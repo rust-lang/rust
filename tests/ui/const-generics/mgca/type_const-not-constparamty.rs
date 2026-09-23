@@ -1,11 +1,13 @@
 #![expect(incomplete_features)]
 #![feature(min_generic_const_args)]
 
+use std::gca;
+
 struct S;
 
 // FIXME(mgca): need support for ctors without anon const
 // (we use a const-block to trigger an anon const here)
-const FREE: S = core::direct_const_arg!(const { S });
+const FREE: S = gca!(const { S });
 //~^ ERROR `S` must implement `ConstParamTy` to be used as the type of a const generic parameter
 
 trait Tr {
@@ -17,7 +19,7 @@ trait Tr {
 impl Tr for S {
     // FIXME(mgca): need support for ctors without anon const
     // (we use a const-block to trigger an anon const here)
-    const N: S = core::direct_const_arg!(const { S });
+    const N: S = gca!(const { S });
     //~^ ERROR `S` must implement `ConstParamTy` to be used as the type of a const generic parameter
 }
 

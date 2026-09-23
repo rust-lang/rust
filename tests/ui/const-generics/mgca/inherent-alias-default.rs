@@ -5,11 +5,13 @@
 //! ensure_ok(). This test just makes sure that codepath is hit in tests.
 #![feature(min_generic_const_args, inherent_associated_types)]
 
+use std::gca;
+
 struct Struct<T1, T2, T3>(T1, T2, T3);
 impl<T1, T2, T3> Struct<T1, T2, T3> {
-    const INHERENT: usize = core::direct_const_arg!(2);
+    const INHERENT: usize = gca!(2);
 }
 
-struct WithDefault<const N: usize = { core::direct_const_arg!(Struct::<u8, u16, u32>::INHERENT) }>;
+struct WithDefault<const N: usize = { gca!(Struct::<u8, u16, u32>::INHERENT) }>;
 
 fn main() {}

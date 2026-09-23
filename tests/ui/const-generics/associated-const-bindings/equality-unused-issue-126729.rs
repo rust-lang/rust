@@ -4,13 +4,15 @@
 #![allow(incomplete_features)]
 #![deny(dead_code)]
 
+use std::gca;
+
 trait Tr {
     #[rustc_always_gca]
     const I: i32;
 }
 
 impl Tr for () {
-    const I: i32 = core::direct_const_arg!(1);
+    const I: i32 = gca!(1);
 }
 
 fn foo() -> impl Tr<I = 1> {}
@@ -23,20 +25,22 @@ trait Tr2 {
 }
 
 impl Tr2 for () {
-    const J: i32 = core::direct_const_arg!(1);
-    const K: i32 = core::direct_const_arg!(1);
+    const J: i32 = gca!(1);
+    const K: i32 = gca!(1);
 }
 
 fn foo2() -> impl Tr2<J = 1, K = 1> {}
 
 mod t {
+    use std::gca;
+
     pub trait Tr3 {
         #[rustc_always_gca]
         const L: i32;
     }
 
     impl Tr3 for () {
-        const L: i32 = core::direct_const_arg!(1);
+        const L: i32 = gca!(1);
     }
 }
 

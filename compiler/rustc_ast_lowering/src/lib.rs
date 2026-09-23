@@ -1489,9 +1489,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let ct = self.arena.alloc(ct);
                         return GenericArg::Const(ct.try_as_ambig_ct().unwrap());
                     }
-                    TyKind::DirectConstArg(expr)
-                        if self.tcx.features().min_generic_const_args() =>
-                    {
+                    TyKind::GcaMacro(expr) if self.tcx.features().min_generic_const_args() => {
                         let ct = match self.can_lower_expr_to_const_arg_direct(
                             expr,
                             DirectConstArgContext::MacrolessMinGenericConstArgs,
@@ -1797,8 +1795,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let fields = self.arena.alloc_slice(fields);
                 hir::TyKind::View(ty, fields)
             }
-            TyKind::DirectConstArg(expr) => {
-                let e = self.emit_bad_direct_const_arg(t.span, expr, "type");
+            TyKind::GcaMacro(expr) => {
+                let e = self.emit_bad_gca_macro(t.span, expr, "type");
                 hir::TyKind::Err(e)
             }
             TyKind::Dummy => panic!("`TyKind::Dummy` should never be lowered"),
@@ -1807,16 +1805,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::Ty { kind, span: self.lower_span(t.span), hir_id: self.lower_node_id(t.id) }
     }
 
-    pub(crate) fn emit_bad_direct_const_arg(
+    pub(crate) fn emit_bad_gca_macro(
         &mut self,
         span: Span,
         expr: &Expr,
         expected: &'static str,
     ) -> ErrorGuaranteed {
-        let msg = format!("expected {expected}, found `direct_const_arg!()` constant");
+        let msg = format!("expected {expected}, found `gca!()` constant");
         if expr::WillCreateDefIdsVisitor.visit_expr(expr).is_break() {
             // FIXME(mgca): make this non-fatal once we have a better way to handle
-            // nested items in invalid `direct_const_arg!()` arguments.
+            // nested items in invalid `gca!()` arguments.
             self.dcx().span_fatal(span, msg)
         } else {
             self.dcx().span_err(span, msg)
@@ -2711,9 +2709,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .is_ok()
             } else {
                 // do not check can_lower_expr_to_const_arg_direct, but rather just
-                // ExprKind::DirectConstArg, because we don't want e.g.
+                // ExprKind::GcaMacro, because we don't want e.g.
                 // `impl<const N: u8> { const C: u8 = N; }` to be a direct-rhs const
-                matches!(body, Expr { kind: ExprKind::DirectConstArg(_), .. })
+                matches!(body, Expr { kind: ExprKind::GcaMacro(_), .. })
             }
         };
         if self.tcx.features().min_generic_const_args()
@@ -2816,7 +2814,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 Ok(())
             }
             (ExprKind::ConstBlock(_), MacrolessMinGenericConstArgs) => Ok(()),
-            (ExprKind::DirectConstArg(_), MacrolessMinGenericConstArgs | MinGenericConstArgs) => {
+            (ExprKind::GcaMacro(_), MacrolessMinGenericConstArgs | MinGenericConstArgs) => {
                 // Always report this as able to be represented directly. If it turns out not to be,
                 // `lower_expr_to_const_arg_direct` will report an error.
                 Ok(())
@@ -2998,11 +2996,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     span,
                 }
             }
-            ExprKind::DirectConstArg(expr) => {
+            ExprKind::GcaMacro(expr) => {
                 // `can_lower_expr_to_const_arg_direct` always returns success upon encountering a
-                // ExprKind::DirectConstArg, which effectively forces the expression to be lowered
-                // as a direct arg. If it actually turns out to not be possible, emit an error
-                // instead.
+                // ExprKind::GcaMacro, which effectively forces the expression to be lowered as a
+                // direct arg. If it actually turns out to not be possible, emit an error instead.
                 // Always use MacrolessMinGenericConstArgs, even if we're under regular GCA, because
                 // that's what the macro means: to enter a context that is like macroless GCA.
                 match self.can_lower_expr_to_const_arg_direct(
@@ -3354,12 +3351,12 @@ enum DirectConstArgContext {
     /// The only allowed direct const arg representation is simple paths that nameres to generic
     /// const parameters.
     Stable,
-    /// The allowed representations are what is allowed on stable, plus the `direct_const_arg!` macro.
+    /// The allowed representations are what is allowed on stable, plus the `gca!` macro.
     MinGenericConstArgs,
     /// Expressions attempt to be lowered directly, and if that fails, the expression falls back to
     /// being represented as an anon const.
     ///
-    /// This context is also used under MinGenericConstArgs inside a `direct_const_arg!` macro, for
+    /// This context is also used under MinGenericConstArgs inside a `gca!` macro, for
     /// simplicity, as they allow the same code.
     MacrolessMinGenericConstArgs,
 }

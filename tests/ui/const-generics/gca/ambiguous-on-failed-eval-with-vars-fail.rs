@@ -12,6 +12,8 @@
 )]
 #![expect(incomplete_features)]
 
+use std::gca;
+
 const FREE<const A: usize>: usize = 10;
 
 trait Trait {
@@ -23,7 +25,7 @@ impl Trait for S {
     const PROJ<const A: usize>: usize = 10;
 }
 
-fn free<const N: usize>() -> ([(); N], [(); core::direct_const_arg!(FREE::<N>)]) {
+fn free<const N: usize>() -> ([(); N], [(); gca!(FREE::<N>)]) {
     loop {}
 }
 
@@ -40,7 +42,7 @@ fn test_free_mismatch() {
     arr = [(); 10];
 }
 
-fn proj<const N: usize>() -> ([(); N], [(); core::direct_const_arg!(<S as Trait>::PROJ::<N>)]) {
+fn proj<const N: usize>() -> ([(); N], [(); gca!(<S as Trait>::PROJ::<N>)]) {
     loop {}
 }
 

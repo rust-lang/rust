@@ -1,12 +1,14 @@
 #![feature(min_generic_const_args)]
 #![expect(incomplete_features)]
 
+use std::gca;
+
 pub trait IsVoid {
     #[rustc_always_gca]
     const IS_VOID: bool;
 }
 impl IsVoid for () {
-    const IS_VOID: bool = core::direct_const_arg!(true);
+    const IS_VOID: bool = gca!(true);
 }
 
 pub trait Maybe {}

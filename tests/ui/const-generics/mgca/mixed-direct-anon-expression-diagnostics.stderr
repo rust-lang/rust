@@ -1,11 +1,11 @@
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/mixed-direct-anon-expression-diagnostics.rs:13:39
+  --> $DIR/mixed-direct-anon-expression-diagnostics.rs:15:20
    |
-LL |     f::<{ core::direct_const_arg!((N, 1 + 1)) }>();
-   |                                       ^^^^^
+LL |     f::<{ gca!((N, 1 + 1)) }>();
+   |                    ^^^^^
 
 error: generic parameters may not be used in const operations
-  --> $DIR/mixed-direct-anon-expression-diagnostics.rs:11:12
+  --> $DIR/mixed-direct-anon-expression-diagnostics.rs:13:12
    |
 LL |     f::<{ (N, 1 + 1) }>();
    |            ^
