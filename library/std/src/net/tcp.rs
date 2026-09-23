@@ -617,7 +617,7 @@ impl TcpStream {
     /// use std::net::TcpStream;
     ///
     /// let stream = TcpStream::connect("[::1]:12345")
-    ///                        .expect("Couldn't connect to the server...");
+    ///     .expect("Couldn't connect to the server...");
     /// stream.set_hop_limit_v6(88).expect("set_hop_limit_v6 call failed");
     /// ```
     #[unstable(feature = "ipv6_hop_limit", issue = "139166")]
@@ -636,7 +636,7 @@ impl TcpStream {
     /// use std::net::TcpStream;
     ///
     /// let stream = TcpStream::connect("[::1]:12345")
-    ///                        .expect("Couldn't connect to the server...");
+    ///     .expect("Couldn't connect to the server...");
     /// stream.set_hop_limit_v6(88).expect("set_hop_limit_v6 call failed");
     /// assert_eq!(stream.hop_limit_v6().unwrap(), 88);
     /// ```
