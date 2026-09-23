@@ -1,14 +1,12 @@
 error: use of deprecated import through accidentally stabilized module `intrinsics`
-  --> $DIR/accidentally-stable-intrinsics.rs:8:5
+  --> $DIR/accidentally-stable-intrinsics.rs:7:5
    |
 LL | use std::intrinsics::transmute as _;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the lint level is defined here
-  --> $DIR/accidentally-stable-intrinsics.rs:4:9
-   |
-LL | #![deny(deprecated)]
-   |         ^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+   = note: `#[deny(unstable_imports)]` (part of `#[deny(future_incompatible)]`) on by default
 help: import this function via the `mem` module instead
    |
 LL - use std::intrinsics::transmute as _;
@@ -21,6 +19,8 @@ error: use of deprecated import through accidentally stabilized module `intrinsi
 LL | use core::intrinsics::copy as _;
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
 help: import this function via the `ptr` module instead
    |
 LL - use core::intrinsics::copy as _;
@@ -28,11 +28,13 @@ LL + use core::ptr::copy as _;
    |
 
 error: use of deprecated import through accidentally stabilized module `intrinsics`
-  --> $DIR/accidentally-stable-intrinsics.rs:12:5
+  --> $DIR/accidentally-stable-intrinsics.rs:13:5
    |
 LL | use std::intrinsics::copy_nonoverlapping as _;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
 help: import this function via the `ptr` module instead
    |
 LL - use std::intrinsics::copy_nonoverlapping as _;
@@ -40,11 +42,13 @@ LL + use std::ptr::copy_nonoverlapping as _;
    |
 
 error: use of deprecated import through accidentally stabilized module `intrinsics`
-  --> $DIR/accidentally-stable-intrinsics.rs:14:5
+  --> $DIR/accidentally-stable-intrinsics.rs:16:5
    |
 LL | use core::intrinsics::write_bytes as _;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
 help: import this function via the `ptr` module instead
    |
 LL - use core::intrinsics::write_bytes as _;
@@ -52,11 +56,13 @@ LL + use core::ptr::write_bytes as _;
    |
 
 error: use of deprecated import through accidentally stabilized module `intrinsics`
-  --> $DIR/accidentally-stable-intrinsics.rs:18:5
+  --> $DIR/accidentally-stable-intrinsics.rs:21:5
    |
 LL |     copy as _,
    |     ^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
 help: import this function via the `ptr` module instead
    |
 LL - use core::intrinsics::{
@@ -64,11 +70,13 @@ LL + use core::ptr::{
    |
 
 error: use of deprecated import through accidentally stabilized module `intrinsics`
-  --> $DIR/accidentally-stable-intrinsics.rs:20:5
+  --> $DIR/accidentally-stable-intrinsics.rs:24:5
    |
 LL |     copy_nonoverlapping as _,
    |     ^^^^^^^^^^^^^^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
 help: import this function via the `ptr` module instead
    |
 LL - use core::intrinsics::{
@@ -76,11 +84,13 @@ LL + use core::ptr::{
    |
 
 error: use of deprecated import through accidentally stabilized module `intrinsics`
-  --> $DIR/accidentally-stable-intrinsics.rs:22:5
+  --> $DIR/accidentally-stable-intrinsics.rs:27:5
    |
 LL |     write_bytes as _,
    |     ^^^^^^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
 help: import this function via the `ptr` module instead
    |
 LL - use core::intrinsics::{
@@ -88,11 +98,13 @@ LL + use core::ptr::{
    |
 
 error: use of deprecated import through accidentally stabilized module `intrinsics`
-  --> $DIR/accidentally-stable-intrinsics.rs:30:17
+  --> $DIR/accidentally-stable-intrinsics.rs:36:17
    |
 LL |         let _ = std::intrinsics::transmute::<u8, i8>(value);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
 help: import this function via the `mem` module instead
    |
 LL -         let _ = std::intrinsics::transmute::<u8, i8>(value);
@@ -100,11 +112,13 @@ LL +         let _ = std::mem::transmute::<u8, i8>(value);
    |
 
 error: use of deprecated import through accidentally stabilized module `intrinsics`
-  --> $DIR/accidentally-stable-intrinsics.rs:32:9
+  --> $DIR/accidentally-stable-intrinsics.rs:39:9
    |
 LL |         core::intrinsics::copy(&value, &mut dst, 1);
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
 help: import this function via the `ptr` module instead
    |
 LL -         core::intrinsics::copy(&value, &mut dst, 1);
@@ -112,11 +126,13 @@ LL +         core::ptr::copy(&value, &mut dst, 1);
    |
 
 error: use of deprecated import through accidentally stabilized module `intrinsics`
-  --> $DIR/accidentally-stable-intrinsics.rs:34:9
+  --> $DIR/accidentally-stable-intrinsics.rs:42:9
    |
 LL |         core::intrinsics::copy_nonoverlapping(&value, &mut dst, 1);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
 help: import this function via the `ptr` module instead
    |
 LL -         core::intrinsics::copy_nonoverlapping(&value, &mut dst, 1);
@@ -124,11 +140,13 @@ LL +         core::ptr::copy_nonoverlapping(&value, &mut dst, 1);
    |
 
 error: use of deprecated import through accidentally stabilized module `intrinsics`
-  --> $DIR/accidentally-stable-intrinsics.rs:36:9
+  --> $DIR/accidentally-stable-intrinsics.rs:45:9
    |
 LL |         std::intrinsics::write_bytes(&mut dst, value, 1)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
 help: import this function via the `ptr` module instead
    |
 LL -         std::intrinsics::write_bytes(&mut dst, value, 1)
@@ -136,4 +154,180 @@ LL +         std::ptr::write_bytes(&mut dst, value, 1)
    |
 
 error: aborting due to 11 previous errors
+
+Future incompatibility report: Future breakage diagnostic:
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:7:5
+   |
+LL | use std::intrinsics::transmute as _;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+   = note: `#[deny(unstable_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+help: import this function via the `mem` module instead
+   |
+LL - use std::intrinsics::transmute as _;
+LL + use std::mem::transmute as _;
+   |
+
+Future breakage diagnostic:
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:10:5
+   |
+LL | use core::intrinsics::copy as _;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+   = note: `#[deny(unstable_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+help: import this function via the `ptr` module instead
+   |
+LL - use core::intrinsics::copy as _;
+LL + use core::ptr::copy as _;
+   |
+
+Future breakage diagnostic:
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:13:5
+   |
+LL | use std::intrinsics::copy_nonoverlapping as _;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+   = note: `#[deny(unstable_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+help: import this function via the `ptr` module instead
+   |
+LL - use std::intrinsics::copy_nonoverlapping as _;
+LL + use std::ptr::copy_nonoverlapping as _;
+   |
+
+Future breakage diagnostic:
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:16:5
+   |
+LL | use core::intrinsics::write_bytes as _;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+   = note: `#[deny(unstable_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+help: import this function via the `ptr` module instead
+   |
+LL - use core::intrinsics::write_bytes as _;
+LL + use core::ptr::write_bytes as _;
+   |
+
+Future breakage diagnostic:
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:21:5
+   |
+LL |     copy as _,
+   |     ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+   = note: `#[deny(unstable_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+help: import this function via the `ptr` module instead
+   |
+LL - use core::intrinsics::{
+LL + use core::ptr::{
+   |
+
+Future breakage diagnostic:
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:24:5
+   |
+LL |     copy_nonoverlapping as _,
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+   = note: `#[deny(unstable_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+help: import this function via the `ptr` module instead
+   |
+LL - use core::intrinsics::{
+LL + use core::ptr::{
+   |
+
+Future breakage diagnostic:
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:27:5
+   |
+LL |     write_bytes as _,
+   |     ^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+   = note: `#[deny(unstable_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+help: import this function via the `ptr` module instead
+   |
+LL - use core::intrinsics::{
+LL + use core::ptr::{
+   |
+
+Future breakage diagnostic:
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:36:17
+   |
+LL |         let _ = std::intrinsics::transmute::<u8, i8>(value);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+   = note: `#[deny(unstable_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+help: import this function via the `mem` module instead
+   |
+LL -         let _ = std::intrinsics::transmute::<u8, i8>(value);
+LL +         let _ = std::mem::transmute::<u8, i8>(value);
+   |
+
+Future breakage diagnostic:
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:39:9
+   |
+LL |         core::intrinsics::copy(&value, &mut dst, 1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+   = note: `#[deny(unstable_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+help: import this function via the `ptr` module instead
+   |
+LL -         core::intrinsics::copy(&value, &mut dst, 1);
+LL +         core::ptr::copy(&value, &mut dst, 1);
+   |
+
+Future breakage diagnostic:
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:42:9
+   |
+LL |         core::intrinsics::copy_nonoverlapping(&value, &mut dst, 1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+   = note: `#[deny(unstable_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+help: import this function via the `ptr` module instead
+   |
+LL -         core::intrinsics::copy_nonoverlapping(&value, &mut dst, 1);
+LL +         core::ptr::copy_nonoverlapping(&value, &mut dst, 1);
+   |
+
+Future breakage diagnostic:
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:45:9
+   |
+LL |         std::intrinsics::write_bytes(&mut dst, value, 1)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+   = note: `#[deny(unstable_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+help: import this function via the `ptr` module instead
+   |
+LL -         std::intrinsics::write_bytes(&mut dst, value, 1)
+LL +         std::ptr::write_bytes(&mut dst, value, 1)
+   |
 
