@@ -6,6 +6,39 @@
 #[cfg(test)]
 mod tests;
 
+// Import the file operations under consistent names.
+cfg_select! {
+    not(any(
+        all(target_os = "linux", not(target_env = "musl")),
+        target_os = "android",
+        target_os = "hurd",
+        target_os = "l4re",
+    )) => {
+        use libc::{
+            dirent as dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
+            lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
+        };
+    }
+    target_os = "android" => {
+        // Android's `stat`, `dirent`, and related functions are always 64-bit LFS compatible, and
+        // `open` already implies `O_LARGEFILE`, so all those don't need to follow Linux.
+        // However, we still need off64_t, ftruncate64, and lseek64.
+        use libc::{
+            dirent as dirent64, fstat as fstat64, ftruncate64, lseek64, lstat as lstat64, off64_t,
+            open as open64, stat as stat64,
+        };
+    }
+    target_os = "l4re" => {
+        use libc::{
+            dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
+            lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
+        };
+    }
+    _ => {
+        use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
+    }
+}
+
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use libc::c_char;
 #[cfg(any(
@@ -18,28 +51,6 @@ use libc::c_char;
 ))]
 use libc::dirfd;
 use libc::{c_int, mode_t};
-#[cfg(target_os = "android")]
-use libc::{
-    dirent as dirent64, fstat as fstat64, fstatat as fstatat64, ftruncate64, lseek64,
-    lstat as lstat64, off64_t, open as open64, stat as stat64,
-};
-#[cfg(not(any(
-    all(target_os = "linux", not(target_env = "musl")),
-    target_os = "android",
-    target_os = "hurd",
-    target_os = "l4re",
-)))]
-use libc::{
-    dirent as dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
-    lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
-};
-#[cfg(target_os = "l4re")]
-use libc::{
-    dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64, lstat as lstat64,
-    off_t as off64_t, open as open64, stat as stat64,
-};
-#[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
-use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
 
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt::{self, Write as _};
@@ -1033,7 +1044,7 @@ impl DirEntry {
                 let dir_handle =
                     mem::ManuallyDrop::new(dir::Dir(unsafe { OwnedFd::from_raw_fd(fd) }));
 
-                dir_handle.metadata_at_c(&self.name, /* symlink_nofollow */ true)
+                dir_handle.metadata_c(&self.name, /* symlink_nofollow */ true)
             }
 
             // Fallback based on path

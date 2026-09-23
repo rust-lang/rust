@@ -85,7 +85,7 @@ impl Dir {
         File::open(&self.path.join(path), opts)
     }
 
-    pub fn metadata(&self) -> io::Result<FileAttr> {
+    pub fn self_metadata(&self) -> io::Result<FileAttr> {
         self.path.metadata().map(|m| m.into_inner())
     }
 
@@ -109,11 +109,11 @@ impl Dir {
         remove_dir(self.path.join(path))
     }
 
-    pub fn metadata_at(&self, path: &Path) -> io::Result<FileAttr> {
+    pub fn metadata(&self, path: &Path) -> io::Result<FileAttr> {
         self.path.join(path).metadata().map(|m| m.into_inner())
     }
 
-    pub fn symlink_metadata_at(&self, path: &Path) -> io::Result<FileAttr> {
+    pub fn symlink_metadata(&self, path: &Path) -> io::Result<FileAttr> {
         self.path.join(path).symlink_metadata().map(|m| m.into_inner())
     }
 }
