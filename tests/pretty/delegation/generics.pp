@@ -1,12 +1,13 @@
-//@ pretty-compare-only
-//@ pretty-mode:hir
-//@ pp-exact:generics.pp
-
-#![allow(incomplete_features)]
+#![attr = LintCheck([LintCheck {lint_name: "incomplete_features",
+kind: Allow}])]
 #![attr = Feature([fn_delegation#0])]
 extern crate std;
 #[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;
+//@ pretty-compare-only
+//@ pretty-mode:hir
+//@ pp-exact:generics.pp
+
 
 mod free_to_trait {
     trait Trait<'a, XX, Y, T = (), const N: usize = 2> {

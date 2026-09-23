@@ -10,6 +10,7 @@ rustc_abi = { path = "../rustc_abi" }
 rustc_apfloat = "0.2.0"
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
+rustc_attr_ir = { path = "../rustc_attr_ir" }
 rustc_attr_parsing = { path = "../rustc_attr_parsing" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
@@ -28,6 +29,7 @@ rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+thin-vec = "0.2.19"
 tracing = "0.1"
 unicode-security = "0.1.0"
 # tidy-alphabetical-end

@@ -1,10 +1,9 @@
-//@ compile-flags: -Z unpretty=hir,typed
-
-#![deny(deprecated)]
 #![attr = Feature([extern_item_impls#0])]
+#![attr = LintCheck([LintCheck {lint_name: "deprecated", kind: Deny}])]
 extern crate std;
 #[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;
+//@ compile-flags: -Z unpretty=hir,typed
 
 const _: () =
     ({

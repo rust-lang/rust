@@ -1,3 +1,4 @@
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint_defs::builtin::UNFULFILLED_LINT_EXPECTATIONS;
 use rustc_lint_defs::{LintExpectationId, StableLintExpectationId};
@@ -35,7 +36,11 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
             LintExpectationId::Unstable(id) => (id.attr_id, id.lint_index),
             LintExpectationId::Stable(id) => {
                 // We are an `eval_always` query, so looking at the attribute's `AttrId` is ok.
-                (tcx.hir_attrs(id.hir_id)[id.attr_index as usize].id(), id.lint_index)
+
+                let lint_checks = find_attr!(tcx, id.hir_id, LintCheck(lints) => lints).unwrap();
+                let attr_id = lint_checks[id.lint_index as usize].attr_id.attr_id;
+
+                (attr_id, id.lint_index)
             }
         };
         (attr_id, lint_index)

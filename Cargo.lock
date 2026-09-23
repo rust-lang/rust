@@ -4324,6 +4324,7 @@ dependencies = [
  "rustc_apfloat",
  "rustc_ast",
  "rustc_ast_pretty",
+ "rustc_attr_ir",
  "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
@@ -4342,6 +4343,7 @@ dependencies = [
  "rustc_target",
  "rustc_trait_selection",
  "smallvec",
+ "thin-vec",
  "tracing",
  "unicode-security",
 ]
@@ -4471,6 +4473,7 @@ dependencies = [
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
+ "rustc_attr_ir",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
