@@ -1,7 +1,7 @@
-error: expected type, found `direct_const_arg!()` constant
-  --> $DIR/invalid-direct-const-arg-owner-issue-159172.rs:6:14
+error: expected type, found `gca!()` constant
+  --> $DIR/invalid-gca-macro-owner-issue-159172.rs:8:14
    |
-LL |       const C: core::direct_const_arg!(|| {
+LL |       const C: gca!(|| {
    |  ______________^
 LL | |
 LL | |         use std::io::*;

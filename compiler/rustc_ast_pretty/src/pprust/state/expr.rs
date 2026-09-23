@@ -883,8 +883,8 @@ impl<'a> State<'a> {
                 self.word("/*DUMMY*/");
                 self.pclose();
             }
-            ast::ExprKind::DirectConstArg(expr) => {
-                self.word_nbsp("core::direct_const_arg!");
+            ast::ExprKind::GcaMacro(expr) => {
+                self.word_nbsp("core::gca!");
                 self.popen();
                 self.print_expr(expr, FixupContext::default());
                 self.pclose()

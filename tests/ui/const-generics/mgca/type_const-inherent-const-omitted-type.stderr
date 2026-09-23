@@ -1,19 +1,19 @@
 error: missing type for `const` item
-  --> $DIR/type_const-inherent-const-omitted-type.rs:7:12
+  --> $DIR/type_const-inherent-const-omitted-type.rs:9:12
    |
-LL |     const B = core::direct_const_arg!(4);
+LL |     const B = gca!(4);
    |            ^
    |
 help: provide a type for the item
    |
-LL |     const B: <type> = core::direct_const_arg!(4);
+LL |     const B: <type> = gca!(4);
    |            ++++++++
 
 error: type annotations needed for the literal
-  --> $DIR/type_const-inherent-const-omitted-type.rs:7:39
+  --> $DIR/type_const-inherent-const-omitted-type.rs:9:20
    |
-LL |     const B = core::direct_const_arg!(4);
-   |                                       ^
+LL |     const B = gca!(4);
+   |                    ^
 
 error: aborting due to 2 previous errors
 

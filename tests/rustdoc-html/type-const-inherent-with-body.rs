@@ -2,10 +2,12 @@
 #![feature(min_generic_const_args, macroless_generic_const_args, inherent_associated_types)]
 #![expect(incomplete_features)]
 
+use std::gca;
+
 pub struct Foo;
 
 impl Foo {
-    const LEN: usize = core::direct_const_arg!(4);
+    const LEN: usize = gca!(4);
 }
 
 //@ has 'foo/fn.mk_array.html'

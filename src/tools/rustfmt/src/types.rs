@@ -1043,7 +1043,7 @@ impl Rewrite for ast::Ty {
                 result.push_str(&rewrite);
                 Ok(result)
             }
-            ast::TyKind::Pat(..) | ast::TyKind::View(..) | ast::TyKind::DirectConstArg(..) => {
+            ast::TyKind::Pat(..) | ast::TyKind::View(..) | ast::TyKind::GcaMacro(..) => {
                 // These don't normally occur in the AST because macros aren't expanded. However,
                 // rustfmt tries to parse macro arguments when formatting macros, so it's not
                 // totally impossible for rustfmt to come across these nodes when formatting a file.

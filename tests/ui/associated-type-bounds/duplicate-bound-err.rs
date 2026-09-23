@@ -4,7 +4,7 @@
 #![expect(incomplete_features)]
 #![allow(refining_impl_trait_internal)]
 
-use std::iter;
+use std::{gca, iter};
 
 fn rpit1() -> impl Iterator<Item: Copy, Item: Send> {
     iter::empty()
@@ -55,7 +55,7 @@ trait Trait {
 impl Trait for () {
     type Gat<T> = ();
 
-    const ASSOC: i32 = core::direct_const_arg!(3);
+    const ASSOC: i32 = gca!(3);
 
     fn foo() {}
 }
@@ -63,7 +63,7 @@ impl Trait for () {
 impl Trait for u32 {
     type Gat<T> = ();
 
-    const ASSOC: i32 = core::direct_const_arg!(4);
+    const ASSOC: i32 = gca!(4);
 
     fn foo() -> u32 {
         42

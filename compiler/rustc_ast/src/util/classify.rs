@@ -158,7 +158,7 @@ pub fn leading_labeled_expr(mut expr: &ast::Expr) -> bool {
             | Yeet(..)
             | Yield(..)
             | UnsafeBinderCast(..)
-            | DirectConstArg(..)
+            | GcaMacro(..)
             | Err(..)
             | Dummy => return false,
         }
@@ -244,7 +244,7 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<TrailingBrace<'_>> {
             | Try(_)
             | Yeet(None)
             | UnsafeBinderCast(..)
-            | DirectConstArg(..)
+            | GcaMacro(..)
             | Err(_)
             | Dummy => {
                 break None;
@@ -307,7 +307,7 @@ fn type_trailing_braced_mac_call(mut ty: &ast::Ty) -> Option<&ast::MacCall> {
             | ast::TyKind::Pat(..)
             | ast::TyKind::FieldOf(..)
             | ast::TyKind::View(..)
-            | ast::TyKind::DirectConstArg(..)
+            | ast::TyKind::GcaMacro(..)
             | ast::TyKind::Dummy
             | ast::TyKind::Err(..) => break None,
         }

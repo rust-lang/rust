@@ -7,6 +7,8 @@
 
 #![feature(min_generic_const_args, macroless_generic_const_args)]
 
+use std::gca;
+
 pub struct A;
 
 pub trait Array {
@@ -16,7 +18,7 @@ pub trait Array {
 }
 
 impl Array for A {
-    const LEN: usize = core::direct_const_arg!(0u8);
+    const LEN: usize = gca!(0u8);
     //~^ ERROR the constant `0` is not of type `usize`
 
     fn arr() -> [u8; const { Self::LEN }] {}

@@ -1,11 +1,11 @@
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/tuple_ctor_complex_args.rs:12:50
+  --> $DIR/tuple_ctor_complex_args.rs:13:31
    |
-LL |     with_point::<{ core::direct_const_arg!(Point(N + 1, N)) }>();
-   |                                                  ^^^^^
+LL |     with_point::<{ gca!(Point(N + 1, N)) }>();
+   |                               ^^^^^
 
 error: generic parameters may not be used in const operations
-  --> $DIR/tuple_ctor_complex_args.rs:15:34
+  --> $DIR/tuple_ctor_complex_args.rs:16:34
    |
 LL |     with_point::<{ Point(const { N + 1 }, N) }>();
    |                                  ^

@@ -3,6 +3,8 @@
 #![feature(min_generic_const_args)]
 #![feature(macroless_generic_const_args)]
 
+use std::gca;
+
 trait Trait<T> {}
 
 impl Trait<i32> for i32 {}
@@ -13,11 +15,11 @@ fn main() {
     // Const-only infer args used for a type parameter are rejected.
     let _z: &[&dyn Trait<{ _ }>] = &[&0i32];
     //~^ ERROR: constant provided when a type was expected
-    let _y: &dyn Trait<core::direct_const_arg!(_)> = &0i32;
+    let _y: &dyn Trait<gca!(_)> = &0i32;
     //~^ ERROR: constant provided when a type was expected
 
     let _a: S<{ _ }> = S::<3>;
-    let _b: S<core::direct_const_arg!(_)> = S::<3>;
-    let _c: S<{ core::direct_const_arg!(_) }> = S::<3>;
+    let _b: S<gca!(_)> = S::<3>;
+    let _c: S<{ gca!(_) }> = S::<3>;
     let _d: S<_> = S::<3>;
 }

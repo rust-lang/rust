@@ -10,6 +10,7 @@
 )]
 #![expect(incomplete_features)]
 
+use std::gca;
 use std::marker::{ConstParamTy, ConstParamTy_, PhantomData};
 
 #[derive(PartialEq, Eq, ConstParamTy)]
@@ -17,7 +18,7 @@ struct Foo<T> {
     field: T,
 }
 
-const WRAP<T: ConstParamTy_, const N: T>: Foo<T> = core::direct_const_arg!(Foo::<T> { field: N });
+const WRAP<T: ConstParamTy_, const N: T>: Foo<T> = gca!(Foo::<T> { field: N });
 
 fn main() {
     // What we're trying to accomplish here is winding up with an equality relation

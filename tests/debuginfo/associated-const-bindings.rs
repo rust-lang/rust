@@ -13,12 +13,15 @@
 #![feature(min_generic_const_args)]
 #![expect(unused_variables, incomplete_features)]
 
+use std::gca;
+
 trait Trait {
     #[rustc_always_gca]
     const N: usize;
 }
+
 impl Trait for () {
-    const N: usize = core::direct_const_arg!(101);
+    const N: usize = gca!(101);
 }
 
 fn main() {
