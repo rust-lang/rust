@@ -32,13 +32,16 @@ pub fn dump_symbol_names_and_def_paths(tcx: TyCtxt<'_>) {
                 let args = tcx.erase_and_anonymize_regions(args);
                 let instance = Instance::new_raw(def_id, args);
                 let mangled = tcx.symbol_name(instance);
+                let def_span = tcx.def_span(def_id);
+                let span = span.to(def_span);
 
-                tcx.dcx().span_err(span, format!("symbol-name({mangled})"));
+                let mut err = tcx.dcx().struct_span_err(span, format!("symbol-name({mangled})"));
 
                 if let Ok(demangling) = rustc_demangle::try_demangle(mangled.name) {
-                    tcx.dcx().span_err(span, format!("demangling({demangling})"));
-                    tcx.dcx().span_err(span, format!("demangling-alt({demangling:#})"));
+                    err.note(format!("demangling({demangling})"));
+                    err.note(format!("demangling-alt({demangling:#})"));
                 }
+                err.emit_err();
             }
 
             if let Some(&span) = find_attr!(tcx, id.def_id, RustcDumpDefPath(span) => span) {
