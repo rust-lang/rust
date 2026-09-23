@@ -58,7 +58,6 @@
 
 #![allow(unused_features)]
 #![allow(incomplete_features)]
-#![allow(unused_attributes)]
 #![expect(clippy::partialeq_ne_impl, reason = "we need to implement ne for a lot of alloc types")]
 #![stable(feature = "alloc", since = "1.36.0")]
 #![doc(

@@ -1950,7 +1950,6 @@ crate::target_spec_enum! {
         Spe = "spe",
         Uwp = "uwp",
         VecDefault = "vec-default",
-        VecExtAbi = "vec-extabi",
         X32 = "x32",
         V8Plus = "v8plus",
         Unspecified = "",

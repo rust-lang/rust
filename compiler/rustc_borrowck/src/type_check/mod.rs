@@ -24,6 +24,7 @@ use rustc_middle::mir::*;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{
     self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, GenericArgsRef, Ty, TyCtxt,
     TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
@@ -244,7 +245,7 @@ struct TypeChecker<'a, 'tcx> {
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
     deferred_closure_requirements: &'a mut DeferredClosureRequirements<'tcx>,
     /// When using `-Zpolonius=next`, the liveness helper data used to create polonius constraints.
-    polonius_context: Option<PoloniusContext>,
+    polonius_context: Option<PoloniusContext<'tcx>>,
 }
 
 /// Holder struct for passing results from MIR typeck to the rest of the non-lexical regions
@@ -255,7 +256,7 @@ pub(crate) struct MirTypeckResults<'tcx> {
     pub(crate) region_bound_pairs: Frozen<RegionBoundPairs<'tcx>>,
     pub(crate) known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesClause<'tcx>>>,
     pub(crate) deferred_closure_requirements: DeferredClosureRequirements<'tcx>,
-    pub(crate) polonius_context: Option<PoloniusContext>,
+    pub(crate) polonius_context: Option<PoloniusContext<'tcx>>,
 }
 
 /// A collection of region constraints that must be satisfied for the

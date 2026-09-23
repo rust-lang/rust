@@ -4,7 +4,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_span::Symbol;
 
 use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
-use crate::spec::{CfgAbi, RelocModel, RustcAbi, Target};
+use crate::spec::{RelocModel, RustcAbi, Target};
 
 def_reg_class! {
     PowerPC PowerPCInlineAsmRegClass {
@@ -107,11 +107,8 @@ fn reserved_v20to31(
     _is_clobber: bool,
 ) -> Result<(), &'static str> {
     if target.is_like_aix {
-        match &target.options.cfg_abi {
-            CfgAbi::VecDefault => Err("v20-v31 (vs52-vs63) are reserved on vec-default ABI"),
-            CfgAbi::VecExtAbi => Ok(()),
-            abi => unreachable!("unrecognized AIX ABI: {abi}"),
-        }
+        // We do not support the vec-extabi at the moment.
+        Err("v20-v31 (vs52-vs63) are reserved on vec-default ABI")
     } else {
         Ok(())
     }
