@@ -1,8 +1,8 @@
 //! Manages calling a concrete function (with known MIR body) with argument passing,
 //! and returning the return value to the caller.
 
-use std::assert_matches;
 use std::borrow::Cow;
+use std::{assert_matches, debug_assert_matches};
 
 use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
@@ -432,8 +432,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.storage_live_dyn(local, meta)?;
         }
         // Now we can finally actually evaluate the callee place.
-        let callee_arg =
-            self.eval_place(*callee_arg, /* skip_validity_for_simple_deref */ false)?;
+        let callee_arg = self
+            .eval_place_for_write(*callee_arg, /* skip_validity_for_simple_deref */ false)?;
         // We allow some transmutes here.
         // FIXME: Depending on the PassMode, this should reset some padding to uninitialized. (This
         // is true for all `copy_op`, but there are a lot of special cases for argument passing
@@ -605,6 +605,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     let (callee_arg_idx, callee_abi) = callee_args_abis.next().unwrap();
                     assert!(callee_abi.layout.is_1zst() && callee_abi.is_ignore());
                     ecx.storage_live(local)?;
+                    ecx.allocate_local_for_write(local)?;
                     // And skip it in the caller, if present. We can tell whether it is present by
                     // comparing the number of arguments on the caller and callee side.
                     if caller_fn_abi.args.len() == callee_fn_abi.args.len() {
@@ -624,8 +625,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     // This argument is a VaList holding the remaining caller-side arguments.
                     ecx.storage_live(local)?;
 
-                    let place =
-                        ecx.eval_place(dest, /* skip_validity_for_simple_deref */ false)?;
+                    let place = ecx.eval_place_for_write(
+                        dest, /* skip_validity_for_simple_deref */ false,
+                    )?;
                     let mplace = ecx.force_allocation(&place)?;
 
                     // Consume the remaining arguments by putting them into the variable argument
@@ -651,6 +653,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 } else if Some(local) == body.spread_arg {
                     // Make the local live once, then fill in the value field by field.
                     ecx.storage_live(local)?;
+                    // Function arguments start allocated, including an empty spread tuple for
+                    // which the loop below has no fields to initialize.
+                    ecx.allocate_local_for_write(local)?;
                     // Must be a tuple
                     let ty::Tuple(fields) = ty.kind() else {
                         span_bug!(ecx.cur_span(), "non-tuple type for `spread_arg`: {ty}")
@@ -1003,10 +1008,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // as that "executes" the goto to the return block, but we don't want to,
         // only the tail called function should return to the current return block.
 
-        // The arguments need to all be copied since the current stack frame will be removed
-        // before the callee even starts executing.
-        // FIXME(explicit_tail_calls,#144855): does this match what codegen does?
-        let args = args.iter().map(|fn_arg| FnArg::Copy(fn_arg.copy_fn_arg())).collect::<Vec<_>>();
+        // Tail-call arguments are evaluated as ordinary operands, so none of them may donate a
+        // place in the frame that is about to be destroyed.
+        for arg in args {
+            debug_assert_matches!(arg, FnArg::Copy(_));
+        }
         // Remove the frame from the stack.
         let frame = self.pop_stack_frame_raw()?;
         // Remember where this frame would have returned to.
@@ -1023,7 +1029,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         self.init_fn_call(
             fn_val,
             (caller_abi, caller_fn_abi),
-            &*args,
+            args,
             with_caller_location,
             frame.return_place(),
             ret,
@@ -1133,11 +1139,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Get out the return value. Must happen *before* the frame is popped as we have to get the
         // local's value out.
         let return_op =
-            self.local_to_op(mir::RETURN_PLACE, None).expect("return place should always be live");
+            if unwinding { None } else { Some(self.local_to_op(mir::RETURN_PLACE, None)?) };
         // Remove the frame from the stack.
         let frame = self.pop_stack_frame_raw()?;
         // Copy the return value and remember the return continuation.
-        if !unwinding {
+        if let Some(return_op) = return_op {
             self.copy_op_allow_transmute(&return_op, frame.return_place())?;
             trace!("return value: {:?}", self.dump_place(frame.return_place()));
         }

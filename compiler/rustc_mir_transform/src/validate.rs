@@ -388,6 +388,23 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     }
                     self.check_unwind_edge(location, unwind);
 
+                    // With move-elimination semantics from RFC 3943, the
+                    // destination is evaluated last. It must not allocate fresh
+                    // storage for a moved argument's local: that would hide an
+                    // overlap forbidden by in-place argument and return
+                    // passing.
+                    //
+                    // We forbid this as malformed MIR instead of treating as
+                    // runtime UB.
+                    if !destination.is_indirect()
+                        && args.iter().any(|arg| {
+                            matches!(&arg.node, Operand::Move(place)
+                                if place.as_local() == Some(destination.local))
+                        })
+                    {
+                        self.fail(location, "return destination refers to a moved local");
+                    }
+
                     // The code generation assumes that there are no critical call edges. The
                     // assumption is used to simplify inserting code that should be executed along
                     // the return edge from the call. FIXME(tmiasko): Since this is a strictly code
