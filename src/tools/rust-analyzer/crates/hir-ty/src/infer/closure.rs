@@ -273,9 +273,9 @@ impl<'db> InferenceContext<'db> {
                 // coroutine. To do so, we use the `CoroutineClosureSignature` to compute
                 // the coroutine type, filling in the tupled_upvars_ty and kind_ty with infer
                 // vars which will get constrained during upvar analysis.
-                let coroutine_output_ty = closure_args
-                    .coroutine_closure_sig()
-                    .map_bound(|sig| {
+                let coroutine_output_ty = interner.liberate_late_bound_regions(
+                    self.owner.into(),
+                    closure_args.coroutine_closure_sig().map_bound(|sig| {
                         sig.to_coroutine(
                             interner,
                             parent_args.as_slice(),
@@ -283,8 +283,8 @@ impl<'db> InferenceContext<'db> {
                             interner.coroutine_for_closure(coroutine_closure_id.into()),
                             coroutine_upvars_ty,
                         )
-                    })
-                    .skip_binder();
+                    }),
+                );
                 liberated_sig = interner.mk_fn_sig(
                     liberated_sig.inputs().iter().copied(),
                     coroutine_output_ty,
