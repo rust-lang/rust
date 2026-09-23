@@ -23,7 +23,7 @@ use super::sidebar::{ModuleLike, Sidebar, print_sidebar, sidebar_module_like};
 use super::{AllTypes, StylePath};
 use crate::clean::types::ExternalLocation;
 use crate::clean::utils::has_doc_flag;
-use crate::clean::{self, ExternalCrate};
+use crate::clean::{self, ExternalCrate, ItemKind};
 use crate::config::{EmitType, ModuleSorting, RenderOptions};
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
@@ -748,8 +748,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         // Render sidebar-items.js used throughout this module.
         if !self.info.render_redirect_pages {
-            let (clean::StrippedItem(clean::ModuleItem(ref module))
-            | clean::ModuleItem(ref module)) = item.kind
+            let (ItemKind::StrippedItem(ItemKind::ModuleItem(ref module))
+            | ItemKind::ModuleItem(ref module)) = item.kind
             else {
                 unreachable!()
             };

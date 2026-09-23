@@ -30,7 +30,6 @@ use rustc_span::symbol::{Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, FileName, Ident, Loc, RemapPathScopeComponents, span_bug};
 use tracing::{debug, trace};
 
-pub(crate) use self::ItemKind::*;
 pub(crate) use self::Type::{
     Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive, QPath,
     RawPointer, SelfTy, Slice, Tuple, UnsafeBinder,
@@ -647,21 +646,34 @@ impl Item {
         self.type_() == ItemType::Variant
     }
     pub(crate) fn is_associated_type(&self) -> bool {
-        matches!(self.kind, AssocTypeItem(..) | StrippedItem(AssocTypeItem(..)))
+        matches!(
+            self.kind,
+            ItemKind::AssocTypeItem(..) | ItemKind::StrippedItem(ItemKind::AssocTypeItem(..))
+        )
     }
     pub(crate) fn is_required_associated_type(&self) -> bool {
-        matches!(self.kind, RequiredAssocTypeItem(..) | StrippedItem(RequiredAssocTypeItem(..)))
+        matches!(
+            self.kind,
+            ItemKind::RequiredAssocTypeItem(..)
+                | ItemKind::StrippedItem(ItemKind::RequiredAssocTypeItem(..))
+        )
     }
     pub(crate) fn is_associated_const(&self) -> bool {
         matches!(
             self.kind,
-            ProvidedAssocConstItem(..)
-                | ImplAssocConstItem(..)
-                | StrippedItem(ProvidedAssocConstItem(..) | ImplAssocConstItem(..))
+            ItemKind::ProvidedAssocConstItem(..)
+                | ItemKind::ImplAssocConstItem(..)
+                | ItemKind::StrippedItem(
+                    ItemKind::ProvidedAssocConstItem(..) | ItemKind::ImplAssocConstItem(..)
+                )
         )
     }
     pub(crate) fn is_required_associated_const(&self) -> bool {
-        matches!(self.kind, RequiredAssocConstItem(..) | StrippedItem(RequiredAssocConstItem(..)))
+        matches!(
+            self.kind,
+            ItemKind::RequiredAssocConstItem(..)
+                | ItemKind::StrippedItem(ItemKind::RequiredAssocConstItem(..))
+        )
     }
     pub(crate) fn is_method(&self) -> bool {
         self.type_() == ItemType::Method
@@ -700,18 +712,18 @@ impl Item {
     }
     pub(crate) fn is_stripped(&self) -> bool {
         match self.kind {
-            StrippedItem(..) => true,
-            ImportItem(ref i) => !i.should_be_displayed,
+            ItemKind::StrippedItem(..) => true,
+            ItemKind::ImportItem(ref i) => !i.should_be_displayed,
             _ => false,
         }
     }
     pub(crate) fn has_stripped_entries(&self) -> Option<bool> {
         match self.kind {
-            StructItem(ref struct_) => Some(struct_.has_stripped_entries()),
-            UnionItem(ref union_) => Some(union_.has_stripped_entries()),
-            EnumItem(ref enum_) => Some(enum_.has_stripped_entries()),
-            VariantItem(ref v) => v.has_stripped_entries(),
-            TypeAliasItem(ref type_alias) => {
+            ItemKind::StructItem(ref struct_) => Some(struct_.has_stripped_entries()),
+            ItemKind::UnionItem(ref union_) => Some(union_.has_stripped_entries()),
+            ItemKind::EnumItem(ref enum_) => Some(enum_.has_stripped_entries()),
+            ItemKind::VariantItem(ref v) => v.has_stripped_entries(),
+            ItemKind::TypeAliasItem(ref type_alias) => {
                 type_alias.inner_type.as_ref().and_then(|t| t.has_stripped_entries())
             }
             _ => None,
@@ -866,19 +878,19 @@ impl Item {
                 return Some(Visibility::Public);
             }
             // Variant fields inherit their enum's visibility.
-            StructFieldItem(..) if is_field_vis_inherited(tcx, def_id) => {
+            ItemKind::StructFieldItem(..) if is_field_vis_inherited(tcx, def_id) => {
                 return None;
             }
             // Variants always inherit visibility
-            VariantItem(..) | ImplItem(..) => return None,
+            ItemKind::VariantItem(..) | ItemKind::ImplItem(..) => return None,
             // Trait items inherit the trait's visibility
-            RequiredAssocConstItem(..)
-            | ProvidedAssocConstItem(..)
-            | ImplAssocConstItem(..)
-            | AssocTypeItem(..)
-            | RequiredAssocTypeItem(..)
-            | RequiredMethodItem(..)
-            | MethodItem(..) => {
+            ItemKind::RequiredAssocConstItem(..)
+            | ItemKind::ProvidedAssocConstItem(..)
+            | ItemKind::ImplAssocConstItem(..)
+            | ItemKind::AssocTypeItem(..)
+            | ItemKind::RequiredAssocTypeItem(..)
+            | ItemKind::RequiredMethodItem(..)
+            | ItemKind::MethodItem(..) => {
                 match tcx.associated_item(def_id).container {
                     // Trait impl items always inherit the impl's visibility --
                     // we don't want to show `pub`.
@@ -930,7 +942,7 @@ pub(crate) enum ItemKind {
     RequiredMethodItem(Box<Function>, Defaultness),
     /// A method in a trait impl or a provided method in a trait declaration.
     ///
-    /// Compared to [RequiredMethodItem], it also contains a method body.
+    /// Compared to [`ItemKind::RequiredMethodItem`], it also contains a method body.
     MethodItem(Box<Function>, Defaultness),
     StructFieldItem(Type),
     VariantItem(Variant),
@@ -977,42 +989,42 @@ impl ItemKind {
     /// (for their variants). This method returns those contained items.
     pub(crate) fn inner_items(&self) -> impl Iterator<Item = &Item> {
         match self {
-            StructItem(s) => s.fields.iter(),
-            UnionItem(u) => u.fields.iter(),
-            VariantItem(v) => match &v.kind {
+            Self::StructItem(s) => s.fields.iter(),
+            Self::UnionItem(u) => u.fields.iter(),
+            Self::VariantItem(v) => match &v.kind {
                 VariantKind::CLike => [].iter(),
                 VariantKind::Tuple(t) => t.iter(),
                 VariantKind::Struct(s) => s.fields.iter(),
             },
-            EnumItem(e) => e.variants.iter(),
-            TraitItem(t) => t.items.iter(),
-            ImplItem(i) => i.items.iter(),
-            ModuleItem(m) => m.items.iter(),
-            ExternCrateItem { .. }
-            | ImportItem(_)
-            | FunctionItem(_)
-            | TypeAliasItem(_)
-            | StaticItem(_)
-            | ConstantItem(_)
-            | TraitAliasItem(_)
-            | RequiredMethodItem(..)
-            | MethodItem(..)
-            | StructFieldItem(_)
-            | ForeignFunctionItem(_, _)
-            | ForeignStaticItem(_, _)
-            | ForeignTypeItem
-            | MacroItem(..)
-            | ProcMacroItem(_)
-            | PrimitiveItem(_)
-            | RequiredAssocConstItem(..)
-            | ProvidedAssocConstItem(..)
-            | ImplAssocConstItem(..)
-            | RequiredAssocTypeItem(..)
-            | AssocTypeItem(..)
-            | StrippedItem(_)
-            | KeywordItem
-            | AttributeItem
-            | PlaceholderImplItem => [].iter(),
+            Self::EnumItem(e) => e.variants.iter(),
+            Self::TraitItem(t) => t.items.iter(),
+            Self::ImplItem(i) => i.items.iter(),
+            Self::ModuleItem(m) => m.items.iter(),
+            Self::ExternCrateItem { .. }
+            | Self::ImportItem(_)
+            | Self::FunctionItem(_)
+            | Self::TypeAliasItem(_)
+            | Self::StaticItem(_)
+            | Self::ConstantItem(_)
+            | Self::TraitAliasItem(_)
+            | Self::RequiredMethodItem(..)
+            | Self::MethodItem(..)
+            | Self::StructFieldItem(_)
+            | Self::ForeignFunctionItem(_, _)
+            | Self::ForeignStaticItem(_, _)
+            | Self::ForeignTypeItem
+            | Self::MacroItem(..)
+            | Self::ProcMacroItem(_)
+            | Self::PrimitiveItem(_)
+            | Self::RequiredAssocConstItem(..)
+            | Self::ProvidedAssocConstItem(..)
+            | Self::ImplAssocConstItem(..)
+            | Self::RequiredAssocTypeItem(..)
+            | Self::AssocTypeItem(..)
+            | Self::StrippedItem(_)
+            | Self::KeywordItem
+            | Self::AttributeItem
+            | Self::PlaceholderImplItem => [].iter(),
         }
     }
 }
