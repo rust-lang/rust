@@ -5,6 +5,7 @@ pub use clause_filter::NoClauses;
 use clause_filter::*;
 pub use iterator::CallerBoundsIterator;
 use output_as::*;
+use output_filter::*;
 use polarity_filter::*;
 use rustc_data_structures::either::Either;
 use self_ty_filter::*;
@@ -92,28 +93,37 @@ mod iterator {
     }
 
     #[inline]
-    fn filter_trait_clause_helper<I, P, S, T, O>(
-        filter: &TraitClauses<I, P, S, T, O>,
+    fn filter_trait_clause_helper<I, P, S, T, F, O, X>(
+        filter: &TraitClauses<I, P, S, T, F, O>,
         clause: TraitClause<I>,
+        bound: Binder<I, X>,
     ) -> bool
     where
         I: Interner,
         P: PolarityFilter,
         S: SelfTyFilter<I>,
         T: TraitFilter<I>,
+        F: OutputFilter<I>,
         O: OutputAs<I>,
     {
-        let TraitClauses { cx: _, polarity_filter, self_type_filter, trait_filter, output: _ } =
-            filter;
-
+        let TraitClauses {
+            cx: _,
+            polarity_filter,
+            self_type_filter,
+            trait_filter,
+            output_filter,
+            output: _,
+        } = filter;
         polarity_filter.allow_polarity(clause.polarity)
             && self_type_filter.allow_self_ty(clause.self_ty())
             && trait_filter.allow_clause(clause)
+            && output_filter.allow_trait_clause(bound.rebind(clause))
     }
 
     #[inline]
-    fn filter_compressed_trait_helper<I, T>(
+    fn filter_compressed_trait_helper<I, T, F>(
         trait_filter: &T,
+        output_filter: &F,
         cx: I,
         self_ty: I::GenericArgs,
         trait_ref_single_bit: CompressedTraitRefs,
@@ -121,6 +131,7 @@ mod iterator {
     where
         I: Interner,
         T: TraitFilter<I>,
+        F: OutputFilter<I>,
     {
         if let Some(def_id) =
             trait_filter.allow_compressed_trait_ref_single_bit(cx, trait_ref_single_bit)
@@ -129,6 +140,7 @@ mod iterator {
             // but we don't intern it yet, since that depends on the output transformation. If we can
             // avoid re-interning, that's worth a *lot*.
             Some(CompressedTraitRefs::trait_clause_from_def_id(cx, self_ty, def_id))
+                .filter(|i| output_filter.allow_trait_clause(*i))
         } else {
             None
         }
@@ -147,14 +159,15 @@ mod iterator {
         self_ty: Option<I::GenericArgs>,
     }
 
-    impl<I, Iter, P, S, T, O> Iterator
-        for CallerBoundsIteratorImpl<I, Iter, TraitClauses<I, P, S, T, O>>
+    impl<I, Iter, P, S, T, F, O> Iterator
+        for CallerBoundsIteratorImpl<I, Iter, TraitClauses<I, P, S, T, F, O>>
     where
         I: Interner,
         Iter: Iterator<Item = I::Clause>,
         P: PolarityFilter,
         S: SelfTyFilter<I>,
         T: TraitFilter<I>,
+        F: OutputFilter<I>,
         O: OutputAs<I>,
     {
         type Item = O::Output;
@@ -177,6 +190,7 @@ mod iterator {
                 {
                     match filter_compressed_trait_helper(
                         &filter.trait_filter,
+                        &filter.output_filter,
                         cx,
                         self.self_ty.unwrap(),
                         trait_ref_single_bit,
@@ -192,7 +206,7 @@ mod iterator {
                     match kind.skip_binder() {
                         // If we find a trait clause, and it matches, return it
                         ClauseKind::Trait(trait_clause)
-                            if filter_trait_clause_helper(&filter, trait_clause) =>
+                            if filter_trait_clause_helper(&filter, trait_clause, kind) =>
                         {
                             break kind.rebind(trait_clause);
                         }
@@ -215,14 +229,15 @@ mod iterator {
         }
     }
 
-    impl<I, Iter, P, S, T, O> CallerBoundsIterator<I, Iter>
-        for CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, T, O>>
+    impl<I, Iter, P, S, T, F, O> CallerBoundsIterator<I, Iter>
+        for CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, T, F, O>>
     where
         I: Interner,
         Iter: Iterator<Item = I::Clause>,
         P: PolarityFilter,
         S: SelfTyFilter<I>,
         T: TraitFilter<I>,
+        F: OutputFilter<I>,
         O: OutputAs<I>,
     {
         type Item = O::Output;
@@ -250,15 +265,16 @@ mod clause_filter {
     impl ClauseFilter for NonTraitClauses {}
 
     #[derive(Clone, Copy)]
-    pub struct TraitClauses<I, P, S, T, O> {
+    pub struct TraitClauses<I, P, S, T, F, O> {
         pub cx: I,
         pub polarity_filter: P,
         pub self_type_filter: S,
         pub trait_filter: T,
+        pub output_filter: F,
         pub output: O,
     }
 
-    impl<I, P, S, T, O> ClauseFilter for TraitClauses<I, P, S, T, O> {}
+    impl<I, P, S, T, F, O> ClauseFilter for TraitClauses<I, P, S, T, F, O> {}
 
     pub struct AllClauses<I>(pub I)
     where
@@ -283,7 +299,7 @@ mod clause_filter {
         pub fn trait_clauses(
             self,
             cx: I,
-        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, (), (), (), OutputAsTraitClause>>
+        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, (), (), (), (), OutputAsTraitClause>>
         {
             CallerBoundsAccessor {
                 clauses: self.clauses,
@@ -291,6 +307,7 @@ mod clause_filter {
                     polarity_filter: (),
                     self_type_filter: (),
                     trait_filter: (),
+                    output_filter: (),
                     output: OutputAsTraitClause,
                     cx,
                 },
@@ -329,24 +346,32 @@ mod polarity_filter {
         }
     }
 
-    impl<I, Iter, P, S, T, O> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, T, O>>
+    impl<I, Iter, P, S, T, F, O> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, T, F, O>>
     where
         I: Interner,
         Iter: Iterator<Item = I::Clause>,
         P: PolarityFilter,
         S: SelfTyFilter<I>,
         T: TraitFilter<I>,
+        F: OutputFilter<I>,
         O: OutputAs<I>,
     {
         #[inline]
         pub fn with_polarity(
             self,
             polarity: ClausePolarity,
-        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, ClausePolarity, S, T, O>> {
+        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, ClausePolarity, S, T, F, O>> {
             let CallerBoundsAccessor {
                 clauses: iter,
                 clause_filter:
-                    TraitClauses { cx, polarity_filter: _, self_type_filter, trait_filter, output },
+                    TraitClauses {
+                        cx,
+                        polarity_filter: _,
+                        self_type_filter,
+                        trait_filter,
+                        output_filter,
+                        output,
+                    },
                 cx: PhantomData,
             } = self;
             CallerBoundsAccessor {
@@ -356,20 +381,29 @@ mod polarity_filter {
                     polarity_filter: polarity,
                     self_type_filter,
                     trait_filter,
+                    output_filter,
                     output,
                 },
                 cx: PhantomData,
             }
         }
         #[inline]
-        pub fn validate_self_ty<F: Fn(I::Ty) -> bool>(
+        pub fn validate_self_ty<SF: Fn(I::Ty) -> bool>(
             self,
-            validate_fn: F,
-        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, FilterFn<F>, T, O>> {
+            validate_fn: SF,
+        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, SelfTyFilterFn<SF>, T, F, O>>
+        {
             let CallerBoundsAccessor {
                 clauses: iter,
                 clause_filter:
-                    TraitClauses { cx, polarity_filter, self_type_filter: _, trait_filter, output },
+                    TraitClauses {
+                        cx,
+                        polarity_filter,
+                        self_type_filter: _,
+                        trait_filter,
+                        output_filter,
+                        output,
+                    },
                 cx: PhantomData,
             } = self;
             CallerBoundsAccessor {
@@ -377,8 +411,9 @@ mod polarity_filter {
                 clause_filter: TraitClauses {
                     cx,
                     polarity_filter,
-                    self_type_filter: FilterFn { f: validate_fn },
+                    self_type_filter: SelfTyFilterFn { f: validate_fn },
                     trait_filter,
+                    output_filter,
                     output,
                 },
                 cx: PhantomData,
@@ -388,8 +423,11 @@ mod polarity_filter {
         pub fn with_self_ty(
             self,
             desired_self_ty: I::Ty,
-        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, FilterFn<impl Fn(I::Ty) -> bool>, T, O>>
-        {
+        ) -> CallerBoundsAccessor<
+            I,
+            Iter,
+            TraitClauses<I, P, SelfTyFilterFn<impl Fn(I::Ty) -> bool>, T, F, O>,
+        > {
             self.validate_self_ty(move |actual_self_ty| actual_self_ty == desired_self_ty)
         }
 
@@ -397,11 +435,18 @@ mod polarity_filter {
         fn for_target_trait(
             self,
             trait_filter: TargetTrait<I>,
-        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, TargetTrait<I>, O>> {
+        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, TargetTrait<I>, F, O>> {
             let CallerBoundsAccessor {
                 clauses: iter,
                 clause_filter:
-                    TraitClauses { cx, polarity_filter, self_type_filter, trait_filter: _, output },
+                    TraitClauses {
+                        cx,
+                        polarity_filter,
+                        self_type_filter,
+                        trait_filter: _,
+                        output_filter,
+                        output,
+                    },
                 cx: PhantomData,
             } = self;
             CallerBoundsAccessor {
@@ -411,6 +456,7 @@ mod polarity_filter {
                     polarity_filter,
                     self_type_filter,
                     trait_filter,
+                    output_filter,
                     output,
                 },
                 cx: PhantomData,
@@ -420,7 +466,7 @@ mod polarity_filter {
         pub fn for_trait(
             self,
             def_id: I::TraitId,
-        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, TargetTrait<I>, O>> {
+        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, TargetTrait<I>, F, O>> {
             let cx = self.clause_filter.cx;
 
             self.for_target_trait(TargetTrait {
@@ -434,7 +480,7 @@ mod polarity_filter {
         pub fn for_trait_lang_item(
             self,
             lang_item: SolverTraitLangItem,
-        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, TargetTrait<I>, O>> {
+        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, TargetTrait<I>, F, O>> {
             let cx = self.clause_filter.cx;
             self.for_target_trait(TargetTrait {
                 def_id: cx.require_trait_lang_item(lang_item),
@@ -442,15 +488,26 @@ mod polarity_filter {
             })
         }
 
+        /// Filter the final [`TraitClause`] before interning.
         #[inline]
-        pub fn interned(
+        pub fn filter<OF>(
             self,
-        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, T, OutputAsInternedClause>>
+            f: OF,
+        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, T, OutputFilterFn<OF>, O>>
+        where
+            OF: Fn(Binder<I, TraitClause<I>>) -> bool,
         {
             let CallerBoundsAccessor {
                 clauses: iter,
                 clause_filter:
-                    TraitClauses { cx, polarity_filter, self_type_filter, trait_filter, output: _ },
+                    TraitClauses {
+                        cx,
+                        polarity_filter,
+                        self_type_filter,
+                        trait_filter,
+                        output_filter: _,
+                        output,
+                    },
                 cx: PhantomData,
             } = self;
             CallerBoundsAccessor {
@@ -460,6 +517,39 @@ mod polarity_filter {
                     polarity_filter,
                     self_type_filter,
                     trait_filter,
+                    output_filter: OutputFilterFn { f },
+                    output,
+                },
+                cx: PhantomData,
+            }
+        }
+
+        #[inline]
+        pub fn interned(
+            self,
+        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, T, F, OutputAsInternedClause>>
+        {
+            let CallerBoundsAccessor {
+                clauses: iter,
+                clause_filter:
+                    TraitClauses {
+                        cx,
+                        polarity_filter,
+                        self_type_filter,
+                        trait_filter,
+                        output_filter,
+                        output: _,
+                    },
+                cx: PhantomData,
+            } = self;
+            CallerBoundsAccessor {
+                clauses: iter,
+                clause_filter: TraitClauses {
+                    cx,
+                    polarity_filter,
+                    self_type_filter,
+                    trait_filter,
+                    output_filter,
                     output: OutputAsInternedClause,
                 },
                 cx: PhantomData,
@@ -488,10 +578,10 @@ mod self_ty_filter {
         }
     }
 
-    pub struct FilterFn<F> {
+    pub struct SelfTyFilterFn<F> {
         pub f: F,
     }
-    impl<I, F> SelfTyFilter<I> for FilterFn<F>
+    impl<I, F> SelfTyFilter<I> for SelfTyFilterFn<F>
     where
         I: Interner,
         F: Fn(I::Ty) -> bool,
@@ -577,6 +667,41 @@ mod trait_filter {
                 // return false unconditionally.
                 None
             }
+        }
+    }
+}
+
+mod output_filter {
+    use super::*;
+
+    pub trait OutputFilter<I>
+    where
+        I: Interner,
+    {
+        fn allow_trait_clause(&self, clause: Binder<I, TraitClause<I>>) -> bool;
+    }
+
+    impl<I> OutputFilter<I> for ()
+    where
+        I: Interner,
+    {
+        #[inline]
+        fn allow_trait_clause(&self, _clause: Binder<I, TraitClause<I>>) -> bool {
+            true
+        }
+    }
+
+    pub struct OutputFilterFn<F> {
+        pub f: F,
+    }
+    impl<I, F> OutputFilter<I> for OutputFilterFn<F>
+    where
+        I: Interner,
+        F: Fn(Binder<I, TraitClause<I>>) -> bool,
+    {
+        #[inline]
+        fn allow_trait_clause(&self, clause: Binder<I, TraitClause<I>>) -> bool {
+            (self.f)(clause)
         }
     }
 }
