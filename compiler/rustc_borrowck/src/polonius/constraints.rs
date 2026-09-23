@@ -1,10 +1,11 @@
 use std::rc::Rc;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::IndexVec;
 use rustc_middle::mir::{Body, Location};
 use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
+use smallvec::SmallVec;
 
 use crate::BorrowSet;
 use crate::constraints::OutlivesConstraint;
@@ -44,12 +45,12 @@ pub(super) struct LocalizedConstraintGraph {
 
     /// The actual, physical, edges we have recorded for a given node. We localize them on-demand
     /// when traversing from the node to the successor region.
-    edges: FxHashMap<LocalizedNode, FxIndexSet<RegionVid>>,
+    edges: FxHashMap<LocalizedNode, SmallVec<[RegionVid; 4]>>,
 
     /// The logical edges representing the outlives constraints that hold at all points in the CFG,
     /// which we don't localize to avoid creating a lot of unnecessary edges in the graph. Some CFGs
     /// can be big, and we don't need to create such a physical edge for every point in the CFG.
-    logical_edges: IndexVec<RegionVid, FxIndexSet<RegionVid>>,
+    logical_edges: IndexVec<RegionVid, SmallVec<[RegionVid; 4]>>,
 }
 
 /// The visitor interface when traversing a `LocalizedConstraintGraph`.
@@ -69,15 +70,17 @@ impl LocalizedConstraintGraph {
         location_map: Rc<DenseLocationMap>,
         outlives_constraints: impl Iterator<Item = OutlivesConstraint<'tcx>>,
     ) -> Self {
-        let mut edges: FxHashMap<_, FxIndexSet<_>> = FxHashMap::default();
-        let mut logical_edges: IndexVec<_, FxIndexSet<_>> = IndexVec::new();
+        let mut edges: FxHashMap<_, SmallVec<[RegionVid; 4]>> = FxHashMap::default();
+        let mut logical_edges: IndexVec<_, SmallVec<[RegionVid; 4]>> = IndexVec::new();
 
         for outlives_constraint in outlives_constraints {
             match outlives_constraint.locations {
                 Locations::All(_) => {
-                    logical_edges
-                        .ensure_contains_elem(outlives_constraint.sup, FxIndexSet::default)
-                        .insert(outlives_constraint.sub);
+                    let succs =
+                        logical_edges.ensure_contains_elem(outlives_constraint.sup, SmallVec::new);
+                    if !succs.contains(&outlives_constraint.sub) {
+                        succs.push(outlives_constraint.sub);
+                    }
                 }
 
                 Locations::Single(location) => {
@@ -85,7 +88,10 @@ impl LocalizedConstraintGraph {
                         region: outlives_constraint.sup,
                         point: location_map.point_from_location(location),
                     };
-                    edges.entry(node).or_default().insert(outlives_constraint.sub);
+                    let succs = edges.entry(node).or_default();
+                    if !succs.contains(&outlives_constraint.sub) {
+                        succs.push(outlives_constraint.sub);
+                    }
                 }
             }
         }
