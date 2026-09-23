@@ -13,10 +13,12 @@
 #![expect(incomplete_features)]
 
 mod own {
+    use std::gca;
+
     // the lifetime comes from the own generics
     struct Parent;
     impl Parent {
-        const CT<'a, T: 'a + super::AbideBy<'a> + ?Sized>: usize = core::direct_const_arg!(0);
+        const CT<'a, T: 'a + super::AbideBy<'a> + ?Sized>: usize = gca!(0);
     }
 
     // FIXME: Ideally, we would deduce `dyn Trait + 'r` from the bound `'a` on ty param `T` of
@@ -31,10 +33,12 @@ mod own {
 }
 
 mod parent {
+    use std::gca;
+
     // the lifetime comes from the parent generics
     struct Parent<'a>(&'a ());
     impl<'a> Parent<'a> {
-        const CT<T: 'a + super::AbideBy<'a> + ?Sized>: usize = core::direct_const_arg!(0);
+        const CT<T: 'a + super::AbideBy<'a> + ?Sized>: usize = gca!(0);
     }
 
     //FIXME: Ideally, we would deduce `dyn Trait + 'r` from the bound `'a` on ty param `T` of

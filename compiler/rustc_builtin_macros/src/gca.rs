@@ -10,8 +10,7 @@ pub(crate) fn expand<'cx>(
     span: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
-    let ExpandResult::Ready(expr) = get_single_expr_from_tts(cx, span, tts, "direct_const_arg!")
-    else {
+    let ExpandResult::Ready(expr) = get_single_expr_from_tts(cx, span, tts, "gca!") else {
         return ExpandResult::Retry(());
     };
     let expr = match expr {
@@ -23,12 +22,12 @@ pub(crate) fn expand<'cx>(
     ExpandResult::Ready(Box::new(base::MacEager {
         expr: Some(Box::new(ast::Expr {
             id,
-            kind: ast::ExprKind::DirectConstArg(expr.clone()),
+            kind: ast::ExprKind::GcaMacro(expr.clone()),
             span,
             attrs: Default::default(),
             tokens: None,
         })),
-        ty: Some(Box::new(ast::Ty { id, kind: ast::TyKind::DirectConstArg(expr), span })),
+        ty: Some(Box::new(ast::Ty { id, kind: ast::TyKind::GcaMacro(expr), span })),
         ..Default::default()
     }))
 }

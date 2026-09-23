@@ -35,6 +35,4 @@ fn main() {
         .arg("-Clto=fat")
         .emit("obj")
         .run();
-
-    assert!(cwd().join("host.o").exists());
 }

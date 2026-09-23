@@ -1199,7 +1199,6 @@ pub struct CguMessage;
 // - `span`: it doesn't impl `Send`.
 // - `suggestions`: it doesn't impl `Send`, and isn't used for codegen
 //   diagnostics.
-// - `sort_span`: it doesn't impl `Send`.
 // - `is_lint`: lints aren't relevant during codegen.
 // - `emitted_at`: not used for codegen diagnostics.
 struct Diagnostic {
@@ -1993,7 +1992,6 @@ impl Emitter for SharedEmitter {
         // the cut-down local `DiagInner`.
         assert!(!diag.span.has_span_labels());
         assert_eq!(diag.suggestions, Suggestions::Enabled(vec![]));
-        assert_eq!(diag.sort_span, rustc_span::DUMMY_SP);
         assert_eq!(diag.is_lint, None);
         // No sensible check for `diag.emitted_at`.
 

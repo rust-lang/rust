@@ -4,6 +4,8 @@
 #![feature(min_generic_const_args)]
 #![allow(dead_code)]
 
+use std::gca;
+
 trait A {
     const CONST: i32;
 }
@@ -16,7 +18,7 @@ trait B: A {
     const CONST: i32;
 }
 impl<T> B for T {
-    const CONST: i32 = core::direct_const_arg!(2);
+    const CONST: i32 = gca!(2);
 }
 
 trait C: B {}

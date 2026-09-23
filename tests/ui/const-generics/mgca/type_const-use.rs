@@ -3,7 +3,9 @@
 #![expect(incomplete_features)]
 #![feature(min_generic_const_args)]
 
-const CONST: usize = core::direct_const_arg!(1);
+use std::gca;
+
+const CONST: usize = gca!(1);
 
 fn uses_const() {
     CONST;

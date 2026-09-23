@@ -1,6 +1,8 @@
 #![expect(incomplete_features)]
 #![feature(min_generic_const_args)]
 
+use std::gca;
+
 trait BadTr {
     const NUM: usize;
 }
@@ -8,8 +10,8 @@ trait BadTr {
 struct GoodS;
 
 impl BadTr for GoodS {
-    const NUM: usize = core::direct_const_arg!(84);
-    //~^ ERROR implementation of a regular const cannot have a `direct_const_arg!` RHS
+    const NUM: usize = gca!(84);
+    //~^ ERROR implementation of a regular const cannot have a `gca!` RHS
 }
 
 fn accept_bad_tr<const N: usize, T: BadTr<NUM = { N }>>(_x: &T) {}

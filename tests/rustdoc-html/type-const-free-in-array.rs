@@ -2,7 +2,9 @@
 #![feature(min_generic_const_args, macroless_generic_const_args)]
 #![expect(incomplete_features)]
 
-const N: usize = core::direct_const_arg!(2);
+use std::gca;
+
+const N: usize = gca!(2);
 
 //@ has 'foo/trait.CollectArray.html'
 //@ has - '//pre[@class="rust item-decl"]/code' '[A; N]'

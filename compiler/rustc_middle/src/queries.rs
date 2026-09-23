@@ -288,8 +288,8 @@ rustc_queries! {
     }
 
     /// Returns the const of the RHS of a (free or assoc) const item, if it is a `type const`, or if
-    /// it is a directly represented `const` (i.e. a const with a `direct_const_arg!` RHS, or a
-    /// const that `feature(macroless_generic_const_args)` has decided is direct).
+    /// it is a directly represented `const` (i.e. a const with a `gca!` RHS, or a const that
+    /// `feature(macroless_generic_const_args)` has decided is direct).
     ///
     /// When a const item is used in a type-level expression, like in equality for an assoc const
     /// projection, this allows us to retrieve the typesystem-appropriate representation of the

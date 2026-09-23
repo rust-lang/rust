@@ -1,18 +1,18 @@
 error[E0658]: use of unstable library feature `min_generic_const_args`
   --> $DIR/type-const-inherent-impl-normalize.rs:3:24
    |
-LL |     const LEN: usize = core::direct_const_arg!(1);
-   |                        ^^^^^^^^^^^^^^^^^^^^^^
+LL |     const LEN: usize = std::gca!(1);
+   |                        ^^^^^^^^
    |
    = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
    = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: expected expression, found `direct_const_arg!()` constant
+error: expected expression, found `gca!()` constant
   --> $DIR/type-const-inherent-impl-normalize.rs:3:24
    |
-LL |     const LEN: usize = core::direct_const_arg!(1);
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const LEN: usize = std::gca!(1);
+   |                        ^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

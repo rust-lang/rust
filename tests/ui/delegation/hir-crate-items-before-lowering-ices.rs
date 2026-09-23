@@ -5,10 +5,11 @@
 
 #[cfg(ice_155125)]
 mod ice_155125 {
+    use std::gca;
     struct S<const N: usize>;
     impl
         S<
-            core::direct_const_arg!({ //[ice_155125]~ ERROR: complex const arguments must be placed inside of a `const` block
+            gca!({ //[ice_155125]~ ERROR: complex const arguments must be placed inside of a `const` block
                 fn foo() {}
                 reuse foo; //[ice_155125]~ ERROR: the name `foo` is defined multiple times
                 2
@@ -43,9 +44,10 @@ mod ice_155128 {
 
 #[cfg(ice_155164)]
 mod ice_155164 {
+    use std::gca;
     struct X<const N: usize, F> {
         inner: std::iter::Map<
-            core::direct_const_arg!({
+            gca!({
             //[ice_155164]~^ ERROR: complex const arguments must be placed inside of a `const` block
                 struct W<I>;
                 impl<I> W<I> {

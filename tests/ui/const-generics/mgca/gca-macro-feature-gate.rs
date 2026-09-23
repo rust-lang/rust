@@ -1,5 +1,5 @@
-fn foo<const N: usize>(_: [(); core::direct_const_arg!(N)]) {}
+fn foo<const N: usize>(_: [(); std::gca!(N)]) {}
 //~^ ERROR use of unstable library feature `min_generic_const_args`
-//~| ERROR expected expression, found `direct_const_arg!()` constant
+//~| ERROR expected expression, found `gca!()` constant
 //~| ERROR generic parameters may not be used in const operations
 fn main() {}

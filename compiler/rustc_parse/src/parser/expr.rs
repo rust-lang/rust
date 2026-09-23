@@ -4358,7 +4358,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::IncludedBytes(_)
             | ExprKind::FormatArgs(_)
             | ExprKind::Err(_)
-            | ExprKind::DirectConstArg(_)
+            | ExprKind::GcaMacro(_)
             | ExprKind::Dummy => {
                 // These would forbid any let expressions they contain already.
             }

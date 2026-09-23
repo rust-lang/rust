@@ -2856,7 +2856,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         true
     }
 
-    /// Identify some cases where `as_ref()` would be appropriate and suggest it.
+    /// Identify some cases where `as_ref()` or `as_mut()` would be appropriate and suggest it.
     ///
     /// Given the following code:
     /// ```compile_fail,E0308
@@ -2872,7 +2872,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```ignore (illustrative)
     /// opt.map(|param| { takes_ref(param) });
     /// ```
-    fn can_use_as_ref(&self, expr: &hir::Expr<'_>) -> Option<(Vec<(Span, String)>, &'static str)> {
+    fn can_use_as_ref_or_mut(
+        &self,
+        expr: &hir::Expr<'_>,
+        mutability: hir::Mutability,
+    ) -> Option<(Vec<(Span, String)>, &'static str)> {
         let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind else {
             return None;
         };
@@ -2909,9 +2913,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        let self_ty = self.typeck_results.borrow().expr_ty_opt(receiver)?;
+        let mut self_ty = self.typeck_results.borrow().expr_ty_opt(receiver)?;
+        while let ty::Ref(_, inner, ref_mutability) = self_ty.kind() {
+            // `as_mut()` cannot borrow through a shared reference,
+            // also we cannot suggest `as_ref()` either when the reference is shared
+            if mutability.is_mut() && ref_mutability.is_not() {
+                return None;
+            }
+            self_ty = *inner;
+        }
         let name = method_path.ident.name;
-        let is_as_ref_able = match self_ty.peel_refs().kind() {
+        let can_borrow = match self_ty.kind() {
             ty::Adt(def, _) => {
                 (self.tcx.is_diagnostic_item(sym::Option, def.did())
                     || self.tcx.is_diagnostic_item(sym::Result, def.did()))
@@ -2919,11 +2931,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => false,
         };
-        if is_as_ref_able {
-            Some((
-                vec![(method_path.ident.span.shrink_to_lo(), "as_ref().".to_string())],
-                "consider using `as_ref` instead",
-            ))
+        if can_borrow {
+            let (suggestion, message) = match mutability {
+                hir::Mutability::Not => ("as_ref().", "consider using `as_ref` instead"),
+                hir::Mutability::Mut => ("as_mut().", "consider using `as_mut` instead"),
+            };
+            Some((vec![(method_path.ident.span.shrink_to_lo(), suggestion.to_string())], message))
         } else {
             None
         }
@@ -3114,7 +3127,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return Some((suggs, help, app, mutref));
                     }
 
-                    if let Some((sugg, msg)) = self.can_use_as_ref(expr) {
+                    if let Some((sugg, msg)) = self.can_use_as_ref_or_mut(expr, mutability) {
                         return Some((
                             sugg,
                             msg.to_string(),

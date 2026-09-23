@@ -1098,7 +1098,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     feature,
                     reason.to_opt_reason(),
                     issue,
-                    None,
                     span,
                     stability::UnstableKind::Regular,
                 );

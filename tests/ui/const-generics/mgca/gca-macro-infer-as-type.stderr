@@ -1,0 +1,15 @@
+error[E0747]: constant provided when a type was expected
+  --> $DIR/gca-macro-infer-as-type.rs:10:19
+   |
+LL |     let _: S<gca!(_)> = S(2u32);
+   |                   ^
+
+error[E0747]: constant provided when a type was expected
+  --> $DIR/gca-macro-infer-as-type.rs:12:21
+   |
+LL |     let _: S<{ gca!(_) }> = S(2u32);
+   |                     ^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0747`.
