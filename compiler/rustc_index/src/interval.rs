@@ -374,6 +374,12 @@ impl<R: Idx, C: Step + Idx> SparseIntervalMatrix<R, C> {
         self.rows.iter_enumerated()
     }
 
+    pub fn clear_row(&mut self, row: R) {
+        if let Some(row) = self.rows.get_mut(row) {
+            row.clear();
+        }
+    }
+
     fn ensure_row(&mut self, row: R) -> &mut IntervalSet<C> {
         self.rows.ensure_contains_elem(row, || IntervalSet::new(self.column_size))
     }
@@ -395,6 +401,16 @@ impl<R: Idx, C: Step + Idx> SparseIntervalMatrix<R, C> {
         self.ensure_row(write);
         let (read_row, write_row) = self.rows.pick2_mut(read, write);
         write_row.union(read_row)
+    }
+
+    pub fn disjoint_rows(&self, a: R, b: R) -> bool
+    where
+        C: Step,
+    {
+        let (Some(a), Some(b)) = (self.rows.get(a), self.rows.get(b)) else {
+            return true;
+        };
+        a.disjoint(b)
     }
 
     pub fn insert_all_into_row(&mut self, row: R) {
