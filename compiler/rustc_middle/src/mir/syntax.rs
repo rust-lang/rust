@@ -333,7 +333,11 @@ pub enum StatementKind<'tcx> {
     /// [`Scalar::Initialized`][rustc_abi::Scalar::Initialized]. As a part of this discussion, it is
     /// also unclear in what order the components are evaluated.
     ///
+    /// With `-Zmir-move-elimination`, the rvalue's operands and source places are evaluated before
+    /// the destination place. See [RFC 3943].
+    ///
     /// [#68364]: https://github.com/rust-lang/rust/issues/68364
+    /// [RFC 3943]: https://github.com/rust-lang/rfcs/pull/3943
     ///
     /// See [`Rvalue`] documentation for details on each of those.
     Assign(Box<(Place<'tcx>, Rvalue<'tcx>)>),
@@ -380,6 +384,11 @@ pub enum StatementKind<'tcx> {
     /// If the local is already allocated, calling `StorageLive` again will implicitly free the
     /// local and then allocate fresh uninitialized memory. If a local is already deallocated,
     /// calling `StorageDead` again is a NOP.
+    ///
+    /// With `-Zmir-move-elimination`, `StorageLive` leaves locals live but unallocated. Storage is
+    /// allocated when a destination place directly based on the local is evaluated. See [RFC 3943].
+    ///
+    /// [RFC 3943]: https://github.com/rust-lang/rfcs/pull/3943
     StorageLive(Local),
 
     /// See `StorageLive` above.
@@ -784,7 +793,13 @@ pub enum TerminatorKind<'tcx> {
     /// The evaluation order is currently "first compute destination place, then `func` operand,
     /// then the arguments in left-to-right order".
     ///
+    /// [RFC 3943] semantics (enabled with -Z mir-move-elimination) changes the evaluation order to
+    /// evaluate the destination place last instead. Additionally, a direct destination must not be
+    /// rooted in a local that is also a whole-local move argument. Violating this restriction makes
+    /// the MIR malformed.
+    ///
     /// [#71117]: https://github.com/rust-lang/rust/issues/71117
+    /// [RFC 3943]: https://github.com/rust-lang/rfcs/pull/3943
     Call {
         /// The function that’s being called.
         func: Operand<'tcx>,
@@ -1323,7 +1338,12 @@ pub enum Operand<'tcx> {
     /// inherently tied to a function call. Are these the semantics we want for MIR? Is this
     /// something we can even decide without knowing more about Rust's memory model?
     ///
+    /// With `-Zmir-move-elimination`, moving a whole local loads its value, frees its allocation,
+    /// and leaves it live but unallocated. This happens during operand evaluation, including for
+    /// call arguments, before evaluating subsequent operands. See [RFC 3943].
+    ///
     /// [UCG#188]: https://github.com/rust-lang/unsafe-code-guidelines/issues/188
+    /// [RFC 3943]: https://github.com/rust-lang/rfcs/pull/3943
     Move(Place<'tcx>),
 
     /// Constants are already semantically values, and remain unchanged.
