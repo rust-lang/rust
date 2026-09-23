@@ -472,6 +472,13 @@ pub(crate) fn encode_ty<'tcx>(
                 FloatTy::F64 => "d",
                 FloatTy::F128 => match tcx.sess.target.arch {
                     Arch::PowerPC | Arch::PowerPC64 => "u9__ieee128", // "g" is used for __ibm128
+                    // Clang is more friendly toward `long double`, and not all platforms support `_Float128`.
+                    Arch::AArch64
+                        if !tcx.sess.target.is_like_darwin && !tcx.sess.target.is_like_windows =>
+                    {
+                        "e"
+                    }
+                    Arch::RiscV32 | Arch::RiscV64 | Arch::LoongArch64 => "e",
                     _ => "g",
                 },
             });
