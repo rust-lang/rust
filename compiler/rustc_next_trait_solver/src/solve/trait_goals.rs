@@ -157,15 +157,7 @@ where
             .caller_bounds()
             .trait_clauses(ecx.cx())
             .with_polarity(goal.predicate.polarity)
-            // .for_trait(goal.predicate.def_id())
-            // TODO: allow filtering before interning
-            .interned()
-            .iter()
-            .filter(move |&trait_clause| {
-                let trait_clause = trait_clause
-                    .as_trait_clause()
-                    .expect("caller_bounds only returns trait clauses");
-
+            .filter(move |trait_clause| {
                 trait_def_id_matches(
                     ecx.cx(),
                     trait_clause.def_id(),
@@ -176,6 +168,10 @@ where
                     trait_clause.skip_binder().trait_ref.args,
                 )
             })
+            // TODO: allow using for_trait by elaborating the sized hierarchy
+            // .for_trait(goal.predicate.def_id())
+            .interned()
+            .iter()
     }
 
     fn fast_reject_assumption(
