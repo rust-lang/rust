@@ -10,9 +10,9 @@ use rustc_type_ir::solve::{
     QueryResultOrRerunNonErased, RerunNonErased, RerunReason, RerunResultExt, SizedTraitKind,
 };
 use rustc_type_ir::{
-    self as ty, CallerBoundsIterator, ClausePolarity, ExistentialPredicate, FieldInfo,
-    IncludeSizedImplicitBounds, Interner, MayBeErased, Movability, Region, TraitClause, TraitRef,
-    TypeVisitableExt as _, TypingMode, Unnormalized, Upcast as _, elaborate,
+    self as ty, CallerBoundsIterator, ExistentialPredicate, FieldInfo, IncludeSizedImplicitBounds,
+    Interner, MayBeErased, Movability, Region, TraitClause, TraitRef, TypeVisitableExt as _,
+    TypingMode, Unnormalized, Upcast as _, elaborate,
 };
 use tracing::{debug, instrument, trace, warn};
 
@@ -137,39 +137,17 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> impl Iterator<Item = I::Clause> {
-        fn trait_def_id_matches<I: Interner>(
-            cx: I,
-            clause_def_id: I::TraitId,
-            goal_def_id: I::TraitId,
-            polarity: ClausePolarity,
-        ) -> bool {
-            clause_def_id == goal_def_id
-            // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
-            // check for a `MetaSized` supertrait being matched against a `Sized` assumption.
-            //
-            // `PointeeSized` bounds are syntactic sugar for a lack of bounds so don't need this.
-                || (polarity == ClausePolarity::Positive
-                    && cx.is_trait_lang_item(clause_def_id, SolverTraitLangItem::Sized)
-                    && cx.is_trait_lang_item(goal_def_id, SolverTraitLangItem::MetaSized))
-        }
-
         goal.param_env
             .caller_bounds()
             .trait_clauses(ecx.cx())
             .with_polarity(goal.predicate.polarity)
+            .for_trait(goal.predicate.def_id())
             .filter(move |trait_clause| {
-                trait_def_id_matches(
-                    ecx.cx(),
-                    trait_clause.def_id(),
-                    goal.predicate.def_id(),
-                    goal.predicate.polarity,
-                ) && DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
+                DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                     goal.predicate.trait_ref.args,
                     trait_clause.skip_binder().trait_ref.args,
                 )
             })
-            // TODO: allow using for_trait by elaborating the sized hierarchy
-            // .for_trait(goal.predicate.def_id())
             .interned()
             .iter()
     }
