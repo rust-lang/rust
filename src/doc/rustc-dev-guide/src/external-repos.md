@@ -42,13 +42,13 @@ you should include fixes for those in the rustc PR as well.
 * Using `git subtree`
     * `clippy` ([sync guide](https://doc.rust-lang.org/nightly/clippy/development/infrastructure/sync.html#performing-the-sync-from-rust-langrust-to-clippy))
     * `portable-simd` ([sync script](https://github.com/rust-lang/portable-simd/blob/master/subtree-sync.sh))
-    * `rustfmt`
     * `rustc_codegen_gcc` ([sync guide](https://github.com/rust-lang/rustc_codegen_gcc/blob/master/doc/subtree.md))
 * Using the [josh](#synchronizing-a-josh-subtree) tool
     * `miri`
     * `rust-analyzer`
     * `rustc_codegen_cranelift`
     * `rustc-dev-guide`
+    * `rustfmt`
     * `compiler-builtins`
     * `stdarch`
 
