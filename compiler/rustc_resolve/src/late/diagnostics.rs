@@ -1191,6 +1191,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
             }
         }
+
         if candidates.is_empty() {
             candidates = self.smart_resolve_partial_mod_path_errors(path, following_seg);
         }
