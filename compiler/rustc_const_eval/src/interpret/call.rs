@@ -6,8 +6,8 @@ use std::borrow::Cow;
 
 use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
+use rustc_attr_ir::find_attr;
 use rustc_hir::def_id::DefId;
-use rustc_hir::find_attr;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, FieldDef, Instance, Ty, VariantDef};

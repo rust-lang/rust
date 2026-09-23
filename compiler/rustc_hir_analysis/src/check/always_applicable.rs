@@ -4,6 +4,7 @@
 //!
 //! This is necessary for `Drop` and negative impls to be well-formed.
 
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
@@ -403,7 +404,7 @@ fn check_drop_xor_pin_drop<'tcx>(
         }
         (Some(span), None) => {
             if tcx.adt_def(adt_def_id).is_pin_project() {
-                let pin_v2_span = rustc_hir::find_attr!(tcx, adt_def_id, PinV2(attr) => *attr);
+                let pin_v2_span = find_attr!(tcx, adt_def_id, PinV2(attr) => *attr);
                 let adt_name = tcx.item_name(adt_def_id);
                 return Err(tcx.dcx().emit_err(crate::diagnostics::PinV2WithoutPinDrop {
                     span,

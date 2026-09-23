@@ -2,12 +2,12 @@ use std::cell::LazyCell;
 use std::ops::ControlFlow;
 
 use rustc_abi::{ExternAbi, FieldIdx, MAX_SIMD_LANES, ScalableElt};
+use rustc_attr_ir::ReprAttr::ReprPacked;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::attrs::ReprAttr::ReprPacked;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::{Node, find_attr, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
