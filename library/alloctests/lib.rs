@@ -1,5 +1,4 @@
 #![cfg(test)]
-#![allow(unused_attributes)]
 #![unstable(feature = "alloctests", issue = "none")]
 #![no_std]
 // Lints:

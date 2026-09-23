@@ -244,7 +244,6 @@
 #![warn(unreachable_pub)]
 #![warn(missing_debug_implementations)]
 #![allow(explicit_outlives_requirements)]
-#![allow(unused_lifetimes)]
 #![allow(internal_features)]
 #![deny(implicit_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -539,24 +538,24 @@ pub use core::future;
 #[stable(feature = "core_hint", since = "1.27.0")]
 pub use core::hint;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::i8;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::i16;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::i32;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::i64;
 #[stable(feature = "i128", since = "1.26.0")]
-#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::i128;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::intrinsics;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::isize;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::iter;
@@ -577,24 +576,24 @@ pub use core::range;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::u8;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::u16;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::u32;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::u64;
 #[stable(feature = "i128", since = "1.26.0")]
-#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::u128;
 #[unstable(feature = "unsafe_binders", issue = "130516")]
 pub use core::unsafe_binder;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::usize;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -740,7 +739,7 @@ pub mod alloc;
 mod panicking;
 
 #[path = "../../backtrace/src/lib.rs"]
-#[allow(dead_code, unused_attributes, implicit_provenance_casts, unsafe_op_in_unsafe_fn)]
+#[allow(implicit_provenance_casts, unsafe_op_in_unsafe_fn)]
 #[allow(clippy::len_zero, clippy::needless_borrow, clippy::filter_map_next)] // FIXME
 mod backtrace_rs;
 
@@ -760,12 +759,10 @@ pub use core::concat_bytes;
 #[unstable(feature = "derive_macro_global_path", issue = "154645")]
 pub use core::derive;
 #[stable(feature = "matches_macro", since = "1.42.0")]
-#[allow(deprecated, deprecated_in_future)]
 pub use core::matches;
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use core::primitive;
 #[stable(feature = "todo_macro", since = "1.40.0")]
-#[allow(deprecated, deprecated_in_future)]
 pub use core::todo;
 // Re-export built-in macros defined through core.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
@@ -776,7 +773,7 @@ pub use core::{
 };
 // Re-export macros defined in core.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[expect(deprecated, reason = "`try! macro")]
 pub use core::{
     assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, r#try, unimplemented,
     unreachable, write, writeln,

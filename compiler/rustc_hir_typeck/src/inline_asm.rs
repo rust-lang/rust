@@ -6,6 +6,7 @@ use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_lint_defs::builtin::ASM_SUB_REGISTER;
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{
     self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy, Unnormalized,
 };

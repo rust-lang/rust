@@ -33,6 +33,7 @@ use rustc_hir::{self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateO
 // Lints from rustc_lint_defs
 pub use rustc_lint_defs::builtin::*;
 use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw, impl_lint_pass};
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
@@ -148,10 +149,7 @@ declare_lint_pass!(NonShorthandFieldPatterns => [NON_SHORTHAND_FIELD_PATTERNS]);
 
 impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &hir::Pat<'_>) {
-        // The result shouldn't be tainted, otherwise it will cause ICE.
-        if let PatKind::Struct(ref qpath, field_pats, _) = pat.kind
-            && cx.typeck_results().tainted_by_errors.is_none()
-        {
+        if let PatKind::Struct(ref qpath, field_pats, _) = pat.kind {
             let variant = cx
                 .typeck_results()
                 .pat_ty(pat)
