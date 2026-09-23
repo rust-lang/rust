@@ -12,7 +12,7 @@ use rustc_error_messages::{DiagArgMap, DiagArgName, IntoDiagArg};
 use rustc_hashes::Hash128;
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
-use rustc_span::{DUMMY_SP, Span, Spanned, Symbol};
+use rustc_span::{Span, Spanned, Symbol};
 use tracing::debug;
 
 use crate::{
@@ -195,14 +195,7 @@ pub struct DiagInner {
     pub children: Vec<Subdiag>,
     pub suggestions: Suggestions,
     pub args: DiagArgMap,
-
-    /// This is not used for highlighting or rendering any error message. Rather, it can be used
-    /// as a sort key to sort a buffer of diagnostics. By default, it is the primary span of
-    /// `span` if there is one. Otherwise, it is `DUMMY_SP`.
-    pub sort_span: Span,
-
     pub is_lint: Option<IsLint>,
-
     pub long_ty_path: Option<PathBuf>,
     /// With `-Ztrack_diagnostics` enabled,
     /// we print where in rustc this error was emitted.
@@ -226,7 +219,6 @@ impl DiagInner {
             children: vec![],
             suggestions: Suggestions::Enabled(vec![]),
             args: Default::default(),
-            sort_span: DUMMY_SP,
             is_lint: None,
             long_ty_path: None,
             emitted_at: DiagLocation::caller(),
@@ -320,7 +312,6 @@ impl DiagInner {
             children,
             suggestions,
             args,
-            sort_span: _, // ignore
             is_lint,
             long_ty_path: _, // ignore
             emitted_at: _,   // ignore
@@ -1088,9 +1079,6 @@ impl<'a> Diag<'a> {
     /// Add a span.
     pub fn span(&mut self, sp: impl Into<MultiSpan>) -> &mut Self {
         self.span = sp.into();
-        if let Some(span) = self.span.primary_span() {
-            self.sort_span = span;
-        }
         self
     } }
 
