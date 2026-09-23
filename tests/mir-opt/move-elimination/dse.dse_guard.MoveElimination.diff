@@ -22,12 +22,12 @@
   
       bb0: {
 -         StorageLive(_1);
--         StorageLive(_2);
++         nop;
++         nop;
++         nop;
+          StorageLive(_2);
 -         StorageLive(_3);
 -         _3 = make_fields(const 0_u8) -> [return: bb1, unwind unreachable];
-+         nop;
-+         nop;
-+         nop;
 +         _2 = make_fields(const 0_u8) -> [return: bb1, unwind unreachable];
       }
   
@@ -39,6 +39,7 @@
 +         nop;
 +         nop;
 +         nop;
++         StorageLive(_7);
 +         _7 = make_fields(const 1_u8) -> [return: bb2, unwind unreachable];
       }
   
@@ -46,45 +47,49 @@
 -         _1 = move _4;
 -         StorageDead(_4);
 -         StorageLive(_5);
--         StorageLive(_6);
++         nop;
++         nop;
++         nop;
++         nop;
+          StorageLive(_6);
 -         _6 = &raw const _1;
-+         nop;
-+         nop;
-+         nop;
-+         nop;
 +         _6 = &raw const _7;
++         StorageLive(_5);
           _5 = observe(move _6) -> [return: bb3, unwind unreachable];
       }
   
       bb3: {
 -         StorageDead(_6);
--         StorageDead(_5);
+          StorageDead(_5);
 -         StorageLive(_7);
 -         _7 = move _1;
++         StorageDead(_6);
 +         nop;
 +         nop;
 +         nop;
 +         nop;
           _2 = move _7;
--         StorageDead(_7);
+          StorageDead(_7);
 -         StorageLive(_8);
--         StorageLive(_9);
 +         nop;
 +         nop;
 +         nop;
+          StorageLive(_9);
           _9 = &raw const _2;
++         StorageLive(_8);
           _8 = observe(move _9) -> [return: bb4, unwind unreachable];
       }
   
       bb4: {
 -         StorageDead(_9);
--         StorageDead(_8);
+          StorageDead(_8);
++         StorageDead(_9);
 +         nop;
 +         nop;
           _0 = const ();
--         StorageDead(_2);
--         StorageDead(_1);
 +         nop;
+          StorageDead(_2);
+-         StorageDead(_1);
 +         nop;
           return;
       }

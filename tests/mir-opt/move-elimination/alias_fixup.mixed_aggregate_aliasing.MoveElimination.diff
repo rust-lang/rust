@@ -46,7 +46,8 @@
       }
   
       bb3: {
--         StorageLive(_6);
++         nop;
+          StorageLive(_6);
 -         _6 = copy (_3.1: u8);
 -         StorageLive(_7);
 -         _7 = copy (_3.0: u8);
@@ -55,8 +56,6 @@
 -         _4 = Triple(move _6, move _7, move _8);
 -         StorageDead(_8);
 -         StorageDead(_7);
--         StorageDead(_6);
-+         nop;
 +         _6 = copy (_0.1: u8);
 +         nop;
 +         nop;
@@ -69,6 +68,7 @@
 +         (_0.2: u8) = no_retag move _2;
 +         nop;
 +         StorageDead(_9);
+          StorageDead(_6);
 +         nop;
 +         nop;
 +         nop;
