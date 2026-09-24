@@ -114,7 +114,9 @@ pub(crate) fn complete_attribute_path(
         Qualified::No => {
             ctx.process_all_names(&mut |name, def, doc_aliases| match def {
                 hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_attr(ctx.db) => {
-                    acc.add_macro(ctx, path_ctx, m, name)
+                    if !DUPLICATE_ATTR.contains(&name.as_str()) {
+                        acc.add_macro(ctx, path_ctx, m, name)
+                    }
                 }
                 hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => {
                     acc.add_module(ctx, path_ctx, m, name, doc_aliases)
@@ -396,6 +398,8 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     )
     .prefer_inner(),
 ];
+
+const DUPLICATE_ATTR: &[&str] = &["derive", "test"];
 
 fn parse_comma_sep_expr(input: ast::TokenTree) -> Option<Vec<ast::Expr>> {
     let r_paren = input.r_paren_token()?;

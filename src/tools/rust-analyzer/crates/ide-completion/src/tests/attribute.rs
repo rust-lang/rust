@@ -28,7 +28,6 @@ pub struct Foo(#[m$0] i32);
             at cold
             at deny(…)
             at deprecated
-            at derive                                  macro derive
             at derive(…)
             at diagnostic::do_not_recommend
             at diagnostic::on_unimplemented
@@ -92,7 +91,6 @@ pub struct Foo(#[$0] i32);
             at cold
             at deny(…)
             at deprecated
-            at derive                                  macro derive
             at derive(…)
             at diagnostic::do_not_recommend
             at diagnostic::on_unimplemented
@@ -140,6 +138,7 @@ fn proc_macros() {
     check(
         r#"
 //- proc_macros: identity
+//- minicore: derive
 #[$0]
 struct Foo;
 "#,
@@ -150,6 +149,7 @@ struct Foo;
             at deny(…)
             at deprecated
             at derive(…)
+            at derive_const macro derive_const
             at doc = "…"
             at doc = include_str!("…")
             at doc(alias = "…")
@@ -162,6 +162,7 @@ struct Foo;
             at repr(…)
             at unsafe(…)
             at warn(…)
+            md core::
             md proc_macros::
             kw crate::
             kw self::
@@ -448,7 +449,6 @@ struct Foo;
             at cfg_attr(…)
             at deny(…)
             at deprecated
-            at derive             macro derive
             at derive(…)
             at derive_const macro derive_const
             at doc = "…"
