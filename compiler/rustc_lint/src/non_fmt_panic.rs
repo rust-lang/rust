@@ -143,7 +143,14 @@ impl<'a, 'b, 'tcx> Diagnostic<'a> for PanicMessageNotLiteral<'b, 'tcx> {
                     .get_diagnostic_item(sym::Debug)
                     .is_some_and(|t| infcx.type_implements_trait(t, [ty], param_env).may_apply());
 
-            let suggest_panic_any = !is_str && panic == Some(sym::std_panic_macro);
+            let suggest_panic_any = !is_str
+                && panic == Some(sym::std_panic_macro)
+                && cx
+                    .tcx
+                    .all_diagnostic_items(())
+                    .name_to_id
+                    .keys()
+                    .any(|name| name.as_str() == "panic_any");
 
             let fmt_applicability = if suggest_panic_any {
                 // If we can use panic_any, use that as the MachineApplicable suggestion.
