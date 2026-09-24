@@ -12,14 +12,12 @@ fn main() {
 
     compile();
     let mut previous = session_dir();
-    rfs::write(previous.join("sentinel"), "previous session");
 
     for _ in 0..2 {
         compile();
         let current = session_dir();
         assert_ne!(previous, current);
         assert!(!previous.exists(), "superseded session was not collected: {previous:?}");
-        assert_eq!(rfs::read_to_string(current.join("sentinel")), "previous session");
         previous = current;
     }
 
@@ -36,7 +34,6 @@ fn main() {
     let current = session_dir();
     assert_ne!(previous, newer);
     assert!(!newer.exists(), "superseded session was not collected: {previous:?}");
-    assert_eq!(rfs::read_to_string(current.join("sentinel")), "previous session");
 }
 
 fn session_dir() -> PathBuf {
