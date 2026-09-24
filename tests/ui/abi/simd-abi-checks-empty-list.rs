@@ -11,6 +11,5 @@
 extern crate minicore;
 use minicore::simd::Simd;
 
-#[expect(improper_ctypes_definitions)]
 pub extern "C" fn pass_by_vec(_: Simd<i32, 4>) {}
 //~^ ERROR: this function definition uses SIMD vector type `Simd<i32, 4>` which is not currently supported with the chosen ABI
