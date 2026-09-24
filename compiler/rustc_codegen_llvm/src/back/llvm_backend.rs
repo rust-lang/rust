@@ -20,7 +20,9 @@ use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
-use rustc_session::{CodegenBackendInit, EarlySession, IncrCompSession, Session};
+use rustc_session::{
+    BorrowedIncrCompSession, CodegenBackendInit, EarlySession, IncrCompSession, Session,
+};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{RelocModel, TlsModel};
 
@@ -120,6 +122,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     fn run_thin_lto(
         cgcx: &CodegenContext,
         prof: &SelfProfilerRef,
+        incr_comp_session: Option<&BorrowedIncrCompSession>,
         dcx: DiagCtxtHandle<'_>,
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
@@ -128,6 +131,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         back::lto::run_thin(
             cgcx,
             prof,
+            incr_comp_session,
             dcx,
             exported_symbols_for_lto,
             each_linked_rlib_for_lto,

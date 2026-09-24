@@ -19,7 +19,7 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_middle::dep_graph::WorkProduct;
-use rustc_session::config;
+use rustc_session::{BorrowedIncrCompSession, config};
 use rustc_span::bug;
 use rustc_structures::SanitizerSet;
 use tracing::{debug, info};
@@ -184,6 +184,7 @@ pub(crate) fn run_fat(
 pub(crate) fn run_thin(
     cgcx: &CodegenContext,
     prof: &SelfProfilerRef,
+    incr_comp_session: Option<&BorrowedIncrCompSession>,
     dcx: DiagCtxtHandle<'_>,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
@@ -199,7 +200,7 @@ pub(crate) fn run_thin(
                       is deferred to the linker"
         );
     }
-    thin_lto(cgcx, prof, dcx, modules, upstream_modules, &symbols_below_threshold)
+    thin_lto(prof, incr_comp_session, dcx, modules, upstream_modules, &symbols_below_threshold)
 }
 
 fn fat_lto(
@@ -371,8 +372,8 @@ fn fat_lto(
 /// all of the `LtoModuleCodegen` units returned below and destroyed once
 /// they all go out of scope.
 fn thin_lto(
-    cgcx: &CodegenContext,
     prof: &SelfProfilerRef,
+    incr_comp_session: Option<&BorrowedIncrCompSession>,
     dcx: DiagCtxtHandle<'_>,
     modules: Vec<ThinLtoInput<LlvmCodegenBackend>>,
     serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
@@ -463,13 +464,12 @@ fn thin_lto(
 
         info!("thin LTO data created");
 
-        let new_key_map_path = cgcx
-            .new_incr_comp_session_dir
-            .as_ref()
-            .map(|dir| dir.join(THIN_LTO_KEYS_INCR_COMP_FILE_NAME));
+        let new_key_map_path = incr_comp_session.as_ref().map(|incr_comp_session| {
+            incr_comp_session.new_session_directory.join(THIN_LTO_KEYS_INCR_COMP_FILE_NAME)
+        });
 
-        let prev_key_map = if let Some(ref old_incr_comp_session_dir) =
-            cgcx.old_incr_comp_session_dir
+        let prev_key_map = if let Some(ref old_incr_comp_session_dir) = incr_comp_session
+            .and_then(|incr_comp_session| incr_comp_session.old_session_directory.as_deref())
         {
             let old_path = old_incr_comp_session_dir.join(THIN_LTO_KEYS_INCR_COMP_FILE_NAME);
 
@@ -481,7 +481,7 @@ fn thin_lto(
             assert!(green_modules.is_empty());
             None
         };
-        let curr_key_map = if cgcx.new_incr_comp_session_dir.is_some() {
+        let curr_key_map = if incr_comp_session.is_some() {
             ThinLTOKeysMap::from_thin_lto_modules(&data, &thin_modules, &module_names)
         } else {
             assert!(green_modules.is_empty());
@@ -506,8 +506,7 @@ fn thin_lto(
             if let (Some(prev_key_map), true) =
                 (prev_key_map.as_ref(), green_modules.contains_key(module_name))
             {
-                assert!(cgcx.old_incr_comp_session_dir.is_some());
-                assert!(cgcx.new_incr_comp_session_dir.is_some());
+                assert!(incr_comp_session.unwrap().old_session_directory.is_some());
 
                 // If a module exists in both the current and the previous session,
                 // and has the same LTO cache key in both sessions, then we can re-use it
