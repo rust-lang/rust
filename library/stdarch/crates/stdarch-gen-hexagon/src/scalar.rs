@@ -19,7 +19,7 @@
 use regex::Regex;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::Write;
+use std::io::{BufWriter, Write};
 use std::path::Path;
 use stdarch_gen_common::GENERATED_MARKER;
 
@@ -627,30 +627,16 @@ fn generate_functions(intrinsics: &[ScalarIntrinsic]) -> String {
 }
 
 /// Generate the complete scalar.rs file
-fn generate_scalar_file(intrinsics: &[ScalarIntrinsic], output_path: &Path) -> Result<(), String> {
-    let mut output =
-        File::create(output_path).map_err(|e| format!("Failed to create output: {}", e))?;
+fn generate_scalar_file(intrinsics: &[ScalarIntrinsic], output_path: &Path) -> std::io::Result<()> {
+    let mut output = BufWriter::new(File::create(output_path)?);
 
-    writeln!(output, "{}", GENERATED_MARKER).map_err(|e| e.to_string())?;
-    writeln!(output, "{}", generate_module_doc()).map_err(|e| e.to_string())?;
-    writeln!(output, "").map_err(|e| e.to_string())?;
-    writeln!(output, "{}", generate_extern_block(intrinsics)).map_err(|e| e.to_string())?;
-    writeln!(output, "{}", generate_functions(intrinsics)).map_err(|e| e.to_string())?;
+    writeln!(output, "{}", GENERATED_MARKER)?;
+    writeln!(output, "{}", generate_module_doc())?;
+    writeln!(output, "")?;
+    writeln!(output, "{}", generate_extern_block(intrinsics))?;
+    writeln!(output, "{}", generate_functions(intrinsics))?;
 
-    // Flush before running rustfmt
-    drop(output);
-
-    // Run rustfmt on the generated file
-    let status = std::process::Command::new("rustfmt")
-        .arg(output_path)
-        .status()
-        .map_err(|e| format!("Failed to run rustfmt: {}", e))?;
-
-    if !status.success() {
-        return Err("rustfmt failed".to_string());
-    }
-
-    Ok(())
+    output.flush()
 }
 
 /// Parse the scalar header in `crate_dir` and write `scalar.rs` into `out_dir`.
@@ -659,6 +645,6 @@ pub fn generate(crate_dir: &std::path::Path, out_dir: &std::path::Path) -> Resul
     let intrinsics = parse_header(&header_content);
     std::fs::create_dir_all(out_dir).map_err(|e| e.to_string())?;
     let scalar_path = out_dir.join("scalar.rs");
-    generate_scalar_file(&intrinsics, &scalar_path)?;
+    generate_scalar_file(&intrinsics, &scalar_path).map_err(|e| e.to_string())?;
     Ok(())
 }
