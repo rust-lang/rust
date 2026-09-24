@@ -14,6 +14,8 @@ LL |         *if true {a} else {b} = 42;
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/fnmut-closure-moving-value.rs:11:14
    |
+LL | impl Bar {
+LL |     fn f<F>(&self, mut f: F)
 LL |     where F: FnMut()
    |              ^^^^^^^
 
@@ -32,6 +34,8 @@ LL |         *if true {a} else {b} = 42;
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/fnmut-closure-moving-value.rs:11:14
    |
+LL | impl Bar {
+LL |     fn f<F>(&self, mut f: F)
 LL |     where F: FnMut()
    |              ^^^^^^^
 
