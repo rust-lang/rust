@@ -5,7 +5,7 @@ use rustc_index::IndexVec;
 use rustc_middle::mir::pretty::{MirDumper, PassWhere, PrettyPrintMirOptions};
 use rustc_middle::mir::{Body, Location};
 use rustc_middle::ty::{RegionVid, TyCtxt};
-use rustc_mir_dataflow::points::PointIndex;
+use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use rustc_session::config::MirIncludeSpans;
 
 use crate::borrow_set::BorrowSet;
@@ -71,7 +71,8 @@ pub(crate) fn dump_polonius_mir<'tcx>(
     };
     let mut collector = MirDumpCollector::default();
     if let Some(graph) = &polonius_context.graph {
-        graph.traverse(body, borrow_set, &mut liveness_source, &mut collector);
+        let location_map = regioncx.liveness_constraints().location_map();
+        graph.traverse(body, borrow_set, location_map, &mut liveness_source, &mut collector);
     }
 
     let extra_data = &|pass_where, out: &mut dyn io::Write| {
@@ -172,7 +173,7 @@ fn emit_polonius_dump<'tcx>(
                     "POLONIUS_CONSTRAINTS" => {
                         edge_count = emit_mermaid_constraint_graph(
                             borrow_set,
-                            regioncx.liveness_constraints(),
+                            regioncx.liveness_constraints().location_map(),
                             &collector.constraints,
                             out,
                         )?;
@@ -271,7 +272,7 @@ fn emit_polonius_mir<'tcx>(
         out,
     )?;
 
-    let liveness = regioncx.liveness_constraints();
+    let location_map = regioncx.liveness_constraints().location_map();
 
     // Add localized outlives constraints
     match pass_where {
@@ -281,8 +282,8 @@ fn emit_polonius_mir<'tcx>(
 
                 for constraint in localized_outlives_constraints {
                     let LocalizedOutlivesConstraint { source, from, target, to } = constraint;
-                    let from = liveness.location_from_point(*from);
-                    let to = liveness.location_from_point(*to);
+                    let from = location_map.to_location(*from);
+                    let to = location_map.to_location(*to);
                     writeln!(out, "| {source:?} at {from:?} -> {target:?} at {to:?}")?;
                 }
                 writeln!(out, "|")?;
@@ -462,12 +463,12 @@ fn emit_mermaid_nll_sccs<'tcx>(
 /// region, and loan introductions.
 fn emit_mermaid_constraint_graph<'tcx>(
     borrow_set: &BorrowSet<'tcx>,
-    liveness: &LivenessValues,
+    location_map: &DenseLocationMap,
     localized_outlives_constraints: &[LocalizedOutlivesConstraint],
     out: &mut dyn io::Write,
 ) -> io::Result<usize> {
     let node_label = |region: RegionVid, point: PointIndex| {
-        let location = liveness.location_from_point(point);
+        let location = location_map.to_location(point);
         node_name(region, location)
     };
 
@@ -533,6 +534,7 @@ fn emit_loan_reachability(
     reachability: &FxIndexMap<BorrowIndex, Vec<LocalizedNode>>,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
+    let location_map = liveness.location_map();
     for (loan, _) in borrow_set.iter_enumerated() {
         let Some(reachability) = reachability.get(&loan) else {
             continue;
@@ -553,7 +555,7 @@ fn emit_loan_reachability(
         for (idx, node) in reachability.iter().enumerate() {
             writeln!(out, "<li>")?;
 
-            let location = liveness.location_from_point(node.point);
+            let location = location_map.to_location(node.point);
             let kind = if idx == 0 { "starts in" } else { "reaches" };
             writeln!(
                 out,

@@ -39,8 +39,6 @@ pub(crate) mod legacy;
 mod liveness;
 mod liveness_constraints;
 
-use std::rc::Rc;
-
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
@@ -143,7 +141,7 @@ impl<'tcx> PoloniusContext<'tcx> {
         universal_regions: &UniversalRegions<'tcx>,
         body: &Body<'tcx>,
         move_data: &MoveData<'tcx>,
-        location_map: Rc<DenseLocationMap>,
+        location_map: &DenseLocationMap,
         borrow_set: &BorrowSet<'tcx>,
     ) {
         // We don't need to prepare the graph (index NLL constraints, etc.) if we have no loans to
@@ -152,8 +150,7 @@ impl<'tcx> PoloniusContext<'tcx> {
             // From the outlives constraints, liveness, and variances, we can compute reachability
             // on the lazy localized constraint graph to trace the liveness of loans, for the next
             // step in the chain (the NLL loan scope and active loans computations).
-            let graph =
-                LocalizedConstraintGraph::new(Rc::clone(&location_map), outlives_constraints);
+            let graph = LocalizedConstraintGraph::new(location_map, outlives_constraints);
 
             let local_use_map = self
                 .local_use_map
@@ -163,7 +160,7 @@ impl<'tcx> PoloniusContext<'tcx> {
                 std::mem::take(&mut self.deferred_locals_for_liveness);
             let mut live_loans = LiveLoans::new(location_map.num_points(), borrow_set.len());
             let comp =
-                LivenessComputation::new(infcx, body, &location_map, move_data, &local_use_map);
+                LivenessComputation::new(infcx, body, location_map, move_data, &local_use_map);
             let mut liveness_source = DeferredLivenessSource {
                 liveness,
                 live_region_variances: &mut self.live_region_variances,
@@ -172,7 +169,7 @@ impl<'tcx> PoloniusContext<'tcx> {
                 comp,
             };
             let mut visitor = LoanLivenessVisitor { live_loans: &mut live_loans };
-            graph.traverse(body, borrow_set, &mut liveness_source, &mut visitor);
+            graph.traverse(body, borrow_set, location_map, &mut liveness_source, &mut visitor);
             liveness.record_live_loans(live_loans);
 
             // The graph can be traversed again during MIR dumping, so we store it here.
