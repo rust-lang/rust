@@ -223,10 +223,13 @@ pub fn new_context<'gcc>(sess: &Session) -> Context<'gcc> {
     }
 
     match sess.merge_functions() {
-        MergeFunctions::Disabled | MergeFunctions::Trampolines => {
+        MergeFunctions::Disabled => {
             context.add_command_line_option("-fno-ipa-icf-functions");
         }
-        MergeFunctions::Aliases => {}
+        // GCC always merges functions with trampolines rather than aliases, so we don't
+        // need to differentiate MergeFunctions::Trampolines and MergeFunctions::Aliases
+        // as trampolines are allowed either way.
+        MergeFunctions::Trampolines | MergeFunctions::Aliases => {}
     }
 
     match sess.target.stack_probes {
