@@ -53,13 +53,8 @@ pub struct FulfillmentCtxt<'tcx, E: 'tcx> {
 
     last_stalled_goal_generation: u64,
 
-    /// Whether any trackable stalled obligation requires the opaque
-    /// type storage to remain empty.
-    stalled_on_empty_opaques: bool,
-
-    /// Whether every pending obligation can use the context-wide
-    /// stalled-goal fast path.
-    all_pending_trackable: bool,
+    /// Whether every pending goal stays stalled until the generation changes.
+    all_goals_known_to_be_stalled: bool,
 
     _errors: PhantomData<E>,
 }
@@ -117,25 +112,18 @@ impl<'tcx, E: 'tcx> FulfillmentCtxt<'tcx, E> {
             obligations: Default::default(),
             usable_in_snapshot: infcx.num_open_snapshots(),
             last_stalled_goal_generation: generation,
-            stalled_on_empty_opaques: false,
-            all_pending_trackable: true,
+            all_goals_known_to_be_stalled: true,
             _errors: PhantomData,
         }
     }
 
-    fn record_trackable_stalled_on(
-        stalled_on: &GoalStalledOn<TyCtxt<'tcx>>,
-        stalled_on_empty_opaques: &mut bool,
-    ) -> bool {
-        match stalled_on.opaques {
-            GoalStalledOnOpaques::No => {}
-            GoalStalledOnOpaques::Yes { num_opaques_in_storage: 0, .. } => {
-                *stalled_on_empty_opaques = true;
-            }
-            GoalStalledOnOpaques::Yes { .. } => return false,
-        }
-
-        true
+    fn goal_is_known_to_be_stalled(stalled_on: &GoalStalledOn<TyCtxt<'tcx>>) -> bool {
+        // Registering or removing an opaque bumps the generation. A goal that
+        // observed an empty storage therefore remains stalled until it changes.
+        matches!(
+            stalled_on.opaques,
+            GoalStalledOnOpaques::No | GoalStalledOnOpaques::Yes { num_opaques_in_storage: 0, .. }
+        )
     }
 
     fn inspect_evaluated_obligation(
@@ -174,22 +162,14 @@ where
             match certainty {
                 Certainty::Yes => {}
                 Certainty::Maybe(_) => {
-                    if let Some(stalled_on) = &stalled_on {
-                        if !Self::record_trackable_stalled_on(
-                            stalled_on,
-                            &mut self.stalled_on_empty_opaques,
-                        ) {
-                            self.all_pending_trackable = false;
-                        }
-                    } else {
-                        self.all_pending_trackable = false;
-                    }
+                    self.all_goals_known_to_be_stalled &=
+                        stalled_on.as_ref().is_some_and(Self::goal_is_known_to_be_stalled);
 
                     self.obligations.register(obligation, stalled_on);
                 }
             }
         } else {
-            self.all_pending_trackable = false;
+            self.all_goals_known_to_be_stalled = false;
             self.obligations.register(obligation, None);
         }
     }
@@ -215,29 +195,22 @@ where
 
         if self.obligations.pending.is_empty() {
             self.last_stalled_goal_generation = generation;
-            self.stalled_on_empty_opaques = false;
-            self.all_pending_trackable = true;
+            self.all_goals_known_to_be_stalled = true;
             return errors;
         }
 
         if !infcx.tcx.disable_trait_solver_fast_paths()
-            && self.all_pending_trackable
+            && self.all_goals_known_to_be_stalled
             && self.last_stalled_goal_generation == generation
         {
-            let opaques_unchanged = !self.stalled_on_empty_opaques
-                || infcx.inner.borrow_mut().opaque_types().is_empty();
-
-            if opaques_unchanged {
-                return errors;
-            }
+            return errors;
         }
 
         loop {
             let pass_generation = infcx.stalled_goal_generation();
 
             let mut any_changed = false;
-            let mut all_pending_trackable = true;
-            let mut stalled_on_empty_opaques = false;
+            let mut all_goals_known_to_be_stalled = true;
 
             self.obligations.pending.retain_mut(|(obligation, opt_stalled_on)| {
                 // Common case: still stalled; keep the obligation. This path is extremely hot in
@@ -245,10 +218,7 @@ where
                 if let Some(stalled_on) = opt_stalled_on
                     && delegate.goal_remains_stalled(stalled_on)
                 {
-                    if !Self::record_trackable_stalled_on(stalled_on, &mut stalled_on_empty_opaques)
-                    {
-                        all_pending_trackable = false;
-                    }
+                    all_goals_known_to_be_stalled &= Self::goal_is_known_to_be_stalled(stalled_on);
 
                     return true;
                 }
@@ -326,23 +296,14 @@ where
                         // running until a fixpoint.
                         *opt_stalled_on = stalled_on;
 
-                        if let Some(stalled_on) = opt_stalled_on {
-                            if !Self::record_trackable_stalled_on(
-                                stalled_on,
-                                &mut stalled_on_empty_opaques,
-                            ) {
-                                all_pending_trackable = false;
-                            }
-                        } else {
-                            all_pending_trackable = false;
-                        }
+                        all_goals_known_to_be_stalled &=
+                            opt_stalled_on.as_ref().is_some_and(Self::goal_is_known_to_be_stalled);
                         true
                     }
                 }
             });
             if !any_changed {
-                self.all_pending_trackable = all_pending_trackable;
-                self.stalled_on_empty_opaques = stalled_on_empty_opaques;
+                self.all_goals_known_to_be_stalled = all_goals_known_to_be_stalled;
                 self.last_stalled_goal_generation = pass_generation;
                 break;
             }
