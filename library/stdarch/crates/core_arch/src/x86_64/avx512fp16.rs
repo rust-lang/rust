@@ -227,6 +227,7 @@ unsafe extern "llvm-intrinsic" {
 }
 
 #[cfg(test)]
+#[cfg(target_has_reliable_f16)]
 mod tests {
     use crate::core_arch::{x86::*, x86_64::*};
     use stdarch_test::simd_test;

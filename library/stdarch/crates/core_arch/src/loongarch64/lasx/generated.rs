@@ -6,8 +6,8 @@
 // OUT_DIR=`pwd`/crates/core_arch cargo run -p stdarch-gen-loongarch -- crates/stdarch-gen-loongarch/lasx.spec
 // ```
 
-use crate::mem::transmute;
 use super::super::*;
+use crate::mem::transmute;
 
 #[allow(improper_ctypes)]
 unsafe extern "llvm-intrinsic" {
@@ -3033,168 +3033,312 @@ pub fn lasx_xvhsubw_qu_du(a: m256i, b: m256i) -> m256i {
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwev_q_d(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwev_q_d(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwev_q_d(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwev_d_w(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwev_d_w(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwev_d_w(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwev_w_h(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwev_w_h(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwev_w_h(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwev_h_b(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwev_h_b(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwev_h_b(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwev_q_du(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwev_q_du(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwev_q_du(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwev_d_wu(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwev_d_wu(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwev_d_wu(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwev_w_hu(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwev_w_hu(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwev_w_hu(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwev_h_bu(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwev_h_bu(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwev_h_bu(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwod_q_d(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwod_q_d(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwod_q_d(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwod_d_w(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwod_d_w(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwod_d_w(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwod_w_h(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwod_w_h(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwod_w_h(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwod_h_b(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwod_h_b(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwod_h_b(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwod_q_du(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwod_q_du(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwod_q_du(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwod_d_wu(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwod_d_wu(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwod_d_wu(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwod_w_hu(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwod_w_hu(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwod_w_hu(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwod_h_bu(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwod_h_bu(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwod_h_bu(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwev_q_du_d(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwev_q_du_d(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwev_q_du_d(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwev_d_wu_w(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwev_d_wu_w(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwev_d_wu_w(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwev_w_hu_h(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwev_w_hu_h(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwev_w_hu_h(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwev_h_bu_b(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwev_h_bu_b(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwev_h_bu_b(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwod_q_du_d(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwod_q_du_d(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwod_q_du_d(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwod_d_wu_w(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwod_d_wu_w(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwod_d_wu_w(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwod_w_hu_h(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwod_w_hu_h(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwod_w_hu_h(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaddwod_h_bu_b(a: m256i, b: m256i, c: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvmaddwod_h_bu_b(transmute(a), transmute(b), transmute(c))) }
+    unsafe {
+        transmute(__lasx_xvmaddwod_h_bu_b(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 }
 
 #[inline]
