@@ -24,6 +24,7 @@ macro_rules! msrv_aliases {
 
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
+    1,99,0 { BOX_INTO_NON_NULL }
     1,97,0 { ISOLATE_LOWEST_ONE, BIT_WIDTH }
     1,94,0 { EULER_GAMMA, GOLDEN_RATIO }
     1,93,0 { VEC_DEQUE_POP_BACK_IF, VEC_DEQUE_POP_FRONT_IF }
