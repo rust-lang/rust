@@ -120,7 +120,7 @@ unsafe fn configure_llvm(sess: &EarlySession) {
             add("-generate-arange-section", false);
         }
 
-        match sess.opts.unstable_opts.merge_functions.unwrap_or(sess.target.merge_functions) {
+        match sess.merge_functions() {
             MergeFunctions::Disabled | MergeFunctions::Trampolines => {}
             MergeFunctions::Aliases => {
                 add("-mergefunc-use-aliases", false);
