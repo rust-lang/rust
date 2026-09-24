@@ -758,6 +758,10 @@ impl Span {
         self.map_ctxt(|_| ctxt)
     }
 
+    /// When to use this:
+    /// - Use it instead of `==` for span equality comparisons when either span could be generated
+    ///   code and you only care that they point to the same bytes of source text.
+    /// - Use it (possibly via `OrdSpan`) for span ordering comparisons of any kind.
     #[inline]
     pub fn lo_hi(self) -> (BytePos, BytePos) {
         let data = self.data();
@@ -850,16 +854,6 @@ impl Span {
         let span = self.data();
         let other = other.data();
         span.lo <= other.hi && other.lo <= span.hi
-    }
-
-    /// Returns `true` if the spans are equal with regards to the source text.
-    ///
-    /// Use this instead of `==` when either span could be generated code,
-    /// and you only care that they point to the same bytes of source text.
-    pub fn source_equal(self, other: Span) -> bool {
-        let span = self.data();
-        let other = other.data();
-        span.lo == other.lo && span.hi == other.hi
     }
 
     /// Returns `Some(span)`, where the start is trimmed by the end of `other`.
@@ -1075,7 +1069,7 @@ impl Span {
                 }
 
                 let expn_data = ctxt.outer_expn_data();
-                let is_recursive = expn_data.call_site.source_equal(prev_span);
+                let is_recursive = expn_data.call_site.lo_hi() == prev_span.lo_hi();
 
                 prev_span = self;
                 self = expn_data.call_site;

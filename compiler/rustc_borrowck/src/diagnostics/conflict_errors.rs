@@ -2544,7 +2544,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
 
                 if let hir::ExprKind::MethodCall(body_call, recv, ..) = ex.kind
                     && body_call.ident.name == sym::next
-                    && recv.span.source_equal(self.expr_span)
+                    && recv.span.lo_hi() == self.expr_span.lo_hi()
                 {
                     self.body_expr = Some(ex);
                 }

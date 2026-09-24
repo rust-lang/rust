@@ -734,7 +734,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match (parent, error) {
             (hir::Node::LetStmt(hir::LetStmt { ty: Some(ty), init: Some(init), .. }), _)
-                if init.hir_id == current_hir_id && !ty.span.source_equal(init.span) =>
+                if init.hir_id == current_hir_id && ty.span.lo_hi() != init.span.lo_hi() =>
             {
                 // Point at `let` assignment type.
                 err.span_label(ty.span, "expected due to this");

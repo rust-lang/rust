@@ -1178,7 +1178,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             type Result = ControlFlow<&'v hir::Expr<'v>>;
             fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) -> Self::Result {
                 if let hir::ExprKind::Match(expr, _arms, hir::MatchSource::TryDesugar(_)) = ex.kind
-                    && ex.span.with_lo(ex.span.hi() - BytePos(1)).source_equal(self.search_span)
+                    && ex.span.with_lo(ex.span.hi() - BytePos(1)).lo_hi()
+                        == self.search_span.lo_hi()
                     && let hir::ExprKind::Call(_, [expr, ..]) = expr.kind
                 {
                     ControlFlow::Break(expr)
