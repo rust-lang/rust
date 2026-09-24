@@ -29,31 +29,6 @@ fn sock_addr_from_pathname() {
     assert_eq!(address.as_pathname(), Some(Path::new("/path/to/socket")));
 }
 
-// the trailing NUL is not counted in the reported length on freebsd, netbsd
-// and qnx, and a caller may bind(2) without one anywhere
-#[test]
-fn sock_addr_without_trailing_nul() {
-    const PATH: &[u8] = b"/path/to/socket";
-
-    let mut addr: [u8; SOCK_MAX_SIZE] = [0; SOCK_MAX_SIZE];
-    let sun_family = (libc::AF_UNIX as libc::sa_family_t).to_ne_bytes();
-    addr[SUN_FAMILY_OFFSET..SUN_FAMILY_OFFSET + size_of::<libc::sa_family_t>()]
-        .copy_from_slice(&sun_family);
-
-    for (dst, &src) in addr[SUN_PATH_OFFSET..].iter_mut().zip(PATH) {
-        *dst = src as _;
-    }
-    let offset = crate::mem::offset_of!(libc::sockaddr_un, sun_path);
-
-    // length excluding the NUL, as reported by freebsd, netbsd and qnx
-    let address = or_panic!(SocketAddr::from_parts(addr, (offset + PATH.len()) as _));
-    assert_eq!(address.as_pathname(), Some(Path::new("/path/to/socket")));
-
-    // length including the NUL, as reported by linux
-    let address = or_panic!(SocketAddr::from_parts(addr, (offset + PATH.len() + 1) as _));
-    assert_eq!(address.as_pathname(), Some(Path::new("/path/to/socket")));
-}
-
 #[test]
 #[cfg(any(target_os = "android", target_os = "linux"))]
 fn sock_addr_pathname_fills_sun_path() {

@@ -23,8 +23,8 @@ mod libc {
 }
 
 cfg_if::cfg_if! {
-    if #[cfg(any(target_os = "macos", target_os = "dragonfly"))] {
-        // MacOS and DragonFly utilize `SOCK_MAXADDRLEN` to define
+    if #[cfg(any(target_vendor = "apple", target_os = "dragonfly"))] {
+        // Apple and DragonFly utilize `SOCK_MAXADDRLEN` to define
         // the maximum size that the `sockaddr_un` struct could be.
         // SOCK_MAXADDRLEN = 255 on these platforms, and it's based on
         // sizeof(sa_len) (a u8) + sizeof(sun_family) (a u8) + 253 bytes
@@ -40,15 +40,25 @@ cfg_if::cfg_if! {
     }
 }
 
-// Offset to `libc::sockaddr_un.sun_family`
+// Offset to `libc::sockaddr_un.sun_family` in bytes
 pub(crate) const SUN_FAMILY_OFFSET: usize = mem::offset_of!(libc::sockaddr_un, sun_family);
-// Offset to `libc::sockaddr_un.sun_path`
+// Offset to `libc::sockaddr_un.sun_path` in bytes
 pub(crate) const SUN_PATH_OFFSET: usize = mem::offset_of!(libc::sockaddr_un, sun_path);
-// This represents the maximum number of characters + 1 allowed to be
+// This represents the maximum number of bytes + 1 allowed to be
 // stored in the socket path (e.g. 254 for NetBSD because it allows 253
 // valid characters for its path, 104 for FreeBSD because it allows up to
 // 103 characters for its path)
 pub(crate) const SUN_PATH_MAX_LEN: usize = SOCK_MAX_SIZE - SUN_PATH_OFFSET;
+// Platform-dependent error message when user provides a longer socket address path
+// than what the OS allows for.
+const LEN_EXCEEDED_MSG: &'static str =
+    cfg_select! {
+        any(target_os = "macos", target_os = "dragonfly") => {
+            "path must be shorter than SOCK_MAXADDRLEN - 1"
+        }
+        target_os = "netbsd" => "path must be shorter than UCHAR_MAX - 1",
+        _ => "path must be shorter than SUN_LEN",
+    };
 
 enum AddressKind<'a> {
     Unnamed,
@@ -56,80 +66,68 @@ enum AddressKind<'a> {
     Abstract(&'a ByteStr),
 }
 
-/// An address associated with a Unix socket.
+/// An internal helper struct that provides a `len` field describing the actual filled size of the socket
+/// address and a `buf` field that contains an internal platform-agnostic struct of `libc::sockaddr_un`.
 ///
-/// # Examples
+/// On BSD platforms, `libc::sockaddr_un` is defined as:
+/// struct sockaddr_un {
+///     sun_len: u8,
+///     sun_family: sa_family_t,
+///     sun_path: [c_char; 104],
+/// }
 ///
-#[cfg_attr(target_family = "unix", doc = "```")]
-#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
-/// use std::os::unix::net::UnixListener;
+/// On Linux and other platforms, `libc::sockaddr_un` is defined as:
+/// struct sockaddr_un {
+///     sun_family: sa_family_t,
+///     sun_path: [c_char; 108],
+/// }
 ///
-/// let socket = match UnixListener::bind("/tmp/sock") {
-///     Ok(sock) => sock,
-///     Err(e) => {
-///         println!("Couldn't bind: {e:?}");
-///         return
-///     }
-/// };
-/// let addr = socket.local_addr().expect("Couldn't get local address");
-/// ```
+/// Note:
+/// * `sa_family_t` is a u8 on BSD platforms and a u16 on Linux/other platforms.
+/// * The fix-sized array value for `sun_path` field could be different across
+/// other platforms (for Linux it's 108, but this may be a different on other platforms).
+///
+/// Although `sockaddr_un.sun_path` is restricted to 104 characters on BSD platforms,
+/// DragonFlyBSD/NetBSD/Apple actually allow `sun_path` to hold up to 253 non-nul bytes.
+/// Therefore, this `SockaddrUn` struct aims to hold a buffer that contains the maximum
+/// socket address size for each platform.
 #[derive(Clone)]
-#[stable(feature = "unix_socket", since = "1.10.0")]
-pub struct SocketAddr {
+#[repr(C)]
+pub(super) struct SockaddrBuf {
     /// Size of the socket address, `sun_family` and `sun_path`
     /// fields from `libc::sockaddr_un` included
-    pub(super) len: libc::socklen_t,
+    len: libc::socklen_t,
     /// Stack allocated buffer that contains full size of what `libc::sockaddr_un`
     /// could be (as `sun_path` field defined for `sockaddr_un` does not represent
     /// the maximum path length of a Unix Domain socket name)
-    pub(super) addr: [u8; SOCK_MAX_SIZE],
+    buf: [u8; SOCK_MAX_SIZE],
+    /// Make it sound to cast the struct to/from a `sockaddr_un`
+    align: [libc::sockaddr_un; 0],
 }
 
-impl SocketAddr {
-    pub(super) fn default() -> SocketAddr {
-        let mut addr: [u8; SOCK_MAX_SIZE] = [0; SOCK_MAX_SIZE];
+impl SockaddrBuf {
+    /* API for use in Rust */
+
+    /// This returns an empty Unix Domain socket address with a
+    /// length value containing the current size of the `SockaddrUn`
+    pub(super) fn default() -> SockaddrBuf {
+        let len = 0;
+        let mut sockaddr_un: [u8; SOCK_MAX_SIZE] = [0; SOCK_MAX_SIZE];
         let sun_family = (libc::AF_UNIX as libc::sa_family_t).to_ne_bytes();
-        addr[SUN_FAMILY_OFFSET..SUN_FAMILY_OFFSET + size_of::<libc::sa_family_t>()]
+        sockaddr_un[SUN_FAMILY_OFFSET..SUN_FAMILY_OFFSET + size_of::<libc::sa_family_t>()]
             .copy_from_slice(&sun_family);
 
-        SocketAddr { len: SUN_PATH_OFFSET as libc::socklen_t, addr }
+        SockaddrBuf { len, buf: sockaddr_un, align: unsafe { [mem::zeroed(); 0] } }
     }
 
-    pub(super) fn new<F>(f: F) -> io::Result<SocketAddr>
-    where
-        F: FnOnce(*mut [u8; SOCK_MAX_SIZE], *mut libc::socklen_t) -> libc::c_int,
-    {
-        let mut addr: [u8; SOCK_MAX_SIZE] = [0; SOCK_MAX_SIZE];
-        let mut len = size_of::<libc::sockaddr_un>() as libc::socklen_t;
-        cvt(f((&raw mut addr) as *mut _, &mut len))?;
-        SocketAddr::from_parts(addr, len)
+    /// Extracts the `sun_path` value from the socket address buffer.
+    fn path(&self) -> &[u8] {
+        &self.buf[SUN_PATH_OFFSET..]
     }
 
-    pub(super) fn from_path(path: &Path) -> io::Result<SocketAddr> {
-        let mut sockaddr = SocketAddr::default();
-
-        let bytes = path.as_os_str().as_bytes();
-
-        if bytes.contains(&0) {
-            return Err(io::const_error!(
-                io::ErrorKind::InvalidInput,
-                "paths must not contain interior null bytes",
-            ));
-        }
-
-        if bytes.len() >= SUN_PATH_MAX_LEN {
-            const LEN_EXCEEDED_MSG: &'static str =
-                cfg_select! {
-                    any(target_os = "macos", target_os = "dragonfly") => {
-                        "path must be shorter than SOCK_MAXADDRLEN - 1"
-                    }
-                    target_os = "netbsd" => "path must be shorter than UCHAR_MAX - 1",
-                    _ => "path must be shorter than SUN_LEN",
-                };
-            return Err(io::const_error!(io::ErrorKind::InvalidInput, LEN_EXCEEDED_MSG));
-        }
-
-        sockaddr.set_path(bytes);
+    /// Sets the socket address path for `SockaddrUn` in `SocketAddr`.
+    fn set_path(&mut self, bytes: &[u8]) {
+        self.buf[SUN_PATH_OFFSET..SUN_PATH_OFFSET + bytes.len()].copy_from_slice(bytes);
 
         let mut len = SUN_PATH_OFFSET + bytes.len();
         #[cfg(any(
@@ -171,51 +169,98 @@ impl SocketAddr {
 
         // Even though len here is a `usize` and `libc::socklen_t` is a `u32`
         // our len value should be limited to whatever value a `u32` can hold
-        sockaddr.set_len(len as libc::socklen_t);
-
-        Ok(sockaddr)
+        self.len = len as libc::socklen_t;
     }
 
-    pub(super) fn from_parts(
-        addr: [u8; SOCK_MAX_SIZE],
-        mut len: libc::socklen_t,
-    ) -> io::Result<SocketAddr> {
+    /// Extracts the `sun_family` value from the socket address buffer.
+    fn sun_family(&self) -> libc::sa_family_t {
+        let sun_family_array = self.buf[SUN_FAMILY_OFFSET..SUN_FAMILY_OFFSET + size_of::<libc::sa_family_t>()]
+        .try_into()
+        .expect("Slice should have exactly the same number of bytes extracted as the size of libc::sa_family_t");
+        libc::sa_family_t::from_ne_bytes(sun_family_array)
+    }
+
+    /* API for use in sockets in abstract namespace + interop with C */
+
+    /// Types passed to libc calls that read a socket address.
+    pub(super) fn as_libc_input(&self) -> (*const libc::sockaddr, libc::socklen_t) {
+        (self.buf.as_ptr().cast(), self.len)
+    }
+
+    /// Types passed to libc calls that write a socket address. Length is first set to the
+    /// max allowed.
+    ///
+    /// Note that using this API _must_ be followed by a call to `update_from_libc`.
+    // Note that returning two raw pointers from a single `&mut self` function call rather than
+    // two `&mut self -> *mut T` function calls is required to pass Miri with stacked borrows.
+    pub(super) fn as_max_libc_output(&mut self) -> (*mut libc::sockaddr, *mut libc::socklen_t) {
+        // Even though len here is a `usize` and `libc::socklen_t` is a `u32`
+        // our len value should be limited to whatever value a `u32` can hold
+        self.len = SOCK_MAX_SIZE as libc::socklen_t;
+
+        (self.buf.as_mut_ptr().cast(), &mut self.len)
+    }
+
+    /// Some platforms encode things differently. Call this after a `libc` call to adjust length
+    /// and validate as needed.
+    pub(super) fn update_from_libc(&mut self) -> io::Result<()> {
+        // let mut len = self.len;
         if cfg!(target_os = "openbsd") {
             // on OpenBSD, getsockname(2) returns the actual size of the socket address,
             // and not the len of the content. Figure out the length for ourselves.
             // https://marc.info/?l=openbsd-bugs&m=170105481926736&w=2
-            let sun_path = &addr[SUN_PATH_OFFSET..];
-            len = core::slice::memchr::memchr(0, sun_path)
-                .map_or(len, |new_len| (new_len + SUN_PATH_OFFSET) as libc::socklen_t);
+            let sun_path = self.path();
+            self.len = core::slice::memchr::memchr(0, sun_path)
+                .map_or(self.len, |new_len| (new_len + SUN_PATH_OFFSET) as libc::socklen_t);
         }
 
-        len = len.min(size_of::<libc::sockaddr_un>() as libc::socklen_t);
-
-        if len == 0 {
+        if self.len == 0 {
             // When there is a datagram from unnamed unix socket
             // linux returns zero bytes of address
-            len = SUN_PATH_OFFSET as libc::socklen_t; // i.e., zero-length address
-        } else if SocketAddr::sun_family_from_addr(&addr) != libc::AF_UNIX as libc::sa_family_t {
+            self.len = SUN_PATH_OFFSET as libc::socklen_t; // i.e., zero-length address
+        } else if self.sun_family() != libc::AF_UNIX as libc::sa_family_t {
             return Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
                 "file descriptor did not correspond to a Unix socket",
             ));
         }
 
-        Ok(SocketAddr { len, addr })
+        Ok(())
     }
+}
 
-    fn sun_family_from_addr(addr: &[u8; SOCK_MAX_SIZE]) -> libc::sa_family_t {
-        let sun_family_array = addr[SUN_FAMILY_OFFSET..SUN_FAMILY_OFFSET + size_of::<libc::sa_family_t>()].try_into().expect("Slice should have exactly the same number of bytes extracted as the size of libc::sa_family_t");
-        libc::sa_family_t::from_ne_bytes(sun_family_array)
-    }
+/// An address associated with a Unix socket.
+///
+/// # Examples
+///
+#[cfg_attr(target_family = "unix", doc = "```")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+/// use std::os::unix::net::UnixListener;
+///
+/// let socket = match UnixListener::bind("/tmp/sock") {
+///     Ok(sock) => sock,
+///     Err(e) => {
+///         println!("Couldn't bind: {e:?}");
+///         return
+///     }
+/// };
+/// let addr = socket.local_addr().expect("Couldn't get local address");
+/// ```
+#[derive(Clone)]
+#[stable(feature = "unix_socket", since = "1.10.0")]
+pub struct SocketAddr {
+    pub(super) sock: SockaddrBuf,
+}
 
-    fn set_path(&mut self, path_bytes: &[u8]) {
-        self.addr[SUN_PATH_OFFSET..SUN_PATH_OFFSET + path_bytes.len()].copy_from_slice(path_bytes);
-    }
-
-    fn set_len(&mut self, len: libc::socklen_t) {
-        self.len = len;
+impl SocketAddr {
+    pub(super) fn new<F>(f: F) -> io::Result<SocketAddr>
+    where
+        F: FnOnce(&mut SockaddrBuf) -> libc::c_int,
+    {
+        let mut sock = SockaddrBuf::default();
+        cvt(f(&mut sock))?;
+        sock.update_from_libc()?;
+        Ok(SocketAddr { sock })
     }
 
     /// Constructs a `SockAddr` with the family `AF_UNIX` and the provided path.
@@ -253,6 +298,27 @@ impl SocketAddr {
         P: AsRef<Path>,
     {
         SocketAddr::from_path(path.as_ref())
+    }
+
+    /// Constructs a Unix Domain socket address from a given `Path`
+    pub(super) fn from_path(path: &Path) -> io::Result<SocketAddr> {
+        let bytes = path.as_os_str().as_bytes();
+
+        if bytes.contains(&0) {
+            return Err(io::const_error!(
+                io::ErrorKind::InvalidInput,
+                "paths must not contain interior null bytes",
+            ));
+        }
+
+        if bytes.len() >= SUN_PATH_MAX_LEN {
+            return Err(io::const_error!(io::ErrorKind::InvalidInput, LEN_EXCEEDED_MSG));
+        }
+
+        let mut sock = SockaddrBuf::default();
+        sock.set_path(bytes);
+
+        Ok(SocketAddr { sock })
     }
 
     /// Returns `true` if the address is unnamed.
@@ -331,8 +397,8 @@ impl SocketAddr {
     }
 
     fn address(&self) -> AddressKind<'_> {
-        let len = self.len as usize - SUN_PATH_OFFSET;
-        let path = &self.addr[SUN_PATH_OFFSET..];
+        let len = self.sock.len as usize - SUN_PATH_OFFSET;
+        let path = self.sock.path();
 
         // macOS seems to return a len of 16 and a zeroed sun_path for unnamed addresses
         if len == 0
@@ -365,24 +431,39 @@ impl linux_ext::addr::SocketAddrExt for SocketAddr {
         N: AsRef<[u8]>,
     {
         let name = name.as_ref();
-        let mut sockaddr = SocketAddr::default();
+        let mut sock = SockaddrBuf::default();
 
+        // Abstract socket address paths are not nul terminated!
+        // (Hence the > instead of >=)
+        // See Linux manpage: https://man7.org/linux/man-pages/man7/unix.7.html
+        // "The socket's address in this namespace is given by the additional
+        // bytes in sun_path that are covered by the specified length of the
+        // address structure. (Null bytes in the name have no special
+        // significance.)"
         if name.len() + 1 > SUN_PATH_MAX_LEN {
-            const LEN_EXCEEDED_MSG: &'static str =
-                cfg_select! {
-                    any(target_os = "macos", target_os = "dragonfly") => {
-                        "path must be shorter than SOCK_MAXADDRLEN - 2"
-                    }
-                    target_os = "netbsd" => "path must be shorter than UCHAR_MAX - 2",
-                    _ => "path must be shorter than SUN_LEN - 1",
-                };
-
-            return Err(io::const_error!(io::ErrorKind::InvalidInput, LEN_EXCEEDED_MSG,));
+            return Err(io::const_error!(
+                io::ErrorKind::InvalidInput,
+                "path must be shorter than SUN_LEN - 1",
+            ));
         }
 
-        sockaddr.addr[SUN_PATH_OFFSET + 1..SUN_PATH_OFFSET + 1 + name.len()].copy_from_slice(name);
-        sockaddr.len = (SUN_PATH_OFFSET + 1 + name.len()) as libc::socklen_t;
-        Ok(sockaddr)
+        let (addr, len) = sock.as_max_libc_output();
+
+        // SAFETY: `name` and `addr` are not overlapping and point to valid
+        // memory. the checks above prevents any out of bounds write from
+        // occurring to `addr`.
+        // Note: we do this over using `SockaddrBuf::set_path` because on Linux
+        // it appends a nul byte and accounts that in the socket address size/length
+        // Our true path length for abstract socket address is `1 + name.len()`
+        unsafe {
+            crate::ptr::copy_nonoverlapping(
+                name.as_ptr(),
+                (addr as *mut u8).add(SUN_PATH_OFFSET + 1),
+                name.len(),
+            );
+            *len = (SUN_PATH_OFFSET + 1 + name.len()) as libc::socklen_t
+        }
+        Ok(SocketAddr { sock })
     }
 }
 

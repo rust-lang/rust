@@ -1,6 +1,5 @@
-use super::{SocketAddr, UnixStream};
+use super::{SockaddrBuf, SocketAddr, UnixStream};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-use crate::os::unix::net::SOCK_MAX_SIZE;
 use crate::path::Path;
 use crate::sys::net::Socket;
 use crate::sys::{AsInner, FromInner, IntoInner, cvt};
@@ -75,6 +74,7 @@ impl UnixListener {
         unsafe {
             let inner = Socket::new(libc::AF_UNIX, libc::SOCK_STREAM)?;
             let sockaddr = SocketAddr::from_path(path.as_ref())?;
+            let (addr, len) = sockaddr.sock.as_libc_input();
             #[cfg(any(
                 target_os = "windows",
                 target_os = "redox",
@@ -105,11 +105,7 @@ impl UnixListener {
             )))]
             const backlog: libc::c_int = libc::SOMAXCONN;
 
-            cvt(libc::bind(
-                inner.as_inner().as_raw_fd(),
-                (&raw const sockaddr.addr) as *const _,
-                sockaddr.len as _,
-            ))?;
+            cvt(libc::bind(inner.as_inner().as_raw_fd(), addr, len))?;
             cvt(libc::listen(inner.as_inner().as_raw_fd(), backlog))?;
 
             Ok(UnixListener(inner))
@@ -144,15 +140,12 @@ impl UnixListener {
     pub fn bind_addr(socket_addr: &SocketAddr) -> io::Result<UnixListener> {
         unsafe {
             let inner = Socket::new(libc::AF_UNIX, libc::SOCK_STREAM)?;
+            let (addr, len) = socket_addr.sock.as_libc_input();
             #[cfg(target_os = "linux")]
             const backlog: core::ffi::c_int = -1;
             #[cfg(not(target_os = "linux"))]
             const backlog: core::ffi::c_int = 128;
-            cvt(libc::bind(
-                inner.as_raw_fd(),
-                (&raw const socket_addr.addr) as *const _,
-                socket_addr.len as _,
-            ))?;
+            cvt(libc::bind(inner.as_raw_fd(), addr, len))?;
             cvt(libc::listen(inner.as_raw_fd(), backlog))?;
             Ok(UnixListener(inner))
         }
@@ -184,11 +177,10 @@ impl UnixListener {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn accept(&self) -> io::Result<(UnixStream, SocketAddr)> {
-        let mut storage: [u8; SOCK_MAX_SIZE] = [0; SOCK_MAX_SIZE];
-        let mut len = size_of_val(&storage) as libc::socklen_t;
-        let sock = self.0.accept((&raw mut storage) as *mut _, &mut len)?;
-        let addr = SocketAddr::from_parts(storage, len)?;
-        Ok((UnixStream(sock), addr))
+        let mut sockaddr_buf = SockaddrBuf::default();
+        let (addr, len) = sockaddr_buf.as_max_libc_output();
+        let sock = self.0.accept(addr, len)?;
+        Ok((UnixStream(sock), SocketAddr { sock: sockaddr_buf }))
     }
 
     /// Creates a new independently owned handle to the underlying socket.
@@ -230,8 +222,9 @@ impl UnixListener {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        SocketAddr::new(|addr, len| unsafe {
-            libc::getsockname(self.as_raw_fd(), addr as *mut libc::sockaddr, len)
+        SocketAddr::new(|sockaddr| unsafe {
+            let (addr, len) = sockaddr.as_max_libc_output();
+            libc::getsockname(self.as_raw_fd(), addr, len)
         })
     }
 

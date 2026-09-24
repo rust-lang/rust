@@ -99,12 +99,9 @@ impl UnixDatagram {
         unsafe {
             let socket = UnixDatagram::unbound()?;
             let sockaddr = SocketAddr::from_path(path.as_ref())?;
+            let (addr, len) = sockaddr.sock.as_libc_input();
 
-            cvt(libc::bind(
-                socket.as_raw_fd(),
-                (&raw const sockaddr.addr) as *const _,
-                sockaddr.len as _,
-            ))?;
+            cvt(libc::bind(socket.as_raw_fd(), addr, len))?;
 
             Ok(socket)
         }
@@ -136,11 +133,8 @@ impl UnixDatagram {
     pub fn bind_addr(socket_addr: &SocketAddr) -> io::Result<UnixDatagram> {
         unsafe {
             let socket = UnixDatagram::unbound()?;
-            cvt(libc::bind(
-                socket.as_raw_fd(),
-                (&raw const socket_addr.addr) as *const _,
-                socket_addr.len as _,
-            ))?;
+            let (addr, len) = socket_addr.sock.as_libc_input();
+            cvt(libc::bind(socket.as_raw_fd(), addr, len))?;
             Ok(socket)
         }
     }
@@ -222,12 +216,9 @@ impl UnixDatagram {
     pub fn connect<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         unsafe {
             let sockaddr = SocketAddr::from_path(path.as_ref())?;
+            let (addr, len) = sockaddr.sock.as_libc_input();
 
-            cvt(libc::connect(
-                self.as_raw_fd(),
-                (&raw const sockaddr.addr) as *const _,
-                sockaddr.len,
-            ))?;
+            cvt(libc::connect(self.as_raw_fd(), addr, len))?;
         }
         Ok(())
     }
@@ -258,11 +249,8 @@ impl UnixDatagram {
     #[stable(feature = "unix_socket_abstract", since = "1.70.0")]
     pub fn connect_addr(&self, socket_addr: &SocketAddr) -> io::Result<()> {
         unsafe {
-            cvt(libc::connect(
-                self.as_raw_fd(),
-                (&raw const socket_addr.addr) as *const _,
-                socket_addr.len,
-            ))?;
+            let (addr, len) = socket_addr.sock.as_libc_input();
+            cvt(libc::connect(self.as_raw_fd(), addr, len))?;
         }
         Ok(())
     }
@@ -306,8 +294,9 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        SocketAddr::new(|addr, len| unsafe {
-            libc::getsockname(self.as_raw_fd(), addr as *mut libc::sockaddr, len)
+        SocketAddr::new(|sock| unsafe {
+            let (addr, len) = sock.as_max_libc_output();
+            libc::getsockname(self.as_raw_fd(), addr, len)
         })
     }
 
@@ -333,8 +322,9 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        SocketAddr::new(|addr, len| unsafe {
-            libc::getpeername(self.as_raw_fd(), addr as *mut libc::sockaddr, len)
+        SocketAddr::new(|sockaddr| unsafe {
+            let (addr, len) = sockaddr.as_max_libc_output();
+            libc::getpeername(self.as_raw_fd(), addr, len)
         })
     }
 
@@ -344,13 +334,15 @@ impl UnixDatagram {
         flags: core::ffi::c_int,
     ) -> io::Result<(usize, SocketAddr)> {
         let mut count = 0;
-        let addr = SocketAddr::new(|addr, len| unsafe {
+        let addr = SocketAddr::new(|sockaddr| unsafe {
+            let (addr, len) = sockaddr.as_max_libc_output();
+
             count = libc::recvfrom(
                 self.as_raw_fd(),
                 buf.as_mut_ptr() as *mut _,
                 buf.len(),
                 flags,
-                addr as *mut libc::sockaddr,
+                addr,
                 len,
             );
             if count > 0 {
@@ -543,14 +535,15 @@ impl UnixDatagram {
     pub fn send_to<P: AsRef<Path>>(&self, buf: &[u8], path: P) -> io::Result<usize> {
         unsafe {
             let sockaddr = SocketAddr::from_path(path.as_ref())?;
+            let (addr, len) = sockaddr.sock.as_libc_input();
 
             let count = cvt(libc::sendto(
                 self.as_raw_fd(),
                 buf.as_ptr() as *const _,
                 buf.len(),
                 MSG_NOSIGNAL,
-                (&raw const sockaddr.addr) as *const _,
-                sockaddr.len,
+                addr,
+                len,
             ))?;
             Ok(count as usize)
         }
@@ -580,13 +573,14 @@ impl UnixDatagram {
     #[stable(feature = "unix_socket_abstract", since = "1.70.0")]
     pub fn send_to_addr(&self, buf: &[u8], socket_addr: &SocketAddr) -> io::Result<usize> {
         unsafe {
+            let (addr, len) = socket_addr.sock.as_libc_input();
             let count = cvt(libc::sendto(
                 self.as_raw_fd(),
                 buf.as_ptr() as *const _,
                 buf.len(),
                 MSG_NOSIGNAL,
-                (&raw const socket_addr.addr) as *const _,
-                socket_addr.len,
+                addr,
+                len,
             ))?;
             Ok(count as usize)
         }
