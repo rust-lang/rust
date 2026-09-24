@@ -1,9 +1,11 @@
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
+use std::iter::once;
+
 use rustc_ast as ast;
 use rustc_ast::{GenericArg, MetaItem};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 macro pathvec($($rest:ident)::+) {{
@@ -11,7 +13,7 @@ macro pathvec($($rest:ident)::+) {{
 }}
 
 macro path_std($cx: expr, $span: expr, $($x:tt)*) {
-    generic::ty::new_path($cx, $span, pathvec!( $($x)* ), &[] )
+    new_path($cx, $span, pathvec!( $($x)* ), vec![] )
 }
 
 pub(crate) mod clone;
@@ -87,6 +89,11 @@ fn call_intrinsic(
     cx.expr_call_global(span, path, args)
 }
 
+/// Constructs an expression that calls the `discriminant_value` intrinsic.
+fn call_discriminant_value(cx: &ExtCtxt<'_>, span: Span, arg: Symbol) -> Box<ast::Expr> {
+    call_intrinsic(cx, span, sym::discriminant_value, thin_vec![cx.expr_ident_sym(span, arg)])
+}
+
 /// Constructs an expression that calls the `unreachable` intrinsic.
 fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
     let call = call_intrinsic(cx, span, sym::unreachable, ThinVec::new());
@@ -109,4 +116,12 @@ fn assert_ty_bounds(
     let span = cx.with_def_site_ctxt(span);
     let assert_path = cx.path_all(span, true, cx.std_path(assert_path), vec![GenericArg::Type(ty)]);
     stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
+}
+
+fn new_path(cx: &ExtCtxt<'_>, span: Span, path: &[Symbol], params: Vec<Box<ast::Ty>>) -> ast::Path {
+    let idents = path.iter().map(|s| Ident::new(*s, span));
+    let params = params.into_iter().map(GenericArg::Type).collect();
+
+    let idents = once(Ident::new(kw::DollarCrate, span)).chain(idents).collect();
+    cx.path_all(span, false, idents, params)
 }

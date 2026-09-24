@@ -4,7 +4,6 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::{Span, sym};
 use thin_vec::{ThinVec, thin_vec};
 
-use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
@@ -29,7 +28,8 @@ pub(crate) fn expand_deriving_eq(
             generics: cx.empty_generics(span),
             explicit_self: true,
             nonself_args: smallvec![],
-            ret_ty: Unit,
+            has_other_selflike_arg: false,
+            ret_ty: cx.ty_unit(span),
             attributes: thin_vec![
                 // This method will never be called, so doing codegen etc. for it is unnecessary.
                 // We prevent this by adding `#[inline]`, which improves compile-time.
@@ -40,7 +40,6 @@ pub(crate) fn expand_deriving_eq(
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(cs_total_eq_assert),
         }],
-        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,
