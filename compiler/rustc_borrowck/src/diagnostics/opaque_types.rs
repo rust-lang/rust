@@ -17,7 +17,7 @@ use rustc_trait_selection::error_reporting::infer::region::unexpected_hidden_reg
 
 use crate::MirBorrowckCtxt;
 use crate::borrow_set::BorrowData;
-use crate::consumers::RegionInferenceContext;
+use crate::region_infer::RegionInferenceContext;
 use crate::region_infer::opaque_types::DeferredOpaqueTypeError;
 use crate::type_check::Locations;
 
