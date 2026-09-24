@@ -465,6 +465,20 @@ cfg_select! {
     _ => { /* unsupported */ }
 }
 
+cfg_select! {
+    target_arch = "powerpc" => {
+        #[unstable_feature_bound(powerpc_ppcf128)]
+        #[unstable(feature = "powerpc_ppcf128", issue = "163323")]
+        unsafe impl VaArgSafe for crate::arch::powerpc::ppcf128 {}
+    }
+    target_arch = "powerpc64" => {
+        #[unstable_feature_bound(powerpc_ppcf128)]
+        #[unstable(feature = "powerpc_ppcf128", issue = "163323")]
+        unsafe impl VaArgSafe for crate::arch::powerpc64::ppcf128 {}
+    }
+    _ => { /* ppcf128 is not defined */ }
+}
+
 #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
 unsafe impl<T> VaArgSafe for *mut T {}
 #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
