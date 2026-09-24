@@ -552,6 +552,17 @@ fn make_href(
     url_parts.finish()
 }
 
+fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut def_id: DefId) -> bool {
+    loop {
+        if tcx.is_doc_hidden(def_id) {
+            return true;
+        } else if def_id.is_crate_root() {
+            return false;
+        }
+        def_id = tcx.parent(def_id);
+    }
+}
+
 pub(crate) fn href_with_root_path(
     original_did: DefId,
     cx: &Context<'_>,
@@ -590,7 +601,7 @@ pub(crate) fn href_with_root_path(
         // If we are generating an href for the "jump to def" feature, then the only case we want
         // to ignore is if the item is `doc(hidden)` because we can't link to it.
         if root_path.is_some() {
-            if tcx.is_doc_hidden(original_did) {
+            if inherits_doc_hidden(tcx, original_did) {
                 return Err(HrefError::Private);
             }
         } else if !cache.effective_visibilities.is_directly_public(tcx, did)
