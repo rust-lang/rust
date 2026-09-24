@@ -5,11 +5,11 @@ use crate::io::{self, IoSlice, IoSliceMut};
 use crate::marker::PhantomData;
 use crate::mem::zeroed;
 use crate::os::unix::io::RawFd;
-use crate::os::unix::net::SOCK_MAX_SIZE;
 use crate::path::Path;
 use crate::ptr::{eq, read_unaligned};
 use crate::slice::from_raw_parts;
 use crate::sys::net::Socket;
+
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
 #[cfg(all(
     doc,
@@ -39,8 +39,8 @@ pub(super) fn recv_vectored_with_ancillary_from(
         let mut sock = SockaddrBuf::default();
         let (addr, len) = sock.as_max_libc_output();
         let mut msg: libc::msghdr = zeroed();
-        msg.msg_name = addr as *mut _;
-        msg.msg_namelen = SOCK_MAX_SIZE as libc::socklen_t;
+        msg.msg_name = addr.cast();
+        msg.msg_namelen = len.read();
         msg.msg_iov = bufs.as_mut_ptr().cast();
         msg.msg_iovlen = bufs.len() as _;
         msg.msg_controllen = ancillary.buffer.len() as _;
@@ -74,7 +74,7 @@ pub(super) fn send_vectored_with_ancillary_to(
         let (addr, len) = sockaddr.sock.as_libc_input();
 
         let mut msg: libc::msghdr = zeroed();
-        msg.msg_name = addr as *mut _;
+        msg.msg_name = addr.cast_mut().cast();
         msg.msg_namelen = len;
         msg.msg_iov = bufs.as_ptr() as *mut _;
         msg.msg_iovlen = bufs.len() as _;
