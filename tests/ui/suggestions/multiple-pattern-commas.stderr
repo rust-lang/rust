@@ -11,7 +11,7 @@ LL |         ((0, 1), (2, 3), (4, 5)) => true,
 help: ...or a vertical bar to match on alternatives
    |
 LL -         (0, 1), (2, 3), (4, 5) => true,
-LL +         (0, 1) | (2, 3), (4, 5) => true,
+LL +         (0, 1) | (2, 3) | (4, 5) => true,
    |
 
 error: aborting due to 1 previous error

@@ -3,7 +3,7 @@
 
 fn matches_pair(pair: (u8, u8)) -> bool {
     match pair {
-        (0, 1), (2, 3), (4, 5) => true,
+        ((0, 1) | (2, 3) | (4, 5)) => true,
         //~^ ERROR unexpected `,` in pattern
         _ => false,
     }
