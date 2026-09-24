@@ -17,6 +17,7 @@ use crate::diagnostics::{
     InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime, NestedCVariadicType,
     ReturnTypesUseThinArrow,
 };
+use crate::parser::function::FuncParam;
 use crate::parser::{FnContext, FnParseMode, FrontMatterParsingMode};
 use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
 
@@ -878,7 +879,10 @@ impl<'a> Parser<'a> {
             context: FnContext::FunctionPtrType,
             req_body: false,
         };
-        let decl = self.parse_fn_decl(&mode, AllowPlus::No, recover_return_sign)?;
+        let (decl, const_params) =
+            self.parse_fn_decl(&mode, AllowPlus::No, recover_return_sign)?.into_fn_decl();
+        params.extend(const_params);
+        let decl = Box::new(decl);
 
         let decl_span = span_start.to(self.prev_token.span);
         Ok(TyKind::FnPtr(Box::new(FnPtrTy {
@@ -1444,6 +1448,7 @@ impl<'a> Parser<'a> {
             FnParseMode { req_name: |_, _| false, context: FnContext::Free, req_body: false };
         match self.parse_fn_decl(&mode, AllowPlus::No, RecoverReturnSign::OnlyFatArrow) {
             Ok(decl) => {
+                let (decl, _) = decl.into_fn_decl();
                 self.dcx().emit_err(ExpectedFnPathFoundFnKeyword { fn_token_span });
                 Some(ast::Path {
                     span: fn_token_span.to(self.prev_token.span),
@@ -1541,7 +1546,13 @@ impl<'a> Parser<'a> {
         let mode =
             FnParseMode { req_name: |_, _| false, context: FnContext::Free, req_body: false };
         let inputs = match self.parse_fn_params(&mode) {
-            Ok(params) => params,
+            Ok(params) => params
+                .into_iter()
+                .filter_map(|param| match param {
+                    FuncParam::GeneralParam(param) => Some(param),
+                    FuncParam::ConstGenericParam(_) => None,
+                })
+                .collect(),
             Err(err) => {
                 if let Some(snapshot) = snapshot {
                     self.restore_snapshot(snapshot);

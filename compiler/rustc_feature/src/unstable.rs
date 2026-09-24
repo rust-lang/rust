@@ -546,6 +546,8 @@ declare_features! (
     (internal, freeze_impls, "1.78.0", Some(121675)),
     /// Frontmatter `---` blocks for use by external tools.
     (unstable, frontmatter, "1.88.0", Some(136889)),
+    /// Allow function args to be const generics
+    (incomplete, function_arg_const_generics, "CURRENT_RUSTC_VERSION", Some(163261)),
     /// Allows defining gen blocks and `gen fn`.
     (unstable, gen_blocks, "1.75.0", Some(117078)),
     /// Allows using generics in more complex const expressions, based on definitional equality.
@@ -859,6 +861,7 @@ pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[
 
 /// Some features require one or more other features to be enabled.
 pub const DEPENDENT_FEATURES: &[(Symbol, &[Symbol])] = &[
+    (sym::function_arg_const_generics, &[sym::min_generic_const_args]),
     (sym::generic_const_args, &[sym::min_generic_const_args]),
     (sym::macroless_generic_const_args, &[sym::min_generic_const_args]),
     (sym::macroless_const_item_generic_const_args, &[sym::min_generic_const_args]),
