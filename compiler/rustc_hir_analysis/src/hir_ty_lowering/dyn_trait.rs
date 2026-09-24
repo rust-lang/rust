@@ -2,10 +2,7 @@ use rustc_ast::TraitObjectSyntax;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
-use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, Diagnostic, Level, StashKey, Suggestions,
-    struct_span_code_err,
-};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level, struct_span_code_err};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId};
@@ -17,6 +14,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{ErrorGuaranteed, Span};
+use rustc_trait_selection::diagnostics::AssocTypeWithSameName;
 use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::traits;
@@ -655,15 +653,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 poly_trait_ref.trait_ref.trait_def_id(),
                 &mut diag,
             );
-            // In case there is an associated type with the same name
-            // Add the suggestion to this error
-            if let Some(mut sugg) =
-                self.dcx().steal_non_err(span, StashKey::AssociatedTypeSuggestion)
-                && let Suggestions::Enabled(ref mut s1) = diag.suggestions
-                && let Suggestions::Enabled(ref mut s2) = sugg.suggestions
+            // If there is an associated type with the same name, add the suggestion to this error.
+            if self
+                .tcx()
+                .resolutions(())
+                .paths_matching_assoc_types
+                .contains(&span.with_parent(None))
             {
-                s1.append(s2);
-                sugg.cancel();
+                diag.subdiagnostic(AssocTypeWithSameName { span: span.shrink_to_lo() });
             }
             Some(diag.emit_err())
         } else {
