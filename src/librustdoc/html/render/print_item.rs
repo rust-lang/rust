@@ -2017,13 +2017,11 @@ fn item_constant(
 
             write!(
                 w,
-                "{vis}const {name}{generics}: {typ}{where_clause}",
+                "{vis}const {name}{generics}: {typ}",
                 vis = visibility_print_with_space(it, cx),
                 name = it.name.unwrap(),
                 generics = print_generics(generics, cx),
                 typ = print_type(ty, cx),
-                where_clause =
-                    print_where_clause(generics, cx, 0, Ending::NoNewline).maybe_display(),
             )?;
 
             // FIXME: The code below now prints
@@ -2039,9 +2037,7 @@ fn item_constant(
             let is_literal = c.is_literal(tcx);
             let expr = c.expr(tcx);
             if value.is_some() || is_literal {
-                write!(w, " = {expr};", expr = Escape(&expr))?;
-            } else {
-                w.write_str(";")?;
+                write!(w, " = {expr}", expr = Escape(&expr))?;
             }
 
             if !is_literal && let Some(value) = &value {
@@ -2051,9 +2047,14 @@ fn item_constant(
                 if value_lowercase != expr_lowercase
                     && value_lowercase.trim_end_matches("i32") != expr_lowercase
                 {
-                    write!(w, " // {value}", value = Escape(value))?;
+                    write!(w, " /* {value} */", value = Escape(value))?;
                 }
             }
+
+            print_where_clause(generics, cx, 0, Ending::NoNewline).maybe_display().fmt(w)?;
+
+            w.write_str(";")?;
+
             Ok::<(), fmt::Error>(())
         })?;
 
