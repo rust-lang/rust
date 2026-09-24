@@ -480,9 +480,10 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
                         const char *Path, const char *DwoPath,
                         LLVMRustFileType RustFileType, bool VerifyIR,
                         bool DisableSimplifyLibCalls) {
-  llvm::legacy::PassManager PM;
+  std::unique_ptr<llvm::legacy::PassManager> PM =
+      std::make_unique<llvm::legacy::PassManager>();
 
-  PM.add(createTargetTransformInfoWrapperPass(
+  PM->add(createTargetTransformInfoWrapperPass(
       unwrap(Target)->getTargetIRAnalysis()));
 
   auto TargetTriple = Triple(unwrap(M)->getTargetTriple());
@@ -490,13 +491,15 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
   auto TLII = TargetLibraryInfoImpl(TargetTriple);
   if (DisableSimplifyLibCalls)
     TLII.disableAllFunctions();
-  PM.add(new TargetLibraryInfoWrapperPass(TLII));
+  PM->add(new TargetLibraryInfoWrapperPass(TLII));
 #if LLVM_VERSION_GE(24, 0)
-  PM.add(new RuntimeLibraryInfoWrapper(
-      Options->ExceptionModel, Options->EABIVersion, Options->MCOptions.ABIName,
-      Options->VecLib));
+  // LLVM 24 removed TargetOptions::EABIVersion and ExceptionModel; the EABI
+  // version and exception model are now derived from the target triple and
+  // module flags respectively instead.
+  PM->add(new RuntimeLibraryInfoWrapper(Options->MCOptions.ABIName,
+                                        Options->VecLib));
 #elif LLVM_VERSION_GE(22, 0)
-  PM.add(new RuntimeLibraryInfoWrapper(
+  PM->add(new RuntimeLibraryInfoWrapper(
       TargetTriple, Options->ExceptionModel, Options->FloatABIType,
       Options->EABIVersion, Options->MCOptions.ABIName, Options->VecLib));
 #endif
@@ -524,12 +527,17 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
       return LLVMRustResult::Failure;
     }
     auto DBOS = buffer_ostream(DOS);
-    unwrap(Target)->addPassesToEmitFile(PM, BOS, &DBOS, FileType, !VerifyIR);
-    PM.run(*unwrap(M));
+    unwrap(Target)->addPassesToEmitFile(*PM, BOS, &DBOS, FileType, !VerifyIR);
+    PM->run(*unwrap(M));
   } else {
-    unwrap(Target)->addPassesToEmitFile(PM, BOS, nullptr, FileType, !VerifyIR);
-    PM.run(*unwrap(M));
+    unwrap(Target)->addPassesToEmitFile(*PM, BOS, nullptr, FileType, !VerifyIR);
+    PM->run(*unwrap(M));
   }
+
+  // TargetMachine::addPassesToEmitFile stores a pointer to the output stream
+  // in a couple of places inside of the object. Explicitly delete the PM here
+  // to ensure that the output stream always outlives the PM.
+  PM.reset();
 
   return LLVMRustResult::Success;
 }
