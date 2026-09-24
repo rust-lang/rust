@@ -25,6 +25,7 @@ macro_rules! msrv_aliases {
 
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
+    1,99,0 { BOX_INTO_NON_NULL }
     1,98,0 { MAP_OR_DEFAULT }
     1,97,0 { ISOLATE_LOWEST_ONE, BIT_WIDTH }
     1,94,0 { EULER_GAMMA, GOLDEN_RATIO, MUL_ADD_CONST }
