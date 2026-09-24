@@ -2,7 +2,7 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
-// This testis no longer testing what it was originally intended to do as we've changed the
+// This test is no longer testing what it was originally intended to do as we've changed the
 // leak check to no longer rely on any constraints from nested goals, see #155749.
 //
 // Long-term we do want to consider constraints from nested goals, at which point
