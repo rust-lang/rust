@@ -21,8 +21,8 @@ trait Trait {
 
 #[rustc_dump_symbol_name]
 //~^ ERROR symbol-name(_RMCs
-//~| ERROR demangling(<dyn sym[
-//~| ERROR demangling-alt(<dyn sym::Trait<N = 0>>)
+//~| NOTE demangling(<dyn sym[
+//~| NOTE demangling-alt(<dyn sym::Trait<N = 0>>)
 impl dyn Trait<N = 0> {}
 
 fn main() {}
