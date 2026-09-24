@@ -136,6 +136,21 @@ mod target_modifier_consistency_check {
         }
         true
     }
+    pub(super) fn sanitizer_cfi_minimal_runtime(
+        sess: &Session,
+        l: &TargetModifier,
+        r: Option<&TargetModifier>,
+    ) -> bool {
+        // For CFI, the helper flag -Zsanitizer-cfi-minimal-runtime should also be a target modifier
+        if sess.sanitizers().contains(SanitizerSet::CFI) {
+            if let Some(r) = r {
+                return l.extend().tech_value == r.extend().tech_value;
+            } else {
+                return false;
+            }
+        }
+        true
+    }
     pub(super) fn target_cpu(
         sess: &Session,
         l: &TargetModifier,
@@ -175,6 +190,11 @@ impl TargetModifier {
                 }
                 UnstableOptionsTargetModifiers::SanitizerCfiNormalizeIntegers => {
                     return target_modifier_consistency_check::sanitizer_cfi_normalize_integers(
+                        sess, self, other,
+                    );
+                }
+                UnstableOptionsTargetModifiers::SanitizerCfiMinimalRuntime => {
+                    return target_modifier_consistency_check::sanitizer_cfi_minimal_runtime(
                         sess, self, other,
                     );
                 }
@@ -2825,6 +2845,8 @@ written to standard error output)"),
         "enable CFI diagnostics (default: no)"),
     sanitizer_cfi_recover: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable CFI recovery (default: no)"),
+    sanitizer_cfi_minimal_runtime: Option<bool> = (None, parse_opt_bool, [TRACKED] { TARGET_MODIFIER: SanitizerCfiMinimalRuntime },
+        "enable minimal UBSan runtime for CFI (default: no)"),
     sanitizer_dataflow_abilist: Vec<String> = (Vec::new(), parse_comma_list, [TRACKED],
         "additional ABI list files that control how shadow parameters are passed (comma separated)"),
     sanitizer_kcfi_arity: Option<bool> = (None, parse_opt_bool, [TRACKED],
