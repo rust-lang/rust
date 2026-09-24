@@ -5,10 +5,10 @@ LL |     value: &'a mut &'a (),
    |     --------------------- source field `value` has type `&'a mut &'a ()`
 ...
 LL |     value: &'a &'static (),
-   |     ^^^^^^^^^^^^^^^^^^^^^^ target field `value` has type `&'a &'static ()`
+   |     ^^^^^^^^^^^^^^^^^^^^^^ target field `value` has type `&'b &'static ()`
 ...
-LL | impl<'a> CoerceShared<RejectedInnerLifetimeRef<'a>> for RejectedInnerLifetimeMut<'a> {}
-   | --------------------------------------------------------------------------------------- required by this `CoerceShared` implementation
+LL | impl<'a: 'b, 'b> CoerceShared<RejectedInnerLifetimeRef<'b>> for RejectedInnerLifetimeMut<'a> {}
+   | ----------------------------------------------------------------------------------------------- required by this `CoerceShared` implementation
 
 error: aborting due to 1 previous error
 

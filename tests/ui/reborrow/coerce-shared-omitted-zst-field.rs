@@ -26,7 +26,7 @@ struct Target<'a> {
     value: &'a i32,
 }
 
-impl<'a> CoerceShared<Target<'a>> for Source<'a> {}
+impl<'a: 'b, 'b> CoerceShared<Target<'b>> for Source<'a> {}
 
 struct CopyZstSource<'a> {
     value: &'a mut i32,
@@ -40,7 +40,7 @@ struct CopyZstTarget<'a> {
     value: &'a i32,
 }
 
-impl<'a> CoerceShared<CopyZstTarget<'a>> for CopyZstSource<'a> {}
+impl<'a: 'b, 'b> CoerceShared<CopyZstTarget<'b>> for CopyZstSource<'a> {}
 
 struct ReborrowZstSource<'a> {
     value: &'a mut i32,
@@ -54,6 +54,6 @@ struct ReborrowZstTarget<'a> {
     value: &'a i32,
 }
 
-impl<'a> CoerceShared<ReborrowZstTarget<'a>> for ReborrowZstSource<'a> {}
+impl<'a: 'b, 'b> CoerceShared<ReborrowZstTarget<'b>> for ReborrowZstSource<'a> {}
 
 fn main() {}
