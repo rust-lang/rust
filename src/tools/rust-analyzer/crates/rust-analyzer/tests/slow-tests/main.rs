@@ -1321,6 +1321,7 @@ pub fn foo(_input: TokenStream) -> TokenStream {
         ```
 
         ```rust
+        impl Bar for Foo
         fn bar()
         ```"#]]
     .assert_eq(value);
