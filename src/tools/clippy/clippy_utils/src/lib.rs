@@ -82,9 +82,9 @@ use itertools::Itertools as _;
 use rustc_abi::Integer;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
 use rustc_ast::{LitIntType, join_path_syms};
-use rustc_attr_ir::CfgEntry;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::lang_items::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
+use rustc_attr_ir::{CfgEntry, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexmap;
 use rustc_data_structures::packed::Pu128;
@@ -99,7 +99,6 @@ use rustc_hir::{
     FieldDef, FnDecl, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, HirIdSet, Impl, ImplItem, ImplItemKind, Item,
     ItemKind, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode, Param, Pat, PatExpr, PatExprKind, PatKind,
     Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp, Variant, def,
-    find_attr,
 };
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext as _};
@@ -1672,7 +1671,18 @@ pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: UintTy) -> u128 {
     (u << amt) >> amt
 }
 
-pub fn has_attr(attrs: &[hir::Attribute], symbol: Symbol) -> bool {
+/// Checks if an attribute is present. 
+///
+/// NOTE: this does not work for most attributes:
+/// - parsed attributes: use `find_attr!` for these
+/// - tool attributes: these have multi-segmented names
+/// (and diagnostic attrs are parsed anyway)
+///
+/// At this time, these only work for lint attributes (allow, warn, etc)
+/// and derive helpers.
+///
+/// FIXME: remove after lint attributes are parsed
+pub fn has_attr(attrs: &[rustc_attr_ir::Attribute], symbol: Symbol) -> bool {
     attrs.iter().any(|attr| attr.has_name(symbol))
 }
 
