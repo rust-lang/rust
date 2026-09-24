@@ -861,12 +861,6 @@ impl DepGraph {
         self.data.as_ref().and_then(|data| data.previous_work_products.get(v).cloned())
     }
 
-    /// Access the map of work-products created during the cached run. Only
-    /// used during saving of the dep-graph.
-    pub fn previous_work_products(&self) -> &WorkProductMap {
-        &self.data.as_ref().unwrap().previous_work_products
-    }
-
     pub fn debug_was_loaded_from_disk(&self, dep_node: DepNode) -> bool {
         self.data.as_ref().unwrap().debug_loaded_from_disk.lock().contains(&dep_node)
     }
