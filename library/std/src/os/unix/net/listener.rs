@@ -1,4 +1,4 @@
-use super::{SocketAddr, UnixStream, sockaddr_un};
+use super::{SockaddrBuf, SocketAddr, UnixStream};
 use crate::macros::rustdoc_skip_body;
 use crate::os::unix::io::{
     AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd, unsafe_impl_fd_asrefs,
@@ -76,8 +76,6 @@ impl UnixListener {
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixListener> {
         unsafe {
             let inner = Socket::new(libc::AF_UNIX, libc::SOCK_STREAM)?;
-            let sockaddr = SocketAddr::from_path(path.as_ref())?;
-            let (addr, len) = sockaddr.sock.as_libc_input();
             #[cfg(any(
                 target_os = "windows",
                 target_os = "redox",
@@ -107,6 +105,8 @@ impl UnixListener {
                 target_vendor = "apple",
             )))]
             const backlog: libc::c_int = libc::SOMAXCONN;
+            let sockaddr = SocketAddr::from_path(path.as_ref())?;
+            let (addr, len) = sockaddr.sock.as_libc_input();
 
             cvt(libc::bind(inner.as_inner().as_raw_fd(), addr, len))?;
             cvt(libc::listen(inner.as_inner().as_raw_fd(), backlog))?;
