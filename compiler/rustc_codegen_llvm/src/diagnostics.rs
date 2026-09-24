@@ -234,6 +234,11 @@ pub(crate) struct FixedX18InvalidArch<'a> {
 pub(crate) struct PackedStackBackchainNeedsSoftfloat;
 
 #[derive(Diagnostic)]
+#[diag("use of `-Ctarget-feature=+backchain` is deprecated")]
+#[note("use `-Cforce-frame-pointers` together with `-Zunstable-options` instead")]
+pub(crate) struct BackchainTargetFeatureObsolete;
+
+#[derive(Diagnostic)]
 #[diag(
     "intrinsic signature mismatch for `{$name}`: expected signature `{$llvm_fn_ty}`, found `{$rust_fn_ty}`"
 )]

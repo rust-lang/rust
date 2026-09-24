@@ -9,6 +9,9 @@
 //@ [NonLeaf] ignore-x86_64-apple-darwin
 //@ [NonLeaf] ignore-windows-gnu
 //@ [NonLeaf] ignore-thumb
+// On s390x, -Cforce-frame-pointers + -Zunstable-options emits `"backchain"` not `"frame-pointer"`.
+// Since this test passes -Zunstable-options globally, it must be skipped on s390x.
+//@ ignore-s390x
 // result is platform-dependent based on platform's frame pointer settings
 
 #![crate_type = "lib"]

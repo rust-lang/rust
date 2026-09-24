@@ -371,6 +371,12 @@ pub(crate) fn target_config(sess: &EarlySession) -> TargetConfig {
         },
     );
 
+    // Warn early (at session creation, before any compilation phase including check) if the
+    // deprecated `-Ctarget-feature=+backchain` was used on s390x.
+    if sess.target.arch == Arch::S390x && internal_target_features.contains(&sym::backchain) {
+        sess.dcx().emit_warn(crate::diagnostics::BackchainTargetFeatureObsolete);
+    }
+
     let mut cfg = TargetConfig {
         internal_target_features,
         has_reliable_f16: true,
