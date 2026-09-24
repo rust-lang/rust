@@ -74,28 +74,41 @@ pub(crate) fn as_constant_inner<'tcx>(
         ExprKind::NamedConst { def_id, args, ref user_ty } => {
             let user_ty = user_ty.as_ref().and_then(push_cuta);
 
-            // Under generic_const_args, `def_id` might be a regular const declared in a trait, but
-            // is `impl`d as a directly represented const. We do not know whether it is here, so we
-            // must use type system normalization for all consts under generic_const_args.
-            // FIXME(generic_const_args): there's a lot to consider here! `Const::Ty` uses valtrees
-            // and `Const::Unevaluated` does not, we should revisit this before stabilization.
-            let def_kind = tcx.def_kind(def_id);
-            if tcx.features().generic_const_args()
-                || matches!(def_kind, DefKind::Const | DefKind::AssocConst)
-                    && tcx.is_direct_const(def_id)
-            {
-                let kind = match def_kind {
-                    DefKind::AssocConst => {
-                        if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(def_id))
-                        {
-                            ty::AliasConstKind::InherentImpl { def_id }
-                        } else {
-                            ty::AliasConstKind::Projection { def_id }
-                        }
+            let get_kind = |def_id, def_kind| match def_kind {
+                DefKind::AssocConst => {
+                    if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(def_id)) {
+                        ty::AliasConstKind::InherentImpl { def_id }
+                    } else {
+                        ty::AliasConstKind::Projection { def_id }
                     }
-                    DefKind::Const => ty::AliasConstKind::Free { def_id },
-                    _ => unreachable!(),
+                }
+                DefKind::Const => ty::AliasConstKind::Free { def_id },
+                kind => bug!("unexpected DefKind in THIR ExprKind::NamedConst: {kind:?}"),
+            };
+
+            let could_be_direct_const = |def_id| {
+                let def_kind = tcx.def_kind(def_id);
+                let (DefKind::Const | DefKind::AssocConst) = def_kind else {
+                    return None;
                 };
+                if tcx.is_direct_const(def_id) {
+                    return Some(get_kind(def_id, def_kind));
+                }
+                // Under generic_const_args, `def_id` might be a regular const declared in a trait,
+                // but is `impl`d as a directly represented const. We do not know whether it is
+                // here, so we must use type system normalization for all const projections.
+                // FIXME(generic_const_args): there's a lot to consider here! `Const::Ty` uses
+                // valtrees and `Const::Unevaluated` does not, we should revisit this before
+                // stabilization.
+                if tcx.features().generic_const_args()
+                    && let kind @ ty::AliasConstKind::Projection { .. } = get_kind(def_id, def_kind)
+                {
+                    return Some(kind);
+                }
+                None
+            };
+
+            if let Some(kind) = could_be_direct_const(def_id) {
                 let alias = ty::AliasConst::new(tcx, kind, args);
                 let ct = ty::Const::new_alias(tcx, ty::IsRigid::No, alias);
                 let const_ = Const::Ty(ty, ct);

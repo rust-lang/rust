@@ -1,4 +1,3 @@
-//@ ignore-backends: gcc
 // FIXME(#125418): linking on Windows GNU targets is not yet supported.
 //@ ignore-windows-gnu
 // Tests that one item can't both define and impl an EII at the same time
