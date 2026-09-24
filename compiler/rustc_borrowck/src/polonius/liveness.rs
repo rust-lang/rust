@@ -57,7 +57,9 @@ impl<'a> RegionLiveness<'a> {
 }
 
 /// The data needed to compute region liveness on-demand while traversing the localized outlives
-/// constraint graph to compute loan liveness.
+/// constraint graph to compute loan liveness. Each region comes from a local's type, so this holds
+/// mostly the locals and drop-liveness specifics about their type, to be used as inputs to the
+/// `LivenessComputation` giving us the region liveness.
 #[derive(Default)]
 pub(crate) struct DeferredLocals<'tcx> {
     /// For each region, the local whose liveness is deferred.
