@@ -18,7 +18,7 @@ use rustc_trait_selection::traits::query::dropck_outlives;
 use rustc_trait_selection::traits::query::type_op::{DropckOutlives, TypeOpOutput};
 use tracing::debug;
 
-use crate::polonius::{DeferredLocals, LiveRegionVariances, record_live_region_variance};
+use crate::polonius::{DeferredRegionLiveness, LiveRegionVariances, record_live_region_variance};
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::liveness::local_use_map::LocalUseMap;
 use crate::type_check::liveness::make_all_regions_live;
@@ -64,16 +64,15 @@ pub(super) fn trace<'tcx>(
 
     let mut results = LivenessResults::new(typeck, comp);
 
-    let mut deferred_locals = DeferredLocals::default();
-
     results.record_legacy_polonius_drop_facts(relevant_live_locals, &deferred);
 
     results.compute_for_all_locals(relevant_live_locals);
 
-    results.dropck_boring_locals(boring_locals, &deferred, &mut deferred_locals);
+    let mut deferred_liveness = DeferredRegionLiveness::default();
+    results.dropck_boring_locals(boring_locals, &deferred, &mut deferred_liveness);
 
     if let Some(polonius_context) = &mut typeck.polonius_context {
-        polonius_context.deferred_locals_for_liveness = deferred_locals;
+        polonius_context.deferred_liveness = deferred_liveness;
         polonius_context.local_use_map = Some(local_use_map);
     }
 }
@@ -198,10 +197,10 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
         &mut self,
         boring_locals: &[Local],
         deferred: &FxIndexSet<Local>,
-        deferred_locals: &mut DeferredLocals<'tcx>,
+        deferred_liveness: &mut DeferredRegionLiveness<'tcx>,
     ) {
         for &local in boring_locals {
-            self.dropck_boring_local(local, deferred, deferred_locals);
+            self.dropck_boring_local(local, deferred, deferred_liveness);
         }
     }
 
@@ -209,7 +208,7 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
         &mut self,
         local: Local,
         deferred: &FxIndexSet<Local>,
-        deferred_locals: &mut DeferredLocals<'tcx>,
+        deferred_liveness: &mut DeferredRegionLiveness<'tcx>,
     ) {
         let typeck = &mut *self.typeck;
         let local_ty = self.comp.body.local_decls[local].ty;
@@ -220,7 +219,7 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
         // Calculating drop-liveness is expensive, but we can skip it when we know that there
         // are *no* drops (which is relatively cheap).
         if deferred.contains(&local) && self.comp.local_use_map.drops(local).next().is_none() {
-            deferred_locals.defer_local(
+            deferred_liveness.defer_local(
                 typeck.infcx.tcx,
                 typeck.universal_regions,
                 local,
@@ -264,7 +263,7 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
         }
 
         // Finally, we mark that this local is deferred, including the drop kinds.
-        deferred_locals.defer_local(
+        deferred_liveness.defer_local(
             typeck.infcx.tcx,
             typeck.universal_regions,
             local,

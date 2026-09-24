@@ -61,7 +61,7 @@ impl<'a> RegionLiveness<'a> {
 /// mostly the locals and drop-liveness specifics about their type, to be used as inputs to the
 /// `LivenessComputation` giving us the region liveness.
 #[derive(Default)]
-pub(crate) struct DeferredLocals<'tcx> {
+pub(crate) struct DeferredRegionLiveness<'tcx> {
     /// For each region, the local whose liveness is deferred.
     ///
     /// Importantly, because of MIR renumbering, this will always be a 1:1 relationship.
@@ -71,7 +71,7 @@ pub(crate) struct DeferredLocals<'tcx> {
     drop_args_by_local: IndexVec<Local, Option<Vec<GenericArg<'tcx>>>>,
 }
 
-impl<'tcx> DeferredLocals<'tcx> {
+impl<'tcx> DeferredRegionLiveness<'tcx> {
     pub(crate) fn defer_local(
         &mut self,
         tcx: TyCtxt<'tcx>,

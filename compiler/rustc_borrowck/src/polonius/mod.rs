@@ -52,7 +52,7 @@ pub(crate) use self::dump::dump_polonius_mir;
 pub(crate) use self::liveness_constraints::record_live_region_variance;
 use crate::constraints::OutlivesConstraint;
 use crate::dataflow::BorrowIndex;
-pub(crate) use crate::polonius::liveness::DeferredLocals;
+pub(crate) use crate::polonius::liveness::DeferredRegionLiveness;
 use crate::polonius::liveness::{LivenessSource, RegionLiveness};
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::liveness::{LivenessComputation, LocalUseMap};
@@ -103,7 +103,7 @@ pub(crate) struct PoloniusContext<'tcx> {
     /// diagnostics, to focus on the locals we consider relevant and match NLL diagnostics.
     pub(crate) boring_nll_locals: FxHashSet<Local>,
 
-    pub(crate) deferred_locals_for_liveness: DeferredLocals<'tcx>,
+    pub(crate) deferred_liveness: DeferredRegionLiveness<'tcx>,
 
     pub(crate) local_use_map: Option<LocalUseMap>,
 }
@@ -156,8 +156,7 @@ impl<'tcx> PoloniusContext<'tcx> {
                 .local_use_map
                 .as_ref()
                 .expect("local use map should be computed before loan liveness");
-            let deferred_locals_for_liveness =
-                std::mem::take(&mut self.deferred_locals_for_liveness);
+            let deferred_liveness = std::mem::take(&mut self.deferred_liveness);
             let mut live_loans = LiveLoans::new(location_map.num_points(), borrow_set.len());
             let comp =
                 LivenessComputation::new(infcx, body, location_map, move_data, &local_use_map);
@@ -165,7 +164,7 @@ impl<'tcx> PoloniusContext<'tcx> {
                 liveness,
                 live_region_variances: &mut self.live_region_variances,
                 universal_regions,
-                deferred_locals_for_liveness,
+                deferred_liveness,
                 comp,
             };
             let mut visitor = LoanLivenessVisitor { live_loans: &mut live_loans };
@@ -185,14 +184,14 @@ struct DeferredLivenessSource<'a, 'tcx> {
     liveness: &'a mut LivenessValues,
     live_region_variances: &'a mut LiveRegionVariances,
     universal_regions: &'a UniversalRegions<'tcx>,
-    deferred_locals_for_liveness: DeferredLocals<'tcx>,
+    deferred_liveness: DeferredRegionLiveness<'tcx>,
     comp: LivenessComputation<'a, 'tcx>,
 }
 
 impl<'a> LivenessSource for DeferredLivenessSource<'a, '_> {
     #[inline]
     fn liveness_for_region(&mut self, region: RegionVid) -> RegionLiveness<'_> {
-        self.deferred_locals_for_liveness.compute_deferred_local(
+        self.deferred_liveness.compute_deferred_local(
             region,
             self.universal_regions,
             &mut self.liveness,
