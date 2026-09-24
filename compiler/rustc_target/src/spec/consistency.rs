@@ -484,7 +484,7 @@ impl Target {
                     // (vec-default vs vec-ext).
                     check_matches!(
                         (&self.llvm_abiname, &self.cfg_abi),
-                        (LlvmAbi::Unspecified, CfgAbi::VecDefault | CfgAbi::VecExtAbi),
+                        (LlvmAbi::Unspecified, CfgAbi::VecDefault),
                         "invalid PowerPC64 AIX ABI name and `cfg(target_abi)` combination:\n\
                         ABI name: {}\n\
                         cfg(target_abi): {}",

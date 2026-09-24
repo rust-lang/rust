@@ -2,12 +2,14 @@
 //@ compile-flags: -Znext-solver
 #![feature(min_generic_const_args, generic_const_args)]
 
+use std::gca;
+
 trait Trait {
     const ASSOC: usize;
 }
 
 impl<T: Other> Trait for T {
-    const ASSOC: usize = core::direct_const_arg!(T::RIGID);
+    const ASSOC: usize = gca!(T::RIGID);
 }
 
 trait Other {
@@ -15,8 +17,7 @@ trait Other {
 }
 
 fn foo<T: Other>() {
-    let a: [(); core::direct_const_arg!(<T as Trait>::ASSOC)] =
-        [(); core::direct_const_arg!(T::RIGID)];
+    let a: [(); gca!(<T as Trait>::ASSOC)] = [(); gca!(T::RIGID)];
 }
 
 fn main() {}

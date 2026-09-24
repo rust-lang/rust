@@ -5,7 +5,7 @@ use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverAdtLangItem;
 use rustc_type_ir::{
-    self as ty, InferCtxtLike, Interner, Region, TrivialTypeTraversalImpls, TypeVisitable,
+    self as ty, Const, InferCtxtLike, Interner, Region, TrivialTypeTraversalImpls, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
 };
 use tracing::instrument;
@@ -469,7 +469,7 @@ where
     /// As these should be quite rare as const arguments and especially rare as impl
     /// parameters, allowing uncovered const parameters in impls seems more useful
     /// than allowing `impl<T> Trait<local_fn_ptr, T> for i32` to compile.
-    fn visit_const(&mut self, _c: I::Const) -> Self::Result {
+    fn visit_const(&mut self, _c: Const<I>) -> Self::Result {
         ControlFlow::Continue(())
     }
 }

@@ -1,10 +1,10 @@
 use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, Mutability, Safety};
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{Span, sym};
+use rustc_span::{Ident, Span, sym};
 use thin_vec::thin_vec;
 
 use crate::deriving::generic::ty::*;
-use crate::deriving::generic::{self, *};
+use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
 /// Expands a `#[derive(PartialEq)]` attribute into an implementation for the
@@ -18,13 +18,13 @@ pub(crate) fn expand_deriving_partial_eq(
 ) {
     let structural_trait_def = TraitDef {
         span,
-        path: path_std!(marker::StructuralPartialEq),
+        path: path_std!(cx, span, marker::StructuralPartialEq),
         skip_path_as_bound: true, // crucial!
         needs_copy_as_bound_if_packed: false,
         // The `StructuralPartialEq` impl must have the *same* bounds as the `PartialEq` impl,
         // or it will apply in situations where it should not, such as in the bug
         // <https://github.com/rust-lang/rust/issues/147714>.
-        additional_bounds: smallvec![ty::Ty::Path(path_std!(cmp::PartialEq))],
+        additional_bounds: smallvec![path_std!(cx, span, cmp::PartialEq)],
         // We really don't support unions, but that's already checked by the impl generated below;
         // a second check here would lead to redundant error messages.
         supports_unions: true,
@@ -43,7 +43,7 @@ pub(crate) fn expand_deriving_partial_eq(
         generics: cx.empty_generics(span),
         explicit_self: true,
         nonself_args: smallvec![(self_ref(), sym::other)],
-        ret_ty: Path(generic::ty::Path::new_local(sym::bool)),
+        ret_ty: Path(cx.path_ident(span, Ident::new(sym::bool, span))),
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
         combine_substructure: combine_substructure(get_substructure_equality_expr),
@@ -51,7 +51,7 @@ pub(crate) fn expand_deriving_partial_eq(
 
     let trait_def = TraitDef {
         span,
-        path: path_std!(cmp::PartialEq),
+        path: path_std!(cx, span, cmp::PartialEq),
         skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: SmallVec::new(),
@@ -121,9 +121,7 @@ fn get_substructure_equality_expr(
     span: Span,
     substructure: Substructure<'_>,
 ) -> BlockOrExpr {
-    use SubstructureFields::*;
-
-    BlockOrExpr::new_expr(match substructure.fields {
+    BlockOrExpr::new_expr(match substructure {
         EnumMatching(.., fields) | Struct(.., fields) => {
             let combine = move |acc, field| {
                 let rhs = get_field_equality_expr(cx, field);
@@ -172,9 +170,8 @@ fn get_substructure_equality_expr(
 /// Panics if there are not exactly two arguments to compare (should be `self`
 /// and `other`).
 fn get_field_equality_expr(cx: &ExtCtxt<'_>, field: &FieldInfo) -> Box<Expr> {
-    let [rhs] = &field.other_selflike_exprs[..] else {
-        cx.dcx().span_bug(field.span, "not exactly 2 arguments in `derive(PartialEq)`");
-    };
+    let rhs =
+        field.other_selflike_expr.as_ref().expect("not exactly 2 arguments in `derive(PartialEq)`");
 
     cx.expr_binary(
         field.span,

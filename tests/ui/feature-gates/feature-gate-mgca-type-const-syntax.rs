@@ -1,6 +1,6 @@
-const FOO: u8 = core::direct_const_arg!(10);
+const FOO: u8 = std::gca!(10);
 //~^ ERROR use of unstable library feature `min_generic_const_args` [E0658]
-//~| ERROR expected expression, found `direct_const_arg!()` constant
+//~| ERROR expected expression, found `gca!()` constant
 
 trait Bar {
     #[rustc_always_gca]
@@ -9,10 +9,10 @@ trait Bar {
 }
 
 impl Bar for bool {
-    const BAR: bool = core::direct_const_arg!(false);
+    const BAR: bool = std::gca!(false);
     //~^ ERROR use of unstable library feature `min_generic_const_args` [E0658]
-    //~| ERROR expected expression, found `direct_const_arg!()` constant
-    //~| ERROR implementation of a `#[rustc_always_gca]` must have a `direct_const_arg!` RHS
+    //~| ERROR expected expression, found `gca!()` constant
+    //~| ERROR implementation of a `#[rustc_always_gca]` must have a `gca!` RHS
 }
 
 fn main() {}

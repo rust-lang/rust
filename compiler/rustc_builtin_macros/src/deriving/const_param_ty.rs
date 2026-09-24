@@ -14,10 +14,10 @@ pub(crate) fn expand_deriving_const_param_ty(
 ) {
     let trait_def = TraitDef {
         span,
-        path: path_std!(marker::ConstParamTy_),
+        path: path_std!(cx, span, marker::ConstParamTy_),
         skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: false,
-        additional_bounds: smallvec![ty::Ty::Path(path_std!(cmp::Eq))],
+        additional_bounds: smallvec![path_std!(cx, span, cmp::Eq)],
         supports_unions: false,
         methods: SmallVec::new(),
         associated_types: SmallVec::new(),

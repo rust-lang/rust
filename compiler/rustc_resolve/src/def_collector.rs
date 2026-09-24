@@ -2,11 +2,10 @@ use std::mem;
 
 use rustc_ast::visit::FnKind;
 use rustc_ast::*;
-use rustc_attr_parsing as attr;
+use rustc_attr_ir::target::Target;
 use rustc_attr_parsing::{AttributeParser, ShouldEmit};
 use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
-use rustc_hir::Target;
 use rustc_hir::def::DefKind;
 use rustc_hir::def::Namespace::{TypeNS, ValueNS};
 use rustc_hir::def_id::LocalDefId;
@@ -558,7 +557,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         let orig_in_attr = mem::replace(&mut self.invocation_parent.in_attr, true);
         match &attr.kind {
             AttrKind::Normal(normal) => {
-                if attr::is_builtin_attr(&normal.item) {
+                if rustc_attr_parsing::is_builtin_attr(&normal.item) {
                     self.r
                         .builtin_attrs
                         .push((normal.item.path.segments[0].ident, self.parent_scope));

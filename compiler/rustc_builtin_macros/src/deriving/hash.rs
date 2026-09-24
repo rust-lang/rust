@@ -14,15 +14,15 @@ pub(crate) fn expand_deriving_hash(
     push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
-    let path = path_std!(hash::Hash);
+    let path = path_std!(cx, span, hash::Hash);
 
-    let typaram = sym::__H;
+    let typaram = Ident::new(sym::__H, span);
 
-    let arg = Path::new_local(typaram);
+    let arg = cx.path_ident(span, typaram);
 
     let param = {
-        let path = cx.path_all(span, false, cx.std_path(&[sym::hash, sym::Hasher]), Vec::new());
-        cx.typaram(span, Ident::new(typaram, span), thin_vec![cx.trait_bound(path, false)], None)
+        let path = path_std!(cx, span, hash::Hasher);
+        cx.typaram(span, typaram, thin_vec![cx.trait_bound(path, false)], None)
     };
 
     let generics = ast::Generics {
@@ -58,24 +58,25 @@ pub(crate) fn expand_deriving_hash(
 }
 
 fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {
-    let [state_expr] = substr.nonselflike_args else {
-        cx.dcx().span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`");
-    };
     let call_hash = |span, expr| {
         let strs = cx.std_path(&[sym::hash, sym::Hash, sym::hash]);
         let hash_path = cx.expr_path(cx.path_global(span, strs));
-        let expr = cx.expr_call(span, hash_path, thin_vec![expr, state_expr.clone()]);
+        let expr = cx.expr_call(
+            span,
+            hash_path,
+            thin_vec![expr, cx.expr_ident(span, Ident::new(sym::state, span))],
+        );
         cx.stmt_expr(expr)
     };
 
-    let (stmts, match_expr) = match substr.fields {
+    let (stmts, match_expr) = match substr {
         Struct(_, fields) | EnumMatching(.., fields) => {
             let stmts =
                 fields.into_iter().map(|field| call_hash(field.span, field.self_expr)).collect();
             (stmts, None)
         }
         EnumDiscr(discr_field, match_expr) => {
-            assert!(discr_field.other_selflike_exprs.is_empty());
+            assert!(discr_field.other_selflike_expr.is_none());
             let stmts = thin_vec![call_hash(discr_field.span, discr_field.self_expr)];
             (stmts, match_expr)
         }

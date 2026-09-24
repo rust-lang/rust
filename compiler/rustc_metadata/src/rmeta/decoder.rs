@@ -7,6 +7,8 @@ use std::{io, mem};
 
 pub(super) use cstore_impl::provide;
 use rustc_ast as ast;
+use rustc_attr_ir::CanonicalSymbols;
+use rustc_attr_ir::diagnostic_items::DiagnosticItems;
 use rustc_crate_store::{CrateSource, ExternCrate};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
@@ -16,8 +18,6 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
 use rustc_hir::Safety;
-use rustc_hir::attrs::CanonicalSymbols;
-use rustc_hir::attrs::diagnostic_items::DiagnosticItems;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPath, DefPathData};
@@ -1424,7 +1424,7 @@ impl CrateMetadata {
         &self,
         tcx: TyCtxt<'_>,
         id: DefIndex,
-    ) -> impl Iterator<Item = hir::Attribute> {
+    ) -> impl Iterator<Item = rustc_attr_ir::Attribute> {
         self.root
             .tables
             .attributes

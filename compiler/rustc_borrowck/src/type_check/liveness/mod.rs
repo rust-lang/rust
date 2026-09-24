@@ -1,5 +1,5 @@
 use itertools::{Either, Itertools};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_index::interval::IntervalSet;
 use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location, SourceInfo};
@@ -20,6 +20,9 @@ use crate::universal_regions::UniversalRegions;
 
 mod local_use_map;
 mod trace;
+
+pub(crate) use local_use_map::LocalUseMap;
+pub(crate) use trace::LivenessComputation;
 
 /// Combines liveness analysis with initialization analysis to
 /// determine which variables are live at which points, both due to
@@ -42,35 +45,58 @@ pub(super) fn generate<'tcx>(
         typeck.constraints.liveness_constraints.add_all_points(region);
     }
 
-    let mut free_regions = regions_that_outlive_free_regions(
+    let free_regions = regions_that_outlive_free_regions(
         typeck.infcx.num_region_vars(),
         &typeck.universal_regions,
         &typeck.constraints.outlives_constraints,
     );
 
-    // NLLs can avoid computing some liveness data here because its constraints are
-    // location-insensitive, but that doesn't work in polonius: locals whose type contains a region
-    // that outlives a free region are not necessarily live everywhere in a flow-sensitive setting,
-    // unlike NLLs.
-    // We do record these regions in the polonius context, since they're used to differentiate
-    // relevant and boring locals, which is a key distinction used later in diagnostics.
-    // This additional liveness information is ultimately used for *loan* liveness,
-    // so we don't need to compute it when there are no loans.
-    // FIXME: this NLL optimization idea, to reduce work to relevant locals only, still makes sense
-    // for polonius, and should be investigated to improve liveness performance.
-    if typeck.tcx().sess.opts.unstable_opts.polonius.is_next_enabled()
-        && typeck.borrow_set.len() > 0
-    {
-        let (_, boring_locals) =
-            compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
-        typeck.polonius_context.as_mut().unwrap().boring_nll_locals =
-            boring_locals.into_iter().collect();
-        free_regions = typeck.universal_regions.universal_regions_iter().collect();
-    }
     let (relevant_live_locals, boring_locals) =
         compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
 
-    trace::trace(typeck, location_map, move_data, &relevant_live_locals, &boring_locals);
+    // Under Polonius Alpha, a larger set of locals are considered relevant: specifically,
+    // locals containing regions *outliving* universal regions are relevant and only
+    // locals containing solely universal regions are considered boring.
+    //
+    // However, we don't actually need liveness information for *all* these locals,
+    // only when actually computing loans. So, we can defer computing the liveness
+    // until we try to propagate the loan, which is gated on `LocalizedConstraintGraph`
+    // traversal.
+    //
+    // Potentially in theory, we could defer computing liveness for *all* locals,
+    // but that's a much bigger refactor (many things rely on liveness of
+    // NLL-relevant locals). So, we only defer NLL-boring/Polonius-relevant locals
+    // for now.
+    // FIXME: this NLL optimization idea, to reduce work to relevant locals only, still makes sense
+    // for polonius, and should be investigated to improve liveness performance.
+    let deferred_locals = 'deferred: {
+        // If we aren't going to be using the additional liveness information,
+        // don't even bother computing the larger relevant set.
+        // Similarly, since this liveness information is ultimately used for *loan*
+        // liveness, we don't need to compute it when there are no loans.
+        if typeck.polonius_context.is_none() || typeck.borrow_set.len() == 0 {
+            break 'deferred FxIndexSet::default();
+        }
+
+        let free_regions = typeck.universal_regions.universal_regions_iter().collect();
+        let (polonius_relevant, _) =
+            compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
+
+        let boring: FxHashSet<_> = boring_locals.iter().copied().collect();
+        let deferred =
+            polonius_relevant.into_iter().filter(|local| boring.contains(local)).collect();
+        typeck.polonius_context.as_mut().unwrap().boring_nll_locals = boring;
+        deferred
+    };
+
+    trace::trace(
+        typeck,
+        location_map,
+        move_data,
+        &relevant_live_locals,
+        &boring_locals,
+        &deferred_locals,
+    );
 
     // Mark regions that should be live where they appear within rvalues or within a call: like
     // args, regions, and types.
@@ -155,7 +181,7 @@ fn record_regular_live_regions<'tcx>(
     tcx: TyCtxt<'tcx>,
     liveness_constraints: &mut LivenessValues,
     universal_regions: &UniversalRegions<'tcx>,
-    polonius_context: &mut Option<PoloniusContext>,
+    polonius_context: &mut Option<PoloniusContext<'tcx>>,
     body: &Body<'tcx>,
 ) {
     let mut visitor =
@@ -170,7 +196,7 @@ struct LiveVariablesVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     liveness_constraints: &'a mut LivenessValues,
     universal_regions: &'a UniversalRegions<'tcx>,
-    polonius_context: &'a mut Option<PoloniusContext>,
+    polonius_context: &'a mut Option<PoloniusContext<'tcx>>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for LiveVariablesVisitor<'a, 'tcx> {

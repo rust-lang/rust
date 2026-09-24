@@ -678,10 +678,13 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
 
         if let Some(def_id) = is_const_pat_that_looks_like_binding(self.tcx, pat) {
             let span = self.tcx.def_span(def_id);
-            let variable = self.tcx.item_name(def_id).to_string();
+            let name = self.tcx.item_name(def_id);
             // When we encounter a constant as the binding name, point at the `const` definition.
-            interpreted_as_const = Some(InterpretedAsConst { span, variable: variable.clone() });
-            interpreted_as_const_sugg = Some(InterpretedAsConstSugg { span: pat.span, variable });
+            interpreted_as_const =
+                Some(InterpretedAsConst { span, variable: name.to_ident_string() });
+            // The suggested name is suffixed, so it is never a keyword and never needs `r#`.
+            interpreted_as_const_sugg =
+                Some(InterpretedAsConstSugg { span: pat.span, variable: name.to_string() });
         } else if let PatKind::Constant { .. } = pat.kind
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
         {
@@ -1231,7 +1234,11 @@ fn is_const_pat_that_looks_like_binding<'tcx>(tcx: TyCtxt<'tcx>, pat: &Pat<'tcx>
     // `::` namespace separators or other non-identifier characters.
     if let ty::AliasConstKind::Free { def_id } = pat.extra.as_deref()?.expanded_const?
         && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(pat.span)
-        && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
+        && snippet
+            .strip_prefix("r#")
+            .unwrap_or(&snippet)
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '_')
     {
         Some(def_id)
     } else {

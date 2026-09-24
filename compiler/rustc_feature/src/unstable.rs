@@ -610,9 +610,9 @@ declare_features! (
     /// Provides a way to concatenate identifiers using metavariable expressions.
     (unstable, macro_metavar_expr_concat, "1.81.0", Some(124225)),
     /// Allows directly represented generic_const_args as the rhs of const items without the
-    /// `direct_const_arg!` macro.
+    /// `gca!` macro.
     (incomplete, macroless_const_item_generic_const_args, "CURRENT_RUSTC_VERSION", Some(162540)),
-    /// Allows directly represented generic_const_args without the `direct_const_arg!` macro.
+    /// Allows directly represented generic_const_args without the `gca!` macro.
     (incomplete, macroless_generic_const_args, "1.99.0", Some(159006)),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),

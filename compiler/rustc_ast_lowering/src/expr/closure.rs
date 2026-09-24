@@ -1,6 +1,8 @@
 use rustc_ast::*;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::target::Target;
 use rustc_hir as hir;
-use rustc_hir::{HirId, Target, find_attr};
+use rustc_hir::HirId;
 use rustc_span::{Span, span_bug};
 
 use super::{LoweringContext, MoveExprState};
@@ -55,7 +57,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_expr_coroutine_closure_with_move_exprs(
         &mut self,
         expr_hir_id: HirId,
-        attrs: &[hir::Attribute],
+        attrs: &[rustc_attr_ir::Attribute],
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
@@ -114,7 +116,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_expr_plain_closure_with_move_exprs(
         &mut self,
         expr_hir_id: HirId,
-        attrs: &[hir::Attribute],
+        attrs: &[rustc_attr_ir::Attribute],
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
@@ -153,7 +155,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     // local uses and the caller can later add the matching initializers.
     fn lower_expr_closure(
         &mut self,
-        attrs: &[hir::Attribute],
+        attrs: &[rustc_attr_ir::Attribute],
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
@@ -283,7 +285,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Expr,
         fn_decl_span: Span,
         fn_arg_span: Span,
-        attrs: &[hir::Attribute],
+        attrs: &[rustc_attr_ir::Attribute],
     ) -> hir::ExprKind<'hir> {
         let closure_def_id = self.local_def_id(closure_id);
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);

@@ -3,6 +3,7 @@
 #![feature(min_generic_const_args)]
 #![feature(generic_const_args)]
 
+use std::gca;
 use std::marker::PhantomData;
 
 trait Project1<'a> {
@@ -21,14 +22,15 @@ impl<T: Project1<'static, Assoc1 = ()>> Project2 for PhantomData<T> {
     type Assoc2 = usize;
 }
 
-const N<T>: <PhantomData::<T> as Project2>::Assoc2 = 2_usize;
+const N<T>: <PhantomData<T> as Project2>::Assoc2 = 2_usize;
 
-fn func(_: [(); core::direct_const_arg!(N::<u32>)])
+fn func(_: [(); gca!(N::<u32>)])
 //~^ ERROR: type mismatch resolving `N<u32> == _` [E0271]
 //~| ERROR: the type `[(); N::<u32>]` is not well-formed
 //~| ERROR: type mismatch resolving `N<u32> == _` [E0271]
 where
     for<'a> u32: Project1<'a>,
-{}
+{
+}
 
 fn main() {}

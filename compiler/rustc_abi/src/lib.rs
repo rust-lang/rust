@@ -1778,6 +1778,10 @@ pub struct AddressSpace(pub u32);
 impl AddressSpace {
     /// LLVM's `0` address space.
     pub const ZERO: Self = AddressSpace(0);
+    /// The address space for constant memory on nvptx and amdgpu.
+    /// This address space is used e.g. for kernel arguments that are constant throughout the
+    /// execution.
+    pub const GPU_CONSTANT: Self = AddressSpace(4);
     /// The address space for workgroup memory on nvptx and amdgpu.
     /// See e.g. the `gpu_launch_sized_workgroup_mem` intrinsic for details.
     pub const GPU_WORKGROUP: Self = AddressSpace(3);
@@ -2023,10 +2027,10 @@ pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
     /// 2. the never type
     Empty,
 
-    /// The type has a single valid variant.
+    /// The type has a single valid variant. Such types are called "univariant".
     ///
     /// This is the case for:
-    /// 1. enums with a single inhabited variant
+    /// 1. enums with a single inhabited variant, aka. "univariant enums"
     /// 2. structs, unions, and non-ADTs (except coroutines; see below),
     ///    as those can't have multiple variants
     Single {
@@ -2189,6 +2193,18 @@ impl Niche {
             }
         }
     }
+}
+
+/// Whether niche optimizations should be performed during layout calculation.
+///
+/// [`UnsafeCell`] and [`UnsafePinned`] both disable niche optimizations.
+///
+/// [`UnsafeCell`]: std::cell::UnsafeCell
+/// [`UnsafePinned`]: std::pin::UnsafePinned
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub enum NicheOptimizations {
+    Enabled,
+    Disabled,
 }
 
 // NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.

@@ -10,23 +10,23 @@ use std::slice;
 
 use rustc_abi::ExternAbi;
 use rustc_ast::MetaItemKind;
+use rustc_attr_ir::diagnostic::Directive;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
+use rustc_attr_ir::{
+    Attribute, AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution,
+    InlineAttr, OptimizeAttr, ReprAttr, find_attr,
+};
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, msg};
 use rustc_feature::BUILTIN_ATTRIBUTE_SET;
-use rustc_hir::attrs::diagnostic::Directive;
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::attrs::{
-    AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
-    OptimizeAttr, ReprAttr,
-};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, AssocCtxt, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam,
-    GenericParamKind, HirId, Item, ItemKind, MethodKind, Mod, Node, ParamName, Target, TraitItem,
-    find_attr,
+    self as hir, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam, GenericParamKind,
+    HirId, Item, ItemKind, Mod, Node, ParamName, TraitItem,
 };
 use rustc_lint_defs::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,

@@ -11,14 +11,37 @@ use rustc_session::config::MirIncludeSpans;
 use crate::borrow_set::BorrowSet;
 use crate::constraints::OutlivesConstraint;
 use crate::dataflow::BorrowIndex;
-use crate::polonius::{LocalizedConstraintGraphVisitor, LocalizedNode, PoloniusContext};
+use crate::polonius::liveness::RegionLiveness;
+use crate::polonius::{
+    LiveRegionVariances, LivenessSource, LocalizedConstraintGraphVisitor, LocalizedNode,
+    PoloniusContext,
+};
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::Locations;
+use crate::universal_regions::UniversalRegions;
 use crate::{BorrowckInferCtxt, ClosureRegionRequirements, RegionInferenceContext};
 
 /// The polonius MIR dump template: a regular HTML file for easy editing, with special dummy
 /// sections to be replaced by real contents.
 const TEMPLATE: &str = include_str!("./dump/polonius-mir-dump.template.html");
+
+/// A `LivenessSource` for already-existing liveness and variance data.
+struct CachedLivenessSource<'a, 'tcx> {
+    live_region_variances: &'a LiveRegionVariances,
+    universal_regions: &'a UniversalRegions<'tcx>,
+    liveness: &'a LivenessValues,
+}
+
+impl<'a, 'tcx> LivenessSource for CachedLivenessSource<'a, 'tcx> {
+    fn liveness_for_region(&mut self, region: RegionVid) -> RegionLiveness<'_> {
+        RegionLiveness::new(
+            region,
+            self.live_region_variances,
+            self.universal_regions,
+            self.liveness.points(),
+        )
+    }
+}
 
 /// `-Zdump-mir=polonius` dumps MIR annotated with NLL and polonius specific information.
 pub(crate) fn dump_polonius_mir<'tcx>(
@@ -27,7 +50,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
-    polonius_context: Option<&PoloniusContext>,
+    polonius_context: Option<&PoloniusContext<'tcx>>,
 ) {
     let tcx = infcx.tcx;
     if !tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
@@ -41,16 +64,14 @@ pub(crate) fn dump_polonius_mir<'tcx>(
 
     // If we have a polonius graph to dump along the rest of the MIR and NLL info, we extract its
     // constraints here.
+    let mut liveness_source = CachedLivenessSource {
+        live_region_variances: &polonius_context.live_region_variances,
+        universal_regions: regioncx.universal_regions(),
+        liveness: regioncx.liveness_constraints(),
+    };
     let mut collector = MirDumpCollector::default();
     if let Some(graph) = &polonius_context.graph {
-        graph.traverse(
-            body,
-            regioncx.liveness_constraints(),
-            &polonius_context.live_region_variances,
-            regioncx.universal_regions(),
-            borrow_set,
-            &mut collector,
-        );
+        graph.traverse(body, borrow_set, &mut liveness_source, &mut collector);
     }
 
     let extra_data = &|pass_where, out: &mut dyn io::Write| {
@@ -98,7 +119,7 @@ struct MirDumpCollector {
 }
 
 impl LocalizedConstraintGraphVisitor for MirDumpCollector {
-    fn on_node_traversed(&mut self, loan: BorrowIndex, node: LocalizedNode) {
+    fn on_node_traversed(&mut self, loan: BorrowIndex, node: LocalizedNode, _is_live: bool) {
         self.reachability.entry(loan).or_default().push(node);
     }
 

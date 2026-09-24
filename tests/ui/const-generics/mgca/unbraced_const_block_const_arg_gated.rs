@@ -1,5 +1,7 @@
 #![feature(adt_const_params)]
 
+use std::gca;
+
 #[derive(Eq, PartialEq, std::marker::ConstParamTy)]
 struct Inner<const N: usize>;
 
@@ -32,9 +34,9 @@ fn generic<const N: usize>() {
 
 const NON_TYPE_CONST: usize = const { 1 };
 
-const TYPE_CONST: usize = core::direct_const_arg!(const { 1 });
+const TYPE_CONST: usize = gca!(const { 1 });
 //~^ ERROR: use of unstable library feature `min_generic_const_args` [E0658]
-//~| ERROR: expected expression, found `direct_const_arg!()` constant
+//~| ERROR: expected expression, found `gca!()` constant
 
 static STATIC: usize = const { 1 };
 

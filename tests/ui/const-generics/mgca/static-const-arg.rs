@@ -5,14 +5,16 @@
 #![feature(min_generic_const_args)]
 #![allow(incomplete_features)]
 
+use std::gca;
+
 static A: u32 = 0;
 
 struct Foo<const N: u32>;
 
-const _: Foo<{ core::direct_const_arg!(A) }> = Foo;
+const _: Foo<{ gca!(A) }> = Foo;
 //~^ ERROR static items cannot be used as const arguments
 
-const _: Foo<core::direct_const_arg!(A)> = Foo;
+const _: Foo<gca!(A)> = Foo;
 //~^ ERROR static items cannot be used as const arguments
 
 fn main() {}

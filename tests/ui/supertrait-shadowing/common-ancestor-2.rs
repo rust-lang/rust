@@ -6,6 +6,7 @@
 #![warn(shadowing_supertrait_items)]
 #![allow(dead_code)]
 
+use std::gca;
 use std::mem::size_of;
 
 trait A {
@@ -45,7 +46,7 @@ trait C: A + B {
 }
 impl<T> C for T {
     type Assoc = i32;
-    const CONST: i32 = core::direct_const_arg!(3);
+    const CONST: i32 = gca!(3);
 }
 
 fn main() {

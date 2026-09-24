@@ -1,4 +1,4 @@
-//! Emulated wait status for non-Unix #[cfg(unix) platforms
+//! Emulated wait status for non-Unix `#[cfg(unix)]` platforms
 //!
 //! Separate module to facilitate testing against a real Unix implementation.
 

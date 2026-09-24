@@ -12,7 +12,7 @@ use thin_vec::ThinVec;
 
 use crate::data_structures::{DelayedMap, HashMap};
 use crate::inherent::*;
-use crate::{self as ty, Interner, Region, TypingModeEqWrapper, UniverseIndex};
+use crate::{self as ty, Const, Interner, Region, TypingModeEqWrapper, UniverseIndex};
 
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, V)]
 #[derive_where(Copy; I: Interner, V: Copy)]

@@ -1,6 +1,9 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/153198
 #![feature(min_generic_const_args)]
 #![allow(incomplete_features)]
+
+use std::gca;
+
 macro_rules! y {
     ( $($matcher:tt)*) => {
         _ //~ ERROR: constant provided when a type was expected
@@ -11,7 +14,7 @@ macro_rules! y {
 struct A<T>; //~ ERROR: type parameter `T` is never used
 
 const y: A<
-    core::direct_const_arg!(y! {
+    gca!(y! {
         x
     }),
 > = 1;

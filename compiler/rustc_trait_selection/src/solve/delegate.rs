@@ -3,9 +3,9 @@ use std::fmt::Debug;
 use std::mem;
 use std::ops::{ControlFlow, Deref};
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::CRATE_HIR_ID;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;

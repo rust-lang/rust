@@ -1449,6 +1449,7 @@ macro_rules! nonzero_integer {
             ///
             #[doc = concat!("assert!(NonZero::<", stringify!($Int), ">::from_str(\"1 \").is_err());")]
             /// ```
+            #[inline]
             fn from_str(src: &str) -> Result<Self, Self::Err> {
                 Self::from_str_radix(src, 10)
             }

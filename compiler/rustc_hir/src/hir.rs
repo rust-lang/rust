@@ -554,7 +554,7 @@ pub enum InferArgKind {
     /// determined during HIR ty lowering.
     TypeOrConst,
     /// An infer argument with unambiguous const syntax, e.g. S<{ _ }> or
-    /// S<direct_const_arg!(_)>. It can only be inferred to a const.
+    /// S<gca!(_)>. It can only be inferred to a const.
     Const,
 }
 
