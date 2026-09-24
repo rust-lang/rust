@@ -365,6 +365,33 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         if let Err(conflict) = self.is_knowable(stack) {
             debug!("coherence stage: not knowable");
+
+            let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
+            if matches!(conflict, Conflict::Upstream)
+                && !trait_ref.def_id.is_local()
+                && matches!(
+                    self.tcx().trait_def(trait_ref.def_id).impl_restriction,
+                    ty::RestrictionKind::Restricted(..)
+                )
+            {
+                // Check supertraits in a probe so we do not constrain inference.
+                // Skip the original goal to avoid recursing into this candidate.
+                let tcx = self.tcx();
+                let predicate: ty::Predicate<'tcx> = stack.obligation.predicate.upcast(tcx);
+                let supertrait_obligations = elaborate::elaborate(tcx, [predicate])
+                    .skip(1)
+                    .map(|predicate| stack.obligation.with(tcx, predicate))
+                    .collect::<Vec<_>>();
+                let supertraits = self.evaluation_probe(|this| {
+                    this.evaluate_predicates_recursively(stack.list(), supertrait_obligations)
+                });
+                match supertraits {
+                    Ok(EvaluatedToErr) => return Err(SelectionError::Unimplemented),
+                    Err(overflow) => return Err(SelectionError::Overflow(overflow)),
+                    // An ambiguous supertrait cannot rule out the impl.
+                    Ok(_) => {}
+                }
+            }
             if self.intercrate_ambiguity_causes.is_some() {
                 debug!("evaluate_stack: intercrate_ambiguity_causes is some");
                 // Heuristics: show the diagnostics when there are no candidates in crate.
