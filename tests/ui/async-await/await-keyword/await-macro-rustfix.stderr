@@ -1,0 +1,50 @@
+error: incorrect use of `await`
+  --> $DIR/await-macro-rustfix.rs:9:18
+   |
+LL |     let _: i32 = await!(future);
+   |                  ^^^^^^^^^^^^^^
+   |
+help: `await` is a postfix operation
+   |
+LL -     let _: i32 = await!(future);
+LL +     let _: i32 = future.await);
+   |
+
+error: incorrect use of `await`
+  --> $DIR/await-macro-rustfix.rs:11:18
+   |
+LL |     let _: i32 = await!(ready(1));
+   |                  ^^^^^^^^^^^^^^^^
+   |
+help: `await` is a postfix operation
+   |
+LL -     let _: i32 = await!(ready(1));
+LL +     let _: i32 = ready(1).await);
+   |
+
+error: incorrect use of `await`
+  --> $DIR/await-macro-rustfix.rs:13:18
+   |
+LL |     let _: i32 = await!(ready(Ok::<i32, ()>(1)))?;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: `await` is a postfix operation
+   |
+LL -     let _: i32 = await!(ready(Ok::<i32, ()>(1)))?;
+LL +     let _: i32 = ready(Ok::<i32, ()>(1)).await)?;
+   |
+
+error: incorrect use of `await`
+  --> $DIR/await-macro-rustfix.rs:15:18
+   |
+LL |     let _: i32 = await!(/* keep */ &mut ready(1) /* keep */);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: `await` is a postfix operation
+   |
+LL -     let _: i32 = await!(/* keep */ &mut ready(1) /* keep */);
+LL +     let _: i32 = &mut ready(1).await /* keep */);
+   |
+
+error: aborting due to 4 previous errors
+
