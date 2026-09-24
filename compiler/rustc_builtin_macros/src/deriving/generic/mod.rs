@@ -260,10 +260,6 @@ pub(crate) enum FieldlessVariantsStrategy {
     /// Don't do anything special about fieldless variants. They are
     /// handled like any other variant.
     Default,
-    /// If all variants of the enum are fieldless, expand the special
-    /// `AllFieldLessEnum` substructure, so that the entire enum can be handled
-    /// at once.
-    SpecializeIfAllVariantsFieldless,
 }
 
 /// Summary of the relevant parts of a struct/enum field.
@@ -285,11 +281,6 @@ pub(crate) struct FieldInfo {
 pub(crate) enum Substructure<'a> {
     /// A non-static method where `Self` is a struct.
     Struct(&'a ast::VariantData, Vec<FieldInfo>),
-
-    /// A non-static method handling the entire enum at once
-    /// (after it has been determined that none of the enum
-    /// variants has any fields).
-    AllFieldlessEnum(&'a ast::EnumDef),
 
     /// Matching variants of the enum: ast::Variant,
     /// fields: the field name is only non-`None` in the case of a struct
@@ -990,9 +981,6 @@ impl<'a> MethodDef<'a> {
                         // there are multiple variants, we need just an operation on
                         // the discriminant(s).
                         return self.call_substructure_method(cx, span, EnumDiscr(None));
-                    }
-                    FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless => {
-                        return self.call_substructure_method(cx, span, AllFieldlessEnum(enum_def));
                     }
                     FieldlessVariantsStrategy::Default => (),
                 }

@@ -22,6 +22,13 @@ pub(crate) fn expand_deriving_debug(
         ast::Mutability::Mut,
     );
 
+    let all_fieldless = match &item.kind {
+        ast::ItemKind::Enum(_, _, def) => {
+            def.variants.len() > 1 && def.variants.iter().all(|v| v.data.fields().is_empty())
+        }
+        _ => false,
+    };
+
     let trait_def = TraitDef {
         span,
         path: path_std!(cx, span, fmt::Debug),
@@ -37,8 +44,7 @@ pub(crate) fn expand_deriving_debug(
             has_other_selflike_arg: false,
             ret_ty: cx.ty_path(path_std!(cx, span, fmt::Result)),
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
-            fieldless_variants_strategy:
-                FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless,
+            fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: combine_substructure(|cx, span, substr| show_substructure(
                 cx,
                 span,
@@ -50,7 +56,7 @@ pub(crate) fn expand_deriving_debug(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand(cx, item, push)
+    trait_def.expand_ext(cx, item, push, all_fieldless);
 }
 
 fn formatter_ident(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
@@ -71,7 +77,7 @@ fn show_substructure(
     let (ident, vdata, fields) = match substr {
         Struct(vdata, fields) => (type_ident, vdata, fields),
         EnumMatching(v, fields) => (v.ident, &v.data, fields),
-        AllFieldlessEnum(enum_def) => return show_fieldless_enum(cx, span, enum_def, type_ident),
+        StaticEnum(enum_def) => return show_fieldless_enum(cx, span, enum_def, type_ident),
         _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Debug)`"),
     };
 
