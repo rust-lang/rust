@@ -18,7 +18,6 @@
         min_specialization,
         trivial_clone,
         extend_one,
-        allocator_api,
         strict_provenance_lints
     )
 )]
