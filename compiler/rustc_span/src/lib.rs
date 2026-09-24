@@ -1618,17 +1618,23 @@ impl fmt::Debug for Span {
         // available, fall back to printing the raw values.
 
         fn fallback(span: Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.debug_struct("Span")
-                .field("lo", &span.lo())
-                .field("hi", &span.hi())
-                .field("ctxt", &span.ctxt())
-                .finish()
+            let mut d = f.debug_struct("Span");
+            d.field("lo", &span.lo()).field("hi", &span.hi()).field("ctxt", &span.ctxt());
+            if let Some(parent) = span.parent() {
+                d.field("parent", &parent);
+            }
+            d.finish()
         }
 
         if SESSION_GLOBALS.is_set() {
             with_session_globals(|session_globals| {
                 if let Some(source_map) = &session_globals.source_map {
-                    write!(f, "{} ({:?})", source_map.span_to_diagnostic_string(*self), self.ctxt())
+                    let pos = source_map.span_to_diagnostic_string(*self);
+                    write!(f, "{pos} ({ctxt:?})", ctxt = self.ctxt())?;
+                    if let Some(parent) = self.parent() {
+                        write!(f, " (parent={parent:?})")?;
+                    }
+                    Ok(())
                 } else {
                     fallback(*self, f)
                 }
