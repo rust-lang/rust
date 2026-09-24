@@ -69,15 +69,13 @@ pub(super) fn generate<'tcx>(
     // for now.
     // FIXME: this NLL optimization idea, to reduce work to relevant locals only, still makes sense
     // for polonius, and should be investigated to improve liveness performance.
-    let deferred_locals = 'deferred: {
+    let deferred_locals = if typeck.polonius_context.is_none() || typeck.borrow_set.len() == 0 {
         // If we aren't going to be using the additional liveness information,
         // don't even bother computing the larger relevant set.
         // Similarly, since this liveness information is ultimately used for *loan*
         // liveness, we don't need to compute it when there are no loans.
-        if typeck.polonius_context.is_none() || typeck.borrow_set.len() == 0 {
-            break 'deferred FxIndexSet::default();
-        }
-
+        FxIndexSet::default()
+    } else {
         let free_regions = typeck.universal_regions.universal_regions_iter().collect();
         let (polonius_relevant, _) =
             compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
