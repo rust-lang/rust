@@ -26,7 +26,7 @@ struct AliasRef<'a> {
     value: AliasRefField<'a>,
 }
 
-impl<'a> CoerceShared<AliasRef<'a>> for AliasMut<'a> {}
+impl<'a: 'b, 'b> CoerceShared<AliasRef<'b>> for AliasMut<'a> {}
 
 struct InnerLifetimeMut<'a> {
     value: &'a mut &'static (),
@@ -39,7 +39,7 @@ struct InnerLifetimeRef<'a> {
     value: &'a &'a (),
 }
 
-impl<'a> CoerceShared<InnerLifetimeRef<'a>> for InnerLifetimeMut<'a> {}
+impl<'a: 'b, 'b> CoerceShared<InnerLifetimeRef<'b>> for InnerLifetimeMut<'a> {}
 
 struct RejectedInnerLifetimeMut<'a> {
     value: &'a mut &'a (),
@@ -53,6 +53,6 @@ struct RejectedInnerLifetimeRef<'a> {
     //~^ ERROR
 }
 
-impl<'a> CoerceShared<RejectedInnerLifetimeRef<'a>> for RejectedInnerLifetimeMut<'a> {}
+impl<'a: 'b, 'b> CoerceShared<RejectedInnerLifetimeRef<'b>> for RejectedInnerLifetimeMut<'a> {}
 
 fn main() {}
