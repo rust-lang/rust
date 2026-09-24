@@ -95,14 +95,32 @@ pub(crate) struct WorkspaceInfo<'a> {
     pub(crate) path: &'a str,
     /// The list of license exceptions.
     pub(crate) exceptions: ExceptionList,
-    /// Optionally:
-    /// * A list of crates for which dependencies need to be explicitly allowed
-    ///   or None to check the entire workspace.
-    /// * The list of allowed dependencies.
-    /// * The source code location of the allowed dependencies list
-    crates_and_deps: Option<(Option<&'a [&'a str]>, &'a [&'a str], ListLocation)>,
+    /// The list of dependencies that are allowed. If None, any crate with an
+    /// acceptable license is allowed.
+    allowed_deps: Option<PermittedDeps<'a>>,
     /// Submodules required for the workspace
     pub(crate) submodules: &'a [&'a str],
+}
+
+#[derive(Clone, Copy)]
+struct PermittedDeps<'a> {
+    /// A list of crates for which dependencies need to be explicitly allowed
+    /// or None to check the entire workspace.
+    roots: Option<&'a [&'a str]>,
+    /// The list of allowed dependencies.
+    deps: &'a [&'a str],
+    /// The source code location of the allowed dependencies list.
+    deps_loc: ListLocation,
+}
+
+impl<'a> PermittedDeps<'a> {
+    const fn new(
+        roots: Option<&'a [&'a str]>,
+        deps: &'a [&'a str],
+        deps_loc: ListLocation,
+    ) -> Self {
+        Self { roots, deps, deps_loc }
+    }
 }
 
 const WORKSPACE_LOCATION: ListLocation = location!(+4);
@@ -114,7 +132,7 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
     WorkspaceInfo {
         path: ".",
         exceptions: EXCEPTIONS,
-        crates_and_deps: Some((
+        allowed_deps: Some(PermittedDeps::new(
             Some(&["rustc-main"]),
             PERMITTED_RUSTC_DEPENDENCIES,
             PERMITTED_RUSTC_DEPS_LOCATION,
@@ -124,7 +142,7 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
     WorkspaceInfo {
         path: "library",
         exceptions: EXCEPTIONS_STDLIB,
-        crates_and_deps: Some((
+        allowed_deps: Some(PermittedDeps::new(
             None,
             PERMITTED_STDLIB_DEPENDENCIES,
             PERMITTED_STDLIB_DEPS_LOCATION,
@@ -134,13 +152,13 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
     WorkspaceInfo {
         path: "library/stdarch",
         exceptions: EXCEPTIONS_STDARCH,
-        crates_and_deps: None,
+        allowed_deps: None,
         submodules: &[],
     },
     WorkspaceInfo {
         path: "compiler/rustc_codegen_cranelift",
         exceptions: EXCEPTIONS_CRANELIFT,
-        crates_and_deps: Some((
+        allowed_deps: Some(PermittedDeps::new(
             None,
             PERMITTED_CRANELIFT_DEPENDENCIES,
             PERMITTED_CRANELIFT_DEPS_LOCATION,
@@ -150,19 +168,19 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
     WorkspaceInfo {
         path: "compiler/rustc_codegen_gcc",
         exceptions: EXCEPTIONS_GCC,
-        crates_and_deps: None,
+        allowed_deps: None,
         submodules: &[],
     },
     WorkspaceInfo {
         path: "src/bootstrap",
         exceptions: EXCEPTIONS_BOOTSTRAP,
-        crates_and_deps: None,
+        allowed_deps: None,
         submodules: &[],
     },
     WorkspaceInfo {
         path: "src/tools/cargo",
         exceptions: EXCEPTIONS_CARGO,
-        crates_and_deps: None,
+        allowed_deps: None,
         submodules: &["src/tools/cargo"],
     },
     // FIXME uncomment once all deps are vendored
@@ -179,25 +197,25 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
     WorkspaceInfo {
         path: "src/tools/rust-analyzer",
         exceptions: EXCEPTIONS_RUST_ANALYZER,
-        crates_and_deps: None,
+        allowed_deps: None,
         submodules: &[],
     },
     WorkspaceInfo {
         path: "src/tools/rustbook",
         exceptions: EXCEPTIONS_RUSTBOOK,
-        crates_and_deps: None,
+        allowed_deps: None,
         submodules: &["src/doc/book", "src/doc/reference"],
     },
     WorkspaceInfo {
         path: "src/tools/rustc-perf",
         exceptions: EXCEPTIONS_RUSTC_PERF,
-        crates_and_deps: None,
+        allowed_deps: None,
         submodules: &["src/tools/rustc-perf"],
     },
     WorkspaceInfo {
         path: "tests/run-make-cargo/uefi-qemu/uefi_qemu_test",
         exceptions: EXCEPTIONS_UEFI_QEMU_TEST,
-        crates_and_deps: None,
+        allowed_deps: None,
         submodules: &[],
     },
 ];
@@ -639,7 +657,8 @@ pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
 
     check_proc_macro_dep_list(root, cargo, bless, &mut check);
 
-    for &WorkspaceInfo { path, exceptions, crates_and_deps, submodules } in WORKSPACES {
+    for &WorkspaceInfo { path, exceptions, allowed_deps: crates_and_deps, submodules } in WORKSPACES
+    {
         if has_missing_submodule(root, submodules, tidy_ctx.is_running_on_ci()) {
             continue;
         }
@@ -664,14 +683,14 @@ pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
             check.error(format!("{path} is part of another workspace ({} != {}), remove from `WORKSPACES` ({WORKSPACE_LOCATION})", absolute_root.display(), absolute_root_real.display()));
         }
         check_license_exceptions(&metadata, path, exceptions, &mut check);
-        if let Some((crates, permitted_deps, location)) = crates_and_deps {
-            let descr = crates.map_or(path, |crates| crates.get(0).unwrap_or(&path));
+        if let Some(PermittedDeps { roots, deps: permitted_deps, deps_loc }) = crates_and_deps {
+            let descr = roots.map_or(path, |roots| roots.get(0).unwrap_or(&path));
             check_permitted_dependencies(
                 &metadata,
                 descr,
                 permitted_deps,
-                crates,
-                location,
+                roots,
+                deps_loc,
                 &mut check,
             );
         }
