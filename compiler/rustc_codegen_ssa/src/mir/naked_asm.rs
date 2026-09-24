@@ -1,5 +1,5 @@
 use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind};
-use rustc_hir::attrs::{InstructionSetAttr, Linkage};
+use rustc_attr_ir::{InstructionSetAttr, Linkage};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::{self, InlineAsmOperand, START_BLOCK};

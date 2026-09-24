@@ -6,6 +6,7 @@ use rustc_abi::{
     AddressSpace, Align, BackendRepr, CVariadicStatus, Float, HasDataLayout, NumScalableVectors,
     Primitive, Size, WrappingRange,
 };
+use rustc_attr_ir::find_attr;
 use rustc_codegen_ssa::RetagInfo;
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -16,7 +17,6 @@ use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_hir::find_attr;
 use rustc_lint_defs::builtin::DEPRECATED_LLVM_INTRINSIC;
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::consts::ConstExt;

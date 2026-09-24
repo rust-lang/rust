@@ -4,11 +4,11 @@ use std::rc::Rc;
 use std::{fmt, iter, mem};
 
 use rustc_abi::FieldIdx;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::{IndexSlice, IndexVec};

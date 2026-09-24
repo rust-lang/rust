@@ -10,6 +10,7 @@ use std::time::Instant;
 
 use cranelift_object::{ObjectBuilder, ObjectModule};
 use rustc_ast::expand::allocator::AllocatorMethod;
+use rustc_attr_ir::Linkage as RLinkage;
 use rustc_codegen_ssa::back::lto::ThinModule;
 use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryFn, ThinLtoInput,
@@ -18,7 +19,6 @@ use rustc_codegen_ssa::traits::{ExtraBackendMethods, WriteBackendMethods};
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
-use rustc_hir::attrs::Linkage as RLinkage;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mono::{MonoItem, MonoItemData, Visibility};

@@ -3,12 +3,13 @@ use std::cmp::max;
 use std::ops::Deref;
 use std::{assert_matches, debug_assert_matches};
 
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
-use rustc_hir::{self as hir, ExprKind, HirId, Node, find_attr};
+use rustc_hir::{self as hir, ExprKind, HirId, Node};
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TyCtxtInferExt};

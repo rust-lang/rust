@@ -8,6 +8,8 @@
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordMap;
@@ -17,10 +19,9 @@ use rustc_errors::{
     struct_span_code_err,
 };
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{ExprKind, HirId, QPath, find_attr, is_range_literal};
+use rustc_hir::{ExprKind, HirId, QPath, is_range_literal};
 use rustc_hir_analysis::diagnostics::{NoFieldOnType, NoVariantNamed};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, RegionVariableOrigin};
@@ -56,7 +57,10 @@ use crate::{
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
         let has_attr = |id: HirId| -> bool {
-            self.tcx.hir_attrs(id).iter().any(hir::Attribute::is_prefix_attr_for_suggestions)
+            self.tcx
+                .hir_attrs(id)
+                .iter()
+                .any(rustc_attr_ir::Attribute::is_prefix_attr_for_suggestions)
         };
 
         // Special case: range expressions are desugared to struct literals in HIR,

@@ -1,8 +1,8 @@
 use gccjit::Function;
 #[cfg(feature = "master")]
 use gccjit::{FnAttribute, GlobalKind, ToRValue, Type, VarAttribute};
+use rustc_attr_ir::Linkage;
 use rustc_codegen_ssa::traits::PreDefineCodegenMethods;
-use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};

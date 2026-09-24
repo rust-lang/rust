@@ -1,7 +1,7 @@
-use rustc_hir::attrs::InlineAttr;
+use rustc_attr_ir::{InlineAttr, find_attr};
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{self as hir, find_attr};
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;

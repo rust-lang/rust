@@ -14,10 +14,10 @@
 use std::cell::Cell;
 use std::iter;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Diag;
 use rustc_hir::BodyOwnerKind;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::IndexVec;

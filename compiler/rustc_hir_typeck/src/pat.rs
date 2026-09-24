@@ -3,13 +3,13 @@ use std::{assert_matches, cmp};
 
 use rustc_abi::FieldIdx;
 use rustc_ast as ast;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, Level, MultiSpan, pluralize,
     struct_span_code_err,
 };
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;

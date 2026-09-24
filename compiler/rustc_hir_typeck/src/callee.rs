@@ -2,12 +2,13 @@ use std::iter;
 
 use rustc_abi::{CanonAbi, ExternAbi};
 use rustc_ast::util::parser::ExprPrecedence;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey, msg};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, HirId, find_attr};
+use rustc_hir::{self as hir, HirId};
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
 use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};

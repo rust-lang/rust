@@ -33,13 +33,14 @@
 use std::iter;
 
 use rustc_abi::FIRST_VARIANT;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, HirId, find_attr};
+use rustc_hir::{self as hir, HirId};
 use rustc_lint_defs::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, ProjectionKind};
 use rustc_middle::mir::FakeReadCause;

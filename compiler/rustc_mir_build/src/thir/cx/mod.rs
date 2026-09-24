@@ -2,12 +2,13 @@
 //! structures into the THIR. The `builder` is generally ignorant of the tcx,
 //! etc., and instead goes through the `Cx` for most of its work.
 
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::steal::Steal;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, HirId, find_attr};
+use rustc_hir::{self as hir, HirId};
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::bug;

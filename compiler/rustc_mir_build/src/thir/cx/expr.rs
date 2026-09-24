@@ -1,12 +1,12 @@
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::UnsafeBinderCastKind;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{AttributeKind, HasAttrs, find_attr};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::attrs::{AttributeKind, HasAttrs};
+use rustc_hir::HirId;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::{HirId, find_attr};
 use rustc_index::Idx;
 use rustc_middle::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
@@ -61,8 +61,8 @@ fn parsed_attrs(id: HirId, tcx: TyCtxt<'_>) -> ThinVec<AttributeKind> {
     HasAttrs::get_attrs(id, &tcx)
         .into_iter()
         .filter_map(|attr| match attr {
-            hir::Attribute::Parsed(attrkind) => Some(attrkind.clone()),
-            hir::Attribute::Unparsed(_) => None,
+            rustc_attr_ir::Attribute::Parsed(attrkind) => Some(attrkind.clone()),
+            rustc_attr_ir::Attribute::Unparsed(_) => None,
         })
         .collect()
 }

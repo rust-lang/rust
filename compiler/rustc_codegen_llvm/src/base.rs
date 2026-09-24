@@ -13,12 +13,12 @@
 
 use std::time::Instant;
 
+use rustc_attr_ir::Linkage;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_hir::attrs::Linkage;
 use rustc_middle::dep_graph;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrs, SanitizerFnAttrs};
 use rustc_middle::mono::Visibility;

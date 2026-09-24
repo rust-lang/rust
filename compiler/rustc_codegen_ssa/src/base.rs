@@ -9,14 +9,15 @@ use rustc_ast::expand::allocator::{
     ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorMethod, AllocatorMethodInput,
     AllocatorTy,
 };
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{DebuggerVisualizerType, EiiDecl, EiiImpl, OptimizeAttr, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_data_structures::unord::UnordMap;
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::attrs::{DebuggerVisualizerType, EiiDecl, EiiImpl, OptimizeAttr};
+use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc_hir::{ItemId, Target, find_attr};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::{Dependencies, Linkage};
@@ -404,7 +405,7 @@ pub(crate) fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     mir::codegen_mir::<Bx>(cx, instance);
 }
 
-pub fn codegen_global_asm<'tcx, Cx>(cx: &mut Cx, item_id: ItemId)
+pub fn codegen_global_asm<'tcx, Cx>(cx: &mut Cx, item_id: hir::ItemId)
 where
     Cx: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>> + AsmCodegenMethods<'tcx>,
 {

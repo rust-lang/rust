@@ -3,7 +3,7 @@ use std::ops::Deref;
 
 use rustc_abi::{Align, Scalar, Size, WrappingRange};
 use rustc_ast::expand::typetree::{FncTree, TypeTree};
-use rustc_hir::attrs::AttributeKind;
+use rustc_attr_ir::AttributeKind;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
