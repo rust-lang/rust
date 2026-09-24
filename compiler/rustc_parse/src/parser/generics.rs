@@ -126,7 +126,7 @@ impl<'a> Parser<'a> {
                     id: ast::DUMMY_NODE_ID,
                     attrs: preceding_attrs,
                     bounds: ThinVec::new(),
-                    kind: GenericParamKind::Const { ty, span, default: None },
+                    kind: GenericParamKind::Const { ty, span, default: None, arg_pos: None },
                     is_placeholder: false,
                     colon_span: None,
                 })
@@ -149,7 +149,7 @@ impl<'a> Parser<'a> {
             id: ast::DUMMY_NODE_ID,
             attrs: preceding_attrs,
             bounds: ThinVec::new(),
-            kind: GenericParamKind::Const { ty, span, default },
+            kind: GenericParamKind::Const { ty, span, default, arg_pos: None },
             is_placeholder: false,
             colon_span: None,
         })
@@ -190,7 +190,7 @@ impl<'a> Parser<'a> {
             id: ast::DUMMY_NODE_ID,
             attrs: preceding_attrs,
             bounds: ThinVec::new(),
-            kind: GenericParamKind::Const { ty, span, default },
+            kind: GenericParamKind::Const { ty, span, default, arg_pos: None },
             is_placeholder: false,
             colon_span: None,
         })

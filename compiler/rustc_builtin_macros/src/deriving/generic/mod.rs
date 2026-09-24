@@ -635,6 +635,7 @@ impl<'a> TraitDef<'a> {
 
                         // We can't have default values inside impl block
                         default: None,
+                        arg_pos: None,
                     };
                     let mut param_clone = param.clone();
                     param_clone.kind = const_nodefault_kind;

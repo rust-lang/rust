@@ -310,7 +310,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
                 ty::GenericParamDefKind::Type { has_default: default.is_some(), synthetic }
             }
-            GenericParamKind::Const { ty: _, default } => {
+            GenericParamKind::Const { ty: _, default, arg_pos } => {
                 if default.is_some() {
                     match param_default_policy.expect("no policy for generic param default") {
                         ParamDefaultPolicy::Allowed => {}
@@ -321,7 +321,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     }
                 }
 
-                ty::GenericParamDefKind::Const { has_default: default.is_some() }
+                ty::GenericParamDefKind::Const { has_default: default.is_some(), arg_pos }
             }
         };
         Some(ty::GenericParamDef {
@@ -524,7 +524,7 @@ impl<'v> Visitor<'v> for AnonConstInParamTyDetector {
     type Result = ControlFlow<()>;
 
     fn visit_generic_param(&mut self, p: &'v hir::GenericParam<'v>) -> Self::Result {
-        if let GenericParamKind::Const { ty, default: _ } = p.kind {
+        if let GenericParamKind::Const { ty, default: _, arg_pos: _ } = p.kind {
             let prev = self.in_param_ty;
             self.in_param_ty = true;
             let res = self.visit_ty_unambig(ty);
