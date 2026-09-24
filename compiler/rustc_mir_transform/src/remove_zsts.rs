@@ -2,7 +2,6 @@
 
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
 use crate::PassPolicy;
