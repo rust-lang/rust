@@ -41,6 +41,7 @@ fn get_runners() -> Runners {
     runners.insert("--test-failing-rustc", ("Run failing rustc tests", test_failing_rustc));
     runners.insert("--run-ui-tests", ("Run specified rustc UI tests", run_ui_tests));
     runners.insert("--projects", ("Run the tests of popular crates", test_projects));
+    runners.insert("--librsvg-tests", ("Run the librsvg tests", test_librsvg));
     runners.insert("--test-libcore", ("Run libcore tests", test_libcore));
     runners.insert("--test-release-libcore", ("Run libcore tests", test_release_libcore));
     runners.insert("--test-libcore-doctests", ("Run libcore doc-tests", test_libcore_doctests));
@@ -758,93 +759,101 @@ impl Project {
     }
 }
 
+// The reference images assume the exact cairo, pango and freetype that librsvg pins in its own CI;
+// this one renders text decorations a pixel off with the versions Ubuntu ships.
+const LIBRSVG: Project = Project::new("https://gitlab.gnome.org/GNOME/librsvg")
+    .test_harness_arguments(&["--skip", "tests::svg1_1_text_text_03_b_svg", "--exact"])
+    // A debug build of librsvg needs about 5 MB of stack per `cargo test` thread to reach its
+    // maximum layer nesting depth; librsvg's own CI sets the same value.
+    .environment_variables(&[("RUST_MIN_STACK", "8388608")]);
+
+const PROJECTS: &[Project] = &[
+    Project::new("https://github.com/rust-random/getrandom"),
+    Project::new("https://github.com/BurntSushi/memchr"),
+    Project::new("https://github.com/dtolnay/itoa"),
+    Project::new("https://github.com/rust-lang/cfg-if"),
+    // The `ui` test compares against the diagnostics of the compiler it was blessed with, so it
+    // fails on the nightly we use no matter which backend produces the code.
+    Project::new("https://github.com/rust-lang-nursery/lazy-static.rs")
+        .test_harness_arguments(&["--skip", "ui", "--exact"]),
+    Project::new("https://github.com/marshallpierce/rust-base64"),
+    // The test suite refuses to build unless every feature is enabled; it otherwise spawns a
+    // nested `cargo test --all-features` which would not use this backend.
+    Project::new("https://github.com/time-rs/time").cargo_arguments(&["--all-features"]),
+    Project::new("https://github.com/rust-lang/log"),
+    Project::new("https://github.com/bitflags/bitflags"),
+    Project::new("https://github.com/serde-rs/serde"),
+    Project::new("https://github.com/rayon-rs/rayon"),
+    // FIXME: too slow to run in the CI: the release build alone takes 46 minutes and the
+    // `cargo` crate itself needs 5.4 GB of memory in a single rustc process.
+    //Project::new("https://github.com/rust-lang/cargo"),
+];
+
+fn test_project(
+    project: &Project,
+    projects_path: &Path,
+    env: &Env,
+    args: &TestArg,
+) -> Result<(), String> {
+    let clone_result = git_clone_root_dir(project.url, projects_path, true)?;
+    let repo_path = Path::new(&clone_result.repo_dir);
+
+    let mut project_environment = env.clone();
+    let rustflags = format!(
+        "{} --cap-lints allow",
+        project_environment.get("RUSTFLAGS").cloned().unwrap_or_default()
+    );
+    project_environment.insert("RUSTFLAGS".to_string(), rustflags);
+    for (name, value) in project.environment_variables {
+        project_environment.insert(name.to_string(), value.to_string());
+    }
+
+    let mut build_command: Vec<&dyn AsRef<OsStr>> = vec![&"build", &"--release"];
+    build_command
+        .extend(project.cargo_arguments.iter().map(|argument| argument as &dyn AsRef<OsStr>));
+    run_cargo_command(&build_command, Some(repo_path), &project_environment, args)?;
+
+    let mut test_command: Vec<&dyn AsRef<OsStr>> = vec![&"test"];
+    test_command
+        .extend(project.cargo_arguments.iter().map(|argument| argument as &dyn AsRef<OsStr>));
+    if !project.test_harness_arguments.is_empty() {
+        test_command.push(&"--");
+        test_command.extend(
+            project.test_harness_arguments.iter().map(|argument| argument as &dyn AsRef<OsStr>),
+        );
+    }
+    run_cargo_command(&test_command, Some(repo_path), &project_environment, args)
+}
+
+/// Returns the projects of `current_part` when `projects` is split into `nb_parts` parts.
+fn projects_part(projects: &[Project], nb_parts: usize, current_part: usize) -> &[Project] {
+    let count = projects.len().div_ceil(nb_parts);
+    let start = (current_part * count).min(projects.len());
+    let end = (start + count).min(projects.len());
+    &projects[start..end]
+}
+
 fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
-    let projects = [
-        // The reference images assume the exact cairo, pango and freetype that librsvg pins in its
-        // own CI; this one renders text decorations a pixel off with the versions Ubuntu ships.
-        Project::new("https://gitlab.gnome.org/GNOME/librsvg")
-            .test_harness_arguments(&["--skip", "tests::svg1_1_text_text_03_b_svg", "--exact"])
-            // A debug build of librsvg needs about 5 MB of stack per `cargo test` thread to reach
-            // its maximum layer nesting depth; librsvg's own CI sets the same value.
-            .environment_variables(&[("RUST_MIN_STACK", "8388608")]),
-        Project::new("https://github.com/rust-random/getrandom"),
-        Project::new("https://github.com/BurntSushi/memchr"),
-        Project::new("https://github.com/dtolnay/itoa"),
-        Project::new("https://github.com/rust-lang/cfg-if"),
-        // The `ui` test compares against the diagnostics of the compiler it was blessed with, so it
-        // fails on the nightly we use no matter which backend produces the code.
-        Project::new("https://github.com/rust-lang-nursery/lazy-static.rs")
-            .test_harness_arguments(&["--skip", "ui", "--exact"]),
-        Project::new("https://github.com/marshallpierce/rust-base64"),
-        // The test suite refuses to build unless every feature is enabled; it otherwise spawns a
-        // nested `cargo test --all-features` which would not use this backend.
-        Project::new("https://github.com/time-rs/time").cargo_arguments(&["--all-features"]),
-        Project::new("https://github.com/rust-lang/log"),
-        Project::new("https://github.com/bitflags/bitflags"),
-        Project::new("https://github.com/serde-rs/serde"),
-        Project::new("https://github.com/rayon-rs/rayon"),
-        // FIXME: too slow to run in the CI: the release build alone takes 46 minutes and the
-        // `cargo` crate itself needs 5.4 GB of memory in a single rustc process.
-        //Project::new("https://github.com/rust-lang/cargo"),
-    ];
-
-    let mut env = env.clone();
-    let rustflags =
-        format!("{} --cap-lints allow", env.get("RUSTFLAGS").cloned().unwrap_or_default());
-    env.insert("RUSTFLAGS".to_string(), rustflags);
-    let run_tests =
-        |projects_path, iter: &mut dyn Iterator<Item = &Project>| -> Result<(), String> {
-            for project in iter {
-                let clone_result = git_clone_root_dir(project.url, projects_path, true)?;
-                let repo_path = Path::new(&clone_result.repo_dir);
-
-                let mut project_environment = env.clone();
-                for (name, value) in project.environment_variables {
-                    project_environment.insert(name.to_string(), value.to_string());
-                }
-
-                let mut build_command: Vec<&dyn AsRef<OsStr>> = vec![&"build", &"--release"];
-                build_command.extend(
-                    project.cargo_arguments.iter().map(|argument| argument as &dyn AsRef<OsStr>),
-                );
-                run_cargo_command(&build_command, Some(repo_path), &project_environment, args)?;
-
-                let mut test_command: Vec<&dyn AsRef<OsStr>> = vec![&"test"];
-                test_command.extend(
-                    project.cargo_arguments.iter().map(|argument| argument as &dyn AsRef<OsStr>),
-                );
-                if !project.test_harness_arguments.is_empty() {
-                    test_command.push(&"--");
-                    test_command.extend(
-                        project
-                            .test_harness_arguments
-                            .iter()
-                            .map(|argument| argument as &dyn AsRef<OsStr>),
-                    );
-                }
-                run_cargo_command(&test_command, Some(repo_path), &project_environment, args)?;
-            }
-
-            Ok(())
-        };
-
     let projects_path = Path::new("projects");
     create_dir(projects_path)?;
 
-    let nb_parts = args.nb_parts.unwrap_or(0);
-    if let Some(count) = projects.len().checked_div(nb_parts) {
-        // We increment the number of tests by one because if this is an odd number, we would skip
-        // one test.
-        let count = count + 1;
-        let current_part = args.current_part.unwrap();
-        let start = current_part * count;
-        // We remove the projects we don't want to test.
-        run_tests(projects_path, &mut projects.iter().skip(start).take(count))?;
-    } else {
-        run_tests(projects_path, &mut projects.iter())?;
+    let projects = match (args.nb_parts, args.current_part) {
+        (Some(nb_parts), Some(current_part)) if nb_parts > 0 => {
+            projects_part(PROJECTS, nb_parts, current_part)
+        }
+        _ => PROJECTS,
+    };
+    for project in projects {
+        test_project(project, projects_path, env, args)?;
     }
 
     Ok(())
+}
+
+fn test_librsvg(env: &Env, args: &TestArg) -> Result<(), String> {
+    let projects_path = Path::new("projects");
+    create_dir(projects_path)?;
+    test_project(&LIBRSVG, projects_path, env, args)
 }
 
 fn test_libcore(env: &Env, args: &TestArg) -> Result<(), String> {
@@ -1743,5 +1752,18 @@ mod tests {
         assert_eq!(read_test_list(&rust_path, &list_path), Ok(vec!["tests/ui/".to_string()]));
 
         remove_dir_all(&rust_path).unwrap();
+    }
+
+    #[test]
+    fn test_projects_parts_cover_every_project() {
+        let urls = |projects: &[Project]| -> Vec<&str> {
+            projects.iter().map(|project| project.url).collect()
+        };
+        for nb_parts in 1..=PROJECTS.len() + 1 {
+            let parts: Vec<&str> = (0..nb_parts)
+                .flat_map(|current_part| urls(projects_part(PROJECTS, nb_parts, current_part)))
+                .collect();
+            assert_eq!(parts, urls(PROJECTS), "splitting into {nb_parts} parts");
+        }
     }
 }
