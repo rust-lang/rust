@@ -6,8 +6,8 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 rustc_abi = { path = "../rustc_abi", optional = true }
+rustc_attr_ir = { path = "../rustc_attr_ir", optional = true }
 rustc_data_structures = { path = "../rustc_data_structures" }
-rustc_hir = { path = "../rustc_hir", optional = true }
 rustc_middle = { path = "../rustc_middle", optional = true }
 rustc_span = { path = "../rustc_span", optional = true }
 smallvec = "1.8.1"
@@ -23,7 +23,7 @@ itertools = "0.15"
 # tidy-alphabetical-start
 rustc = [
     "dep:rustc_abi",
-    "dep:rustc_hir",
+    "dep:rustc_attr_ir",
     "dep:rustc_middle",
     "dep:rustc_span",
 ]

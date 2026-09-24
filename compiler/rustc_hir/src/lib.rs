@@ -26,18 +26,13 @@ mod target_impls;
 
 #[doc(no_inline)]
 pub use hir::*;
-pub use rustc_attr_ir::{self as attrs, find_attr};
+// FIXME: Remove this use tree, replace by `rustc_attr_ir` imports
+#[doc(hidden)]
+pub use rustc_attr_ir::{
+    self as attrs, Attribute, ConstStability, DefaultBodyStability, Stability, StabilityLevel,
+    StableSince, find_attr, target::Target,
+};
 pub use rustc_hir_id::*;
 pub use rustc_span::def_id;
-// FIXME: Remove this use tree, replace by `rustc_hir::attrs` or `rustc_attr_ir` imports
-#[doc(hidden)]
-pub use {
-    attrs::target::{self, AssocCtxt, MethodKind, Target},
-    attrs::{
-        AttrArgs, AttrItem, AttrPath, Attribute, ConstStability, DefaultBodyStability,
-        HashIgnoredAttrId, PartialConstStability, Stability, StabilityLevel, StableSince,
-        UnstableReason, VERSION_PLACEHOLDER,
-    },
-};
 
 pub use crate::arena::Arena;

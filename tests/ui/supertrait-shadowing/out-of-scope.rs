@@ -6,6 +6,7 @@
 use std::mem::size_of;
 
 mod out_of_scope {
+    use std::gca;
     pub trait Subtrait: super::Supertrait {
         fn hello(&self) -> &'static str {
             "subtrait"
@@ -16,7 +17,7 @@ mod out_of_scope {
     }
     impl<T> Subtrait for T {
         type Assoc = i16;
-        const CONST: i32 = core::direct_const_arg!(2);
+        const CONST: i32 = gca!(2);
     }
 }
 

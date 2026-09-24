@@ -7,9 +7,11 @@
 #![feature(min_generic_const_args, associated_type_defaults)]
 #![allow(incomplete_features)]
 
+use std::gca;
+
 pub trait TraitA<T> {
     #[rustc_always_gca]
-    const K: u8 = core::direct_const_arg!(0);
+    const K: u8 = gca!(0);
 }
 pub trait TraitB<T> {}
 

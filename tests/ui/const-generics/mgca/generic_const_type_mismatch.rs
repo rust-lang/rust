@@ -7,13 +7,15 @@
     min_generic_const_args,
     const_param_ty_trait
 )]
+
+use std::gca;
 use std::marker::ConstParamTy_;
 
 struct Foo<T> {
     field: T,
 }
 
-const WRAP<T: ConstParamTy_>: T = core::direct_const_arg!(Foo::<T> { field: 1 });
+const WRAP<T: ConstParamTy_>: T = gca!(Foo::<T> { field: 1 });
 //~^ ERROR: type annotations needed for the literal
 
 fn main() {}

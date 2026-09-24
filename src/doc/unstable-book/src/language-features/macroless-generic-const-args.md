@@ -1,6 +1,6 @@
 # macroless_generic_const_args
 
-Enables using `#![feature(min_generic_const_args)]` without the `direct_const_arg!` macro.
+Enables using `#![feature(min_generic_const_args)]` without the `gca!` macro.
 
 The tracking issue for this feature is: [#159006]
 
@@ -11,7 +11,7 @@ The tracking issue for this feature is: [#159006]
 Warning: This feature is incomplete; its design and syntax may change.
 
 Related features:
-- [min_generic_const_args]. See that doc for what the `direct_const_arg!` is. This feature enables
+- [min_generic_const_args]. See that doc for what the `gca!` is. This feature enables
 support for directly represented const arguments without the macro.
 - [macroless_const_item_generic_const_args]. For a version of this feature that works for const arguments
 as the right hand side of a const item.
@@ -39,13 +39,13 @@ trait Bar {
 struct Baz;
 
 impl Bar for Baz {
-    const VAL: usize = core::direct_const_arg!(2);
-    const VAL2: usize = core::direct_const_arg!(const { Self::VAL * 2 });
+    const VAL: usize = core::gca!(2);
+    const VAL2: usize = core::gca!(const { Self::VAL * 2 });
 }
 
 struct Foo<B: Bar> {
-    arr1: [usize; core::direct_const_arg!(B::VAL)],
-    arr2: [usize; core::direct_const_arg!(B::VAL2)],
+    arr1: [usize; core::gca!(B::VAL)],
+    arr2: [usize; core::gca!(B::VAL2)],
 }
 ```
 
@@ -66,8 +66,8 @@ struct Baz;
 
 impl Bar for Baz {
     // note these still need a macro, macroless for these is `macroless_const_item_generic_const_args`
-    const VAL: usize = core::direct_const_arg!(2);
-    const VAL2: usize = core::direct_const_arg!(const { Self::VAL * 2 });
+    const VAL: usize = core::gca!(2);
+    const VAL2: usize = core::gca!(const { Self::VAL * 2 });
 }
 
 struct Foo<B: Bar> {

@@ -1,8 +1,9 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
 use rustc_ast::Mutability;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::TraitErrors;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
@@ -122,7 +123,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
             if !tcx.features().adt_const_params() {
                 for variant in adt.variants() {
                     if variant.is_field_list_non_exhaustive() {
-                        let attr_span = match hir::find_attr!(tcx, variant.def_id, hir::attrs::AttributeKind::NonExhaustive(span) => *span)
+                        let attr_span = match find_attr!(tcx, variant.def_id, NonExhaustive(span) => *span)
                         {
                             Some(sp) => sp,
                             None => bug!("non_exhaustive variant missing NonExhaustive attribute"),

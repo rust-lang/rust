@@ -1,11 +1,11 @@
 error: the constant `"this isn't a usize"` is not of type `usize`
-  --> $DIR/type-const-free-value-type-mismatch.rs:8:1
+  --> $DIR/type-const-free-value-type-mismatch.rs:10:1
    |
-LL | const N: usize = core::direct_const_arg!("this isn't a usize");
+LL | const N: usize = gca!("this isn't a usize");
    | ^^^^^^^^^^^^^^ expected `usize`, found `&'static str`
 
 error[E0308]: mismatched types
-  --> $DIR/type-const-free-value-type-mismatch.rs:11:11
+  --> $DIR/type-const-free-value-type-mismatch.rs:13:11
    |
 LL | fn f() -> [u8; const { N }] {}
    |    -      ^^^^^^^^^^^^^^^^^ expected `[u8; const { N }]`, found `()`

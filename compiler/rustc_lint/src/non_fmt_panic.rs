@@ -1,7 +1,7 @@
 use rustc_ast as ast;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level, msg};
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw};
@@ -143,7 +143,14 @@ impl<'a, 'b, 'tcx> Diagnostic<'a> for PanicMessageNotLiteral<'b, 'tcx> {
                     .get_diagnostic_item(sym::Debug)
                     .is_some_and(|t| infcx.type_implements_trait(t, [ty], param_env).may_apply());
 
-            let suggest_panic_any = !is_str && panic == Some(sym::std_panic_macro);
+            let suggest_panic_any = !is_str
+                && panic == Some(sym::std_panic_macro)
+                && cx
+                    .tcx
+                    .all_diagnostic_items(())
+                    .name_to_id
+                    .keys()
+                    .any(|name| name.as_str() == "panic_any");
 
             let fmt_applicability = if suggest_panic_any {
                 // If we can use panic_any, use that as the MachineApplicable suggestion.

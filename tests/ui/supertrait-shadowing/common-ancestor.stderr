@@ -1,11 +1,11 @@
 warning: trait item `hello` from `B` shadows identically named item from supertrait
-  --> $DIR/common-ancestor.rs:24:5
+  --> $DIR/common-ancestor.rs:25:5
    |
 LL |     fn hello(&self) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: item from `A` is shadowed by a subtrait item
-  --> $DIR/common-ancestor.rs:12:5
+  --> $DIR/common-ancestor.rs:13:5
    |
 LL |     fn hello(&self) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,42 +16,42 @@ LL | #![warn(shadowing_supertrait_items)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: trait item `Assoc` from `B` shadows identically named item from supertrait
-  --> $DIR/common-ancestor.rs:28:5
+  --> $DIR/common-ancestor.rs:29:5
    |
 LL |     type Assoc;
    |     ^^^^^^^^^^
    |
 note: item from `A` is shadowed by a subtrait item
-  --> $DIR/common-ancestor.rs:15:5
+  --> $DIR/common-ancestor.rs:16:5
    |
 LL |     type Assoc;
    |     ^^^^^^^^^^
 
 warning: trait item `CONST` from `B` shadows identically named item from supertrait
-  --> $DIR/common-ancestor.rs:31:5
+  --> $DIR/common-ancestor.rs:32:5
    |
 LL |     const CONST: i32;
    |     ^^^^^^^^^^^^^^^^
    |
 note: item from `A` is shadowed by a subtrait item
-  --> $DIR/common-ancestor.rs:16:5
+  --> $DIR/common-ancestor.rs:17:5
    |
 LL |     const CONST: i32;
    |     ^^^^^^^^^^^^^^^^
 
 warning: trait item `hello` from `B` shadows identically named item from supertrait
-  --> $DIR/common-ancestor.rs:40:19
+  --> $DIR/common-ancestor.rs:41:19
    |
 LL |     assert_eq!(().hello(), "B");
    |                   ^^^^^
    |
 note: item from `B` shadows a supertrait item
-  --> $DIR/common-ancestor.rs:24:5
+  --> $DIR/common-ancestor.rs:25:5
    |
 LL |     fn hello(&self) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: item from `A` is shadowed by a subtrait item
-  --> $DIR/common-ancestor.rs:12:5
+  --> $DIR/common-ancestor.rs:13:5
    |
 LL |     fn hello(&self) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

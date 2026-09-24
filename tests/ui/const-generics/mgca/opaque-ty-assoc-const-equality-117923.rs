@@ -3,6 +3,8 @@
 #![feature(min_generic_const_args, macroless_generic_const_args)]
 #![allow(incomplete_features, dead_code)]
 
+use std::gca;
+
 trait Trait {
     #[rustc_always_gca]
     const CT: usize;
@@ -13,7 +15,7 @@ struct Type<const N: usize> {
 }
 
 impl<const N: usize> Trait for Type<N> {
-    const CT: usize = core::direct_const_arg!(N);
+    const CT: usize = gca!(N);
 }
 
 fn func<const N: usize>() -> impl Trait<CT = { <Type<N> as Trait>::CT }> {

@@ -7,8 +7,8 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use smallvec::SmallVec;
 use thin_vec::{ThinVec, thin_vec};
 
-use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
+use crate::deriving::new_path;
 use crate::diagnostics;
 
 pub(crate) fn expand_deriving_default(
@@ -22,7 +22,7 @@ pub(crate) fn expand_deriving_default(
 
     let trait_def = TraitDef {
         span,
-        path: new_path(cx, span, &[kw::Default, sym::Default], &[]),
+        path: new_path(cx, span, &[kw::Default, sym::Default], vec![]),
         skip_path_as_bound: has_a_default_variant(item),
         needs_copy_as_bound_if_packed: false,
         additional_bounds: SmallVec::new(),
@@ -32,7 +32,8 @@ pub(crate) fn expand_deriving_default(
             generics: cx.empty_generics(span),
             explicit_self: false,
             nonself_args: SmallVec::new(),
-            ret_ty: Self_,
+            has_other_selflike_arg: false,
+            ret_ty: cx.ty_self(span),
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: combine_substructure(|cx, trait_span, substr| {
@@ -49,7 +50,6 @@ pub(crate) fn expand_deriving_default(
                 }
             }),
         }],
-        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,

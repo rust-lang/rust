@@ -3,7 +3,7 @@
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 
 use std::alloc::{Allocator, Global, Layout};
 

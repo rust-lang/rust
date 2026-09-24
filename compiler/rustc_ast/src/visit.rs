@@ -1112,7 +1112,7 @@ macro_rules! common_visitor_and_walkers {
                     visit_visitable!(vis, bytes),
                 ExprKind::UnsafeBinderCast(kind, expr, ty) =>
                     visit_visitable!(vis, kind, expr, ty),
-                ExprKind::DirectConstArg(expr) =>
+                ExprKind::GcaMacro(expr) =>
                     visit_visitable!(vis, expr),
                 ExprKind::Err(_guar) => {}
                 ExprKind::Dummy => {}

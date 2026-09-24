@@ -3,7 +3,7 @@
 //@ compile-flags: --target nvptx64-nvidia-cuda
 //@ needs-llvm-components: nvptx
 
-#![feature(no_core, asm_experimental_arch)]
+#![feature(no_core, asm_experimental_arch, f16)]
 #![crate_type = "rlib"]
 #![no_core]
 
@@ -38,78 +38,96 @@ macro_rules! check {
 
 // CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg16_i8
 // CHECK: // begin inline asm
-// CHECK: mov.i16 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: mov.b16 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
 // CHECK: // end inline asm
-check!(reg16_i8 i8 reg16 "mov.i16");
+check!(reg16_i8 i8 reg16 "mov.b16");
 
 // CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg16_i16
 // CHECK: // begin inline asm
-// CHECK: mov.i16 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: mov.b16 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
 // CHECK: // end inline asm
-check!(reg16_i16 i16 reg16 "mov.i16");
+check!(reg16_i16 i16 reg16 "mov.b16");
+
+// CHECK-LABEL: .visible .func (.param .align 2 .b8 func_retval0[2]) reg16_f16
+// CHECK: // begin inline asm
+// CHECK: mov.b16 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
+check!(reg16_f16 f16 reg16 "mov.b16");
 
 // CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg32_i8
 // CHECK: // begin inline asm
-// CHECK: mov.i32 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: mov.b32 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
 // CHECK: // end inline asm
-check!(reg32_i8 i8 reg32 "mov.i32");
+check!(reg32_i8 i8 reg32 "mov.b32");
 
 // CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg32_i16
 // CHECK: // begin inline asm
-// CHECK: mov.i32 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: mov.b32 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
 // CHECK: // end inline asm
-check!(reg32_i16 i16 reg32 "mov.i32");
+check!(reg32_i16 i16 reg32 "mov.b32");
+
+// CHECK-LABEL: .visible .func (.param .align 2 .b8 func_retval0[2]) reg32_f16
+// CHECK: // begin inline asm
+// CHECK: mov.b32 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
+check!(reg32_f16 f16 reg32 "mov.b32");
 
 // CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg32_i32
 // CHECK: // begin inline asm
-// CHECK: mov.i32 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: mov.b32 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
 // CHECK: // end inline asm
-check!(reg32_i32 i32 reg32 "mov.i32");
+check!(reg32_i32 i32 reg32 "mov.b32");
 
 // CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg32_f32
 // CHECK: // begin inline asm
-// CHECK: mov.i32 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: mov.b32 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
 // CHECK: // end inline asm
-check!(reg32_f32 f32 reg32 "mov.i32");
+check!(reg32_f32 f32 reg32 "mov.b32");
 
 // CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg64_i8
 // CHECK: // begin inline asm
-// CHECK: mov.i64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: mov.b64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
 // CHECK: // end inline asm
-check!(reg64_i8 i8 reg64 "mov.i64");
+check!(reg64_i8 i8 reg64 "mov.b64");
 
 // CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg64_i16
 // CHECK: // begin inline asm
-// CHECK: mov.i64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: mov.b64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
 // CHECK: // end inline asm
-check!(reg64_i16 i16 reg64 "mov.i64");
+check!(reg64_i16 i16 reg64 "mov.b64");
+
+// CHECK-LABEL: .visible .func (.param .align 2 .b8 func_retval0[2]) reg64_f16
+// CHECK: // begin inline asm
+// CHECK: mov.b64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
+check!(reg64_f16 f16 reg64 "mov.b64");
 
 // CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg64_i32
 // CHECK: // begin inline asm
-// CHECK: mov.i64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: mov.b64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
 // CHECK: // end inline asm
-check!(reg64_i32 i32 reg64 "mov.i64");
+check!(reg64_i32 i32 reg64 "mov.b64");
 
 // CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg64_f32
 // CHECK: // begin inline asm
-// CHECK: mov.i64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: mov.b64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
 // CHECK: // end inline asm
-check!(reg64_f32 f32 reg64 "mov.i64");
+check!(reg64_f32 f32 reg64 "mov.b64");
 
 // CHECK-LABEL: .visible .func (.param .b64 func_retval0) reg64_i64
 // CHECK: // begin inline asm
-// CHECK: mov.i64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: mov.b64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
 // CHECK: // end inline asm
-check!(reg64_i64 i64 reg64 "mov.i64");
+check!(reg64_i64 i64 reg64 "mov.b64");
 
 // CHECK-LABEL: .visible .func (.param .b64 func_retval0) reg64_f64
 // CHECK: // begin inline asm
-// CHECK: mov.i64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: mov.b64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
 // CHECK: // end inline asm
-check!(reg64_f64 f64 reg64 "mov.i64");
+check!(reg64_f64 f64 reg64 "mov.b64");
 
 // CHECK-LABEL: .visible .func (.param .b64 func_retval0) reg64_ptr
 // CHECK: // begin inline asm
-// CHECK: mov.i64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: mov.b64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
 // CHECK: // end inline asm
-check!(reg64_ptr ptr reg64 "mov.i64");
+check!(reg64_ptr ptr reg64 "mov.b64");

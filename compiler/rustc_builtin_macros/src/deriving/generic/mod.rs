@@ -174,9 +174,8 @@
 //! )
 //! ```
 
-use std::iter::once;
 use std::ops::Not;
-use std::{iter, vec};
+use std::vec;
 
 pub(crate) use Substructure::*;
 pub(crate) use rustc_ast as ast;
@@ -192,11 +191,8 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, respan, sym};
 pub(crate) use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
-use ty::{Ref, Self_, Ty};
 
 use crate::{deriving, diagnostics};
-
-pub(crate) mod ty;
 
 pub(crate) struct TraitDef<'a> {
     /// The span for the current #[derive(Foo)] header.
@@ -220,8 +216,6 @@ pub(crate) struct TraitDef<'a> {
 
     pub methods: SmallVec<[MethodDef<'a>; 1]>,
 
-    pub associated_types: SmallVec<[(Ident, Ty); 1]>,
-
     pub is_const: bool,
 
     /// The safety of the `impl`.
@@ -241,10 +235,13 @@ pub(crate) struct MethodDef<'a> {
     pub explicit_self: bool,
 
     /// Arguments other than the self argument.
-    pub nonself_args: SmallVec<[(Ty, Symbol); 1]>,
+    pub nonself_args: SmallVec<[(Box<ast::Ty>, Symbol); 1]>,
+
+    /// Whether this method has another arg of type `&self`.
+    pub has_other_selflike_arg: bool,
 
     /// Returns type
-    pub ret_ty: Ty,
+    pub ret_ty: Box<ast::Ty>,
 
     pub attributes: ast::AttrVec,
 
@@ -294,15 +291,14 @@ pub(crate) enum Substructure<'a> {
     /// variants has any fields).
     AllFieldlessEnum(&'a ast::EnumDef),
 
-    /// Matching variants of the enum: variant index, ast::Variant,
+    /// Matching variants of the enum: ast::Variant,
     /// fields: the field name is only non-`None` in the case of a struct
     /// variant.
     EnumMatching(&'a ast::Variant, Vec<FieldInfo>),
 
-    /// The discriminant of an enum. The first field is a `FieldInfo` for the discriminants, as
-    /// if they were fields. The second field is the expression to combine the
+    /// The discriminant of an enum. The field is the expression to combine the
     /// discriminant expression with; it will be `None` if no match is necessary.
-    EnumDiscr(FieldInfo, Option<Box<Expr>>),
+    EnumDiscr(Option<Box<Expr>>),
 
     /// A static method where `Self` is a struct.
     StaticStruct(&'a ast::VariantData),
@@ -462,14 +458,30 @@ impl<'a> TraitDef<'a> {
         push: &mut dyn FnMut(Box<ast::Item>),
         from_scratch: bool,
     ) {
+        let span = self.span;
         let is_packed = matches!(
             AttributeParser::parse_limited_sym(cx.sess, &item.attrs, &[sym::repr]),
             Some(Attribute::Parsed(AttributeKind::Repr { reprs, .. })) if reprs.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
         );
 
         let mut newitem = match &item.kind {
-            ast::ItemKind::Struct(ident, generics, struct_def) => {
-                self.expand_struct_def(cx, struct_def, *ident, generics, from_scratch, is_packed)
+            ast::ItemKind::Union(..) if !self.supports_unions => {
+                cx.dcx().emit_err(diagnostics::DeriveUnion { span });
+                return;
+            }
+            ast::ItemKind::Struct(ident, generics, struct_def)
+            | ast::ItemKind::Union(ident, generics, struct_def) => {
+                let fields = struct_def.fields().iter();
+                let methods = self.methods.iter().filter_map(|method_def| {
+                    let body = if from_scratch || method_def.is_static() {
+                        method_def.call_substructure_method(cx, span, StaticStruct(struct_def))
+                    } else {
+                        method_def.expand_struct_method_body(cx, span, struct_def, is_packed)
+                    };
+
+                    method_def.create_method(cx, span, body)
+                });
+                self.create_derived_impl(cx, *ident, generics, fields, methods, is_packed)
             }
             ast::ItemKind::Enum(ident, generics, enum_def) => {
                 // We can skip generating the impl here, because `repr(packed)`
@@ -479,22 +491,17 @@ impl<'a> TraitDef<'a> {
                 if is_packed {
                     return;
                 }
-                self.expand_enum_def(cx, enum_def, *ident, generics, from_scratch)
-            }
-            ast::ItemKind::Union(ident, generics, struct_def) => {
-                if self.supports_unions {
-                    self.expand_struct_def(
-                        cx,
-                        struct_def,
-                        *ident,
-                        generics,
-                        from_scratch,
-                        is_packed,
-                    )
-                } else {
-                    cx.dcx().emit_err(diagnostics::DeriveUnion { span: self.span });
-                    return;
-                }
+                let fields = enum_def.variants.iter().flat_map(|variant| variant.data.fields());
+                let methods = self.methods.iter().filter_map(|method_def| {
+                    let body = if from_scratch || method_def.is_static() {
+                        method_def.call_substructure_method(cx, span, StaticEnum(enum_def))
+                    } else {
+                        method_def.expand_enum_method_body(cx, span, enum_def)
+                    };
+
+                    method_def.create_method(cx, span, body)
+                });
+                self.create_derived_impl(cx, *ident, generics, fields, methods, is_packed)
             }
             _ => unreachable!(),
         };
@@ -558,36 +565,13 @@ impl<'a> TraitDef<'a> {
         cx: &ExtCtxt<'_>,
         type_ident: Ident,
         generics: &Generics,
-        field_tys: impl Iterator<Item = &'a ast::Ty>,
+        fields: impl Iterator<Item = &'a ast::FieldDef>,
         methods: impl Iterator<Item = Box<ast::AssocItem>>,
         is_packed: bool,
     ) -> Box<ast::Item> {
-        // Transform associated types from `deriving::ty::Ty` into `ast::AssocItem`
-        let associated_types = self.associated_types.iter().map(|&(ident, ref type_def)| {
-            Box::new(ast::AssocItem {
-                id: ast::DUMMY_NODE_ID,
-                span: self.span,
-                vis: ast::Visibility {
-                    span: self.span.shrink_to_lo(),
-                    kind: ast::VisibilityKind::Inherited,
-                },
-                attrs: ast::AttrVec::new(),
-                kind: ast::AssocItemKind::Type(Box::new(ast::TyAlias {
-                    defaultness: ast::Defaultness::Implicit,
-                    ident,
-                    generics: Generics::default(),
-                    after_where_clause: ast::WhereClause::default(),
-                    bounds: ThinVec::new(),
-                    ty: Some(type_def.to_ty(cx, self.span)),
-                })),
-                tokens: None,
-            })
-        });
-
         let mut where_clause = ast::WhereClause::default();
         where_clause.span = generics.where_clause.span;
         let ctxt = self.span.ctxt();
-        let span = generics.span.with_ctxt(ctxt);
 
         // Create the generic parameters
         let params: ThinVec<_> = generics
@@ -667,8 +651,8 @@ impl<'a> TraitDef<'a> {
             .collect();
 
         if !ty_param_names.is_empty() {
-            for field_ty in field_tys {
-                let field_ty_params = find_type_parameters(field_ty, &ty_param_names, cx);
+            for field in fields {
+                let field_ty_params = find_type_parameters(&field.ty, &ty_param_names, cx);
 
                 for field_ty_param in field_ty_params {
                     // if we have already handled this type, skip it
@@ -716,7 +700,7 @@ impl<'a> TraitDef<'a> {
             }
         }
 
-        let trait_generics = Generics { params, where_clause, span };
+        let trait_generics = Generics { params, where_clause, span: generics.span.with_ctxt(ctxt) };
 
         // Create the reference to the trait.
         let trait_ref = cx.trait_ref(self.path.clone());
@@ -741,8 +725,6 @@ impl<'a> TraitDef<'a> {
         let path =
             cx.path_all(type_ident.span.with_ctxt(ctxt), false, vec![type_ident], self_params);
         let self_type = cx.ty_path(path);
-        let rustc_const_unstable =
-            cx.path_ident(self.span, Ident::new(sym::rustc_const_unstable, self.span));
 
         let mut attrs = thin_vec![cx.attr_word(sym::automatically_derived, self.span),];
 
@@ -750,6 +732,9 @@ impl<'a> TraitDef<'a> {
         // Other crates don't need stability attributes, so adding them is not useful, but libcore needs them
         // on all const trait impls.
         if self.is_const && cx.ecfg.features.staged_api() {
+            let rustc_const_unstable =
+                cx.path_ident(self.span, Ident::new(sym::rustc_const_unstable, self.span));
+
             // #[rustc_const_unstable(feature = "derive_const", issue = "118304")]
             attrs.push(
                 cx.attr_nested(
@@ -798,61 +783,9 @@ impl<'a> TraitDef<'a> {
                 })),
                 constness: if self.is_const { ast::Const::Yes(DUMMY_SP) } else { ast::Const::No },
                 self_ty: self_type,
-                items: methods.chain(associated_types).collect(),
+                items: methods.collect(),
             }),
         )
-    }
-
-    fn expand_struct_def(
-        &self,
-        cx: &ExtCtxt<'_>,
-        struct_def: &'a VariantData,
-        type_ident: Ident,
-        generics: &Generics,
-        from_scratch: bool,
-        is_packed: bool,
-    ) -> Box<ast::Item> {
-        let field_tys = struct_def.fields().iter().map(|field| &*field.ty);
-
-        let methods = self.methods.iter().filter_map(|method_def| {
-            let body = if from_scratch || method_def.is_static() {
-                method_def.call_substructure_method(cx, self, StaticStruct(struct_def))
-            } else {
-                method_def.expand_struct_method_body(cx, self, struct_def, is_packed)
-            };
-
-            method_def.create_method(cx, self, body)
-        });
-
-        self.create_derived_impl(cx, type_ident, generics, field_tys, methods, is_packed)
-    }
-
-    fn expand_enum_def(
-        &self,
-        cx: &ExtCtxt<'_>,
-        enum_def: &'a EnumDef,
-        type_ident: Ident,
-        generics: &Generics,
-        from_scratch: bool,
-    ) -> Box<ast::Item> {
-        let field_tys = enum_def
-            .variants
-            .iter()
-            .flat_map(|variant| variant.data.fields())
-            .map(|field| &*field.ty);
-
-        let methods = self.methods.iter().filter_map(|method_def| {
-            let body = if from_scratch || method_def.is_static() {
-                method_def.call_substructure_method(cx, self, StaticEnum(enum_def))
-            } else {
-                method_def.expand_enum_method_body(cx, self, enum_def, type_ident)
-            };
-
-            method_def.create_method(cx, self, body)
-        });
-
-        let is_packed = false; // enums are never packed
-        self.create_derived_impl(cx, type_ident, generics, field_tys, methods, is_packed)
     }
 }
 
@@ -860,10 +793,10 @@ impl<'a> MethodDef<'a> {
     fn call_substructure_method(
         &self,
         cx: &ExtCtxt<'_>,
-        trait_: &TraitDef<'_>,
+        span: Span,
         substructure: Substructure<'_>,
     ) -> BlockOrExpr {
-        (self.combine_substructure)(cx, trait_.span, substructure)
+        (self.combine_substructure)(cx, span, substructure)
     }
 
     fn is_static(&self) -> bool {
@@ -872,30 +805,27 @@ impl<'a> MethodDef<'a> {
 
     /// Expressions for `&self` and also any other
     /// args with the same type (e.g. the `other` arg in `PartialEq::eq`).
-    fn get_selflike_args(&self, cx: &ExtCtxt<'_>, trait_: &TraitDef<'_>) -> ThinVec<Box<Expr>> {
+    fn get_selflike_args(&self, cx: &ExtCtxt<'_>, span: Span) -> ThinVec<Box<Expr>> {
         assert!(self.explicit_self);
 
-        let span = trait_.span;
-
-        once(cx.expr_self(span))
-            .chain(self.nonself_args.iter().filter_map(|(ty, name)| match ty {
-                Ref(Self_, _) => Some(cx.expr_ident(span, Ident::new(*name, span))),
-                _ => None,
-            }))
-            .collect()
+        let self_expr = cx.expr_self(span);
+        if self.has_other_selflike_arg {
+            thin_vec![self_expr, cx.expr_ident_sym(span, self.nonself_args[0].1)]
+        } else {
+            thin_vec![self_expr]
+        }
     }
 
     fn create_method(
         &self,
         cx: &ExtCtxt<'_>,
-        trait_: &TraitDef<'_>,
+        span: Span,
         body: BlockOrExpr,
     ) -> Option<Box<ast::AssocItem>> {
         // `assert_fields_are_eq` has an empty default implementation
         if body.0.is_empty() && body.1.is_none() && self.name == sym::assert_fields_are_eq {
             return None;
         }
-        let span = trait_.span;
         // Create the generics that aren't for `Self`.
         let fn_generics = self.generics.clone();
 
@@ -910,16 +840,16 @@ impl<'a> MethodDef<'a> {
         let args = self_arg
             .into_iter()
             .chain(self.nonself_args.iter().map(|(ty, name)| {
-                let ast_ty = ty.to_ty(cx, span);
+                let ast_ty = ty.clone();
                 let ident = Ident::new(*name, span);
                 cx.param(span, ident, ast_ty)
             }))
             .collect();
 
-        let ret_type = if let Ty::Unit = &self.ret_ty {
+        let ret_type = if self.ret_ty.kind.is_unit() {
             ast::FnRetTy::Default(span)
         } else {
-            ast::FnRetTy::Ty(self.ret_ty.to_ty(cx, span))
+            ast::FnRetTy::Ty(self.ret_ty.clone())
         };
 
         let method_ident = Ident::new(self.name, span);
@@ -989,15 +919,15 @@ impl<'a> MethodDef<'a> {
     fn expand_struct_method_body<'b>(
         &self,
         cx: &ExtCtxt<'_>,
-        trait_: &TraitDef<'b>,
+        span: Span,
         struct_def: &'b VariantData,
         is_packed: bool,
     ) -> BlockOrExpr {
-        let selflike_args = self.get_selflike_args(cx, trait_);
+        let selflike_args = self.get_selflike_args(cx, span);
 
         let selflike_fields =
-            trait_.create_struct_field_access_fields(cx, &selflike_args, struct_def, is_packed);
-        self.call_substructure_method(cx, trait_, Struct(struct_def, selflike_fields))
+            create_struct_field_access_fields(span, cx, &selflike_args, struct_def, is_packed);
+        self.call_substructure_method(cx, span, Struct(struct_def, selflike_fields))
     }
 
     /// ```
@@ -1038,11 +968,9 @@ impl<'a> MethodDef<'a> {
     fn expand_enum_method_body<'b>(
         &self,
         cx: &ExtCtxt<'_>,
-        trait_: &TraitDef<'b>,
+        span: Span,
         enum_def: &'b EnumDef,
-        type_ident: Ident,
     ) -> BlockOrExpr {
-        let span = trait_.span;
         let variants = &enum_def.variants;
 
         // Traits that unify fieldless variants always use the discriminant(s).
@@ -1059,48 +987,12 @@ impl<'a> MethodDef<'a> {
             return BlockOrExpr(ThinVec::new(), Some(expr));
         }
 
-        let selflike_args = self.get_selflike_args(cx, trait_);
+        let selflike_args = self.get_selflike_args(cx, span);
 
-        let prefixes = iter::once("__self".to_string())
-            .chain((1..selflike_args.len()).map(|arg_count| format!("__arg{arg_count}")))
-            .collect::<Vec<String>>();
-
-        // Build a series of let statements mapping each selflike_arg
-        // to its discriminant value.
-        //
-        // e.g. for `PartialEq::eq` builds two statements:
-        // ```
-        // let __self_discr = ::core::intrinsics::discriminant_value(self);
-        // let __arg1_discr = ::core::intrinsics::discriminant_value(other);
-        // ```
-        let get_discr_pieces = || {
-            let discr_idents = prefixes
-                .iter()
-                .map(|name| Ident::from_str_and_span(&format!("{name}_discr"), span));
-
-            let mut discr_exprs =
-                discr_idents.clone().map(|ident| cx.expr_addr_of(span, cx.expr_ident(span, ident)));
-
-            let self_expr = discr_exprs.next().unwrap();
-            let other_selflike_expr = discr_exprs.next();
-            debug_assert!(discr_exprs.next().is_none());
-
-            let discr_field =
-                FieldInfo { span, name: None, self_expr, other_selflike_expr, maybe_scalar: true };
-
-            let discr_let_stmts: ThinVec<_> = iter::zip(discr_idents, &selflike_args)
-                .map(|(ident, selflike_arg)| {
-                    let variant_value = deriving::call_intrinsic(
-                        cx,
-                        span,
-                        sym::discriminant_value,
-                        thin_vec![selflike_arg.clone()],
-                    );
-                    cx.stmt_let(span, false, ident, variant_value)
-                })
-                .collect();
-
-            (discr_field, discr_let_stmts)
+        let prefixes: &[&str] = match selflike_args.len() {
+            1 => &["__self"],
+            2 => &["__self", "__arg1"],
+            _ => unreachable!(),
         };
 
         // There are some special cases involving fieldless enums where no
@@ -1113,29 +1005,17 @@ impl<'a> MethodDef<'a> {
                         // If the type is fieldless and the trait uses the discriminant and
                         // there are multiple variants, we need just an operation on
                         // the discriminant(s).
-                        let (discr_field, mut discr_let_stmts) = get_discr_pieces();
-                        let mut discr_check =
-                            self.call_substructure_method(cx, trait_, EnumDiscr(discr_field, None));
-                        discr_let_stmts.append(&mut discr_check.0);
-                        return BlockOrExpr(discr_let_stmts, discr_check.1);
+                        return self.call_substructure_method(cx, span, EnumDiscr(None));
                     }
                     FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless => {
-                        return self.call_substructure_method(
-                            cx,
-                            trait_,
-                            AllFieldlessEnum(enum_def),
-                        );
+                        return self.call_substructure_method(cx, span, AllFieldlessEnum(enum_def));
                     }
                     FieldlessVariantsStrategy::Default => (),
                 }
             } else if let [variant] = variants.as_slice() {
                 // If there is a single variant, we don't need an operation on
                 // the discriminant(s). Just use the most degenerate result.
-                return self.call_substructure_method(
-                    cx,
-                    trait_,
-                    EnumMatching(variant, Vec::new()),
-                );
+                return self.call_substructure_method(cx, span, EnumMatching(variant, Vec::new()));
             }
         }
 
@@ -1151,12 +1031,13 @@ impl<'a> MethodDef<'a> {
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK
                 // (see "Final wrinkle" note below for why.)
 
-                let fields = trait_.create_struct_pattern_fields(cx, &variant.data, &prefixes);
+                let fields = create_struct_pattern_fields(span, cx, &variant.data, &prefixes);
 
-                let sp = variant.span.with_ctxt(trait_.span.ctxt());
-                let variant_path = cx.path(sp, vec![type_ident, variant.ident]);
+                let sp = variant.span.with_ctxt(span.ctxt());
+                let variant_path =
+                    cx.path(sp, vec![Ident::new(kw::SelfUpper, span), variant.ident]);
                 let mut subpats =
-                    trait_.create_struct_patterns(cx, variant_path, &variant.data, &prefixes);
+                    create_struct_patterns(span, cx, variant_path, &variant.data, &prefixes);
 
                 // `(VariantK, VariantK, ...)` or just `VariantK`.
                 let single_pat = if subpats.len() == 1 {
@@ -1175,7 +1056,7 @@ impl<'a> MethodDef<'a> {
                 // Build up code associated with such a case.
                 let substructure = EnumMatching(variant, fields);
                 let arm_expr =
-                    self.call_substructure_method(cx, trait_, substructure).into_expr(cx, span);
+                    self.call_substructure_method(cx, span, substructure).into_expr(cx, span);
 
                 cx.arm(span, single_pat, arm_expr)
             })
@@ -1185,17 +1066,15 @@ impl<'a> MethodDef<'a> {
         let first_fieldless = variants.iter().find(|v| v.data.fields().is_empty());
         let default = match first_fieldless {
             Some(v) if unify_fieldless_variants => {
-                // We need a default case that handles all the fieldless
-                // variants. The index and actual variant aren't meaningful in
-                // this case, so just use dummy values.
+                // We need a default case that handles all the fieldless variants.
                 Some(
-                    self.call_substructure_method(cx, trait_, EnumMatching(v, Vec::new()))
+                    self.call_substructure_method(cx, span, EnumMatching(v, Vec::new()))
                         .into_expr(cx, span),
                 )
             }
             _ if variants.len() > 1 && selflike_args.len() > 1 => {
                 // Because we know that all the arguments will match if we reach
-                // the match expression we add the unreachable intrinsics as the
+                // the match expression we add the unreachable intrinsic as the
                 // result of the default which should help llvm in optimizing it.
                 Some(deriving::call_unreachable(cx, span))
             }
@@ -1217,7 +1096,7 @@ impl<'a> MethodDef<'a> {
             let match_arg = if selflike_args.len() == 1 {
                 selflike_args.pop().unwrap()
             } else {
-                cx.expr(span, ast::ExprKind::Tup(selflike_args))
+                cx.expr_tuple(span, selflike_args)
             };
             cx.expr_match(span, match_arg, match_arms)
         };
@@ -1226,16 +1105,8 @@ impl<'a> MethodDef<'a> {
         // to add a discriminant check operation before the match. Otherwise, the match
         // is enough.
         if unify_fieldless_variants && variants.len() > 1 {
-            let (discr_field, mut discr_let_stmts) = get_discr_pieces();
-
             // Combine a discriminant check with the match.
-            let mut discr_check_plus_match = self.call_substructure_method(
-                cx,
-                trait_,
-                EnumDiscr(discr_field, Some(get_match_expr(selflike_args))),
-            );
-            discr_let_stmts.append(&mut discr_check_plus_match.0);
-            BlockOrExpr(discr_let_stmts, discr_check_plus_match.1)
+            self.call_substructure_method(cx, span, EnumDiscr(Some(get_match_expr(selflike_args))))
         } else {
             BlockOrExpr(ThinVec::new(), Some(get_match_expr(selflike_args)))
         }
@@ -1243,179 +1114,128 @@ impl<'a> MethodDef<'a> {
 }
 
 // general helper methods.
-impl<'a> TraitDef<'a> {
-    fn create_struct_patterns(
-        &self,
-        cx: &ExtCtxt<'_>,
-        struct_path: ast::Path,
-        struct_def: &'a VariantData,
-        prefixes: &[String],
-    ) -> ThinVec<ast::Pat> {
+fn create_struct_patterns(
+    span: Span,
+    cx: &ExtCtxt<'_>,
+    struct_path: ast::Path,
+    struct_def: &VariantData,
+    prefixes: &[&str],
+) -> ThinVec<ast::Pat> {
+    prefixes
+        .iter()
+        .map(|prefix| {
+            let pieces_iter = struct_def.fields().iter().enumerate().map(|(i, struct_field)| {
+                let ident = mk_pattern_ident(span, prefix, i);
+                let path = ident.with_span_pos(struct_field.span);
+                (struct_field.ident, cx.pat_ident(path.span, path))
+            });
+
+            let struct_path = struct_path.clone();
+            match *struct_def {
+                VariantData::Struct { .. } => {
+                    let field_pats = pieces_iter
+                        .map(|(ident, pat)| ast::PatField {
+                            ident: ident.expect("a braced struct with unnamed fields in `derive`"),
+                            is_shorthand: false,
+                            attrs: ast::AttrVec::new(),
+                            id: ast::DUMMY_NODE_ID,
+                            span: pat.span.with_ctxt(span.ctxt()),
+                            pat: Box::new(pat),
+                            is_placeholder: false,
+                        })
+                        .collect();
+                    cx.pat_struct(span, struct_path, field_pats)
+                }
+                VariantData::Tuple(..) => {
+                    let subpats = pieces_iter.map(|(_, subpat)| subpat).collect();
+                    cx.pat_tuple_struct(span, struct_path, subpats)
+                }
+                VariantData::Unit(..) => cx.pat_path(span, struct_path),
+            }
+        })
+        .collect()
+}
+
+fn create_fields<F>(span: Span, struct_def: &VariantData, mk_exprs: F) -> Vec<FieldInfo>
+where
+    F: Fn(usize, &ast::FieldDef, Span) -> Vec<Box<Expr>>,
+{
+    struct_def
+        .fields()
+        .iter()
+        .enumerate()
+        .map(|(i, struct_field)| {
+            // For this field, get an expr for each selflike_arg. E.g. for
+            // `PartialEq::eq`, one for each of `&self` and `other`.
+            let span = struct_field.span.with_ctxt(span.ctxt());
+            let mut exprs: Vec<_> = mk_exprs(i, struct_field, span);
+            let self_expr = exprs.remove(0);
+            debug_assert!(exprs.len() <= 1);
+            FieldInfo {
+                span,
+                name: struct_field.ident,
+                self_expr,
+                other_selflike_expr: exprs.pop(),
+                maybe_scalar: struct_field.ty.peel_refs().kind.maybe_scalar(),
+            }
+        })
+        .collect()
+}
+
+fn mk_pattern_ident(span: Span, prefix: &str, i: usize) -> Ident {
+    Ident::from_str_and_span(&format!("{prefix}_{i}"), span)
+}
+
+fn create_struct_pattern_fields(
+    span: Span,
+    cx: &ExtCtxt<'_>,
+    struct_def: &VariantData,
+    prefixes: &[&str],
+) -> Vec<FieldInfo> {
+    create_fields(span, struct_def, |i, _struct_field, sp| {
         prefixes
             .iter()
             .map(|prefix| {
-                let pieces_iter =
-                    struct_def.fields().iter().enumerate().map(|(i, struct_field)| {
-                        let sp = struct_field.span.with_ctxt(self.span.ctxt());
-                        let ident = self.mk_pattern_ident(prefix, i);
-                        let path = ident.with_span_pos(sp);
-                        (struct_field.ident, cx.pat_ident(path.span, path))
-                    });
-
-                let struct_path = struct_path.clone();
-                match *struct_def {
-                    VariantData::Struct { .. } => {
-                        let field_pats = pieces_iter
-                            .map(|(ident, pat)| ast::PatField {
-                                ident: ident
-                                    .expect("a braced struct with unnamed fields in `derive`"),
-                                is_shorthand: false,
-                                attrs: ast::AttrVec::new(),
-                                id: ast::DUMMY_NODE_ID,
-                                span: pat.span.with_ctxt(self.span.ctxt()),
-                                pat: Box::new(pat),
-                                is_placeholder: false,
-                            })
-                            .collect();
-                        cx.pat_struct(self.span, struct_path, field_pats)
-                    }
-                    VariantData::Tuple(..) => {
-                        let subpats = pieces_iter.map(|(_, subpat)| subpat).collect();
-                        cx.pat_tuple_struct(self.span, struct_path, subpats)
-                    }
-                    VariantData::Unit(..) => cx.pat_path(self.span, struct_path),
-                }
+                let ident = mk_pattern_ident(span, prefix, i);
+                cx.expr_path(cx.path_ident(sp, ident))
             })
             .collect()
-    }
-
-    fn create_fields<F>(&self, struct_def: &'a VariantData, mk_exprs: F) -> Vec<FieldInfo>
-    where
-        F: Fn(usize, &ast::FieldDef, Span) -> Vec<Box<ast::Expr>>,
-    {
-        struct_def
-            .fields()
-            .iter()
-            .enumerate()
-            .map(|(i, struct_field)| {
-                // For this field, get an expr for each selflike_arg. E.g. for
-                // `PartialEq::eq`, one for each of `&self` and `other`.
-                let span = struct_field.span.with_ctxt(self.span.ctxt());
-                let mut exprs: Vec<_> = mk_exprs(i, struct_field, span);
-                let self_expr = exprs.remove(0);
-                debug_assert!(exprs.len() <= 1);
-                FieldInfo {
-                    span,
-                    name: struct_field.ident,
-                    self_expr,
-                    other_selflike_expr: exprs.pop(),
-                    maybe_scalar: struct_field.ty.peel_refs().kind.maybe_scalar(),
-                }
-            })
-            .collect()
-    }
-
-    fn mk_pattern_ident(&self, prefix: &str, i: usize) -> Ident {
-        Ident::from_str_and_span(&format!("{prefix}_{i}"), self.span)
-    }
-
-    fn create_struct_pattern_fields(
-        &self,
-        cx: &ExtCtxt<'_>,
-        struct_def: &'a VariantData,
-        prefixes: &[String],
-    ) -> Vec<FieldInfo> {
-        self.create_fields(struct_def, |i, _struct_field, sp| {
-            prefixes
-                .iter()
-                .map(|prefix| {
-                    let ident = self.mk_pattern_ident(prefix, i);
-                    cx.expr_path(cx.path_ident(sp, ident))
-                })
-                .collect()
-        })
-    }
-
-    fn create_struct_field_access_fields(
-        &self,
-        cx: &ExtCtxt<'_>,
-        selflike_args: &[Box<Expr>],
-        struct_def: &'a VariantData,
-        is_packed: bool,
-    ) -> Vec<FieldInfo> {
-        self.create_fields(struct_def, |i, struct_field, sp| {
-            selflike_args
-                .iter()
-                .map(|selflike_arg| {
-                    // Note: we must use `struct_field.span` rather than `sp` in the
-                    // `unwrap_or_else` case otherwise the hygiene is wrong and we get
-                    // "field `0` of struct `Point` is private" errors on tuple
-                    // structs.
-                    let mut field_expr = cx.expr(
-                        sp,
-                        ast::ExprKind::Field(
-                            selflike_arg.clone(),
-                            struct_field.ident.unwrap_or_else(|| {
-                                Ident::from_str_and_span(&i.to_string(), struct_field.span)
-                            }),
-                        ),
-                    );
-                    if is_packed {
-                        // Fields in packed structs are wrapped in a block, e.g. `&{self.0}`,
-                        // causing a copy instead of a (potentially misaligned) reference.
-                        field_expr = cx.expr_block(
-                            cx.block(struct_field.span, thin_vec![cx.stmt_expr(field_expr)]),
-                        );
-                    }
-                    cx.expr_addr_of(sp, field_expr)
-                })
-                .collect()
-        })
-    }
+    })
 }
 
-/// Folds over fields, combining the expressions for each field in a sequence.
-/// Statics may not be folded over.
-pub(crate) fn cs_foldr(
+fn create_struct_field_access_fields(
+    span: Span,
     cx: &ExtCtxt<'_>,
-    trait_span: Span,
-    substructure: Substructure<'_>,
-    // The basic case: a field expression for one or more selflike args. E.g.
-    // for `PartialEq::eq` this is something like `self.x == other.x`.
-    single: impl Fn(FieldInfo) -> Box<Expr>,
-    // The combination of two field expressions. E.g. for `PartialEq::eq` this
-    // is something like `<field1 equality> && <field2 equality>`.
-    combine: impl Fn(Span, Box<Expr>, Box<Expr>) -> Box<Expr>,
-    // The fallback case for a struct or enum variant with no fields.
-    fieldless: impl Fn() -> Box<Expr>,
-) -> Box<Expr> {
-    match substructure {
-        EnumMatching(.., all_fields) | Struct(_, all_fields) => {
-            let mut fields = all_fields.into_iter();
-            let base_field = fields.next_back();
-
-            let Some(base_field) = base_field else {
-                return fieldless();
-            };
-
-            let base_expr = single(base_field);
-
-            let op = |old, field: FieldInfo| {
-                let span = field.span;
-                let new = single(field);
-                combine(span, old, new)
-            };
-
-            fields.rfold(base_expr, op)
-        }
-        EnumDiscr(discr_field, match_expr) => {
-            let discr_check_expr = single(discr_field);
-            if let Some(match_expr) = match_expr {
-                combine(trait_span, match_expr, discr_check_expr)
-            } else {
-                discr_check_expr
-            }
-        }
-        _ => cx.dcx().span_bug(trait_span, "unexpected substructure in `derive`"),
-    }
+    selflike_args: &[Box<Expr>],
+    struct_def: &VariantData,
+    is_packed: bool,
+) -> Vec<FieldInfo> {
+    create_fields(span, struct_def, |i, struct_field, sp| {
+        selflike_args
+            .iter()
+            .map(|selflike_arg| {
+                // Note: we must use `struct_field.span` rather than `sp` in the
+                // `unwrap_or_else` case otherwise the hygiene is wrong and we get
+                // "field `0` of struct `Point` is private" errors on tuple
+                // structs.
+                let mut field_expr = cx.expr(
+                    sp,
+                    ast::ExprKind::Field(
+                        selflike_arg.clone(),
+                        struct_field.ident.unwrap_or_else(|| {
+                            Ident::from_str_and_span(&i.to_string(), struct_field.span)
+                        }),
+                    ),
+                );
+                if is_packed {
+                    // Fields in packed structs are wrapped in a block, e.g. `&{self.0}`,
+                    // causing a copy instead of a (potentially misaligned) reference.
+                    field_expr = cx.expr_block(
+                        cx.block(struct_field.span, thin_vec![cx.stmt_expr(field_expr)]),
+                    );
+                }
+                cx.expr_addr_of(sp, field_expr)
+            })
+            .collect()
+    })
 }

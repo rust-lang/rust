@@ -1,0 +1,13 @@
+//@ check-pass
+//@ run-rustfix
+
+#![no_std]
+#![crate_type = "lib"]
+#![allow(dead_code)]
+
+fn a() {}
+
+fn cmp(f: fn()) -> bool {
+    core::ptr::fn_addr_eq(f, a as fn())
+    //~^ WARN function pointer comparisons
+}

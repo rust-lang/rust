@@ -547,7 +547,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_assoc_item_constraint(self, constraint)
     }
 
-    fn visit_attribute(&mut self, attr: &'v hir::Attribute) {
+    fn visit_attribute(&mut self, attr: &'v rustc_attr_ir::Attribute) {
         self.record("Attribute", None, attr);
     }
 
@@ -661,7 +661,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 If, While, ForLoop, Loop, Match, Closure, Block, Await, Move, Use, TryBlock, Assign,
                 AssignOp, Field, Index, Range, Underscore, Path, AddrOf, Break, Continue, Ret,
                 InlineAsm, FormatArgs, OffsetOf, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet,
-                Become, IncludedBytes, Gen, UnsafeBinderCast, Err, Dummy, DirectConstArg
+                Become, IncludedBytes, Gen, UnsafeBinderCast, GcaMacro, Err, Dummy
             ]
         );
         ast_visit::walk_expr(self, e)
@@ -691,7 +691,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 CVarArgs,
                 FieldOf,
                 View,
-                DirectConstArg,
+                GcaMacro,
                 Dummy,
                 Err
             ]

@@ -25,6 +25,7 @@ use std::{assert_matches, slice};
 
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast::LitKind;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::thin_vec::ThinVec;
@@ -33,7 +34,6 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, StashKey,
     struct_span_code_err,
 };
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, AnonConst, GenericArg, GenericArgs, HirId};
@@ -42,6 +42,7 @@ use rustc_infer::traits::DynCompatibilityViolation;
 use rustc_lint_defs::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{
     self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput,
     Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
@@ -3146,9 +3147,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     let body_span = tcx.hir_body(body_id).value.span;
 
                     err.multipart_suggestion(
-                        "add direct_const_arg!() to the right-hand side of the constant",
+                        "add gca!() to the right-hand side of the constant",
                         vec![
-                            (body_span.shrink_to_lo(), String::from("core::direct_const_arg!(")),
+                            (body_span.shrink_to_lo(), String::from("core::gca!(")),
                             (body_span.shrink_to_hi(), String::from(")")),
                         ],
                         Applicability::MaybeIncorrect,
@@ -3164,9 +3165,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     );
                 }
             } else {
-                err.note(
-                    "only consts with a `direct_const_arg!` right-hand side may be used in types",
-                );
+                err.note("only consts with a `gca!` right-hand side may be used in types");
             }
             Err(err.emit_err())
         }

@@ -1,12 +1,11 @@
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{AttributeKind, EiiImplResolution, find_attr};
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
-use rustc_hir::attrs::{AttributeKind, EiiImplResolution};
 use rustc_hir::def::{DefKind, PerNS, Res};
-use rustc_hir::{
-    self as hir, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin, Target, find_attr,
-};
+use rustc_hir::{self as hir, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin};
 use rustc_middle::ty::data_structures::IndexMap;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -68,8 +67,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         name: Ident,
         EiiDecl { foreign_item, impl_unsafe }: &EiiDecl,
-    ) -> Option<hir::attrs::EiiDecl> {
-        self.lower_path_simple_eii(id, foreign_item).map(|did| hir::attrs::EiiDecl {
+    ) -> Option<rustc_attr_ir::EiiDecl> {
+        self.lower_path_simple_eii(id, foreign_item).map(|did| rustc_attr_ir::EiiDecl {
             foreign_item: did,
             impl_unsafe: *impl_unsafe,
             name,
@@ -87,7 +86,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             is_default,
             known_eii_macro_resolution,
         }: &EiiImpl,
-    ) -> hir::attrs::EiiImpl {
+    ) -> rustc_attr_ir::EiiImpl {
         let resolution = if let Some(target) = known_eii_macro_resolution
             && let Some(foreign_item_did) = self.lower_path_simple_eii(*node_id, target)
         {
@@ -100,7 +99,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             )
         };
 
-        hir::attrs::EiiImpl {
+        rustc_attr_ir::EiiImpl {
             span: self.lower_span(*span),
             inner_span: self.lower_span(*inner_span),
             impl_unsafe_span: match *impl_safety {
@@ -116,19 +115,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         id: NodeId,
         i: &ItemKind,
-    ) -> Vec<hir::Attribute> {
+    ) -> Vec<rustc_attr_ir::Attribute> {
         match i {
             ItemKind::Fn(Fn { eii_impl: None, .. })
             | ItemKind::Static(StaticItem { eii_impl: None, .. }) => Vec::new(),
             ItemKind::Fn(Fn { eii_impl: Some(eii_impl), .. })
             | ItemKind::Static(StaticItem { eii_impl: Some(eii_impl), .. }) => {
-                vec![hir::Attribute::Parsed(AttributeKind::EiiImpl(Box::new(
+                vec![rustc_attr_ir::Attribute::Parsed(AttributeKind::EiiImpl(Box::new(
                     self.lower_eii_impl(eii_impl),
                 )))]
             }
             ItemKind::MacroDef(name, MacroDef { eii_declaration: Some(target), .. }) => self
                 .lower_eii_decl(id, *name, target)
-                .map(|decl| vec![hir::Attribute::Parsed(AttributeKind::EiiDeclaration(decl))])
+                .map(|decl| {
+                    vec![rustc_attr_ir::Attribute::Parsed(AttributeKind::EiiDeclaration(decl))]
+                })
                 .unwrap_or_default(),
 
             ItemKind::ExternCrate(..)
@@ -184,7 +185,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         id: NodeId,
         hir_id: hir::HirId,
-        attrs: &'hir [hir::Attribute],
+        attrs: &'hir [rustc_attr_ir::Attribute],
         vis_span: Span,
         i: &ItemKind,
     ) -> hir::ItemKind<'hir> {
@@ -551,7 +552,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         prefix: &Path,
         id: NodeId,
         vis_span: Span,
-        attrs: &'hir [hir::Attribute],
+        attrs: &'hir [rustc_attr_ir::Attribute],
     ) -> hir::ItemKind<'hir> {
         let path = &tree.prefix;
         let segments = prefix.segments.iter().chain(path.segments.iter()).cloned().collect();
@@ -1351,7 +1352,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         decl: &FnDecl,
         coroutine_marker: Option<CoroutineMarker>,
         body: Option<&Block>,
-        attrs: &'hir [hir::Attribute],
+        attrs: &'hir [rustc_attr_ir::Attribute],
         contract: Option<&FnContract>,
     ) -> hir::BodyId {
         let Some(body) = body else {
@@ -1612,7 +1613,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         kind: FnDeclKind,
         coroutine_marker: Option<CoroutineMarker>,
-        attrs: &[hir::Attribute],
+        attrs: &[rustc_attr_ir::Attribute],
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header, hir::Safety::Safe, attrs);
         let itctx = ImplTraitContext::Universal;
@@ -1626,7 +1627,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         h: FnHeader,
         default_safety: hir::Safety,
-        attrs: &[hir::Attribute],
+        attrs: &[rustc_attr_ir::Attribute],
     ) -> hir::FnHeader {
         let asyncness = if let Some(coroutine_marker) = h.coroutine_marker
             && let CoroutineKind::Async = coroutine_marker.kind
@@ -1713,7 +1714,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// Lowers constness or comptime attribute.
     /// Whether `const` is allowed here is checked by ast validation.
     /// Whether `comptime` is allowed here is checked by the `comptime` attribute parser.
-    pub(super) fn lower_constness(&mut self, attrs: &[hir::Attribute], c: Const) -> hir::Constness {
+    pub(super) fn lower_constness(
+        &mut self,
+        attrs: &[rustc_attr_ir::Attribute],
+        c: Const,
+    ) -> hir::Constness {
         let mut constness = match c {
             Const::Yes(_) => hir::Constness::Const { always: false },
             Const::No => hir::Constness::NotConst,

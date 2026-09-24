@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Maybe<()>` for type `()`
-  --> $DIR/overlap-due-to-unsatisfied-const-bound.rs:18:1
+  --> $DIR/overlap-due-to-unsatisfied-const-bound.rs:20:1
    |
 LL | impl<T> Maybe<T> for T {}
    | ---------------------- first implementation here

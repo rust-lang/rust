@@ -14,6 +14,8 @@
 #![feature(min_generic_const_args, macroless_generic_const_args)]
 #![expect(incomplete_features)]
 
+use std::gca;
+
 trait Trait {
     #[rustc_always_gca]
     const N: usize;
@@ -22,7 +24,7 @@ trait Trait {
 }
 
 impl Trait for u8 {
-    const N: usize = core::direct_const_arg!(2);
+    const N: usize = gca!(2);
 
     fn process(&self, [x, y]: [u8; Self::N]) -> [u8; Self::N] {
         [self * x, self + y]
@@ -30,7 +32,7 @@ impl Trait for u8 {
 }
 
 impl<const N: usize> Trait for [u8; N] {
-    const N: usize = core::direct_const_arg!(N);
+    const N: usize = gca!(N);
 
     fn process(&self, other: [u8; Self::N]) -> [u8; Self::N] {
         let mut result = [0; _];

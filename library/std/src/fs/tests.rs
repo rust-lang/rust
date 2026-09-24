@@ -3072,6 +3072,16 @@ fn test_dir_remove_dir() {
 }
 
 #[test]
+fn test_dir_rename_dir() {
+    let tmpdir = tmpdir();
+    check!(fs::create_dir(tmpdir.join("foo")));
+    let dir = check!(Dir::open(tmpdir.path()));
+    check!(dir.rename("foo", &dir, "baz"));
+    let m = check!(tmpdir.join("baz").metadata());
+    assert!(m.is_dir());
+}
+
+#[test]
 fn test_dir_create_dir() {
     let tmpdir = tmpdir();
     let dir = check!(Dir::open(tmpdir.path()));

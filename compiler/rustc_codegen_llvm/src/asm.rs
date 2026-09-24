@@ -791,12 +791,10 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             } else if let Some(idx) = hexagon_vreg_pair_index(reg) {
                 // LLVM uses `wN` for Hexagon HVX vector pair registers.
                 format!("{{w{}}}", idx)
-            } else if reg == InlineAsmReg::Arm(ArmInlineAsmReg::r14)
-                && llvm_util::get_version() < (23, 0, 0)
-            {
+            } else if reg == InlineAsmReg::Arm(ArmInlineAsmReg::r14) {
                 // FIXME(llvm): LLVM <23 does not recognize `r14` as a register name
                 // in inline assembly.
-                // This workaround can be removed when support for LLVM 22 is dropped.
+                // We can make this branch fallthrough again for LLVM 23+ when https://github.com/llvm/llvm-project/pull/225746 gets released.
                 "{lr}".to_string()
             } else if let InlineAsmReg::Sparc(reg) = reg
                 && let Some(num) = reg.dreg_number()

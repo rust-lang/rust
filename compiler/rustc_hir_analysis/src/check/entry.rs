@@ -1,7 +1,8 @@
 use std::ops::Not;
 
+use rustc_attr_ir::find_attr;
 use rustc_hir as hir;
-use rustc_hir::{Node, find_attr};
+use rustc_hir::Node;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::TraitErrors;
 use rustc_middle::ty::{self, TyCtxt, TypingMode, Unnormalized};

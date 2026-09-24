@@ -1,0 +1,50 @@
+error: fields are not allowed in trait definitions
+  --> $DIR/trait-item-field-colon-syntax.rs:4:5
+   |
+LL | trait Trait1 {
+   |              - while parsing this item list starting here
+LL |     field_name: String,
+   |     ^^^^^^^^^^^^^^^^^^^
+LL | }
+   | - the item list ends here
+   |
+   = help: consider using a method instead: `fn field_name(&self) -> String;`
+
+error: fields are not allowed in trait definitions
+  --> $DIR/trait-item-field-colon-syntax.rs:8:5
+   |
+LL | trait Trait2 {
+   |              - while parsing this item list starting here
+LL |     self: String,
+   |     ^^^^^^^^^^^^^
+LL | }
+   | - the item list ends here
+   |
+   = note: `self` can only appear as a method receiver; consider `fn method(self: String)`
+
+error: fields are not allowed in trait definitions
+  --> $DIR/trait-item-field-colon-syntax.rs:12:5
+   |
+LL | trait Trait3 {
+   |              - while parsing this item list starting here
+LL |     field_name: String
+   |     ^^^^^^^^^^^^^^^^^^
+LL | }
+   | - the item list ends here
+   |
+   = help: consider using a method instead: `fn field_name(&self) -> String;`
+
+error: fields are not allowed in trait definitions
+  --> $DIR/trait-item-field-colon-syntax.rs:16:5
+   |
+LL | trait Trait4 {
+   |              - while parsing this item list starting here
+LL |     self: String
+   |     ^^^^^^^^^^^^
+LL | }
+   | - the item list ends here
+   |
+   = note: `self` can only appear as a method receiver; consider `fn method(self: String)`
+
+error: aborting due to 4 previous errors
+

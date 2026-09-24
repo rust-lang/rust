@@ -23,7 +23,7 @@ use std::convert::TryFrom;
 use std::io::Write;
 use std::ops::ControlFlow;
 
-use rustc_public::abi::{CallConvention, PassMode, RegKind};
+use rustc_public::abi::{CallConvention, IndirectMode, PassMode, RegKind};
 use rustc_public::mir::mono::Instance;
 use rustc_public::{CrateDef, ItemKind};
 
@@ -147,7 +147,7 @@ fn test_abi_cast() -> ControlFlow<()> {
     }
     // Fourth TwoWords has no registers left → Indirect (on stack)
     assert!(
-        matches!(&abi.args[3].mode, PassMode::Indirect { on_stack: true, .. }),
+        matches!(&abi.args[3].mode, PassMode::Indirect { mode: IndirectMode::OnStack, .. }),
         "Expected arg 3 to be Indirect on stack, got: {:?}",
         abi.args[3].mode
     );

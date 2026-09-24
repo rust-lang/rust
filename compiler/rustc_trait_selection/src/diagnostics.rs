@@ -2083,3 +2083,15 @@ pub(crate) struct NonGenericOpaqueTypeParam<'a, 'tcx> {
     }")]
     pub param_span: Span,
 }
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "there is an associated type with the same name",
+    style = "verbose",
+    code = "Self::",
+    applicability = "maybe-incorrect"
+)]
+pub struct AssocTypeWithSameName {
+    #[primary_span]
+    pub span: Span,
+}

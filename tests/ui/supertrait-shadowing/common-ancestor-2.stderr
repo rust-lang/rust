@@ -1,11 +1,11 @@
 warning: trait item `hello` from `C` shadows identically named item from supertrait
-  --> $DIR/common-ancestor-2.rs:36:5
+  --> $DIR/common-ancestor-2.rs:37:5
    |
 LL |     fn hello(&self) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: items from several supertraits are shadowed: `B` and `A`
-  --> $DIR/common-ancestor-2.rs:12:5
+  --> $DIR/common-ancestor-2.rs:13:5
    |
 LL |     fn hello(&self) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,13 +19,13 @@ LL | #![warn(shadowing_supertrait_items)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: trait item `Assoc` from `C` shadows identically named item from supertrait
-  --> $DIR/common-ancestor-2.rs:40:5
+  --> $DIR/common-ancestor-2.rs:41:5
    |
 LL |     type Assoc;
    |     ^^^^^^^^^^
    |
 note: items from several supertraits are shadowed: `B` and `A`
-  --> $DIR/common-ancestor-2.rs:15:5
+  --> $DIR/common-ancestor-2.rs:16:5
    |
 LL |     type Assoc;
    |     ^^^^^^^^^^
@@ -34,13 +34,13 @@ LL |     type Assoc;
    |     ^^^^^^^^^^
 
 warning: trait item `CONST` from `C` shadows identically named item from supertrait
-  --> $DIR/common-ancestor-2.rs:43:5
+  --> $DIR/common-ancestor-2.rs:44:5
    |
 LL |     const CONST: i32;
    |     ^^^^^^^^^^^^^^^^
    |
 note: items from several supertraits are shadowed: `B` and `A`
-  --> $DIR/common-ancestor-2.rs:16:5
+  --> $DIR/common-ancestor-2.rs:17:5
    |
 LL |     const CONST: i32;
    |     ^^^^^^^^^^^^^^^^
@@ -49,18 +49,18 @@ LL |     const CONST: i32;
    |     ^^^^^^^^^^^^^^^^
 
 warning: trait item `hello` from `C` shadows identically named item from supertrait
-  --> $DIR/common-ancestor-2.rs:52:19
+  --> $DIR/common-ancestor-2.rs:53:19
    |
 LL |     assert_eq!(().hello(), "C");
    |                   ^^^^^
    |
 note: item from `C` shadows a supertrait item
-  --> $DIR/common-ancestor-2.rs:36:5
+  --> $DIR/common-ancestor-2.rs:37:5
    |
 LL |     fn hello(&self) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: items from several supertraits are shadowed: `A` and `B`
-  --> $DIR/common-ancestor-2.rs:12:5
+  --> $DIR/common-ancestor-2.rs:13:5
    |
 LL |     fn hello(&self) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

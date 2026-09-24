@@ -10,13 +10,14 @@
 #![feature(min_generic_const_args, adt_const_params)]
 #![expect(incomplete_features)]
 
+use std::gca;
 use std::marker::ConstParamTy;
 
 #[derive(ConstParamTy, PartialEq, Eq)]
 struct S;
 
 impl S {
-    const N: S = core::direct_const_arg!(S);
+    const N: S = gca!(S);
 }
 
 #[derive(ConstParamTy, PartialEq, Eq)]
@@ -25,7 +26,7 @@ enum E {
 }
 
 impl E {
-    const M: E = core::direct_const_arg!({ E::V });
+    const M: E = gca!({ E::V });
 }
 
 fn main() {}

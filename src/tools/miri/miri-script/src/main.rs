@@ -1,6 +1,7 @@
 #![allow(clippy::needless_question_mark, rustc::internal)]
 
 mod commands;
+mod config;
 mod coverage;
 mod util;
 
@@ -137,11 +138,15 @@ pub enum Command {
         /// List of benchmarks to run (default: run all benchmarks).
         benches: Vec<String>,
     },
-    /// Update and activate the rustup toolchain 'miri'.
+    /// Update and activate the rustup toolchain 'miri' (or whatever name is configured in
+    /// `miri.toml`).
     ///
     /// The `rust-version` file is used to determine the commit that will be intsalled.
     /// `rustup-toolchain-install-master` must be installed for this to work.
     Toolchain {
+        /// Overwrite the name the toolchain will have in `rustup`.
+        #[arg(long)]
+        name: Option<String>,
         /// Overwrite the commit to install.
         #[arg(long)]
         commit: Option<String>,
@@ -200,6 +205,10 @@ fn main() -> Result<()> {
     let args = Cli::parse_from(miri_args);
     let mut command = args.command;
     command.add_remainder(remainder)?;
-    command.exec()?;
-    Ok(())
+
+    // Parse config file.
+    let config = config::Config::load()?;
+
+    // Run the thing.
+    command.exec(&config)
 }
