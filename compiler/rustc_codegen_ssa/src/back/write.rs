@@ -998,6 +998,7 @@ fn do_thin_lto<B: WriteBackendMethods>(
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
     needs_thin_lto: Vec<ThinLtoInput<B>>,
+    stack_size: usize,
 ) -> Vec<CompiledModule> {
     let _timer = prof.verbose_generic_activity("LLVM_thinlto");
 
@@ -1088,6 +1089,7 @@ fn do_thin_lto<B: WriteBackendMethods>(
                     Arc::clone(&tm_factory),
                     coordinator_send.clone(),
                     item,
+                    stack_size,
                 );
                 used_token_count += 1;
             }
@@ -1279,6 +1281,8 @@ fn start_executing_work<B: WriteBackendMethods>(
     } else {
         None
     };
+
+    let stack_size = sess.opts.recommended_stack_size;
 
     let cgcx = CodegenContext {
         crate_types: tcx.crate_types().to_vec(),
@@ -1542,6 +1546,7 @@ fn start_executing_work<B: WriteBackendMethods>(
                             coordinator_send.clone(),
                             &mut llvm_start_time,
                             item,
+                            stack_size,
                         );
                     }
                 }
@@ -1567,6 +1572,7 @@ fn start_executing_work<B: WriteBackendMethods>(
                                 coordinator_send.clone(),
                                 &mut llvm_start_time,
                                 item,
+                                stack_size,
                             );
                         } else {
                             // There is no unstarted work, so let the main thread
@@ -1610,6 +1616,7 @@ fn start_executing_work<B: WriteBackendMethods>(
                         coordinator_send.clone(),
                         &mut llvm_start_time,
                         item,
+                        stack_size,
                     );
                     running_with_own_token += 1;
                 }
@@ -1778,6 +1785,7 @@ fn start_executing_work<B: WriteBackendMethods>(
                     &exported_symbols_for_lto,
                     &[],
                     needs_thin_lto,
+                    stack_size,
                 ));
             } else {
                 if let Some(allocator_module) = allocator_module.take() {
@@ -1873,6 +1881,7 @@ fn spawn_work<'a, B: WriteBackendMethods>(
     coordinator_send: Sender<Message<B>>,
     llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
     work: WorkItem<B>,
+    stack_size: usize,
 ) {
     if llvm_start_time.is_none() {
         *llvm_start_time = Some(prof.verbose_generic_activity("LLVM_passes"));
@@ -1906,7 +1915,11 @@ fn spawn_work<'a, B: WriteBackendMethods>(
         };
         drop(coordinator_send.send(msg));
     };
-    std::thread::Builder::new().name(name).spawn(f).expect("failed to spawn work thread");
+    std::thread::Builder::new()
+        .name(name)
+        .stack_size(stack_size)
+        .spawn(f)
+        .expect("failed to spawn work thread");
 }
 
 fn spawn_thin_lto_work<B: WriteBackendMethods>(
@@ -1916,6 +1929,7 @@ fn spawn_thin_lto_work<B: WriteBackendMethods>(
     tm_factory: TargetMachineFactoryFn<B>,
     coordinator_send: Sender<ThinLtoMessage>,
     work: ThinLtoWorkItem<B>,
+    stack_size: usize,
 ) {
     let cgcx = cgcx.clone();
     let prof = prof.clone();
@@ -1948,7 +1962,11 @@ fn spawn_thin_lto_work<B: WriteBackendMethods>(
         };
         drop(coordinator_send.send(msg));
     };
-    std::thread::Builder::new().name(name).spawn(f).expect("failed to spawn work thread");
+    std::thread::Builder::new()
+        .name(name)
+        .stack_size(stack_size)
+        .spawn(f)
+        .expect("failed to spawn work thread");
 }
 
 enum SharedEmitterMessage {
@@ -2189,6 +2207,7 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                         &crate_info.exported_symbols_for_lto,
                         &crate_info.each_linked_rlib_file_for_lto,
                         needs_thin_lto,
+                        sess.opts.recommended_stack_size,
                     ),
                     allocator_module: None,
                 }
