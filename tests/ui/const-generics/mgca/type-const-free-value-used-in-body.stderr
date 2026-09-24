@@ -1,13 +1,13 @@
 error: the constant `1` is not of type `usize`
-  --> $DIR/type-const-free-value-used-in-body.rs:7:1
+  --> $DIR/type-const-free-value-used-in-body.rs:9:1
    |
-LL | const CONST: usize = core::direct_const_arg!(1u32);
+LL | const CONST: usize = gca!(1u32);
    | ^^^^^^^^^^^^^^^^^^ expected `usize`, found `u32`
 
 error: the constant `1` is not of type `bool`
-  --> $DIR/type-const-free-value-used-in-body.rs:10:1
+  --> $DIR/type-const-free-value-used-in-body.rs:12:1
    |
-LL | const S: bool = core::direct_const_arg!(1i32);
+LL | const S: bool = gca!(1i32);
    | ^^^^^^^^^^^^^ expected `bool`, found `i32`
 
 error: aborting due to 2 previous errors

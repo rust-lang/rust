@@ -1,5 +1,5 @@
 error[E0449]: visibility qualifiers are not permitted here
-  --> $DIR/suggest-direct-const.rs:37:9
+  --> $DIR/suggest-direct-const.rs:40:9
    |
 LL |         pub const PUBLIC: usize;
    |         ^^^ help: remove the qualifier
@@ -7,7 +7,7 @@ LL |         pub const PUBLIC: usize;
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
-  --> $DIR/suggest-direct-const.rs:39:9
+  --> $DIR/suggest-direct-const.rs:42:9
    |
 LL |         pub(crate) const RESTRICTED: usize;
    |         ^^^^^^^^^^ help: remove the qualifier
@@ -15,76 +15,76 @@ LL |         pub(crate) const RESTRICTED: usize;
    = note: trait items always share the visibility of their trait
 
 error: use of `const` in the type system not marked as direct
-  --> $DIR/suggest-direct-const.rs:14:50
+  --> $DIR/suggest-direct-const.rs:15:31
    |
-LL |     pub struct Foo1([u8; core::direct_const_arg!(Bar::PUBLIC)]);
-   |                                                  ^^^^^^^^^^^
+LL |     pub struct Foo1([u8; gca!(Bar::PUBLIC)]);
+   |                               ^^^^^^^^^^^
    |
-help: add direct_const_arg!() to the right-hand side of the constant
+help: add gca!() to the right-hand side of the constant
    |
-LL |         pub const PUBLIC: usize = core::direct_const_arg!(1);
-   |                                   ++++++++++++++++++++++++ +
+LL |         pub const PUBLIC: usize = core::gca!(1);
+   |                                   +++++++++++ +
 
 error: use of `const` in the type system not marked as direct
-  --> $DIR/suggest-direct-const.rs:16:50
+  --> $DIR/suggest-direct-const.rs:17:31
    |
-LL |     pub struct Foo2([u8; core::direct_const_arg!(Bar::RESTRICTED)]);
-   |                                                  ^^^^^^^^^^^^^^^
+LL |     pub struct Foo2([u8; gca!(Bar::RESTRICTED)]);
+   |                               ^^^^^^^^^^^^^^^
    |
-help: add direct_const_arg!() to the right-hand side of the constant
+help: add gca!() to the right-hand side of the constant
    |
-LL |         pub(crate) const RESTRICTED: usize = core::direct_const_arg!(1);
-   |                                              ++++++++++++++++++++++++ +
+LL |         pub(crate) const RESTRICTED: usize = core::gca!(1);
+   |                                              +++++++++++ +
 
 error: use of `const` in the type system not marked as direct
-  --> $DIR/suggest-direct-const.rs:18:50
+  --> $DIR/suggest-direct-const.rs:19:31
    |
-LL |     pub struct Foo3([u8; core::direct_const_arg!(Bar::PRIVATE)]);
-   |                                                  ^^^^^^^^^^^^
+LL |     pub struct Foo3([u8; gca!(Bar::PRIVATE)]);
+   |                               ^^^^^^^^^^^^
    |
-help: add direct_const_arg!() to the right-hand side of the constant
+help: add gca!() to the right-hand side of the constant
    |
-LL |         const PRIVATE: usize = core::direct_const_arg!(1);
-   |                                ++++++++++++++++++++++++ +
+LL |         const PRIVATE: usize = core::gca!(1);
+   |                                +++++++++++ +
 
 error: use of `const` in the type system not marked as direct
-  --> $DIR/suggest-direct-const.rs:27:50
+  --> $DIR/suggest-direct-const.rs:29:31
    |
-LL |     pub struct Foo1([u8; core::direct_const_arg!(PUBLIC)]);
-   |                                                  ^^^^^^
+LL |     pub struct Foo1([u8; gca!(PUBLIC)]);
+   |                               ^^^^^^
    |
-help: add direct_const_arg!() to the right-hand side of the constant
+help: add gca!() to the right-hand side of the constant
    |
-LL |     pub const PUBLIC: usize = core::direct_const_arg!(1);
-   |                               ++++++++++++++++++++++++ +
+LL |     pub const PUBLIC: usize = core::gca!(1);
+   |                               +++++++++++ +
 
 error: use of `const` in the type system not marked as direct
-  --> $DIR/suggest-direct-const.rs:29:50
+  --> $DIR/suggest-direct-const.rs:31:31
    |
-LL |     pub struct Foo2([u8; core::direct_const_arg!(RESTRICTED)]);
-   |                                                  ^^^^^^^^^^
+LL |     pub struct Foo2([u8; gca!(RESTRICTED)]);
+   |                               ^^^^^^^^^^
    |
-help: add direct_const_arg!() to the right-hand side of the constant
+help: add gca!() to the right-hand side of the constant
    |
-LL |     pub(crate) const RESTRICTED: usize = core::direct_const_arg!(1);
-   |                                          ++++++++++++++++++++++++ +
+LL |     pub(crate) const RESTRICTED: usize = core::gca!(1);
+   |                                          +++++++++++ +
 
 error: use of `const` in the type system not marked as direct
-  --> $DIR/suggest-direct-const.rs:31:50
+  --> $DIR/suggest-direct-const.rs:33:31
    |
-LL |     pub struct Foo3([u8; core::direct_const_arg!(PRIVATE)]);
-   |                                                  ^^^^^^^
+LL |     pub struct Foo3([u8; gca!(PRIVATE)]);
+   |                               ^^^^^^^
    |
-help: add direct_const_arg!() to the right-hand side of the constant
+help: add gca!() to the right-hand side of the constant
    |
-LL |     const PRIVATE: usize = core::direct_const_arg!(1);
-   |                            ++++++++++++++++++++++++ +
+LL |     const PRIVATE: usize = core::gca!(1);
+   |                            +++++++++++ +
 
 error: use of `const` in the type system not marked as direct
-  --> $DIR/suggest-direct-const.rs:44:57
+  --> $DIR/suggest-direct-const.rs:47:38
    |
-LL |     pub struct Bar<T: Foo>([u8; core::direct_const_arg!(T::PUBLIC)]);
-   |                                                         ^^^^^^^^^
+LL |     pub struct Bar<T: Foo>([u8; gca!(T::PUBLIC)]);
+   |                                      ^^^^^^^^^
    |
 help: add `#[rustc_always_gca]` to the constant
    |
@@ -92,10 +92,10 @@ LL |         #[rustc_always_gca] pub const PUBLIC: usize;
    |         +++++++++++++++++++
 
 error: use of `const` in the type system not marked as direct
-  --> $DIR/suggest-direct-const.rs:46:58
+  --> $DIR/suggest-direct-const.rs:49:39
    |
-LL |     pub struct Bar2<T: Foo>([u8; core::direct_const_arg!(T::RESTRICTED)]);
-   |                                                          ^^^^^^^^^^^^^
+LL |     pub struct Bar2<T: Foo>([u8; gca!(T::RESTRICTED)]);
+   |                                       ^^^^^^^^^^^^^
    |
 help: add `#[rustc_always_gca]` to the constant
    |
@@ -103,10 +103,10 @@ LL |         #[rustc_always_gca] pub(crate) const RESTRICTED: usize;
    |         +++++++++++++++++++
 
 error: use of `const` in the type system not marked as direct
-  --> $DIR/suggest-direct-const.rs:48:58
+  --> $DIR/suggest-direct-const.rs:51:39
    |
-LL |     pub struct Bar3<T: Foo>([u8; core::direct_const_arg!(T::PRIVATE)]);
-   |                                                          ^^^^^^^^^^
+LL |     pub struct Bar3<T: Foo>([u8; gca!(T::PRIVATE)]);
+   |                                       ^^^^^^^^^^
    |
 help: add `#[rustc_always_gca]` to the constant
    |

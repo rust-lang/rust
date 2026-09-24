@@ -5,7 +5,7 @@ use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
 
-use crate::Interner;
+use crate::{Const, Interner};
 
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
@@ -14,7 +14,7 @@ use crate::Interner;
     derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
 pub enum PatternKind<I: Interner> {
-    Range { start: I::Const, end: I::Const },
+    Range { start: Const<I>, end: Const<I> },
     Or(I::PatList),
     NotNull,
 }

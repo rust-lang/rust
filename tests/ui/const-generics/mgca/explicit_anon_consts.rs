@@ -4,13 +4,15 @@
 // DefIds which were created for const args.
 #![crate_type = "lib"]
 
+use std::gca;
+
 struct Foo<const N: usize>;
 
 type Adt1<const N: usize> = Foo<N>;
 type Adt2<const N: usize> = Foo<{ N }>;
 type Adt3<const N: usize> = Foo<const { N }>;
 //~^ ERROR: generic parameters may not be used in const operations
-type Adt4<const N: usize> = Foo<core::direct_const_arg!(1 + 1)>;
+type Adt4<const N: usize> = Foo<gca!(1 + 1)>;
 //~^ ERROR: complex const arguments must be placed inside of a `const` block
 type Adt5<const N: usize> = Foo<const { 1 + 1 }>;
 
@@ -18,7 +20,7 @@ type Arr<const N: usize> = [(); N];
 type Arr2<const N: usize> = [(); { N }];
 type Arr3<const N: usize> = [(); const { N }];
 //~^ ERROR: generic parameters may not be used in const operations
-type Arr4<const N: usize> = [(); core::direct_const_arg!(1 + 1)];
+type Arr4<const N: usize> = [(); gca!(1 + 1)];
 //~^ ERROR: complex const arguments must be placed inside of a `const` block
 type Arr5<const N: usize> = [(); const { 1 + 1 }];
 
@@ -27,24 +29,24 @@ fn repeats<const N: usize>() -> [(); N] {
     let _2 = [(); { N }];
     let _3 = [(); const { N }];
     //~^ ERROR: generic parameters may not be used in const operations
-    let _4 = [(); core::direct_const_arg!(1 + 1)];
+    let _4 = [(); gca!(1 + 1)];
     //~^ ERROR: complex const arguments must be placed inside of a `const` block
     let _5 = [(); const { 1 + 1 }];
     let _6: [(); const { N }] = todo!();
     //~^ ERROR: generic parameters may not be used in const operations
 }
 
-const ITEM1<const N: usize>: usize = core::direct_const_arg!(N);
+const ITEM1<const N: usize>: usize = gca!(N);
 
-const ITEM2<const N: usize>: usize = core::direct_const_arg!({ N });
+const ITEM2<const N: usize>: usize = gca!({ N });
 
-const ITEM3<const N: usize>: usize = core::direct_const_arg!(const { N });
+const ITEM3<const N: usize>: usize = gca!(const { N });
 //~^ ERROR: generic parameters may not be used in const operations
 
-const ITEM4<const N: usize>: usize = core::direct_const_arg!(1 + 1);
+const ITEM4<const N: usize>: usize = gca!(1 + 1);
 //~^ ERROR: complex const arguments must be placed inside of a `const` block
 
-const ITEM5<const N: usize>: usize = core::direct_const_arg!(const { 1 + 1 });
+const ITEM5<const N: usize>: usize = gca!(const { 1 + 1 });
 
 trait Trait {
     #[rustc_always_gca]
@@ -58,7 +60,7 @@ fn ace_bounds<
     T2: Trait<ASSOC = { N }>,
     T3: Trait<ASSOC = const { N }>,
     //~^ ERROR: generic parameters may not be used in const operations
-    T4: Trait<ASSOC = { core::direct_const_arg!(1 + 1) }>,
+    T4: Trait<ASSOC = { gca!(1 + 1) }>,
     //~^ ERROR: complex const arguments must be placed inside of a `const` block
     T5: Trait<ASSOC = const { 1 + 1 }>,
 >() {
@@ -68,6 +70,6 @@ struct Default1<const N: usize, const M: usize = N>;
 struct Default2<const N: usize, const M: usize = { N }>;
 struct Default3<const N: usize, const M: usize = const { N }>;
 //~^ ERROR: generic parameters may not be used in const operations
-struct Default4<const N: usize, const M: usize = { core::direct_const_arg!(1 + 1) }>;
+struct Default4<const N: usize, const M: usize = { gca!(1 + 1) }>;
 //~^ ERROR: complex const arguments must be placed inside of a `const` block
 struct Default5<const N: usize, const M: usize = const { 1 + 1 }>;

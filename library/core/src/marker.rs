@@ -1076,13 +1076,13 @@ pub trait Tuple {}
 
 /// Creates a new style directly represented const argument.
 /// ```ignore (cannot test this from within core yet)
-/// const BAR<const N: usize>: usize = direct_const_arg!(N);
-/// const FOO<const N: usize>: usize = direct_const_arg!(BAR::<N>);
+/// const BAR<const N: usize>: usize = gca!(N);
+/// const FOO<const N: usize>: usize = gca!(BAR::<N>);
 /// ```
-#[rustc_builtin_macro(direct_const_arg)]
+#[rustc_builtin_macro(gca)]
 #[unstable(feature = "min_generic_const_args", issue = "132980")]
 #[macro_export]
-macro_rules! direct_const_arg {
+macro_rules! gca {
     ($($arg:tt)*) => {
         /* compiler built-in */
     };

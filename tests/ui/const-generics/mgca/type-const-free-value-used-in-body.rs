@@ -4,10 +4,12 @@
 
 //@ compile-flags: --emit=mir
 
-const CONST: usize = core::direct_const_arg!(1u32);
+use std::gca;
+
+const CONST: usize = gca!(1u32);
 //~^ ERROR the constant `1` is not of type `usize`
 
-const S: bool = core::direct_const_arg!(1i32);
+const S: bool = gca!(1i32);
 //~^ ERROR the constant `1` is not of type `bool`
 
 fn main() {

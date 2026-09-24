@@ -98,16 +98,6 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for ty::GenericArgsRef<'tcx> {
     }
 }
 
-impl<'tcx> Relate<TyCtxt<'tcx>> for ty::Const<'tcx> {
-    fn relate<R: TypeRelation<TyCtxt<'tcx>>>(
-        relation: &mut R,
-        a: ty::Const<'tcx>,
-        b: ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        relation.consts(a, b)
-    }
-}
-
 impl<'tcx> Relate<TyCtxt<'tcx>> for ty::Expr<'tcx> {
     fn relate<R: TypeRelation<TyCtxt<'tcx>>>(
         relation: &mut R,

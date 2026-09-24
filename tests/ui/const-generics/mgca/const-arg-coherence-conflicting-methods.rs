@@ -3,7 +3,9 @@
 #![expect(incomplete_features)]
 #![feature(min_generic_const_args)]
 
-const C: usize = core::direct_const_arg!(0);
+use std::gca;
+
+const C: usize = gca!(0);
 pub struct A<const M: usize> {}
 impl A<C> {
     fn fun1() {}

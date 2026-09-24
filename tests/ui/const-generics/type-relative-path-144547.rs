@@ -22,7 +22,7 @@ struct Info;
 
 impl LevelInfo for Info {
     #[cfg(mgca)]
-    const SUPPORTED_SLOTS: usize = core::direct_const_arg!(1);
+    const SUPPORTED_SLOTS: usize = std::gca!(1);
 
     #[cfg(not(mgca))]
     const SUPPORTED_SLOTS: usize = 1;

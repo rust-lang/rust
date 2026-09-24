@@ -6,6 +6,7 @@
 #![feature(adt_const_params, min_generic_const_args, macroless_generic_const_args)]
 #![feature(unsized_const_params, generic_const_parameter_types)]
 
+use std::gca;
 use std::marker::ConstParamTy_;
 
 fn foo<T: ConstParamTy_, const N: usize, const M: [T; N]>() -> [T; N] {
@@ -21,7 +22,7 @@ trait Trait {
 
 struct S;
 impl Trait for S {
-    const LEN: usize = core::direct_const_arg!(3);
+    const LEN: usize = gca!(3);
 }
 
 fn baz<const A: [u8; <S as Trait>::LEN]>() {}

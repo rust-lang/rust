@@ -18,7 +18,7 @@ use rustc_trait_selection::traits::query::dropck_outlives;
 use rustc_trait_selection::traits::query::type_op::{DropckOutlives, TypeOpOutput};
 use tracing::debug;
 
-use crate::polonius::{LiveRegionVariances, record_live_region_variance};
+use crate::polonius::{DeferredLocals, LiveRegionVariances, record_live_region_variance};
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::liveness::local_use_map::LocalUseMap;
 use crate::type_check::liveness::make_all_regions_live;
@@ -46,10 +46,14 @@ pub(super) fn trace<'tcx>(
     move_data: &MoveData<'tcx>,
     relevant_live_locals: &[Local],
     boring_locals: &[Local],
+    deferred: &FxIndexSet<Local>,
 ) {
     let _timer = typeck.tcx().prof.generic_activity("borrowck_liveness_trace");
 
-    let local_use_map = LocalUseMap::build(&relevant_live_locals, location_map, typeck.body);
+    // The use map must also cover the deferred locals: their liveness is computed later, from
+    // this same map, when the loan liveness traversal first reaches one of their regions.
+    let use_map_locals = relevant_live_locals.iter().chain(deferred).copied();
+    let local_use_map = LocalUseMap::build(use_map_locals, location_map, typeck.body);
     let comp = LivenessComputation::new(
         typeck.infcx,
         typeck.body,
@@ -60,11 +64,18 @@ pub(super) fn trace<'tcx>(
 
     let mut results = LivenessResults::new(typeck, comp);
 
-    results.record_legacy_polonius_drop_facts(relevant_live_locals);
+    let mut deferred_locals = DeferredLocals::default();
+
+    results.record_legacy_polonius_drop_facts(relevant_live_locals, &deferred);
 
     results.compute_for_all_locals(relevant_live_locals);
 
-    results.dropck_boring_locals(boring_locals);
+    results.dropck_boring_locals(boring_locals, &deferred, &mut deferred_locals);
+
+    if let Some(polonius_context) = &mut typeck.polonius_context {
+        polonius_context.deferred_locals_for_liveness = deferred_locals;
+        polonius_context.local_use_map = Some(local_use_map);
+    }
 }
 
 pub(crate) struct LivenessComputation<'a, 'tcx> {
@@ -73,7 +84,7 @@ pub(crate) struct LivenessComputation<'a, 'tcx> {
     pub(crate) body: &'a Body<'tcx>,
 
     /// Defines the `PointIndex` mapping
-    location_map: &'a DenseLocationMap,
+    pub(crate) location_map: &'a DenseLocationMap,
 
     /// Mapping to/from the various indices used for initialization tracking.
     move_data: &'a MoveData<'tcx>,
@@ -183,19 +194,94 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
     /// These are all the locals which do not potentially reference a region local
     /// to this body. Locals which only reference free regions are always drop-live
     /// and can therefore safely be dropped.
-    fn dropck_boring_locals(&mut self, boring_locals: &[Local]) {
+    fn dropck_boring_locals(
+        &mut self,
+        boring_locals: &[Local],
+        deferred: &FxIndexSet<Local>,
+        deferred_locals: &mut DeferredLocals<'tcx>,
+    ) {
         for &local in boring_locals {
-            let local_ty = self.comp.body.local_decls[local].ty;
-            let local_span = self.comp.body.local_decls[local].source_info.span;
-            dropck_local(&self.typeck.infcx, &mut self.drop_data, local_ty, local_span);
+            self.dropck_boring_local(local, deferred, deferred_locals);
         }
+    }
+
+    fn dropck_boring_local(
+        &mut self,
+        local: Local,
+        deferred: &FxIndexSet<Local>,
+        deferred_locals: &mut DeferredLocals<'tcx>,
+    ) {
+        let typeck = &mut *self.typeck;
+        let local_ty = self.comp.body.local_decls[local].ty;
+        let local_span = self.comp.body.local_decls[local].source_info.span;
+
+        // If we had treated this as "relevant", we would have run `compute_for_local`. This
+        // in turn would have skipped calculating dropck *at all* for locals without drop-liveness.
+        // Calculating drop-liveness is expensive, but we can skip it when we know that there
+        // are *no* drops (which is relatively cheap).
+        if deferred.contains(&local) && self.comp.local_use_map.drops(local).next().is_none() {
+            deferred_locals.defer_local(
+                typeck.infcx.tcx,
+                typeck.universal_regions,
+                local,
+                local_ty,
+                &[],
+            );
+            return;
+        }
+
+        // We need to compute dropck for *all* boring locals because we report overflows.
+        //
+        // FIXME: there is an argument to be made that we don't need to do this for boring locals
+        // without drop-liveness, because we skip it for *relevant* locals without drop-liveness.
+        // But, this is preexisting even on NLL, so leaving it for now.
+        let drop_data = dropck_local(&typeck.infcx, &mut self.drop_data, local_ty, local_span);
+
+        // We are done with *truly* boring locals.
+        if !deferred.contains(&local) {
+            return;
+        }
+
+        // If this local is deferred and has drop region constraints, we need to register
+        // them, but *only if the local is drop-live*.
+        // It doesn't really make sense to only check drop-liveness but defer use-liveness,
+        // so we just treat this as eager.
+        if drop_data.region_constraint_data.is_some() {
+            self.compute_for_local(local);
+            return;
+        }
+
+        // The only other thing we need to do *eagerly* for deferred locals is to register
+        // legacy drop facts (because these facts are on `typeck`).
+        for &kind in &drop_data.dropck_result.kinds {
+            polonius::legacy::emit_drop_facts(
+                typeck.tcx(),
+                local,
+                &kind,
+                typeck.universal_regions,
+                typeck.polonius_facts,
+            );
+        }
+
+        // Finally, we mark that this local is deferred, including the drop kinds.
+        deferred_locals.defer_local(
+            typeck.infcx.tcx,
+            typeck.universal_regions,
+            local,
+            local_ty,
+            &drop_data.dropck_result.kinds,
+        );
     }
 
     /// Add extra drop facts needed for Polonius Legacy.
     ///
     /// Add facts for all locals with free regions, since regions may outlive
     /// the function body only at certain nodes in the CFG.
-    fn record_legacy_polonius_drop_facts(&mut self, relevant_live_locals: &[Local]) {
+    fn record_legacy_polonius_drop_facts(
+        &mut self,
+        nll_relevant_locals: &[Local],
+        deferred_polonius_relevant_locals: &FxIndexSet<Local>,
+    ) {
         // This is *all wonky* because this used to call a shared
         // `add_drop_live_facts_for` function that was also used for regular
         // relevant locals. Presumably, this can be cleaned up quite a bit.
@@ -206,15 +292,17 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
         // `add_drop_live_facts_for()` that make sense.
         let Some(facts) = self.typeck.polonius_facts.as_ref() else { return };
         let facts_to_add: Vec<_> = {
-            let relevant_live_locals: FxIndexSet<_> =
-                relevant_live_locals.iter().copied().collect();
+            let nll_relevant_locals: FxIndexSet<_> = nll_relevant_locals.iter().copied().collect();
 
             facts
                 .var_dropped_at
                 .iter()
                 .filter_map(|&(local, location_index)| {
                     let local_ty = self.comp.body.local_decls[local].ty;
-                    if relevant_live_locals.contains(&local) || !local_ty.has_free_regions() {
+                    if nll_relevant_locals.contains(&local)
+                        || deferred_polonius_relevant_locals.contains(&local)
+                        || !local_ty.has_free_regions()
+                    {
                         return None;
                     }
 
@@ -299,16 +387,18 @@ impl<'a, 'tcx> LivenessComputation<'a, 'tcx> {
     }
 
     /// Compute for a given local the use- and drop-live points
-    fn compute<'drop_data>(
+    pub(crate) fn compute<'drop_data>(
         &mut self,
         local: Local,
         universal_regions: &UniversalRegions<'tcx>,
         live_region_variances: Option<&mut LiveRegionVariances>,
         liveness_constraints: &mut LivenessValues,
-        get_drop_args: impl FnOnce() -> &'drop_data Vec<GenericArg<'tcx>>,
+        get_drop_args: impl FnOnce() -> &'drop_data [GenericArg<'tcx>],
     ) where
         'tcx: 'drop_data,
     {
+        let _timer = self.infcx.tcx.prof.generic_activity("borrowck_liveness_compute");
+
         self.reset_local_state();
         self.add_defs_for(local);
         self.compute_use_live_points_for(local);
@@ -340,17 +430,16 @@ impl<'a, 'tcx> LivenessComputation<'a, 'tcx> {
         if !self.drop_live_at.is_empty() {
             let drop_data = get_drop_args();
 
-            // `drop_live_at` is using a DenseBitSet, but `make_all_regions_live`
-            // expects an IntervalSet. We thus convert between those two here.
-            // Using a `DenseBitSet` has better performance, but storing liveness
-            // as a dense matrix has worse performance. There's probably room here
-            // for some cleanup, but this works for now.
-            let mut drop_live_at: IntervalSet<PointIndex> =
-                IntervalSet::new(self.drop_live_at.domain_size());
-            for item in self.drop_live_at.iter() {
+            // `compute_drop_live_points_for` computes `drop_live_at` as a `DenseBitSet`, but
+            // `make_all_regions_live` expects an `IntervalSet`. We thus convert between those two
+            // here. Using a `DenseBitSet` has better performance, but storing liveness as a dense
+            // matrix has worse performance. There's probably room here for some cleanup, but this
+            // works for now.
+            let mut drop_live_at = IntervalSet::new(self.drop_live_at.domain_size());
+            for point in self.drop_live_at.iter() {
                 // We iterate the `drop_live_at` set from smallest to largest values, so
                 // we can use append to add things to the interval set at the end.
-                drop_live_at.append(item);
+                drop_live_at.append(point);
             }
 
             for &kind in drop_data {

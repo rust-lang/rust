@@ -3,8 +3,8 @@ use std::fmt;
 #[cfg(feature = "nightly")]
 use crate::{AliasConst, ClosureKind};
 use crate::{
-    AliasTerm, AliasTy, Binder, CoercePredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
-    HostEffectClause, Interner, NormalizesTo, OutlivesClause, PatternKind, Placeholder,
+    AliasTerm, AliasTy, Binder, CoercePredicate, Const, ExistentialProjection, ExistentialTraitRef,
+    FnSig, HostEffectClause, Interner, NormalizesTo, OutlivesClause, PatternKind, Placeholder,
     ProjectionClause, Region, SubtypePredicate, TraitClause, TraitRef,
 };
 
@@ -61,6 +61,15 @@ where
 {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         <I as IrPrint<Region<I>>>::print(self, fmt)
+    }
+}
+
+impl<I: Interner> fmt::Display for Const<I>
+where
+    I: IrPrint<Const<I>>,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <I as IrPrint<Const<I>>>::print(self, fmt)
     }
 }
 

@@ -5,13 +5,15 @@
 #![feature(min_generic_const_args, generic_const_items)]
 #![expect(incomplete_features)]
 
+use std::gca;
+
 trait Trait {
     #[rustc_always_gca]
     const N: i32 where Self: Bound;
 }
 
 impl Trait for () {
-    const N: i32 = core::direct_const_arg!(0);
+    const N: i32 = gca!(0);
 }
 
 trait Bound {}

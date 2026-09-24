@@ -50,7 +50,7 @@ pub(crate) fn expand_deriving_clone(
             }
         }
         ItemKind::Union(..) => {
-            bounds = smallvec![Path(path_std!(marker::Copy))];
+            bounds = smallvec![path_std!(cx, span, marker::Copy)];
             is_simple = true;
             substructure = combine_substructure(|c, s, sub| cs_clone_simple(c, s, sub, true));
         }
@@ -62,7 +62,7 @@ pub(crate) fn expand_deriving_clone(
     if is_simple {
         let trivial_def = TraitDef {
             span,
-            path: path_std!(clone::TrivialClone),
+            path: path_std!(cx, span, clone::TrivialClone),
             skip_path_as_bound: false,
             needs_copy_as_bound_if_packed: true,
             additional_bounds: bounds.clone(),
@@ -81,7 +81,7 @@ pub(crate) fn expand_deriving_clone(
 
     let trait_def = TraitDef {
         span,
-        path: path_std!(clone::Clone),
+        path: path_std!(cx, span, clone::Clone),
         skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: bounds,
@@ -149,7 +149,7 @@ fn cs_clone_simple(
             &[sym::clone, sym::AssertParamIsCopy],
         );
     } else {
-        match substr.fields {
+        match substr {
             StaticStruct(vdata, ..) => {
                 process_variant(vdata);
             }
@@ -171,17 +171,18 @@ fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> Blo
         cx.expr_call_global(field.span, fn_path.clone(), args)
     };
 
+    let self_ident = Ident::new(kw::SelfUpper, trait_span);
     let ctor_path;
     let all_fields;
     let vdata;
-    match substr.fields {
+    match substr {
         Struct(vdata_, af) => {
-            ctor_path = cx.path(trait_span, vec![substr.type_ident]);
+            ctor_path = cx.path(trait_span, vec![self_ident]);
             all_fields = af;
             vdata = vdata_;
         }
         EnumMatching(.., variant, af) => {
-            ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.ident]);
+            ctor_path = cx.path(trait_span, vec![self_ident, variant.ident]);
             all_fields = af;
             vdata = &variant.data;
         }

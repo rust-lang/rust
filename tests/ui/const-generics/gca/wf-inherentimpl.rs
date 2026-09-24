@@ -5,10 +5,11 @@
 #![feature(inherent_associated_types)]
 #![feature(generic_const_args, min_generic_const_args)]
 //[old]~^ ERROR `generic_const_args` requires -Znext-solver=globally to be enabled
+use std::gca;
 struct Foo<const A: usize>;
 impl<const A: usize> Foo<A> {
     const SIZE: usize = { todo!() };
-    fn to_bytes() -> [u8; core::direct_const_arg!(Self::SIZE)] {
+    fn to_bytes() -> [u8; gca!(Self::SIZE)] {
         todo!()
     }
 }

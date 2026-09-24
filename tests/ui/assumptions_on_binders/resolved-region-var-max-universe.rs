@@ -10,12 +10,14 @@
 
 #![feature(min_generic_const_args, inherent_associated_types, generic_const_items)]
 
+use std::gca;
+
 struct Parent<'a> {
     a: &'a str,
 }
 
 impl<'a> Parent<'a> {
-    const CT<T: 'a>: usize = core::direct_const_arg!(0);
+    const CT<T: 'a>: usize = gca!(0);
 }
 
 fn check()

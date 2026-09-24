@@ -2171,7 +2171,7 @@ pub(super) fn compare_const_directness<'tcx>(
         tcx.dcx()
             .struct_span_err(
                 tcx.def_span(impl_const_item.def_id),
-                "implementation of a `#[rustc_always_gca]` must have a `direct_const_arg!` RHS",
+                "implementation of a `#[rustc_always_gca]` must have a `gca!` RHS",
             )
             .with_span_note(
                 tcx.def_span(trait_const_item.def_id),
@@ -2182,7 +2182,7 @@ pub(super) fn compare_const_directness<'tcx>(
         tcx.dcx()
             .struct_span_err(
                 tcx.def_span(impl_const_item.def_id),
-                "implementation of a regular const cannot have a `direct_const_arg!` RHS",
+                "implementation of a regular const cannot have a `gca!` RHS",
             )
             .with_span_note(
                 tcx.def_span(trait_const_item.def_id),

@@ -8,7 +8,9 @@
 #![expect(incomplete_features)]
 #![cfg_attr(gca, feature(generic_const_args))]
 
-const A: () = core::direct_const_arg!(A);
+use std::gca;
+
+const A: () = gca!(A);
 //[gca]~^ ERROR: overflow evaluating the requirement `A == _`
 //[gca]~| ERROR: overflow evaluating the requirement `the constant `A` has type `()``
 //[min_gca]~^^^ ERROR: cycle detected when computing the type-level value for `A`

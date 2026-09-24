@@ -1,7 +1,8 @@
+use rustc_attr_ir::find_attr;
 use rustc_errors::{MultiSpan, msg};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{Body, HirId, Item, ItemKind, Node, Path, TyKind, find_attr};
+use rustc_hir::{Body, HirId, Item, ItemKind, Node, Path, TyKind};
 use rustc_lint_defs::{declare_lint, impl_lint_pass};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};

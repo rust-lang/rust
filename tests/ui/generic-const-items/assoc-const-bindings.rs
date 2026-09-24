@@ -4,6 +4,7 @@
 #![feature(adt_const_params, const_param_ty_trait, generic_const_parameter_types)]
 #![expect(incomplete_features)]
 
+use std::gca;
 use std::marker::{ConstParamTy, ConstParamTy_};
 
 trait Owner {
@@ -16,9 +17,9 @@ trait Owner {
 }
 
 impl Owner for () {
-    const C<const N: u32>: u32 = core::direct_const_arg!(N);
-    const K<const N: u32>: u32 = core::direct_const_arg!(const { 99 + 1 });
-    const Q<T: ConstParamTy_>: Maybe<T> = core::direct_const_arg!(Maybe::Nothing::<T>);
+    const C<const N: u32>: u32 = gca!(N);
+    const K<const N: u32>: u32 = gca!(const { 99 + 1 });
+    const Q<T: ConstParamTy_>: Maybe<T> = gca!(Maybe::Nothing::<T>);
 }
 
 fn take0<const N: u32>(_: impl Owner<C<N> = { N }>) {}

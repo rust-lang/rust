@@ -4,6 +4,8 @@
 #![feature(min_generic_const_args, macroless_generic_const_args)]
 #![expect(incomplete_features)]
 
+use std::gca;
+
 trait X<const N: usize = { <Self as Y>::N }> {}
 
 trait Y {
@@ -12,7 +14,7 @@ trait Y {
 }
 
 impl<T: ?Sized> Y for T {
-    const N: usize = core::direct_const_arg!(1);
+    const N: usize = gca!(1);
 }
 
 fn main() {

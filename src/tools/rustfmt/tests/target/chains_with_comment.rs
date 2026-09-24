@@ -134,4 +134,36 @@ fn foo() {
         // comment
         // comment
         .baz;
+
+    parent /* comment */
+        .child;
+    parent /* comment1 */     /* comment2 */
+        .child;
+    parent /* comment1 */   // comment 2
+        .child;
+    parent??? /* ???no tries here */ // nor ??? here ????
+        .child;
+    parent /*
+            some interesting shaped comment
+        */
+        .child;
+
+    parent /* comment */
+        // another comment
+        .child1(some, args) /* comment */ // again
+        .await /* longer
+             comment
+        */ // more comments!
+        .use // here's a comment that reaches right to the default width limit aaaaaaaaaaaaaaaaaaaa
+        .end;
+
+    parent?? /* spacing is interesting */       /* blah */
+        .child;
+
+    // NB: recording the current state of things
+    // but is possibly a bug: rustfmt/issues/6433
+    parent //comment
+        .1
+         .2
+         .3;
 }

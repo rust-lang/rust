@@ -1,37 +1,37 @@
 error[E0770]: the type of const parameters must not depend on other generic parameters
-  --> $DIR/type_const-generic-param-in-type.rs:12:1
+  --> $DIR/type_const-generic-param-in-type.rs:13:1
    |
-LL | const FOO<T: core::marker::ConstParamTy_>: [T; 0] = core::direct_const_arg!([]);
+LL | const FOO<T: core::marker::ConstParamTy_>: [T; 0] = gca!([]);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `[T; 0]` must not depend on other generic parameter
 
 error[E0770]: the type of const parameters must not depend on other generic parameters
-  --> $DIR/type_const-generic-param-in-type.rs:15:1
+  --> $DIR/type_const-generic-param-in-type.rs:16:1
    |
-LL | const BAR<const N: usize>: StructWithConstParam<N> =
+LL | const BAR<const N: usize>: StructWithConstParam<N> = gca!(StructWithConstParam::<N>);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `StructWithConstParam<N>` must not depend on other generic parameter
 
 error[E0770]: the type of const parameters must not depend on other generic parameters
   --> $DIR/type_const-generic-param-in-type.rs:19:1
    |
-LL | const BAZ<'a>: [&'a (); 0] = core::direct_const_arg!([]);
+LL | const BAZ<'a>: [&'a (); 0] = gca!([]);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `[&'a (); 0]` must not depend on other generic parameter
 
 error[E0770]: the type of const parameters must not depend on other generic parameters
   --> $DIR/type_const-generic-param-in-type.rs:37:5
    |
-LL |     const ASSOC<T: core::marker::ConstParamTy_>: [T; 0] = core::direct_const_arg!([]);
+LL |     const ASSOC<T: core::marker::ConstParamTy_>: [T; 0] = gca!([]);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `[T; 0]` must not depend on other generic parameter
 
 error[E0770]: the type of const parameters must not depend on other generic parameters
   --> $DIR/type_const-generic-param-in-type.rs:40:5
    |
-LL |     const ASSOC_CONST<const N: usize>: StructWithConstParam<N> =
+LL |     const ASSOC_CONST<const N: usize>: StructWithConstParam<N> = gca!(StructWithConstParam::<N>);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `StructWithConstParam<N>` must not depend on other generic parameter
 
 error[E0770]: the type of const parameters must not depend on other generic parameters
-  --> $DIR/type_const-generic-param-in-type.rs:44:5
+  --> $DIR/type_const-generic-param-in-type.rs:43:5
    |
-LL |     const ASSOC_LT<'a>: [&'a (); 0] = core::direct_const_arg!([]);
+LL |     const ASSOC_LT<'a>: [&'a (); 0] = gca!([]);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `[&'a (); 0]` must not depend on other generic parameter
 
 error[E0770]: the type of const parameters must not depend on other generic parameters

@@ -198,8 +198,8 @@ trait UnusedDelimLint {
             | Paren(_)
             | Become(_) => true,
             Call(..) | MethodCall(_) | Let(..) | Field(..) | MacCall(_) | FormatArgs(_) => false,
-            // `direct_const_arg!()` is invalid in function/method argument position.
-            DirectConstArg(_) => false,
+            // `gca!()` is invalid in function/method argument position.
+            GcaMacro(_) => false,
             // don't lint for placeholder/error-recovery
             Underscore | Err(_) | Dummy => false,
         }

@@ -1,7 +1,9 @@
 #![feature(min_generic_const_args)]
 #![expect(incomplete_features)]
 
-const CONST: usize = core::direct_const_arg!(1_i32);
+use std::gca;
+
+const CONST: usize = gca!(1_i32);
 //~^ ERROR the constant `1` is not of type `usize`
 //~| NOTE expected `usize`, found `i32`
 

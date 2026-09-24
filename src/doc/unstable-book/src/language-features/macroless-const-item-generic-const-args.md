@@ -1,6 +1,6 @@
 # macroless_generic_const_args
 
-Enables implementing const items under `#![feature(min_generic_const_args)]` and `#![feature(generic_const_args)]` without the `direct_const_arg!` macro.
+Enables implementing const items under `#![feature(min_generic_const_args)]` and `#![feature(generic_const_args)]` without the `gca!` macro.
 
 The tracking issue for this feature is: [#162540]
 
@@ -11,7 +11,7 @@ The tracking issue for this feature is: [#162540]
 Warning: This feature is incomplete; its design and syntax may change.
 
 Related features:
-- [min_generic_const_args]. See that doc for what the `direct_const_arg!` is. This feature enables
+- [min_generic_const_args]. See that doc for what the `gca!` is. This feature enables
 support for directly represented const arguments as the rhs of const items without the macro.
 - [macroless_generic_const_args]. For a version of this feature that works for const arguments in other
 positions
@@ -39,7 +39,7 @@ trait Trait {
 }
 
 impl Trait for () {
-    const ASSOC<const N: usize>: usize = core::direct_const_arg!(N);
+    const ASSOC<const N: usize>: usize = core::gca!(N);
 }
 
 fn foo<const N: usize>() {

@@ -9,16 +9,16 @@ pub use encoder::{EncodedMetadata, encode_metadata, rendered_const};
 pub(crate) use parameterized::ParameterizedOverTcx;
 use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
 use rustc_ast as ast;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{Stability, StrippedCfgItem};
 use rustc_crate_store::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
-use rustc_hir::attrs::StrippedCfgItem;
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::PreciseCapturingArgKind;
 use rustc_hir::def::{CtorKind, DefKind, MacroKinds};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
-use rustc_hir::{PreciseCapturingArgKind, attrs};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_macros::{
@@ -192,7 +192,7 @@ type ExpnHashTable = LazyTable<ExpnIndex, Option<LazyValue<ExpnHash>>>;
 #[derive(MetadataEncodable, LazyDecodable)]
 pub(crate) struct ProcMacroData {
     proc_macro_decls_static: DefIndex,
-    stability: Option<hir::Stability>,
+    stability: Option<Stability>,
     macros: LazyArray<(DefIndex, LazyValue<ProcMacroKind>)>,
 }
 
@@ -417,7 +417,7 @@ define_tables! {
     impl_is_fully_generic_for_reflection: Table<DefIndex, bool>,
 
 - optional:
-    attributes: Table<DefIndex, LazyArray<hir::Attribute>>,
+    attributes: Table<DefIndex, LazyArray<rustc_attr_ir::Attribute>>,
     // For non-reexported names in a module every name is associated with a separate `DefId`,
     // so we can take their names, visibilities etc from other encoded tables.
     module_children_non_reexports: Table<DefIndex, LazyArray<DefIndex>>,
@@ -426,10 +426,10 @@ define_tables! {
     visibility: Table<DefIndex, LazyValue<ty::Visibility<DefIndex>>>,
     def_span: Table<DefIndex, LazyValue<Span>>,
     def_ident_span: Table<DefIndex, LazyValue<Span>>,
-    lookup_stability: Table<DefIndex, LazyValue<hir::Stability>>,
-    lookup_const_stability: Table<DefIndex, LazyValue<hir::ConstStability>>,
-    lookup_default_body_stability: Table<DefIndex, LazyValue<hir::DefaultBodyStability>>,
-    lookup_deprecation_entry: Table<DefIndex, LazyValue<attrs::Deprecation>>,
+    lookup_stability: Table<DefIndex, LazyValue<Stability>>,
+    lookup_const_stability: Table<DefIndex, LazyValue<rustc_attr_ir::ConstStability>>,
+    lookup_default_body_stability: Table<DefIndex, LazyValue<rustc_attr_ir::DefaultBodyStability>>,
+    lookup_deprecation_entry: Table<DefIndex, LazyValue<rustc_attr_ir::Deprecation>>,
     explicit_clauses_of: Table<DefIndex, LazyValue<ty::GenericClauses<'static>>>,
     generics_of: Table<DefIndex, LazyValue<ty::Generics>>,
     type_of: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, Ty<'static>>>>,

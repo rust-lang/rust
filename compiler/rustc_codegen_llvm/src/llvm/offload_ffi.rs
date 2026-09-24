@@ -5,7 +5,6 @@ use std::sync::OnceLock;
 use super::ffi::{Module, TargetMachine, Value};
 
 type LLVMRustBundleImagesFn = unsafe extern "C" fn(&Module, &TargetMachine, *const c_char) -> bool;
-type LLVMRustOffloadEmbedBufferInModuleFn = unsafe extern "C" fn(&Module, *const c_char) -> bool;
 type LLVMRustOffloadMapperFn = unsafe extern "C" fn(&Value, &Value, *const &Value);
 type LLVMRustOffloadWrapImagesFn =
     unsafe extern "C" fn(&Module, *const c_char, *const c_char) -> bool;
@@ -18,7 +17,6 @@ use crate::llvm;
 
 pub(crate) struct RustOffloadWrapper {
     LLVMRustBundleImages: LLVMRustBundleImagesFn,
-    LLVMRustOffloadEmbedBufferInModule: LLVMRustOffloadEmbedBufferInModuleFn,
     LLVMRustOffloadMapper: LLVMRustOffloadMapperFn,
     LLVMRustOffloadWrapImages: LLVMRustOffloadWrapImagesFn,
     lld_path: Option<PathBuf>,
@@ -65,14 +63,6 @@ impl RustOffloadWrapper {
         unsafe { (self.LLVMRustBundleImages)(m, tm, c.as_ptr()) }
     }
 
-    pub(crate) unsafe fn llvm_rust_offload_embed_buffer_in_module(
-        &self,
-        m: &Module,
-        i: &CStr,
-    ) -> bool {
-        unsafe { (self.LLVMRustOffloadEmbedBufferInModule)(m, i.as_ptr()) }
-    }
-
     pub(crate) unsafe fn llvm_rust_offload_wrapper(&self, v1: &Value, v2: &Value, vs: &[&Value]) {
         unsafe { (self.LLVMRustOffloadMapper)(v1, v2, vs.as_ptr()) }
     }
@@ -96,11 +86,6 @@ impl RustOffloadWrapper {
 
         let llvm_rust_bundle_images =
             *unsafe { lib.get::<LLVMRustBundleImagesFn>(b"LLVMRustBundleImages\0")? };
-        let llvm_rust_offload_embed_buffer_in_module = *unsafe {
-            lib.get::<LLVMRustOffloadEmbedBufferInModuleFn>(
-                b"LLVMRustOffloadEmbedBufferInModule\0",
-            )?
-        };
         let llvm_rust_offload_wrapper =
             *unsafe { lib.get::<LLVMRustOffloadMapperFn>(b"LLVMRustOffloadMapper\0")? };
         let llvm_rust_offload_wrap_images =
@@ -108,7 +93,6 @@ impl RustOffloadWrapper {
 
         Ok(Self {
             LLVMRustBundleImages: llvm_rust_bundle_images,
-            LLVMRustOffloadEmbedBufferInModule: llvm_rust_offload_embed_buffer_in_module,
             LLVMRustOffloadMapper: llvm_rust_offload_wrapper,
             LLVMRustOffloadWrapImages: llvm_rust_offload_wrap_images,
             lld_path,

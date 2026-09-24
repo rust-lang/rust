@@ -3,6 +3,8 @@
 #![feature(min_generic_const_args)]
 #![expect(incomplete_features)]
 
+use std::gca;
+
 trait SuperTrait {}
 trait Trait: SuperTrait {
     #[rustc_always_gca]
@@ -10,7 +12,7 @@ trait Trait: SuperTrait {
 }
 impl Trait for () {
     //~^ ERROR: the trait bound `(): SuperTrait` is not satisfied
-    const K: u32 = core::direct_const_arg!(const { 1 });
+    const K: u32 = gca!(const { 1 });
 }
 
 fn check(_: impl Trait<K = 0>) {}

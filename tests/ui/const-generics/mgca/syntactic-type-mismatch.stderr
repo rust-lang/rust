@@ -1,18 +1,18 @@
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
-  --> $DIR/syntactic-type-mismatch.rs:7:11
+  --> $DIR/syntactic-type-mismatch.rs:9:11
    |
-LL | const T0: _ = core::direct_const_arg!(());
+LL | const T0: _ = gca!(());
    |           ^ not allowed in type signatures
 
 error: missing type for `const` item
-  --> $DIR/syntactic-type-mismatch.rs:10:9
+  --> $DIR/syntactic-type-mismatch.rs:12:9
    |
-LL | const T1 = core::direct_const_arg!([0]);
+LL | const T1 = gca!([0]);
    |         ^
    |
 help: provide a type for the item
    |
-LL | const T1: <type> = core::direct_const_arg!([0]);
+LL | const T1: <type> = gca!([0]);
    |         ++++++++
 
 error: aborting due to 2 previous errors

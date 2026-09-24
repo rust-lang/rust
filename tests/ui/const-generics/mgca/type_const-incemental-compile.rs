@@ -6,5 +6,7 @@
 #![expect(incomplete_features)]
 #![feature(min_generic_const_args)]
 
-const TYPE_CONST: usize = core::direct_const_arg!(0);
+use std::gca;
+
+const TYPE_CONST: usize = gca!(0);
 fn main() {}

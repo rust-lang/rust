@@ -16,11 +16,11 @@ pub(crate) fn expand_deriving_debug(
     is_const: bool,
 ) {
     // &mut ::std::fmt::Formatter
-    let fmtr = Ref(Box::new(Path(path_std!(fmt::Formatter))), ast::Mutability::Mut);
+    let fmtr = Ref(Box::new(Path(path_std!(cx, span, fmt::Formatter))), ast::Mutability::Mut);
 
     let trait_def = TraitDef {
         span,
-        path: path_std!(fmt::Debug),
+        path: path_std!(cx, span, fmt::Debug),
         skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: SmallVec::new(),
@@ -30,11 +30,16 @@ pub(crate) fn expand_deriving_debug(
             generics: cx.empty_generics(span),
             explicit_self: true,
             nonself_args: smallvec![(fmtr, sym::character('f'))],
-            ret_ty: Path(path_std!(fmt::Result)),
+            ret_ty: Path(path_std!(cx, span, fmt::Result)),
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy:
                 FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless,
-            combine_substructure: combine_substructure(show_substructure),
+            combine_substructure: combine_substructure(|cx, span, substr| show_substructure(
+                cx,
+                span,
+                substr,
+                item.kind.ident().unwrap()
+            )),
         }],
         associated_types: SmallVec::new(),
         is_const,
@@ -44,24 +49,30 @@ pub(crate) fn expand_deriving_debug(
     trait_def.expand(cx, item, push)
 }
 
-fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
-    // We want to make sure we have the ctxt set so that we can use unstable methods
-    let span = cx.with_def_site_ctxt(span);
+fn formatter_ident(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
+    cx.expr_ident(span, Ident::new(sym::character('f'), span))
+}
 
+fn show_substructure(
+    cx: &ExtCtxt<'_>,
+    span: Span,
+    substr: Substructure<'_>,
+    type_ident: Ident,
+) -> BlockOrExpr {
     let fmt_detail = cx.sess.opts.unstable_opts.fmt_debug;
     if fmt_detail == FmtDebug::None {
         return BlockOrExpr::new_expr(cx.expr_ok(span, cx.expr_tuple(span, ThinVec::new())));
     }
 
-    let (ident, vdata, fields) = match substr.fields {
-        Struct(vdata, fields) => (substr.type_ident, vdata, fields),
+    let (ident, vdata, fields) = match substr {
+        Struct(vdata, fields) => (type_ident, vdata, fields),
         EnumMatching(v, fields) => (v.ident, &v.data, fields),
-        AllFieldlessEnum(enum_def) => return show_fieldless_enum(cx, span, enum_def, substr),
+        AllFieldlessEnum(enum_def) => return show_fieldless_enum(cx, span, enum_def, type_ident),
         _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Debug)`"),
     };
 
     let name = cx.expr_str(span, ident.name);
-    let fmt = substr.nonselflike_args[0].clone();
+    let fmt = formatter_ident(cx, span);
 
     // Fieldless enums have been special-cased earlier
     if fmt_detail == FmtDebug::Shallow {
@@ -85,13 +96,14 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> 
     // The number of fields that can be handled without an array.
     const CUTOFF: usize = 5;
 
-    let expr_for_field = |field: &FieldInfo, index: usize| -> Box<ast::Expr> {
-        if index < fields.len() - 1 {
-            field.self_expr.clone()
+    let len = fields.len();
+    let expr_for_field = |field: FieldInfo, index: usize| -> Box<ast::Expr> {
+        if index < len - 1 {
+            field.self_expr
         } else {
             // Unsized types need an extra indirection, but only the last field
             // may be unsized.
-            cx.expr_addr_of(field.span, field.self_expr.clone())
+            cx.expr_addr_of(field.span, field.self_expr)
         }
     };
 
@@ -111,8 +123,7 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> 
 
         let mut args = ThinVec::with_capacity(2 + fields.len() * args_per_field);
         args.extend([fmt, name]);
-        for i in 0..fields.len() {
-            let field = &fields[i];
+        for (i, field) in fields.into_iter().enumerate() {
             if is_struct {
                 let name = cx.expr_str(field.span, field.name.unwrap().name);
                 args.push(name);
@@ -128,8 +139,7 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> 
         let mut name_exprs = ThinVec::with_capacity(fields.len());
         let mut value_exprs = ThinVec::with_capacity(fields.len());
 
-        for i in 0..fields.len() {
-            let field = &fields[i];
+        for (i, field) in fields.into_iter().enumerate() {
             if is_struct {
                 name_exprs.push(cx.expr_str(field.span, field.name.unwrap().name));
             }
@@ -216,14 +226,14 @@ fn show_fieldless_enum(
     cx: &ExtCtxt<'_>,
     span: Span,
     def: &EnumDef,
-    substr: Substructure<'_>,
+    type_ident: Ident,
 ) -> BlockOrExpr {
-    let fmt = substr.nonselflike_args[0].clone();
+    let fmt = formatter_ident(cx, span);
     let arms = def
         .variants
         .iter()
         .map(|v| {
-            let variant_path = cx.path(span, vec![substr.type_ident, v.ident]);
+            let variant_path = cx.path(span, vec![type_ident, v.ident]);
             let pat = match &v.data {
                 ast::VariantData::Tuple(fields, _) => {
                     debug_assert!(fields.is_empty());

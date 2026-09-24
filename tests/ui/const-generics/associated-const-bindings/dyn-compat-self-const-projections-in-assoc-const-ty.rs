@@ -13,6 +13,8 @@
 )]
 #![expect(incomplete_features)]
 
+use std::gca;
+
 trait A {
     type Ty: std::marker::ConstParamTy_;
     #[rustc_always_gca]
@@ -21,7 +23,7 @@ trait A {
 
 impl A for () {
     type Ty = i32;
-    const CT: i32 = core::direct_const_arg!(0);
+    const CT: i32 = gca!(0);
 }
 
 fn main() {

@@ -2,12 +2,14 @@
 
 #![feature(min_generic_const_args, specialization)]
 
+use std::gca;
+
 pub trait IsVoid {
     #[rustc_always_gca]
     const IS_VOID: bool;
 }
 impl<T> IsVoid for T {
-    default const IS_VOID: bool = core::direct_const_arg!(false);
+    default const IS_VOID: bool = gca!(false);
 }
 
 pub trait NotVoid {}

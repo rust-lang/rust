@@ -1,6 +1,8 @@
 #![feature(min_generic_const_args, macroless_generic_const_args, adt_const_params)]
 #![expect(incomplete_features)]
 
+use std::gca;
+
 #[derive(Eq, PartialEq, std::marker::ConstParamTy)]
 enum Option<T> {
     Some(T),
@@ -26,7 +28,7 @@ fn bar<T: Trait, const N: u32>() {
 
     // this on the other hand is not allowed as `N + 1` is not a legal
     // const argument
-    foo::<{ core::direct_const_arg!(Some::<u32> { 0: N + 1 }) }>();
+    foo::<{ gca!(Some::<u32> { 0: N + 1 }) }>();
     //~^ ERROR: complex const arguments must be placed inside of a `const` block
 
     // this also is not allowed as generic parameters cannot be used

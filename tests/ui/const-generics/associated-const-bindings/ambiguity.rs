@@ -4,6 +4,8 @@
 #![feature(adt_const_params, min_generic_const_args, unsized_const_params)]
 #![allow(incomplete_features)]
 
+use std::gca;
+
 trait Trait0: Parent0<i32> + Parent0<u32> {}
 trait Parent0<T> {
     #[rustc_always_gca]
@@ -23,7 +25,7 @@ trait Parent2 {
     const C: &'static str;
 }
 
-fn take1(_: impl Trait1<C = { core::direct_const_arg!("?") }>) {}
+fn take1(_: impl Trait1<C = { gca!("?") }>) {}
 //~^ ERROR ambiguous associated constant `C` in bounds of `Trait1`
 
 fn main() {}

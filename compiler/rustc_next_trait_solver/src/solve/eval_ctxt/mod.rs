@@ -17,7 +17,7 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt, SmallCopySet, TyOrConstInferVar,
 };
 use rustc_type_ir::{
-    self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
+    self as ty, CanonicalVarValues, ClauseKind, Const, InferCtxtLike, Interner, MayBeErased,
     OpaqueTypeKey, PredicateKind, PredicateProxy, Region, RegionVid, TypeFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, max_universe,
 };
@@ -460,7 +460,10 @@ where
             // Relating types is always unproductive. If we were to map proof trees to
             // corecursive functions as explained in #136824, relating types never
             // introduces a constructor which could cause the recursion to be guarded.
-            GoalSource::TypeRelating => PathKind::Inductive,
+            //
+            // FIXME(-Znext-solver=coinductive): For now we treat all inductive cycles as
+            // `Unknown`. See the comment in `fn initial_provisional_result`.
+            GoalSource::TypeRelating => PathKind::Unknown,
             // These goal sources are likely unproductive and can be changed to
             // `PathKind::Inductive`. Keeping them as unknown until we're confident
             // about this and have an example where it is necessary.
@@ -1057,7 +1060,7 @@ where
         ty
     }
 
-    pub(super) fn next_const_infer(&mut self) -> I::Const {
+    pub(super) fn next_const_infer(&mut self) -> Const<I> {
         let ct = self.delegate.next_const_infer();
         self.inspect.add_var_value(ct);
         ct
@@ -1154,7 +1157,7 @@ where
                 ControlFlow::Continue(())
             }
 
-            fn visit_const(&mut self, c: I::Const) -> Self::Result {
+            fn visit_const(&mut self, c: Const<I>) -> Self::Result {
                 match c.kind() {
                     ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
                         if let ty::TermKind::Const(term) = self.term.kind()
@@ -1409,7 +1412,7 @@ where
         &mut self,
         param_env: I::ParamEnv,
         alias_const: ty::AliasConst<I>,
-    ) -> Result<Option<I::Const>, NoSolutionOrRerunNonErased> {
+    ) -> Result<Option<Const<I>>, NoSolutionOrRerunNonErased> {
         if self.typing_mode().is_erased_not_coherence() {
             match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
         }
@@ -1470,7 +1473,7 @@ where
         &mut self,
         src: I::Ty,
         dst: I::Ty,
-        assume: I::Const,
+        assume: Const<I>,
     ) -> Result<Certainty, NoSolution> {
         self.delegate.is_transmutable(dst, src, assume)
     }
@@ -1760,7 +1763,7 @@ fn filter_irrelevant_region_constraints<D, I>(
             }
             t.super_visit_with(self);
         }
-        fn visit_const(&mut self, c: I::Const) {
+        fn visit_const(&mut self, c: Const<I>) {
             // The same goes for consts.
             if !c.has_infer_regions() {
                 return;

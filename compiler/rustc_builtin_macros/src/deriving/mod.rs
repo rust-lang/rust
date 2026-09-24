@@ -7,11 +7,11 @@ use rustc_span::{Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 macro pathvec($($rest:ident)::+) {{
-    vec![ $( sym::$rest ),+ ]
+    &[ $( sym::$rest ),+ ]
 }}
 
-macro path_std($($x:tt)*) {
-    generic::ty::Path::new( pathvec!( $($x)* ) )
+macro path_std($cx: expr, $span: expr, $($x:tt)*) {
+    generic::ty::new_path($cx, $span, pathvec!( $($x)* ), &[] )
 }
 
 pub(crate) mod clone;

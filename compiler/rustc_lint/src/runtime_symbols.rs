@@ -1,4 +1,4 @@
-use rustc_hir::attrs::CanonicalSymbol;
+use rustc_attr_ir::CanonicalSymbol;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, FnSig, ForeignItemKind};
 use rustc_infer::infer::DefineOpaqueTypes;

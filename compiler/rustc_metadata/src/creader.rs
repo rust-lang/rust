@@ -14,7 +14,6 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
 use rustc_data_structures::unord::UnordMap;
 use rustc_expand::base::SyntaxExtension;
-use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE, LocalDefId, StableCrateId};
 use rustc_hir::definitions::Definitions;
 use rustc_index::IndexVec;
@@ -89,7 +88,7 @@ pub enum LoadedMacro {
     MacroDef {
         def: MacroDef,
         ident: Ident,
-        attrs: Vec<hir::Attribute>,
+        attrs: Vec<rustc_attr_ir::Attribute>,
         span: Span,
         edition: Edition,
     },

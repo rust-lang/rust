@@ -9,6 +9,10 @@ use rustc_ast::{
     join_path_idents,
 };
 use rustc_ast_pretty::pprust;
+use rustc_attr_ir::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
+use rustc_attr_ir::{
+    Attribute, AttributeKind, CfgEntry, Stability, StabilityLevel, StrippedCfgItem, find_attr,
+};
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
@@ -18,12 +22,10 @@ use rustc_errors::{
     pluralize, struct_span_code_err,
 };
 use rustc_feature::BUILTIN_ATTRIBUTES;
-use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
-use rustc_hir::attrs::{AttributeKind, CfgEntry, StrippedCfgItem};
+use rustc_hir::PrimTy;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, MacroKinds, NonMacroAttrKind, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
-use rustc_hir::{Attribute, PrimTy, Stability, StabilityLevel, find_attr};
 use rustc_lint_defs::builtin::{
     ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS, AMBIGUOUS_IMPORT_VISIBILITIES,
     AMBIGUOUS_PANIC_IMPORTS, MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,

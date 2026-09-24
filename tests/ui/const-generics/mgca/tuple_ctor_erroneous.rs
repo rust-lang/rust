@@ -1,6 +1,7 @@
 #![feature(min_generic_const_args, macroless_generic_const_args, adt_const_params)]
 #![expect(incomplete_features)]
 
+use std::gca;
 use std::marker::ConstParamTy;
 
 #[derive(Eq, PartialEq, ConstParamTy)]
@@ -12,7 +13,7 @@ enum MyEnum<T> {
     Unit,
 }
 
-const CONST_ITEM: u32 = core::direct_const_arg!(42);
+const CONST_ITEM: u32 = gca!(42);
 
 fn accepts_point<const P: Point>() {}
 fn accepts_enum<const E: MyEnum<u32>>() {}

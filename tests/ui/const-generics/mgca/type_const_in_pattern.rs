@@ -3,12 +3,14 @@
 #![expect(incomplete_features)]
 #![allow(irrefutable_let_patterns)]
 
-const CONST: usize = core::direct_const_arg!(1_usize);
+use std::gca;
+
+const CONST: usize = gca!(1_usize);
 
 struct Inherent;
 
 impl Inherent {
-    const BAR: usize = core::direct_const_arg!(1_usize);
+    const BAR: usize = gca!(1_usize);
 }
 
 trait Trait {
@@ -19,7 +21,7 @@ trait Trait {
 struct Assoc;
 
 impl Trait for Assoc {
-    const BAZ: usize = core::direct_const_arg!(1_usize);
+    const BAZ: usize = gca!(1_usize);
 }
 
 fn main() {

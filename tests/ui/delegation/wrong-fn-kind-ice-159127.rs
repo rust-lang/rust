@@ -1,9 +1,11 @@
 #![feature(fn_delegation)]
 #![feature(min_generic_const_args)]
 
+use std::gca;
+
 impl
-    core::direct_const_arg!({
-    //~^ ERROR: expected type, found `direct_const_arg!()` constant
+    gca!({
+        //~^ ERROR: expected type, found `gca!()` constant
         fn foo() {}
         reuse foo::<>as bar;
         reuse bar;

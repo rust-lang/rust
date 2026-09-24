@@ -4,17 +4,19 @@
 use std::num::NonZero;
 
 use rustc_ast_lowering::stability::extern_abi_stability;
+use rustc_attr_ir::{
+    AttributeKind, ConstStability, DefaultBodyStability, DeprecatedSince, Stability,
+    StabilityLevel, StableSince, UnstableReason, VERSION_PLACEHOLDER, find_attr,
+};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
 use rustc_feature::{EnabledLangFeature, EnabledLibFeature, UNSTABLE_LANG_FEATURES};
-use rustc_hir::attrs::{AttributeKind, DeprecatedSince};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalModId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, AmbigArg, ConstStability, Constness, DefaultBodyStability, FieldDef, HirId, Item,
-    ItemKind, Path, Stability, StabilityLevel, StableSince, TraitRef, Ty, TyKind, UnstableReason,
-    UsePath, VERSION_PLACEHOLDER, Variant, find_attr,
+    self as hir, AmbigArg, Constness, FieldDef, HirId, Item, ItemKind, Path, TraitRef, Ty, TyKind,
+    UsePath, Variant,
 };
 use rustc_lint_defs::builtin::{
     DEPRECATED, DUPLICATE_FEATURES, INEFFECTIVE_UNSTABLE_REEXPORTS,

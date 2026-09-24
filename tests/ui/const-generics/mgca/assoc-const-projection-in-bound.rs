@@ -4,6 +4,8 @@
 #![feature(min_generic_const_args, macroless_generic_const_args)]
 #![allow(dead_code)]
 
+use std::gca;
+
 trait Abc {}
 
 trait A {
@@ -12,7 +14,7 @@ trait A {
 }
 
 impl<T: Abc> A for T {
-    const VALUE: usize = core::direct_const_arg!(0);
+    const VALUE: usize = gca!(0);
 }
 
 trait S<const K: usize> {}
