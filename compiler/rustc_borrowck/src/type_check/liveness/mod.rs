@@ -76,15 +76,33 @@ pub(super) fn generate<'tcx>(
         // liveness, we don't need to compute it when there are no loans.
         FxIndexSet::default()
     } else {
-        let free_regions = typeck.universal_regions.universal_regions_iter().collect();
-        let (polonius_relevant, _) =
-            compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
-
+        // As described above, we can defer computing liveness for the regions that are
+        // NLL-boring-and-polonius-relevant. Let's find these.
+        //
+        // Note that this is basically a simplified version of `compute_relevant_live_locals`
+        // avoiding the allocations that are unnecessary in our more limited use-case.
+        let tcx = typeck.tcx();
+        let universal_regions = typeck.universal_regions;
         let boring_nll_locals: FxHashSet<_> = boring_locals.iter().copied().collect();
-        let deferred_polonius_locals = polonius_relevant
-            .into_iter()
-            .filter(|local| boring_nll_locals.contains(local))
+        let deferred_polonius_locals = typeck
+            .body
+            .local_decls
+            .iter_enumerated()
+            .filter_map(|(local, decl)| {
+                // The polonius-relevant locals are the ones whose types do not only contain
+                // universal regions.
+                if boring_nll_locals.contains(&local)
+                    && !tcx.all_free_regions_meet(&decl.ty, |r| {
+                        universal_regions.is_universal_region(r.as_var())
+                    })
+                {
+                    Some(local)
+                } else {
+                    None
+                }
+            })
             .collect();
+
         typeck.polonius_context.as_mut().unwrap().boring_nll_locals = boring_nll_locals;
         deferred_polonius_locals
     };
