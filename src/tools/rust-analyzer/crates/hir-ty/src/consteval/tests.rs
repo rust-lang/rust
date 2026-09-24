@@ -2543,6 +2543,19 @@ fn unsupported_str_binary_op_in_eval_rvalue() {
 }
 
 #[test]
+fn enum_variant_as_usize_in_const() {
+    check_number(
+        r#"
+enum Foo {
+    Bar = 4,
+}
+const GOAL: usize = Foo::Bar as usize;
+    "#,
+        4,
+    );
+}
+
+#[test]
 fn const_loop() {
     check_fail(
         r#"
