@@ -115,25 +115,25 @@ fn test_clamp_magnitude_f64() {
 }
 
 #[test]
-#[should_panic(expected = "limit must be non-negative")]
+#[should_panic(expected = "limit must be non-negative and not NaN")]
 fn test_clamp_magnitude_f32_panic_negative_limit() {
     let _ = 1.0f32.clamp_magnitude(-1.0);
 }
 
 #[test]
-#[should_panic(expected = "limit must be non-negative")]
+#[should_panic(expected = "limit must be non-negative and not NaN")]
 fn test_clamp_magnitude_f64_panic_negative_limit() {
     let _ = 1.0f64.clamp_magnitude(-1.0);
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "limit must be non-negative and not NaN")]
 fn test_clamp_magnitude_f32_panic_nan_limit() {
     let _ = 1.0f32.clamp_magnitude(f32::NAN);
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "limit must be non-negative and not NaN")]
 fn test_clamp_magnitude_f64_panic_nan_limit() {
     let _ = 1.0f64.clamp_magnitude(f64::NAN);
 }

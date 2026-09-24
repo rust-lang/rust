@@ -1699,11 +1699,11 @@ impl f32 {
     /// assert_eq!(2.0f32.clamp_magnitude(3.0), 2.0);
     /// assert_eq!((-2.0f32).clamp_magnitude(3.0), -2.0);
     /// ```
-    #[must_use = "this returns the clamped value and does not modify the original"]
-    #[unstable(feature = "clamp_magnitude", issue = "148519")]
     #[inline]
+    #[unstable(feature = "clamp_magnitude", issue = "148519")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "NaN is also invalid")]
-    pub fn clamp_magnitude(self, limit: f32) -> f32 {
+    pub const fn clamp_magnitude(self, limit: f32) -> f32 {
         assert!(limit >= 0.0, "limit must be non-negative and not NaN");
         let limit = limit.abs(); // Canonicalises -0.0 to 0.0
         self.clamp(-limit, limit)

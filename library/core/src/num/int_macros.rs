@@ -3968,10 +3968,11 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(80", stringify!($SelfT), ".clamp_magnitude(100), 80);")]
         #[doc = concat!("assert_eq!(-80", stringify!($SelfT), ".clamp_magnitude(100), -80);")]
         /// ```
-        #[must_use = "this returns the clamped value and does not modify the original"]
-        #[unstable(feature = "clamp_magnitude", issue = "148519")]
         #[inline]
-        pub fn clamp_magnitude(self, limit: $UnsignedT) -> Self {
+        #[must_use = "method returns a new number and does not mutate the original value"]
+        #[rustc_const_unstable(feature = "clamp_magnitude", issue = "148519")]
+        #[unstable(feature = "clamp_magnitude", issue = "148519")]
+        pub const fn clamp_magnitude(self, limit: $UnsignedT) -> Self {
             if let Ok(limit) = core::convert::TryInto::<$SelfT>::try_into(limit) {
                 self.clamp(-limit, limit)
             } else {
