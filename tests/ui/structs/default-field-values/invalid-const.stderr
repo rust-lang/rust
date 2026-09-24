@@ -17,6 +17,7 @@ LL | pub struct Baz<const C: u8> {
 LL |     pub bax: u8 = 130 + C,
    |                   ^^^^^^^ this can't be const-evaluated until use
    |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
    = note: `#[warn(unevaluated_default_field_value)]` on by default
 help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
    |
@@ -24,32 +25,51 @@ LL + #[expect(unevaluated_default_field_value)]
 LL | pub struct Baz<const C: u8> {
    |
 
-error[E0080]: attempt to compute `130_u8 + 130_u8`, which would overflow
+warning: field `bat` has a default value that is only checked when a value of `Baz` is constructed
   --> $DIR/invalid-const.rs:12:19
    |
-LL |     pub bat: u8 = 130 + 130,
-   |                   ^^^^^^^^^ evaluation of `Baz::<C>::bat::{constant#0}` failed here
-
-warning: field `bap` has a default value that is only checked when a value of `Baz` is constructed
-  --> $DIR/invalid-const.rs:15:19
-   |
 LL | pub struct Baz<const C: u8> {
-...
-LL |     pub bap: u8 = C,
-   |                   ^ this can't be const-evaluated until use
+LL |     pub bax: u8 = 130 + C,
+LL |     pub bat: u8 = 130 + 130,
+   |                   ^^^^^^^^^ this can't be const-evaluated until use
    |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
 help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
    |
 LL + #[expect(unevaluated_default_field_value)]
 LL | pub struct Baz<const C: u8> {
    |
 
-error[E0080]: evaluation panicked: asdf
+warning: field `bay` has a default value that is only checked when a value of `Baz` is constructed
+  --> $DIR/invalid-const.rs:15:19
+   |
+LL | pub struct Baz<const C: u8> {
+...
+LL |     pub bay: u8 = 1,
+   |                   ^ this can't be const-evaluated until use
+   |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[expect(unevaluated_default_field_value)]
+LL | pub struct Baz<const C: u8> {
+   |
+
+warning: field `bap` has a default value that is only checked when a value of `Baz` is constructed
   --> $DIR/invalid-const.rs:16:19
    |
-LL |     pub ban: u8 = panic!("asdf"),
-   |                   ^^^^^^^^^^^^^^ evaluation of `Baz::<C>::ban::{constant#0}` failed here
+LL | pub struct Baz<const C: u8> {
+...
+LL |     pub bap: u8 = C,
+   |                   ^ this can't be const-evaluated until use
+   |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[expect(unevaluated_default_field_value)]
+LL | pub struct Baz<const C: u8> {
+   |
 
-error: aborting due to 4 previous errors; 2 warnings emitted
+error: aborting due to 2 previous errors; 4 warnings emitted
 
 For more information about this error, try `rustc --explain E0080`.

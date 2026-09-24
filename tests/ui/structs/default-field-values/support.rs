@@ -39,9 +39,13 @@ const impl ConstDefault for i32 {
 
 pub struct Qux<A, const C: i32, X: const ConstDefault> {
     bar: S = Qux::<A, C, X>::S, // Associated constant from inherent impl
+    //~^ WARN
     baz: i32 = foo(), // Constant function
+    //~^ WARN
     bat: i32 = <Qux<A, C, X> as T>::K, // Associated constant from explicit trait
+    //~^ WARN
     baq: i32 = Self::K, // Associated constant from implicit trait
+    //~^ WARN
     bay: i32 = C, // `const` parameter
     //~^ WARN
     bak: Vec<A> = Vec::new(), // Associated constant function

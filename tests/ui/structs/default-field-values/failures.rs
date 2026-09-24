@@ -19,9 +19,9 @@ pub struct Bar {
 
 #[derive(Default)]
 pub struct Qux<const C: i32> {
-    bar: S = Self::S,
-    baz: i32 = foo(),
-    bat: i32 = <Qux<{ C }> as T>::K,
+    bar: S = Self::S, //~ WARN
+    baz: i32 = foo(), //~ WARN
+    bat: i32 = <Qux<{ C }> as T>::K, //~ WARN
     bay: i32 = C, //~ WARN
 }
 

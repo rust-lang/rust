@@ -992,28 +992,24 @@ pub(crate) fn check_type_defn<'tcx>(
     enter_wf_checking_ctxt(tcx, item, |wfcx| {
         let variants = adt_def.variants();
         let packed = adt_def.repr().packed();
+        let own_params_require_monomorphization =
+            LazyCell::new(|| tcx.generics_of(item).own_requires_monomorphization());
 
         for variant in variants.iter() {
             // All field types must be well-formed.
             for field in &variant.fields {
                 if let Some(def_id) = field.value {
-                    if let Err(ErrorHandled::TooGeneric(span)) = tcx.const_eval_poly(def_id)
+                    if !*own_params_require_monomorphization {
+                        let _ = tcx.const_eval_poly(def_id);
+                    } else if tcx.features().default_field_values()
                         && let Some(local_def_id) = def_id.as_local()
-                        // Do not redundantly trigger lint if the feature is not actually available.
-                        && tcx.features().default_field_values()
                     {
+                        // Do not redundantly trigger lint if the feature is not actually available.
+
                         let field_span = tcx.def_span(def_id);
                         let mut multispan: MultiSpan = field_span.into();
-                        if !span.is_dummy() && span != field_span {
-                            multispan
-                                .push_span_label(span, "this can't be const-evaluated until use");
-                            multispan.push_span_label(field_span, "unevaluated default value");
-                        } else {
-                            multispan.push_span_label(
-                                field_span,
-                                "this can't be const-evaluated until use",
-                            );
-                        }
+                        multispan
+                            .push_span_label(field_span, "this can't be const-evaluated until use");
                         let struct_start = tcx.def_span(item).shrink_to_lo();
                         multispan.push_span_context(tcx.def_span(field.did));
                         multispan.push_span_context(struct_start);

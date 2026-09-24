@@ -2155,7 +2155,12 @@ pub(crate) struct ParamInTyOfConstParam<'tcx> {
 
 #[derive(Diagnostic)]
 #[diag(
-    "field `{$field}` has a default value that is only checked when a value of `{$ty}` is constructed"
+    "field `{$field}` has a default value that is only checked when a value of `{$ty}` is \
+     constructed"
+)]
+#[help(
+    "structs with type and const parameters only evaluate their default field values during \
+     construction, not eagerly when declared"
 )]
 pub(crate) struct UnevaluatedDefaultFieldValue {
     pub(crate) field: Symbol,

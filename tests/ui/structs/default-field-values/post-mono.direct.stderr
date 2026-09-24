@@ -5,6 +5,7 @@ LL | struct Z<const X: usize> {
 LL |     post_mono: usize = X / 0,
    |                        ^^^^^ this can't be const-evaluated until use
    |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
    = note: `#[warn(unevaluated_default_field_value)]` on by default
 help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
    |

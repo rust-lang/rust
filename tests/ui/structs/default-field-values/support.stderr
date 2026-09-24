@@ -1,11 +1,11 @@
-warning: field `bay` has a default value that is only checked when a value of `Qux` is constructed
-  --> $DIR/support.rs:45:16
+warning: field `bar` has a default value that is only checked when a value of `Qux` is constructed
+  --> $DIR/support.rs:41:14
    |
 LL | pub struct Qux<A, const C: i32, X: const ConstDefault> {
-...
-LL |     bay: i32 = C, // `const` parameter
-   |                ^ this can't be const-evaluated until use
+LL |     bar: S = Qux::<A, C, X>::S, // Associated constant from inherent impl
+   |              ^^^^^^^^^^^^^^^^^ this can't be const-evaluated until use
    |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
    = note: `#[warn(unevaluated_default_field_value)]` on by default
 help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
    |
@@ -13,14 +13,75 @@ LL + #[expect(unevaluated_default_field_value)]
 LL | pub struct Qux<A, const C: i32, X: const ConstDefault> {
    |
 
+warning: field `baz` has a default value that is only checked when a value of `Qux` is constructed
+  --> $DIR/support.rs:43:16
+   |
+LL | pub struct Qux<A, const C: i32, X: const ConstDefault> {
+...
+LL |     baz: i32 = foo(), // Constant function
+   |                ^^^^^ this can't be const-evaluated until use
+   |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[expect(unevaluated_default_field_value)]
+LL | pub struct Qux<A, const C: i32, X: const ConstDefault> {
+   |
+
+warning: field `bat` has a default value that is only checked when a value of `Qux` is constructed
+  --> $DIR/support.rs:45:16
+   |
+LL | pub struct Qux<A, const C: i32, X: const ConstDefault> {
+...
+LL |     bat: i32 = <Qux<A, C, X> as T>::K, // Associated constant from explicit trait
+   |                ^^^^^^^^^^^^^^^^^^^^^^ this can't be const-evaluated until use
+   |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[expect(unevaluated_default_field_value)]
+LL | pub struct Qux<A, const C: i32, X: const ConstDefault> {
+   |
+
+warning: field `baq` has a default value that is only checked when a value of `Qux` is constructed
+  --> $DIR/support.rs:47:16
+   |
+LL | pub struct Qux<A, const C: i32, X: const ConstDefault> {
+...
+LL |     baq: i32 = Self::K, // Associated constant from implicit trait
+   |                ^^^^^^^ this can't be const-evaluated until use
+   |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[expect(unevaluated_default_field_value)]
+LL | pub struct Qux<A, const C: i32, X: const ConstDefault> {
+   |
+
+warning: field `bay` has a default value that is only checked when a value of `Qux` is constructed
+  --> $DIR/support.rs:49:16
+   |
+LL | pub struct Qux<A, const C: i32, X: const ConstDefault> {
+...
+LL |     bay: i32 = C, // `const` parameter
+   |                ^ this can't be const-evaluated until use
+   |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[expect(unevaluated_default_field_value)]
+LL | pub struct Qux<A, const C: i32, X: const ConstDefault> {
+   |
+
 warning: field `bak` has a default value that is only checked when a value of `Qux` is constructed
-  --> $DIR/support.rs:47:19
+  --> $DIR/support.rs:51:19
    |
 LL | pub struct Qux<A, const C: i32, X: const ConstDefault> {
 ...
 LL |     bak: Vec<A> = Vec::new(), // Associated constant function
    |                   ^^^^^^^^^^ this can't be const-evaluated until use
    |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
 help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
    |
 LL + #[expect(unevaluated_default_field_value)]
@@ -28,18 +89,19 @@ LL | pub struct Qux<A, const C: i32, X: const ConstDefault> {
    |
 
 warning: field `ban` has a default value that is only checked when a value of `Qux` is constructed
-  --> $DIR/support.rs:49:14
+  --> $DIR/support.rs:53:14
    |
 LL | pub struct Qux<A, const C: i32, X: const ConstDefault> {
 ...
 LL |     ban: X = X::value(), // Associated constant function from `const` trait parameter
    |              ^^^^^^^^^^ this can't be const-evaluated until use
    |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
 help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
    |
 LL + #[expect(unevaluated_default_field_value)]
 LL | pub struct Qux<A, const C: i32, X: const ConstDefault> {
    |
 
-warning: 3 warnings emitted
+warning: 7 warnings emitted
 

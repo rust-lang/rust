@@ -1,3 +1,18 @@
+warning: field `x` has a default value that is only checked when a value of `Foo` is constructed
+  --> $DIR/struct-type-parameter-with-default.rs:5:12
+   |
+LL | struct Foo<T = String> {
+LL |     x: T = String::new(),
+   |            ^^^^^^^^^^^^^ this can't be const-evaluated until use
+   |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
+   = note: `#[warn(unevaluated_default_field_value)]` on by default
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[expect(unevaluated_default_field_value)]
+LL | struct Foo<T = String> {
+   |
+
 error[E0308]: mismatched types
   --> $DIR/struct-type-parameter-with-default.rs:5:12
    |
@@ -10,6 +25,6 @@ LL |     x: T = String::new(),
                       found struct `String`
    = note: the type of default fields referencing type parameters can't be assumed inside the struct defining them
 
-error: aborting due to 1 previous error
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0308`.

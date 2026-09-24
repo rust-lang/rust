@@ -6,6 +6,7 @@ LL | struct Z<const X: usize> {
 LL |     one: W<X> = W::<X>::new(),
    |                 ^^^^^^^^^^^^^ this can't be const-evaluated until use
    |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
    = note: `#[warn(unevaluated_default_field_value)]` on by default
 help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
    |
@@ -21,6 +22,7 @@ LL | struct Z<const X: usize> {
 LL |     two: W<X> = W::new(),
    |                 ^^^^^^^^ this can't be const-evaluated until use
    |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
 help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
    |
 LL + #[expect(unevaluated_default_field_value)]
@@ -35,6 +37,7 @@ LL | struct Z<const X: usize> {
 LL |     too_generic: usize = X + 1,
    |                          ^^^^^ this can't be const-evaluated until use
    |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
 help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
    |
 LL + #[expect(unevaluated_default_field_value)]
@@ -49,6 +52,7 @@ LL | struct Z<const X: usize> {
 LL |     direct: usize = X,
    |                     ^ this can't be const-evaluated until use
    |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
 help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
    |
 LL + #[expect(unevaluated_default_field_value)]
