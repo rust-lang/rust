@@ -178,6 +178,12 @@ values:
 The default behaviour, if frame pointers are not force-enabled, depends on the
 target.
 
+#### Implementation notes
+
+On s390x targets, frame pointers cannot be used to walk the stack. Instead of enabling frame
+pointers, this flag enables the `backchain`, which stores a pointer to the caller's frame in each
+function's frame.
+
 ## force-unwind-tables
 
 This flag forces the generation of unwind tables. It takes one of the following
