@@ -183,12 +183,12 @@ use rustc_ast::token::{IdentKind, LitKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenTree};
 use rustc_ast::{
     AttrArgs, DelimArgs, EnumDef, Expr, GenericArg, GenericParam, GenericParamKind, Generics,
-    Safety, SelfKind, VariantData,
+    Safety, VariantData,
 };
 use rustc_attr_ir::{Attribute, AttributeKind, ReprPacked};
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{Ident, Span, Symbol, kw, respan, sym};
+use rustc_span::{Ident, Span, Symbol, kw, sym};
 pub(crate) use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -792,19 +792,6 @@ impl<'a> MethodDef<'a> {
         !self.explicit_self
     }
 
-    /// Expressions for `&self` and also any other
-    /// args with the same type (e.g. the `other` arg in `PartialEq::eq`).
-    fn get_selflike_args(&self, cx: &ExtCtxt<'_>, span: Span) -> ThinVec<Box<Expr>> {
-        assert!(self.explicit_self);
-
-        let self_expr = cx.expr_self(span);
-        if self.has_other_selflike_arg {
-            thin_vec![self_expr, cx.expr_ident_sym(span, self.nonself_args[0].1)]
-        } else {
-            thin_vec![self_expr]
-        }
-    }
-
     fn create_method(
         &self,
         cx: &ExtCtxt<'_>,
@@ -815,23 +802,16 @@ impl<'a> MethodDef<'a> {
         if body.0.is_empty() && body.1.is_none() && self.name == sym::assert_fields_are_eq {
             return None;
         }
-        // Create the generics that aren't for `Self`.
-        let fn_generics = self.generics.clone();
 
         let self_arg = self.explicit_self.then(|| {
-            let ident = Ident::new(kw::SelfLower, span);
-            ast::Param::from_self(
-                ast::AttrVec::default(),
-                respan(span, SelfKind::Region(None, ast::Mutability::Not)),
-                ident,
-            )
+            let infer_ty = cx.ty(span, ast::TyKind::ImplicitSelf);
+            let ty = cx.ty_ref(span, infer_ty, None, ast::Mutability::Not);
+            (ty, kw::SelfLower)
         });
         let args = self_arg
             .into_iter()
-            .chain(self.nonself_args.iter().map(|(ty, name)| {
-                let ast_ty = ty.clone();
-                cx.param(span, *name, ast_ty)
-            }))
+            .chain(self.nonself_args.iter().cloned())
+            .map(|(ty, name)| cx.param(span, name, ty))
             .collect();
 
         let ret_type = if self.ret_ty.kind.is_unit() {
@@ -857,7 +837,7 @@ impl<'a> MethodDef<'a> {
             kind: ast::AssocItemKind::Fn(cx.item_fn(
                 sig,
                 method_ident,
-                fn_generics,
+                self.generics.clone(),
                 Some(body_block),
             )),
             tokens: None,
@@ -907,10 +887,15 @@ impl<'a> MethodDef<'a> {
         is_packed: bool,
         type_ident: Ident,
     ) -> BlockOrExpr {
-        let selflike_args = self.get_selflike_args(cx, span);
+        let self_expr = cx.expr_self(span);
+        let selflike_args = if self.has_other_selflike_arg {
+            &[self_expr, cx.expr_ident_sym(span, self.nonself_args[0].1)][..]
+        } else {
+            &[self_expr]
+        };
 
         let selflike_fields =
-            create_struct_field_access_fields(span, cx, &selflike_args, struct_def, is_packed);
+            create_struct_field_access_fields(span, cx, selflike_args, struct_def, is_packed);
         self.call_substructure_method(cx, span, Struct(struct_def, selflike_fields), type_ident)
     }
 
@@ -958,10 +943,6 @@ impl<'a> MethodDef<'a> {
     ) -> BlockOrExpr {
         let variants = &enum_def.variants;
 
-        // Traits that unify fieldless variants always use the discriminant(s).
-        let unify_fieldless_variants =
-            self.fieldless_variants_strategy == FieldlessVariantsStrategy::Unify;
-
         // For zero-variant enum, this function body is unreachable. Generate
         // `match *self {}`. This produces machine code identical to `unsafe {
         // core::intrinsics::unreachable() }` while being safe and stable.
@@ -971,14 +952,6 @@ impl<'a> MethodDef<'a> {
             let expr = cx.expr_match(span, match_arg, match_arms);
             return BlockOrExpr(ThinVec::new(), Some(expr));
         }
-
-        let selflike_args = self.get_selflike_args(cx, span);
-
-        let prefixes: &[&str] = match selflike_args.len() {
-            1 => &["__self"],
-            2 => &["__self", "__arg1"],
-            _ => unreachable!(),
-        };
 
         // There are some special cases involving fieldless enums where no
         // match is necessary.
@@ -1010,6 +983,13 @@ impl<'a> MethodDef<'a> {
                 );
             }
         }
+
+        // Traits that unify fieldless variants always use the discriminant(s).
+        let unify_fieldless_variants =
+            self.fieldless_variants_strategy == FieldlessVariantsStrategy::Unify;
+
+        let prefixes: &[&str] =
+            if self.has_other_selflike_arg { &["__self", "__arg1"] } else { &["__self"] };
 
         // These arms are of the form:
         // (Variant1, Variant1, ...) => Body1
@@ -1046,9 +1026,8 @@ impl<'a> MethodDef<'a> {
                 // expressions for referencing every field of every
                 // Self arg, assuming all are instances of VariantK.
                 // Build up code associated with such a case.
-                let substructure = EnumMatching(variant, fields);
                 let arm_expr = self
-                    .call_substructure_method(cx, span, substructure, type_ident)
+                    .call_substructure_method(cx, span, EnumMatching(variant, fields), type_ident)
                     .into_expr(cx, span);
 
                 cx.arm(span, single_pat, arm_expr)
@@ -1070,7 +1049,7 @@ impl<'a> MethodDef<'a> {
                     .into_expr(cx, span),
                 )
             }
-            _ if variants.len() > 1 && selflike_args.len() > 1 => {
+            _ if variants.len() > 1 && self.has_other_selflike_arg => {
                 // Because we know that all the arguments will match if we reach
                 // the match expression we add the unreachable intrinsic as the
                 // result of the default which should help llvm in optimizing it.
@@ -1085,33 +1064,31 @@ impl<'a> MethodDef<'a> {
         // Create a match expression with one arm per discriminant plus
         // possibly a default arm, e.g.:
         //      match (self, other) {
-        //          (Variant1, Variant1, ...) => Body1
-        //          (Variant2, Variant2, ...) => Body2,
+        //          (Variant1, Variant1) => Body1
+        //          (Variant2, Variant2) => Body2,
         //          ...
         //          _ => ::core::intrinsics::unreachable(),
         //      }
-        let get_match_expr = |mut selflike_args: ThinVec<Box<Expr>>| {
-            let match_arg = if selflike_args.len() == 1 {
-                selflike_args.pop().unwrap()
-            } else {
-                cx.expr_tuple(span, selflike_args)
-            };
-            cx.expr_match(span, match_arg, match_arms)
+
+        let self_expr = cx.expr_self(span);
+        let match_arg = if self.has_other_selflike_arg {
+            cx.expr_tuple(
+                span,
+                thin_vec![self_expr, cx.expr_ident_sym(span, self.nonself_args[0].1)],
+            )
+        } else {
+            self_expr
         };
+        let match_expr = cx.expr_match(span, match_arg, match_arms);
 
         // If the trait uses the discriminant and there are multiple variants, we need
         // to add a discriminant check operation before the match. Otherwise, the match
         // is enough.
         if unify_fieldless_variants && variants.len() > 1 {
             // Combine a discriminant check with the match.
-            self.call_substructure_method(
-                cx,
-                span,
-                EnumDiscr(Some(get_match_expr(selflike_args))),
-                type_ident,
-            )
+            self.call_substructure_method(cx, span, EnumDiscr(Some(match_expr)), type_ident)
         } else {
-            BlockOrExpr(ThinVec::new(), Some(get_match_expr(selflike_args)))
+            BlockOrExpr(ThinVec::new(), Some(match_expr))
         }
     }
 }
@@ -1128,7 +1105,7 @@ fn create_struct_patterns(
         .iter()
         .map(|prefix| {
             let pieces_iter = struct_def.fields().iter().enumerate().map(|(i, struct_field)| {
-                let ident = mk_pattern_ident(span, prefix, i).name;
+                let ident = Symbol::intern(&format!("{prefix}_{i}"));
                 (struct_field.ident, cx.pat_ident(struct_field.span.with_ctxt(span.ctxt()), ident))
             });
 
@@ -1184,10 +1161,6 @@ where
         .collect()
 }
 
-fn mk_pattern_ident(span: Span, prefix: &str, i: usize) -> Ident {
-    Ident::from_str_and_span(&format!("{prefix}_{i}"), span)
-}
-
 fn create_struct_pattern_fields(
     span: Span,
     cx: &ExtCtxt<'_>,
@@ -1197,10 +1170,7 @@ fn create_struct_pattern_fields(
     create_fields(span, struct_def, |i, _struct_field, sp| {
         prefixes
             .iter()
-            .map(|prefix| {
-                let ident = mk_pattern_ident(span, prefix, i);
-                cx.expr_path(cx.path_ident(sp, ident))
-            })
+            .map(|prefix| cx.expr_ident_sym(sp, Symbol::intern(&format!("{prefix}_{i}"))))
             .collect()
     })
 }
@@ -1224,9 +1194,9 @@ fn create_struct_field_access_fields(
                     sp,
                     ast::ExprKind::Field(
                         selflike_arg.clone(),
-                        struct_field.ident.unwrap_or_else(|| {
-                            Ident::from_str_and_span(&i.to_string(), struct_field.span)
-                        }),
+                        struct_field
+                            .ident
+                            .unwrap_or_else(|| Ident::new(sym::integer(i), struct_field.span)),
                     ),
                 );
                 if is_packed {
