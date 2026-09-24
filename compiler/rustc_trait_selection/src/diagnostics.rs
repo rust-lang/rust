@@ -1166,7 +1166,7 @@ impl<'tcx> ActualImplExplNotes<'tcx> {
 pub(crate) struct TraitPlaceholderMismatch<'tcx> {
     #[primary_span]
     pub span: Span,
-    #[label("doesn't satisfy where-clause")]
+    #[label("unsatisfied where-clause on `{$def_id}`")]
     pub satisfy_span: Option<Span>,
     #[label("due to a where-clause on `{$def_id}`...")]
     pub where_span: Option<Span>,

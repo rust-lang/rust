@@ -3823,7 +3823,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         true
     }
 
-    pub(super) fn note_obligation_cause_code<T>(
+    pub(crate) fn note_obligation_cause_code<T>(
         &self,
         body_def_id: LocalDefId,
         err: &mut Diag<'_>,
@@ -3894,7 +3894,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::ReturnNoExpression
             | ObligationCauseCode::Misc
             | ObligationCauseCode::WellFormed(..)
-            | ObligationCauseCode::MatchImpl(..)
             | ObligationCauseCode::ReturnValue(_)
             | ObligationCauseCode::BlockTailExpression(..)
             | ObligationCauseCode::AwaitableExpr(_)
@@ -4408,6 +4407,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::SharedStatic => {
                 err.note("shared static variables must have a type that implements `Sync`");
+            }
+            ObligationCauseCode::MatchImpl(ref cause, _) => {
+                self.note_obligation_cause_code_inner(
+                    body_def_id,
+                    err,
+                    predicate,
+                    param_env,
+                    &cause.code(),
+                    obligated_types,
+                    seen_requirements,
+                    closure_capture_ty,
+                );
             }
             ObligationCauseCode::BuiltinDerived(ref data) => {
                 let parent_trait_ref = self.deeply_resolve_ignoring_regions(data.parent_trait_pred);

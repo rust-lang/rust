@@ -1790,7 +1790,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // Generic arguments are unlikely to be what relates regions together
                 ConstraintCategory::TypeAnnotation(AnnotationSource::GenericArg) => 3,
                 // We handle predicates and opaque types specially; don't prioritize them here.
-                ConstraintCategory::Predicate(_) | ConstraintCategory::OpaqueType => 4,
+                ConstraintCategory::Predicate(_, _) | ConstraintCategory::OpaqueType => 4,
                 // `Boring` constraints can correspond to user-written code and have useful spans,
                 // but don't provide any other useful information for diagnostics.
                 ConstraintCategory::Boring => 5,
@@ -1928,11 +1928,11 @@ impl<'tcx> BestBlame<'tcx> {
             .path
             .iter()
             .find_map(|constraint| {
-                if let ConstraintCategory::Predicate(predicate_span) = constraint.category {
+                if let ConstraintCategory::Predicate(predicate_span, def_id) = constraint.category {
                     // We currently do not store the `DefId` in the `ConstraintCategory`
                     // for performances reasons. The error reporting code used by NLL only
                     // uses the span, so this doesn't cause any problems at the moment.
-                    Some(ObligationCauseCode::WhereClause(CRATE_DEF_ID.to_def_id(), predicate_span))
+                    Some(ObligationCauseCode::WhereClause(def_id, predicate_span))
                 } else {
                     None
                 }
