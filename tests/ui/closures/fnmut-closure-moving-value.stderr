@@ -1,0 +1,40 @@
+error[E0507]: cannot move out of `a`, a captured variable in an `FnMut` closure
+  --> $DIR/fnmut-closure-moving-value.rs:29:19
+   |
+LL |     let a = &mut foo.a;
+   |         -   ---------- move occurs because `a` has type `&mut i32`, which does not implement the `Copy` trait
+   |         |
+   |         captured outer variable
+LL |     let b = &mut foo.b;
+LL |     foo.bar.f(|| { // doesn't work
+   |               -- captured by this `FnMut` closure
+LL |         *if true {a} else {b} = 42;
+   |                   ^ `a` is moved here
+   |
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+  --> $DIR/fnmut-closure-moving-value.rs:11:14
+   |
+LL |     where F: FnMut()
+   |              ^^^^^^^
+
+error[E0507]: cannot move out of `b`, a captured variable in an `FnMut` closure
+  --> $DIR/fnmut-closure-moving-value.rs:29:28
+   |
+LL |     let b = &mut foo.b;
+   |         -   ---------- move occurs because `b` has type `&mut i32`, which does not implement the `Copy` trait
+   |         |
+   |         captured outer variable
+LL |     foo.bar.f(|| { // doesn't work
+   |               -- captured by this `FnMut` closure
+LL |         *if true {a} else {b} = 42;
+   |                            ^ `b` is moved here
+   |
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+  --> $DIR/fnmut-closure-moving-value.rs:11:14
+   |
+LL |     where F: FnMut()
+   |              ^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0507`.
