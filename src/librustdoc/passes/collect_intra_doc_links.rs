@@ -8,14 +8,14 @@ use std::mem;
 use std::ops::Range;
 
 use rustc_ast::util::comments::may_have_doc_links;
+use rustc_attr_ir::{Attribute, AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, Diag, DiagMessage};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
-use rustc_hir::{Attribute, Mutability, Safety, find_attr};
+use rustc_hir::{Mutability, Safety};
 use rustc_lint::Lint;
 use rustc_middle::ty;
 use rustc_middle::ty::{Ty, TyCtxt};

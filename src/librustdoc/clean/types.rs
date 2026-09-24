@@ -8,14 +8,17 @@ use arrayvec::ArrayVec;
 use itertools::Either;
 use rustc_abi::{ExternAbi, VariantIdx};
 use rustc_ast as ast;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{
+    AttributeKind, ConstStability, DeprecatedSince, Deprecation, DocAttribute, Stability,
+    StableSince, find_attr,
+};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation, DocAttribute};
 use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{Attribute, BodyId, ConstStability, Mutability, Stability, StableSince, find_attr};
+use rustc_hir::{BodyId, Mutability};
 use rustc_index::IndexVec;
 use rustc_metadata::rendered_const;
 use rustc_middle::ty::fast_reject::SimplifiedType;
@@ -426,7 +429,7 @@ impl Item {
             // versions; the paths that are exposed through it are "deprecated" because they
             // were never supposed to work at all.
             let stab = self.stability(tcx)?;
-            if let rustc_hir::StabilityLevel::Stable {
+            if let rustc_attr_ir::StabilityLevel::Stable {
                 allowed_through_unstable_modules: Some((note, _)),
                 ..
             } = stab.level
@@ -1061,7 +1064,7 @@ pub struct RenderedLink {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Attributes {
     pub(crate) doc_strings: Vec<DocFragment>,
-    pub(crate) other_attrs: ThinVec<hir::Attribute>,
+    pub(crate) other_attrs: ThinVec<rustc_attr_ir::Attribute>,
 }
 
 impl Attributes {
@@ -1073,13 +1076,13 @@ impl Attributes {
         find_attr!(&self.other_attrs, Doc(d) if d.hidden.is_some())
     }
 
-    pub(crate) fn from_hir(attrs: &[hir::Attribute]) -> Attributes {
+    pub(crate) fn from_hir(attrs: &[rustc_attr_ir::Attribute]) -> Attributes {
         Attributes::from_hir_iter(attrs.iter().map(|attr| (attr, None)), false)
     }
 
     pub(crate) fn from_hir_with_additional(
-        attrs: &[hir::Attribute],
-        (additional_attrs, def_id): (&[hir::Attribute], DefId),
+        attrs: &[rustc_attr_ir::Attribute],
+        (additional_attrs, def_id): (&[rustc_attr_ir::Attribute], DefId),
     ) -> Attributes {
         // Additional documentation should be shown before the original documentation.
         let attrs1 = additional_attrs.iter().map(|attr| (attr, Some(def_id)));
@@ -1088,7 +1091,7 @@ impl Attributes {
     }
 
     pub(crate) fn from_hir_iter<'a>(
-        attrs: impl Iterator<Item = (&'a hir::Attribute, Option<DefId>)>,
+        attrs: impl Iterator<Item = (&'a rustc_attr_ir::Attribute, Option<DefId>)>,
         doc_only: bool,
     ) -> Attributes {
         let (doc_strings, other_attrs) = attrs_to_doc_fragments(attrs, doc_only);
@@ -1118,7 +1121,7 @@ impl Attributes {
         let mut aliases = FxIndexSet::default();
 
         for attr in &self.other_attrs {
-            if let Attribute::Parsed(AttributeKind::Doc(d)) = attr {
+            if let rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d)) = attr {
                 for (alias, _) in &d.aliases {
                     aliases.insert(*alias);
                 }
