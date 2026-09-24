@@ -6555,6 +6555,23 @@ mod test_map {
         assert_eq!(dropped.load(Ordering::SeqCst), 0);
     }
 
+    #[test]
+    fn test_hashmap_into_iter_unallocated_drops_allocator() {
+        let dropped: Arc<AtomicI8> = Arc::new(AtomicI8::new(1));
+
+        {
+            let map: HashMap<i32, i32, _, _> = HashMap::with_hasher_in(
+                DefaultHashBuilder::default(),
+                MyAlloc::new(dropped.clone()),
+            );
+
+            for _ in map {}
+        }
+
+        // The table never allocated, but the allocator must still be dropped.
+        assert_eq!(dropped.load(Ordering::SeqCst), 0);
+    }
+
     #[derive(Debug)]
     struct CheckedCloneDrop<T> {
         panic_in_clone: bool,

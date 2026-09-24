@@ -6,7 +6,7 @@ use core::alloc::Layout;
 use core::array;
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
-use core::mem;
+use core::mem::{self, ManuallyDrop};
 use core::ptr;
 use core::ptr::NonNull;
 use core::slice;
@@ -1455,21 +1455,24 @@ impl<T, A: Allocator> RawTable<T, A> {
     /// should be dropped using a `RawIter` before freeing the allocation.
     #[cfg_attr(feature = "inline-more", inline)]
     pub(crate) fn into_allocation(self) -> Option<(NonNull<u8>, Layout, A)> {
-        let alloc = if self.table.is_empty_singleton() {
+        let this = ManuallyDrop::new(self);
+        // SAFETY: `this` is never dropped, so ownership of the allocator is
+        // moved out exactly once. If the table never allocated, the allocator
+        // is dropped here rather than being leaked.
+        let alloc = unsafe { ptr::read(&raw const this.alloc) };
+        if this.table.is_empty_singleton() {
             None
         } else {
             let (layout, ctrl_offset) = {
-                let option = Self::TABLE_LAYOUT.calculate_layout_for(self.table.num_buckets());
+                let option = Self::TABLE_LAYOUT.calculate_layout_for(this.table.num_buckets());
                 unsafe { option.unwrap_unchecked() }
             };
             Some((
-                unsafe { NonNull::new_unchecked(self.table.ctrl.as_ptr().sub(ctrl_offset).cast()) },
+                unsafe { NonNull::new_unchecked(this.table.ctrl.as_ptr().sub(ctrl_offset).cast()) },
                 layout,
-                unsafe { ptr::read(&raw const self.alloc) },
+                alloc,
             ))
-        };
-        mem::forget(self);
-        alloc
+        }
     }
 }
 
