@@ -5060,6 +5060,91 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
+    /// When a failed try operator follows an `unwrap()` or `expect()`, suggest removing it.
+    pub(super) fn suggest_remove_unwrap(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diag<'_>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
+        span: Span,
+    ) -> bool {
+        if !matches!(obligation.cause.code().peel_derives(), ObligationCauseCode::QuestionMark) {
+            return false;
+        }
+
+        let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_def_id) else {
+            return false;
+        };
+
+        struct FindTrySubexpr {
+            search_span: Span,
+        }
+        impl<'v> Visitor<'v> for FindTrySubexpr {
+            type Result = std::ops::ControlFlow<&'v hir::Expr<'v>>;
+            fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) -> Self::Result {
+                if let hir::ExprKind::Match(expr, _arms, hir::MatchSource::TryDesugar(_)) = ex.kind
+                    && (ex.span.source_equal(self.search_span)
+                        || ex.span.contains(self.search_span)
+                        || self.search_span.contains(ex.span)
+                        || ex
+                            .span
+                            .with_lo(ex.span.hi() - BytePos(1))
+                            .source_equal(self.search_span))
+                    && let hir::ExprKind::Call(_, [sub_expr, ..]) = expr.kind
+                {
+                    std::ops::ControlFlow::Break(sub_expr)
+                } else {
+                    hir::intravisit::walk_expr(self, ex)
+                }
+            }
+        }
+
+        let std::ops::ControlFlow::Break(sub_expr) =
+            (FindTrySubexpr { search_span: span }).visit_body(body)
+        else {
+            return false;
+        };
+
+        let hir::ExprKind::MethodCall(pathsegment, receiver, _, _) = sub_expr.kind else {
+            return false;
+        };
+
+        if pathsegment.ident.name != sym::unwrap && pathsegment.ident.name != sym::expect {
+            return false;
+        }
+
+        let Some(typeck_results) = &self.typeck_results else {
+            return false;
+        };
+        let receiver_ty = typeck_results.expr_ty_adjusted(receiver);
+
+        let ty::Adt(adt, _) = receiver_ty.kind() else {
+            return false;
+        };
+        if !self.tcx.is_diagnostic_item(sym::Option, adt.did())
+            && !self.tcx.is_diagnostic_item(sym::Result, adt.did())
+        {
+            return false;
+        }
+
+        let try_obligation = self.mk_trait_obligation_with_new_self_ty(
+            obligation.param_env,
+            trait_pred.map_bound(|trait_pred| (trait_pred, receiver_ty)),
+        );
+        if !self.predicate_may_hold(&try_obligation) {
+            return false;
+        }
+
+        err.span_suggestion_verbose(
+            receiver.span.shrink_to_hi().to(sub_expr.span.shrink_to_hi()),
+            format!("remove the `.{pathsegment}()`", pathsegment = pathsegment.ident.name),
+            "",
+            Applicability::MaybeIncorrect,
+        );
+
+        true
+    }
+
     pub(super) fn suggest_floating_point_literal(
         &self,
         obligation: &PredicateObligation<'tcx>,

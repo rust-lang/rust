@@ -518,6 +518,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 leaf_trait_predicate,
                                 span,
                             );
+                            suggested |= self.suggest_remove_unwrap(
+                                &obligation,
+                                &mut err,
+                                leaf_trait_predicate,
+                                span,
+                            );
                         }
 
                         if self.suggest_add_clone_to_arg(
