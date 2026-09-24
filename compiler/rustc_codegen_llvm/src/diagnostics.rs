@@ -227,9 +227,9 @@ pub(crate) struct FixedX18InvalidArch<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("`-Zpacked-stack` is incompatible with `backchain` target feature")]
+#[diag("`-Zpacked-stack` is incompatible with `-Cforce-frame-pointers` on s390x (backchain)")]
 #[note(
-    "enabling both `-Zpacked-stack` and the `backchain` target feature is incompatible with the default s390x ABI. Switch to s390x-unknown-none-softfloat if you need both attributes"
+    "enabling both `-Zpacked-stack` and backchain is incompatible with the default s390x ABI. Switch to s390x-unknown-none-softfloat if you need both"
 )]
 pub(crate) struct PackedStackBackchainNeedsSoftfloat;
 
