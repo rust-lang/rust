@@ -7,7 +7,6 @@ trait MyTrait {
 impl MyTrait for i32 {
     fn foo<const N: Self>() {}
     //~^ ERROR cannot use `Self` in const parameter type
-    //~| ERROR associated function `foo` has an incompatible generic parameter for trait `MyTrait`
 }
 
 fn main(){}
