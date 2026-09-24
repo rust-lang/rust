@@ -191,7 +191,7 @@ struct DeferredLivenessSource<'a, 'tcx> {
 impl<'a> LivenessSource for DeferredLivenessSource<'a, '_> {
     #[inline]
     fn liveness_for_region(&mut self, region: RegionVid) -> RegionLiveness<'_> {
-        self.deferred_liveness.compute_deferred_local(
+        self.deferred_liveness.ensure_deferred_liveness(
             region,
             self.universal_regions,
             &mut self.liveness,
