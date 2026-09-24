@@ -1024,7 +1024,14 @@ impl<'db> InferenceContext<'db> {
                 }
             }
         };
-        if let (Some(a_sig), Some(b_sig)) = (a_sig, b_sig) {
+        if let (Some(mut a_sig), Some(mut b_sig)) = (a_sig, b_sig) {
+            // Allow coercing safe sigs to unsafe sigs
+            if a_sig.safety().is_safe() && !b_sig.safety().is_safe() {
+                a_sig = a_sig.map_bound(|sig| sig.set_safety(Safety::Unsafe));
+            } else if b_sig.safety().is_safe() && !a_sig.safety().is_safe() {
+                b_sig = b_sig.map_bound(|sig| sig.set_safety(Safety::Unsafe));
+            }
+
             // The signature must match.
             let sig = self
                 .table

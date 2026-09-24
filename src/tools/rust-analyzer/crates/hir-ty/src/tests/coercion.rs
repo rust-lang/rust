@@ -537,6 +537,40 @@ fn test() {
 }
 
 #[test]
+fn coerce_fn_item_with_unsafe_in_array() {
+    check_no_mismatches(
+        r"
+fn foo(x: u32) -> isize { 1 }
+unsafe fn bar(x: u32) -> isize { 1 }
+fn test() {
+    let f = [foo, bar];
+          // ^^^ adjustments: Pointer(ReifyFnPointer)
+}",
+    );
+}
+
+#[test]
+fn coerce_fn_items_with_unsafe_in_match_arms() {
+    check_no_mismatches(
+        r"
+const fn foo1(x: u32) -> isize { 1 }
+unsafe fn foo2(x: u32) -> isize { 2 }
+fn foo3(x: u32) -> isize { 3 }
+fn test() {
+    let x = match 1 {
+        1 => foo1,
+          // ^^^^ adjustments: Pointer(ReifyFnPointer)
+        2 => foo2,
+          // ^^^^ adjustments: Pointer(ReifyFnPointer)
+        _ => foo3,
+          // ^^^^ adjustments: Pointer(ReifyFnPointer), Pointer(UnsafeFnPointer)
+    };
+    x;
+}",
+    );
+}
+
+#[test]
 fn coerce_closure_to_fn_ptr() {
     check_no_mismatches(
         r"
