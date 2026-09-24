@@ -50,7 +50,7 @@ use crate::diagnostics::{
 };
 use crate::hygiene::Macros20NormalizedSyntaxContext;
 use crate::imports::{Import, ImportKind, UnresolvedImportError, import_path_to_string};
-use crate::late::{DiagMetadata, PatternSource, Rib};
+use crate::late::{CaseSensitive, DiagMetadata, PatternSource, Rib};
 use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingError, BindingKey, Decl, DeclKind,
     DelayedVisResolutionError, Finalize, ForwardGenericParamBanReason, HasGenericParams, IdentKey,
@@ -998,6 +998,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 )
                             )
                         },
+                        CaseSensitive::Yes,
                     );
 
                     if import_suggestions.is_empty() && !suggested_typo {
@@ -1591,18 +1592,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    fn lookup_import_candidates_from_module<IdentFilterFn, FilterFn>(
+    fn lookup_import_candidates_from_module<FilterFn>(
         &self,
         lookup_ident: Ident,
         namespace: Namespace,
         parent_scope: &ParentScope<'ra>,
         start_module: Module<'ra>,
         crate_path: ThinVec<ast::PathSegment>,
-        ident_filter_fn: IdentFilterFn,
+        case_sensitive: CaseSensitive,
         filter_fn: FilterFn,
     ) -> Vec<ImportSuggestion>
     where
-        IdentFilterFn: Fn(Ident, Ident) -> bool,
         FilterFn: Fn(Res) -> bool,
     {
         let mut candidates = Vec::new();
@@ -1671,10 +1671,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let child_doc_visible = doc_visible
                     && did.is_none_or(|did| did.is_local() || !this.tcx.is_doc_hidden(did));
 
+                let (ident_matched, exact_matched) = if let CaseSensitive::Yes = case_sensitive {
+                    (ident.name == lookup_ident.name, true)
+                } else {
+                    (
+                        ident.name.as_str().to_lowercase()
+                            == lookup_ident.name.as_str().to_lowercase(),
+                        false,
+                    )
+                };
+
                 // collect results based on the filter function
                 // avoid suggesting anything from the same module in which we are resolving
                 // avoid suggesting anything with a hygienic name
-                if ident_filter_fn(ident.orig(orig_ident_span), lookup_ident)
+                if ident_matched
                     && ns == namespace
                     && in_module != parent_scope.module
                     && ident.ctxt.is_root()
@@ -1754,7 +1764,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             note,
                             via_import,
                             is_stable,
-                            exact_matched: ident.name == lookup_ident.name,
+                            exact_matched,
                         });
                     }
                 }
@@ -1839,40 +1849,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         namespace: Namespace,
         parent_scope: &ParentScope<'ra>,
         filter_fn: FilterFn,
+        case_sensitive: CaseSensitive,
     ) -> Vec<ImportSuggestion>
     where
-        FilterFn: Fn(Res) -> bool,
-    {
-        self.lookup_import_candidates_impl(
-            lookup_ident,
-            namespace,
-            parent_scope,
-            |ident: Ident, lookup_ident: Ident| ident.name == lookup_ident.name,
-            filter_fn,
-        )
-    }
-
-    /// The actual impl of the `lookup_import_candidates function`.
-    pub(crate) fn lookup_import_candidates_impl<IdentFilterFn, FilterFn>(
-        &self,
-        lookup_ident: Ident,
-        namespace: Namespace,
-        parent_scope: &ParentScope<'ra>,
-        ident_filter_fn: IdentFilterFn,
-        filter_fn: FilterFn,
-    ) -> Vec<ImportSuggestion>
-    where
-        IdentFilterFn: Fn(Ident, Ident) -> bool,
         FilterFn: Fn(Res) -> bool,
     {
         let crate_path = thin_vec![ast::PathSegment::from_ident(Ident::with_dummy_span(kw::Crate))];
+
         let mut suggestions = self.lookup_import_candidates_from_module(
             lookup_ident,
             namespace,
             parent_scope,
             self.graph_root.to_module(),
             crate_path,
-            &ident_filter_fn,
+            case_sensitive,
             &filter_fn,
         );
 
@@ -1927,7 +1917,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     parent_scope,
                     crate_root,
                     crate_path,
-                    &ident_filter_fn,
+                    case_sensitive,
                     &filter_fn,
                 ));
             }
@@ -1962,8 +1952,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.detect_derive_attribute(err, ident, parent_scope, sugg_span);
         }
 
-        let import_suggestions =
-            self.lookup_import_candidates(ident, Namespace::MacroNS, parent_scope, is_expected);
+        let import_suggestions = self.lookup_import_candidates(
+            ident,
+            Namespace::MacroNS,
+            parent_scope,
+            is_expected,
+            CaseSensitive::Yes,
+        );
         let (span, found_use) = match parent_scope.module.nearest_parent_mod_node_id() {
             DUMMY_NODE_ID => (None, FoundUse::No),
             node_id => UsePlacementFinder::check(krate, node_id),
@@ -2105,10 +2100,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         // Not in scope: check if the name refers to a trait importable from elsewhere.
         if macro_kind == MacroKind::Derive {
-            let trait_candidates =
-                self.lookup_import_candidates(ident, TypeNS, parent_scope, |res| {
-                    matches!(res, Res::Def(DefKind::Trait, _))
-                });
+            let trait_candidates = self.lookup_import_candidates(
+                ident,
+                TypeNS,
+                parent_scope,
+                |res| matches!(res, Res::Def(DefKind::Trait, _)),
+                CaseSensitive::Yes,
+            );
             let mut seen = FxHashSet::default();
             for candidate in &trait_candidates {
                 if let Some(def_id) = candidate.did
@@ -2610,6 +2608,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 this_res.ns().unwrap_or(Namespace::TypeNS),
                 &parent_scope,
                 &|res: Res| res == this_res,
+                CaseSensitive::Yes,
             );
             // Shorten candidate paths using `super::` or `self::` when possible.
             for suggestion in &mut import_suggestions {
@@ -3018,7 +3017,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         if module_def_id == Some(CRATE_DEF_ID.to_def_id()) {
             let is_mod = |res| matches!(res, Res::Def(DefKind::Mod, _));
-            let mut candidates = self.lookup_import_candidates(ident, TypeNS, parent_scope, is_mod);
+            let mut candidates = self.lookup_import_candidates(
+                ident,
+                TypeNS,
+                parent_scope,
+                is_mod,
+                CaseSensitive::Yes,
+            );
             candidates
                 .sort_by_cached_key(|c| (c.path.segments.len(), pprust::path_to_string(&c.path)));
             if let Some(candidate) = candidates.get(0) {

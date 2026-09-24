@@ -35,8 +35,8 @@ use tracing::debug;
 use super::NoConstantGenericsReason;
 use crate::diagnostics::impls::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
 use crate::late::{
-    AliasPossibility, LateResolutionVisitor, LifetimeBinderKind, LifetimeRes, LifetimeRibKind,
-    LifetimeUseSet, QSelf, RibKind,
+    AliasPossibility, CaseSensitive, LateResolutionVisitor, LifetimeBinderKind, LifetimeRes,
+    LifetimeRibKind, LifetimeUseSet, QSelf, RibKind,
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::{
@@ -636,6 +636,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 Namespace::TypeNS,
                 &self.parent_scope,
                 &|res: Res| matches!(res, Res::Def(DefKind::Mod, _)),
+                CaseSensitive::Yes,
             );
             // double check next seg is valid
             candidates
@@ -760,7 +761,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         };
 
         let (found, suggested_candidates, mut candidates) = self.try_lookup_name_relaxed(
-            true,
+            CaseSensitive::Yes,
             &mut err,
             source,
             path,
@@ -802,7 +803,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         {
             candidates = self
                 .try_lookup_name_relaxed(
-                    false,
+                    CaseSensitive::No,
                     &mut err,
                     source,
                     path,
@@ -941,7 +942,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
     fn try_lookup_name_relaxed(
         &mut self,
-        case_sensitive: bool, // a subset of the tests are run when false
+        case_sensitive: CaseSensitive, // a subset of the tests are run when false
         err: &mut Diag<'_>,
         source: PathSource<'_, '_, '_>,
         path: &[Segment],
@@ -961,18 +962,13 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let mut suggested_candidates = FxHashSet::default();
         // Try to lookup name in more relaxed fashion for better error reporting.
         let ident = path.last().unwrap().ident;
-        // we do not suggest alternative capitalizations if only one letter, too many constants can match and it become noisy.
-        if !case_sensitive && ident.as_str().len() < 2 {
+        // we do not suggest alternative casing if only one letter, too many constants can match and it becomes noisy.
+        if let CaseSensitive::No = case_sensitive
+            && ident.as_str().len() < 2
+        {
             return (false, suggested_candidates, Vec::new());
         }
 
-        let ident_filter = &|ident: Ident, ident_lookup: Ident| {
-            if case_sensitive {
-                ident.name == ident_lookup.name
-            } else {
-                ident.name.as_str().to_lowercase() == ident_lookup.name.as_str().to_lowercase()
-            }
-        };
         let is_expected = &|res| source.is_expected(res);
         let ns = source.namespace();
         let is_enum_variant = &|res| matches!(res, Res::Def(DefKind::Variant, _));
@@ -980,7 +976,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
         let mut candidates = self
             .r
-            .lookup_import_candidates_impl(ident, ns, &self.parent_scope, ident_filter, is_expected)
+            .lookup_import_candidates(ident, ns, &self.parent_scope, is_expected, case_sensitive)
             .into_iter()
             .filter(|ImportSuggestion { did, .. }| {
                 match (did, res.and_then(|res| res.opt_def_id())) {
@@ -1005,7 +1001,13 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if candidates.is_empty() && is_expected(Res::Def(DefKind::Enum, crate_def_id)) {
             let mut enum_candidates: Vec<_> = self
                 .r
-                .lookup_import_candidates(ident, ns, &self.parent_scope, is_enum_variant)
+                .lookup_import_candidates(
+                    ident,
+                    ns,
+                    &self.parent_scope,
+                    is_enum_variant,
+                    CaseSensitive::Yes,
+                )
                 .into_iter()
                 .map(|suggestion| import_candidate_to_enum_paths(&suggestion))
                 .filter(|(_, enum_ty_path)| !enum_ty_path.starts_with("std::prelude::"))
@@ -2749,6 +2751,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 Namespace::TypeNS,
                 &self.parent_scope,
                 &|res: Res| matches!(res, Res::Def(DefKind::Trait, _)),
+                CaseSensitive::Yes,
             )
             .iter()
             .filter_map(|candidate| candidate.did)

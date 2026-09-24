@@ -32,6 +32,7 @@ use crate::diagnostics::{
     CannotGlobImportAllCrates, ConsiderAddingMacroExport, ConsiderMarkingAsPub,
     ConsiderMarkingAsPubCrate,
 };
+use crate::late::CaseSensitive;
 use crate::ref_mut::{CmCell, CmRefCell};
 use crate::{
     AmbiguityError, BindingKey, Decl, DeclData, DeclKind, Determinacy, Finalize, IdentKey,
@@ -1571,8 +1572,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 };
 
-                let parent_suggestion =
-                    self.lookup_import_candidates(ident, TypeNS, &import.parent_scope, |_| true);
+                let parent_suggestion = self.lookup_import_candidates(
+                    ident,
+                    TypeNS,
+                    &import.parent_scope,
+                    |_| true,
+                    CaseSensitive::Yes,
+                );
 
                 Some(UnresolvedImportError {
                     span: import.span,

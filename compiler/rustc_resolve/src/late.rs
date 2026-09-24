@@ -837,6 +837,12 @@ struct LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     use_injections: Vec<UseError<'tcx>>,
 }
 
+#[derive(Copy, Clone, Debug)]
+pub(crate) enum CaseSensitive {
+    Yes,
+    No,
+}
+
 impl<'ra, 'tcx> AsRef<Resolver<'ra, 'tcx>> for LateResolutionVisitor<'_, '_, 'ra, 'tcx> {
     fn as_ref(&self) -> &Resolver<'ra, 'tcx> {
         &self.r
