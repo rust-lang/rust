@@ -21,7 +21,7 @@ macro my_macro($field:ident) {
 
     impl Reborrow for MyMut<'_> {}
 
-    impl<'a> CoerceShared<MyRef<'a>> for MyMut<'a> {}
+    impl<'a: 'b, 'b> CoerceShared<MyRef<'b>> for MyMut<'a> {}
     //~^ ERROR
 }
 
