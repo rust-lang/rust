@@ -109,13 +109,16 @@ impl SockaddrBuf {
     /* API for use in Rust */
 
     /// This returns an empty Unix Domain socket address with a
-    /// length value containing the current size of the `SockaddrUn`
+    /// length value containing the current size of the `sockaddr_un`
     pub(super) fn default() -> SockaddrBuf {
-        let len = 0;
         let mut sockaddr_un: [u8; SOCK_MAX_SIZE] = [0; SOCK_MAX_SIZE];
         let sun_family = (libc::AF_UNIX as libc::sa_family_t).to_ne_bytes();
         sockaddr_un[SUN_FAMILY_OFFSET..SUN_FAMILY_OFFSET + size_of::<libc::sa_family_t>()]
             .copy_from_slice(&sun_family);
+
+        // Size of the socket address is not 0 since we have an initialized
+        // `sun_family`/`sun_len`
+        let len = SUN_PATH_OFFSET as libc::socklen_t;
 
         SockaddrBuf { len, buf: sockaddr_un, align: unsafe { [mem::zeroed(); 0] } }
     }
@@ -125,7 +128,7 @@ impl SockaddrBuf {
         &self.buf[SUN_PATH_OFFSET..]
     }
 
-    /// Sets the socket address path for `SockaddrUn` in `SocketAddr`.
+    /// Sets the socket address path for `sockaddr_un` in `SocketaddrBuf`.
     fn set_path(&mut self, bytes: &[u8]) {
         self.buf[SUN_PATH_OFFSET..SUN_PATH_OFFSET + bytes.len()].copy_from_slice(bytes);
 
@@ -170,6 +173,21 @@ impl SockaddrBuf {
         // Even though len here is a `usize` and `libc::socklen_t` is a `u32`
         // our len value should be limited to whatever value a `u32` can hold
         self.len = len as libc::socklen_t;
+    }
+
+    /// Extracts the `sun_path` value from the abstract socket address buffer (excludes initial
+    /// nul byte).
+    fn abstract_path(&self) -> &[u8] {
+        &self.buf[SUN_PATH_OFFSET + 1..self.len as usize]
+    }
+
+    #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
+    /// Sets the abstract socket address path for `sockaddr_un` in `SocketaddrBuf`.
+    /// Only used on Android, Linux, and Cygwin.
+    fn set_abstract_path(&mut self, bytes: &[u8]) {
+        // +1 because the first byte in the sun_path for abstract sockets is a nul byte
+        self.buf[SUN_PATH_OFFSET + 1..SUN_PATH_OFFSET + 1 + bytes.len()].copy_from_slice(bytes);
+        self.len = (SUN_PATH_OFFSET + 1 + bytes.len()) as libc::socklen_t;
     }
 
     /// Extracts the `sun_family` value from the socket address buffer.
@@ -304,7 +322,7 @@ impl SocketAddr {
     pub(super) fn from_path(path: &Path) -> io::Result<SocketAddr> {
         let bytes = path.as_os_str().as_bytes();
 
-        if bytes.contains(&0) {
+        if core::slice::memchr::memchr(0, bytes).is_some() {
             return Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
                 "paths must not contain interior null bytes",
@@ -407,7 +425,7 @@ impl SocketAddr {
         {
             AddressKind::Unnamed
         } else if path[0] == 0 {
-            AddressKind::Abstract(ByteStr::from_bytes(&path[1..len]))
+            AddressKind::Abstract(ByteStr::from_bytes(self.sock.abstract_path()))
         } else {
             // linux adds a trailing NUL and counts it in the length, freebsd, netbsd
             // and qnx do not, and a caller may bind(2) without one either. unix(7)
@@ -447,22 +465,7 @@ impl linux_ext::addr::SocketAddrExt for SocketAddr {
             ));
         }
 
-        let (addr, len) = sock.as_max_libc_output();
-
-        // SAFETY: `name` and `addr` are not overlapping and point to valid
-        // memory. the checks above prevents any out of bounds write from
-        // occurring to `addr`.
-        // Note: we do this over using `SockaddrBuf::set_path` because on Linux
-        // it appends a nul byte and accounts that in the socket address size/length
-        // Our true path length for abstract socket address is `1 + name.len()`
-        unsafe {
-            crate::ptr::copy_nonoverlapping(
-                name.as_ptr(),
-                (addr as *mut u8).add(SUN_PATH_OFFSET + 1),
-                name.len(),
-            );
-            *len = (SUN_PATH_OFFSET + 1 + name.len()) as libc::socklen_t
-        }
+        sock.set_abstract_path(name);
         Ok(SocketAddr { sock })
     }
 }
