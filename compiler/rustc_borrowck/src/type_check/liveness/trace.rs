@@ -200,14 +200,15 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
         deferred_liveness: &mut DeferredRegionLiveness<'tcx>,
     ) {
         for &local in boring_locals {
-            self.dropck_boring_local(local, deferred_locals, deferred_liveness);
+            let is_local_deferred = deferred_locals.contains(&local);
+            self.dropck_boring_local(local, is_local_deferred, deferred_liveness);
         }
     }
 
     fn dropck_boring_local(
         &mut self,
         local: Local,
-        deferred_locals: &FxIndexSet<Local>,
+        is_local_deferred: bool,
         deferred_liveness: &mut DeferredRegionLiveness<'tcx>,
     ) {
         let typeck = &mut *self.typeck;
@@ -218,8 +219,7 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
         // in turn would have skipped calculating dropck *at all* for locals without drop-liveness.
         // Calculating drop-liveness is expensive, but we can skip it when we know that there
         // are *no* drops (which is relatively cheap).
-        if deferred_locals.contains(&local) && self.comp.local_use_map.drops(local).next().is_none()
-        {
+        if is_local_deferred && self.comp.local_use_map.drops(local).next().is_none() {
             deferred_liveness.defer_local(
                 typeck.infcx.tcx,
                 typeck.universal_regions,
@@ -238,7 +238,7 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
         let drop_data = dropck_local(&typeck.infcx, &mut self.drop_data, local_ty, local_span);
 
         // We are done with *truly* boring locals.
-        if !deferred_locals.contains(&local) {
+        if !is_local_deferred {
             return;
         }
 
