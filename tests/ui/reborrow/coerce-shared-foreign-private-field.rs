@@ -16,7 +16,7 @@ struct LocalMut<'a> {
 impl<'a> Reborrow for LocalMut<'a> {}
 
 // Should error: ForeignRef has private fields.
-impl<'a> CoerceShared<ForeignRef<'a>> for LocalMut<'a> {}
+impl<'a: 'b, 'b> CoerceShared<ForeignRef<'b>> for LocalMut<'a> {}
 //~^ ERROR
 
 fn main() {}
