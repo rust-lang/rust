@@ -2454,9 +2454,11 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
             unsafe { NonZero::new_unchecked(self.get().cast_unsigned()) }
         }
 
-        /// clamps this number to a symmetric range centred around zero. the method clamps the number's magnitude (absolute value) to be at most `limit`.
+        /// Clamps this number to a symmetric range centred around zero.
         ///
-        /// this is functionally equivalent to `self.clamp(-limit, limit)`, but is more
+        /// The method clamps the number's magnitude (absolute value) to be at most `limit`.
+        ///
+        /// This is functionally equivalent to `self.clamp(-limit, limit)`, but is more
         /// explicit about the intent.
         ///
         /// # Examples
