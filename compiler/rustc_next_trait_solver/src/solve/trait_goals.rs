@@ -1556,19 +1556,77 @@ where
         }
     }
 
+    /// Like `try_merge_candidates`, but returns `None` if there are multiple user-written
+    /// impls, or a user-written impl and a builtin impl, in which case we bail with ambiguity.
+    ///
+    /// Candidates with equal responses can still come from conflicting impls, ex - two
+    /// overlapping impls which both apply due to impossible where-clauses. We don't want
+    /// to merge these. Multiple builtin impls are still merged as usual. This is not
+    /// done for marker traits, as their impls are allowed to overlap.
+    #[instrument(level = "trace", skip(self), ret)]
+    fn try_merge_impl_candidates(
+        &mut self,
+        trait_def_id: I::TraitId,
+        candidates: &[Candidate<I>],
+    ) -> Option<CanonicalResponse<I>> {
+        let is_marker = self.cx().trait_is_marker(trait_def_id);
+        let all_builtin = candidates
+            .iter()
+            .all(|candidate| matches!(candidate.source, CandidateSource::BuiltinImpl(_)));
+
+        if is_marker || all_builtin {
+            self.try_merge_candidates(candidates).map(|(response, _)| response)
+        } else if candidates.len() > 1 {
+            None
+        } else {
+            candidates.first().map(|candidate| candidate.result)
+        }
+    }
+
+    fn merge_candidates_or_bail_with_ambiguity(
+        &mut self,
+        candidates: &[Candidate<I>],
+        proven_via: TraitGoalProvenVia,
+    ) -> (CanonicalResponse<I>, Option<TraitGoalProvenVia>) {
+        if let Some((response, _)) = self.try_merge_candidates(candidates) {
+            (response, Some(proven_via))
+        } else {
+            (self.bail_with_ambiguity(candidates), None)
+        }
+    }
+
+    fn merge_impl_candidates_or_bail_with_ambiguity(
+        &mut self,
+        trait_def_id: I::TraitId,
+        candidates: &[Candidate<I>],
+    ) -> (CanonicalResponse<I>, Option<TraitGoalProvenVia>) {
+        debug_assert!(candidates.iter().all(|c| matches!(
+            c.source,
+            CandidateSource::Impl(_) | CandidateSource::BuiltinImpl(_)
+        )));
+        match self.try_merge_impl_candidates(trait_def_id, candidates) {
+            Some(response) => (response, Some(TraitGoalProvenVia::Misc)),
+            None => (self.bail_with_ambiguity(candidates), None),
+        }
+    }
+
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn merge_trait_candidates(
         &mut self,
-        candidate_preference_mode: CandidatePreferenceMode,
+        trait_def_id: I::TraitId,
         mut candidates: Vec<Candidate<I>>,
         failed_candidate_info: FailedCandidateInfo,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
+        if candidates.is_empty() {
+            return Err(NoSolution);
+        }
+
+        let candidate_preference_mode = CandidatePreferenceMode::compute(self.cx(), trait_def_id);
         if self.typing_mode().is_coherence() {
-            return if let Some((response, _)) = self.try_merge_candidates(&candidates) {
-                Ok((response, Some(TraitGoalProvenVia::Misc)))
-            } else {
-                self.flounder(&candidates).map(|r| (r, None))
-            };
+            return Ok(match self.try_merge_impl_candidates(trait_def_id, &candidates) {
+                Some(response) => (response, Some(TraitGoalProvenVia::Misc)),
+                None => (self.bail_with_ambiguity(&candidates), None),
+            });
         }
 
         // We prefer trivial builtin candidates, i.e. builtin impls without any
@@ -1595,11 +1653,10 @@ where
             let alias_bounds: Vec<_> = candidates
                 .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound(..)))
                 .collect();
-            return if let Some((response, _)) = self.try_merge_candidates(&alias_bounds) {
-                Ok((response, Some(TraitGoalProvenVia::AliasBound)))
-            } else {
-                Ok((self.bail_with_ambiguity(&alias_bounds), None))
-            };
+            return Ok(self.merge_candidates_or_bail_with_ambiguity(
+                &alias_bounds,
+                TraitGoalProvenVia::AliasBound,
+            ));
         }
 
         // If there are non-global where-bounds, prefer where-bounds
@@ -1651,11 +1708,10 @@ where
             let alias_bounds: Vec<_> = candidates
                 .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound(_)))
                 .collect();
-            return if let Some((response, _)) = self.try_merge_candidates(&alias_bounds) {
-                Ok((response, Some(TraitGoalProvenVia::AliasBound)))
-            } else {
-                Ok((self.bail_with_ambiguity(&alias_bounds), None))
-            };
+            return Ok(self.merge_candidates_or_bail_with_ambiguity(
+                &alias_bounds,
+                TraitGoalProvenVia::AliasBound,
+            ));
         }
 
         self.filter_specialized_impls(AllowInferenceConstraints::No, &mut candidates);
@@ -1665,21 +1721,16 @@ where
         // is still reported as being proven-via the param-env so that rigid projections
         // operate correctly. Otherwise, drop all global where-bounds before merging the
         // remaining candidates.
-        let proven_via = if candidates
+        let only_global_where_bounds = candidates
             .iter()
-            .all(|c| matches!(c.source, CandidateSource::ParamEnv(ParamEnvSource::Global)))
-        {
-            TraitGoalProvenVia::ParamEnv
+            .all(|c| matches!(c.source, CandidateSource::ParamEnv(ParamEnvSource::Global)));
+        if only_global_where_bounds {
+            Ok(self
+                .merge_candidates_or_bail_with_ambiguity(&candidates, TraitGoalProvenVia::ParamEnv))
         } else {
             candidates
                 .retain(|c| !matches!(c.source, CandidateSource::ParamEnv(ParamEnvSource::Global)));
-            TraitGoalProvenVia::Misc
-        };
-
-        if let Some((response, _)) = self.try_merge_candidates(&candidates) {
-            Ok((response, Some(proven_via)))
-        } else {
-            self.flounder(&candidates).map(|r| (r, None))
+            Ok(self.merge_impl_candidates_or_bail_with_ambiguity(trait_def_id, &candidates))
         }
     }
 
@@ -1691,9 +1742,7 @@ where
     {
         let (candidates, failed_candidate_info) =
             self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All)?;
-        let candidate_preference_mode =
-            CandidatePreferenceMode::compute(self.cx(), goal.predicate.def_id());
-        self.merge_trait_candidates(candidate_preference_mode, candidates, failed_candidate_info)
+        self.merge_trait_candidates(goal.predicate.def_id(), candidates, failed_candidate_info)
             .map_err(Into::into)
     }
 
