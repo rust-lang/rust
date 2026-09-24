@@ -6,6 +6,7 @@ use rustc_middle::query::on_disk_cache;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::FileEncoder;
+use rustc_session::config::OutputFilenames;
 use rustc_session::{IncrCompSession, Session};
 use tracing::debug;
 
@@ -94,6 +95,7 @@ pub fn save_work_product_index(
     sess: &Session,
     incr_comp_session: Option<&IncrCompSession>,
     dep_graph: &DepGraph,
+    output_filenames: &OutputFilenames,
     new_work_products: WorkProductMap,
 ) {
     if sess.opts.incremental.is_none() {
@@ -115,6 +117,9 @@ pub fn save_work_product_index(
     // We also need to clean out old work-products, as not all of them are
     // deleted during invalidation. Some object files don't change their
     // content, they are just not needed anymore.
+    //
+    // The same goes for files the previous session left in the output directory
+    // for debuginfo: this session replaces the artifact that referred to them.
     let previous_work_products = dep_graph.previous_work_products();
     for (id, wp) in previous_work_products.to_sorted_stable_ord() {
         if !new_work_products.contains_key(id) {
@@ -127,6 +132,7 @@ pub fn save_work_product_index(
                 .exists())
             );
         }
+        work_product::delete_preserved_debuginfo_files(sess, output_filenames, wp);
     }
 
     // Check that we did not delete one of the current work-products:
