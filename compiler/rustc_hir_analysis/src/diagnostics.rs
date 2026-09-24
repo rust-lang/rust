@@ -2162,7 +2162,7 @@ pub(crate) struct UnevaluatedDefaultFieldValue {
     pub(crate) ty: String,
     #[suggestion(
         "if this behavior is acceptable, allow the lint and preferably write a test relying on the default value",
-        code = "{padding}#[allow(unevaluated_default_field_value)]\n",
+        code = "{padding}#[expect(unevaluated_default_field_value)]\n",
         applicability = "maybe-incorrect"
     )]
     pub(crate) struct_start: Span,

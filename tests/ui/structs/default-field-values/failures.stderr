@@ -35,7 +35,7 @@ LL |     bay: i32 = C,
    = note: `#[warn(unevaluated_default_field_value)]` on by default
 help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
    |
-LL + #[allow(unevaluated_default_field_value)]
+LL + #[expect(unevaluated_default_field_value)]
 LL | pub struct Qux<const C: i32> {
    |
 
