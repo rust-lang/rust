@@ -82,11 +82,13 @@ pub(super) fn generate<'tcx>(
         let (polonius_relevant, _) =
             compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
 
-        let boring: FxHashSet<_> = boring_locals.iter().copied().collect();
-        let deferred =
-            polonius_relevant.into_iter().filter(|local| boring.contains(local)).collect();
-        typeck.polonius_context.as_mut().unwrap().boring_nll_locals = boring;
-        deferred
+        let boring_nll_locals: FxHashSet<_> = boring_locals.iter().copied().collect();
+        let deferred_polonius_locals = polonius_relevant
+            .into_iter()
+            .filter(|local| boring_nll_locals.contains(local))
+            .collect();
+        typeck.polonius_context.as_mut().unwrap().boring_nll_locals = boring_nll_locals;
+        deferred_polonius_locals
     };
 
     trace::trace(
