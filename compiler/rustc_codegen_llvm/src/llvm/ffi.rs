@@ -2422,9 +2422,10 @@ unsafe extern "C" {
         Features: *const c_char,
     ) -> *mut MCSubtargetInfo;
 
-    pub(crate) fn LLVMRustMCSubtargetInfoHasFeature(
+    pub(crate) fn LLVMRustMCSubtargetInfoCheckFeatures(
         MCInfo: &MCSubtargetInfo,
-        Feature: *const c_char,
+        Features: *const c_uchar, // See "PTR_LEN_STR".
+        FeaturesLen: usize,
     ) -> bool;
 
     pub(crate) fn LLVMRustDisposeMCSubtargetInfo(MCInfo: ptr::NonNull<MCSubtargetInfo>);

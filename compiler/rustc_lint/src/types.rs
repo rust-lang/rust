@@ -25,6 +25,7 @@ use crate::diagnostics::{
     UnpredictableFunctionPointerComparisonsSuggestion, UnusedComparisons,
     VariantSizeDifferencesDiag,
 };
+use crate::utils::std_or_core;
 use crate::{LateContext, LateLintPass, LintContext};
 
 mod literal;
@@ -348,13 +349,21 @@ fn lint_wide_pointer<'tcx>(
         return;
     };
 
+    let Some(krate) = std_or_core(cx) else {
+        return cx.emit_span_lint(
+            AMBIGUOUS_WIDE_POINTER_COMPARISONS,
+            e.span,
+            AmbiguousWidePointerComparisons::Warn,
+        );
+    };
+
     let (Some(l_span), Some(r_span)) =
         (l.span.find_ancestor_inside(e.span), r.span.find_ancestor_inside(e.span))
     else {
         return cx.emit_span_lint(
             AMBIGUOUS_WIDE_POINTER_COMPARISONS,
             e.span,
-            AmbiguousWidePointerComparisons::Spanless,
+            AmbiguousWidePointerComparisons::Spanless { krate },
         );
     };
 
@@ -380,6 +389,7 @@ fn lint_wide_pointer<'tcx>(
             AmbiguousWidePointerComparisons::SpanfulEq {
                 addr_metadata_suggestion: (!is_dyn_comparison).then(|| {
                     AmbiguousWidePointerComparisonsAddrMetadataSuggestion {
+                        krate,
                         ne,
                         deref_left,
                         deref_right,
@@ -391,6 +401,7 @@ fn lint_wide_pointer<'tcx>(
                     }
                 }),
                 addr_suggestion: AmbiguousWidePointerComparisonsAddrSuggestion {
+                    krate,
                     ne,
                     deref_left,
                     deref_right,
@@ -512,6 +523,14 @@ fn lint_fn_pointer<'tcx>(
     let middle = l_span.shrink_to_hi().until(r_span.shrink_to_lo());
     let right = r_span.shrink_to_hi().until(e.span.shrink_to_hi());
 
+    let Some(krate) = std_or_core(cx) else {
+        return cx.emit_span_lint(
+            UNPREDICTABLE_FUNCTION_POINTER_COMPARISONS,
+            e.span,
+            UnpredictableFunctionPointerComparisons::Warn,
+        );
+    };
+
     let sugg =
         // We only check for a right cast as `FnDef` == `FnPtr` is not possible,
         // only `FnPtr == FnDef` is possible.
@@ -519,6 +538,7 @@ fn lint_fn_pointer<'tcx>(
             let fn_sig = r_ty.fn_sig(cx.tcx);
 
             UnpredictableFunctionPointerComparisonsSuggestion::FnAddrEqWithCast {
+                krate,
                 ne,
                 fn_sig,
                 deref_left,
@@ -529,6 +549,7 @@ fn lint_fn_pointer<'tcx>(
             }
         } else {
             UnpredictableFunctionPointerComparisonsSuggestion::FnAddrEq {
+                krate,
                 ne,
                 deref_left,
                 deref_right,

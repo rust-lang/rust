@@ -13,8 +13,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, StringPart, Sublevel, Suggestions,
-    msg, pluralize, struct_span_code_err,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, StringPart, Sublevel, msg, pluralize,
+    struct_span_code_err,
 };
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
@@ -42,7 +42,8 @@ use tracing::{debug, instrument};
 use super::suggestions::get_explanation_based_on_obligation;
 use super::{ArgKind, CandidateSimilarity, GetSafeTransmuteErrorAndReason, ImplCandidate};
 use crate::diagnostics::{
-    ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch, CoroClosureNotFn,
+    AssocTypeWithSameName, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
+    CoroClosureNotFn,
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
@@ -3107,13 +3108,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             );
             self.suggest_unsized_bound_if_applicable(err, obligation);
             if let Some(span) = err.span.primary_span()
-                && let Some(mut diag) =
-                    self.dcx().steal_non_err(span, StashKey::AssociatedTypeSuggestion)
-                && let Suggestions::Enabled(ref mut s1) = err.suggestions
-                && let Suggestions::Enabled(ref mut s2) = diag.suggestions
+                && self
+                    .tcx
+                    .resolutions(())
+                    .paths_matching_assoc_types
+                    .contains(&span.with_parent(None))
             {
-                s1.append(s2);
-                diag.cancel()
+                err.subdiagnostic(AssocTypeWithSameName { span: span.shrink_to_lo() });
             }
         }
     }
