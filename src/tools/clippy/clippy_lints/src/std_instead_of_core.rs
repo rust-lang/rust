@@ -6,10 +6,10 @@ use clippy_utils::paths::{PathNS, lookup_path};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Block, Body, HirId, Path, PathSegment, StabilityLevel, StableSince};
+use rustc_hir::{Block, Body, HirId, Item, ItemKind, Path, PathSegment, StabilityLevel, StableSince, UseKind, UseTree};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext as _, impl_lint_pass};
 use rustc_span::symbol::kw;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -95,6 +95,10 @@ impl_lint_pass!(StdReexports => [
 pub struct StdReexports {
     lint_points: Option<(Span, Vec<LintPoint>)>,
     msrv: Msrv,
+    /// Imports are handled manually, as they are a tree, not a linear path.
+    /// If one element in a nested import wants to change the shared start of the import,
+    /// but another element does not, then we shouldn't emit a suggestion.
+    in_import: bool,
 }
 
 impl StdReexports {
@@ -102,6 +106,7 @@ impl StdReexports {
         Self {
             lint_points: Option::default(),
             msrv: conf.msrv.into(),
+            in_import: false,
         }
     }
 
@@ -113,6 +118,82 @@ impl StdReexports {
             _ => emit_lints(cx, self.lint_points.replace((krate, vec![lint_point]))),
         }
     }
+
+    fn walk_import<'tcx>(&mut self, cx: &LateContext<'tcx>, tree: &UseTree<'tcx>, prefix: &[PathSegment<'tcx>]) {
+        match tree.kind {
+            UseKind::Single(_) => {
+                let segments: Vec<_> = prefix
+                    .iter()
+                    .copied()
+                    .chain(tree.prefix.segments.iter().copied())
+                    .collect();
+                for res in tree.prefix.res.present_items() {
+                    self.check_path_segments(
+                        cx,
+                        &Path {
+                            span: tree.prefix.span,
+                            res,
+                            segments: &segments[..],
+                        },
+                    );
+                }
+            },
+            UseKind::Glob => {},
+            UseKind::Nested { items } => {
+                let segments: Vec<_> = prefix
+                    .iter()
+                    .copied()
+                    .chain(tree.prefix.segments.iter().copied())
+                    .collect();
+                for (nested, _, _) in items {
+                    self.walk_import(cx, nested, &segments);
+                }
+            },
+        }
+    }
+
+    fn check_path_segments(&mut self, cx: &LateContext<'_>, path: &Path<'_>) {
+        if let Res::Def(def_kind, def_id) = path.res
+            && !matches!(def_kind, DefKind::Macro(_))
+            && let Some((res, ident)) = get_first_segment(path.segments)
+            && let Res::Def(DefKind::Mod, crate_def_id) = res
+            && crate_def_id.is_crate_root()
+            && is_stable(cx, def_id, self.msrv)
+            && !path.span.in_external_macro(cx.sess().source_map())
+            && !is_from_proc_macro(cx, &ident)
+            && let Some(last_segment) = path.segments.last()
+        {
+            let (lint, used_mod, replace_with) = match ident.name {
+                sym::std => match cx.tcx.crate_name(def_id.krate) {
+                    sym::core => (STD_INSTEAD_OF_CORE, "std", "core"),
+                    sym::alloc => (STD_INSTEAD_OF_ALLOC, "std", "alloc"),
+                    _ => {
+                        self.lint_if_finish(cx, ident.span, LintPoint::Conflict);
+                        return;
+                    },
+                },
+                sym::alloc if cx.tcx.crate_name(def_id.krate) == sym::core => (ALLOC_INSTEAD_OF_CORE, "alloc", "core"),
+                _ => {
+                    self.lint_if_finish(cx, ident.span, LintPoint::Conflict);
+                    return;
+                },
+            };
+
+            // Only the crate name is replaced, so the rest of the path has to name the same item in
+            // the target crate. `std::collections::Bound` for instance reaches `core::ops::Bound`
+            // through a legacy re-export, and `core::collections` does not exist.
+            if !resolves_in(cx, path, def_kind, def_id, replace_with) {
+                self.lint_if_finish(cx, ident.span, LintPoint::Conflict);
+                return;
+            }
+
+            self.lint_if_finish(
+                cx,
+                ident.span,
+                LintPoint::Available(last_segment.ident.span, lint, used_mod, replace_with),
+            );
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -122,47 +203,26 @@ enum LintPoint {
 }
 
 impl<'tcx> LateLintPass<'tcx> for StdReexports {
-    fn check_path(&mut self, cx: &LateContext<'tcx>, path: &Path<'tcx>, _: HirId) {
-        if let Res::Def(def_kind, def_id) = path.res
-            && !matches!(def_kind, DefKind::Macro(_))
-            && let Some(first_segment) = get_first_segment(path)
-            && let Res::Def(DefKind::Mod, crate_def_id) = first_segment.res
-            && crate_def_id.is_crate_root()
-            && is_stable(cx, def_id, self.msrv)
-            && !path.span.in_external_macro(cx.sess().source_map())
-            && !is_from_proc_macro(cx, &first_segment.ident)
-            && let Some(last_segment) = path.segments.last()
-        {
-            let (lint, used_mod, replace_with) = match first_segment.ident.name {
-                sym::std => match cx.tcx.crate_name(def_id.krate) {
-                    sym::core => (STD_INSTEAD_OF_CORE, "std", "core"),
-                    sym::alloc => (STD_INSTEAD_OF_ALLOC, "std", "alloc"),
-                    _ => {
-                        self.lint_if_finish(cx, first_segment.ident.span, LintPoint::Conflict);
-                        return;
-                    },
-                },
-                sym::alloc if cx.tcx.crate_name(def_id.krate) == sym::core => (ALLOC_INSTEAD_OF_CORE, "alloc", "core"),
-                _ => {
-                    self.lint_if_finish(cx, first_segment.ident.span, LintPoint::Conflict);
-                    return;
-                },
-            };
-
-            // Only the crate name is replaced, so the rest of the path has to name the same item in
-            // the target crate. `std::collections::Bound` for instance reaches `core::ops::Bound`
-            // through a legacy re-export, and `core::collections` does not exist.
-            if !resolves_in(cx, path, def_kind, def_id, replace_with) {
-                self.lint_if_finish(cx, first_segment.ident.span, LintPoint::Conflict);
-                return;
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &Item<'tcx>) {
+        if let ItemKind::Use(tree) = item.kind {
+            if let UseKind::Nested { items } = tree.kind {
+                for (nested, _, _) in items {
+                    self.walk_import(cx, nested, tree.prefix.segments);
+                }
+                self.in_import = true;
             }
-
-            self.lint_if_finish(
-                cx,
-                first_segment.ident.span,
-                LintPoint::Available(last_segment.ident.span, lint, used_mod, replace_with),
-            );
         }
+    }
+
+    fn check_item_post(&mut self, _: &LateContext<'_>, _: &Item<'_>) {
+        self.in_import = false;
+    }
+
+    fn check_path(&mut self, cx: &LateContext<'tcx>, path: &Path<'_>, _: HirId) {
+        if self.in_import {
+            return;
+        }
+        self.check_path_segments(cx, path);
     }
 
     fn check_block_post(&mut self, cx: &LateContext<'tcx>, _: &Block<'tcx>) {
@@ -256,11 +316,11 @@ fn resolves_in(cx: &LateContext<'_>, path: &Path<'_>, def_kind: DefKind, def_id:
 ///
 /// If this is a global path (such as `::std::fmt::Debug`), then the segment after [`kw::PathRoot`]
 /// is returned.
-fn get_first_segment<'tcx>(path: &Path<'tcx>) -> Option<&'tcx PathSegment<'tcx>> {
-    match path.segments {
+fn get_first_segment<'tcx>(segments: &'tcx [PathSegment<'tcx>]) -> Option<(Res, Ident)> {
+    match segments {
         // A global path will have PathRoot as the first segment. In this case, return the segment after.
-        [x, y, ..] if x.ident.name == kw::PathRoot => Some(y),
-        [x, ..] => Some(x),
+        [x, y, ..] if x.ident.name == kw::PathRoot => Some((y.res, y.ident)),
+        [x, ..] => Some((x.res, x.ident)),
         _ => None,
     }
 }

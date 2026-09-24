@@ -421,8 +421,13 @@ pub trait Visitor<'v>: Sized {
     ) -> Self::Result {
         walk_fn(self, fk, fd, b, id)
     }
-    fn visit_use(&mut self, path: &'v UsePath<'v>, hir_id: HirId) -> Self::Result {
-        walk_use(self, path, hir_id)
+    fn visit_use(
+        &mut self,
+        tree: &'v UseTree<'v>,
+        hir_id: HirId,
+        _def_id: LocalDefId,
+    ) -> Self::Result {
+        walk_use(self, tree, hir_id)
     }
     fn visit_trait_item(&mut self, ti: &'v TraitItem<'v>) -> Self::Result {
         walk_trait_item(self, ti)
@@ -550,12 +555,8 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             visit_opt!(visitor, visit_name, orig_name);
             try_visit!(visitor.visit_ident(ident));
         }
-        ItemKind::Use(ref path, kind) => {
-            try_visit!(visitor.visit_use(path, item.hir_id()));
-            match kind {
-                UseKind::Single(ident) => try_visit!(visitor.visit_ident(ident)),
-                UseKind::Glob | UseKind::ListStem => {}
-            }
+        ItemKind::Use(ref tree) => {
+            try_visit!(visitor.visit_use(tree, item.hir_id(), item.owner_id.def_id));
         }
         ItemKind::Static(_, ident, ref typ, body) => {
             try_visit!(visitor.visit_ident(ident));
@@ -1268,12 +1269,24 @@ pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V, function_kind: FnKind<'
 
 pub fn walk_use<'v, V: Visitor<'v>>(
     visitor: &mut V,
-    path: &'v UsePath<'v>,
+    tree: &'v UseTree<'v>,
     hir_id: HirId,
 ) -> V::Result {
-    let UsePath { segments, ref res, span } = *path;
+    visitor.visit_id(hir_id);
+    let UseTree { prefix, kind } = *tree;
+    let UsePath { segments, ref res, span } = *prefix;
     for res in res.present_items() {
         try_visit!(visitor.visit_path(&Path { segments, res, span }, hir_id));
+    }
+
+    match kind {
+        UseKind::Single(ident) => try_visit!(visitor.visit_ident(ident)),
+        UseKind::Glob => {}
+        UseKind::Nested { items } => {
+            for (tree, id, def_id) in items {
+                try_visit!(visitor.visit_use(tree, *id, *def_id));
+            }
+        }
     }
     V::Result::output()
 }
