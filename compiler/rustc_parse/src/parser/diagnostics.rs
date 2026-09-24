@@ -439,7 +439,7 @@ impl<'a> Parser<'a> {
                     span,
                     token: self.token,
                     unexpected_token_label: Some(self.token.span),
-                    sugg: ExpectedSemiSugg::AddSemi(span),
+                    sugg: ExpectedSemiSugg::AddSemi(span, Applicability::MachineApplicable),
                 });
                 return Ok(guar);
             }
@@ -723,7 +723,8 @@ impl<'a> Parser<'a> {
             span,
             token: self.token,
             unexpected_token_label: Some(self.token.span),
-            sugg: ExpectedSemiSugg::AddSemi(span),
+            // A semicolon may discard the intended return value of a cfg-gated tail expression.
+            sugg: ExpectedSemiSugg::AddSemi(span, Applicability::MaybeIncorrect),
         });
         let attr_span = match &expr.attrs[..] {
             [] => unreachable!(),
@@ -755,7 +756,7 @@ impl<'a> Parser<'a> {
                     (expr.span.shrink_to_lo(), "{ ".to_string()),
                     (expr.span.shrink_to_hi(), " }".to_string()),
                 ],
-                Applicability::MachineApplicable,
+                Applicability::MaybeIncorrect,
             );
 
             // Special handling for `#[cfg(...)]` chains
@@ -811,7 +812,8 @@ impl<'a> Parser<'a> {
                     "it seems like you are trying to provide different expressions depending on \
                      `cfg`, consider using `if cfg!(..)`",
                     sugg,
-                    Applicability::MachineApplicable,
+                    // Unlike `#[cfg]`, `if cfg!` still checks disabled branches.
+                    Applicability::MaybeIncorrect,
                 );
             }
         }
