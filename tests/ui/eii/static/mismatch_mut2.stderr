@@ -1,5 +1,5 @@
 error: mutability does not match with the definition of`#[hello]`
-  --> $DIR/mismatch_mut2.rs:10:1
+  --> $DIR/mismatch_mut2.rs:9:1
    |
 LL | #[hello]
    | ^^^^^^^^
