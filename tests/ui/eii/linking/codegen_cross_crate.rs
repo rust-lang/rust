@@ -2,7 +2,6 @@
 //@ check-run-results
 //@ aux-build: codegen_cross_crate_other_crate.rs
 //@ compile-flags: -O
-//@ ignore-backends: gcc
 // FIXME(#125418): linking on Windows GNU targets is not yet supported.
 //@ ignore-windows-gnu
 // Tests whether calling EIIs works with the declaration in another crate.
