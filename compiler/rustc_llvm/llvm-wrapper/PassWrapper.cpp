@@ -516,6 +516,9 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
     return LLVMRustResult::Failure;
   }
 
+  // TargetMachine::addPassesToEmitFile stores pointers to the output streams
+  // in a couple of places inside of the object. Explicitly delete the PM after
+  // we call run() to avoid dangling references.
   auto BOS = buffer_ostream(OS);
   if (DwoPath) {
     auto DOS = raw_fd_ostream(DwoPath, EC, sys::fs::OF_None);
@@ -529,15 +532,12 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
     auto DBOS = buffer_ostream(DOS);
     unwrap(Target)->addPassesToEmitFile(*PM, BOS, &DBOS, FileType, !VerifyIR);
     PM->run(*unwrap(M));
+    PM.reset();
   } else {
     unwrap(Target)->addPassesToEmitFile(*PM, BOS, nullptr, FileType, !VerifyIR);
     PM->run(*unwrap(M));
+    PM.reset();
   }
-
-  // TargetMachine::addPassesToEmitFile stores a pointer to the output stream
-  // in a couple of places inside of the object. Explicitly delete the PM here
-  // to ensure that the output stream always outlives the PM.
-  PM.reset();
 
   return LLVMRustResult::Success;
 }
