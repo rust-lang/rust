@@ -11,7 +11,6 @@ use rustc_span::bug;
 
 use super::ScalarInt;
 use crate::mir::interpret::{ErrorHandled, Scalar};
-use crate::ty::consts::ConstExt;
 use crate::ty::print::{FmtPrinter, PrettyPrinter};
 use crate::ty::{self, Ty, TyCtxt, ValTreeKind};
 
@@ -234,6 +233,10 @@ impl<'tcx> rustc_type_ir::inherent::ValueConst<TyCtxt<'tcx>> for Value<'tcx> {
 
     fn valtree(self) -> ValTree<'tcx> {
         self.valtree
+    }
+
+    fn new(ty: Ty<'tcx>, valtree: ValTree<'tcx>) -> Self {
+        Self { ty, valtree }
     }
 }
 
