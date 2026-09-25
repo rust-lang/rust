@@ -65,9 +65,10 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
         otherwise: Option<&ConstOperand<'tcx>>,
     ) -> Option<StatementKind<'tcx>> {
         let (_, first_const, mut others) = split_first_case(consts, otherwise);
-        let first_scalar_int = first_const.const_.try_eval_scalar_int(self.tcx, self.typing_env)?;
+        let first_value =
+            first_const.const_.eval(self.tcx, self.typing_env, first_const.span).ok()?;
         if others.all(|const_| {
-            const_.const_.try_eval_scalar_int(self.tcx, self.typing_env) == Some(first_scalar_int)
+            const_.const_.eval(self.tcx, self.typing_env, const_.span).ok() == Some(first_value)
         }) {
             Some(StatementKind::Assign(Box::new((
                 dest,
