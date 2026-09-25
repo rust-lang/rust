@@ -50,7 +50,7 @@ pub struct RegionInferenceContextInner<'tcx> {
     /// regions, these start out empty and steadily grow, though for
     /// each universally quantified region R they start out containing
     /// the entire CFG and `end(R)`.
-    pub(super) liveness_constraints: LivenessValues,
+    liveness_constraints: LivenessValues,
 
     /// The outlives constraints computed by the type-check.
     pub(super) constraints: Frozen<OutlivesConstraintSet<'tcx>>,
@@ -58,17 +58,17 @@ pub struct RegionInferenceContextInner<'tcx> {
     /// The constraint-set, but in graph form, making it easy to traverse
     /// the constraints adjacent to a particular region. Used to construct
     /// the SCC (see `constraint_sccs`) and for error reporting.
-    pub(super) constraint_graph: Frozen<NormalConstraintGraph>,
+    constraint_graph: Frozen<NormalConstraintGraph>,
 
     /// The SCC computed from `constraints` and the constraint
     /// graph. We have an edge from SCC A to SCC B if `A: B`. Used to
     /// compute the values of each region.
     pub(super) constraint_sccs: ConstraintSccs,
 
-    pub(super) scc_annotations: IndexVec<ConstraintSccIndex, RegionTracker>,
+    scc_annotations: IndexVec<ConstraintSccIndex, RegionTracker>,
 
     /// Map universe indexes to information on why we created it.
-    pub(super) universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
+    universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
     /// The final inferred values of the region variables; we compute
     /// one value per SCC. To get the value for any given *region*,
@@ -97,10 +97,10 @@ impl<'tcx> Deref for RegionInferenceContext<'tcx> {
 /// This contains data around region constraints and liveness, up to solving.
 /// Calling `solve` returns a new immutable `RegionInferenceContext`.
 pub(crate) struct UnsolvedRegionInferenceContext<'tcx> {
-    pub(super) inner: RegionInferenceContextInner<'tcx>,
+    inner: RegionInferenceContextInner<'tcx>,
 
     /// Type constraints that we check after solving.
-    pub(super) type_tests: Vec<TypeTest<'tcx>>,
+    type_tests: Vec<TypeTest<'tcx>>,
 }
 
 impl<'tcx> Deref for UnsolvedRegionInferenceContext<'tcx> {
