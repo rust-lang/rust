@@ -64,10 +64,10 @@ pub struct DefPathToIndexMap {
 
 impl DefPathToIndexMap {
     #[inline]
-    pub fn get(&self, hash: &Hash64) -> Option<DefIndex> {
+    pub fn get(&self, hash: Hash64) -> Option<DefIndex> {
         self.det_part
-            .get(hash)
-            .or_else(|| self.non_det_part.as_ref().and_then(|map| map.get(hash).copied()))
+            .get(&hash)
+            .or_else(|| self.non_det_part.as_ref().and_then(|map| map.get(&hash).copied()))
     }
 
     /// This insert function does not behave like regular `insert` of a `HashMap`,
@@ -75,15 +75,15 @@ impl DefPathToIndexMap {
     /// def index for local hash before panicking. So we can do not actually insert
     /// def index into `det_part` when we are in non-deterministic mode.
     #[inline]
-    pub fn insert(&mut self, hash: &Hash64, index: DefIndex) -> Option<DefIndex> {
+    pub fn insert(&mut self, hash: Hash64, index: DefIndex) -> Option<DefIndex> {
         match self.non_det_part.as_mut() {
-            None => self.det_part.insert(hash, &index),
+            None => self.det_part.insert(&hash, &index),
             Some(map) => {
-                if let Some(existing) = self.det_part.get(hash) {
+                if let Some(existing) = self.det_part.get(&hash) {
                     return Some(existing);
                 }
 
-                map.insert(*hash, index)
+                map.insert(hash, index)
             }
         }
     }
@@ -372,7 +372,7 @@ impl Definitions {
         // Check for hash collisions of DefPathHashes. These should be
         // exceedingly rare.
         if let Some(existing) =
-            self.def_path_hash_to_index.insert(&local_hash, def_id.local_def_index)
+            self.def_path_hash_to_index.insert(local_hash, def_id.local_def_index)
         {
             let def_path1 = self.def_path(LocalDefId { local_def_index: existing });
             let def_path2 = self.def_path(def_id);
@@ -460,7 +460,7 @@ impl Definitions {
     pub fn local_def_path_hash_to_def_id(&self, hash: DefPathHash) -> Option<LocalDefId> {
         debug_assert!(hash.stable_crate_id() == self.stable_crate_id);
         self.def_path_hash_to_index
-            .get(&hash.local_hash())
+            .get(hash.local_hash())
             .map(|local_def_index| LocalDefId { local_def_index })
     }
 
