@@ -885,7 +885,7 @@ impl<T> [T] {
 
     /// Swaps two elements in the slice.
     ///
-    /// If `a` equals to `b`, it's guaranteed that elements won't change value.
+    /// If `a` equals `b`, it's guaranteed that elements won't change value.
     ///
     /// # Arguments
     ///
@@ -2125,7 +2125,7 @@ impl<T> [T] {
     /// Divides one slice into two at an index, returning `None` if the slice is
     /// too short.
     ///
-    /// If `mid ≤ len` returns a pair of slices where the first will contain all
+    /// If `mid ≤ len`, returns a pair of slices where the first will contain all
     /// indices from `[0, mid)` (excluding the index `mid` itself) and the
     /// second will contain all indices from `[mid, len)` (excluding the index
     /// `len` itself).
@@ -2174,7 +2174,7 @@ impl<T> [T] {
     /// Divides one mutable slice into two at an index, returning `None` if the
     /// slice is too short.
     ///
-    /// If `mid ≤ len` returns a pair of slices where the first will contain all
+    /// If `mid ≤ len`, returns a pair of slices where the first will contain all
     /// indices from `[0, mid)` (excluding the index `mid` itself) and the
     /// second will contain all indices from `[mid, len)` (excluding the index
     /// `len` itself).
