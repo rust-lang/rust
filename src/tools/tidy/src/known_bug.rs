@@ -6,7 +6,7 @@ use crate::diagnostics::{CheckId, TidyCtx};
 use crate::walk::*;
 
 pub fn check(filepath: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("known_bug").path(filepath));
+    let check = tidy_ctx.start_check(CheckId::new("known_bug").path(filepath));
     walk(filepath, |path, _is_dir| filter_not_rust(path), &mut |entry, contents| {
         let file: &Path = entry.path();
 
