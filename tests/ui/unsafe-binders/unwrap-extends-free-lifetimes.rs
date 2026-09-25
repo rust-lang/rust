@@ -1,6 +1,5 @@
-//@ compile-flags: -Znext-solver
 //@ check-pass
-//@ known-bug: #130516
+//@ known-bug: unknown
 
 #![feature(unsafe_binders)]
 #![allow(incomplete_features)]
