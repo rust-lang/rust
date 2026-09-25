@@ -94,6 +94,26 @@ impl<'tcx> Deref for RegionInferenceContext<'tcx> {
     }
 }
 
+impl RegionInferenceContext<'_> {
+    /// Returns `true` if the region `r` contains the point `p`.
+    pub(crate) fn region_contains_point(&self, r: RegionVid, p: Location) -> bool {
+        let scc = self.constraint_sccs.scc(r);
+        self.scc_values.contains_point(scc, p)
+    }
+
+    /// Returns the lowest statement index in `start..=end` which is not contained by `r`.
+    pub(crate) fn first_non_contained_inclusive(
+        &self,
+        r: RegionVid,
+        block: BasicBlock,
+        start: usize,
+        end: usize,
+    ) -> Option<usize> {
+        let scc = self.constraint_sccs.scc(r);
+        self.scc_values.first_non_contained_inclusive(scc, block, start, end)
+    }
+}
+
 /// This contains data around region constraints and liveness, up to solving.
 /// Calling `solve` returns a new immutable `RegionInferenceContext`.
 pub(crate) struct UnsolvedRegionInferenceContext<'tcx> {
@@ -141,28 +161,6 @@ impl<'tcx> RegionInferenceContextInner<'tcx> {
     /// Adds annotations for `#[rustc_regions]`; see `UniversalRegions::annotate`.
     pub(crate) fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diag<'_>) {
         self.universal_regions().annotate(tcx, err)
-    }
-
-    /// Returns `true` if the region `r` contains the point `p`.
-    ///
-    /// Panics if called before `solve()` executes,
-    pub(crate) fn region_contains_point(&self, r: RegionVid, p: Location) -> bool {
-        let scc = self.constraint_sccs.scc(r);
-        self.scc_values.contains_point(scc, p)
-    }
-
-    /// Returns the lowest statement index in `start..=end` which is not contained by `r`.
-    ///
-    /// Panics if called before `solve()` executes.
-    pub(crate) fn first_non_contained_inclusive(
-        &self,
-        r: RegionVid,
-        block: BasicBlock,
-        start: usize,
-        end: usize,
-    ) -> Option<usize> {
-        let scc = self.constraint_sccs.scc(r);
-        self.scc_values.first_non_contained_inclusive(scc, block, start, end)
     }
 
     /// Returns access to the value of `r` for debugging purposes.
