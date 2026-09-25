@@ -253,6 +253,7 @@ impl<'sess> AttributeParser<'sess> {
                 cx: &mut parser,
                 target_span,
                 target,
+                target_item: None,
                 emit_lint: &mut emit_lint,
                 #[cfg(debug_assertions)]
                 has_lint_been_emitted: AtomicBool::new(false),
@@ -427,6 +428,7 @@ impl<'sess> AttributeParser<'sess> {
                                 cx: self,
                                 target_span,
                                 target,
+                                target_item,
                                 emit_lint: &mut emit_lint,
                                 #[cfg(debug_assertions)]
                                 has_lint_been_emitted: AtomicBool::new(false),
@@ -494,6 +496,7 @@ impl<'sess> AttributeParser<'sess> {
                     cx: self,
                     target_span,
                     target,
+                    target_item,
                     emit_lint: &mut emit_lint,
                     #[cfg(debug_assertions)]
                     has_lint_been_emitted: AtomicBool::new(false),
@@ -517,13 +520,13 @@ impl<'sess> AttributeParser<'sess> {
                         cx: self,
                         target_span,
                         target,
+                        target_item,
                         emit_lint: &mut emit_lint,
                         #[cfg(debug_assertions)]
                         has_lint_been_emitted: AtomicBool::new(false),
                     },
                     all_attrs: &attr_paths,
                     parsed_attrs: &attributes,
-                    target_item,
                 },
                 attr_span,
             );
