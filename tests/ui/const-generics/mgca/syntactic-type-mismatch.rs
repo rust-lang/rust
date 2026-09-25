@@ -1,7 +1,7 @@
 // This test ensures proper diagnostics emission during HIR ty lowering
 // See https://github.com/rust-lang/rust/issues/153254
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
 
 use std::gca;

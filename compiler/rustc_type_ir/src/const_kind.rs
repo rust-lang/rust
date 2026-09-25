@@ -281,7 +281,7 @@ pub enum AnonConstKind {
     GCE,
     /// stable `min_const_generics` anon consts are not allowed to use any generic parameters
     ///
-    /// under `feature(min_generic_const_args)`, these may be inline consts as well, and should be
+    /// under `feature(gca_min_const_items)`, these may be inline consts as well, and should be
     /// treated the same as anon consts.
     MCG,
     /// anon consts used as the length of a repeat expr are syntactically allowed to use generic parameters

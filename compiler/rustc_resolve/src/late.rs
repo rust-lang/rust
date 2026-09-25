@@ -5232,7 +5232,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             AnonConstKind::InlineConst => ConstantHasGenerics::Yes,
             AnonConstKind::ConstArg(_) | AnonConstKind::ArrayLength => {
                 if self.r.features.generic_const_exprs()
-                    || self.r.features.min_generic_const_args()
+                    || self.r.features.gca_min_const_items()
                     || is_trivial_const_arg
                 {
                     ConstantHasGenerics::Yes

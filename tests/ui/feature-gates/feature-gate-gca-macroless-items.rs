@@ -3,13 +3,13 @@
 //@ compile-flags: -Znext-solver
 
 #![feature(
-    min_generic_const_args,
-    generic_const_args,
-    macroless_generic_const_args,
+    gca_min_const_items,
+    gca_const_items,
+    gca_macroless_args,
     generic_const_items,
 )]
 
-#![cfg_attr(macroless, feature(macroless_const_item_generic_const_args))]
+#![cfg_attr(macroless, feature(gca_macroless_items))]
 
 trait Trait {
     const ASSOC<const N: usize>: usize;

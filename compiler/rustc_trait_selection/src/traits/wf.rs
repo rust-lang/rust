@@ -1090,9 +1090,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             ty::ConstKind::Alias(_, alias_const) => {
                 if !c.has_escaping_bound_vars() {
                     // Skip type consts as mGCA doesn't support evaluatable clauses
-                    if !alias_const.kind.is_direct_const(tcx)
-                        && !tcx.features().generic_const_args()
-                    {
+                    if !alias_const.kind.is_direct_const(tcx) && !tcx.features().gca_const_items() {
                         let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
                             ty::ClauseKind::ConstEvaluatable(c),
                         ));
@@ -1171,7 +1169,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             }
             ty::ConstKind::Value(val) => {
                 // FIXME(mgca): no need to feature-gate once valtree lifetimes are not erased
-                if tcx.features().min_generic_const_args() {
+                if tcx.features().gca_min_const_items() {
                     match val.ty.kind() {
                         ty::Adt(adt_def, args) => {
                             let adt_val = val.destructure_adt_const();

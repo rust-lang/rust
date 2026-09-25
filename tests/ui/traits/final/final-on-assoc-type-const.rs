@@ -1,6 +1,6 @@
 // This is a regression test for <https://github.com/rust-lang/rust/issues/152797>.
 #![feature(final_associated_functions)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
 trait Uwu {
     final type Ovo;

@@ -1,6 +1,6 @@
-# macroless_generic_const_args
+# gca_macroless_args
 
-Enables implementing const items under `#![feature(min_generic_const_args)]` and `#![feature(generic_const_args)]` without the `gca!` macro.
+Enables implementing const items under `#![feature(gca_min_const_items)]` and `#![feature(gca_const_items)]` without the `gca!` macro.
 
 The tracking issue for this feature is: [#162540]
 
@@ -11,26 +11,26 @@ The tracking issue for this feature is: [#162540]
 Warning: This feature is incomplete; its design and syntax may change.
 
 Related features:
-- [min_generic_const_args]. See that doc for what the `gca!` is. This feature enables
+- [gca_min_const_items]. See that doc for what the `gca!` is. This feature enables
 support for directly represented const arguments as the rhs of const items without the macro.
-- [macroless_generic_const_args]. For a version of this feature that works for const arguments in other
+- [gca_macroless_args]. For a version of this feature that works for const arguments in other
 positions
 
-[min_generic_const_args]: min-generic-const-args.md
-[macroless_generic_const_args]: macroless-generic-const-args.md
+[gca_min_const_items]: gca-min-const-items.md
+[gca_macroless_args]: gca-macroless-args.md
 
 ## Examples
 
-Here is an example from [min_generic_const_args]:
+Here is an example from [gca_min_const_items]:
 
-[min_generic_const_args]: min-generic-const-args.md
+[gca_min_const_items]: gca-min-const-items.md
 
 ```rust,ignore (needs new solver)
 #![allow(incomplete_features)]
 #![feature(
-    min_generic_const_args,
-    generic_const_args,
-    macroless_generic_const_args,
+    gca_min_const_items,
+    gca_const_items,
+    gca_macroless_args,
     generic_const_items,
 )]
 
@@ -48,15 +48,15 @@ fn foo<const N: usize>() {
 }
 ```
 
-Using `#![feature(macroless_const_item_generic_const_args)]` enables you to write the above without the macro:
+Using `#![feature(gca_macroless_items)]` enables you to write the above without the macro:
 
 ```rust,ignore (needs new solver)
 #![allow(incomplete_features)]
 #![feature(
-    min_generic_const_args,
-    generic_const_args,
-    macroless_generic_const_args,
-    macroless_const_item_generic_const_args,
+    gca_min_const_items,
+    gca_const_items,
+    gca_macroless_args,
+    gca_macroless_items,
     generic_const_items,
 )]
 

@@ -558,9 +558,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                         if let ty::AssocTag::Const = assoc_tag
                             && !self.tcx().is_direct_const(assoc_item.def_id)
-                            && !tcx.features().generic_const_args()
+                            && !tcx.features().gca_const_items()
                         {
-                            if tcx.features().min_generic_const_args() {
+                            if tcx.features().gca_min_const_items() {
                                 let err = self.dcx().struct_span_err(
                                     constraint.span,
                                     "use of trait associated const not defined as `#[rustc_always_gca]`",

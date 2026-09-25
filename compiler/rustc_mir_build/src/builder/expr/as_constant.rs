@@ -94,13 +94,13 @@ pub(crate) fn as_constant_inner<'tcx>(
                 if tcx.is_direct_const(def_id) {
                     return Some(get_kind(def_id, def_kind));
                 }
-                // Under generic_const_args, `def_id` might be a regular const declared in a trait,
+                // Under gca_const_items, `def_id` might be a regular const declared in a trait,
                 // but is `impl`d as a directly represented const. We do not know whether it is
                 // here, so we must use type system normalization for all const projections.
-                // FIXME(generic_const_args): there's a lot to consider here! `Const::Ty` uses
+                // FIXME(gca_const_items): there's a lot to consider here! `Const::Ty` uses
                 // valtrees and `Const::Unevaluated` does not, we should revisit this before
                 // stabilization.
-                if tcx.features().generic_const_args()
+                if tcx.features().gca_const_items()
                     && let kind @ ty::AliasConstKind::Projection { .. } = get_kind(def_id, def_kind)
                 {
                     return Some(kind);

@@ -1,11 +1,11 @@
-// Demonstrate that generic_const_args changes the behavior for dyn trait aliases
+// Demonstrate that gca_const_items changes the behavior for dyn trait aliases
 // with non-type associated consts: the associated const must be specified.
 
 //@ revisions: no_gca gca
 //@ compile-flags: -Znext-solver=globally
 //@ [no_gca] check-pass
 
-#![cfg_attr(gca, feature(generic_const_args, min_generic_const_args))]
+#![cfg_attr(gca, feature(gca_const_items, gca_min_const_items))]
 #![cfg_attr(gca, expect(incomplete_features))]
 
 type UnsatTraitBound0 = [str]; // `str: Sized` unsatisfied

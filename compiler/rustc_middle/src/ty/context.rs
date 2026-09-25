@@ -110,8 +110,8 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
         self.generic_const_exprs()
     }
 
-    fn generic_const_args(self) -> bool {
-        self.generic_const_args()
+    fn gca_const_items(self) -> bool {
+        self.gca_const_items()
     }
 
     fn coroutine_clone(self) -> bool {
@@ -1030,7 +1030,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// because it has a directly represented RHS, or is a trait definition that is marked as
     /// requiring its implementation to have a directly represented RHS.
     ///
-    /// Note: Be very careful with using this method - under `generic_const_args`, a trait can
+    /// Note: Be very careful with using this method - under `gca_const_items`, a trait can
     /// declare a regular const, but an `impl` could implement it with a directly represented const
     /// (a la refinement). This method would return false in such a case.
     pub fn is_direct_const(self, def_id: DefId) -> bool {

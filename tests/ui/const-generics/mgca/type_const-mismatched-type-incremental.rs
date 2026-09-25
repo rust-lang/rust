@@ -1,7 +1,7 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/152653>
 //!                     <https://github.com/rust-lang/rust/issues/154636>
 //@ incremental
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 use std::gca;
 

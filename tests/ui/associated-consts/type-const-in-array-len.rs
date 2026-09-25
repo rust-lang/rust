@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![feature(min_generic_const_args, macroless_generic_const_args, inherent_associated_types)]
+#![feature(gca_min_const_items, gca_macroless_args, inherent_associated_types)]
 
 use std::gca;
 

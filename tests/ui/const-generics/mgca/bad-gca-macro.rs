@@ -1,7 +1,7 @@
 //@ edition: 2024
 
 //! Reject direct const arguments in value/type positions without unrelated brace suggestions.
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![deny(unused_braces)]
 
 use std::gca;

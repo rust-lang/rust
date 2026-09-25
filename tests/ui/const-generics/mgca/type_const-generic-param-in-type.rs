@@ -1,7 +1,7 @@
 //@ revisions: nogate gate
 //@ [gate] check-pass
 #![expect(incomplete_features)]
-#![feature(adt_const_params, unsized_const_params, min_generic_const_args, generic_const_items)]
+#![feature(adt_const_params, unsized_const_params, gca_min_const_items, generic_const_items)]
 #![cfg_attr(gate, feature(generic_const_parameter_types))]
 
 use std::gca;

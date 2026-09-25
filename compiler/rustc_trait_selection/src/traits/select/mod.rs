@@ -1209,7 +1209,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // terms of `Fn` etc, but we could probably make this more
         // precise still.
         //
-        // FIXME(min_generic_const_args): Consider consts as well?
+        // FIXME(gca_min_const_items): Consider consts as well?
         let unbound_input_types =
             stack.fresh_trait_pred.skip_binder().trait_ref.args.types().any(|ty| ty.is_fresh());
 

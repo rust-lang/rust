@@ -1,8 +1,8 @@
 // Regression test for https://github.com/rust-lang/rust/issues/154632
 
 #![feature(generic_const_exprs)]
-#![feature(min_generic_const_args)]
-#![feature(macroless_generic_const_args)]
+#![feature(gca_min_const_items)]
+#![feature(gca_macroless_args)]
 #![feature(generic_const_items)]
 
 use std::gca;

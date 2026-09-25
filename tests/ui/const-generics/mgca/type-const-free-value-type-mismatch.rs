@@ -1,4 +1,4 @@
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)

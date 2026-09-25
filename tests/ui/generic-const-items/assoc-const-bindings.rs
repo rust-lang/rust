@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![feature(generic_const_items, min_generic_const_args)]
+#![feature(generic_const_items, gca_min_const_items)]
 #![feature(adt_const_params, const_param_ty_trait, generic_const_parameter_types)]
 #![expect(incomplete_features)]
 

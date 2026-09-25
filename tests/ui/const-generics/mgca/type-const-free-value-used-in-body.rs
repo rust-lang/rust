@@ -1,6 +1,6 @@
 // Regression test for https://github.com/rust-lang/rust/issues/154748 and https://github.com/rust-lang/rust/issues/154750
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 //@ compile-flags: --emit=mir
 

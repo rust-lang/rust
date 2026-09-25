@@ -1,6 +1,6 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/117923>.
 //@ check-pass
-#![feature(min_generic_const_args, macroless_generic_const_args)]
+#![feature(gca_min_const_items, gca_macroless_args)]
 #![allow(incomplete_features, dead_code)]
 
 use std::gca;

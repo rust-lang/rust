@@ -1,5 +1,5 @@
 //@ check-pass
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
 #![allow(irrefutable_let_patterns)]
 

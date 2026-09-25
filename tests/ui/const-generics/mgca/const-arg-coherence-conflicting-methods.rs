@@ -1,7 +1,7 @@
 // Regression test for #140729
 
 #![expect(incomplete_features)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 use std::gca;
 

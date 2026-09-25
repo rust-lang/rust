@@ -1,7 +1,7 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/105952>
 
 #![crate_name = "foo"]
-#![feature(min_generic_const_args, adt_const_params)]
+#![feature(gca_min_const_items, adt_const_params)]
 #![expect(incomplete_features)]
 use std::marker::ConstParamTy;
 

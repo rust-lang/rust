@@ -1,8 +1,8 @@
-error: `generic_const_args` requires -Znext-solver=globally to be enabled
+error: `gca_const_items` requires -Znext-solver=globally to be enabled
   --> $DIR/require-next-solver.rs:2:12
    |
-LL | #![feature(generic_const_args)]
-   |            ^^^^^^^^^^^^^^^^^^
+LL | #![feature(gca_const_items)]
+   |            ^^^^^^^^^^^^^^^
    |
    = help: enable all of these features
 

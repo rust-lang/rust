@@ -3,7 +3,7 @@
 //! the generic args are in Self format at that point, not in impl format, so the result can't be
 //! used with the Self-format args. However, it does not instantiate the result, it just does
 //! ensure_ok(). This test just makes sure that codepath is hit in tests.
-#![feature(min_generic_const_args, inherent_associated_types)]
+#![feature(gca_min_const_items, inherent_associated_types)]
 
 use std::gca;
 

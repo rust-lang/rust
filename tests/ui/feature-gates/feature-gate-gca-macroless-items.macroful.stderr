@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/feature-gate-macroless_const_item_generic_const_args.rs:24:11
+  --> $DIR/feature-gate-gca-macroless-items.rs:24:11
    |
 LL |     let a: [(); <() as Trait>::ASSOC::<N>]
    |            ------------------------------- expected due to this

@@ -10,7 +10,7 @@
 //\@[legacy] normalize-stderr: "h[[:xdigit:]]{16}" -> "h[HASH]"
 //@    [v0] normalize-stderr: "sym\[.*?\]" -> "sym[HASH]"
 
-#![feature(min_generic_const_args, rustc_attrs)]
+#![feature(gca_min_const_items, rustc_attrs)]
 #![expect(incomplete_features)]
 #![crate_name = "sym"]
 

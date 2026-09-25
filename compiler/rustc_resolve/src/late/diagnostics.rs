@@ -4164,11 +4164,11 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     name: lifetime_ref.ident.name,
                     param_kind: diagnostics::ParamKindInNonTrivialAnonConst::Lifetime,
                     help: self.r.tcx.sess.is_nightly_build()
-                        && !self.r.features.min_generic_const_args(),
-                    is_gca: self.r.features.generic_const_args(),
-                    help_gca: self.r.features.generic_const_args(),
+                        && !self.r.features.gca_min_const_items(),
+                    is_gca: self.r.features.gca_const_items(),
+                    help_gca: self.r.features.gca_const_items(),
                     help_suggest_gca: self.r.tcx.sess.is_nightly_build()
-                        && !self.r.features.generic_const_args(),
+                        && !self.r.features.gca_const_items(),
                 })
             }
         }

@@ -3,7 +3,7 @@
 //@[next] compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicit revisions)
 #![feature(
-    min_generic_const_args,
+    gca_min_const_items,
     generic_const_parameter_types,
     inherent_associated_types,
     min_adt_const_params,

@@ -1,6 +1,6 @@
 //@ edition: 2024
 
-#![feature(min_generic_const_args, type_alias_impl_trait, return_type_notation)]
+#![feature(gca_min_const_items, type_alias_impl_trait, return_type_notation)]
 #![expect(incomplete_features)]
 #![allow(refining_impl_trait_internal)]
 

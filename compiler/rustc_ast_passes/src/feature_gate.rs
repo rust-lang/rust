@@ -442,12 +442,12 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(final_associated_functions, "`final` on trait functions is experimental");
     gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
     gate_all!(frontmatter, "frontmatters are experimental");
+    gate_all!(gca_min_const_items, "unbraced const blocks as const args are experimental");
     gate_all!(gen_blocks, "gen blocks are experimental");
     gate_all!(generic_const_items, "generic const items are experimental");
     gate_all!(global_registration, "global registration is experimental");
     gate_all!(guard_patterns, "guard patterns are experimental", "consider using match arm guards");
     gate_all!(impl_restriction, "`impl` restrictions are experimental");
-    gate_all!(min_generic_const_args, "unbraced const blocks as const args are experimental");
     gate_all!(more_qualified_paths, "usage of qualified paths in this context is experimental");
     gate_all!(move_expr, "`move(expr)` syntax is experimental");
     gate_all!(mut_ref, "mutable by-reference bindings are experimental");
@@ -490,9 +490,9 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         "named parameters in parenthesized generic argument lists are experimental"
     );
 
-    // `associated_const_equality` will be stabilized as part of `min_generic_const_args`.
+    // `associated_const_equality` will be stabilized as part of `gca_min_const_items`.
     for &span in spans.get(&sym::associated_const_equality).into_flat_iter() {
-        gate!(visitor, min_generic_const_args, span, "associated const equality is incomplete");
+        gate!(visitor, gca_min_const_items, span, "associated const equality is incomplete");
     }
 
     // Negative bounds are *super* internal. We require `-Zinternal-testing-features` *and*
@@ -703,13 +703,13 @@ fn check_features_requiring_new_solver(sess: &Session, features: &Features) {
     if let Some(gca_span) = features
         .enabled_lang_features()
         .iter()
-        .find(|feat| feat.gate_name == sym::generic_const_args)
+        .find(|feat| feat.gate_name == sym::gca_const_items)
         .map(|feat| feat.attr_sp)
     {
         #[allow(rustc::symbol_intern_string_literal)]
         sess.dcx().emit_err(diagnostics::MissingDependentFeatures {
             parent_span: gca_span,
-            parent: sym::generic_const_args,
+            parent: sym::gca_const_items,
             missing: String::from("-Znext-solver=globally"),
         });
     }

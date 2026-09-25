@@ -3,8 +3,8 @@
 #![feature(
     adt_const_params,
     generic_const_parameter_types,
-    min_generic_const_args,
-    macroless_generic_const_args
+    gca_min_const_items,
+    gca_macroless_args
 )]
 fn foo<const N: usize, const A: [u8; N]>() {}
 

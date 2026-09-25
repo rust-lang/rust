@@ -1,6 +1,6 @@
 //@ run-pass
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![allow(dead_code)]
 
 use std::mem::size_of;
