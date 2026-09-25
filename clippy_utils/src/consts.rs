@@ -871,7 +871,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             {
                 did
             },
-            // TODO: revisit when feature `min_generic_const_args` is stabilized. In the meantime,
+            // TODO: revisit when feature `gca_min_const_items` is stabilized. In the meantime,
             // `TyCtxt::const_eval_resolve()` will trigger an ICE when evaluating the body of the
             // `type const` definition.
             _ if let Res::Def(DefKind::Const | DefKind::AssocConst, did) = self.typeck.qpath_res(qpath, id)
