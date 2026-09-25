@@ -430,8 +430,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     pub fn field_with(
         &mut self,
         value_fmt: impl FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
-    ) -> &mut Self
-where {
+    ) -> &mut Self {
         self.field(&DebugOnce(Cell::new(Some(value_fmt))))
     }
 
@@ -657,8 +656,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     pub fn entry_with(
         &mut self,
         entry_fmt: impl FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
-    ) -> &mut Self
-where {
+    ) -> &mut Self {
         self.inner.entry_with(entry_fmt);
         self
     }
@@ -873,8 +871,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     pub fn entry_with(
         &mut self,
         entry_fmt: impl FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
-    ) -> &mut Self
-where {
+    ) -> &mut Self {
         self.inner.entry_with(entry_fmt);
         self
     }
