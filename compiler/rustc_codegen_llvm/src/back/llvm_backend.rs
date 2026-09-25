@@ -380,21 +380,36 @@ impl CodegenBackend for LlvmCodegenBackend {
             });
         }
 
+        if sess.codegen_units().as_usize() == 1 && sess.opts.unstable_opts.time_llvm_passes {
+            let timings =
+                llvm::build_string(|s| unsafe { llvm::LLVMRustPrintPassTimings(s) }).unwrap();
+            print!("{timings}");
+        }
+
+        if sess.print_llvm_stats() {
+            let stats =
+                llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatistics(s) }).unwrap();
+            print!("{stats}");
+        }
+
+        if let Some(out_path) = sess.print_llvm_stats_json() {
+            let llvm_stats_json =
+                llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatisticsJSON(s) }).unwrap();
+
+            if !llvm_stats_json.is_empty() {
+                if let Err(e) = std::fs::write(&out_path, llvm_stats_json) {
+                    sess.dcx().err(format!("failed to write stats to {}: {}", out_path, e));
+                }
+            } else {
+                sess.dcx().warn(format!(
+                    "requested to print LLVM statistics to JSON file {}, but the codegen backend \
+                    did not provide any statistics",
+                    out_path,
+                ));
+            }
+        }
+
         (compiled_modules, work_products)
-    }
-
-    fn print_pass_timings(&self) {
-        let timings = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintPassTimings(s) }).unwrap();
-        print!("{timings}");
-    }
-
-    fn print_statistics(&self) {
-        let stats = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatistics(s) }).unwrap();
-        print!("{stats}");
-    }
-
-    fn print_statistics_json(&self) -> String {
-        llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatisticsJSON(s) }).unwrap()
     }
 
     fn link(
