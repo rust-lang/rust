@@ -14,6 +14,12 @@ LL |     reuse core::<> as bar2;
    |
    = note: a crate named `core` exists in another namespace
 
-error: aborting due to 2 previous errors
+error: failed to resolve delegation callee
+  --> $DIR/ice-non-fn-target-in-trait-impl.rs:13:16
+   |
+LL |     reuse std::path::<> as bar;
+   |                ^^^^
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0423`.
