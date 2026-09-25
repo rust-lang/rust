@@ -53,20 +53,26 @@
 //!
 //! # Memory layout
 //!
-//! For non-zero-sized values, a [`Box`] will use the [`Global`] allocator for its allocation. It is
-//! valid to convert both ways between a [`Box`] and a raw pointer allocated with the [`Global`]
-//! allocator, given that the [`Layout`] used with the allocator is correct for the type and the raw
-//! pointer points to a valid value of the right type. More precisely, a `value: *mut T` that has
-//! been allocated with the [`Global`] allocator with `Layout::for_value(&*value)` may be converted
-//! into a box using [`Box::<T>::from_raw(value)`]. Conversely, the memory backing a `value: *mut T`
-//! obtained from [`Box::<T>::into_raw`] may be deallocated using the [`Global`] allocator with
-//! [`Layout::for_value(&*value)`].
+//! For non-zero-sized values, a [`Box<T, A>`] will use its allocator of type `A` for its allocation.
+//! It is valid to convert both ways between a `Box` and a raw pointer allocated with `A`, so long as:
+//! - the size of the pointee, as reported by [`size_of_val`], is non-zero,
+//! - the [`Layout::for_value`] of the pointee [*fits*](Allocator#memory-fitting) the memory block, and
+//! - the pointee is a valid instance of `T` (for the given metadata of the pointer).
 //!
-//! For zero-sized values, the `Box` pointer has to be non-null and sufficiently aligned. The
-//! recommended way to build a Box to a ZST if `Box::new` cannot be used is to use
-//! [`ptr::NonNull::dangling`].
+//! For zero-sized values, a [`Box<T, A>`] may use any sufficiently aligned non-null pointer.
+//! While it is sound to convert a zero-sized allocation from `A` into a `Box`, as
+//! long as it is backed by a valid value of `T`, doing so may lead to memory leaks, as
+//! the destructor of [`Box`] will not call [`deallocate`](Allocator::deallocate)
+//! on zero-sized values. It is recommended to use [`ptr::dangling`] instead.
 //!
-//! On top of these basic layout requirements, a `Box<T>` must point to a valid value of `T`.
+//! Likewise, manually deallocating the raw pointer acquired from a `Box` is only sound
+//! if the size of the pointee is non-zero, as zero-sized values may be represented by
+//! a pointer that is not [*currently allocated*] by that allocator. It is recommended to
+//! pair [`Box::into_raw_with_allocator`] with [`Box::from_raw_in`], rather than
+//! doing this.
+//!
+//! Note that even the [`Global`] allocator might not use dangling pointers for
+//! zero-sized allocations, even though *most* implementations do this.
 //!
 //! So long as `T: Sized`, a `Box<T>` is guaranteed to be represented
 //! as a single pointer and is also ABI-compatible with C pointers
@@ -172,6 +178,7 @@
 //! and it's best to avoid relying on this edition-dependent behavior if you wish to preserve
 //! compatibility with future versions of the compiler.
 //!
+//! [*currently allocated*]: Allocator#currently-allocated-memory
 //! [ucg#198]: https://github.com/rust-lang/unsafe-code-guidelines/issues/198
 //! [ucg#326]: https://github.com/rust-lang/unsafe-code-guidelines/issues/326
 //! [dereferencing]: core::ops::Deref
@@ -1300,9 +1307,16 @@ impl<T: ?Sized> Box<T> {
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same raw pointer.
     ///
-    /// The raw pointer must point to a block of memory allocated by the global allocator.
+    /// The exact safety requirements are described in the [memory layout] section, together
+    /// with recommendations about how to handle the special case of zero-sized allocations
+    /// correctly.
     ///
-    /// The safety conditions are described in the [memory layout] section.
+    /// In particular, if the size of the pointee, as reported by [`size_of_val`], is
+    /// nonzero, then the raw pointer must point to a block of memory allocated by
+    /// [`Global`].
+    /// If the size of the pointee is zero, then the raw pointer can be any
+    /// sufficiently aligned non-null pointer, e.g. [`ptr::dangling`].
+    ///
     /// Note that the [considerations for unsafe code] apply to all `Box<T>` values.
     ///
     /// # Examples
@@ -1352,9 +1366,16 @@ impl<T: ?Sized> Box<T> {
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same `NonNull` pointer.
     ///
-    /// The non-null pointer must point to a block of memory allocated by the global allocator.
+    /// The exact safety requirements are described in the [memory layout] section, together
+    /// with recommendations about how to handle the special case of zero-sized allocations
+    /// correctly.
     ///
-    /// The safety conditions are described in the [memory layout] section.
+    /// In particular, if the size of the pointee, as reported by [`size_of_val`], is
+    /// nonzero, then the raw pointer must point to a block of memory allocated by
+    /// [`Global`].
+    /// If the size of the pointee is zero, then the raw pointer can be any
+    /// sufficiently aligned pointer, e.g. [`NonNull::dangling`].
+    ///
     /// Note that the [considerations for unsafe code] apply to all `Box<T>` values.
     ///
     /// # Examples
@@ -1403,6 +1424,11 @@ impl<T: ?Sized> Box<T> {
     /// [`Box::from_raw`] function, allowing the `Box` destructor to perform
     /// the cleanup.
     ///
+    /// While manually deallocating the pointer through [`deallocate`]
+    /// is possible, you must only do this if the pointee's size, as reported by
+    /// [`size_of_val`], is non-zero (the `Box` may be a dangling pointer
+    /// otherwise). See the [memory layout] section for more details.
+    ///
     /// Note: this is an associated function, which means that you have
     /// to call it as `Box::into_raw(b)` instead of `b.into_raw()`. This
     /// is so that there is no conflict with a method on the inner type.
@@ -1438,6 +1464,7 @@ impl<T: ?Sized> Box<T> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
+    /// [`deallocate`]: Allocator::deallocate
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
@@ -1464,6 +1491,11 @@ impl<T: ?Sized> Box<T> {
     /// do this is to convert the `NonNull` pointer back into a `Box` with the
     /// [`Box::from_non_null`] function, allowing the `Box` destructor to
     /// perform the cleanup.
+    ///
+    /// While manually deallocating the pointer through [`deallocate`]
+    /// is possible, you must only do this if the pointee's size, as reported by
+    /// [`size_of_val`], is non-zero (the `Box` may be a dangling pointer
+    /// otherwise). See the [memory layout] section for more details.
     ///
     /// Note: this is an associated function, which means that you have
     /// to call it as `Box::into_non_null(b)` instead of `b.into_non_null()`.
@@ -1499,6 +1531,7 @@ impl<T: ?Sized> Box<T> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
+    /// [`deallocate`]: Allocator::deallocate
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "box_vec_non_null", since = "1.99.0")]
     #[inline]
@@ -1517,9 +1550,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// After calling this function, the raw pointer is owned by the
     /// resulting `Box`. Specifically, the `Box` destructor will call
-    /// the destructor of `T` and free the allocated memory. For this
-    /// to be safe, the memory must have been allocated in accordance
-    /// with the [memory layout] used by `Box` .
+    /// the destructor of `T` and free the allocated memory, except
+    /// in the cases described in the [memory layout] section.
     ///
     /// # Safety
     ///
@@ -1527,9 +1559,16 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same raw pointer.
     ///
-    /// The raw pointer must point to a block of memory allocated by `alloc`.
+    /// The exact safety requirements are described in the [memory layout] section, together
+    /// with recommendations about how to handle the special case of zero-sized allocations
+    /// correctly.
     ///
-    /// The safety conditions are described in the [memory layout] section.
+    /// In particular, if the size of the pointee, as reported by [`size_of_val`], is
+    /// nonzero, then the raw pointer must point to a block of memory allocated by
+    /// `alloc`.
+    /// If the size of the pointee is zero, then the raw pointer can be any
+    /// sufficiently aligned non-null pointer, e.g. [`ptr::dangling`].
+    ///
     /// Note that the [considerations for unsafe code] apply to all `Box<T, A>` values.
     ///
     /// # Examples
@@ -1573,9 +1612,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// After calling this function, the `NonNull` pointer is owned by
     /// the resulting `Box`. Specifically, the `Box` destructor will call
-    /// the destructor of `T` and free the allocated memory. For this
-    /// to be safe, the memory must have been allocated in accordance
-    /// with the [memory layout] used by `Box` .
+    /// the destructor of `T` and free the allocated memory, except
+    /// in the cases described in the [memory layout] section.
     ///
     /// # Safety
     ///
@@ -1583,9 +1621,16 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same raw pointer.
     ///
-    /// The non-null pointer must point to a block of memory allocated by `alloc`.
+    /// The exact safety requirements are described in the [memory layout] section, together
+    /// with recommendations about how to handle the special case of zero-sized allocations
+    /// correctly.
     ///
-    /// The safety conditions are described in the [memory layout] section.
+    /// In particular, if the size of the pointee, as reported by [`size_of_val`], is
+    /// nonzero, then the raw pointer must point to a block of memory allocated by
+    /// `alloc`.
+    /// If the size of the pointee is zero, then the raw pointer can be any
+    /// sufficiently aligned pointer, e.g. [`NonNull::dangling`].
+    ///
     /// Note that the [considerations for unsafe code] apply to all `Box<T, A>` values.
     ///
     /// # Examples
@@ -1634,6 +1679,11 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [`Box::from_raw_in`] function, allowing the `Box` destructor to perform
     /// the cleanup.
     ///
+    /// While manually deallocating the pointer through [`deallocate`]
+    /// is possible, you must only do this if the pointee's size, as reported by
+    /// [`size_of_val`], is non-zero (the `Box` may be a dangling pointer
+    /// otherwise). See the [memory layout] section for more details.
+    ///
     /// Note: this is an associated function, which means that you have
     /// to call it as `Box::into_raw_with_allocator(b)` instead of `b.into_raw_with_allocator()`. This
     /// is so that there is no conflict with a method on the inner type.
@@ -1664,6 +1714,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
+    /// [`deallocate`]: Allocator::deallocate
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
@@ -1692,6 +1743,11 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// do this is to convert the `NonNull` pointer back into a `Box` with the
     /// [`Box::from_non_null_in`] function, allowing the `Box` destructor to
     /// perform the cleanup.
+    ///
+    /// While manually deallocating the pointer through [`deallocate`]
+    /// is possible, you must only do this if the pointee's size, as reported by
+    /// [`size_of_val`], is non-zero (the `Box` may be a dangling pointer
+    /// otherwise). See the [memory layout] section for more details.
     ///
     /// Note: this is an associated function, which means that you have
     /// to call it as `Box::into_non_null_with_allocator(b)` instead of
@@ -1722,6 +1778,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
+    /// [`deallocate`]: Allocator::deallocate
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
