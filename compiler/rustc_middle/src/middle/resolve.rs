@@ -291,11 +291,11 @@ pub struct DelegationInfo {
 }
 
 #[derive(Debug, StableHash)]
+// FIXME(fn_delegation): replace with `Result<DefId, ErrorGuaranteed>`.
 pub enum TypeRelativeDelegationRes {
     Ok(DefId),
     Ambig(ErrorGuaranteed),
     Error(ErrorGuaranteed),
-    InherentFnNotFound,
 }
 
 #[derive(Debug, StableHash)]
