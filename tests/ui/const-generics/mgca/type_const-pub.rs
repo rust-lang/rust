@@ -3,7 +3,7 @@
 // This is because reachability also tried to evaluate the #[type_const] which
 // requires the item have a body. #[type_const] do not have bodies.
 #![expect(incomplete_features)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 use std::gca;
 

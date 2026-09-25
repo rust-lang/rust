@@ -1,7 +1,7 @@
 #![feature(
     generic_const_exprs,
-    min_generic_const_args,
-    macroless_generic_const_args,
+    gca_min_const_items,
+    gca_macroless_args,
     inherent_associated_types
 )]
 

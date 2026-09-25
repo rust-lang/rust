@@ -22,7 +22,7 @@ error: generic parameters may not be used in const operations
 LL |     takes_nested_tuple::<{ gca!((N, (N, const { N + 1 }))) }>();
    |                                                 ^
    |
-   = help: add `#![feature(generic_const_args)]` and extract the expression into a `type const` item
+   = help: add `#![feature(gca_const_items)]` and extract the expression into a `type const` item
 
 error: aborting due to 4 previous errors
 

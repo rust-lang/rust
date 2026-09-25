@@ -1,5 +1,5 @@
 #![crate_name = "foo"]
-#![feature(min_generic_const_args, macroless_generic_const_args)]
+#![feature(gca_min_const_items, gca_macroless_args)]
 #![expect(incomplete_features)]
 
 use std::gca;

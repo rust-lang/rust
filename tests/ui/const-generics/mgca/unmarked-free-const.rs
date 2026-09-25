@@ -1,6 +1,6 @@
 // regression test, used to ICE
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![allow(incomplete_features)]
 
 use std::gca;

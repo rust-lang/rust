@@ -1,6 +1,6 @@
 //! Regression test for #157152.
 //!
-//! Under `min_generic_const_args` with `macroless_generic_const_args`, a braced const
+//! Under `gca_min_const_items` with `gca_macroless_args`, a braced const
 //! argument containing an associated-function call (e.g. `FieldName::len()`, as generated
 //! by `tracing`'s logging macros as `FieldName<{ FieldName::len(name) }>`) was lowered as
 //! a tuple-struct constructor. Lowering the callee's `Self` type `FieldName`, written
@@ -13,8 +13,8 @@
 //! tuple-variant constructor (unions, primitives, foreign types), not just structs.
 //@ compile-flags: -Znext-solver
 
-#![feature(min_generic_const_args, macroless_generic_const_args)]
-#![feature(generic_const_args)]
+#![feature(gca_min_const_items, gca_macroless_args)]
+#![feature(gca_const_items)]
 #![feature(extern_types)]
 #![expect(incomplete_features)]
 

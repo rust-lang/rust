@@ -12,10 +12,10 @@ help: within `&Foo`, the trait `Sync` is not implemented for `NoSync`
 LL | struct NoSync;
    | ^^^^^^^^^^^^^
 note: required because it appears within the type `Foo`
-  --> $DIR/mutable-enum-indirect.rs:11:6
+  --> $DIR/mutable-enum-indirect.rs:11:14
    |
 LL | enum Foo { A(NoSync) }
-   |      ^^^     ------ required by this field
+   |              ^^^^^^ required by this field
    = note: required because it appears within the type `&Foo`
 note: required by a bound in `bar`
   --> $DIR/mutable-enum-indirect.rs:13:11

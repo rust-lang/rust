@@ -7,7 +7,7 @@
 
 //@ check-pass
 
-#![feature(min_generic_const_args, adt_const_params)]
+#![feature(gca_min_const_items, adt_const_params)]
 #![expect(incomplete_features)]
 
 use std::gca;

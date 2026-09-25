@@ -1,5 +1,5 @@
 //@ run-pass
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![allow(unused, incomplete_features)]
 
 use std::gca;

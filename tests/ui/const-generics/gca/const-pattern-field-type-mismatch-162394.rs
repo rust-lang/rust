@@ -1,9 +1,9 @@
 //@ compile-flags: -Znext-solver=globally
 
 #![allow(incomplete_features)]
-#![feature(macroless_generic_const_args)]
-#![feature(macroless_const_item_generic_const_args)]
-#![feature(generic_const_args, min_generic_const_args)]
+#![feature(gca_macroless_args)]
+#![feature(gca_macroless_items)]
+#![feature(gca_const_items, gca_min_const_items)]
 #![feature(min_adt_const_params)]
 
 use std::marker::ConstParamTy;

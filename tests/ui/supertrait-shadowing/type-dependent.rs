@@ -2,7 +2,7 @@
 
 // Makes sure we can shadow with type-dependent associated item syntax.
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![feature(supertrait_item_shadowing)]
 #![allow(dead_code)]
 

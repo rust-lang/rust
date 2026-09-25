@@ -11,7 +11,7 @@
 // correct values from the type assoc consts).
 //@ run-pass
 
-#![feature(min_generic_const_args, macroless_generic_const_args)]
+#![feature(gca_min_const_items, gca_macroless_args)]
 #![expect(incomplete_features)]
 
 use std::gca;

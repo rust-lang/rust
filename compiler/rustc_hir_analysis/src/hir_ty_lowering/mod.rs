@@ -419,7 +419,7 @@ impl<'tcx> ForbidParamUsesFolder<'tcx> {
                 "generic `Self` types are currently not permitted in anonymous constants"
             }
             ForbidParamContext::ConstArgument => {
-                if self.tcx.features().generic_const_args() {
+                if self.tcx.features().gca_const_items() {
                     "generic parameters in const blocks are not allowed; use a named `const` item instead"
                 } else {
                     "generic parameters may not be used in const operations"
@@ -442,15 +442,15 @@ impl<'tcx> ForbidParamUsesFolder<'tcx> {
             }
         }
         if matches!(self.context, ForbidParamContext::ConstArgument) {
-            if self.tcx.features().generic_const_args() {
+            if self.tcx.features().gca_const_items() {
                 diag.help("consider factoring the expression into a `type const` item and use it as the const argument instead");
-            } else if self.tcx.features().min_generic_const_args() {
-                diag.help("add `#![feature(generic_const_args)]` and extract the expression into a `type const` item");
+            } else if self.tcx.features().gca_min_const_items() {
+                diag.help("add `#![feature(gca_const_items)]` and extract the expression into a `type const` item");
             } else if self.tcx.sess.is_nightly_build() {
                 diag.help(
                     "add `#![feature(generic_const_exprs)]` to allow generic const expressions",
                 );
-                diag.help("alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item");
+                diag.help("alternatively, you can use `#![feature(gca_const_items)]` and extract the expression into a `type const` item");
             }
         }
         diag.emit_err()
@@ -3127,7 +3127,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
     ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx();
-        if tcx.features().generic_const_args() || alias_const.is_direct_const(tcx) {
+        if tcx.features().gca_const_items() || alias_const.is_direct_const(tcx) {
             Ok(())
         } else {
             let mut err = self

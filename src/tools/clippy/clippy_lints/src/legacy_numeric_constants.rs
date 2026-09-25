@@ -5,8 +5,7 @@ use clippy_utils::source::SpanExt as _;
 use clippy_utils::{is_from_proc_macro, sym};
 use hir::def_id::DefId;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_hir::{ExprKind, Item, ItemKind, QPath, UseKind};
+use rustc_hir::{self as hir, ExprKind, Item, ItemKind, QPath, UseKind, UseTree};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_span::Symbol;
 use rustc_span::symbol::kw;
@@ -44,18 +43,26 @@ impl LegacyNumericConstants {
     pub fn new(conf: &'static Conf) -> Self {
         Self { msrv: conf.msrv.into() }
     }
-}
 
-impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
-    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
+    fn check_use_tree(&mut self, cx: &LateContext<'_>, tree: &UseTree<'_>) {
+        match tree.kind {
+            UseKind::Single(_) | UseKind::Glob => {},
+            UseKind::Nested { items } => {
+                for (tree, ..) in items {
+                    self.check_use_tree(cx, tree);
+                }
+                return;
+            },
+        }
+
+        let prefix = tree.prefix;
         // Integer modules are "TBD" deprecated, and the contents are too,
         // so lint on the `use` statement directly.
-        if let ItemKind::Use(path, kind @ (UseKind::Single(_) | UseKind::Glob)) = item.kind
-            && !item.span.in_external_macro(cx.sess().source_map())
-            // use `present_items` because it could be in either type_ns or value_ns
-            && let Some(res) = path.res.present_items().next()
-            && let Some(def_id) = res.opt_def_id()
-            && self.msrv.meets(cx, msrvs::NUMERIC_ASSOCIATED_CONSTANTS)
+        if !tree.prefix.span.in_external_macro(cx.sess().source_map())
+        // use `present_items` because it could be in either type_ns or value_ns
+        && let Some(res) = prefix.res.present_items().next()
+        && let Some(def_id) = res.opt_def_id()
+        && self.msrv.meets(cx, msrvs::NUMERIC_ASSOCIATED_CONSTANTS)
         {
             let module = if is_integer_module(cx, def_id) {
                 true
@@ -68,14 +75,14 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
             span_lint_and_then(
                 cx,
                 LEGACY_NUMERIC_CONSTANTS,
-                path.span,
+                prefix.span,
                 if module {
                     "importing legacy numeric constants"
                 } else {
                     "importing a legacy numeric constant"
                 },
                 |diag| {
-                    if let UseKind::Single(ident) = kind
+                    if let UseKind::Single(ident) = tree.kind
                         && ident.name == kw::Underscore
                     {
                         diag.help("remove this import");
@@ -85,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
                     let def_path = cx.get_def_path(def_id);
 
                     if module && let [.., module_name] = &*def_path {
-                        if kind == UseKind::Glob {
+                        if matches!(tree.kind, UseKind::Glob) {
                             diag.help(format!("remove this import and use associated constants `{module_name}::<CONST>` from the primitive type instead"));
                         } else {
                             diag.help("remove this import").note(format!(
@@ -94,11 +101,19 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
                         }
                     } else if let [.., module_name, name] = &*def_path {
                         diag.help(
-                            format!("remove this import and use the associated constant `{module_name}::{name}` from the primitive type instead")
-                        );
+                        format!("remove this import and use the associated constant `{module_name}::{name}` from the primitive type instead")
+                    );
                     }
                 },
             );
+        }
+    }
+}
+
+impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
+        if let ItemKind::Use(tree) = &item.kind {
+            self.check_use_tree(cx, tree);
         }
     }
 

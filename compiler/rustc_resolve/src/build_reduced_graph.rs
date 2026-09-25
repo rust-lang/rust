@@ -759,19 +759,18 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             ast::UseTreeKind::Nested { ref items, .. } => {
                 for tree in items {
                     let id = tree.id;
-                    self.with_owner(id, None, DefKind::Use, use_tree.span(), |this, feed| {
-                        this.build_reduced_graph_for_use_tree(
-                            item,
-                            &tree.inner,
-                            id,
-                            &prefix,
-                            true,
-                            false,
-                            vis,
-                            root_span,
-                            feed,
-                        )
-                    });
+                    let feed = self.create_def(id, None, DefKind::Use, use_tree.span());
+                    self.build_reduced_graph_for_use_tree(
+                        item,
+                        &tree.inner,
+                        id,
+                        &prefix,
+                        true,
+                        false,
+                        vis,
+                        root_span,
+                        feed,
+                    );
                 }
 
                 // Empty groups `a::b::{}` are turned into synthetic `self` imports

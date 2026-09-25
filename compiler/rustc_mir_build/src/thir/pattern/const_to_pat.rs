@@ -136,16 +136,16 @@ impl<'tcx> ConstToPat<'tcx> {
             return self.mk_err(err, ty);
         };
 
-        // Under generic_const_args, `alias_const` might be a regular const declared in a trait, but
+        // Under gca_const_items, `alias_const` might be a regular const declared in a trait, but
         // is `impl`d as a directly represented const. We do not know whether it is here, so we must
-        // use type system normalization for all consts under generic_const_args.
+        // use type system normalization for all consts under gca_const_items.
         //
         // We probably want to always use type system normalization on stable too, but that would be
         // a breaking change (in addition to needing significant improvements to diagnostics), so
-        // right now, we limit this to just generic_const_args.
+        // right now, we limit this to just gca_const_items.
         //
         // See: https://github.com/rust-lang/project-const-generics/issues/105
-        let const_value = if self.tcx.features().generic_const_args()
+        let const_value = if self.tcx.features().gca_const_items()
             || alias_const.kind.is_direct_const(self.tcx)
         {
             let Ok(normalize) = self

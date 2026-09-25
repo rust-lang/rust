@@ -25,10 +25,10 @@ LL |     mem::size_of::<Misc<U>>();
    |                    ^^^^^^^ doesn't have a size known at compile-time
    |
 note: required because it appears within the type `Misc<U>`
-  --> $DIR/suggest-where-clause.rs:3:8
+  --> $DIR/suggest-where-clause.rs:3:23
    |
 LL | struct Misc<T:?Sized>(T);
-   |        ^^^^           - required by this field
+   |                       ^ required by this field
 note: required by an implicit `Sized` bound in `std::mem::size_of`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 help: consider removing the `?Sized` bound to make the type parameter `Sized`

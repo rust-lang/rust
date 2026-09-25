@@ -993,7 +993,7 @@ pub enum MethodViolation {
 /// Reasons an associated const might not be dyn compatible.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, StableHash)]
 pub enum AssocConstViolation {
-    /// Unstable feature `min_generic_const_args` wasn't enabled.
+    /// Unstable feature `gca_min_const_items` wasn't enabled.
     FeatureNotEnabled,
 
     /// Not defined as a type-level associated const.
