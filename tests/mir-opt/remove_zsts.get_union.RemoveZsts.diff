@@ -7,11 +7,10 @@
   
       bb0: {
 -         StorageLive(_1);
--         _1 = ();
++         nop;
+          _1 = ();
 -         _0 = Foo { x: move _1 };
 -         StorageDead(_1);
-+         nop;
-+         nop;
 +         _0 = Foo { x: const () };
 +         nop;
           return;

@@ -281,6 +281,7 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     }
 
     bb10: {
+        _0 = const ();
         StorageDead(_23);
         StorageDead(_24);
         drop(_22) -> [return: bb11, unwind continue];

@@ -1,0 +1,19 @@
+- // MIR for `local` before RemoveZsts
++ // MIR for `local` after RemoveZsts
+  
+  fn local() -> () {
+      let mut _0: ();
+      let mut _1: ();
+  
+      bb0: {
+-         StorageLive(_1);
++         nop;
+          _1 = ();
+-         _0 = move _1;
+-         StorageDead(_1);
++         _0 = const ();
++         nop;
+          return;
+      }
+  }
+  
