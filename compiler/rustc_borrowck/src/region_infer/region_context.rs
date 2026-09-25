@@ -94,7 +94,163 @@ impl<'tcx> Deref for RegionInferenceContext<'tcx> {
     }
 }
 
-impl RegionInferenceContext<'_> {
+impl<'tcx> RegionInferenceContext<'tcx> {
+    /// Performs region inference and report errors if we see any
+    /// unsatisfiable constraints. If this is a closure, returns the
+    /// region requirements to propagate to our creator, if any.
+    #[instrument(
+        skip(infcx, lowered_constraints, location_map, body, polonius_output),
+        level = "debug"
+    )]
+    pub(crate) fn solve(
+        infcx: &BorrowckInferCtxt<'tcx>,
+        lowered_constraints: LoweredConstraints<'tcx>,
+        universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
+        location_map: Rc<DenseLocationMap>,
+        body: &Body<'tcx>,
+        polonius_output: Option<Box<PoloniusOutput>>,
+    ) -> (RegionInferenceContext<'tcx>, Option<ClosureRegionRequirements<'tcx>>, RegionErrors<'tcx>)
+    {
+        // 1. We first prepare the data needed for the `UnsolvedRegionInferenceContext` to do the
+        //    solving work.
+        let universal_regions = &universal_region_relations.universal_regions;
+
+        let LoweredConstraints {
+            constraint_sccs,
+            definitions,
+            outlives_constraints,
+            scc_annotations,
+            type_tests,
+            liveness_constraints,
+            universe_causes,
+            placeholder_indices,
+        } = lowered_constraints;
+
+        debug!("universal_regions: {:#?}", universal_region_relations.universal_regions);
+        debug!("outlives constraints: {:#?}", outlives_constraints);
+        debug!("placeholder_indices: {:#?}", placeholder_indices);
+        debug!("type tests: {:#?}", type_tests);
+
+        let constraint_graph = Frozen::freeze(outlives_constraints.graph(definitions.len()));
+
+        if cfg!(debug_assertions) {
+            sccs_info(infcx, &constraint_sccs);
+        }
+
+        let mut scc_values =
+            RegionValues::new(location_map, universal_regions.len(), placeholder_indices);
+
+        // Initializes the region variables with their initial live points.
+        for (region, definition) in definitions.iter_enumerated() {
+            let scc = constraint_sccs.scc(region);
+
+            // For each universally quantified region (lifetime parameter). The
+            // first N variables always correspond to the regions appearing in the
+            // function signature (both named and anonymous) and in where-clauses.
+            match definition.origin {
+                // For each free, universally quantified region X:
+                NllRegionVariableOrigin::FreeRegion => {
+                    // Add `end(X)` into the set for X.
+                    scc_values.add_free_region(scc, region);
+                }
+
+                NllRegionVariableOrigin::Placeholder(placeholder) => {
+                    scc_values.add_placeholder(scc, placeholder);
+                }
+
+                NllRegionVariableOrigin::Existential { .. } => {
+                    // For existential, regions, nothing to do.
+                }
+            }
+
+            // Initially copy the liveness constraints of any region that
+            // has them, setting `scc_values[scc(region)] |= liveness_constraints[region]`.
+            //
+            // These values will later be propagated during
+            // [`UnsolvedRegionInferenceContext::propagate_constraints()`].
+            // The values include any live-at-all-points constraints added previously in `liveness::generate`.
+            if let Some(liveness) = liveness_constraints.point_liveness(region) {
+                scc_values.merge_liveness(scc, liveness)
+            }
+        }
+
+        let mut unsolved_regioncx = UnsolvedRegionInferenceContext {
+            inner: RegionInferenceContextInner {
+                definitions,
+                liveness_constraints,
+                constraints: outlives_constraints,
+                constraint_graph,
+                constraint_sccs,
+                scc_annotations,
+                universe_causes,
+                universal_region_relations,
+                scc_values,
+            },
+            type_tests,
+        };
+
+        // 2. And now we can do the actual solving, the region inference.
+        let mir_def_id = body.source.def_id();
+        unsolved_regioncx.propagate_constraints();
+
+        let mut errors_buffer = RegionErrors::new(infcx.tcx);
+
+        // If this is a nested body, we propagate unsatisfied
+        // outlives constraints to the parent body instead of
+        // eagerly erroing.
+        let mut propagated_outlives_requirements =
+            infcx.tcx.is_typeck_child(mir_def_id).then(Vec::new);
+
+        unsolved_regioncx.check_type_tests(
+            infcx,
+            propagated_outlives_requirements.as_mut(),
+            &mut errors_buffer,
+        );
+
+        debug!(?errors_buffer);
+        debug!(?propagated_outlives_requirements);
+
+        // In Polonius mode, the errors about missing universal region relations are in the output
+        // and need to be emitted or propagated. Otherwise, we need to check whether the
+        // constraints were too strong, and if so, emit or propagate those errors.
+        if infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled() {
+            unsolved_regioncx.check_polonius_subset_errors(
+                propagated_outlives_requirements.as_mut(),
+                &mut errors_buffer,
+                polonius_output
+                    .as_ref()
+                    .expect("Polonius output is unavailable despite `-Z polonius`"),
+            );
+        } else {
+            unsolved_regioncx.check_universal_regions(
+                propagated_outlives_requirements.as_mut(),
+                &mut errors_buffer,
+            );
+        }
+
+        debug!(?errors_buffer);
+
+        let propagated_outlives_requirements = propagated_outlives_requirements.unwrap_or_default();
+        if propagated_outlives_requirements.is_empty() {
+            (
+                RegionInferenceContext { inner: Frozen::freeze(unsolved_regioncx.inner) },
+                None,
+                errors_buffer,
+            )
+        } else {
+            let num_external_vids =
+                unsolved_regioncx.universal_regions().num_global_and_external_regions();
+            (
+                RegionInferenceContext { inner: Frozen::freeze(unsolved_regioncx.inner) },
+                Some(ClosureRegionRequirements {
+                    num_external_vids,
+                    outlives_requirements: propagated_outlives_requirements,
+                }),
+                errors_buffer,
+            )
+        }
+    }
+
     /// Returns `true` if the region `r` contains the point `p`.
     pub(crate) fn region_contains_point(&self, r: RegionVid, p: Location) -> bool {
         let scc = self.constraint_sccs.scc(r);
@@ -698,158 +854,6 @@ impl<'tcx> RegionInferenceContextInner<'tcx> {
 }
 
 impl<'tcx> UnsolvedRegionInferenceContext<'tcx> {
-    /// Creates a new region inference context with a total of
-    /// `num_region_variables` valid inference variables; the first N
-    /// of those will be constant regions representing the free
-    /// regions defined in `universal_regions`.
-    ///
-    /// The `outlives_constraints` and `type_tests` are an initial set
-    /// of constraints produced by the MIR type check.
-    pub(crate) fn new(
-        infcx: &BorrowckInferCtxt<'tcx>,
-        lowered_constraints: LoweredConstraints<'tcx>,
-        universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-        location_map: Rc<DenseLocationMap>,
-    ) -> Self {
-        let universal_regions = &universal_region_relations.universal_regions;
-
-        let LoweredConstraints {
-            constraint_sccs,
-            definitions,
-            outlives_constraints,
-            scc_annotations,
-            type_tests,
-            liveness_constraints,
-            universe_causes,
-            placeholder_indices,
-        } = lowered_constraints;
-
-        debug!("universal_regions: {:#?}", universal_region_relations.universal_regions);
-        debug!("outlives constraints: {:#?}", outlives_constraints);
-        debug!("placeholder_indices: {:#?}", placeholder_indices);
-        debug!("type tests: {:#?}", type_tests);
-
-        let constraint_graph = Frozen::freeze(outlives_constraints.graph(definitions.len()));
-
-        if cfg!(debug_assertions) {
-            sccs_info(infcx, &constraint_sccs);
-        }
-
-        let mut scc_values =
-            RegionValues::new(location_map, universal_regions.len(), placeholder_indices);
-
-        // Initializes the region variables with their initial live points.
-        for (region, definition) in definitions.iter_enumerated() {
-            let scc = constraint_sccs.scc(region);
-
-            // For each universally quantified region (lifetime parameter). The
-            // first N variables always correspond to the regions appearing in the
-            // function signature (both named and anonymous) and in where-clauses.
-            match definition.origin {
-                // For each free, universally quantified region X:
-                NllRegionVariableOrigin::FreeRegion => {
-                    // Add `end(X)` into the set for X.
-                    scc_values.add_free_region(scc, region);
-                }
-
-                NllRegionVariableOrigin::Placeholder(placeholder) => {
-                    scc_values.add_placeholder(scc, placeholder);
-                }
-
-                NllRegionVariableOrigin::Existential { .. } => {
-                    // For existential, regions, nothing to do.
-                }
-            }
-
-            // Initially copy the liveness constraints of any region that
-            // has them, setting `scc_values[scc(region)] |= liveness_constraints[region]`.
-            //
-            // These values will later be propagated during [`Self::propagate_constraints()`].
-            // The values include any live-at-all-points constraints added previously in `liveness::generate`.
-            if let Some(liveness) = liveness_constraints.point_liveness(region) {
-                scc_values.merge_liveness(scc, liveness)
-            }
-        }
-
-        Self {
-            inner: RegionInferenceContextInner {
-                definitions,
-                liveness_constraints,
-                constraints: outlives_constraints,
-                constraint_graph,
-                constraint_sccs,
-                scc_annotations,
-                universe_causes,
-                universal_region_relations,
-                scc_values,
-            },
-            type_tests,
-        }
-    }
-
-    /// Performs region inference and report errors if we see any
-    /// unsatisfiable constraints. If this is a closure, returns the
-    /// region requirements to propagate to our creator, if any.
-    #[instrument(skip(self, infcx, body, polonius_output), level = "debug")]
-    pub(crate) fn solve(
-        mut self,
-        infcx: &InferCtxt<'tcx>,
-        body: &Body<'tcx>,
-        polonius_output: Option<Box<PoloniusOutput>>,
-    ) -> (RegionInferenceContext<'tcx>, Option<ClosureRegionRequirements<'tcx>>, RegionErrors<'tcx>)
-    {
-        let mir_def_id = body.source.def_id();
-        self.propagate_constraints();
-
-        let mut errors_buffer = RegionErrors::new(infcx.tcx);
-
-        // If this is a nested body, we propagate unsatisfied
-        // outlives constraints to the parent body instead of
-        // eagerly erroing.
-        let mut propagated_outlives_requirements =
-            infcx.tcx.is_typeck_child(mir_def_id).then(Vec::new);
-
-        self.check_type_tests(infcx, propagated_outlives_requirements.as_mut(), &mut errors_buffer);
-
-        debug!(?errors_buffer);
-        debug!(?propagated_outlives_requirements);
-
-        // In Polonius mode, the errors about missing universal region relations are in the output
-        // and need to be emitted or propagated. Otherwise, we need to check whether the
-        // constraints were too strong, and if so, emit or propagate those errors.
-        if infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled() {
-            self.check_polonius_subset_errors(
-                propagated_outlives_requirements.as_mut(),
-                &mut errors_buffer,
-                polonius_output
-                    .as_ref()
-                    .expect("Polonius output is unavailable despite `-Z polonius`"),
-            );
-        } else {
-            self.check_universal_regions(
-                propagated_outlives_requirements.as_mut(),
-                &mut errors_buffer,
-            );
-        }
-
-        debug!(?errors_buffer);
-
-        let propagated_outlives_requirements = propagated_outlives_requirements.unwrap_or_default();
-        if propagated_outlives_requirements.is_empty() {
-            (RegionInferenceContext { inner: Frozen::freeze(self.inner) }, None, errors_buffer)
-        } else {
-            let num_external_vids = self.universal_regions().num_global_and_external_regions();
-            (
-                RegionInferenceContext { inner: Frozen::freeze(self.inner) },
-                Some(ClosureRegionRequirements {
-                    num_external_vids,
-                    outlives_requirements: propagated_outlives_requirements,
-                }),
-                errors_buffer,
-            )
-        }
-    }
-
     /// Propagate the region constraints: this will grow the values
     /// for each region variable until all the constraints are
     /// satisfied. Note that some values may grow **too** large to be
