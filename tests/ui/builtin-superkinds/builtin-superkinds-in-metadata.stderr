@@ -5,10 +5,10 @@ LL | impl <T:Sync+'static> RequiresRequiresShareAndSend for X<T> { }
    |                                                        ^^^^ `T` cannot be sent between threads safely
    |
 note: required because it appears within the type `X<T>`
-  --> $DIR/builtin-superkinds-in-metadata.rs:9:8
+  --> $DIR/builtin-superkinds-in-metadata.rs:9:13
    |
 LL | struct X<T>(T);
-   |        ^    - required by this field
+   |             ^ required by this field
 note: required by a bound in `RequiresRequiresShareAndSend`
   --> $DIR/auxiliary/trait_superkinds_in_metadata.rs:7:58
    |

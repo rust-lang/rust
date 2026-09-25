@@ -1,82 +1,84 @@
 error[E0275]: overflow evaluating the requirement `J: Send`
   --> $DIR/recursion_limit.rs:34:5
    |
+LL | macro_rules! link {
+...
 LL |     is_send::<A>();
    |     ^^^^^^^^^^^^^^
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "20"]` attribute to your crate (`recursion_limit`)
 note: required because it appears within the type `I`
-  --> $DIR/recursion_limit.rs:23:9
+  --> $DIR/recursion_limit.rs:11:24
    |
 LL |         enum $id { $id($t) }
-   |                        -- required by this field
+   |                        ^^ required by this field
 ...
 LL | link! { I, J }
-   |         ^
+   | -------------- in this macro invocation
 note: required because it appears within the type `H`
-  --> $DIR/recursion_limit.rs:22:9
+  --> $DIR/recursion_limit.rs:11:24
    |
 LL |         enum $id { $id($t) }
-   |                        -- required by this field
+   |                        ^^ required by this field
 ...
 LL | link! { H, I }
-   |         ^
+   | -------------- in this macro invocation
 note: required because it appears within the type `G`
-  --> $DIR/recursion_limit.rs:21:9
+  --> $DIR/recursion_limit.rs:11:24
    |
 LL |         enum $id { $id($t) }
-   |                        -- required by this field
+   |                        ^^ required by this field
 ...
 LL | link! { G, H }
-   |         ^
+   | -------------- in this macro invocation
 note: required because it appears within the type `F`
-  --> $DIR/recursion_limit.rs:20:9
+  --> $DIR/recursion_limit.rs:11:24
    |
 LL |         enum $id { $id($t) }
-   |                        -- required by this field
+   |                        ^^ required by this field
 ...
 LL | link! { F, G }
-   |         ^
+   | -------------- in this macro invocation
 note: required because it appears within the type `E`
-  --> $DIR/recursion_limit.rs:19:9
+  --> $DIR/recursion_limit.rs:11:24
    |
 LL |         enum $id { $id($t) }
-   |                        -- required by this field
+   |                        ^^ required by this field
 ...
 LL | link! { E, F }
-   |         ^
+   | -------------- in this macro invocation
 note: required because it appears within the type `D`
-  --> $DIR/recursion_limit.rs:18:9
+  --> $DIR/recursion_limit.rs:11:24
    |
 LL |         enum $id { $id($t) }
-   |                        -- required by this field
+   |                        ^^ required by this field
 ...
 LL | link! { D, E }
-   |         ^
+   | -------------- in this macro invocation
 note: required because it appears within the type `C`
-  --> $DIR/recursion_limit.rs:17:9
+  --> $DIR/recursion_limit.rs:11:24
    |
 LL |         enum $id { $id($t) }
-   |                        -- required by this field
+   |                        ^^ required by this field
 ...
 LL | link! { C, D }
-   |         ^
+   | -------------- in this macro invocation
 note: required because it appears within the type `B`
-  --> $DIR/recursion_limit.rs:16:9
+  --> $DIR/recursion_limit.rs:11:24
    |
 LL |         enum $id { $id($t) }
-   |                        -- required by this field
+   |                        ^^ required by this field
 ...
 LL | link! { B, C }
-   |         ^
+   | -------------- in this macro invocation
 note: required because it appears within the type `A`
-  --> $DIR/recursion_limit.rs:15:9
+  --> $DIR/recursion_limit.rs:11:24
    |
 LL |         enum $id { $id($t) }
-   |                        -- required by this field
+   |                        ^^ required by this field
 ...
 LL | link! { A, B }
-   |         ^
+   | -------------- in this macro invocation
 note: required by a bound in `is_send`
   --> $DIR/recursion_limit.rs:31:14
    |
