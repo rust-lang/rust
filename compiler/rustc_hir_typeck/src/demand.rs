@@ -893,18 +893,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .inputs
                 .iter()
                 .filter_map(|ty| match ty.kind {
-                    hir::TyKind::Ref(lt, mut_ty) if ty.span == *ty_span => Some((lt, mut_ty)),
+                    hir::TyKind::Ref(lt, inner_ty, mutbl) if ty.span == *ty_span => Some((lt, inner_ty, mutbl)),
                     _ => None,
                 })
                 .next()
         {
-            let mut sugg = if ty_ref.1.mutbl.is_mut() {
+            let mut sugg = if ty_ref.2.is_mut() {
                 // Leave `&'name mut Ty` and `&mut Ty` as they are (#136028).
                 vec![]
             } else {
                 // `&'name Ty` -> `&'name mut Ty` or `&Ty` -> `&mut Ty`
                 vec![(
-                    ty_ref.1.ty.span.shrink_to_lo(),
+                    ty_ref.1.span.shrink_to_lo(),
                     format!("{}mut ", if ty_ref.0.ident.span.is_empty() { "" } else { " " },),
                 )]
             };

@@ -293,7 +293,7 @@ fn annotate_mut_binding_to_immutable_binding<'tcx>(
         local.as_usize() - if tcx.is_closure_like(body_def_id.to_def_id()) { 2 } else { 1 };
     let fn_decl = tcx.hir_node_by_def_id(body_def_id).fn_decl()?;
     let ty = fn_decl.inputs[hir_param_index];
-    let hir::TyKind::Ref(lt, mut_ty) = ty.kind else { return None };
+    let hir::TyKind::Ref(lt, ty, mutbl) = ty.kind else { return None };
 
     // ... as a binding pattern.
     let hir_body = tcx.hir_maybe_body_owned_by(body_def_id)?;
@@ -312,12 +312,12 @@ fn annotate_mut_binding_to_immutable_binding<'tcx>(
 
     // Changes to the parameter's type.
     let pre = if lt.ident.span.is_empty() { "" } else { " " };
-    let ty_span = if mut_ty.mutbl.is_mut() {
+    let ty_span = if mutbl.is_mut() {
         // Leave `&'name mut Ty` and `&mut Ty` as they are (#136028).
         None
     } else {
         // `&'name Ty` -> `&'name mut Ty` or `&Ty` -> `&mut Ty`
-        Some(mut_ty.ty.span.shrink_to_lo())
+        Some(ty.span.shrink_to_lo())
     };
 
     return Some(diagnostics::UnusedAssignSuggestion {

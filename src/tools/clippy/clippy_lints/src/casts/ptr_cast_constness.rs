@@ -52,8 +52,8 @@ pub(super) fn check<'tcx>(
         if msrv.meets(cx, msrvs::POINTER_CAST_CONSTNESS) {
             let mut app = Applicability::MachineApplicable;
             let sugg = if let ExprKind::Cast(nested_from, nested_hir_ty) = cast_from_expr.kind
-                && let hir::TyKind::Ptr(ptr_ty) = nested_hir_ty.kind
-                && let hir::TyKind::Infer(()) = ptr_ty.ty.kind
+                && let hir::TyKind::Ptr(ty, _) = nested_hir_ty.kind
+                && let hir::TyKind::Infer(()) = ty.kind
             {
                 // `(foo as *const _).cast_mut()` fails method name resolution
                 // avoid this by `as`-ing the full type

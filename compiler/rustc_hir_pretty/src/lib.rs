@@ -395,14 +395,16 @@ impl<'a> State<'a> {
                 self.print_type(ty);
                 self.word("]");
             }
-            hir::TyKind::Ptr(ref mt) => {
+            hir::TyKind::Ptr(ref ty, mutbl) => {
                 self.word("*");
-                self.print_mt(mt, true);
+                self.print_mutability(mutbl, true);
+                self.print_type(ty);
             }
-            hir::TyKind::Ref(lifetime, ref mt) => {
+            hir::TyKind::Ref(lifetime, ref ty, mutbl) => {
                 self.word("&");
                 self.print_opt_lifetime(lifetime);
-                self.print_mt(mt, false);
+                self.print_mutability(mutbl, false);
+                self.print_type(ty);
             }
             hir::TyKind::Never => {
                 self.word("!");
@@ -2553,11 +2555,6 @@ impl<'a> State<'a> {
                 }
             }
         }
-    }
-
-    fn print_mt(&mut self, mt: &hir::MutTy<'_>, print_const: bool) {
-        self.print_mutability(mt.mutbl, print_const);
-        self.print_type(mt.ty);
     }
 
     fn print_fn_output(&mut self, decl: &hir::FnDecl<'_>) {

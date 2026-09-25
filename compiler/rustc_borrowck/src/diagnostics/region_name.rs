@@ -621,7 +621,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 //
                 //     &
                 //     - let's call the lifetime of this reference `'1`
-                (ty::Ref(region, referent_ty, _), hir::TyKind::Ref(_lifetime, referent_hir_ty)) => {
+                (
+                    ty::Ref(region, referent_ty, _),
+                    hir::TyKind::Ref(_lifetime, referent_hir_ty, _),
+                ) => {
                     if region.as_var() == needle_fr {
                         // Just grab the first character, the `&`.
                         let source_map = self.infcx.tcx.sess.source_map();
@@ -631,7 +634,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     }
 
                     // Otherwise, let's descend into the referent types.
-                    search_stack.push((*referent_ty, referent_hir_ty.ty));
+                    search_stack.push((*referent_ty, referent_hir_ty));
                 }
 
                 // Match up something like `Foo<'1>`
@@ -669,8 +672,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     search_stack.push((*elem_ty, elem_hir_ty));
                 }
 
-                (ty::RawPtr(mut_ty, _), hir::TyKind::Ptr(mut_hir_ty)) => {
-                    search_stack.push((*mut_ty, mut_hir_ty.ty));
+                (ty::RawPtr(ty, _), hir::TyKind::Ptr(hir_ty, _)) => {
+                    search_stack.push((*ty, hir_ty));
                 }
 
                 _ => {

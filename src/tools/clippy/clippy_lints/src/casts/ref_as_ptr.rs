@@ -44,13 +44,13 @@ pub(super) fn check<'tcx>(
         let mut app = Applicability::MachineApplicable;
         let turbofish = match &cast_to_hir_ty.kind {
             TyKind::Infer(()) => String::new(),
-            TyKind::Ptr(mut_ty) => {
-                if matches!(mut_ty.ty.kind, TyKind::Infer(())) {
+            TyKind::Ptr(ty, _) => {
+                if matches!(ty.kind, TyKind::Infer(())) {
                     String::new()
                 } else {
                     format!(
                         "::<{}>",
-                        snippet_with_applicability(cx, mut_ty.ty.span, "/* type */", &mut app)
+                        snippet_with_applicability(cx, ty.span, "/* type */", &mut app)
                     )
                 }
             },

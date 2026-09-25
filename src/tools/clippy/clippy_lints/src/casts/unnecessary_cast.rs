@@ -35,13 +35,13 @@ pub(super) fn check<'tcx>(
         // Ignore casts to e.g. type aliases and infer types
         // - p as pointer_alias
         // - p as _
-        && let TyKind::Ptr(to_pointee) = cast_to_hir.kind
+        && let TyKind::Ptr(to_pointee, _) = cast_to_hir.kind
     {
-        match to_pointee.ty.kind {
+        match to_pointee.kind {
             // Ignore casts to pointers that are aliases or cfg dependant, e.g.
             // - p as *const std::ffi::c_char (alias)
             // - p as *const std::os::raw::c_char (cfg dependant)
-            TyKind::Path(qpath) if is_ty_alias(&qpath) || is_hir_ty_cfg_dependant(cx, to_pointee.ty) => {
+            TyKind::Path(qpath) if is_ty_alias(&qpath) || is_hir_ty_cfg_dependant(cx, to_pointee) => {
                 return false;
             },
             // Ignore `p as *const _`

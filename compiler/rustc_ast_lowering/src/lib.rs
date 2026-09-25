@@ -1597,14 +1597,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             TyKind::Infer => hir::TyKind::Infer(()),
             TyKind::Err(guar) => hir::TyKind::Err(*guar),
             TyKind::Slice(ty) => hir::TyKind::Slice(self.lower_ty_alloc(ty, itctx)),
-            TyKind::Ptr(ty, mutbl) => hir::TyKind::Ptr(self.lower_mt(ty, *mutbl, itctx)),
+            TyKind::Ptr(ty, mutbl) => hir::TyKind::Ptr(self.lower_ty_alloc(ty, itctx), *mutbl),
             TyKind::Ref(region, ty, mutbl) => {
                 let lifetime = self.lower_ty_direct_lifetime(t, *region);
-                hir::TyKind::Ref(lifetime, self.lower_mt(ty, *mutbl, itctx))
+                hir::TyKind::Ref(lifetime, self.lower_ty_alloc(ty, itctx), *mutbl)
             }
             TyKind::PinnedRef(region, ty, mutbl) => {
                 let lifetime = self.lower_ty_direct_lifetime(t, *region);
-                let kind = hir::TyKind::Ref(lifetime, self.lower_mt(ty, *mutbl, itctx));
+                let kind = hir::TyKind::Ref(lifetime, self.lower_ty_alloc(ty, itctx), *mutbl);
                 let span = self.lower_span(t.span);
                 let arg = hir::Ty { kind, span, hir_id: self.next_id() };
                 let args = self.arena.alloc(hir::GenericArgs {
@@ -2541,15 +2541,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                  type parameters defined on the closest item",
             )
             .emit();
-    }
-
-    fn lower_mt(
-        &mut self,
-        ty: &Ty,
-        mutbl: Mutability,
-        itctx: ImplTraitContext,
-    ) -> hir::MutTy<'hir> {
-        hir::MutTy { ty: self.lower_ty_alloc(ty, itctx), mutbl }
     }
 
     #[instrument(level = "debug", skip(self), ret)]

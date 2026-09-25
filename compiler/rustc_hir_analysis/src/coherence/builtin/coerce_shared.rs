@@ -130,14 +130,14 @@ fn first_explicit_lifetime_span_in_ambig_ty(ty: &hir::Ty<'_, hir::AmbigArg>) -> 
 
 fn first_explicit_lifetime_span_in_ty(ty: &hir::Ty<'_>) -> Option<Span> {
     match ty.kind {
-        hir::TyKind::Ref(lifetime, mut_ty) => first_explicit_lifetime_span(lifetime)
-            .or_else(|| first_explicit_lifetime_span_in_ty(mut_ty.ty)),
+        hir::TyKind::Ref(lifetime, ty, _) => first_explicit_lifetime_span(lifetime)
+            .or_else(|| first_explicit_lifetime_span_in_ty(ty)),
         hir::TyKind::Slice(ty)
         | hir::TyKind::Array(ty, _)
         | hir::TyKind::Pat(ty, _)
         | hir::TyKind::FieldOf(ty, _)
         | hir::TyKind::View(ty, _) => first_explicit_lifetime_span_in_ty(ty),
-        hir::TyKind::Ptr(mut_ty) => first_explicit_lifetime_span_in_ty(mut_ty.ty),
+        hir::TyKind::Ptr(ty, _) => first_explicit_lifetime_span_in_ty(ty),
         hir::TyKind::Tup(tys) => tys.iter().find_map(first_explicit_lifetime_span_in_ty),
         hir::TyKind::Path(qpath) => first_explicit_lifetime_span_in_qpath(qpath),
         hir::TyKind::TraitObject(bounds, lifetime) => bounds

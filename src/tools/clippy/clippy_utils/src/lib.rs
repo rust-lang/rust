@@ -2294,8 +2294,8 @@ pub fn peel_hir_ty_refs<'a>(mut ty: &'a hir::Ty<'a>) -> (&'a hir::Ty<'a>, usize)
     let mut count = 0;
     loop {
         match &ty.kind {
-            TyKind::Ref(_, ref_ty) => {
-                ty = ref_ty.ty;
+            TyKind::Ref(_, inner_ty, _) => {
+                ty = inner_ty;
                 count += 1;
             },
             _ => break (ty, count),
@@ -2306,7 +2306,7 @@ pub fn peel_hir_ty_refs<'a>(mut ty: &'a hir::Ty<'a>) -> (&'a hir::Ty<'a>, usize)
 /// Returns the base type for HIR references and pointers.
 pub fn peel_hir_ty_refs_and_ptrs<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
     match &ty.kind {
-        TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => peel_hir_ty_refs_and_ptrs(mut_ty.ty),
+        TyKind::Ptr(ty, _) | TyKind::Ref(_, ty, _) => peel_hir_ty_refs_and_ptrs(ty),
         _ => ty,
     }
 }

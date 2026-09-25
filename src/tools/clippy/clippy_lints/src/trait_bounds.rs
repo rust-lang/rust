@@ -178,8 +178,8 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx, AmbigArg>) {
-        if let TyKind::Ref(.., mut_ty) = &ty.kind
-            && let TyKind::TraitObject(bounds, ..) = mut_ty.ty.kind
+        if let TyKind::Ref(_, ty, _) = &ty.kind
+            && let TyKind::TraitObject(bounds, ..) = ty.kind
             && bounds.len() > 2
         {
             // Build up a hash of every trait we've seen
