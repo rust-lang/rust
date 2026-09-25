@@ -1,8 +1,8 @@
-// gca! is a built-in macro relevant to min_generic_const_args; its contents should be formatted as
+// gca! is a built-in macro relevant to gca_min_const_items; its contents should be formatted as
 // if its contents were passed through unchanged (the macro changes the semantics of the contained
 // expression, the syntax is unchanged)
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 use std::gca;
 

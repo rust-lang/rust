@@ -2,7 +2,7 @@
 #![no_std]
 //@ pretty-mode:expanded
 //@ pp-exact:gca-macro.pp
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;

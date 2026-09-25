@@ -3984,8 +3984,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         span: Span,
     ) -> Result<Diag<'a>, ErrorGuaranteed> {
-        if !self.tcx.features().generic_const_exprs()
-            && !self.tcx.features().min_generic_const_args()
+        if !self.tcx.features().generic_const_exprs() && !self.tcx.features().gca_min_const_items()
         {
             let guar = self
                 .dcx()

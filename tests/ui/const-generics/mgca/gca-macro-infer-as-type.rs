@@ -1,6 +1,6 @@
 //! `gca!(_)` used to be allowed to infer to a type as a compiler implementation quirk. Since it
 //! uses explicit const argument syntax, it is now rejected when passed as a type argument
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 use std::gca;
 

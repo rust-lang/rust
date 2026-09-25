@@ -1,6 +1,6 @@
 //@ check-pass
 //@ compile-flags: -Znext-solver
-#![feature(generic_const_items, min_generic_const_args, generic_const_args)]
+#![feature(generic_const_items, gca_min_const_items, gca_const_items)]
 #![expect(incomplete_features)]
 
 use std::gca;

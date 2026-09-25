@@ -84,7 +84,7 @@ pub fn is_const_evaluatable<'tcx>(
             }
             _ => bug!("unexpected constkind in `is_const_evalautable: {unexpanded_ct:?}`"),
         }
-    } else if tcx.features().min_generic_const_args() {
+    } else if tcx.features().gca_min_const_items() {
         // This is a sanity check to make sure that non-generics consts are checked to
         // be evaluatable in case they aren't cchecked elsewhere. This will NOT error
         // if the const uses generics, as desired.

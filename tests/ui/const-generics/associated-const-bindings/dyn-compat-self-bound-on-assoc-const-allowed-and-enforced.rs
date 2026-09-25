@@ -2,7 +2,7 @@
 // reference the `Self` type parameter (contrary to methods) and that such where clauses are
 // actually enforced.
 
-#![feature(min_generic_const_args, generic_const_items)]
+#![feature(gca_min_const_items, generic_const_items)]
 #![expect(incomplete_features)]
 
 use std::gca;

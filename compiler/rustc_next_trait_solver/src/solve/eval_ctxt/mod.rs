@@ -1434,7 +1434,7 @@ where
                 self.eq(param_env, expected_term, evaluated.into())?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
-            None if self.cx().features().generic_const_args() => {
+            None if self.cx().features().gca_const_items() => {
                 // HACK(khyperia): calling `deeply_resolve_ignoring_regions` here shouldn't be necessary,
                 // `try_evaluate_const` calls `deeply_resolve_ignoring_regions` already. However, we want
                 // to check `has_non_region_infer` against the type with vars resolved (i.e. check

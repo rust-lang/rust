@@ -1,4 +1,4 @@
-# min_generic_const_args
+# gca_min_const_items
 
 Enables the generic const args MVP (paths to direct const items and constructors for ADTs and primitives).
 
@@ -15,12 +15,12 @@ and uses a different approach for implementation. It is intentionally more restr
 cases that make the `generic_const_exprs` hard to implement properly. See [Feature background][feature_background]
 for more details.
 
-Related features: [macroless_generic_const_args], [generic_const_args], [generic_const_items].
+Related features: [gca_macroless_args], [gca_const_items], [generic_const_items].
 
 [feature_background]: https://github.com/rust-lang/project-const-generics/blob/main/documents/min_const_generics_plan.md
 [generic_const_exprs]: generic-const-exprs.md
-[macroless_generic_const_args]: macroless-generic-const-args.md
-[generic_const_args]: generic-const-args.md
+[gca_macroless_args]: gca-macroless-args.md
+[gca_const_items]: gca-const-items.md
 [generic_const_items]: generic-const-items.md
 
 ## `gca!` macro
@@ -34,9 +34,9 @@ expression "directly", i.e. without an anon const, in a way that is visible to t
 (Note that plain paths to generic parameters are always represented directly, without `gca!`, as this
 already works on stable)
 
-See [macroless_generic_const_args] as a feature to disable the requirement of writing `gca!`.
+See [gca_macroless_args] as a feature to disable the requirement of writing `gca!`.
 
-[macroless_generic_const_args]: macroless-generic-const-args.md
+[gca_macroless_args]: gca-macroless-args.md
 
 ## direct const items
 
@@ -45,7 +45,7 @@ Constants with a direct right-hand side are allowed to be used in type contexts,
 
 ```compile_fail
 #![allow(incomplete_features)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 const X: usize = core::gca!(1);
 const Y: usize = 1;
@@ -60,7 +60,7 @@ struct Foo {
 
 ```rust
 #![allow(incomplete_features)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 trait Bar {
     #[rustc_always_gca]
@@ -114,7 +114,7 @@ Use of const functions is allowed:
 
 ```rust
 #![allow(incomplete_features)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 const VAL: usize = 1;
 

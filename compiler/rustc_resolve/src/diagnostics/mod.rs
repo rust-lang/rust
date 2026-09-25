@@ -429,7 +429,7 @@ pub(crate) struct ParamInNonTrivialAnonConst {
     )]
     pub(crate) help_gca: bool,
     #[help(
-        "alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item"
+        "alternatively, you can use `#![feature(gca_const_items)]` and extract the expression into a `type const` item"
     )]
     pub(crate) help_suggest_gca: bool,
 }

@@ -368,10 +368,10 @@ pub fn dyn_compatibility_violations_for_assoc_item(
 
             let mut errors = Vec::new();
 
-            if tcx.features().min_generic_const_args() {
+            if tcx.features().gca_min_const_items() {
                 if !tcx.generics_of(item.def_id).is_own_empty() {
                     errors.push(AssocConstViolation::Generic);
-                } else if !tcx.is_always_gca(item.def_id) && !tcx.features().generic_const_args() {
+                } else if !tcx.is_always_gca(item.def_id) && !tcx.features().gca_const_items() {
                     errors.push(AssocConstViolation::NonType);
                 }
 
@@ -790,7 +790,7 @@ enum AllowSelfProjections {
 /// associated type of the current trait, since we retain the value of those associated
 /// types in the trait object type itself.
 ///
-/// The same thing holds for associated consts under feature `min_generic_const_args`.
+/// The same thing holds for associated consts under feature `gca_min_const_items`.
 ///
 /// ```rust,ignore (example)
 /// trait SuperTrait {
@@ -914,7 +914,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
             ty::ConstKind::Alias(
                 _,
                 ty::AliasConst { kind: ty::AliasConstKind::Projection { def_id }, args, .. },
-            ) if self.tcx.features().min_generic_const_args() => {
+            ) if self.tcx.features().gca_min_const_items() => {
                 match self.allow_self_projections {
                     AllowSelfProjections::Yes => {
                         let trait_def_id = self.tcx.parent(def_id);

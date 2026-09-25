@@ -1,7 +1,7 @@
 //@ revisions: r1 r2 r3
 
 #![expect(incomplete_features)]
-#![feature(min_generic_const_args, adt_const_params)]
+#![feature(gca_min_const_items, adt_const_params)]
 
 use std::gca;
 

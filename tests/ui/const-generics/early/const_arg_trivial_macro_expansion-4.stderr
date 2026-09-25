@@ -11,7 +11,7 @@ LL | fn foo<const N: usize>() -> Foo<{ arg!{} arg!{} }> { loop {} }
    |
    = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
-   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
+   = help: alternatively, you can use `#![feature(gca_const_items)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const_arg_trivial_macro_expansion-4.rs:7:9
@@ -26,7 +26,7 @@ LL | fn foo<const N: usize>() -> Foo<{ arg!{} arg!{} }> { loop {} }
    |
    = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
-   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
+   = help: alternatively, you can use `#![feature(gca_const_items)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const_arg_trivial_macro_expansion-4.rs:15:46
@@ -36,7 +36,7 @@ LL | fn bar<const N: usize>() -> [(); { empty!{}; N }] { loop {} }
    |
    = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
-   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
+   = help: alternatively, you can use `#![feature(gca_const_items)]` and extract the expression into a `type const` item
 
 error: aborting due to 3 previous errors
 

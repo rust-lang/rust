@@ -1,6 +1,6 @@
 //! regression test for <https://github.com/rust-lang/rust/issues/147415>
 #![expect(incomplete_features)]
-#![feature(min_generic_const_args, macroless_generic_const_args)]
+#![feature(gca_min_const_items, gca_macroless_args)]
 
 fn foo<T>() {
     [0; size_of::<*mut T>()];

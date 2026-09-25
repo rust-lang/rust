@@ -1403,7 +1403,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // type and value namespaces. If we resolved the path in the value namespace, we
                     // transform it into a generic const argument.
                     //
-                    // Note that even under `#![feature(min_generic_const_args)]`, only plain paths
+                    // Note that even under `#![feature(gca_min_const_items)]`, only plain paths
                     // to constants are allowed - e.g. `A::<T::ASSOC_CONST>` and
                     // `A::<CONST_WITH_PARAM::<2>>` are disallowed (they must be wrapped in `{ }`).
                     //
@@ -1420,7 +1420,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let ct = self.arena.alloc(ct);
                         return GenericArg::Const(ct.try_as_ambig_ct().unwrap());
                     }
-                    TyKind::GcaMacro(expr) if self.tcx.features().min_generic_const_args() => {
+                    TyKind::GcaMacro(expr) if self.tcx.features().gca_min_const_items() => {
                         let ct = match self.can_lower_expr_to_const_arg_direct(
                             expr,
                             DirectConstArgContext::MacrolessMinGenericConstArgs,
@@ -2558,7 +2558,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // We cannot just match on `ExprKind::Underscore` as `(_)` is represented as
         // `ExprKind::Paren(ExprKind::Underscore)` and should also be lowered to `GenericArg::Infer`
         //
-        // FIXME(macroless_generic_const_args): Handling of underscores should be moved into
+        // FIXME(gca_macroless_args): Handling of underscores should be moved into
         // lower_expr_to_const_arg_direct. It is left here as retaining compatibility of what is
         // currently allowed on stable gets hairy and annoying otherwise.
         match c.value.peel_parens().kind {
@@ -2632,7 +2632,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
     ) -> hir::ConstItemRhs<'hir> {
         let is_direct = |body| {
-            if self.tcx.features().macroless_const_item_generic_const_args() {
+            if self.tcx.features().gca_macroless_items() {
                 self.can_lower_expr_to_const_arg_direct(
                     body,
                     DirectConstArgContext::MacrolessMinGenericConstArgs,
@@ -2645,7 +2645,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 matches!(body, Expr { kind: ExprKind::GcaMacro(_), .. })
             }
         };
-        if self.tcx.features().min_generic_const_args()
+        if self.tcx.features().gca_min_const_items()
             && let Some(body) = body
             && is_direct(body)
         {
@@ -2658,9 +2658,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn ambient_direct_const_arg_context(&self) -> DirectConstArgContext {
-        if self.tcx.features().macroless_generic_const_args() {
+        if self.tcx.features().gca_macroless_args() {
             DirectConstArgContext::MacrolessMinGenericConstArgs
-        } else if self.tcx.features().min_generic_const_args() {
+        } else if self.tcx.features().gca_min_const_items() {
             DirectConstArgContext::MinGenericConstArgs
         } else {
             DirectConstArgContext::Stable
@@ -2965,7 +2965,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_anon_const_to_const_arg(&mut self, anon: &AnonConst) -> hir::ConstArg<'hir> {
         // Stable only allows one nesting of blocks for directly represented paths. mGCA allows
         // arbitrarily many, and are handled inside lower_expr_to_const_arg_direct for consistency.
-        let expr = if self.tcx.features().macroless_generic_const_args() {
+        let expr = if self.tcx.features().gca_macroless_args() {
             &anon.value
         } else {
             anon.value.maybe_unwrap_block()

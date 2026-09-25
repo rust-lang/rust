@@ -1,6 +1,6 @@
 //@ check-pass
 //! See also: tests/ui/const-generics/paren.rs
-#![feature(min_generic_const_args, generic_const_items)]
+#![feature(gca_min_const_items, generic_const_items)]
 
 use std::gca;
 

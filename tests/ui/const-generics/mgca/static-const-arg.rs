@@ -1,8 +1,8 @@
 // Regression test for #132986.
-// FIXME(min_generic_const_args): using statics as direct const arguments should error instead of
+// FIXME(gca_min_const_items): using statics as direct const arguments should error instead of
 // ICEing until const eval can evaluate statics to valtrees for const generics.
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![allow(incomplete_features)]
 
 use std::gca;

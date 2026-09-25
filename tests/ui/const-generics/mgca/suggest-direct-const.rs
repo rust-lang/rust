@@ -1,6 +1,6 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/157368>
 //@ run-rustfix
-#![feature(min_generic_const_args, inherent_associated_types)]
+#![feature(gca_min_const_items, inherent_associated_types)]
 #![allow(dead_code)]
 
 mod impl_item {

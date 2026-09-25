@@ -1,7 +1,7 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/156293>
 //@ check-pass
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 trait Bar<const N: usize = const { 1 + 1 }> {}
 

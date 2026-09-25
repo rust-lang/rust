@@ -1,10 +1,10 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/feature-gate-generic-const-args.rs:6:49
+  --> $DIR/feature-gate-gca-const-items.rs:6:49
    |
 LL | const INC<const N: usize>: usize = gca!(const { N + 1 });
    |                                                 ^
    |
-   = help: add `#![feature(generic_const_args)]` and extract the expression into a `type const` item
+   = help: add `#![feature(gca_const_items)]` and extract the expression into a `type const` item
 
 error: aborting due to 1 previous error
 

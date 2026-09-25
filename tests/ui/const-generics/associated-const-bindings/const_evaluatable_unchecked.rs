@@ -4,7 +4,7 @@
 //
 // issue: <https://github.com/rust-lang/rust/issues/108220>
 //@ check-pass
-#![feature(min_generic_const_args, associated_type_defaults)]
+#![feature(gca_min_const_items, associated_type_defaults)]
 #![allow(incomplete_features)]
 
 use std::gca;

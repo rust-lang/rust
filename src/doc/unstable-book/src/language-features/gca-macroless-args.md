@@ -1,6 +1,6 @@
-# macroless_generic_const_args
+# gca_macroless_args
 
-Enables using `#![feature(min_generic_const_args)]` without the `gca!` macro.
+Enables using `#![feature(gca_min_const_items)]` without the `gca!` macro.
 
 The tracking issue for this feature is: [#159006]
 
@@ -11,23 +11,23 @@ The tracking issue for this feature is: [#159006]
 Warning: This feature is incomplete; its design and syntax may change.
 
 Related features:
-- [min_generic_const_args]. See that doc for what the `gca!` is. This feature enables
+- [gca_min_const_items]. See that doc for what the `gca!` is. This feature enables
 support for directly represented const arguments without the macro.
-- [macroless_const_item_generic_const_args]. For a version of this feature that works for const arguments
+- [gca_macroless_items]. For a version of this feature that works for const arguments
 as the right hand side of a const item.
 
-[min_generic_const_args]: min-generic-const-args.md
-[macroless_const_item_generic_const_args]: macroless-const-item-generic-const-args.md
+[gca_min_const_items]: gca-min-const-items.md
+[gca_macroless_items]: gca-macroless-items.md
 
 ## Examples
 
-Here is an example from [min_generic_const_args]:
+Here is an example from [gca_min_const_items]:
 
-[min_generic_const_args]: min-generic-const-args.md
+[gca_min_const_items]: gca-min-const-items.md
 
 ```rust
 #![allow(incomplete_features)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 trait Bar {
     #[rustc_always_gca]
@@ -49,11 +49,11 @@ struct Foo<B: Bar> {
 }
 ```
 
-Using `#![feature(macroless_generic_const_args)]` enables you to write the above without the macro:
+Using `#![feature(gca_macroless_args)]` enables you to write the above without the macro:
 
 ```rust
 #![allow(incomplete_features)]
-#![feature(min_generic_const_args, macroless_generic_const_args)]
+#![feature(gca_min_const_items, gca_macroless_args)]
 
 trait Bar {
     #[rustc_always_gca]
@@ -65,7 +65,7 @@ trait Bar {
 struct Baz;
 
 impl Bar for Baz {
-    // note these still need a macro, macroless for these is `macroless_const_item_generic_const_args`
+    // note these still need a macro, macroless for these is `gca_macroless_items`
     const VAL: usize = core::gca!(2);
     const VAL2: usize = core::gca!(const { Self::VAL * 2 });
 }

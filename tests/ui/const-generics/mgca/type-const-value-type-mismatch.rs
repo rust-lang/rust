@@ -5,7 +5,7 @@
 //@[next] compile-flags: -Znext-solver
 //@ compile-flags: -Zvalidate-mir
 
-#![feature(min_generic_const_args, macroless_generic_const_args)]
+#![feature(gca_min_const_items, gca_macroless_args)]
 
 use std::gca;
 

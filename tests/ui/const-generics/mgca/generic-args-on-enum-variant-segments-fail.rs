@@ -1,4 +1,4 @@
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![feature(adt_const_params, unsized_const_params)]
 use std::gca;
 #[derive(PartialEq, Eq, std::marker::ConstParamTy)]

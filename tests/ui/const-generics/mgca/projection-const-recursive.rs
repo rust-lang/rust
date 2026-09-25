@@ -3,7 +3,7 @@
 
 // Regression test for <https://github.com/rust-lang/rust/issues/153831>
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
 
 use std::gca;

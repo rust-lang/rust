@@ -2162,8 +2162,8 @@ pub(super) fn compare_const_directness<'tcx>(
     if trait_is_gca == impl_is_gca {
         return Ok(());
     }
-    // feature(generic_const_args) is allowed to impl non-GCA traits with a GCA const
-    if tcx.features().generic_const_args() && !trait_is_gca && impl_is_gca {
+    // feature(gca_const_items) is allowed to impl non-GCA traits with a GCA const
+    if tcx.features().gca_const_items() && !trait_is_gca && impl_is_gca {
         return Ok(());
     }
 
