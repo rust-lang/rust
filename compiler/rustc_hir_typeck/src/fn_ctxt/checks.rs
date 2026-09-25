@@ -2107,25 +2107,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None
             }
         });
-        match (body_id, params) {
+        let mut params_with_generics: IndexVec<ExpectedIdx, _> = match (body_id, params) {
             (Some(_), Some(_)) | (None, None) => unreachable!(),
             (Some(body), None) => {
                 let params = self.tcx.hir_body(body).params;
                 let params = params
                     .get(is_method as usize..params.len() - sig.decl.c_variadic() as usize)?;
                 debug_assert_eq!(params.len(), fn_inputs.len());
-                Some((fn_inputs.zip(params.iter().map(FnParam::Param)).collect(), generics))
+                fn_inputs.zip(params.iter().map(FnParam::Param)).collect()
             }
             (None, Some(params)) => {
                 let params = params
                     .get(is_method as usize..params.len() - sig.decl.c_variadic() as usize)?;
                 debug_assert_eq!(params.len(), fn_inputs.len());
-                Some((
-                    fn_inputs.zip(params.iter().map(|&ident| FnParam::Ident(ident))).collect(),
-                    generics,
-                ))
+                fn_inputs.zip(params.iter().map(|&ident| FnParam::Ident(ident))).collect()
+            }
+        };
+        for param in generics.params {
+            if let hir::GenericParamKind::Const { arg_pos: Some(pos), .. } = param.kind
+                && let Some(idx) = (pos as usize).checked_sub(is_method as usize)
+            {
+                params_with_generics
+                    .raw
+                    .insert(idx, (None, FnParam::Ident(Some(param.name.ident()))));
             }
         }
+        Some((params_with_generics, generics))
     }
 }
 

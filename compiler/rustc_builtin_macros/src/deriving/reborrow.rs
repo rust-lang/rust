@@ -172,7 +172,7 @@ fn impl_generics(cx: &ExtCtxt<'_>, generics: &Generics) -> Generics {
                 GenericParamKind::Type { default: _ } => {
                     cx.typaram(param.span(), param.ident, param.bounds.clone(), None)
                 }
-                GenericParamKind::Const { ty, span: _, default: _ } => cx.const_param(
+                GenericParamKind::Const { ty, span: _, default: _, arg_pos: _ } => cx.const_param(
                     param.span(),
                     param.ident,
                     param.bounds.clone(),

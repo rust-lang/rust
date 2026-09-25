@@ -117,14 +117,15 @@ pub(crate) fn expand_deriving_coerce_pointee(
                                 GenericParamKind::Type { default: _ } => {
                                     cx.typaram(p.span(), p.ident, p.bounds.clone(), None)
                                 }
-                                GenericParamKind::Const { ty, span: _, default: _ } => cx
-                                    .const_param(
+                                GenericParamKind::Const { ty, span: _, default: _, arg_pos: _ } => {
+                                    cx.const_param(
                                         p.span(),
                                         p.ident,
                                         p.bounds.clone(),
                                         ty.clone(),
                                         None,
-                                    ),
+                                    )
+                                }
                             })
                             .collect(),
                         where_clause: generics.where_clause.clone(),

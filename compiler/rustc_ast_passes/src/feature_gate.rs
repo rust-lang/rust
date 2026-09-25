@@ -442,6 +442,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(final_associated_functions, "`final` on trait functions is experimental");
     gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
     gate_all!(frontmatter, "frontmatters are experimental");
+    gate_all!(function_arg_const_generics, "function arg const generics are experimental");
     gate_all!(gen_blocks, "gen blocks are experimental");
     gate_all!(generic_const_items, "generic const items are experimental");
     gate_all!(global_registration, "global registration is experimental");

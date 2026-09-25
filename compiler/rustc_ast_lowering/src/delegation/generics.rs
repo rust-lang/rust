@@ -641,6 +641,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::GenericParamKind::Const {
                         ty: self.arena.alloc(hir::Ty { kind, hir_id, span }),
                         default: None,
+                        arg_pos: None,
                     }
                 }
             };

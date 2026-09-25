@@ -1170,7 +1170,7 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(
         GenericParamKind::Type { ref default, .. } => {
             visit_opt!(visitor, visit_ty_unambig, default)
         }
-        GenericParamKind::Const { ref ty, ref default } => {
+        GenericParamKind::Const { ref ty, ref default, arg_pos: _ } => {
             try_visit!(visitor.visit_ty_unambig(ty));
             if let Some(default) = default {
                 try_visit!(visitor.visit_const_param_default(*hir_id, default));

@@ -1383,11 +1383,11 @@ fn validate_generic_param_order(dcx: DiagCtxtHandle<'_>, generics: &[GenericPara
                 }
                 GenericParamKind::Type { default: None } => (),
                 GenericParamKind::Lifetime => (),
-                GenericParamKind::Const { ty: _, span: _, default: Some(default) } => {
+                GenericParamKind::Const { ty: _, span: _, default: Some(default), arg_pos: _ } => {
                     ordered_params += " = ";
                     ordered_params += &pprust::expr_to_string(&default.value);
                 }
-                GenericParamKind::Const { ty: _, span: _, default: None } => (),
+                GenericParamKind::Const { ty: _, span: _, default: None, arg_pos: _ } => (),
             }
             first = false;
         }
