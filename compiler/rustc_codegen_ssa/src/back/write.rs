@@ -27,7 +27,7 @@ use rustc_session::config::{
 };
 use rustc_session::{IncrCompSession, Session};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{FileName, InnerSpan, Span, SpanData, bug};
+use rustc_span::{BytePos, FileName, InnerSpan, Span, SyntaxContext, bug};
 use rustc_structures::CrateType;
 use rustc_target::spec::{MergeFunctions, SanitizerSet};
 use tracing::debug;
@@ -1933,7 +1933,12 @@ enum SharedEmitterMessage {
 }
 
 pub struct InlineAsmError {
-    pub span: SpanData,
+    // We store byte positions rather than a `Span` because this error is created on a codegen
+    // thread which doesn't have access to the span interner within the session globals. The byte
+    // positions are converted to a `Span` once they reach a thread with access to the span
+    // interner.
+    pub lo: BytePos,
+    pub hi: BytePos,
     pub msg: String,
     pub level: Level,
     pub source: Option<(String, Vec<InnerSpan>)>,
@@ -1998,8 +2003,9 @@ impl SharedEmitterMain {
                 Ok(SharedEmitterMessage::InlineAsmError(inner)) => {
                     assert_matches!(inner.level, Level::Error | Level::Warning | Level::Note);
                     let mut err = Diag::new(sess.dcx(), inner.level, inner.msg);
-                    if !inner.span.is_dummy() {
-                        err.span(inner.span.span());
+                    let span = Span::new(inner.lo, inner.hi, SyntaxContext::root(), None);
+                    if !span.is_dummy() {
+                        err.span(span);
                     }
 
                     // Point to the generated assembly if it is available.
