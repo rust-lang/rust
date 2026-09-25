@@ -1673,8 +1673,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if let Some(extern_crate_id) = pub_use_of_private_extern_crate_hack(import.summary(), decl)
         {
             let ImportKind::Single { id, .. } = import.kind else { unreachable!() };
-            let sugg = self.tcx.source_span(extern_crate_id).shrink_to_lo();
-            let diagnostic = crate::diagnostics::PrivateExternCrateReexport { ident, sugg };
+            let sugg = self.tcx.source_span(extern_crate_id);
+            let diagnostic = crate::diagnostics::PrivateExternCrateReexport {
+                ident,
+                sugg: sugg.can_be_used_for_suggestions().then(|| sugg.shrink_to_lo()),
+            };
             return Some(BufferedEarlyLint {
                 lint_id: LintId::of(PUB_USE_OF_PRIVATE_EXTERN_CRATE),
                 node_id: id,
