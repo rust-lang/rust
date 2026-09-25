@@ -745,8 +745,7 @@ impl<'a> Parser<'a> {
         lo: Span,
     ) -> PResult<'a, Box<Expr>> {
         let mut res = loop {
-            let has_question = if self.prev_token == TokenKind::Ident(kw::Return, IdentKind::Normal)
-            {
+            let has_question = if self.prev_token.is_keyword(kw::Return) {
                 // We are using noexpect here because we don't expect a `?` directly after
                 // a `return` which could be suggested otherwise.
                 self.eat_noexpect(&token::Question)
@@ -758,7 +757,7 @@ impl<'a> Parser<'a> {
                 e = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Try(e));
                 continue;
             }
-            let has_dot = if self.prev_token == TokenKind::Ident(kw::Return, IdentKind::Normal) {
+            let has_dot = if self.prev_token.is_keyword(kw::Return) {
                 // We are using noexpect here because we don't expect a `.` directly after
                 // a `return` which could be suggested otherwise.
                 self.eat_noexpect(&token::Dot)
@@ -1374,8 +1373,6 @@ impl<'a> Parser<'a> {
                 })
             } else if this.check(exp!(OpenBracket)) {
                 this.parse_expr_array_or_repeat(exp!(CloseBracket))
-            } else if this.is_builtin() {
-                this.parse_expr_builtin()
             } else if this.check_path() {
                 this.parse_expr_path_start()
             } else if this.check_keyword(exp!(Move))
@@ -1440,6 +1437,18 @@ impl<'a> Parser<'a> {
                     return Ok(expr);
                 }
                 Ok(this.mk_expr(this.prev_token.span, ExprKind::Underscore))
+            } else if this.token.is_forced_keyword(kw::OffsetOf) {
+                this.bump();
+                this.parse_expr_offset_of(lo)
+            } else if this.token.is_forced_keyword(kw::TypeAscribe) {
+                this.bump();
+                this.parse_expr_type_ascribe(lo)
+            } else if this.token.is_forced_keyword(kw::WrapBinder) {
+                this.bump();
+                this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Wrap)
+            } else if this.token.is_forced_keyword(kw::UnwrapBinder) {
+                this.bump();
+                this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Unwrap)
             } else if this.token_uninterpolated_span().at_least_rust_2018() {
                 // `Span::at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
                 let at_async = this.check_keyword(exp!(Async));
@@ -1447,6 +1456,7 @@ impl<'a> Parser<'a> {
                 // or `async gen {}` and `async gen move {}`
                 // FIXME: (async) gen closures aren't yet parsed.
                 // FIXME(gen_blocks): Parse `gen async` and suggest swap
+                // FIXME(forced_keywords): Allow k#gen blocks prior to Rust 2024, too!
                 if this.token_uninterpolated_span().at_least_rust_2024()
                     && this.is_gen_block(kw::Gen, at_async as usize)
                 {
@@ -1879,58 +1889,9 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr)
     }
 
-    /// Parse `builtin # ident(args,*)`.
-    fn parse_expr_builtin(&mut self) -> PResult<'a, Box<Expr>> {
-        self.parse_builtin(|this, lo, ident| {
-            Ok(match ident.name {
-                sym::offset_of => Some(this.parse_expr_offset_of(lo)?),
-                sym::type_ascribe => Some(this.parse_expr_type_ascribe(lo)?),
-                sym::wrap_binder => {
-                    Some(this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Wrap)?)
-                }
-                sym::unwrap_binder => {
-                    Some(this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Unwrap)?)
-                }
-                _ => None,
-            })
-        })
-    }
-
-    pub(crate) fn parse_builtin<T>(
-        &mut self,
-        parse: impl FnOnce(&mut Parser<'a>, Span, Ident) -> PResult<'a, Option<T>>,
-    ) -> PResult<'a, T> {
-        let lo = self.token.span;
-
-        self.bump(); // `builtin`
-        self.bump(); // `#`
-
-        let Some((ident, IdentKind::Normal)) = self.token.ident() else {
-            let err = self
-                .dcx()
-                .create_err(crate::diagnostics::ExpectedBuiltinIdent { span: self.token.span });
-            return Err(err);
-        };
-        self.psess.gated_spans.gate(sym::builtin_syntax, ident.span);
-        self.bump();
-
-        self.expect(exp!(OpenParen))?;
-        let ret = if let Some(res) = parse(self, lo, ident)? {
-            Ok(res)
-        } else {
-            let err = self.dcx().create_err(crate::diagnostics::UnknownBuiltinConstruct {
-                span: lo.to(ident.span),
-                name: ident,
-            });
-            return Err(err);
-        };
-        self.expect(exp!(CloseParen))?;
-
-        ret
-    }
-
-    /// Built-in macro for `offset_of!` expressions.
     pub(crate) fn parse_expr_offset_of(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
+        self.expect(exp!(OpenParen))?;
+
         let container = self.parse_ty()?;
         self.expect(exp!(Comma))?;
 
@@ -1953,16 +1914,26 @@ impl<'a> Parser<'a> {
             }
         }
 
+        // FIXME: Odd not include the closing paren (contrary to the leading one etc.) but
+        //        it actually "improves" diagnostics slightly.
         let span = lo.to(self.token.span);
+        self.expect(exp!(CloseParen))?;
+
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
+
         Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields)))
     }
 
-    /// Built-in macro for type ascription expressions.
     pub(crate) fn parse_expr_type_ascribe(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
+        self.expect(exp!(OpenParen))?;
         let expr = self.parse_expr()?;
         self.expect(exp!(Comma))?;
         let ty = self.parse_ty()?;
+        // FIXME: Odd not include the closing paren (contrary to the leading one etc.) but
+        //        it actually "improves" diagnostics slightly.
         let span = lo.to(self.token.span);
+        self.expect(exp!(CloseParen))?;
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
         Ok(self.mk_expr(span, ExprKind::Type(expr, ty)))
     }
 
@@ -1971,9 +1942,15 @@ impl<'a> Parser<'a> {
         lo: Span,
         kind: UnsafeBinderCastKind,
     ) -> PResult<'a, Box<Expr>> {
+        self.expect(exp!(OpenParen))?;
+
         let expr = self.parse_expr()?;
         let ty = if self.eat(exp!(Comma)) { Some(self.parse_ty()?) } else { None };
+        // FIXME: Odd not include the closing paren (contrary to the leading one etc.) but
+        //        it actually "improves" diagnostics slightly.
         let span = lo.to(self.token.span);
+        self.expect(exp!(CloseParen))?;
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
         Ok(self.mk_expr(span, ExprKind::UnsafeBinderCast(kind, expr, ty)))
     }
 
@@ -2092,7 +2069,9 @@ impl<'a> Parser<'a> {
             }
         };
         match self.token.uninterpolate().kind {
-            token::Ident(name, IdentKind::Normal) if name.is_bool_lit() => {
+            token::Ident(name, IdentKind::Normal | IdentKind::ForcedKeyword)
+                if name.is_bool_lit() =>
+            {
                 self.bump();
                 Some(token::Lit::new(token::Bool, name, None))
             }
@@ -3495,10 +3474,6 @@ impl<'a> Parser<'a> {
             },
         )?;
         Ok(expr)
-    }
-
-    pub(crate) fn is_builtin(&self) -> bool {
-        self.token.is_keyword(kw::Builtin) && self.look_ahead(1, |t| *t == token::Pound)
     }
 
     /// Parses a `try {...}` or `try bikeshed Ty {...}` expression (`try` token already eaten).

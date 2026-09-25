@@ -350,9 +350,6 @@ impl<'a> Parser<'a> {
             // UNION ITEM
             self.bump(); // `union`
             self.parse_item_union()?
-        } else if self.is_builtin() {
-            // BUILTIN# ITEM
-            return self.parse_item_builtin();
         } else if self.eat_keyword_case(exp!(Macro), case) {
             // MACROS 2.0 ITEM
             self.parse_item_decl_macro(lo)?
@@ -593,11 +590,6 @@ impl<'a> Parser<'a> {
         };
 
         if let Some(err) = err { Err(self.dcx().create_err(err)) } else { Ok(()) }
-    }
-
-    fn parse_item_builtin(&mut self) -> PResult<'a, Option<ItemKind>> {
-        // To be expanded
-        Ok(None)
     }
 
     /// Parses an item macro, e.g., `item!();`.
@@ -2507,8 +2499,7 @@ impl<'a> Parser<'a> {
     /// for better diagnostics and suggestions.
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
         let (ident, kind) = self.ident_or_err(true)?;
-        if kind == IdentKind::Normal
-            && ident.is_reserved()
+        if token::ident_of_kind_is_reserved(ident, kind)
             && !(ident.name == kw::Underscore && adt_ty == "enum")
         {
             let snapshot = self.create_snapshot_for_diagnostic();
