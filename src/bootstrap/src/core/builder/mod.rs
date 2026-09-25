@@ -886,6 +886,7 @@ impl<'a> Builder<'a> {
                 test::MirOpt,
                 test::CodegenLlvm,
                 test::CodegenUnits,
+                test::AssemblyGcc,
                 test::AssemblyLlvm,
                 test::Incremental,
                 test::Debuginfo,

@@ -10,16 +10,11 @@
 //@ [none] compile-flags: -Z stack-protector=none
 //@ compile-flags: -C opt-level=2 -Z merge-functions=disabled
 
-// NOTE: the heuristics for stack smash protection inappropriately rely on types in LLVM IR,
-// despite those types having no semantic meaning. This means that the `basic` and `strong`
-// settings do not behave in a coherent way. This is a known issue in LLVM.
-// See comments on https://github.com/rust-lang/rust/issues/114903.
-
 #![crate_type = "lib"]
 #![allow(internal_features)]
 #![feature(unsized_fn_params)]
 
-// CHECK-LABEL: emptyfn{{:|\[}}
+// CHECK-LABEL: "emptyfn"
 #[no_mangle]
 pub fn emptyfn() {
     // all: __stack_chk_fail
@@ -29,7 +24,7 @@ pub fn emptyfn() {
     // missing-NOT: __stack_chk_fail
 }
 
-// CHECK-LABEL: array_char{{:|\[}}
+// CHECK-LABEL: "array_char"
 #[no_mangle]
 pub fn array_char(f: fn(*const char)) {
     let a = ['c'; 1];
@@ -47,7 +42,7 @@ pub fn array_char(f: fn(*const char)) {
     // missing-NOT: __stack_chk_fail
 }
 
-// CHECK-LABEL: array_u8_1{{:|\[}}
+// CHECK-LABEL: "array_u8_1"
 #[no_mangle]
 pub fn array_u8_1(f: fn(*const u8)) {
     let a = [0u8; 1];
@@ -63,7 +58,7 @@ pub fn array_u8_1(f: fn(*const u8)) {
     // missing-NOT: __stack_chk_fail
 }
 
-// CHECK-LABEL: array_u8_small{{:|\[}}
+// CHECK-LABEL: "array_u8_small"
 #[no_mangle]
 pub fn array_u8_small(f: fn(*const u8)) {
     let a = [0u8; 2];
@@ -80,7 +75,7 @@ pub fn array_u8_small(f: fn(*const u8)) {
     // missing-NOT: __stack_chk_fail
 }
 
-// CHECK-LABEL: array_u8_large{{:|\[}}
+// CHECK-LABEL: "array_u8_large"
 #[no_mangle]
 pub fn array_u8_large(f: fn(*const u8)) {
     let a = [0u8; 9];
@@ -99,13 +94,13 @@ pub fn array_u8_large(f: fn(*const u8)) {
 #[derive(Copy, Clone)]
 pub struct ByteSizedNewtype(u8);
 
-// CHECK-LABEL: array_bytesizednewtype_9{{:|\[}}
+// CHECK-LABEL: "array_bytesizednewtype_9"
 #[no_mangle]
 pub fn array_bytesizednewtype_9(f: fn(*const ByteSizedNewtype)) {
     let a = [ByteSizedNewtype(0); 9];
     f(&a as *const _);
 
-    // Since `a` is a byte array in the LLVM output, the basic heuristic will
+    // Since `a` is a byte array in the GCC output, the basic heuristic will
     // also protect this function.
 
     // all: __stack_chk_fail
@@ -115,7 +110,7 @@ pub fn array_bytesizednewtype_9(f: fn(*const ByteSizedNewtype)) {
     // missing-NOT: __stack_chk_fail
 }
 
-// CHECK-LABEL: local_var_addr_used_indirectly{{:|\[}}
+// CHECK-LABEL: "local_var_addr_used_indirectly"
 #[no_mangle]
 pub fn local_var_addr_used_indirectly(f: fn(bool)) {
     let a = 5;
@@ -126,7 +121,7 @@ pub fn local_var_addr_used_indirectly(f: fn(bool)) {
     // address is never used as a way to refer to stack memory, the `strong`
     // heuristic adds stack smash protection. This is also the case in C++:
     // ```
-    // cat << EOF | clang++ -O2 -fstack-protector-strong -S -x c++ - -o - | grep stack_chk
+    // cat << EOF | g++ -O2 -fstack-protector-strong -S -x c++ - -o - | grep stack_chk
     // #include <cstdint>
     // void f(void (*g)(bool)) {
     //     int32_t x;
@@ -142,7 +137,7 @@ pub fn local_var_addr_used_indirectly(f: fn(bool)) {
     // missing-NOT: __stack_chk_fail
 }
 
-// CHECK-LABEL: local_string_addr_taken{{:|\[}}
+// CHECK-LABEL: "local_string_addr_taken"
 #[no_mangle]
 pub fn local_string_addr_taken(f: fn(&String)) {
     let x = String::new();
@@ -168,7 +163,7 @@ impl SelfByRef for i32 {
     }
 }
 
-// CHECK-LABEL: local_var_addr_taken_used_locally_only{{:|\[}}
+// CHECK-LABEL: "local_var_addr_taken_used_locally_only"
 #[no_mangle]
 pub fn local_var_addr_taken_used_locally_only(factory: fn() -> i32, sink: fn(i32)) {
     let x = factory();
@@ -195,7 +190,7 @@ pub struct Gigastruct {
     members: u64,
 }
 
-// CHECK-LABEL: local_large_var_moved{{:|\[}}
+// CHECK-LABEL: "local_large_var_moved"
 #[no_mangle]
 pub fn local_large_var_moved(f: fn(Gigastruct)) {
     let x = Gigastruct { does: 0, not: 1, have: 2, array: 3, members: 4 };
@@ -207,7 +202,7 @@ pub fn local_large_var_moved(f: fn(Gigastruct)) {
     // protected. This is also the case for rvalue-references in C++,
     // regardless of struct size:
     // ```
-    // cat <<EOF | clang++ -O2 -fstack-protector-strong -S -x c++ - -o - | grep stack_chk
+    // cat <<EOF | g++ -O2 -fstack-protector-strong -S -x c++ - -o - | grep stack_chk
     // #include <cstdint>
     // #include <utility>
     // void f(void (*g)(uint64_t&&)) {
@@ -224,7 +219,7 @@ pub fn local_large_var_moved(f: fn(Gigastruct)) {
     // missing-NOT: __stack_chk_fail
 }
 
-// CHECK-LABEL: local_large_var_cloned{{:|\[}}
+// CHECK-LABEL: "local_large_var_cloned"
 #[no_mangle]
 pub fn local_large_var_cloned(f: fn(Gigastruct)) {
     f(Gigastruct { does: 0, not: 1, have: 2, array: 3, members: 4 });
@@ -233,10 +228,18 @@ pub fn local_large_var_cloned(f: fn(Gigastruct)) {
     // connection to this stack frame. Still, since instances of `Gigastruct`
     // are sufficiently large, it is allocated in the caller stack frame and
     // passed as a pointer. As such, this function is *also* protected, just
-    // like `local_large_var_moved`. This is also the case for pass-by-value
-    // of sufficiently large structs in C++:
+    // like `local_large_var_moved`.
+    //
+    // This matches clang++ behavior, but not g++ behavior.
+    //
+    // In any case, both options are fine from a specification point of view, there
+    // is no "user-accessible pointer", and there is no strong reason to avoid generating
+    // a canary in this case, since it doesn't seem to be one of the performance-critical
+    // cases in which avoiding generating a canary is important, so it seems that
+    // rustc should keep the clang-like behavior of generating a canary here.
+    //
     // ```
-    // cat <<EOF | clang++ -O2 -fstack-protector-strong -S -x c++ - -o - | grep stack_chk
+    // cat <<EOF | g++ -O2 -fstack-protector-strong -S -x c++ - -o - | grep stack_chk
     // #include <cstdint>
     // #include <utility>
     // struct Gigastruct { uint64_t a, b, c, d, e; };
@@ -254,65 +257,49 @@ pub fn local_large_var_cloned(f: fn(Gigastruct)) {
 }
 
 extern "C" {
-    // A call to an external `alloca` function is *not* recognized as an
-    // `alloca(3)` operation. This function is a compiler built-in, as the
-    // man page explains. Clang translates it to an LLVM `alloca`
-    // instruction with a count argument, which is also what the LLVM stack
-    // protector heuristics looks for. The man page for `alloca(3)` details
-    // a way to avoid using the compiler built-in: pass a -std=c11
-    // argument, *and* don't include <alloca.h>. Though this leads to an
-    // external alloca() function being called, it doesn't lead to stack
-    // protection being included. It even fails with a linker error
-    // "undefined reference to `alloca'". Example:
-    // ```
-    // cat<<EOF | clang -fstack-protector-strong -x c -std=c11 - -o /dev/null
-    // #include <stdlib.h>
-    // void * alloca(size_t);
-    // void f(void (*g)(void*)) {
-    //     void * p = alloca(10);
-    //     g(p);
-    // }
-    // int main() { return 0; }
-    // EOF
-    // ```
-    // The following tests demonstrate that calls to an external `alloca`
-    // function in Rust also doesn't trigger stack protection.
+    // Difference between LLVM and GCC: LLVM will not generate stack protection
+    // for "external" calls to alloca, but gcc will. See the matching test for
+    // stack-protector-heuristics-effect under assembly-llvm.
+    //
+    // This is a difference in heuristics and therefore fine.
+    //
+    // Check that rustc_codegen_gcc matches gcc behavior.
 
     fn alloca(size: usize) -> *mut ();
 }
 
-// CHECK-LABEL: alloca_small_compile_time_constant_arg{{:|\[}}
+// CHECK-LABEL: "alloca_small_compile_time_constant_arg"
 #[no_mangle]
 pub fn alloca_small_compile_time_constant_arg(f: fn(*mut ())) {
     f(unsafe { alloca(8) });
 
     // all: __stack_chk_fail
-    // strong-NOT: __stack_chk_fail
-    // basic-NOT: __stack_chk_fail
+    // strong: __stack_chk_fail
+    // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
 }
 
-// CHECK-LABEL: alloca_large_compile_time_constant_arg{{:|\[}}
+// CHECK-LABEL: "alloca_large_compile_time_constant_arg"
 #[no_mangle]
 pub fn alloca_large_compile_time_constant_arg(f: fn(*mut ())) {
     f(unsafe { alloca(9) });
 
     // all: __stack_chk_fail
-    // strong-NOT: __stack_chk_fail
-    // basic-NOT: __stack_chk_fail
+    // strong: __stack_chk_fail
+    // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
 }
 
-// CHECK-LABEL: alloca_dynamic_arg{{:|\[}}
+// CHECK-LABEL: "alloca_dynamic_arg"
 #[no_mangle]
 pub fn alloca_dynamic_arg(f: fn(*mut ()), n: usize) {
     f(unsafe { alloca(n) });
 
     // all: __stack_chk_fail
-    // strong-NOT: __stack_chk_fail
-    // basic-NOT: __stack_chk_fail
+    // strong: __stack_chk_fail
+    // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
 }
