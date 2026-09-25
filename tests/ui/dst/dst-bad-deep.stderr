@@ -6,12 +6,11 @@ LL |     let h: &Fat<Fat<[isize]>> = &Fat { ptr: *g };
    |
    = help: within `Fat<Fat<[isize]>>`, the trait `Sized` is not implemented for `[isize]`
 note: required because it appears within the type `Fat<[isize]>`
-  --> $DIR/dst-bad-deep.rs:6:8
+  --> $DIR/dst-bad-deep.rs:7:5
    |
 LL | struct Fat<T: ?Sized> {
-   |        ^^^
 LL |     ptr: T
-   |     ------ required by this field
+   |     ^^^^^^ required by this field
    = note: structs must have a statically known size to be initialized
 
 error: aborting due to 1 previous error

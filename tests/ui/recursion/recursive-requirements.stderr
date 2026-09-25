@@ -6,12 +6,11 @@ LL |     let _: AssertSync<Foo> = unimplemented!();
    |
    = help: within `Foo`, the trait `Sync` is not implemented for `*const Bar`
 note: required because it appears within the type `Foo`
-  --> $DIR/recursive-requirements.rs:5:12
+  --> $DIR/recursive-requirements.rs:6:5
    |
 LL | pub struct Foo {
-   |            ^^^
 LL |     bar: *const Bar,
-   |     --------------- required by this field
+   |     ^^^^^^^^^^^^^^^ required by this field
 note: required by a bound in `AssertSync`
   --> $DIR/recursive-requirements.rs:3:22
    |
@@ -26,22 +25,20 @@ LL |     let _: AssertSync<Foo> = unimplemented!();
    |
    = help: within `Foo`, the trait `Sync` is not implemented for `*const Foo`
 note: required because it appears within the type `Bar`
-  --> $DIR/recursive-requirements.rs:10:12
+  --> $DIR/recursive-requirements.rs:11:5
    |
 LL | pub struct Bar {
-   |            ^^^
 LL |     foo: *const Foo,
-   |     --------------- required by this field
+   |     ^^^^^^^^^^^^^^^ required by this field
 note: required because it appears within the type `PhantomData<Bar>`
   --> $SRC_DIR/core/src/marker.rs:LL:COL
 note: required because it appears within the type `Foo`
-  --> $DIR/recursive-requirements.rs:5:12
+  --> $DIR/recursive-requirements.rs:7:5
    |
 LL | pub struct Foo {
-   |            ^^^
 LL |     bar: *const Bar,
 LL |     phantom: PhantomData<Bar>,
-   |     ------------------------- required by this field
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this field
 note: required by a bound in `AssertSync`
   --> $DIR/recursive-requirements.rs:3:22
    |
