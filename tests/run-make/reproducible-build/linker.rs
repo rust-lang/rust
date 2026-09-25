@@ -33,6 +33,14 @@ fn main() {
         } else {
             &*arg
         };
+
+        // This file is produced during linking in a temporary directory (windows only).
+        let arg = if arg.ends_with(".dll_imports_indirect.lib") {
+            path.file_name().unwrap().to_str().unwrap()
+        } else {
+            arg
+        };
+
         out.push_str(&format!("{}: {}\n", arg, hash(&contents)));
     }
 
