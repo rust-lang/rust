@@ -1656,8 +1656,8 @@ pub(crate) enum ExpectedSemiSugg {
         style = "short"
     )]
     ChangeToSemi(#[primary_span] Span),
-    #[suggestion("add `;` here", code = ";", applicability = "machine-applicable", style = "short")]
-    AddSemi(#[primary_span] Span),
+    #[suggestion("add `;` here", code = ";", style = "short")]
+    AddSemi(#[primary_span] Span, #[applicability] Applicability),
 }
 
 #[derive(Diagnostic)]
