@@ -72,12 +72,48 @@ LL |     reuse foo { &self.0 }
    |           ^^^ not found in this scope
 
 error[E0423]: cannot find function `self` in module `prefix`
-  --> $DIR/bad-resolve.rs:46:16
+  --> $DIR/bad-resolve.rs:49:16
    |
 LL | reuse prefix::{self, super, crate};
    |                ^^^^ not found in `prefix`
    |
    = note: a module named `prefix::self` exists in another namespace
+
+error: failed to resolve delegation callee
+  --> $DIR/bad-resolve.rs:45:27
+   |
+LL | reuse unresolved_prefix::{a, b, c};
+   |                           ^
+
+error: failed to resolve delegation callee
+  --> $DIR/bad-resolve.rs:45:30
+   |
+LL | reuse unresolved_prefix::{a, b, c};
+   |                              ^
+
+error: failed to resolve delegation callee
+  --> $DIR/bad-resolve.rs:45:33
+   |
+LL | reuse unresolved_prefix::{a, b, c};
+   |                                 ^
+
+error: failed to resolve delegation callee
+  --> $DIR/bad-resolve.rs:49:16
+   |
+LL | reuse prefix::{self, super, crate};
+   |                ^^^^
+
+error: failed to resolve delegation callee
+  --> $DIR/bad-resolve.rs:49:22
+   |
+LL | reuse prefix::{self, super, crate};
+   |                      ^^^^^
+
+error: failed to resolve delegation callee
+  --> $DIR/bad-resolve.rs:49:29
+   |
+LL | reuse prefix::{self, super, crate};
+   |                             ^^^^^
 
 error[E0186]: method `foo` has a `&self` declaration in the trait, but not in the impl
   --> $DIR/bad-resolve.rs:34:11
@@ -152,12 +188,12 @@ LL | reuse unresolved_prefix::{a, b, c};
    = help: you might be missing a crate named `unresolved_prefix`
 
 error[E0433]: `crate` in paths can only be used in start position
-  --> $DIR/bad-resolve.rs:46:29
+  --> $DIR/bad-resolve.rs:49:29
    |
 LL | reuse prefix::{self, super, crate};
    |                             ^^^^^ can only be used in path start position
 
-error: aborting due to 14 previous errors; 1 warning emitted
+error: aborting due to 20 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0038, E0046, E0186, E0324, E0407, E0423, E0425, E0433, E0575...
 For more information about an error, try `rustc --explain E0038`.
