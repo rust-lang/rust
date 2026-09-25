@@ -1,11 +1,13 @@
 //! Function pointer type discrimination for pointer authentication.
 
 //! This module implements Rust's equivalent of Clang's function pointer type
-//! discriminator computation used in pointer authentication.
+//! discriminator computation used in pointer authentication, as well as the
+//! machinery required to locate function pointer fields in Rust layouts that
+//! require such discriminators.
 //!
 //! Compatibility with Clang is a primary goal. The discriminator produced for a
-//! given external "C" function type must match the value computed by Clang so that
-//! function pointers can be exchanged safely between Rust and C code while
+//! given external "C" function type must match the value computed by Clang so
+//! that function pointers can be exchanged safely between Rust and C code while
 //! preserving pointer authentication semantics.
 //!
 //! The implementation mirrors Clang's behavior in
@@ -15,14 +17,17 @@
 //!
 //! ## Overview
 //!
-//! The computation is structured into three conceptual stages:
+//! The implementation is structured into three conceptual stages:
 //!
 //! ### 1. Type normalization and lowering
-//!    Rust types are converted into a language-independent representation
-//!    (`ClangDiscTy`) that mirrors the type categories used by Clang when computing
-//!    function pointer discriminators. This includes canonicalization such as
-//!    treating all pointer-like types uniformly and mapping Rust constructs onto
-//!    their closest C equivalents.
+//!
+//!    Rust types are first canonicalized according to ABI representation
+//!    (treating ABI-equivalent wrappers and niche representations as their
+//!    underlying representation, and treating pointer-like types uniformly),
+//!    then converted into a language-independent representation (`ClangDiscTy`)
+//!    that mirrors the type categories used by Clang when computing function
+//!    pointer discriminators.
+//!
 //!    One notable exception is C `_Complex`. Rust has no corresponding native type,
 //!    so there is no canonical Rust representation to map onto Clang's `_Complex`
 //!    type category. Rather than infer one (for example, by treating `(f32, f32)`
@@ -31,17 +36,24 @@
 //!    encoding.
 //!
 //! ### 2. Type encoding
+//!
 //!    The lowered representation is serialized into a byte stream using rules
 //!    intended to match Clang's implementation in:
 //!    `encodeTypeForFunctionPointerAuth`. The resulting encoding describes the
 //!    function signature in a target-independent form suitable for hashing.
 //!
 //! ### 3. Discriminator hashing
+//!
 //!    The encoded byte stream is hashed using LLVM's stable SipHash-2-4 based
 //!    discriminator algorithm. The implementation here is a direct translation
 //!    of LLVM/Clang's logic and must remain bit-for-bit compatible. See:
 //!    <https://github.com/llvm/llvm-project/blob/main/third-party/siphash/include/siphash/SipHash.h>.
 //!    Defined in `llvm_siphash.rs`.
+//!
+//!    In addition to computing discriminators for individual function pointer
+//!    types, this module can recursively walk Rust type layouts and produce a map
+//!    from byte offsets to discriminators for function pointer fields contained
+//!    within aggregates.
 //!
 //! ## Module structure
 //!
@@ -49,10 +61,15 @@
 //!   - `FnPtrDiscriminatorSource`
 //!   - `ptrauth_compute_fn_ptr_type_discriminator_for`
 //!   - `ptrauth_clone_discriminated_schema_for`
+//!   - `ptrauth_collect_fn_ptr_discriminators`
 //!
 //! - Low-level API
-//!   - `FnPtrTypeDiscriminatorInput`
+//!   - `FnPtrTypeDiscriminatorInput` - canonical function signature input for
+//!       discriminator computation; exposes the function ABI through `abi()`.
 //!   - `compute_fn_ptr_type_discriminator`
+//!
+//! - Layout traversal
+//!   - `ptrauth_collect_fn_ptr_discriminators`
 //!
 //! - Signature extraction
 //!   - `extract_fn_ptr_type`
@@ -68,19 +85,22 @@
 //!
 //! ## Compatibility requirements
 //!
-//! Any changes to the encoding or hashing logic should be validated against Clang's
-//! discriminator computation. Divergence from Clang will result in incompatible
-//! pointer authentication values across language boundaries.
+//! Any changes to the encoding or hashing logic should be validated against
+//! Clang's discriminator computation. Divergence from Clang will result in
+//! incompatible pointer authentication values across language boundaries.
 //!
-//! This implementation intentionally approximates Clang's behavior for extern "C"
-//! function types only. It does NOT attempt to model full type system rules.
+//! This implementation intentionally approximates Clang's behavior for
+//! `extern "C"` and `extern "System"` function types only. It does NOT attempt
+//! to model full Rust type system rules.
 
-use rustc_abi::ExternAbi;
+use rustc_abi::{ExternAbi, Size, TagEncoding, Variants};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, Unnormalized};
 use rustc_session::PointerAuthSchema;
-use rustc_span::sym;
 
 use crate::ptrauth::llvm_siphash::llvm_pointer_auth_stable_siphash;
+use crate::ty::consts::ConstExt;
+use crate::ty::layout::LayoutCx;
 
 /// Types that can serve as a source for function pointer type discrimination.
 ///
@@ -131,15 +151,22 @@ impl<'tcx> FnPtrDiscriminatorSource<'tcx> for Ty<'tcx> {
 /// normalized before constructing the canonical discriminator input.
 impl<'tcx> FnPtrDiscriminatorSource<'tcx> for Instance<'tcx> {
     fn discriminator_input(self, tcx: TyCtxt<'tcx>) -> Option<FnPtrTypeDiscriminatorInput<'tcx>> {
-        let sig = tcx
-            .instantiate_and_normalize_erasing_regions(
-                self.args,
-                ty::TypingEnv::fully_monomorphized(),
-                tcx.fn_sig(self.def_id()),
-            )
-            .skip_binder();
+        let typing_env = ty::TypingEnv::fully_monomorphized();
 
-        Some(FnPtrTypeDiscriminatorInput::from_sig(sig))
+        match self.ty(tcx, typing_env).kind() {
+            ty::FnDef(def_id, args) => {
+                let sig = tcx
+                    .instantiate_and_normalize_erasing_regions(
+                        args.skip_binder(),
+                        typing_env,
+                        tcx.fn_sig(*def_id),
+                    )
+                    .skip_binder();
+                Some(FnPtrTypeDiscriminatorInput::from_sig(sig))
+            }
+            // Closures, coroutines, etc. are never called via an `extern "C"` function pointer.
+            _ => None,
+        }
     }
 }
 /// Enables discriminator computation directly from instantiated function
@@ -213,7 +240,11 @@ pub struct FnPtrTypeDiscriminatorInput<'tcx> {
 }
 
 impl<'tcx> FnPtrTypeDiscriminatorInput<'tcx> {
-    fn from_sig(sig: ty::FnSig<'tcx>) -> Self {
+    pub fn abi(&self) -> ExternAbi {
+        self.abi
+    }
+
+    pub fn from_sig(sig: ty::FnSig<'tcx>) -> Self {
         FnPtrTypeDiscriminatorInput {
             inputs: sig.inputs(),
             output: sig.output(),
@@ -255,16 +286,137 @@ fn extract_fn_ptr_type<'tcx>(tcx: TyCtxt<'tcx>, mut ty: Ty<'tcx>) -> Option<Ty<'
     }
 }
 
-/// Computes the Clang-compatible function pointer type discriminator.
+/// Recursively walks a type layout and records the offsets of all supported
+/// function pointer fields together with their computed type discriminators.
 ///
+///
+/// Traversal currently supports:
+/// - references
+/// - direct function pointers
+/// - structs
+/// - tuples
+/// - arrays
+///
+/// Offsets are accumulated relative to the containing object.
+pub fn ptrauth_collect_fn_ptr_discriminators<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> FxHashMap<Size, u64> {
+    let mut map = FxHashMap::default();
+
+    collect_fn_ptr_discriminators_inner(tcx, typing_env, ty, Size::ZERO, &mut map);
+
+    map
+}
+
+fn collect_fn_ptr_discriminators_inner<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    ty: Ty<'tcx>,
+    base_offset: Size,
+    map: &mut FxHashMap<Size, u64>,
+) {
+    // Direct function pointer.
+    if let Some(disc) = ptrauth_compute_fn_ptr_type_discriminator_for(tcx, ty) {
+        map.insert(base_offset, disc.into());
+
+        return;
+    }
+
+    match ty.kind() {
+        ty::Ref(_, pointee, _) => {
+            collect_fn_ptr_discriminators_inner(tcx, typing_env, *pointee, base_offset, map);
+        }
+        ty::Adt(def, args) if def.is_struct() => {
+            let Ok(layout) = tcx.layout_of(typing_env.as_query_input(ty)) else {
+                return;
+            };
+
+            let variant = def.non_enum_variant();
+
+            for (idx, field_def) in variant.fields.iter_enumerated() {
+                let field_ty = tcx.normalize_erasing_regions(typing_env, field_def.ty(tcx, args));
+
+                let field_offset = layout.fields.offset(idx.into());
+
+                collect_fn_ptr_discriminators_inner(
+                    tcx,
+                    typing_env,
+                    field_ty,
+                    base_offset + field_offset,
+                    map,
+                );
+            }
+        }
+        ty::Tuple(fields) => {
+            let Ok(layout) = tcx.layout_of(typing_env.as_query_input(ty)) else {
+                return;
+            };
+
+            for (idx, field_ty) in fields.iter().enumerate() {
+                let field_offset = layout.fields.offset(idx);
+
+                collect_fn_ptr_discriminators_inner(
+                    tcx,
+                    typing_env,
+                    field_ty,
+                    base_offset + field_offset,
+                    map,
+                );
+            }
+        }
+        ty::Array(elem_ty, len) => {
+            let count = match len.try_to_target_usize(tcx) {
+                Some(v) => v,
+                None => return,
+            };
+
+            let Ok(elem_layout) = tcx.layout_of(typing_env.as_query_input(*elem_ty)) else {
+                return;
+            };
+
+            let stride = elem_layout.size;
+
+            // Collect discriminator of one element, so we don't have to recompute it for all the
+            // elements in the array.
+            let mut elem_map = FxHashMap::default();
+
+            collect_fn_ptr_discriminators_inner(
+                tcx,
+                typing_env,
+                *elem_ty,
+                Size::ZERO,
+                &mut elem_map,
+            );
+
+            // SAFETY: We immediately collect into a Vec and sort by offset.
+            // The HashMap iteration order is irrelevant and must not affect determinism.
+            #[allow(rustc::potential_query_instability)]
+            let mut entries: Vec<(Size, u64)> = elem_map.into_iter().collect();
+            entries.sort_unstable_by_key(|(offset, _)| *offset);
+
+            // Replicate for every array slot.
+            for i in 0..count {
+                let elem_base = base_offset + stride * i;
+
+                for (inner_offset, discr) in entries.iter().copied() {
+                    map.insert(elem_base + inner_offset, discr);
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
 /// This is the low-level discriminator computation routine operating on an
 /// already constructed `FnPtrTypeDiscriminatorInput`.
-fn compute_fn_ptr_type_discriminator<'tcx>(
+fn encode_fn_ptr_type_discriminator<'tcx>(
     tcx: TyCtxt<'tcx>,
     input: &FnPtrTypeDiscriminatorInput<'tcx>,
-) -> u16 {
+) -> Option<PtrauthEncoder> {
     if !matches!(input.abi, ExternAbi::C { .. } | ExternAbi::System { .. }) {
-        return 0;
+        return None;
     }
 
     let mut enc = PtrauthEncoder::new();
@@ -282,9 +434,30 @@ fn compute_fn_ptr_type_discriminator<'tcx>(
 
     enc.push(b'E');
 
-    let hash = enc.finish();
+    Some(enc)
+}
 
-    hash.into()
+/// Computes the Clang-compatible function pointer type discriminator (hashed).
+///
+/// Returns `0` for function ABIs that are not supported by the Clang-compatible
+/// encoding.
+pub fn compute_fn_ptr_type_discriminator<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    input: &FnPtrTypeDiscriminatorInput<'tcx>,
+) -> u16 {
+    encode_fn_ptr_type_discriminator(tcx, input).map(|enc| enc.finish().into()).unwrap_or(0)
+}
+
+/// Returns the raw Clang-compatible type encoding used as input to the
+/// discriminator hash.
+///
+/// This is primarily used for debugging and comparing Rust's encoding against
+/// Clang's `encodeTypeForFunctionPointerAuth`.
+pub fn debug_encode_fn_ptr_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    input: &FnPtrTypeDiscriminatorInput<'tcx>,
+) -> String {
+    encode_fn_ptr_type_discriminator(tcx, input).map(|enc| enc.debug_string()).unwrap_or_default()
 }
 
 // Clang disc type.
@@ -300,6 +473,9 @@ enum ClangDiscTy<'tcx> {
     // - raw pointers (`*const T`, `*mut T`)
     // - Rust references (`&T`, `&mut T`)
     // - function pointers
+    // - `Box<T, Global>` (canonicalized to a raw pointer)
+    // - `NonNull<T>` (canonicalized through its transparent representation)
+    // - DST pointer-like types (`dyn Trait`, slices, `str`)
     // All collapse to a single Clang-compatible 'P' node.
     Pointer,
 
@@ -317,35 +493,66 @@ enum ClangDiscTy<'tcx> {
     Void,
 }
 
-// Canonicalize Option-wrapped pointer types used to model C nullable pointers.
-//
-// Rust and Clang should compute identical discriminators for equivalent C APIs.
-// Clang does not distinguish nullable from non-nullable pointer types when
-// computing function pointer authentication discriminators, so
-// `Option<fn>` and `Option<*mut T>` are encoded identically to their
-// underlying pointer types.
-//
-// Although `Option<*mut T>` is not considered FFI-safe by Rust and triggers the
-// `improper_ctypes`/`improper_ctypes_definitions` lints, this is a warning
-// rather than a hard error. Canonicalizing it here preserves Clang-compatible
-// discriminator computation.
-//
-// Please see the following tests for sample use cases:
-// pauth-fn-ptr-type-discrimination-option-callback.rs,
-// pauth-fn-ptr-type-discrimination-option-return.rs and pauth-fn-ptr-type-discrimination-option.rs
-fn canonicalize_c_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    if let ty::Adt(def, args) = ty.kind()
-        && tcx.is_diagnostic_item(sym::Option, def.did())
-    {
-        let inner = args.type_at(0);
+/// Canonicalizes Rust types that have the same ABI representation as a simpler
+/// C-compatible type for discriminator purposes.
+///
+/// This is intentionally representation-based rather than purely semantic:
+/// types that have the same ABI representation are lowered to the same
+/// discriminator type. This includes:
+/// - pattern types, which are transparent with respect to representation;
+/// - `Box<T, Global>`, which is represented as a thin pointer;
+/// - size-0, alignment-1 types, which are represented like `()`;
+/// - `repr(transparent)` wrappers, which are represented like their non-ZST
+///   field;
+/// - two-variant niche enums, which are represented like their payload field.
+///
+/// The canonicalization is repeated until reaching a fixed point because one
+/// transformation can expose another canonicalization opportunity.
+fn canonicalize_abi_compatible_type<'tcx>(tcx: TyCtxt<'tcx>, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+    let typing_env = ty::TypingEnv::fully_monomorphized();
 
-        match inner.kind() {
-            ty::FnPtr(..) | ty::RawPtr(..) => return inner,
-            _ => {}
+    loop {
+        let before = ty;
+
+        if let ty::Pat(base, _) = ty.kind() {
+            ty = *base;
+        }
+
+        if ty.is_box_global(tcx) {
+            ty = Ty::new_imm_ptr(
+                tcx,
+                ty.boxed_ty().expect("is_box_global() returned true, so this must be a Box"),
+            );
+        }
+
+        if let Ok(layout) = tcx.layout_of(typing_env.as_query_input(ty)) {
+            if layout.is_zst() && layout.align.abi.bytes() == 1 {
+                ty = tcx.types.unit;
+            } else if matches!(ty.kind(), ty::Adt(..)) {
+                let cx = LayoutCx::new(tcx, typing_env);
+                ty = layout.peel_transparent_wrappers(&cx).ty;
+            }
+        }
+
+        if let ty::Adt(def, args) = ty.kind()
+            && def.is_enum()
+            && def.variants().len() == 2
+            && let Ok(layout) = tcx.layout_of(typing_env.as_query_input(ty))
+            && let Variants::Multiple {
+                tag_encoding: TagEncoding::Niche { untagged_variant, .. },
+                ..
+            } = layout.variants
+        {
+            let variant = def.variant(untagged_variant);
+            if let [field] = &variant.fields.raw[..] {
+                ty = tcx.normalize_erasing_regions(typing_env, field.ty(tcx, args));
+            }
+        }
+
+        if ty == before {
+            return ty;
         }
     }
-
-    ty
 }
 
 /// Lowers a Rust type into a Clang-compatible discriminator type.
@@ -368,7 +575,7 @@ fn canonicalize_c_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 ///   `_Complex` types.
 /// This must remain in sync with Clang's `encodeTypeForFunctionPointerAuth`.
 fn to_clang_disc_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ClangDiscTy<'tcx> {
-    let ty = canonicalize_c_type(tcx, ty);
+    let ty = canonicalize_abi_compatible_type(tcx, ty);
     match ty.kind() {
         // C void / Rust ()
         _ if ty.is_unit() => ClangDiscTy::Void,
@@ -380,7 +587,8 @@ fn to_clang_disc_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ClangDiscTy<'tcx> 
         ty::Int(_) | ty::Uint(_) => ClangDiscTy::Int,
         ty::Float(f) => ClangDiscTy::Float(f),
 
-        // everything pointer-like collapses
+        // Pointer-like types form a discriminator boundary: the pointee type
+        // does not participate in the encoding.
         ty::RawPtr(..) | ty::Ref(..) | ty::FnPtr(..) | ty::Dynamic(..) | ty::Slice(_) | ty::Str => {
             ClangDiscTy::Pointer
         }
@@ -388,8 +596,14 @@ fn to_clang_disc_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ClangDiscTy<'tcx> 
         // arrays ignore size
         ty::Array(elem, _) => ClangDiscTy::Array { elem: *elem },
 
-        // enums to integer collapse
-        ty::Adt(def, _) if def.is_enum() => ClangDiscTy::EnumLikeInt,
+        // enums to integer collapse - mirrors Clang's Type::Enum handling,
+        // which recurses into the enum's underlying integer type per C11
+        // 6.7.2.2p4.
+        // A non-niche, data-carrying enum (e.g. Option<*mut T>) is not an
+        // "enumerated type" in the C11 sense, such enums fall through to the
+        // general Adt(_) => AdtName(..) arm below instead.
+        ty::Adt(def, _) if def.is_enum() && def.is_payloadfree() => ClangDiscTy::EnumLikeInt,
+
         // simd vectors
         ty::Adt(def, args) if def.repr().simd() => {
             // Clang encodes SIMD vectors by their total size
@@ -440,6 +654,10 @@ impl PtrauthEncoder {
     fn finish(&self) -> u16 {
         llvm_pointer_auth_stable_siphash(&self.buf)
     }
+
+    fn debug_string(&self) -> String {
+        String::from_utf8_lossy(&self.buf).into_owned()
+    }
 }
 
 /// Encodes a ClangDiscTy into the discriminator byte stream.
@@ -454,7 +672,7 @@ fn encode_ty<'tcx>(enc: &mut PtrauthEncoder, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) {
         ClangDiscTy::Bool | ClangDiscTy::Char | ClangDiscTy::Int => enc.push(b'i'),
 
         ClangDiscTy::Float(f) => match f.bit_width() {
-            16 => enc.push_str("Dh"),
+            16 => enc.push_str("DF16_"),
             32 => enc.push(b'f'),
             64 => enc.push(b'd'),
             128 => enc.push(b'g'),

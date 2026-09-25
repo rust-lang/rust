@@ -1,6 +1,8 @@
+// ignore-tidy-file-linelength
+// The combining of ptrauth constant callee into bundle was introduced after LLVM 21:
+// https://github.com/llvm/llvm-project/pull/94706
+//@ min-llvm-version: 22
 //@ add-minicore
-// ignore-tidy-linelength
-//@ only-pauthtest
 //@ revisions: O0_PAUTH O3_PAUTH
 
 //@ [O0_PAUTH] needs-llvm-components: aarch64
