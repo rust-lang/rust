@@ -41,6 +41,7 @@ use tracing::debug;
 
 use crate::creader::CStore;
 use crate::eii::EiiMapEncodedKeyValue;
+use crate::rmeta::encoder::CRATE_LOCAL_DEF_INDEX;
 use crate::rmeta::table::IsDefault;
 use crate::rmeta::*;
 
@@ -98,12 +99,12 @@ pub(crate) struct CrateMetadata {
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
-    trait_impls: FxIndexMap<(u32, DefIndex), LazyArray<(DefIndex, Option<SimplifiedType>)>>,
+    trait_impls: FxIndexMap<(u32, u32), LazyArray<(LocalDefIndex, Option<SimplifiedType>)>>,
     /// Inherent impls which do not follow the normal coherence rules.
     ///
     /// These can be introduced using either `#![rustc_coherence_is_core]`
     /// or `#[rustc_allow_incoherent_impl]`.
-    incoherent_impls: FxIndexMap<SimplifiedType, LazyArray<DefIndex>>,
+    incoherent_impls: FxIndexMap<SimplifiedType, LazyArray<LocalDefIndex>>,
     /// Proc macro function pointers for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacroClient]>,
     /// Source maps for code from the crate.
@@ -115,7 +116,7 @@ pub(crate) struct CrateMetadata {
     /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     alloc_decoding_state: AllocDecodingState,
     /// Caches decoded `DefKey`s.
-    def_key_cache: Lock<FxHashMap<DefIndex, DefKey>>,
+    def_key_cache: Lock<FxHashMap<LocalDefIndex, DefKey>>,
 
     // --- Other significant crate properties ---
     /// ID of this crate, from the current compilation session's point of view.
@@ -804,10 +805,10 @@ impl MetadataBlob {
                             out,
                             "{} = crate{}",
                             lang_item.name(),
-                            DefPath::make(LOCAL_CRATE, id, |parent| root
+                            DefPath::make(LOCAL_CRATE, id.into(), |parent| root
                                 .tables
                                 .def_keys
-                                .get(self, parent)
+                                .get(self, LocalDefIndex::from_def_index(parent))
                                 .unwrap()
                                 .decode(self))
                             .to_string_no_crate_verbose()
@@ -847,10 +848,12 @@ impl MetadataBlob {
                     ) -> io::Result<()> {
                         let root = blob.get_root();
 
+                        let item = LocalDefIndex::from_def_index(item);
+
                         let def_kind = root.tables.def_kind.get(blob, item).unwrap();
                         let def_key = root.tables.def_keys.get(blob, item).unwrap().decode(blob);
                         #[allow(rustc::symbol_intern_string_literal)]
-                        let def_name = if item == CRATE_DEF_INDEX {
+                        let def_name = if item == CRATE_LOCAL_DEF_INDEX {
                             kw::Crate
                         } else {
                             def_key
@@ -864,10 +867,10 @@ impl MetadataBlob {
                                 |index| {
                                     format!(
                                         "crate{}",
-                                        DefPath::make(LOCAL_CRATE, index, |parent| root
+                                        DefPath::make(LOCAL_CRATE, index.into(), |parent| root
                                             .tables
                                             .def_keys
-                                            .get(blob, parent)
+                                            .get(blob, LocalDefIndex::from_def_index(parent))
                                             .unwrap()
                                             .decode(blob))
                                         .to_string_no_crate_verbose()
@@ -888,7 +891,7 @@ impl MetadataBlob {
                         {
                             write!(out, "\n")?;
                             for child in children.decode(blob) {
-                                print_item(blob, out, child, indent + 4)?;
+                                print_item(blob, out, child.into(), indent + 4)?;
                             }
                             writeln!(out, "{nil: <indent$}}}", nil = "")?;
                         } else {
@@ -983,11 +986,15 @@ impl CrateRoot {
 }
 
 impl CrateMetadata {
-    fn missing(&self, descr: &str, id: DefIndex) -> ! {
+    fn missing(&self, descr: &str, id: LocalDefIndex) -> ! {
         bug!("missing `{descr}` for {:?}", self.local_def_id(id))
     }
 
-    fn raw_proc_macro(&self, tcx: TyCtxt<'_>, id: DefIndex) -> (ProcMacroClient, ProcMacroKind) {
+    fn raw_proc_macro(
+        &self,
+        tcx: TyCtxt<'_>,
+        id: LocalDefIndex,
+    ) -> (ProcMacroClient, ProcMacroKind) {
         // DefIndex's in root.proc_macro_data have a one-to-one correspondence
         // with items in 'raw_proc_macros'.
         let (pos, (_id, kind)) = self
@@ -1003,23 +1010,26 @@ impl CrateMetadata {
         (self.raw_proc_macros.unwrap()[pos], kind.decode((self, tcx)))
     }
 
-    fn opt_item_name(&self, item_index: DefIndex) -> Option<Symbol> {
+    fn opt_item_name(&self, item_index: LocalDefIndex) -> Option<Symbol> {
         let def_key = self.def_key(item_index);
         def_key.disambiguated_data.data.get_opt_name().or_else(|| {
             if def_key.disambiguated_data.data == DefPathData::Ctor {
                 let parent_index = def_key.parent.expect("no parent for a constructor");
-                self.def_key(parent_index).disambiguated_data.data.get_opt_name()
+                self.def_key(LocalDefIndex::from_def_index(parent_index))
+                    .disambiguated_data
+                    .data
+                    .get_opt_name()
             } else {
                 None
             }
         })
     }
 
-    fn item_name(&self, item_index: DefIndex) -> Symbol {
+    fn item_name(&self, item_index: LocalDefIndex) -> Symbol {
         self.opt_item_name(item_index).expect("no encoded ident for item")
     }
 
-    fn opt_item_ident(&self, tcx: TyCtxt<'_>, item_index: DefIndex) -> Option<Ident> {
+    fn opt_item_ident(&self, tcx: TyCtxt<'_>, item_index: LocalDefIndex) -> Option<Ident> {
         let name = self.opt_item_name(item_index)?;
         let span = self
             .root
@@ -1031,7 +1041,7 @@ impl CrateMetadata {
         Some(Ident::new(name, span))
     }
 
-    fn item_ident(&self, tcx: TyCtxt<'_>, item_index: DefIndex) -> Ident {
+    fn item_ident(&self, tcx: TyCtxt<'_>, item_index: LocalDefIndex) -> Ident {
         self.opt_item_ident(tcx, item_index).expect("no encoded ident for item")
     }
 
@@ -1040,7 +1050,7 @@ impl CrateMetadata {
         if cnum == LOCAL_CRATE { self.cnum } else { self.cnum_map[cnum] }
     }
 
-    fn def_kind(&self, item_id: DefIndex) -> DefKind {
+    fn def_kind(&self, item_id: LocalDefIndex) -> DefKind {
         self.root
             .tables
             .def_kind
@@ -1048,7 +1058,7 @@ impl CrateMetadata {
             .unwrap_or_else(|| self.missing("def_kind", item_id))
     }
 
-    fn get_span(&self, tcx: TyCtxt<'_>, index: DefIndex) -> Span {
+    fn get_span(&self, tcx: TyCtxt<'_>, index: LocalDefIndex) -> Span {
         self.root
             .tables
             .def_span
@@ -1057,7 +1067,7 @@ impl CrateMetadata {
             .decode((self, tcx))
     }
 
-    fn load_proc_macro<'tcx>(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> SyntaxExtension {
+    fn load_proc_macro<'tcx>(&self, tcx: TyCtxt<'tcx>, id: LocalDefIndex) -> SyntaxExtension {
         let (name, kind, helper_attrs) = match self.raw_proc_macro(tcx, id) {
             (client, ProcMacroKind::CustomDerive { trait_name, attributes }) => {
                 let helper_attrs =
@@ -1094,7 +1104,7 @@ impl CrateMetadata {
         &self,
         tcx: TyCtxt<'_>,
         kind: DefKind,
-        index: DefIndex,
+        index: LocalDefIndex,
         parent_did: DefId,
     ) -> (VariantIdx, ty::VariantDef) {
         let adt_kind = match kind {
@@ -1118,13 +1128,16 @@ impl CrateMetadata {
                 ctor,
                 data.discr,
                 self.get_associated_item_or_field_def_ids(tcx, index)
-                    .map(|did| ty::FieldDef {
-                        did,
-                        name: self.item_name(did.index),
-                        vis: self.get_visibility(tcx, did.index),
-                        mut_restriction: self.get_mut_restriction(tcx, did.index),
-                        safety: self.get_safety(did.index),
-                        value: self.get_default_field(tcx, did.index),
+                    .map(|did| {
+                        let index = LocalDefIndex::from_def_index(did.index);
+                        ty::FieldDef {
+                            did,
+                            name: self.item_name(index),
+                            vis: self.get_visibility(tcx, index),
+                            mut_restriction: self.get_mut_restriction(tcx, index),
+                            safety: self.get_safety(index),
+                            value: self.get_default_field(tcx, index),
+                        }
                     })
                     .collect(),
                 parent_did,
@@ -1134,7 +1147,7 @@ impl CrateMetadata {
         )
     }
 
-    fn get_adt_def<'tcx>(&self, tcx: TyCtxt<'tcx>, item_id: DefIndex) -> ty::AdtDef<'tcx> {
+    fn get_adt_def<'tcx>(&self, tcx: TyCtxt<'tcx>, item_id: LocalDefIndex) -> ty::AdtDef<'tcx> {
         let kind = self.def_kind(item_id);
         let did = self.local_def_id(item_id);
 
@@ -1175,7 +1188,7 @@ impl CrateMetadata {
         )
     }
 
-    fn get_visibility(&self, tcx: TyCtxt<'_>, id: DefIndex) -> Visibility<ModId> {
+    fn get_visibility(&self, tcx: TyCtxt<'_>, id: LocalDefIndex) -> Visibility<ModId> {
         self.root
             .tables
             .visibility
@@ -1185,7 +1198,7 @@ impl CrateMetadata {
             .map_id(|index| ModId::new_unchecked(self.local_def_id(index)))
     }
 
-    fn get_mut_restriction(&self, tcx: TyCtxt<'_>, id: DefIndex) -> RestrictionKind {
+    fn get_mut_restriction(&self, tcx: TyCtxt<'_>, id: LocalDefIndex) -> RestrictionKind {
         self.root
             .tables
             .mut_restriction
@@ -1194,15 +1207,15 @@ impl CrateMetadata {
             .decode((self, tcx))
     }
 
-    fn get_safety(&self, id: DefIndex) -> Safety {
+    fn get_safety(&self, id: LocalDefIndex) -> Safety {
         self.root.tables.safety.get(self, id)
     }
 
-    fn get_default_field(&self, tcx: TyCtxt<'_>, id: DefIndex) -> Option<DefId> {
+    fn get_default_field(&self, tcx: TyCtxt<'_>, id: LocalDefIndex) -> Option<DefId> {
         self.root.tables.default_fields.get(self, id).map(|d| d.decode((self, tcx)))
     }
 
-    fn get_expn_that_defined(&self, tcx: TyCtxt<'_>, id: DefIndex) -> ExpnId {
+    fn get_expn_that_defined(&self, tcx: TyCtxt<'_>, id: LocalDefIndex) -> ExpnId {
         self.root
             .tables
             .expn_that_defined
@@ -1253,7 +1266,7 @@ impl CrateMetadata {
             .root
             .stripped_cfg_items
             .decode((self, tcx))
-            .map(|item| item.map_scope_id(|index| DefId { krate: cnum, index }));
+            .map(|item| item.map_scope_id(|index| DefId { krate: cnum, index: index.into() }));
         tcx.arena.alloc_from_iter(item_names)
     }
 
@@ -1297,7 +1310,7 @@ impl CrateMetadata {
         fake_doc_items
     }
 
-    fn get_mod_child(&self, tcx: TyCtxt<'_>, id: DefIndex) -> ModChild {
+    fn get_mod_child(&self, tcx: TyCtxt<'_>, id: LocalDefIndex) -> ModChild {
         let ident = self.item_ident(tcx, id);
         let res = Res::Def(self.def_kind(id), self.local_def_id(id));
         let vis = self.get_visibility(tcx, id);
@@ -1313,12 +1326,16 @@ impl CrateMetadata {
     /// # Panics
     ///
     /// May panic if the provided `id` does not refer to a module.
-    fn get_module_children(&self, tcx: TyCtxt<'_>, id: DefIndex) -> impl Iterator<Item = ModChild> {
+    fn get_module_children(
+        &self,
+        tcx: TyCtxt<'_>,
+        id: LocalDefIndex,
+    ) -> impl Iterator<Item = ModChild> {
         gen move {
             if let Some(data) = &self.root.proc_macro_data {
                 // If we are loading as a proc macro, we want to return
                 // the view of this crate as a proc macro crate.
-                if id == CRATE_DEF_INDEX {
+                if id == CRATE_LOCAL_DEF_INDEX {
                     for (child_index, _) in data.macros.decode((self, tcx)) {
                         yield self.get_mod_child(tcx, child_index);
                     }
@@ -1345,7 +1362,7 @@ impl CrateMetadata {
     fn get_ambig_module_children(
         &self,
         tcx: TyCtxt<'_>,
-        id: DefIndex,
+        id: LocalDefIndex,
     ) -> impl Iterator<Item = AmbigModChild> {
         gen move {
             let children = self.root.tables.ambig_module_children.get(self, id);
@@ -1357,11 +1374,11 @@ impl CrateMetadata {
         }
     }
 
-    fn is_item_mir_available(&self, id: DefIndex) -> bool {
+    fn is_item_mir_available(&self, id: LocalDefIndex) -> bool {
         self.root.tables.optimized_mir.get(self, id).is_some()
     }
 
-    fn get_fn_has_self_parameter(&self, tcx: TyCtxt<'_>, id: DefIndex) -> bool {
+    fn get_fn_has_self_parameter(&self, tcx: TyCtxt<'_>, id: LocalDefIndex) -> bool {
         self.root
             .tables
             .fn_arg_idents
@@ -1375,7 +1392,7 @@ impl CrateMetadata {
     fn get_associated_item_or_field_def_ids(
         &self,
         tcx: TyCtxt<'_>,
-        id: DefIndex,
+        id: LocalDefIndex,
     ) -> impl Iterator<Item = DefId> {
         self.root
             .tables
@@ -1386,7 +1403,7 @@ impl CrateMetadata {
             .map(move |child_index| self.local_def_id(child_index))
     }
 
-    fn get_associated_item(&self, tcx: TyCtxt<'_>, id: DefIndex) -> ty::AssocItem {
+    fn get_associated_item(&self, tcx: TyCtxt<'_>, id: LocalDefIndex) -> ty::AssocItem {
         let kind = match self.def_kind(id) {
             DefKind::AssocConst => ty::AssocKind::Const { name: self.item_name(id) },
             DefKind::AssocFn => ty::AssocKind::Fn {
@@ -1409,7 +1426,7 @@ impl CrateMetadata {
         ty::AssocItem { kind, def_id: self.local_def_id(id), container }
     }
 
-    fn get_ctor(&self, tcx: TyCtxt<'_>, node_id: DefIndex) -> Option<(CtorKind, DefId)> {
+    fn get_ctor(&self, tcx: TyCtxt<'_>, node_id: LocalDefIndex) -> Option<(CtorKind, DefId)> {
         match self.def_kind(node_id) {
             DefKind::Struct | DefKind::Variant => {
                 let vdata =
@@ -1423,8 +1440,8 @@ impl CrateMetadata {
     fn get_item_attrs(
         &self,
         tcx: TyCtxt<'_>,
-        id: DefIndex,
-    ) -> impl Iterator<Item = rustc_attr_ir::Attribute> {
+        id: LocalDefIndex,
+    ) -> impl Iterator<Item = hir::Attribute> {
         self.root
             .tables
             .attributes
@@ -1440,7 +1457,7 @@ impl CrateMetadata {
                         self.root
                             .tables
                             .attributes
-                            .get(self, parent_id)
+                            .get(self, LocalDefIndex::from_def_index(parent_id))
                             .expect("no encoded attributes for a structure or variant")
                     }
                     DefPathData::SyntheticCoroutineBody => {
@@ -1456,7 +1473,7 @@ impl CrateMetadata {
     fn get_inherent_implementations_for_type<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
-        id: DefIndex,
+        id: LocalDefIndex,
     ) -> &'tcx [DefId] {
         tcx.arena.alloc_from_iter(
             self.root
@@ -1500,7 +1517,7 @@ impl CrateMetadata {
         // Do a reverse lookup beforehand to avoid touching the crate_num
         // hash map in the loop below.
         let key = match self.reverse_translate_def_id(trait_def_id) {
-            Some(def_id) => (def_id.krate.as_u32(), def_id.index),
+            Some(def_id) => (def_id.krate.as_u32(), def_id.index.as_u32()),
             None => return &[],
         };
 
@@ -1587,7 +1604,7 @@ impl CrateMetadata {
         tcx.arena.alloc_from_iter(self.root.exported_generic_symbols.decode((self, tcx)))
     }
 
-    fn get_macro(&self, tcx: TyCtxt<'_>, id: DefIndex) -> ast::MacroDef {
+    fn get_macro(&self, tcx: TyCtxt<'_>, id: LocalDefIndex) -> ast::MacroDef {
         match self.def_kind(id) {
             DefKind::Macro(_) => {
                 let macro_rules = self.root.tables.is_macro_rules.get(self, id);
@@ -1600,7 +1617,7 @@ impl CrateMetadata {
     }
 
     #[inline]
-    fn def_key(&self, index: DefIndex) -> DefKey {
+    fn def_key(&self, index: LocalDefIndex) -> DefKey {
         *self.def_key_cache.lock().entry(index).or_insert_with(|| {
             self.root.tables.def_keys.get(&self.blob, index).unwrap().decode(&self.blob)
         })
@@ -1609,11 +1626,11 @@ impl CrateMetadata {
     // Returns the path leading to the thing with this `id`.
     fn def_path(&self, id: DefIndex) -> DefPath {
         debug!("def_path(cnum={:?}, id={:?})", self.cnum, id);
-        DefPath::make(self.cnum, id, |parent| self.def_key(parent))
+        DefPath::make(self.cnum, id, |parent| self.def_key(LocalDefIndex::from_def_index(parent)))
     }
 
     #[inline]
-    fn def_path_hash(&self, index: DefIndex) -> DefPathHash {
+    fn def_path_hash(&self, index: LocalDefIndex) -> DefPathHash {
         // This is a hack to workaround the fact that we can't easily encode/decode a Hash64
         // into the FixedSizeEncoding, as Hash64 lacks a Default impl. A future refactor to
         // relax the Default restriction will likely fix this.
@@ -1896,15 +1913,15 @@ impl CrateMetadata {
             .clone()
     }
 
-    fn get_attr_flags(&self, index: DefIndex) -> AttrFlags {
+    fn get_attr_flags(&self, index: LocalDefIndex) -> AttrFlags {
         self.root.tables.attr_flags.get(self, index)
     }
 
-    fn get_intrinsic(&self, tcx: TyCtxt<'_>, index: DefIndex) -> Option<ty::IntrinsicDef> {
+    fn get_intrinsic(&self, tcx: TyCtxt<'_>, index: LocalDefIndex) -> Option<ty::IntrinsicDef> {
         self.root.tables.intrinsic.get(self, index).map(|d| d.decode((self, tcx)))
     }
 
-    fn get_doc_link_resolutions(&self, tcx: TyCtxt<'_>, index: DefIndex) -> DocLinkResMap {
+    fn get_doc_link_resolutions(&self, tcx: TyCtxt<'_>, index: LocalDefIndex) -> DocLinkResMap {
         self.root
             .tables
             .doc_link_resolutions
@@ -1916,7 +1933,7 @@ impl CrateMetadata {
     fn get_doc_link_traits_in_scope(
         &self,
         tcx: TyCtxt<'_>,
-        index: DefIndex,
+        index: LocalDefIndex,
     ) -> impl Iterator<Item = DefId> {
         self.root
             .tables
@@ -2082,8 +2099,10 @@ impl CrateMetadata {
     ) -> impl Iterator<Item = DefId> {
         gen move {
             if let Some(data) = &self.root.proc_macro_data {
-                for def_id in
-                    data.macros.decode((self, tcx)).map(move |(index, _)| DefId { index, krate })
+                for def_id in data
+                    .macros
+                    .decode((self, tcx))
+                    .map(move |(index, _)| DefId { index: index.into(), krate })
                 {
                     yield def_id;
                 }
@@ -2107,8 +2126,8 @@ impl CrateMetadata {
         self.root.tables.def_keys.size()
     }
 
-    fn local_def_id(&self, index: DefIndex) -> DefId {
-        DefId { krate: self.cnum, index }
+    fn local_def_id(&self, index: impl Into<DefIndex>) -> DefId {
+        DefId { krate: self.cnum, index: index.into() }
     }
 
     // Translate a DefId from the current compilation environment to a DefId

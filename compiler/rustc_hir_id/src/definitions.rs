@@ -58,7 +58,7 @@ pub struct Definitions {
 /// A unique identifier that we can use to lookup a definition
 /// precisely. It combines the index of the definition's parent (if
 /// any) with a `DisambiguatedDefPathData`.
-#[derive(Copy, Clone, PartialEq, Debug, Encodable, BlobDecodable)]
+#[derive(Copy, Clone, PartialEq, Debug, BlobDecodable)]
 pub struct DefKey {
     /// The parent path.
     pub parent: Option<DefIndex>,

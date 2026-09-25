@@ -1,11 +1,11 @@
 use std::hash::Hash;
 
 use rustc_data_structures::unord::UnordMap;
-use rustc_hir::def_id::DefIndex;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::ty::{Binder, EarlyBinder, GenericArg, Region};
 use rustc_span::Symbol;
 
+use crate::rmeta::encoder::LocalDefIndex;
 use crate::rmeta::{LazyArray, LazyValue};
 
 pub(crate) trait ParameterizedOverTcx: 'static {
@@ -79,6 +79,7 @@ trivially_parameterized_over_tcx! {
     crate::rmeta::CrateHeader,
     crate::rmeta::CrateRoot,
     crate::rmeta::IncoherentImpls,
+    crate::rmeta::LocalDefIndex,
     crate::rmeta::ProcMacroKind,
     crate::rmeta::RawDefId,
     crate::rmeta::TraitImpls,
@@ -88,12 +89,6 @@ trivially_parameterized_over_tcx! {
     rustc_attr_ir::Attribute,
     rustc_attr_ir::ConstStability,
     rustc_attr_ir::DefaultBodyStability,
-    rustc_attr_ir::Deprecation,
-    rustc_attr_ir::EiiDecl,
-    rustc_attr_ir::EiiImpl,
-    rustc_attr_ir::Stability,
-    rustc_attr_ir::StrippedCfgItem<rustc_hir::def_id::DefIndex>,
-    rustc_attr_ir::lang_items::LangItem,
     rustc_crate_store::ForeignModule,
     rustc_crate_store::LinkagePreference,
     rustc_crate_store::NativeLib,
@@ -103,6 +98,12 @@ trivially_parameterized_over_tcx! {
     rustc_hir::OpaqueTyOrigin<rustc_hir::def_id::DefId>,
     rustc_hir::PreciseCapturingArgKind<Symbol, Symbol>,
     rustc_hir::Safety,
+    rustc_hir::Stability,
+    rustc_hir::attrs::Deprecation,
+    rustc_hir::attrs::EiiDecl,
+    rustc_hir::attrs::EiiImpl,
+    rustc_hir::attrs::StrippedCfgItem<LocalDefIndex>,
+    rustc_hir::attrs::lang_items::LangItem,
     rustc_hir::def::DefKind,
     rustc_hir::def_id::DefId,
     rustc_hir::def_id::DefIndex,
@@ -130,7 +131,7 @@ trivially_parameterized_over_tcx! {
     rustc_middle::ty::RestrictionKind,
     rustc_middle::ty::TraitDef,
     rustc_middle::ty::Variance,
-    rustc_middle::ty::Visibility<DefIndex>,
+    rustc_middle::ty::Visibility<LocalDefIndex>,
     rustc_middle::ty::adjustment::CoerceUnsizedInfo,
     rustc_middle::ty::fast_reject::SimplifiedType,
     rustc_session::config::TargetModifier,

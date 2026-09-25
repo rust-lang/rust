@@ -31,8 +31,8 @@ use rustc_session::config::{OptLevel, OutputType, TargetModifier};
 use rustc_span::def_id::CRATE_MOD_ID;
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
-    ByteSymbol, ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId,
-    Symbol, SyntaxContext, bug, span_bug, sym,
+    BlobDecoder, ByteSymbol, ExternalSource, FileName, SourceFile, SpanData, SpanEncoder,
+    StableSourceFileId, Symbol, SyntaxContext, bug, span_bug, sym,
 };
 use rustc_structures::CrateType;
 use tracing::{debug, instrument, trace};
@@ -109,6 +109,50 @@ impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
     }
 }
 
+rustc_index::newtype_index! {
+    #[orderable]
+    #[debug_format = "LocalDefIndex({})"]
+    pub struct LocalDefIndex {
+        const CRATE_LOCAL_DEF_INDEX = 0;
+    }
+}
+
+impl LocalDefIndex {
+    pub fn from_def_index(index: DefIndex) -> LocalDefIndex {
+        LocalDefIndex::from_u32(index.as_u32())
+    }
+}
+
+impl From<LocalDefId> for LocalDefIndex {
+    fn from(value: LocalDefId) -> LocalDefIndex {
+        LocalDefIndex::from_u32(value.local_def_index.as_u32())
+    }
+}
+
+impl Into<DefIndex> for LocalDefIndex {
+    fn into(self) -> DefIndex {
+        DefIndex::from_u32(self.as_u32())
+    }
+}
+
+impl From<DefId> for LocalDefIndex {
+    fn from(value: DefId) -> Self {
+        value.expect_local().into()
+    }
+}
+
+impl<D: BlobDecoder> Decodable<D> for LocalDefIndex {
+    fn decode(d: &mut D) -> LocalDefIndex {
+        LocalDefIndex::from_u32(d.read_u32())
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for LocalDefIndex {
+    fn encode(&self, e: &mut E) {
+        e.emit_u32(self.as_u32());
+    }
+}
+
 impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyValue<T> {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
         e.emit_lazy_distance(self.position);
@@ -146,13 +190,14 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
         self.emit_u32(crate_num.as_u32());
     }
 
-    fn encode_def_index(&mut self, def_index: DefIndex) {
-        self.emit_u32(def_index.as_u32());
+    fn encode_def_index(&mut self, _: DefIndex) {
+        panic!("use LocalDefIndex or DefId or encode DefIndex manually")
     }
 
     fn encode_def_id(&mut self, def_id: DefId) {
         def_id.krate.encode(self);
-        def_id.index.encode(self);
+
+        self.emit_u32(def_id.index.as_u32());
     }
 
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
@@ -371,6 +416,13 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for [u8] {
     }
 }
 
+impl Encodable<EncodeContext<'_, '_>> for DefKey {
+    fn encode(&self, e: &mut EncodeContext<'_, '_>) {
+        self.parent.as_ref().map(|p| LocalDefIndex::from_def_index(*p)).encode(e);
+        self.disambiguated_data.encode(e);
+    }
+}
+
 impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 
@@ -401,7 +453,8 @@ macro_rules! record_some_lazy {
         {
             let value = $value;
             let lazy = $self.lazy(value);
-            $self.$tables.$table.set_some($def_id.index, lazy);
+            let index = LocalDefIndex::from($def_id);
+            $self.$tables.$table.set_some(index, lazy);
         }
     }};
 }
@@ -409,7 +462,8 @@ macro_rules! record_some_lazy {
 macro_rules! record_some {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
         {
-            $self.$tables.$table.set_some($def_id.index, $value);
+            let index = LocalDefIndex::from($def_id);
+            $self.$tables.$table.set_some(index, $value);
         }
     }};
 }
@@ -417,7 +471,8 @@ macro_rules! record_some {
 macro_rules! record_value {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
         {
-            $self.$tables.$table.set($def_id.index, $value);
+            let index = LocalDefIndex::from($def_id);
+            $self.$tables.$table.set(index, $value);
         }
     }};
 }
@@ -429,7 +484,8 @@ macro_rules! record_array {
         {
             let value = $value;
             let lazy = $self.lazy_array(value);
-            $self.$tables.$table.set_some($def_id.index, lazy);
+            let index = LocalDefIndex::from($def_id);
+            $self.$tables.$table.set_some(index, lazy);
         }
     }};
 }
@@ -439,7 +495,8 @@ macro_rules! record_defaulted_array {
         {
             let value = $value;
             let lazy = $self.lazy_array(value);
-            $self.$tables.$table.set($def_id.index, lazy);
+            let index = LocalDefIndex::from($def_id);
+            $self.$tables.$table.set(index, lazy);
         }
     }};
 }
@@ -1485,7 +1542,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let vis = self
                     .tcx
                     .local_visibility(local_id)
-                    .map_id(|mod_id| mod_id.to_local_def_id().local_def_index);
+                    .map_id(|mod_id| mod_id.to_local_def_id().into());
                 record_some_lazy!(self.tables.visibility[def_id] <- vis);
             }
             if should_encode_stability(def_kind) {
@@ -1545,7 +1602,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     self.tcx.explicit_implied_clauses_of(def_id).skip_binder());
                 let module_children = self.tcx.module_children_local(local_id);
                 record_array!(self.tables.module_children_non_reexports[def_id] <-
-                    module_children.iter().map(|child| child.res.def_id().index));
+                    module_children.iter().map(|child| LocalDefIndex::from(child.res.def_id())));
                 if self.tcx.is_const_trait(def_id) {
                     record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
                         <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder());
@@ -1562,8 +1619,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
                 record_array!(self.tables.associated_item_or_field_def_ids[def_id] <-
                     associated_item_def_ids.iter().map(|&def_id| {
-                        assert!(def_id.is_local());
-                        def_id.index
+                        LocalDefIndex::from(def_id)
                     })
                 );
                 for &def_id in associated_item_def_ids {
@@ -1666,8 +1722,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         for (def_id, impls) in &tcx.crate_inherent_impls(()).0.inherent_impls {
             record_defaulted_array!(self.tables.inherent_impls[def_id.to_def_id()] <- impls.iter().map(|def_id| {
-                assert!(def_id.is_local());
-                def_id.index
+                LocalDefIndex::from(*def_id)
             }));
         }
 
@@ -1707,7 +1762,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         if adt_def.is_enum() {
             let module_children = tcx.module_children_local(local_def_id);
             record_array!(self.tables.module_children_non_reexports[def_id] <-
-                module_children.iter().map(|child| child.res.def_id().index));
+                module_children.iter().map(|child| LocalDefIndex::from(child.res.def_id())));
         } else {
             // For non-enum, there is only one variant, and its def_id is the adt's.
             debug_assert_eq!(adt_def.variants().len(), 1);
@@ -1719,14 +1774,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let data = VariantData {
                 discr: variant.discr,
                 idx,
-                ctor: variant.ctor.map(|(kind, def_id)| (kind, def_id.index)),
+                ctor: variant.ctor.map(|(kind, def_id)| (kind, LocalDefIndex::from(def_id))),
                 is_non_exhaustive: variant.is_field_list_non_exhaustive(),
             };
             record_some_lazy!(self.tables.variant_data[variant.def_id] <- data);
 
             record_array!(self.tables.associated_item_or_field_def_ids[variant.def_id] <- variant.fields.iter().map(|f| {
-                assert!(f.did.is_local());
-                f.did.index
+                LocalDefIndex::from(f.did)
             }));
 
             for field in &variant.fields {
@@ -1770,7 +1824,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             record_array!(self.tables.module_children_non_reexports[def_id] <-
                 module_children.iter().filter(|child| child.reexport_chain.is_empty())
-                    .map(|child| child.res.def_id().index));
+                    .map(|child| LocalDefIndex::from(child.res.def_id())));
 
             record_defaulted_array!(self.tables.module_children_reexports[def_id] <-
                 module_children.iter().filter(|child| !child.reexport_chain.is_empty()));
@@ -2014,7 +2068,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let is_proc_macro = self.tcx.crate_types().contains(&CrateType::ProcMacro);
         if is_proc_macro {
             let tcx = self.tcx;
-            let proc_macro_decls_static = tcx.proc_macro_decls_static(()).unwrap().local_def_index;
+            let proc_macro_decls_static = tcx.proc_macro_decls_static(()).unwrap();
+            let proc_macro_decls_static = LocalDefIndex::from(proc_macro_decls_static);
+
             let stability = tcx.lookup_stability(CRATE_DEF_ID);
 
             record_some!(self.tables.def_kind[LOCAL_CRATE.as_def_id()] <- DefKind::Mod);
@@ -2022,7 +2078,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             self.encode_attrs(LOCAL_CRATE.as_def_id().expect_local());
             let vis = tcx
                 .local_visibility(CRATE_DEF_ID)
-                .map_id(|mod_id| mod_id.to_local_def_id().local_def_index);
+                .map_id(|mod_id| LocalDefIndex::from(mod_id.to_local_def_id()));
             record_some_lazy!(self.tables.visibility[LOCAL_CRATE.as_def_id()] <- vis);
             if let Some(stability) = stability {
                 record_some_lazy!(self.tables.lookup_stability[LOCAL_CRATE.as_def_id()] <- stability);
@@ -2070,7 +2126,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     bug!("Unknown proc-macro type for item {:?}", id);
                 };
 
-                macros.push((id.local_def_index, self.lazy(kind)));
+                macros.push((id.into(), self.lazy(kind)));
 
                 let mut def_key = self.tcx.hir_def_key(id);
                 def_key.disambiguated_data.data = DefPathData::MacroNs(name);
@@ -2185,32 +2241,36 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_array(sorted.into_iter().map(|(k, v)| (*k, *v)))
     }
 
-    fn encode_canonical_symbols(&mut self) -> LazyArray<(Symbol, DefIndex)> {
+    fn encode_canonical_symbols(&mut self) -> LazyArray<(Symbol, LocalDefIndex)> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         let canonical_symbols = &tcx.canonical_symbols(LOCAL_CRATE);
-        self.lazy_array(canonical_symbols.iter().map(|cs| (cs.symbol, cs.def_id.index)))
+        self.lazy_array(
+            canonical_symbols.iter().map(|cs| (cs.symbol, LocalDefIndex::from(cs.def_id))),
+        )
     }
 
-    fn encode_diagnostic_items(&mut self) -> LazyArray<(Symbol, DefIndex)> {
+    fn encode_diagnostic_items(&mut self) -> LazyArray<(Symbol, LocalDefIndex)> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         let diagnostic_items = &tcx.diagnostic_items(LOCAL_CRATE).name_to_id;
-        self.lazy_array(diagnostic_items.iter().map(|(&name, def_id)| (name, def_id.index)))
+        self.lazy_array(
+            diagnostic_items.iter().map(|(&name, def_id)| (name, LocalDefIndex::from(*def_id))),
+        )
     }
 
-    fn encode_fake_doc_items(&mut self) -> LazyArray<DefIndex> {
+    fn encode_fake_doc_items(&mut self) -> LazyArray<LocalDefIndex> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         let fake_doc_items = &tcx.fake_doc_items(LOCAL_CRATE);
-        self.lazy_array(fake_doc_items.iter().map(|cs| cs.index))
+        self.lazy_array(fake_doc_items.iter().map(|cs| LocalDefIndex::from(*cs)))
     }
 
-    fn encode_lang_items(&mut self) -> LazyArray<(DefIndex, LangItem)> {
+    fn encode_lang_items(&mut self) -> LazyArray<(LocalDefIndex, LangItem)> {
         empty_proc_macro!(self);
         let lang_items = self.tcx.lang_items().iter();
         self.lazy_array(lang_items.filter_map(|(lang_item, def_id)| {
-            def_id.as_local().map(|id| (id.local_def_index, lang_item))
+            def_id.as_local().map(|id| (LocalDefIndex::from(id), lang_item))
         }))
     }
 
@@ -2220,18 +2280,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_array(&tcx.lang_items().missing)
     }
 
-    fn encode_stripped_cfg_items(&mut self) -> LazyArray<StrippedCfgItem<DefIndex>> {
+    fn encode_stripped_cfg_items(&mut self) -> LazyArray<StrippedCfgItem<LocalDefIndex>> {
         self.lazy_array(
             self.tcx
                 .stripped_cfg_items(LOCAL_CRATE)
                 .into_iter()
-                .map(|item| item.clone().map_scope_id(|def_id| def_id.index)),
+                .map(|item| item.clone().map_scope_id(|def_id| LocalDefIndex::from(def_id))),
         )
     }
 
-    fn encode_traits(&mut self) -> LazyArray<DefIndex> {
+    fn encode_traits(&mut self) -> LazyArray<LocalDefIndex> {
         empty_proc_macro!(self);
-        self.lazy_array(self.tcx.traits(LOCAL_CRATE).iter().map(|def_id| def_id.index))
+        self.lazy_array(
+            self.tcx.traits(LOCAL_CRATE).iter().map(|def_id| LocalDefIndex::from(*def_id)),
+        )
     }
 
     /// Encodes an index, mapping each trait to its (local) implementations.
@@ -2239,7 +2301,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_impls(&mut self) -> LazyArray<TraitImpls> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
-        let mut trait_impls: FxIndexMap<DefId, Vec<(DefIndex, Option<SimplifiedType>)>> =
+        let mut trait_impls: FxIndexMap<DefId, Vec<(LocalDefIndex, Option<SimplifiedType>)>> =
             FxIndexMap::default();
 
         for id in tcx.hir_free_items() {
@@ -2267,7 +2329,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 trait_impls
                     .entry(trait_ref.def_id)
                     .or_default()
-                    .push((id.owner_id.def_id.local_def_index, simplified_self_ty));
+                    .push((LocalDefIndex::from(id.owner_id.def_id), simplified_self_ty));
 
                 let trait_def = tcx.trait_def(trait_ref.def_id);
                 if let Ok(mut an) = trait_def.ancestors(tcx, def_id)
@@ -2288,7 +2350,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let trait_impls: Vec<_> = trait_impls
             .into_iter()
             .map(|(trait_def_id, impls)| TraitImpls {
-                trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
+                trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index.as_u32()),
                 impls: self.lazy_array(&impls),
             })
             .collect();
@@ -2308,24 +2370,31 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             .iter()
             .map(|(&simp, impls)| IncoherentImpls {
                 self_ty: self.lazy(simp),
-                impls: self.lazy_array(impls.iter().map(|def_id| def_id.local_def_index)),
+                impls: self.lazy_array(impls.iter().map(|def_id| LocalDefIndex::from(*def_id))),
             })
             .collect();
 
         self.lazy_array(&all_impls)
     }
 
-    fn encode_exportable_items(&mut self) -> LazyArray<DefIndex> {
+    fn encode_exportable_items(&mut self) -> LazyArray<LocalDefIndex> {
         empty_proc_macro!(self);
-        self.lazy_array(self.tcx.exportable_items(LOCAL_CRATE).iter().map(|def_id| def_id.index))
+        self.lazy_array(
+            self.tcx
+                .exportable_items(LOCAL_CRATE)
+                .iter()
+                .map(|def_id| LocalDefIndex::from(*def_id)),
+        )
     }
 
-    fn encode_stable_order_of_exportable_impls(&mut self) -> LazyArray<(DefIndex, usize)> {
+    fn encode_stable_order_of_exportable_impls(&mut self) -> LazyArray<(LocalDefIndex, usize)> {
         empty_proc_macro!(self);
         let stable_order_of_exportable_impls =
             self.tcx.stable_order_of_exportable_impls(LOCAL_CRATE);
         self.lazy_array(
-            stable_order_of_exportable_impls.iter().map(|(def_id, idx)| (def_id.index, *idx)),
+            stable_order_of_exportable_impls
+                .iter()
+                .map(|(def_id, idx)| (LocalDefIndex::from(*def_id), *idx)),
         )
     }
 
