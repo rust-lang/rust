@@ -193,13 +193,16 @@ impl LlvmType for CastTarget {
             self.rest.total.bytes().div_ceil(self.rest.unit.size.bytes())
         };
 
-        // Simplify to a single unit or an array if there's no prefix.
-        // This produces the same layout, but using a simpler type.
+        // Simplify to an array if there is no prefix.
         if self.prefix.is_empty() {
-            // We can't do this if is_consecutive is set and the unit would get
-            // split on the target. Currently, this is only relevant for i128
-            // registers.
-            if rest_count == 1 && (!self.rest.is_consecutive || self.rest.unit != Reg::i128()) {
+            // Pass `[1 x unit]` as just `unit`.
+            //
+            // On little-endian targets this produces a compatible layout, but using a simpler type.
+            // But on big-endian targets (e.g. aarch64_be or powerpc64) the value may be passed in
+            // different halves of the register-sized slot, so unit and [1 x unit] are incompatible.
+            //
+            // Setting `is_consecutive` forces use of an array.
+            if rest_count == 1 && !self.rest.is_consecutive {
                 return rest_ll_unit;
             }
 
