@@ -4,15 +4,15 @@ use std::panic::AssertUnwindSafe;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
-use std::{assert_matches, fs, io, mem, str, thread};
+use std::{assert_matches, fs, io, str, thread};
 
 use rustc_abi::Size;
 use rustc_data_structures::jobserver::{self, Acquired};
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_errors::emitter::Emitter;
 use rustc_errors::{
-    Diag, DiagArgMap, DiagCtxt, DiagCtxtHandle, DiagMessage, ErrCode, FatalError, FatalErrorMarker,
-    Level, MultiSpan, Style, Sublevel, Suggestions, catch_fatal_errors,
+    Diag, DiagCtxt, DiagCtxtHandle, DiagInner, FatalError, FatalErrorMarker, Level,
+    catch_fatal_errors,
 };
 use rustc_fs_util::link_or_copy;
 use rustc_incremental::{
@@ -1191,31 +1191,6 @@ pub(crate) enum ThinLtoMessage {
 /// process another codegen unit.
 pub struct CguMessage;
 
-// A cut-down version of `rustc_errors::DiagInner` that impls `Send`, which
-// can be used to send diagnostics from codegen threads to the main thread.
-// It's missing the following fields from `rustc_errors::DiagInner`.
-// - `span`: it doesn't impl `Send`.
-// - `suggestions`: it doesn't impl `Send`, and isn't used for codegen
-//   diagnostics.
-// - `is_lint`: lints aren't relevant during codegen.
-// - `emitted_at`: not used for codegen diagnostics.
-struct Diagnostic {
-    span: Vec<SpanData>,
-    level: Level,
-    messages: Vec<(DiagMessage, Style)>,
-    code: Option<ErrCode>,
-    children: Vec<Subdiagnostic>,
-    args: DiagArgMap,
-}
-
-// A cut-down version of `rustc_errors::Subdiag` that impls `Send`. It's
-// missing the following fields from `rustc_errors::Subdiag`.
-// - `span`: it doesn't impl `Send`.
-struct Subdiagnostic {
-    level: Sublevel,
-    messages: Vec<(DiagMessage, Style)>,
-}
-
 #[derive(PartialEq, Clone, Copy, Debug)]
 enum MainThreadState {
     /// Doing nothing.
@@ -1952,7 +1927,7 @@ fn spawn_thin_lto_work<B: WriteBackendMethods>(
 }
 
 enum SharedEmitterMessage {
-    Diagnostic(Diagnostic),
+    Diagnostic(DiagInner),
     InlineAsmError(InlineAsmError),
     Fatal(String),
 }
@@ -1990,29 +1965,8 @@ impl SharedEmitter {
 }
 
 impl Emitter for SharedEmitter {
-    fn emit_diagnostic(&mut self, mut diag: rustc_errors::DiagInner) {
-        // Check that we aren't missing anything interesting when converting to
-        // the cut-down local `DiagInner`.
-        assert!(!diag.span.has_span_labels());
-        assert_eq!(diag.suggestions, Suggestions::Enabled(vec![]));
-        assert_eq!(diag.is_lint, None);
-        // No sensible check for `diag.emitted_at`.
-
-        let args = mem::take(&mut diag.args);
-        drop(
-            self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
-                span: diag.span.primary_spans().iter().map(|span| span.data()).collect::<Vec<_>>(),
-                level: diag.level(),
-                messages: diag.messages,
-                code: diag.code,
-                children: diag
-                    .children
-                    .into_iter()
-                    .map(|child| Subdiagnostic { level: child.level, messages: child.messages })
-                    .collect(),
-                args,
-            })),
-        );
+    fn emit_diagnostic(&mut self, diag: DiagInner) {
+        drop(self.sender.send(SharedEmitterMessage::Diagnostic(diag)));
     }
 
     fn source_map(&self) -> Option<&SourceMap> {
@@ -2037,26 +1991,8 @@ impl SharedEmitterMain {
 
             match message {
                 Ok(SharedEmitterMessage::Diagnostic(diag)) => {
-                    // The diagnostic has been received on the main thread.
-                    // Convert it back to a full `Diagnostic` and emit.
                     let dcx = sess.dcx();
-                    let mut d =
-                        rustc_errors::DiagInner::new_with_messages(diag.level, diag.messages);
-                    d.span = MultiSpan::from_spans(
-                        diag.span.into_iter().map(|span| span.span()).collect(),
-                    );
-                    d.code = diag.code; // may be `None`, that's ok
-                    d.children = diag
-                        .children
-                        .into_iter()
-                        .map(|sub| rustc_errors::Subdiag {
-                            level: sub.level,
-                            messages: sub.messages,
-                            span: MultiSpan::new(),
-                        })
-                        .collect();
-                    d.args = diag.args;
-                    dcx.emit_diagnostic(d);
+                    dcx.emit_diagnostic(diag);
                     sess.dcx().abort_if_errors();
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(inner)) => {
