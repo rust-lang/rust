@@ -1280,18 +1280,18 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 for (op, _op_sp) in asm.operands {
                     match op {
                         InlineAsmOperand::In { reg, expr } => {
-                            reg.hash(&mut self.s);
+                            reg.as_target().hash(&mut self.s);
                             self.hash_expr(expr);
                         },
                         InlineAsmOperand::Out { reg, late, expr } => {
-                            reg.hash(&mut self.s);
+                            reg.as_target().hash(&mut self.s);
                             late.hash(&mut self.s);
                             if let Some(expr) = expr {
                                 self.hash_expr(expr);
                             }
                         },
                         InlineAsmOperand::InOut { reg, late, expr } => {
-                            reg.hash(&mut self.s);
+                            reg.as_target().hash(&mut self.s);
                             late.hash(&mut self.s);
                             self.hash_expr(expr);
                         },
@@ -1301,7 +1301,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                             in_expr,
                             out_expr,
                         } => {
-                            reg.hash(&mut self.s);
+                            reg.as_target().hash(&mut self.s);
                             late.hash(&mut self.s);
                             self.hash_expr(in_expr);
                             if let Some(out_expr) = out_expr {

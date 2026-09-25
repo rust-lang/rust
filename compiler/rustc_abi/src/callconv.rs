@@ -58,6 +58,10 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     ///
     /// Note: We generally ignore 1-ZST fields when computing this value (see #56877).
     ///
+    /// Note: The fields of a union are merged as if it were a struct, so the result does not
+    /// distinguish the two. `powerpc64::is_or_contains_union` in `rustc_target` walks the layout
+    /// again to do that, mirroring the array handling here.
+    ///
     /// This is public so that it can be used in unit tests, but
     /// should generally only be relevant to the ABI details of
     /// specific targets.

@@ -19,7 +19,7 @@ use rustc_hir::def::{DefKind, MacroKinds};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{ConstStability, StabilityLevel, StableSince};
 use rustc_metadata::creader::CStore;
-use rustc_middle::ty::{self, TyCtxt, TypingMode};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypingMode};
 use rustc_span::symbol::kw;
 use rustc_span::{Ident, Symbol};
 use tracing::{debug, trace};
@@ -410,17 +410,28 @@ fn generate_macro_def_id_path(
     Ok(HrefInfo { url, kind: item_type, rust_path: path })
 }
 
+/// Takes an impl `DefId` and return the self `Ty` of the impl.
+fn impl_self_ty(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Ty<'_> {
+    use rustc_middle::traits::ObligationCause;
+    use rustc_middle::ty;
+    use rustc_trait_selection::infer::TyCtxtInferExt;
+    use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
+
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+    let ty = tcx.type_of(impl_def_id);
+    infcx
+        .at(&ObligationCause::dummy(), tcx.param_env(impl_def_id))
+        .query_normalize(ty::Binder::dummy(ty.instantiate_identity().skip_norm_wip()))
+        .map(|resolved| infcx.deeply_resolve_ignoring_regions(resolved.value).skip_binder())
+        .unwrap_or(ty.skip_binder())
+}
+
 fn generate_item_def_id_path(
     mut def_id: DefId,
     original_def_id: DefId,
     cx: &Context<'_>,
     root_path: Option<&str>,
 ) -> Result<HrefInfo, HrefError> {
-    use rustc_middle::traits::ObligationCause;
-    use rustc_middle::ty;
-    use rustc_trait_selection::infer::TyCtxtInferExt;
-    use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
-
     let tcx = cx.tcx();
     let crate_name = tcx.crate_name(def_id.krate);
     let mut prim = None;
@@ -428,13 +439,7 @@ fn generate_item_def_id_path(
     // No need to try to infer the actual parent item if it's not an associated item from the `impl`
     // block.
     if def_id != original_def_id && matches!(tcx.def_kind(def_id), DefKind::Impl { .. }) {
-        let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
-        let ty = tcx.type_of(def_id);
-        let ty = infcx
-            .at(&ObligationCause::dummy(), tcx.param_env(def_id))
-            .query_normalize(ty::Binder::dummy(ty.instantiate_identity().skip_norm_wip()))
-            .map(|resolved| infcx.deeply_resolve_ignoring_regions(resolved.value).skip_binder())
-            .unwrap_or(ty.skip_binder());
+        let ty = impl_self_ty(tcx, def_id);
         // If this is a dyn trait, we want to get the actual trait from which the method comes from.
         // Since a `dyn trait` (as of 2026) can only be composed of a trait plus auto traits, we
         // look for the trait and ignore auto traits.
@@ -552,6 +557,47 @@ fn make_href(
     url_parts.finish()
 }
 
+fn ty_inherits_doc_hidden<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    match ty.kind() {
+        // If this is a dyn trait, we want to get the actual trait from which the method comes from.
+        // Since a `dyn trait` (as of 2026) can only be composed of a trait plus auto traits, we
+        // look for the trait and ignore auto traits.
+        ty::Dynamic(traits, _) => traits
+            .iter()
+            .find_map(|trait_| match trait_.skip_binder() {
+                ty::ExistentialPredicate::Trait(t) => Some(inherits_doc_hidden(tcx, t.def_id)),
+                ty::ExistentialPredicate::Projection(p) => {
+                    Some(inherits_doc_hidden(tcx, p.trait_ref(tcx).def_id))
+                }
+                ty::ExistentialPredicate::AutoTrait(_) => None,
+            })
+            .unwrap_or(false),
+        ty::Adt(adt, _) => inherits_doc_hidden(tcx, adt.did()),
+        ty::Foreign(def_id) => inherits_doc_hidden(tcx, *def_id),
+        ty::Ref(_, ty, _) => ty_inherits_doc_hidden(tcx, *ty),
+        // For now we consider that everything doesn't inherit `#[doc(hidden)]`. To be confirmed
+        // later.
+        _ => false,
+    }
+}
+
+fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut def_id: DefId) -> bool {
+    loop {
+        if tcx.is_doc_hidden(def_id) {
+            return true;
+        } else if def_id.is_crate_root() {
+            return false;
+        } else if let DefKind::Impl { of_trait } = tcx.def_kind(def_id) {
+            // `impl` blocks stand a bit on their own: unless they have `#[doc(hidden)]` directly
+            // on them, they don't inherit it from the parent context.
+            // Instead we check that the `Self` item and the trait aren't hidden.
+            return ty_inherits_doc_hidden(tcx, impl_self_ty(tcx, def_id))
+                || (of_trait && inherits_doc_hidden(tcx, tcx.impl_trait_id(def_id)));
+        }
+        def_id = tcx.parent(def_id);
+    }
+}
+
 pub(crate) fn href_with_root_path(
     original_did: DefId,
     cx: &Context<'_>,
@@ -590,7 +636,7 @@ pub(crate) fn href_with_root_path(
         // If we are generating an href for the "jump to def" feature, then the only case we want
         // to ignore is if the item is `doc(hidden)` because we can't link to it.
         if root_path.is_some() {
-            if tcx.is_doc_hidden(original_did) {
+            if inherits_doc_hidden(tcx, original_did) {
                 return Err(HrefError::Private);
             }
         } else if !cache.effective_visibilities.is_directly_public(tcx, did)
