@@ -1597,14 +1597,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             TyKind::Infer => hir::TyKind::Infer(()),
             TyKind::Err(guar) => hir::TyKind::Err(*guar),
             TyKind::Slice(ty) => hir::TyKind::Slice(self.lower_ty_alloc(ty, itctx)),
-            TyKind::Ptr(mt) => hir::TyKind::Ptr(self.lower_mt(mt, itctx)),
-            TyKind::Ref(region, mt) => {
+            TyKind::Ptr(ty, mutbl) => hir::TyKind::Ptr(self.lower_mt(ty, *mutbl, itctx)),
+            TyKind::Ref(region, ty, mutbl) => {
                 let lifetime = self.lower_ty_direct_lifetime(t, *region);
-                hir::TyKind::Ref(lifetime, self.lower_mt(mt, itctx))
+                hir::TyKind::Ref(lifetime, self.lower_mt(ty, *mutbl, itctx))
             }
-            TyKind::PinnedRef(region, mt) => {
+            TyKind::PinnedRef(region, ty, mutbl) => {
                 let lifetime = self.lower_ty_direct_lifetime(t, *region);
-                let kind = hir::TyKind::Ref(lifetime, self.lower_mt(mt, itctx));
+                let kind = hir::TyKind::Ref(lifetime, self.lower_mt(ty, *mutbl, itctx));
                 let span = self.lower_span(t.span);
                 let arg = hir::Ty { kind, span, hir_id: self.next_id() };
                 let args = self.arena.alloc(hir::GenericArgs {
@@ -2068,10 +2068,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // Given we are only considering `ImplicitSelf` types, we needn't consider
                     // the case where we have a mutable pattern to a reference as that would
                     // no longer be an `ImplicitSelf`.
-                    TyKind::Ref(_, mt) | TyKind::PinnedRef(_, mt)
-                        if mt.ty.kind.is_implicit_self() =>
+                    TyKind::Ref(_, ty, mutbl) | TyKind::PinnedRef(_, ty, mutbl)
+                        if ty.kind.is_implicit_self() =>
                     {
-                        match mt.mutbl {
+                        match mutbl {
                             hir::Mutability::Not => hir::ImplicitSelfKind::RefImm,
                             hir::Mutability::Mut => hir::ImplicitSelfKind::RefMut,
                         }
@@ -2543,8 +2543,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .emit();
     }
 
-    fn lower_mt(&mut self, mt: &MutTy, itctx: ImplTraitContext) -> hir::MutTy<'hir> {
-        hir::MutTy { ty: self.lower_ty_alloc(&mt.ty, itctx), mutbl: mt.mutbl }
+    fn lower_mt(
+        &mut self,
+        ty: &Ty,
+        mutbl: Mutability,
+        itctx: ImplTraitContext,
+    ) -> hir::MutTy<'hir> {
+        hir::MutTy { ty: self.lower_ty_alloc(ty, itctx), mutbl }
     }
 
     #[instrument(level = "debug", skip(self), ret)]

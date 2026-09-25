@@ -2,9 +2,9 @@ use rustc_ast::token::{self, IdentKind, MetaVarKind, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnPtrTy, FnRetTy,
-    GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, MutTy, Mutability,
-    Path, Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax,
-    Ty, TyKind, UnsafeBinderTy,
+    GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, Mutability, Path,
+    Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
+    TyKind, UnsafeBinderTy,
 };
 use rustc_errors::{Applicability, Diag, E0516, PResult};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
@@ -565,7 +565,7 @@ impl<'a> Parser<'a> {
                     Applicability::MaybeIncorrect,
                 );
                 err.emit();
-                Ok(TyKind::Ref(Some(lt), MutTy { ty, mutbl }))
+                Ok(TyKind::Ref(Some(lt), ty, mutbl))
             }
             Err(diag) => {
                 diag.cancel();
@@ -626,7 +626,7 @@ impl<'a> Parser<'a> {
                 )
                 .emit();
 
-            return Ok(TyKind::Ptr(MutTy { ty, mutbl }));
+            return Ok(TyKind::Ptr(ty, mutbl));
         }
         // This is unreachable because we always get into if above and return from it
         unreachable!("this could never happen")
@@ -643,7 +643,7 @@ impl<'a> Parser<'a> {
             Mutability::Not
         });
         let ty = self.parse_ty_no_plus()?;
-        Ok(TyKind::Ptr(MutTy { ty, mutbl }))
+        Ok(TyKind::Ptr(ty, mutbl))
     }
 
     /// Parses an array (`[TYPE; EXPR]`) or slice (`[TYPE]`) type.
@@ -761,8 +761,8 @@ impl<'a> Parser<'a> {
         }
         let ty = self.parse_ty_no_plus()?;
         Ok(match pinned {
-            Pinnedness::Not => TyKind::Ref(opt_lifetime, MutTy { ty, mutbl }),
-            Pinnedness::Pinned => TyKind::PinnedRef(opt_lifetime, MutTy { ty, mutbl }),
+            Pinnedness::Not => TyKind::Ref(opt_lifetime, ty, mutbl),
+            Pinnedness::Pinned => TyKind::PinnedRef(opt_lifetime, ty, mutbl),
         })
     }
 

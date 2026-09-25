@@ -1348,20 +1348,23 @@ impl<'a> State<'a> {
                 self.print_type(ty);
                 self.word("]");
             }
-            ast::TyKind::Ptr(mt) => {
+            ast::TyKind::Ptr(ty, mutbl) => {
                 self.word("*");
-                self.print_mt(mt, true);
+                self.print_mutability(*mutbl, true);
+                self.print_type(ty);
             }
-            ast::TyKind::Ref(lifetime, mt) => {
+            ast::TyKind::Ref(lifetime, ty, mutbl) => {
                 self.word("&");
                 self.print_opt_lifetime(lifetime);
-                self.print_mt(mt, false);
+                self.print_mutability(*mutbl, false);
+                self.print_type(ty);
             }
-            ast::TyKind::PinnedRef(lifetime, mt) => {
+            ast::TyKind::PinnedRef(lifetime, ty, mutbl) => {
                 self.word("&");
                 self.print_opt_lifetime(lifetime);
                 self.word("pin ");
-                self.print_mt(mt, true);
+                self.print_mutability(*mutbl, true);
+                self.print_type(ty);
             }
             ast::TyKind::Never => {
                 self.word("!");
@@ -2229,11 +2232,6 @@ impl<'a> State<'a> {
                 }
             }
         }
-    }
-
-    fn print_mt(&mut self, mt: &ast::MutTy, print_const: bool) {
-        self.print_mutability(mt.mutbl, print_const);
-        self.print_type(&mt.ty)
     }
 
     fn print_param(&mut self, input: &ast::Param, is_closure: bool) {

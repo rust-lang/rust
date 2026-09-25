@@ -988,7 +988,7 @@ impl EarlyLintPass for UnusedParens {
 
                 self.with_self_ty_parens = false;
             }
-            ast::TyKind::Ref(_, mut_ty) | ast::TyKind::Ptr(mut_ty) => {
+            ast::TyKind::Ref(_, inner_ty, _) | ast::TyKind::Ptr(inner_ty, _) => {
                 // If this type itself appears in no-bounds position, we propagate its
                 // potentially tighter constraint or risk a false posive (issue 143653).
                 let own_constraint = self.in_no_bounds_pos.get(&ty.id);
@@ -997,7 +997,7 @@ impl EarlyLintPass for UnusedParens {
                     Some(NoBoundsException::OneBound) => NoBoundsException::OneBound,
                     None => NoBoundsException::OneBound,
                 };
-                self.in_no_bounds_pos.insert(mut_ty.ty.id, constraint);
+                self.in_no_bounds_pos.insert(inner_ty.id, constraint);
             }
             ast::TyKind::TraitObject(bounds, _) | ast::TyKind::ImplTrait(_, bounds) => {
                 for i in 0..bounds.len() {

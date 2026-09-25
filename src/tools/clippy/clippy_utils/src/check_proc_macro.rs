@@ -431,12 +431,12 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
 }
 
 fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
-    use ast::{Extern, FnRetTy, MutTy, Safety, TraitObjectSyntax, TyKind};
+    use ast::{Extern, FnRetTy, Safety, TraitObjectSyntax, TyKind};
 
     match &ty.kind {
         TyKind::Slice(..) | TyKind::Array(..) => (Pat::Str("["), Pat::Str("]")),
-        TyKind::Ptr(MutTy { ty, .. }) => (Pat::Str("*"), ast_ty_search_pat(ty).1),
-        TyKind::Ref(_, MutTy { ty, .. }) | TyKind::PinnedRef(_, MutTy { ty, .. }) => {
+        TyKind::Ptr( ty, .. ) => (Pat::Str("*"), ast_ty_search_pat(ty).1),
+        TyKind::Ref(_, ty, ..) | TyKind::PinnedRef(_,  ty, .. ) => {
             (Pat::Str("&"), ast_ty_search_pat(ty).1)
         },
         TyKind::FnPtr(fn_ptr) => (
