@@ -2820,7 +2820,7 @@ const HASH_UP_TO: usize = 1024;
 
 #[inline]
 fn hash_symbol(hasher: FxBuildHasher, bytes: &[u8]) -> u64 {
-    hasher.hash_one(&bytes[0..HASH_UP_TO.min(bytes.len())])
+    hasher.hash_one(&bytes[bytes.len().saturating_sub(HASH_UP_TO)..])
 }
 
 impl Interner {
