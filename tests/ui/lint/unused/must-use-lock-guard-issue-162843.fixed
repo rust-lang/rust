@@ -33,9 +33,9 @@ fn box_value() -> Box<u8> {
 
 fn main() {
     let mutex = Mutex::new(0);
-    mutex.lock().unwrap(); //~ ERROR unused `std::sync::MutexGuard` that must be used
-    guard(); //~ ERROR unused return value of `guard` that must be used
-    value(); //~ ERROR unused return value of `value` that must be used
-    vec_values(); //~ ERROR unused return value of `vec_values` that must be used
-    box_value(); //~ ERROR unused return value of `box_value` that must be used
+    let _unused = mutex.lock().unwrap(); //~ ERROR unused `std::sync::MutexGuard` that must be used
+    let _unused = guard(); //~ ERROR unused return value of `guard` that must be used
+    let _ = value(); //~ ERROR unused return value of `value` that must be used
+    let _ = vec_values(); //~ ERROR unused return value of `vec_values` that must be used
+    let _ = box_value(); //~ ERROR unused return value of `box_value` that must be used
 }

@@ -1,55 +1,63 @@
 error: unused `std::sync::MutexGuard` that must be used
-  --> $DIR/must-use-lock-guard-issue-162843.rs:9:5
+  --> $DIR/must-use-lock-guard-issue-162843.rs:36:5
    |
 LL |     mutex.lock().unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: if unused the Mutex will immediately unlock
 note: the lint level is defined here
-  --> $DIR/must-use-lock-guard-issue-162843.rs:3:9
+  --> $DIR/must-use-lock-guard-issue-162843.rs:4:9
    |
 LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
+help: use `let _unused = ...` to ignore the resulting value without dropping it immediately
+   |
+LL |     let _unused = mutex.lock().unwrap();
+   |     +++++++++++++
+
+error: unused return value of `guard` that must be used
+  --> $DIR/must-use-lock-guard-issue-162843.rs:37:5
+   |
+LL |     guard();
+   |     ^^^^^^^
+   |
+help: use `let _unused = ...` to ignore the resulting value without dropping it immediately
+   |
+LL |     let _unused = guard();
+   |     +++++++++++++
+
+error: unused return value of `value` that must be used
+  --> $DIR/must-use-lock-guard-issue-162843.rs:38:5
+   |
+LL |     value();
+   |     ^^^^^^^
+   |
 help: use `let _ = ...` to ignore the resulting value
    |
-LL |     let _ = mutex.lock().unwrap();
+LL |     let _ = value();
    |     +++++++
 
-error: unused `Result` that must be used
-  --> $DIR/must-use-lock-guard-issue-162843.rs:10:5
+error: unused return value of `vec_values` that must be used
+  --> $DIR/must-use-lock-guard-issue-162843.rs:39:5
    |
-LL |     mutex.lock();
+LL |     vec_values();
    |     ^^^^^^^^^^^^
    |
-   = note: this `Result` may be an `Err` variant, which should be handled
 help: use `let _ = ...` to ignore the resulting value
    |
-LL |     let _ = mutex.lock();
+LL |     let _ = vec_values();
    |     +++++++
 
-error: unused `std::sync::RwLockReadGuard` that must be used
-  --> $DIR/must-use-lock-guard-issue-162843.rs:13:5
+error: unused return value of `box_value` that must be used
+  --> $DIR/must-use-lock-guard-issue-162843.rs:40:5
    |
-LL |     rwlock.read().unwrap();
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+LL |     box_value();
+   |     ^^^^^^^^^^^
    |
-   = note: if unused the RwLock will immediately unlock
 help: use `let _ = ...` to ignore the resulting value
    |
-LL |     let _ = rwlock.read().unwrap();
+LL |     let _ = box_value();
    |     +++++++
 
-error: unused `std::sync::RwLockWriteGuard` that must be used
-  --> $DIR/must-use-lock-guard-issue-162843.rs:14:5
-   |
-LL |     rwlock.write().unwrap();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: if unused the RwLock will immediately unlock
-help: use `let _ = ...` to ignore the resulting value
-   |
-LL |     let _ = rwlock.write().unwrap();
-   |     +++++++
-
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
