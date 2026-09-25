@@ -1,5 +1,7 @@
 use core::num::*;
 
+use crate::num::assert_biteq;
+
 macro_rules! check_int_clamp {
     ($t:ty, $ut:ty) => {
         let min = <$t>::MIN;
@@ -151,7 +153,7 @@ fn test_clamp_magnitude_nonzero_isize() {
 }
 
 macro_rules! check_float_clamp {
-    ($t:ty) => {
+    ($t:ty, $huge: expr) => {
         // Basic clamping
         assert_eq!((5.0 as $t).clamp_magnitude(3.0), 3.0);
         assert_eq!((-5.0 as $t).clamp_magnitude(3.0), -3.0);
@@ -163,10 +165,13 @@ macro_rules! check_float_clamp {
         assert_eq!((-3.0 as $t).clamp_magnitude(3.0), -3.0);
 
         // Zero cases
-        assert_eq!((0.0 as $t).clamp_magnitude(1.0), 0.0);
-        assert_eq!((-0.0 as $t).clamp_magnitude(1.0), 0.0);
-        assert_eq!((5.0 as $t).clamp_magnitude(0.0), 0.0);
-        assert_eq!((-5.0 as $t).clamp_magnitude(0.0), 0.0);
+        type Float = $t;
+        assert_biteq!((0.0 as $t).clamp_magnitude(1.0), 0.0);
+        assert_biteq!((-0.0 as $t).clamp_magnitude(1.0), -0.0);
+        assert_biteq!((5.0 as $t).clamp_magnitude(0.0), 0.0);
+        assert_biteq!((-5.0 as $t).clamp_magnitude(0.0), -0.0);
+        assert_biteq!((5.0 as $t).clamp_magnitude(-0.0), 0.0);
+        assert_biteq!((-5.0 as $t).clamp_magnitude(-0.0), -0.0);
 
         // Special values - Infinity
         let inf = <$t>::INFINITY;
@@ -183,9 +188,12 @@ macro_rules! check_float_clamp {
         let max = <$t>::MAX;
         let min = <$t>::MIN;
         // Large limit
-        let huge = 1e30;
-        assert_eq!(max.clamp_magnitude(huge), huge);
-        assert_eq!(min.clamp_magnitude(huge), -huge);
+        assert_eq!(max.clamp_magnitude($huge), $huge);
+        assert_eq!(min.clamp_magnitude($huge), -$huge);
+
+        // NaN
+        let nan = <$t>::NAN;
+        assert!(nan.clamp_magnitude(1.0).is_nan());
 
         // Const clamping
         const C1: $t = (5.0 as $t).clamp_magnitude(3.0);
@@ -200,13 +208,29 @@ macro_rules! check_float_clamp {
 }
 
 #[test]
+fn test_clamp_magnitude_f16() {
+    check_float_clamp!(f16, 1e3);
+}
+
+#[test]
 fn test_clamp_magnitude_f32() {
-    check_float_clamp!(f32);
+    check_float_clamp!(f32, 1e30);
 }
 
 #[test]
 fn test_clamp_magnitude_f64() {
-    check_float_clamp!(f64);
+    check_float_clamp!(f64, 1e300);
+}
+
+#[test]
+fn test_clamp_magnitude_f128() {
+    check_float_clamp!(f128, 1e3000);
+}
+
+#[test]
+#[should_panic(expected = "limit must be non-negative and not NaN")]
+fn test_clamp_magnitude_f16_panic_negative_limit() {
+    let _ = 1.0f16.clamp_magnitude(-1.0);
 }
 
 #[test]
@@ -223,6 +247,18 @@ fn test_clamp_magnitude_f64_panic_negative_limit() {
 
 #[test]
 #[should_panic(expected = "limit must be non-negative and not NaN")]
+fn test_clamp_magnitude_f128_panic_negative_limit() {
+    let _ = 1.0f128.clamp_magnitude(-1.0);
+}
+
+#[test]
+#[should_panic(expected = "limit must be non-negative and not NaN")]
+fn test_clamp_magnitude_f16_panic_nan_limit() {
+    let _ = 1.0f16.clamp_magnitude(f16::NAN);
+}
+
+#[test]
+#[should_panic(expected = "limit must be non-negative and not NaN")]
 fn test_clamp_magnitude_f32_panic_nan_limit() {
     let _ = 1.0f32.clamp_magnitude(f32::NAN);
 }
@@ -231,4 +267,10 @@ fn test_clamp_magnitude_f32_panic_nan_limit() {
 #[should_panic(expected = "limit must be non-negative and not NaN")]
 fn test_clamp_magnitude_f64_panic_nan_limit() {
     let _ = 1.0f64.clamp_magnitude(f64::NAN);
+}
+
+#[test]
+#[should_panic(expected = "limit must be non-negative and not NaN")]
+fn test_clamp_magnitude_f128_panic_nan_limit() {
+    let _ = 1.0f128.clamp_magnitude(f128::NAN);
 }

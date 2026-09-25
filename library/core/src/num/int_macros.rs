@@ -3964,13 +3964,13 @@ macro_rules! int_impl {
         /// ```
         /// #![feature(clamp_magnitude)]
         #[doc = concat!("assert_eq!(120", stringify!($SelfT), ".clamp_magnitude(100), 100);")]
-        #[doc = concat!("assert_eq!(-120", stringify!($SelfT), ".clamp_magnitude(100), -100);")]
+        #[doc = concat!("assert_eq!((-120", stringify!($SelfT), ").clamp_magnitude(100), -100);")]
         #[doc = concat!("assert_eq!(80", stringify!($SelfT), ".clamp_magnitude(100), 80);")]
-        #[doc = concat!("assert_eq!(-80", stringify!($SelfT), ".clamp_magnitude(100), -80);")]
+        #[doc = concat!("assert_eq!((-80", stringify!($SelfT), ").clamp_magnitude(100), -80);")]
         /// ```
         #[inline]
         #[must_use = "method returns a new number and does not mutate the original value"]
-        #[rustc_const_unstable(feature = "clamp_magnitude", issue = "148519")]
+        #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
         #[unstable(feature = "clamp_magnitude", issue = "148519")]
         pub const fn clamp_magnitude(self, limit: $UnsignedT) -> Self {
             if let Ok(limit) = core::convert::TryInto::<$SelfT>::try_into(limit) {

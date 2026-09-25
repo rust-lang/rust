@@ -2468,14 +2468,30 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # use std::num::NonZero;
         /// #
         #[doc = concat!("let limit = NonZero::<", stringify!($Uint), ">::new(100).unwrap();")]
-        #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(120).unwrap().clamp_magnitude(limit), NonZero::new(100).unwrap());")]
-        #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(-120).unwrap().clamp_magnitude(limit), NonZero::new(-100).unwrap());")]
-        #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(80).unwrap().clamp_magnitude(limit), NonZero::new(80).unwrap());")]
-        #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(-80).unwrap().clamp_magnitude(limit), NonZero::new(-80).unwrap());")]
+        ///
+        /// assert_eq!(
+        #[doc = concat!("\tNonZero::<", stringify!($Int), ">::new(120).unwrap().clamp_magnitude(limit),")]
+        #[doc = "\tNonZero::new(100).unwrap(),"]
+        /// );
+        ///
+        /// assert_eq!(
+        #[doc = concat!("\tNonZero::<", stringify!($Int), ">::new(-120).unwrap().clamp_magnitude(limit),")]
+        #[doc = "\tNonZero::new(-100).unwrap(),"]
+        /// );
+        ///
+        /// assert_eq!(
+        #[doc = concat!("\tNonZero::<", stringify!($Int), ">::new(80).unwrap().clamp_magnitude(limit),")]
+        #[doc = "\tNonZero::new(80).unwrap(),"]
+        /// );
+        ///
+        /// assert_eq!(
+        #[doc = concat!("\tNonZero::<", stringify!($Int), ">::new(-80).unwrap().clamp_magnitude(limit),")]
+        #[doc = "\tNonZero::new(-80).unwrap(),"]
+        /// );
         /// ```
         #[inline]
         #[must_use = "method returns a new number and does not mutate the original value"]
-        #[rustc_const_unstable(feature = "clamp_magnitude", issue = "148519")]
+        #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
         #[unstable(feature = "clamp_magnitude", issue = "148519")]
         pub const fn clamp_magnitude(self, limit: NonZero<$Uint>) -> Self {
             // SAFETY: a non-zero value clamped to the magnitude of a non-zero value is still non-zero.
