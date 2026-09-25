@@ -84,7 +84,7 @@ pub(super) fn build_async_drop_shim<'tcx>(
 
     let return_block = BasicBlock::new(1);
     let mut blocks = IndexVec::with_capacity(2);
-    let block = |blocks: &mut IndexVec<_, _>, kind| {
+    let block = |blocks: &mut IndexVec<_, _>, kind| -> BasicBlock {
         blocks.push(BasicBlockData::new(
             Some(Terminator { source_info, kind, attributes: ThinVec::new() }),
             false,
@@ -104,7 +104,14 @@ pub(super) fn build_async_drop_shim<'tcx>(
             TerminatorKind::Goto { target: return_block }
         },
     );
-    block(&mut blocks, TerminatorKind::Return);
+    let ret = block(&mut blocks, TerminatorKind::Return);
+    blocks[ret].statements.push(Statement::new(
+        source_info,
+        StatementKind::Assign(Box::new((
+            Place::return_place(),
+            Rvalue::Use(Operand::zero_sized_constant(tcx.types.unit, span), WithRetag::Yes),
+        ))),
+    ));
 
     let source = MirSource::from_shim(ty::ShimKind::AsyncDropGlue(def_id, ty));
     let mut body =
