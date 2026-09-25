@@ -6,13 +6,12 @@ LL |     require_send::<Record<Bar>>();
    |
    = help: within `Record<*const c_void>`, the trait `Send` is not implemented for `*const c_void`
 note: required because it appears within the type `Record<*const c_void>`
-  --> $DIR/non-send-field-location-issue-146016.rs:24:8
+  --> $DIR/non-send-field-location-issue-146016.rs:26:5
    |
 LL | struct Record<T> {
-   |        ^^^^^^
 LL |     unrelated: u8,
 LL |     value: T,
-   |     -------- required by this field
+   |     ^^^^^^^^ required by this field
 note: required by a bound in `require_send`
   --> $DIR/non-send-field-location-issue-146016.rs:38:20
    |
@@ -27,20 +26,18 @@ LL |     require_send::<Nested<Bar>>();
    |
    = help: within `Nested<*const c_void>`, the trait `Send` is not implemented for `*const c_void`
 note: required because it appears within the type `Record<*const c_void>`
-  --> $DIR/non-send-field-location-issue-146016.rs:24:8
+  --> $DIR/non-send-field-location-issue-146016.rs:26:5
    |
 LL | struct Record<T> {
-   |        ^^^^^^
 LL |     unrelated: u8,
 LL |     value: T,
-   |     -------- required by this field
+   |     ^^^^^^^^ required by this field
 note: required because it appears within the type `Nested<*const c_void>`
-  --> $DIR/non-send-field-location-issue-146016.rs:29:8
+  --> $DIR/non-send-field-location-issue-146016.rs:30:5
    |
 LL | struct Nested<T> {
-   |        ^^^^^^
 LL |     value: Record<T>,
-   |     ---------------- required by this field
+   |     ^^^^^^^^^^^^^^^^ required by this field
 note: required by a bound in `require_send`
   --> $DIR/non-send-field-location-issue-146016.rs:38:20
    |
@@ -55,13 +52,12 @@ LL |     require_send::<Multiple<Bar>>();
    |
    = help: within `Multiple<*const c_void>`, the trait `Send` is not implemented for `*const c_void`
 note: required because it appears within the type `Multiple<*const c_void>`
-  --> $DIR/non-send-field-location-issue-146016.rs:33:6
+  --> $DIR/non-send-field-location-issue-146016.rs:35:14
    |
 LL | enum Multiple<T> {
-   |      ^^^^^^^^
 LL |     Empty,
 LL |     Values { first: T, second: T },
-   |              --------  --------- required by this field
+   |              ^^^^^^^^  ^^^^^^^^^ required by this field
    |              |
    |              required by this field
 note: required by a bound in `require_send`
@@ -85,13 +81,12 @@ LL | |     });
    |
    = help: within `Foo`, the trait `Send` is not implemented for `*const c_void`
 note: required because it appears within the type `Foo`
-  --> $DIR/non-send-field-location-issue-146016.rs:19:6
+  --> $DIR/non-send-field-location-issue-146016.rs:21:11
    |
 LL | enum Foo {
-   |      ^^^
 LL |     Case(i32),
 LL |     Case2(Bar),
-   |           --- required by this field
+   |           ^^^ required by this field
    = note: required for `std::sync::mpsc::Receiver<Foo>` to implement `Send`
 note: required because `rx` is used within this closure
   --> $DIR/non-send-field-location-issue-146016.rs:55:41

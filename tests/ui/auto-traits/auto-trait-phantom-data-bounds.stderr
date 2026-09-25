@@ -14,12 +14,11 @@ LL | unsafe impl<'a, T: 'a> Zen for &'a T where T: Sync {}
 note: required because it appears within the type `PhantomData<&T>`
   --> $SRC_DIR/core/src/marker.rs:LL:COL
 note: required because it appears within the type `Guard<'_, T>`
-  --> $DIR/auto-trait-phantom-data-bounds.rs:12:8
+  --> $DIR/auto-trait-phantom-data-bounds.rs:13:5
    |
 LL | struct Guard<'a, T: 'a> {
-   |        ^^^^^
 LL |     _marker: PhantomData<&'a T>,
-   |     --------------------------- required by this field
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this field
 note: required by a bound in `is_zen`
   --> $DIR/auto-trait-phantom-data-bounds.rs:18:14
    |
@@ -46,17 +45,16 @@ LL | unsafe impl<'a, T: 'a> Zen for &'a T where T: Sync {}
 note: required because it appears within the type `PhantomData<&T>`
   --> $SRC_DIR/core/src/marker.rs:LL:COL
 note: required because it appears within the type `Guard<'_, T>`
-  --> $DIR/auto-trait-phantom-data-bounds.rs:12:8
+  --> $DIR/auto-trait-phantom-data-bounds.rs:13:5
    |
 LL | struct Guard<'a, T: 'a> {
-   |        ^^^^^
 LL |     _marker: PhantomData<&'a T>,
-   |     --------------------------- required by this field
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this field
 note: required because it appears within the type `Nested<Guard<'_, T>>`
-  --> $DIR/auto-trait-phantom-data-bounds.rs:16:8
+  --> $DIR/auto-trait-phantom-data-bounds.rs:16:18
    |
 LL | struct Nested<T>(T);
-   |        ^^^^^^    - required by this field
+   |                  ^ required by this field
 note: required by a bound in `is_zen`
   --> $DIR/auto-trait-phantom-data-bounds.rs:18:14
    |

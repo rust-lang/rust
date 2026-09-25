@@ -4456,7 +4456,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             let msg = msg();
                             match tcx.opt_item_ident(def.did()) {
                                 Some(ident) => {
-                                    let mut spans = MultiSpan::from(ident.span);
+                                    let mut spans = MultiSpan::new();
                                     if def.did().is_local()
                                         && let Some(pred) = predicate.as_trait_clause()
                                     {
@@ -4465,12 +4465,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                         );
                                         for field in def.all_fields() {
                                             if field.ty(tcx, args).skip_norm_wip() == field_ty {
-                                                spans.push_span_label(
-                                                    tcx.def_span(field.did),
-                                                    "required by this field",
-                                                );
+                                                let sp = tcx.def_span(field.did);
+                                                spans.push_primary_span(sp);
+                                                spans.push_span_label(sp, "required by this field");
                                             }
                                         }
+                                    }
+                                    if spans.has_primary_spans() {
+                                        spans.push_span_context(ident.span);
+                                    } else {
+                                        spans.push_primary_span(ident.span);
+                                        spans.push_span_label(ident.span, "");
                                     }
                                     err.span_note(spans, msg);
                                 }

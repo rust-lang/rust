@@ -259,7 +259,9 @@ pub enum TyKind<I: Interner> {
     /// `ClosureArgs` for more details.
     Closure(I::ClosureId, I::GenericArgs),
 
-    /// The anonymous type of a closure. Used to represent the type of `async |a| a`.
+    /// The anonymous type of an async closure. Used to represent the type of `async |a| a`.
+    ///
+    /// This type itself is not a coroutine, it just represents a closure that returns one.
     ///
     /// Coroutine-closure args contain both the - potentially instantiated - generic
     /// parameters of its parent and some synthetic parameters. See the documentation

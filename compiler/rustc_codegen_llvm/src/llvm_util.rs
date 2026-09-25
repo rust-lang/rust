@@ -127,7 +127,7 @@ unsafe fn configure_llvm(sess: &EarlySession) {
             }
         }
 
-        if wants_wasm_eh(&sess.target) {
+        if get_version() < (24, 0, 0) && wants_wasm_eh(&sess.target) {
             add("-wasm-enable-eh", false);
         }
 
