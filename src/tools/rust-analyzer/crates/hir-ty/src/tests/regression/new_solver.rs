@@ -670,6 +670,40 @@ where
 }
 
 #[test]
+fn opaque_iterator_uses_blanket_into_iterator_impl() {
+    check_types(
+        r#"
+//- minicore: iterator
+struct Item;
+impl Item {
+    fn method(&self) -> usize {
+        0
+    }
+}
+
+struct Iter;
+impl Iterator for Iter {
+    type Item = Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
+fn iterator(recurse: bool) -> impl Iterator<Item = Item> {
+    if recurse {
+        for item in iterator(false) {
+            item.method();
+          //^^^^^^^^^^^^^ usize
+        }
+    }
+    Iter
+}
+"#,
+    );
+}
+
+#[test]
 fn regression_16282() {
     check_infer(
         r#"
