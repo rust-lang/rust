@@ -5634,6 +5634,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             let ns = if i + 1 == path.len() { ns } else { TypeNS };
             let res = self.r.partial_res_map.get(&seg.id?)?.full_res()?;
             let binding = self.resolve_ident_in_lexical_scope(seg.ident, ns, None, None)?;
+            // Do not suggest removing the qualification if the unqualified path would be
+            // ambiguous, e.g. when several glob imports bring the same name into scope.
+            if let LateDecl::Decl(binding) = binding
+                && binding.descent_to_ambiguity().is_some()
+            {
+                return None;
+            }
             (res == binding.res()).then_some((seg, binding))
         });
 
