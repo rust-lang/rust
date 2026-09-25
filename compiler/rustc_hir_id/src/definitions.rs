@@ -59,8 +59,7 @@ impl LocalDefIdMap<PerParentDisambiguatorState> {
 #[derive(Debug, Default)]
 pub struct DefPathToIndexMap {
     pub det_part: DefPathHashMap,
-    pub non_det_part: SortedMap<Hash64, DefIndex>,
-    non_det_mode: bool,
+    pub non_det_part: Option<SortedMap<Hash64, DefIndex>>,
 }
 
 impl DefPathToIndexMap {
@@ -68,13 +67,7 @@ impl DefPathToIndexMap {
     pub fn get(&self, hash: &Hash64) -> Option<DefIndex> {
         match self.det_part.get(hash) {
             Some(index) => Some(index),
-            None => {
-                if self.non_det_mode {
-                    self.non_det_part.get(hash).copied()
-                } else {
-                    None
-                }
-            }
+            None => self.non_det_part.as_ref().and_then(|map| map.get(hash).copied()),
         }
     }
 
@@ -84,21 +77,16 @@ impl DefPathToIndexMap {
     /// def index into `det_part` when we are in non-deterministic mode.
     #[inline]
     pub fn insert(&mut self, hash: &Hash64, index: DefIndex) -> Option<DefIndex> {
-        match self.non_det_mode {
-            false => self.det_part.insert(hash, &index),
-            true => {
+        match self.non_det_part.as_mut() {
+            None => self.det_part.insert(hash, &index),
+            Some(map) => {
                 if let Some(existing) = self.det_part.get(hash) {
                     return Some(existing);
                 }
 
-                self.non_det_part.insert(*hash, index)
+                map.insert(*hash, index)
             }
         }
-    }
-
-    #[inline]
-    pub fn switch_to_non_det_mode(&mut self) {
-        self.non_det_mode = true;
     }
 }
 
@@ -308,7 +296,7 @@ impl Definitions {
     /// This function indicates that def ids allocations are non-deterministic after
     /// it was called.
     pub fn commit_end_of_determinism(&mut self) {
-        self.def_path_hash_to_index.switch_to_non_det_mode();
+        self.def_path_hash_to_index.non_det_part = Some(Default::default());
     }
 
     #[inline(always)]

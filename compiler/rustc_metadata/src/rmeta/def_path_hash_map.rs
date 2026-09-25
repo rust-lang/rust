@@ -43,7 +43,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefPathHashMapRef<'tcx> {
                 e.emit_usize(bytes.len());
                 e.emit_raw_bytes(bytes);
 
-                map.non_det_part.range(..).encode(e);
+                map.non_det_part.as_ref().unwrap_or(&Default::default()).range(..).encode(e);
             }
             DefPathHashMapRef::OwnedFromMetadata(..) => {
                 panic!("DefPathHashMap::OwnedFromMetadata variant only exists for deserialization")
