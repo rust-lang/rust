@@ -83,21 +83,21 @@ pub struct RegionInferenceContextInner<'tcx> {
 /// This contains data around region constraints and liveness, up to and after solving.
 /// All data is immutable.
 pub struct RegionInferenceContext<'tcx> {
-    data: Frozen<RegionInferenceContextInner<'tcx>>,
+    inner: Frozen<RegionInferenceContextInner<'tcx>>,
 }
 
 impl<'tcx> Deref for RegionInferenceContext<'tcx> {
     type Target = RegionInferenceContextInner<'tcx>;
 
     fn deref(&self) -> &Self::Target {
-        &self.data
+        &self.inner
     }
 }
 
 /// This contains data around region constraints and liveness, up to solving.
 /// Calling `solve` returns a new immutable `RegionInferenceContext`.
 pub(crate) struct UnsolvedRegionInferenceContext<'tcx> {
-    pub(super) data: RegionInferenceContextInner<'tcx>,
+    pub(super) inner: RegionInferenceContextInner<'tcx>,
 
     /// Type constraints that we check after solving.
     pub(super) type_tests: Vec<TypeTest<'tcx>>,
@@ -107,13 +107,13 @@ impl<'tcx> Deref for UnsolvedRegionInferenceContext<'tcx> {
     type Target = RegionInferenceContextInner<'tcx>;
 
     fn deref(&self) -> &Self::Target {
-        &self.data
+        &self.inner
     }
 }
 
 impl<'tcx> DerefMut for UnsolvedRegionInferenceContext<'tcx> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.data
+        &mut self.inner
     }
 }
 
@@ -774,7 +774,7 @@ impl<'tcx> UnsolvedRegionInferenceContext<'tcx> {
         }
 
         Self {
-            data: RegionInferenceContextInner {
+            inner: RegionInferenceContextInner {
                 definitions,
                 liveness_constraints,
                 constraints: outlives_constraints,
@@ -838,11 +838,11 @@ impl<'tcx> UnsolvedRegionInferenceContext<'tcx> {
 
         let propagated_outlives_requirements = propagated_outlives_requirements.unwrap_or_default();
         if propagated_outlives_requirements.is_empty() {
-            (RegionInferenceContext { data: Frozen::freeze(self.data) }, None, errors_buffer)
+            (RegionInferenceContext { inner: Frozen::freeze(self.inner) }, None, errors_buffer)
         } else {
             let num_external_vids = self.universal_regions().num_global_and_external_regions();
             (
-                RegionInferenceContext { data: Frozen::freeze(self.data) },
+                RegionInferenceContext { inner: Frozen::freeze(self.inner) },
                 Some(ClosureRegionRequirements {
                     num_external_vids,
                     outlives_requirements: propagated_outlives_requirements,
@@ -874,9 +874,9 @@ impl<'tcx> UnsolvedRegionInferenceContext<'tcx> {
         // dependency order. I.e. a chain A: B: C will visit C, B, A.
         for scc_a in self.constraint_sccs.all_sccs() {
             // Walk each SCC `B` such that `A: B`...
-            for &scc_b in self.data.constraint_sccs.successors(scc_a) {
+            for &scc_b in self.inner.constraint_sccs.successors(scc_a) {
                 debug!(?scc_b);
-                self.data.scc_values.add_region(scc_a, scc_b);
+                self.inner.scc_values.add_region(scc_a, scc_b);
             }
         }
     }
