@@ -75,7 +75,7 @@ where
             RegKind::Vector { .. } => unit.size.bits() == 128,
         };
 
-        valid_unit.then_some(Uniform::consecutive(unit, arg.layout.size))
+        valid_unit.then_some(Uniform::new(unit, arg.layout.size))
     })
 }
 
