@@ -4223,6 +4223,7 @@ fn main() {
             ba all
             ba any
             ba dbg
+            ba false
             ba not
             ba opt_level
             ba test
@@ -4241,6 +4242,7 @@ fn main() {
             ba all
             ba any
             ba dbg
+            ba false
             ba not
             ba opt_level
             ba test
@@ -4259,6 +4261,7 @@ fn main() {
             ba all
             ba any
             ba dbg
+            ba false
             ba not
             ba opt_level
             ba test
@@ -4279,6 +4282,7 @@ fn main() {
             ba all
             ba any
             ba dbg
+            ba false
             ba not
             ba opt_level
             ba test
