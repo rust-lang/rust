@@ -156,7 +156,7 @@ pub(crate) fn compute_regions<'tcx>(
             &universal_region_relations.universal_regions,
             body,
             move_data,
-            Rc::clone(&location_map),
+            &location_map,
             borrow_set,
         );
     }

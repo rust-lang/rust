@@ -69,24 +69,42 @@ pub(super) fn generate<'tcx>(
     // for now.
     // FIXME: this NLL optimization idea, to reduce work to relevant locals only, still makes sense
     // for polonius, and should be investigated to improve liveness performance.
-    let deferred_locals = 'deferred: {
+    let deferred_locals = if typeck.polonius_context.is_none() || typeck.borrow_set.len() == 0 {
         // If we aren't going to be using the additional liveness information,
         // don't even bother computing the larger relevant set.
         // Similarly, since this liveness information is ultimately used for *loan*
         // liveness, we don't need to compute it when there are no loans.
-        if typeck.polonius_context.is_none() || typeck.borrow_set.len() == 0 {
-            break 'deferred FxIndexSet::default();
-        }
+        FxIndexSet::default()
+    } else {
+        // As described above, we can defer computing liveness for the regions that are
+        // NLL-boring-and-polonius-relevant. Let's find these.
+        //
+        // Note that this is basically a simplified version of `compute_relevant_live_locals`
+        // avoiding the allocations that are unnecessary in our more limited use-case.
+        let tcx = typeck.tcx();
+        let universal_regions = typeck.universal_regions;
+        let boring_nll_locals: FxHashSet<_> = boring_locals.iter().copied().collect();
+        let deferred_polonius_locals = typeck
+            .body
+            .local_decls
+            .iter_enumerated()
+            .filter_map(|(local, decl)| {
+                // The polonius-relevant locals are the ones whose types do not only contain
+                // universal regions.
+                if boring_nll_locals.contains(&local)
+                    && !tcx.all_free_regions_meet(&decl.ty, |r| {
+                        universal_regions.is_universal_region(r.as_var())
+                    })
+                {
+                    Some(local)
+                } else {
+                    None
+                }
+            })
+            .collect();
 
-        let free_regions = typeck.universal_regions.universal_regions_iter().collect();
-        let (polonius_relevant, _) =
-            compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
-
-        let boring: FxHashSet<_> = boring_locals.iter().copied().collect();
-        let deferred =
-            polonius_relevant.into_iter().filter(|local| boring.contains(local)).collect();
-        typeck.polonius_context.as_mut().unwrap().boring_nll_locals = boring;
-        deferred
+        typeck.polonius_context.as_mut().unwrap().boring_nll_locals = boring_nll_locals;
+        deferred_polonius_locals
     };
 
     trace::trace(
