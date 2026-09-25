@@ -558,15 +558,15 @@ impl<'a> ExtCtxt<'a> {
         self.expr(span, ast::ExprKind::If(cond, self.block_expr(then), els))
     }
 
-    pub fn lambda(&self, span: Span, ids: Vec<Ident>, body: Box<ast::Expr>) -> Box<ast::Expr> {
+    pub fn closure(&self, span: Span, ids: Vec<Ident>, body: Box<ast::Expr>) -> Box<ast::Expr> {
         let fn_decl = self.fn_decl(
             ids.iter().map(|id| self.param(span, *id, self.ty(span, ast::TyKind::Infer))).collect(),
             ast::FnRetTy::Default(span),
         );
 
         // FIXME -- We are using `span` as the span of the `|...|`
-        // part of the lambda, but it probably (maybe?) corresponds to
-        // the entire lambda body. Probably we should extend the API
+        // part of the closure, but it probably (maybe?) corresponds to
+        // the entire closure body. Probably we should extend the API
         // here, but that's not entirely clear.
         self.expr(
             span,
@@ -584,14 +584,6 @@ impl<'a> ExtCtxt<'a> {
                 fn_arg_span: span,
             })),
         )
-    }
-
-    pub fn lambda0(&self, span: Span, body: Box<ast::Expr>) -> Box<ast::Expr> {
-        self.lambda(span, Vec::new(), body)
-    }
-
-    pub fn lambda1(&self, span: Span, body: Box<ast::Expr>, ident: Ident) -> Box<ast::Expr> {
-        self.lambda(span, vec![ident], body)
     }
 
     pub fn param(&self, span: Span, ident: Ident, ty: Box<ast::Ty>) -> ast::Param {

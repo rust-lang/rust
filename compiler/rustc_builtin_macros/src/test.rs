@@ -210,8 +210,9 @@ pub(crate) fn expand_test_or_bench(
             thin_vec![
                 // #[coverage(off)]
                 // |__bench_fn_name| self::test::assert_test_result(
-                coverage_off(cx.lambda1(
+                coverage_off(cx.closure(
                     sp,
+                    vec![bencher_param],
                     cx.expr_call(
                         sp,
                         cx.expr_path(test_path("assert_test_result")),
@@ -224,7 +225,6 @@ pub(crate) fn expand_test_or_bench(
                             ),
                         ],
                     ),
-                    bencher_param,
                 )), // )
             ],
         )
@@ -235,8 +235,9 @@ pub(crate) fn expand_test_or_bench(
             thin_vec![
                 // #[coverage(off)]
                 // || {
-                coverage_off(cx.lambda0(
+                coverage_off(cx.closure(
                     sp,
+                    vec![],
                     // test::assert_test_result(
                     cx.expr_call(
                         sp,
