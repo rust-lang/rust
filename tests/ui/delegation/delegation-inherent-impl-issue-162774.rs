@@ -12,7 +12,7 @@ struct S(F);
 impl S {
     reuse Trait::foo { self.0 }
     reuse Self::foo::<> as bar { self }
-    //~^ ERROR failed to resolve delegation to inherent impl
+    //~^ ERROR failed to resolve delegation callee
 }
 
 fn main() {}

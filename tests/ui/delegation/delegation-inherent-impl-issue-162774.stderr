@@ -1,4 +1,4 @@
-error: failed to resolve delegation to inherent impl
+error: failed to resolve delegation callee
   --> $DIR/delegation-inherent-impl-issue-162774.rs:14:17
    |
 LL |     reuse Self::foo::<> as bar { self }
