@@ -206,13 +206,6 @@ pub(crate) struct RustcForceInlineCoro {
     pub span: Span,
 }
 
-#[derive(Diagnostic)]
-pub(crate) enum MacroExport {
-    #[diag("`#[macro_export]` has no effect on declarative macro definitions")]
-    #[note("declarative macros follow the same exporting rules as regular items")]
-    OnDeclMacro,
-}
-
 #[derive(Subdiagnostic)]
 pub(crate) enum UnusedNote {
     #[note("attribute `{$name}` with an empty list has no effect")]
