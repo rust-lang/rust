@@ -688,7 +688,10 @@ fn compute_type_match(
 
     // We don't ever consider unit type to be an exact type match, since
     // nearly always this is not meaningful to the user.
-    if expected_type.is_unit() {
+    if expected_type.is_unit() || completion_ty.is_unit() {
+        return None;
+    }
+    if expected_type.is_unknown() || completion_ty.is_unknown() {
         return None;
     }
 
@@ -2205,9 +2208,7 @@ fn main() { A { the$0 } }
                         deprecated: true,
                         relevance: CompletionRelevance {
                             exact_name_match: false,
-                            type_match: Some(
-                                CouldUnify,
-                            ),
+                            type_match: None,
                             is_local: false,
                             is_missing: false,
                             trait_: None,
@@ -3128,6 +3129,66 @@ fn go(foo: Foo) { match foo { Foo($0) } }
     }
 
     #[test]
+    fn not_type_match_useless_types() {
+        check_relevance(
+            r#"
+fn foo() -> Unknown {}
+fn test() {
+    let unit = ();
+    let unknown = unknown;
+    let _: () = $0;
+}
+"#,
+            expect![[r#"
+                lc unit () [local]
+                fn foo() fn() -> {unknown} []
+                fn test() fn() []
+            "#]],
+        );
+        check_relevance(
+            r#"
+fn foo() -> Unknown {}
+fn test() {
+    let unit = ();
+    let unknown = unknown;
+    let _ = $0;
+}
+"#,
+            expect![[r#"
+                lc unit () [local]
+                fn foo() fn() -> {unknown} []
+                fn test() fn() []
+            "#]],
+        );
+        check_relevance(
+            r#"
+struct Matches;
+impl Matches {
+    fn opt_present(&self) -> bool {}
+}
+mod module {
+    pub fn max<T>(a: T, b: T) -> T {}
+    pub fn min<T>(a: T, b: T) -> T {}
+}
+use module::max;
+fn test(matches: &Matches) {
+    if m$0
+}
+"#,
+            expect![[r#"
+                ex false  [type]
+                ex true  [type]
+                lc matches &Matches [local]
+                st Matches Matches []
+                fn max(…) fn(T, T) -> T []
+                md module::  []
+                fn test(…) fn(&Matches) []
+                fn min(…) fn(T, T) -> T [requires_import]
+            "#]],
+        );
+    }
+
+    #[test]
     fn test_avoid_redundant_suggestion() {
         check_relevance(
             r#"
@@ -3570,9 +3631,9 @@ fn test() {
 }
 "#,
             expect![[r#"
-                fn fn_ctr() fn() -> Foo [type_could_unify]
-                fn fn_ctr_self() fn() -> Option<Foo> [type_could_unify]
-                fn fn_another(…) fn(u32) -> Other [type_could_unify]
+                fn fn_ctr() fn() -> Foo []
+                fn fn_ctr_self() fn() -> Option<Foo> []
+                fn fn_another(…) fn(u32) -> Other []
             "#]],
         );
     }
@@ -3766,12 +3827,12 @@ fn test() {
             // Constructor
             // Others
             expect![[r#"
-                fn fn_direct_ctr() fn() -> Foo [type_could_unify]
-                fn fn_ctr_with_args(…) fn(u32) -> Foo [type_could_unify]
-                fn fn_builder() fn() -> FooBuilder [type_could_unify]
-                fn fn_ctr() fn() -> Result<Foo> [type_could_unify]
-                me fn_no_ret(…) fn(&self) [type_could_unify]
-                fn fn_other() fn() -> Result<u32> [type_could_unify]
+                fn fn_direct_ctr() fn() -> Foo []
+                fn fn_ctr_with_args(…) fn(u32) -> Foo []
+                fn fn_builder() fn() -> FooBuilder []
+                fn fn_ctr() fn() -> Result<Foo> []
+                me fn_no_ret(…) fn(&self) []
+                fn fn_other() fn() -> Result<u32> []
             "#]],
         );
 
@@ -3802,13 +3863,13 @@ fn test() {
 }
                 "#,
             expect![[r#"
-                fn fn_direct_ctr() fn() -> Foo<T> [type_could_unify]
-                fn fn_ctr_with_args(…) fn(T) -> Foo<T> [type_could_unify]
-                fn fn_builder() fn() -> FooBuilder [type_could_unify]
-                fn fn_ctr_wrapped() fn() -> Option<Foo<T>> [type_could_unify]
-                fn fn_ctr_wrapped_2() fn() -> Result<Foo<T>, u32> [type_could_unify]
-                fn fn_other() fn() -> Option<u32> [type_could_unify]
-                me fn_returns_unit(…) fn(&self) [type_could_unify]
+                fn fn_direct_ctr() fn() -> Foo<T> []
+                fn fn_ctr_with_args(…) fn(T) -> Foo<T> []
+                fn fn_builder() fn() -> FooBuilder []
+                fn fn_ctr_wrapped() fn() -> Option<Foo<T>> []
+                fn fn_ctr_wrapped_2() fn() -> Result<Foo<T>, u32> []
+                fn fn_other() fn() -> Option<u32> []
+                me fn_returns_unit(…) fn(&self) []
             "#]],
         );
     }
@@ -3838,13 +3899,13 @@ fn test() {
 }
                 "#,
             expect![[r#"
-                fn fn_direct_ctr() fn() -> Foo<T> [type_could_unify]
-                fn fn_ctr_with_args(…) fn(T) -> Foo<T> [type_could_unify]
-                fn fn_builder() fn() -> FooBuilder [type_could_unify]
-                fn fn_ctr() fn() -> Option<Foo<T>> [type_could_unify]
-                fn fn_ctr2() fn() -> Result<Foo<T>, u32> [type_could_unify]
-                me fn_no_ret(…) fn(&self) [type_could_unify]
-                fn fn_other() fn() -> Option<u32> [type_could_unify]
+                fn fn_direct_ctr() fn() -> Foo<T> []
+                fn fn_ctr_with_args(…) fn(T) -> Foo<T> []
+                fn fn_builder() fn() -> FooBuilder []
+                fn fn_ctr() fn() -> Option<Foo<T>> []
+                fn fn_ctr2() fn() -> Result<Foo<T>, u32> []
+                me fn_no_ret(…) fn(&self) []
+                fn fn_other() fn() -> Option<u32> []
             "#]],
         );
     }
@@ -4254,10 +4315,10 @@ fn main() {
 }
 "#,
             expect![[r#"
-                ct INFINITY pub const INFINITY: f32 [type_could_unify]
-                ct NEG_INFINITY pub const NEG_INFINITY: f32 [type_could_unify]
-                ct INFINITY f32 [type_could_unify+requires_import+deprecated]
-                ct NEG_INFINITY f32 [type_could_unify+requires_import+deprecated]
+                ct INFINITY pub const INFINITY: f32 []
+                ct NEG_INFINITY pub const NEG_INFINITY: f32 []
+                ct INFINITY f32 [requires_import+deprecated]
+                ct NEG_INFINITY f32 [requires_import+deprecated]
             "#]],
         );
         check_relevance(
