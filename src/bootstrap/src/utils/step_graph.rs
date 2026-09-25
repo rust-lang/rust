@@ -131,6 +131,10 @@ struct DotGraph {
 
 impl DotGraph {
     fn add_node(&mut self, key: String, node: Node) -> NodeHandle {
+        if let Some(&handle) = self.key_to_index.get(&key) {
+            return handle;
+        }
+
         let handle = NodeHandle(self.nodes.len());
         self.nodes.push(node);
         self.key_to_index.insert(key, handle);
@@ -200,4 +204,21 @@ fn render_step(step: &dyn Debug) -> String {
 /// Normalizes the string so that it can be rendered into a DOT file.
 fn escape(input: &str) -> String {
     input.replace("\"", "\\\"")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{DotGraph, Node};
+
+    #[test]
+    fn add_node_reuses_existing_node() {
+        let mut graph = DotGraph::default();
+        let node = || Node { label: "label".into(), tooltip: "tooltip".into() };
+
+        let first = graph.add_node("key".into(), node());
+        let second = graph.add_node("key".into(), node());
+
+        assert_eq!(first, second);
+        assert_eq!(graph.nodes.len(), 1);
+    }
 }
