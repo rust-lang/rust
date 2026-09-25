@@ -17,6 +17,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir_pretty::id_to_string;
+use rustc_index::Idx;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::mir::interpret;
@@ -42,8 +43,8 @@ use crate::eii::EiiMapEncodedKeyValue;
 use crate::rmeta::*;
 
 pub(super) struct EncodeContext<'a, 'tcx> {
-    opaque: opaque::FileEncoder<'a>,
-    tcx: TyCtxt<'tcx>,
+    pub(super) opaque: opaque::FileEncoder<'a>,
+    pub(super) tcx: TyCtxt<'tcx>,
     feat: &'tcx rustc_feature::Features,
     tables: TableBuilders,
 
@@ -69,6 +70,8 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     hygiene_ctxt: Rc<RefCell<HygieneEncodeContext>>,
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
+    pub(super) def_indexes_remapping: FxHashMap<DefIndex, DefIndex>,
+    last_deterministic_index: u32,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -147,12 +150,14 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     }
 
     fn encode_def_index(&mut self, def_index: DefIndex) {
-        self.emit_u32(def_index.as_u32());
+        self.emit_u32(self.map_index(def_index).as_u32());
     }
 
     fn encode_def_id(&mut self, def_id: DefId) {
+        let def_id = self.map_def_id(def_id);
+
         def_id.krate.encode(self);
-        def_id.index.encode(self);
+        self.emit_u32(def_id.index.as_u32());
     }
 
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
@@ -400,7 +405,26 @@ macro_rules! record {
         {
             let value = $value;
             let lazy = $self.lazy(value);
-            $self.$tables.$table.set_some($def_id.index, lazy);
+            let def_id = $self.map_def_id($def_id);
+            $self.$tables.$table.set_some(def_id.index, lazy);
+        }
+    }};
+}
+
+macro_rules! record_non_lazy {
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
+        {
+            let def_id = $self.map_def_id($def_id);
+            $self.$tables.$table.set_some(def_id.index, $value);
+        }
+    }};
+}
+
+macro_rules! record_defaulted {
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
+        {
+            let def_id = $self.map_def_id($def_id);
+            $self.$tables.$table.set(def_id.index, $value);
         }
     }};
 }
@@ -412,7 +436,8 @@ macro_rules! record_array {
         {
             let value = $value;
             let lazy = $self.lazy_array(value);
-            $self.$tables.$table.set_some($def_id.index, lazy);
+            let def_id = $self.map_def_id($def_id);
+            $self.$tables.$table.set_some(def_id.index, lazy);
         }
     }};
 }
@@ -422,7 +447,8 @@ macro_rules! record_defaulted_array {
         {
             let value = $value;
             let lazy = $self.lazy_array(value);
-            $self.$tables.$table.set($def_id.index, lazy);
+            let def_id = $self.map_def_id($def_id);
+            $self.$tables.$table.set(def_id.index, lazy);
         }
     }};
 }
@@ -512,24 +538,28 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_def_path_table(&mut self) {
+    fn encode_def_path_table(&mut self, sorted_ids: &[LocalDefId]) {
         let defs = self.tcx.definitions();
         if self.is_proc_macro {
             for def_id in std::iter::once(CRATE_DEF_ID)
                 .chain(self.tcx.resolutions(()).proc_macros.iter().copied())
             {
-                let def_key = self.lazy(defs.def_key(def_id));
+                let def_key = defs.def_key(def_id);
                 let def_path_hash = defs.def_path_hash(def_id);
-                self.tables.def_keys.set_some(def_id.local_def_index, def_key);
-                self.tables
-                    .def_path_hashes
-                    .set(def_id.local_def_index, def_path_hash.local_hash().as_u64());
+                let def_id = def_id.to_def_id();
+
+                record!(self.tables.def_keys[def_id] <- def_key);
+                record_defaulted!(self.tables.def_path_hashes[def_id] <- def_path_hash.local_hash().as_u64())
             }
         } else {
-            for (def_index, def_key, def_path_hash) in defs.enumerated_keys_and_path_hashes() {
-                let def_key = self.lazy(def_key);
-                self.tables.def_keys.set_some(def_index, def_key);
-                self.tables.def_path_hashes.set(def_index, def_path_hash.local_hash().as_u64());
+            for &def_id in sorted_ids {
+                let def_key = defs.def_key(def_id);
+                let hash = defs.def_path_hash(def_id).local_hash().as_u64();
+
+                let def_id = def_id.to_def_id();
+
+                record!(self.tables.def_keys[def_id] <- def_key);
+                record_defaulted!(self.tables.def_path_hashes[def_id] <- hash);
             }
         }
     }
@@ -606,7 +636,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         adapted.encode(&mut self.opaque)
     }
 
-    fn encode_crate_root(&mut self) -> LazyValue<CrateRoot> {
+    fn encode_crate_root(
+        &mut self,
+        remapping: FxHashMap<DefIndex, DefIndex>,
+        sorted_ids: Vec<LocalDefId>,
+    ) -> LazyValue<CrateRoot> {
+        self.def_indexes_remapping = remapping;
+
         let tcx = self.tcx;
         let mut stats: Vec<(&'static str, usize)> = Vec::with_capacity(32);
 
@@ -649,7 +685,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let foreign_modules = stat!("foreign-modules", || self.encode_foreign_modules());
 
-        _ = stat!("def-path-table", || self.encode_def_path_table());
+        _ = stat!("def-path-table", || self.encode_def_path_table(&sorted_ids));
 
         // Encode the def IDs of traits, for rustdoc and diagnostics.
         let traits = stat!("traits", || self.encode_traits());
@@ -661,7 +697,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         _ = stat!("mir", || self.encode_mir());
 
-        _ = stat!("def-ids", || self.encode_def_ids());
+        _ = stat!("def-ids", || self.encode_def_ids(&sorted_ids));
 
         let interpret_alloc_index = stat!("interpret-alloc-index", || {
             let mut interpret_alloc_index = Vec::new();
@@ -1404,10 +1440,30 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         if state.is_doc_hidden {
             attr_flags |= AttrFlags::IS_DOC_HIDDEN;
         }
-        self.tables.attr_flags.set(def_id.local_def_index, attr_flags);
+
+        record_defaulted!(self.tables.attr_flags[def_id.to_def_id()] <- attr_flags)
     }
 
-    fn encode_def_ids(&mut self) {
+    fn map_def_id(&self, def_id: DefId) -> DefId {
+        if def_id.is_local() {
+            DefId { krate: LOCAL_CRATE, index: self.map_index(def_id.index) }
+        } else {
+            def_id
+        }
+    }
+
+    #[inline]
+    fn map_index(&self, def_index: DefIndex) -> DefIndex {
+        let index = def_index.as_u32();
+
+        if index <= self.last_deterministic_index {
+            def_index
+        } else {
+            self.def_indexes_remapping.get(&def_index).copied().unwrap_or(def_index)
+        }
+    }
+
+    fn encode_def_ids(&mut self, sorted_ids: &[LocalDefId]) {
         self.encode_info_for_mod(CRATE_DEF_ID);
 
         // Proc-macro crates only export proc-macro items, which are looked
@@ -1417,11 +1473,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
 
         let tcx = self.tcx;
-
-        for local_id in tcx.iter_local_def_id() {
+        for &local_id in sorted_ids {
             let def_id = local_id.to_def_id();
             let def_kind = tcx.def_kind(local_id);
-            self.tables.def_kind.set_some(def_id.index, def_kind);
+            record_non_lazy!(self.tables.def_kind[def_id] <- def_kind);
 
             // The `DefCollector` will sometimes create unnecessary `DefId`s
             // for trivial const arguments which are directly lowered to
@@ -1505,11 +1560,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if should_encode_constness(def_kind) {
                 let constness = self.tcx.constness(def_id);
-                self.tables.constness.set(def_id.index, constness);
+                record_defaulted!(self.tables.constness[def_id] <- constness)
             }
             if let DefKind::Fn | DefKind::AssocFn = def_kind {
                 let asyncness = tcx.asyncness(def_id);
-                self.tables.asyncness.set(def_id.index, asyncness);
+                record_defaulted!(self.tables.asyncness[def_id] <- asyncness);
                 record_array!(self.tables.fn_arg_idents[def_id] <- tcx.fn_arg_idents(def_id));
             }
             if let Some(name) = tcx.intrinsic(def_id) {
@@ -1555,22 +1610,21 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let DefKind::Closure | DefKind::SyntheticCoroutineBody = def_kind
                 && let Some(coroutine_kind) = self.tcx.coroutine_kind(def_id)
             {
-                self.tables.coroutine_kind.set(def_id.index, Some(coroutine_kind))
+                record_defaulted!(self.tables.coroutine_kind[def_id] <- Some(coroutine_kind))
             }
             if def_kind == DefKind::Closure
                 && tcx.type_of(def_id).skip_binder().is_coroutine_closure()
             {
                 let coroutine_for_closure = self.tcx.coroutine_for_closure(def_id);
-                self.tables
-                    .coroutine_for_closure
-                    .set_some(def_id.index, coroutine_for_closure.into());
+                record_non_lazy!(self.tables.coroutine_for_closure[def_id] <- self.map_def_id(coroutine_for_closure).into());
 
                 // If this async closure has a by-move body, record it too.
                 if tcx.needs_coroutine_by_move_body_def_id(coroutine_for_closure) {
-                    self.tables.coroutine_by_move_body_def_id.set_some(
-                        coroutine_for_closure.index,
-                        self.tcx.coroutine_by_move_body_def_id(coroutine_for_closure).into(),
-                    );
+                    record_non_lazy!(self.tables.coroutine_by_move_body_def_id[coroutine_for_closure] <- self.map_def_id(
+                            self.tcx.coroutine_by_move_body_def_id(coroutine_for_closure),
+                        )
+                        .into()
+                    )
                 }
             }
             if let DefKind::Static { .. } = def_kind {
@@ -1600,9 +1654,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.encode_info_for_macro(local_id);
             }
             if let DefKind::TyAlias = def_kind {
-                self.tables
-                    .type_alias_is_checked
-                    .set(def_id.index, self.tcx.type_alias_is_checked(def_id));
+                record_defaulted!(self.tables.type_alias_is_checked[def_id] <- self.tcx.type_alias_is_checked(def_id));
+
                 if self.tcx.type_alias_is_checked(def_id) {
                     record!(self.tables.args_known_to_outlive_alias_params[def_id] <- tcx.args_known_to_outlive_alias_params(def_id));
                 }
@@ -1713,7 +1766,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }));
 
             for field in &variant.fields {
-                self.tables.safety.set(field.did.index, field.safety);
+                record_defaulted!(self.tables.safety[field.did] <- field.safety);
                 record!(
                     self.tables.mut_restriction[field.did] <- field.mut_restriction
                 );
@@ -1786,7 +1839,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let item = tcx.associated_item(def_id);
 
         if matches!(item.container, AssocContainer::Trait | AssocContainer::TraitImpl(_)) {
-            self.tables.defaultness.set(def_id.index, item.defaultness(tcx));
+            record_defaulted!(self.tables.defaultness[def_id] <- item.defaultness(tcx));
         }
 
         record!(self.tables.assoc_container[def_id] <- item.container);
@@ -1839,9 +1892,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             debug!("EntryBuilder::encode_mir({:?})", def_id);
             if encode_opt {
                 record!(self.tables.optimized_mir[def_id.to_def_id()] <- tcx.optimized_mir(def_id));
-                self.tables
-                    .cross_crate_inlinable
-                    .set(def_id.to_def_id().index, self.tcx.cross_crate_inlinable(def_id));
+
+                record_defaulted!(self.tables.cross_crate_inlinable[def_id.to_def_id()] <- self.tcx.cross_crate_inlinable(def_id));
+
                 record!(self.tables.closure_saved_names_of_captured_variables[def_id.to_def_id()]
                     <- tcx.closure_saved_names_of_captured_variables(def_id));
 
@@ -1949,7 +2002,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tcx = self.tcx;
 
         let (_, macro_def, _) = tcx.hir_expect_item(def_id).expect_macro();
-        self.tables.is_macro_rules.set(def_id.local_def_index, macro_def.macro_rules);
+        record_defaulted!(self.tables.is_macro_rules[def_id.to_def_id()] <- macro_def.macro_rules);
         record!(self.tables.macro_definition[def_id.to_def_id()] <- &*macro_def.body);
     }
 
@@ -1999,12 +2052,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let tcx = self.tcx;
             let proc_macro_decls_static = tcx.proc_macro_decls_static(()).unwrap().local_def_index;
             let stability = tcx.lookup_stability(CRATE_DEF_ID);
-            for (i, span) in self.tcx.sess.proc_macro_quoted_spans() {
-                let span = self.lazy(span);
-                self.tables.proc_macro_quoted_spans.set_some(i, span);
-            }
 
-            self.tables.def_kind.set_some(LOCAL_CRATE.as_def_id().index, DefKind::Mod);
+            record_non_lazy!(self.tables.def_kind[LOCAL_CRATE.as_def_id()] <- DefKind::Mod);
             record!(self.tables.def_span[LOCAL_CRATE.as_def_id()] <- tcx.def_span(LOCAL_CRATE.as_def_id()));
             self.encode_attrs(LOCAL_CRATE.as_def_id().expect_local());
             let vis = tcx
@@ -2063,7 +2112,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 def_key.disambiguated_data.data = DefPathData::MacroNs(name);
 
                 let def_id = id.to_def_id();
-                self.tables.def_kind.set_some(def_id.index, DefKind::Macro(macro_kind.into()));
+                record_non_lazy!(self.tables.def_kind[def_id] <- DefKind::Macro(macro_kind.into()));
+
                 self.encode_attrs(id);
                 record!(self.tables.def_keys[def_id] <- def_key);
                 record!(self.tables.def_ident_span[def_id] <- span);
@@ -2076,7 +2126,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             let macros = self.lazy_array(macros);
 
-            Some(ProcMacroData { proc_macro_decls_static, stability, macros })
+            let mut proc_macro_quoted_spans = TableBuilder::default();
+            for (i, span) in self.tcx.sess.proc_macro_quoted_spans() {
+                let span = self.lazy(span);
+                proc_macro_quoted_spans.set_some(i, span);
+            }
+
+            let proc_macro_quoted_spans = proc_macro_quoted_spans.encode(&mut self.opaque);
+
+            Some(ProcMacroData {
+                proc_macro_decls_static,
+                stability,
+                macros,
+                proc_macro_quoted_spans,
+            })
         } else {
             None
         }
@@ -2228,11 +2291,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
                 let impl_is_fully_generic_for_reflection =
                     tcx.impl_is_fully_generic_for_reflection(def_id);
-                self.tables
-                    .impl_is_fully_generic_for_reflection
-                    .set(def_id.index, impl_is_fully_generic_for_reflection);
 
-                self.tables.defaultness.set(def_id.index, tcx.defaultness(def_id));
+                record_defaulted!(self.tables.impl_is_fully_generic_for_reflection[def_id] <- impl_is_fully_generic_for_reflection);
+                record_defaulted!(self.tables.defaultness[def_id] <- tcx.defaultness(def_id));
 
                 let trait_ref = header.trait_ref.instantiate_identity().skip_norm_wip();
                 let simplified_self_ty = fast_reject::simplify_type(
@@ -2249,7 +2310,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 if let Ok(mut an) = trait_def.ancestors(tcx, def_id)
                     && let Some(specialization_graph::Node::Impl(parent)) = an.nth(1)
                 {
-                    self.tables.impl_parent.set_some(def_id.index, parent.into());
+                    record_non_lazy!(self.tables.impl_parent[def_id] <- self.map_def_id(parent).into());
                 }
 
                 // if this is an impl of `CoerceUnsized`, create its
@@ -2263,9 +2324,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let trait_impls: Vec<_> = trait_impls
             .into_iter()
-            .map(|(trait_def_id, impls)| TraitImpls {
-                trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
-                impls: self.lazy_array(&impls),
+            .map(|(trait_id, impls)| {
+                let trait_id = self.map_def_id(trait_id);
+                TraitImpls {
+                    trait_id: (trait_id.krate.as_u32(), trait_id.index.as_u32()),
+                    impls: self.lazy_array(&impls),
+                }
             })
             .collect();
 
@@ -2540,7 +2604,9 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
             with_encode_metadata_header(tcx, path, |ecx| {
                 // Encode all the entries and extra information in the crate,
                 // culminating in the `CrateRoot` which points to all of it.
-                let root = ecx.encode_crate_root();
+                let (remapping, sequence) = create_def_index_remapping(tcx);
+
+                let root = ecx.encode_crate_root(remapping, sequence);
 
                 // Flush buffer to ensure backing file has the correct size.
                 ecx.opaque.flush();
@@ -2556,6 +2622,49 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         },
         None,
     );
+}
+
+fn create_def_index_remapping(tcx: TyCtxt<'_>) -> (FxHashMap<DefIndex, DefIndex>, Vec<LocalDefId>) {
+    let defs = tcx.untracked().definitions.read();
+
+    let mut to_remap = vec![];
+    let mut def_ids = vec![];
+
+    let start = tcx.definitions().last_deterministic_index().as_usize() + 1;
+    for idx in start..defs.num_definitions() {
+        let def_id = LocalDefId { local_def_index: idx.into() };
+        if let Some(data) = defs.def_path(def_id).data.last()
+            && matches!(
+                data.data,
+                DefPathData::SyntheticCoroutineBody
+                    | DefPathData::OpaqueLifetime(..)
+                    | DefPathData::NestedStatic
+                    | DefPathData::AnonAssocTy(..)
+            )
+        {
+            to_remap.push((def_id, defs.def_path_hash(def_id).local_hash()));
+            def_ids.push(def_id);
+        }
+    }
+
+    to_remap.sort_by_key(|(_, hash)| *hash);
+
+    let mut remapping = FxHashMap::default();
+    for ((orig_id, _), remapped_id) in to_remap.into_iter().zip(def_ids) {
+        remapping.insert(orig_id.local_def_index, remapped_id.local_def_index);
+    }
+
+    let mut sorted_def_ids = (0..defs.num_definitions())
+        .into_iter()
+        .map(|idx| LocalDefId { local_def_index: DefIndex::new(idx) })
+        .collect::<Vec<_>>();
+
+    sorted_def_ids.sort_by_key(|id| {
+        let def_index = id.local_def_index;
+        remapping.get(&def_index).copied().unwrap_or(def_index)
+    });
+
+    (remapping, sorted_def_ids)
 }
 
 fn with_encode_metadata_header(
@@ -2590,6 +2699,8 @@ fn with_encode_metadata_header(
         is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: Default::default(),
         symbol_index_table: Default::default(),
+        def_indexes_remapping: Default::default(),
+        last_deterministic_index: tcx.definitions().last_deterministic_index().as_u32(),
     };
 
     // Encode the rustc version string in a predictable location.

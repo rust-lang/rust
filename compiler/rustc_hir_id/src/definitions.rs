@@ -6,8 +6,10 @@
 
 use std::fmt::{self, Write};
 use std::hash::Hash;
+use std::sync::OnceLock;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hash::StableHasher;
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
@@ -46,13 +48,56 @@ impl LocalDefIdMap<PerParentDisambiguatorState> {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct DefPathToIndexMap {
+    pub det_part: DefPathHashMap,
+    pub non_det_part: SortedMap<Hash64, DefIndex>,
+    non_det_mode: bool,
+}
+
+impl DefPathToIndexMap {
+    #[inline]
+    pub fn get(&self, hash: &Hash64) -> Option<DefIndex> {
+        match self.det_part.get(hash) {
+            Some(index) => Some(index),
+            None => {
+                if self.non_det_mode {
+                    self.non_det_part.get(hash).copied()
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    #[inline]
+    pub fn insert(&mut self, hash: &Hash64, index: DefIndex) -> Option<DefIndex> {
+        match self.non_det_mode {
+            false => self.det_part.insert(hash, &index),
+            true => {
+                if let Some(existing) = self.det_part.get(hash) {
+                    return Some(existing);
+                }
+
+                self.non_det_part.insert(*hash, index)
+            }
+        }
+    }
+
+    #[inline]
+    pub fn switch_to_non_det_mode(&mut self) {
+        self.non_det_mode = true;
+    }
+}
+
 #[derive(Debug)]
 pub struct Definitions {
     stable_crate_id: StableCrateId,
     def_id_to_key: IndexVec<LocalDefId, DefKey>,
     // We do only store the local hash, as all the definitions are from the current crate.
     def_path_hashes: IndexVec<LocalDefId, Hash64>,
-    def_path_hash_to_index: DefPathHashMap,
+    last_deterministic_index: OnceLock<DefIndex>,
+    def_path_hash_to_index: DefPathToIndexMap,
 }
 
 /// A unique identifier that we can use to lookup a definition
@@ -249,6 +294,19 @@ pub enum DefPathData {
 }
 
 impl Definitions {
+    pub fn commit_last_deterministic_index(&mut self) {
+        self.def_path_hash_to_index.switch_to_non_det_mode();
+        self.last_deterministic_index
+            .set(
+                if self.def_id_to_key.is_empty() { 0 } else { self.def_id_to_key.len() - 1 }.into(),
+            )
+            .expect("must be called once");
+    }
+
+    pub fn last_deterministic_index(&self) -> DefIndex {
+        self.last_deterministic_index.get().copied().expect("must contain index")
+    }
+
     #[inline(always)]
     pub fn def_key(&self, id: LocalDefId) -> DefKey {
         self.def_id_to_key[id]
@@ -300,6 +358,7 @@ impl Definitions {
             def_path_hashes: Default::default(),
             def_id_to_key: Default::default(),
             def_path_hash_to_index: Default::default(),
+            last_deterministic_index: Default::default(),
         };
 
         // Create the root definition.
@@ -323,7 +382,7 @@ impl Definitions {
         // Check for hash collisions of DefPathHashes. These should be
         // exceedingly rare.
         if let Some(existing) =
-            self.def_path_hash_to_index.insert(&local_hash, &def_id.local_def_index)
+            self.def_path_hash_to_index.insert(&local_hash, def_id.local_def_index)
         {
             let def_path1 = self.def_path(LocalDefId { local_def_index: existing });
             let def_path2 = self.def_path(def_id);
@@ -415,7 +474,7 @@ impl Definitions {
             .map(|local_def_index| LocalDefId { local_def_index })
     }
 
-    pub fn def_path_hash_to_def_index_map(&self) -> &DefPathHashMap {
+    pub fn def_path_hash_to_def_index_map(&self) -> &DefPathToIndexMap {
         &self.def_path_hash_to_index
     }
 
