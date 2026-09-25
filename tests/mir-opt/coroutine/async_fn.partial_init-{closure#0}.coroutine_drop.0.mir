@@ -47,6 +47,7 @@ fn partial_init::{closure#0}(_1: &mut {async fn body of partial_init()}) -> () {
 
     bb0: {
         _27 = discriminant((*_1));
+        _0 = const ();
         switchInt(move _27) -> [0: bb11, 3: bb12, otherwise: bb13];
     }
 
