@@ -24,12 +24,14 @@
 -     }
 - 
 -     bb2: {
++         _2 = const ();
           StorageDead(_2);
           StorageLive(_3);
 -         _3 = instruction_set_default() -> [return: bb3, unwind unreachable];
 -     }
 - 
 -     bb3: {
++         _3 = const ();
           StorageDead(_3);
           StorageLive(_4);
 -         _4 = inline_always_and_using_inline_asm() -> [return: bb4, unwind unreachable];
