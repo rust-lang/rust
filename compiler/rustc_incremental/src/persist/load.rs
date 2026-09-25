@@ -177,7 +177,8 @@ pub fn setup_dep_graph(
     }
 
     // `load_dep_graph` can only be called after `prepare_session_directory`.
-    let mut incr_comp_session = prepare_session_directory(sess, crate_name, stable_crate_id);
+    let mut incr_comp_session =
+        prepare_session_directory(sess, crate_name, stable_crate_id, "main");
     // Try to load the previous session's dep graph and work products.
     let load_result = load_dep_graph(sess, &incr_comp_session);
 

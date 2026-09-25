@@ -218,10 +218,11 @@ pub fn in_incr_comp_dir_sess(incr_comp_session: &IncrCompSession, file_name: &st
 /// The garbage collection will take care of it.
 ///
 /// [`rustc_interface::queries::dep_graph`]: ../../rustc_interface/struct.Queries.html#structfield.dep_graph
-pub(crate) fn prepare_session_directory(
+pub fn prepare_session_directory(
     sess: &Session,
     crate_name: Symbol,
     stable_crate_id: StableCrateId,
+    suffix: &'static str,
 ) -> IncrCompSession {
     assert!(sess.opts.incremental.is_some());
 
@@ -229,8 +230,8 @@ pub(crate) fn prepare_session_directory(
 
     debug!("prepare_session_directory");
 
-    // {incr-comp-dir}/{crate-name-and-disambiguator}
-    let crate_dir = crate_path(sess, crate_name, stable_crate_id);
+    // {incr-comp-dir}/{crate-name}-{disambiguator}-{prefix}
+    let crate_dir = crate_path(sess, crate_name, stable_crate_id, suffix);
     debug!("crate-dir: {}", crate_dir.display());
     create_dir(sess, &crate_dir, "crate");
 
@@ -247,7 +248,7 @@ pub(crate) fn prepare_session_directory(
 
     // Generate a session directory of the form:
     //
-    // {incr-comp-dir}/{crate-name-and-disambiguator}/s-{timestamp}-{random}-working
+    // {incr-comp-dir}/{crate-name}-{disambiguator}-{prefix}/s-{timestamp}-{random}-{suffix}-working
     let new_session_dir = generate_session_dir_path(&crate_dir);
     debug!("session-dir: {}", new_session_dir.display());
 
@@ -547,11 +548,18 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, &'static str> {
     Ok(UNIX_EPOCH + duration)
 }
 
-fn crate_path(sess: &Session, crate_name: Symbol, stable_crate_id: StableCrateId) -> PathBuf {
+fn crate_path(
+    sess: &Session,
+    crate_name: Symbol,
+    stable_crate_id: StableCrateId,
+    suffix: &str,
+) -> PathBuf {
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
-    let crate_name =
-        format!("{crate_name}-{}", stable_crate_id.as_u64().to_base_fixed_len(CASE_INSENSITIVE));
+    let crate_name = format!(
+        "{crate_name}-{}-{suffix}",
+        stable_crate_id.as_u64().to_base_fixed_len(CASE_INSENSITIVE)
+    );
     incr_dir.join(crate_name)
 }
 
