@@ -1937,9 +1937,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     binder_ty.into(),
                 );
                 self.relate_types(
-                    ty,
-                    context.ambient_variance(),
                     found_ty,
+                    context.ambient_variance(),
+                    ty,
                     location.to_locations(),
                     ConstraintCategory::Boring,
                 )
