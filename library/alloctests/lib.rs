@@ -32,7 +32,6 @@
 #![feature(extend_one_unchecked)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(inplace_iteration)]
-#![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(ptr_alignment_type)]

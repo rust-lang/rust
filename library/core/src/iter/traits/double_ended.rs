@@ -168,8 +168,6 @@ pub const trait DoubleEndedIterator: [const] Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(iter_advance_by)]
-    ///
     /// use std::num::NonZero;
     ///
     /// let a = [3, 4, 5, 6];
@@ -184,7 +182,7 @@ pub const trait DoubleEndedIterator: [const] Iterator {
     /// [`Ok(())`]: Ok
     /// [`Err(k)`]: Err
     #[inline]
-    #[unstable(feature = "iter_advance_by", issue = "77404")]
+    #[stable(feature = "iter_advance_by", since = "CURRENT_RUSTC_VERSION")]
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>>
     where
         Self::Item: [const] Destruct,

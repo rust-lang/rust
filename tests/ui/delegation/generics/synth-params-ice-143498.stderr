@@ -1,11 +1,11 @@
 error[E0425]: cannot find type `X` in this scope
-  --> $DIR/synth-params-ice-143498.rs:19:6
+  --> $DIR/synth-params-ice-143498.rs:18:6
    |
 LL | impl X {
    |      ^ not found in this scope
 
 error[E0575]: cannot find method or associated constant `Item` in trait `Iterator`
-  --> $DIR/synth-params-ice-143498.rs:21:43
+  --> $DIR/synth-params-ice-143498.rs:20:43
    |
 LL |     reuse< std::fmt::Debug as Iterator >::*;
    |                                           ^ not found in `Iterator`
@@ -13,7 +13,7 @@ LL |     reuse< std::fmt::Debug as Iterator >::*;
    = note: an associated type named `Iterator::Item` exists in another namespace
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/synth-params-ice-143498.rs:21:12
+  --> $DIR/synth-params-ice-143498.rs:20:12
    |
 LL |     reuse< std::fmt::Debug as Iterator >::*;
    |            ^^^^^^^^^^^^^^^

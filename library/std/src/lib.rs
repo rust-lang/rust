@@ -363,7 +363,6 @@
 #![feature(io_error_uncategorized)]
 #![feature(io_slice_as_bytes)]
 #![feature(ip)]
-#![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(maybe_dangling)]
 #![feature(maybe_uninit_array_assume_init)]

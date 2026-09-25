@@ -1,7 +1,7 @@
 //@ compile-flags: -Z deduplicate-diagnostics=yes
 //@ edition:2024
 
-#![feature(fn_delegation)]#![feature(iter_advance_by)]
+#![feature(fn_delegation)]
 #![feature(iter_array_chunks)]
 #![feature(iterator_try_collect)]
 #![feature(iterator_try_reduce)]
