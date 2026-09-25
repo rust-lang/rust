@@ -271,8 +271,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 }
 
 /// This contains data around region constraints and liveness, up to solving.
-/// Calling `solve` returns a new immutable `RegionInferenceContext`.
-pub(crate) struct UnsolvedRegionInferenceContext<'tcx> {
+struct UnsolvedRegionInferenceContext<'tcx> {
     inner: RegionInferenceContextInner<'tcx>,
 
     /// Type constraints that we check after solving.
