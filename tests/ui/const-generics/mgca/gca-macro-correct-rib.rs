@@ -1,5 +1,5 @@
 //! make sure TyKind::GcaMacro resolves properly with the correct ribs and doesn't ICE
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 use std::gca;
 

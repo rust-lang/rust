@@ -28,9 +28,9 @@ use rustc_trait_selection::traits::{Obligation, ObligationCtxt};
 use tracing::{debug, instrument, trace};
 
 use super::{LIMITATION_NOTE, OutlivesSuggestionBuilder, RegionName, RegionNameSource};
-use crate::consumers::{OutlivesConstraint, RegionInferenceContext};
+use crate::consumers::OutlivesConstraint;
 use crate::nll::ConstraintDescription;
-use crate::region_infer::TypeTest;
+use crate::region_infer::{RegionInferenceContext, TypeTest};
 use crate::session_diagnostics::{
     FnMutError, FnMutReturnTypeErr, GenericDoesNotLiveLongEnough, LifetimeOutliveErr,
     LifetimeReturnCategoryErr, RequireStaticErr, VarHereDenote,

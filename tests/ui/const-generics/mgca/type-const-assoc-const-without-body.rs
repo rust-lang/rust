@@ -1,6 +1,6 @@
 //@ needs-rustc-debug-assertions
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
 
 use std::gca;

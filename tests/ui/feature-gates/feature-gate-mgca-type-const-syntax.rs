@@ -1,5 +1,5 @@
 const FOO: u8 = std::gca!(10);
-//~^ ERROR use of unstable library feature `min_generic_const_args` [E0658]
+//~^ ERROR use of unstable library feature `gca_min_const_items` [E0658]
 //~| ERROR expected expression, found `gca!()` constant
 
 trait Bar {
@@ -10,7 +10,7 @@ trait Bar {
 
 impl Bar for bool {
     const BAR: bool = std::gca!(false);
-    //~^ ERROR use of unstable library feature `min_generic_const_args` [E0658]
+    //~^ ERROR use of unstable library feature `gca_min_const_items` [E0658]
     //~| ERROR expected expression, found `gca!()` constant
     //~| ERROR implementation of a `#[rustc_always_gca]` must have a `gca!` RHS
 }

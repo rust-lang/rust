@@ -1,7 +1,7 @@
 // We used to say "ambiguous associated type" on ambiguous associated consts.
 // Ensure that we now use the correct label.
 
-#![feature(adt_const_params, min_generic_const_args, unsized_const_params)]
+#![feature(adt_const_params, gca_min_const_items, unsized_const_params)]
 #![allow(incomplete_features)]
 
 use std::gca;

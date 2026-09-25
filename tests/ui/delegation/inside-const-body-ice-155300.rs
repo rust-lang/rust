@@ -1,4 +1,4 @@
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![feature(fn_delegation)]
 
 use std::gca;

@@ -1,5 +1,5 @@
 //@ known-bug: #150049
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![feature(inherent_associated_types)]
 
 use std::gca;

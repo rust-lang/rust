@@ -1,7 +1,7 @@
 //@ compile-flags: -Znext-solver
 #![feature(generic_const_items)]
-#![feature(min_generic_const_args)]
-#![feature(generic_const_args)]
+#![feature(gca_min_const_items)]
+#![feature(gca_const_items)]
 
 use std::gca;
 use std::marker::PhantomData;

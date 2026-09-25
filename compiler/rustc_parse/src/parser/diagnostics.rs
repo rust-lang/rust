@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 
 use ast::token::IdentKind;
 use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
-use rustc_ast::util::parser::AssocOp;
+use rustc_ast::util::parser::{AssocOp, ExprPrecedence};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode,
     Block, BlockCheckMode, Expr, ExprKind, GenericArg, GenericArgs, Generics, Item, ItemKind,
@@ -439,7 +439,7 @@ impl<'a> Parser<'a> {
                     span,
                     token: self.token,
                     unexpected_token_label: Some(self.token.span),
-                    sugg: ExpectedSemiSugg::AddSemi(span),
+                    sugg: ExpectedSemiSugg::AddSemi(span, Applicability::MachineApplicable),
                 });
                 return Ok(guar);
             }
@@ -723,7 +723,8 @@ impl<'a> Parser<'a> {
             span,
             token: self.token,
             unexpected_token_label: Some(self.token.span),
-            sugg: ExpectedSemiSugg::AddSemi(span),
+            // A semicolon may discard the intended return value of a cfg-gated tail expression.
+            sugg: ExpectedSemiSugg::AddSemi(span, Applicability::MaybeIncorrect),
         });
         let attr_span = match &expr.attrs[..] {
             [] => unreachable!(),
@@ -755,7 +756,7 @@ impl<'a> Parser<'a> {
                     (expr.span.shrink_to_lo(), "{ ".to_string()),
                     (expr.span.shrink_to_hi(), " }".to_string()),
                 ],
-                Applicability::MachineApplicable,
+                Applicability::MaybeIncorrect,
             );
 
             // Special handling for `#[cfg(...)]` chains
@@ -811,7 +812,8 @@ impl<'a> Parser<'a> {
                     "it seems like you are trying to provide different expressions depending on \
                      `cfg`, consider using `if cfg!(..)`",
                     sugg,
-                    Applicability::MachineApplicable,
+                    // Unlike `#[cfg]`, `if cfg!` still checks disabled branches.
+                    Applicability::MaybeIncorrect,
                 );
             }
         }
@@ -1719,26 +1721,35 @@ impl<'a> Parser<'a> {
         &mut self,
         await_sp: Span,
     ) -> PResult<'a, Box<Expr>> {
-        let (hi, expr, is_question) = if self.token == token::Bang {
+        let (hi, expr_span, is_question) = if self.token == token::Bang {
             // Handle `await!(<expr>)`.
             self.recover_await_macro()?
         } else {
             self.recover_await_prefix(await_sp)?
         };
-        let (sp, guar) = self.error_on_incorrect_await(await_sp, hi, &expr, is_question);
+        let (sp, guar) = self.error_on_incorrect_await(await_sp, hi, expr_span, is_question);
         let expr = self.mk_expr_err(await_sp.to(sp), guar);
         self.maybe_recover_from_bad_qpath(expr)
     }
 
-    fn recover_await_macro(&mut self) -> PResult<'a, (Span, Box<Expr>, bool)> {
+    fn recover_await_macro(&mut self) -> PResult<'a, (Span, Span, bool)> {
         self.expect(exp!(Bang))?;
         self.expect(exp!(OpenParen))?;
+        let open = self.prev_token.span;
         let expr = self.parse_expr()?;
         self.expect(exp!(CloseParen))?;
-        Ok((self.prev_token.span, expr, false))
+        let close = self.prev_token.span;
+        // Keep parentheses when needed for `.await`, e.g. `(&mut future).await`.
+        // Use the delimiters to preserve any comments around the operand.
+        let expr_span = if expr.precedence() < ExprPrecedence::Unambiguous {
+            open.to(close)
+        } else {
+            open.shrink_to_hi().to(close.shrink_to_lo())
+        };
+        Ok((close, expr_span, false))
     }
 
-    fn recover_await_prefix(&mut self, await_sp: Span) -> PResult<'a, (Span, Box<Expr>, bool)> {
+    fn recover_await_prefix(&mut self, await_sp: Span) -> PResult<'a, (Span, Span, bool)> {
         let is_question = self.eat(exp!(Question)); // Handle `await? <expr>`.
         let expr = if self.token == token::OpenBrace {
             // Handle `await { <expr> }`.
@@ -1752,22 +1763,22 @@ impl<'a> Parser<'a> {
             err.span_label(await_sp, format!("while parsing this incorrect await expression"));
             err
         })?;
-        Ok((expr.span, expr, is_question))
+        Ok((expr.span, expr.span, is_question))
     }
 
     fn error_on_incorrect_await(
         &self,
         lo: Span,
         hi: Span,
-        expr: &Expr,
+        expr_span: Span,
         is_question: bool,
     ) -> (Span, ErrorGuaranteed) {
         let span = lo.to(hi);
         let guar = self.dcx().emit_err(IncorrectAwait {
             span,
             suggestion: AwaitSuggestion {
-                removal: lo.until(expr.span),
-                dot_await: expr.span.shrink_to_hi(),
+                removal: lo.until(expr_span),
+                dot_await: expr_span.shrink_to_hi().to(hi.shrink_to_hi()),
                 question_mark: if is_question { "?" } else { "" },
             },
         });

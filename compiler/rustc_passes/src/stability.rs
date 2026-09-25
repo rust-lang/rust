@@ -570,8 +570,8 @@ struct Checker<'tcx> {
 }
 
 impl<'tcx> Checker<'tcx> {
-    fn unstable_reexport_span(&self, item: &'tcx hir::Item<'tcx>) -> Option<Span> {
-        let attrs = self.tcx.hir_attrs(item.hir_id());
+    fn unstable_reexport_span(&self, hir_id: HirId) -> Option<Span> {
+        let attrs = self.tcx.hir_attrs(hir_id);
         let (stability, span) =
             find_attr!(attrs, Stability { stability, span } => (*stability, *span))?;
 
@@ -624,14 +624,14 @@ impl<'tcx> Checker<'tcx> {
 
     fn record_unstable_reexport(
         &mut self,
-        item: &'tcx hir::Item<'tcx>,
+        hir_id: HirId,
         attr_span: Span,
         span: Span,
         has_target: bool,
         all_targets_stable: bool,
     ) {
         let entry = self.unstable_reexports.entry(attr_span).or_insert(UnstableReexport {
-            hir_id: item.hir_id(),
+            hir_id,
             span,
             has_target: false,
             all_targets_stable: true,
@@ -641,31 +641,28 @@ impl<'tcx> Checker<'tcx> {
         entry.all_targets_stable &= all_targets_stable;
     }
 
-    fn check_single_unstable_reexport(
-        &mut self,
-        item: &'tcx hir::Item<'tcx>,
-        path: &'tcx UsePath<'tcx>,
-    ) {
-        let Some(attr_span) = self.unstable_reexport_span(item) else {
+    fn check_single_unstable_reexport(&mut self, hir_id: HirId, path: &'tcx UsePath<'tcx>) {
+        let Some(attr_span) = self.unstable_reexport_span(hir_id) else {
             return;
         };
 
         let (has_target, all_targets_stable) =
             self.classify_reexport_targets(path.res.present_items());
 
-        self.record_unstable_reexport(item, attr_span, path.span, has_target, all_targets_stable);
+        self.record_unstable_reexport(hir_id, attr_span, path.span, has_target, all_targets_stable);
     }
 
     fn check_glob_unstable_reexport(
         &mut self,
-        item: &'tcx hir::Item<'tcx>,
+        hir_id: HirId,
+        glob_def_id: LocalDefId,
         path: &'tcx UsePath<'tcx>,
     ) {
-        let Some(attr_span) = self.unstable_reexport_span(item) else {
+        let Some(attr_span) = self.unstable_reexport_span(hir_id) else {
             return;
         };
 
-        let glob_def_id = item.owner_id.def_id.to_def_id();
+        let glob_def_id = glob_def_id.to_def_id();
 
         let targets = self
             .tcx
@@ -678,7 +675,7 @@ impl<'tcx> Checker<'tcx> {
 
         let (has_target, all_targets_stable) = self.classify_reexport_targets(targets);
 
-        self.record_unstable_reexport(item, attr_span, path.span, has_target, all_targets_stable);
+        self.record_unstable_reexport(hir_id, attr_span, path.span, has_target, all_targets_stable);
     }
 
     fn containing_module_is_unstable(&self) -> bool {
@@ -731,20 +728,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 };
                 let def_id = cnum.as_def_id();
                 self.tcx.check_stability(def_id, Some(item.hir_id()), item.span, None);
-            }
-
-            hir::ItemKind::Use(path, hir::UseKind::Single(_))
-                if self.tcx.features().staged_api()
-                    && self.tcx.local_visibility(item.owner_id.def_id).is_public() =>
-            {
-                self.check_single_unstable_reexport(item, path);
-            }
-
-            hir::ItemKind::Use(path, hir::UseKind::Glob)
-                if self.tcx.features().staged_api()
-                    && self.tcx.local_visibility(item.owner_id.def_id).is_public() =>
-            {
-                self.check_glob_unstable_reexport(item, path);
             }
 
             // For implementations of traits, check the stability of each item
@@ -908,36 +891,82 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
         intravisit::walk_poly_trait_ref(self, t);
     }
 
-    fn visit_use(&mut self, path: &'tcx UsePath<'tcx>, hir_id: HirId) {
-        let res = path.res;
+    fn visit_use(&mut self, tree: &'tcx hir::UseTree<'tcx>, hir_id: HirId, def_id: LocalDefId) {
+        let mut v = vec![];
 
-        // A use item can import something from two namespaces at the same time.
-        // For deprecation/stability we don't want to warn twice.
-        // This specifically happens with constructors for unit/tuple structs.
-        if let Some(ty_ns_res) = res.type_ns
-            && let Some(value_ns_res) = res.value_ns
-            && let Some(type_ns_did) = ty_ns_res.opt_def_id()
-            && let Some(value_ns_did) = value_ns_res.opt_def_id()
-            && let DefKind::Ctor(.., _) = self.tcx.def_kind(value_ns_did)
-            && self.tcx.parent(value_ns_did) == type_ns_did
-        {
-            // Only visit the value namespace path when we've detected a duplicate,
-            // not the type namespace path.
-            let UsePath { segments, res: _, span } = *path;
-            self.visit_path(&Path { segments, res: value_ns_res, span }, hir_id);
+        #[instrument(skip(visitor))]
+        fn recurse<'tcx>(
+            visitor: &mut Checker<'tcx>,
+            tree: &'tcx hir::UseTree<'tcx>,
+            hir_id: HirId,
+            def_id: LocalDefId,
+            stack: &mut Vec<&'tcx [hir::PathSegment<'tcx>]>,
+        ) {
+            let UsePath { segments, res, span } = *tree.prefix;
 
-            // Though, visit the macro namespace if it exists,
-            // regardless of the checks above relating to constructors.
-            if let Some(res) = res.macro_ns {
-                self.visit_path(&Path { segments, res, span }, hir_id);
+            match tree.kind {
+                hir::UseKind::Single(_) | hir::UseKind::Glob => {
+                    if visitor.tcx.features().staged_api()
+                        && visitor.tcx.local_visibility(def_id).is_public()
+                    {
+                        if let hir::UseKind::Single(_) = tree.kind {
+                            visitor.check_single_unstable_reexport(hir_id, tree.prefix);
+                        } else {
+                            visitor.check_glob_unstable_reexport(hir_id, def_id, tree.prefix);
+                        }
+                    }
+                    // A use item can import something from two namespaces at the same time.
+                    // For deprecation/stability we don't want to warn twice.
+                    // This specifically happens with constructors for unit/tuple structs.
+                    if let Some(res) = res.value_ns.or(res.type_ns) {
+                        visitor.check_path(&Path { segments, res, span }, hir_id, stack);
+                    }
+
+                    // Though, visit the macro namespace if it exists,
+                    // regardless of the checks above relating to constructors.
+                    if let Some(res) = res.macro_ns {
+                        visitor.check_path(&Path { segments, res, span }, hir_id, stack);
+                    }
+                }
+                hir::UseKind::Nested { items } => {
+                    stack.push(tree.prefix.segments);
+                    if items.is_empty() {
+                        // need to handle `use foo::bar::{};`
+                        visitor.check_path(
+                            &Path {
+                                segments,
+                                res: segments.last().map_or(Res::Err, |seg| seg.res),
+                                span,
+                            },
+                            hir_id,
+                            stack,
+                        );
+                    } else {
+                        for (tree, id, def_id) in items {
+                            recurse(visitor, tree, *id, *def_id, stack);
+                        }
+                    }
+                    stack.pop();
+                }
             }
-        } else {
-            // if there's no duplicate, just walk as normal
-            intravisit::walk_use(self, path, hir_id)
         }
+        recurse(self, tree, hir_id, def_id, &mut v);
     }
 
     fn visit_path(&mut self, path: &hir::Path<'tcx>, id: hir::HirId) {
+        self.check_path(path, id, &[]);
+
+        intravisit::walk_path(self, path)
+    }
+}
+
+impl<'tcx> Checker<'tcx> {
+    fn check_path(
+        &mut self,
+        path: &hir::Path<'tcx>,
+        id: hir::HirId,
+        prefix: &[&[hir::PathSegment<'tcx>]],
+    ) {
         if let Some(def_id) = path.res.opt_def_id() {
             let method_span = path.segments.last().map(|s| s.ident.span);
             let item_is_allowed = self.tcx.check_stability_allow_unstable(
@@ -961,83 +990,104 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                         }
                         _ => None,
                     });
+                let segments = prefix
+                    .into_iter()
+                    .flat_map(|i| i.into_iter())
+                    .chain(path.segments.iter().rev().skip(1).rev());
+                let intrinsics_module = segments.clone().last();
+                for segment in segments {
+                    self.check_path_segments(
+                        path.span,
+                        segment,
+                        intrinsics_module,
+                        id,
+                        method_span,
+                        is_allowed_through_unstable_modules,
+                    );
+                }
+            }
+        }
+    }
+    /// Check parent modules stability as well if the item the path refers to is itself
+    /// stable. We only emit errors for unstable path segments if the item is stable
+    /// or allowed because stability is often inherited, so the most common case is that
+    /// both the segments and the item are unstable behind the same feature flag.
+    ///
+    /// We check here rather than in `visit_path_segment` to prevent visiting the last
+    /// path segment twice
+    ///
+    /// We include special cases via `#[rustc_allowed_through_unstable_modules]` for items
+    /// that were accidentally stabilized through unstable paths before this check was
+    /// added, such as `core::intrinsics::transmute`
+    fn check_path_segments(
+        &mut self,
+        span: Span,
+        path_segment: &hir::PathSegment<'_>,
+        intrinsics_module: Option<&hir::PathSegment<'_>>,
+        id: HirId,
+        method_span: Option<Span>,
+        is_allowed_through_unstable_modules: Option<(Symbol, Symbol)>,
+    ) {
+        // The item itself is allowed; check whether the path there is also allowed.
 
-                // Check parent modules stability as well if the item the path refers to is itself
-                // stable. We only emit errors for unstable path segments if the item is stable
-                // or allowed because stability is often inherited, so the most common case is that
-                // both the segments and the item are unstable behind the same feature flag.
-                //
-                // We check here rather than in `visit_path_segment` to prevent visiting the last
-                // path segment twice
-                //
-                // We include special cases via #[rustc_allowed_through_unstable_modules] for items
-                // that were accidentally stabilized through unstable paths before this check was
-                // added, such as `core::intrinsics::transmute`
-                let parents = path.segments.iter().rev().skip(1);
-                for path_segment in parents {
-                    if let Some(def_id) = path_segment.res.opt_def_id() {
-                        match is_allowed_through_unstable_modules {
-                            None => {
-                                // Emit a hard stability error if this path is not stable.
+        if let Some(def_id) = path_segment.res.opt_def_id() {
+            match is_allowed_through_unstable_modules {
+                None => {
+                    // Emit a hard stability error if this path is not stable.
 
-                                // use `None` for id to prevent deprecation check
-                                self.tcx.check_stability_allow_unstable(
-                                    def_id,
-                                    None,
-                                    path_segment.ident.span,
-                                    None,
-                                    if is_unstable_reexport(self.tcx, id) {
-                                        AllowUnstable::Yes
-                                    } else {
-                                        AllowUnstable::No
-                                    },
-                                );
-                            }
-                            Some((message, suggestion)) => {
-                                // Call the stability check directly so that we can control which
-                                // diagnostic is emitted.
-                                let eval_result = self.tcx.eval_stability_allow_unstable(
-                                    def_id,
-                                    None,
-                                    path.span,
-                                    None,
-                                    if is_unstable_reexport(self.tcx, id) {
-                                        AllowUnstable::Yes
-                                    } else {
-                                        AllowUnstable::No
-                                    },
-                                );
-                                let is_allowed = matches!(eval_result, EvalResult::Allow);
-                                if !is_allowed {
-                                    // Show a deprecation message.
-                                    let [.., intrinsics_module, _intrinsic] = path.segments else {
-                                        span_bug!(
-                                            path.span,
-                                            "no module for `is_allowed_through_unstable_modules` intrinsic {path:?}"
-                                        )
-                                    };
-                                    let diag = diagnostics::RustcAtumSuggestion {
-                                        message,
-                                        import_span: path.span,
-                                        unstable_mod_span: { intrinsics_module.ident.span },
-                                        module: intrinsics_module.ident,
-                                        suggestion,
-                                    };
-                                    self.tcx.emit_node_span_lint(
-                                        DEPRECATED,
-                                        id,
-                                        method_span.unwrap_or(path.span),
-                                        diag,
-                                    );
-                                }
-                            }
-                        }
+                    // use `None` for id to prevent deprecation check
+                    self.tcx.check_stability_allow_unstable(
+                        def_id,
+                        None,
+                        path_segment.ident.span,
+                        None,
+                        if is_unstable_reexport(self.tcx, id) {
+                            AllowUnstable::Yes
+                        } else {
+                            AllowUnstable::No
+                        },
+                    );
+                }
+                Some((message, suggestion)) => {
+                    // Call the stability check directly so that we can control which
+                    // diagnostic is emitted.
+                    let eval_result = self.tcx.eval_stability_allow_unstable(
+                        def_id,
+                        None,
+                        span,
+                        None,
+                        if is_unstable_reexport(self.tcx, id) {
+                            AllowUnstable::Yes
+                        } else {
+                            AllowUnstable::No
+                        },
+                    );
+                    let is_allowed = matches!(eval_result, EvalResult::Allow);
+                    if !is_allowed {
+                        // Show a deprecation message.
+                        let intrinsics_module = intrinsics_module.unwrap_or_else(|| {
+                            span_bug!(
+                                span,
+                                "no module for `is_allowed_through_unstable_modules` intrinsic {path_segment:?}"
+                            )
+                        });
+                        let diag = diagnostics::RustcAtumSuggestion {
+                            message,
+                            import_span: span,
+                            unstable_mod_span: { intrinsics_module.ident.span },
+                            module: intrinsics_module.ident,
+                            suggestion,
+                        };
+                        self.tcx.emit_node_span_lint(
+                            DEPRECATED,
+                            id,
+                            method_span.unwrap_or(span),
+                            diag,
+                        );
                     }
                 }
             }
         }
-
-        intravisit::walk_path(self, path)
     }
 }
 
@@ -1046,10 +1096,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
 /// See issue #94972 for details on why this is a special case
 fn is_unstable_reexport(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
     // Get the LocalDefId so we can lookup the item to check the kind.
-    let Some(owner) = id.as_owner() else {
-        return false;
-    };
-    let def_id = owner.def_id;
+    let def_id = id.owner.def_id;
 
     let Some(stab) = tcx.lookup_stability(def_id) else {
         return false;
@@ -1061,7 +1108,10 @@ fn is_unstable_reexport(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
     }
 
     // If this is a path that isn't a use, we don't need to do anything special
-    if !matches!(tcx.hir_expect_item(def_id).kind, ItemKind::Use(..)) {
+    if !matches!(
+        tcx.hir_node(id),
+        hir::Node::Item(hir::Item { kind: ItemKind::Use(..), .. }) | hir::Node::NestedUseTree(_)
+    ) {
         return false;
     }
 

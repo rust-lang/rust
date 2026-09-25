@@ -2,8 +2,8 @@
 
 #![feature(
     generic_const_items,
-    min_generic_const_args,
-    macroless_generic_const_args,
+    gca_min_const_items,
+    gca_macroless_args,
     adt_const_params,
     generic_const_parameter_types,
     const_param_ty_trait
@@ -42,5 +42,5 @@ fn main() {
 struct PC<T: ConstParamTy_, const N: T> {
     _0: PhantomData<T>,
 }
-// FIXME(min_generic_const_args): this shouldn't have to do silly (expr,).0 hacks
+// FIXME(gca_min_const_items): this shouldn't have to do silly (expr,).0 hacks
 const PC<T: ConstParamTy_, const N: T>: PC<T, N> = (PC { _0: PhantomData::<T> },).0;

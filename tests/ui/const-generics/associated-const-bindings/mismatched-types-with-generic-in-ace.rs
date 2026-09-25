@@ -1,4 +1,4 @@
-#![feature(generic_const_items, min_generic_const_args)]
+#![feature(generic_const_items, gca_min_const_items)]
 #![expect(incomplete_features)]
 
 use std::gca;

@@ -3440,7 +3440,6 @@ name = "replace-version-placeholder"
 version = "0.1.0"
 dependencies = [
  "tidy",
- "walkdir",
 ]
 
 [[package]]

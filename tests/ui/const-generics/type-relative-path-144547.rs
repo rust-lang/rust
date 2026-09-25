@@ -2,7 +2,7 @@
 
 //@ revisions: min mgca
 //@[mgca] check-pass
-#![cfg_attr(mgca, feature(min_generic_const_args, macroless_generic_const_args))]
+#![cfg_attr(mgca, feature(gca_min_const_items, gca_macroless_args))]
 
 trait UnderlyingImpl<const MAX_SIZE: usize> {
     type InfoType: LevelInfo;

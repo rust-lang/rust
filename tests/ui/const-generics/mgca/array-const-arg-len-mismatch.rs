@@ -3,7 +3,7 @@
 //! Ensure that providing an array const arg with the wrong number of elements
 //! doesn't ICE or silently cause UB.
 #![expect(incomplete_features)]
-#![feature(adt_const_params, min_generic_const_args, macroless_generic_const_args)]
+#![feature(adt_const_params, gca_min_const_items, gca_macroless_args)]
 #![feature(unsized_const_params, generic_const_parameter_types)]
 
 use std::gca;

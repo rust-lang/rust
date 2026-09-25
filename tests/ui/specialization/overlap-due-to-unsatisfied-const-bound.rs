@@ -1,6 +1,6 @@
 // Regression test for #140571. The compiler used to ICE
 
-#![feature(min_generic_const_args, specialization)]
+#![feature(gca_min_const_items, specialization)]
 
 use std::gca;
 

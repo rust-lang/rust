@@ -5,8 +5,8 @@
 // removes the restriction that -Znext-solver must be enabled)
 
 #![feature(
-    min_generic_const_args,
-    generic_const_args,
+    gca_min_const_items,
+    gca_const_items,
 //[old]~^ ERROR next-solver
     generic_const_items
 )]

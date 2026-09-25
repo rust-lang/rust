@@ -878,6 +878,10 @@ pub fn codegen_crate<
                         source: cgu.previous_work_product(tcx),
                     },
                 );
+                // This will unwind if there are errors, which triggers our `AbortCodegenOnDrop`
+                // guard. Unfortunately, just skipping the `submit_pre_lto_module_to_llvm` makes
+                // compilation hang on post-monomorphization errors.
+                tcx.dcx().abort_if_errors();
             }
             CguReuse::PostLto => {
                 submit_post_lto_module_to_llvm(

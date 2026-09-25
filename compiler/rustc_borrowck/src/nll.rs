@@ -26,7 +26,7 @@ use crate::polonius::PoloniusContext;
 use crate::polonius::legacy::{
     PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
 };
-use crate::region_infer::RegionInferenceContext;
+use crate::region_infer::{RegionInferenceContext, UnsolvedRegionInferenceContext};
 use crate::type_check::MirTypeckRegionConstraints;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
@@ -96,14 +96,14 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
         &universal_region_relations,
         infcx,
     );
-    let mut regioncx = RegionInferenceContext::new(
+    let regioncx = UnsolvedRegionInferenceContext::new(
         &infcx,
         lowered_constraints,
         universal_region_relations.clone(),
         location_map,
     );
 
-    let (closure_region_requirements, _nll_errors) = regioncx.solve(infcx, body, None);
+    let (_, closure_region_requirements, _nll_errors) = regioncx.solve(infcx, body, None);
     closure_region_requirements
 }
 
@@ -161,13 +161,6 @@ pub(crate) fn compute_regions<'tcx>(
         );
     }
 
-    let mut regioncx = RegionInferenceContext::new(
-        infcx,
-        lowered_constraints,
-        universal_region_relations,
-        location_map,
-    );
-
     // If requested: dump NLL facts, and run legacy polonius analysis.
     let polonius_output = polonius_facts.as_ref().and_then(|polonius_facts| {
         if infcx.tcx.sess.opts.unstable_opts.nll_facts {
@@ -189,8 +182,15 @@ pub(crate) fn compute_regions<'tcx>(
         }
     });
 
+    let regioncx = UnsolvedRegionInferenceContext::new(
+        infcx,
+        lowered_constraints,
+        universal_region_relations,
+        location_map,
+    );
+
     // Solve the region constraints.
-    let (closure_region_requirements, nll_errors) =
+    let (regioncx, closure_region_requirements, nll_errors) =
         regioncx.solve(infcx, body, polonius_output.clone());
 
     NllOutput {

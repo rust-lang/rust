@@ -1,6 +1,6 @@
 //@ compile-flags: -Zvalidate-mir -Znext-solver
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 use std::gca;
 

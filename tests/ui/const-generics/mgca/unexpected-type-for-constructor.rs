@@ -2,8 +2,8 @@
 //@ compile-flags: -Znext-solver=globally
 //@ check-fail
 
-#![feature(macroless_generic_const_args)]
-#![feature(generic_const_args, min_generic_const_args)]
+#![feature(gca_macroless_args)]
+#![feature(gca_const_items, gca_min_const_items)]
 const C_INNER: (*const u8, u8) = (None::<u8>, None::<u8>);
 //~^ ERROR mismatched types
 //~| ERROR mismatched types

@@ -4,7 +4,12 @@ error[E0391]: cycle detected when building specialization graph of trait `Trait`
 LL | trait Trait<T> { type Assoc; }
    | ^^^^^^^^^^^^^^
    |
-   = note: ...which immediately requires building specialization graph of trait `Trait` again
+note: ...which requires computing whether impls specialize one another...
+  --> $DIR/coherence-inherited-assoc-ty-cycle-err.rs:17:1
+   |
+LL | impl<T> Trait<T> for String {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires building specialization graph of trait `Trait`, completing the cycle
    = note: cycle used when coherence checking all impls of trait `Trait`
    = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 

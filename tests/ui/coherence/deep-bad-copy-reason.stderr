@@ -21,13 +21,12 @@ LL | pub struct List<'tcx, T>(Interned<'tcx, ListS<T>>);
    |
    = help: within `ListS<T>`, the trait `Sized` is not implemented for `OpaqueListContents`
 note: required because it appears within the type `ListS<T>`
-  --> $DIR/deep-bad-copy-reason.rs:7:12
+  --> $DIR/deep-bad-copy-reason.rs:10:5
    |
 LL | pub struct ListS<T> {
-   |            ^^^^^
 ...
 LL |     opaque: OpaqueListContents,
-   |     -------------------------- required by this field
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this field
 note: required by an implicit `Sized` bound in `Interned`
   --> $DIR/deep-bad-copy-reason.rs:15:25
    |

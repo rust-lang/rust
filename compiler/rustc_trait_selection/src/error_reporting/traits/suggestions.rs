@@ -3795,9 +3795,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if typeck_results.hir_owner.to_def_id() != typeck_root {
             return false;
         }
+
+        // Error reporting can run before closure capture analysis has inferred the
+        // tuple of upvar types. avoid accessing upvar types until they are available.
+        let upvar_tys = match upvar_args.tupled_upvars_ty().kind() {
+            ty::Tuple(args) => args,
+            ty::Error(_) => ty::List::empty(),
+            ty::Infer(_) => return false,
+            ty => unreachable!("unexpected upvar types tuple: {ty:?}"),
+        };
+
         let captures: Vec<_> =
             typeck_results.closure_min_captures_flattened(closure_def_id).collect();
-        let upvar_tys = upvar_args.upvar_tys();
         if captures.len() != upvar_tys.len() {
             return false;
         }
@@ -4447,7 +4456,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             let msg = msg();
                             match tcx.opt_item_ident(def.did()) {
                                 Some(ident) => {
-                                    let mut spans = MultiSpan::from(ident.span);
+                                    let mut spans = MultiSpan::new();
                                     if def.did().is_local()
                                         && let Some(pred) = predicate.as_trait_clause()
                                     {
@@ -4456,12 +4465,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                         );
                                         for field in def.all_fields() {
                                             if field.ty(tcx, args).skip_norm_wip() == field_ty {
-                                                spans.push_span_label(
-                                                    tcx.def_span(field.did),
-                                                    "required by this field",
-                                                );
+                                                let sp = tcx.def_span(field.did);
+                                                spans.push_primary_span(sp);
+                                                spans.push_span_label(sp, "required by this field");
                                             }
                                         }
+                                    }
+                                    if spans.has_primary_spans() {
+                                        spans.push_span_context(ident.span);
+                                    } else {
+                                        spans.push_primary_span(ident.span);
+                                        spans.push_span_label(ident.span, "");
                                     }
                                     err.span_note(spans, msg);
                                 }

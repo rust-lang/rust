@@ -1209,7 +1209,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // terms of `Fn` etc, but we could probably make this more
         // precise still.
         //
-        // FIXME(min_generic_const_args): Consider consts as well?
+        // FIXME(gca_min_const_items): Consider consts as well?
         let unbound_input_types =
             stack.fresh_trait_pred.skip_binder().trait_ref.args.types().any(|ty| ty.is_fresh());
 
@@ -3082,16 +3082,16 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
 
     /// Invoked when the node with dfn `dfn` does not get a successful
     /// result. This will clear out any provisional cache entries
-    /// that were added since `dfn` was created. This is because the
-    /// provisional entries are things which must assume that the
-    /// things on the stack at the time of their creation succeeded --
-    /// since the failing node is presently at the top of the stack,
-    /// these provisional entries must either depend on it or some
-    /// ancestor of it.
+    /// originating from nodes visited before this node (`from_dfn < dfn`).
+    /// This is because the provisional entries are things which must
+    /// assume that the things on the stack at the time of their creation
+    /// succeeded -- since the failing node is presently at the top of
+    /// the stack, these provisional entries must either depend on it or
+    /// some ancestor of it.
     fn on_failure(&self, dfn: usize) {
         debug!(?dfn, "on_failure");
         self.map.borrow_mut().retain(|key, eval| {
-            if !eval.from_dfn >= dfn {
+            if eval.from_dfn < dfn {
                 debug!("on_failure: removing {:?}", key);
                 false
             } else {

@@ -1080,7 +1080,7 @@ pub trait Tuple {}
 /// const FOO<const N: usize>: usize = gca!(BAR::<N>);
 /// ```
 #[rustc_builtin_macro(gca)]
-#[unstable(feature = "min_generic_const_args", issue = "132980")]
+#[unstable(feature = "gca_min_const_items", issue = "132980")]
 #[macro_export]
 macro_rules! gca {
     ($($arg:tt)*) => {

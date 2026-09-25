@@ -1,7 +1,7 @@
 //@ run-pass
 
 #![feature(supertrait_item_shadowing)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![warn(resolving_to_items_shadowing_supertrait_items)]
 #![warn(shadowing_supertrait_items)]
 #![allow(dead_code)]

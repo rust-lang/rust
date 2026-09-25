@@ -19,7 +19,7 @@
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::io::Write;
+use std::io::{BufWriter, Write};
 use std::path::Path;
 use stdarch_gen_common::GENERATED_MARKER;
 
@@ -1606,30 +1606,16 @@ fn generate_module_file(
     intrinsics: &[IntrinsicInfo],
     output_path: &Path,
     mode: VectorMode,
-) -> Result<(), String> {
-    let mut output =
-        File::create(output_path).map_err(|e| format!("Failed to create output: {}", e))?;
+) -> std::io::Result<()> {
+    let mut output = BufWriter::new(File::create(output_path)?);
 
-    writeln!(output, "{}", GENERATED_MARKER).map_err(|e| e.to_string())?;
-    writeln!(output, "{}", generate_module_doc(mode)).map_err(|e| e.to_string())?;
-    writeln!(output, "{}", generate_types(mode)).map_err(|e| e.to_string())?;
-    writeln!(output, "{}", generate_extern_block(intrinsics, mode)).map_err(|e| e.to_string())?;
-    writeln!(output, "{}", generate_functions(intrinsics)).map_err(|e| e.to_string())?;
+    writeln!(output, "{}", GENERATED_MARKER)?;
+    writeln!(output, "{}", generate_module_doc(mode))?;
+    writeln!(output, "{}", generate_types(mode))?;
+    writeln!(output, "{}", generate_extern_block(intrinsics, mode))?;
+    writeln!(output, "{}", generate_functions(intrinsics))?;
 
-    // Ensure file is flushed before running rustfmt
-    drop(output);
-
-    // Run rustfmt on the generated file
-    let status = std::process::Command::new("rustfmt")
-        .arg(output_path)
-        .status()
-        .map_err(|e| format!("Failed to run rustfmt: {}", e))?;
-
-    if !status.success() {
-        return Err("rustfmt failed".to_string());
-    }
-
-    Ok(())
+    output.flush()
 }
 
 /// Parse the HVX header in `crate_dir` and write `v64.rs` and `v128.rs` into `out_dir`.
@@ -1642,7 +1628,8 @@ pub fn generate(crate_dir: &std::path::Path, out_dir: &std::path::Path) -> Resul
         .collect();
     for (filename, vmode) in [("v64.rs", VectorMode::V64), ("v128.rs", VectorMode::V128)] {
         let path = out_dir.join(filename);
-        generate_module_file(&intrinsics, &path, vmode)?;
+        generate_module_file(&intrinsics, &path, vmode)
+            .map_err(|e| format!("Cannot generate {path:?}: {e:?}"))?;
     }
     Ok(())
 }

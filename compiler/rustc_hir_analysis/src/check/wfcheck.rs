@@ -1289,7 +1289,7 @@ pub(super) fn check_const_item<'tcx>(
                 tcx.require_lang_item(LangItem::ConstParamTy, span),
             );
         }
-        // FIXME(min_generic_const_args): We *might* want to move this check to `type_of`, so we can
+        // FIXME(gca_min_const_items): We *might* want to move this check to `type_of`, so we can
         // return `ty::Error` if it references invalid params. However, doing so is hard, because
         // `type_of` doesn't know if it's a direct const - `const_of_item` determines that, and
         // `const_of_item` calls `type_of`.

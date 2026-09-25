@@ -1,5 +1,4 @@
 //@ only-apple
-//@ ignore-backends: gcc
 
 #![feature(extern_item_impls)]
 #![crate_type = "lib"]
