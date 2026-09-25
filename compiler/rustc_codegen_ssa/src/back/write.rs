@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::marker::PhantomData;
 use std::num::NonZero;
 use std::panic::AssertUnwindSafe;
@@ -389,6 +390,10 @@ fn generate_thin_lto_work<B: WriteBackendMethods>(
 
 enum MaybeLtoModules<B: WriteBackendMethods> {
     NoLto(CompiledModules),
+    Lto(LtoModules<B>),
+}
+
+enum LtoModules<B: WriteBackendMethods> {
     FatLto {
         cgcx: CodegenContext,
         needs_fat_lto: Vec<FatLtoInput<B>>,
@@ -1730,7 +1735,7 @@ fn start_executing_work<B: WriteBackendMethods>(
                 needs_fat_lto.push(FatLtoInput::Serialized { name: wp.cgu_name, bitcode_path })
             }
 
-            return Ok(MaybeLtoModules::FatLto { cgcx, needs_fat_lto });
+            return Ok(MaybeLtoModules::Lto(LtoModules::FatLto { cgcx, needs_fat_lto }));
         } else if !needs_thin_lto.is_empty() || !lto_import_only_modules.is_empty() {
             assert!(compiled_modules.is_empty());
             assert!(needs_fat_lto.is_empty());
@@ -1764,7 +1769,11 @@ fn start_executing_work<B: WriteBackendMethods>(
                 None
             };
 
-            return Ok(MaybeLtoModules::ThinLto { cgcx, needs_thin_lto, allocator_module });
+            return Ok(MaybeLtoModules::Lto(LtoModules::ThinLto {
+                cgcx,
+                needs_thin_lto,
+                allocator_module,
+            }));
         }
 
         Ok(MaybeLtoModules::NoLto(CompiledModules {
@@ -2111,8 +2120,7 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
         self,
         sess: &Session,
         incr_comp_session: Option<&mut IncrCompSession>,
-        crate_info: &CrateInfo,
-    ) -> CompiledModules {
+    ) -> Box<dyn Any> {
         self.shared_emitter_main.check(sess, true);
 
         let maybe_lto_modules = sess.time("join_worker_thread", || match self.coordinator.join() {
@@ -2128,13 +2136,9 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
 
         sess.dcx().abort_if_errors();
 
-        let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
-
         // Catch fatal errors to ensure shared_emitter_main.check() can emit the actual diagnostics
-        let compiled_modules = catch_fatal_errors(|| match maybe_lto_modules {
+        match maybe_lto_modules {
             MaybeLtoModules::NoLto(compiled_modules) => {
-                drop(shared_emitter);
-
                 if let Some(incr_comp_session) = incr_comp_session {
                     copy_all_cgu_workproducts_to_incr_comp_cache_dir(
                         sess,
@@ -2143,9 +2147,57 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                     );
                 }
 
-                compiled_modules
+                Box::new(compiled_modules) as Box<dyn Any>
             }
-            MaybeLtoModules::FatLto { cgcx, needs_fat_lto } => {
+            MaybeLtoModules::Lto(lto_modules) => Box::new(PendingLto {
+                backend: self.backend,
+                output_filenames: self.output_filenames,
+                lto_modules,
+            }),
+        }
+    }
+
+    pub(crate) fn codegen_finished(&self, tcx: TyCtxt<'_>) {
+        self.wait_for_signal_to_codegen_item();
+        self.check_for_errors(tcx.sess);
+        drop(self.coordinator.sender.send(Message::CodegenComplete::<B>));
+    }
+
+    pub(crate) fn check_for_errors(&self, sess: &Session) {
+        self.shared_emitter_main.check(sess, false);
+    }
+
+    pub(crate) fn wait_for_signal_to_codegen_item(&self) {
+        match self.codegen_worker_receive.recv() {
+            Ok(CguMessage) => {
+                // Ok to proceed.
+            }
+            Err(_) => {
+                // One of the LLVM threads must have panicked, fall through so
+                // error handling can be reached.
+            }
+        }
+    }
+}
+
+pub struct PendingLto<B: WriteBackendMethods> {
+    backend: B,
+    output_filenames: Arc<OutputFilenames>,
+    lto_modules: LtoModules<B>,
+}
+
+impl<B: WriteBackendMethods> PendingLto<B> {
+    pub fn perform_lto(
+        self,
+        sess: &Session,
+        incr_comp_session: Option<&mut IncrCompSession>,
+        crate_info: &CrateInfo,
+    ) -> CompiledModules {
+        let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
+
+        // Catch fatal errors to ensure shared_emitter_main.check() can emit the actual diagnostics
+        let compiled_modules = catch_fatal_errors(|| match self.lto_modules {
+            LtoModules::FatLto { cgcx, needs_fat_lto } => {
                 let tm_factory = self.backend.target_machine_factory(sess);
 
                 // FIXME cache local pre-LTO bitcode
@@ -2163,7 +2215,7 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                     allocator_module: None,
                 }
             }
-            MaybeLtoModules::ThinLto { cgcx, needs_thin_lto, allocator_module } => {
+            LtoModules::ThinLto { cgcx, needs_thin_lto, allocator_module } => {
                 let tm_factory = self.backend.target_machine_factory(sess);
 
                 let compiled_modules = CompiledModules {
@@ -2210,28 +2262,6 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
         produce_final_output_artifacts(sess, &compiled_modules, &self.output_filenames);
 
         compiled_modules
-    }
-
-    pub(crate) fn codegen_finished(&self, tcx: TyCtxt<'_>) {
-        self.wait_for_signal_to_codegen_item();
-        self.check_for_errors(tcx.sess);
-        drop(self.coordinator.sender.send(Message::CodegenComplete::<B>));
-    }
-
-    pub(crate) fn check_for_errors(&self, sess: &Session) {
-        self.shared_emitter_main.check(sess, false);
-    }
-
-    pub(crate) fn wait_for_signal_to_codegen_item(&self) {
-        match self.codegen_worker_receive.recv() {
-            Ok(CguMessage) => {
-                // Ok to proceed.
-            }
-            Err(_) => {
-                // One of the LLVM threads must have panicked, fall through so
-                // error handling can be reached.
-            }
-        }
     }
 }
 

@@ -40,12 +40,21 @@ impl CodegenBackend for TheBackend {
         ongoing_codegen: Box<dyn Any>,
         _sess: &Session,
         _incr_comp_session: Option<&mut IncrCompSession>,
+    ) -> Box<dyn Any> {
+        ongoing_codegen
+            .downcast::<CompiledModules>()
+            .expect("in join_codegen: ongoing_codegen is not a CompiledModules")
+    }
+
+    fn perform_lto(
+        &self,
+        _pending_lto: Box<dyn Any>,
+        _sess: &Session,
+        _incr_comp_session: Option<&mut IncrCompSession>,
         _outputs: &OutputFilenames,
         _crate_info: &CrateInfo,
     ) -> CompiledModules {
-        *ongoing_codegen
-            .downcast::<CompiledModules>()
-            .expect("in join_codegen: ongoing_codegen is not a CompiledModules")
+        unreachable!()
     }
 
     fn link(

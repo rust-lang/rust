@@ -55,12 +55,17 @@ impl Linker {
         codegen_backend: &dyn CodegenBackend,
     ) {
         let compiled_modules = sess.time("finish_ongoing_codegen", || {
-            match self.ongoing_codegen.downcast::<CompiledModules>() {
+            let maybe_pending_lto = if self.ongoing_codegen.is::<CompiledModules>() {
                 // This was a check only build
-                Ok(compiled_modules) => *compiled_modules,
+                self.ongoing_codegen
+            } else {
+                codegen_backend.join_codegen(self.ongoing_codegen, sess, incr_comp_session.as_mut())
+            };
 
-                Err(ongoing_codegen) => codegen_backend.join_codegen(
-                    ongoing_codegen,
+            match maybe_pending_lto.downcast::<CompiledModules>() {
+                Ok(compiled_modules) => *compiled_modules,
+                Err(pending_lto) => codegen_backend.perform_lto(
+                    pending_lto,
                     sess,
                     incr_comp_session.as_mut(),
                     &self.output_filenames,

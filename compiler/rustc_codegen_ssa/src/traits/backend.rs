@@ -103,14 +103,18 @@ pub trait CodegenBackend {
 
     fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any>;
 
-    /// This is called on the returned `Box<dyn Any>` from [`codegen_crate`](Self::codegen_crate)
-    ///
-    /// # Panics
-    ///
-    /// Panics when the passed `Box<dyn Any>` was not returned by [`codegen_crate`](Self::codegen_crate).
+    /// This is called on the returned `Box<dyn Any>` from [`codegen_crate`](Self::codegen_crate).
     fn join_codegen(
         &self,
         ongoing_codegen: Box<dyn Any>,
+        sess: &Session,
+        incr_comp_session: Option<&mut IncrCompSession>,
+    ) -> Box<dyn Any>;
+
+    /// This is called on the returned `Box<dyn Any>` from [`join_codegen`](Self::join_codegen).
+    fn perform_lto(
+        &self,
+        pending_lto: Box<dyn Any>,
         sess: &Session,
         incr_comp_session: Option<&mut IncrCompSession>,
         outputs: &OutputFilenames,
