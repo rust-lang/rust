@@ -65,10 +65,9 @@ pub struct DefPathToIndexMap {
 impl DefPathToIndexMap {
     #[inline]
     pub fn get(&self, hash: &Hash64) -> Option<DefIndex> {
-        match self.det_part.get(hash) {
-            Some(index) => Some(index),
-            None => self.non_det_part.as_ref().and_then(|map| map.get(hash).copied()),
-        }
+        self.det_part
+            .get(hash)
+            .or_else(|| self.non_det_part.as_ref().and_then(|map| map.get(hash).copied()))
     }
 
     /// This insert function does not behave like regular `insert` of a `HashMap`,

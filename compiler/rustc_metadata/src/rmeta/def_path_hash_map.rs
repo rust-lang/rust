@@ -23,10 +23,7 @@ impl DefPathHashMapRef<'_> {
         match self {
             DefPathHashMapRef::OwnedFromMetadata(det_map, non_det_map) => {
                 let hash = &def_path_hash.local_hash();
-                match det_map.get(hash) {
-                    Some(index) => Some(index),
-                    None => non_det_map.get(hash).copied(),
-                }
+                det_map.get(hash).or_else(|| non_det_map.get(hash).copied())
             }
             DefPathHashMapRef::BorrowedFromTcx(_) => {
                 panic!("DefPathHashMap::BorrowedFromTcx variant only exists for serialization")
