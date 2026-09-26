@@ -11,11 +11,6 @@ LL |     #[derive(Copy, Clone)]
    |                    ----- in this derive macro
 LL |     struct Foo(NonExistent);
    |                ^^^^^^^^^^^ not found in this scope
-   |
-help: you might be missing a type parameter
-   |
-LL |     struct Foo<NonExistent>(NonExistent);
-   |               +++++++++++++
 
 error[E0658]: `impl Trait` in type aliases is unstable
   --> $DIR/issue-119493-type-error-ice.rs:9:14

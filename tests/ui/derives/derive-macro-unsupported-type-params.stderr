@@ -34,11 +34,6 @@ help: an enum with a similar name exists
 LL -     Variant(T),
 LL +     Variant(A),
    |
-help: you might be missing a type parameter
-  --> $DIR/auxiliary/derive-no-generics.rs:79:15
-   |
-LL |         fn foo<T>(val: $name<$arg>) {
-   |               +++
 
 error[E0425]: cannot find value `T` in this scope
   --> $DIR/derive-macro-unsupported-type-params.rs:25:13
@@ -48,12 +43,6 @@ LL | #[derive(C)]
 LL | enum C<T> {
 LL |     Variant(T),
    |             ^ not found in this scope
-   |
-help: you might be missing a const parameter
-  --> $DIR/auxiliary/derive-no-generics.rs:79:15
-   |
-LL |         fn foo<const T: /* Type */>(val: $name<$arg>) {
-   |               +++++++++++++++++++++
 
 error[E0107]: missing generics for enum `A`
   --> $DIR/derive-macro-unsupported-type-params.rs:8:6
