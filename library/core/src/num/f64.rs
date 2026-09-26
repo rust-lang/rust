@@ -1867,8 +1867,8 @@ impl f64 {
     ///
     /// The choice of which one is used is unspecified and non-deterministic:
     /// it may vary by target, optimization level, and surrounding code, and
-    /// two evaluations of the same operation may even produce different
-    /// results.
+    /// even two invocations of this operation with the same inputs may
+    /// produce different results.
     ///
     /// # Precision
     ///
@@ -1881,9 +1881,6 @@ impl f64 {
     ///
     /// ```
     /// #![feature(float_mul_add_relaxed)]
-    ///
-    /// let result = 1.0f64.mul_add_relaxed(2.0, 3.0);
-    /// assert_eq!(result, 5.0);
     ///
     /// // When the fused and unfused operations round differently, either
     /// // result may be returned:
