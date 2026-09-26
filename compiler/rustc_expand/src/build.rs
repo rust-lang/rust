@@ -1,3 +1,5 @@
+use std::iter;
+
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::literal;
@@ -11,6 +13,13 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::base::ExtCtxt;
 
 impl<'a> ExtCtxt<'a> {
+    pub fn std_path(&self, components: &[Symbol]) -> Vec<Ident> {
+        let def_site = self.with_def_site_ctxt(DUMMY_SP);
+        iter::once(Ident::new(kw::DollarCrate, def_site))
+            .chain(components.iter().map(|&s| Ident::new(s, def_site)))
+            .collect()
+    }
+
     pub fn path(&self, span: Span, strs: Vec<Ident>) -> ast::Path {
         self.path_all(span, false, strs, vec![])
     }
