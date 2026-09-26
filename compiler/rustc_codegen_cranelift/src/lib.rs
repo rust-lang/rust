@@ -42,7 +42,7 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig, back};
 use rustc_data_structures::unord::UnordSet;
 use rustc_log::tracing::info;
-use rustc_middle::dep_graph::{IncrCompSession, WorkProductMap};
+use rustc_middle::dep_graph::IncrCompSession;
 use rustc_session::config::{NATIVE_CPU, OutputFilenames};
 use rustc_session::{CodegenBackendInit, EarlySession, Session};
 use rustc_span::{Symbol, sym};
@@ -239,10 +239,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
-        incr_comp_session: Option<&IncrCompSession>,
+        incr_comp_session: Option<&mut IncrCompSession>,
         _outputs: &OutputFilenames,
         crate_info: &CrateInfo,
-    ) -> (CompiledModules, WorkProductMap) {
+    ) -> CompiledModules {
         ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<driver::aot::AotDriver>>()
             .unwrap()
