@@ -94,7 +94,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn ret_void(&mut self);
     fn ret(&mut self, v: Self::Value);
     fn br(&mut self, dest: Self::BasicBlock);
-    fn br_with_attrs(&mut self, dest: Self::BasicBlock, _attributes: &[AttributeKind]) {
+    fn br_with_attrs(&mut self, dest: Self::BasicBlock, _loop_hint_attrs: &[AttributeKind]) {
         self.br(dest)
     }
     fn cond_br(

@@ -340,14 +340,14 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn br_with_attrs(&mut self, dest: &'ll BasicBlock, attributes: &[AttributeKind]) {
+    fn br_with_attrs(&mut self, dest: &'ll BasicBlock, loop_hint_attrs: &[AttributeKind]) {
         unsafe {
             let val = llvm::LLVMBuildBr(self.llbuilder, dest);
 
             let mut nodes = Vec::new();
 
-            for attribute in attributes {
-                let AttributeKind::Unroll(unroll) = attribute else {
+            for loop_hint_attr in loop_hint_attrs {
+                let AttributeKind::Unroll(unroll) = loop_hint_attr else {
                     continue;
                 };
                 // UnrollAttr::Count needs a second operand, the provided count, but the other
