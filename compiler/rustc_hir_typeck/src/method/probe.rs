@@ -2382,18 +2382,24 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
         }
 
-        // They are all the same, so if any of them is ambiguous, we report the pick as ambiguous.
-        let is_ambiguously_imported = probes.iter().any(|(p, _)| match p.kind {
-            TraitCandidate { is_ambiguously_imported, .. } => is_ambiguously_imported,
-            _ => false,
+        let ambiguously_imported_import_ids = probes.iter().find_map(|(p, _)| match p.kind {
+            TraitCandidate { is_ambiguously_imported, .. } => {
+                is_ambiguously_imported.then_some(p.import_ids)
+            }
+            _ => None,
         });
+
+        let (is_ambiguously_imported, import_ids) = match ambiguously_imported_import_ids {
+            Some(import_ids) => (true, import_ids),
+            None => (false, probes[0].0.import_ids),
+        };
 
         // FIXME: check the return type here somehow.
         // If so, just use this trait and call it a day.
         Some(Pick {
             item: probes[0].0.item,
             kind: TraitPick { is_ambiguously_imported },
-            import_ids: probes[0].0.import_ids,
+            import_ids,
             autoderefs: 0,
             autoref_or_ptr_adjustment: None,
             self_ty,
