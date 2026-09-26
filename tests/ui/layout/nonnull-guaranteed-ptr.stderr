@@ -1,0 +1,20 @@
+error: backend_repr: Scalar(pointer is 0..=18446744073709551615)
+  --> $DIR/nonnull-guaranteed-ptr.rs:11:1
+   |
+LL | type OptNonNull = Option<NonNull<String>>;
+   | ^^^^^^^^^^^^^^^
+
+error: backend_repr: Scalar(pointer is 0..=18446744073709551615)
+  --> $DIR/nonnull-guaranteed-ptr.rs:15:1
+   |
+LL | type OptRef<'a> = Option<&'a String>;
+   | ^^^^^^^^^^^^^^^
+
+error: backend_repr: Scalar(pointer is 0..=18446744073709551615)
+  --> $DIR/nonnull-guaranteed-ptr.rs:19:1
+   |
+LL | type OptMut<'a> = Option<&'a mut String>;
+   | ^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
