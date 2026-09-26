@@ -56,6 +56,7 @@
 //! [`Rc`]: rc
 //! [`RefCell`]: core::cell
 
+#![feature(split_array)]
 #![allow(unused_features)]
 #![allow(incomplete_features)]
 #![expect(clippy::partialeq_ne_impl, reason = "we need to implement ne for a lot of alloc types")]

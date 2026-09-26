@@ -2926,6 +2926,9 @@ impl<T: ?Sized + fmt::Display, A: Allocator> fmt::Display for Rc<T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
     }
+    fn size_hint(&self) -> Option<usize> {
+        fmt::Display::size_hint(&**self)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -4075,6 +4078,9 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<UniqueRc<U>> for UniqueRc
 impl<T: ?Sized + fmt::Display, A: Allocator> fmt::Display for UniqueRc<T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
+    }
+    fn size_hint(&self) -> Option<usize> {
+        fmt::Display::size_hint(&**self)
     }
 }
 
