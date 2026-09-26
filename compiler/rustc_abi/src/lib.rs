@@ -2195,6 +2195,15 @@ impl Niche {
     }
 }
 
+/// Whether niche optimizations are should be performed during layout calculation.
+///
+/// UnsafeCell and UnsafePinned both disable niche optimizations
+#[derive(PartialEq, Eq)]
+pub enum NicheOptimizations {
+    Enabled,
+    Disabled,
+}
+
 // NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
