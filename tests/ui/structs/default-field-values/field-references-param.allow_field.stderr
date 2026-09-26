@@ -1,0 +1,18 @@
+warning: field `too_generic` has a default value that is only checked when a value of `Z` is constructed
+  --> $DIR/field-references-param.rs:23:26
+   |
+LL | struct Z<const X: usize> {
+...
+LL |     too_generic: usize = X + 1,
+   |                          ^^^^^ this can't be const-evaluated until use
+   |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
+   = note: `#[warn(unevaluated_default_field_value)]` on by default
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[expect(unevaluated_default_field_value)]
+LL | struct Z<const X: usize> {
+   |
+
+warning: 1 warning emitted
+

@@ -24,6 +24,66 @@ error: unions cannot have default field values
 LL |     y: f32 = 2.,
    |              ^^
 
+warning: field `bar` has a default value that is only checked when a value of `Qux` is constructed
+  --> $DIR/failures.rs:22:14
+   |
+LL | pub struct Qux<const C: i32> {
+LL |     bar: S = Self::S,
+   |              ^^^^^^^ this can't be const-evaluated until use
+   |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
+   = note: `#[warn(unevaluated_default_field_value)]` on by default
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[expect(unevaluated_default_field_value)]
+LL | pub struct Qux<const C: i32> {
+   |
+
+warning: field `baz` has a default value that is only checked when a value of `Qux` is constructed
+  --> $DIR/failures.rs:23:16
+   |
+LL | pub struct Qux<const C: i32> {
+LL |     bar: S = Self::S,
+LL |     baz: i32 = foo(),
+   |                ^^^^^ this can't be const-evaluated until use
+   |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[expect(unevaluated_default_field_value)]
+LL | pub struct Qux<const C: i32> {
+   |
+
+warning: field `bat` has a default value that is only checked when a value of `Qux` is constructed
+  --> $DIR/failures.rs:24:16
+   |
+LL | pub struct Qux<const C: i32> {
+...
+LL |     bat: i32 = <Qux<{ C }> as T>::K,
+   |                ^^^^^^^^^^^^^^^^^^^^ this can't be const-evaluated until use
+   |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[expect(unevaluated_default_field_value)]
+LL | pub struct Qux<const C: i32> {
+   |
+
+warning: field `bay` has a default value that is only checked when a value of `Qux` is constructed
+  --> $DIR/failures.rs:25:16
+   |
+LL | pub struct Qux<const C: i32> {
+...
+LL |     bay: i32 = C,
+   |                ^ this can't be const-evaluated until use
+   |
+   = help: structs with type and const parameters only evaluate their default field values during construction, not eagerly when declared
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[expect(unevaluated_default_field_value)]
+LL | pub struct Qux<const C: i32> {
+   |
+
 error[E0277]: the trait bound `S: Default` is not satisfied
   --> $DIR/failures.rs:16:5
    |
@@ -114,7 +174,7 @@ LL -     let _ = Rak(.., 0);
 LL +     let _ = Rak(0);
    |
 
-error: aborting due to 10 previous errors
+error: aborting due to 10 previous errors; 4 warnings emitted
 
 Some errors have detailed explanations: E0061, E0277, E0308.
 For more information about an error, try `rustc --explain E0061`.

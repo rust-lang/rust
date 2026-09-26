@@ -9,7 +9,9 @@ use rustc_attr_ir::{EiiDecl, EiiImpl, EiiImplResolution, find_attr};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, ErrorGuaranteed, msg, pluralize, struct_span_code_err};
+use rustc_errors::{
+    Applicability, ErrorGuaranteed, MultiSpan, msg, pluralize, struct_span_code_err,
+};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -17,10 +19,13 @@ use rustc_hir::{AmbigArg, ItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{BoundRegionConversionTime, SolverRegionConstraint, TyCtxtInferExt};
 use rustc_infer::traits::{PredicateObligations, TraitErrors};
-use rustc_lint_defs::builtin::{REDUNDANT_LIFETIMES, SHADOWING_SUPERTRAIT_ITEMS};
+use rustc_lint_defs::builtin::{
+    REDUNDANT_LIFETIMES, SHADOWING_SUPERTRAIT_ITEMS, UNEVALUATED_DEFAULT_FIELD_VALUE,
+};
 use rustc_macros::{Diagnostic, TypeFoldable, TypeVisitable};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::solve::NoSolution;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::region_constraint::{And, LeafRegionConstraint, Or};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
@@ -47,7 +52,9 @@ use tracing::{debug, instrument};
 use super::compare_eii::{compare_eii_function_types, compare_eii_statics};
 use crate::autoderef::Autoderef;
 use crate::constrained_generic_params::{Parameter, identify_constrained_generic_params};
-use crate::diagnostics::{self, InvalidReceiverTyHint, ParamInTyOfConstParam};
+use crate::diagnostics::{
+    self, InvalidReceiverTyHint, ParamInTyOfConstParam, UnevaluatedDefaultFieldValue,
+};
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
     pub(super) ocx: ObligationCtxt<'a, 'tcx, FulfillmentError<'tcx>>,
@@ -985,28 +992,42 @@ pub(crate) fn check_type_defn<'tcx>(
     enter_wf_checking_ctxt(tcx, item, |wfcx| {
         let variants = adt_def.variants();
         let packed = adt_def.repr().packed();
+        let own_params_require_monomorphization =
+            LazyCell::new(|| tcx.generics_of(item).own_requires_monomorphization());
 
         for variant in variants.iter() {
             // All field types must be well-formed.
             for field in &variant.fields {
-                if let Some(def_id) = field.value
-                    && let Some(_ty) = tcx.type_of(def_id).no_bound_vars()
-                {
-                    // FIXME(generic_const_exprs, default_field_values): this is a hack and needs to
-                    // be refactored to check the instantiate-ability of the code better.
-                    if let Some(def_id) = def_id.as_local()
-                        && let DefKind::AnonConst = tcx.def_kind(def_id)
-                        && let hir::Node::AnonConst(anon) = tcx.hir_node_by_def_id(def_id)
-                        && let expr = &tcx.hir_body(anon.body).value
-                        && let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
-                        && let Res::Def(DefKind::ConstParam, _def_id) = path.res
-                    {
-                        // Do not evaluate bare `const` params, as those would ICE and are only
-                        // usable if `#![feature(generic_const_exprs)]` is enabled.
-                    } else {
-                        // Evaluate the constant proactively, to emit an error if the constant has
-                        // an unconditional error. We only do so if the const has no type params.
+                if let Some(def_id) = field.value {
+                    if !*own_params_require_monomorphization {
                         let _ = tcx.const_eval_poly(def_id);
+                    } else if tcx.features().default_field_values()
+                        && let Some(local_def_id) = def_id.as_local()
+                    {
+                        // Do not redundantly trigger lint if the feature is not actually available.
+
+                        let field_span = tcx.def_span(def_id);
+                        let mut multispan: MultiSpan = field_span.into();
+                        multispan
+                            .push_span_label(field_span, "this can't be const-evaluated until use");
+                        let struct_start = tcx.def_span(item).shrink_to_lo();
+                        multispan.push_span_context(tcx.def_span(field.did));
+                        multispan.push_span_context(struct_start);
+                        tcx.emit_node_span_lint(
+                            UNEVALUATED_DEFAULT_FIELD_VALUE,
+                            tcx.local_def_id_to_hir_id(local_def_id),
+                            multispan,
+                            UnevaluatedDefaultFieldValue {
+                                field: field.name,
+                                ty: with_no_trimmed_paths!(tcx.def_path_str(item)),
+                                padding: tcx
+                                    .sess
+                                    .source_map()
+                                    .indentation_before(struct_start)
+                                    .unwrap_or_default(),
+                                struct_start,
+                            },
+                        );
                     }
                 }
                 let field_id = field.did.expect_local();

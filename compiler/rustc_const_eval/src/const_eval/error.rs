@@ -92,13 +92,21 @@ impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
     }
 }
 
+pub(crate) fn get_stacktrace<'tcx>(
+    tcx: TyCtxtAt<'tcx>,
+    stack: &[Frame<'tcx, impl Provenance, impl Sized>],
+) -> Vec<crate::interpret::FrameInfo<'tcx>> {
+    let mut stacktrace = Frame::generate_stacktrace_from_stack(stack, *tcx);
+    // Filter out `requires_caller_location` frames.
+    stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*tcx));
+    stacktrace
+}
+
 pub(crate) fn get_span_and_frames<'tcx>(
     tcx: TyCtxtAt<'tcx>,
     stack: &[Frame<'tcx, impl Provenance, impl Sized>],
 ) -> (Span, Vec<diagnostics::FrameNote>) {
-    let mut stacktrace = Frame::generate_stacktrace_from_stack(stack, *tcx);
-    // Filter out `requires_caller_location` frames.
-    stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*tcx));
+    let stacktrace = get_stacktrace(tcx, stack);
     let span = stacktrace.last().map(|f| f.span).unwrap_or(tcx.span);
 
     let mut frames = Vec::new();
@@ -176,7 +184,11 @@ pub(super) fn report<'tcx>(
         // should remain silent.
         err_inval!(AlreadyReported(info)) => ErrorHandled::Reported(info, DUMMY_SP),
         err_inval!(Layout(LayoutError::TooGeneric(_))) | err_inval!(TooGeneric) => {
-            ErrorHandled::TooGeneric(DUMMY_SP)
+            let span = super::get_stacktrace(ecx.tcx, ecx.stack())
+                .last()
+                .map(|f| f.span)
+                .unwrap_or(ecx.tcx.span);
+            ErrorHandled::TooGeneric(span)
         }
         err_inval!(Layout(LayoutError::ReferencesError(guar))) => {
             // This can occur in infallible promoteds e.g. when a non-existent type or field is

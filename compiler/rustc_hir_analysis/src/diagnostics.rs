@@ -2152,3 +2152,24 @@ pub(crate) struct ParamInTyOfConstParam<'tcx> {
     pub(crate) span: Span,
     pub(crate) ty: Ty<'tcx>,
 }
+
+#[derive(Diagnostic)]
+#[diag(
+    "field `{$field}` has a default value that is only checked when a value of `{$ty}` is \
+     constructed"
+)]
+#[help(
+    "structs with type and const parameters only evaluate their default field values during \
+     construction, not eagerly when declared"
+)]
+pub(crate) struct UnevaluatedDefaultFieldValue {
+    pub(crate) field: Symbol,
+    pub(crate) ty: String,
+    #[suggestion(
+        "if this behavior is acceptable, allow the lint and preferably write a test relying on the default value",
+        code = "{padding}#[expect(unevaluated_default_field_value)]\n",
+        applicability = "maybe-incorrect"
+    )]
+    pub(crate) struct_start: Span,
+    pub(crate) padding: String,
+}
