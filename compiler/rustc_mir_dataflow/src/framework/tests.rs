@@ -22,7 +22,7 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
 
         blocks.push(mir::BasicBlockData::new_stmts(
             std::iter::repeat(&nop).cloned().take(n).collect(),
-            Some(mir::Terminator { source_info, kind, attributes: ThinVec::new() }),
+            Some(mir::Terminator { source_info, kind, attributes: None }),
             false,
         ))
     };
