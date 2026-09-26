@@ -1,9 +1,9 @@
 use std::cell::{Cell, RefCell, RefMut};
-use std::io;
 use std::io::Read;
 use std::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
+use std::{io, mem};
 
 use mio::event::Source;
 use mio::net::{TcpListener, TcpStream};
@@ -83,16 +83,6 @@ impl SocketState {
             SocketState::None => unreachable!(),
         }
     }
-
-    /// Invoke `cb` with a [`socket2::SockRef`] to the underlying host socket.
-    ///
-    /// **Note**: Potentially blocking operations need to be performed on the
-    /// underlying [`TcpStream`] and [`TcpListener`] as it would break the mio
-    /// poll on Windows hosts when performed directly on the [`socket2::SockRef`].
-    fn with_socket_ref<'a, T>(&'a self, cb: impl FnOnce(socket2::SockRef<'a>) -> T) -> T {
-        let socket = self.as_socket_ref();
-        cb(socket)
-    }
 }
 
 #[derive(Debug)]
@@ -152,6 +142,16 @@ impl TcpSocket {
             write_timeout: Cell::new(None),
             watched: ReadinessWatched::default(),
         })
+    }
+
+    /// Invoke `cb` with a [`socket2::SockRef`] to the underlying host socket.
+    ///
+    /// **Note**: Potentially blocking operations need to be performed on the
+    /// underlying [`TcpStream`] and [`TcpListener`] as it would break the mio
+    /// poll on Windows hosts when performed directly on the [`socket2::SockRef`].
+    fn with_socket_ref<T>(&self, cb: impl FnOnce(socket2::SockRef<'_>) -> T) -> T {
+        let state = self.state.borrow();
+        cb(state.as_socket_ref())
     }
 }
 
@@ -345,7 +345,7 @@ impl UnixSocketFileDescription for TcpSocket {
         assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
         ecx.ensure_not_failed(&self, "listen")?;
 
-        let state = self.state.borrow();
+        let mut state = self.state.borrow_mut();
 
         // We'll only attempt to invoke `listen` on the socket if it's not already
         // connected because POSIX specifies that EINVAL should be returned in this
@@ -410,10 +410,8 @@ impl UnixSocketFileDescription for TcpSocket {
             return interp_ok(Ok(()));
         }
 
-        drop(state);
-
         // Temporarily use dummy state to take ownership of the underlying socket.
-        let SocketState::Initial(socket) = self.state.replace(SocketState::None) else {
+        let SocketState::Initial(socket) = mem::replace(&mut *state, SocketState::None) else {
             unreachable!()
         };
 
@@ -442,7 +440,8 @@ impl UnixSocketFileDescription for TcpSocket {
             _ => unreachable!("unsupported host platform")
         };
 
-        self.state.replace(SocketState::Listening(listener));
+        *state = SocketState::Listening(listener);
+        drop(state);
 
         // Clear the "artificial" readiness as we are about to put the blocking
         // I/O manager in charge of handling readiness.
@@ -504,7 +503,7 @@ impl UnixSocketFileDescription for TcpSocket {
         assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
         ecx.ensure_not_failed(&self, "connect")?;
 
-        let state = self.state.borrow();
+        let mut state = self.state.borrow_mut();
 
         // We'll only attempt to invoke `connect` on the socket if it's not already
         // connected or listening because POSIX specifies error codes which should
@@ -536,8 +535,6 @@ impl UnixSocketFileDescription for TcpSocket {
 
         let result = socket.connect(&socket2::SockAddr::from(address));
 
-        drop(state);
-
         // Boolean whether the connection attempt "failed" because it could not be
         // completed immediately without blocking.
         let is_in_progress = result.as_ref().is_err_and(|e| {
@@ -552,7 +549,7 @@ impl UnixSocketFileDescription for TcpSocket {
         }
 
         // Temporarily use dummy state to take ownership of the underlying socket.
-        let SocketState::Initial(socket) = self.state.replace(SocketState::None) else {
+        let SocketState::Initial(socket) = mem::replace(&mut *state, SocketState::None) else {
             unreachable!()
         };
 
@@ -581,7 +578,9 @@ impl UnixSocketFileDescription for TcpSocket {
              _ => unreachable!("unsupported host platform")
          };
 
-        self.state.replace(SocketState::Connecting(stream));
+        *state = SocketState::Connecting(stream);
+        drop(state);
+
         // Connecting sockets are implicitly bound to a local address.
         self.is_bound.set(true);
 
@@ -815,7 +814,7 @@ impl UnixSocketFileDescription for TcpSocket {
                 let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.u32);
                 let ttl = ecx.read_scalar(&option_value)?.to_u32()?;
 
-                return match self.state.borrow().with_socket_ref(|s| s.set_ttl_v4(ttl)) {
+                return match self.with_socket_ref(|s| s.set_ttl_v4(ttl)) {
                     Ok(_) => interp_ok(Ok(())),
                     Err(e) => interp_ok(Err(IoError::HostError(e))),
                 };
@@ -835,7 +834,7 @@ impl UnixSocketFileDescription for TcpSocket {
                 let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.i32);
                 let nodelay = ecx.read_scalar(&option_value)?.to_i32()? != 0;
 
-                return match self.state.borrow().with_socket_ref(|s| s.set_tcp_nodelay(nodelay)) {
+                return match self.with_socket_ref(|s| s.set_tcp_nodelay(nodelay)) {
                     Ok(_) => interp_ok(Ok(())),
                     Err(e) => interp_ok(Err(IoError::HostError(e))),
                 };
@@ -917,7 +916,7 @@ impl UnixSocketFileDescription for TcpSocket {
             let opt_ip_ttl = ecx.eval_libc_i32("IP_TTL");
 
             if option == opt_ip_ttl {
-                let ttl = match self.state.borrow().with_socket_ref(|s| s.ttl_v4()) {
+                let ttl = match self.with_socket_ref(|s| s.ttl_v4()) {
                     Ok(ttl) => ttl,
                     Err(e) => return interp_ok(Err(IoError::HostError(e))),
                 };
@@ -935,7 +934,7 @@ impl UnixSocketFileDescription for TcpSocket {
             let opt_tcp_nodelay = ecx.eval_libc_i32("TCP_NODELAY");
 
             if option == opt_tcp_nodelay {
-                let nodelay = match self.state.borrow().with_socket_ref(|s| s.tcp_nodelay()) {
+                let nodelay = match self.with_socket_ref(|s| s.tcp_nodelay()) {
                     Ok(nodelay) => nodelay,
                     Err(e) => return interp_ok(Err(IoError::HostError(e))),
                 };
@@ -1598,14 +1597,17 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // In other words, we are assuming that there will be no spurious
                     // wakeups while establishing the connection.
 
-                    // The connection is established.
+                    // The connection is established. Update the state.
+                    let mut state = socket.state.borrow_mut();
 
                     // Temporarily use dummy state to take ownership of the stream.
-                    let SocketState::Connecting(stream) = socket.state.replace(SocketState::None) else {
+                    let SocketState::Connecting(stream) = mem::replace(&mut *state, SocketState::None) else {
                         // At the start of the function we ensured that we're currently connecting.
                         unreachable!()
                     };
-                    socket.state.replace(SocketState::Connected(stream));
+                    *state = SocketState::Connected(stream);
+                    drop(state);
+
                     action.call(this, Ok(()))
                 }
             ),
@@ -1638,7 +1640,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// state because we know that `socket` can no longer successfully establish a
     /// connection.
     fn update_last_error(&self, socket: &FileDescriptionRef<TcpSocket>) {
-        let state = socket.state.borrow();
+        let mut state = socket.state.borrow_mut();
 
         let new_error =
             state.as_socket_ref().take_error().expect("Reading SO_ERROR should not fail");
@@ -1654,13 +1656,12 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // specification, the socket is now in an unspecified state.
             // We thus change the socket state to `ConnectionFailed`.
 
-            drop(state);
-
             // Temporarily use dummy state to take ownership of the stream.
-            let SocketState::Connecting(stream) = socket.state.replace(SocketState::None) else {
+            let SocketState::Connecting(stream) = mem::replace(&mut *state, SocketState::None)
+            else {
                 unreachable!()
             };
-            socket.state.replace(SocketState::ConnectionFailed(stream));
+            *state = SocketState::ConnectionFailed(stream);
         }
     }
 }
