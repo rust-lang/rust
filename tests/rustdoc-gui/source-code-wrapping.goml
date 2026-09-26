@@ -14,7 +14,7 @@ define-function: (
 )
 
 store-size: (".rust code", {"width": width, "height": height})
-call-function: ("open-settings-menu", {})
+call-function: ("change-settings-tab", {'tab_name': 'Interface'})
 call-function: ("click-code-wrapping", {"expected": "true"})
 wait-for-size-false: (".rust code", {"width": |width|, "height": |height|})
 store-size: (".rust code", {"width": new_width, "height": new_height})
@@ -28,7 +28,7 @@ assert-size: (".rust code", {"width": |width|, "height": |height|})
 
 // Now let's check in docs code examples.
 go-to: "file://" + |DOC_PATH| + "/test_docs/trait_bounds/index.html"
-call-function: ("open-settings-menu", {})
+call-function: ("change-settings-tab", {'tab_name': 'Interface'})
 
 store-property: (".example-wrap .rust code", {"scrollWidth": rust_width, "scrollHeight": rust_height})
 store-property: (".example-wrap .language-text code", {"scrollWidth": txt_width, "scrollHeight": txt_height})

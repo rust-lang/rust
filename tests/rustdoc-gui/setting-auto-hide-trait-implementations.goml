@@ -22,6 +22,7 @@ call-function: ("check-setting", {
     "toggle_attribute_value": "",
 })
 
+call-function: ("change-settings-tab", {'tab_name': 'Interface'})
 // Now we change its value.
 click: "#auto-hide-trait-implementations"
 assert-local-storage: {"rustdoc-auto-hide-trait-implementations": "true"}
@@ -35,6 +36,7 @@ call-function: ("check-setting", {
     "toggle_attribute_value": null,
 })
 
+call-function: ("change-settings-tab", {'tab_name': 'Interface'})
 // And now we re-disable the setting.
 click: "#auto-hide-trait-implementations"
 assert-local-storage: {"rustdoc-auto-hide-trait-implementations": "false"}

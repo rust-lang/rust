@@ -5,8 +5,7 @@ assert-property: (".sidebar", {"clientWidth": "199"})
 show-text: true
 
 // Verify that the "hide" option is unchecked
-call-function: ("open-settings-menu", {})
-assert-css: ("#settings", {"display": "block"})
+call-function: ("change-settings-tab", {'tab_name': 'Navigation'})
 assert-property: ("#hide-sidebar", {"checked": "false"})
 press-key: "Escape"
 wait-for-css: ("#settings", {"display": "none"})
@@ -28,7 +27,7 @@ go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 set-window-size: (600, 600)
 focus: "rustdoc-topbar .settings-menu a"
 press-key: "Enter"
-wait-for-css: ("#settings", {"display": "block"})
+call-function: ("change-settings-tab", {'tab_name': 'Navigation'})
 wait-for-css: ("#sidebar-button", {"position": "static"})
 assert-property: ("#hide-sidebar", {"checked": "false"})
 click: "#hide-sidebar"

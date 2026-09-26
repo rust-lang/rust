@@ -1478,6 +1478,13 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	padding: 4px;
 	transform: rotate(-45deg);
 	top: -5px;
+	/* So the arrow doesn't go above the content in the popover. */
+	z-index: -1;
+}
+#settings.popover {
+	/* Because of the tabs, it renders weird if we pick a different color than the tab's
+	   background. */
+	background-color: var(--search-tab-button-not-selected-background);
 }
 
 .setting-line {
@@ -1548,9 +1555,22 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	border-color: var(--settings-input-color) !important;
 }
 
+.settings-menu #settings {
+	/* This is to prevent the popover width to change when we switch tabs. I picked the biggest
+	   width based on the setting with the longest text. The `- 2px` is to includes the borders
+	   width when the window's width is very thin. */
+	width: min(456px, calc(100vw - 2px));
+}
 #settings.popover {
 	--popover-arrow-offset: 196px;
 	top: calc(100% - 16px);
+	right: 1px;
+}
+
+#settings .settings {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
 }
 
 /* use larger max-width for help popover, but not for help.html */
@@ -2032,13 +2052,15 @@ a.tooltip:hover::after {
 
 #search-tabs {
 	margin-top: 0.25rem;
-	display: flex;
-	flex-direction: row;
-	gap: 1px;
 	margin-bottom: 4px;
 }
 
-#search-tabs button {
+#search-tabs, #settings .tabs {
+	display: flex;
+	flex-direction: row;
+	gap: 1px;
+}
+#search-tabs button, #settings .tabs button.tab {
 	text-align: center;
 	font-size: 1.125rem;
 	border: 0;
@@ -2047,13 +2069,21 @@ a.tooltip:hover::after {
 	line-height: 1.5;
 	color: inherit;
 }
-#search-tabs button:not(.selected) {
+#search-tabs button:not(.selected), #settings .tabs button.tab:not(.selected) {
 	background-color: var(--search-tab-button-not-selected-background);
 	border-top-color: var(--search-tab-button-not-selected-border-top-color);
 }
-#search-tabs button:hover, #search-tabs button.selected {
+#search-tabs button:hover, #search-tabs button.selected,
+#settings .tabs button.tab:hover, #settings .tabs button.tab.selected {
 	background-color: var(--search-tab-button-selected-background);
 	border-top-color: var(--search-tab-button-selected-border-top-color);
+}
+
+#settings .settings .setting {
+	display: none;
+}
+#settings .settings .setting.selected {
+	display: block;
 }
 
 #search-tabs .count {
@@ -2067,8 +2097,7 @@ a.tooltip:hover::after {
 	color: transparent;
 }
 
-.search-form.loading::after
-{
+.search-form.loading::after {
 	width: 18px;
 	height: 18px;
 	border-radius: 18px;
@@ -2777,8 +2806,11 @@ in src-script.js and main.js
 	}
 	/* The `overflow-y` property is used on an internal content instead of the top one otherwise the
 	   little arrow at the top can't be displayed. */
-	#settings.popover .settings, #help.popover .content {
+	#settings.popover .settings .setting, #help.popover .content {
 		overflow-y: scroll;
+	}
+
+	#help.popover .content {
 		height: 100%;
 	}
 

@@ -150,6 +150,7 @@ compare-elements-position-near: (
     {"y": 1}
 )
 
+call-function: ("change-settings-tab", {'tab_name': 'Interface'})
 // First we check the "default" display for toggles.
 assert-css: (
     "#auto-hide-large-items",
@@ -241,6 +242,7 @@ assert-css: (
 )
 
 // We now switch the display.
+call-function: ("change-settings-tab", {'tab_name': 'Appearance'})
 click: "#theme-system-preference"
 // Wait for the hidden element to show up.
 wait-for: "#preferred-dark-theme.setting-line:not(.hidden)"
@@ -252,6 +254,7 @@ assert-text: ("#preferred-light-theme .setting-radio-name", "Preferred light the
 
 // We now check that clicking on the toggles' text is like clicking on the checkbox.
 // To test it, we use the "Disable keyboard shortcuts".
+call-function: ("change-settings-tab", {'tab_name': 'Appearance'})
 set-local-storage: {"rustdoc-disable-shortcuts": "false"}
 click: "#disable-shortcuts"
 assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
@@ -312,7 +315,7 @@ assert-css: (".setting-line", {"margin": |setting_line_margin|})
 
 // We will check that the checkboxes size doesn't change either.
 assert-size: (
-    "#settings label > input[type='checkbox']",
+    "#settings .selected label > input[type='checkbox']",
     {"width": 19, "height": 19},
     ALL,
 )
@@ -333,7 +336,7 @@ assert-css: (".setting-radio", {"cursor": "pointer"})
 
 // We ensure that the checkboxes size didn't change.
 assert-size: (
-    "#settings label > input[type='checkbox']",
+    "#settings .selected label > input[type='checkbox']",
     {"width": 19, "height": 19},
     ALL,
 )

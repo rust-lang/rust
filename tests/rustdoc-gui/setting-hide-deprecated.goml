@@ -12,7 +12,7 @@ assert-count: ("dt" + |deprecated_class|, 2)
 assert-css: ("dt" + |deprecated_class|, {"display": "block"}, ALL)
 
 // We enable the "hide deprecated items" setting.
-call-function: ("open-settings-menu", {})
+call-function: ("change-settings-tab", {'tab_name': 'Interface'})
 click: "#hide-deprecated-items"
 // None of them should be displayed anymore.
 wait-for-css: ("dt" + |deprecated_class|, {"display": "none"}, ALL)
@@ -31,7 +31,7 @@ assert-count: ("details" + |deprecated_class|, 2)
 assert-css: ("details" + |deprecated_class|, {"display": "block"}, ALL)
 
 // We enable the "hide deprecated items" setting.
-call-function: ("open-settings-menu", {})
+call-function: ("change-settings-tab", {'tab_name': 'Interface'})
 click: "#hide-deprecated-items"
 
 // They shouldn't be displayed anymore.
@@ -56,7 +56,7 @@ assert: "details:not(" + |deprecated_class| + ") #method\.future_deprecated_fn"
 assert-css: ("details" + |deprecated_class|, {"display": "block"}, ALL)
 
 // We enable the "hide deprecated items" setting.
-call-function: ("open-settings-menu", {})
+call-function: ("change-settings-tab", {'tab_name': 'Interface'})
 click: "#hide-deprecated-items"
 
 // They shouldn't be displayed anymore.
@@ -84,7 +84,7 @@ assert-text: (
 )
 assert-css: ("#results ul.search-results.active .deprecated-count", {"display": "none"})
 // We enable the "hide deprecated items" setting.
-call-function: ("open-settings-menu", {})
+call-function: ("change-settings-tab", {'tab_name': 'Interface'})
 click: "#hide-deprecated-items"
 // None of them should be displayed anymore.
 wait-for-css: (

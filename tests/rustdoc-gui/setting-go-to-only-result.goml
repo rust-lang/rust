@@ -27,7 +27,7 @@ wait-for: "#search"
 assert-document-property: ({"URL": "/lib2/index.html"}, CONTAINS)
 
 // Now we change its value.
-call-function: ("open-settings-menu", {})
+call-function: ("change-settings-tab", {'tab_name': 'Navigation'})
 click: "#go-to-only-result"
 assert-local-storage: {"rustdoc-go-to-only-result": "true"}
 
@@ -58,6 +58,7 @@ call-function: ("check-setting", {
 })
 
 // And now we re-disable the setting.
+call-function: ("change-settings-tab", {'tab_name': 'Navigation'})
 click: "#go-to-only-result"
 assert-local-storage: {"rustdoc-go-to-only-result": "false"}
 
@@ -105,7 +106,7 @@ write-into: (".search-input", "Whitespace")
 call-function: ("search-multiple-results", {"location": |location|})
 
 // We now toggle the setting and reload the page.
-call-function: ("open-settings-menu", {})
+call-function: ("change-settings-tab", {'tab_name': 'Navigation'})
 click: "#go-to-only-result"
 assert-local-storage: {"rustdoc-go-to-only-result": "true"}
 

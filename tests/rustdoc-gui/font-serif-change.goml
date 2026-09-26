@@ -9,7 +9,7 @@ assert-css: ("body", {"font-family": |serif_font|})
 assert-css: ("p code", {"font-family": |serif_code_font|})
 
 // We now switch to the sans serif font
-call-function: ("open-settings-menu", {})
+call-function: ("change-settings-tab", {"tab_name": "Interface"})
 click: "#sans-serif-fonts"
 
 store-value: (font, '"Fira Sans", sans-serif')
@@ -23,7 +23,7 @@ assert-css: ("body", {"font-family": |font|})
 assert-css: ("p code", {"font-family": |code_font|})
 
 // We switch back to the serif font
-call-function: ("open-settings-menu", {})
+call-function: ("change-settings-tab", {"tab_name": "Interface"})
 click: "#sans-serif-fonts"
 
 assert-css: ("body", {"font-family": |serif_font|})
