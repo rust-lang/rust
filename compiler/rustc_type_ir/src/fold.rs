@@ -49,7 +49,7 @@ use std::convert::Infallible;
 use std::mem;
 use std::sync::Arc;
 
-use rustc_index::{Idx, IndexVec};
+use rustc_index::{IndexVec, StableIdx};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
@@ -379,7 +379,7 @@ impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Box<[T]> {
     }
 }
 
-impl<I: Interner, T: TypeFoldable<I>, Ix: Idx> TypeFoldable<I> for IndexVec<Ix, T> {
+impl<I: Interner, T: TypeFoldable<I>, Ix: StableIdx> TypeFoldable<I> for IndexVec<Ix, T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         self.raw.try_fold_with(folder).map(IndexVec::from_raw)
     }

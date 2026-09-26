@@ -11,7 +11,7 @@
 
 use std::sync::Arc;
 
-use rustc_index::{Idx, IndexVec};
+use rustc_index::{IndexVec, StableIdx};
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
@@ -116,7 +116,9 @@ unsafe impl<V, T: GenericTypeVisitable<V>> GenericTypeVisitable<V> for [T] {
     }
 }
 
-unsafe impl<V, T: GenericTypeVisitable<V>, Ix: Idx> GenericTypeVisitable<V> for IndexVec<Ix, T> {
+unsafe impl<V, T: GenericTypeVisitable<V>, Ix: StableIdx> GenericTypeVisitable<V>
+    for IndexVec<Ix, T>
+{
     fn generic_visit_with(&self, visitor: &mut V) {
         self.iter().for_each(|it| it.generic_visit_with(visitor));
     }

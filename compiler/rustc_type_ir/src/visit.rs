@@ -47,7 +47,7 @@ use std::sync::Arc;
 
 pub use rustc_ast_ir::visit::VisitorResult;
 pub use rustc_ast_ir::{try_visit, walk_visitable_list};
-use rustc_index::{Idx, IndexVec};
+use rustc_index::{IndexVec, StableIdx};
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
@@ -223,7 +223,7 @@ impl<const N: usize, I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for [T; 
     }
 }
 
-impl<I: Interner, T: TypeVisitable<I>, Ix: Idx> TypeVisitable<I> for IndexVec<Ix, T> {
+impl<I: Interner, T: TypeVisitable<I>, Ix: StableIdx> TypeVisitable<I> for IndexVec<Ix, T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         walk_visitable_list!(visitor, self.iter());
         V::Result::output()

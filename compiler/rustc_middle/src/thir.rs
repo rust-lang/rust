@@ -21,7 +21,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
-use rustc_index::{IndexVec, newtype_index};
+use rustc_index::{IndexVec, StableIdx, newtype_index};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeVisitable};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, bug};
@@ -51,6 +51,8 @@ macro_rules! thir_with_elements {
                 #[debug_format = $format]
                 pub struct $id {}
             }
+
+            impl StableIdx for $id {}
         )*
 
         // Note: Making `Thir` implement `Clone` is useful for external tools that need access to

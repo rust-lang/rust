@@ -1429,6 +1429,7 @@ impl<'tcx> BasicBlockData<'tcx> {
 rustc_index::newtype_index! {
     #[stable_hash]
     #[encodable]
+    #[orderable]
     #[debug_format = "scope[{}]"]
     pub struct SourceScope {
         const OUTERMOST_SOURCE_SCOPE = 0;
