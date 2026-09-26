@@ -39,14 +39,13 @@ where
 
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) enum Flavor {
-    General,
+    General { regparam: Option<u32> },
     FastcallOrVectorcall,
 }
 
 #[derive(Clone, Copy)]
 pub(crate) struct X86Options {
     pub flavor: Flavor,
-    pub regparm: Option<u32>,
     pub reg_struct_return: bool,
 }
 
@@ -193,9 +192,6 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
 ) where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
-    if opts.flavor != Flavor::FastcallOrVectorcall && opts.regparm.is_none_or(|x| x == 0) {
-        return;
-    }
     // Mark arguments as InReg like clang does it,
     // so our fastcall/vectorcall is compatible with C/C++ fastcall/vectorcall.
 
@@ -205,8 +201,19 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
     // IsSoftFloatABI is only set to true on ARM platforms,
     // which in turn can't be x86?
 
-    // 2 for fastcall/vectorcall, regparm limited by 3 otherwise
-    let mut free_regs = opts.regparm.unwrap_or(2).into();
+    // The number of registers available for argument passing.
+    //
+    // An `extern "fastcall"` and `extern "vectorcall"` function always have 2 registers available.
+    // Otherwise the `regparam` count (in the range 0..=3) determines the number of available
+    // registers. If unspecified, no registers are used for argument passing.
+    let mut free_regs = match opts.flavor {
+        Flavor::FastcallOrVectorcall => 2,
+        Flavor::General { regparam } => u64::from(regparam.unwrap_or(0)),
+    };
+
+    if free_regs == 0 {
+        return;
+    }
 
     // For types generating PassMode::Cast, InRegs will not be set.
     // Maybe, this is a FIXME
