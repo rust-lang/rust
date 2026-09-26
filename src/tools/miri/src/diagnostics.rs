@@ -569,7 +569,7 @@ fn report_msg<'tcx>(
     let tcx = machine.tcx;
     let level = match diag_level {
         DiagLevel::Error => Level::Error,
-        DiagLevel::Warning => Level::Warning,
+        DiagLevel::Warning => Level::Warning(None),
         DiagLevel::Note => Level::Note,
     };
     let mut err = Diag::new(tcx.sess.dcx(), level, title);
