@@ -1,0 +1,33 @@
+- // MIR for `indexed` before Inline
++ // MIR for `indexed` after Inline
+  
+  fn indexed(_1: usize) -> u32 {
+      let mut _0: u32;
+      let mut _2: [u32; 2];
+- 
+-     bb0: {
+-         _2[_1] = identity(const 42_u32) -> [return: bb1, unwind unreachable];
++     let mut _3: *mut u32;
++     let mut _4: u32;
++     let mut _5: u32;
++     scope 1 (inlined identity) {
+      }
+  
+-     bb1: {
++     bb0: {
++         StorageAlloc(_2);
++         StorageLive(_3);
++         _3 = &raw mut _2[_1];
++         StorageLive(_4);
++         StorageLive(_5);
++         _5 = const 42_u32;
++         _4 = copy _5;
++         (*_3) = move _4;
++         StorageDead(_5);
++         StorageDead(_4);
++         StorageDead(_3);
+          _0 = copy _2[_1];
+          return;
+      }
+  }
+  

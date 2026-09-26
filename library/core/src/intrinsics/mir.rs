@@ -229,7 +229,7 @@
 //!
 //! #### Statements
 //!  - Assign statements work via normal Rust assignment.
-//!  - [`StorageLive`], [`StorageDead`] statements have an associated function.
+//!  - [`StorageLive`], [`StorageDead`], [`StorageAlloc`] statements have an associated function.
 //!
 //! #### Rvalues
 //!
@@ -401,6 +401,12 @@ define!("mir_unwind_resume",
 
 define!("mir_storage_live", fn StorageLive<T>(local: T));
 define!("mir_storage_dead", fn StorageDead<T>(local: T));
+define!(
+    "mir_storage_alloc",
+    /// If the local is live but unallocated, allocates backing storage containing uninitialized
+    /// bytes for it. This has no effect if the local already has an allocation.
+    fn StorageAlloc<T>(local: T)
+);
 define!("mir_assume", fn Assume(operand: bool));
 define!("mir_checked", fn Checked<T>(binop: T) -> (T, bool));
 define!(

@@ -1,0 +1,26 @@
+- // MIR for `projected` before MoveElimination
++ // MIR for `projected` after MoveElimination
+  
+  fn projected() -> ([u32; 4], u32) {
+      let mut _0: ([u32; 4], u32);
+      let mut _1: [u32; 4];
+      let mut _2: *mut [u32; 4];
+  
+      bb0: {
+-         StorageLive(_1);
+-         StorageAlloc(_1);
+-         _2 = &raw mut _1;
+-         _1 = [const 42_u32; 4];
+-         _0 = (move _1, const 99_u32);
+-         StorageDead(_1);
++         nop;
++         StorageAlloc(_0);
++         _2 = &raw mut (_0.0: [u32; 4]);
++         (_0.0: [u32; 4]) = [const 42_u32; 4];
++         (_0.1: u32) = no_retag const 99_u32;
++         nop;
++         nop;
+          return;
+      }
+  }
+  
