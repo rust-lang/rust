@@ -46,7 +46,7 @@ pub(crate) struct AssocKindMismatch {
     pub expected_because_label: Option<Span>,
     pub assoc_kind: &'static str,
     #[note("the associated {$assoc_kind} is defined here")]
-    pub def_span: Span,
+    pub def_span: MultiSpan,
     #[label("bounds are not allowed on associated constants")]
     pub bound_on_assoc_const_label: Option<Span>,
     #[subdiagnostic]

@@ -9,6 +9,7 @@ LL | pub fn accept(_: impl Trait<K: Copy>) {}
 note: the associated constant is defined here
   --> $DIR/consts.rs:5:5
    |
+LL | pub trait Trait {
 LL |     const K: i32;
    |     ^^^^^^^^^^^^
 
