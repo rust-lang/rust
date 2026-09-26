@@ -146,7 +146,6 @@
 #![feature(must_not_suspend)]
 #![feature(negative_impls)]
 #![feature(no_core)]
-#![feature(optimize_attribute)]
 #![feature(pattern_types)]
 #![feature(pin_macro_internals)]
 #![feature(prelude_import)]

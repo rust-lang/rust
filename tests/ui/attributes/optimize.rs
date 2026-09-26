@@ -1,4 +1,3 @@
-#![feature(optimize_attribute)]
 #![feature(stmt_expr_attributes)]
 #![deny(unused_attributes)]
 #![allow(dead_code)]
@@ -74,3 +73,11 @@ fn inline_conflict_b() {}
 #[inline(never)]
 #[optimize(none)]
 fn inline_conflict_c() {}
+
+#[optimize(none)]
+fn valid_none() {}
+
+#[optimize(none)]
+async fn async_fn_none() {
+    ()
+}
