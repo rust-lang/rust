@@ -33,7 +33,7 @@ use rustc_middle::ty::print::{
 use rustc_middle::ty::{self, GenericArgKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::DefIdSet;
 use rustc_span::{
-    DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, Ident, MacroKind, Span, Symbol, bug,
+    DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, Ident, MacroKind, OrdSpan, Span, Symbol, bug,
     edit_distance, kw, sym,
 };
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
@@ -890,12 +890,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         source: SelfSource<'tcx>,
         unsatisfied_predicates: &UnsatisfiedPredicates<'tcx>,
         static_candidates: &[CandidateSource],
-    ) -> Result<(bool, bool, bool, bool, SortedMap<Span, Vec<String>>), ()> {
+    ) -> Result<(bool, bool, bool, bool, SortedMap<OrdSpan, Vec<String>>), ()> {
         let mut restrict_type_params = false;
         let mut suggested_derive = false;
         let mut unsatisfied_bounds = false;
         let mut custom_span_label = !static_candidates.is_empty();
-        let mut bound_spans: SortedMap<Span, Vec<String>> = Default::default();
+        let mut bound_spans: SortedMap<OrdSpan, Vec<String>> = Default::default();
         let tcx = self.tcx;
 
         if item_ident.name == sym::count && self.is_slice_ty(rcvr_ty, span) {
@@ -1137,7 +1137,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rcvr_ty: Ty<'tcx>,
         item_ident: Ident,
         item_kind: &str,
-        bound_spans: SortedMap<Span, Vec<String>>,
+        bound_spans: SortedMap<OrdSpan, Vec<String>>,
         unsatisfied_predicates: &UnsatisfiedPredicates<'tcx>,
     ) {
         let mut ty_span = match rcvr_ty.kind() {
@@ -1179,6 +1179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None
         };
         for (span, mut bounds) in bound_spans {
+            let span = span.0;
             if !self.tcx.sess.source_map().is_span_accessible(span) {
                 continue;
             }
@@ -1715,7 +1716,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         suggested_derive: &mut bool,
         unsatisfied_bounds: &mut bool,
         custom_span_label: &mut bool,
-        bound_spans: &mut SortedMap<Span, Vec<String>>,
+        bound_spans: &mut SortedMap<OrdSpan, Vec<String>>,
     ) {
         let tcx = self.tcx;
         let rcvr_ty_str = self.tcx.short_string(rcvr_ty, err.long_ty_path());
@@ -1800,16 +1801,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let msg = format!("`{}`", if obligation.len() > 50 { quiet } else { obligation });
             match self_ty.kind() {
                 // Point at the type that couldn't satisfy the bound.
-                ty::Adt(def, _) => {
-                    bound_spans.get_mut_or_insert_default(tcx.def_span(def.did())).push(msg)
-                }
+                ty::Adt(def, _) => bound_spans
+                    .get_mut_or_insert_default(OrdSpan(tcx.def_span(def.did())))
+                    .push(msg),
                 // Point at the trait object that couldn't satisfy the bound.
                 ty::Dynamic(preds, _) => {
                     for pred in preds.iter() {
                         match pred.skip_binder() {
                             ty::ExistentialPredicate::Trait(tr) => {
                                 bound_spans
-                                    .get_mut_or_insert_default(tcx.def_span(tr.def_id))
+                                    .get_mut_or_insert_default(OrdSpan(tcx.def_span(tr.def_id)))
                                     .push(msg.clone());
                             }
                             ty::ExistentialPredicate::Projection(_)
@@ -1820,7 +1821,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Point at the closure that couldn't satisfy the bound.
                 ty::Closure(def_id, _) => {
                     bound_spans
-                        .get_mut_or_insert_default(tcx.def_span(*def_id))
+                        .get_mut_or_insert_default(OrdSpan(tcx.def_span(*def_id)))
                         .push(format!("`{quiet}`"));
                 }
                 _ => {}
@@ -2030,7 +2031,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         let mut spanned_predicates: Vec<_> = spanned_predicates.into_iter().collect();
-        spanned_predicates.sort_by_key(|(span, _)| *span);
+        spanned_predicates.sort_by_key(|(span, _)| span.lo_hi());
         for (_, (primary_spans, span_labels, predicates)) in spanned_predicates {
             let mut tracker = TraitBoundDuplicateTracker::new();
             let mut all_trait_bounds_for_rcvr = true;
@@ -3572,7 +3573,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         trait_pred: ty::TraitClause<'tcx>,
         adt: ty::AdtDef<'tcx>,
-    ) -> Option<Vec<(String, Span, Symbol)>> {
+    ) -> Option<Vec<(String, OrdSpan, Symbol)>> {
         let diagnostic_name = self.tcx.get_diagnostic_name(trait_pred.def_id())?;
 
         let can_derive = match diagnostic_name {
@@ -3610,7 +3611,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut derives = Vec::new();
         let self_name = self_ty.to_string();
-        let self_span = self.tcx.def_span(adt.did());
+        let self_span = OrdSpan(self.tcx.def_span(adt.did()));
 
         for super_trait in supertraits(self.tcx, ty::Binder::dummy(trait_pred.trait_ref)) {
             if let Some(parent_diagnostic_name) = self.tcx.get_diagnostic_name(super_trait.def_id())
@@ -3628,7 +3629,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         unsatisfied_predicates: &UnsatisfiedPredicates<'tcx>,
-    ) -> Vec<(String, Span, Symbol)> {
+    ) -> Vec<(String, OrdSpan, Symbol)> {
         let mut derives = Vec::new();
         let mut traits = Vec::new();
         for (pred, _, _) in unsatisfied_predicates {
@@ -3692,7 +3693,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     continue;
                 }
             }
-            derives_grouped.push((self_name, self_span, trait_name.to_string()));
+            derives_grouped.push((self_name, self_span.0, trait_name.to_string()));
         }
 
         for (self_name, self_span, traits) in &derives_grouped {

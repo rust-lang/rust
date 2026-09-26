@@ -412,7 +412,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             {
                 let mut redundant_subpats = redundant_subpats.clone();
                 // Emit lints in the order in which they occur in the file.
-                redundant_subpats.sort_unstable_by_key(|(pat, _)| pat.data().span);
+                redundant_subpats.sort_unstable_by_key(|(pat, _)| pat.data().span.lo_hi());
                 for (pat, explanation) in redundant_subpats {
                     report_unreachable_pattern(cx, arm.arm_data, pat, &explanation, None)
                 }

@@ -961,7 +961,7 @@ impl<'a> Diag<'a> {
                     .map(|(span, snippet)| SubstitutionPart { snippet, span })
                     .collect::<Vec<_>>();
 
-                parts.sort_unstable_by_key(|part| part.span);
+                parts.sort_unstable_by_key(|part| part.span.lo_hi());
 
                 assert!(!parts.is_empty());
                 debug_assert_eq!(

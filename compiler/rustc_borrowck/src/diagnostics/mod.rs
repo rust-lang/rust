@@ -123,7 +123,7 @@ impl<'diag, 'tcx> BorrowckDiagnosticsBuffer<'diag, 'tcx> {
         }
 
         if !self.buffered_diags.is_empty() {
-            self.buffered_diags.sort_by_key(|(sort_span, _)| *sort_span);
+            self.buffered_diags.sort_by_key(|(sort_span, _)| sort_span.lo_hi());
             for (_, diag) in self.buffered_diags.drain(..) {
                 diag.emit();
             }

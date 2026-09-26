@@ -419,8 +419,8 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         _ => None,
                     })
                     .collect::<Vec<Span>>();
-                preds.sort();
-                preds.dedup();
+                preds.sort_by_key(|span| span.lo_hi());
+                preds.dedup_by_key(|span| span.lo_hi());
                 if !preds.is_empty() {
                     let s = if preds.len() == 1 { "" } else { "s" };
                     err.span_note(

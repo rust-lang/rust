@@ -1,3 +1,6 @@
+use std::cmp::Ordering;
+use std::hash::Hash;
+
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hash::RawSpan;
 // This code is very hot and uses lots of arithmetic, avoid overflow checks for performance.
@@ -84,6 +87,12 @@ pub struct Span {
     len_with_tag_or_marker: u16,
     ctxt_or_parent_or_marker: u16,
 }
+
+// `SyntaxContext` (`SpanData::ctxt`) and `LocalDefId` (within `SpanData::parent`) aren't orderable.
+// If you want to order spans just on `lo`/`hi`, use explicit comparisons involving `Span::lo_hi`.
+// Or you can wrap your span within `OrdSpan` which impls `PartialOrd`/`Ord` via `Span::lo_hi`.
+impl !PartialOrd for Span {}
+impl !Ord for Span {}
 
 // Convenience structures for all span formats.
 #[derive(Clone, Copy)]
@@ -455,6 +464,38 @@ impl Span {
         Span { lo_or_index: a, len_with_tag_or_marker: b, ctxt_or_parent_or_marker: c }
     }
 }
+
+/// Span wrapper that provides equality and ordering based only on the `lo`/`hi` fields. Exists
+/// because `Span` doesn't impl `PartialOrd`/`Ord` due to the `ctxt` and `parent` fields being
+/// unorderable. Useful when storing things in source code order, e.g. in a `BTreeMap<OrdSpan, T>`.
+#[derive(Clone, Copy, Debug)]
+pub struct OrdSpan(pub Span);
+
+impl PartialEq for OrdSpan {
+    fn eq(&self, rhs: &Self) -> bool {
+        // Ignores `ctxt` and `parent` because they are unorderable.
+        self.0.lo_hi() == rhs.0.lo_hi()
+    }
+}
+
+impl Eq for OrdSpan {}
+
+impl PartialOrd for OrdSpan {
+    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+        Some(self.cmp(rhs))
+    }
+}
+
+impl Ord for OrdSpan {
+    fn cmp(&self, rhs: &Self) -> Ordering {
+        // Ignores `ctxt` and `parent` because they are unorderable.
+        self.0.lo_hi().cmp(&rhs.0.lo_hi())
+    }
+}
+
+// `OrdSpan` is typically stored in types that rely on ordering, such as `BTreeMap` or `SortedMap`.
+// Hashing shouldn't be necessary.
+impl !Hash for OrdSpan {}
 
 #[derive(Default)]
 pub(crate) struct SpanInterner {

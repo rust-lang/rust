@@ -3311,7 +3311,7 @@ impl<'a, 'tcx> ArgsCtxt<'a, 'tcx> {
         // Sometimes macros mess up the spans, so do not normalize the
         // arg span to equal the error span, because that's less useful
         // than pointing out the arg expr in the wrong context.
-        if normalized_span.source_equal(self.call_metadata.error_span) {
+        if normalized_span.lo_hi() == self.call_metadata.error_span.lo_hi() {
             span
         } else {
             normalized_span

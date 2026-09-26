@@ -2,7 +2,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
-use rustc_span::Symbol;
+use rustc_span::{OrdSpan, Symbol};
 use unicode_security::general_security_profile::IdentifierType;
 
 use crate::diagnostics::{
@@ -180,7 +180,7 @@ impl EarlyLintPass for NonAsciiIdents {
         // We will soon sort, so the initial order does not matter.
         #[allow(rustc::potential_query_instability)]
         let mut symbols: Vec<_> = symbols.iter().collect();
-        symbols.sort_by_key(|k| k.1);
+        symbols.sort_by_key(|k| k.1.lo_hi());
         for &(ref symbol, &sp) in symbols.iter() {
             let symbol_str = symbol.as_str();
             if symbol_str.is_ascii() {
@@ -342,7 +342,7 @@ impl EarlyLintPass for NonAsciiIdents {
                     .collect::<Vec<_>>();
 
                 // we're sorting the output here.
-                let mut lint_reports: BTreeMap<(Span, Vec<char>), AugmentedScriptSet> =
+                let mut lint_reports: BTreeMap<(OrdSpan, Vec<char>), AugmentedScriptSet> =
                     BTreeMap::new();
 
                 // The end result is put in `lint_reports` which is sorted.
@@ -368,7 +368,7 @@ impl EarlyLintPass for NonAsciiIdents {
                     // We sort primitive chars here and can use unstable sort
                     ch_list.sort_unstable();
                     ch_list.dedup();
-                    lint_reports.insert((sp, ch_list), augment_script_set);
+                    lint_reports.insert((OrdSpan(sp), ch_list), augment_script_set);
                 }
 
                 for ((sp, ch_list), script_set) in lint_reports {
@@ -382,7 +382,7 @@ impl EarlyLintPass for NonAsciiIdents {
                     }
                     cx.emit_span_lint(
                         MIXED_SCRIPT_CONFUSABLES,
-                        sp,
+                        sp.0,
                         MixedScriptConfusables { set: script_set.to_string(), includes },
                     );
                 }

@@ -893,7 +893,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 .errors
                 .iter()
                 .map(|error| error.span)
-                .any(|sp| span < sp && !sp.contains(span))
+                .any(|sp| span.lo_hi() < sp.lo_hi() && !sp.contains(span))
         }) {
             show_assign_sugg = true;
             if all_init_spans.iter().any(|init_span| !init_span.contains(span))
@@ -929,7 +929,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let mut shown = false;
         let mut shown_condition_value = false;
         for error in visitor.errors {
-            if error.span < span && !error.span.overlaps(span) {
+            if error.span.lo_hi() < span.lo_hi() && !error.span.overlaps(span) {
                 // When we have a case like `match-cfg-fake-edges.rs`, we don't want to mention
                 // match arms coming after the primary span because they aren't relevant:
                 // ```
@@ -950,7 +950,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         }
         if !shown {
             for sp in &reachable_spans {
-                if *sp < span && !sp.overlaps(span) {
+                if sp.lo_hi() < span.lo_hi() && !sp.overlaps(span) {
                     err.span_label(*sp, "binding initialized here in some conditions");
                 }
             }
@@ -2544,7 +2544,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
 
                 if let hir::ExprKind::MethodCall(body_call, recv, ..) = ex.kind
                     && body_call.ident.name == sym::next
-                    && recv.span.source_equal(self.expr_span)
+                    && recv.span.lo_hi() == self.expr_span.lo_hi()
                 {
                     self.body_expr = Some(ex);
                 }
