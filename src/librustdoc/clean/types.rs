@@ -30,7 +30,6 @@ use rustc_span::symbol::{Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, FileName, Ident, Loc, RemapPathScopeComponents, span_bug};
 use tracing::{debug, trace};
 
-pub(crate) use self::ItemKind::*;
 pub(crate) use self::Type::{
     Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive, QPath,
     RawPointer, SelfTy, Slice, Tuple, UnsafeBinder,
@@ -452,7 +451,7 @@ impl Item {
 
     pub(crate) fn is_exported_macro(&self) -> bool {
         match self.kind {
-            ItemKind::MacroItem(..) => find_attr!(&self.attrs.other_attrs, MacroExport { .. }),
+            ItemKind::DeclMacro(..) => find_attr!(&self.attrs.other_attrs, MacroExport { .. }),
             _ => false,
         }
     }
@@ -471,22 +470,18 @@ impl Item {
 
     /// Returns true if item is an associated function with a `self` parameter.
     pub(crate) fn has_self_param(&self) -> bool {
-        if let ItemKind::MethodItem(Function { decl, .. }, _) = &self.inner.kind {
-            decl.receiver_type().is_some()
-        } else {
-            false
-        }
+        matches!(&self.inner.kind, ItemKind::AssocFn(fn_) if fn_.decl.receiver_type().is_some())
     }
 
     pub(crate) fn span(&self, tcx: TyCtxt<'_>) -> Option<Span> {
         let kind = match &self.kind {
-            ItemKind::StrippedItem(k) => k,
+            ItemKind::Stripped(k) => k,
             _ => &self.kind,
         };
         match kind {
-            ItemKind::ModuleItem(Module { span, .. }) => Some(*span),
-            ItemKind::ImplItem(Impl { kind: ImplKind::Auto, .. }) => None,
-            ItemKind::ImplItem(Impl { kind: ImplKind::Blanket(_), .. }) => {
+            ItemKind::Module(Module { span, .. }) => Some(*span),
+            ItemKind::Impl(Impl { kind: ImplKind::Auto, .. }) => None,
+            ItemKind::Impl(Impl { kind: ImplKind::Blanket(_), .. }) => {
                 if let ItemId::Blanket { impl_id, .. } = self.item_id {
                     Some(rustc_span(impl_id, tcx))
                 } else {
@@ -646,28 +641,27 @@ impl Item {
     pub(crate) fn is_variant(&self) -> bool {
         self.type_() == ItemType::Variant
     }
-    pub(crate) fn is_associated_type(&self) -> bool {
-        matches!(self.kind, AssocTypeItem(..) | StrippedItem(AssocTypeItem(..)))
+    pub(crate) fn is_assoc_ty_with_body(&self) -> bool {
+        let kind = if let ItemKind::Stripped(kind) = &self.kind { kind } else { &self.kind };
+        matches!(kind, ItemKind::AssocTy(AssocTy { ty: Some(_), .. }))
     }
-    pub(crate) fn is_required_associated_type(&self) -> bool {
-        matches!(self.kind, RequiredAssocTypeItem(..) | StrippedItem(RequiredAssocTypeItem(..)))
+    pub(crate) fn is_assoc_ty_without_body(&self) -> bool {
+        let kind = if let ItemKind::Stripped(kind) = &self.kind { kind } else { &self.kind };
+        matches!(kind, ItemKind::AssocTy(AssocTy { ty: None, .. }))
     }
-    pub(crate) fn is_associated_const(&self) -> bool {
-        matches!(
-            self.kind,
-            ProvidedAssocConstItem(..)
-                | ImplAssocConstItem(..)
-                | StrippedItem(ProvidedAssocConstItem(..) | ImplAssocConstItem(..))
-        )
+    pub(crate) fn is_assoc_const_with_body(&self) -> bool {
+        let kind = if let ItemKind::Stripped(kind) = &self.kind { kind } else { &self.kind };
+        matches!(kind, ItemKind::AssocConst(AssocConst { rhs: Some(_), .. }))
     }
-    pub(crate) fn is_required_associated_const(&self) -> bool {
-        matches!(self.kind, RequiredAssocConstItem(..) | StrippedItem(RequiredAssocConstItem(..)))
+    pub(crate) fn is_assoc_const_without_body(&self) -> bool {
+        let kind = if let ItemKind::Stripped(kind) = &self.kind { kind } else { &self.kind };
+        matches!(kind, ItemKind::AssocConst(AssocConst { rhs: None, .. }))
     }
-    pub(crate) fn is_method(&self) -> bool {
-        self.type_() == ItemType::Method
+    pub(crate) fn is_assoc_fn_with_body(&self) -> bool {
+        self.type_() == ItemType::AssocFnWithBody
     }
-    pub(crate) fn is_ty_method(&self) -> bool {
-        self.type_() == ItemType::TyMethod
+    pub(crate) fn is_assoc_fn_without_body(&self) -> bool {
+        self.type_() == ItemType::AssocFnWithoutBody
     }
     pub(crate) fn is_primitive(&self) -> bool {
         self.type_() == ItemType::Primitive
@@ -700,18 +694,18 @@ impl Item {
     }
     pub(crate) fn is_stripped(&self) -> bool {
         match self.kind {
-            StrippedItem(..) => true,
-            ImportItem(ref i) => !i.should_be_displayed,
+            ItemKind::Stripped(..) => true,
+            ItemKind::Import(ref i) => !i.should_be_displayed,
             _ => false,
         }
     }
     pub(crate) fn has_stripped_entries(&self) -> Option<bool> {
         match self.kind {
-            StructItem(ref struct_) => Some(struct_.has_stripped_entries()),
-            UnionItem(ref union_) => Some(union_.has_stripped_entries()),
-            EnumItem(ref enum_) => Some(enum_.has_stripped_entries()),
-            VariantItem(ref v) => v.has_stripped_entries(),
-            TypeAliasItem(ref type_alias) => {
+            ItemKind::Struct(ref struct_) => Some(struct_.has_stripped_entries()),
+            ItemKind::Union(ref union_) => Some(union_.has_stripped_entries()),
+            ItemKind::Enum(ref enum_) => Some(enum_.has_stripped_entries()),
+            ItemKind::Variant(ref v) => v.has_stripped_entries(),
+            ItemKind::TyAlias(ref type_alias) => {
                 type_alias.inner_type.as_ref().and_then(|t| t.has_stripped_entries())
             }
             _ => None,
@@ -753,7 +747,7 @@ impl Item {
     /// Returns an item types. There is only one case where it can return more than one kind:
     /// for `macro_rules!` items which contain an attr/derive kind.
     pub(crate) fn types(&self) -> impl Iterator<Item = ItemType> {
-        if let ItemKind::MacroItem(_, macro_kinds) = self.kind {
+        if let ItemKind::DeclMacro(_, macro_kinds) = self.kind {
             Either::Right(macro_kinds.iter().map(|kind| match kind {
                 MacroKinds::ATTR => ItemType::DeclMacroAttribute,
                 MacroKinds::DERIVE => ItemType::DeclMacroDerive,
@@ -767,16 +761,7 @@ impl Item {
 
     /// Returns true if this a macro declared with the `macro` keyword or with `macro_rules!.
     pub(crate) fn is_decl_macro(&self) -> bool {
-        matches!(self.kind, ItemKind::MacroItem(..))
-    }
-
-    pub(crate) fn defaultness(&self) -> Option<Defaultness> {
-        match self.kind {
-            ItemKind::MethodItem(_, defaultness) | ItemKind::RequiredMethodItem(_, defaultness) => {
-                Some(defaultness)
-            }
-            _ => None,
-        }
+        matches!(self.kind, ItemKind::DeclMacro(..))
     }
 
     /// Generates the HTML file name based on the item kind.
@@ -823,7 +808,7 @@ impl Item {
             }
         }
         let header = match self.kind {
-            ItemKind::ForeignFunctionItem(_, safety) => {
+            ItemKind::ForeignFn(_, safety) => {
                 let def_id = self.def_id().unwrap();
                 let abi = tcx.fn_sig(def_id).skip_binder().abi();
                 hir::FnHeader {
@@ -838,9 +823,7 @@ impl Item {
                     asyncness: hir::IsAsync::NotAsync,
                 }
             }
-            ItemKind::FunctionItem(_)
-            | ItemKind::MethodItem(..)
-            | ItemKind::RequiredMethodItem(..) => {
+            ItemKind::Fn(_) | ItemKind::AssocFn(..) => {
                 let def_id = self.def_id().unwrap();
                 build_fn_header(def_id, tcx, tcx.asyncness(def_id))
             }
@@ -862,23 +845,17 @@ impl Item {
             // Primitives and Keywords are written in the source code as private modules.
             // The modules need to be private so that nobody actually uses them, but the
             // keywords and primitives that they are documenting are public.
-            ItemKind::KeywordItem | ItemKind::PrimitiveItem(_) | ItemKind::AttributeItem => {
+            ItemKind::Keyword | ItemKind::Primitive(_) | ItemKind::Attribute => {
                 return Some(Visibility::Public);
             }
             // Variant fields inherit their enum's visibility.
-            StructFieldItem(..) if is_field_vis_inherited(tcx, def_id) => {
+            ItemKind::StructField(..) if is_field_vis_inherited(tcx, def_id) => {
                 return None;
             }
             // Variants always inherit visibility
-            VariantItem(..) | ImplItem(..) => return None,
+            ItemKind::Variant(..) | ItemKind::Impl(..) => return None,
             // Trait items inherit the trait's visibility
-            RequiredAssocConstItem(..)
-            | ProvidedAssocConstItem(..)
-            | ImplAssocConstItem(..)
-            | AssocTypeItem(..)
-            | RequiredAssocTypeItem(..)
-            | RequiredMethodItem(..)
-            | MethodItem(..) => {
+            ItemKind::AssocConst(..) | ItemKind::AssocTy(..) | ItemKind::AssocFn(..) => {
                 match tcx.associated_item(def_id).container {
                     // Trait impl items always inherit the impl's visibility --
                     // we don't want to show `pub`.
@@ -908,68 +885,53 @@ impl Item {
 
 #[derive(Clone, Debug)]
 pub(crate) enum ItemKind {
-    ExternCrateItem {
+    ExternCrate {
         /// The crate's name, *not* the name it's imported as.
         src: Option<Symbol>,
     },
-    ImportItem(Import),
-    StructItem(Struct),
-    UnionItem(Union),
-    EnumItem(Enum),
-    FunctionItem(Box<Function>),
-    ModuleItem(Module),
-    TypeAliasItem(Box<TypeAlias>),
-    StaticItem(Static),
-    TraitItem(Box<Trait>),
-    TraitAliasItem(TraitAlias),
-    ImplItem(Box<Impl>),
+    Import(Import),
+    Struct(Struct),
+    Union(Union),
+    Enum(Enum),
+    Fn(Box<Function>),
+    Module(Module),
+    TyAlias(Box<TyAlias>),
+    Static(Static),
+    Trait(Box<Trait>),
+    TraitAlias(TraitAlias),
+    Impl(Box<Impl>),
     /// This variant is used only as a placeholder for trait impls in order to correctly compute
     /// `doc_cfg` as trait impls are added to `clean::Crate` after we went through the whole tree.
-    PlaceholderImplItem,
-    /// A required method in a trait declaration meaning it's only a function signature.
-    RequiredMethodItem(Box<Function>, Defaultness),
-    /// A method in a trait impl or a provided method in a trait declaration.
-    ///
-    /// Compared to [RequiredMethodItem], it also contains a method body.
-    MethodItem(Box<Function>, Defaultness),
-    StructFieldItem(Type),
-    VariantItem(Variant),
+    PlaceholderImpl,
+    AssocFn(Box<AssocFn>),
+    StructField(Type),
+    Variant(Variant),
     /// `fn`s from an extern block
-    ForeignFunctionItem(Box<Function>, hir::Safety),
+    ForeignFn(Box<Function>, hir::Safety),
     /// `static`s from an extern block
-    ForeignStaticItem(Static, hir::Safety),
+    ForeignStatic(Static, hir::Safety),
     /// `type`s from an extern block
-    ForeignTypeItem,
+    ForeignTy,
     /// A macro defined with `macro_rules` or the `macro` keyword. It can be multiple things (macro,
     /// derive and attribute, potentially multiple at once). Don't forget to look into the
     ///`MacroKinds` values.
     ///
     /// If a `macro_rules!` only contains a `attr`/`derive` branch, then it's not stored in this
     /// variant but in the `ProcMacroItem` variant.
-    MacroItem(Macro, MacroKinds),
-    ProcMacroItem(ProcMacro),
-    PrimitiveItem(PrimitiveType),
-    /// A required associated constant in a trait declaration.
-    RequiredAssocConstItem(Generics, Box<Type>),
-    ConstantItem(Box<Constant>),
-    /// An associated constant in a trait declaration with provided default value.
-    ProvidedAssocConstItem(Box<Constant>),
-    /// An associated constant in an inherent impl or trait impl.
-    ImplAssocConstItem(Box<Constant>),
-    /// A required associated type in a trait declaration.
-    ///
-    /// The bounds may be non-empty if there is a `where` clause.
-    RequiredAssocTypeItem(Generics, Vec<GenericBound>),
-    /// An associated type in a trait impl or a provided one in a trait declaration.
-    AssocTypeItem(Box<TypeAlias>, Vec<GenericBound>),
+    DeclMacro(Macro, MacroKinds),
+    ProcMacro(ProcMacro),
+    Primitive(PrimitiveType),
+    Const(Box<Constant>),
+    AssocConst(Box<AssocConst>),
+    AssocTy(Box<AssocTy>),
     /// An item that has been stripped by a rustdoc pass
-    StrippedItem(Box<ItemKind>),
+    Stripped(Box<ItemKind>),
     /// This item represents an anonymous constant with a `#[doc(keyword = "...")]` attribute which is used
     /// to generate documentation for Rust keywords.
-    KeywordItem,
+    Keyword,
     /// This item represents an anonymous constant with a `#[doc(attribute = "...")]` attribute which is used
     /// to generate documentation for Rust builtin attributes.
-    AttributeItem,
+    Attribute,
 }
 
 impl ItemKind {
@@ -977,42 +939,38 @@ impl ItemKind {
     /// (for their variants). This method returns those contained items.
     pub(crate) fn inner_items(&self) -> impl Iterator<Item = &Item> {
         match self {
-            StructItem(s) => s.fields.iter(),
-            UnionItem(u) => u.fields.iter(),
-            VariantItem(v) => match &v.kind {
+            Self::Struct(s) => s.fields.iter(),
+            Self::Union(u) => u.fields.iter(),
+            Self::Variant(v) => match &v.kind {
                 VariantKind::CLike => [].iter(),
                 VariantKind::Tuple(t) => t.iter(),
                 VariantKind::Struct(s) => s.fields.iter(),
             },
-            EnumItem(e) => e.variants.iter(),
-            TraitItem(t) => t.items.iter(),
-            ImplItem(i) => i.items.iter(),
-            ModuleItem(m) => m.items.iter(),
-            ExternCrateItem { .. }
-            | ImportItem(_)
-            | FunctionItem(_)
-            | TypeAliasItem(_)
-            | StaticItem(_)
-            | ConstantItem(_)
-            | TraitAliasItem(_)
-            | RequiredMethodItem(..)
-            | MethodItem(..)
-            | StructFieldItem(_)
-            | ForeignFunctionItem(_, _)
-            | ForeignStaticItem(_, _)
-            | ForeignTypeItem
-            | MacroItem(..)
-            | ProcMacroItem(_)
-            | PrimitiveItem(_)
-            | RequiredAssocConstItem(..)
-            | ProvidedAssocConstItem(..)
-            | ImplAssocConstItem(..)
-            | RequiredAssocTypeItem(..)
-            | AssocTypeItem(..)
-            | StrippedItem(_)
-            | KeywordItem
-            | AttributeItem
-            | PlaceholderImplItem => [].iter(),
+            Self::Enum(e) => e.variants.iter(),
+            Self::Trait(t) => t.items.iter(),
+            Self::Impl(i) => i.items.iter(),
+            Self::Module(m) => m.items.iter(),
+            Self::ExternCrate { .. }
+            | Self::Import(_)
+            | Self::Fn(_)
+            | Self::TyAlias(_)
+            | Self::Static(_)
+            | Self::Const(_)
+            | Self::TraitAlias(_)
+            | Self::AssocFn(..)
+            | Self::StructField(_)
+            | Self::ForeignFn(_, _)
+            | Self::ForeignStatic(_, _)
+            | Self::ForeignTy
+            | Self::DeclMacro(..)
+            | Self::ProcMacro(_)
+            | Self::Primitive(_)
+            | Self::AssocConst(..)
+            | Self::AssocTy(..)
+            | Self::Stripped(_)
+            | Self::Keyword
+            | Self::Attribute
+            | Self::PlaceholderImpl => [].iter(),
         }
     }
 }
@@ -1300,8 +1258,15 @@ impl Generics {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Function {
-    pub(crate) decl: FnDecl,
     pub(crate) generics: Generics,
+    pub(crate) decl: FnDecl,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct AssocFn {
+    pub(crate) generics: Generics,
+    pub(crate) decl: FnDecl,
+    pub(crate) body: Option<Defaultness>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -2251,19 +2216,28 @@ impl TypeAliasInnerType {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct TypeAlias {
-    pub(crate) type_: Type,
+pub(crate) struct TyAlias {
     pub(crate) generics: Generics,
+    pub(crate) ty: Type,
     /// Inner `AdtDef` type, ie `type TyKind = IrTyKind<Adt, Ty>`,
     /// to be shown directly on the typedef page.
     pub(crate) inner_type: Option<TypeAliasInnerType>,
-    /// `type_` can come from either the HIR or from metadata. If it comes from HIR, it may be a type
-    /// alias instead of the final type. This will always have the final type, regardless of whether
-    /// `type_` came from HIR or from metadata.
-    ///
-    /// If `item_type.is_none()`, `type_` is guaranteed to come from metadata (and therefore hold the
-    /// final type).
-    pub(crate) item_type: Option<Type>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct AssocTy {
+    pub(crate) generics: Generics,
+    pub(crate) bounds: Vec<GenericBound>,
+    pub(crate) ty: Option<AliasedTy>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct AliasedTy {
+    pub(crate) ty: Type,
+    // FIXME: Somehow get rid of this field.
+    /// Iff [`Self::ty`] was cleaned from the HIR, this contains
+    /// the corresponding type cleaned from the middle::ty IR.
+    pub(crate) middle_ty: Option<Type>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -2287,11 +2261,18 @@ pub(crate) struct Static {
     pub(crate) expr: Option<BodyId>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Constant {
     pub(crate) generics: Generics,
-    pub(crate) kind: ConstantKind,
-    pub(crate) type_: Type,
+    pub(crate) ty: Type,
+    pub(crate) rhs: ConstantKind,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct AssocConst {
+    pub(crate) generics: Generics,
+    pub(crate) ty: Type,
+    pub(crate) rhs: Option<ConstantKind>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
