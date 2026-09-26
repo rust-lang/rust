@@ -672,6 +672,85 @@ fn test_chunks_exact_mut_zip() {
     assert_eq!(v1, [13, 14, 19, 20, 4]);
 }
 
+// every one starts a new chunk
+// every zero is part of the current chunk
+fn chunk_by_fn(_: &u8, b: &u8) -> bool {
+    *b == 0
+}
+
+// all cases of chunking up to length 4
+const CHUNKS: [&[&[u8]]; 16] = [
+    &[],
+    &[&[1]],
+    &[&[1, 0]],
+    &[&[1], &[1]],
+    &[&[1, 0, 0]],
+    &[&[1, 0], &[1]],
+    &[&[1], &[1, 0]],
+    &[&[1], &[1], &[1]],
+    &[&[1, 0, 0, 0]],
+    &[&[1, 0, 0], &[1]],
+    &[&[1, 0], &[1, 0]],
+    &[&[1, 0], &[1], &[1]],
+    &[&[1], &[1, 0, 0]],
+    &[&[1], &[1, 0], &[1]],
+    &[&[1], &[1], &[1, 0]],
+    &[&[1], &[1], &[1], &[1]],
+];
+
+#[test]
+fn test_chunk_by_count() {
+    for chunks in CHUNKS {
+        let case: Vec<_> = chunks.concat();
+        assert_eq!(
+            case.chunk_by(chunk_by_fn).map(|_| 1).sum::<usize>(),
+            case.chunk_by(chunk_by_fn).count(),
+            "not equal for {case:?}"
+        );
+    }
+}
+
+#[test]
+fn test_chunk_by_chunks() {
+    // tests next through collect
+    for chunks in CHUNKS {
+        let case: Vec<_> = chunks.concat();
+        assert_eq!(
+            chunks,
+            case.chunk_by(chunk_by_fn).collect::<Vec<_>>(),
+            "not equal for {case:?}"
+        );
+    }
+}
+
+#[test]
+fn test_chunk_by_rchunks() {
+    // tests next_back through rfold
+    for chunks in CHUNKS {
+        let case: Vec<_> = chunks.concat();
+        assert_eq!(
+            chunks.iter().rev().copied().collect::<Vec<_>>(),
+            case.chunk_by(chunk_by_fn).rfold(vec![], |mut v, e| {
+                v.push(e);
+                v
+            }),
+            "not equal for {case:?}"
+        );
+    }
+}
+
+#[test]
+fn test_chunk_by_last() {
+    for chunks in CHUNKS {
+        let case: Vec<_> = chunks.concat();
+        assert_eq!(
+            chunks.iter().copied().last(),
+            case.chunk_by(chunk_by_fn).last(),
+            "not equal for {case:?}"
+        );
+    }
+}
+
 #[test]
 fn test_array_windows_infer() {
     let v: &[i32] = &[0, 1, 0, 1];
