@@ -207,14 +207,6 @@ note: the lint level is defined here
 LL | #![warn(unused_attributes, unknown_lints)]
    |         ^^^^^^^^^^^^^^^^^
 
-warning: attribute should be applied to an `extern` block with non-Rust ABI
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:729:5
-   |
-LL |     #[link(name = "x")] extern "Rust" {}
-   |     ^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
 warning: the `macro_use` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:45:4
    |
@@ -976,6 +968,14 @@ LL |     #[link(name = "x")] impl S { }
    |       ^^^^
    |
    = help: the `link` attribute can only be applied to foreign modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: attribute should be applied to an `extern` block with non-Rust ABI
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:729:5
+   |
+LL |     #[link(name = "x")] extern "Rust" {}
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `must_use` attribute cannot be used on modules
