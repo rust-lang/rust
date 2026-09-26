@@ -90,6 +90,7 @@ pub(crate) use self::Enzyme_AD::*;
 
 pub(crate) mod Enzyme_AD {
     use std::ffi::{c_char, c_void};
+    use std::path::PathBuf;
     use std::sync::{Mutex, MutexGuard, OnceLock};
 
     use rustc_session::config::{Sysroot, host_tuple};
@@ -433,38 +434,36 @@ pub(crate) mod Enzyme_AD {
             })
         }
 
-        fn get_enzyme_path(sysroot: &Sysroot) -> Result<String, EnzymeLibraryError> {
+        fn get_enzyme_path(sysroot: &Sysroot) -> Result<PathBuf, EnzymeLibraryError> {
             let llvm_version_major = llvm::LLVMRustVersionMajor();
+            let mut searched = Vec::new();
 
-            let path_buf = sysroot
-                .all_paths()
-                .map(|sysroot_path| {
-                    filesearch::make_target_lib_path(sysroot_path, host_tuple())
-                        .join("lib")
-                        .with_file_name(format!("libEnzyme-{llvm_version_major}"))
-                        .with_extension(std::env::consts::DLL_EXTENSION)
-                })
-                .find(|f| f.exists())
-                .ok_or_else(|| {
-                    let candidates = sysroot
-                        .all_paths()
-                        .map(|p| p.join("lib").display().to_string())
-                        .collect::<Vec<String>>()
-                        .join("\n* ");
-                    EnzymeLibraryError::NotFound {
-                        err: format!(
-                            "failed to find a `libEnzyme-{llvm_version_major}` folder \
-                    in the sysroot candidates:\n* {candidates}"
-                        ),
-                    }
-                })?;
+            for p in sysroot.all_paths() {
+                let libdir = filesearch::make_target_lib_path(p, host_tuple());
 
-            Ok(path_buf
-                .to_str()
-                .ok_or_else(|| EnzymeLibraryError::LoadFailed {
-                    err: format!("invalid UTF-8 in path: {}", path_buf.display()),
-                })?
-                .to_string())
+                let enzyme_path = libdir
+                    .join(format!("libEnzyme-{llvm_version_major}"))
+                    .with_extension(std::env::consts::DLL_EXTENSION);
+
+                if enzyme_path.exists() {
+                    return Ok(enzyme_path);
+                }
+
+                searched.push(libdir);
+            }
+
+            Err(EnzymeLibraryError::NotFound {
+                err: format!(
+                    "failed to find a `libEnzyme-{llvm_version_major}.{}` \
+                    in the sysroot candidates:\n* {}",
+                    std::env::consts::DLL_EXTENSION,
+                    searched
+                        .iter()
+                        .map(|p| p.display().to_string())
+                        .collect::<Vec<_>>()
+                        .join("\n* ")
+                ),
+            })
         }
     }
 }
