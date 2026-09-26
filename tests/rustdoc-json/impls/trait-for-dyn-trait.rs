@@ -7,9 +7,9 @@ pub trait T2 {}
 /// Fun impl
 impl T1 for dyn T2 {}
 
-//@ set impl = '$.index[?(@.docs=="Fun impl")].id'
+//@ set impl = '$.index[?(@.docs[0].text=="Fun impl")].id'
 //@ is '$.index[?(@.name=="T1")].inner.trait.implementations[*]' $impl
 //@ is '$.index[?(@.name=="T2")].inner.trait.implementations' []
 
-//@ is '$.index[?(@.docs=="Fun impl")].inner.impl.trait.id' $t1
-//@ is '$.index[?(@.docs=="Fun impl")].inner.impl.for.dyn_trait.traits[*].trait.id' $t2
+//@ is '$.index[?(@.docs[0].text=="Fun impl")].inner.impl.trait.id' $t1
+//@ is '$.index[?(@.docs[0].text=="Fun impl")].inner.impl.for.dyn_trait.traits[*].trait.id' $t2

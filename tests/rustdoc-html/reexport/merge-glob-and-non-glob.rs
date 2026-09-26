@@ -13,8 +13,8 @@
 // We should also only have one section (Structs).
 //@ count - '//h2[@class="section-header"]' 1
 // We now check the short docs.
-//@ has - '//dl[@class="item-table"]/dd' 'Foobar Blob'
-//@ has - '//dl[@class="item-table"]/dd' 'Tarte Tatin'
+//@ has - '//dl[@class="item-table"]/dd' 'Foobar'
+//@ has - '//dl[@class="item-table"]/dd' 'Tarte'
 
 //@ has 'foo/struct.Foo.html'
 //@ has - '//*[@class="docblock"]' 'Foobar Blob'

@@ -477,8 +477,18 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                         };
                         let visibility_and_hidden = visibility_and_hidden(myitem);
 
-                        let docs = MarkdownSummaryLine(&myitem.doc_value(), &myitem.links(cx))
-                            .into_string();
+                        let doc_values = myitem.doc_values();
+                        let (dox, intra_doc_links) =
+                            doc_values.iter().next().map_or_default(|(opt_item_id, dox)| {
+                                (
+                                    &dox[..],
+                                    opt_item_id
+                                        .map_or(myitem.item_id, clean::ItemId::DefId)
+                                        .links(cx),
+                                )
+                            });
+
+                        let docs = MarkdownSummaryLine(&dox, &intra_doc_links).into_string();
                         let (docs_before, docs_after) =
                             if docs.is_empty() { ("", "") } else { ("<dd>", "</dd>") };
                         let deprecation_attr = deprecation_class_attr(myitem.is_deprecated(tcx));
@@ -1872,7 +1882,7 @@ fn item_variants(
                 clean::VariantKind::Tuple(fields) => {
                     // Documentation on tuple variant fields is rare, so to reduce noise we only emit
                     // the section if at least one field is documented.
-                    if fields.iter().any(|f| !f.doc_value().is_empty()) {
+                    if fields.iter().any(|f| !f.doc_values().is_empty()) {
                         Some(("Tuple Fields", fields))
                     } else {
                         None

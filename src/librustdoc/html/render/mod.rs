@@ -65,7 +65,7 @@ use tracing::{debug, info};
 
 pub(crate) use self::context::*;
 pub(crate) use self::write_shared::*;
-use crate::clean::{self, Defaultness, Item, ItemId, RenderedLink};
+use crate::clean::{self, Defaultness, Item, ItemId};
 use crate::display::{Joined as _, MaybeDisplay as _};
 use crate::error::Error;
 use crate::formats::Impl;
@@ -144,7 +144,11 @@ impl IndexItemInfo {
         impl_generics: Option<&(clean::Type, clean::Generics)>,
         ty: ItemType,
     ) -> Self {
-        let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
+        let doc_values = item.doc_values();
+        let desc = short_markdown_summary(
+            &doc_values.values().next().map_or_default(|s| &s[..]),
+            &item.link_names(cache),
+        );
         let search_type = get_function_type_for_search(item, tcx, impl_generics, parent_did, cache);
         let aliases = item.attrs.get_doc_aliases();
         let deprecation = item.deprecation(tcx);
@@ -710,29 +714,6 @@ fn document(
     })
 }
 
-/// Render md_text as markdown.
-fn render_markdown(
-    cx: &Context<'_>,
-    md_text: &str,
-    links: Vec<RenderedLink>,
-    heading_offset: HeadingOffset,
-) -> impl fmt::Display {
-    fmt::from_fn(move |f| {
-        f.write_str("<div class=\"docblock\">")?;
-        Markdown {
-            content: md_text,
-            links: &links,
-            ids: &mut cx.id_map.borrow_mut(),
-            error_codes: cx.shared.codes,
-            edition: cx.shared.edition(),
-            playground: &cx.shared.playground,
-            heading_offset,
-        }
-        .write_into(&mut *f)?;
-        f.write_str("</div>")
-    })
-}
-
 /// Writes a documentation block containing only the first paragraph of the documentation. If the
 /// docs are longer, a "Read more" link is appended to the end.
 fn document_short(
@@ -747,10 +728,14 @@ fn document_short(
         if !show_def_docs {
             return Ok(());
         }
-        let s = item.doc_value();
-        if !s.is_empty() {
+        let doc_values = item.doc_values();
+        let (dox, intra_doc_links) =
+            doc_values.iter().next().map_or_default(|(opt_item_id, dox)| {
+                (&dox[..], opt_item_id.map_or(item.item_id, ItemId::DefId).links(cx))
+            });
+        if !dox.is_empty() {
             let (mut summary_html, has_more_content) =
-                MarkdownSummaryLine(&s, &item.links(cx)).into_string_with_has_more_content();
+                MarkdownSummaryLine(&dox, &intra_doc_links).into_string_with_has_more_content();
 
             let link = if has_more_content {
                 let link = fmt::from_fn(|f| {
@@ -801,20 +786,35 @@ fn document_full_inner(
     heading_offset: HeadingOffset,
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| {
-        if let Some(s) = item.opt_doc_value() {
-            debug!("Doc block: =====\n{s}\n=====");
-            if is_collapsible {
-                write!(
-                    f,
+        if let Some(doc_values) = item.opt_doc_values() {
+            let close = if is_collapsible {
+                f.write_str(
                     "<details class=\"toggle top-doc\" open>\
                      <summary class=\"hideme\">\
                         <span>Expand description</span>\
-                     </summary>{}</details>",
-                    render_markdown(cx, &s, item.links(cx), heading_offset)
+                     </summary><div class=\"docblock\">",
                 )?;
+                "</div></details>"
             } else {
-                write!(f, "{}", render_markdown(cx, &s, item.links(cx), heading_offset))?;
+                f.write_str("<div class=\"docblock\">")?;
+                "</div>"
+            };
+            debug!("Doc block: {}\n", item.name.as_ref().map_or("[anonymous]", |nm| nm.as_str()));
+            for (opt_item_id, content) in doc_values.iter() {
+                debug!("Doc fragment: =====\n{content}\n=====");
+                let intra_doc_links = opt_item_id.map_or(item.item_id, ItemId::DefId).links(cx);
+                Markdown {
+                    content,
+                    links: &intra_doc_links,
+                    ids: &mut cx.id_map.borrow_mut(),
+                    error_codes: cx.shared.codes,
+                    edition: cx.shared.edition(),
+                    playground: &cx.shared.playground,
+                    heading_offset,
+                }
+                .write_into(&mut *f)?;
             }
+            f.write_str(close)?;
         }
 
         let kind = match &item.kind {
@@ -912,7 +912,7 @@ fn short_item_info(
         if let Some(note) = note {
             let note = note.as_str();
             let mut id_map = cx.id_map.borrow_mut();
-            let links = item.links(cx);
+            let links = item.item_id.links(cx);
             let html = MarkdownItemInfo::new(note, &links, &mut id_map);
             message.push_str(": ");
             html.write_into(&mut message).unwrap();
@@ -1906,7 +1906,7 @@ fn render_impl(
                             trait_item_deprecated = it.is_deprecated(cx.tcx());
                             // We need the stability of the item from the trait
                             // because impls can't have a stability.
-                            if !item.doc_value().is_empty() {
+                            if !item.doc_values().is_empty() {
                                 document_item_info(cx, it, Some(parent))
                                     .render_into(&mut info_buffer)?;
                                 doc_buffer = document_full(item, cx, HeadingOffset::H5).to_string();
@@ -2278,11 +2278,16 @@ fn render_impl(
 
             let (before_dox, after_dox) = i
                 .impl_item
-                .opt_doc_value()
+                .doc_values()
+                .values()
+                // impl blocks can't be reexported,
+                // because they can't be named,
+                // so there will only ever be at most one docblock
+                .next()
                 .map(|dox| {
                     Markdown {
                         content: &dox,
-                        links: &i.impl_item.links(cx),
+                        links: &i.impl_item.item_id.links(cx),
                         ids: &mut cx.id_map.borrow_mut(),
                         error_codes: cx.shared.codes,
                         edition: cx.shared.edition(),

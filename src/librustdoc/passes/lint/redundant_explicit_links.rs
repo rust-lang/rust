@@ -9,7 +9,7 @@ use rustc_middle::middle::resolve::DocLinkResMap;
 use rustc_resolve::rustdoc::pulldown_cmark::{
     BrokenLink, BrokenLinkCallback, CowStr, Event, LinkType, OffsetIter, Parser, Tag,
 };
-use rustc_resolve::rustdoc::{prepare_to_doc_link_resolution, source_span_for_markdown_range};
+use rustc_resolve::rustdoc::{prepare_fragments, source_span_for_markdown_range};
 use rustc_span::def_id::{DefId, ModId};
 use rustc_span::{Span, Symbol};
 
@@ -28,7 +28,7 @@ struct LinkData {
 }
 
 pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId) {
-    let hunks = prepare_to_doc_link_resolution(&item.attrs.doc_strings);
+    let hunks = prepare_fragments(&item.attrs.doc_strings);
     for (item_id, doc) in hunks {
         if let Some(item_id) = item_id.or(item.def_id())
             && !doc.is_empty()

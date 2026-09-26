@@ -38,9 +38,9 @@ pub union StableUnionWithUnstableField {
 #[stable(feature = "stable_tuple_struct_feature", since = "3.0.0")]
 pub struct StableTupleStructWithUnstableField(
     pub usize,
-    //@ is "$.index[?(@.docs=='unstable tuple struct field')].stability.level" '"unstable"'
-    //@ is "$.index[?(@.docs=='unstable tuple struct field')].stability.feature" '"unstable_tuple_struct_field_feature"'
-    //@ !has "$.index[?(@.docs=='unstable tuple struct field')].stability.since"
+    //@ is "$.index[?(@.docs[0].text=='unstable tuple struct field')].stability.level" '"unstable"'
+    //@ is "$.index[?(@.docs[0].text=='unstable tuple struct field')].stability.feature" '"unstable_tuple_struct_field_feature"'
+    //@ !has "$.index[?(@.docs[0].text=='unstable tuple struct field')].stability.since"
     /// unstable tuple struct field
     #[unstable(feature = "unstable_tuple_struct_field_feature", issue = "none")]
     pub usize,
@@ -51,9 +51,9 @@ pub enum StableEnumWithFieldVariants {
     #[stable(feature = "stable_tuple_variant_feature", since = "4.1.0")]
     TupleVariant(
         usize,
-        //@ is "$.index[?(@.docs=='unstable tuple variant field')].stability.level" '"unstable"'
-        //@ is "$.index[?(@.docs=='unstable tuple variant field')].stability.feature" '"unstable_tuple_variant_field_feature"'
-        //@ !has "$.index[?(@.docs=='unstable tuple variant field')].stability.since"
+        //@ is "$.index[?(@.docs[0].text=='unstable tuple variant field')].stability.level" '"unstable"'
+        //@ is "$.index[?(@.docs[0].text=='unstable tuple variant field')].stability.feature" '"unstable_tuple_variant_field_feature"'
+        //@ !has "$.index[?(@.docs[0].text=='unstable tuple variant field')].stability.since"
         /// unstable tuple variant field
         #[unstable(feature = "unstable_tuple_variant_field_feature", issue = "none")]
         usize,

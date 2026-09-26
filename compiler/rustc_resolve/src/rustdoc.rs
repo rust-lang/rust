@@ -236,9 +236,7 @@ pub fn attrs_to_doc_fragments<'a, A: AttributeExt + Clone + 'a>(
 ///
 /// The last newline is not trimmed so the produced strings are reusable between
 /// early and late doc link resolution regardless of their position.
-pub fn prepare_to_doc_link_resolution(
-    doc_fragments: &[DocFragment],
-) -> FxIndexMap<Option<DefId>, String> {
+pub fn prepare_fragments(doc_fragments: &[DocFragment]) -> FxIndexMap<Option<DefId>, String> {
     let mut res = FxIndexMap::default();
     for fragment in doc_fragments {
         let out_str = res.entry(fragment.item_id).or_default();
@@ -412,7 +410,7 @@ pub fn may_be_doc_link(link_type: LinkType) -> bool {
 pub(crate) fn attrs_to_preprocessed_links(attrs: &[ast::Attribute]) -> Vec<Box<str>> {
     let (doc_fragments, other_attrs) =
         attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), false);
-    let doc = prepare_to_doc_link_resolution(&doc_fragments).into_values().next();
+    let doc = prepare_fragments(&doc_fragments).into_values().next();
     let mut links = doc.as_deref().map(parse_links).unwrap_or_default();
 
     for attr in other_attrs {

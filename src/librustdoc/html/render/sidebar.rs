@@ -224,18 +224,25 @@ fn docblock_toc<'a>(
     it: &'a clean::Item,
     ids: &mut IdMap,
 ) -> Option<LinkBlock<'a>> {
-    let (toc, _) = MarkdownWithToc {
-        content: &it.doc_value(),
-        links: &it.links(cx),
-        ids,
-        error_codes: cx.shared.codes,
-        edition: cx.shared.edition(),
-        playground: &cx.shared.playground,
-    }
-    .into_parts();
-    let links: Vec<Link<'_>> = toc
-        .entries
-        .into_iter()
+    let links: Vec<Link<'_>> = it
+        .doc_values()
+        .iter()
+        .map(|(opt_item_id, content)| {
+            let intra_doc_links = opt_item_id.map_or(it.item_id, clean::ItemId::DefId).links(cx);
+            MarkdownWithToc {
+                content: &content,
+                links: &intra_doc_links,
+                ids,
+                error_codes: cx.shared.codes,
+                edition: cx.shared.edition(),
+                playground: &cx.shared.playground,
+            }
+            .into_parts()
+            .0
+            .entries
+            .into_iter()
+        })
+        .flatten()
         .map(|entry| {
             Link {
                 name_html: if entry.html == entry.name { None } else { Some(entry.html.into()) },

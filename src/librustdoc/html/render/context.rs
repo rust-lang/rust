@@ -254,7 +254,10 @@ impl<'tcx> Context<'tcx> {
             };
             title.push_str(" - Rust");
             let tyname = it.type_();
-            let desc = plain_text_summary(&it.doc_value(), &it.link_names(self.cache()));
+            let desc = plain_text_summary(
+                &it.doc_values().values().next().map_or_default(|s| &s[..]),
+                &it.link_names(self.cache()),
+            );
             let desc = if !desc.is_empty() {
                 desc
             } else if it.is_crate() {
