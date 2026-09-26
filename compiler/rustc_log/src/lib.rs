@@ -130,25 +130,10 @@ where
         Err(VarError::NotUnicode(_value)) => return Err(Error::NonUnicodeColorValue),
     };
 
-    let verbose_entry_exit = match cfg.verbose_entry_exit {
-        Ok(v) => &v != "0",
-        Err(_) => false,
-    };
-
-    let verbose_thread_ids = match cfg.verbose_thread_ids {
-        Ok(v) => &v == "1",
-        Err(_) => false,
-    };
-
-    let lines = match cfg.lines {
-        Ok(v) => &v == "1",
-        Err(_) => false,
-    };
-
-    let json = match cfg.json {
-        Ok(v) => &v == "1",
-        Err(_) => false,
-    };
+    let verbose_entry_exit = cfg.verbose_entry_exit.is_ok_and(|v| v != "0");
+    let verbose_thread_ids = cfg.verbose_thread_ids.is_ok_and(|v| v == "1");
+    let lines = cfg.lines.is_ok_and(|v| v == "1");
+    let json = cfg.json.is_ok_and(|v| v == "1");
 
     let output_target: BoxMakeWriter = match cfg.output_target {
         Ok(v) => match File::options().create(true).write(true).truncate(true).open(&v) {
@@ -337,25 +322,25 @@ impl<S: Subscriber, L: Layer<S>> Layer<S> for NonrecursiveLayer<L> {
     }
 
     fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
-        if let Some(_) = NonrecursiveGuard::lock() {
+        if NonrecursiveGuard::lock().is_some() {
             self.inner.on_new_span(attrs, id, ctx)
         }
     }
 
     fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
-        if let Some(_) = NonrecursiveGuard::lock() {
+        if NonrecursiveGuard::lock().is_some() {
             self.inner.on_record(span, values, ctx)
         }
     }
 
     fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, S>) {
-        if let Some(_) = NonrecursiveGuard::lock() {
+        if NonrecursiveGuard::lock().is_some() {
             self.inner.on_follows_from(span, follows, ctx)
         }
     }
 
     fn event_enabled(&self, event: &Event<'_>, ctx: Context<'_, S>) -> bool {
-        if let Some(_) = NonrecursiveGuard::lock() {
+        if NonrecursiveGuard::lock().is_some() {
             self.inner.event_enabled(event, ctx)
         } else {
             false
@@ -363,25 +348,25 @@ impl<S: Subscriber, L: Layer<S>> Layer<S> for NonrecursiveLayer<L> {
     }
 
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
-        if let Some(_) = NonrecursiveGuard::lock() {
+        if NonrecursiveGuard::lock().is_some() {
             self.inner.on_event(event, ctx)
         }
     }
 
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
-        if let Some(_) = NonrecursiveGuard::lock() {
+        if NonrecursiveGuard::lock().is_some() {
             self.inner.on_enter(id, ctx)
         }
     }
 
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
-        if let Some(_) = NonrecursiveGuard::lock() {
+        if NonrecursiveGuard::lock().is_some() {
             self.inner.on_exit(id, ctx)
         }
     }
 
     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
-        if let Some(_) = NonrecursiveGuard::lock() {
+        if NonrecursiveGuard::lock().is_some() {
             self.inner.on_close(id, ctx)
         }
     }
