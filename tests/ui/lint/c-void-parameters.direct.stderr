@@ -1,0 +1,43 @@
+error: `c_void` should not be used directly as the type of a function parameter
+  --> $DIR/c-void-parameters.rs:14:11
+   |
+LL | fn foo(_: c_void) {
+   |           ^^^^^^
+   |
+   = help: did you mean `*mut c_void` or `*const c_void`?
+   = note: `c_void` is only used through raw pointers, for compatibility with `void` pointers
+note: the lint level is defined here
+  --> $DIR/c-void-parameters.rs:4:9
+   |
+LL | #![deny(c_void_parameters)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: `c_void` should not be used directly as the type of a function parameter
+  --> $DIR/c-void-parameters.rs:21:15
+   |
+LL |     fn baz(_: c_void);
+   |               ^^^^^^
+   |
+   = help: did you mean `*mut c_void` or `*const c_void`?
+   = note: `c_void` is only used through raw pointers, for compatibility with `void` pointers
+
+error: `c_void` should not be used directly as the type of a function parameter
+  --> $DIR/c-void-parameters.rs:25:17
+   |
+LL | type Xyzzy = fn(c_void);
+   |                 ^^^^^^
+   |
+   = help: did you mean `*mut c_void` or `*const c_void`?
+   = note: `c_void` is only used through raw pointers, for compatibility with `void` pointers
+
+error: `c_void` should not be used directly as the type of a function parameter
+  --> $DIR/c-void-parameters.rs:28:15
+   |
+LL |     fn foo(_: c_void);
+   |               ^^^^^^
+   |
+   = help: did you mean `*mut c_void` or `*const c_void`?
+   = note: `c_void` is only used through raw pointers, for compatibility with `void` pointers
+
+error: aborting due to 4 previous errors
+
