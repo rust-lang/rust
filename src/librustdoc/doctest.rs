@@ -96,27 +96,8 @@ pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> 
     // We now put the common arguments into the file we created.
     let mut content = vec![];
 
-    for cfg in &options.cfgs {
-        content.push(format!("--cfg={cfg}"));
-    }
-    for check_cfg in &options.check_cfgs {
-        content.push(format!("--check-cfg={check_cfg}"));
-    }
-
-    for lib_str in &options.lib_strs {
-        content.push(format!("-L{lib_str}"));
-    }
-    for extern_str in &options.extern_strs {
-        content.push(format!("--extern={extern_str}"));
-    }
     content.push("-Ccodegen-units=1".to_string());
-    for codegen_options_str in &options.codegen_options_strs {
-        content.push(format!("-C{codegen_options_str}"));
-    }
-    for unstable_option_str in &options.unstable_opts_strs {
-        content.push(format!("-Z{unstable_option_str}"));
-    }
-
+    content.extend(options.forwarded_rustc_args.iter().cloned());
     content.extend(options.doctest_build_args.clone());
 
     let content = content.join("\n");
@@ -695,6 +676,9 @@ fn run_test(
     let mut compiler = wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
 
     compiler.args(&compiler_args);
+    for lib in &rustdoc_options.native_lib_strs {
+        compiler.arg(format!("-l{lib}"));
+    }
 
     // If this is a merged doctest, we need to write it into a file instead of using stdin
     // because if the size of the merged doctests is too big, it'll simply break stdin.
