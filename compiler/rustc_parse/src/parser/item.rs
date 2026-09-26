@@ -2507,8 +2507,7 @@ impl<'a> Parser<'a> {
     /// for better diagnostics and suggestions.
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
         let (ident, kind) = self.ident_or_err(true)?;
-        if kind == IdentKind::Normal
-            && ident.is_reserved()
+        if token::ident_of_kind_is_reserved(ident, kind)
             && !(ident.name == kw::Underscore && adt_ty == "enum")
         {
             let snapshot = self.create_snapshot_for_diagnostic();

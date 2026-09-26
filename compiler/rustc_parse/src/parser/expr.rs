@@ -745,8 +745,7 @@ impl<'a> Parser<'a> {
         lo: Span,
     ) -> PResult<'a, Box<Expr>> {
         let mut res = loop {
-            let has_question = if self.prev_token == TokenKind::Ident(kw::Return, IdentKind::Normal)
-            {
+            let has_question = if self.prev_token.is_keyword(kw::Return) {
                 // We are using noexpect here because we don't expect a `?` directly after
                 // a `return` which could be suggested otherwise.
                 self.eat_noexpect(&token::Question)
@@ -758,7 +757,7 @@ impl<'a> Parser<'a> {
                 e = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Try(e));
                 continue;
             }
-            let has_dot = if self.prev_token == TokenKind::Ident(kw::Return, IdentKind::Normal) {
+            let has_dot = if self.prev_token.is_keyword(kw::Return) {
                 // We are using noexpect here because we don't expect a `.` directly after
                 // a `return` which could be suggested otherwise.
                 self.eat_noexpect(&token::Dot)
@@ -1447,6 +1446,7 @@ impl<'a> Parser<'a> {
                 // or `async gen {}` and `async gen move {}`
                 // FIXME: (async) gen closures aren't yet parsed.
                 // FIXME(gen_blocks): Parse `gen async` and suggest swap
+                // FIXME(forced_keywords): Allow k#gen blocks prior to Rust 2024, too!
                 if this.token_uninterpolated_span().at_least_rust_2024()
                     && this.is_gen_block(kw::Gen, at_async as usize)
                 {
@@ -2092,7 +2092,9 @@ impl<'a> Parser<'a> {
             }
         };
         match self.token.uninterpolate().kind {
-            token::Ident(name, IdentKind::Normal) if name.is_bool_lit() => {
+            token::Ident(name, IdentKind::Normal | IdentKind::ForcedKeyword)
+                if name.is_bool_lit() =>
+            {
                 self.bump();
                 Some(token::Lit::new(token::Bool, name, None))
             }
