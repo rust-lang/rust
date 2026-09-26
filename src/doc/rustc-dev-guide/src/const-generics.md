@@ -5,7 +5,7 @@
 Most of the kinds of `ty::Const` that exist have direct parallels to kinds of types that exist, for example `ConstKind::Param` is equivalent to `TyKind::Param`.
 
 The main interesting points here are:
-- [`ConstKind::Unevaluated`], which is equivalent to `TyKind::Alias` and in the long term should be renamed (as well as introducing an `AliasConstKind` to parallel `ty::AliasKind`).
+- [`ConstKind::Alias`], which is equivalent to `TyKind::Alias`.
 - [`ConstKind::Value`], which is the final value of a `ty::Const` after monomorphization.
   This is somewhat similar to fully concrete things like `TyKind::Str` or `TyKind::ADT`.
 
@@ -35,7 +35,7 @@ const ANON: usize = 1 + 1;
 type Alias = [u8; ANON];
 ```
 
-Where the array length in `[u8; ANON]` isn't itself an anon const containing a usage of `ANON`, but a kind of "direct" usage of the `ANON` const item ([`ConstKind::Unevaluated`]).
+Where the array length in `[u8; ANON]` isn't itself an anon const containing a usage of `ANON`, but a kind of "direct" usage of the `ANON` const item ([`ConstKind::Alias`]).
 
 Anon consts do not inherit any generic parameters of the item they are inside of:
 ```rust
@@ -81,7 +81,7 @@ type Alias = [u8; ANON];
 When we go through HIR ty lowering for the array type in `Alias`, we will lower the array length too, and feed `type_of(ANON) -> usize`.
 This will effectively set the type of the `ANON` const item during some later part of the compiler rather than when constructing the HIR.
 
-After all of this desugaring has taken place the final representation in the type system (ie as a `ty::Const`) is a `ConstKind::Unevaluated` with the `DefId` of the `AnonConst`. This is equivalent to how we would representa a usage of an actual const item if we were to represent them without going through an anon const (e.g. when `min_generic_const_args` is enabled).
+After all of this desugaring has taken place the final representation in the type system (ie as a `ty::Const`) is a `ConstKind::Alias` with the `DefId` of the `AnonConst`. This is equivalent to how we would representa a usage of an actual const item if we were to represent them without going through an anon const (e.g. when `min_generic_const_args` is enabled).
 
 This allows the representation for const "aliases" to be the same as the representation of `TyKind::Alias`. Having a proper HIR body also allows for a *lot* of code re-use, e.g. we can reuse HIR typechecking and all of the lowering steps to MIR where we can then reuse const eval.
 
@@ -215,7 +215,7 @@ Proving `ConstArgHasType` goals is implemented by first computing the type of th
 A rough outline of how the type of a Const Argument may be computed:
 - [`ConstKind::Param(N)`][`ConstKind::Param`] can be looked up in the [`ParamEnv`] to find a `ConstArgHasType(N, ty)` clause
 - [`ConstKind::Value`] stores the type of the value inside itself so can trivially be accessed
-- [`ConstKind::Unevaluated`] can have its type computed by calling the `type_of` query
+- [`ConstKind::Alias`] can have its type computed by calling the `type_of` query
 - See the implementation of proving `ConstArgHasType` goals for more detailed information
 
 `ConstArgHasType` is *the* soundness critical way that we check Const Arguments have the correct type.
@@ -241,7 +241,7 @@ Looking at the above example, this corresponds to `[u8; ANON]` being a well form
 [`ConstKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.ConstKind.html
 [`ConstKind::Infer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.ConstKind.html#variant.Infer
 [`ConstKind::Param`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.ConstKind.html#variant.Param
-[`ConstKind::Unevaluated`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.ConstKind.html#variant.Unevaluated
+[`ConstKind::Alias`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/consts/type.ConstKind.html#variant.Alias
 [`ConstKind::Value`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.ConstKind.html#variant.Value
 [const_arg_has_type]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.ClauseKind.html#variant.ConstArgHasType
 [`ParamEnv`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html
