@@ -438,6 +438,7 @@ top_level_options!(
         color: ColorConfig [UNTRACKED],
         verbose: bool [TRACKED_NO_CRATE_HASH],
         jobs: Jobs [UNTRACKED],
+        recommended_stack_size: usize [UNTRACKED],
     }
 );
 
