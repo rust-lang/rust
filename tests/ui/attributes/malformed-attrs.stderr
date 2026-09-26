@@ -896,7 +896,7 @@ LL | | }
    | |_^
    = note: requested on the command line with `-W unused-attributes`
 
-warning: the `link` attribute cannot be used on functions
+error: the `link` attribute cannot be used on functions
   --> $DIR/malformed-attrs.rs:85:3
    |
 LL | #[link]
@@ -904,8 +904,9 @@ LL | #[link]
    |
    = help: the `link` attribute can only be applied to foreign modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: `#[deny(harmful_unused_attributes)]` on by default
 
-warning: the `link_name` attribute cannot be used on functions
+error: the `link_name` attribute cannot be used on functions
   --> $DIR/malformed-attrs.rs:89:3
    |
 LL | #[link_name]
@@ -984,7 +985,7 @@ LL |     #[coroutine = 63] || {}
    = note: expected unit type `()`
               found coroutine `{coroutine@$DIR/malformed-attrs.rs:118:23: 118:25}`
 
-error: aborting due to 74 previous errors; 8 warnings emitted
+error: aborting due to 76 previous errors; 6 warnings emitted
 
 Some errors have detailed explanations: E0308, E0463, E0539, E0565, E0658, E0805.
 For more information about an error, try `rustc --explain E0308`.

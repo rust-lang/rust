@@ -10,21 +10,17 @@ help: must be of the form
 LL | #[link_name = "name"]
    |             ++++++++
 
-warning: the `link_name` attribute cannot be used on structs
-  --> $DIR/issue-47725.rs:4:3
+error: the `link_name` attribute cannot be used on structs
+  --> $DIR/issue-47725.rs:3:3
    |
 LL | #[link_name = "foo"]
    |   ^^^^^^^^^
    |
    = help: the `link_name` attribute can be applied to foreign functions and foreign statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-note: the lint level is defined here
-  --> $DIR/issue-47725.rs:2:9
-   |
-LL | #![warn(unused_attributes)]
-   |         ^^^^^^^^^^^^^^^^^
+   = note: `#[deny(harmful_unused_attributes)]` on by default
 
-warning: the `link_name` attribute cannot be used on foreign modules
+error: the `link_name` attribute cannot be used on foreign modules
   --> $DIR/issue-47725.rs:11:3
    |
 LL | #[link_name = "foobar"]
@@ -33,7 +29,7 @@ LL | #[link_name = "foobar"]
    = help: the `link_name` attribute can be applied to foreign functions and foreign statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-warning: the `link_name` attribute cannot be used on foreign modules
+error: the `link_name` attribute cannot be used on foreign modules
   --> $DIR/issue-47725.rs:20:3
    |
 LL | #[link_name]
@@ -42,6 +38,6 @@ LL | #[link_name]
    = help: the `link_name` attribute can be applied to foreign functions and foreign statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: aborting due to 1 previous error; 3 warnings emitted
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0539`.

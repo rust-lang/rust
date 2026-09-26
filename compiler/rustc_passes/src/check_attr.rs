@@ -29,9 +29,9 @@ use rustc_hir::{
     HirId, Item, ItemKind, Mod, Node, ParamName, TraitItem,
 };
 use rustc_lint_defs::builtin::{
-    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS, MISPLACED_DIAGNOSTIC_ATTRIBUTES, REPEATED_REPRS,
-    UNUSED_ATTRIBUTES,
+    CONFLICTING_REPR_HINTS, HARMFUL_UNUSED_ATTRIBUTES, INVALID_DOC_ATTRIBUTES,
+    MALFORMED_DIAGNOSTIC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+    MISPLACED_DIAGNOSTIC_ATTRIBUTES, REPEATED_REPRS, UNUSED_ATTRIBUTES,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
@@ -1113,7 +1113,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         }
 
-        self.tcx.emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr_span, diagnostics::Link);
+        self.tcx.emit_node_span_lint(
+            HARMFUL_UNUSED_ATTRIBUTES,
+            hir_id,
+            attr_span,
+            diagnostics::Link,
+        );
     }
 
     /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid argument.
@@ -1537,7 +1542,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             };
 
             self.tcx.emit_node_span_lint(
-                UNUSED_ATTRIBUTES,
+                HARMFUL_UNUSED_ATTRIBUTES,
                 hir_id,
                 no_mangle_span,
                 diagnostics::MixedExportNameAndNoMangle {

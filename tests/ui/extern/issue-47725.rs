@@ -1,15 +1,15 @@
 //@ reference: items.extern.attributes.link_name.allowed-positions
-#![warn(unused_attributes)] //~ NOTE lint level is defined here
 
 #[link_name = "foo"]
-//~^ WARN attribute cannot be used on
+//~^ ERROR attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
 //~| HELP remove the attribute
+//~| NOTE `#[deny(harmful_unused_attributes)]` on by default
 struct Foo;
 
 #[link_name = "foobar"]
-//~^ WARN attribute cannot be used on
+//~^ ERROR attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
 //~| HELP remove the attribute
@@ -20,7 +20,7 @@ extern "C" {
 #[link_name]
 //~^ ERROR malformed `link_name` attribute input
 //~| HELP must be of the form
-//~| WARN attribute cannot be used on
+//~| ERROR attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP remove the attribute
 //~| HELP can be applied to

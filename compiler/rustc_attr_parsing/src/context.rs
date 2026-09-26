@@ -14,7 +14,7 @@ use rustc_attr_ir::{AttrPath, Attribute, AttributeKind};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::AttributeStability;
-use rustc_lint_defs::builtin::UNUSED_ATTRIBUTES;
+use rustc_lint_defs::builtin::{HARMFUL_UNUSED_ATTRIBUTES, UNUSED_ATTRIBUTES};
 use rustc_lint_defs::{Lint, LintId};
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
@@ -474,6 +474,18 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
     ) {
         self.emit_lint(
             UNUSED_ATTRIBUTES,
+            UnusedDuplicate { this: unused_span, other: used_span, warning: true },
+            unused_span,
+        )
+    }
+
+    pub(crate) fn deny_unused_duplicate_future_error(
+        &mut self,
+        used_span: Span,
+        unused_span: Span,
+    ) {
+        self.emit_lint(
+            HARMFUL_UNUSED_ATTRIBUTES,
             UnusedDuplicate { this: unused_span, other: used_span, warning: true },
             unused_span,
         )

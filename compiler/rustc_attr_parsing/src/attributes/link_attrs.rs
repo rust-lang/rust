@@ -26,8 +26,8 @@ pub(crate) struct LinkNameParser;
 
 impl SingleAttributeParser for LinkNameParser {
     const PATH: &[Symbol] = &[sym::link_name];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::DenyAndFutureError;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListDenyRest(&[
         Allow(Target::ForeignFn),
         Allow(Target::ForeignStatic),
     ]);
@@ -72,7 +72,7 @@ impl CombineAttributeParser for LinkParser {
             r#"name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated""#,
         ], "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute");
     const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::ForeignMod)]);
+        AllowedTargets::AllowListDenyRest(&[Allow(Target::ForeignMod)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn extend(
@@ -494,13 +494,13 @@ fn check_link_section_macho(name: Symbol) -> Result<(), InvalidMachoSectionReaso
 
 impl SingleAttributeParser for LinkSectionParser {
     const PATH: &[Symbol] = &[sym::link_section];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::DenyAndFutureError;
     const SAFETY: AttributeSafety = AttributeSafety::Unsafe {
         note: "the program's behavior with overridden link sections on items is unpredictable and Rust cannot provide guarantees when you manually override them",
         unsafe_since: Some(Edition2024),
     };
     const STABILITY: AttributeStability = AttributeStability::Stable;
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListDenyRest(&[
         Allow(Target::Static),
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -612,7 +612,7 @@ impl SingleAttributeParser for LinkOrdinalParser {
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::ForeignFn),
         Allow(Target::ForeignStatic),
-        Warn(Target::MacroCall),
+        Deny(Target::MacroCall),
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         List: &["ordinal"],

@@ -111,7 +111,7 @@ pub(crate) struct ExportNameParser;
 
 impl SingleAttributeParser for ExportNameParser {
     const PATH: &[rustc_span::Symbol] = &[sym::export_name];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::DenyAndFutureError;
     const SAFETY: AttributeSafety = AttributeSafety::Unsafe {
         note: "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them",
         unsafe_since: Some(Edition2024),
@@ -122,10 +122,10 @@ impl SingleAttributeParser for ExportNameParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Warn(Target::Field),
-        Warn(Target::Arm),
-        Warn(Target::MacroDef),
-        Warn(Target::MacroCall),
+        Deny(Target::Field),
+        Deny(Target::Arm),
+        Deny(Target::MacroDef),
+        Deny(Target::MacroCall),
     ]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
     const STABILITY: AttributeStability = AttributeStability::Stable;
@@ -233,7 +233,7 @@ impl AttributeParser for NakedParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Warn(Target::MacroCall),
+        Deny(Target::MacroCall),
     ]);
 
     fn finalize(self, cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
@@ -386,7 +386,7 @@ impl NoArgsAttributeParser for NoMangleParser {
         note: "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them",
         unsafe_since: Some(Edition2024),
     };
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListDenyRest(&[
         Allow(Target::Fn),
         Allow(Target::Static),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -556,11 +556,11 @@ impl CombineAttributeParser for TargetFeatureParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Warn(Target::Statement),
-        Warn(Target::Field),
-        Warn(Target::Arm),
-        Warn(Target::MacroDef),
-        Warn(Target::MacroCall),
+        Deny(Target::Statement),
+        Deny(Target::Field),
+        Deny(Target::Arm),
+        Deny(Target::MacroDef),
+        Deny(Target::MacroCall),
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 

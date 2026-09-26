@@ -20,7 +20,7 @@ pub(super) use crate::context::{AcceptContext, FinalizeCheckContext, FinalizeCon
 pub(super) use crate::parser::*;
 // target checking
 #[doc(hidden)]
-pub(super) use crate::target_checking::Policy::{Allow, Error, Warn};
+pub(super) use crate::target_checking::Policy::{Allow, Deny, Error, Warn};
 #[doc(hidden)]
 pub(super) use crate::target_checking::{ALL_TARGETS, AllowedTargets};
 #[doc(hidden)]

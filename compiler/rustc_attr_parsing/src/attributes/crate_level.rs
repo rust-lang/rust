@@ -15,7 +15,7 @@ pub(crate) struct CrateNameParser;
 
 impl SingleAttributeParser for CrateNameParser {
     const PATH: &[Symbol] = &[sym::crate_name];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnAndFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
     const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
@@ -78,7 +78,7 @@ pub(crate) struct RecursionLimitParser;
 
 impl SingleAttributeParser for RecursionLimitParser {
     const PATH: &[Symbol] = &[sym::recursion_limit];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnAndFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N", "https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute");
     const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
@@ -110,7 +110,7 @@ pub(crate) struct TypeLengthLimitParser;
 
 impl SingleAttributeParser for TypeLengthLimitParser {
     const PATH: &[Symbol] = &[sym::type_length_limit];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnAndFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
     const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
@@ -185,7 +185,7 @@ pub(crate) struct WindowsSubsystemParser;
 
 impl SingleAttributeParser for WindowsSubsystemParser {
     const PATH: &[Symbol] = &[sym::windows_subsystem];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnAndFutureError;
     const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: ["windows", "console"], "https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute");
