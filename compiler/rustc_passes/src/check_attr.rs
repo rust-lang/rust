@@ -1346,7 +1346,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 sym::expect,
             ]) && let Some(meta) = attr.meta_item_list()
                 && meta.iter().any(|meta| {
-                    meta.meta_item().map_or(false, |item| {
+                    meta.meta_item().is_some_and(|item| {
                         item.path == sym::linker_messages || item.path == sym::linker_info
                     })
                 })

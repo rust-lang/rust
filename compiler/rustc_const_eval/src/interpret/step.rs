@@ -583,7 +583,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     with_caller_location,
                     &dest_place,
                     target,
-                    if fn_abi.map_or(false, |fn_abi| fn_abi.can_unwind) {
+                    if fn_abi.is_some_and(|fn_abi| fn_abi.can_unwind) {
                         unwind
                     } else {
                         mir::UnwindAction::Unreachable
