@@ -219,7 +219,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     SubregionOrigin::RelateRegionParamBound(span, None),
                     outlives.1,
                     outlives.0,
-                    ty::VisibleForLeakCheck::Yes,
+                    ty::VisibleForLeakCheck::No,
                 );
                 Outcome::TriviallyHolds
             }
