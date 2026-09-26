@@ -1,4 +1,4 @@
-//@ compile-flags: -O -Zmerge-functions=disabled
+//@ compile-flags: -O -Zmerge-functions=disabled -Zinline-mir-threshold=52
 //@ needs-deterministic-layouts
 //@ ignore-std-debug-assertions (causes different value naming)
 #![crate_type = "lib"]
