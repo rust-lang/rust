@@ -1,5 +1,5 @@
 error: memory leaked: ALLOC (Rust heap, SIZE, ALIGN), allocated here:
-  --> RUSTLIB/alloc/src/rc.rs:LL:CC
+  --> RUSTLIB/alloc/src/rcs/rc.rs:LL:CC
    |
 LL |               Self::from_inner(Box::into_non_null(Box::new(RcInner {
    |  _________________________________________________^
@@ -11,7 +11,7 @@ LL | |             })))
    |
    = note: stack backtrace:
            0: std::rc::Rc::<std::cell::RefCell<std::option::Option<Dummy>>>::new
-               at RUSTLIB/alloc/src/rc.rs:LL:CC
+               at RUSTLIB/alloc/src/rcs/rc.rs:LL:CC
            1: main
                at tests/fail/memleak_rc.rs:LL:CC
 
