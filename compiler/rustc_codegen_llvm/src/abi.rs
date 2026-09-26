@@ -617,6 +617,17 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                                     end: u128::from(isize_max / elem_size.bytes()),
                                 },
                             }
+                        } else if let rustc_abi::Primitive::Int(int, false) = primitive_b
+                            && let ty::Ref(_, pointee_ty, _) = *arg.layout.ty.kind()
+                            && matches!(pointee_ty.kind(), ty::Str)
+                        {
+                            rustc_abi::Scalar::Initialized {
+                                value: primitive_b,
+                                valid_range: rustc_abi::WrappingRange {
+                                    start: 0,
+                                    end: int.signed_max() as u128,
+                                },
+                            }
                         } else {
                             scalar_b
                         };
