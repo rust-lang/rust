@@ -92,7 +92,9 @@ use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OptLevel, OutputFilenames};
-use rustc_session::{CodegenBackendInit, EarlySession, IncrCompSession, Session};
+use rustc_session::{
+    BorrowedIncrCompSession, CodegenBackendInit, EarlySession, IncrCompSession, Session,
+};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{RelocModel, TargetTuple};
 use tempfile::TempDir;
@@ -403,6 +405,7 @@ impl WriteBackendMethods for GccCodegenBackend {
     fn run_thin_lto(
         _cgcx: &CodegenContext,
         _prof: &SelfProfilerRef,
+        _incr_comp_session: Option<&BorrowedIncrCompSession>,
         _dcx: DiagCtxtHandle<'_>,
         // FIXME(bjorn3): Limit LTO exports to these symbols
         _exported_symbols_for_lto: &[String],

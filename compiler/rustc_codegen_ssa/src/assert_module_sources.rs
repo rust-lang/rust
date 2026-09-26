@@ -112,7 +112,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
 
             if !self.check_config(cfg) {
                 debug!("check_attr: config does not match, ignoring attr");
-                return;
+                continue;
             }
 
             let user_path = module.as_str();

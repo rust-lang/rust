@@ -1849,6 +1849,45 @@ pub struct IncrCompSession {
     /// The directory to which cached data for the current session can be
     /// written to.
     pub new_session_directory: flock::LockedDir,
+    borrows: Arc<()>,
+}
+
+impl IncrCompSession {
+    pub fn new(
+        old_session_directory: Option<flock::LockedDir>,
+        new_session_directory: flock::LockedDir,
+    ) -> Self {
+        IncrCompSession { old_session_directory, new_session_directory, borrows: Arc::new(()) }
+    }
+
+    pub fn borrow(&self) -> BorrowedIncrCompSession {
+        BorrowedIncrCompSession {
+            old_session_directory: self.old_session_directory.as_deref().map(ToOwned::to_owned),
+            new_session_directory: (&*self.new_session_directory).to_owned(),
+            _borrows: Arc::clone(&self.borrows),
+        }
+    }
+}
+
+impl Drop for IncrCompSession {
+    fn drop(&mut self) {
+        // Check that there are no workers threads remaining that use the incr
+        // comp session before we unlock the old and new session dir. If there
+        // does exist a worker thread, there is not much we can do, but at
+        // least we will unconditionally complain rather than the worker thread
+        // sometimes crashing depending on what other rustc instances run.
+        assert!(
+            Arc::strong_count(&self.borrows) == 1,
+            "Incr comp session dropped while there are still references",
+        );
+    }
+}
+
+/// A runtime tracked borrow of the incr comp session. Can be sent to worker threads.
+pub struct BorrowedIncrCompSession {
+    pub old_session_directory: Option<PathBuf>,
+    pub new_session_directory: PathBuf,
+    _borrows: Arc<()>,
 }
 
 /// A wrapper around an [`DiagCtxt`] that is used for early error emissions.
