@@ -45,6 +45,7 @@ pub fn pad_for_alignment(x: u32) -> Align64<u32> {
 pub fn forget_at_home(x: String) {
     // CHECK-LABEL: fn forget_at_home
     // CHECK: bb0:
+    // CHECK-NEXT: _0 = const ();
     // CHECK-NEXT: return;
     unsafe { transmute_prefix(x) }
 }

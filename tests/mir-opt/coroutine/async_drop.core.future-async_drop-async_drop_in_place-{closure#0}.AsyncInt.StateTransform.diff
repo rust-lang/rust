@@ -54,6 +54,8 @@
       }
   
       bb1: {
+-         _0 = const ();
++         _21 = const ();
 +         _0 = Poll::<()>::Ready(move _21);
 +         discriminant((*_23)) = 1;
           return;
