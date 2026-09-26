@@ -429,6 +429,45 @@ impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
         }
         ret
     }
+    /// Drops all kvs in this node without deallocating the node itself
+    ///
+    /// # Safety
+    ///
+    /// - kvs in the node must be initialized and must not be accessed after this call.
+    /// - No kvs in the node can be accessed through any other path while this function is running.
+    pub(super) unsafe fn drop_kvs(&self) {
+        struct DropGuard<'a, K, V> {
+            node: &'a NodeRef<marker::Dying, K, V, marker::LeafOrInternal>,
+            idx: usize,
+        }
+        impl<'a, K, V> Drop for DropGuard<'a, K, V> {
+            fn drop(&mut self) {
+                let len = self.node.len();
+                for i in self.idx..len {
+                    // SAFETY: idx < len and the kv has been initialized and
+                    // it won't use the i-th kv more than once.
+                    unsafe {
+                        let kv = Handle::new_kv(ptr::read(self.node), i);
+                        kv.drop_key_val();
+                    }
+                }
+            }
+        }
+        let len = self.len();
+        for idx in 0..len {
+            // If `kv.drop_key_val()` panics, the guard would drop
+            // the rest and skip the panicked kv.
+            let guard = DropGuard { node: self, idx: idx + 1 };
+            // SAFETY: idx < len and the kv has been initialized and
+            // it won't touch the idx-th more than once
+            unsafe {
+                let kv = Handle::new_kv(ptr::read(self), idx);
+                kv.drop_key_val();
+            }
+
+            core::mem::forget(guard);
+        }
+    }
 }
 
 impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
