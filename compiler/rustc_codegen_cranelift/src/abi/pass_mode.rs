@@ -126,7 +126,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 assert_eq!(pad_i32_count, 0, "padding support not yet implemented");
                 cast_target_to_abi_params(cast).into_iter().map(|(_, param)| param).collect()
             }
-            PassMode::Indirect { attrs, meta_attrs: None, address_space: _, mode } => {
+            PassMode::Indirect { attrs, address_space: _, mode } => {
                 assert!(
                     mode != IndirectMode::AmdgpuKernelArg,
                     "unsupported amdgpu kernel argument"
@@ -143,8 +143,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                     smallvec![apply_attrs_to_abi_param(AbiParam::new(pointer_ty(tcx)), attrs)]
                 }
             }
-            PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), address_space: _, mode } => {
-                assert!(mode == IndirectMode::Pointer);
+            PassMode::IndirectUnsized { attrs, meta_attrs } => {
                 smallvec![
                     apply_attrs_to_abi_param(AbiParam::new(pointer_ty(tcx)), attrs),
                     apply_attrs_to_abi_param(AbiParam::new(pointer_ty(tcx)), meta_attrs),
@@ -188,7 +187,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 None,
                 cast_target_to_abi_params(cast).into_iter().map(|(_, param)| param).collect(),
             ),
-            PassMode::Indirect { attrs, meta_attrs: None, address_space: _, mode } => {
+            PassMode::Indirect { attrs, address_space: _, mode } => {
                 assert!(mode == IndirectMode::Pointer);
                 (
                     Some(apply_attrs_to_abi_param(
@@ -198,7 +197,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                     vec![],
                 )
             }
-            PassMode::Indirect { attrs: _, meta_attrs: Some(_), address_space: _, mode: _ } => {
+            PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => {
                 unreachable!("unsized return value")
             }
         }
@@ -268,7 +267,7 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
             smallvec![a, b]
         }
         PassMode::Cast { ref cast, .. } => to_casted_value(fx, arg, cast),
-        PassMode::Indirect { .. } => {
+        PassMode::Indirect { .. } | PassMode::IndirectUnsized { .. } => {
             if is_owned {
                 match arg.force_stack(fx) {
                     (ptr, None) => smallvec![ptr.get_addr(fx)],
@@ -328,7 +327,7 @@ pub(super) fn cvalue_for_param<'tcx>(
         PassMode::Cast { ref cast, .. } => {
             from_casted_value(fx, &block_params, arg_abi.layout, cast)
         }
-        PassMode::Indirect { attrs, meta_attrs: None, address_space: _, mode: _ } => {
+        PassMode::Indirect { attrs, address_space: _, mode: _ } => {
             assert_eq!(block_params.len(), 1, "{:?}", block_params);
             if let Some(pointee_align) = attrs.pointee_align
                 && pointee_align < arg_abi.layout.align.abi
@@ -346,7 +345,7 @@ pub(super) fn cvalue_for_param<'tcx>(
                 CValue::by_ref(Pointer::new(block_params[0]), arg_abi.layout)
             }
         }
-        PassMode::Indirect { attrs: _, meta_attrs: Some(_), address_space: _, mode: _ } => {
+        PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => {
             assert_eq!(block_params.len(), 2, "{:?}", block_params);
             CValue::by_ref_unsized(Pointer::new(block_params[0]), block_params[1], arg_abi.layout)
         }
