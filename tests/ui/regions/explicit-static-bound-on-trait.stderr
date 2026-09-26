@@ -1,8 +1,8 @@
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/explicit-static-bound-on-trait.rs:2:12
+  --> $DIR/explicit-static-bound-on-trait.rs:2:36
    |
 LL |     value: Box<dyn std::any::Any + 'a>,
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                    ^^ lifetime bound not satisfied
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/explicit-static-bound-on-trait.rs:1:14

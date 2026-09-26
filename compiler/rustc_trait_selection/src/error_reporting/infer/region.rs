@@ -2,7 +2,8 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
-    Applicability, Diag, E0309, E0310, E0311, E0803, Subdiagnostic, msg, struct_span_code_err,
+    Applicability, Diag, E0309, E0310, E0311, E0803, MultiSpan, Subdiagnostic, msg, pluralize,
+    struct_span_code_err,
 };
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -70,13 +71,24 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // the error. If all of these fails, we fall back to a rather
                     // general bit of code that displays the error information
                     RegionResolutionError::ConcreteFailure(origin, sub, sup) => {
-                        if sub.is_placeholder() || sup.is_placeholder() {
+                        let extra_info = self.find_trait_object_relate_failure_reason(
+                            generic_param_scope,
+                            &origin,
+                            sup,
+                        );
+                        let mut err = if sub.is_placeholder() || sup.is_placeholder() {
                             self.report_placeholder_failure(generic_param_scope, origin, sub, sup)
-                                .emit_err()
                         } else {
                             self.report_concrete_failure(generic_param_scope, origin, sub, sup)
-                                .emit_err()
+                        };
+                        if let Some(primary_spans) = extra_info {
+                            if primary_spans.has_primary_spans() {
+                                // We shorten the span from the whole field type to only the traits
+                                // and lifetime bound that failed.
+                                err.span(primary_spans);
+                            }
                         }
+                        err.emit_err()
                     }
 
                     RegionResolutionError::GenericBoundFailure(origin, param_ty, sub) => self
@@ -165,6 +177,88 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         guar.unwrap()
+    }
+
+    /// If a field on a struct has a trait object with lifetime requirement that can't be satisfied
+    /// by one of the traits in the trait object, shorten the span from the whole field type to only
+    /// the relevant traits and the lifetime.
+    fn find_trait_object_relate_failure_reason(
+        &self,
+        generic_param_scope: LocalDefId,
+        origin: &SubregionOrigin<'tcx>,
+        sup: ty::Region<'tcx>,
+    ) -> Option<MultiSpan> {
+        let SubregionOrigin::RelateRegionParamBound(span, _) = origin else {
+            return None;
+        };
+        let node = self.tcx.hir_get_if_local(generic_param_scope.into())?;
+        let types: Vec<&hir::Ty<'_>> = match node {
+            hir::Node::Item(item) => match item.kind {
+                hir::ItemKind::Union(_, _, variant_data)
+                | hir::ItemKind::Struct(_, _, variant_data) => {
+                    variant_data.fields().iter().map(|field| field.ty).collect()
+                }
+                hir::ItemKind::Enum(_, _, def) => def
+                    .variants
+                    .iter()
+                    .flat_map(|v| v.data.fields().iter().map(|field| field.ty))
+                    .collect(),
+                _ => return None,
+            },
+            _ => return None,
+        };
+        /// Collect all `hir::Ty<'_>` `Span`s for trait objects with the sup lifetime.
+        struct HirTraitObjectVisitor<'tcx> {
+            generic_param_scope: LocalDefId,
+            expected_region: ty::Region<'tcx>,
+            primary_spans: Vec<Span>,
+            tcx: TyCtxt<'tcx>,
+        }
+        impl<'tcx> Visitor<'tcx> for HirTraitObjectVisitor<'tcx> {
+            fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) {
+                if match (lt.kind, self.expected_region.kind()) {
+                    (
+                        hir::LifetimeKind::ImplicitObjectLifetimeDefault
+                        | hir::LifetimeKind::Static,
+                        ty::RegionKind::ReStatic,
+                    ) => true,
+                    (hir::LifetimeKind::Param(a), ty::RegionKind::ReEarlyParam(b)) => {
+                        let item_generics = self.tcx.generics_of(self.generic_param_scope);
+                        a.to_def_id() == item_generics.region_param(b, self.tcx).def_id
+                    }
+                    _ => false,
+                } {
+                    // We want to keep a span to the lifetime bound on the trait object.
+                    self.primary_spans.push(lt.ident.span);
+                }
+            }
+        }
+        let mut visitor = HirTraitObjectVisitor {
+            generic_param_scope,
+            expected_region: sup,
+            primary_spans: vec![],
+            tcx: self.tcx,
+        };
+        for ty in types {
+            if ty.span == *span {
+                // `span` points at the type of a field, we only want to look for trait objects in
+                // the field that failed.
+                visitor.visit_ty_unambig(ty);
+            }
+        }
+
+        visitor.primary_spans.sort();
+        let mut primary_span: MultiSpan = visitor.primary_spans.clone().into();
+        if let Some(last) = visitor.primary_spans.iter().rev().next() {
+            primary_span.push_span_label(
+                *last,
+                format!(
+                    "lifetime bound{s} not satisfied",
+                    s = pluralize!(visitor.primary_spans.len())
+                ),
+            );
+        }
+        Some(primary_span)
     }
 
     // This method goes through all the errors and try to group certain types

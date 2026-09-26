@@ -19,10 +19,10 @@ LL |     type Y<'a> = &'a () where 'a: 'static;
    |                         +++++++++++++++++
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/unsatisfied-item-lifetime-bound.rs:13:8
+  --> $DIR/unsatisfied-item-lifetime-bound.rs:13:20
    |
 LL |     f: <T as X>::Y<'a>,
-   |        ^^^^^^^^^^^^^^^
+   |                    ^^ lifetime bound not satisfied
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/unsatisfied-item-lifetime-bound.rs:12:10
@@ -32,10 +32,10 @@ LL | struct B<'a, T: for<'r> X<Y<'r> = &'r ()>> {
    = note: but lifetime parameter must outlive the static lifetime
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/unsatisfied-item-lifetime-bound.rs:18:8
+  --> $DIR/unsatisfied-item-lifetime-bound.rs:18:20
    |
 LL |     f: <T as X>::Y<'a>,
-   |        ^^^^^^^^^^^^^^^
+   |                    ^^ lifetime bound not satisfied
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/unsatisfied-item-lifetime-bound.rs:17:10
@@ -45,10 +45,10 @@ LL | struct C<'a, T: X> {
    = note: but lifetime parameter must outlive the static lifetime
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/unsatisfied-item-lifetime-bound.rs:23:8
+  --> $DIR/unsatisfied-item-lifetime-bound.rs:23:21
    |
 LL |     f: <() as X>::Y<'a>,
-   |        ^^^^^^^^^^^^^^^^
+   |                     ^^ lifetime bound not satisfied
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/unsatisfied-item-lifetime-bound.rs:22:10

@@ -13,10 +13,10 @@ LL | struct Foo<'a,'b,'c> {
    = help: consider removing `'c`, referring to it in a field, or using a marker such as `PhantomData`
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:21:8
+  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:21:23
    |
 LL |     z: Box<dyn Is<'a>+'b+'c>,
-   |        ^^^^^^^^^^^^^^^^^^^^^
+   |                       ^^ lifetime bound not satisfied
    |
 note: lifetime parameter instantiated with the lifetime `'b` as defined here
   --> $DIR/region-bounds-on-objects-and-type-parameters.rs:11:15
