@@ -16,8 +16,6 @@ where
     fn transmute(&self) {}
     //~^ ERROR type mismatch resolving
     //~| ERROR the size for values of type `Self` cannot be known at compilation time
-    //~| ERROR type mismatch resolving
-    //~| ERROR the size for values of type `Self` cannot be known at compilation time
 }
 
 trait Mirror {

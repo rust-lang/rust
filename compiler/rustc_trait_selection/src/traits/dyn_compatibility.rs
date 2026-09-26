@@ -26,7 +26,7 @@ pub use crate::traits::DynCompatibilityViolation;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{
     AssocConstViolation, MethodViolation, Obligation, ObligationCause,
-    normalize_param_env_or_error, util,
+    normalize_param_env_or_delay_bugs, util,
 };
 
 /// Returns the dyn-compatibility violations that affect HIR ty lowering.
@@ -719,7 +719,7 @@ fn receiver_is_dispatchable<'tcx>(
         // N.B. We generally want to emulate the construction of the `unnormalized_param_env`
         // in the param-env query here. The fact that we don't just start with the clauses
         // in the param-env of the method is because those are already normalized, and mixing
-        // normalized and unnormalized copies of predicates in `normalize_param_env_or_error`
+        // normalized and unnormalized copies of predicates in `normalize_param_env_or_delay_bugs`
         // will cause ambiguity that the user can't really avoid.
         //
         // We leave out certain complexities of the param-env query here. Specifically, we:
@@ -755,7 +755,11 @@ fn receiver_is_dispatchable<'tcx>(
         };
         clauses.push(meta_sized_predicate.upcast(tcx));
 
-        normalize_param_env_or_error(
+        // To suppress duplicate errors and errors mentioning `U` (shown as `RustaceansAreAwesome`),
+        // we convert errors from param-env normalization into delayed bugs. If this is the only
+        // place we encounter errors (e.g. if we constructed the param-env improperly), something's
+        // gone wrong, so we should ICE.
+        normalize_param_env_or_delay_bugs(
             tcx,
             ty::ParamEnv::new(tcx, clauses),
             ObligationCause::dummy_with_span(tcx.def_span(method.def_id)),
