@@ -13,10 +13,13 @@ use libc::{gid_t, uid_t};
 use super::common::*;
 use crate::io::{self, Error, ErrorKind};
 use crate::num::NonZero;
+use crate::os::fd::AsRawFd;
+#[cfg(not(any(target_os = "tvos", target_os = "watchos")))]
+use crate::os::fd::OwnedFd;
 use crate::process::StdioPipes;
-use crate::sys::cvt;
 #[cfg(target_os = "linux")]
 use crate::sys::process::PidFd;
+use crate::sys::{FromInner, IntoInner, cvt};
 use crate::{fmt, mem, sys};
 
 cfg_select! {
@@ -71,8 +74,12 @@ impl Command {
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
 
         if let Some(ret) = self.posix_spawn(&theirs, envp.as_ref())? {
+            self.last_spawn_was_posix_spawn(true);
+            // Close fds in the parent that have been duplicated in the child
+            self.close_owned_fds();
             return Ok((ret, ours));
         }
+        self.last_spawn_was_posix_spawn(false);
 
         #[cfg(target_os = "linux")]
         let (input, output) = sys::net::Socket::new_pair(libc::AF_UNIX, libc::SOCK_SEQPACKET)?;
@@ -101,7 +108,15 @@ impl Command {
             if self.get_create_pidfd() {
                 self.send_pidfd(&output);
             }
-            let Err(err) = unsafe { self.do_exec(theirs, envp.as_ref()) };
+            #[cfg(target_os = "linux")]
+            let mut output_fd = output.into_inner().into_inner();
+            #[cfg(not(target_os = "linux"))]
+            let mut output_fd = output.into_inner();
+            let Err(err) = unsafe { self.do_exec(theirs, envp.as_ref(), Some(&mut output_fd)) };
+            #[cfg(target_os = "linux")]
+            let output = sys::net::Socket::from_inner(sys::fd::FileDesc::from_inner(output_fd));
+            #[cfg(not(target_os = "linux"))]
+            let output = sys::fd::FileDesc::from_inner(output_fd);
             let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
             let errno = errno.to_be_bytes();
             let bytes = [
@@ -123,6 +138,9 @@ impl Command {
 
         drop(env_lock);
         drop(output);
+
+        // Close fds in the parent that have been duplicated in the child
+        self.close_owned_fds();
 
         #[cfg(target_os = "linux")]
         let pidfd = if self.get_create_pidfd() { self.recv_pidfd(&input) } else { -1 };
@@ -241,7 +259,7 @@ impl Command {
                     // environment lock before we try to exec.
                     let _lock = sys::env::env_read_lock();
 
-                    let Err(e) = self.do_exec(theirs, envp.as_ref());
+                    let Err(e) = self.do_exec(theirs, envp.as_ref(), None);
                     e
                 }
             }
@@ -284,6 +302,7 @@ impl Command {
         &mut self,
         stdio: ChildPipes,
         maybe_envp: Option<&CStringArray>,
+        mut preserve_fd: Option<&mut OwnedFd>,
     ) -> Result<!, io::Error> {
         use crate::sys::{self, cvt_r};
 
@@ -295,6 +314,22 @@ impl Command {
         }
         if let Some(fd) = stdio.stderr.fd() {
             cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO))?;
+        }
+
+        for &(ref old_fd, new_fd) in self.get_fds() {
+            if let Some(ref mut preserve_fd) = preserve_fd
+                && new_fd == preserve_fd.as_raw_fd()
+            {
+                let mut copy = preserve_fd.try_clone()?;
+                mem::swap(&mut copy, preserve_fd);
+                // after the swap, copy holds the same file descriptor as new_fd, so we can let dup2
+                // close it instead
+                mem::forget(copy);
+            }
+            cvt_r(|| libc::dup2(old_fd.as_raw_fd(), new_fd))?;
+            if old_fd.as_raw_fd() != new_fd {
+                cvt_r(|| libc::close(old_fd.as_raw_fd()))?;
+            }
         }
 
         #[cfg(not(target_os = "l4re"))]
@@ -462,6 +497,7 @@ impl Command {
         use core::sync::atomic::{Atomic, AtomicU8, Ordering};
 
         use crate::mem::MaybeUninit;
+        use crate::os::fd::AsRawFd;
         use crate::pin::{Pin, pin};
         use crate::sys::helpers::COpaque;
         use crate::sys::{self, cvt_nz, on_broken_pipe_used};
@@ -733,6 +769,19 @@ impl Command {
                     fd,
                     libc::STDERR_FILENO,
                 ))?;
+            }
+            for &(ref old_fd, new_fd) in self.get_fds() {
+                cvt_nz(libc::posix_spawn_file_actions_adddup2(
+                    file_actions.0.get(),
+                    old_fd.as_raw_fd(),
+                    new_fd,
+                ))?;
+                if old_fd.as_raw_fd() != new_fd {
+                    cvt_nz(libc::posix_spawn_file_actions_addclose(
+                        file_actions.0.get(),
+                        old_fd.as_raw_fd(),
+                    ))?;
+                }
             }
             if let Some((f, cwd)) = addchdir {
                 cvt_nz(f(file_actions.0.get(), cwd.as_ptr()))?;
