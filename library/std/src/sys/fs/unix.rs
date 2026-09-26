@@ -50,6 +50,8 @@ use crate::fmt::{self, Write as _};
 use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
+#[cfg(not(target_os = "wasi"))]
+pub use crate::os::unix::fs::dirs::{ExtraHomeDirs, ExtraMediaDirs};
 #[cfg(target_family = "unix")]
 use crate::os::unix::prelude::*;
 #[cfg(target_os = "wasi")]
@@ -58,6 +60,8 @@ use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::fd::FileDesc;
 pub use crate::sys::fs::common::exists;
+#[cfg(target_os = "wasi")]
+pub use crate::sys::fs::common::{ExtraHomeDirs, ExtraMediaDirs};
 use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::time::SystemTime;
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
