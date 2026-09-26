@@ -26,10 +26,10 @@ pub fn test_likely(x: bool) {
 }
 
 // CHECK-LABEL: @test_likely(
-// CHECK: br i1 %x, label %bb2, label %bb3, !prof ![[NUM:[0-9]+]]
-// CHECK: bb3:
+// CHECK: br i1 %x, label %[[TRUE:bb[0-9]+]], label %[[FALSE:bb[0-9]+]], !prof ![[NUM:[0-9]+]]
+// CHECK: [[FALSE]]:
 // CHECK-NOT: cold_path
 // CHECK: path_b
-// CHECK: bb2:
+// CHECK: [[TRUE]]:
 // CHECK: path_a
 // CHECK: ![[NUM]] = !{!"branch_weights", {{(!"expected", )?}}i32 2000, i32 1}
