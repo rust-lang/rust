@@ -93,7 +93,6 @@ pub fn save_work_product_index(
     sess: &Session,
     incr_comp_session: &IncrCompSession,
     dep_graph: &DepGraph,
-    new_work_products: WorkProductMap,
 ) {
     // This is going to be deleted in finalize_session_directory, so let's not create it
     if sess.dcx().has_errors().is_some() {
@@ -104,13 +103,13 @@ pub fn save_work_product_index(
     dep_graph.assert_ignored();
     let path = work_products_path(incr_comp_session);
     file_format::save_in(sess, path, "work product index", |mut e| {
-        encode_work_product_index(&new_work_products, &mut e);
+        encode_work_product_index(&incr_comp_session.new_work_products, &mut e);
         e.finish()
     });
 
     // Check that we did not delete one of the current work-products:
     debug_assert!({
-        new_work_products.items().all(|(_, wp)| {
+        incr_comp_session.new_work_products.items().all(|(_, wp)| {
             wp.saved_files
                 .items()
                 .all(|(_, path)| in_incr_comp_dir_sess(incr_comp_session, path).exists())
