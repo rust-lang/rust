@@ -81,28 +81,36 @@ pub macro thread_local_inner {
 
     // used to generate the `LocalKey` value for `thread_local!`
     (@key $t:ty, $(#[$align_attr:meta])*, $init:expr) => {{
+        // NOTE: The `PhantomData` here is a nice trick to ensure that *all* usages of `$t` can be
+        // inferred to have static lifetimes. This function definition would normally *not* be such
+        // a definition, but because lifetime elision tends to prefer lifetimes matching arguments
+        // to a function, the `'static` lifetime inside the `PhantomData` qualifies here.
+        #[allow(mismatched_lifetime_syntaxes)]
         #[inline]
-        fn __rust_std_internal_init_fn() -> $t {
+        fn __rust_std_internal_init_fn(_lifetime_elision: $crate::marker::PhantomData<&'static ()>) -> $t {
             $init
         }
 
         unsafe {
             $crate::thread::LocalKey::new(const {
+                // NOTE: `$t`'s lifetimes can always be inferred in turbofish position
                 if $crate::mem::needs_drop::<$t>() {
                     |__rust_std_internal_init| {
                         #[thread_local]
                         $(#[$align_attr])*
+                        // NOTE: `$t`'s lifetimes can always be inferred `'static` for `static`s
                         static __RUST_STD_INTERNAL_VAL: $crate::thread::local_impl::LazyStorage<$t, ()>
                             = $crate::thread::local_impl::LazyStorage::new();
-                        __RUST_STD_INTERNAL_VAL.get_or_init(__rust_std_internal_init, __rust_std_internal_init_fn)
+                        __RUST_STD_INTERNAL_VAL.get_or_init(__rust_std_internal_init, || __rust_std_internal_init_fn($crate::marker::PhantomData))
                     }
                 } else {
                     |__rust_std_internal_init| {
                         #[thread_local]
                         $(#[$align_attr])*
+                        // NOTE: `$t`'s lifetimes can always be inferred `'static` for `static`s
                         static __RUST_STD_INTERNAL_VAL: $crate::thread::local_impl::LazyStorage<$t, !>
                             = $crate::thread::local_impl::LazyStorage::new();
-                        __RUST_STD_INTERNAL_VAL.get_or_init(__rust_std_internal_init, __rust_std_internal_init_fn)
+                        __RUST_STD_INTERNAL_VAL.get_or_init(__rust_std_internal_init, || __rust_std_internal_init_fn($crate::marker::PhantomData))
                     }
                 }
             })
