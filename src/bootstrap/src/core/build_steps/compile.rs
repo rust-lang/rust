@@ -359,10 +359,10 @@ fn copy_third_party_objects(
 
     if target == "x86_64-fortanix-unknown-sgx"
         || builder.config.llvm_libunwind(target) == LlvmLibunwind::InTree
-            && (target.contains("linux")
-                || target.contains("fuchsia")
-                || target.contains("aix")
-                || target.contains("hexagon"))
+        && (target.contains("linux")
+        || target.contains("fuchsia")
+        || target.contains("aix")
+        || target.contains("hexagon"))
     {
         let libunwind_path =
             copy_llvm_libunwind(builder, target, &builder.sysroot_target_libdir(*compiler, target));
@@ -696,7 +696,7 @@ pub fn std_cargo(
     }
 
     let html_root =
-        format!("-Zcrate-attr=doc(html_root_url=\"{}/\")", builder.doc_rust_lang_org_channel(),);
+        format!("-Zcrate-attr=doc(html_root_url=\"{}/\")", builder.doc_rust_lang_org_channel(), );
     cargo.rustflag(&html_root);
     cargo.rustdocflag(&html_root);
 
@@ -1368,7 +1368,7 @@ fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelec
     let nightly = builder.config.channel == "nightly" || builder.config.channel == "dev";
     if nightly {
         // We want to enable Polonius Alpha and Next Trait Solver by default on nighty
-        cargo.env("CFG_DEFAULT_POLONIUS_NEXT", "1");
+        // cargo.env("CFG_DEFAULT_POLONIUS_NEXT", "1");
         cargo.env("CFG_DEFAULT_NEXT_SOLVER_GLOBALLY", "1");
     }
 
@@ -2775,9 +2775,9 @@ pub fn run_cargo(
         let candidates = contents.iter().filter(|&(_, filename, meta)| {
             meta.len() == expected_len
                 && filename
-                    .strip_prefix(&prefix[..])
-                    .map(|s| s.starts_with('-') && s.ends_with(&extension[..]))
-                    .unwrap_or(false)
+                .strip_prefix(&prefix[..])
+                .map(|s| s.starts_with('-') && s.ends_with(&extension[..]))
+                .unwrap_or(false)
         });
         let max = candidates.max_by_key(|&(_, _, metadata)| {
             metadata.modified().expect("mtime should be available on all relevant OSes")
