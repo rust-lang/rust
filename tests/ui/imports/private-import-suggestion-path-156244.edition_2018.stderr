@@ -91,7 +91,7 @@ note: ...and refers to the struct `Hi` which is defined here
   --> $DIR/private-import-suggestion-path-156244.rs:46:13
    |
 LL |             pub struct Hi;
-   |             ^^^^^^^^^^^^^^ you could import this directly
+   |             ^^^^^^^^^^^^^^
 
 error[E0603]: module import `mem` is private
   --> $DIR/private-import-suggestion-path-156244.rs:65:21

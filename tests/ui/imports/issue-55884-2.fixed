@@ -17,6 +17,6 @@ mod parser {
     use ParseOptions;
 }
 
-pub use parser::ParseOptions; //~ ERROR struct import `ParseOptions` is private
+pub use options::ParseOptions; //~ ERROR struct import `ParseOptions` is private
 
 fn main() {}
