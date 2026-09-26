@@ -18,12 +18,14 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE, LocalDefId, StableCrateId};
 use rustc_hir::definitions::Definitions;
 use rustc_index::IndexVec;
 use rustc_lint_defs as lint;
-use rustc_lint_defs::builtin::UNUSED_CRATE_DEPENDENCIES;
+use rustc_lint_defs::builtin::{PARTIAL_STACK_PROTECTOR, UNUSED_CRATE_DEPENDENCIES};
 use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
 use rustc_session::Session;
-use rustc_session::config::mitigation_coverage::DeniedPartialMitigationLevel;
+use rustc_session::config::mitigation_coverage::{
+    DeniedPartialMitigationKind, DeniedPartialMitigationLevel,
+};
 use rustc_session::config::{
     ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers, TargetModifier,
 };
@@ -499,11 +501,21 @@ impl CStore {
                     }
                     *errors += 1;
 
-                    tcx.dcx().emit_err(diagnostics::MitigationLessStrictInDependency {
+                    let diagnostic = diagnostics::MitigationLessStrictInDependency {
                         mitigation_name: my_mitigation.kind.to_string(),
                         mitigation_level: my_mitigation.level.level_str().to_string(),
                         extern_crate: data.name(),
-                    });
+                    };
+                    if my_mitigation.kind == DeniedPartialMitigationKind::StackProtector
+                        && !tcx.sess.using_stable_stack_protector()
+                    {
+                        // make stack-protector with -Z stack-protector only a forward-compat warning since it was
+                        // pretty widely used. When using -C stack-protector, it should still be a hard error since
+                        // -C stack-protector has no pre-existing users
+                        tcx.sess.psess.buffer_crate_lint(PARTIAL_STACK_PROTECTOR, diagnostic);
+                    } else {
+                        tcx.dcx().emit_err(diagnostic);
+                    }
                 }
             }
         }

@@ -1102,11 +1102,16 @@ impl Session {
     }
 
     pub fn stack_protector(&self) -> StackProtector {
-        if self.target.options.supports_stack_protector {
-            self.opts.unstable_opts.stack_protector
-        } else {
-            StackProtector::None
-        }
+        // -C stack-protector overwrites -Z stack-protector, default to StackProtector::None
+        self.opts
+            .cg
+            .stack_protector
+            .or(self.opts.unstable_opts.stack_protector)
+            .unwrap_or(StackProtector::None)
+    }
+
+    pub fn using_stable_stack_protector(&self) -> bool {
+        self.opts.cg.stack_protector.is_some()
     }
 
     /// Returns the `-Zbranch-protection` info. Note that it is adjusted to the current target, e.g.
@@ -1710,10 +1715,10 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
-    if sess.opts.unstable_opts.stack_protector != StackProtector::None {
+    if sess.stack_protector() != StackProtector::None {
         if !sess.target.options.supports_stack_protector {
-            sess.dcx().emit_warn(diagnostics::StackProtectorNotSupportedForTarget {
-                stack_protector: sess.opts.unstable_opts.stack_protector,
+            sess.dcx().emit_err(diagnostics::StackProtectorNotSupportedForTarget {
+                stack_protector: sess.stack_protector(),
                 target_triple: &sess.opts.target_triple,
             });
         }

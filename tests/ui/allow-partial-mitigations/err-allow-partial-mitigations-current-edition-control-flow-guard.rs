@@ -12,8 +12,10 @@
 // disallow partial mitigations (in edition=future, they are
 // disallowed by default)
 
-//@ [control-flow-2024-explicit-deny] compile-flags: -C control-flow-guard=on -Z deny-partial-mitigations=control-flow-guard
+// put the test for control-flow-guard in its own file since it does not have the future-compat warning,
+// and you can't do negative revisions in compiletest
 
+//@ [control-flow-2024-explicit-deny] compile-flags: -C control-flow-guard=on -Z deny-partial-mitigations=control-flow-guard
 
 fn main() {}
 //~? ERROR that is not compiled with
