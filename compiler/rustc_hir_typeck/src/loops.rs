@@ -183,9 +183,12 @@ impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
                 Some(&Normal) | Some(&AnonConst) | Some(&UnlabeledBlock { .. })
             ) =>
             {
-                // An unlabeled block targeted by `break` may comes from a `try` block.
+                // An unlabeled block targeted by `break` may come from a `try` block.
                 // Since `try 'block: {}` is invalid, nest a labeled block inside its body.
-                let wrap_end = b.targeted_by_break.then(|| b.span.shrink_to_hi());
+                let end = b.span.shrink_to_hi();
+                let wrap_end = (b.targeted_by_break
+                    || e.span.is_desugaring(DesugaringKind::TryBlock))
+                .then_some(end);
                 self.with_context(
                     UnlabeledBlock { label_span: b.span.shrink_to_lo(), wrap_end },
                     |v| v.visit_block(b),
