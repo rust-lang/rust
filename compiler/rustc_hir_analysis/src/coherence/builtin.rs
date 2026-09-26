@@ -472,7 +472,7 @@ pub(crate) fn reborrow_info<'tcx>(
     let source = tcx.type_of(impl_did).instantiate_identity().skip_norm_wip();
     let trait_ref = tcx.impl_trait_ref(impl_did).instantiate_identity().skip_norm_wip();
 
-    if trait_impl_lifetime_params_count(tcx, impl_did) != 1 {
+    if trait_impl_lifetime_params_count(tcx, impl_did) == 0 {
         return Err(tcx
             .dcx()
             .emit_err(diagnostics::CoerceSharedNotSingleLifetimeParam { span, trait_name }));
@@ -492,19 +492,7 @@ pub(crate) fn reborrow_info<'tcx>(
         }
     };
 
-    let lifetimes_count = generic_lifetime_params_count(args);
     let data_fields = collect_reborrow_data_fields(tcx, def, args);
-
-    if lifetimes_count != 1 {
-        let item = tcx.hir_expect_item(impl_did);
-        let _span = if let ItemKind::Impl(hir::Impl { of_trait: Some(of_trait), .. }) = &item.kind {
-            of_trait.trait_ref.path.span
-        } else {
-            tcx.def_span(impl_did)
-        };
-
-        return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedMulti { span, trait_name }));
-    }
 
     if data_fields.is_empty() {
         return Ok(());
@@ -546,10 +534,6 @@ fn trait_impl_lifetime_params_count(tcx: TyCtxt<'_>, did: LocalDefId) -> usize {
         .iter()
         .filter(|p| matches!(p.kind, ty::GenericParamDefKind::Lifetime))
         .count()
-}
-
-fn generic_lifetime_params_count(args: &[ty::GenericArg<'_>]) -> usize {
-    args.iter().filter(|arg| arg.as_region().is_some()).count()
 }
 
 #[derive(Clone, Copy)]
