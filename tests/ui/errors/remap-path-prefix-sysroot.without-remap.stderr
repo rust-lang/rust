@@ -9,6 +9,8 @@ LL |         self.thread.join().unwrap();
 note: `std::thread::JoinHandle::<T>::join` takes ownership of the receiver `self`, which moves `self.thread`
   --> $SRC_DIR_REAL/std/src/thread/join_handle.rs:LL:COL
    |
+LL | impl<T> JoinHandle<T> {
+...
 LL |     pub fn join(self) -> Result<T> {
    |                 ^^^^
 
