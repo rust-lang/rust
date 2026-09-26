@@ -28,6 +28,8 @@ fn test_format_f64() {
 
 #[test]
 fn test_format_f64_rounds_ties_to_even() {
+    // Use only values exactly representable in IEEE floating-point, i.e.,
+    // multiples of 1/2^n.
     assert_eq!("0", format!("{:.0}", 0.5f64));
     assert_eq!("2", format!("{:.0}", 1.5f64));
     assert_eq!("2", format!("{:.0}", 2.5f64));
@@ -40,7 +42,7 @@ fn test_format_f64_rounds_ties_to_even() {
     assert_eq!("0.8", format!("{:.1}", 0.75f64));
     assert_eq!("0.12", format!("{:.2}", 0.125f64));
     assert_eq!("0.88", format!("{:.2}", 0.875f64));
-    assert_eq!("0.062", format!("{:.3}", 0.062f64));
+    assert_eq!("0.062", format!("{:.3}", 0.0625f64));
     assert_eq!("-0", format!("{:.0}", -0.5f64));
     assert_eq!("-2", format!("{:.0}", -1.5f64));
     assert_eq!("-2", format!("{:.0}", -2.5f64));
@@ -53,7 +55,7 @@ fn test_format_f64_rounds_ties_to_even() {
     assert_eq!("-0.8", format!("{:.1}", -0.75f64));
     assert_eq!("-0.12", format!("{:.2}", -0.125f64));
     assert_eq!("-0.88", format!("{:.2}", -0.875f64));
-    assert_eq!("-0.062", format!("{:.3}", -0.062f64));
+    assert_eq!("-0.062", format!("{:.3}", -0.0625f64));
 
     assert_eq!("2e0", format!("{:.0e}", 1.5f64));
     assert_eq!("2e0", format!("{:.0e}", 2.5f64));
@@ -114,6 +116,8 @@ fn test_format_f32() {
 
 #[test]
 fn test_format_f32_rounds_ties_to_even() {
+    // Use only values exactly representable in IEEE floating-point, i.e.,
+    // multiples of 1/2^n.
     assert_eq!("0", format!("{:.0}", 0.5f32));
     assert_eq!("2", format!("{:.0}", 1.5f32));
     assert_eq!("2", format!("{:.0}", 2.5f32));
@@ -126,7 +130,7 @@ fn test_format_f32_rounds_ties_to_even() {
     assert_eq!("0.8", format!("{:.1}", 0.75f32));
     assert_eq!("0.12", format!("{:.2}", 0.125f32));
     assert_eq!("0.88", format!("{:.2}", 0.875f32));
-    assert_eq!("0.062", format!("{:.3}", 0.062f32));
+    assert_eq!("0.062", format!("{:.3}", 0.0625f32));
     assert_eq!("-0", format!("{:.0}", -0.5f32));
     assert_eq!("-2", format!("{:.0}", -1.5f32));
     assert_eq!("-2", format!("{:.0}", -2.5f32));
@@ -139,7 +143,7 @@ fn test_format_f32_rounds_ties_to_even() {
     assert_eq!("-0.8", format!("{:.1}", -0.75f32));
     assert_eq!("-0.12", format!("{:.2}", -0.125f32));
     assert_eq!("-0.88", format!("{:.2}", -0.875f32));
-    assert_eq!("-0.062", format!("{:.3}", -0.062f32));
+    assert_eq!("-0.062", format!("{:.3}", -0.0625f32));
 
     assert_eq!("2e0", format!("{:.0e}", 1.5f32));
     assert_eq!("2e0", format!("{:.0e}", 2.5f32));
@@ -236,6 +240,63 @@ fn test_format_f64_max_precision_exponential() {
     assert_exact_exp(format_args!("{:.65535E}", 0.0f64), "0.", "E0");
     assert_exact_exp(format_args!("{:.65535E}", 1.0f64), "1.", "E0");
     assert_exact_exp(format_args!("{:65535.65535e}", 1.0f64), "1.", "e0");
+}
+
+#[test]
+fn test_format_zero() {
+    let pos = 0.0_f32;
+    let neg = -0.0_f32;
+
+    // defaults
+    assert_eq!("0 0.0 0E0 0e0", format!("{pos} {pos:?} {pos:E} {pos:e}"));
+    assert_eq!("-0 -0.0 -0E0 -0e0", format!("{neg} {neg:?} {neg:E} {neg:e}"));
+
+    // explicit sign
+    assert_eq!("+0 +0.0 +0E0 +0e0", format!("{pos:+} {pos:+?} {pos:+E} {pos:+e}"));
+    assert_eq!("-0 -0.0 -0E0 -0e0", format!("{neg:+} {neg:+?} {neg:+E} {neg:+e}"));
+
+    // fixed precision
+    assert_eq!("0 0 0E0 0e0", format!("{pos:.0} {pos:.0?} {pos:.0E} {pos:.0e}"));
+    assert_eq!("-0 -0 -0E0 -0e0", format!("{neg:.0} {neg:.0?} {neg:.0E} {neg:.0e}"));
+    assert_eq!("0.0 0.0 0.0E0 0.0e0", format!("{pos:.1} {pos:.1?} {pos:.1E} {pos:.1e}"));
+    assert_eq!("-0.0 -0.0 -0.0E0 -0.0e0", format!("{neg:.1} {neg:.1?} {neg:.1E} {neg:.1e}"));
+    assert_eq!("0.00 0.00 0.00E0 0.00e0", format!("{pos:.2} {pos:.2?} {pos:.2E} {pos:.2e}"));
+    assert_eq!("-0.00 -0.00 -0.00E0 -0.00e0", format!("{neg:.2} {neg:.2?} {neg:.2E} {neg:.2e}"));
+}
+
+#[test]
+fn test_format_inf() {
+    let pos = 1.0_f32 / 0.0;
+    let neg = -1.0_f32 / 0.0;
+
+    // defaults
+    assert_eq!("inf inf inf inf", format!("{pos} {pos:?} {pos:E} {pos:e}"));
+    assert_eq!("-inf -inf -inf -inf", format!("{neg} {neg:?} {neg:E} {neg:e}"));
+
+    // explicit sign
+    assert_eq!("+inf +inf +inf +inf", format!("{pos:+} {pos:+?} {pos:+E} {pos:+e}"));
+    assert_eq!("-inf -inf -inf -inf", format!("{neg:+} {neg:+?} {neg:+E} {neg:+e}"));
+
+    // fixed precision
+    assert_eq!("inf inf inf inf", format!("{pos:.0} {pos:.0?} {pos:.0E} {pos:.0e}"));
+    assert_eq!("-inf -inf -inf -inf", format!("{neg:.0} {neg:.0?} {neg:.0E} {neg:.0e}"));
+    assert_eq!("inf inf inf inf", format!("{pos:.1} {pos:.1?} {pos:.1E} {pos:.1e}"));
+    assert_eq!("-inf -inf -inf -inf", format!("{neg:.1} {neg:.1?} {neg:.1E} {neg:.1e}"));
+    assert_eq!("inf inf inf inf", format!("{pos:.2} {pos:.2?} {pos:.2E} {pos:.2e}"));
+    assert_eq!("-inf -inf -inf -inf", format!("{neg:.2} {neg:.1?} {neg:.1E} {neg:.1e}"));
+}
+
+#[test]
+fn test_format_nan() {
+    let nan = 0.0_f32 / 0.0;
+    // defaults
+    assert_eq!("NaN NaN NaN NaN", format!("{nan} {nan:?} {nan:E} {nan:e}"));
+    // explicit sign
+    assert_eq!("NaN NaN NaN NaN", format!("{nan:+} {nan:+?} {nan:+E} {nan:+e}"));
+    // fixed precision
+    assert_eq!("NaN NaN NaN NaN", format!("{nan:.0} {nan:.0?} {nan:.0E} {nan:.0e}"));
+    assert_eq!("NaN NaN NaN NaN", format!("{nan:.1} {nan:.1?} {nan:.1E} {nan:.1e}"));
+    assert_eq!("NaN NaN NaN NaN", format!("{nan:.2} {nan:.2?} {nan:.2E} {nan:.2e}"));
 }
 
 fn is_exponential(s: &str) -> bool {
