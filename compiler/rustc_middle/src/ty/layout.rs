@@ -146,6 +146,11 @@ impl abi::Float {
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
             F128 => tcx.types.f128,
+            PpcF128 => Ty::new_adt(
+                tcx,
+                tcx.adt_def(tcx.require_lang_item(LangItem::PpcF128, DUMMY_SP)),
+                ty::List::empty(),
+            ),
         }
     }
 

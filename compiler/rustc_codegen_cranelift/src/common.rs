@@ -39,6 +39,7 @@ pub(crate) fn scalar_to_clif_type(tcx: TyCtxt<'_>, scalar: Scalar) -> Type {
             Float::F32 => types::F32,
             Float::F64 => types::F64,
             Float::F128 => types::F128,
+            Float::PpcF128 => bug!("cranelift does not support powerpc"),
         },
         // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
         Primitive::Pointer(_) => pointer_ty(tcx),

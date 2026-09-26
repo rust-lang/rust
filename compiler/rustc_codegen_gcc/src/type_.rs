@@ -267,6 +267,11 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
         bug!("unsupported float width 128")
     }
 
+    fn type_ppcf128(&self) -> Type<'gcc> {
+        // FIXME(ppcf128): GCC has long double but it may not correspond to ppc f128.
+        bug!("unsupported ppcf128 type")
+    }
+
     fn type_func(&self, params: &[Type<'gcc>], return_type: Type<'gcc>) -> Type<'gcc> {
         self.context.new_function_pointer_type(None, return_type, params, false)
     }
