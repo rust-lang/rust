@@ -1133,7 +1133,7 @@ pub(crate) fn codegen(
 
             EmitObj::Bitcode => {
                 debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
-                if let Err(err) = link_or_copy(&bc_out, &obj_out) {
+                if let Err(err) = link_or_copy(&bc_out, &obj_out, true /* allow_overwrite */) {
                     dcx.emit_err(CopyBitcode { err });
                 }
 

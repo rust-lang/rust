@@ -59,7 +59,11 @@ pub enum LinkOrCopy {
 
 /// Copies `p` into `q`, preferring to use hard-linking if possible.
 /// The result indicates which of the two operations has been performed.
-pub fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> io::Result<LinkOrCopy> {
+pub fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(
+    p: P,
+    q: Q,
+    allow_overwrite: bool,
+) -> io::Result<LinkOrCopy> {
     // Creating a hard-link will fail if the destination path already exists. We could defensively
     // call remove_file in this function, but that pessimizes callers who can avoid such calls.
     // Incremental compilation calls this function a lot, and is able to avoid calls that
@@ -74,6 +78,9 @@ pub fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> io::Result<Li
     };
 
     if err.kind() == io::ErrorKind::AlreadyExists {
+        if !allow_overwrite {
+            panic!("link/copy target {} already exists: {err}", q.display());
+        }
         fs::remove_file(q)?;
         if fs::hard_link(p, q).is_ok() {
             return Ok(LinkOrCopy::Link);
