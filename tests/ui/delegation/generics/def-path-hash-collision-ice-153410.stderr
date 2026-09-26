@@ -6,6 +6,12 @@ LL |     reuse< < <for<'a> fn()>::Output>::Item as Iterator>::*;
    |
    = note: an associated type named `Iterator::Item` exists in another namespace
 
+error: failed to resolve delegation callee
+  --> $DIR/def-path-hash-collision-ice-153410.rs:21:58
+   |
+LL |     reuse< < <for<'a> fn()>::Output>::Item as Iterator>::*;
+   |                                                          ^
+
 error[E0782]: expected a type, found a trait
   --> $DIR/def-path-hash-collision-ice-153410.rs:19:6
    |
@@ -36,7 +42,7 @@ LL -     reuse< < <for<'a> fn()>::Output>::Item as Iterator>::*;
 LL +     reuse< < <fn() as IntoFuture>::Output>::Item as Iterator>::*;
    |
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0223, E0575, E0782.
 For more information about an error, try `rustc --explain E0223`.

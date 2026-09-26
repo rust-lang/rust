@@ -343,7 +343,9 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         match tcx.resolve_type_relative_delegations(()).get(&def_id) {
             Some(res) => match *res {
                 TypeRelativeDelegationRes::Ok(sig_id) => Ok(sig_id),
-                TypeRelativeDelegationRes::Error(err) => Err(err),
+                TypeRelativeDelegationRes::Error(_) => {
+                    Err(tcx.dcx().emit_err(UnresolvedDelegationCallee { span }))
+                }
                 TypeRelativeDelegationRes::Ambig(_) => {
                     Err(tcx.dcx().emit_err(AmbiguousDelegationToInherentImpl { span }))
                 }
