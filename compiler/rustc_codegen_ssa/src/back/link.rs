@@ -679,24 +679,6 @@ fn link_rlib<'a>(
         }
     }
 
-    // On Windows, we add the raw-dylib import libraries to the rlibs already.
-    // But on ELF, this is not possible, as a shared object cannot be a member of a static library.
-    // Instead, we add all raw-dylibs to the final link on ELF.
-    if sess.target.is_like_windows {
-        for output_path in raw_dylib::create_raw_dylib_dll_import_libs(
-            sess,
-            archive_builder_builder,
-            crate_info.used_libraries.iter(),
-            tmpdir.as_ref(),
-            true,
-        ) {
-            ab.add_archive(&output_path, AddArchiveKind::Other).unwrap_or_else(|error| {
-                sess.dcx()
-                    .emit_fatal(diagnostics::AddNativeLibrary { library_path: output_path, error });
-            });
-        }
-    }
-
     if let Some(trailing_metadata) = trailing_metadata {
         // Note that it is important that we add all of our non-object "magical
         // files" *after* all of the object files in the archive. The reason for
@@ -874,6 +856,24 @@ fn link_staticlib(
         // unsupported format; don't also ask the backend to hide there.
         hide: hide && hide_supported,
     });
+    all_native_libs.extend_from_slice(&crate_info.used_libraries);
+
+    // On Windows, we add the raw-dylib import libraries to the staticlib.
+    // But on ELF, this is not possible, as a shared object cannot be a member of a static library.
+    if sess.target.is_like_windows {
+        for output_path in raw_dylib::create_raw_dylib_dll_import_libs(
+            sess,
+            archive_builder_builder,
+            &all_native_libs,
+            tempdir.as_ref(),
+            true,
+        ) {
+            ab.add_archive(&output_path, AddArchiveKind::Other).unwrap_or_else(|error| {
+                sess.dcx()
+                    .emit_fatal(diagnostics::AddNativeLibrary { library_path: output_path, error });
+            });
+        }
+    }
 
     ab.build(out_filename, symbols);
 
@@ -899,8 +899,6 @@ fn link_staticlib(
             sess.dcx().emit_fatal(diagnostics::LinkRlibError::NotFound { crate_name });
         }
     }
-
-    all_native_libs.extend_from_slice(&crate_info.used_libraries);
 
     for print in &sess.opts.prints {
         if print.kind == PrintKind::NativeStaticLibs {
@@ -3105,36 +3103,22 @@ fn linker_with_args(
             cmd.link_dylib_by_name(&link_path, true, as_needed);
         }
     }
-    // As with add_upstream_native_libraries, we need to add the upstream raw-dylib symbols in case
-    // they are used within inlined functions or instantiated generic functions. We do this *after*
-    // handling the raw-dylib symbols in the current crate to make sure that those are chosen first
-    // by the linker.
-    let dependency_linkage = crate_info
-        .dependency_formats
-        .get(&crate_type)
-        .expect("failed to find crate type in dependency format list");
 
     // We sort the libraries below
     #[allow(rustc::potential_query_instability)]
-    let mut native_libraries_from_nonstatics = crate_info
+    let mut native_libraries = crate_info
         .native_libraries
         .iter()
-        .filter_map(|(&cnum, libraries)| {
-            if sess.target.is_like_windows {
-                (dependency_linkage[cnum] != Linkage::Static).then_some(libraries)
-            } else {
-                Some(libraries)
-            }
-        })
+        .map(|(_, libraries)| libraries)
         .flatten()
         .collect::<Vec<_>>();
-    native_libraries_from_nonstatics.sort_unstable_by(|a, b| a.name.as_str().cmp(b.name.as_str()));
+    native_libraries.sort_unstable_by(|a, b| a.name.as_str().cmp(b.name.as_str()));
 
     if sess.target.is_like_windows {
         for output_path in raw_dylib::create_raw_dylib_dll_import_libs(
             sess,
             archive_builder_builder,
-            native_libraries_from_nonstatics,
+            native_libraries,
             tmpdir,
             false,
         ) {
@@ -3143,7 +3127,7 @@ fn linker_with_args(
     } else {
         for (link_path, as_needed) in raw_dylib::create_raw_dylib_elf_stub_shared_objects(
             sess,
-            native_libraries_from_nonstatics,
+            native_libraries,
             &raw_dylib_dir,
         ) {
             // Always use verbatim linkage, see comments in create_raw_dylib_elf_stub_shared_objects.

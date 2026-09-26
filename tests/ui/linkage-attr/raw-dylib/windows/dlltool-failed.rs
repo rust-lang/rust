@@ -1,7 +1,7 @@
 // Tests that dlltool failing to generate an import library will raise an error.
 
 //@ needs-dlltool
-//@ compile-flags: --crate-type lib --emit link
+//@ compile-flags: --crate-type staticlib --emit link
 //@ normalize-stderr: "[^ ']*/dlltool.exe" -> "$$DLLTOOL"
 //@ normalize-stderr: "[^ ]*/foo.dll_imports.def" -> "$$DEF_FILE"
 //@ normalize-stderr: "[^ ]*/foo.dll_imports.lib" -> "$$LIB_FILE"
