@@ -1,0 +1,54 @@
+error[E0741]: `Foo` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/valtree-erased-region-issue-159688.rs:12:26
+   |
+LL | pub struct Foo_<const F: Foo>;
+   |                          ^^^
+   |
+help: add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct
+   |
+LL + #[derive(ConstParamTy, PartialEq, Eq)]
+LL | pub struct Foo {
+   |
+
+error[E0741]: `Foo` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/valtree-erased-region-issue-159688.rs:12:26
+   |
+LL | pub struct Foo_<const F: Foo>;
+   |                          ^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct
+   |
+LL + #[derive(ConstParamTy, PartialEq, Eq)]
+LL | pub struct Foo {
+   |
+
+error[E0741]: `Foo` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/valtree-erased-region-issue-159688.rs:12:26
+   |
+LL | pub struct Foo_<const F: Foo>;
+   |                          ^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct
+   |
+LL + #[derive(ConstParamTy, PartialEq, Eq)]
+LL | pub struct Foo {
+   |
+
+error[E0741]: `Foo` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/valtree-erased-region-issue-159688.rs:12:26
+   |
+LL | pub struct Foo_<const F: Foo>;
+   |                          ^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct
+   |
+LL + #[derive(ConstParamTy, PartialEq, Eq)]
+LL | pub struct Foo {
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0741`.
