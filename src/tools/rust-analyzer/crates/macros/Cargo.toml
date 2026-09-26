@@ -17,3 +17,6 @@ proc-macro2 = "1"
 quote = "1"
 syn = "2.0.9"
 synstructure = "0.13.0"
+
+[lints]
+workspace = true
