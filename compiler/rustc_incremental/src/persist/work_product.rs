@@ -30,7 +30,7 @@ pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
     for (ext, path) in files {
         let file_name = format!("{cgu_name}.{ext}");
         let path_in_incr_dir = in_incr_comp_dir_sess(incr_comp_session, &file_name);
-        match link_or_copy(path, &path_in_incr_dir) {
+        match link_or_copy(path, &path_in_incr_dir, false /* allow_overwrite */) {
             Ok(_) => {
                 let _ = saved_files.insert(ext.to_string(), file_name);
             }
