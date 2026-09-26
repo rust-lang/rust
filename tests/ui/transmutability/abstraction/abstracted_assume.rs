@@ -1,4 +1,6 @@
-//@ check-pass
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 //! The implementation should behave correctly when the `ASSUME` parameters are
 //! provided indirectly through an abstraction.
 
@@ -24,18 +26,45 @@ mod assert {
 }
 
 fn direct() {
-    assert::is_transmutable::<(), (), { std::mem::Assume::NOTHING }>();
+    assert::is_transmutable::<u8, bool, { std::mem::Assume::VALIDITY }>();
+    assert::is_transmutable::<u8, bool, { std::mem::Assume::NOTHING }>();
+    //~^ ERROR cannot be safely transmuted
 }
 
 fn via_const() {
     const FALSE: bool = false;
+    const TRUE: bool = true;
 
-    assert::is_transmutable::<(), (), { std::mem::Assume::NOTHING }>();
+    assert::is_transmutable::<
+        u8,
+        bool,
+        {
+            std::mem::Assume {
+                alignment: FALSE,
+                lifetimes: FALSE,
+                safety: FALSE,
+                validity: TRUE,
+            }
+        },
+    >();
+    assert::is_transmutable::<
+        u8,
+        bool, //~ ERROR cannot be safely transmuted
+        {
+            std::mem::Assume {
+                alignment: FALSE,
+                lifetimes: FALSE,
+                safety: FALSE,
+                validity: FALSE,
+            }
+        },
+    >();
 }
 
 fn via_associated_const() {
     trait Trait {
-        const FALSE: bool = true;
+        const FALSE: bool = false;
+        const TRUE: bool = true;
     }
 
     struct Ty;
@@ -43,15 +72,27 @@ fn via_associated_const() {
     impl Trait for Ty {}
 
     assert::is_transmutable::<
-        (),
-        (),
+        u8,
+        bool,
         {
             std::mem::Assume {
-                alignment: {Ty::FALSE},
-                lifetimes: {Ty::FALSE},
-                safety: {Ty::FALSE},
-                validity: {Ty::FALSE},
+                alignment: Ty::FALSE,
+                lifetimes: Ty::FALSE,
+                safety: Ty::FALSE,
+                validity: Ty::TRUE,
             }
-        }
+        },
+    >();
+    assert::is_transmutable::<
+        u8,
+        bool, //~ ERROR cannot be safely transmuted
+        {
+            std::mem::Assume {
+                alignment: Ty::FALSE,
+                lifetimes: Ty::FALSE,
+                safety: Ty::FALSE,
+                validity: Ty::FALSE,
+            }
+        },
     >();
 }
