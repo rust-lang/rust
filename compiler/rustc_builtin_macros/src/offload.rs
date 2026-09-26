@@ -1,6 +1,6 @@
-use rustc_ast::ast;
 use rustc_ast::token::{Delimiter, IdentKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
+use rustc_ast::{DUMMY_NODE_ID, ast};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_session::config::Offload;
 use rustc_span::{DUMMY_SP, Ident, Span, sym};
@@ -26,6 +26,15 @@ fn extract_fn(
             ast::ItemKind::Fn(ast::Fn { sig, ident, generics, body, .. }) => {
                 Some((iitem.vis.clone(), sig.clone(), *ident, generics.clone(), body.clone()))
             }
+            _ => None,
+        },
+        Annotatable::Stmt(stmt) => match &stmt.kind {
+            ast::StmtKind::Item(iitem) => match &iitem.kind {
+                ast::ItemKind::Fn(ast::Fn { sig, ident, generics, body, .. }) => {
+                    Some((iitem.vis.clone(), sig.clone(), *ident, generics.clone(), body.clone()))
+                }
+                _ => None,
+            },
             _ => None,
         },
         _ => None,
@@ -68,7 +77,7 @@ pub(crate) fn expand_kernel(
     let dcx = ecx.sess.dcx();
 
     let Some((vis, sig, ident, generics, body)) = extract_fn(&item) else {
-        dcx.emit_err(diagnostics::AutoDiffInvalidApplication { span: item.span() });
+        dcx.emit_err(diagnostics::OffloadKernelInvalidApplication { span: item.span() });
         return vec![item];
     };
 
@@ -109,10 +118,21 @@ pub(crate) fn expand_kernel(
     );
 
     let device_item = {
-        let mut item =
+        let mut device_item_ecx =
             ecx.item(span, thin_vec![rustc_offload_kernel.clone()], ast::ItemKind::Fn(device_fn));
-        item.vis = vis.clone();
-        Annotatable::Item(item)
+        device_item_ecx.vis = vis.clone();
+
+        match &item {
+            Annotatable::Item(_) => Annotatable::Item(device_item_ecx),
+            Annotatable::Stmt(_) => Annotatable::Stmt(Box::new(ast::Stmt {
+                id: DUMMY_NODE_ID,
+                kind: ast::StmtKind::Item(device_item_ecx),
+                span,
+            })),
+            _ => {
+                unreachable!("item kind checked previously")
+            }
+        }
     };
 
     // unimplemented! body
@@ -171,13 +191,24 @@ pub(crate) fn expand_kernel(
     let inline_never = outer_normal_attr(&inline_never_attr, new_id, span);
 
     let host_item = {
-        let mut item = ecx.item(
+        let mut host_item_ecx = ecx.item(
             span,
             thin_vec![rustc_offload_kernel, inline_never],
             ast::ItemKind::Fn(host_fn),
         );
-        item.vis = vis;
-        Annotatable::Item(item)
+        host_item_ecx.vis = vis;
+
+        match &item {
+            Annotatable::Item(_) => Annotatable::Item(host_item_ecx),
+            Annotatable::Stmt(_) => Annotatable::Stmt(Box::new(ast::Stmt {
+                id: DUMMY_NODE_ID,
+                kind: ast::StmtKind::Item(host_item_ecx),
+                span,
+            })),
+            _ => {
+                unreachable!("item kind checked previously")
+            }
+        }
     };
 
     if compile_for_device(ecx) { vec![device_item] } else { vec![host_item] }

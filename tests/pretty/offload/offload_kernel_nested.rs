@@ -1,0 +1,20 @@
+//@ only-nightly
+//@ revisions: host device
+
+//@ pretty-mode:expanded
+//@ pretty-compare-only
+//@[host] pp-exact:offload_kernel_nested.host.pp
+//@[device] pp-exact:offload_kernel_nested.device.pp
+
+//@[device] compile-flags: -Zunstable-options -Zoffload=Device
+
+#![feature(gpu_offload)]
+
+use std::offload::offload_kernel;
+
+fn kernel() {
+    #[offload_kernel]
+    fn inner_kernel() {}
+}
+
+fn main() {}
