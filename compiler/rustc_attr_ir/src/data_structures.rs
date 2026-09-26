@@ -1173,6 +1173,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_clean]`
     RustcClean(ThinVec<RustcCleanAttribute>),
 
+    /// Allows future upstream implementations to affect coherence.
+    RustcCoherenceFutureImpls,
+
     /// Represents `#[rustc_coherence_is_core]`
     RustcCoherenceIsCore,
 

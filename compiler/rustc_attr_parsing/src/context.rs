@@ -299,6 +299,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcAsPtrParser>>,
         Single<WithoutArgs<RustcCanonicalSymbolParser>>,
         Single<WithoutArgs<RustcCaptureAnalysisParser>>,
+        Single<WithoutArgs<RustcCoherenceFutureImplsParser>>,
         Single<WithoutArgs<RustcCoherenceIsCoreParser>>,
         Single<WithoutArgs<RustcCoinductiveParser>>,
         Single<WithoutArgs<RustcConstStableIndirectParser>>,

@@ -55,6 +55,16 @@ where
     I: Interner,
     E: Debug,
 {
+    // Only traits that explicitly opt in allow future upstream impls
+    // to invalidate downstream negative reasoning.
+    // Fundamental traits keep their existing coherence rules.
+    if !trait_ref.def_id.is_local()
+        && infcx.cx().trait_has_coherence_future_impls(trait_ref.def_id)
+        && !infcx.cx().trait_is_fundamental(trait_ref.def_id)
+    {
+        return Ok(Err(Conflict::Upstream));
+    }
+
     if orphan_check_trait_ref(infcx, trait_ref, InCrate::Remote, &mut lazily_normalize_ty)?.is_ok()
     {
         // A downstream or cousin crate is allowed to implement some

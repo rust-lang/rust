@@ -1,0 +1,8 @@
+error: `#[rustc_coherence_future_impls]` cannot be used with `#[fundamental]`
+  --> $DIR/coherence-future-impls-fundamental.rs:5:1
+   |
+LL | pub trait Invalid {}
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

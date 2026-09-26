@@ -501,6 +501,9 @@ pub trait Interner:
 
     fn trait_is_fundamental(self, def_id: Self::TraitId) -> bool;
 
+    /// Whether coherence must account for future upstream impls of this trait.
+    fn trait_has_coherence_future_impls(self, def_id: Self::TraitId) -> bool;
+
     /// Returns `true` if this is an `unsafe trait`.
     fn trait_is_unsafe(self, trait_def_id: Self::TraitId) -> bool;
 

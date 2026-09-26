@@ -600,6 +600,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.trait_def(def_id).is_fundamental
     }
 
+    fn trait_has_coherence_future_impls(self, def_id: DefId) -> bool {
+        self.trait_def(def_id).coherence_future_impls
+    }
+
     fn trait_is_unsafe(self, trait_def_id: Self::DefId) -> bool {
         self.trait_def(trait_def_id).safety.is_unsafe()
     }
