@@ -2294,6 +2294,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 //    |              ^
                 return;
             }
+            if span.in_derive_expansion() {
+                return;
+            }
             let span = self.tcx.sess.source_map().guess_head_span(def_span);
             let candidate_descr = suggestion.res.descr();
             let candidate = suggestion.candidate;
