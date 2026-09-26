@@ -1740,7 +1740,7 @@ pub(crate) enum NonSnakeCaseDiagSub {
     Help { sc: String },
     RenameOrConvertSuggestion { span: Span, suggestion: Ident },
     ConvertSuggestion { span: Span, suggestion: String },
-    SuggestionAndNote { sc: String, span: Span },
+    RawIdent { sc: String, span: Span },
 }
 
 impl Subdiagnostic for NonSnakeCaseDiagSub {
@@ -1769,15 +1769,9 @@ impl Subdiagnostic for NonSnakeCaseDiagSub {
                     Applicability::MaybeIncorrect,
                 );
             }
-            NonSnakeCaseDiagSub::SuggestionAndNote { sc, span } => {
+            NonSnakeCaseDiagSub::RawIdent { sc, span } => {
                 diag.arg("sc", sc);
-                diag.note(msg!("`{$sc}` cannot be used as a raw identifier"));
-                diag.span_suggestion(
-                    span,
-                    msg!("rename the identifier"),
-                    "",
-                    Applicability::MaybeIncorrect,
-                );
+                diag.span_label(span, msg!("`{$sc}` cannot be used as a raw identifier"));
             }
         }
     }
