@@ -244,6 +244,9 @@ mod raw_vec;
 #[cfg(not(no_rc))]
 mod rcs {
     pub mod rc;
+
+    #[cfg(all(not(no_sync), target_has_atomic = "ptr"))]
+    pub(crate) mod arc;
 }
 
 // Heaps provided for low-level allocation strategies

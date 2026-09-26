@@ -1,13 +1,3 @@
-#![stable(feature = "rust1", since = "1.0.0")]
-
-//! Thread-safe reference-counting pointers.
-//!
-//! See the [`Arc<T>`][Arc] documentation for more details.
-//!
-//! **Note**: This module is only available on platforms that support atomic
-//! loads and stores of pointers. This may be detected at compile time using
-//! `#[cfg(target_has_atomic = "ptr")]`.
-
 use core::any::Any;
 use core::cell::CloneFromCell;
 #[cfg(not(no_global_oom_handling))]

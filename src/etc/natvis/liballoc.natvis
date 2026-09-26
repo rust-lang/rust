@@ -131,7 +131,7 @@
   </Type>
 
   <!-- alloc::sync::Arc<T> -->
-  <Type Name="alloc::sync::Arc&lt;*&gt;">
+  <Type Name="alloc::rcs::arc::Arc&lt;*&gt;">
     <DisplayString Optional="true">{ptr.pointer->data}</DisplayString>
     <Expand>
       <!-- thin -->
@@ -146,7 +146,7 @@
   </Type>
 
   <!-- alloc::sync::Arc<[T]> -->
-  <Type Name="alloc::sync::Arc&lt;slice2$&lt;*&gt;,*&gt;">
+  <Type Name="alloc::rcs::arc::Arc&lt;slice2$&lt;*&gt;,*&gt;">
     <DisplayString>{{ len={ptr.pointer.length} }}</DisplayString>
     <Expand>
       <Item Name="[Length]" ExcludeView="simple">ptr.pointer.length</Item>
@@ -160,7 +160,7 @@
   </Type>
 
   <!-- alloc::sync::Weak<T> -->
-  <Type Name="alloc::sync::Weak&lt;*&gt;">
+  <Type Name="alloc::rcs::arc::Weak&lt;*&gt;">
     <DisplayString Optional="true">{ptr.pointer->data}</DisplayString>
     <Expand>
       <!-- thin -->
@@ -175,7 +175,7 @@
   </Type>
 
   <!-- alloc::sync::Weak<[T]> -->
-  <Type Name="alloc::sync::Weak&lt;slice2$&lt;*&gt;,*&gt;">
+  <Type Name="alloc::rcs::arc::Weak&lt;slice2$&lt;*&gt;,*&gt;">
     <DisplayString>{{ len={ptr.pointer.length} }}</DisplayString>
     <Expand>
       <Item Name="[Length]" ExcludeView="simple">ptr.pointer.length</Item>
