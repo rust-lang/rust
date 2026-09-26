@@ -48,6 +48,12 @@ pub struct InterpCx<'tcx, M: Machine<'tcx>> {
     /// The virtual memory system.
     pub memory: Memory<'tcx, M>,
 
+    /// Temporary operand snapshots that survive deallocation of their source
+    /// local.
+    ///
+    /// These are freed after each MIR statement or terminator.
+    pub(super) operand_temps: Vec<MPlaceTy<'tcx, M::Provenance>>,
+
     /// The recursion limit (cached from `tcx.recursion_limit(())`)
     pub recursion_limit: Limit,
 }
@@ -254,6 +260,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             typing_env,
             layout_cache: RefCell::new(FxHashMap::default()),
             memory: Memory::new(),
+            operand_temps: Vec::new(),
             recursion_limit: tcx.recursion_limit(),
         }
     }

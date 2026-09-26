@@ -47,11 +47,10 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                             StatementKind::Assign(Box::new((
                                 *destination,
                                 Rvalue::Use(
-                                    Operand::Constant(Box::new(ConstOperand {
-                                        span: terminator.source_info.span,
-                                        user_ty: None,
-                                        const_: Const::zero_sized(tcx.types.unit),
-                                    })),
+                                    Operand::zero_sized_constant(
+                                        tcx.types.unit,
+                                        terminator.source_info.span,
+                                    ),
                                     WithRetag::Yes,
                                 ),
                             ))),
@@ -61,19 +60,30 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                     sym::copy_nonoverlapping => {
                         let target = target.unwrap();
                         let Ok([src, dst, count]) = take_array(args) else {
-                            bug!("Wrong arguments for copy_non_overlapping intrinsic");
+                            bug!("Wrong arguments for copy_nonoverlapping intrinsic");
                         };
                         block.statements.push(Statement::new(
                             terminator.source_info,
                             StatementKind::Intrinsic(Box::new(
-                                NonDivergingIntrinsic::CopyNonOverlapping(
-                                    rustc_middle::mir::CopyNonOverlapping {
-                                        src: src.node,
-                                        dst: dst.node,
-                                        count: count.node,
-                                    },
-                                ),
+                                NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
+                                    src: src.node,
+                                    dst: dst.node,
+                                    count: count.node,
+                                }),
                             )),
+                        ));
+                        block.statements.push(Statement::new(
+                            terminator.source_info,
+                            StatementKind::Assign(Box::new((
+                                *destination,
+                                Rvalue::Use(
+                                    Operand::zero_sized_constant(
+                                        tcx.types.unit,
+                                        terminator.source_info.span,
+                                    ),
+                                    WithRetag::Yes,
+                                ),
+                            ))),
                         ));
                         terminator.kind = TerminatorKind::Goto { target };
                     }
@@ -86,6 +96,19 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                             terminator.source_info,
                             StatementKind::Intrinsic(Box::new(NonDivergingIntrinsic::Assume(
                                 arg.node,
+                            ))),
+                        ));
+                        block.statements.push(Statement::new(
+                            terminator.source_info,
+                            StatementKind::Assign(Box::new((
+                                *destination,
+                                Rvalue::Use(
+                                    Operand::zero_sized_constant(
+                                        tcx.types.unit,
+                                        terminator.source_info.span,
+                                    ),
+                                    WithRetag::Yes,
+                                ),
                             ))),
                         ));
                         terminator.kind = TerminatorKind::Goto { target };

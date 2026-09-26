@@ -240,6 +240,7 @@ impl<'a> MaybeTransitiveLiveLocals<'a> {
                 (!debuginfo_locals.contains(place.local)).then_some(**place)
             }
             StatementKind::FakeRead(_)
+            | StatementKind::StorageAlloc(_)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::AscribeUserType(..)

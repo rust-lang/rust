@@ -25,31 +25,37 @@
           StorageDead(_3);
           StorageDead(_2);
           _5 = discriminant((_1.0: std::option::Option<u8>));
-          switchInt(move _5) -> [1: bb1, 0: bb3, otherwise: bb5];
+          switchInt(move _5) -> [1: bb1, 0: bb3, otherwise: bb6];
       }
   
       bb1: {
           _4 = discriminant((_1.1: std::option::Option<T>));
-          switchInt(move _4) -> [0: bb2, 1: bb3, otherwise: bb5];
+          switchInt(move _4) -> [0: bb2, 1: bb3, otherwise: bb6];
       }
   
       bb2: {
           StorageLive(_6);
           _6 = copy (((_1.0: std::option::Option<u8>) as Some).0: u8);
+          _0 = no_retag const ();
           StorageDead(_6);
-          goto -> bb3;
+          goto -> bb4;
       }
   
       bb3: {
-          drop(_1) -> [return: bb4, unwind unreachable];
+          _0 = const ();
+          goto -> bb4;
       }
   
       bb4: {
+          drop(_1) -> [return: bb5, unwind unreachable];
+      }
+  
+      bb5: {
           StorageDead(_1);
           return;
       }
   
-      bb5: {
+      bb6: {
           unreachable;
       }
   }

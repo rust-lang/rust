@@ -106,6 +106,8 @@
       }
   
       bb1: {
+-         _0 = const ();
++         _60 = const ();
 +         _0 = Poll::<()>::Ready(move _60);
 +         discriminant((*_62)) = 1;
           return;
@@ -200,7 +202,7 @@
       }
   
       bb15: {
--         _10 = move _2;
+-         _10 = copy _2;
 -         _9 = std::future::get_context::<'_, '_>(move _10) -> [return: bb14, unwind: bb7];
 +         StorageLive(_32);
 +         _0 = Poll::<()>::Pending;
@@ -225,7 +227,7 @@
       bb18: {
 -         _13 = &mut ((*_3).3: AsyncInt);
 -         _12 = Pin::<&mut AsyncInt>::new_unchecked(move _13) -> [return: bb17, unwind: bb2];
-+         _37 = move _70;
++         _37 = copy _70;
 +         _36 = copy (_37.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb17;
       }
@@ -302,7 +304,7 @@
       }
   
       bb28: {
--         _30 = move _2;
+-         _30 = copy _2;
 -         _29 = std::future::get_context::<'_, '_>(move _30) -> [return: bb27, unwind: bb21];
 +         _51 = discriminant(_50);
 +         switchInt(move _51) -> [0: bb22, 1: bb27, otherwise: bb9];
@@ -318,7 +320,7 @@
 -         _2 = move _32;
 -         StorageDead(_32);
 -         goto -> bb36;
-+         _54 = move _70;
++         _54 = copy _70;
 +         _53 = copy (_54.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb29;
       }
@@ -354,7 +356,7 @@
       }
   
       bb35: {
--         _37 = move _2;
+-         _37 = copy _2;
 -         _36 = std::future::get_context::<'_, '_>(move _37) -> [return: bb34, unwind: bb21];
 +         StorageLive(_5);
 +         _5 = move _70;
@@ -438,7 +440,7 @@
 -     }
 - 
 -     bb48: {
--         _47 = move _2;
+-         _47 = copy _2;
 -         _46 = std::future::get_context::<'_, '_>(move _47) -> [return: bb47, unwind: bb41];
 -     }
 - 
@@ -474,7 +476,7 @@
 -     }
 - 
 -     bb55: {
--         _54 = move _2;
+-         _54 = copy _2;
 -         _53 = std::future::get_context::<'_, '_>(move _54) -> [return: bb54, unwind: bb41];
 -     }
 - 

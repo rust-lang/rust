@@ -461,8 +461,10 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
 
     #[tracing::instrument(level = "trace", skip(self, stmt), ret)]
     fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, location: Location) {
-        // Remove StorageLive and StorageDead statements for remapped locals
-        if let StatementKind::StorageLive(l) | StatementKind::StorageDead(l) = stmt.kind
+        // Remove storage statements for remapped locals
+        if let StatementKind::StorageLive(l)
+        | StatementKind::StorageDead(l)
+        | StatementKind::StorageAlloc(l) = stmt.kind
             && self.remap.contains(l)
         {
             stmt.make_nop(true);
@@ -760,11 +762,7 @@ fn return_poll_ready_assign<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) ->
     // Poll::Ready(())
     let poll_def_id = tcx.require_lang_item(LangItem::Poll, source_info.span);
     let args = tcx.mk_args(&[tcx.types.unit.into()]);
-    let val = Operand::Constant(Box::new(ConstOperand {
-        span: source_info.span,
-        user_ty: None,
-        const_: Const::zero_sized(tcx.types.unit),
-    }));
+    let val = Operand::zero_sized_constant(tcx.types.unit, source_info.span);
     let ready_val = Rvalue::Aggregate(
         Box::new(AggregateKind::Adt(poll_def_id, VariantIdx::from_usize(0), args, None, None)),
         indexvec![val],
@@ -929,6 +927,25 @@ fn create_coroutine_resume_function<'tcx>(
         CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
             make_coroutine_state_argument_indirect(tcx, body);
         }
+    }
+
+    // Iterator::next has no resume argument, so initialize the unit resume
+    // local at the start of each invocation.
+    if let CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) = transform.coroutine_kind {
+        let source_info = SourceInfo::outermost(body.span);
+        body.basic_blocks_mut()[START_BLOCK].statements.insert(
+            0,
+            Statement::new(
+                source_info,
+                StatementKind::Assign(Box::new((
+                    CTX_ARG.into(),
+                    Rvalue::Use(
+                        Operand::zero_sized_constant(tcx.types.unit, source_info.span),
+                        WithRetag::Yes,
+                    ),
+                ))),
+            ),
+        );
     }
 
     // Make sure we remove dead blocks to remove
@@ -1296,6 +1313,7 @@ impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
 
             StatementKind::FakeRead(..)
             | StatementKind::SetDiscriminant { .. }
+            | StatementKind::StorageAlloc(_)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::AscribeUserType(..)

@@ -10,9 +10,10 @@ use core::intrinsics::mir::*;
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 pub fn main() {
     mir! {
-        let a: [u8; 1024];
+        let a: ([u8; 1024],);
         {
-            Call(a = f(Move(a)), ReturnTo(bb1), UnwindUnreachable()) //~ ERROR broken MIR
+            // Use a projection otherwise this would be considered malformed MIR.
+            Call(a.0 = f(Move(a.0)), ReturnTo(bb1), UnwindUnreachable()) //~ ERROR broken MIR
             //~^ ERROR encountered overlapping memory in `Move` arguments to `Call`
         }
         bb1 = {
@@ -21,4 +22,6 @@ pub fn main() {
     }
 }
 
-pub fn f<T: Copy>(a: T) -> T { a }
+pub fn f<T: Copy>(a: T) -> T {
+    a
+}

@@ -279,7 +279,7 @@ pub fn build_drop_shim<'tcx>(
 
     let return_block = BasicBlock::new(1);
     let mut blocks = IndexVec::with_capacity(2);
-    let block = |blocks: &mut IndexVec<_, _>, kind| {
+    let block = |blocks: &mut IndexVec<_, _>, kind| -> BasicBlock {
         blocks.push(BasicBlockData::new(
             Some(Terminator { source_info, kind, attributes: ThinVec::new() }),
             false,
@@ -288,7 +288,14 @@ pub fn build_drop_shim<'tcx>(
     if ty.is_some() {
         block(&mut blocks, TerminatorKind::Goto { target: return_block });
     }
-    block(&mut blocks, TerminatorKind::Return);
+    let ret = block(&mut blocks, TerminatorKind::Return);
+    blocks[ret].statements.push(Statement::new(
+        source_info,
+        StatementKind::Assign(Box::new((
+            Place::return_place(),
+            Rvalue::Use(Operand::zero_sized_constant(tcx.types.unit, span), WithRetag::Yes),
+        ))),
+    ));
 
     let source = MirSource::from_shim(ty::ShimKind::DropGlue(def_id, ty));
     let mut body =
@@ -704,10 +711,18 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         unwind
     }
 
-    fn tuple_like_shim<I>(&mut self, dest: Place<'tcx>, src: Place<'tcx>, tys: I)
-    where
-        I: IntoIterator<Item = Ty<'tcx>>,
-    {
+    fn tuple_like_shim(
+        &mut self,
+        dest: Place<'tcx>,
+        src: Place<'tcx>,
+        tys: &'tcx ty::List<Ty<'tcx>>,
+    ) {
+        if tys.is_empty() {
+            // With no fields to clone, initialize the return local directly.
+            self.copy_shim();
+            return;
+        }
+
         self.block(vec![], TerminatorKind::Goto { target: self.block_index_offset(3) }, false);
         let unwind = self.block(vec![], TerminatorKind::UnwindResume, true);
         let target = self.block(vec![], TerminatorKind::Return, false);

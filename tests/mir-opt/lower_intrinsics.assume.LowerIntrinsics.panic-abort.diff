@@ -9,6 +9,7 @@
           StorageLive(_1);
 -         _1 = std::intrinsics::assume(const true) -> [return: bb1, unwind unreachable];
 +         assume(const true);
++         _1 = const ();
 +         goto -> bb1;
       }
   

@@ -124,6 +124,8 @@
       }
   
       bb1: {
+-         _0 = const ();
++         _75 = const ();
 +         _0 = Poll::<()>::Ready(move _75);
 +         discriminant((*_77)) = 1;
           return;
@@ -212,7 +214,7 @@
       }
   
       bb14: {
--         _10 = move _2;
+-         _10 = copy _2;
 -         _9 = std::future::get_context::<'_, '_>(move _10) -> [return: bb13, unwind: bb6];
 +         assert(const false, "`async fn` resumed after async drop") -> [success: bb14, unwind: bb13];
       }
@@ -259,7 +261,7 @@
   
       bb20: {
 -         assert(const false, "`async fn` resumed after async drop") -> [success: bb20, unwind: bb19];
-+         _37 = move _83;
++         _37 = copy _83;
 +         _36 = copy (_37.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb19;
       }
@@ -303,7 +305,7 @@
       }
   
       bb26: {
--         _20 = move _2;
+-         _20 = copy _2;
 -         _19 = std::future::get_context::<'_, '_>(move _20) -> [return: bb25, unwind: bb19];
 +         _83 = move _42;
 +         StorageDead(_42);
@@ -345,7 +347,7 @@
 -         StorageDead(_24);
 -         goto -> bb2;
 +     bb31: {
-+         _54 = move _83;
++         _54 = copy _83;
 +         _53 = copy (_54.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb30;
       }
@@ -396,7 +398,7 @@
       }
   
       bb38: {
--         _30 = move _2;
+-         _30 = copy _2;
 -         _29 = std::future::get_context::<'_, '_>(move _30) -> [return: bb37, unwind: bb31];
 +         _83 = move _66;
 +         StorageDead(_66);
@@ -431,7 +433,7 @@
       bb42: {
 -         StorageLive(_32);
 -         _32 = yield(const ()) -> [resume: bb40, drop: bb41];
-+         _71 = move _83;
++         _71 = copy _83;
 +         _70 = copy (_71.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb41;
       }
@@ -450,7 +452,7 @@
       }
   
 -     bb45: {
--         _37 = move _2;
+-         _37 = copy _2;
 -         _36 = std::future::get_context::<'_, '_>(move _37) -> [return: bb44, unwind: bb31];
 +     bb45 (cleanup): {
 +         discriminant((*_77)) = 2;
@@ -542,7 +544,7 @@
 -     }
 - 
 -     bb57: {
--         _47 = move _2;
+-         _47 = copy _2;
 -         _46 = std::future::get_context::<'_, '_>(move _47) -> [return: bb56, unwind: bb50];
 -     }
 - 
@@ -578,7 +580,7 @@
 -     }
 - 
 -     bb64: {
--         _54 = move _2;
+-         _54 = copy _2;
 -         _53 = std::future::get_context::<'_, '_>(move _54) -> [return: bb63, unwind: bb50];
 -     }
 - 
@@ -640,7 +642,7 @@
 -     }
 - 
 -     bb76: {
--         _64 = move _2;
+-         _64 = copy _2;
 -         _63 = std::future::get_context::<'_, '_>(move _64) -> [return: bb75, unwind: bb69];
 -     }
 - 
@@ -676,7 +678,7 @@
 -     }
 - 
 -     bb83: {
--         _71 = move _2;
+-         _71 = copy _2;
 -         _70 = std::future::get_context::<'_, '_>(move _71) -> [return: bb82, unwind: bb69];
 -     }
 - 

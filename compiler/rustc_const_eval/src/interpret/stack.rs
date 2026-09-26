@@ -18,7 +18,7 @@ use tracing::{info_span, instrument, trace};
 
 use super::{
     AllocId, CtfeProvenance, FnArg, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace,
-    MemPlaceMeta, MemoryKind, Operand, PlaceTy, Pointer, Provenance, ReturnAction, Scalar,
+    MemPlaceMeta, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, ReturnAction, Scalar,
     from_known_layout, interp_ok, throw_ub, throw_unsup,
 };
 use crate::{diagnostics, enter_trace_span};
@@ -153,6 +153,8 @@ impl<Prov: Provenance> std::fmt::Debug for LocalState<'_, Prov> {
 pub(super) enum LocalValue<Prov: Provenance = CtfeProvenance> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
+    /// This local is alive, but does not currently have an allocation.
+    LiveUnallocated,
     /// A normal, live local.
     /// Mostly for convenience, we re-use the `Operand` type here.
     /// This is an optimization over just always having a pointer here;
@@ -174,7 +176,7 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
         &self,
     ) -> Option<Either<(Pointer<Option<Prov>>, MemPlaceMeta<Prov>), Immediate<Prov>>> {
         match self.value {
-            LocalValue::Dead => None,
+            LocalValue::Dead | LocalValue::LiveUnallocated => None,
             LocalValue::Live(Operand::Indirect(mplace)) => Some(Left((mplace.ptr, mplace.meta))),
             LocalValue::Live(Operand::Immediate(imm)) => Some(Right(imm)),
         }
@@ -185,6 +187,7 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
     pub(super) fn access(&self) -> InterpResult<'tcx, &Operand<Prov>> {
         match &self.value {
             LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
+            LocalValue::LiveUnallocated => throw_ub!(UnallocatedLocal),
             LocalValue::Live(val) => interp_ok(val),
         }
     }
@@ -195,6 +198,7 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
     pub(super) fn access_mut(&mut self) -> InterpResult<'tcx, &mut Operand<Prov>> {
         match &mut self.value {
             LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
+            LocalValue::LiveUnallocated => throw_ub!(UnallocatedLocal),
             LocalValue::Live(val) => interp_ok(val),
         }
     }
@@ -557,26 +561,35 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             if layout.is_sized() { None } else { Some(layout) }
         };
 
-        let local_val = LocalValue::Live(if let Some(layout) = unsized_ {
-            if !meta.has_meta() {
-                throw_unsup!(UnsizedLocal);
-            }
-            // Need to allocate some memory, since `Immediate::Uninit` cannot be unsized.
-            let dest_place = self.allocate_dyn(layout, MemoryKind::Stack, meta)?;
-            Operand::Indirect(*dest_place.mplace())
+        // `LiveUnallocated` cannot preserve the metadata needed to allocate an unsized local
+        // later. Unsized locals are only supported as function arguments, where the metadata is
+        // available here and the local is initialized immediately after being made live, so keep
+        // allocating them eagerly.
+        let local_val = if M::move_elimination_semantics(self) && unsized_.is_none() {
+            assert!(!meta.has_meta());
+            LocalValue::LiveUnallocated
         } else {
-            // Just make this an efficient immediate.
-            assert!(!meta.has_meta()); // we're dropping the metadata
-            // Make sure the machine knows this "write" is happening. (This is important so that
-            // races involving local variable allocation can be detected by Miri.)
-            M::after_local_write(self, local, /*storage_live*/ true)?;
-            // Note that not calling `layout_of` here does have one real consequence:
-            // if the type is too big, we'll only notice this when the local is actually initialized,
-            // which is a bit too late -- we should ideally notice this already here, when the memory
-            // is conceptually allocated. But given how rare that error is and that this is a hot function,
-            // we accept this downside for now.
-            Operand::Immediate(Immediate::Uninit)
-        });
+            LocalValue::Live(if let Some(layout) = unsized_ {
+                if !meta.has_meta() {
+                    throw_unsup!(UnsizedLocal);
+                }
+                // Need to allocate some memory, since `Immediate::Uninit` cannot be unsized.
+                let dest_place = self.allocate_dyn(layout, MemoryKind::Stack, meta)?;
+                Operand::Indirect(*dest_place.mplace())
+            } else {
+                // Just make this an efficient immediate.
+                assert!(!meta.has_meta()); // we're dropping the metadata
+                // Make sure the machine knows this "write" is happening. (This is important so that
+                // races involving local variable allocation can be detected by Miri.)
+                M::after_local_write(self, local, /*storage_live*/ true)?;
+                // Note that not calling `layout_of` here does have one real consequence:
+                // if the type is too big, we'll only notice this when the local is actually initialized,
+                // which is a bit too late -- we should ideally notice this already here, when the memory
+                // is conceptually allocated. But given how rare that error is and that this is a hot function,
+                // we accept this downside for now.
+                Operand::Immediate(Immediate::Uninit)
+            })
+        };
 
         // If the local is already live, deallocate its old memory.
         let old = mem::replace(&mut self.frame_mut().locals[local].value, local_val);
@@ -590,6 +603,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         self.storage_live_dyn(local, MemPlaceMeta::None)
     }
 
+    /// Ensure that a live local has an allocation.
+    pub fn storage_alloc(&mut self, local: mir::Local) -> InterpResult<'tcx> {
+        match self.frame().locals[local].value {
+            LocalValue::Dead => throw_ub!(DeadLocal),
+            LocalValue::LiveUnallocated | LocalValue::Live(_) => {
+                self.allocate_local_for_write(local)?
+            }
+        }
+        interp_ok(())
+    }
+
     pub fn storage_dead(&mut self, local: mir::Local) -> InterpResult<'tcx> {
         assert!(local != mir::RETURN_PLACE, "Cannot make return place dead");
         trace!("{:?} is now dead", local);
@@ -598,6 +622,31 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let old = mem::replace(&mut self.frame_mut().locals[local].value, LocalValue::Dead);
         self.deallocate_local(old)?;
         interp_ok(())
+    }
+
+    /// Ensure that a direct destination local has an allocation.
+    pub(super) fn allocate_local_for_write(&mut self, local: mir::Local) -> InterpResult<'tcx> {
+        let local_value = &mut self.frame_mut().locals[local].value;
+        if matches!(local_value, LocalValue::LiveUnallocated) {
+            *local_value = LocalValue::Live(Operand::Immediate(Immediate::Uninit));
+            M::after_local_write(self, local, /*storage_live*/ true)?;
+        }
+        interp_ok(())
+    }
+
+    /// Move an entire local into a detached value and leave the local live but unallocated.
+    pub(super) fn move_out_local(
+        &mut self,
+        local: mir::Local,
+        layout: Option<TyAndLayout<'tcx>>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        let op = self.local_to_op(local, layout)?;
+
+        let moved_op = self.snapshot_operand(op)?;
+        let old =
+            mem::replace(&mut self.frame_mut().locals[local].value, LocalValue::LiveUnallocated);
+        self.deallocate_local(old)?;
+        interp_ok(moved_op)
     }
 
     fn deallocate_local(&mut self, local: LocalValue<M::Provenance>) -> InterpResult<'tcx> {
@@ -661,10 +710,12 @@ impl<'a, 'tcx: 'a, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // provided so it should not be possible to get a mismatch here.
             let (_idx, callee_abi) = callee_abis.next().unwrap();
             assert!(self.check_argument_compat(caller_abi, callee_abi)?);
-            // FIXME: do we have to worry about in-place argument passing?
             let op = fn_arg.copy_fn_arg();
             let mplace = self.allocate(op.layout, MemoryKind::Stack)?;
             self.copy_op(&op, &mplace)?;
+            if let FnArg::InPlace(mplace) = fn_arg {
+                M::protect_in_place_function_argument(self, mplace)?;
+            }
 
             varargs.push(mplace);
         }
@@ -702,6 +753,7 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
     ) -> std::fmt::Result {
         match self.value {
             LocalValue::Dead => write!(fmt, " is dead")?,
+            LocalValue::LiveUnallocated => write!(fmt, " is live but unallocated")?,
             LocalValue::Live(Operand::Immediate(Immediate::Uninit)) => {
                 write!(fmt, " is uninitialized")?
             }

@@ -63,6 +63,7 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb2: {
         StorageDead(_6);
+        _0 = const ();
         StorageDead(_8);
         drop(_2) -> [return: bb3, unwind continue];
     }

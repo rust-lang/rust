@@ -398,7 +398,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             StatementKind::FakeRead((_, place)) => {
                 self.create_move_path(*place);
             }
-            StatementKind::StorageLive(_) => {}
+            StatementKind::StorageAlloc(_) | StatementKind::StorageLive(_) => {}
             StatementKind::StorageDead(local) => {
                 // DerefTemp locals (results of CopyForDeref) don't actually move anything.
                 if !self.body.local_decls[*local].is_deref_temp() {

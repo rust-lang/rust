@@ -70,6 +70,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::StatementKind::SetDiscriminant { ref place, variant_index } => {
                 self.codegen_place(bx, (**place).as_ref()).codegen_set_discr(bx, variant_index);
             }
+            mir::StatementKind::StorageAlloc(_) => {
+                // This is a no-op in codegen.
+            }
             mir::StatementKind::StorageLive(local) => {
                 if let LocalRef::Place(cg_place) = self.locals[local] {
                     cg_place.storage_live(bx);

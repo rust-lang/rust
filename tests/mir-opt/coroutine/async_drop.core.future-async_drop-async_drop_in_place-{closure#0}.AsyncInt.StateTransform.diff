@@ -54,6 +54,8 @@
       }
   
       bb1: {
+-         _0 = const ();
++         _21 = const ();
 +         _0 = Poll::<()>::Ready(move _21);
 +         discriminant((*_23)) = 1;
           return;
@@ -132,13 +134,13 @@
   
       bb12: {
 -         _6 = <impl Future<Output = ()> as Future>::poll(move _8, move _9) -> [return: bb11, unwind: bb5];
-+         _17 = move _24;
++         _17 = copy _24;
 +         _16 = copy (_17.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb11;
       }
   
       bb13: {
--         _10 = move _2;
+-         _10 = copy _2;
 -         _9 = std::future::get_context::<'_, '_>(move _10) -> [return: bb12, unwind: bb5];
 +         _18 = &mut (((*_23) as variant#4).0: impl std::future::Future<Output = ()>);
 +         _15 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _18) -> [return: bb12, unwind: bb4];
@@ -189,7 +191,7 @@
       }
   
       bb20: {
--         _17 = move _2;
+-         _17 = copy _2;
 -         _16 = std::future::get_context::<'_, '_>(move _17) -> [return: bb19, unwind: bb5];
 -     }
 - 
