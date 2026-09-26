@@ -40,12 +40,12 @@ __impl_slice_eq1! { [] &[T], Cow<'_, [U]> where U: Clone, #[stable(feature = "pa
 __impl_slice_eq1! { [] &mut [T], Cow<'_, [U]> where U: Clone, #[stable(feature = "partialeq_cow_for_vec_and_slice", since = "CURRENT_RUSTC_VERSION")] }
 __impl_slice_eq1! { const, [A: Allocator, const N: usize] Vec<T, A>, [U; N], #[rustc_const_unstable(feature = "const_cmp", issue = "143800")] #[stable(feature = "rust1", since = "1.0.0")] }
 __impl_slice_eq1! { const, [A: Allocator, const N: usize] Vec<T, A>, &[U; N], #[rustc_const_unstable(feature = "const_cmp", issue = "143800")] #[stable(feature = "rust1", since = "1.0.0")] }
+__impl_slice_eq1! { const, [const N: usize] [T; N], Vec<U>, #[rustc_const_unstable(feature = "const_cmp", issue = "143800")] #[stable(feature = "array_vec_partialeq", since = "CURRENT_RUSTC_VERSION")]}
+__impl_slice_eq1! { const, [const N: usize] &[T; N], Vec<U>, #[rustc_const_unstable(feature = "const_cmp", issue = "143800")] #[stable(feature = "array_vec_partialeq", since = "CURRENT_RUSTC_VERSION")]}
 
 // NOTE: some less important impls are omitted to reduce code bloat
 // FIXME(Centril): Reconsider this?
 //__impl_slice_eq1! { [const N: usize] Vec<A>, &mut [B; N], }
-//__impl_slice_eq1! { [const N: usize] [A; N], Vec<B>, }
-//__impl_slice_eq1! { [const N: usize] &[A; N], Vec<B>, }
 //__impl_slice_eq1! { [const N: usize] &mut [A; N], Vec<B>, }
 //__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, [B; N], }
 //__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, &[B; N], }
