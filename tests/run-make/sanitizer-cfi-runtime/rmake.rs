@@ -1,3 +1,5 @@
+// FIXME(#122848) Remove only-linux once OSX CFI binaries work
+//@ only-linux
 //@ needs-sanitizer-support
 //@ needs-sanitizer-cfi
 //@ ignore-backends: gcc
