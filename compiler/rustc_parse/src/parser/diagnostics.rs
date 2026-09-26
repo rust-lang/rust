@@ -2705,8 +2705,9 @@ impl<'a> Parser<'a> {
         // parentheses in what should have been a tuple pattern; return a
         // suggestion-enhanced error here rather than choking on the comma later.
         let comma_span = self.token.span;
+        let mut comma_spans = vec![comma_span];
         self.bump();
-        if let Err(err) = self.skip_pat_list() {
+        if let Err(err) = self.skip_pat_list(&mut comma_spans) {
             // We didn't expect this to work anyway; we just wanted to advance to the
             // end of the comma-sequence so we know the span to suggest parenthesizing.
             err.cancel();
@@ -2725,10 +2726,9 @@ impl<'a> Parser<'a> {
             Applicability::MachineApplicable,
         );
         if let CommaRecoveryMode::EitherTupleOrPipe = rt {
-            err.span_suggestion_verbose(
-                comma_span,
+            err.multipart_suggestion(
                 "...or a vertical bar to match on alternatives",
-                " |",
+                comma_spans.into_iter().map(|span| (span, " |".to_string())).collect(),
                 Applicability::MachineApplicable,
             );
         }
@@ -2911,12 +2911,13 @@ impl<'a> Parser<'a> {
 
     /// Parse and throw away a parenthesized comma separated
     /// sequence of patterns until `)` is reached.
-    fn skip_pat_list(&mut self) -> PResult<'a, ()> {
+    fn skip_pat_list(&mut self, comma_spans: &mut Vec<Span>) -> PResult<'a, ()> {
         while !self.check(exp!(CloseParen)) {
             self.parse_pat_no_top_alt(None, None)?;
             if !self.eat(exp!(Comma)) {
                 return Ok(());
             }
+            comma_spans.push(self.prev_token.span);
         }
         Ok(())
     }
