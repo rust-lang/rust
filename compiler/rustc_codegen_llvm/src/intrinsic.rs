@@ -515,11 +515,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                             self.call_intrinsic(llvm_name, &[llty], &[args[0].immediate(), y]);
                         self.intcast(ret, result_layout.llvm_type(self), false)
                     }
-                    sym::ctpop => {
-                        let ret =
-                            self.call_intrinsic("llvm.ctpop", &[llty], &[args[0].immediate()]);
-                        self.intcast(ret, result_layout.llvm_type(self), false)
-                    }
+                    sym::ctpop => self.ctpop(args[0].immediate()),
                     sym::bswap => {
                         if width == 8 {
                             args[0].immediate() // byte swap a u8/i8 is just a no-op
@@ -1060,6 +1056,11 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         } else {
             cond
         }
+    }
+
+    fn ctpop(&mut self, val: Self::Value) -> Self::Value {
+        let ret = self.call_intrinsic("llvm.ctpop", &[self.val_ty(val)], &[val]);
+        self.intcast(ret, self.type_i32(), false)
     }
 
     fn type_checked_load(
