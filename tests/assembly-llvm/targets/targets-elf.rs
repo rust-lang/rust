@@ -646,9 +646,15 @@
 //@ revisions: thumbv8m_main_none_eabi
 //@ [thumbv8m_main_none_eabi] compile-flags: --target thumbv8m.main-none-eabi
 //@ [thumbv8m_main_none_eabi] needs-llvm-components: arm
+//@ revisions: thumbv81m_main_none_eabi
+//@ [thumbv81m_main_none_eabi] compile-flags: --target thumbv8.1m.main-none-eabi
+//@ [thumbv81m_main_none_eabi] needs-llvm-components: arm
 //@ revisions: thumbv8m_main_none_eabihf
 //@ [thumbv8m_main_none_eabihf] compile-flags: --target thumbv8m.main-none-eabihf
 //@ [thumbv8m_main_none_eabihf] needs-llvm-components: arm
+//@ revisions: thumbv81m_main_none_eabihf
+//@ [thumbv81m_main_none_eabihf] compile-flags: --target thumbv8.1m.main-none-eabihf
+//@ [thumbv81m_main_none_eabihf] needs-llvm-components: arm
 //@ revisions: wasm32_unknown_emscripten
 //@ [wasm32_unknown_emscripten] compile-flags: --target wasm32-unknown-emscripten
 //@ [wasm32_unknown_emscripten] needs-llvm-components: webassembly
