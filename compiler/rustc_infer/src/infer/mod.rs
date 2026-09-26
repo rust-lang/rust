@@ -97,6 +97,11 @@ pub(crate) type UnificationTable<'a, 'tcx, T> = ut::UnificationTable<
 pub struct InferCtxtInner<'tcx> {
     undo_log: InferCtxtUndoLogs<'tcx>,
 
+    /// Bumped whenever an inference change may let a stalled fulfillment goal
+    /// make progress. Snapshots save and restore the value, but individual bumps
+    /// are not undo-log entries.
+    stalled_goal_generation: Option<u64>,
+
     /// Cache for projections.
     ///
     /// This cache is snapshotted along with the infcx.
@@ -171,9 +176,10 @@ pub struct InferCtxtInner<'tcx> {
 }
 
 impl<'tcx> InferCtxtInner<'tcx> {
-    fn new() -> InferCtxtInner<'tcx> {
+    fn new(next_trait_solver: bool) -> InferCtxtInner<'tcx> {
         InferCtxtInner {
             undo_log: InferCtxtUndoLogs::default(),
+            stalled_goal_generation: next_trait_solver.then_some(0),
 
             projection_cache: Default::default(),
             type_variable_storage: Default::default(),
@@ -223,6 +229,26 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
+    fn register_opaque_type(
+        &mut self,
+        key: OpaqueTypeKey<'tcx>,
+        hidden_type: ProvisionalHiddenType<'tcx>,
+    ) -> Option<Ty<'tcx>> {
+        self.bump_stalled_goal_generation();
+        self.opaque_types().register(key, hidden_type)
+    }
+
+    #[inline]
+    fn add_duplicate_opaque_type(
+        &mut self,
+        key: OpaqueTypeKey<'tcx>,
+        hidden_type: ProvisionalHiddenType<'tcx>,
+    ) {
+        self.bump_stalled_goal_generation();
+        self.opaque_types().add_duplicate(key, hidden_type);
+    }
+
+    #[inline]
     fn int_unification_table(&mut self) -> UnificationTable<'_, 'tcx, ty::IntVid> {
         self.int_unification_storage.with_log(&mut self.undo_log)
     }
@@ -235,6 +261,79 @@ impl<'tcx> InferCtxtInner<'tcx> {
     #[inline]
     fn const_unification_table(&mut self) -> UnificationTable<'_, 'tcx, ConstVidKey<'tcx>> {
         self.const_unification_storage.with_log(&mut self.undo_log)
+    }
+
+    #[inline]
+    pub(crate) fn start_snapshot(&mut self) -> snapshot::undo_log::Snapshot<'tcx> {
+        self.undo_log.start_snapshot(self.stalled_goal_generation)
+    }
+
+    #[inline]
+    fn stalled_goal_generation(&self) -> Option<u64> {
+        self.stalled_goal_generation
+    }
+
+    #[inline]
+    fn bump_stalled_goal_generation(&mut self) {
+        if let Some(generation) = &mut self.stalled_goal_generation {
+            *generation = generation.wrapping_add(1);
+        }
+    }
+
+    #[inline]
+    fn equate_ty_vids(&mut self, a: ty::TyVid, b: ty::TyVid) {
+        self.bump_stalled_goal_generation();
+        self.type_variables().equate(a, b);
+    }
+
+    #[inline]
+    fn sub_unify_ty_vids(&mut self, a: ty::TyVid, b: ty::TyVid) {
+        self.bump_stalled_goal_generation();
+        self.type_variables().sub_unify(a, b);
+    }
+
+    #[inline]
+    fn instantiate_ty_var(&mut self, vid: ty::TyVid, ty: Ty<'tcx>) {
+        self.bump_stalled_goal_generation();
+        self.type_variables().instantiate(vid, ty);
+    }
+
+    // These mutations can unblock stalled goals too, so route them through the
+    // same generation bump.
+    #[inline]
+    fn equate_int_vids(&mut self, a: ty::IntVid, b: ty::IntVid) {
+        self.bump_stalled_goal_generation();
+        self.int_unification_table().union(a, b);
+    }
+
+    #[inline]
+    fn equate_float_vids(&mut self, a: ty::FloatVid, b: ty::FloatVid) {
+        self.bump_stalled_goal_generation();
+        self.float_unification_table().union(a, b);
+    }
+
+    #[inline]
+    fn equate_const_vids(&mut self, a: ty::ConstVid, b: ty::ConstVid) {
+        self.bump_stalled_goal_generation();
+        self.const_unification_table().union(a, b);
+    }
+
+    #[inline]
+    fn instantiate_int_var(&mut self, vid: ty::IntVid, value: ty::IntVarValue) {
+        self.bump_stalled_goal_generation();
+        self.int_unification_table().union_value(vid, value);
+    }
+
+    #[inline]
+    fn instantiate_float_var(&mut self, vid: ty::FloatVid, value: ty::FloatVarValue) {
+        self.bump_stalled_goal_generation();
+        self.float_unification_table().union_value(vid, value);
+    }
+
+    #[inline]
+    fn instantiate_const_var(&mut self, vid: ty::ConstVid, value: ty::Const<'tcx>) {
+        self.bump_stalled_goal_generation();
+        self.const_unification_table().union_value(vid, ConstVariableValue::Known { value });
     }
 
     #[inline]
@@ -684,7 +783,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             considering_regions,
             in_hir_typeck,
             skip_leak_check,
-            inner: RefCell::new(InferCtxtInner::new()),
+            inner: RefCell::new(InferCtxtInner::new(next_trait_solver)),
             lexical_region_resolutions: RefCell::new(None),
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
@@ -1121,7 +1220,13 @@ impl<'tcx> InferCtxt<'tcx> {
 
     #[instrument(level = "debug", skip(self), ret)]
     pub fn take_opaque_types(&self) -> Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)> {
-        self.inner.borrow_mut().opaque_type_storage.take_opaque_types().collect()
+        let inner = &mut *self.inner.borrow_mut();
+
+        if !inner.opaque_type_storage.is_empty() {
+            inner.bump_stalled_goal_generation();
+        }
+
+        inner.opaque_type_storage.take_opaque_types().collect()
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -1379,7 +1484,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn sub_unify_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {
-        self.inner.borrow_mut().type_variables().sub_unify(a, b);
+        self.inner.borrow_mut().sub_unify_ty_vids(a, b);
     }
 
     pub fn sub_unification_table_root_var(&self, var: ty::TyVid) -> ty::TyVid {
@@ -1711,6 +1816,14 @@ impl<'tcx> InferCtxt<'tcx> {
         debug_assert!(!param_env.has_infer());
         debug_assert!(!param_env.has_placeholders());
         self.typing_env(param_env).as_query_input(value)
+    }
+
+    #[inline]
+    pub fn stalled_goal_generation(&self) -> u64 {
+        self.inner
+            .borrow()
+            .stalled_goal_generation()
+            .expect("stalled-goal generation requires the next trait solver")
     }
 
     /// The returned function is used in a fast path. If it returns `true` the variable is
