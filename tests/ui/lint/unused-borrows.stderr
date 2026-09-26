@@ -9,7 +9,7 @@ note: the lint level is defined here
    |
 LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = &42;
    |     +++++++
@@ -20,7 +20,7 @@ error: unused borrow that must be used
 LL |     &mut foo(42);
    |     ^^^^^^^^^^^^ the borrow produces a value
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = &mut foo(42);
    |     +++++++
@@ -31,7 +31,7 @@ error: unused borrow that must be used
 LL |     &&42;
    |     ^^^^ the borrow produces a value
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = &&42;
    |     +++++++
@@ -42,7 +42,7 @@ error: unused borrow that must be used
 LL |     &&mut 42;
    |     ^^^^^^^^ the borrow produces a value
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = &&mut 42;
    |     +++++++
@@ -53,7 +53,7 @@ error: unused borrow that must be used
 LL |     &mut &42;
    |     ^^^^^^^^ the borrow produces a value
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = &mut &42;
    |     +++++++
@@ -64,7 +64,7 @@ error: unused borrow that must be used
 LL |     && foo(42);
    |     ^^^^^^^^^^ the borrow produces a value
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = && foo(42);
    |     +++++++

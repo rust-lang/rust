@@ -20,7 +20,7 @@ note: the lint level is defined here
    |
 LL | #![warn(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = need_to_use_this_value();
    |     +++++++
@@ -31,7 +31,7 @@ warning: unused return value of `MyStruct::need_to_use_this_method_value` that m
 LL |     m.need_to_use_this_method_value();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = m.need_to_use_this_method_value();
    |     +++++++
@@ -43,7 +43,7 @@ LL |     m.is_even(); // trait method!
    |     ^^^^^^^^^^^
    |
    = note: no side effects
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = m.is_even(); // trait method!
    |     +++++++
@@ -54,7 +54,7 @@ warning: unused return value of `MyStruct::need_to_use_this_associated_function_
 LL |     MyStruct::need_to_use_this_associated_function_value();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = MyStruct::need_to_use_this_associated_function_value();
    |     +++++++
@@ -65,7 +65,7 @@ warning: unused return value of `std::cmp::PartialEq::eq` that must be used
 LL |     2.eq(&3);
    |     ^^^^^^^^
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = 2.eq(&3);
    |     +++++++
@@ -76,7 +76,7 @@ warning: unused return value of `std::cmp::PartialEq::eq` that must be used
 LL |     m.eq(&n);
    |     ^^^^^^^^
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = m.eq(&n);
    |     +++++++
@@ -87,7 +87,7 @@ warning: unused comparison that must be used
 LL |     2 == 3;
    |     ^^^^^^ the comparison produces a value
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = 2 == 3;
    |     +++++++
@@ -98,7 +98,7 @@ warning: unused comparison that must be used
 LL |     m == n;
    |     ^^^^^^ the comparison produces a value
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = m == n;
    |     +++++++
