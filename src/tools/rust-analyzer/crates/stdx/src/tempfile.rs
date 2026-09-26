@@ -21,7 +21,7 @@ impl NamedTempFile {
     /// Creates a new `NamedTempFile` that is a copy of an existing file.
     pub fn new_from_existing(prefix: &str, existing: &Path) -> io::Result<NamedTempFile> {
         let result = NamedTempFile::new(prefix)?;
-        std::fs::copy(existing, &result.path)?;
+        io::copy(&mut File::open(existing)?, &mut File::options().write(true).open(&result.path)?)?;
         Ok(result)
     }
 
@@ -160,10 +160,12 @@ mod imp {
 
     const FILE_ATTRIBUTE_TEMPORARY: u32 = 0x100;
     const FILE_FLAG_DELETE_ON_CLOSE: u32 = 0x04000000;
+    const GENERIC_READ: u32 = 0x80000000;
 
     pub(super) fn create(prefix: &str) -> io::Result<NamedTempFile> {
         let (file, path) = general_imp::create(prefix, |mut options, path| {
             options
+                .access_mode(GENERIC_READ)
                 .attributes(FILE_ATTRIBUTE_TEMPORARY)
                 .custom_flags(FILE_FLAG_DELETE_ON_CLOSE)
                 .open(path)
@@ -193,6 +195,39 @@ mod tests {
     use std::fs;
 
     use super::*;
+
+    #[test]
+    fn named_temp_file_new_from_existing_copies_file() {
+        let dir = NamedTempDir::new("test-").unwrap();
+        let source = dir.path().join("source");
+        fs::write(&source, b"contents").unwrap();
+
+        let file = NamedTempFile::new_from_existing("test-copy-", &source).unwrap();
+        assert_eq!(fs::read(file.path()).unwrap(), b"contents");
+        fs::write(&source, b"changed").unwrap();
+        assert_eq!(fs::read(file.path()).unwrap(), b"contents");
+
+        let path = file.path().to_owned();
+        drop(file);
+        assert!(!fs::exists(path).unwrap());
+        assert_eq!(fs::read(source).unwrap(), b"changed");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn named_temp_file_allows_read_only_sharing() {
+        use std::os::windows::fs::OpenOptionsExt;
+
+        const FILE_SHARE_READ: u32 = 1;
+        const FILE_SHARE_DELETE: u32 = 4;
+
+        let file = NamedTempFile::new("test-").unwrap();
+        let _reader = fs::OpenOptions::new()
+            .read(true)
+            .share_mode(FILE_SHARE_READ | FILE_SHARE_DELETE)
+            .open(file.path())
+            .unwrap();
+    }
 
     #[test]
     fn named_temp_file_new_creates_file() {
