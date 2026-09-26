@@ -21,7 +21,7 @@ use rustc_hir::{ConstStability, StabilityLevel, StableSince};
 use rustc_metadata::creader::CStore;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypingMode};
 use rustc_span::symbol::kw;
-use rustc_span::{Ident, Symbol};
+use rustc_span::{Ident, Symbol, sym};
 use tracing::{debug, trace};
 
 use super::url_parts_builder::UrlPartsBuilder;
@@ -537,11 +537,20 @@ fn generate_item_def_id_path(
                 && !def_id.is_local()
                 && def_id.krate != original_def_id.krate;
         } else {
+            if !of_trait && crate_name != sym::core {
+                if ![sym::alloc, sym::std].contains(&crate_name) {
+                    // We cannot link to this primitive's associated item as it's not part of
+                    // `core`, `alloc` or `std` so returning early.
+                    return Err(HrefError::UnnamableItem);
+                }
+                maybe_have_impl_not_in_def_crate = true;
+            }
             prim = PrimitiveType::from_ty(ty);
         }
     }
 
     let (shortty, fqp) = if let Some(prim) = prim {
+        let crate_name = if maybe_have_impl_not_in_def_crate { sym::std } else { crate_name };
         (ItemType::Primitive, vec![crate_name, prim.as_sym()])
     } else {
         (
