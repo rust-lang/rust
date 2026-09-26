@@ -13,18 +13,7 @@ error[E0425]: cannot find type `T` in this scope
 LL | #[derive(B)]
    |          ^ not found in this scope
    |
-note: similarly named enum `A` defined here
-  --> $DIR/derive-macro-unsupported-type-params.rs:8:1
-   |
-LL | enum A<T> {
-   | ^^^^^^^^^
    = note: this error originates in the derive macro `B` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: an enum with a similar name exists
-  --> $DIR/auxiliary/derive-no-generics.rs:56:28
-   |
-LL -                     let _: T = val;
-LL +                     let _: A = val;
-   |
 
 error[E0425]: cannot find type `T` in this scope
   --> $DIR/derive-macro-unsupported-type-params.rs:25:13
