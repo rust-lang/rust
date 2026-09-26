@@ -14,9 +14,8 @@ mod llvm_enzyme {
     use rustc_ast::tokenstream::*;
     use rustc_ast::visit::AssocCtxt::*;
     use rustc_ast::{
-        self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocItemKind, BindingMode,
-        FnRetTy, FnSig, GenericArg, GenericArgs, GenericParamKind, Generics, ItemKind,
-        MetaItemInner, PatKind, Path, PathSegment, TyKind, Visibility,
+        self as ast, AnonConst, AssocItemKind, FnRetTy, FnSig, GenericArg, GenericParamKind,
+        Generics, ItemKind, MetaItemInner, PatKind, TyKind, Visibility,
     };
     use rustc_attr_ir::RustcAutodiff;
     use rustc_expand::base::{Annotatable, ExtCtxt};
@@ -459,12 +458,7 @@ mod llvm_enzyme {
             Annotatable::Stmt(_) => {
                 let mut d_fn = ecx.item(span, d_attrs, ItemKind::Fn(d_fn));
                 d_fn.vis = vis;
-
-                Annotatable::Stmt(Box::new(ast::Stmt {
-                    id: ast::DUMMY_NODE_ID,
-                    kind: ast::StmtKind::Item(d_fn),
-                    span,
-                }))
+                Annotatable::Stmt(Box::new(ecx.stmt_item(span, d_fn)))
             }
             _ => {
                 unreachable!("item kind checked previously")
@@ -591,35 +585,20 @@ mod llvm_enzyme {
                 GenericParamKind::Type { .. } => {
                     let path = ast::Path::from_ident(p.ident);
                     let ty = ecx.ty_path(path);
-                    Some(AngleBracketedArg::Arg(GenericArg::Type(ty)))
+                    Some(GenericArg::Type(ty))
                 }
                 GenericParamKind::Const { .. } => {
                     let expr = ecx.expr_path(ast::Path::from_ident(p.ident));
                     let anon_const = AnonConst { id: ast::DUMMY_NODE_ID, value: expr };
-                    Some(AngleBracketedArg::Arg(GenericArg::Const(anon_const)))
+                    Some(GenericArg::Const(anon_const))
                 }
                 GenericParamKind::Lifetime => None,
             })
-            .collect::<ThinVec<_>>();
+            .collect::<Vec<_>>();
 
-        let args: AngleBracketedArgs = AngleBracketedArgs { span, args: generic_args };
-
-        let segment = PathSegment {
-            ident,
-            id: ast::DUMMY_NODE_ID,
-            args: Some(Box::new(GenericArgs::AngleBracketed(args))),
-        };
-
-        let segments = if is_impl {
-            thin_vec![
-                PathSegment { ident: Ident::from_str("Self"), id: ast::DUMMY_NODE_ID, args: None },
-                segment,
-            ]
-        } else {
-            thin_vec![segment]
-        };
-
-        let path = Path { span, segments };
+        let idents =
+            if is_impl { vec![Ident::new(kw::SelfUpper, span), ident] } else { vec![ident] };
+        let path = ecx.path_all(span, false, idents, generic_args);
 
         ecx.expr_path(path)
     }
@@ -727,12 +706,8 @@ mod llvm_enzyme {
                         let name: String = format!("d{}_{}", old_name, i);
                         new_inputs.push(name.clone());
                         let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
-                        *shadow_arg.pat = ast::Pat {
-                            id: ast::DUMMY_NODE_ID,
-                            kind: PatKind::Ident(BindingMode::NONE, ident, None),
-                            span: shadow_arg.pat.span,
-                        };
-                        d_inputs.push(shadow_arg.clone());
+                        *shadow_arg.pat = ecx.pat_ident(shadow_arg.pat.span, ident);
+                        d_inputs.push(shadow_arg);
                     }
                 }
                 DiffActivity::Dual
@@ -758,12 +733,9 @@ mod llvm_enzyme {
                         let name: String = format!("b{}_{}", old_name, i);
                         new_inputs.push(name.clone());
                         let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
-                        *shadow_arg.pat = ast::Pat {
-                            id: ast::DUMMY_NODE_ID,
-                            kind: PatKind::Ident(BindingMode::NONE, ident, None),
-                            span: shadow_arg.pat.span,
-                        };
-                        d_inputs.push(shadow_arg.clone());
+
+                        *shadow_arg.pat = ecx.pat_ident(shadow_arg.pat.span, ident);
+                        d_inputs.push(shadow_arg);
                     }
                 }
                 DiffActivity::Const => {
@@ -798,18 +770,7 @@ mod llvm_enzyme {
                     };
                     let name = "dret".to_string();
                     let ident = Ident::from_str_and_span(&name, ty.span);
-                    let shadow_arg = ast::Param {
-                        attrs: ThinVec::new(),
-                        ty: ty.clone(),
-                        pat: Box::new(ast::Pat {
-                            id: ast::DUMMY_NODE_ID,
-                            kind: PatKind::Ident(BindingMode::NONE, ident, None),
-                            span: ty.span,
-                        }),
-                        id: ast::DUMMY_NODE_ID,
-                        span: ty.span,
-                        is_placeholder: false,
-                    };
+                    let shadow_arg = ecx.param(ty.span, ident, ty);
                     d_inputs.push(shadow_arg);
                     new_inputs.push(name);
                 }
@@ -823,8 +784,7 @@ mod llvm_enzyme {
                 FnRetTy::Ty(ref ty) => ty.clone(),
                 FnRetTy::Default(span) => {
                     // We want to return std::hint::black_box(()).
-                    let kind = TyKind::Tup(ThinVec::new());
-                    let ty = Box::new(rustc_ast::Ty { kind, id: ast::DUMMY_NODE_ID, span });
+                    let ty = ecx.ty_unit(span);
                     d_decl.output = FnRetTy::Ty(ty.clone());
                     assert!(matches!(x.ret_activity, DiffActivity::None));
                     // this won't be used below, so any type would be fine.

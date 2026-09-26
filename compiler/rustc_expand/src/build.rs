@@ -657,6 +657,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn item_static(
         &self,
         span: Span,
+        attrs: ast::AttrVec,
         ident: Ident,
         ty: Box<ast::Ty>,
         mutability: ast::Mutability,
@@ -664,7 +665,7 @@ impl<'a> ExtCtxt<'a> {
     ) -> Box<ast::Item> {
         self.item(
             span,
-            AttrVec::new(),
+            attrs,
             ast::ItemKind::Static(
                 ast::StaticItem {
                     ident,
