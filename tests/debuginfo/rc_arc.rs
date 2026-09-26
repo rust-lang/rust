@@ -27,12 +27,12 @@
 //@ cdb-command:g
 
 //@ cdb-command:dx rc,d
-//@ cdb-check:rc,d             : 111 [Type: alloc::rc::Rc<i32,alloc::alloc::Global>]
+//@ cdb-check:rc,d             : 111 [Type: alloc::rcs::rc::Rc<i32,alloc::alloc::Global>]
 //@ cdb-check:    [Reference count] : 11 [Type: core::cell::Cell<usize>]
 //@ cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
 
 //@ cdb-command:dx weak_rc,d
-//@ cdb-check:weak_rc,d        : 111 [Type: alloc::rc::Weak<i32,alloc::alloc::Global>]
+//@ cdb-check:weak_rc,d        : 111 [Type: alloc::rcs::rc::Weak<i32,alloc::alloc::Global>]
 //@ cdb-check:    [Reference count] : 11 [Type: core::cell::Cell<usize>]
 //@ cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
 
@@ -47,17 +47,17 @@
 //@ cdb-check:    [Weak reference count] : 2 [Type: core::sync::atomic::Atomic<usize>]
 
 //@ cdb-command:dx dyn_rc,d
-//@ cdb-check:dyn_rc,d         [Type: alloc::rc::Rc<dyn$<core::fmt::Debug>,alloc::alloc::Global>]
+//@ cdb-check:dyn_rc,d         [Type: alloc::rcs::rc::Rc<dyn$<core::fmt::Debug>,alloc::alloc::Global>]
 //@ cdb-check:    [Reference count] : 31 [Type: core::cell::Cell<usize>]
 //@ cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
 
 //@ cdb-command:dx dyn_rc_weak,d
-//@ cdb-check:dyn_rc_weak,d    [Type: alloc::rc::Weak<dyn$<core::fmt::Debug>,alloc::alloc::Global>]
+//@ cdb-check:dyn_rc_weak,d    [Type: alloc::rcs::rc::Weak<dyn$<core::fmt::Debug>,alloc::alloc::Global>]
 //@ cdb-check:    [Reference count] : 31 [Type: core::cell::Cell<usize>]
 //@ cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
 
 //@ cdb-command:dx slice_rc,d
-//@ cdb-check:slice_rc,d       : { len=3 } [Type: alloc::rc::Rc<slice2$<u32>,alloc::alloc::Global>]
+//@ cdb-check:slice_rc,d       : { len=3 } [Type: alloc::rcs::rc::Rc<slice2$<u32>,alloc::alloc::Global>]
 //@ cdb-check:    [Length]         : 3 [Type: [...]]
 //@ cdb-check:    [Reference count] : 41 [Type: core::cell::Cell<usize>]
 //@ cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
@@ -66,7 +66,7 @@
 //@ cdb-check:    [2]              : 3 [Type: u32]
 
 //@ cdb-command:dx slice_rc_weak,d
-//@ cdb-check:slice_rc_weak,d  : { len=3 } [Type: alloc::rc::Weak<slice2$<u32>,alloc::alloc::Global>]
+//@ cdb-check:slice_rc_weak,d  : { len=3 } [Type: alloc::rcs::rc::Weak<slice2$<u32>,alloc::alloc::Global>]
 //@ cdb-check:    [Length]         : 3 [Type: [...]]
 //@ cdb-check:    [Reference count] : 41 [Type: core::cell::Cell<usize>]
 //@ cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]

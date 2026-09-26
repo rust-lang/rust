@@ -72,7 +72,7 @@
       it is necessary for them.
   -->
   <!-- alloc::rc::Rc<T> -->
-  <Type Name="alloc::rc::Rc&lt;*&gt;">
+  <Type Name="alloc::rcs::rc::Rc&lt;*&gt;">
     <DisplayString Optional="true">{ptr.pointer->value}</DisplayString>
     <Expand>
       <!-- thin -->
@@ -87,7 +87,7 @@
   </Type>
 
   <!-- alloc::rc::Rc<[T]> -->
-  <Type Name="alloc::rc::Rc&lt;slice2$&lt;*&gt;,*&gt;">
+  <Type Name="alloc::rcs::rc::Rc&lt;slice2$&lt;*&gt;,*&gt;">
     <DisplayString>{{ len={ptr.pointer.length} }}</DisplayString>
     <Expand>
       <Item Name="[Length]" ExcludeView="simple">ptr.pointer.length</Item>
@@ -102,7 +102,7 @@
   </Type>
 
   <!-- alloc::rc::Weak<T> -->
-  <Type Name="alloc::rc::Weak&lt;*&gt;">
+  <Type Name="alloc::rcs::rc::Weak&lt;*&gt;">
     <DisplayString Optional="true">{ptr.pointer->value}</DisplayString>
     <Expand>
       <!-- thin -->
@@ -117,7 +117,7 @@
   </Type>
 
   <!-- alloc::rc::Weak<[T]> -->
-  <Type Name="alloc::rc::Weak&lt;slice2$&lt;*&gt;,*&gt;">
+  <Type Name="alloc::rcs::rc::Weak&lt;slice2$&lt;*&gt;,*&gt;">
     <DisplayString>{{ len={ptr.pointer.length} }}</DisplayString>
     <Expand>
       <Item Name="[Length]" ExcludeView="simple">ptr.pointer.length</Item>
