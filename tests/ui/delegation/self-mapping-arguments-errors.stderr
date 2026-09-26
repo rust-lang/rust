@@ -89,7 +89,7 @@ LL |     reuse impl MyAdd for W { self.0 }
    |     arguments to this function are incorrect
    |     this return type influences the call expression's return type
    |
-note: there is a field `0` on `Box<complex_Self_doesnt_map::W>` with type `std::ptr::Unique<complex_Self_doesnt_map::W>` but it is private; `0` from `complex_Self_doesnt_map::W` was accessed through auto-deref instead
+note: there is a field `0` on `Box<complex_Self_doesnt_map::W>` with type `boxed::BoxRaw<complex_Self_doesnt_map::W>` but it is private; `0` from `complex_Self_doesnt_map::W` was accessed through auto-deref instead
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
    |
    = note: in this struct
