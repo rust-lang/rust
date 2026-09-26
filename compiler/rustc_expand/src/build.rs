@@ -68,10 +68,6 @@ impl<'a> ExtCtxt<'a> {
         })
     }
 
-    pub fn ty_mt(&self, ty: Box<ast::Ty>, mutbl: ast::Mutability) -> ast::MutTy {
-        ast::MutTy { ty, mutbl }
-    }
-
     pub fn ty(&self, span: Span, kind: ast::TyKind) -> Box<ast::Ty> {
         Box::new(ast::Ty { id: ast::DUMMY_NODE_ID, span, kind })
     }
@@ -118,11 +114,11 @@ impl<'a> ExtCtxt<'a> {
         lifetime: Option<ast::Lifetime>,
         mutbl: ast::Mutability,
     ) -> Box<ast::Ty> {
-        self.ty(span, ast::TyKind::Ref(lifetime, self.ty_mt(ty, mutbl)))
+        self.ty(span, ast::TyKind::Ref(lifetime, ty, mutbl))
     }
 
     pub fn ty_ptr(&self, span: Span, ty: Box<ast::Ty>, mutbl: ast::Mutability) -> Box<ast::Ty> {
-        self.ty(span, ast::TyKind::Ptr(self.ty_mt(ty, mutbl)))
+        self.ty(span, ast::TyKind::Ptr(ty, mutbl))
     }
 
     pub fn ty_unit(&self, span: Span) -> Box<ast::Ty> {

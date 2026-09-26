@@ -479,11 +479,11 @@ mod llvm_enzyme {
     fn assure_mut_ref(ty: &ast::Ty) -> ast::Ty {
         let mut ty = ty.clone();
         match ty.kind {
-            TyKind::Ptr(ref mut mut_ty) => {
-                mut_ty.mutbl = ast::Mutability::Mut;
+            TyKind::Ptr(_, ref mut mutbl) => {
+                *mutbl = ast::Mutability::Mut;
             }
-            TyKind::Ref(_, ref mut mut_ty) => {
-                mut_ty.mutbl = ast::Mutability::Mut;
+            TyKind::Ref(_, _, ref mut mutbl) => {
+                *mutbl = ast::Mutability::Mut;
             }
             _ => {
                 panic!("unsupported type: {:?}", ty);
@@ -516,10 +516,11 @@ mod llvm_enzyme {
             .map(|param| {
                 let ty = match &param.ty.kind {
                     TyKind::ImplicitSelf => self_ty(),
-                    TyKind::Ref(lt, mt) if matches!(mt.ty.kind, TyKind::ImplicitSelf) => ecx
-                        .ty(span, TyKind::Ref(*lt, ast::MutTy { ty: self_ty(), mutbl: mt.mutbl })),
-                    TyKind::Ptr(mt) if matches!(mt.ty.kind, TyKind::ImplicitSelf) => {
-                        ecx.ty(span, TyKind::Ptr(ast::MutTy { ty: self_ty(), mutbl: mt.mutbl }))
+                    TyKind::Ref(lt, ty, mutbl) if matches!(ty.kind, TyKind::ImplicitSelf) => {
+                        ecx.ty(span, TyKind::Ref(*lt, self_ty(), *mutbl))
+                    }
+                    TyKind::Ptr(ty, mutbl) if matches!(ty.kind, TyKind::ImplicitSelf) => {
+                        ecx.ty(span, TyKind::Ptr(self_ty(), *mutbl))
                     }
                     _ => param.ty.clone(),
                 };

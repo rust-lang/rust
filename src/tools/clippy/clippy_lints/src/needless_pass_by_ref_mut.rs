@@ -266,9 +266,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             for input in unused {
                 // If the argument is never used mutably, we emit the warning.
                 let sp = input.span;
-                if let rustc_hir::TyKind::Ref(_, inner_ty) = input.kind {
+                if let rustc_hir::TyKind::Ref(_, inner_ty, _) = input.kind {
                     let Some(after_mut_span) = cx.tcx.sess.source_map().span_extend_to_prev_str(
-                        inner_ty.ty.span.shrink_to_lo(),
+                        inner_ty.span.shrink_to_lo(),
                         "mut",
                         true,
                         true,

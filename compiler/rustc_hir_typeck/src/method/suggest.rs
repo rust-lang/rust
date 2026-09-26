@@ -457,11 +457,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             && let hir::Node::Param(p) = self.tcx.parent_hir_node(b.hir_id)
                             && let Some(decl) = self.tcx.parent_hir_node(p.hir_id).fn_decl()
                             && let Some(ty) = decl.inputs.iter().find(|ty| ty.span == p.ty_span)
-                            && let hir::TyKind::Ref(_, mut_ty) = &ty.kind
-                            && let hir::Mutability::Not = mut_ty.mutbl
+                            && let hir::TyKind::Ref(_, ty, hir::Mutability::Not) = &ty.kind
                         {
                             err.span_suggestion_verbose(
-                                mut_ty.ty.span.shrink_to_lo(),
+                                ty.span.shrink_to_lo(),
                                 msg,
                                 "mut ",
                                 Applicability::MachineApplicable,

@@ -2023,7 +2023,7 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
             ("(", ")")
         }
         Node::Ty(ty) => match ty.kind {
-            rustc_hir::TyKind::Ptr(_) | rustc_hir::TyKind::Ref(..) => ("(", ")"),
+            rustc_hir::TyKind::Ptr(..) | rustc_hir::TyKind::Ref(..) => ("(", ")"),
             // FIXME: RPITs are not allowed to be nested in `impl Fn() -> ...`,
             // but we eventually could support that, and that would necessitate
             // making this more sophisticated.

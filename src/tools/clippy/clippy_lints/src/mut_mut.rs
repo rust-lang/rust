@@ -98,26 +98,26 @@ impl<'tcx> LateLintPass<'tcx> for MutMut {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'_, AmbigArg>) {
-        if let TyKind::Ref(_, base) = ty.kind
-            && base.mutbl.is_mut()
+        if let TyKind::Ref(_, base, base_mutbl) = ty.kind
+            && base_mutbl.is_mut()
             && let ctxt = ty.span.ctxt()
-            && ctxt == base.ty.span.ctxt()
+            && ctxt == base.span.ctxt()
         {
-            if self.skip_id.replace(base.ty.hir_id) == Some(ty.hir_id) {
+            if self.skip_id.replace(base.hir_id) == Some(ty.hir_id) {
                 return;
             }
 
-            if let TyKind::Ref(_, mut base2) = base.ty.kind
-                && base2.mutbl.is_mut()
+            if let TyKind::Ref(_, mut base2, base2_mutbl) = base.kind
+                && base2_mutbl.is_mut()
             {
-                while let TyKind::Ref(_, next) = base2.ty.kind
-                    && next.mutbl.is_mut()
-                    && ctxt == base2.ty.span.ctxt()
+                while let TyKind::Ref(_, next, next_mutbl) = base2.kind
+                    && next_mutbl.is_mut()
+                    && ctxt == base2.span.ctxt()
                 {
                     base2 = next;
                 }
                 if !ctxt.in_external_macro(cx.tcx.sess.source_map())
-                    && let Some(sp) = walk_span_to_context(base2.ty.span, ctxt)
+                    && let Some(sp) = walk_span_to_context(base2.span, ctxt)
                 {
                     span_lint_and_then(
                         cx,
@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for MutMut {
                         "multiple successive mutable references",
                         |diag| {
                             diag.span_suggestion_verbose(
-                                base.ty.span.until(sp),
+                                base.span.until(sp),
                                 "use only a single mutable reference",
                                 "",
                                 Applicability::MaybeIncorrect,

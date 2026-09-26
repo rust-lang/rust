@@ -526,10 +526,10 @@ fn virtual_call_violations_for_method<'tcx>(
             {
                 // If we have `self: &'a Ty`, get `'a`, so that we can suggest `&'a self`.
                 let lt = match sig.decl.inputs[0].kind {
-                    hir::TyKind::Ref(lt, _) if lt.ident.name == kw::UnderscoreLifetime => {
+                    hir::TyKind::Ref(lt, ..) if lt.ident.name == kw::UnderscoreLifetime => {
                         sym::empty
                     }
-                    hir::TyKind::Ref(lt, _) => lt.ident.name,
+                    hir::TyKind::Ref(lt, ..) => lt.ident.name,
                     _ => sym::empty,
                 };
                 // Get the `Span` for all of `self: Ty`, not just `Ty`.

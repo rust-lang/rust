@@ -2272,9 +2272,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // Skipping binder here, remapping below
         let mut suggested_ty = trait_pred.self_ty().skip_binder();
         if let Some(mut hir_ty) = expr_finder.ty_result {
-            while let hir::TyKind::Ref(_, mut_ty) = &hir_ty.kind {
+            while let hir::TyKind::Ref(_, ty, _) = &hir_ty.kind {
                 count += 1;
-                let span = hir_ty.span.until(mut_ty.ty.span);
+                let span = hir_ty.span.until(ty.span);
                 suggestions.push((span, String::new()));
 
                 let ty::Ref(_, inner_ty, _) = suggested_ty.kind() else {
@@ -2282,7 +2282,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 };
                 suggested_ty = *inner_ty;
 
-                hir_ty = mut_ty.ty;
+                hir_ty = ty;
 
                 if maybe_suggest(suggested_ty, count, suggestions.clone()) {
                     return true;
@@ -2311,9 +2311,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn suggest_remove_ref_from_param(&self, param: &hir::Param<'_>, err: &mut Diag<'_>) -> bool {
         if let Some(decl) = self.tcx.parent_hir_node(param.hir_id).fn_decl()
             && let Some(input_ty) = decl.inputs.iter().find(|t| param.ty_span.contains(t.span))
-            && let hir::TyKind::Ref(_, mut_ty) = input_ty.kind
+            && let hir::TyKind::Ref(_, ty, _) = input_ty.kind
         {
-            let ref_span = input_ty.span.until(mut_ty.ty.span);
+            let ref_span = input_ty.span.until(ty.span);
             match self.tcx.sess.source_map().span_to_snippet(ref_span) {
                 Ok(snippet) if snippet.starts_with("&") => {
                     err.span_suggestion_verbose(
@@ -6830,11 +6830,11 @@ fn hint_missing_borrow<'tcx>(
                 let mut span = arg.span.shrink_to_lo();
                 let mut left = found_refs.len() - expected_refs.len();
                 let mut ty = arg;
-                while let hir::TyKind::Ref(_, mut_ty) = &ty.kind
+                while let hir::TyKind::Ref(_, inner_ty, _) = &ty.kind
                     && left > 0
                 {
-                    span = span.with_hi(mut_ty.ty.span.lo());
-                    ty = mut_ty.ty;
+                    span = span.with_hi(inner_ty.span.lo());
+                    ty = inner_ty;
                     left -= 1;
                 }
                 if left == 0 {
@@ -7304,7 +7304,7 @@ impl<'v> Visitor<'v> for FindTypeParam {
         // and suggest `T: ?Sized` regardless of their obligations. This is fine because the errors
         // in that case should make what happened clear enough.
         match ty.kind {
-            hir::TyKind::Ptr(_) | hir::TyKind::Ref(..) | hir::TyKind::TraitObject(..) => {}
+            hir::TyKind::Ptr(..) | hir::TyKind::Ref(..) | hir::TyKind::TraitObject(..) => {}
             hir::TyKind::Path(hir::QPath::Resolved(None, path))
                 if let [segment] = path.segments
                     && segment.ident.name == self.param =>

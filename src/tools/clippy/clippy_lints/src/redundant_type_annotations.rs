@@ -154,9 +154,9 @@ impl LateLintPass<'_> for RedundantTypeAnnotations {
                     let mut ty_kind = &ty.kind;
 
                     // If the annotation is a ref we "peel" it
-                    if let hir::TyKind::Ref(_, mut_ty) = &ty.kind {
+                    if let hir::TyKind::Ref(_, ty, _) = &ty.kind {
                         is_ref = true;
-                        ty_kind = &mut_ty.ty.kind;
+                        ty_kind = &ty.kind;
                     }
 
                     if let hir::TyKind::Path(ty_path) = ty_kind
@@ -204,8 +204,8 @@ impl LateLintPass<'_> for RedundantTypeAnnotations {
                             // We only lint if the type annotation is an array type (e.g. &[u8; 4]).
                             // If instead it is a slice (e.g. &[u8]) it may not be redundant, so we
                             // don't lint.
-                            if let hir::TyKind::Ref(_, mut_ty) = ty.kind
-                                && matches!(mut_ty.ty.kind, hir::TyKind::Array(..))
+                            if let hir::TyKind::Ref(_, ty, _) = ty.kind
+                                && matches!(ty.kind, hir::TyKind::Array(..))
                             {
                                 span_lint(cx, REDUNDANT_TYPE_ANNOTATIONS, local.span, "redundant type annotation");
                             }

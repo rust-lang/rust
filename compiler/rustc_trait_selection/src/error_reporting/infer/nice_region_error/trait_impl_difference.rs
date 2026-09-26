@@ -268,9 +268,9 @@ impl<'tcx> Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
 
     fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx, AmbigArg>) {
         match arg.kind {
-            hir::TyKind::Ref(_, ref mut_ty) => {
+            hir::TyKind::Ref(_, ref ty, _) => {
                 // We don't want to suggest looking into borrowing `&T` or `&Self`.
-                if let Some(ambig_ty) = mut_ty.ty.try_as_ambig_ty() {
+                if let Some(ambig_ty) = ty.try_as_ambig_ty() {
                     walk_ty(self, ambig_ty);
                 }
                 return;

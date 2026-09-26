@@ -903,9 +903,9 @@ impl HirEqInterExpr<'_, '_, '_> {
         match (&left.kind, &right.kind) {
             (TyKind::Slice(l_vec), TyKind::Slice(r_vec)) => self.eq_ty(l_vec, r_vec),
             (TyKind::Array(lt, ll), TyKind::Array(rt, rl)) => self.eq_ty(lt, rt) && self.eq_const_arg(ll, rl),
-            (TyKind::Ptr(l_mut), TyKind::Ptr(r_mut)) => l_mut.mutbl == r_mut.mutbl && self.eq_ty(l_mut.ty, r_mut.ty),
-            (TyKind::Ref(_, l_rmut), TyKind::Ref(_, r_rmut)) => {
-                l_rmut.mutbl == r_rmut.mutbl && self.eq_ty(l_rmut.ty, r_rmut.ty)
+            (TyKind::Ptr(l_ty, l_mutbl), TyKind::Ptr(r_ty, r_mutbl)) => l_mutbl == r_mutbl && self.eq_ty(l_ty, r_ty),
+            (TyKind::Ref(_, l_ty, l_mutbl), TyKind::Ref(_, r_ty, r_mutbl)) => {
+                l_mutbl == r_mutbl && self.eq_ty(l_ty, r_ty)
             },
             (TyKind::Path(l), TyKind::Path(r)) => self.eq_qpath(l, r),
             (TyKind::Tup(l), TyKind::Tup(r)) => over(l, r, |l, r| self.eq_ty(l, r)),
@@ -1617,14 +1617,14 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
                 self.hash_name(field.name);
             },
-            TyKind::Ptr(mut_ty) => {
-                self.hash_ty(mut_ty.ty);
-                mut_ty.mutbl.hash(&mut self.s);
+            TyKind::Ptr(ty, mutbl) => {
+                self.hash_ty(ty);
+                mutbl.hash(&mut self.s);
             },
-            TyKind::Ref(lifetime, mut_ty) => {
+            TyKind::Ref(lifetime, ty, mutbl) => {
                 self.hash_lifetime(lifetime);
-                self.hash_ty(mut_ty.ty);
-                mut_ty.mutbl.hash(&mut self.s);
+                self.hash_ty(ty);
+                mutbl.hash(&mut self.s);
             },
             TyKind::FnPtr(fn_ptr) => {
                 fn_ptr.safety.hash(&mut self.s);

@@ -2896,14 +2896,6 @@ impl fmt::Display for YieldSource {
     }
 }
 
-// N.B., if you change this, you'll probably want to change the corresponding
-// type structure in middle/ty.rs as well.
-#[derive(Debug, Clone, Copy, StableHash)]
-pub struct MutTy<'hir> {
-    pub ty: &'hir Ty<'hir>,
-    pub mutbl: Mutability,
-}
-
 /// Represents a function's signature in a trait declaration,
 /// trait implementation, or a free function.
 #[derive(Debug, Clone, Copy, StableHash)]
@@ -3234,7 +3226,7 @@ impl<'hir> Ty<'hir> {
 impl<'hir> Ty<'hir, AmbigArg> {
     pub fn peel_refs(&self) -> &Ty<'hir> {
         let mut final_ty = self.as_unambig_ty();
-        while let TyKind::Ref(_, MutTy { ty, .. }) = &final_ty.kind {
+        while let TyKind::Ref(_, ty, _) = &final_ty.kind {
             final_ty = ty;
         }
         final_ty
@@ -3244,7 +3236,7 @@ impl<'hir> Ty<'hir, AmbigArg> {
 impl<'hir> Ty<'hir> {
     pub fn peel_refs(&self) -> &Self {
         let mut final_ty = self;
-        while let TyKind::Ref(_, MutTy { ty, .. }) = &final_ty.kind {
+        while let TyKind::Ref(_, ty, _) = &final_ty.kind {
             final_ty = ty;
         }
         final_ty
@@ -3308,7 +3300,7 @@ impl<'hir> Ty<'hir> {
                 ty.is_suggestable_infer_ty() || matches!(length.kind, ConstArgKind::Infer(..))
             }
             TyKind::Tup(tys) => tys.iter().any(Self::is_suggestable_infer_ty),
-            TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => mut_ty.ty.is_suggestable_infer_ty(),
+            TyKind::Ptr(ty, _) | TyKind::Ref(_, ty, _) => ty.is_suggestable_infer_ty(),
             TyKind::Path(QPath::TypeRelative(ty, segment)) => {
                 ty.is_suggestable_infer_ty() || are_suggestable_generic_args(segment.args().args)
             }
@@ -3577,9 +3569,9 @@ pub enum TyKind<'hir, Unambig = ()> {
     /// A fixed length array (i.e., `[T; n]`).
     Array(&'hir Ty<'hir>, &'hir ConstArg<'hir>),
     /// A raw pointer (i.e., `*const T` or `*mut T`).
-    Ptr(MutTy<'hir>),
+    Ptr(&'hir Ty<'hir>, Mutability),
     /// A reference (i.e., `&'a T` or `&'a mut T`).
-    Ref(&'hir Lifetime, MutTy<'hir>),
+    Ref(&'hir Lifetime, &'hir Ty<'hir>, Mutability),
     /// A function pointer (e.g., `fn(usize) -> bool`).
     FnPtr(&'hir FnPtrTy<'hir>),
     /// An unsafe binder type (e.g. `unsafe<'a> Foo<'a>`).
