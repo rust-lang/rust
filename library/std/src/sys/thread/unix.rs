@@ -181,12 +181,29 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             {
                 #[cfg(not(target_os = "freebsd"))]
                 type Cpuset = libc::cpu_set_t;
+                // FreeBSD >= 13.2 having smaller mask will just leave the remaining bits to zero,
+                // 1024 here to match FreeBSD >= 14.x CPU_MAXSIZE
+                // while ABI gate is still freebsd 12 (CPU_SETSIZE is 256).
                 #[cfg(target_os = "freebsd")]
-                type Cpuset = libc::cpuset_t;
+                const CPU_MAXSIZE: usize = 1024;
+                #[cfg(target_os = "freebsd")]
+                type Cpuset = [libc::c_long; CPU_MAXSIZE / libc::c_long::BITS as usize];
                 let mut set: Cpuset = unsafe { mem::zeroed() };
                 unsafe {
-                    if libc::sched_getaffinity(0, size_of::<Cpuset>(), &mut set) == 0 {
+                    #[cfg(not(target_os = "freebsd"))]
+                    let affinity = libc::sched_getaffinity(0, size_of::<Cpuset>(), &mut set);
+                    #[cfg(target_os = "freebsd")]
+                    let affinity = libc::sched_getaffinity(
+                        0,
+                        size_of::<Cpuset>(),
+                        set.as_mut_ptr().cast::<libc::cpuset_t>(),
+                    );
+
+                    if affinity == 0 {
+                        #[cfg(not(target_os = "freebsd"))]
                         let count = libc::CPU_COUNT(&set) as usize;
+                        #[cfg(target_os = "freebsd")]
+                        let count: usize = set.iter().map(|s| s.count_ones() as usize).sum();
                         let count = count.min(quota);
 
                         // According to sched_getaffinity's API it should always be non-zero, but
