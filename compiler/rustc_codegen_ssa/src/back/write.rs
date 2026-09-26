@@ -892,7 +892,11 @@ fn execute_copy_from_cache_work_item(
             source_file_in_incr_comp_dir,
             output_path.display()
         );
-        match link_or_copy(&source_file_in_incr_comp_dir, &output_path) {
+        match link_or_copy(
+            &source_file_in_incr_comp_dir,
+            &output_path,
+            true, // allow_overwrite
+        ) {
             Ok(_) => Some(output_path),
             Err(error) => {
                 dcx.emit_err(diagnostics::CopyPathBuf {
@@ -2267,7 +2271,7 @@ pub(crate) fn submit_pre_lto_module_to_llvm<B: WriteBackendMethods>(
         in_old_incr_comp_dir_sess(tcx.incr_comp_session.unwrap(), &filename).unwrap();
     let bitcode_path = in_incr_comp_dir_sess(tcx.incr_comp_session.unwrap(), &filename);
 
-    match link_or_copy(&old_bitcode_path, &bitcode_path) {
+    match link_or_copy(&old_bitcode_path, &bitcode_path, false /* allow_overwrite */) {
         Ok(_) => {}
         Err(error) => {
             tcx.sess.dcx().emit_err(diagnostics::CopyPathBuf {
