@@ -239,20 +239,20 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     ///
     /// This uses dedicated code instead of [`Self::layout_of_struct_or_enum`], as coroutine
     /// fields may be shared between multiple variants (see the [`coroutine`] module for details).
-    pub fn coroutine<
-        'a,
-        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
-        VariantIdx: Idx,
-        FieldIdx: Idx,
-        LocalIdx: Idx,
-    >(
+    pub fn coroutine<'a, F, VariantIdx, FieldIdx, LocalIdx>(
         &self,
         local_layouts: &IndexSlice<LocalIdx, F>,
         prefix_layouts: IndexVec<FieldIdx, F>,
         variant_fields: &IndexSlice<VariantIdx, IndexVec<FieldIdx, LocalIdx>>,
         storage_conflicts: &BitMatrix<LocalIdx, LocalIdx>,
         tag_to_layout: impl Fn(Scalar) -> F,
-    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
+    where
+        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+        VariantIdx: Idx,
+        FieldIdx: Idx,
+        LocalIdx: Idx,
+    {
         coroutine::layout(
             self,
             local_layouts,
@@ -263,17 +263,17 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         )
     }
 
-    pub fn univariant<
-        'a,
-        FieldIdx: Idx,
-        VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
-    >(
+    pub fn univariant<'a, FieldIdx, VariantIdx, F>(
         &self,
         fields: &IndexSlice<FieldIdx, F>,
         repr: &ReprOptions,
         kind: StructKind,
-    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
+    where
+        FieldIdx: Idx,
+        VariantIdx: Idx,
+        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+    {
         let dl = self.cx.data_layout();
         let layout = self.univariant_biased(fields, repr, kind, NicheBias::Start);
         // Enums prefer niches close to the beginning or the end of the variants so that other
@@ -333,12 +333,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         layout
     }
 
-    pub fn layout_of_struct_or_enum<
-        'a,
-        FieldIdx: Idx,
-        VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
-    >(
+    pub fn layout_of_struct_or_enum<'a, FieldIdx, VariantIdx, F>(
         &self,
         repr: &ReprOptions,
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
@@ -347,7 +342,12 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         discr_range_of_repr: impl Fn(RangeFrom<i128>, RangeToInclusive<u128>) -> (Integer, bool),
         discriminants: impl Iterator<Item = (VariantIdx, u128)>,
         always_sized: bool,
-    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
+    where
+        FieldIdx: Idx,
+        VariantIdx: Idx,
+        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+    {
         let (present_first, present_second) = {
             let mut present_variants = variants.iter_enumerated().filter_map(|(i, v)| {
                 if !repr.inhibit_enum_layout_opt() && absent(v) { None } else { Some(i) }
@@ -387,16 +387,16 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         }
     }
 
-    pub fn layout_of_union<
-        'a,
-        FieldIdx: Idx,
-        VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
-    >(
+    pub fn layout_of_union<'a, FieldIdx, VariantIdx, F>(
         &self,
         repr: &ReprOptions,
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
-    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
+    where
+        FieldIdx: Idx,
+        VariantIdx: Idx,
+        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+    {
         let dl = self.cx.data_layout();
         let mut align = if repr.pack.is_some() { dl.i8_align } else { dl.aggregate_align };
         let mut max_repr_align = repr.align;
@@ -515,12 +515,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     }
 
     /// single-variant enums are just structs, if you think about it
-    fn layout_of_struct<
-        'a,
-        FieldIdx: Idx,
-        VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
-    >(
+    fn layout_of_struct<'a, FieldIdx, VariantIdx, F>(
         &self,
         repr: &ReprOptions,
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
@@ -528,7 +523,12 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         is_special_no_niche: bool,
         always_sized: bool,
         present_first: VariantIdx,
-    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
+    where
+        FieldIdx: Idx,
+        VariantIdx: Idx,
+        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+    {
         // Struct, or univariant enum equivalent to a struct.
         // (Typechecking will reject discriminant-sizing attrs.)
 
@@ -568,18 +568,18 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         Ok(st)
     }
 
-    fn layout_of_enum<
-        'a,
-        FieldIdx: Idx,
-        VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
-    >(
+    fn layout_of_enum<'a, FieldIdx, VariantIdx, F>(
         &self,
         repr: &ReprOptions,
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
         discr_range_of_repr: impl Fn(RangeFrom<i128>, RangeToInclusive<u128>) -> (Integer, bool),
         discriminants: impl Iterator<Item = (VariantIdx, u128)>,
-    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
+    where
+        FieldIdx: Idx,
+        VariantIdx: Idx,
+        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+    {
         let dl = self.cx.data_layout();
         // bail if the enum has an incoherent repr that cannot be computed
         if repr.packed() {
@@ -1073,18 +1073,18 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         Ok(best_layout)
     }
 
-    fn univariant_biased<
-        'a,
-        FieldIdx: Idx,
-        VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
-    >(
+    fn univariant_biased<'a, FieldIdx, VariantIdx, F>(
         &self,
         fields: &IndexSlice<FieldIdx, F>,
         repr: &ReprOptions,
         kind: StructKind,
         niche_bias: NicheBias,
-    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
+    where
+        FieldIdx: Idx,
+        VariantIdx: Idx,
+        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+    {
         let dl = self.cx.data_layout();
         let pack = repr.pack;
         let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
@@ -1419,16 +1419,16 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         })
     }
 
-    fn format_field_niches<
-        'a,
-        FieldIdx: Idx,
-        VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
-    >(
+    fn format_field_niches<'a, FieldIdx, VariantIdx, F>(
         &self,
         layout: &LayoutData<FieldIdx, VariantIdx>,
         fields: &IndexSlice<FieldIdx, F>,
-    ) -> String {
+    ) -> String
+    where
+        FieldIdx: Idx,
+        VariantIdx: Idx,
+        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
+    {
         let dl = self.cx.data_layout();
         let mut s = String::new();
         for i in layout.fields.index_by_increasing_offset() {
