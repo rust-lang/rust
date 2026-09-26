@@ -1763,6 +1763,7 @@ impl Disambiguator {
                     safety: Safety::Safe,
                 }),
                 "function" | "fn" | "method" => Kind(DefKind::Fn),
+                "attribute" => Kind(DefKind::Macro(MacroKinds::ATTR)),
                 "derive" => Kind(DefKind::Macro(MacroKinds::DERIVE)),
                 "field" => Kind(DefKind::Field),
                 "variant" => Kind(DefKind::Variant),

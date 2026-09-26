@@ -16,6 +16,4 @@ pub fn foo() {}
 //~| HELP to link to the attribute macro, prefix with `attribute@`
 
 /// Link to my attribute [attribute@foo]
-//~^ ERROR unknown disambiguator
-//~| NOTE see
 pub fn f() {}
