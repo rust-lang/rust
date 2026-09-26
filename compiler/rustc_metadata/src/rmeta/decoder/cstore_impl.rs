@@ -26,6 +26,7 @@ use rustc_span::{Span, Symbol, bug, kw};
 use super::{Decodable, DecodeIterator};
 use crate::creader::{CStore, LoadedMacro};
 use crate::rmeta::AttrFlags;
+use crate::rmeta::encoder::LocalDefIndex;
 use crate::rmeta::table::IsDefault;
 use crate::{eii, foreign_modules, native_libs};
 
@@ -102,7 +103,7 @@ macro_rules! provide_one {
                     .root
                     .tables
                     .$name
-                    .get($cdata, $def_id.index)
+                    .get($cdata, LocalDefIndex::from_def_index($def_id.index))
                     .map(|lazy| lazy.decode(($cdata, $tcx)))
                     .process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
             }
@@ -111,7 +112,7 @@ macro_rules! provide_one {
     ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_defaulted_array }) => {
         provide_one! {
             $tcx, $def_id, $other, $cdata, $name => {
-                let lazy = $cdata.root.tables.$name.get($cdata, $def_id.index);
+                let lazy = $cdata.root.tables.$name.get($cdata, LocalDefIndex::from_def_index($def_id.index));
                 let value = if lazy.is_default() {
                     &[] as &[_]
                 } else {
@@ -129,7 +130,7 @@ macro_rules! provide_one {
                     .root
                     .tables
                     .$name
-                    .get($cdata, $def_id.index)
+                    .get($cdata, LocalDefIndex::from_def_index($def_id.index))
                     .process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
             }
         }
@@ -258,7 +259,7 @@ provide! { tcx, def_id, other, cdata,
     lookup_default_body_stability => { table }
     lookup_deprecation_entry => { table }
     params_in_repr => { table }
-    def_kind => { cdata.def_kind(def_id.index) }
+    def_kind => { cdata.def_kind(LocalDefIndex::from_def_index(def_id.index)) }
     impl_parent => { table }
     defaultness => { table_direct }
     constness => { table_direct }
@@ -269,7 +270,7 @@ provide! { tcx, def_id, other, cdata,
             .root
             .tables
             .coerce_unsized_info
-            .get(cdata, def_id.index)
+            .get(cdata, LocalDefIndex::from_def_index(def_id.index))
             .map(|lazy| lazy.decode((cdata, tcx)))
             .process_decoded(tcx, || panic!("{def_id:?} does not have coerce_unsized_info")))
     }
@@ -286,7 +287,7 @@ provide! { tcx, def_id, other, cdata,
             .root
             .tables
             .eval_static_initializer
-            .get(cdata, def_id.index)
+            .get(cdata, LocalDefIndex::from_def_index(def_id.index))
             .map(|lazy| lazy.decode((cdata, tcx)))
             .unwrap_or_else(|| panic!("{def_id:?} does not have eval_static_initializer")))
     }
@@ -299,7 +300,7 @@ provide! { tcx, def_id, other, cdata,
             .root
             .tables
             .deduced_param_attrs
-            .get(cdata, def_id.index)
+            .get(cdata, LocalDefIndex::from_def_index(def_id.index))
             .map(|lazy| {
                 &*tcx.arena.alloc_from_iter(lazy.decode((cdata, tcx)))
             })
@@ -312,24 +313,24 @@ provide! { tcx, def_id, other, cdata,
             .root
             .tables
             .collect_return_position_impl_trait_in_trait_tys
-            .get(cdata, def_id.index)
+            .get(cdata, LocalDefIndex::from_def_index(def_id.index))
             .map(|lazy| lazy.decode((cdata, tcx)))
             .process_decoded(tcx, || panic!("{def_id:?} does not have collect_return_position_impl_trait_in_trait_tys")))
     }
 
     associated_types_for_impl_traits_in_trait_or_impl => { table }
 
-    visibility => { cdata.get_visibility(tcx, def_id.index) }
-    adt_def => { cdata.get_adt_def(tcx, def_id.index) }
+    visibility => { cdata.get_visibility(tcx, LocalDefIndex::from_def_index(def_id.index)) }
+    adt_def => { cdata.get_adt_def(tcx, LocalDefIndex::from_def_index(def_id.index)) }
     adt_destructor => { table }
     adt_async_destructor => { table }
     associated_item_def_ids => {
-        tcx.arena.alloc_from_iter(cdata.get_associated_item_or_field_def_ids(tcx, def_id.index))
+        tcx.arena.alloc_from_iter(cdata.get_associated_item_or_field_def_ids(tcx, LocalDefIndex::from_def_index(def_id.index)))
     }
-    associated_item => { cdata.get_associated_item(tcx, def_id.index) }
-    inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
-    attrs_for_def => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(tcx, def_id.index)) }
-    is_mir_available => { cdata.is_item_mir_available(def_id.index) }
+    associated_item => { cdata.get_associated_item(tcx, LocalDefIndex::from_def_index(def_id.index)) }
+    inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, LocalDefIndex::from_def_index(def_id.index)) }
+    attrs_for_def => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(tcx, LocalDefIndex::from_def_index(def_id.index))) }
+    is_mir_available => { cdata.is_item_mir_available(LocalDefIndex::from_def_index(def_id.index)) }
     cross_crate_inlinable => { table_direct }
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
@@ -390,14 +391,14 @@ provide! { tcx, def_id, other, cdata,
 
     crate_dep_kind => { cdata.dep_kind }
     module_children => {
-        tcx.arena.alloc_from_iter(cdata.get_module_children(tcx, def_id.index))
+        tcx.arena.alloc_from_iter(cdata.get_module_children(tcx, LocalDefIndex::from_def_index(def_id.index)))
     }
     lib_features => { cdata.get_lib_features(tcx) }
     stability_implications => {
         cdata.get_stability_implications(tcx).iter().copied().collect()
     }
     stripped_cfg_items => { cdata.get_stripped_cfg_items(tcx, cdata.cnum) }
-    intrinsic_raw => { cdata.get_intrinsic(tcx, def_id.index) }
+    intrinsic_raw => { cdata.get_intrinsic(tcx, LocalDefIndex::from_def_index(def_id.index)) }
     defined_lang_items => { cdata.get_lang_items(tcx) }
     diagnostic_items => { cdata.get_diagnostic_items(tcx) }
     canonical_symbols => { cdata.get_canonical_symbols(tcx) }
@@ -421,12 +422,12 @@ provide! { tcx, def_id, other, cdata,
     crate_extern_paths => {
         tcx.arena.alloc_from_iter(cdata.source().paths().map(|p| tcx.arena.alloc_path(p)))
     }
-    expn_that_defined => { cdata.get_expn_that_defined(tcx, def_id.index) }
-    default_field => { cdata.get_default_field(tcx, def_id.index) }
-    is_doc_hidden => { cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
-    doc_link_resolutions => { tcx.arena.alloc(cdata.get_doc_link_resolutions(tcx, def_id.index)) }
+    expn_that_defined => { cdata.get_expn_that_defined(tcx, LocalDefIndex::from_def_index(def_id.index)) }
+    default_field => { cdata.get_default_field(tcx, LocalDefIndex::from_def_index(def_id.index)) }
+    is_doc_hidden => { cdata.get_attr_flags(LocalDefIndex::from_def_index(def_id.index)).contains(AttrFlags::IS_DOC_HIDDEN) }
+    doc_link_resolutions => { tcx.arena.alloc(cdata.get_doc_link_resolutions(tcx, LocalDefIndex::from_def_index(def_id.index))) }
     doc_link_traits_in_scope => {
-        tcx.arena.alloc_from_iter(cdata.get_doc_link_traits_in_scope(tcx, def_id.index))
+        tcx.arena.alloc_from_iter(cdata.get_doc_link_traits_in_scope(tcx, LocalDefIndex::from_def_index(def_id.index)))
     }
     anon_const_kind => { table }
     const_of_item => { table }
@@ -628,7 +629,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
 
 impl CStore {
     pub fn ctor_untracked(&self, tcx: TyCtxt<'_>, def: DefId) -> Option<(CtorKind, DefId)> {
-        self.get_crate_data(def.krate).get_ctor(tcx, def.index)
+        self.get_crate_data(def.krate).get_ctor(tcx, LocalDefIndex::from_def_index(def.index))
     }
 
     pub fn load_macro_untracked(&self, tcx: TyCtxt<'_>, id: DefId) -> LoadedMacro {
@@ -636,29 +637,32 @@ impl CStore {
         let _prof_timer = sess.prof.generic_activity("metadata_load_macro");
 
         let cdata = self.get_crate_data(id.krate);
+        let index = LocalDefIndex::from_def_index(id.index);
+
         if cdata.root.is_proc_macro_crate() {
-            LoadedMacro::ProcMacro(cdata.load_proc_macro(tcx, id.index))
+            LoadedMacro::ProcMacro(cdata.load_proc_macro(tcx, index))
         } else {
             LoadedMacro::MacroDef {
-                def: cdata.get_macro(tcx, id.index),
-                ident: cdata.item_ident(tcx, id.index),
-                attrs: cdata.get_item_attrs(tcx, id.index).collect(),
-                span: cdata.get_span(tcx, id.index),
+                def: cdata.get_macro(tcx, index),
+                ident: cdata.item_ident(tcx, index),
+                attrs: cdata.get_item_attrs(tcx, index).collect(),
+                span: cdata.get_span(tcx, index),
                 edition: cdata.root.edition,
             }
         }
     }
 
     pub fn def_span_untracked(&self, tcx: TyCtxt<'_>, def_id: DefId) -> Span {
-        self.get_crate_data(def_id.krate).get_span(tcx, def_id.index)
+        self.get_crate_data(def_id.krate).get_span(tcx, LocalDefIndex::from_def_index(def_id.index))
     }
 
     pub fn def_kind_untracked(&self, def: DefId) -> DefKind {
-        self.get_crate_data(def.krate).def_kind(def.index)
+        self.get_crate_data(def.krate).def_kind(LocalDefIndex::from_def_index(def.index))
     }
 
     pub fn expn_that_defined_untracked(&self, tcx: TyCtxt<'_>, def_id: DefId) -> ExpnId {
-        self.get_crate_data(def_id.krate).get_expn_that_defined(tcx, def_id.index)
+        self.get_crate_data(def_id.krate)
+            .get_expn_that_defined(tcx, LocalDefIndex::from_def_index(def_id.index))
     }
 
     pub fn ambig_module_children_untracked(
@@ -666,7 +670,8 @@ impl CStore {
         tcx: TyCtxt<'_>,
         def_id: DefId,
     ) -> impl Iterator<Item = AmbigModChild> {
-        self.get_crate_data(def_id.krate).get_ambig_module_children(tcx, def_id.index)
+        self.get_crate_data(def_id.krate)
+            .get_ambig_module_children(tcx, LocalDefIndex::from_def_index(def_id.index))
     }
 
     /// Only public-facing way to traverse all the definitions in a non-local crate.
@@ -755,7 +760,7 @@ impl CrateStore for CStore {
     /// parent `DefId` as well as some idea of what kind of data the
     /// `DefId` refers to.
     fn def_key(&self, def: DefId) -> DefKey {
-        self.get_crate_data(def.krate).def_key(def.index)
+        self.get_crate_data(def.krate).def_key(LocalDefIndex::from_def_index(def.index))
     }
 
     fn def_path(&self, def: DefId) -> DefPath {
@@ -763,7 +768,7 @@ impl CrateStore for CStore {
     }
 
     fn def_path_hash(&self, def: DefId) -> DefPathHash {
-        self.get_crate_data(def.krate).def_path_hash(def.index)
+        self.get_crate_data(def.krate).def_path_hash(LocalDefIndex::from_def_index(def.index))
     }
 }
 
