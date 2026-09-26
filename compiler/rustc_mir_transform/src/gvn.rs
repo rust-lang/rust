@@ -284,6 +284,18 @@ enum Value<'a, 'tcx> {
     },
 }
 
+impl<'a, 'tcx> Value<'a, 'tcx> {
+    fn new_binary_op(bin_op: BinOp, lhs: VnIndex, rhs: VnIndex) -> Self {
+        // Commutative operations are stored in a canonical order.
+        let (lhs, rhs) = if bin_op.is_commutative() && rhs.index() < lhs.index() {
+            (rhs, lhs)
+        } else {
+            (lhs, rhs)
+        };
+        Value::BinaryOp(bin_op, lhs, rhs)
+    }
+}
+
 /// Stores and deduplicates pairs of `(Value, Ty)` into in `VnIndex` numbered values.
 ///
 /// This data structure is mostly a partial reimplementation of `FxIndexMap<VnIndex, (Value, Ty)>`.
@@ -1356,10 +1368,10 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             (UnOp::Not, Value::UnaryOp(UnOp::Not, inner)) => return Some(inner),
             (UnOp::Neg, Value::UnaryOp(UnOp::Neg, inner)) => return Some(inner),
             (UnOp::Not, Value::BinaryOp(BinOp::Eq, lhs, rhs)) => {
-                Value::BinaryOp(BinOp::Ne, lhs, rhs)
+                Value::new_binary_op(BinOp::Ne, lhs, rhs)
             }
             (UnOp::Not, Value::BinaryOp(BinOp::Ne, lhs, rhs)) => {
-                Value::BinaryOp(BinOp::Eq, lhs, rhs)
+                Value::new_binary_op(BinOp::Eq, lhs, rhs)
             }
             (UnOp::PtrMetadata, Value::RawPtr { metadata, .. }) => return Some(metadata),
             // We have an unsizing cast, which assigns the length to wide pointer metadata.
@@ -1421,7 +1433,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             return Some(value);
         }
         let ty = op.ty(self.tcx, lhs_ty, self.ty(rhs));
-        let value = Value::BinaryOp(op, lhs, rhs);
+        let value = Value::new_binary_op(op, lhs, rhs);
         Some(self.insert(ty, value))
     }
 

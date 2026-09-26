@@ -1007,6 +1007,23 @@ impl<'tcx> BinOp {
             _ => return None,
         })
     }
+
+    pub fn is_commutative(self) -> bool {
+        matches!(
+            self,
+            BinOp::Add
+                | BinOp::AddUnchecked
+                | BinOp::AddWithOverflow
+                | BinOp::Mul
+                | BinOp::MulUnchecked
+                | BinOp::MulWithOverflow
+                | BinOp::BitXor
+                | BinOp::BitAnd
+                | BinOp::BitOr
+                | BinOp::Eq
+                | BinOp::Ne
+        )
+    }
 }
 
 impl From<Mutability> for RawPtrKind {
