@@ -1627,8 +1627,9 @@ fn check_matcher_core<'tt>(
                             err.span_label(sp, format!("not allowed after `{kind}` fragments"));
 
                             if kind == NonterminalKind::Pat(PatWithOr)
-                                && sess.psess.edition.at_least_rust_2021()
-                                && next_token.is_token(&token::Or)
+                                && ((sess.psess.edition.at_least_rust_2021()
+                                    && next_token.is_token(&token::Or))
+                                    || next_token.is_token(&token::Colon))
                             {
                                 let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl {
                                     span,
@@ -1745,18 +1746,26 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            NonterminalKind::Pat(PatParam { .. }) => {
-                const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`|`", "`if`", "`if let`", "`in`"];
+            NonterminalKind::Pat(PatParam { inferred }) => {
+                let explicit = !inferred;
+                // only allow `:` after explicit `pat_param` matchers,
+                // not after edition2015 `pat`
+                let tokens: &[&str] = if explicit {
+                    &["`=>`", "`,`", "`=`", "`|`", "`:`", "`if`", "`if let`", "`in`"]
+                } else {
+                    &["`=>`", "`,`", "`=`", "`|`", "`if`", "`if let`", "`in`"]
+                };
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         FatArrow | Comma | Eq | Or => IsInFollow::Yes,
+                        Colon if explicit => IsInFollow::Yes,
                         Ident(name, IdentKind::Normal) if name == kw::If || name == kw::In => {
                             IsInFollow::Yes
                         }
-                        _ => IsInFollow::No(TOKENS),
+                        _ => IsInFollow::No(tokens),
                     },
                     TokenTree::MetaVarDecl { kind: NonterminalKind::Guard, .. } => IsInFollow::Yes,
-                    _ => IsInFollow::No(TOKENS),
+                    _ => IsInFollow::No(tokens),
                 }
             }
             NonterminalKind::Pat(PatWithOr) => {
