@@ -6,9 +6,8 @@ LL |         y
    |
 help: a local variable with a similar name exists
    |
-LL -         y
-LL +         x
-   |
+LL |         y: x
+   |          +++
 
 error: aborting due to 1 previous error
 

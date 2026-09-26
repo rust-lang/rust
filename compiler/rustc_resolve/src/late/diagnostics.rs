@@ -1194,7 +1194,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         }
                     }
                 }
-                self.r.add_typo_suggestion(err, typo_sugg, ident_span);
+                self.r.add_typo_suggestion(err, typo_sugg, ident_span, None);
                 return (true, suggested_candidates, candidates);
             }
 
@@ -1244,7 +1244,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 &base_error.fallback_label,
             ) {
                 // We do this to avoid losing a secondary span when we override the main error span.
-                self.r.add_typo_suggestion(err, typo_sugg, ident_span);
+                self.r.add_typo_suggestion(err, typo_sugg, ident_span, None);
                 return (true, suggested_candidates, candidates);
             }
         }
@@ -1429,13 +1429,22 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             return false;
         }
 
+        // Preserve the field name for struct field shorthands to avoid suggesting invalid shorthands.
+        let mut prefix = None;
+        if let PathSource::Expr(Some(ast::Expr { kind: ExprKind::Struct(expr), .. })) = source
+            && let Some(ident) = path.last().map(|seg| seg.ident)
+            && expr.fields.iter().any(|f| f.ident == ident && f.is_shorthand)
+        {
+            prefix = Some(ident);
+        }
+
         let typo_sugg =
             self.lookup_typo_candidate(path, following_seg, source.namespace(), is_expected);
         let mut fallback = true;
         let typo_sugg = typo_sugg
             .to_opt_suggestion()
             .filter(|sugg| !suggested_candidates.contains(sugg.candidate.as_str()));
-        self.r.add_typo_suggestion(err, typo_sugg, ident_span);
+        self.r.add_typo_suggestion(err, typo_sugg, ident_span, prefix);
 
         match self.diag_metadata.current_let_binding {
             Some((pat_sp, Some(ty_sp), None))
@@ -1453,7 +1462,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         // If the trait has a single item (which wasn't matched by the algorithm), suggest it
         let suggestion = self.get_single_associated_item(path, &source, is_expected);
-        self.r.add_typo_suggestion(err, suggestion, ident_span);
+        self.r.add_typo_suggestion(err, suggestion, ident_span, prefix);
 
         if self.let_binding_suggestion(err, ident_span) {
             fallback = false;

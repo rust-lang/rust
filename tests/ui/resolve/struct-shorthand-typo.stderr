@@ -1,0 +1,78 @@
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/struct-shorthand-typo.rs:7:9
+   |
+LL |     S { a };
+   |         ^ not found in this scope
+   |
+note: similarly named constant `A` defined here
+  --> $DIR/struct-shorthand-typo.rs:3:1
+   |
+LL | const A: usize = 0;
+   | ^^^^^^^^^^^^^^^^^^^
+help: a constant with a similar name exists
+   |
+LL |     S { a: A };
+   |          +++
+
+error[E0425]: cannot find value `b` in this scope
+  --> $DIR/struct-shorthand-typo.rs:13:19
+   |
+LL |     Multi { a: 0, b };
+   |                   ^ not found in this scope
+   |
+note: similarly named constant `B` defined here
+  --> $DIR/struct-shorthand-typo.rs:10:1
+   |
+LL | const B: usize = 1;
+   | ^^^^^^^^^^^^^^^^^^^
+help: a constant with a similar name exists
+   |
+LL |     Multi { a: 0, b: B };
+   |                    +++
+
+error[E0425]: cannot find value `c` in this scope
+  --> $DIR/struct-shorthand-typo.rs:20:11
+   |
+LL |     Fru { c, ..base };
+   |           ^ not found in this scope
+   |
+note: similarly named constant `C` defined here
+  --> $DIR/struct-shorthand-typo.rs:16:1
+   |
+LL | const C: usize = 2;
+   | ^^^^^^^^^^^^^^^^^^^
+help: a constant with a similar name exists
+   |
+LL |     Fru { c: C, ..base };
+   |            +++
+
+error[E0425]: cannot find value `d` in this scope
+  --> $DIR/struct-shorthand-typo.rs:28:24
+   |
+LL |     E::StructVariant { d };
+   |                        ^ not found in this scope
+   |
+note: similarly named constant `D` defined here
+  --> $DIR/struct-shorthand-typo.rs:23:1
+   |
+LL | const D: usize = 3;
+   | ^^^^^^^^^^^^^^^^^^^
+help: a constant with a similar name exists
+   |
+LL |     E::StructVariant { d: D };
+   |                         +++
+
+error[E0425]: cannot find value `e` in this scope
+  --> $DIR/struct-shorthand-typo.rs:34:13
+   |
+LL |     Local { e };
+   |             ^ not found in this scope
+   |
+help: a local variable with a similar name exists
+   |
+LL |     Local { e: E };
+   |              +++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
