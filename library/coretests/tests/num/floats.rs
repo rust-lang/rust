@@ -1243,6 +1243,67 @@ float_test! {
 }
 
 float_test! {
+    name: scalbn,
+    attrs: {
+        f16: #[cfg(target_has_reliable_f16)],
+        f128: #[cfg(target_has_reliable_f128)],
+    },
+    test {
+        assert_biteq!(flt(3.0).scalbn(4), 48.0);
+        assert_biteq!(flt(-3.0).scalbn(4), -48.0);
+
+        assert_biteq!(flt(0.0).scalbn(4), 0.0);
+        assert_biteq!(flt(-0.0).scalbn(4), -0.0);
+
+        assert_biteq!(Float::ONE.scalbn(0), Float::ONE);
+        assert_biteq!(Float::ONE.scalbn(1), 2.0);
+        assert_biteq!(Float::ONE.scalbn(-1), 0.5);
+        assert_biteq!(Float::ONE.scalbn(10), 1024.0);
+        assert_biteq!(Float::ONE.scalbn(-10), 1.0 / 1024.0);
+
+        assert_biteq!(Float::MAX.scalbn(1), Float::INFINITY);
+        assert_biteq!(Float::MAX.scalbn(0), Float::MAX);
+        assert_biteq!(Float::TINY.scalbn(-1), Float::ZERO);
+        assert_biteq!((-Float::TINY).scalbn(-1), -Float::ZERO);
+
+        assert_biteq!(Float::ONE.scalbn(i32::MAX), Float::INFINITY);
+        assert_biteq!(Float::ONE.scalbn(i32::MIN), Float::ZERO);
+
+        assert_biteq!(Float::NAN.scalbn(100), Float::NAN);
+    }
+}
+
+float_test! {
+    name: ilogb,
+    attrs: {
+        f16: #[cfg(target_has_reliable_f16)],
+        f128: #[cfg(target_has_reliable_f128)],
+    },
+    test {
+        assert_eq_const_safe!(Option<i32>: flt(32.0).ilogb(), Some(5));
+
+        assert_eq_const_safe!(Option<i32>: Float::ONE.ilogb(), Some(0));
+        assert_eq_const_safe!(Option<i32>: flt(2.0).ilogb(), Some(1));
+        assert_eq_const_safe!(Option<i32>: flt(4.0).ilogb(), Some(2));
+        assert_eq_const_safe!(Option<i32>: flt(0.5).ilogb(), Some(-1));
+        assert_eq_const_safe!(Option<i32>: flt(0.25).ilogb(), Some(-2));
+
+        assert_eq_const_safe!(Option<i32>: Float::INFINITY.ilogb(), Some(i32::MAX));
+        assert_eq_const_safe!(Option<i32>: Float::NEG_INFINITY.ilogb(), Some(i32::MAX));
+
+        // The return value of the intrinsic for 0.0 is implementation-defined,
+        // we guarantee that the method returns i32::MIN.
+        assert_eq_const_safe!(Option<i32>: Float::ZERO.ilogb(), Some(i32::MIN));
+        assert_eq_const_safe!(Option<i32>: (-Float::ZERO).ilogb(), Some(i32::MIN));
+
+        // The return value of the intrinsic for NaN is implementation-defined, we
+        // guarantee that the method returns None.
+        assert_eq_const_safe!(Option<i32>: Float::NAN.ilogb(), None);
+
+    }
+}
+
+float_test! {
     name: next_up,
     attrs: {
         f16: #[cfg(target_has_reliable_f16)],

@@ -606,6 +606,26 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 )
             }
 
+            sym::scalbn => {
+                let ty = args[0].layout.ty;
+                let ty::Float(f) = ty.kind() else {
+                    span_bug!(
+                        span,
+                        "the `{}` intrinsic requires a floating-point argument, got {:?}",
+                        name,
+                        ty
+                    );
+                };
+                let llty = self.type_float_from_ty(*f);
+
+                // For our floats (that use a radix of 2), scalbn corresponds to ldexp.
+                self.call_intrinsic(
+                    "llvm.ldexp",
+                    &[llty, self.type_i32()],
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                )
+            }
+
             sym::raw_eq => {
                 use BackendRepr::*;
                 let tp_ty = fn_args.type_at(0);

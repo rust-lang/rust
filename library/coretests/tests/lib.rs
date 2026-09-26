@@ -59,6 +59,7 @@
 #![feature(f128)]
 #![feature(float_conversions)]
 #![feature(float_exact_integer_constants)]
+#![feature(float_exponent_methods)]
 #![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
 #![feature(flt2dec)]
