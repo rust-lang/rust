@@ -964,6 +964,14 @@ pub(crate) struct DocAttrNotCrateLevel {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#![doc({$attr_name} = \"...\")]` isn't allowed on parameters")]
+pub(crate) struct DocAttrNotParameters {
+    #[primary_span]
+    pub span: Span,
+    pub attr_name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag("nonexistent keyword `{$keyword}` used in `#[doc(keyword = \"...\")]`")]
 #[help("only existing keywords are allowed in core/std")]
 pub(crate) struct DocKeywordNotKeyword {

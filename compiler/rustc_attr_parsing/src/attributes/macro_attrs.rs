@@ -38,6 +38,7 @@ const MACRO_USE_ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListW
     Allow(Target::Mod),
     Allow(Target::ExternCrate),
     Error(Target::WherePredicate),
+    Error(Target::Param),
 ]);
 
 impl AttributeParser for MacroUseParser {
@@ -151,6 +152,7 @@ impl SingleAttributeParser for MacroExportParser {
         Allow(Target::MacroDef),
         Error(Target::WherePredicate),
         Error(Target::Crate),
+        Error(Target::Param),
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
