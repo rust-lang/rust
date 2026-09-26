@@ -8,7 +8,7 @@
 //@ [safestack] compile-flags: -Z stack-protector=none -Z sanitizer=safestack
 //@ [safestack_strong] compile-flags: -Z stack-protector=strong -Z sanitizer=safestack
 //@ [safestack_all] compile-flags: -Z stack-protector=all -Z sanitizer=safestack
-//@ compile-flags: -C opt-level=2 -Z merge-functions=disabled --target x86_64-unknown-linux-gnu
+//@ compile-flags: -Z allow-partial-mitigations=stack-protector -C opt-level=2 -Z merge-functions=disabled --target x86_64-unknown-linux-gnu
 //@ needs-llvm-components: x86
 
 #![feature(unsized_fn_params)]
