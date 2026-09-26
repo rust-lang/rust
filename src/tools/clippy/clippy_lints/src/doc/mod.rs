@@ -876,7 +876,7 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         return None;
     }
 
-    let (fragments, _) = attrs_to_doc_fragments(
+    let (fragments, _, _) = attrs_to_doc_fragments(
         attrs.iter().filter_map(|attr| {
             if attr.doc_str_and_fragment_kind().is_none() || attr.span().in_external_macro(cx.sess().source_map()) {
                 None
