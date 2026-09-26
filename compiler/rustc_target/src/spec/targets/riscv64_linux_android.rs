@@ -25,6 +25,7 @@ pub(crate) fn target() -> Target {
             supported_sanitizers: SanitizerSet::ADDRESS,
             max_atomic_width: Some(64),
             supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
+            pre_link_args: base::riscv::pre_link_args(),
             ..base::android::opts()
         },
     }
