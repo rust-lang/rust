@@ -1,4 +1,4 @@
-#![cfg_attr(all(feature = "native-lib", unix), feature(iter_advance_by))]
+#![cfg_attr(all(feature = "native-lib", unix, bootstrap), feature(iter_advance_by))]
 #![cfg_attr(
     all(
         feature = "native-lib",

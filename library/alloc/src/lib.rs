@@ -143,7 +143,6 @@
 #![feature(io_const_error)]
 #![feature(io_const_error_internals)]
 #![feature(io_slice_as_bytes)]
-#![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(legacy_receiver_trait)]
 #![feature(likely_unlikely)]
