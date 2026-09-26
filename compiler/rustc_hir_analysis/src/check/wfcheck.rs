@@ -2424,8 +2424,23 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         self.infcx.enter_forall(forall.binder, |body| {
             let u = self.infcx.universe();
             let mut builder = TransitiveRelationBuilder::default();
-            for &(r1, r2) in &body.region_outlives {
+            for &ty::OutlivesClause(r1, r2) in &body.region_outlives {
                 builder.add(r1, r2);
+            }
+            for clause in &body.type_outlives {
+                let ty::OutlivesClause(lhs, rhs) = clause.skip_binder();
+                match lhs.kind() {
+                    ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) => (),
+                    _ => {
+                        let mut err = self.tcx().dcx().struct_span_err(
+                            forall.span,
+                            "the lhs of a forall where clause must be \
+                                 an alias, placeholder, or lifetime",
+                        );
+                        err.note(format!("{lhs}: {rhs}"));
+                        err.emit();
+                    }
+                }
             }
             // Deliberately unelaborated: the assumptions of a `forall` are exactly the ones
             // written down in the test, no extra ones hidden behind the scenes.
@@ -2742,6 +2757,6 @@ pub(crate) struct WithWhereClauses<'tcx, T> {
 
     // The where clauses on the forall. These eventually will probably get stored inside
     // `ty::Binder` but they're here for now.
-    pub type_outlives: Vec<ty::Binder<'tcx, ty::OutlivesClause<'tcx, Ty<'tcx>>>>,
-    pub region_outlives: Vec<(ty::Region<'tcx>, ty::Region<'tcx>)>,
+    pub type_outlives: Vec<ty::PolyTypeOutlivesClause<'tcx>>,
+    pub region_outlives: Vec<ty::RegionOutlivesClause<'tcx>>,
 }

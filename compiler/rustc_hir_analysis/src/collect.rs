@@ -372,62 +372,50 @@ impl<'tcx> ItemCtxt<'tcx> {
         TestBinderExists { span: exists.span, binder }
     }
 
-    // FIXME: this is likely too basic, and we'll want to evolve/make this more advanced over time.
-    // For example, right now, if the user writes `forall<'a> where Foo<'a>: 'b`, that's not gonna
-    // work - that should be destructured into `where 'a: 'b`, whether by hand (and checked it was
-    // indeed done so, via compiler) or automatically by the test framework, unsure, but something.
     fn lower_test_binder_assumptions(
         &self,
         predicate: &hir::WherePredicate<'tcx>,
-        type_outlives: &mut Vec<ty::Binder<'tcx, ty::OutlivesClause<'tcx, Ty<'tcx>>>>,
-        region_outlives: &mut Vec<(ty::Region<'tcx>, ty::Region<'tcx>)>,
+        type_outlives: &mut Vec<ty::PolyTypeOutlivesClause<'tcx>>,
+        region_outlives: &mut Vec<ty::RegionOutlivesClause<'tcx>>,
     ) {
+        fn outlives_bounds<'tcx>(
+            dcx: DiagCtxtHandle<'tcx>,
+            bounds: &'tcx hir::GenericBounds<'tcx>,
+        ) -> impl Iterator<Item = &'tcx hir::Lifetime> {
+            bounds.iter().flat_map(move |bound| match *bound {
+                rustc_hir::GenericBound::Trait(poly_trait_ref) => {
+                    dcx.span_err(
+                        poly_trait_ref.span,
+                        "trait bounds aren't supported in forall where clauses",
+                    );
+                    None
+                }
+                rustc_hir::GenericBound::Outlives(lifetime) => Some(lifetime),
+                rustc_hir::GenericBound::Use(_, span) => {
+                    dcx.span_err(span, "use bounds aren't supported in forall where clauses");
+                    None
+                }
+            })
+        }
         match predicate.kind {
             hir::WherePredicateKind::BoundPredicate(p) => {
                 let bound_vars = self.tcx.late_bound_vars(predicate.hir_id);
                 let ty = self.lower_ty(p.bounded_ty);
-                for bound in p.bounds {
-                    match bound {
-                        hir::GenericBound::Trait(poly_trait_ref) => {
-                            self.dcx()
-                                .span_err(poly_trait_ref.span, "trait bounds aren't supported yet");
-                        }
-                        hir::GenericBound::Outlives(lifetime) => {
-                            let region = self
-                                .lowerer()
-                                .lower_lifetime(lifetime, RegionInferReason::RegionPredicate);
-                            let binder = ty::Binder::bind_with_vars(
-                                ty::OutlivesClause(ty, region),
-                                bound_vars,
-                            );
-                            type_outlives.push(binder);
-                        }
-                        hir::GenericBound::Use(_, span) => {
-                            self.dcx().span_err(*span, "use bounds aren't supported yet");
-                        }
-                    }
+                for lifetime in outlives_bounds(self.dcx(), &p.bounds) {
+                    let region =
+                        self.lowerer().lower_lifetime(lifetime, RegionInferReason::RegionPredicate);
+                    let binder =
+                        ty::Binder::bind_with_vars(ty::OutlivesClause(ty, region), bound_vars);
+                    type_outlives.push(binder);
                 }
             }
-            hir::WherePredicateKind::RegionPredicate(predicate) => {
-                let lhs = self
-                    .lowerer()
-                    .lower_lifetime(predicate.lifetime, RegionInferReason::RegionPredicate);
-                for bound in predicate.bounds {
-                    match bound {
-                        hir::GenericBound::Trait(poly_trait_ref) => {
-                            self.dcx()
-                                .span_err(poly_trait_ref.span, "trait bounds aren't supported yet");
-                        }
-                        hir::GenericBound::Outlives(lifetime) => {
-                            let rhs = self
-                                .lowerer()
-                                .lower_lifetime(lifetime, RegionInferReason::RegionPredicate);
-                            region_outlives.push((lhs, rhs));
-                        }
-                        hir::GenericBound::Use(_, span) => {
-                            self.dcx().span_err(*span, "use bounds aren't supported yet");
-                        }
-                    }
+            hir::WherePredicateKind::RegionPredicate(p) => {
+                let lhs =
+                    self.lowerer().lower_lifetime(p.lifetime, RegionInferReason::RegionPredicate);
+                for lifetime in outlives_bounds(self.dcx(), &p.bounds) {
+                    let rhs =
+                        self.lowerer().lower_lifetime(lifetime, RegionInferReason::RegionPredicate);
+                    region_outlives.push(ty::OutlivesClause(lhs, rhs));
                 }
             }
         }
