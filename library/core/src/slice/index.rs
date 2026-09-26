@@ -136,6 +136,34 @@ pub impl(crate) const unsafe trait SliceIndex<T: ?Sized> {
     #[unstable(feature = "slice_index_methods", issue = "none")]
     fn get_mut(self, slice: &mut T) -> Option<&mut Self::Output>;
 
+    /// Returns a pointer to the output at this location, if in
+    /// bounds.
+    ///
+    /// # Safety
+    ///
+    /// Calling this method with a dangling `slice` pointer
+    /// is *[undefined behavior]* even if the resulting pointer is not used.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    #[unstable(feature = "slice_index_methods", issue = "none")]
+    fn get_raw(self, _slice: *const T) -> Option<*const Self::Output> {
+        todo!()
+    }
+
+    /// Returns a mutable pointer to the output at this location, if in
+    /// bounds.
+    ///
+    /// # Safety
+    ///
+    /// Calling this method with a dangling `slice` pointer
+    /// is *[undefined behavior]* even if the resulting pointer is not used.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    #[unstable(feature = "slice_index_methods", issue = "none")]
+    fn get_raw_mut(self, _slice: *mut T) -> Option<*mut Self::Output> {
+        todo!()
+    }
+
     /// Returns a pointer to the output at this location, without
     /// performing any bounds checking.
     ///
