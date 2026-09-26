@@ -13,9 +13,9 @@ mod iter;
 mod traits;
 mod validations;
 
-use self::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use crate::char::{self, EscapeDebugExtArgs};
 use crate::hint::assert_unchecked;
+use crate::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use crate::range::Range;
 use crate::slice::{self, SliceIndex};
 use crate::ub_checks::assert_unsafe_precondition;
@@ -1378,7 +1378,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn contains<P: Pattern>(&self, pat: P) -> bool {
+    pub fn contains<P: Pattern<str>>(&self, pat: P) -> bool {
         pat.is_contained_in(self)
     }
 
@@ -1416,7 +1416,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "str_starts_with"]
-    pub fn starts_with<P: Pattern>(&self, pat: P) -> bool {
+    pub fn starts_with<P: Pattern<str>>(&self, pat: P) -> bool {
         pat.is_prefix_of(self)
     }
 
@@ -1441,9 +1441,9 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "str_ends_with"]
-    pub fn ends_with<P: Pattern>(&self, pat: P) -> bool
+    pub fn ends_with<P>(&self, pat: P) -> bool
     where
-        for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
+        P: for<'a> Pattern<str, Searcher<'a>: ReverseSearcher<'a, str>>,
     {
         pat.is_suffix_of(self)
     }
@@ -1492,7 +1492,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn find<P: Pattern>(&self, pat: P) -> Option<usize> {
+    pub fn find<P: Pattern<str>>(&self, pat: P) -> Option<usize> {
         pat.into_searcher(self).next_match().map(|(i, _)| i)
     }
 
@@ -1538,9 +1538,9 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn rfind<P: Pattern>(&self, pat: P) -> Option<usize>
+    pub fn rfind<P: Pattern<str>>(&self, pat: P) -> Option<usize>
     where
-        for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
+        for<'a> P::Searcher<'a>: ReverseSearcher<'a, str>,
     {
         pat.into_searcher(self).next_match_back().map(|(i, _)| i)
     }
@@ -1666,7 +1666,7 @@ impl str {
     /// [`split_whitespace`]: str::split_whitespace
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn split<P: Pattern>(&self, pat: P) -> Split<'_, P> {
+    pub fn split<P: Pattern<str>>(&self, pat: P) -> Split<'_, P> {
         Split(SplitInternal {
             start: 0,
             end: self.len(),
@@ -1707,7 +1707,7 @@ impl str {
     /// ```
     #[stable(feature = "split_inclusive", since = "1.51.0")]
     #[inline]
-    pub fn split_inclusive<P: Pattern>(&self, pat: P) -> SplitInclusive<'_, P> {
+    pub fn split_inclusive<P: Pattern<str>>(&self, pat: P) -> SplitInclusive<'_, P> {
         SplitInclusive(SplitInternal {
             start: 0,
             end: self.len(),
@@ -1762,9 +1762,9 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn rsplit<P: Pattern>(&self, pat: P) -> RSplit<'_, P>
+    pub fn rsplit<P: Pattern<str>>(&self, pat: P) -> RSplit<'_, P>
     where
-        for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
+        for<'a> P::Searcher<'a>: ReverseSearcher<'a, str>,
     {
         RSplit(self.split(pat).0)
     }
@@ -1811,7 +1811,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn split_terminator<P: Pattern>(&self, pat: P) -> SplitTerminator<'_, P> {
+    pub fn split_terminator<P: Pattern<str>>(&self, pat: P) -> SplitTerminator<'_, P> {
         SplitTerminator(SplitInternal { allow_trailing_empty: false, ..self.split(pat).0 })
     }
 
@@ -1857,9 +1857,9 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn rsplit_terminator<P: Pattern>(&self, pat: P) -> RSplitTerminator<'_, P>
+    pub fn rsplit_terminator<P: Pattern<str>>(&self, pat: P) -> RSplitTerminator<'_, P>
     where
-        for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
+        for<'a> P::Searcher<'a>: ReverseSearcher<'a, str>,
     {
         RSplitTerminator(self.split_terminator(pat).0)
     }
@@ -1912,7 +1912,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn splitn<P: Pattern>(&self, n: usize, pat: P) -> SplitN<'_, P> {
+    pub fn splitn<P: Pattern<str>>(&self, n: usize, pat: P) -> SplitN<'_, P> {
         SplitN(SplitNInternal { iter: self.split(pat).0, count: n })
     }
 
@@ -1961,9 +1961,9 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn rsplitn<P: Pattern>(&self, n: usize, pat: P) -> RSplitN<'_, P>
+    pub fn rsplitn<P: Pattern<str>>(&self, n: usize, pat: P) -> RSplitN<'_, P>
     where
-        for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
+        for<'a> P::Searcher<'a>: ReverseSearcher<'a, str>,
     {
         RSplitN(self.splitn(n, pat).0)
     }
@@ -1981,7 +1981,7 @@ impl str {
     /// ```
     #[stable(feature = "str_split_once", since = "1.52.0")]
     #[inline]
-    pub fn split_once<P: Pattern>(&self, delimiter: P) -> Option<(&'_ str, &'_ str)> {
+    pub fn split_once<P: Pattern<str>>(&self, delimiter: P) -> Option<(&'_ str, &'_ str)> {
         let (start, end) = delimiter.into_searcher(self).next_match()?;
         // SAFETY: `Searcher` is known to return valid indices.
         unsafe { Some((self.get_unchecked(..start), self.get_unchecked(end..))) }
@@ -2000,9 +2000,9 @@ impl str {
     /// ```
     #[stable(feature = "str_split_once", since = "1.52.0")]
     #[inline]
-    pub fn rsplit_once<P: Pattern>(&self, delimiter: P) -> Option<(&'_ str, &'_ str)>
+    pub fn rsplit_once<P: Pattern<str>>(&self, delimiter: P) -> Option<(&'_ str, &'_ str)>
     where
-        for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
+        for<'a> P::Searcher<'a>: ReverseSearcher<'a, str>,
     {
         let (start, end) = delimiter.into_searcher(self).next_match_back()?;
         // SAFETY: `Searcher` is known to return valid indices.
@@ -2040,7 +2040,7 @@ impl str {
     /// ```
     #[stable(feature = "str_matches", since = "1.2.0")]
     #[inline]
-    pub fn matches<P: Pattern>(&self, pat: P) -> Matches<'_, P> {
+    pub fn matches<P: Pattern<str>>(&self, pat: P) -> Matches<'_, P> {
         Matches(MatchesInternal(pat.into_searcher(self)))
     }
 
@@ -2074,9 +2074,9 @@ impl str {
     /// ```
     #[stable(feature = "str_matches", since = "1.2.0")]
     #[inline]
-    pub fn rmatches<P: Pattern>(&self, pat: P) -> RMatches<'_, P>
+    pub fn rmatches<P: Pattern<str>>(&self, pat: P) -> RMatches<'_, P>
     where
-        for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
+        for<'a> P::Searcher<'a>: ReverseSearcher<'a, str>,
     {
         RMatches(self.matches(pat).0)
     }
@@ -2118,7 +2118,7 @@ impl str {
     /// ```
     #[stable(feature = "str_match_indices", since = "1.5.0")]
     #[inline]
-    pub fn match_indices<P: Pattern>(&self, pat: P) -> MatchIndices<'_, P> {
+    pub fn match_indices<P: Pattern<str>>(&self, pat: P) -> MatchIndices<'_, P> {
         MatchIndices(MatchIndicesInternal(pat.into_searcher(self)))
     }
 
@@ -2158,9 +2158,9 @@ impl str {
     /// ```
     #[stable(feature = "str_match_indices", since = "1.5.0")]
     #[inline]
-    pub fn rmatch_indices<P: Pattern>(&self, pat: P) -> RMatchIndices<'_, P>
+    pub fn rmatch_indices<P: Pattern<str>>(&self, pat: P) -> RMatchIndices<'_, P>
     where
-        for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
+        for<'a> P::Searcher<'a>: ReverseSearcher<'a, str>,
     {
         RMatchIndices(self.match_indices(pat).0)
     }
@@ -2373,9 +2373,9 @@ impl str {
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn trim_matches<P: Pattern>(&self, pat: P) -> &str
+    pub fn trim_matches<P: Pattern<str>>(&self, pat: P) -> &'_ str
     where
-        for<'a> P::Searcher<'a>: DoubleEndedSearcher<'a>,
+        for<'a> P::Searcher<'a>: DoubleEndedSearcher<'a, str>,
     {
         let mut i = 0;
         let mut j = 0;
@@ -2420,7 +2420,7 @@ impl str {
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
-    pub fn trim_start_matches<P: Pattern>(&self, pat: P) -> &str {
+    pub fn trim_start_matches<P: Pattern<str>>(&self, pat: P) -> &str {
         let mut i = self.len();
         let mut matcher = pat.into_searcher(self);
         if let Some((a, _)) = matcher.next_reject() {
@@ -2454,7 +2454,7 @@ impl str {
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
     #[stable(feature = "str_strip", since = "1.45.0")]
-    pub fn strip_prefix<P: Pattern>(&self, prefix: P) -> Option<&str> {
+    pub fn strip_prefix<P: Pattern<str>>(&self, prefix: P) -> Option<&str> {
         prefix.strip_prefix_of(self)
     }
 
@@ -2482,9 +2482,9 @@ impl str {
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
     #[stable(feature = "str_strip", since = "1.45.0")]
-    pub fn strip_suffix<P: Pattern>(&self, suffix: P) -> Option<&str>
+    pub fn strip_suffix<P: Pattern<str>>(&self, suffix: P) -> Option<&str>
     where
-        for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
+        for<'a> P::Searcher<'a>: ReverseSearcher<'a, str>,
     {
         suffix.strip_suffix_of(self)
     }
@@ -2519,9 +2519,13 @@ impl str {
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
     #[stable(feature = "strip_circumfix", since = "1.98.0")]
-    pub fn strip_circumfix<P: Pattern, S: Pattern>(&self, prefix: P, suffix: S) -> Option<&str>
+    pub fn strip_circumfix<P: Pattern<str>, S: Pattern<str>>(
+        &self,
+        prefix: P,
+        suffix: S,
+    ) -> Option<&str>
     where
-        for<'a> S::Searcher<'a>: ReverseSearcher<'a>,
+        for<'a> S::Searcher<'a>: ReverseSearcher<'a, str>,
     {
         self.strip_prefix(prefix)?.strip_suffix(suffix)
     }
@@ -2557,7 +2561,7 @@ impl str {
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_prefix_suffix", since = "CURRENT_RUSTC_VERSION")]
-    pub fn trim_prefix<P: Pattern>(&self, prefix: P) -> &str {
+    pub fn trim_prefix<P: Pattern<str>>(&self, prefix: P) -> &str {
         prefix.strip_prefix_of(self).unwrap_or(self)
     }
 
@@ -2592,9 +2596,9 @@ impl str {
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_prefix_suffix", since = "CURRENT_RUSTC_VERSION")]
-    pub fn trim_suffix<P: Pattern>(&self, suffix: P) -> &str
+    pub fn trim_suffix<P: Pattern<str>>(&self, suffix: P) -> &str
     where
-        for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
+        for<'a> P::Searcher<'a>: ReverseSearcher<'a, str>,
     {
         suffix.strip_suffix_of(self).unwrap_or(self)
     }
@@ -2635,9 +2639,9 @@ impl str {
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
-    pub fn trim_end_matches<P: Pattern>(&self, pat: P) -> &str
+    pub fn trim_end_matches<P: Pattern<str>>(&self, pat: P) -> &str
     where
-        for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
+        for<'a> P::Searcher<'a>: ReverseSearcher<'a, str>,
     {
         let mut j = 0;
         let mut matcher = pat.into_searcher(self);
@@ -2679,7 +2683,7 @@ impl str {
         note = "superseded by `trim_start_matches`",
         suggestion = "trim_start_matches"
     )]
-    pub fn trim_left_matches<P: Pattern>(&self, pat: P) -> &str {
+    pub fn trim_left_matches<P: Pattern<str>>(&self, pat: P) -> &str {
         self.trim_start_matches(pat)
     }
 
@@ -2722,9 +2726,9 @@ impl str {
         note = "superseded by `trim_end_matches`",
         suggestion = "trim_end_matches"
     )]
-    pub fn trim_right_matches<P: Pattern>(&self, pat: P) -> &str
+    pub fn trim_right_matches<P: Pattern<str>>(&self, pat: P) -> &str
     where
-        for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
+        for<'a> P::Searcher<'a>: ReverseSearcher<'a, str>,
     {
         self.trim_end_matches(pat)
     }
