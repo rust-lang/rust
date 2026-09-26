@@ -873,6 +873,7 @@ impl Debug for StatementKind<'_> {
             FakeRead((ref cause, ref place)) => {
                 write!(fmt, "FakeRead({cause:?}, {place:?})")
             }
+            StorageAlloc(ref local) => write!(fmt, "StorageAlloc({local:?})"),
             StorageLive(ref place) => write!(fmt, "StorageLive({place:?})"),
             StorageDead(ref place) => write!(fmt, "StorageDead({place:?})"),
             SetDiscriminant { ref place, variant_index } => {

@@ -791,7 +791,7 @@
 +     }
 + 
 +     bb93: {
-+         _33 = move _2;
++         _33 = copy _2;
 +         _32 = std::future::get_context::<'_, '_>(move _33) -> [return: bb92, unwind: bb85];
 +     }
 + 
@@ -827,7 +827,7 @@
 +     }
 + 
 +     bb100: {
-+         _40 = move _2;
++         _40 = copy _2;
 +         _39 = std::future::get_context::<'_, '_>(move _40) -> [return: bb99, unwind: bb85];
 +     }
 + 
@@ -892,7 +892,7 @@
 +     }
 + 
 +     bb113: {
-+         _50 = move _2;
++         _50 = copy _2;
 +         _49 = std::future::get_context::<'_, '_>(move _50) -> [return: bb112, unwind: bb106];
 +     }
 + 
@@ -928,7 +928,7 @@
 +     }
 + 
 +     bb120: {
-+         _57 = move _2;
++         _57 = copy _2;
 +         _56 = std::future::get_context::<'_, '_>(move _57) -> [return: bb119, unwind: bb106];
 +     }
 + 
@@ -993,7 +993,7 @@
 +     }
 + 
 +     bb133: {
-+         _67 = move _2;
++         _67 = copy _2;
 +         _66 = std::future::get_context::<'_, '_>(move _67) -> [return: bb132, unwind: bb126];
 +     }
 + 
@@ -1029,7 +1029,7 @@
 +     }
 + 
 +     bb140: {
-+         _74 = move _2;
++         _74 = copy _2;
 +         _73 = std::future::get_context::<'_, '_>(move _74) -> [return: bb139, unwind: bb126];
 +     }
 + 
@@ -1094,7 +1094,7 @@
 +     }
 + 
 +     bb153: {
-+         _84 = move _2;
++         _84 = copy _2;
 +         _83 = std::future::get_context::<'_, '_>(move _84) -> [return: bb152, unwind: bb146];
 +     }
 + 
@@ -1130,7 +1130,7 @@
 +     }
 + 
 +     bb160: {
-+         _91 = move _2;
++         _91 = copy _2;
 +         _90 = std::future::get_context::<'_, '_>(move _91) -> [return: bb159, unwind: bb146];
 +     }
 + 
@@ -1195,7 +1195,7 @@
 +     }
 + 
 +     bb173: {
-+         _101 = move _2;
++         _101 = copy _2;
 +         _100 = std::future::get_context::<'_, '_>(move _101) -> [return: bb172, unwind: bb166];
 +     }
 + 
@@ -1231,7 +1231,7 @@
 +     }
 + 
 +     bb180: {
-+         _108 = move _2;
++         _108 = copy _2;
 +         _107 = std::future::get_context::<'_, '_>(move _108) -> [return: bb179, unwind: bb166];
 +     }
 + 
@@ -1296,7 +1296,7 @@
 +     }
 + 
 +     bb193: {
-+         _118 = move _2;
++         _118 = copy _2;
 +         _117 = std::future::get_context::<'_, '_>(move _118) -> [return: bb192, unwind: bb186];
 +     }
 + 
@@ -1332,7 +1332,7 @@
 +     }
 + 
 +     bb200: {
-+         _125 = move _2;
++         _125 = copy _2;
 +         _124 = std::future::get_context::<'_, '_>(move _125) -> [return: bb199, unwind: bb186];
 +     }
 + 
@@ -1397,7 +1397,7 @@
 +     }
 + 
 +     bb213: {
-+         _135 = move _2;
++         _135 = copy _2;
 +         _134 = std::future::get_context::<'_, '_>(move _135) -> [return: bb212, unwind: bb206];
 +     }
 + 
@@ -1433,7 +1433,7 @@
 +     }
 + 
 +     bb220: {
-+         _142 = move _2;
++         _142 = copy _2;
 +         _141 = std::future::get_context::<'_, '_>(move _142) -> [return: bb219, unwind: bb206];
 +     }
 + 
@@ -1498,7 +1498,7 @@
 +     }
 + 
 +     bb233: {
-+         _152 = move _2;
++         _152 = copy _2;
 +         _151 = std::future::get_context::<'_, '_>(move _152) -> [return: bb232, unwind: bb226];
 +     }
 + 
@@ -1534,7 +1534,7 @@
 +     }
 + 
 +     bb240: {
-+         _159 = move _2;
++         _159 = copy _2;
 +         _158 = std::future::get_context::<'_, '_>(move _159) -> [return: bb239, unwind: bb226];
 +     }
 + 
@@ -1599,7 +1599,7 @@
 +     }
 + 
 +     bb253: {
-+         _169 = move _2;
++         _169 = copy _2;
 +         _168 = std::future::get_context::<'_, '_>(move _169) -> [return: bb252, unwind: bb246];
 +     }
 + 
@@ -1635,7 +1635,7 @@
 +     }
 + 
 +     bb260: {
-+         _176 = move _2;
++         _176 = copy _2;
 +         _175 = std::future::get_context::<'_, '_>(move _176) -> [return: bb259, unwind: bb246];
 +     }
 + 
