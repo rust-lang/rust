@@ -89,9 +89,7 @@ use rustc_codegen_ssa::{CompiledModule, CompiledModules, CrateInfo, ModuleCodege
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
-use rustc_middle::dep_graph::{
-    BorrowedIncrCompSession, IncrCompSession, WorkProduct, WorkProductMap,
-};
+use rustc_middle::dep_graph::{BorrowedIncrCompSession, IncrCompSession, WorkProduct};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OptLevel, OutputFilenames};
 use rustc_session::{CodegenBackendInit, EarlySession, Session};
@@ -305,10 +303,10 @@ impl CodegenBackend for GccCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
-        incr_comp_session: Option<&IncrCompSession>,
+        incr_comp_session: Option<&mut IncrCompSession>,
         _outputs: &OutputFilenames,
         crate_info: &CrateInfo,
-    ) -> (CompiledModules, WorkProductMap) {
+    ) -> CompiledModules {
         ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<GccCodegenBackend>>()
             .expect("Expected GccCodegenBackend's OngoingCodegen, found Box<Any>")
