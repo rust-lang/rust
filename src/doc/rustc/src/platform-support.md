@@ -273,6 +273,7 @@ target | std | host | notes
 [`aarch64-oe-linux-gnu`](platform-support/oe-linux-gnu.md) | ✓ |  | ARM64 OpenEmbedded/Yocto Linux (GNU)
 [`aarch64-unknown-helenos`](platform-support/helenos.md) | ✓ |  | ARM64 HelenOS
 [`aarch64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | ARM64 Hermit
+[`aarch64-unknown-hyperlight`](platform-support/hyperlight.md) | * |  | ARM64 Hyperlight
 [`aarch64-unknown-illumos`](platform-support/illumos.md) | ✓ | ✓ | ARM64 illumos
 [`aarch64-unknown-l4re-uclibc`](platform-support/l4re.md) | ✓ |  | ARM64 L4Re with uclibc
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
@@ -461,6 +462,7 @@ target | std | host | notes
 `x86_64-unknown-haiku` | ✓ | ✓ | 64-bit Haiku
 [`x86_64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | x86_64 Hermit
 [`x86_64-unknown-helenos`](platform-support/helenos.md) | ✓ |  | x86_64 (amd64) HelenOS
+[`x86_64-unknown-hyperlight`](platform-support/hyperlight.md) | * |  | x86_64 (amd64) Hyperlight
 [`x86_64-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 64-bit GNU/Hurd
 [`x86_64-unknown-l4re-uclibc`](platform-support/l4re.md) | ✓ |  | x86_64 L4Re with uclibc
 [`x86_64-unknown-linux-none`](platform-support/x86_64-unknown-linux-none.md) | * |  | 64-bit Linux with no libc

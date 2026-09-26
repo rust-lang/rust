@@ -672,6 +672,7 @@ fn human_readable_target_os(os: Symbol) -> Option<&'static str> {
         Hermit => "Hermit",
         Horizon => "Horizon",
         Hurd => "GNU/Hurd",
+        Hyperlight => "Hyperlight",
         IOs => "iOS",
         Illumos => "illumos",
         L4Re => "L4Re",
