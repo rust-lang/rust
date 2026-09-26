@@ -1,7 +1,7 @@
 //! Benchmarking module.
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, Instant};
 use std::{cmp, io};
 
@@ -45,6 +45,27 @@ impl Bencher {
         }
 
         self.summary = Some(iter(&mut inner));
+    }
+
+    /// Callback for benchmark functions to run in their body with its setup excluded.
+    ///
+    /// `ctx` is passed as a mutuable reference to both `setup` and `inner`,
+    ///  allowing for state to be shared between the two.
+    /// `setup` runs before each call to `inner` and its result
+    /// is passed to `inner`, the time spent in setup is excluded
+    /// from the measurement.
+    ///
+    pub fn iter_excluding_setup<I, T, S, F>(&mut self, mut ctx: I, mut setup: S, mut inner: F)
+    where
+        S: FnMut(&mut I),
+        F: FnMut(&mut I) -> T,
+    {
+        if self.mode == BenchMode::Single {
+            ns_iter_setup_inner(&mut ctx, &mut setup, &mut inner, 1);
+            return;
+        }
+
+        self.summary = Some(iter_excluding_setup(ctx, &mut setup, &mut inner));
     }
 
     pub fn bench<F>(&mut self, mut f: F) -> Result<Option<stats::Summary>, String>
@@ -109,6 +130,9 @@ fn fmt_thousands_sep(mut n: f64, sep: char) -> String {
     output
 }
 
+static INSTANT_NOW_SAMPLE: LazyLock<Duration> =
+    LazyLock::new(|| (0..1000).map(|_| Instant::now().elapsed()).min().unwrap());
+
 fn ns_iter_inner<T, F>(inner: &mut F, k: u64) -> u64
 where
     F: FnMut() -> T,
@@ -117,15 +141,46 @@ where
     for _ in 0..k {
         black_box(inner());
     }
-    start.elapsed().as_nanos() as u64
+    start.elapsed().as_nanos().saturating_sub(INSTANT_NOW_SAMPLE.as_nanos()) as u64
+}
+
+fn ns_iter_setup_inner<I, T, S, F>(ctx: &mut I, setup: &mut S, inner: &mut F, k: u64) -> u64
+where
+    S: FnMut(&mut I),
+    F: FnMut(&mut I) -> T,
+{
+    let now_sample = INSTANT_NOW_SAMPLE.as_nanos() as i64;
+    let mut total = 0i64;
+    for _ in 0..k {
+        // setup is not included in timing
+        black_box(setup(ctx));
+        // start timing after setup is complete
+        let start = Instant::now();
+        black_box(inner(ctx));
+        total += start.elapsed().as_nanos() as i64;
+    }
+    (total - k as i64 * now_sample).max(0) as u64
 }
 
 pub fn iter<T, F>(inner: &mut F) -> stats::Summary
 where
     F: FnMut() -> T,
 {
+    iter_inner(&mut |k| ns_iter_inner(inner, k))
+}
+
+pub fn iter_excluding_setup<I, T, S, F>(mut ctx: I, setup: &mut S, inner: &mut F) -> stats::Summary
+where
+    S: FnMut(&mut I),
+    F: FnMut(&mut I) -> T,
+{
+    iter_inner(&mut |k| ns_iter_setup_inner(&mut ctx, setup, inner, k))
+}
+
+#[inline]
+fn iter_inner(ns_iter: &mut impl FnMut(u64) -> u64) -> stats::Summary {
     // Initial bench run to get ballpark figure.
-    let ns_single = ns_iter_inner(inner, 1);
+    let ns_single = ns_iter(1);
 
     // Try to estimate iter count for 1ms falling back to 1m
     // iterations if first run took < 1ns.
@@ -145,14 +200,14 @@ where
         let loop_start = Instant::now();
 
         for p in &mut *samples {
-            *p = ns_iter_inner(inner, n) as f64 / n as f64;
+            *p = ns_iter(n) as f64 / n as f64;
         }
 
         stats::winsorize(samples, 5.0);
         let summ = stats::Summary::new(samples);
 
         for p in &mut *samples {
-            let ns = ns_iter_inner(inner, 5 * n);
+            let ns = ns_iter(5 * n);
             *p = ns as f64 / (5 * n) as f64;
         }
 
