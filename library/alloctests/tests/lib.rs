@@ -37,7 +37,6 @@
 #![feature(macro_metavar_expr_concat)]
 #![feature(map_try_insert)]
 #![feature(pattern)]
-#![feature(ptr_cast_slice)]
 #![feature(read_buf)]
 #![feature(seek_io_take_position)]
 #![feature(seek_stream_len)]

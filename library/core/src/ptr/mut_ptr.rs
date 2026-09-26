@@ -1650,17 +1650,14 @@ impl<T> *mut T {
     /// Performs the same functionality as [`cast_slice`] on a `*const T`, except that a
     /// raw mutable slice is returned, as opposed to a raw immutable slice.
     ///
-    /// This function is safe, but actually using the return value is unsafe.
-    /// See the documentation of [`slice::from_raw_parts_mut`] for slice safety requirements.
+    /// See [`ptr::slice_from_raw_parts`] for more information.
     ///
-    /// [`slice::from_raw_parts_mut`]: crate::slice::from_raw_parts_mut
+    /// [`ptr::slice_from_raw_parts`]: crate::ptr::slice_from_raw_parts
     /// [`cast_slice`]: pointer::cast_slice
     ///
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(ptr_cast_slice)]
-    ///
     /// let x = &mut [5, 6, 7];
     /// let raw_mut_slice = x.as_mut_ptr().cast_slice(3);
     ///
@@ -1675,7 +1672,6 @@ impl<T> *mut T {
     /// the raw slice. A slice reference must never have a null pointer, even if it's empty.
     ///
     /// ```rust,should_panic
-    /// #![feature(ptr_cast_slice)]
     /// use std::ptr;
     /// let danger: *mut [u8] = ptr::null_mut::<u8>().cast_slice(0);
     /// unsafe {
@@ -1683,7 +1679,8 @@ impl<T> *mut T {
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "ptr_cast_slice", issue = "149103")]
+    #[stable(feature = "ptr_cast_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ptr_cast_slice", since = "CURRENT_RUSTC_VERSION")]
     pub const fn cast_slice(self, len: usize) -> *mut [T] {
         slice_from_raw_parts_mut(self, len)
     }
