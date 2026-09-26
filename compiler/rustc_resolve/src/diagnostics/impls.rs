@@ -1042,6 +1042,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     Res::Def(k, _) => matches_kind(k),
                                     _ => false,
                                 },
+                                &|_| true,
                             ) && let Res::Def(kind, mut def_id) = suggestion.res
                             {
                                 if let DefKind::Ctor(_, _) = kind {
@@ -1615,6 +1616,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
         ident: Ident,
         filter_fn: &impl Fn(Res) -> bool,
+        suggestion_filter: &impl Fn(&TypoSuggestion) -> bool,
     ) -> Option<TypoSuggestion> {
         let mut suggestions = Vec::new();
         self.add_scope_set_candidates(
@@ -1624,6 +1626,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ident.span,
             filter_fn,
         );
+
+        // Some candidates cannot be decided from the `Res` alone (e.g. they need
+        // re-resolution or visibility checks), filter them out before picking the
+        // best name match.
+        suggestions.retain(suggestion_filter);
 
         // Make sure error reporting is deterministic.
         suggestions.sort_by(|a, b| a.candidate.as_str().cmp(b.candidate.as_str()));
@@ -1977,6 +1984,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             parent_scope,
             ident,
             is_expected,
+            &|_| true,
         );
         self.add_typo_suggestion(err, suggestion, ident.span);
         self.detect_derive_attribute(err, ident, parent_scope, sugg_span);
@@ -3035,6 +3043,45 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
         let message = format!("cannot find `{ident}` in {scope}");
 
+        // we may have typo in the middle part of path, try find a candidate with a similar name
+        // and then check whether it contains a candidate that is accessible from the current scope
+        let typo_suggestion = if opt_ns.is_none()
+            && ignore_import.is_some()
+            && let Some(ModuleOrUniformRoot::Module(module)) = module
+            && let Some(candidate) = self.early_lookup_typo_candidate(
+                ScopeSet::Module(TypeNS, module),
+                parent_scope,
+                ident,
+                &|res| matches!(res, Res::Def(DefKind::Mod | DefKind::Enum, _)),
+                &|candidate| {
+                    self.cm()
+                        .resolve_ident_in_module(
+                            ModuleOrUniformRoot::Module(module),
+                            Ident::new(candidate.candidate, ident.span),
+                            TypeNS,
+                            parent_scope,
+                            None,
+                            ignore_decl,
+                            ignore_import,
+                        )
+                        .is_ok_and(|binding| {
+                            self.is_accessible_from(binding.vis(), parent_scope.module)
+                        })
+                },
+            ) {
+            Some((
+                vec![(ident.span, Ident::new(candidate.candidate, ident.span).to_string())],
+                format!(
+                    "{} {} with a similar name exists",
+                    candidate.res.article(),
+                    candidate.res.descr(),
+                ),
+                Applicability::MaybeIncorrect,
+            ))
+        } else {
+            None
+        };
+
         if module_def_id == Some(CRATE_DEF_ID.to_def_id()) {
             let is_mod = |res| matches!(res, Res::Def(DefKind::Mod, _));
             let mut candidates = self.lookup_import_candidates(ident, TypeNS, parent_scope, is_mod);
@@ -3059,6 +3106,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         String::from("a similar path exists"),
                         Applicability::MaybeIncorrect,
                     )),
+                    None,
+                )
+            } else if let Some(suggestion) = typo_suggestion {
+                (
+                    message,
+                    format!("could not find `{ident}` in the crate root"),
+                    Some(suggestion),
                     None,
                 )
             } else if ident.name == sym::core {
@@ -3193,7 +3247,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     );
                 };
             }
-            (message, msg, None, None)
+            (message, msg, typo_suggestion, None)
         } else if ident.name == kw::SelfUpper {
             // As mentioned above, `opt_ns` being `None` indicates a module path in import.
             // We can use this to improve a confusing error for, e.g. `use Self::Variant` in an
