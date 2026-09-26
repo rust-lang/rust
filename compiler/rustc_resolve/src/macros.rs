@@ -1007,6 +1007,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
             }
+
+            if kind == MacroKind::Attr
+                && let [tool, _second, ..] = path.as_slice()
+                && let Some(_decl) = self.registered_attr_tool_decls.get(&IdentKey::new(tool.ident))
+            {
+                if !matches!(initial_res, Some(Res::NonMacroAttr(NonMacroAttrKind::Tool))) {
+                    let attr_path =
+                        path.iter().map(|seg| seg.ident.to_string()).collect::<Vec<_>>().join("::");
+                    self.dcx().emit_err(diagnostics::ToolAttrAmbiguity {
+                        path_span,
+                        attr_path,
+                        tool: tool.ident.name,
+                    });
+                }
+            }
         }
 
         let macro_resolutions = self.single_segment_macro_resolutions.take(self);

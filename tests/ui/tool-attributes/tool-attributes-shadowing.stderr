@@ -4,6 +4,15 @@ error[E0433]: cannot find `skip` in `rustfmt`
 LL | #[rustfmt::skip]
    |            ^^^^ could not find `skip` in `rustfmt`
 
-error: aborting due to 1 previous error
+error: attribute macro `rustfmt::skip` is ambiguous
+  --> $DIR/tool-attributes-shadowing.rs:3:3
+   |
+LL | #[rustfmt::skip]
+   |   ^^^^^^^^^^^^^
+   |
+   = note: ambiguous because of a name conflict with a tool namespace
+   = note: `rustfmt` could refer to a tool namespace
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0433`.
