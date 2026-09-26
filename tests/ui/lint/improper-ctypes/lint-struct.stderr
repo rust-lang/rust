@@ -1,0 +1,226 @@
+error: `extern` block uses type `TransparentUnit2<(), u8>`, which is not FFI-safe
+  --> $DIR/lint-struct.rs:66:23
+   |
+LL |     pub fn transp2(p: TransparentUnit2<(), u8>);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider marking this struct as phantom by wrapping it in `std::marker::PhantomData`, or by marking its fields as phantom
+   = note: `TransparentUnit2<(), u8>` contains only zero-sized fields
+note: the type is defined here
+  --> $DIR/lint-struct.rs:25:1
+   |
+LL | pub struct TransparentUnit2<T,U>(T, PhantomData<U>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/lint-struct.rs:2:9
+   |
+LL | #![deny(improper_ctypes)]
+   |         ^^^^^^^^^^^^^^^
+
+error: `extern` block uses type `TransparentUnit2S<u8>`, which is not FFI-safe
+  --> $DIR/lint-struct.rs:67:24
+   |
+LL |     pub fn transp2s(p: TransparentUnit2S<u8>);
+   |                        ^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider marking this struct as phantom by wrapping it in `std::marker::PhantomData`, or by marking its fields as phantom
+   = note: `TransparentUnit2S<u8>` contains only zero-sized fields
+note: the type is defined here
+  --> $DIR/lint-struct.rs:23:1
+   |
+LL | pub struct TransparentUnit2S<U>((), PhantomData<U>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `extern` block uses type `TransparentUnit2<ZeroSize, ()>`, which is not FFI-safe
+  --> $DIR/lint-struct.rs:68:24
+   |
+LL |     pub fn transp2b(p: TransparentUnit2<ZeroSize, ()>);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this struct/enum/union (`TransparentUnit2<ZeroSize, ()>`) is FFI-unsafe due to a `ZeroSize` field
+note: the type is defined here
+  --> $DIR/lint-struct.rs:25:1
+   |
+LL | pub struct TransparentUnit2<T,U>(T, PhantomData<U>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider adding a member to this struct
+   = note: `ZeroSize` has no fields
+note: the type is defined here
+  --> $DIR/lint-struct.rs:7:1
+   |
+LL | pub struct ZeroSize;
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: `extern` block uses type `TransparentUnit2<ZeroSize, ()>`, which is not FFI-safe
+  --> $DIR/lint-struct.rs:68:24
+   |
+LL |     pub fn transp2b(p: TransparentUnit2<ZeroSize, ()>);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: `TransparentUnit2<ZeroSize, ()>` contains only zero-sized fields
+note: the type is defined here
+  --> $DIR/lint-struct.rs:25:1
+   |
+LL | pub struct TransparentUnit2<T,U>(T, PhantomData<U>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `extern` block uses type `ZeroSize`, which is not FFI-safe
+  --> $DIR/lint-struct.rs:78:25
+   |
+LL |     pub fn zero_size(p: ZeroSize);
+   |                         ^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a member to this struct
+   = note: `ZeroSize` has no fields
+note: the type is defined here
+  --> $DIR/lint-struct.rs:7:1
+   |
+LL | pub struct ZeroSize;
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: `extern` block uses type `ZeroSizeTransparent`, which is not FFI-safe
+  --> $DIR/lint-struct.rs:79:32
+   |
+LL |     pub fn zero_size_transp(p: ZeroSizeTransparent);
+   |                                ^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a member to this struct
+   = note: `ZeroSizeTransparent` has no fields
+note: the type is defined here
+  --> $DIR/lint-struct.rs:9:1
+   |
+LL | pub struct ZeroSizeTransparent;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `extern` block uses type `ZeroSizeWithPhantomData`, which is not FFI-safe
+  --> $DIR/lint-struct.rs:81:33
+   |
+LL |     pub fn zero_size_phantom(p: ZeroSizeWithPhantomData);
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: composed only of `PhantomData`
+note: the type is defined here
+  --> $DIR/lint-struct.rs:11:1
+   |
+LL | pub struct ZeroSizeWithPhantomData(::std::marker::PhantomData<i32>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `extern` block uses type `TransparentPhantomData`, which is not FFI-safe
+  --> $DIR/lint-struct.rs:83:35
+   |
+LL |     pub fn transparent_phantom(p: TransparentPhantomData);
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: composed only of `PhantomData`
+note: the type is defined here
+  --> $DIR/lint-struct.rs:13:1
+   |
+LL | pub struct TransparentPhantomData(::std::marker::PhantomData<i32>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `extern` block uses type `RustyPhantomData`, which is not FFI-safe
+  --> $DIR/lint-struct.rs:85:29
+   |
+LL |     pub fn rusty_phantom(p: RustyPhantomData);
+   |                             ^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
+   = note: `RustyPhantomData` has unspecified layout
+note: the type is defined here
+  --> $DIR/lint-struct.rs:14:1
+   |
+LL | pub struct RustyPhantomData(::std::marker::PhantomData<i32>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `extern` block uses type `WrapperForPhantoms<RustyPhantomData>`, which is not FFI-safe
+  --> $DIR/lint-struct.rs:91:37
+   |
+LL |     pub fn rusty_phantom_wrapped(p: WrapperForPhantoms<RustyPhantomData>);
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this struct/enum/union (`WrapperForPhantoms<RustyPhantomData>`) is FFI-unsafe due to a `RustyPhantomData` field
+note: the type is defined here
+  --> $DIR/lint-struct.rs:36:1
+   |
+LL | pub struct WrapperForPhantoms<T>(T,u32);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
+   = note: `RustyPhantomData` has unspecified layout
+note: the type is defined here
+  --> $DIR/lint-struct.rs:14:1
+   |
+LL | pub struct RustyPhantomData(::std::marker::PhantomData<i32>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `extern` block uses type `BadPackedStruct`, which is not FFI-safe
+  --> $DIR/lint-struct.rs:95:26
+   |
+LL |     pub fn bad_packed(p: BadPackedStruct);
+   |                          ^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider removing the `#[repr(packed)]` attribute from this struct
+   = note: `BadPackedStruct` has unspecified layout
+note: the type is defined here
+  --> $DIR/lint-struct.rs:39:1
+   |
+LL | pub struct BadPackedStruct(u8,u16,u32);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `extern` block uses type `BadAlignedStruct`, which is not FFI-safe
+  --> $DIR/lint-struct.rs:96:27
+   |
+LL |     pub fn bad_aligned(p: BadAlignedStruct);
+   |                           ^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider removing the `#[repr(align)]` attribute from this struct
+   = note: `BadAlignedStruct` has unspecified layout
+note: the type is defined here
+  --> $DIR/lint-struct.rs:41:1
+   |
+LL | pub struct BadAlignedStruct(u8,u16,u32);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `extern` block uses type `RUnion`, which is not FFI-safe
+  --> $DIR/lint-struct.rs:98:23
+   |
+LL |     pub fn unions(p1: RUnion, p2: CUnion, p3: PUnion, p4: AUnion);
+   |                       ^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` attribute to this union
+   = note: `RUnion` has unspecified layout
+note: the type is defined here
+  --> $DIR/lint-struct.rs:43:1
+   |
+LL | pub union RUnion {
+   | ^^^^^^^^^^^^^^^^
+
+error: `extern` block uses type `PUnion`, which is not FFI-safe
+  --> $DIR/lint-struct.rs:98:47
+   |
+LL |     pub fn unions(p1: RUnion, p2: CUnion, p3: PUnion, p4: AUnion);
+   |                                               ^^^^^^ not FFI-safe
+   |
+   = help: consider removing the `#[repr(packed)]` attribute from this union
+   = note: `PUnion` has unspecified layout
+note: the type is defined here
+  --> $DIR/lint-struct.rs:53:1
+   |
+LL | pub union PUnion {
+   | ^^^^^^^^^^^^^^^^
+
+error: `extern` block uses type `AUnion`, which is not FFI-safe
+  --> $DIR/lint-struct.rs:98:59
+   |
+LL |     pub fn unions(p1: RUnion, p2: CUnion, p3: PUnion, p4: AUnion);
+   |                                                           ^^^^^^ not FFI-safe
+   |
+   = help: consider removing the `#[repr(align)]` attribute from this union
+   = note: `AUnion` has unspecified layout
+note: the type is defined here
+  --> $DIR/lint-struct.rs:58:1
+   |
+LL | pub union AUnion {
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to 15 previous errors
+

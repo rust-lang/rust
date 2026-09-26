@@ -26,11 +26,24 @@ enum ReprC {
     C,
 }
 
+#[repr(C,align(8))]
+enum ReprCAligned {
+    A,
+    B,
+    C,
+}
+
 #[repr(u8)]
 enum U8 {
     A,
     B,
     C,
+}
+
+#[repr(u8)]
+enum U8Bad {
+    A(char),
+    B,
 }
 
 #[repr(isize)]
@@ -67,7 +80,7 @@ union TransparentUnion<T: Copy> {
     field: T,
 }
 
-struct Rust<T>(T);
+ struct Rust<T>(T);
 
 struct NoField;
 
@@ -75,15 +88,19 @@ struct NoField;
 struct Field(());
 
 #[non_exhaustive]
-enum NonExhaustive {}
+enum NonExhaustive1ZST {}  // let's ignore uninhabitedness for now
+
+
 
 extern "C" {
-    fn zf(x: Z);
+    fn zf(x: Z); //~ ERROR `extern` block uses type `Z`
     fn uf(x: U); //~ ERROR `extern` block uses type `U`
     fn bf(x: B); //~ ERROR `extern` block uses type `B`
     fn tf(x: T); //~ ERROR `extern` block uses type `T`
     fn repr_c(x: ReprC);
+    fn repr_c_aligned(x: ReprCAligned); //~ ERROR: `extern` block uses type `ReprCAligned`
     fn repr_u8(x: U8);
+    fn repr_u8b(x: U8Bad); //~ ERROR `extern` block uses type `U8Bad`
     fn repr_isize(x: Isize);
     fn repr_u128(x: U128);
     fn repr_i128(x: I128);
@@ -132,13 +149,14 @@ extern "C" {
     //~^ ERROR `extern` block uses type
     fn result_repr_rust_t(x: Result<Rust<num::NonZero<u8>>, ()>);
     //~^ ERROR `extern` block uses type
+
     fn result_phantom_t(x: Result<num::NonZero<u8>, std::marker::PhantomData<()>>);
     fn result_1zst_exhaustive_no_variant_t(x: Result<num::NonZero<u8>, Z>);
     fn result_1zst_exhaustive_single_variant_t(x: Result<num::NonZero<u8>, U>);
     //~^ ERROR `extern` block uses type
     fn result_1zst_exhaustive_multiple_variant_t(x: Result<num::NonZero<u8>, B>);
     //~^ ERROR `extern` block uses type
-    fn result_1zst_non_exhaustive_no_variant_t(x: Result<num::NonZero<u8>, NonExhaustive>);
+    fn result_1zst_non_exhaustive_no_variant_t(x: Result<num::NonZero<u8>, NonExhaustive1ZST>);
     //~^ ERROR `extern` block uses type
     fn result_1zst_exhaustive_no_field_t(x: Result<num::NonZero<u8>, NoField>);
     fn result_1zst_exhaustive_single_field_t(x: Result<num::NonZero<u8>, Field>);
@@ -174,7 +192,7 @@ extern "C" {
     //~^ ERROR `extern` block uses type
     fn result_1zst_exhaustive_multiple_variant_e(x: Result<B, num::NonZero<u8>>);
     //~^ ERROR `extern` block uses type
-    fn result_1zst_non_exhaustive_no_variant_e(x: Result<NonExhaustive, num::NonZero<u8>>);
+    fn result_1zst_non_exhaustive_no_variant_e(x: Result<NonExhaustive1ZST, num::NonZero<u8>>);
     //~^ ERROR `extern` block uses type
     fn result_1zst_exhaustive_no_field_e(x: Result<NoField, num::NonZero<u8>>);
     fn result_1zst_exhaustive_single_field_e(x: Result<Field, num::NonZero<u8>>);

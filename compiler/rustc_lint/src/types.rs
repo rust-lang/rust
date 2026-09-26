@@ -1,6 +1,6 @@
 use std::iter;
 
-use rustc_abi::{BackendRepr, TagEncoding, Variants, WrappingRange};
+use rustc_abi::{BackendRepr, Size, TagEncoding, Variants, WrappingRange};
 use rustc_ast as ast;
 use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
@@ -9,12 +9,14 @@ use rustc_hir::{Expr, ExprKind, HirId};
 use rustc_lint_defs::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, Const, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::{DUMMY_SP, Span, Symbol, bug, sym};
 use tracing::debug;
 
 mod improper_ctypes; // these files do the implementation for ImproperCTypesDefinitions,ImproperCTypesDeclarations
-pub(crate) use improper_ctypes::ImproperCTypesLint;
+pub(crate) use improper_ctypes::{
+    IMPROPER_CTYPES, IMPROPER_CTYPES_DEFINITIONS, ImproperCTypesLint,
+};
 
 use crate::diagnostics::{
     AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
@@ -728,8 +730,27 @@ pub(crate) fn nonnull_optimization_guaranteed<'tcx>(
     find_attr!(tcx, def.did(), RustcNonnullOptimizationGuaranteed)
 }
 
+/// Test if a given Ty is a 1-ZST.
+/// (This function is designed to only test a single type. For multiple `Ty`s,
+/// more efficient alternatives exist.)
+pub(crate) fn is_1zst<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    // Use `TypingMode::Borrowck` so the new solver doesn't reveal opaque types since we're now
+    // past hir typeck. If we were to attempt to reveal more opaque types, dropping the
+    // `InferCtxt` would ICE (see #156352).
+    let typing_env = if let Some(body_id) = cx.enclosing_body {
+        let body_def_id = cx.tcx.hir_enclosing_body_owner(body_id.hir_id);
+        ty::TypingEnv::new(cx.param_env, ty::TypingMode::borrowck(cx.tcx, body_def_id))
+    } else {
+        cx.typing_env()
+    };
+    cx.tcx.layout_of(typing_env.as_query_input(ty)).is_ok_and(|layout| layout.is_1zst())
+}
+
 /// `repr(transparent)` structs can have a single non-1-ZST field, this function returns that
 /// field.
+/// Note that this function does not see through type parameters.
+/// Instead, it returns the sole field which *might* be a non-1-ZST.
+/// Proper layout checks still need to be done on that field's type.
 pub(crate) fn transparent_newtype_field<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     variant: &'a ty::VariantDef,
@@ -741,6 +762,26 @@ pub(crate) fn transparent_newtype_field<'a, 'tcx>(
             tcx.layout_of(typing_env.as_query_input(field_ty)).is_ok_and(|layout| layout.is_1zst());
         !is_1zst
     })
+}
+
+/// for a given ADT variant, list which fields *may* be non-1ZST (depending of type params, if any)
+/// (`repr(transparent)`, if present, guarantees that there is at most one)
+pub(crate) fn map_non_1zst_fields<'a, 'tcx>(
+    tcx: TyCtxt<'tcx>,
+    variant: &'a ty::VariantDef,
+) -> Vec<bool> {
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, variant.def_id);
+    variant
+        .fields
+        .iter()
+        .map(|field| {
+            let field_ty = tcx.type_of(field.did).instantiate_identity().skip_norm_wip();
+            let is_1zst = tcx
+                .layout_of(typing_env.as_query_input(field_ty))
+                .is_ok_and(|layout| layout.is_1zst());
+            !is_1zst
+        })
+        .collect()
 }
 
 /// Is type known to be non-null?
@@ -879,7 +920,7 @@ fn is_niche_optimization_candidate<'tcx>(
 /// Check if this enum can be safely exported based on the "nullable pointer optimization". If it
 /// can, return the type that `ty` can be safely converted to, otherwise return `None`.
 /// Currently restricted to function pointers, boxes, references, `core::num::NonZero`,
-/// `core::ptr::NonNull`, and `#[repr(transparent)]` newtypes.
+/// `core::ptr::NonNull`, `#[repr(transparent)]` newtypes, and int-range pattern types.
 pub(crate) fn repr_nullable_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
@@ -907,6 +948,14 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
                 },
                 _ => return None,
             };
+
+            if let ty::Pat(base, pat) = field_ty.kind() {
+                if pattern_has_disallowed_values(*pat) || matches!(base.kind(), ty::Char) {
+                    return get_nullable_type_from_pat(tcx, typing_env, *base, *pat);
+                } else {
+                    return None;
+                }
+            }
 
             if !ty_is_known_nonnull(tcx, typing_env, field_ty) {
                 return None;
@@ -951,6 +1000,151 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
         }
         ty::Pat(base, pat) => get_nullable_type_from_pat(tcx, typing_env, *base, *pat),
         _ => None,
+    }
+}
+
+/// Returns whether a pattern type actually has disallowed values.
+pub(crate) fn pattern_has_disallowed_values<'tcx>(pat: ty::Pattern<'tcx>) -> bool {
+    // note the logic in this function assumes that signed ints use one's complement representation,
+    // which I believe is a requirement for rust
+
+    /// Find numeric metadata on a pair of range bounds.
+    /// If None, assume that there are no bounds specified
+    /// and that this is a usize. in other words, all values are allowed.
+    fn unwrap_start_end<'tcx>(
+        start: Const<'tcx>,
+        end: Const<'tcx>,
+    ) -> (bool, Size, ScalarInt, ScalarInt) {
+        let usable_bound = match (start.try_to_value(), end.try_to_value()) {
+            (Some(ty), _) | (_, Some(ty)) => ty,
+            (None, None) => bug!(
+                "pattern range should have at least one defined value: {:?} - {:?}",
+                start,
+                end,
+            ),
+        };
+        let usable_size = usable_bound.valtree.to_leaf().size();
+        let is_signed = match usable_bound.ty.kind() {
+            ty::Int(_) => true,
+            ty::Uint(_) | ty::Char => false,
+            kind @ _ => bug!("unexpected non-scalar base for pattern bounds: {:?}", kind),
+        };
+
+        let end = match end.try_to_value() {
+            Some(end) => end.valtree.to_leaf(),
+            None => {
+                let max_val = if is_signed {
+                    usable_size.signed_int_max() as u128
+                } else {
+                    usable_size.unsigned_int_max()
+                };
+                ScalarInt::try_from_uint(max_val, usable_size).unwrap()
+            }
+        };
+        let start = match start.try_to_value() {
+            Some(start) => start.valtree.to_leaf(),
+            None => {
+                let min_val = if is_signed {
+                    (usable_size.signed_int_min() as u128) & usable_size.unsigned_int_max()
+                } else {
+                    0_u128
+                };
+                ScalarInt::try_from_uint(min_val, usable_size).unwrap()
+            }
+        };
+        (is_signed, usable_size, start, end)
+    }
+
+    match *pat {
+        ty::PatternKind::NotNull => true,
+        ty::PatternKind::Range { start, end } => {
+            let (is_signed, scalar_size, start, end) = unwrap_start_end(start, end);
+            let (scalar_min, scalar_max) = if is_signed {
+                (
+                    (scalar_size.signed_int_min() as u128) & scalar_size.unsigned_int_max(),
+                    scalar_size.signed_int_max() as u128,
+                )
+            } else {
+                (0, scalar_size.unsigned_int_max())
+            };
+
+            (start.to_bits(scalar_size), end.to_bits(scalar_size)) != (scalar_min, scalar_max)
+        }
+        ty::PatternKind::Or(patterns) => {
+            // first, get a simplified an sorted view of the ranges
+            let (is_signed, scalar_size, mut ranges) = {
+                let (is_signed, size, start, end) = match &*patterns[0] {
+                    ty::PatternKind::Range { start, end } => unwrap_start_end(*start, *end),
+                    ty::PatternKind::Or(_) => bug!("recursive \"or\" patterns?"),
+                    ty::PatternKind::NotNull => bug!("nonnull pattern in \"or\" pattern?"),
+                };
+                (is_signed, size, vec![(start, end)])
+            };
+            let scalar_max = if is_signed {
+                scalar_size.signed_int_max() as u128
+            } else {
+                scalar_size.unsigned_int_max()
+            };
+            ranges.reserve(patterns.len() - 1);
+            for pat in patterns.iter().skip(1) {
+                match *pat {
+                    ty::PatternKind::Range { start, end } => {
+                        let (is_this_signed, this_scalar_size, start, end) =
+                            unwrap_start_end(start, end);
+                        assert_eq!(is_signed, is_this_signed);
+                        assert_eq!(scalar_size, this_scalar_size);
+                        ranges.push((start, end))
+                    }
+                    ty::PatternKind::Or(_) => bug!("recursive \"or\" patterns?"),
+                    ty::PatternKind::NotNull => bug!("nonnull pattern in \"or\" pattern?"),
+                }
+            }
+            ranges.sort_by_key(|(start, _end)| {
+                let is_positive =
+                    if is_signed { start.to_bits(scalar_size) <= scalar_max } else { true };
+                (is_positive, start.to_bits(scalar_size))
+            });
+
+            // then, range per range, look at the sizes of the gaps left in between
+            // (`prev_tail` is the highest value currently accounted for by the ranges,
+            // unless the first range has not been dealt with yet)
+            let mut prev_tail = scalar_max;
+
+            for (range_i, (start, end)) in ranges.into_iter().enumerate() {
+                let (start, end) = (start.to_bits(scalar_size), end.to_bits(scalar_size));
+
+                // if the start of the current range is lower
+                // than the current-highest-range-end, ...
+                let current_range_overlap =
+                    if is_signed && prev_tail > scalar_max && start <= scalar_max {
+                        false
+                    } else if start <= u128::overflowing_add(prev_tail, 1).0 {
+                        range_i > 0 // no overlap possible when dealing with the first range
+                    } else {
+                        false
+                    };
+                if current_range_overlap {
+                    // update the current-highest-range-end, if the current range has a higher end
+                    if is_signed {
+                        if prev_tail > scalar_max && end <= scalar_max {
+                            prev_tail = end;
+                        } else if prev_tail <= scalar_max && end > scalar_max {
+                            // nothing to do here
+                        } else {
+                            // prev_tail and end have the same sign
+                            prev_tail = u128::max(prev_tail, end)
+                        }
+                    } else {
+                        // prev_tail and end have the same sign
+                        prev_tail = u128::max(prev_tail, end)
+                    }
+                } else {
+                    // no range overlap: there are disallowed values
+                    return true;
+                }
+            }
+            prev_tail != scalar_max
+        }
     }
 }
 

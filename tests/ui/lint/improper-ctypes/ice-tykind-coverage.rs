@@ -3,6 +3,8 @@
 //! comprehensive coverage when the changes are to be relanded, as this is a basic sanity check to
 //! check that the fuzzed example from #134060 doesn't ICE.
 
+// Issue: https://github.com/rust-lang/rust/issues/134060
+
 //@ check-pass
 
 #![crate_type = "lib"]

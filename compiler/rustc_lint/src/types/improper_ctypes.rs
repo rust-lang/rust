@@ -7,31 +7,37 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{DiagMessage, msg};
 use rustc_hir::def::CtorKind;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, AmbigArg};
+use rustc_hir::{self as hir, AmbigArg, find_attr};
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty::{
-    self, Adt, AdtDef, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, Unnormalized,
+    self, Adt, AdtDef, AdtKind, Binder, FnSig, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, Unnormalized,
 };
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{LocalDefId, LocalModId};
 use rustc_span::{Span, bug, sym};
 use rustc_target::spec::Os;
 use tracing::debug;
 
 use super::repr_nullable_ptr;
-use crate::diagnostics::{ImproperCTypes, UsesPowerAlignment};
+use crate::diagnostics::{ImproperCTypes, ImproperCTypesLayer, UsesPowerAlignment};
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `improper_ctypes` lint detects incorrect use of types in foreign
     /// modules.
+    /// (In other words, declarations of items defined in foreign code.)
+    /// This also includes all [`extern` function] pointers.
+    ///
+    /// [`extern` function]: https://doc.rust-lang.org/reference/items/functions.html#extern-function-qualifier
     ///
     /// ### Example
     ///
     /// ```rust
     /// unsafe extern "C" {
     ///     static STATIC: String;
+    ///     fn some_func(a:String);
     /// }
+    /// extern "C" fn register_callback(a: i32, call: extern "C" fn(char)) { /* ... */ }
     /// ```
     ///
     /// {{produces}}
@@ -44,34 +50,40 @@ declare_lint! {
     /// detects a probable mistake in a definition. The lint usually should
     /// provide a description of the issue, along with possibly a hint on how
     /// to resolve it.
-    IMPROPER_CTYPES,
+    pub(crate) IMPROPER_CTYPES,
     Warn,
     "proper use of libc types in foreign modules"
 }
 
 declare_lint! {
     /// The `improper_ctypes_definitions` lint detects incorrect use of
-    /// [`extern` function] definitions.
+    /// [`extern` function] definitions and [`no_mangle`] / [`export_name`] static variable definitions.
+    /// (In other words, functions and global variables to be used by foreign code.)
     ///
     /// [`extern` function]: https://doc.rust-lang.org/reference/items/functions.html#extern-function-qualifier
+    /// [`no_mangle`]: https://doc.rust-lang.org/stable/reference/abi.html#the-no_mangle-attribute
+    /// [`export_name`]: https://doc.rust-lang.org/stable/reference/abi.html#the-export_name-attribute
     ///
     /// ### Example
     ///
     /// ```rust
     /// # #![allow(unused)]
     /// pub extern "C" fn str_type(p: &str) { }
+    /// # #[used]
+    /// # #[unsafe(no_mangle)]
+    /// static PLUGIN_ABI_MIN_VERSION: &'static str = "0.0.5";
     /// ```
     ///
     /// {{produces}}
     ///
     /// ### Explanation
     ///
-    /// There are many parameter and return types that may be specified in an
-    /// `extern` function that are not compatible with the given ABI. This
-    /// lint is an alert that these types should not be used. The lint usually
-    /// should provide a description of the issue, along with possibly a hint
-    /// on how to resolve it.
-    IMPROPER_CTYPES_DEFINITIONS,
+    /// There are many types that may be specified at interfaces exposed to foreign code,
+    /// but are not follow the rules to ensure proper ABI compatibility.
+    /// This lint is issued when a mistake is detected.
+    /// The lint usually should provide a description of the issue,
+    /// along with possibly a hint on how to resolve it.
+    pub(crate) IMPROPER_CTYPES_DEFINITIONS,
     Warn,
     "proper use of libc types in foreign item definitions"
 }
@@ -134,59 +146,63 @@ declare_lint! {
 declare_lint_pass!(ImproperCTypesLint => [
     IMPROPER_CTYPES,
     IMPROPER_CTYPES_DEFINITIONS,
-    USES_POWER_ALIGNMENT
+    USES_POWER_ALIGNMENT,
 ]);
 
-/// A common pattern in this lint is to attempt normalize_erasing_regions,
-/// but keep the original type if it were to fail.
-/// This may or may not be supported in the logic behind the `Unnormalized` wrapper,
-/// (FIXME?)
-/// but it should be enough for non-wrapped types to be as normalised as this lint needs them to be.
+type Sig<'tcx> = Binder<'tcx, FnSig<'tcx>>;
+
+/// Extract (binder-wrapped) FnSig object from a FnPtr's mir::Ty
+fn get_sig_from_fnptr_ty<'tcx>(ty: Ty<'tcx>) -> Sig<'tcx> {
+    match *ty.kind() {
+        ty::FnPtr(sig_tys, hdr) => {
+            let sig = sig_tys.with(hdr);
+            if sig.abi().is_rustic_abi() {
+                bug!(
+                    "expected to inspect the type of an `extern \"ABI\"` FnPtr, not an internal-ABI one"
+                )
+            } else {
+                sig
+            }
+        }
+        r @ _ => {
+            bug!("expected to inspect the type of an `extern \"ABI\"` FnPtr, not {:?}", r,)
+        }
+    }
+}
+
+// FIXME(ctypes): it seems that tests/ui/lint/opaque-ty-ffi-normalization-cycle.rs relies on
+// the fact that we consider opaque aliases that normalise to something else to be unsafe.
+// ...is it the behaviour we want?
+// possible FIXME(ctypes,normalization): this maybe-normalised output may or may not be supported in the logic
+// behind the `Unnormalized` wrapper, but it should be enough for non-wrapped types to
+// be as normalised as this lint needs them to be.
+/// a modified version of cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty).unwrap_or(ty.skip_normalization())
+/// so that opaque types prevent normalisation once region erasure occurs
 fn maybe_normalize_erasing_regions<'tcx>(
     cx: &LateContext<'tcx>,
     value: Unnormalized<'tcx, Ty<'tcx>>,
 ) -> Ty<'tcx> {
-    // Use `TypingMode::Borrowck` so the new solver doesn't reveal opaque types since we're now
-    // past hir typeck. If we were to attempt to reveal more opaque types, dropping the
-    // `InferCtxt` would ICE (see #156352).
-    let typing_env = if let Some(body_id) = cx.enclosing_body {
-        let body_def_id = cx.tcx.hir_enclosing_body_owner(body_id.hir_id);
-        ty::TypingEnv::new(cx.param_env, ty::TypingMode::borrowck(cx.tcx, body_def_id))
+    let value_inner = value.skip_norm_wip();
+    if (!value_inner.has_aliases()) || value_inner.has_opaque_types() {
+        cx.tcx.erase_and_anonymize_regions(value_inner)
     } else {
-        cx.typing_env()
-    };
-    cx.tcx.try_normalize_erasing_regions(typing_env, value).unwrap_or(value.skip_norm_wip())
-}
+        // Use `TypingMode::Borrowck` so the new solver doesn't reveal opaque types since we're now
+        // past hir typeck. If we were to attempt to reveal more opaque types, dropping the
+        // `InferCtxt` would ICE (see #156352).
+        let typing_env = if let Some(body_id) = cx.enclosing_body {
+            let body_def_id = cx.tcx.hir_enclosing_body_owner(body_id.hir_id);
+            ty::TypingEnv::new(cx.param_env, ty::TypingMode::borrowck(cx.tcx, body_def_id))
+        } else {
+            cx.typing_env()
+        };
 
-/// Check a variant of a non-exhaustive enum for improper ctypes
-///
-/// We treat `#[non_exhaustive] enum` as "ensure that code will compile if new variants are added".
-/// This includes linting, on a best-effort basis. There are valid additions that are unlikely.
-///
-/// Adding a data-carrying variant to an existing C-like enum that is passed to C is "unlikely",
-/// so we don't need the lint to account for it.
-/// e.g. going from enum Foo { A, B, C } to enum Foo { A, B, C, D(u32) }.
-pub(crate) fn check_non_exhaustive_variant(
-    non_exhaustive_variant_list: bool,
-    variant: &ty::VariantDef,
-) -> ControlFlow<DiagMessage, ()> {
-    // non_exhaustive suggests it is possible that someone might break ABI
-    // see: https://github.com/rust-lang/rust/issues/44109#issuecomment-537583344
-    // so warn on complex enums being used outside their crate
-    if non_exhaustive_variant_list {
-        // which is why we only warn about really_tagged_union reprs from https://rust.tf/rfc2195
-        // with an enum like `#[repr(u8)] enum Enum { A(DataA), B(DataB), }`
-        // but exempt enums with unit ctors like C's (e.g. from rust-bindgen)
-        if variant_has_complex_ctor(variant) {
-            return ControlFlow::Break(msg!("this enum is non-exhaustive"));
-        }
+        cx.tcx.try_normalize_erasing_regions(typing_env, value).unwrap_or(value_inner)
+        // note: the code above ^^^ should only cause a call to the commented code below vvv
+        //let value = value.skip_normalization();
+        //let value = cx.tcx.erase_and_anonymize_regions(value);
+        //let mut folder = TryNormalizeAfterErasingRegionsFolder::new(cx.tcx, typing_env);
+        //value.try_fold_with(&mut folder).unwrap_or(value)
     }
-
-    if variant.field_list_has_applicable_non_exhaustive() {
-        return ControlFlow::Break(msg!("this enum has non-exhaustive variants"));
-    }
-
-    ControlFlow::Continue(())
 }
 
 fn variant_has_complex_ctor(variant: &ty::VariantDef) -> bool {
@@ -241,22 +257,21 @@ fn check_struct_for_power_alignment<'tcx>(
     item: &'tcx hir::Item<'tcx>,
     adt_def: AdtDef<'tcx>,
 ) {
-    let tcx = cx.tcx;
-
     // Only consider structs (not enums or unions) on AIX.
-    if tcx.sess.target.os != Os::Aix || !adt_def.is_struct() {
+    if cx.tcx.sess.target.os != Os::Aix || !adt_def.is_struct() {
         return;
     }
 
     // The struct must be repr(C), but ignore it if it explicitly specifies its alignment with
     // either `align(N)` or `packed(N)`.
-    if adt_def.repr().c() && !adt_def.repr().packed() && adt_def.repr().align.is_none() {
+    debug_assert!(adt_def.repr().c() && !adt_def.repr().packed() && adt_def.repr().align.is_none());
+    if !adt_def.all_fields().next().is_none() {
         let struct_variant_data = item.expect_struct().2;
         for field_def in struct_variant_data.fields().iter().skip(1) {
             // Struct fields (after the first field) are checked for the
             // power alignment rule, as fields after the first are likely
             // to be the fields that are misaligned.
-            let ty = tcx.type_of(field_def.def_id).instantiate_identity().skip_norm_wip();
+            let ty = cx.tcx.type_of(field_def.def_id).instantiate_identity().skip_norm_wip();
             if check_arg_for_power_alignment(cx, ty) {
                 cx.emit_span_lint(USES_POWER_ALIGNMENT, field_def.span, UsesPowerAlignment);
             }
@@ -264,13 +279,22 @@ fn check_struct_for_power_alignment<'tcx>(
     }
 }
 
-/// Annotates whether we are in the context of an item *defined* in rust
-/// and exposed to an FFI boundary,
-/// or the context of an item from elsewhere, whose interface is re-*declared* in rust.
-#[derive(Clone, Copy)]
+/// Annotates the nature of the "original item" being checked, and its relation
+/// to FFI boundaries.
+/// Mainly, whether is is something defined in rust and exported through the FFI boundary,
+/// or something rust imports through the same boundary.
+/// Callbacks are ultimately treated as imported items, in terms of denying/warning/ignoring FFI-unsafety
+#[derive(Clone, Copy, Debug)]
 enum CItemKind {
-    Declaration,
-    Definition,
+    /// Imported items in an `extern "C"` block (function declarations, static variables) -> IMPROPER_CTYPES
+    ImportedExtern,
+    /// `extern "C"` function definitions, to be used elsewhere -> IMPROPER_CTYPES_DEFINITIONS,
+    ExportedFunction,
+    /// `extern "C"` function pointers -> also IMPROPER_CTYPES,
+    Callback,
+    /// `no_mangle`/`export_name` static variables, assumed to be used from across an FFI boundary,
+    /// -> also IMPROPER_CTYPES_DEFINITIONS
+    ExportedStatic,
 }
 
 /// Annotates whether we are in the context of a function's argument types or return type.
@@ -280,10 +304,180 @@ enum FnPos {
     Ret,
 }
 
+#[derive(Clone, Debug)]
+struct FfiUnsafeReason<'tcx> {
+    ty: Ty<'tcx>,
+    note: DiagMessage,
+    help: Option<DiagMessage>,
+    inner: Option<Box<FfiUnsafeReason<'tcx>>>,
+}
+
+/// A single explanation (out of possibly multiple)
+/// telling why a given element is rendered FFI-unsafe.
+/// This goes as deep as the 'core cause', but it might be located elsewhere, possibly in a different crate.
+/// So, we also track the 'smallest' type in the explanation that appears in the span of the unsafe element.
+/// (we call this the 'cause' or the 'local cause' of the unsafety)
+#[derive(Clone, Debug)]
+struct FfiUnsafeExplanation<'tcx> {
+    /// A stack of incrementally "smaller" types, justifications and help messages,
+    /// ending with the 'core reason' why something is FFI-unsafe, making everything around it also unsafe.
+    reason: Box<FfiUnsafeReason<'tcx>>,
+    /// Override the type considered the local cause of the FFI-unsafety.
+    /// (e.g.: even if the lint goes into detail as to why a struct used as a function argument
+    /// is unsafe, have the first lint line say that the fault lies in the use of said struct.)
+    override_cause_ty: Option<Ty<'tcx>>,
+}
+
+/// The result describing the safety (or lack thereof) of a given type.
+#[derive(Clone, Debug)]
 enum FfiResult<'tcx> {
+    /// The type is known to be safe.
     FfiSafe,
+    /// The type is only a phantom annotation.
+    /// (Safe in some contexts, unsafe in others.)
     FfiPhantom(Ty<'tcx>),
-    FfiUnsafe { ty: Ty<'tcx>, reason: DiagMessage, help: Option<DiagMessage> },
+    /// The type is not safe.
+    /// there might be any number of "explanations" as to why,
+    /// each being a stack of "reasons" going from the type
+    /// to a core cause of FFI-unsafety.
+    FfiUnsafe(Vec<FfiUnsafeExplanation<'tcx>>),
+}
+
+impl<'tcx> FfiResult<'tcx> {
+    /// Simplified creation of the FfiUnsafe variant for a single unsafety reason.
+    fn new_with_reason(ty: Ty<'tcx>, note: DiagMessage, help: Option<DiagMessage>) -> Self {
+        Self::FfiUnsafe(vec![FfiUnsafeExplanation {
+            override_cause_ty: None,
+            reason: Box::new(FfiUnsafeReason { ty, help, note, inner: None }),
+        }])
+    }
+
+    /// If the FfiUnsafe variant, 'wraps' all reasons,
+    /// creating new `FfiUnsafeReason`s, putting the originals as their `inner` fields.
+    /// Otherwise, keep unchanged.
+    fn wrap_all(self, ty: Ty<'tcx>, note: DiagMessage, help: Option<DiagMessage>) -> Self {
+        match self {
+            Self::FfiUnsafe(this) => {
+                let unsafeties = this
+                    .into_iter()
+                    .map(|FfiUnsafeExplanation { reason, override_cause_ty }| {
+                        let reason = Box::new(FfiUnsafeReason {
+                            ty,
+                            help: help.clone(),
+                            note: note.clone(),
+                            inner: Some(reason),
+                        });
+                        FfiUnsafeExplanation { reason, override_cause_ty }
+                    })
+                    .collect::<Vec<_>>();
+                Self::FfiUnsafe(unsafeties)
+            }
+            r @ _ => r,
+        }
+    }
+    /// If the FfiPhantom variant, turns it into a FfiUnsafe version.
+    /// Otherwise, keep unchanged.
+    fn forbid_phantom(self) -> Self {
+        match self {
+            Self::FfiPhantom(ty) => {
+                Self::new_with_reason(ty, msg!("composed only of `PhantomData`"), None)
+            }
+            _ => self,
+        }
+    }
+
+    /// Selectively "pluck" some explanations out of a FfiResult::FfiUnsafe,
+    /// if the note at their core reason is one in a provided list.
+    /// If the FfiResult is not FfiUnsafe, or if no reasons are plucked,
+    /// then return FfiSafe.
+    fn take_with_core_note(&mut self, notes: &[DiagMessage]) -> Self {
+        match self {
+            Self::FfiUnsafe(this) => {
+                let mut remaining_explanations = vec![];
+                std::mem::swap(this, &mut remaining_explanations);
+                let mut filtered_explanations = vec![];
+                let mut remaining_explanations = remaining_explanations
+                    .into_iter()
+                    .filter_map(|explanation| {
+                        let mut reason = explanation.reason.as_ref();
+                        while let Some(ref inner) = reason.inner {
+                            reason = inner.as_ref();
+                        }
+                        let mut does_remain = true;
+                        for note_match in notes {
+                            if note_match == &reason.note {
+                                does_remain = false;
+                                break;
+                            }
+                        }
+                        if does_remain {
+                            Some(explanation)
+                        } else {
+                            filtered_explanations.push(explanation);
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                std::mem::swap(this, &mut remaining_explanations);
+                if filtered_explanations.len() > 0 {
+                    Self::FfiUnsafe(filtered_explanations)
+                } else {
+                    Self::FfiSafe
+                }
+            }
+            _ => Self::FfiSafe,
+        }
+    }
+
+    /// Wrap around code that generates FfiResults "from a different cause".
+    /// For instance, if we have a repr(C) struct in a function's argument, FFI unsafeties inside the struct
+    /// are to be blamed on the struct and not the members.
+    /// This is where we use this wrapper, to tell "all FFI-unsafeties in there are caused by this `ty`"
+    fn with_overrides(mut self, override_cause_ty: Option<Ty<'tcx>>) -> FfiResult<'tcx> {
+        use FfiResult::*;
+
+        if let FfiUnsafe(ref mut explanations) = self {
+            explanations.iter_mut().for_each(|explanation| {
+                explanation.override_cause_ty = override_cause_ty;
+            });
+        }
+        self
+    }
+}
+
+impl<'tcx> std::ops::AddAssign<FfiResult<'tcx>> for FfiResult<'tcx> {
+    fn add_assign(&mut self, other: Self) {
+        // note: we shouldn't really encounter FfiPhantoms here, they should be dealt with beforehand
+        // still, this function deals with them in a reasonable way, I think
+
+        match (self, other) {
+            (Self::FfiUnsafe(myself), Self::FfiUnsafe(mut other_reasons)) => {
+                myself.append(&mut other_reasons);
+            }
+            (Self::FfiUnsafe(_), _) => {
+                // nothing to do
+            }
+            (myself, other @ Self::FfiUnsafe(_)) => {
+                *myself = other;
+            }
+            (Self::FfiPhantom(ty1), Self::FfiPhantom(ty2)) => {
+                debug!("whoops, both FfiPhantom: self({:?}) += other({:?})", ty1, ty2);
+            }
+            (myself @ Self::FfiSafe, other @ Self::FfiPhantom(_)) => {
+                *myself = other;
+            }
+            (_, Self::FfiSafe) => {
+                // nothing to do
+            }
+        }
+    }
+}
+impl<'tcx> std::ops::Add<FfiResult<'tcx>> for FfiResult<'tcx> {
+    type Output = FfiResult<'tcx>;
+    fn add(mut self, other: Self) -> Self::Output {
+        self += other;
+        self
+    }
 }
 
 /// The result when a type has been checked but perhaps not completely. `None` indicates that
@@ -291,7 +485,7 @@ enum FfiResult<'tcx> {
 /// in the `FfiResult` is final.
 type PartialFfiResult<'tcx> = Option<FfiResult<'tcx>>;
 
-/// What type indirection points to a given type.
+/// The type of an indirection (the way in which it points to its pointee).
 #[derive(Clone, Copy)]
 enum IndirectionKind {
     /// Box (valid non-null pointer, owns pointee).
@@ -300,6 +494,176 @@ enum IndirectionKind {
     Ref,
     /// Raw pointer (not necessarily non-null or valid. no info on ownership).
     RawPtr,
+}
+
+impl IndirectionKind {
+    fn to_note_msg(self) -> DiagMessage {
+        match self {
+            IndirectionKind::RawPtr => msg!(
+                "this pointer to an unsized type contains metadata, which makes it incompatible with a C pointer"
+            ),
+            IndirectionKind::Ref => msg!(
+                "this reference to an unsized type contains metadata, which makes it incompatible with a C pointer"
+            ),
+            IndirectionKind::Box => msg!(
+                "this box for an unsized type contains metadata, which makes it incompatible with a C pointer"
+            ),
+        }
+    }
+}
+
+/// The different ways a given type can have/not have a fixed size.
+/// Relies on the vocabulary of the Hierarchy of Sized Traits change (`#![feature(sized_hierarchy)]`)
+#[derive(Clone, Copy)]
+enum TypeSizedness {
+    /// Type of definite size (pointers are C-compatible).
+    Sized,
+    /// Unsized type because it includes an opaque/foreign type (pointers are C-compatible).
+    /// (Relies on all Unsized types being `extern` types, and unable to be used in an array/slice)
+    Unsized,
+    /// MetaSized types are types whose size can be computed from pointer metadata (slice, string, dyn Trait, closure, ...)
+    /// (pointers are not C-compatible).
+    MetaSized,
+    /// Not known, usually for placeholder types (Self in non-impl trait functions, type parameters, aliases, the like).
+    NotYetKnown,
+}
+
+/// Determine if a type is sized or not, and whether it affects references/pointers/boxes to it.
+fn get_type_sizedness<'tcx, 'a>(cx: &'a LateContext<'tcx>, ty: Ty<'tcx>) -> TypeSizedness {
+    let tcx = cx.tcx;
+
+    // note that sizedness is unrelated to inhabitedness
+    if ty.is_sized(tcx, cx.typing_env()) {
+        TypeSizedness::Sized
+    } else {
+        // the overall type is !Sized or ?Sized
+        match ty.kind() {
+            ty::Slice(_) | ty::Str | ty::Dynamic(..) => TypeSizedness::MetaSized,
+            ty::Foreign(..) => TypeSizedness::Unsized,
+            ty::Adt(def, args) => {
+                // for now assume: boxes and phantoms don't mess with this
+                match def.adt_kind() {
+                    AdtKind::Union | AdtKind::Enum => {
+                        bug!("unions and enums are necessarily sized")
+                    }
+                    AdtKind::Struct => {
+                        if let Some(intermediate) =
+                            def.sizedness_constraint(tcx, ty::SizedTraitKind::MetaSized)
+                        {
+                            let ty = maybe_normalize_erasing_regions(
+                                cx,
+                                intermediate.instantiate(tcx, args),
+                            );
+                            get_type_sizedness(cx, ty)
+                        } else {
+                            debug_assert!(
+                                def.sizedness_constraint(tcx, ty::SizedTraitKind::Sized).is_some()
+                            );
+                            TypeSizedness::MetaSized
+                        }
+
+                        // if let Some(sym::cstring_type | sym::cstr_type) =
+                        //     tcx.get_diagnostic_name(def.did())
+                        // {
+                        //     return TypeSizedness::MetaSized;
+                        // }
+
+                        // // note: non-exhaustive structs from other crates are not assumed to be ?Sized
+                        // // for the purpose of sizedness, it seems we are allowed to look at its current contents.
+
+                        // if def.non_enum_variant().fields.is_empty() {
+                        //     bug!("an empty struct is necessarily sized");
+                        // }
+
+                        // let variant = def.non_enum_variant();
+
+                        // // only the last field may be !Sized (or ?Sized in the case of type params)
+                        // let last_field = match (&variant.fields).iter().last() {
+                        //     Some(last_field) => last_field,
+                        //     // even nonexhaustive-empty structs from another crate are considered Sized
+                        //     // (eventhough one could add a !Sized field to them)
+                        //     None => bug!("Empty struct should be Sized, right?"), //
+                        // };
+                        // let field_ty = maybe_normalize_erasing_regions(
+                        //     cx,
+                        //     Unnormalized::new_wip(last_field.ty(cx.tcx, args)),
+                        // );
+                        // match get_type_sizedness(cx, field_ty) {
+                        //     s @ (TypeSizedness::MetaSized
+                        //     | TypeSizedness::Unsized
+                        //     | TypeSizedness::NotYetKnown) => s,
+                        //     TypeSizedness::Sized => {
+                        //         bug!("failed to find the reason why struct `{:?}` is unsized", ty)
+                        //     }
+                        // }
+                    }
+                }
+            }
+            ty::Tuple(tuple) => {
+                // only the last field may be !Sized (or ?Sized in the case of type params)
+                let item_ty: Unnormalized<'tcx, Ty<'tcx>> = match tuple.last() {
+                    Some(item_ty) => Unnormalized::new_wip(*item_ty),
+                    None => bug!("Empty tuple (AKA unit type) should be Sized, right?"),
+                };
+                let item_ty = maybe_normalize_erasing_regions(cx, item_ty);
+                match get_type_sizedness(cx, item_ty) {
+                    s @ (TypeSizedness::MetaSized
+                    | TypeSizedness::Unsized
+                    | TypeSizedness::NotYetKnown) => s,
+                    TypeSizedness::Sized => {
+                        bug!("failed to find the reason why tuple `{:?}` is unsized", ty)
+                    }
+                }
+            }
+
+            // this is a safety net, patterns should not have a base type that is !Sized
+            ty::Pat(base, _) => get_type_sizedness(cx, *base),
+
+            ty_kind @ (ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Array(..)
+            | ty::RawPtr(..)
+            | ty::Ref(..)
+            | ty::FnPtr(..)
+            | ty::Never) => {
+                // those types are all sized, right?
+                bug!(
+                    "This ty_kind (`{:?}`) should be sized, yet we are in a branch of code that deals with unsized types.",
+                    ty_kind,
+                )
+            }
+
+            // While opaque types are checked for earlier, if a projection in a struct field
+            // normalizes to an opaque type, then it will reach ty::Alias(ty::Opaque) here.
+            ty::Param(..)
+            | ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Opaque { .. } | ty::Projection { .. } | ty::Inherent { .. },
+                    ..
+                },
+            ) => {
+                return TypeSizedness::NotYetKnown;
+            }
+
+            // we can skip the binder, it only binds lifetimes, which we don't care about here
+            ty::UnsafeBinder(inner) => get_type_sizedness(cx, inner.skip_binder()),
+
+            ty::Alias(_, ty::AliasTy { kind: ty::Free { .. }, .. })
+            | ty::Infer(..)
+            | ty::Bound(..)
+            | ty::Error(_)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
+            | ty::Placeholder(..)
+            | ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
+        }
+    }
 }
 
 bitflags! {
@@ -326,10 +690,15 @@ bitflags! {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum OuterTyKind {
     None,
-    /// A variant that should not exist,
-    /// but is needed because we don't change the lint's behavior yet
-    NoneThroughFnPtr,
-    /// Placeholder for properties that will be used eventually
+    /// Pointee through ref, raw pointer or Box
+    /// (we don't need to distinguish the ownership of Box specifically)
+    Pointee {
+        mutable: hir::Mutability,
+        raw: bool,
+    },
+    /// For struct/enum/union fields
+    AdtField,
+    /// For arrays/slices but also tuples
     Other,
 }
 
@@ -337,13 +706,18 @@ impl OuterTyKind {
     /// Computes the relationship by providing the containing Ty itself
     fn from_ty<'tcx>(ty: Ty<'tcx>) -> Self {
         match ty.kind() {
-            ty::FnPtr(..) => Self::NoneThroughFnPtr,
-            ty::RawPtr(..)
-            | ty::Ref(..)
-            | ty::Adt(..)
-            | ty::Tuple(..)
-            | ty::Array(..)
-            | ty::Slice(_) => OuterTyKind::Other,
+            ty::FnPtr(..) => Self::None,
+            k @ (ty::Ref(_, _, mutable) | ty::RawPtr(_, mutable)) => {
+                Self::Pointee { raw: matches!(k, ty::RawPtr(..)), mutable: *mutable }
+            }
+            ty::Adt(..) => {
+                if ty.boxed_ty().is_some() {
+                    Self::Pointee { raw: false, mutable: hir::Mutability::Mut }
+                } else {
+                    Self::AdtField
+                }
+            }
+            ty::Tuple(..) | ty::Array(..) | ty::Slice(_) => Self::Other,
             _ => bug!("Unexpected outer type {ty:?}"),
         }
     }
@@ -364,6 +738,8 @@ struct VisitorState {
 impl RootUseFlags {
     // The values that can be set.
     const STATIC_TY: Self = Self::STATIC;
+    const EXPORTED_STATIC_TY: Self =
+        Self::from_bits(Self::STATIC.bits() | Self::DEFINED.bits()).unwrap();
     const ARGUMENT_TY_IN_DEFINITION: Self =
         Self::from_bits(Self::FUNC.bits() | Self::DEFINED.bits()).unwrap();
     const RETURN_TY_IN_DEFINITION: Self =
@@ -390,28 +766,18 @@ impl VisitorState {
         }
     }
 
-    /// From an existing state, compute the state of any subtype of the current type.
-    /// (Case where the current type is a function pointer,
-    /// meaning we need to specify if the subtype is an argument or the return.)
-    fn next_in_fnptr(&self, current_ty: Ty<'_>, fn_pos: FnPos) -> Self {
-        assert!(matches!(current_ty.kind(), ty::FnPtr(..)));
-        VisitorState {
-            root_use_flags: match fn_pos {
-                FnPos::Ret => RootUseFlags::RETURN_TY_IN_FNPTR,
-                FnPos::Arg => RootUseFlags::ARGUMENT_TY_IN_FNPTR,
-            },
-            outer_ty_kind: OuterTyKind::from_ty(current_ty),
-            depth: self.depth + 1,
-        }
-    }
-
     /// Get the proper visitor state for a given function's arguments or return type.
     fn fn_entry_point(fn_mode: CItemKind, fn_pos: FnPos) -> Self {
         let p_flags = match (fn_mode, fn_pos) {
-            (CItemKind::Definition, FnPos::Ret) => RootUseFlags::RETURN_TY_IN_DEFINITION,
-            (CItemKind::Declaration, FnPos::Ret) => RootUseFlags::RETURN_TY_IN_DECLARATION,
-            (CItemKind::Definition, FnPos::Arg) => RootUseFlags::ARGUMENT_TY_IN_DEFINITION,
-            (CItemKind::Declaration, FnPos::Arg) => RootUseFlags::ARGUMENT_TY_IN_DECLARATION,
+            (CItemKind::ExportedFunction, FnPos::Ret) => RootUseFlags::RETURN_TY_IN_DEFINITION,
+            (CItemKind::ImportedExtern, FnPos::Ret) => RootUseFlags::RETURN_TY_IN_DECLARATION,
+            (CItemKind::Callback, FnPos::Ret) => RootUseFlags::RETURN_TY_IN_FNPTR,
+            (CItemKind::ExportedFunction, FnPos::Arg) => RootUseFlags::ARGUMENT_TY_IN_DEFINITION,
+            (CItemKind::ImportedExtern, FnPos::Arg) => RootUseFlags::ARGUMENT_TY_IN_DECLARATION,
+            (CItemKind::Callback, FnPos::Arg) => RootUseFlags::ARGUMENT_TY_IN_FNPTR,
+            (CItemKind::ExportedStatic, _) => bug!(
+                "VisitorState::entry_point_from_fnmode() should not be used for static variables!"
+            ),
         };
         VisitorState { root_use_flags: p_flags, outer_ty_kind: OuterTyKind::None, depth: 0 }
     }
@@ -420,6 +786,15 @@ impl VisitorState {
     fn static_entry_point() -> Self {
         VisitorState {
             root_use_flags: RootUseFlags::STATIC_TY,
+            outer_ty_kind: OuterTyKind::None,
+            depth: 0,
+        }
+    }
+
+    /// Get the proper visitor state for a locally-defined static variable's type
+    fn static_def_entry_point() -> Self {
+        VisitorState {
+            root_use_flags: RootUseFlags::EXPORTED_STATIC_TY,
             outer_ty_kind: OuterTyKind::None,
             depth: 0,
         }
@@ -450,17 +825,30 @@ impl VisitorState {
         self.root_use_flags.contains(RootUseFlags::DEFINED) && self.is_in_function()
     }
 
-    /// Whether the type is used (directly or not) in a function pointer type.
-    /// Here, we also allow non-FFI-safe types behind a C pointer,
-    /// to be treated as an opaque type on the other side of the FFI boundary.
-    fn is_in_fnptr(&self) -> bool {
-        self.root_use_flags.contains(RootUseFlags::THEORETICAL) && self.is_in_function()
-    }
-
     /// Whether we can expect type parameters and co in a given type.
     fn can_expect_ty_params(&self) -> bool {
         // rust-defined functions, as well as FnPtrs
         self.root_use_flags.contains(RootUseFlags::THEORETICAL) || self.is_in_defined_function()
+    }
+
+    /// Whether the current type is an ADT field
+    fn is_field(&self) -> bool {
+        matches!(self.outer_ty_kind, OuterTyKind::AdtField)
+    }
+
+    /// Whether the current type is behind a pointer that doesn't allow mutating this
+    fn is_nonmut_pointee(&self) -> bool {
+        matches!(self.outer_ty_kind, OuterTyKind::Pointee { mutable: hir::Mutability::Not, .. })
+    }
+
+    /// Whether the current type is behind a raw pointer
+    fn is_raw_pointee(&self) -> bool {
+        matches!(self.outer_ty_kind, OuterTyKind::Pointee { raw: true, .. })
+    }
+
+    /// Whether the current type directly in the memory layout of the parent ty
+    fn is_memory_inlined(&self) -> bool {
+        matches!(self.outer_ty_kind, OuterTyKind::AdtField | OuterTyKind::Other)
     }
 }
 
@@ -469,30 +857,60 @@ impl VisitorState {
 /// and ``visit_*`` methods to recurse.
 struct ImproperCTypesVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
+    /// The module id of the item being checked for FFI-safety
+    mod_id: LocalModId,
     /// To prevent problems with recursive types,
     /// add a types-in-check cache.
-    cache: FxHashSet<Ty<'tcx>>,
-    /// The original type being checked, before we recursed
-    /// to any other types it contains.
-    base_ty: Ty<'tcx>,
-    base_fn_mode: CItemKind,
+    ty_cache: FxHashSet<Ty<'tcx>>,
 }
 
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
-    fn new(
-        cx: &'a LateContext<'tcx>,
-        base_ty: Unnormalized<'tcx, Ty<'tcx>>,
-        base_fn_mode: CItemKind,
-    ) -> Self {
-        // Skip normalization for opaques: even in `TypingMode::Borrowck` the body's own
-        // defining opaques still get revealed, leaving entries in `OpaqueTypeStorage` that
-        // ICE on `InferCtxt` drop (issue #156352).
-        let base_ty = if base_ty.skip_norm_wip().has_opaque_types() {
-            base_ty.skip_norm_wip()
+    fn new(cx: &'a LateContext<'tcx>, mod_id: LocalModId) -> Self {
+        ImproperCTypesVisitor { cx, mod_id, ty_cache: FxHashSet::default() }
+    }
+
+    /// Checks whether an uninhabited type (one without valid values) is safe-ish to have here.
+    fn visit_uninhabited(&self, state: VisitorState, ty: Ty<'tcx>) -> FfiResult<'tcx> {
+        if state.is_in_function_return() {
+            FfiResult::FfiSafe
         } else {
-            maybe_normalize_erasing_regions(cx, base_ty)
+            let desc = match ty.kind() {
+                ty::Adt(..) => msg!(
+                    "zero-variant enums and other uninhabited types are not allowed in function arguments and static variables"
+                ),
+                ty::Never => msg!(
+                    "the never type (`!`) and other uninhabited types are not allowed in function arguments and static variables"
+                ),
+                r @ _ => bug!("unexpected ty_kind in uninhabited type handling: {:?}", r),
+            };
+            FfiResult::new_with_reason(ty, desc, None)
+        }
+    }
+
+    /// Return the right help for Cstring and Cstr-linked unsafety.
+    fn visit_cstr(&mut self, state: VisitorState, ty: Ty<'tcx>) -> FfiResult<'tcx> {
+        debug_assert!(matches!(ty.kind(), ty::Adt(def, _)
+            if matches!(
+                self.cx.tcx.get_diagnostic_name(def.did()),
+                Some(sym::cstring_type | sym::cstr_type)
+            )
+        ));
+
+        let help = if state.is_nonmut_pointee() {
+            msg!(
+                "consider passing a `*const std::ffi::c_char` instead, converting to/from `{$ty}` as needed"
+            )
+        } else {
+            msg!(
+                "consider passing a `*mut std::ffi::c_char` instead, converting to/from `{$ty}` as needed"
+            )
         };
-        ImproperCTypesVisitor { cx, base_ty, base_fn_mode, cache: FxHashSet::default() }
+
+        FfiResult::new_with_reason(
+            ty,
+            msg!("`CStr`/`CString` do not have a guaranteed layout"),
+            Some(help),
+        )
     }
 
     /// Checks if the given indirection (box,ref,pointer) is "ffi-safe".
@@ -503,66 +921,84 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         inner_ty: Ty<'tcx>,
         indirection_kind: IndirectionKind,
     ) -> FfiResult<'tcx> {
-        use FfiResult::*;
         let tcx = self.cx.tcx;
 
-        match indirection_kind {
-            IndirectionKind::Box => {
-                // FIXME(ctypes): this logic is broken, but it still fits the current tests:
-                // - for some reason `Box<_>`es in `extern "ABI" {}` blocks
-                //   (including within FnPtr:s)
-                //   are not treated as pointers but as FFI-unsafe structs
-                // - otherwise, treat the box itself correctly, and follow pointee safety logic
-                //   as described in the other `indirection_type` match branch.
-                if state.is_in_defined_function()
-                    || (state.is_in_fnptr() && matches!(self.base_fn_mode, CItemKind::Definition))
-                {
-                    if inner_ty.is_sized(tcx, self.cx.typing_env()) {
-                        return FfiSafe;
-                    } else {
-                        return FfiUnsafe {
-                            ty,
-                            reason: msg!("box cannot be represented as a single pointer"),
-                            help: None,
-                        };
+        if let ty::Adt(def, _) = inner_ty.kind() {
+            if let Some(diag_name @ (sym::cstring_type | sym::cstr_type)) =
+                tcx.get_diagnostic_name(def.did())
+            {
+                // we have better error messages when checking for C-strings directly
+                let mut cstr_res = self.visit_cstr(state.next(ty), inner_ty); // always unsafe with one depth-one reason.
+
+                // Cstr pointer have metadata, CString is Sized
+                if diag_name == sym::cstr_type {
+                    // we need to override the "type" part of `cstr_res`'s only FfiResultReason
+                    // so it says that it's the use of the indirection that is unsafe
+                    match cstr_res {
+                        FfiResult::FfiUnsafe(ref mut reasons) => {
+                            reasons.first_mut().unwrap().reason.ty = ty;
+                        }
+                        _ => unreachable!(),
                     }
+                    let note = indirection_kind.to_note_msg();
+                    return cstr_res.wrap_all(ty, note, None);
                 } else {
-                    // (mid-retcon-commit-chain comment:)
-                    // this is the original fallback behavior, which is wrong
-                    if let ty::Adt(def, args) = ty.kind() {
-                        self.visit_struct_or_union(state, ty, *def, args)
-                    } else if cfg!(debug_assertions) {
-                        bug!("ImproperCTypes: this retcon commit was badly written")
-                    } else {
-                        FfiSafe
-                    }
+                    return cstr_res;
                 }
             }
-            IndirectionKind::Ref | IndirectionKind::RawPtr => {
-                // Weird behaviour for pointee safety. the big question here is
-                // "if you have a FFI-unsafe pointee behind a FFI-safe pointer type, is it ok?"
-                // The answer until now is:
-                // "It's OK for rust-defined functions and callbacks, we'll assume those are
-                // meant to be opaque types on the other side of the FFI boundary".
-                //
-                // Reasoning:
-                // For extern function declarations, the actual definition of the function is
-                // written somewhere else, meaning the declaration is free to express this
-                // opaqueness with an extern type (opaque caller-side) or a std::ffi::c_void
-                // (opaque callee-side). For extern function definitions, however, in the case
-                // where the type is opaque caller-side, it is not opaque callee-side,
-                // and having the full type information is necessary to compile the function.
-                //
-                // It might be better to rething this, or even ignore pointee safety for a first
-                // batch of behaviour changes. See the discussion that ends with
-                // https://github.com/rust-lang/rust/pull/134697#issuecomment-2692610258
-                if (state.is_in_defined_function() || state.is_in_fnptr())
-                    && inner_ty.is_sized(self.cx.tcx, self.cx.typing_env())
-                {
-                    FfiSafe
-                } else {
-                    self.visit_type(state.next(ty), inner_ty)
+        }
+
+        // there are three remaining concerns with the pointer:
+        // - is the pointer compatible with a C pointer in the first place? (if not, only send that error message)
+        // - is the pointee FFI-safe? (it might not matter, see mere lines below)
+        // - does the pointer type contain a non-zero assumption, but has a value given by non-rust code?
+        // this block deals with the first two.
+        let type_sizedness = get_type_sizedness(self.cx, inner_ty);
+        match type_sizedness {
+            TypeSizedness::Unsized | TypeSizedness::Sized => {
+                if matches!(
+                    (type_sizedness, indirection_kind),
+                    (TypeSizedness::Unsized, IndirectionKind::Box)
+                ) {
+                    // Box<_> means rust is capable of drop()'ing the pointee,
+                    // which is impossible for `extern` types (foreign opaque types).
+                    bug!(
+                        "FFI-unsafeties similar to `Box<extern type>` currently cause compilation errors that should prevent ImproperCTypes from running. If you see this, it is likely this behaviour has changed."
+                    );
                 }
+                // FIXME(ctypes):
+                // for now, we consider this to be safe even in the case of a FFI-unsafe pointee
+                // this is technically only safe if the pointer is never dereferenced on the non-rust
+                // side of the FFI boundary, i.e. if the type is to be treated as opaque
+                // there are techniques to flag those pointees as opaque, but not always, so we can only enforce this
+                // in some cases.
+                FfiResult::FfiSafe
+            }
+            TypeSizedness::NotYetKnown => {
+                // types with sizedness NotYetKnown:
+                // - Type params (with `variable: impl Trait` shorthand or not)
+                //   (function definitions only, let's see how this interacts with monomorphisation)
+                // - Self in trait functions/methods
+                // - Opaque return types
+                //   (always FFI-unsafe)
+                // - non-exhaustive structs/enums/unions from other crates
+                //   (always FFI-unsafe)
+                // (for the three first, this is unless there is a `+Sized` bound involved)
+
+                // whether they are FFI-safe or not does not depend on the indirections involved (&Self, &T, Box<impl Trait>),
+                // so let's not wrap the current context around a potential FfiUnsafe type param.
+                self.visit_type(state.next(ty), inner_ty)
+            }
+            TypeSizedness::MetaSized => {
+                let help = match inner_ty.kind() {
+                    ty::Str => Some(msg!("consider using `*const u8` and a length instead")),
+                    ty::Slice(_) => Some(msg!(
+                        "consider using a raw pointer to the slice's first element (and a length) instead"
+                    )),
+                    _ => None,
+                };
+                let reason = indirection_kind.to_note_msg();
+                return FfiResult::new_with_reason(ty, reason, help);
             }
         }
     }
@@ -578,47 +1014,179 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     ) -> FfiResult<'tcx> {
         use FfiResult::*;
 
-        let transparent_with_all_zst_fields = if def.repr().transparent() {
-            if let Some(field) = super::transparent_newtype_field(self.cx.tcx, variant) {
-                // Transparent newtypes have at most one non-ZST field which needs to be checked..
-                let field_ty =
-                    maybe_normalize_erasing_regions(self.cx, field.ty(self.cx.tcx, args));
-                match self.visit_type(state.next(ty), field_ty) {
-                    FfiUnsafe { ty, .. } if ty.is_unit() => (),
-                    r => return r,
-                }
+        // The decision tree for the safety of a list of fields is as follows:
+        // (but please note that the conditionals are not evaluated in that order)
+        //
+        // - is it neither `repr(C)`, `transparent` (for a struct), nor `repr(int_type)` (for enums)?
+        //   - if so, it is unsafe.
+        // - are we in a situation where uninhabitedness is an issue?
+        //   - if so, raise lints for all uninhabited fields
+        // - are all the fields PhantomData?
+        //   - if so, the struct as a whole is PhantomData
+        // - is it a transparent struct?
+        //   - if so, are all fields 1ZSTs?
+        //     - if so, it is unsafe in all cases (prefer reporting unsafeties from the fields, if any)
+        //     - otherwise, check the remaining field's safety
+        // - otherwise, check the safety of all fields
+        //   - if this is a `repr(C)` struct with only one non-1ZST field,
+        //     which is safe, suggest using `repr(transparent)` instead
 
-                false
+        let mut ffires_accumulator = FfiSafe;
+
+        let (transparent_with_all_zst_fields, field_list) = if !matches!(
+            def.adt_kind(),
+            AdtKind::Enum
+        ) && def.repr().transparent()
+        {
+            // determine if there is 0 or 1 non-1ZST field, and which it is.
+            // (note: for enums, "transparent" means 1-variant, which is not what we want)
+            if !ty.is_inhabited_from(self.cx.tcx, self.mod_id, self.cx.typing_env()) {
+                // `repr(transparent)` structs are FFI-safe when some of their 1ZSTs are uninhabited
+                // and if we are in a context where uninhabitedness is allowed (function returns, etc)
+                // Notably, transparent structs with a data type and an uninhabited 1ZST marker
+                // is what models `[[noreturn]]` C functions with a possibly non-void return type,
+                // which still requires things like stack allocations prior to the call.
+                // see https://github.com/rust-lang/rust/pull/134697#issuecomment-2937936422
+                //
+                // However, if we are in a context where uninhabitedness is forbidden (function argument, etc),
+                // we must make sure that we lint on all uninhabited fields, even if we discard
+                // all other sources of FFI-unsafety from them.
+                ffires_accumulator += variant
+                        .fields
+                        .iter()
+                        .map(|field| {
+                            let field_ty = maybe_normalize_erasing_regions(
+                                self.cx,
+                                field.ty(self.cx.tcx, args),
+                            );
+                            let mut field_res = self.visit_type(state.next(ty), field_ty);
+                            field_res.take_with_core_note(&[
+                                msg!("zero-variant enums and other uninhabited types are not allowed in function arguments and static variables"),
+                                msg!("the never type (`!`) and other uninhabited types are not allowed in function arguments and static variables"),
+                            ])
+                        })
+                        .reduce(|r1, r2| r1 + r2)
+                        .unwrap() // if uninhabited, then >0 fields
+            }
+            if let Some(field) = super::transparent_newtype_field(self.cx.tcx, variant)
+                // FIXME: this constructs two `typing_env`s in a single line
+                // (inefficient, but is it that big a problem?)
+                && !super::is_1zst(self.cx, maybe_normalize_erasing_regions(
+                    self.cx,
+                    field.ty(self.cx.tcx, args),
+                ))
+            {
+                // Transparent newtypes have at most one non-ZST field which needs to be checked later
+                // Though, the function above doesn't see through type params in this ADT, so we checked its work
+                (false, vec![field])
             } else {
                 // ..or have only ZST fields, which is FFI-unsafe (unless those fields are all
                 // `PhantomData`).
-                true
+                (true, variant.fields.iter().collect::<Vec<_>>())
             }
         } else {
-            false
+            (false, variant.fields.iter().collect::<Vec<_>>())
         };
 
         // We can't completely trust `repr(C)` markings, so make sure the fields are actually safe.
         let mut all_phantom = !variant.fields.is_empty();
-        for field in &variant.fields {
+        let mut fields_ok_list = vec![true; field_list.len()];
+
+        for (field_i, field) in field_list.into_iter().enumerate() {
             let field_ty = maybe_normalize_erasing_regions(self.cx, field.ty(self.cx.tcx, args));
-            all_phantom &= match self.visit_type(state.next(ty), field_ty) {
-                FfiSafe => false,
-                // `()` fields are FFI-safe!
-                FfiUnsafe { ty, .. } if ty.is_unit() => false,
+            let ffi_res = self.visit_type(state.next(ty), field_ty);
+
+            // checking that this is not an FfiUnsafe due to an unit type:
+            // visit_type should be smart enough to not consider it unsafe if called from another ADT
+            #[cfg(debug_assertions)]
+            if let FfiUnsafe(ref reasons) = ffi_res {
+                if let (1, Some(FfiUnsafeExplanation { reason, .. })) =
+                    (reasons.len(), reasons.first())
+                {
+                    let FfiUnsafeReason { ty, .. } = reason.as_ref();
+                    debug_assert!(!ty.is_unit());
+                }
+            }
+
+            all_phantom &= match ffi_res {
                 FfiPhantom(..) => true,
-                r @ FfiUnsafe { .. } => return r,
+                FfiSafe => false,
+                r @ FfiUnsafe { .. } => {
+                    fields_ok_list[field_i] = false;
+                    ffires_accumulator += r;
+                    false
+                }
             }
         }
 
-        if all_phantom {
+        // if we have bad fields, also report a possible transparent_with_all_zst_fields
+        // (if this combination is somehow possible)
+        // otherwise, having all fields be phantoms
+        // takes priority over transparent_with_all_zst_fields
+        if let FfiUnsafe(explanations) = ffires_accumulator {
+            debug_assert!(
+                (def.repr().c() && !def.repr().packed() && def.repr().align.is_none())
+                    || def.repr().transparent()
+                    || def.repr().int.is_some()
+            );
+
+            if def.repr().transparent() || matches!(def.adt_kind(), AdtKind::Enum) {
+                let field_ffires = FfiUnsafe(explanations).wrap_all(
+                    ty,
+                    msg!("this struct/enum/union (`{$ty}`) is FFI-unsafe due to a `{$inner_ty}` field"),
+                    None,
+                );
+                if transparent_with_all_zst_fields {
+                    field_ffires
+                        + FfiResult::new_with_reason(
+                            ty,
+                            msg!("`{$ty}` contains only zero-sized fields"),
+                            None,
+                        )
+                } else {
+                    field_ffires
+                }
+            } else {
+                // since we have a repr(C) struct/union, there's a chance that we have some unsafe fields,
+                // but also exactly one non-1ZST field that is FFI-safe:
+                // we want to suggest repr(transparent) here.
+                // (FIXME(ctypes): confirm that this makes sense for unions once #60405 / RFC2645 stabilises)
+                let non_1zst_fields = super::map_non_1zst_fields(self.cx.tcx, variant);
+                let (last_non_1zst, non_1zst_count) = non_1zst_fields.into_iter().enumerate().fold(
+                    (None, 0_usize),
+                    |(prev_nz, count), (field_i, is_nz)| {
+                        if is_nz { (Some(field_i), count + 1) } else { (prev_nz, count) }
+                    },
+                );
+                let help = if non_1zst_count == 1
+                    && last_non_1zst.map(|field_i| fields_ok_list[field_i]) == Some(true)
+                {
+                    match def.adt_kind() {
+                        AdtKind::Struct | AdtKind::Union => Some(msg!(
+                            "`{$ty}` has exactly one non-zero-sized field, consider making it `#[repr(transparent)]` instead"
+                        )),
+                        AdtKind::Enum => bug!("cannot suggest an enum to be repr(transparent)"),
+                    }
+                } else {
+                    None
+                };
+
+                FfiUnsafe(explanations).wrap_all(
+                    ty,
+                    msg!("this struct/enum/union (`{$ty}`) is FFI-unsafe due to a `{$inner_ty}` field"),
+                    help,
+                )
+            }
+        } else if all_phantom {
             FfiPhantom(ty)
         } else if transparent_with_all_zst_fields {
-            FfiUnsafe {
+            FfiResult::new_with_reason(
                 ty,
-                reason: msg!("this struct contains only zero-sized fields"),
-                help: None,
-            }
+                msg!("`{$ty}` contains only zero-sized fields"),
+                Some(msg!(
+                    "consider marking this struct as phantom by wrapping it in `std::marker::PhantomData`, or by marking its fields as phantom"
+                )),
+            )
         } else {
             FfiSafe
         }
@@ -632,58 +1200,63 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         args: GenericArgsRef<'tcx>,
     ) -> FfiResult<'tcx> {
         debug_assert!(matches!(def.adt_kind(), AdtKind::Struct | AdtKind::Union));
-        use FfiResult::*;
 
-        if !def.repr().c() && !def.repr().transparent() {
-            return FfiUnsafe {
+        if !(def.repr().c() && !def.repr().packed() && def.repr().align.is_none())
+            && !def.repr().transparent()
+        {
+            // TODO: discuss readability implications of repeating ty name on every message
+            // FIXME(ctypes) acknowledge the not-quite-similar C annotations for alignment
+            return FfiResult::new_with_reason(
                 ty,
-                reason: if def.is_struct() {
-                    msg!("this struct has unspecified layout")
+                msg!("`{$ty}` has unspecified layout"),
+                Some(if def.is_struct() {
+                    if def.repr().packed() {
+                        msg!("consider removing the `#[repr(packed)]` attribute from this struct")
+                    } else if def.repr().align.is_some() {
+                        msg!("consider removing the `#[repr(align)]` attribute from this struct")
+                    } else {
+                        msg!(
+                            "consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct"
+                        )
+                    }
                 } else {
-                    msg!("this union has unspecified layout")
-                },
-                help: if def.is_struct() {
-                    Some(msg!(
-                        "consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct"
-                    ))
-                } else {
-                    // FIXME(#60405): confirm that this makes sense for unions once #60405 / RFC2645 stabilises
-                    Some(msg!(
-                        "consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this union"
-                    ))
-                },
-            };
+                    if def.repr().packed() {
+                        msg!("consider removing the `#[repr(packed)]` attribute from this union")
+                    } else if def.repr().align.is_some() {
+                        msg!("consider removing the `#[repr(align)]` attribute from this union")
+                    } else {
+                        // FIXME(#60405): confirm that this makes sense for unions once #60405 / RFC2645 stabilises
+                        msg!("consider adding a `#[repr(C)]` attribute to this union")
+                    }
+                }),
+            );
         }
 
         if def.non_enum_variant().field_list_has_applicable_non_exhaustive() {
-            return FfiUnsafe {
-                ty,
-                reason: if def.is_struct() {
-                    msg!("this struct is non-exhaustive")
-                } else {
-                    msg!("this union is non-exhaustive")
-                },
-                help: None,
-            };
+            return FfiResult::new_with_reason(ty, msg!("`{$ty}` is non-exhaustive"), None);
         }
 
-        if def.non_enum_variant().fields.is_empty() {
-            FfiUnsafe {
+        let ffires = if def.non_enum_variant().fields.is_empty() {
+            FfiResult::new_with_reason(
                 ty,
-                reason: if def.is_struct() {
-                    msg!("this struct has no fields")
-                } else {
-                    msg!("this union has no fields")
-                },
-                help: if def.is_struct() {
+                msg!("`{$ty}` has no fields"),
+                if def.is_struct() {
                     Some(msg!("consider adding a member to this struct"))
                 } else {
                     Some(msg!("consider adding a member to this union"))
                 },
-            }
+            )
         } else {
             self.visit_variant_fields(state, ty, def, def.non_enum_variant(), args)
-        }
+        };
+
+        // Here, if there is something wrong, then the "fault" comes from inside the struct itself.
+        // Even if we add more details to the lint, the initial line must specify that
+        // the FFI-unsafety is because of the struct
+        // Plus, if the struct is from another crate, then there's not much that can be done anyways
+        //
+        // So, we override the "cause type" of the lint.
+        ffires.with_overrides(Some(ty))
     }
 
     fn visit_enum(
@@ -697,42 +1270,117 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         use FfiResult::*;
 
         if def.variants().is_empty() {
-            // Empty enums are okay... although sort of useless.
-            return FfiSafe;
+            // Empty enums are implicitly handled as the never type:
+            return self.visit_uninhabited(state, ty);
         }
+
+        if def.repr().align.is_some() {
+            // note: aligned reprs are allowed (by the compiler) with enums, but not packed reprs
+            return FfiResult::new_with_reason(
+                ty,
+                msg!("`{$ty}` has unspecified layout"),
+                Some(msg!("consider removing the `#[repr(align)]` attribute from this enum")),
+            );
+        }
+
+        // currently, packed enums cause a compilation error early enough to prevent this lint from running
+        debug_assert!(!def.repr().packed());
+
         // Check for a repr() attribute to specify the size of the
         // discriminant.
         if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none() {
             // Special-case types like `Option<extern fn()>` and `Result<extern fn(), ()>`
             if let Some(inner_ty) = repr_nullable_ptr(self.cx.tcx, self.cx.typing_env(), ty) {
-                return self.visit_type(state.next(ty), inner_ty);
+                let ffi_result = if def.variant_list_has_applicable_non_exhaustive() {
+                    FfiResult::new_with_reason(
+                        ty,
+                        msg!("`{$ty}` will have an unspecified layout"),
+                        Some(msg!(
+                            "consider changing this enum's attributes, removing `#[non_exhaustive]`, or adding either `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]`"
+                        )),
+                    )
+                } else {
+                    FfiSafe
+                };
+                return ffi_result + self.visit_type(state.next(ty), inner_ty);
             }
 
-            return FfiUnsafe {
+            return FfiResult::new_with_reason(
                 ty,
-                reason: msg!("enum has no representation hint"),
-                help: Some(msg!(
+                msg!("enum has no representation hint"),
+                Some(msg!(
                     "consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum"
                 )),
-            };
+            );
         }
 
-        let non_exhaustive = def.variant_list_has_applicable_non_exhaustive();
+        // FIXME(ctypes): connect `def.repr().int` to visit_numeric
+        // (for now it's OK, `repr(char)` doesn't exist and visit_numeric doesn't warn on anything else)
+
+        let enum_non_exhaustive = def.variant_list_has_applicable_non_exhaustive();
         // Check the contained variants.
-        let ret = def.variants().iter().try_for_each(|variant| {
-            check_non_exhaustive_variant(non_exhaustive, variant)
-                .map_break(|reason| FfiUnsafe { ty, reason, help: None })?;
 
-            match self.visit_variant_fields(state, ty, def, variant, args) {
-                FfiSafe => ControlFlow::Continue(()),
-                r => ControlFlow::Break(r),
-            }
+        // non_exhaustive suggests it is possible that someone might break ABI
+        // See: https://github.com/rust-lang/rust/issues/44109#issuecomment-537583344
+        // so warn on complex enums being used outside their crate.
+        //
+        // We treat `#[non_exhaustive]` enum variants as unsafe if the enum is passed by-value,
+        // as additions it will change it size.
+        //
+        // We treat `#[non_exhaustive] enum` as "ensure that code will compile if new variants are added".
+        // This includes linting, on a best-effort basis. There are valid additions that are unlikely.
+        //
+        // Adding a data-carrying variant to an existing C-like enum that is passed to C is "unlikely",
+        // so we don't need the lint to account for it.
+        // e.g. going from enum Foo { A, B, C } to enum Foo { A, B, C, D(u32) }.
+        // Which is why we only warn about really_tagged_union reprs from https://rust.tf/rfc2195
+        // with an enum like `#[repr(u8)] enum Enum { A(DataA), B(DataB), }`
+        // but exempt enums with unit ctors like C's (e.g. from rust-bindgen)
+
+        let (mut improper_on_nonexhaustive_flag, mut nonexhaustive_variant_flag) = (false, false);
+        def.variants().iter().for_each(|variant| {
+            improper_on_nonexhaustive_flag |=
+                enum_non_exhaustive && variant_has_complex_ctor(variant);
+            nonexhaustive_variant_flag |= variant.field_list_has_applicable_non_exhaustive();
         });
-        if let ControlFlow::Break(result) = ret {
-            return result;
-        }
 
-        FfiSafe
+        if improper_on_nonexhaustive_flag {
+            FfiResult::new_with_reason(ty, msg!("this enum is non-exhaustive"), None)
+        } else if nonexhaustive_variant_flag {
+            FfiResult::new_with_reason(ty, msg!("this enum has non-exhaustive variants"), None)
+        } else {
+            // small caveat to checking the variants: we authorise up to n-1 invariants
+            // to be unsafe because uninhabited.
+            // so for now let's isolate those unsafeties
+            let mut variants_uninhabited_ffires = vec![FfiSafe; def.variants().len()];
+
+            let mut ffires = def
+                .variants()
+                .iter()
+                .enumerate()
+                .map(|(variant_i, variant)| {
+                    let mut variant_res = self.visit_variant_fields(state, ty, def, variant, args);
+                    variants_uninhabited_ffires[variant_i] = variant_res.take_with_core_note(&[
+                        msg!("zero-variant enums and other uninhabited types are not allowed in function arguments and static variables"),
+                        msg!("the never type (`!`) and other uninhabited types are not allowed in function arguments and static variables"),
+                    ]);
+                    // FIXME(ctypes): check that enums allow any (up to all) variants to be phantoms?
+                    // (previous code says no, but I don't know why? the problem with phantoms is that they're ZSTs, right?)
+                    variant_res.forbid_phantom()
+                })
+                .reduce(|r1, r2| r1 + r2)
+                .unwrap(); // always at least one variant if we hit this branch
+
+            if variants_uninhabited_ffires.iter().all(|res| matches!(res, FfiUnsafe(..))) {
+                // if the enum is uninhabited, because all its variants are uninhabited
+                ffires += variants_uninhabited_ffires.into_iter().reduce(|r1, r2| r1 + r2).unwrap();
+            }
+
+            // this enum is visited in the middle of another lint,
+            // so we override the "cause type" of the lint
+            // (for more detail, see comment in ``visit_struct_union`` before its call to ``ffires.with_overrides``)
+            ffires.with_overrides(Some(ty))
+        }
     }
 
     /// Checks if the given type is "ffi-safe" (has a stable, well-defined
@@ -744,7 +1392,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         // Protect against infinite recursion, for example
         // `struct S(*mut S);`.
-        if !(self.cache.insert(ty) && self.cx.tcx.recursion_limit().value_within_limit(state.depth))
+        if !(self.ty_cache.insert(ty)
+            && self.cx.tcx.recursion_limit().value_within_limit(state.depth))
         {
             return FfiSafe;
         }
@@ -759,17 +1408,15 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
                 match def.adt_kind() {
                     AdtKind::Struct | AdtKind::Union => {
+                        // There are two ways to encounter cstr here (since pointees are treated elsewhere):
+                        // - Cstr used as an argument of a FnPtr (!Sized structs are in fact allowed there)
+                        // - Cstr as the last field of a struct
+                        // This excludes non-compiling code where a CStr is used where !Sized is not allowed
+                        // (currently those mistakes prevent this lint from running)
                         if let Some(sym::cstring_type | sym::cstr_type) =
                             tcx.get_diagnostic_name(def.did())
-                            && !self.base_ty.is_mutable_ptr()
                         {
-                            return FfiUnsafe {
-                                ty,
-                                reason: msg!("`CStr`/`CString` do not have a guaranteed layout"),
-                                help: Some(msg!(
-                                    "consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`"
-                                )),
-                            };
+                            return self.visit_cstr(state, ty);
                         }
                         self.visit_struct_or_union(state, ty, def, args)
                     }
@@ -789,44 +1436,58 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::Bool => FfiResult::FfiSafe,
 
-            ty::Char => FfiResult::FfiUnsafe {
+            ty::Char => FfiResult::new_with_reason(
                 ty,
-                reason: msg!("the `char` type has no C equivalent"),
-                help: Some(msg!("consider using `u32` or `libc::wchar_t` instead")),
-            },
+                msg!("the `char` type has no C equivalent"),
+                Some(msg!("consider using `u32` or `libc::wchar_t` instead")),
+            ),
 
-            ty::Slice(_) => FfiUnsafe {
-                ty,
-                reason: msg!("slices have no C equivalent"),
-                help: Some(msg!("consider using a raw pointer instead")),
-            },
+            ty::Slice(inner_ty) => {
+                // ty::Slice is used for !Sized arrays, since they are the pointee for actual slices
+                let slice_is_actually_array = state.is_memory_inlined();
 
-            ty::Dynamic(..) => {
-                FfiUnsafe { ty, reason: msg!("trait objects have no C equivalent"), help: None }
+                if slice_is_actually_array {
+                    self.visit_type(state.next(ty), inner_ty)
+                } else {
+                    FfiResult::new_with_reason(
+                        ty,
+                        msg!("slices have no C equivalent"),
+                        Some(msg!(
+                            "consider using a raw pointer to the slice's first element (and a length) instead"
+                        )),
+                    )
+                }
             }
 
-            ty::Str => FfiUnsafe {
+            ty::Dynamic(..) => {
+                FfiResult::new_with_reason(ty, msg!("trait objects have no C equivalent"), None)
+            }
+
+            ty::Str => FfiResult::new_with_reason(
                 ty,
-                reason: msg!("string slices have no C equivalent"),
-                help: Some(msg!("consider using `*const u8` and a length instead")),
-            },
+                msg!("string slices have no C equivalent"),
+                Some(msg!("consider using `*const u8` and a length instead")),
+            ),
 
             ty::Tuple(tuple) => {
                 if tuple.is_empty()
-                    && state.is_in_function_return()
-                    && matches!(
-                        state.outer_ty_kind,
-                        OuterTyKind::None | OuterTyKind::NoneThroughFnPtr
-                    )
+                    && ((
+                            state.is_in_function_return()
+                            // C functions can return void
+                            && matches!(state.outer_ty_kind, OuterTyKind::None)
+                        )
+                        // `()` fields are safe
+                        || state.is_field()
+                        // this serves as a "void*"
+                        || state.is_raw_pointee())
                 {
-                    // C functions can return void
                     FfiSafe
                 } else {
-                    FfiUnsafe {
+                    FfiResult::new_with_reason(
                         ty,
-                        reason: msg!("tuples have unspecified layout"),
-                        help: Some(msg!("consider using a struct instead")),
-                    }
+                        msg!("tuples have unspecified layout"),
+                        Some(msg!("consider using a struct instead")),
+                    )
                 }
             }
 
@@ -847,17 +1508,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
 
             ty::Array(inner_ty, _) => {
-                if state.is_in_function()
-                    // FIXME(ctypes): VVV-this-VVV shouldn't make a difference between ::None and ::NoneThroughFnPtr
-                    && matches!(state.outer_ty_kind, OuterTyKind::None)
-                {
+                if state.is_in_function() && matches!(state.outer_ty_kind, OuterTyKind::None) {
                     // C doesn't really support passing arrays by value - the only way to pass an array by value
                     // is through a struct.
-                    FfiResult::FfiUnsafe {
+                    FfiResult::new_with_reason(
                         ty,
-                        reason: msg!("passing raw arrays by value is not FFI-safe"),
-                        help: Some(msg!("consider passing a pointer to the array")),
-                    }
+                        msg!("passing raw arrays by value is not FFI-safe"),
+                        Some(msg!("consider passing a pointer to the array")),
+                    )
                 } else {
                     // let's allow phantoms to go through,
                     // since an array of 1-ZSTs is also a 1-ZST
@@ -865,54 +1523,98 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
             }
 
+            // fnptrs are a special case, they always need to be treated as
+            // "the element rendered unsafe" because their unsafety doesn't affect
+            // their surroundings, and their type is often declared inline
+            // as a result, don't go into them when scanning for the safety of something else
             ty::FnPtr(sig_tys, hdr) => {
                 let sig = sig_tys.with(hdr);
                 if sig.abi().is_rustic_abi() {
-                    return FfiUnsafe {
+                    FfiResult::new_with_reason(
                         ty,
-                        reason: msg!("this function pointer has Rust-specific calling convention"),
-                        help: Some(msg!(
+                        msg!("this function pointer has a Rust-specific calling convention"),
+                        Some(msg!(
                             "consider using an `extern fn(...) -> ...` function pointer instead"
                         )),
-                    };
+                    )
+                } else {
+                    FfiSafe
                 }
-
-                let sig = tcx.instantiate_bound_regions_with_erased(sig);
-                for arg in sig.inputs() {
-                    match self.visit_type(state.next_in_fnptr(ty, FnPos::Arg), *arg) {
-                        FfiSafe => {}
-                        r => return r,
-                    }
-                }
-
-                let ret_ty = sig.output();
-                self.visit_type(state.next_in_fnptr(ty, FnPos::Ret), ret_ty)
             }
 
             ty::Foreign(..) => FfiSafe,
 
-            ty::Never => FfiSafe,
+            ty::Never => self.visit_uninhabited(state, ty),
 
-            // While opaque types are checked for earlier, if a projection in a struct field
-            // normalizes to an opaque type, then it will reach this branch.
+            // This is only half of the checking-for-opaque-aliases story:
+            // since they are liable to vanish on normalisation, we need a specific to find them through
+            // other aliases, which is called in the next branch of this `match ty.kind()` statement
             ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
-                FfiUnsafe { ty, reason: msg!("opaque types have no C equivalent"), help: None }
+                FfiResult::new_with_reason(ty, msg!("opaque types have no C equivalent"), None)
             }
 
-            // `extern "C" fn` functions can have type parameters, which may or may not be FFI-safe,
+            // `extern "C" fn` function definitions can have type parameters, which may or may not be FFI-safe,
             //  so they are currently ignored for the purposes of this lint.
+            // function pointers can do the same
+            //
+            // however, these ty_kind:s can also be encountered because the type isn't normalized yet.
             ty::Param(..)
-            | ty::Alias(_, ty::AliasTy { kind: ty::Projection { .. } | ty::Inherent { .. }, .. })
-                if state.can_expect_ty_params() =>
-            {
-                FfiSafe
+            | ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
+                    ..
+                },
+            ) => {
+                if ty.has_opaque_types() {
+                    // this is a safety net, I am unsure how to hit it
+                    // (which is a good thing, because calling this means giving up on reporting anything else)
+                    self.visit_for_opaque_ty(ty).unwrap()
+                } else {
+                    // in theory, thanks to maybe_normalize_erasing_regions,
+                    // normalisation has already occurred
+                    debug_assert_eq!(
+                        self.cx
+                            .tcx
+                            .try_normalize_erasing_regions(
+                                self.cx.typing_env(),
+                                Unnormalized::new_wip(ty)
+                            )
+                            .unwrap_or(ty),
+                        ty,
+                    );
+
+                    if matches!(
+                        ty.kind(),
+                        ty::Param(..)
+                            | ty::Alias(
+                                _,
+                                ty::AliasTy {
+                                    kind: ty::Projection { .. } | ty::Inherent { .. },
+                                    ..
+                                }
+                            )
+                    ) && state.can_expect_ty_params()
+                    {
+                        FfiSafe
+                    } else {
+                        // ty::Alias(_, ty::Free), and all params/aliases for something
+                        // defined beyond the FFI boundary
+                        bug!("unexpected type in foreign function: {:?}", ty)
+                    }
+                }
             }
 
-            ty::UnsafeBinder(_) => FfiUnsafe {
-                ty,
-                reason: msg!("unsafe binders are incompatible with foreign function interfaces"),
-                help: None,
-            },
+            // FIXME(unsafe_binder): once we know if UnsafeBinder has the same ABI properties as its underlying type,
+            // decide whether or not to remove the lint
+            // TODO: also determine what we want to do while waiting for the decision to happen
+            ty::UnsafeBinder(inner) => {
+                FfiResult::new_with_reason(
+                    ty,
+                    msg!("unsafe binders are incompatible with foreign function interfaces"),
+                    None,
+                ) + self.visit_type(state, inner.skip_binder())
+            }
 
             // Safety net for when normalization reveals a body's own defining opaque
             // (e.g. `async extern fn`'s `impl Future` → `Coroutine`); the nicer
@@ -921,25 +1623,15 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..) => FfiUnsafe {
+            | ty::CoroutineWitness(..) => FfiResult::new_with_reason(
                 ty,
-                reason: msg!("closures and coroutines are not FFI-safe"),
-                help: None,
-            },
+                msg!("closures and coroutines are not FFI-safe"),
+                None,
+            ),
 
-            ty::Param(..)
-            | ty::Alias(
-                _,
-                ty::AliasTy {
-                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
-                    ..
-                },
-            )
-            | ty::Infer(..)
-            | ty::Bound(..)
-            | ty::Error(_)
-            | ty::Placeholder(..)
-            | ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
+            ty::Infer(..) | ty::Bound(..) | ty::Error(_) | ty::Placeholder(..) | ty::FnDef(..) => {
+                bug!("unexpected type in foreign function: {:?}", ty)
+            }
         }
     }
 
@@ -961,10 +1653,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
         }
 
-        ty.visit_with(&mut ProhibitOpaqueTypes).break_value().map(|ty| FfiResult::FfiUnsafe {
-            ty,
-            reason: msg!("opaque types have no C equivalent"),
-            help: None,
+        ty.visit_with(&mut ProhibitOpaqueTypes).break_value().map(|ty| {
+            FfiResult::new_with_reason(ty, msg!("opaque types have no C equivalent"), None)
         })
     }
 
@@ -973,17 +1663,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         state: VisitorState,
         ty: Unnormalized<'tcx, Ty<'tcx>>,
     ) -> FfiResult<'tcx> {
-        // Catch opaques before normalization so the new solver doesn't reveal them
-        // (e.g. `async extern fn` return → `Coroutine`) and we get the nicer
-        // "opaque types have no C equivalent" message.
-        if let Some(res) = self.visit_for_opaque_ty(ty.skip_norm_wip()) {
-            return res;
-        }
         let ty = maybe_normalize_erasing_regions(self.cx, ty);
-        if let Some(res) = self.visit_for_opaque_ty(ty) {
-            return res;
-        }
-
         self.visit_type(state, ty)
     }
 }
@@ -994,27 +1674,27 @@ impl<'tcx> ImproperCTypesLint {
     fn check_type_for_external_abi_fnptr(
         &mut self,
         cx: &LateContext<'tcx>,
-        state: VisitorState,
-        hir_ty: &hir::Ty<'tcx>,
+        hir_ty: &'tcx hir::Ty<'tcx>,
         ty: Ty<'tcx>,
-        fn_mode: CItemKind,
     ) {
         struct FnPtrFinder<'tcx> {
             current_depth: usize,
             depths: Vec<usize>,
-            spans: Vec<Span>,
+            decls: Vec<&'tcx hir::FnDecl<'tcx>>,
+            hir_ids: Vec<hir::HirId>,
             tys: Vec<Ty<'tcx>>,
         }
 
-        impl<'tcx> hir::intravisit::Visitor<'_> for FnPtrFinder<'tcx> {
-            fn visit_ty(&mut self, ty: &'_ hir::Ty<'_, AmbigArg>) {
+        impl<'tcx> hir::intravisit::Visitor<'tcx> for FnPtrFinder<'tcx> {
+            fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
                 debug!(?ty);
                 self.current_depth += 1;
-                if let hir::TyKind::FnPtr(hir::FnPtrTy { abi, .. }) = ty.kind
+                if let hir::TyKind::FnPtr(hir::FnPtrTy { abi, decl, .. }) = ty.kind
                     && !abi.is_rustic_abi()
                 {
+                    self.decls.push(*decl);
                     self.depths.push(self.current_depth);
-                    self.spans.push(ty.span);
+                    self.hir_ids.push(ty.hir_id);
                 }
 
                 hir::intravisit::walk_ty(self, ty);
@@ -1037,8 +1717,9 @@ impl<'tcx> ImproperCTypesLint {
         }
 
         let mut visitor = FnPtrFinder {
-            spans: Vec::new(),
+            hir_ids: Vec::new(),
             tys: Vec::new(),
+            decls: Vec::new(),
             depths: Vec::new(),
             current_depth: 0,
         };
@@ -1046,17 +1727,24 @@ impl<'tcx> ImproperCTypesLint {
         visitor.visit_ty_unambig(hir_ty);
 
         let all_types = iter::zip(
-            visitor.depths.drain(..),
-            iter::zip(visitor.tys.drain(..), visitor.spans.drain(..)),
+            iter::zip(visitor.depths.drain(..), visitor.hir_ids.drain(..)),
+            iter::zip(visitor.tys.drain(..), visitor.decls.drain(..)),
         );
-        for (depth, (fn_ptr_ty, span)) in all_types {
-            let fn_ptr_ty = Unnormalized::new_wip(fn_ptr_ty);
-            let mut visitor = ImproperCTypesVisitor::new(cx, fn_ptr_ty, fn_mode);
-            let bridge_state = VisitorState { depth, ..state };
-            // FIXME(ctypes): make a check_for_fnptr
-            let ffi_res = visitor.check_type(bridge_state, fn_ptr_ty);
 
-            self.process_ffi_result(cx, span, ffi_res, fn_mode);
+        for ((depth, hir_id), (fn_ptr_ty, decl)) in all_types {
+            let sig = get_sig_from_fnptr_ty(fn_ptr_ty);
+            let mod_id = cx.tcx.parent_module(hir_id);
+
+            // FIXME: does this cause a double normalisation? (since this signature comes from
+            // the normalised `ty` argument of this method) Is this a performance problem?
+            self.check_foreign_fn(
+                cx,
+                CItemKind::Callback,
+                Unnormalized::new_wip(sig),
+                decl,
+                mod_id,
+                depth,
+            );
         }
     }
 
@@ -1065,7 +1753,6 @@ impl<'tcx> ImproperCTypesLint {
     fn check_fn_for_external_abi_fnptr(
         &mut self,
         cx: &LateContext<'tcx>,
-        fn_mode: CItemKind,
         def_id: LocalDefId,
         decl: &'tcx hir::FnDecl<'_>,
     ) {
@@ -1073,13 +1760,11 @@ impl<'tcx> ImproperCTypesLint {
         let sig = cx.tcx.instantiate_bound_regions_with_erased(sig);
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
-            let state = VisitorState::fn_entry_point(fn_mode, FnPos::Arg);
-            self.check_type_for_external_abi_fnptr(cx, state, input_hir, *input_ty, fn_mode);
+            self.check_type_for_external_abi_fnptr(cx, input_hir, *input_ty);
         }
 
         if let hir::FnRetTy::Return(ret_hir) = decl.output {
-            let state = VisitorState::fn_entry_point(fn_mode, FnPos::Ret);
-            self.check_type_for_external_abi_fnptr(cx, state, ret_hir, sig.output(), fn_mode);
+            self.check_type_for_external_abi_fnptr(cx, ret_hir, sig.output());
         }
     }
 
@@ -1100,11 +1785,22 @@ impl<'tcx> ImproperCTypesLint {
         check_struct_for_power_alignment(cx, item, adt_def);
     }
 
-    fn check_foreign_static(&mut self, cx: &LateContext<'tcx>, id: hir::OwnerId, span: Span) {
-        let ty = cx.tcx.type_of(id).instantiate_identity();
-        let mut visitor = ImproperCTypesVisitor::new(cx, ty, CItemKind::Declaration);
+    /// Check that an extern "ABI" static variable is of a ffi-safe type.
+    fn check_foreign_static(&mut self, cx: &LateContext<'tcx>, id: hir::HirId, span: Span) {
+        let ty = cx.tcx.type_of(id.owner).instantiate_identity();
+        let mod_id = cx.tcx.parent_module(id);
+        let mut visitor = ImproperCTypesVisitor::new(cx, mod_id);
         let ffi_res = visitor.check_type(VisitorState::static_entry_point(), ty);
-        self.process_ffi_result(cx, span, ffi_res, CItemKind::Declaration);
+        self.process_ffi_result(cx, span, ffi_res, CItemKind::ImportedExtern);
+    }
+
+    /// Check that a `#[no_mangle]`/`#[export_name = _]` static variable is of a ffi-safe type.
+    fn check_exported_static(&self, cx: &LateContext<'tcx>, id: hir::HirId, span: Span) {
+        let ty = cx.tcx.type_of(id.owner).instantiate_identity();
+        let mod_id = cx.tcx.parent_module(id);
+        let mut visitor = ImproperCTypesVisitor::new(cx, mod_id);
+        let ffi_res = visitor.check_type(VisitorState::static_def_entry_point(), ty);
+        self.process_ffi_result(cx, span, ffi_res, CItemKind::ExportedStatic);
     }
 
     /// Check if a function's argument types and result type are "ffi-safe".
@@ -1112,25 +1808,26 @@ impl<'tcx> ImproperCTypesLint {
         &mut self,
         cx: &LateContext<'tcx>,
         fn_mode: CItemKind,
-        def_id: LocalDefId,
+        sig: Unnormalized<'tcx, Sig<'tcx>>,
         decl: &'tcx hir::FnDecl<'_>,
+        mod_id: LocalModId,
+        depth: usize,
     ) {
-        let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
-        let sig = cx.tcx.instantiate_bound_regions_with_erased(sig);
+        let sig = cx.tcx.instantiate_bound_regions_with_erased(sig.skip_norm_wip());
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
-            let input_ty = Unnormalized::new_wip(*input_ty);
-            let state = VisitorState::fn_entry_point(fn_mode, FnPos::Arg);
-            let mut visitor = ImproperCTypesVisitor::new(cx, input_ty, fn_mode);
-            let ffi_res = visitor.check_type(state, input_ty);
+            let mut state = VisitorState::fn_entry_point(fn_mode, FnPos::Arg);
+            state.depth = depth;
+            let mut visitor = ImproperCTypesVisitor::new(cx, mod_id);
+            let ffi_res = visitor.check_type(state, Unnormalized::new_wip(*input_ty));
             self.process_ffi_result(cx, input_hir.span, ffi_res, fn_mode);
         }
 
         if let hir::FnRetTy::Return(ret_hir) = decl.output {
-            let output_ty = Unnormalized::new_wip(sig.output());
-            let state = VisitorState::fn_entry_point(fn_mode, FnPos::Ret);
-            let mut visitor = ImproperCTypesVisitor::new(cx, output_ty, fn_mode);
-            let ffi_res = visitor.check_type(state, output_ty);
+            let mut state = VisitorState::fn_entry_point(fn_mode, FnPos::Ret);
+            state.depth = depth;
+            let mut visitor = ImproperCTypesVisitor::new(cx, mod_id);
+            let ffi_res = visitor.check_type(state, Unnormalized::new_wip(sig.output()));
             self.process_ffi_result(cx, ret_hir.span, ffi_res, fn_mode);
         }
     }
@@ -1147,15 +1844,53 @@ impl<'tcx> ImproperCTypesLint {
             FfiResult::FfiPhantom(ty) => {
                 self.emit_ffi_unsafe_type_lint(
                     cx,
-                    ty,
+                    ty.clone(),
                     sp,
-                    msg!("composed only of `PhantomData`"),
-                    None,
+                    vec![ImproperCTypesLayer {
+                        ty,
+                        note: msg!("composed only of `PhantomData`"),
+                        span_note: None, // filled later
+                        help: None,
+                        inner_ty: None,
+                    }],
                     fn_mode,
                 );
             }
-            FfiResult::FfiUnsafe { ty, reason, help } => {
-                self.emit_ffi_unsafe_type_lint(cx, ty, sp, reason, help, fn_mode);
+            FfiResult::FfiUnsafe(explanations) => {
+                for explanation in explanations {
+                    let mut ffiresult_recursor = ControlFlow::Continue(explanation.reason.as_ref());
+                    let mut cimproper_layers: Vec<ImproperCTypesLayer<'_>> = vec![];
+
+                    // this whole while block converts the arbitrarily-deep
+                    // FfiResult stack to an ImproperCTypesLayer Vec
+                    while let ControlFlow::Continue(FfiUnsafeReason { ty, note, help, inner }) =
+                        ffiresult_recursor
+                    {
+                        if let Some(layer) = cimproper_layers.last_mut() {
+                            layer.inner_ty = Some(ty.clone());
+                        }
+                        cimproper_layers.push(ImproperCTypesLayer {
+                            ty: ty.clone(),
+                            inner_ty: None,
+                            help: help.clone(),
+                            note: note.clone(),
+                            span_note: None, // filled later
+                        });
+
+                        if let Some(inner) = inner {
+                            ffiresult_recursor = ControlFlow::Continue(inner.as_ref());
+                        } else {
+                            ffiresult_recursor = ControlFlow::Break(());
+                        }
+                    }
+                    let cause_ty = if let Some(cause_ty) = explanation.override_cause_ty {
+                        cause_ty
+                    } else {
+                        // should always have at least one type
+                        cimproper_layers.last().unwrap().ty.clone()
+                    };
+                    self.emit_ffi_unsafe_type_lint(cx, cause_ty, sp, cimproper_layers, fn_mode);
+                }
             }
         }
     }
@@ -1165,58 +1900,77 @@ impl<'tcx> ImproperCTypesLint {
         cx: &LateContext<'tcx>,
         ty: Ty<'tcx>,
         sp: Span,
-        note: DiagMessage,
-        help: Option<DiagMessage>,
+        mut reasons: Vec<ImproperCTypesLayer<'tcx>>,
         fn_mode: CItemKind,
     ) {
         let lint = match fn_mode {
-            CItemKind::Declaration => IMPROPER_CTYPES,
-            CItemKind::Definition => IMPROPER_CTYPES_DEFINITIONS,
+            CItemKind::ImportedExtern => IMPROPER_CTYPES,
+            CItemKind::ExportedFunction => IMPROPER_CTYPES_DEFINITIONS,
+            // Internally, we treat this differently, but at the end of the day
+            // their linting needs to be enabled/disabled alongside that of "FFI-imported" items.
+            CItemKind::Callback => IMPROPER_CTYPES,
+            // Same thing with static variables, which are "FFI-exported"
+            CItemKind::ExportedStatic => IMPROPER_CTYPES_DEFINITIONS,
         };
         let desc = match fn_mode {
-            CItemKind::Declaration => "block",
-            CItemKind::Definition => "fn",
+            CItemKind::ImportedExtern => "`extern` block",
+            CItemKind::ExportedFunction => "`extern` fn",
+            CItemKind::ExportedStatic => "foreign-code-reachable static",
+            CItemKind::Callback => "`extern` callback",
         };
-        let span_note = if let ty::Adt(def, _) = ty.kind()
-            && let Some(sp) = cx.tcx.hir_span_if_local(def.did())
-        {
-            Some(sp)
-        } else {
-            None
-        };
-        cx.emit_span_lint(lint, sp, ImproperCTypes { ty, desc, label: sp, help, note, span_note });
+        for reason in reasons.iter_mut() {
+            reason.span_note = if let ty::Adt(def, _) = reason.ty.kind()
+                && let Some(sp) = cx.tcx.hir_span_if_local(def.did())
+            {
+                Some(sp)
+            } else {
+                None
+            };
+        }
+
+        cx.emit_span_lint(lint, sp, ImproperCTypes { ty, desc, label: sp, reasons });
     }
 }
 
-/// `ImproperCTypesDefinitions` checks items outside of foreign items (e.g. stuff that isn't in
-/// `extern "C" { }` blocks):
+/// IMPROPER_CTYPES checks items that are part of a header to a non-rust library
+/// Namely, functions and static variables in `extern "<abi>" { }`,
+/// if `<abi>` is external (e.g. "C").
+/// it also checks for function pointers marked with an external ABI.
+/// (fields of type `extern "<abi>" fn`, where e.g. `<abi>` is `C`)
+/// These pointers are searched in all other items which contain types
+/// (e.g.functions, struct definitions, etc)
 ///
-/// - `extern "<abi>" fn` definitions are checked in the same way as the
-///   `ImproperCtypesDeclarations` visitor checks functions if `<abi>` is external (e.g. "C").
-/// - All other items which contain types (e.g. other functions, struct definitions, etc) are
-///   checked for extern fn-ptrs with external ABIs.
+/// `IMPROPER_CTYPES_DEFINITIONS` checks rust-defined functions that are marked
+/// to be used from the other side of a FFI boundary.
+/// In other words, `extern "<abi>" fn` definitions and trait-method declarations.
+/// This only matters if `<abi>` is external (e.g. `C`).
+///
+/// maybe later: specialised lints for pointees
 impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
     fn check_foreign_item(&mut self, cx: &LateContext<'tcx>, it: &hir::ForeignItem<'tcx>) {
         let abi = cx.tcx.hir_get_foreign_abi(it.hir_id());
 
         match it.kind {
-            hir::ForeignItemKind::Fn(sig, _, _) => {
+            hir::ForeignItemKind::Fn(hir_sig, _, _) => {
                 // fnptrs are a special case, they always need to be treated as
                 // "the element rendered unsafe" because their unsafety doesn't affect
                 // their surroundings, and their type is often declared inline
+                self.check_fn_for_external_abi_fnptr(cx, it.owner_id.def_id, hir_sig.decl);
+                let sig = cx.tcx.fn_sig(it.owner_id.def_id).instantiate_identity();
+                let mod_id = cx.tcx.parent_module_from_def_id(it.owner_id.def_id);
                 if !abi.is_rustic_abi() {
-                    self.check_foreign_fn(cx, CItemKind::Declaration, it.owner_id.def_id, sig.decl);
-                } else {
-                    self.check_fn_for_external_abi_fnptr(
+                    self.check_foreign_fn(
                         cx,
-                        CItemKind::Declaration,
-                        it.owner_id.def_id,
-                        sig.decl,
+                        CItemKind::ImportedExtern,
+                        sig,
+                        hir_sig.decl,
+                        mod_id,
+                        0,
                     );
                 }
             }
             hir::ForeignItemKind::Static(ty, _, _) if !abi.is_rustic_abi() => {
-                self.check_foreign_static(cx, it.owner_id, ty.span);
+                self.check_foreign_static(cx, it.hir_id(), ty.span);
             }
             hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => (),
         }
@@ -1229,11 +1983,16 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
             | hir::ItemKind::TyAlias(_, _, ty) => {
                 self.check_type_for_external_abi_fnptr(
                     cx,
-                    VisitorState::static_entry_point(),
                     ty,
                     cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip(),
-                    CItemKind::Definition,
                 );
+
+                if matches!(item.kind, hir::ItemKind::Static(..))
+                    && (find_attr!(cx.tcx, item.owner_id, NoMangle(_))
+                        || find_attr!(cx.tcx, item.owner_id, ExportName { .. }))
+                {
+                    self.check_exported_static(cx, item.hir_id(), ty.span);
+                }
             }
             // See `check_fn` for declarations, `check_foreign_items` for definitions in extern blocks
             hir::ItemKind::Fn { .. } => {}
@@ -1264,10 +2023,8 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
     fn check_field_def(&mut self, cx: &LateContext<'tcx>, field: &'tcx hir::FieldDef<'tcx>) {
         self.check_type_for_external_abi_fnptr(
             cx,
-            VisitorState::static_entry_point(),
             field.ty,
             cx.tcx.type_of(field.def_id).instantiate_identity().skip_norm_wip(),
-            CItemKind::Definition,
         );
     }
 
@@ -1291,10 +2048,84 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
         // fnptrs are a special case, they always need to be treated as
         // "the element rendered unsafe" because their unsafety doesn't affect
         // their surroundings, and their type is often declared inline
+        self.check_fn_for_external_abi_fnptr(cx, id, decl);
         if !abi.is_rustic_abi() {
-            self.check_foreign_fn(cx, CItemKind::Definition, id, decl);
-        } else {
-            self.check_fn_for_external_abi_fnptr(cx, CItemKind::Definition, id, decl);
+            let sig = cx.tcx.fn_sig(id).instantiate_identity();
+            let mod_id = cx.tcx.parent_module_from_def_id(id);
+            self.check_foreign_fn(cx, CItemKind::ExportedFunction, sig, decl, mod_id, 0);
+        }
+    }
+
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, tr_it: &hir::TraitItem<'tcx>) {
+        match tr_it.kind {
+            hir::TraitItemKind::Const(hir_ty, _) => {
+                let ty = cx
+                    .tcx
+                    .type_of(hir_ty.hir_id.owner.def_id)
+                    .instantiate_identity()
+                    .skip_norm_wip();
+                self.check_type_for_external_abi_fnptr(cx, hir_ty, ty);
+            }
+            hir::TraitItemKind::Fn(sig, trait_fn) => {
+                match trait_fn {
+                    // if the method is defined here,
+                    // there is a matching ``LateLintPass::check_fn`` call,
+                    // let's not redo that work
+                    hir::TraitFn::Provided(_) => return,
+                    hir::TraitFn::Required(_) => (),
+                }
+                let local_id = tr_it.owner_id.def_id;
+
+                self.check_fn_for_external_abi_fnptr(cx, local_id, sig.decl);
+                if !sig.header.abi.is_rustic_abi() {
+                    let mir_sig = cx.tcx.fn_sig(local_id).instantiate_identity();
+                    let mod_id = cx.tcx.parent_module_from_def_id(local_id);
+                    self.check_foreign_fn(
+                        cx,
+                        CItemKind::ExportedFunction,
+                        mir_sig,
+                        sig.decl,
+                        mod_id,
+                        0,
+                    );
+                }
+            }
+            hir::TraitItemKind::Type(_, ty_maybe) => {
+                if let Some(hir_ty) = ty_maybe {
+                    let ty = cx
+                        .tcx
+                        .type_of(hir_ty.hir_id.owner.def_id)
+                        .instantiate_identity()
+                        .skip_norm_wip();
+                    self.check_type_for_external_abi_fnptr(cx, hir_ty, ty);
+                }
+            }
+        }
+    }
+    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, im_it: &hir::ImplItem<'tcx>) {
+        // note: we do not skip these checks eventhough they might generate dupe warnings because:
+        // - the corresponding trait might be in another crate
+        // - the corresponding trait might have some templating involved, so only the impl has the full type information
+        match im_it.kind {
+            hir::ImplItemKind::Type(hir_ty) => {
+                let ty = cx
+                    .tcx
+                    .type_of(hir_ty.hir_id.owner.def_id)
+                    .instantiate_identity()
+                    .skip_norm_wip();
+                self.check_type_for_external_abi_fnptr(cx, hir_ty, ty);
+            }
+            hir::ImplItemKind::Fn(_sig, _) => {
+                // see ``LateLintPass::check_fn``
+            }
+            hir::ImplItemKind::Const(hir_ty, _) => {
+                let ty = cx
+                    .tcx
+                    .type_of(hir_ty.hir_id.owner.def_id)
+                    .instantiate_identity()
+                    .skip_norm_wip();
+                self.check_type_for_external_abi_fnptr(cx, hir_ty, ty);
+            }
         }
     }
 }
