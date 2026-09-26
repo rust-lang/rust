@@ -1392,7 +1392,7 @@ pub fn parse_remap_path_scope(
                     }
 
                     RemapPathScopeComponents::DOCUMENTATION
-                },
+                }
                 "debuginfo" => RemapPathScopeComponents::DEBUGINFO,
                 "coverage" => RemapPathScopeComponents::COVERAGE,
                 "object" => RemapPathScopeComponents::OBJECT,
@@ -1754,9 +1754,32 @@ fn parse_jobs_all(
                 check_upper_limit(frontend, opt_name);
                 frontend
             }
-            None => None, // default to 1 thread irrespectively of `jobs` for now
+            None => {
+                // Build-time override to opt into a different default for the frontend thread count
+                if let Some(default_frontend_jobs) = option_env!("CFG_DEFAULT_FRONTEND_JOBS") {
+                    let mut frontend_jobs = parse_jobs_one(
+                        early_dcx,
+                        "CFG_DEFAULT_FRONTEND_JOBS",
+                        default_frontend_jobs,
+                        true,
+                        &mut available,
+                    )
+                    .expect("CFG_DEFAULT_FRONTEND_JOBS must be larger than 0");
+
+                    // CFG_DEFAULT_FRONTEND_JOBS is a build-time config, so we cannot use
+                    // `check_upper_limit` here. Instead, we cap the frontend jobs to the value of
+                    // --jobs, if it was passed.
+                    if let Some(jobs) = jobs.flatten() {
+                        frontend_jobs = frontend_jobs.min(jobs);
+                    }
+                    Some(frontend_jobs)
+                } else {
+                    None // default to 1 thread irrespectively of `jobs` for now
+                }
+            }
         },
     };
+
     let backend = match matches.opt_str("jobs-backend") {
         Some(jobs_backend) => {
             let opt_name = "--jobs-backend";

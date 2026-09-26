@@ -79,6 +79,8 @@ fn setup_common() -> Command {
     if let Ok(codegen_backend) = std::env::var("RUSTC_CODEGEN_BACKEND") {
         cmd.arg(format!("-Zcodegen-backend={codegen_backend}"));
     }
+    // Use a single frontend thread for now
+    cmd.arg("-Zthreads=1");
     cmd
 }
 
