@@ -351,7 +351,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         ));
 
         let attrs: rustc_ast::AttrVec = thin_vec![self.unreachable_code_attr(span)];
-        self.lower_attrs(contract_check.hir_id, &attrs, span, Target::Expression);
+        self.lower_attrs(
+            contract_check.hir_id,
+            &attrs,
+            span,
+            Target::Expression,
+            rustc_attr_ir::target::AstTarget::None,
+        );
 
         let ret_block = self.block_all(span, arena_vec![self; ret_stmt], Some(contract_check));
         self.arena.alloc(self.expr_block(self.arena.alloc(ret_block)))

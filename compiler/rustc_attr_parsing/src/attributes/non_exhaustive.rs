@@ -26,17 +26,21 @@ impl NoArgsAttributeParser for NonExhaustiveParser {
             return;
         }
 
-        let item = cx.target_item.expect("missing AST target item for Target::Struct");
-        let ItemKind::Struct(_, _, data) = &item.kind else {
-            panic!("expected struct AST target item for Target::Struct");
-        };
-        if let VariantData::Struct { fields, .. } = data
-            && fields.iter().any(|f| f.default_value().is_some())
-        {
-            cx.emit_err(NonExhaustiveWithDefaultFieldValues {
-                attr_span,
-                defn_span: cx.target_span,
-            });
+        match cx.ast_target {
+            rustc_attr_ir::target::AstTarget::Item(ast_item) => {
+                let ItemKind::Struct(_, _, data) = &ast_item.kind else {
+                    panic!("expected struct AST target item for Target::Struct");
+                };
+                if let VariantData::Struct { fields, .. } = data
+                    && fields.iter().any(|f| f.default_value().is_some())
+                {
+                    cx.emit_err(NonExhaustiveWithDefaultFieldValues {
+                        attr_span,
+                        defn_span: cx.target_span,
+                    });
+                }
+            }
+            _ => {}
         }
     }
 }
