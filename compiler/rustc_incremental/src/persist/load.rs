@@ -6,12 +6,12 @@ use std::sync::Arc;
 
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash64;
-use rustc_middle::dep_graph::{DepGraph, SerializedDepGraph, WorkProductMap};
+use rustc_middle::dep_graph::{DepGraph, IncrCompSession, SerializedDepGraph, WorkProductMap};
 use rustc_middle::query::on_disk_cache::OnDiskCache;
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_session::config::IncrementalStateAssertion;
-use rustc_session::{IncrCompSession, Session, StableCrateId};
+use rustc_session::{Session, StableCrateId};
 use rustc_span::Symbol;
 use tracing::{debug, warn};
 

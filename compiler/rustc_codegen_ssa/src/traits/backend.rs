@@ -5,11 +5,11 @@ use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::MetadataLoaderDyn;
-use rustc_middle::dep_graph::WorkProductMap;
+use rustc_middle::dep_graph::{IncrCompSession, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::config::{OutputFilenames, PrintRequest};
-use rustc_session::{CodegenBackendInit, EarlySession, IncrCompSession, Session};
+use rustc_session::{CodegenBackendInit, EarlySession, Session};
 use rustc_span::Symbol;
 use rustc_structures::CrateType;
 
