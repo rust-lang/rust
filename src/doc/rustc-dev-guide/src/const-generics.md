@@ -238,11 +238,11 @@ what actually happens is a *type checking* error when type checking the anon con
 Looking at the above example, this corresponds to `[u8; ANON]` being a well formed type because `ANON` has type `usize`, but the *body* of `ANON` being illformed and resulting in a type checking error because `true` can't be returned from a const item of type `usize`.
 
 [ambig-unambig-ty-and-consts]: ./ambig-unambig-ty-and-consts.md
-[`ConstKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.ConstKind.html
-[`ConstKind::Infer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.ConstKind.html#variant.Infer
-[`ConstKind::Param`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.ConstKind.html#variant.Param
+[`ConstKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/consts/type.ConstKind.html
+[`ConstKind::Infer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/consts/type.ConstKind.html#variant.Infer
+[`ConstKind::Param`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/consts/type.ConstKind.html#variant.Param
 [`ConstKind::Alias`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/consts/type.ConstKind.html#variant.Alias
-[`ConstKind::Value`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.ConstKind.html#variant.Value
+[`ConstKind::Value`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/consts/type.ConstKind.html#variant.Value
 [const_arg_has_type]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.ClauseKind.html#variant.ConstArgHasType
 [`ParamEnv`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html
 [`generics_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#impl-TyCtxt%3C'tcx%3E/method.generics_of
