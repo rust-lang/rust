@@ -209,9 +209,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Naked(..) => self.check_naked(hir_id, target),
             AttributeKind::MayDangle(attr_span) => self.check_may_dangle(hir_id, *attr_span),
             AttributeKind::Link(_, attr_span) => self.check_link(hir_id, *attr_span, target),
-            AttributeKind::MacroExport { span, .. } => {
-                self.check_macro_export(hir_id, *span, target)
-            }
             AttributeKind::RustcLegacyConstGenerics { attr_span, fn_indexes } => {
                 self.check_rustc_legacy_const_generics(item, *attr_span, fn_indexes)
             }
@@ -276,6 +273,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::LinkSection { .. } => (),
             AttributeKind::LoopMatch(..) => (),
             AttributeKind::MacroEscape => (),
+            AttributeKind::MacroExport { .. } => (),
             AttributeKind::MacroUse { .. } => (),
             AttributeKind::Marker => (),
             AttributeKind::MoveSizeLimit { .. } => (),
@@ -1295,25 +1293,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
             _ => {}
-        }
-    }
-
-    fn check_macro_export(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        if target != Target::MacroDef {
-            return;
-        }
-
-        // special case when `#[macro_export]` is applied to a macro 2.0
-        let (_, macro_definition, _) = self.tcx.hir_node(hir_id).expect_item().expect_macro();
-        let is_decl_macro = !macro_definition.macro_rules;
-
-        if is_decl_macro {
-            self.tcx.emit_node_span_lint(
-                UNUSED_ATTRIBUTES,
-                hir_id,
-                attr_span,
-                diagnostics::MacroExport::OnDeclMacro,
-            );
         }
     }
 

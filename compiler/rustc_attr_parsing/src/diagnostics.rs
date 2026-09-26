@@ -2056,3 +2056,10 @@ pub(crate) struct UnusedDuplicate {
     )]
     pub warning: bool,
 }
+
+#[derive(Diagnostic)]
+pub(crate) enum MacroExport {
+    #[diag("`#[macro_export]` has no effect on declarative macro definitions")]
+    #[note("declarative macros follow the same exporting rules as regular items")]
+    OnDeclMacro,
+}
