@@ -1983,6 +1983,42 @@ impl f16 {
         intrinsics::fmaf16(self, a, b)
     }
 
+    /// Computes `(self * a) + b` with nondeterministic rounding.
+    ///
+    /// This is similar to [`mul_add`](Self::mul_add), but the intermediate
+    /// result may be rounded differently depending on the implementation.
+    /// The operation is either executed as a single fused multiply-add
+    /// instruction, or as separate multiply and add instructions.
+    ///
+    /// The choice of which one is used is unspecified and non-deterministic:
+    /// it may vary by target, optimization level, and surrounding code, and
+    /// even two invocations of this operation with the same inputs may
+    /// produce different results.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// #![feature(float_mul_add_relaxed)]
+    /// # #[cfg(target_has_reliable_f16)] {
+    ///
+    /// // When the fused and unfused operations round differently, either
+    /// // result may be returned:
+    /// // - -7.03e-6 is the fused result (one rounding)
+    /// // - -7.6e-6 is the unfused result (two roundings)
+    /// let r = 0.1_f16.mul_add_relaxed(0.1_f16, -0.01_f16);
+    /// assert!(r == -7.03e-6 || r == -7.6e-6);
+    /// # }
+    /// ```
+    #[inline]
+    #[rustc_allow_incoherent_impl]
+    #[doc(alias = "fmuladd")]
+    #[unstable(feature = "float_mul_add_relaxed", issue = "151770")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    pub const fn mul_add_relaxed(self, a: f16, b: f16) -> f16 {
+        intrinsics::fmuladdf16(self, a, b)
+    }
+
     /// Calculates Euclidean division, the matching method for `rem_euclid`.
     ///
     /// This computes the integer `n` such that
