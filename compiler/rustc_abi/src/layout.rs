@@ -1479,15 +1479,13 @@ where
     };
 
     // Compute the size and alignment of the vector
-    let size = elt
-        .size
-        .checked_mul(count.as_u64(), dl)
-        .ok_or_else(|| LayoutCalculatorError::SizeOverflow)?;
+    let size =
+        elt.size.checked_mul(count.as_u64(), dl).ok_or(LayoutCalculatorError::SizeOverflow)?;
     let (repr, size, align) = match kind {
         SimdVectorKind::Scalable(number_of_vectors) => (
             BackendRepr::SimdScalableVector { element, count, number_of_vectors },
             size.checked_mul(number_of_vectors.0 as u64, dl)
-                .ok_or_else(|| LayoutCalculatorError::SizeOverflow)?,
+                .ok_or(LayoutCalculatorError::SizeOverflow)?,
             dl.rust_vector_align(size),
         ),
         // Non-power-of-two vectors have padding up to the next power-of-two.
