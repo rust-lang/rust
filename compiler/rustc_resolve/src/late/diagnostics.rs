@@ -2338,6 +2338,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 PathSource::Expr(_) | PathSource::TupleStruct(..) | PathSource::Pat => {
                     let span = find_span(&source, err);
                     err.span_label(this.r.def_span(def_id), format!("`{path_str}` defined here"));
+                    if this.r.tcx.def_kind(def_id) == DefKind::Variant {
+                        err.span_context(this.r.def_span(this.r.tcx.parent(def_id)).shrink_to_lo());
+                    }
 
                     let (tail, descr, applicability, old_fields) = match source {
                         PathSource::Pat => ("", "pattern", Applicability::MachineApplicable, None),
@@ -2445,7 +2448,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 &expression,
                                 applicability,
                             ) {
-                                err.span_suggestion(
+                                err.span_suggestion_verbose(
                                     span,
                                     format!("use struct {descr} syntax instead"),
                                     expression,
@@ -2632,7 +2635,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             (Res::Def(DefKind::Union | DefKind::Variant, def_id), _) if ns == ValueNS => {
                 bad_struct_syntax_suggestion(self, err, def_id);
             }
-            (Res::Def(DefKind::Ctor(_, CtorKind::Const), def_id), _) if ns == ValueNS => {
+            (Res::Def(DefKind::Ctor(of, CtorKind::Const), def_id), _) if ns == ValueNS => {
                 match source {
                     PathSource::Expr(_) | PathSource::TupleStruct(..) | PathSource::Pat => {
                         let span = find_span(&source, err);
@@ -2640,9 +2643,16 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             self.r.def_span(def_id),
                             format!("`{path_str}` defined here"),
                         );
-                        err.span_suggestion(
+                        if of == CtorOf::Variant {
+                            err.span_context(
+                                self.r
+                                    .def_span(self.r.tcx.parent(self.r.tcx.parent(def_id)))
+                                    .shrink_to_lo(),
+                            );
+                        }
+                        err.span_suggestion_verbose(
                             span,
-                            "use this syntax instead",
+                            "use the unit struct syntax instead",
                             path_str,
                             Applicability::MaybeIncorrect,
                         );
@@ -2650,14 +2660,17 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     _ => return false,
                 }
             }
-            (Res::Def(DefKind::Ctor(_, CtorKind::Fn), ctor_def_id), _) if ns == ValueNS => {
+            (Res::Def(DefKind::Ctor(of, CtorKind::Fn), ctor_def_id), _) if ns == ValueNS => {
                 let def_id = self.r.tcx.parent(ctor_def_id);
                 err.span_label(self.r.def_span(def_id), format!("`{path_str}` defined here"));
+                if of == CtorOf::Variant {
+                    err.span_context(self.r.def_span(self.r.tcx.parent(def_id)).shrink_to_lo());
+                }
                 let fields = self.r.field_idents(def_id).map_or_else(
                     || "/* fields */".to_string(),
                     |field_ids| vec!["_"; field_ids.len()].join(", "),
                 );
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     span,
                     "use the tuple variant pattern syntax instead",
                     format!("{path_str}({fields})"),

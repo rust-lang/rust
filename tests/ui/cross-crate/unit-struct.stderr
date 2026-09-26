@@ -2,9 +2,7 @@ error[E0423]: cannot find value `StructWithFields` in crate `xcrate_unit_struct`
   --> $DIR/unit-struct.rs:9:33
    |
 LL |     let _ = xcrate_unit_struct::StructWithFields;
-   |             --------------------^^^^^^^^^^^^^^^^
-   |             |
-   |             help: use struct literal syntax instead: `xcrate_unit_struct::StructWithFields { foo: val }`
+   |                                 ^^^^^^^^^^^^^^^^
    |
   ::: $DIR/auxiliary/xcrate_unit_struct.rs:20:1
    |
@@ -12,6 +10,10 @@ LL | pub struct StructWithFields {
    | --------------------------- `xcrate_unit_struct::StructWithFields` defined here
    |
    = note: a struct named `xcrate_unit_struct::StructWithFields` exists in another namespace
+help: use struct literal syntax instead
+   |
+LL |     let _ = xcrate_unit_struct::StructWithFields { foo: val };
+   |                                                  ++++++++++++
 
 error[E0423]: cannot find value `StructWithPrivFields` in crate `xcrate_unit_struct`
   --> $DIR/unit-struct.rs:11:33

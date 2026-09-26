@@ -61,6 +61,7 @@ LL +     let _x = (S { x: 1.0, y: 2.0 }, S(/* f32 */, /* f32 */));
 error[E0559]: variant `E::V` has no field named `x`
   --> $DIR/nested-non-tuple-tuple-struct.rs:13:22
    |
+LL | pub enum E {
 LL |     V(f32, f32),
    |     - `E::V` defined here
 ...
@@ -76,6 +77,7 @@ LL +     let _y = (E::V(/* f32 */, /* f32 */), E::V { x: 3.0, y: 4.0 });
 error[E0559]: variant `E::V` has no field named `y`
   --> $DIR/nested-non-tuple-tuple-struct.rs:13:30
    |
+LL | pub enum E {
 LL |     V(f32, f32),
    |     - `E::V` defined here
 ...
@@ -91,6 +93,7 @@ LL +     let _y = (E::V(/* f32 */, /* f32 */), E::V { x: 3.0, y: 4.0 });
 error[E0559]: variant `E::V` has no field named `x`
   --> $DIR/nested-non-tuple-tuple-struct.rs:13:47
    |
+LL | pub enum E {
 LL |     V(f32, f32),
    |     - `E::V` defined here
 ...
@@ -106,6 +109,7 @@ LL +     let _y = (E::V { x: 1.0, y: 2.0 }, E::V(/* f32 */, /* f32 */));
 error[E0559]: variant `E::V` has no field named `y`
   --> $DIR/nested-non-tuple-tuple-struct.rs:13:55
    |
+LL | pub enum E {
 LL |     V(f32, f32),
    |     - `E::V` defined here
 ...

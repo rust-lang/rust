@@ -2577,6 +2577,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match variant.ctor {
             Some((CtorKind::Fn, def_id)) => match ty.kind() {
                 ty::Adt(adt, ..) if adt.is_enum() => {
+                    err.span_context(self.tcx.def_span(adt.did()).shrink_to_lo());
                     err.span_label(
                         variant_ident_span,
                         format!(
