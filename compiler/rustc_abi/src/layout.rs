@@ -376,10 +376,10 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             self.layout_of_struct(
                 repr,
                 variants,
+                present_first,
                 is_enum,
                 is_special_no_niche,
                 always_sized,
-                present_first,
             )
         } else {
             // At this point, we have handled all unions and
@@ -525,10 +525,10 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         &self,
         repr: &ReprOptions,
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
+        variant_idx: VariantIdx,
         is_enum: bool,
         is_special_no_niche: bool,
         always_sized: bool,
-        present_first: VariantIdx,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
     where
         FieldIdx: Idx,
@@ -536,7 +536,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     {
         let dl = self.cx.data_layout();
-        let v = present_first;
+        let v = variant_idx;
         let kind = if is_enum || variants[v].is_empty() || always_sized {
             StructKind::AlwaysSized
         } else {
