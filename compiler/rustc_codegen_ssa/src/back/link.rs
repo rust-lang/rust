@@ -1,3 +1,4 @@
+// ignore-tidy-file-filelength
 mod raw_dylib;
 
 use std::collections::BTreeSet;
@@ -751,6 +752,72 @@ fn link_rlib<'a>(
 ///
 /// There's no need to include metadata in a static archive, so ensure to not link in the metadata
 /// object file (and also don't prepare the archive with a metadata file).
+// Weak f32/f64 math symbols from c-b's `full_availability` module; keep in sync with
+// `compiler-builtins/src/math/mod.rs`.
+const COMPILER_BUILTINS_LIBM_SYMBOLS: &[&str] = &[
+    "cbrtf",
+    "ceilf",
+    "copysignf",
+    "fabsf",
+    "fdimf",
+    "floorf",
+    "fmaf",
+    "fmaxf",
+    "fminf",
+    "fmodf",
+    "rintf",
+    "roundf",
+    "sqrtf",
+    "truncf",
+    "cbrt",
+    "ceil",
+    "copysign",
+    "fabs",
+    "fdim",
+    "floor",
+    "fma",
+    "fmax",
+    "fmin",
+    "fmod",
+    "rint",
+    "round",
+    "sqrt",
+    "trunc",
+];
+
+fn compiler_builtins_libm_members(rlib_path: &Path) -> FxHashSet<String> {
+    let Ok(file) = File::open(rlib_path) else { return FxHashSet::default() };
+    let Ok(mmap) = (unsafe { Mmap::map(file) }) else { return FxHashSet::default() };
+    let Ok(archive) = object::read::archive::ArchiveFile::parse(&*mmap) else {
+        return FxHashSet::default();
+    };
+    let Some(symbols) = archive.symbols().ok().flatten() else { return FxHashSet::default() };
+
+    let mut members = FxHashSet::default();
+    for symbol in symbols {
+        let Ok(symbol) = symbol else { continue };
+        if !COMPILER_BUILTINS_LIBM_SYMBOLS.iter().any(|&name| name.as_bytes() == symbol.name()) {
+            continue;
+        }
+        if let Ok(member) = archive.member(symbol.offset())
+            && let Ok(name) = str::from_utf8(member.name())
+        {
+            members.insert(name.to_string());
+        }
+    }
+    members
+}
+
+// Whether a system libm (`-lm`) is among the native libraries recorded for the final link.
+fn links_libm(crate_info: &CrateInfo, sess: &Session) -> bool {
+    crate_info
+        .native_libraries
+        .values()
+        .chain(std::iter::once(&crate_info.used_libraries))
+        .flatten()
+        .any(|lib| lib.name.as_str() == "m" && lib.kind.is_dllimport() && relevant_lib(sess, lib))
+}
+
 fn link_staticlib(
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
@@ -773,7 +840,15 @@ fn link_staticlib(
     );
     let mut all_native_libs = vec![];
 
+    // With `-lm` recorded, drop c-b's weak math definitions so libm's strong ones win (#142119).
+    let links_libm = links_libm(crate_info, sess);
     let res = each_linked_rlib(crate_info, Some(CrateType::StaticLib), &mut |cnum, path| {
+        debug_assert!(
+            !links_libm
+                || crate_info.compiler_builtins != Some(cnum)
+                || ignored_for_lto(sess, crate_info, cnum),
+            "compiler-builtins must not participate in LTO for the omit-libm skip to hold"
+        );
         let lto = are_upstream_rust_objects_already_included(sess)
             && !ignored_for_lto(sess, crate_info, cnum);
 
@@ -792,6 +867,11 @@ fn link_staticlib(
             .enumerate()
             .filter_map(|(i, _)| bundled_filenames.get(i).copied().flatten())
             .collect();
+        let cb_libm_members = if links_libm && crate_info.compiler_builtins == Some(cnum) {
+            compiler_builtins_libm_members(path)
+        } else {
+            FxHashSet::default()
+        };
         ab.add_archive(
             path,
             AddArchiveKind::Rlib(rmeta_link_cache, &|fname: &str, entry_kind| {
@@ -810,6 +890,9 @@ fn link_staticlib(
                     return true;
                 }
 
+                if cb_libm_members.contains(fname) {
+                    return true;
+                }
                 false
             }),
         )
@@ -3046,6 +3129,12 @@ fn linker_with_args(
         cmd.link_args(["-z", "nostart-stop-gc"]);
         cmd.link_arg("-rpath");
         cmd.link_arg(std::path::absolute(&*sess.target_tlib_path.dir).unwrap());
+    }
+
+    // Emit `-lm` ahead of the rlibs on glibc so its strong definitions win over c-b's weak ones;
+    // every other native dylib stays after the rlibs below.
+    if sess.target.env == Env::Gnu && links_libm(crate_info, sess) {
+        cmd.link_dylib_by_name("m", false, true);
     }
 
     // Upstream rust crates and their non-dynamic native libraries.
