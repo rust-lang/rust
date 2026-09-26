@@ -1,0 +1,13 @@
+error: labels cannot use keyword names
+  --> $DIR/missing-turbofish-lifetime-run-pass.rs:5:20
+   |
+LL |     let s = Struct<'_>("hi");
+   |                    ^^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime arguments for `Struct`
+   |
+LL |     let s = Struct::<'_>("hi");
+   |                   ++
+
+error: aborting due to 1 previous error
+

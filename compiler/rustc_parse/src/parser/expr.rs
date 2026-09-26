@@ -192,11 +192,30 @@ impl<'a> Parser<'a> {
                 Fixity::Right => Bound::Included(prec),
                 Fixity::Left | Fixity::None => Bound::Excluded(prec),
             };
+            let mut rhs_restrictions = restrictions - Restrictions::STMT_EXPR;
+            if matches!(op.node, AssocOp::Binary(BinOpKind::Lt))
+                && matches!(lhs.kind, ExprKind::Path(..))
+            {
+                rhs_restrictions |= Restrictions::IS_RHS_OF_LT_AFTER_PATH;
+            }
 
             let finish_parsing_bin_op = |this: &mut Self| {
-                let rhs = this.with_res(restrictions - Restrictions::STMT_EXPR, |this| {
-                    this.parse_expr_assoc(min_prec)
-                })?;
+                let rhs = if op.node == AssocOp::Binary(BinOpKind::Lt) {
+                    // Make the path ident available to `parse_expr_labeled` so the turbofish
+                    // suggestion can name the actual path (e.g. "for `Struct`").
+                    if let ExprKind::Path(_, ref path) = lhs.kind {
+                        this.expected_turbofish_context =
+                            path.segments.last().map(|seg| (op.span, seg.ident));
+                    }
+                    let res =
+                        this.with_res(rhs_restrictions, |this| this.parse_expr_assoc(min_prec));
+                    // Clear regardless of whether recovery fired; the context is only valid for
+                    // this one `<` operator.
+                    this.expected_turbofish_context = None;
+                    res?
+                } else {
+                    this.with_res(rhs_restrictions, |this| this.parse_expr_assoc(min_prec))?
+                };
                 let span = this.mk_expr_sp(&lhs, lhs_span, op.span, rhs.span);
                 Ok((rhs, span))
             };
@@ -204,6 +223,57 @@ impl<'a> Parser<'a> {
             lhs = match op.node {
                 AssocOp::Binary(ast_op) => {
                     let (rhs, span) = finish_parsing_bin_op(self)?;
+
+                    // Recover `Struct<'_>` missing its turbofish `::`.
+                    //
+                    // `parse_expr_labeled` set `turbofish_missing_lifetime_recovery` and returned
+                    // an `ExprKind::Err` sentinel after emitting the diagnostic. We now have all
+                    // the information needed to rebuild a well-formed path with the lifetime grafted
+                    // onto the last segment, and then resume normal postfix parsing.
+                    if let Some((ident, recovery_span)) =
+                        self.turbofish_missing_lifetime_recovery.take()
+                    {
+                        if let ExprKind::Err(_) = rhs.kind {
+                            let mut lhs_expr = *lhs;
+                            if let ExprKind::Path(qself, mut path) = lhs_expr.kind {
+                                // Graft the lifetime onto the `lhs` path.
+                                if let Some(last_segment) = path.segments.last_mut() {
+                                    let arg = ast::GenericArg::Lifetime(ast::Lifetime {
+                                        id: ast::DUMMY_NODE_ID,
+                                        ident,
+                                    });
+                                    let args = ast::AngleBracketedArgs {
+                                        span: op.span.to(recovery_span),
+                                        args: thin_vec::thin_vec![ast::AngleBracketedArg::Arg(arg)],
+                                    };
+                                    last_segment.args =
+                                        Some(Box::new(ast::GenericArgs::AngleBracketed(args)));
+                                }
+
+                                // Resume parsing as a struct literal.
+                                if self.token == token::OpenBrace {
+                                    if let Some(expr) = self.maybe_parse_struct_expr(&qself, &path)
+                                    {
+                                        lhs = expr?;
+                                        continue;
+                                    }
+                                }
+
+                                // Otherwise, resume parsing as a postfix expression (e.g. function call).
+                                lhs_expr.kind = ExprKind::Path(qself, path);
+                                let lhs_span = lhs_expr.span;
+                                let recovered_lhs = Box::new(lhs_expr);
+                                lhs = self.parse_expr_dot_or_call_with(
+                                    ast::AttrVec::new(),
+                                    recovered_lhs,
+                                    lhs_span,
+                                )?;
+                                continue;
+                            }
+                            lhs = Box::new(lhs_expr);
+                        }
+                    }
+
                     self.mk_expr(span, self.mk_binary(respan(op.span, ast_op), lhs, rhs))
                 }
                 AssocOp::AssignOp(aop) => {
@@ -744,6 +814,14 @@ impl<'a> Parser<'a> {
         mut e: Box<Expr>,
         lo: Span,
     ) -> PResult<'a, Box<Expr>> {
+        // When recovering a missing turbofish lifetime, `e` is an `ExprKind::Err` sentinel
+        // that `parse_expr_assoc_rest` will replace with the correctly-reconstructed node.
+        // Skip postfix parsing here so we don't attach method/call/index suffixes to the
+        // error node before the replacement happens.
+        if self.turbofish_missing_lifetime_recovery.is_some() {
+            return Ok(e);
+        }
+
         let mut res = loop {
             let has_question = if self.prev_token == TokenKind::Ident(kw::Return, IdentKind::Normal)
             {
@@ -1395,8 +1473,8 @@ impl<'a> Parser<'a> {
                 }
             } else if this.eat_keyword(exp!(While)) {
                 this.parse_expr_while(None, lo)
-            } else if let Some(label) = this.eat_label() {
-                this.parse_expr_labeled(label, true)
+            } else if let (Some(label), err) = this.eat_label() {
+                this.parse_expr_labeled(label, true, err)
             } else if this.eat_keyword(exp!(Loop)) {
                 this.parse_expr_loop(None, lo).map_err(|mut err| {
                     err.span_label(lo, "while parsing this `loop` expression");
@@ -1592,10 +1670,57 @@ impl<'a> Parser<'a> {
         &mut self,
         label_: Label,
         mut consume_colon: bool,
+        mut label_err: Option<Diag<'a>>,
     ) -> PResult<'a, Box<Expr>> {
         let lo = label_.ident.span;
         let label = Some(label_);
         let ate_colon = self.eat(exp!(Colon));
+
+        // Intercept `Struct<'_>` / `Struct<'a>` / `Struct<'abc>` missing their turbofish `::`.
+        // Fires when the lifetime is on the RHS of `<` after a path, has no following `:`, and
+        // the next token is `>` — i.e. this was never a real label, just a mistyped type arg.
+        // Reserved-keyword lifetimes (`'_`) already carry a diag; named ones need a fresh one.
+        if !ate_colon
+            && self.restrictions.contains(Restrictions::IS_RHS_OF_LT_AFTER_PATH)
+            && self.check_noexpect(&token::Gt)
+        {
+            let mut err = if let Some(e) = label_err.take() {
+                e
+            } else {
+                self.dcx().create_err(crate::diagnostics::UnexpectedTokenAfterLabel {
+                    span: self.token.span,
+                    remove_label: None,
+                    enclose_in_block: None,
+                })
+            };
+            let (op_span, ident) = self.expected_turbofish_context.take().expect(
+                "IS_RHS_OF_LT_AFTER_PATH is only ever set alongside expected_turbofish_context \
+                     in parse_expr_assoc_rest, so this must be Some here",
+            );
+            err.span_suggestion(
+                op_span.shrink_to_lo(),
+                format!(
+                    "use `::<...>` instead of `<...>` to specify lifetime arguments for `{ident}`"
+                ),
+                "::",
+                Applicability::MachineApplicable,
+            );
+            err.emit();
+            self.bump(); // consume `>`
+
+            // Return an `Err` sentinel so `parse_expr_assoc_rest` can detect the recovery and
+            // graft the lifetime onto the lhs path. We cannot build the final node here because
+            // `lhs` (the path being parameterized) is owned by the caller above us.
+            self.turbofish_missing_lifetime_recovery = Some((label_.ident, label_.ident.span));
+            return Ok(
+                self.mk_expr_err(lo, self.dcx().delayed_bug("turbofish_missing_lifetime_recovery"))
+            );
+        }
+
+        if let Some(e) = label_err.take() {
+            e.emit();
+        }
+
         let tok_sp = self.token.span;
         let expr = if self.eat_keyword(exp!(While)) {
             self.parse_expr_while(label, lo)
@@ -1787,13 +1912,16 @@ impl<'a> Parser<'a> {
     /// with a labeled loop does not even get a warning because there is no ambiguity.
     fn parse_expr_break(&mut self) -> PResult<'a, Box<Expr>> {
         let lo = self.prev_token.span;
-        let mut label = self.eat_label();
+        let (mut label, err) = self.eat_label();
+        if let Some(e) = err {
+            e.emit();
+        }
         let kind = if self.token == token::Colon
             && let Some(label) = label.take()
         {
             // The value expression can be a labeled loop, see issue #86948, e.g.:
             // `loop { break 'label: loop { break 'label 42; }; }`
-            let lexpr = self.parse_expr_labeled(label, true)?;
+            let lexpr = self.parse_expr_labeled(label, true, None)?;
             self.dcx().emit_err(crate::diagnostics::LabeledLoopInBreak {
                 span: lexpr.span,
                 sub: crate::diagnostics::WrapInParentheses::Expression {
@@ -1854,7 +1982,10 @@ impl<'a> Parser<'a> {
 
     /// Parse `"continue" label?`.
     fn parse_expr_continue(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
-        let mut label = self.eat_label();
+        let (mut label, err) = self.eat_label();
+        if let Some(e) = err {
+            e.emit();
+        }
 
         // Recover `continue label` -> `continue 'label`
         if self.may_recover()
@@ -3004,17 +3135,18 @@ impl<'a> Parser<'a> {
         ))
     }
 
-    pub(crate) fn eat_label(&mut self) -> Option<Label> {
+    pub(crate) fn eat_label(&mut self) -> (Option<Label>, Option<Diag<'a>>) {
         if let Some((ident, kind)) = self.token.lifetime() {
             // Disallow `'fn`, but with a better error message than `expect_lifetime`.
-            if kind == IdentKind::Normal && ident.without_first_quote().is_reserved() {
-                self.dcx().emit_err(crate::diagnostics::KeywordLabel { span: ident.span });
-            }
-
+            let err = if kind == IdentKind::Normal && ident.without_first_quote().is_reserved() {
+                Some(self.dcx().create_err(crate::diagnostics::KeywordLabel { span: ident.span }))
+            } else {
+                None
+            };
             self.bump();
-            Some(Label { ident })
+            (Some(Label { ident }), err)
         } else {
-            None
+            (None, None)
         }
     }
 

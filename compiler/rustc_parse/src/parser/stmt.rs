@@ -1047,7 +1047,7 @@ impl<'a> Parser<'a> {
                                         segment.ident.span,
                                     ),
                                 };
-                                match self.parse_expr_labeled(label, false) {
+                                match self.parse_expr_labeled(label, false, None) {
                                     Ok(labeled_expr) => {
                                         e.cancel();
                                         self.dcx().emit_err(MalformedLoopLabel {

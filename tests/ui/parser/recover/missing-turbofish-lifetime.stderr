@@ -1,0 +1,35 @@
+error: labels cannot use keyword names
+  --> $DIR/missing-turbofish-lifetime.rs:6:20
+   |
+LL |     let _ = Struct<'_> {
+   |                    ^^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime arguments for `Struct`
+   |
+LL |     let _ = Struct::<'_> {
+   |                   ++
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/missing-turbofish-lifetime.rs:13:22
+   |
+LL |     let _ = Struct<'a> {
+   |                      ^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime arguments for `Struct`
+   |
+LL |     let _ = Struct::<'a> {
+   |                   ++
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/missing-turbofish-lifetime.rs:20:24
+   |
+LL |     let _ = Struct<'abc> {
+   |                        ^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime arguments for `Struct`
+   |
+LL |     let _ = Struct::<'abc> {
+   |                   ++
+
+error: aborting due to 3 previous errors
+
