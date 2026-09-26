@@ -1665,6 +1665,12 @@ where
             .iter()
             .any(|c| matches!(c.source, CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)));
         if has_non_global_where_bounds {
+            for c in candidates.iter_mut() {
+                if !matches!(c.source, CandidateSource::ParamEnv(_)) {
+                    self.ignore_candidate_head_usages(std::mem::take(&mut c.head_usages));
+                }
+            }
+
             let where_bounds: Vec<_> = candidates
                 .extract_if(.., |c| matches!(c.source, CandidateSource::ParamEnv(_)))
                 .collect();
