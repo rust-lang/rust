@@ -44,7 +44,7 @@ pub struct DocFragment {
     pub item_id: Option<DefId>,
     pub doc: Symbol,
     pub kind: DocFragmentKind,
-    pub indent: usize,
+    pub indent: u8,
     /// Because we tamper with the spans context, this information cannot be correctly retrieved
     /// later on. So instead, we compute it and store it here.
     pub from_expansion: bool,
@@ -169,7 +169,7 @@ pub fn unindent_doc_fragments(docs: &mut [DocFragment]) {
             min_indent
         };
 
-        fragment.indent = indent;
+        fragment.indent = indent.try_into().unwrap_or(u8::MAX);
     }
 }
 
@@ -188,8 +188,8 @@ pub fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
 
     while let Some(line) = iter.next() {
         if line.chars().any(|c| !c.is_whitespace()) {
-            assert!(line.len() >= frag.indent);
-            out.push_str(&line[frag.indent..]);
+            assert!(line.len() >= frag.indent as usize);
+            out.push_str(&line[frag.indent as usize..]);
         } else {
             out.push_str(line);
         }
