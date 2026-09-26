@@ -234,16 +234,25 @@ impl<'tcx> BestObligation<'tcx> {
                 if candidates.len() > 1 {
                     candidates.retain(|candidate| {
                         goal.infcx().probe(|_| {
-                            candidate.instantiate_nested_goals(self.span()).iter().any(
-                                |nested_goal| {
-                                    matches!(
-                                        nested_goal.source(),
+                            let nested_goals = candidate.instantiate_nested_goals(self.span());
+                            let not_boring = nested_goals.iter().any(|nested_goal| {
+                                matches!(
+                                    nested_goal.source(),
+                                    GoalSource::ImplWhereBound
+                                        | GoalSource::AliasBoundConstCondition
+                                        | GoalSource::AliasWellFormed
+                                ) && nested_goal.result().is_err()
+                            });
+                            let interesting = nested_goals.iter().all(|g| {
+                                g.result().is_ok()
+                                    || matches!(
+                                        g.source(),
                                         GoalSource::ImplWhereBound
                                             | GoalSource::AliasBoundConstCondition
                                             | GoalSource::AliasWellFormed
-                                    ) && nested_goal.result().is_err()
-                                },
-                            )
+                                    )
+                            });
+                            not_boring && interesting
                         })
                     });
                 }
