@@ -20,7 +20,9 @@ use super::{SocketAncillary, recv_vectored_with_ancillary_from, send_vectored_wi
 #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "cygwin"))]
 use crate::io::{IoSlice, IoSliceMut};
 use crate::net::Shutdown;
-use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::os::unix::io::{
+    AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd, unsafe_impl_fd_asrefs,
+};
 use crate::path::Path;
 use crate::sys::net::Socket;
 use crate::sys::{AsInner, FromInner, IntoInner, cvt};
@@ -1015,6 +1017,11 @@ impl AsFd for UnixDatagram {
         self.0.as_inner().as_fd()
     }
 }
+
+// SAFETY: It's a tower of 1-field wrappers around OwnedFd.
+// No methods to close the socket, no methods with safety preconditions,
+// other than the fd being valid.
+unsafe_impl_fd_asrefs!(UnixDatagram);
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<UnixDatagram> for OwnedFd {
