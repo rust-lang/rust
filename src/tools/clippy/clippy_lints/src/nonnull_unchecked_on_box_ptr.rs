@@ -13,10 +13,11 @@ use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for unsafe usage of `NonNull::new_unchecked(Box::into_raw(x))`, and suggests calling `NonNull::from_mut(Box::leak(x))` instead.
+    /// Checks for uses of `NonNull::new_unchecked(Box::into_raw(x))`.
     ///
     /// ### Why is this bad?
-    /// `NonNull::new_unchecked` is an unsafe function, which we don't need to call at all if we can instead use a mutable reference.
+    /// `NonNull::new_unchecked` is an unsafe function with a safe alternative when coming
+    /// from a `Box`.
     ///
     /// ### Example
     /// ```no_run
@@ -28,12 +29,12 @@ declare_clippy_lint! {
     /// ```no_run
     /// use std::ptr::NonNull;
     /// let one = Box::new(1);
-    /// let ptr = NonNull::from_mut(Box::leak(one));
+    /// let ptr = Box::into_non_null(one);
     /// ```
     #[clippy::version = "1.98.0"]
     pub NONNULL_UNCHECKED_ON_BOX_PTR,
     complexity,
-    "using `NonNull::new_unchecked` with `Box::into_raw`, while `NonNull::from_mut` with `Box::leak` can be used instead"
+    "checks for uses of `NonNull::new_unchecked` with `Box::into_raw`"
 }
 
 impl_lint_pass!(NonnullUncheckedOnBoxPtr => [NONNULL_UNCHECKED_ON_BOX_PTR]);
@@ -63,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for NonnullUncheckedOnBoxPtr {
                 .opt_parent(cx)
                 .opt_impl_ty(cx)
                 .is_lang_item(cx, LangItem::OwnedBox)
-            && self.msrv.meets(cx, msrvs::BOX_LEAK)
+            && self.msrv.meets(cx, msrvs::BOX_INTO_NON_NULL)
         {
             let ctxt = expr.span.ctxt();
             let span = match cx.tcx.parent_hir_node(expr.hir_id) {
@@ -84,14 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for NonnullUncheckedOnBoxPtr {
                 |diag| {
                     let mut app = Applicability::MachineApplicable;
                     let arg_name = snippet_with_context(cx, arg.span, ctxt, "_", &mut app).0;
-
-                    let sugg = if self.msrv.meets(cx, msrvs::NONNULL_FROM_MUT) {
-                        format!("NonNull::from_mut(Box::leak({arg_name}))")
-                    } else {
-                        format!("NonNull::from(Box::leak({arg_name}))")
-                    };
-
-                    diag.span_suggestion(span, "try", sugg, app);
+                    diag.span_suggestion(span, "try", format!("Box::into_non_null({arg_name})"), app);
                 },
             );
         }

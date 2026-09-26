@@ -185,7 +185,17 @@ fn needless_borrow_count<'tcx>(
         .instantiate_identity()
         .skip_norm_wip()
         .skip_binder();
-    let clauses = cx.tcx.param_env(fn_id).caller_bounds();
+    let in_const_context = cx.tcx.hir_is_inside_const_context(expr.hir_id);
+    let clauses = cx
+        .tcx
+        .param_env(fn_id)
+        .caller_bounds()
+        // TODO: remove filter once https://github.com/rust-lang/rust/issues/160895 is in stable
+        //
+        // This sends the old trait solver into unbounded recursion for `[const] Destruct` on self-recursive types
+        .into_iter()
+        .filter(|clause| in_const_context || !matches!(clause.kind().skip_binder(), ClauseKind::HostEffect(_)))
+        .collect::<Vec<_>>();
     let projection_predicates = clauses
         .iter()
         .filter_map(|clause| {
@@ -285,7 +295,7 @@ fn needless_borrow_count<'tcx>(
                 return false;
             }
 
-            let clause = EarlyBinder::bind(cx.tcx, clause)
+            let clause = EarlyBinder::bind(cx.tcx, *clause)
                 .instantiate(cx.tcx, &args_with_referent_ty[..])
                 .skip_norm_wip();
             let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, clause);

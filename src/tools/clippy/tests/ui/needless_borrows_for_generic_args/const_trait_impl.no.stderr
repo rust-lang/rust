@@ -1,0 +1,23 @@
+error: the borrowed expression implements the required traits
+  --> tests/ui/needless_borrows_for_generic_args/const_trait_impl.rs:17:22
+   |
+LL |         value.filter(&predicate)
+   |                      ^^^^^^^^^^ help: change this to: `predicate`
+   |
+   = note: `-D clippy::needless-borrows-for-generic-args` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_borrows_for_generic_args)]`
+
+error: the borrowed expression implements the required traits
+  --> tests/ui/needless_borrows_for_generic_args/const_trait_impl.rs:24:22
+   |
+LL |         value.filter(&predicate)
+   |                      ^^^^^^^^^^ help: change this to: `predicate`
+
+error: the borrowed expression implements the required traits
+  --> tests/ui/needless_borrows_for_generic_args/const_trait_impl.rs:46:21
+   |
+LL |             consume(&0u32);
+   |                     ^^^^^ help: change this to: `0u32`
+
+error: aborting due to 3 previous errors
+
