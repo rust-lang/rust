@@ -276,7 +276,7 @@ pub struct Arc<
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     ptr: NonNull<ArcInner<T>>,
-    phantom: PhantomData<ArcInner<T>>,
+    phantom: PhantomData<Box<ArcInner<T>>>,
     alloc: A,
 }
 
@@ -4545,7 +4545,7 @@ pub struct UniqueArc<
 > {
     ptr: NonNull<ArcInner<T>>,
     // Define the ownership of `ArcInner<T>` for drop-check
-    _marker: PhantomData<ArcInner<T>>,
+    _marker: PhantomData<Box<ArcInner<T>>>,
     // Invariance is necessary for soundness: once other `Weak`
     // references exist, we already have a form of shared mutability!
     _marker2: PhantomData<*mut T>,
