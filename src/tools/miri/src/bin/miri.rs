@@ -256,7 +256,7 @@ impl CodegenBackend for MiriCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
-        incr_comp_session: Option<&rustc_session::IncrCompSession>,
+        incr_comp_session: Option<&rustc_middle::dep_graph::IncrCompSession>,
         outputs: &rustc_session::config::OutputFilenames,
         crate_info: &CrateInfo,
     ) -> (CompiledModules, rustc_middle::dep_graph::WorkProductMap) {

@@ -4,8 +4,8 @@ use std::path::PathBuf;
 
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::DiagCtxtHandle;
-use rustc_middle::dep_graph::WorkProduct;
-use rustc_session::{BorrowedIncrCompSession, Session};
+use rustc_middle::dep_graph::{BorrowedIncrCompSession, WorkProduct};
+use rustc_session::Session;
 
 use crate::back::lto::ThinModule;
 use crate::back::write::{

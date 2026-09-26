@@ -15,10 +15,10 @@ use std::any::Any;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo};
 use rustc_metadata::EncodedMetadata;
-use rustc_middle::dep_graph::WorkProductMap;
+use rustc_middle::dep_graph::{IncrCompSession, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
+use rustc_session::Session;
 use rustc_session::config::OutputFilenames;
-use rustc_session::{IncrCompSession, Session};
 
 struct TheBackend;
 
