@@ -14,8 +14,8 @@ mod llvm_enzyme {
     use rustc_ast::tokenstream::*;
     use rustc_ast::visit::AssocCtxt::*;
     use rustc_ast::{
-        self as ast, AnonConst, AssocItemKind, FnRetTy, FnSig, GenericArg, GenericParamKind,
-        Generics, ItemKind, MetaItemInner, PatKind, TyKind, Visibility,
+        self as ast, AnonConst, FnRetTy, FnSig, GenericArg, GenericParamKind, Generics, ItemKind,
+        MetaItemInner, PatKind, TyKind, Visibility,
     };
     use rustc_attr_ir::RustcAutodiff;
     use rustc_expand::base::{Annotatable, ExtCtxt};
@@ -153,7 +153,7 @@ mod llvm_enzyme {
     }
 
     fn meta_item_inner_to_ts(t: &MetaItemInner, ts: &mut Vec<TokenTree>) {
-        let comma: Token = Token::new(TokenKind::Comma, Span::default());
+        let comma = Token::new(TokenKind::Comma, Span::default());
         let val = first_ident(t);
         let t = Token::from_ast_ident(val);
         ts.push(TokenTree::Token(t, Spacing::Joint));
@@ -274,7 +274,7 @@ mod llvm_enzyme {
         // Now, if the user gave a width (vector aka batch-mode ad), then we copy it.
         // If it is not given, we default to 1 (scalar mode).
         let start_position;
-        let kind: LitKind = LitKind::Integer;
+        let kind = LitKind::Integer;
         let symbol;
         if meta_item_vec.len() >= 2
             && let Some(width) = width(&meta_item_vec[1])
@@ -286,7 +286,7 @@ mod llvm_enzyme {
             symbol = sym::integer(1);
         }
 
-        let l: Lit = Lit { kind, symbol, suffix: None };
+        let l = Lit { kind, symbol, suffix: None };
         let t = Token::new(TokenKind::Literal(l), Span::default());
         let comma = Token::new(TokenKind::Comma, Span::default());
         ts.push(TokenTree::Token(t, Spacing::Joint));
@@ -305,9 +305,9 @@ mod llvm_enzyme {
         }
         // We remove the last, trailing comma.
         ts.pop();
-        let ts: TokenStream = TokenStream::from_iter(ts);
+        let ts = TokenStream::from_iter(ts);
 
-        let x: RustcAutodiff = from_ast(ecx, &meta_item_vec, has_ret, mode);
+        let x = from_ast(ecx, &meta_item_vec, has_ret, mode);
         if !x.is_active() {
             // We encountered an error, so we return the original item.
             // This allows us to potentially parse other attributes.
@@ -345,7 +345,7 @@ mod llvm_enzyme {
         let mut rustc_ad_attr =
             Box::new(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
 
-        let ts2: Vec<TokenTree> = vec![TokenTree::Token(
+        let ts2 = vec![TokenTree::Token(
             Token::new(TokenKind::Ident(sym::never, IdentKind::Normal), span),
             Spacing::Joint,
         )];
@@ -381,7 +381,7 @@ mod llvm_enzyme {
         let mut has_inline_never = false;
 
         // Don't add it multiple times:
-        let orig_annotatable: Annotatable = match item {
+        let orig_annotatable = match item {
             Annotatable::Item(ref mut iitem) => {
                 if !iitem.attrs.iter().any(|a| same_attribute(&a.kind, &attr.kind)) {
                     iitem.attrs.push(attr);
@@ -438,7 +438,7 @@ mod llvm_enzyme {
 
         let d_annotatable = match &item {
             Annotatable::AssocItem(_, ctxt) => {
-                let assoc_item: AssocItemKind = ast::AssocItemKind::Fn(d_fn);
+                let assoc_item = ast::AssocItemKind::Fn(d_fn);
                 let d_fn = Box::new(ast::AssocItem {
                     attrs: d_attrs,
                     id: ast::DUMMY_NODE_ID,
@@ -703,7 +703,7 @@ mod llvm_enzyme {
                             debug!("{:#?}", &shadow_arg.pat);
                             panic!("not an ident?");
                         };
-                        let name: String = format!("d{}_{}", old_name, i);
+                        let name = format!("d{}_{}", old_name, i);
                         new_inputs.push(name.clone());
                         let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
                         *shadow_arg.pat = ecx.pat_ident(shadow_arg.pat.span, ident);
@@ -730,7 +730,7 @@ mod llvm_enzyme {
                             debug!("{:#?}", &shadow_arg.pat);
                             panic!("not an ident?");
                         };
-                        let name: String = format!("b{}_{}", old_name, i);
+                        let name = format!("b{}_{}", old_name, i);
                         new_inputs.push(name.clone());
                         let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
 
