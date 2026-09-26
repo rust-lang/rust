@@ -4,6 +4,59 @@ error[E0425]: cannot find type `T` in this scope
 LL |     Variant(T),
    |             ^ not found in this scope
 
+error[E0425]: cannot find type `T` in this scope
+  --> $DIR/derive-macro-unsupported-type-params.rs:16:10
+   |
+LL | #[derive(B)]
+   |          ^ not found in this scope
+   |
+note: similarly named enum `A` defined here
+  --> $DIR/derive-macro-unsupported-type-params.rs:8:1
+   |
+LL | enum A<T> {
+   | ^^^^^^^^^
+   = note: this error originates in the derive macro `B` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: an enum with a similar name exists
+  --> $DIR/auxiliary/derive-no-generics.rs:56:28
+   |
+LL -                     let _: T = val;
+LL +                     let _: A = val;
+   |
+
+error[E0425]: cannot find type `T` in this scope
+  --> $DIR/derive-macro-unsupported-type-params.rs:25:13
+   |
+LL |     Variant(T),
+   |             ^ not found in this scope
+   |
+note: similarly named enum `A` defined here
+  --> $DIR/derive-macro-unsupported-type-params.rs:8:1
+   |
+LL | enum A<T> {
+   | ^^^^^^^^^
+help: an enum with a similar name exists
+   |
+LL -     Variant(T),
+LL +     Variant(A),
+   |
+help: you might be missing a type parameter
+  --> $DIR/auxiliary/derive-no-generics.rs:79:15
+   |
+LL |         fn foo<T>(val: $name<$arg>) {
+   |               +++
+
+error[E0425]: cannot find value `T` in this scope
+  --> $DIR/derive-macro-unsupported-type-params.rs:25:13
+   |
+LL |     Variant(T),
+   |             ^ not found in this scope
+   |
+help: you might be missing a const parameter
+  --> $DIR/auxiliary/derive-no-generics.rs:79:15
+   |
+LL |         fn foo<const T: /* Type */>(val: $name<$arg>) {
+   |               +++++++++++++++++++++
+
 error[E0107]: missing generics for enum `A`
   --> $DIR/derive-macro-unsupported-type-params.rs:8:6
    |
@@ -22,7 +75,25 @@ LL | enum A<T> {
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 3 previous errors
+error[E0107]: missing generics for enum `B`
+  --> $DIR/derive-macro-unsupported-type-params.rs:17:6
+   |
+LL | #[derive(B)]
+   |          - this derive macro might not support items with generic parameters
+LL | enum B<T> {
+   |      ^
+
+error[E0107]: missing generics for enum `B`
+  --> $DIR/derive-macro-unsupported-type-params.rs:17:6
+   |
+LL | #[derive(B)]
+   |          - this derive macro might not support items with generic parameters
+LL | enum B<T> {
+   |      ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0107, E0425.
 For more information about an error, try `rustc --explain E0107`.
