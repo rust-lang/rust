@@ -112,7 +112,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
-        if layout.peel_transparent_wrappers(bx).deref().is_scalable_vector() {
+        // FIXME(rustc_scalable_vector/stdarch_aarch64_sve): Scalable vectors aren't actually sized,
+        // but we pretend they are. Here we have to hack around that.
+        if layout.peel_transparent_wrappers_from_non_1zst(bx).deref().is_scalable_vector() {
             Self::alloca_scalable(bx, layout)
         } else {
             Self::alloca_size(bx, layout.size, layout)
@@ -159,7 +161,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         layout: TyAndLayout<'tcx>,
     ) -> Self {
         PlaceValue::new_sized(
-            bx.alloca_with_ty(layout.peel_transparent_wrappers(bx)),
+            // FIXME why is this peeling at all? The LLVM type should be the same for the
+            // transparent wrapper and the inner type.
+            bx.alloca_with_ty(layout.peel_transparent_wrappers_from_non_1zst(bx)),
             layout.align.abi,
         )
         .with_type(layout)
