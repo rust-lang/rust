@@ -171,8 +171,11 @@ where
     let promoted_layouts = ineligible_locals.iter().map(|local| local_layouts[local]);
     prefix_layouts.push(tag_to_layout(tag));
     prefix_layouts.extend(promoted_layouts);
-    let prefix =
-        calc.univariant(&prefix_layouts, &ReprOptions::default(), StructKind::AlwaysSized)?;
+    let prefix = calc.layout_of_univariant(
+        &prefix_layouts,
+        &ReprOptions::default(),
+        StructKind::AlwaysSized,
+    )?;
 
     let (prefix_size, prefix_align) = (prefix.size, prefix.align);
 
@@ -225,7 +228,7 @@ where
                 })
                 .map(|local| local_layouts[*local]);
 
-            let mut variant = calc.univariant(
+            let mut variant = calc.layout_of_univariant(
                 &variant_only_tys.collect::<IndexVec<_, _>>(),
                 &ReprOptions::default(),
                 StructKind::Prefixed(prefix_size, prefix_align.abi),

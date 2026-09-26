@@ -235,7 +235,7 @@ fn layout_of_uncached<'tcx>(
     let univariant = |tys: &[Ty<'tcx>], kind| {
         let fields = tys.iter().map(|ty| cx.layout_of(*ty)).try_collect::<IndexVec<_, _>>()?;
         let repr = ReprOptions::default();
-        map_layout(cx.calc.univariant(&fields, &repr, kind))
+        map_layout(cx.calc.layout_of_univariant(&fields, &repr, kind))
     };
     debug_assert!(!ty.has_non_region_infer());
 
@@ -586,7 +586,7 @@ fn layout_of_uncached<'tcx>(
 
             let layout = cx
                 .calc
-                .coroutine(
+                .layout_of_coroutine(
                     &local_layouts,
                     prefix_layouts,
                     &info.variant_fields,
