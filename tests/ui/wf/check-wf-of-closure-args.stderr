@@ -1,0 +1,64 @@
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/check-wf-of-closure-args.rs:14:44
+   |
+LL |     let _: for<'x> fn(MyTy<&'x str>) = |x| wf(x);
+   |                                         -  ^^^^^
+   |                                         |  |
+   |                                         |  `x` escapes the closure body here
+   |                                         |  argument requires that `'1` must outlive `'static`
+   |                                         `x` is only valid in the closure body
+   |                                         has type `MyTy<&'1 str>`
+
+warning: lifetime may not live long enough
+  --> $DIR/check-wf-of-closure-args.rs:11:41
+   |
+LL |     let _: for<'x> fn(MyTy<&'x str>) = |_| {};
+   |                                         ^
+   |                                         |
+   |                                         has type `MyTy<&'1 str>`
+   |                                         requires that `'1` must outlive `'static`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163155 <https://github.com/rust-lang/rust/issues/163155>
+
+warning: lifetime may not live long enough
+  --> $DIR/check-wf-of-closure-args.rs:14:41
+   |
+LL |     let _: for<'x> fn(MyTy<&'x str>) = |x| wf(x);
+   |                                         ^
+   |                                         |
+   |                                         has type `MyTy<&'1 str>`
+   |                                         requires that `'1` must outlive `'static`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163155 <https://github.com/rust-lang/rust/issues/163155>
+
+error: aborting due to 1 previous error; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0521`.
+Future incompatibility report: Future breakage diagnostic:
+warning: lifetime may not live long enough
+  --> $DIR/check-wf-of-closure-args.rs:11:41
+   |
+LL |     let _: for<'x> fn(MyTy<&'x str>) = |_| {};
+   |                                         ^
+   |                                         |
+   |                                         has type `MyTy<&'1 str>`
+   |                                         requires that `'1` must outlive `'static`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163155 <https://github.com/rust-lang/rust/issues/163155>
+
+Future breakage diagnostic:
+warning: lifetime may not live long enough
+  --> $DIR/check-wf-of-closure-args.rs:14:41
+   |
+LL |     let _: for<'x> fn(MyTy<&'x str>) = |x| wf(x);
+   |                                         ^
+   |                                         |
+   |                                         has type `MyTy<&'1 str>`
+   |                                         requires that `'1` must outlive `'static`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163155 <https://github.com/rust-lang/rust/issues/163155>
+

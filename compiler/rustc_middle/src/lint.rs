@@ -5,8 +5,8 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::{Diag, DiagLocation, Diagnostic, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_lint_defs::{
-    EditionFcw, FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId,
-    StableLintExpectationId, UnstableLintExpectationId, builtin,
+    Level, Lint, LintExpectationId, LintId, StableLintExpectationId, UnstableLintExpectationId,
+    builtin,
 };
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_session::Session;
@@ -524,48 +524,8 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a> + 'a>(
         }
 
         if let Some(future_incompatible) = future_incompatible {
-            let explanation = match future_incompatible.reason {
-                FutureIncompatibilityReason::FutureReleaseError(_) => {
-                    "this was previously accepted by the compiler but is being phased out; \
-                         it will become a hard error in a future release!"
-                        .to_owned()
-                }
-                FutureIncompatibilityReason::FutureReleaseSemanticsChange(_) => {
-                    "this will change its meaning in a future release!".to_owned()
-                }
-                FutureIncompatibilityReason::EditionError(EditionFcw { edition, .. }) => {
-                    let current_edition = sess.edition();
-                    format!(
-                        "this is accepted in the current edition (Rust {current_edition}) but is a hard error in Rust {edition}!"
-                    )
-                }
-                FutureIncompatibilityReason::EditionSemanticsChange(EditionFcw {
-                    edition, ..
-                }) => {
-                    format!("this changes meaning in Rust {edition}")
-                }
-                FutureIncompatibilityReason::EditionAndFutureReleaseError(EditionFcw {
-                    edition,
-                    ..
-                }) => {
-                    format!(
-                        "this was previously accepted by the compiler but is being phased out; \
-                         it will become a hard error in Rust {edition} and in a future release in all editions!"
-                    )
-                }
-                FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(
-                    EditionFcw { edition, .. },
-                ) => {
-                    format!(
-                        "this changes meaning in Rust {edition} and in a future release in all editions!"
-                    )
-                }
-                FutureIncompatibilityReason::Custom(reason, _) => reason.to_owned(),
-                FutureIncompatibilityReason::Unreachable => unreachable!(),
-            };
-
             if future_incompatible.explain_reason {
-                err.warn(explanation);
+                err.warn(future_incompatible.reason.explain(sess.edition()));
             }
 
             let citation =

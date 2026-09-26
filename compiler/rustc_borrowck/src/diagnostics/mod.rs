@@ -14,6 +14,7 @@ use rustc_hir::{
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::{BoundRegionConversionTime, NllRegionVariableOrigin};
 use rustc_infer::traits::SelectionError;
+use rustc_lint_defs::FutureIncompatibilityReason;
 use rustc_middle::mir::{
     AggregateKind, CallSource, ConstOperand, ConstraintCategory, FakeReadCause, Local, LocalInfo,
     LocalKind, Location, Operand, Place, PlaceRef, PlaceTy, ProjectionElem, Rvalue, Statement,
@@ -23,6 +24,7 @@ use rustc_middle::ty::print::{Print, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveOutIndex};
 use rustc_span::def_id::LocalDefId;
+use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, bug, span_bug, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::call_kind::{CallDesugaringKind, call_kind};
@@ -100,6 +102,12 @@ pub(crate) struct BorrowckDiagnosticsBuffer<'diag, 'tcx> {
 }
 
 impl<'diag, 'tcx> BorrowckDiagnosticsBuffer<'diag, 'tcx> {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.buffered_move_errors.is_empty()
+            && self.buffered_mut_errors.is_empty()
+            && self.buffered_diags.is_empty()
+    }
+
     pub(crate) fn buffer_error(&mut self, diag: Diag<'diag>) {
         let sort_span = diag.span.primary_span().unwrap_or(DUMMY_SP);
         self.buffered_diags.push((sort_span, diag));
@@ -128,6 +136,62 @@ impl<'diag, 'tcx> BorrowckDiagnosticsBuffer<'diag, 'tcx> {
                 diag.emit();
             }
         }
+    }
+
+    pub(crate) fn emit_errors_as_fcw(
+        &mut self,
+        name: &str,
+        fcw_reason: FutureIncompatibilityReason,
+        edition: Edition,
+    ) {
+        // Buffer any move errors that we collected and de-duplicated.
+        for (_, (_, diag)) in std::mem::take(&mut self.buffered_move_errors) {
+            // We have already set tainted for this error, so just buffer it.
+            self.buffer_error(diag);
+        }
+        for (_, (mut diag, count)) in std::mem::take(&mut self.buffered_mut_errors) {
+            if count > 10 {
+                diag.note(format!("...and {} other attempted mutable borrows", count - 10));
+            }
+            self.buffer_error(diag);
+        }
+
+        if !self.buffered_diags.is_empty() {
+            self.buffered_diags.sort_by_key(|(sort_span, _)| *sort_span);
+            for (_, diag) in self.buffered_diags.drain(..) {
+                diag.emit_fcw(name, fcw_reason, edition);
+            }
+        }
+    }
+
+    /// Filters `self` to only the errors that are not in `other`. Cancels any errors removed from `self`.
+    pub(crate) fn diff_errors(&mut self, other: &Self) {
+        self.buffered_move_errors
+            .extract_if(.., |_, (_, diag)| {
+                other
+                    .buffered_move_errors
+                    .iter()
+                    .any(|(_, (_, other_diag))| diag.dedup_hash() == other_diag.dedup_hash())
+            })
+            .for_each(|(_, (_, d))| d.cancel());
+
+        self.buffered_mut_errors
+            .extract_if(.., |_, (diag, _)| {
+                other
+                    .buffered_mut_errors
+                    .iter()
+                    .any(|(_, (other_diag, _))| diag.dedup_hash() == other_diag.dedup_hash())
+            })
+            .for_each(|(_, (d, _))| d.cancel());
+
+        self.buffered_diags
+            .extract_if(.., |(_, diag)| {
+                other
+                    .buffered_diags
+                    .iter()
+                    .any(|(_, other_diag)| diag.dedup_hash() == other_diag.dedup_hash())
+            })
+            .for_each(|(_, d)| d.cancel());
     }
 }
 

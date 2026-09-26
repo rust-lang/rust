@@ -104,6 +104,7 @@ pub(crate) fn type_check<'tcx>(
     polonius_facts: &mut Option<PoloniusFacts>,
     move_data: &MoveData<'tcx>,
     location_map: Rc<DenseLocationMap>,
+    wfck_closures: bool,
 ) -> MirTypeckResults<'tcx> {
     let mut constraints = MirTypeckRegionConstraints {
         placeholder_indices: PlaceholderIndices::default(),
@@ -160,6 +161,7 @@ pub(crate) fn type_check<'tcx>(
         constraints: &mut constraints,
         deferred_closure_requirements: &mut deferred_closure_requirements,
         polonius_context,
+        wfck_closures,
     };
 
     typeck.check_user_type_annotations();
@@ -246,6 +248,8 @@ struct TypeChecker<'a, 'tcx> {
     deferred_closure_requirements: &'a mut DeferredClosureRequirements<'tcx>,
     /// When using `-Zpolonius=next`, the liveness helper data used to create polonius constraints.
     polonius_context: Option<PoloniusContext<'tcx>>,
+    // Do we have `root_cx.wfck_closure_check::Yes` or not.
+    wfck_closures: bool,
 }
 
 /// Holder struct for passing results from MIR typeck to the rest of the non-lexical regions

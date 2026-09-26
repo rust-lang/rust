@@ -1,0 +1,9 @@
+warning: processing debug info with `dsymutil` failed: signal: 6 (SIGABRT)
+   |
+   = note: dyld[60060]: Symbol not found: _LLVMInitializeLanaiAsmPrinter
+             Referenced from: <A67FE96F-27AE-3D73-BC13-FE5CAEFF798A> /opt/homebrew/Cellar/llvm/22.1.4/bin/dsymutil
+             Expected in:     <D15ECECA-0ABC-3826-9F5A-5AC129E73033> $BUILD_DIR/aarch64-apple-darwin/stage1/lib/libLLVM.dylib
+           
+
+warning: 1 warning emitted
+
