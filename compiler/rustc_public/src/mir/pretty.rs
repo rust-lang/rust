@@ -105,6 +105,9 @@ fn pretty_statement<W: Write>(writer: &mut W, statement: &StatementKind) -> io::
         StatementKind::StorageLive(local) => {
             writeln!(writer, "{INDENT}StorageLive(_{local});")
         }
+        StatementKind::StorageAlloc(local) => {
+            writeln!(writer, "{INDENT}StorageAlloc(_{local});")
+        }
         StatementKind::StorageDead(local) => {
             writeln!(writer, "{INDENT}StorageDead(_{local});")
         }

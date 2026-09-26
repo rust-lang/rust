@@ -195,7 +195,7 @@
       }
   
       bb16: {
--         _18 = move _2;
+-         _18 = copy _2;
 -         _17 = std::future::get_context::<'_, '_>(move _18) -> [return: bb15, unwind: bb8];
 +         StorageLive(_32);
 +         _0 = Poll::<()>::Pending;
@@ -222,7 +222,7 @@
 -         _7 = Add(move _7, const 1_usize);
 -         _40 = &mut (*_22);
 -         _39 = Pin::<&mut AsyncInt>::new_unchecked(move _40) -> [return: bb39, unwind: bb4];
-+         _37 = move _46;
++         _37 = copy _46;
 +         _36 = copy (_37.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb18;
       }
@@ -298,7 +298,7 @@
 -     }
 - 
 -     bb30: {
--         _30 = move _2;
+-         _30 = copy _2;
 -         _29 = std::future::get_context::<'_, '_>(move _30) -> [return: bb29, unwind: bb23];
 -     }
 - 
@@ -334,7 +334,7 @@
 -     }
 - 
 -     bb37: {
--         _37 = move _2;
+-         _37 = copy _2;
 -         _36 = std::future::get_context::<'_, '_>(move _37) -> [return: bb36, unwind: bb23];
 -     }
 - 
