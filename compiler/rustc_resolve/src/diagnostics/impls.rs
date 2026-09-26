@@ -1978,7 +1978,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ident,
             is_expected,
         );
-        self.add_typo_suggestion(err, suggestion, ident.span);
+        self.add_typo_suggestion(err, suggestion, ident.span, None);
         self.detect_derive_attribute(err, ident, parent_scope, sugg_span);
 
         let import_suggestions =
@@ -2262,6 +2262,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         err: &mut Diag<'_>,
         suggestion: Option<TypoSuggestion>,
         span: Span,
+        prefix: Option<Ident>,
     ) {
         let suggestion = match suggestion {
             None => return,
@@ -2336,7 +2337,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     format!("maybe you meant this {}", suggestion.res.descr())
                 }
             };
-            (span, msg, suggestion.candidate.to_ident_string())
+            let candidate_str = suggestion.candidate.to_ident_string();
+            let sugg =
+                if let Some(p) = prefix { format!("{p}: {candidate_str}") } else { candidate_str };
+            (span, msg, sugg)
         };
         err.span_suggestion_verbose(span, msg, sugg, Applicability::MaybeIncorrect);
     }

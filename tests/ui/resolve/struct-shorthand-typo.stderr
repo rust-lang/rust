@@ -11,9 +11,8 @@ LL | const A: usize = 0;
    | ^^^^^^^^^^^^^^^^^^^
 help: a constant with a similar name exists
    |
-LL -     S { a };
-LL +     S { A };
-   |
+LL |     S { a: A };
+   |          +++
 
 error[E0425]: cannot find value `b` in this scope
   --> $DIR/struct-shorthand-typo.rs:13:19
@@ -28,9 +27,8 @@ LL | const B: usize = 1;
    | ^^^^^^^^^^^^^^^^^^^
 help: a constant with a similar name exists
    |
-LL -     Multi { a: 0, b };
-LL +     Multi { a: 0, B };
-   |
+LL |     Multi { a: 0, b: B };
+   |                    +++
 
 error[E0425]: cannot find value `c` in this scope
   --> $DIR/struct-shorthand-typo.rs:20:11
@@ -43,11 +41,10 @@ note: similarly named constant `C` defined here
    |
 LL | const C: usize = 2;
    | ^^^^^^^^^^^^^^^^^^^
-help: a constant with a similar name exists (notice the capitalization)
+help: a constant with a similar name exists
    |
-LL -     Fru { c, ..base };
-LL +     Fru { C, ..base };
-   |
+LL |     Fru { c: C, ..base };
+   |            +++
 
 error[E0425]: cannot find value `d` in this scope
   --> $DIR/struct-shorthand-typo.rs:28:24
@@ -62,9 +59,8 @@ LL | const D: usize = 3;
    | ^^^^^^^^^^^^^^^^^^^
 help: a constant with a similar name exists
    |
-LL -     E::StructVariant { d };
-LL +     E::StructVariant { D };
-   |
+LL |     E::StructVariant { d: D };
+   |                         +++
 
 error[E0425]: cannot find value `e` in this scope
   --> $DIR/struct-shorthand-typo.rs:34:13
@@ -74,9 +70,8 @@ LL |     Local { e };
    |
 help: a local variable with a similar name exists
    |
-LL -     Local { e };
-LL +     Local { E };
-   |
+LL |     Local { e: E };
+   |              +++
 
 error: aborting due to 5 previous errors
 
