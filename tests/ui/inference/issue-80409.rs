@@ -21,6 +21,8 @@ struct FsmStateBuilder<TFsm> {
 
 impl<TFsm> FsmStateBuilder<TFsm> {
     fn on_entry<TAction: Fn(&mut StateContext<'_, TFsm>)>(&self, _action: TAction) {}
+    //~^ WARN the trait bound `TFsm: Fsm` is not satisfied
+    //~| WARN this was previously accepted by the compiler
 }
 
 trait Fsm {
