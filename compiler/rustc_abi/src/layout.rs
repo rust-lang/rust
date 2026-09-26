@@ -263,6 +263,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         )
     }
 
+    /// Compute the layout for a univariant.
+    ///
+    /// For structs and univariant enums, prefer [`Self::layout_of_struct`].
     pub fn layout_of_univariant<'a, FieldIdx, VariantIdx, F>(
         &self,
         fields: &IndexSlice<FieldIdx, F>,
@@ -514,7 +517,10 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         })
     }
 
-    /// single-variant enums are just structs, if you think about it
+    /// Calculate the layout for a struct, or a single-variant enum.
+    ///
+    /// They are the same thing, if you think about it
+    /// (Typechecking will reject discriminant-sizing attrs.)
     fn layout_of_struct<'a, FieldIdx, VariantIdx, F>(
         &self,
         repr: &ReprOptions,
@@ -529,9 +535,6 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         VariantIdx: Idx,
         F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     {
-        // Struct, or univariant enum equivalent to a struct.
-        // (Typechecking will reject discriminant-sizing attrs.)
-
         let dl = self.cx.data_layout();
         let v = present_first;
         let kind = if is_enum || variants[v].is_empty() || always_sized {
