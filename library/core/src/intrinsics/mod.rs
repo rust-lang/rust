@@ -95,7 +95,9 @@ use macros::intrinsic_dispatch_on_type;
 // These imports are used for simplifying intra-doc links
 #[allow(unused_imports)]
 #[cfg(all(target_has_atomic = "8", target_has_atomic = "32", target_has_atomic = "ptr"))]
-use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, Ordering};
+use crate::sync::atomic::{
+    self, AtomicBool, AtomicI32, AtomicIsize, AtomicPtr, AtomicU32, Ordering,
+};
 
 /// A type for atomic ordering parameters for intrinsics. This is a separate type from
 /// `atomic::Ordering` so that we can make it `ConstParamTy` and fix the values used here without a
@@ -118,9 +120,19 @@ pub enum AtomicOrdering {
 /// Stores a value if the current value is the same as the `old` value.
 /// `T` must be an integer or pointer type.
 ///
+/// # Safety
+///
+/// This is equivalent to [Atomic::from_ptr] followed by [Atomic::compare_exchange],
+/// with the returned `T` being the previous value and the returned `bool` being
+/// whether the exchange was successful.
+/// Refer to the documentation of [Atomic::from_ptr] for safety requirements.
+///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange` method.
 /// For example, [`AtomicBool::compare_exchange`].
+///
+/// [Atomic::from_ptr]: AtomicI32::from_ptr
+/// [Atomic::compare_exchange]: AtomicI32::compare_exchange
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn atomic_cxchg<
@@ -136,9 +148,19 @@ pub const unsafe fn atomic_cxchg<
 /// Stores a value if the current value is the same as the `old` value.
 /// `T` must be an integer or pointer type. The comparison may spuriously fail.
 ///
+/// # Safety
+///
+/// This is equivalent to [Atomic::from_ptr] followed by [Atomic::compare_exchange_weak],
+/// with the returned `T` being the previous value and the returned `bool` being
+/// whether the exchange was successful.
+/// Refer to the documentation of [Atomic::from_ptr] for safety requirements.
+///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange_weak` method.
 /// For example, [`AtomicBool::compare_exchange_weak`].
+///
+/// [Atomic::from_ptr]: AtomicI32::from_ptr
+/// [Atomic::compare_exchange_weak]: AtomicI32::compare_exchange_weak
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn atomic_cxchgweak<
@@ -201,8 +223,16 @@ pub const unsafe fn atomic_store<T: Copy, const ORD: AtomicOrdering, const VOLAT
 /// Stores the value at the specified memory location, returning the old value.
 /// `T` must be an integer or pointer type.
 ///
+/// # Safety
+///
+/// This is equivalent to [Atomic::from_ptr] followed by [Atomic::swap].
+/// Refer to the documentation of [Atomic::from_ptr] for safety requirements.
+///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `swap` method. For example, [`AtomicBool::swap`].
+///
+/// [Atomic::from_ptr]: AtomicI32::from_ptr
+/// [Atomic::swap]: AtomicI32::swap
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn atomic_xchg<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
@@ -211,8 +241,21 @@ pub const unsafe fn atomic_xchg<T: Copy, const ORD: AtomicOrdering>(dst: *mut T,
 /// `T` must be an integer or pointer type.
 /// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
+/// # Safety
+///
+/// * If `T` is an integer type, this is equivalent to [Atomic::from_ptr] followed by [Atomic::fetch_add].
+///   Refer to the documentation of [Atomic::from_ptr] for safety requirements.
+///
+/// * If `T` is a pointer type, this is equivalent to [AtomicPtr::from_ptr] followed by [AtomicPtr::fetch_byte_add].
+///   Refer to the documentation of [AtomicPtr::from_ptr] for safety requirements.
+///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_add` method. For example, [`AtomicIsize::fetch_add`].
+///
+/// [Atomic::from_ptr]: AtomicI32::from_ptr
+/// [Atomic::fetch_add]: AtomicI32::fetch_add
+/// [AtomicPtr::from_ptr]: AtomicPtr::from_ptr
+/// [AtomicPtr::fetch_byte_add]: AtomicPtr::fetch_byte_add
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn atomic_xadd<T: Copy, U: Copy, const ORD: AtomicOrdering>(
@@ -224,8 +267,21 @@ pub const unsafe fn atomic_xadd<T: Copy, U: Copy, const ORD: AtomicOrdering>(
 /// `T` must be an integer or pointer type.
 /// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
+/// # Safety
+///
+/// * If `T` is an integer type, this is equivalent to [Atomic::from_ptr] followed by [Atomic::fetch_sub].
+///   Refer to the documentation of [Atomic::from_ptr] for safety requirements.
+///
+/// * If `T` is a pointer type, this is equivalent to [AtomicPtr::from_ptr] followed by [AtomicPtr::fetch_byte_sub].
+///   Refer to the documentation of [AtomicPtr::from_ptr] for safety requirements.
+///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_sub` method. For example, [`AtomicIsize::fetch_sub`].
+///
+/// [Atomic::from_ptr]: AtomicI32::from_ptr
+/// [Atomic::fetch_sub]: AtomicI32::fetch_sub
+/// [AtomicPtr::from_ptr]: AtomicPtr::from_ptr
+/// [AtomicPtr::fetch_byte_sub]: AtomicPtr::fetch_byte_sub
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn atomic_xsub<T: Copy, U: Copy, const ORD: AtomicOrdering>(
@@ -237,8 +293,21 @@ pub const unsafe fn atomic_xsub<T: Copy, U: Copy, const ORD: AtomicOrdering>(
 /// `T` must be an integer or pointer type.
 /// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
+/// # Safety
+///
+/// * If `T` is an integer type, this is equivalent to [Atomic::from_ptr] followed by [Atomic::fetch_and].
+///   Refer to the documentation of [Atomic::from_ptr] for safety requirements.
+///
+/// * If `T` is a pointer type, this is equivalent to [AtomicPtr::from_ptr] followed by [AtomicPtr::fetch_and].
+///   Refer to the documentation of [AtomicPtr::from_ptr] for safety requirements.
+///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_and` method. For example, [`AtomicBool::fetch_and`].
+///
+/// [Atomic::from_ptr]: AtomicI32::from_ptr
+/// [Atomic::fetch_and]: AtomicI32::fetch_and
+/// [AtomicPtr::from_ptr]: AtomicPtr::from_ptr
+/// [AtomicPtr::fetch_and]: AtomicPtr::fetch_and
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn atomic_and<T: Copy, U: Copy, const ORD: AtomicOrdering>(
@@ -250,8 +319,16 @@ pub const unsafe fn atomic_and<T: Copy, U: Copy, const ORD: AtomicOrdering>(
 /// `T` must be an integer or pointer type.
 /// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
+/// # Safety
+///
+/// This is equivalent to [Atomic::from_ptr] followed by [Atomic::fetch_nand].
+/// Refer to the documentation of [Atomic::from_ptr] for safety requirements.
+///
 /// The stabilized version of this intrinsic is available on the
-/// [`AtomicBool`] type via the `fetch_nand` method. For example, [`AtomicBool::fetch_nand`].
+/// [`atomic`] types via the `fetch_nand` method. For example, [`AtomicBool::fetch_nand`].
+///
+/// [Atomic::from_ptr]: AtomicI32::from_ptr
+/// [Atomic::fetch_nand]: AtomicI32::fetch_nand
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn atomic_nand<T: Copy, U: Copy, const ORD: AtomicOrdering>(
@@ -263,8 +340,21 @@ pub const unsafe fn atomic_nand<T: Copy, U: Copy, const ORD: AtomicOrdering>(
 /// `T` must be an integer or pointer type.
 /// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
+/// # Safety
+///
+/// * If `T` is an integer type, this is equivalent to [Atomic::from_ptr] followed by [Atomic::fetch_or].
+///   Refer to the documentation of [Atomic::from_ptr] for safety requirements.
+///
+/// * If `T` is a pointer type, this is equivalent to [AtomicPtr::from_ptr] followed by [AtomicPtr::fetch_or].
+///   Refer to the documentation of [AtomicPtr::from_ptr] for safety requirements.
+///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_or` method. For example, [`AtomicBool::fetch_or`].
+///
+/// [Atomic::from_ptr]: AtomicI32::from_ptr
+/// [Atomic::fetch_or]: AtomicI32::fetch_or
+/// [AtomicPtr::from_ptr]: AtomicPtr::from_ptr
+/// [AtomicPtr::fetch_or]: AtomicPtr::fetch_or
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn atomic_or<T: Copy, U: Copy, const ORD: AtomicOrdering>(
@@ -276,8 +366,21 @@ pub const unsafe fn atomic_or<T: Copy, U: Copy, const ORD: AtomicOrdering>(
 /// `T` must be an integer or pointer type.
 /// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
+/// # Safety
+///
+/// * If `T` is an integer type, this is equivalent to [Atomic::from_ptr] followed by [Atomic::fetch_xor].
+///   Refer to the documentation of [Atomic::from_ptr] for safety requirements.
+///
+/// * If `T` is a pointer type, this is equivalent to [AtomicPtr::from_ptr] followed by [AtomicPtr::fetch_xor].
+///   Refer to the documentation of [AtomicPtr::from_ptr] for safety requirements.
+///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_xor` method. For example, [`AtomicBool::fetch_xor`].
+///
+/// [Atomic::from_ptr]: AtomicI32::from_ptr
+/// [Atomic::fetch_xor]: AtomicI32::fetch_xor
+/// [AtomicPtr::from_ptr]: AtomicPtr::from_ptr
+/// [AtomicPtr::fetch_xor]: AtomicPtr::fetch_xor
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn atomic_xor<T: Copy, U: Copy, const ORD: AtomicOrdering>(
@@ -288,8 +391,16 @@ pub const unsafe fn atomic_xor<T: Copy, U: Copy, const ORD: AtomicOrdering>(
 /// Maximum with the current value using a signed comparison.
 /// `T` must be a signed integer type.
 ///
+/// # Safety
+///
+/// This is equivalent to [Atomic::from_ptr] followed by [Atomic::fetch_max].
+/// Refer to the documentation of [Atomic::from_ptr] for safety requirements.
+///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] signed integer types via the `fetch_max` method. For example, [`AtomicI32::fetch_max`].
+///
+/// [Atomic::from_ptr]: AtomicI32::from_ptr
+/// [Atomic::fetch_max]: AtomicI32::fetch_max
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn atomic_max<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
@@ -297,8 +408,16 @@ pub const unsafe fn atomic_max<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, 
 /// Minimum with the current value using a signed comparison.
 /// `T` must be a signed integer type.
 ///
+/// # Safety
+///
+/// This is equivalent to [Atomic::from_ptr] followed by [Atomic::fetch_min].
+/// Refer to the documentation of [Atomic::from_ptr] for safety requirements.
+///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] signed integer types via the `fetch_min` method. For example, [`AtomicI32::fetch_min`].
+///
+/// [Atomic::from_ptr]: AtomicI32::from_ptr
+/// [Atomic::fetch_min]: AtomicI32::fetch_min
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn atomic_min<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
@@ -306,8 +425,16 @@ pub const unsafe fn atomic_min<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, 
 /// Minimum with the current value using an unsigned comparison.
 /// `T` must be an unsigned integer type.
 ///
+/// # Safety
+///
+/// This is equivalent to [Atomic::from_ptr] followed by [Atomic::fetch_min].
+/// Refer to the documentation of [Atomic::from_ptr] for safety requirements.
+///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] unsigned integer types via the `fetch_min` method. For example, [`AtomicU32::fetch_min`].
+///
+/// [Atomic::from_ptr]: AtomicU32::from_ptr
+/// [Atomic::fetch_min]: AtomicU32::fetch_min
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn atomic_umin<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
@@ -315,8 +442,16 @@ pub const unsafe fn atomic_umin<T: Copy, const ORD: AtomicOrdering>(dst: *mut T,
 /// Maximum with the current value using an unsigned comparison.
 /// `T` must be an unsigned integer type.
 ///
+/// # Safety
+///
+/// This is equivalent to [Atomic::from_ptr] followed by [Atomic::fetch_max].
+/// Refer to the documentation of [Atomic::from_ptr] for safety requirements.
+///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] unsigned integer types via the `fetch_max` method. For example, [`AtomicU32::fetch_max`].
+///
+/// [Atomic::from_ptr]: AtomicU32::from_ptr
+/// [Atomic::fetch_max]: AtomicU32::fetch_max
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn atomic_umax<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
