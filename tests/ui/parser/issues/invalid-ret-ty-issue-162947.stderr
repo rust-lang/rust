@@ -1,0 +1,14 @@
+error: expected type, found keyword `return`
+  --> $DIR/invalid-ret-ty-issue-162947.rs:6:15
+   |
+LL |     fn a() -> return {}
+   |               ^^^^^^ expected type
+
+error: expected type, found `1`
+  --> $DIR/invalid-ret-ty-issue-162947.rs:13:15
+   |
+LL |     fn a() -> 1 + 1 {
+   |               ^ expected type
+
+error: aborting due to 2 previous errors
+
