@@ -2907,7 +2907,9 @@ impl Default for IPV6_MREQ {
         unsafe { core::mem::zeroed() }
     }
 }
+pub const IPV6_MULTICAST_HOPS: i32 = 10;
 pub const IPV6_MULTICAST_LOOP: i32 = 11;
+pub const IPV6_UNICAST_HOPS: i32 = 4;
 pub const IPV6_V6ONLY: i32 = 27;
 pub const IP_ADD_MEMBERSHIP: i32 = 12;
 pub const IP_DROP_MEMBERSHIP: i32 = 13;
