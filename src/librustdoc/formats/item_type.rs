@@ -107,6 +107,7 @@ item_type! {
     // still having the filtering working as expected.
     DeclMacroAttribute = 28,
     DeclMacroDerive = 29,
+    Feature = 30,
 }
 
 impl<'a> From<&'a clean::Item> for ItemType {
@@ -150,6 +151,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
                 MacroKind::Attr => ItemType::ProcAttribute,
                 MacroKind::Derive => ItemType::ProcDerive,
             },
+            clean::FeatureItem => ItemType::Feature,
             clean::StrippedItem(..) => unreachable!(),
         }
     }
@@ -230,6 +232,7 @@ impl ItemType {
             ItemType::ProcDerive | ItemType::DeclMacroDerive => "derive",
             ItemType::TraitAlias => "traitalias",
             ItemType::Attribute => "attribute",
+            ItemType::Feature => "feature",
         }
     }
     pub(crate) fn is_method(&self) -> bool {

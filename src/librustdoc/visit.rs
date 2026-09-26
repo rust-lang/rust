@@ -51,6 +51,7 @@ pub(crate) trait DocVisitor<'a>: Sized {
             | AssocTypeItem(..)
             | KeywordItem
             | AttributeItem
+            | FeatureItem
             | PlaceholderImplItem => {}
         }
     }
