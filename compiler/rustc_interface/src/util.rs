@@ -18,14 +18,14 @@ use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::sync;
 use rustc_metadata::{DylibError, EncodedMetadata, load_symbol_from_dylib};
-use rustc_middle::dep_graph::WorkProductMap;
+use rustc_middle::dep_graph::{IncrCompSession, WorkProductMap};
 use rustc_middle::ty::{CurrentGcx, TyCtxt};
 use rustc_query_impl::{CollectActiveJobsKind, collect_active_query_jobs};
 pub use rustc_session::config::DEFAULT_STACK_SIZE;
 use rustc_session::config::{
     Cfg, Jobs, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
 };
-use rustc_session::{EarlyDiagCtxt, EarlySession, IncrCompSession, Session, filesearch};
+use rustc_session::{EarlyDiagCtxt, EarlySession, Session, filesearch};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
 use rustc_span::{SessionGlobals, Symbol, sym};

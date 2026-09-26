@@ -107,9 +107,9 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_data_structures::{base_n, flock};
 use rustc_fs_util::try_canonicalize;
-use rustc_middle::dep_graph::WorkProduct;
+use rustc_middle::dep_graph::{IncrCompSession, WorkProduct};
 use rustc_session::config::OutputType;
-use rustc_session::{IncrCompSession, Session, StableCrateId};
+use rustc_session::{Session, StableCrateId};
 use rustc_span::{Symbol, bug};
 use tracing::debug;
 

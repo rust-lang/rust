@@ -40,8 +40,8 @@ use rustc_index::IndexVec;
 use rustc_lint_defs::Lint;
 use rustc_lint_defs::builtin::UNUSED_FEATURES;
 use rustc_macros::Diagnostic;
+use rustc_session::Session;
 use rustc_session::config::NextSolverConfig;
-use rustc_session::{IncrCompSession, Session};
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, sym};
 use rustc_structures::{CrateType, Limit};
@@ -54,7 +54,7 @@ use tracing::{debug, instrument};
 
 use crate::arena::Arena;
 use crate::dep_graph::dep_node::make_metadata;
-use crate::dep_graph::{DepGraph, DepNodeIndex};
+use crate::dep_graph::{DepGraph, DepNodeIndex, IncrCompSession};
 use crate::hir::{ProjectedMaybeOwner, ProjectedOwnerInfo};
 use crate::ich::StableHashState;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};

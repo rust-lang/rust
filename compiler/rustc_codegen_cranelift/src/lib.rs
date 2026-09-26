@@ -42,9 +42,9 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig, back};
 use rustc_data_structures::unord::UnordSet;
 use rustc_log::tracing::info;
-use rustc_middle::dep_graph::WorkProductMap;
+use rustc_middle::dep_graph::{IncrCompSession, WorkProductMap};
 use rustc_session::config::{NATIVE_CPU, OutputFilenames};
-use rustc_session::{CodegenBackendInit, EarlySession, IncrCompSession, Session};
+use rustc_session::{CodegenBackendInit, EarlySession, Session};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{Arch, CfgAbi, Env, Os};
 

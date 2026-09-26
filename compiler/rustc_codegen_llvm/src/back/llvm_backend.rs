@@ -20,12 +20,12 @@ use rustc_codegen_ssa::{CompiledModule, CompiledModules, CrateInfo, ModuleCodege
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_metadata::EncodedMetadata;
-use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
+use rustc_middle::dep_graph::{
+    BorrowedIncrCompSession, IncrCompSession, WorkProduct, WorkProductMap,
+};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
-use rustc_session::{
-    BorrowedIncrCompSession, CodegenBackendInit, EarlySession, IncrCompSession, Session,
-};
+use rustc_session::{CodegenBackendInit, EarlySession, Session};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{RelocModel, TlsModel};
 

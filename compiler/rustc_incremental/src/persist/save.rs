@@ -1,12 +1,12 @@
 use std::fs;
 
 use rustc_data_structures::sync::par_join;
-use rustc_middle::dep_graph::{DepGraph, WorkProductMap};
+use rustc_middle::dep_graph::{DepGraph, IncrCompSession, WorkProductMap};
 use rustc_middle::query::on_disk_cache;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::FileEncoder;
-use rustc_session::{IncrCompSession, Session};
+use rustc_session::Session;
 use tracing::debug;
 
 use super::data::*;
