@@ -214,21 +214,70 @@ pub const unsafe fn assert_unchecked(cond: bool) {
 /// Emits a machine instruction to signal the processor that it is running in
 /// a busy-wait spin-loop ("spin lock").
 ///
-/// Upon receiving the spin-loop signal the processor can optimize its behavior by,
-/// for example, saving power or switching hyper-threads.
-///
 /// This function is different from [`thread::yield_now`] which directly
-/// yields to the system's scheduler, whereas `spin_loop` does not interact
-/// with the operating system.
+/// yields to the operating system's scheduler, whereas `spin_loop` does not interact
+/// with the OS and only notifies the CPU itself.
 ///
-/// A common use case for `spin_loop` is implementing bounded optimistic
-/// spinning in a CAS loop in synchronization primitives. To avoid problems
-/// like priority inversion, it is strongly recommended that the spin loop is
-/// terminated after a finite amount of iterations and an appropriate blocking
-/// syscall is made.
+/// [`thread::yield_now`]: ../../std/thread/fn.yield_now.html
+///
+/// Upon receiving the spin-loop signal the processor can optimize its behavior by,
+/// for example, saving power or switching [hardware threads].
+///
+/// [hardware threads]: https://en.wikipedia.org/wiki/Simultaneous_multithreading
 ///
 /// **Note**: On platforms that do not support receiving spin-loop hints this
 /// function does not do anything at all.
+///
+/// # Considerations
+///
+/// Be careful when using this hint, since improper usage can lead to [priority inversion]
+/// and halt progress entirely. For example, take the below implementation of [`update`]:
+///
+/// [priority inversion]: https://en.wikipedia.org/wiki/Priority_inversion
+/// [`update`]: crate::sync::atomic::Atomic::update
+///
+/// ```
+/// use std::sync::atomic::{AtomicU32, Ordering};
+/// use std::hint::spin_loop;
+///
+/// fn update(
+///     atomic: AtomicU32,
+///     set_order: Ordering,
+///     fetch_order: Ordering,
+///     mut f: impl FnMut(u32) -> u32,
+/// ) -> u32 {
+///     let mut prev = atomic.load(fetch_order);
+///     loop {
+///         let next = f(prev);
+///         prev = match atomic.compare_exchange(prev, next, set_order, fetch_order) {
+///             Ok(next) => return next,
+///             Err(prev) => prev,
+///         };
+///         spin_loop();
+///     }
+/// }
+/// ```
+///
+/// Note that this version *will not perform correctly* due to the presence of
+/// `spin_loop`, since the thread is de-prioritized in its critical section, `f`,
+/// between two [`compare_exchange`] calls. In the worst case, the `spin_loop` causes
+/// another thread to run a subsequent fetch and store before this thread succeeds,
+/// forcing it to try again.
+///
+/// [`compare_exchange`]: crate::sync::atomic::Atomic::compare_exchange
+///
+/// Because the operating system is not notified at all, this hint should be used only
+/// when the expected wait time is short, i.e. a few instructions. Additionally, since
+/// this hint is intended to reduce the amount of work done on the current thread, you
+/// should only use it when you're waiting on work from *another* thread to complete,
+/// otherwise, you'll just slow everything down.
+///
+/// Some mutex implementations may choose to run this hint opportunistically for a limited
+/// number of iterations even if they intend to call [`thread::yield_now`] afterward. If
+/// you're lucky, you can continue the thread without having to make an expensive system
+/// call at all, but if you're not lucky, you're unlikely to have wasted much time anyway.
+/// This avoids priority inversion by deferring to a proper scheduler while still allowing
+/// for some performance gains.
 ///
 /// # Examples
 ///
@@ -263,8 +312,6 @@ pub const unsafe fn assert_unchecked(cond: bool) {
 /// bg_work.join()?;
 /// # Ok::<(), Box<dyn core::any::Any + Send + 'static>>(())
 /// ```
-///
-/// [`thread::yield_now`]: ../../std/thread/fn.yield_now.html
 #[inline(always)]
 #[stable(feature = "renamed_spin_loop", since = "1.49.0")]
 pub fn spin_loop() {
