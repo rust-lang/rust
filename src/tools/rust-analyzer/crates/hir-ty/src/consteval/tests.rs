@@ -2996,3 +2996,18 @@ fn recursive_adt() {
         },
     );
 }
+
+#[test]
+fn uninhabited_enum_discriminant_read() {
+    check_fail(
+        r#"
+    #![feature(never_type)]
+    enum E { A(!), }
+    union U { u: (), e: E, }
+    const GOAL: () = {
+        let E::A(a) = unsafe { &(&U { u: () }).e };
+    };
+    "#,
+        |e| matches!(e, ConstEvalError::MirEvalError(MirEvalError::UndefinedBehavior(_))),
+    );
+}
