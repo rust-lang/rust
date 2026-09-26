@@ -226,6 +226,7 @@ pub fn check_cast<'tcx>(
 
     let root_ctxt = crate::TypeckRootCtxt::new(tcx, local_def_id);
     let fn_ctxt = FnCtxt::new(&root_ctxt, param_env, local_def_id);
+    fn_ctxt.write_ty(hir_id, from_ty);
 
     if let Ok(check) = CastCheck::new(
         &fn_ctxt, e, from_ty, to_ty,
