@@ -1,0 +1,21 @@
+error[E0080]: evaluation panicked: target `NumBuffer` size must be smaller or equal to source `NumBuffer` size
+  --> $SRC_DIR/core/src/panic.rs:LL:COL
+   |
+   = note: evaluation of `core::fmt::NumBuffer::<u32>::cast_into::<u64>::{constant#0}` failed here
+  --> $SRC_DIR/core/src/fmt/num_buffer.rs:LL:COL
+  ::: $SRC_DIR/core/src/fmt/num_buffer.rs:LL:COL
+   |
+   = note: in this macro invocation
+
+note: erroneous constant encountered
+  --> $SRC_DIR/core/src/fmt/num_buffer.rs:LL:COL
+
+note: the above error was encountered while instantiating `fn NumBuffer::<u32>::cast_into::<u64>`
+  --> $DIR/numbuffer-case.rs:14:17
+   |
+LL |     let mut y = x.cast_into::<u64>();
+   |                 ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.
