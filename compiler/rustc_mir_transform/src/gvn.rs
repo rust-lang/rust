@@ -122,8 +122,8 @@ use rustc_span::{DUMMY_SP, bug};
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 
-use crate::PassPolicy;
 use crate::ssa::{MaybeUninitializedLocals, SsaLocals};
+use crate::{PassPolicy, instsimplify};
 
 pub(super) struct GVN;
 
@@ -1389,6 +1389,18 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     ) -> Option<VnIndex> {
         let lhs = self.simplify_operand(lhs_operand, location);
         let rhs = self.simplify_operand(rhs_operand, location);
+
+        let (lhs, rhs) = if instsimplify::canonicalize_binary_operands(
+            self.tcx,
+            self.local_decls,
+            op,
+            lhs_operand,
+            rhs_operand,
+        ) {
+            (rhs, lhs)
+        } else {
+            (lhs, rhs)
+        };
 
         // Only short-circuit options after we called `simplify_operand`
         // on both operands for side effect.
