@@ -5,8 +5,8 @@ use rustc_abi::Integer::{I8, I32};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
     AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape, HasDataLayout, Layout,
-    LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size, StructKind, TagEncoding,
-    VariantIdx, Variants, WrappingRange,
+    LayoutCalculatorError, LayoutData, Niche, NicheOptimizations, ReprOptions, Scalar, Size,
+    StructKind, TagEncoding, VariantIdx, Variants, WrappingRange,
 };
 use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
@@ -713,7 +713,10 @@ fn layout_of_uncached<'tcx>(
             }
 
             // UnsafeCell and UnsafePinned both disable niche optimizations
-            let is_special_no_niche = def.is_unsafe_cell() || def.is_unsafe_pinned();
+            let niche_optimizations = match def.is_unsafe_cell() || def.is_unsafe_pinned() {
+                true => NicheOptimizations::Disable,
+                false => NicheOptimizations::Enable,
+            };
 
             let discr_range_of_repr = |min: RangeFrom<i128>, max: RangeToInclusive<u128>| {
                 abi::Integer::discr_range_of_repr(tcx, ty, &def.repr(), min.start, max.last)
@@ -772,7 +775,7 @@ fn layout_of_uncached<'tcx>(
                     &def.repr(),
                     &variants,
                     def.is_enum(),
-                    is_special_no_niche,
+                    niche_optimizations,
                     discr_range_of_repr,
                     discriminants_iter(),
                     !maybe_unsized,

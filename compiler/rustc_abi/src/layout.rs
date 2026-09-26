@@ -11,8 +11,9 @@ use tracing::{debug, trace};
 
 use crate::{
     AbiAlign, Align, BackendLaneCount, BackendRepr, FieldsShape, HasDataLayout, IndexSlice,
-    IndexVec, Integer, LayoutData, Niche, NumScalableVectors, Primitive, ReprOptions, Scalar, Size,
-    StructKind, TagEncoding, TargetDataLayout, VariantLayout, Variants, WrappingRange,
+    IndexVec, Integer, LayoutData, Niche, NicheOptimizations, NumScalableVectors, Primitive,
+    ReprOptions, Scalar, Size, StructKind, TagEncoding, TargetDataLayout, VariantLayout, Variants,
+    WrappingRange,
 };
 
 mod coroutine;
@@ -341,7 +342,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         repr: &ReprOptions,
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
         is_enum: bool,
-        is_special_no_niche: bool,
+        niche_optimizations: NicheOptimizations,
         discr_range_of_repr: impl Fn(RangeFrom<i128>, RangeToInclusive<u128>) -> (Integer, bool),
         discriminants: impl Iterator<Item = (VariantIdx, u128)>,
         always_sized: bool,
@@ -378,7 +379,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 variants,
                 present_first,
                 is_enum,
-                is_special_no_niche,
+                niche_optimizations,
                 always_sized,
             )
         } else {
@@ -527,7 +528,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
         variant_idx: VariantIdx,
         is_enum: bool,
-        is_special_no_niche: bool,
+        niche_optimizations: NicheOptimizations,
         always_sized: bool,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
     where
@@ -546,7 +547,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         let mut st = self.layout_of_univariant(&variants[v], repr, kind)?;
         st.variants = Variants::Single { index: v };
 
-        if is_special_no_niche {
+        if niche_optimizations == NicheOptimizations::Disabled {
             let hide_niches = |scalar: &mut _| match scalar {
                 Scalar::Initialized { value, valid_range } => {
                     *valid_range = WrappingRange::full(value.size(dl))
