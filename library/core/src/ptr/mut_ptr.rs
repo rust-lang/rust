@@ -2030,7 +2030,7 @@ impl<T, const N: usize> *mut [T; N] {
     }
 }
 
-/// Pointer equality is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
+/// For thin pointers, equality is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[diagnostic::on_const(
     message = "pointers cannot be reliably compared during const eval",
@@ -2072,7 +2072,7 @@ impl<T: PointeeSized> Ord for *mut T {
     }
 }
 
-/// Pointer comparison is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
+/// For thin pointers, comparison is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[diagnostic::on_const(
     message = "pointers cannot be reliably compared during const eval",
