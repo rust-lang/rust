@@ -432,4 +432,40 @@ mod m {
 "#,
         );
     }
+
+    #[test]
+    fn regression_23336_1() {
+        // Same as `regression_23336_2`, but with a struct that has a field. Its arity is what the
+        // usefulness analysis specializes against, so this reproduces the panic from the original
+        // report (`pat.rs:117`, index out of bounds) rather than the `PatCx::bug` one.
+        check_diagnostics(
+            r#"
+struct S(u8);
+fn main() {
+    let x: &((S, S),) = loop {};
+    let ((ref mut r, _) | ((ref mut r, _),),) = &*x;
+                        //^^^^^^^^^^^^^^^^^ error: expected (S, S), found (S,)
+                         //^^^^^^^^^^^^^^ error: expected S, found ({unknown}, {unknown})
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn regression_23336_2() {
+        // The arms of the or-pattern have mismatching arities, which the usefulness analysis
+        // doesn't expect, so no diagnostic should be produced here. Here the struct has no fields,
+        // so the mismatched arity is caught by `PatCx::bug` instead of by an out-of-bounds index.
+        check_diagnostics(
+            r#"
+struct S;
+fn main() {
+    let x: &((S, S),) = loop {};
+    let ((ref mut r, _) | ((ref mut r, _),),) = &*x;
+                        //^^^^^^^^^^^^^^^^^ error: expected (S, S), found (S,)
+                         //^^^^^^^^^^^^^^ error: expected S, found ({unknown}, {unknown})
+}
+"#,
+        );
+    }
 }
