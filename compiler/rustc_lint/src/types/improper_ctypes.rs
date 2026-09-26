@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::iter;
 use std::ops::ControlFlow;
 
@@ -5,10 +6,11 @@ use bitflags::bitflags;
 use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{DiagMessage, msg};
+use rustc_hashes::Hash128;
 use rustc_hir::def::CtorKind;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, AmbigArg};
-use rustc_lint_defs::{declare_lint, declare_lint_pass};
+use rustc_lint_defs::{declare_lint, impl_lint_pass};
 use rustc_middle::ty::{
     self, Adt, AdtDef, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, Unnormalized,
@@ -131,7 +133,25 @@ declare_lint! {
     "Structs do not follow the power alignment rule under repr(C)"
 }
 
-declare_lint_pass!(ImproperCTypesLint => [
+/// Remembers types we already checked and found FFI-safe, so we don't check the
+/// same type again every time it shows up in another function.
+/// We only remember "safe" types, never "unsafe" ones. That way we never need to
+/// keep the actual type around, just a fingerprint of it.
+#[derive(Default)]
+pub(crate) struct ImproperCTypesLint {
+    /// A fingerprint of the type, not the type itself. Uses a big 128-bit
+    /// fingerprint (not a smaller 64-bit one) so two different types can't
+    /// accidentally get treated as the same one.
+    known_safe: RefCell<FxHashSet<(Hash128, u8)>>,
+}
+
+impl<'tcx> ImproperCTypesLint {
+    fn cache_key(cx: &LateContext<'tcx>, ty: Ty<'tcx>, flags: RootUseFlags) -> (Hash128, u8) {
+        (cx.tcx.type_id_hash(ty), flags.bits())
+    }
+}
+
+impl_lint_pass!(ImproperCTypesLint => [
     IMPROPER_CTYPES,
     IMPROPER_CTYPES_DEFINITIONS,
     USES_POWER_ALIGNMENT
@@ -1102,8 +1122,16 @@ impl<'tcx> ImproperCTypesLint {
 
     fn check_foreign_static(&mut self, cx: &LateContext<'tcx>, id: hir::OwnerId, span: Span) {
         let ty = cx.tcx.type_of(id).instantiate_identity();
+        let state = VisitorState::static_entry_point();
+        let key = Self::cache_key(cx, ty.skip_norm_wip(), state.root_use_flags);
+        if self.known_safe.borrow().contains(&key) {
+            return;
+        }
         let mut visitor = ImproperCTypesVisitor::new(cx, ty, CItemKind::Declaration);
-        let ffi_res = visitor.check_type(VisitorState::static_entry_point(), ty);
+        let ffi_res = visitor.check_type(state, ty);
+        if matches!(ffi_res, FfiResult::FfiSafe) {
+            self.known_safe.borrow_mut().insert(key);
+        }
         self.process_ffi_result(cx, span, ffi_res, CItemKind::Declaration);
     }
 
@@ -1119,19 +1147,32 @@ impl<'tcx> ImproperCTypesLint {
         let sig = cx.tcx.instantiate_bound_regions_with_erased(sig);
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
-            let input_ty = Unnormalized::new_wip(*input_ty);
             let state = VisitorState::fn_entry_point(fn_mode, FnPos::Arg);
+            let key = Self::cache_key(cx, *input_ty, state.root_use_flags);
+            if self.known_safe.borrow().contains(&key) {
+                continue;
+            }
+            let input_ty = Unnormalized::new_wip(*input_ty);
             let mut visitor = ImproperCTypesVisitor::new(cx, input_ty, fn_mode);
             let ffi_res = visitor.check_type(state, input_ty);
+            if matches!(ffi_res, FfiResult::FfiSafe) {
+                self.known_safe.borrow_mut().insert(key);
+            }
             self.process_ffi_result(cx, input_hir.span, ffi_res, fn_mode);
         }
 
         if let hir::FnRetTy::Return(ret_hir) = decl.output {
-            let output_ty = Unnormalized::new_wip(sig.output());
             let state = VisitorState::fn_entry_point(fn_mode, FnPos::Ret);
-            let mut visitor = ImproperCTypesVisitor::new(cx, output_ty, fn_mode);
-            let ffi_res = visitor.check_type(state, output_ty);
-            self.process_ffi_result(cx, ret_hir.span, ffi_res, fn_mode);
+            let key = Self::cache_key(cx, sig.output(), state.root_use_flags);
+            if !self.known_safe.borrow().contains(&key) {
+                let output_ty = Unnormalized::new_wip(sig.output());
+                let mut visitor = ImproperCTypesVisitor::new(cx, output_ty, fn_mode);
+                let ffi_res = visitor.check_type(state, output_ty);
+                if matches!(ffi_res, FfiResult::FfiSafe) {
+                    self.known_safe.borrow_mut().insert(key);
+                }
+                self.process_ffi_result(cx, ret_hir.span, ffi_res, fn_mode);
+            }
         }
     }
 
