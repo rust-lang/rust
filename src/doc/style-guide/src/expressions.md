@@ -173,8 +173,18 @@ let f = Foo {
 };
 ```
 
-Functional record update syntax is treated like a field, but it must never have
-a trailing comma. Do not put a space after `..`.
+Default intialization syntax is treated like a field, but it must never have a
+trailing comma.
+
+```rust
+let f = Foo {
+    field1,
+    ..
+};
+```
+
+Functional record update syntax is treated the same. Do not put a space after
+`..`.
 
 ```rust
 let f = Foo {
