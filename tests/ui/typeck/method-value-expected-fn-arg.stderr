@@ -1,0 +1,14 @@
+error[E0615]: attempted to take value of method `print` on type `FooPrinter`
+  --> $DIR/method-value-expected-fn-arg.rs:20:28
+   |
+LL |     call(FooPrinter::new().print);
+   |                            ^^^^^ method, not a field
+   |
+help: consider wrapping the method call in a closure
+   |
+LL |     call(|| FooPrinter::new().print());
+   |          ++                        ++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0615`.
