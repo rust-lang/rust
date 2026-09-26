@@ -840,7 +840,7 @@ pub(crate) struct PrivateExternCrateReexport {
         style = "verbose",
         applicability = "maybe-incorrect"
     )]
-    pub sugg: Span,
+    pub sugg: Option<Span>,
 }
 
 #[derive(Subdiagnostic)]

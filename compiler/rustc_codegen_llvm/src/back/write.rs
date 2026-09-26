@@ -418,7 +418,7 @@ fn report_inline_asm(
     };
     let level = match level {
         llvm::DiagnosticLevel::Error => Level::Error,
-        llvm::DiagnosticLevel::Warning => Level::Warning,
+        llvm::DiagnosticLevel::Warning => Level::Warning(None),
         llvm::DiagnosticLevel::Note | llvm::DiagnosticLevel::Remark => Level::Note,
     };
     let msg = msg.trim_prefix("error: ").to_string();

@@ -1172,13 +1172,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                 && let (_, Some(expectation)) = self.def_lint_level_plus(node)
             {
                 // Same mechanism as LintContext::fulfill_expectation.
-                self.tcx
-                    .dcx()
-                    .struct_expect(
-                        "this is a dummy diagnostic, to submit and store an expectation",
-                        expectation.into(),
-                    )
-                    .emit();
+                self.tcx.dcx().fulfill_expectation(expectation);
             }
         };
 
