@@ -23,8 +23,7 @@ const FOO: <Tail as Bad>::Assert = todo!();
 //[bad]~^ ERROR the size for values of type `[()]` cannot be known at compilation time
 //[bad]~| ERROR the size for values of type `[()]` cannot be known at compilation time
 //[bad_new]~^^^ ERROR the size for values of type `[()]` cannot be known at compilation time
-//[bad_new]~| ERROR: type mismatch resolving `<Tail as Bad>::Assert == _`
-//[bad_new]~| ERROR: type mismatch resolving `<Tail as Bad>::Assert == _`
+//[bad_new]~| ERROR the size for values of type `[()]` cannot be known at compilation time
 
 #[cfg(any(good, good_new))]
 // Well-formed in trivially false param-env
