@@ -55,7 +55,6 @@ declare_lint! {
     ///
     /// [`core::ffi::c_void`]: https://doc.rust-lang.org/core/ffi/enum.c_void.html
     /// [`pointer`]: https://doc.rust-lang.org/core/primitive.pointer.html
-    /// [`()`]: https://doc.rust-lang.org/core/primitive.unit.html
     pub C_VOID_PARAMETERS,
     Warn,
     "detects use of `c_void` as a parameter type"
