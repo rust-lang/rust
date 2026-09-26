@@ -1,0 +1,10 @@
+error: cannot use `#[inline(always)]` with `#[target_feature]`
+  --> $DIR/inline-always-async-fn.rs:13:1
+   |
+LL | #[inline(always)]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: See this issue for full discussion: https://github.com/rust-lang/rust/issues/145574
+
+error: aborting due to 1 previous error
+
