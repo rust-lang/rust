@@ -2534,6 +2534,52 @@ fn test_vec_dedup_panicking() {
     }
 }
 
+#[test]
+fn test_vec_dedup_long() {
+    fn check(template: &[u32]) {
+        let mut expected = template.to_vec();
+        let (kept, _) = expected.partition_dedup();
+        let kept_len = kept.len();
+        expected.truncate(kept_len);
+
+        let mut vec = template.to_vec();
+        vec.dedup();
+        assert_eq!(vec, expected, "input: {template:?}");
+    }
+
+    for len in 0..=40 {
+        let distinct: Vec<u32> = (0..len as u32).collect();
+        check(&distinct);
+        check(&vec![7; len]);
+
+        for dup_at in 1..len {
+            let mut v = distinct.clone();
+            v[dup_at] = v[dup_at - 1];
+            check(&v);
+
+            for second_at in dup_at + 1..len {
+                let mut w = v.clone();
+                w[second_at] = w[second_at - 1];
+                check(&w);
+            }
+        }
+    }
+}
+
+#[test]
+fn test_vec_dedup_long_boxed() {
+    for len in [9, 10, 16, 17, 24, 25, 33] {
+        for dup_at in 1..len {
+            let mut v: Vec<Box<u32>> = (0..len as u32).map(Box::new).collect();
+            v[dup_at] = Box::new(*v[dup_at - 1]);
+            let expected: Vec<u32> = (0..len as u32).filter(|&x| x != dup_at as u32).collect();
+            v.dedup();
+            let got: Vec<u32> = v.iter().map(|b| **b).collect();
+            assert_eq!(got, expected, "len={len} dup_at={dup_at}");
+        }
+    }
+}
+
 // Regression test for issue #82533
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
