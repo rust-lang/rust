@@ -2004,6 +2004,13 @@ impl f16 {
     ///
     /// let result = 1.0f16.mul_add_relaxed(2.0, 3.0);
     /// assert_eq!(result, 5.0);
+    ///
+    /// // When the fused and unfused operations round differently, either
+    /// // result may be returned:
+    /// // - -7.03e-6 is the fused result (one rounding)
+    /// // - -7.6e-6 is the unfused result (two roundings)
+    /// let r = 0.1_f16.mul_add_relaxed(0.1_f16, -0.01_f16);
+    /// assert!(r == -7.03e-6 || r == -7.6e-6);
     /// # }
     /// ```
     #[inline]

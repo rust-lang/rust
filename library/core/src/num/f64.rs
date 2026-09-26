@@ -1889,8 +1889,11 @@ impl f64 {
     /// // result may be returned:
     /// // - 9.020562075079397e-19 is the fused result (one rounding)
     /// // - 1.734723475976807e-18 is the unfused result (two roundings)
+    /// # // FIXME(#114479): on `i586`, x87 excess precision gives neither allowed result
+    /// # #[cfg(not(all(target_arch = "x86", not(target_feature = "sse2"))))] {
     /// let r = 0.1_f64.mul_add_relaxed(0.1_f64, -0.01_f64);
     /// assert!(r == 9.020562075079397e-19 || r == 1.734723475976807e-18);
+    /// # }
     /// ```
     ///
     /// [`mul_add`]: ../std/primitive.f64.html#method.mul_add

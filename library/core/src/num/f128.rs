@@ -2018,6 +2018,16 @@ impl f128 {
     ///
     /// let result = 1.0f128.mul_add_relaxed(2.0, 3.0);
     /// assert_eq!(result, 5.0);
+    ///
+    /// // When the fused and unfused operations round differently, either
+    /// // result may be returned:
+    /// // - 7.824090399073145653039910391751267e-37 is the fused result (one rounding)
+    /// // - 1.5046327690525280101999827676444745e-36 is the unfused result (two roundings)
+    /// let r = 0.1_f128.mul_add_relaxed(0.1_f128, -0.01_f128);
+    /// assert!(
+    ///     r == 7.824090399073145653039910391751267e-37
+    ///         || r == 1.5046327690525280101999827676444745e-36
+    /// );
     /// # }
     /// ```
     #[inline]
