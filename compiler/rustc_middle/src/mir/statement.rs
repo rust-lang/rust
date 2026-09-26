@@ -1009,20 +1009,35 @@ impl<'tcx> BinOp {
     }
 
     pub fn is_commutative(self) -> bool {
-        matches!(
-            self,
+        match self {
             BinOp::Add
-                | BinOp::AddUnchecked
-                | BinOp::AddWithOverflow
-                | BinOp::Mul
-                | BinOp::MulUnchecked
-                | BinOp::MulWithOverflow
-                | BinOp::BitXor
-                | BinOp::BitAnd
-                | BinOp::BitOr
-                | BinOp::Eq
-                | BinOp::Ne
-        )
+            | BinOp::AddUnchecked
+            | BinOp::AddWithOverflow
+            | BinOp::Mul
+            | BinOp::MulUnchecked
+            | BinOp::MulWithOverflow
+            | BinOp::BitXor
+            | BinOp::BitAnd
+            | BinOp::BitOr
+            | BinOp::Eq
+            | BinOp::Ne => true,
+
+            BinOp::Sub
+            | BinOp::SubUnchecked
+            | BinOp::SubWithOverflow
+            | BinOp::Div
+            | BinOp::Rem
+            | BinOp::Shl
+            | BinOp::ShlUnchecked
+            | BinOp::Shr
+            | BinOp::ShrUnchecked
+            | BinOp::Lt
+            | BinOp::Le
+            | BinOp::Ge
+            | BinOp::Gt
+            | BinOp::Cmp
+            | BinOp::Offset => false,
+        }
     }
 }
 
