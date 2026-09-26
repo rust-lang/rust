@@ -350,22 +350,24 @@ where
 
         let one: CanonicalResponse<I> = candidates[0].result;
 
-        // equal responses can still have region constraints.
-        if candidates[1..].iter().all(|candidate| candidate.result == one) {
-            return Some((one, MergeCandidateInfo::EqualResponse));
-        }
-
-        // If candidates differ only in region constraints, their merged region
-        // constraints are an `Or` of their respective constraints. If one of them
-        // has no region constraints, the `Or` constraint evaluates to `true`.
         if candidates[1..]
             .iter()
             .all(|candidate| equal_response_modulo_region_constraints(&one, &candidate.result))
-            && let Some(candidate) = candidates.iter().find(|candidate| {
-                candidate.result.value.external_constraints.region_constraints.is_empty()
-            })
         {
-            return Some((candidate.result, MergeCandidateInfo::EqualResponse));
+            let region_constraints = &one.value.external_constraints.region_constraints;
+            if candidates[1..].iter().all(|candidate| {
+                &candidate.result.value.external_constraints.region_constraints
+                    == region_constraints
+            }) {
+                return Some((one, MergeCandidateInfo::EqualResponse));
+            }
+
+            // A candidate with no region constraints makes the disjunction true.
+            if let Some(candidate) = candidates.iter().find(|candidate| {
+                candidate.result.value.external_constraints.region_constraints.is_empty()
+            }) {
+                return Some((candidate.result, MergeCandidateInfo::EqualResponse));
+            }
         }
 
         None
