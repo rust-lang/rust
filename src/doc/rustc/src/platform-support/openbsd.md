@@ -19,6 +19,22 @@ The target names follow this format: `$ARCH-unknown-openbsd`, where `$ARCH` spec
 
 Note that all OS versions are *major* even if using X.Y notation (`6.8` and `6.9` are different major versions) and could be binary incompatibles (with breaking changes).
 
+<!--
+Whenever a new OpenBSD version releases, the following is in order:
+
+- Update `` by updating the `Env` variant used for OpenBSD versions
+    - This may potentially need adding a new variant instead of updating
+      the current one if OpenBSD deprecates support for some target
+      architecture but we want to continue supporting it.
+
+- Update `src/librustdoc/clean.rs` with a formatted string containing
+  the new version.
+-->
+
+> [!IMPORTANT]
+> Note these targets encode the latest OpenBSD version that supported
+> them. In most cases, this means the version to be released once
+> OpenBSD `-current` is made into a new `-release` release.
 
 ## Target Maintainers
 
@@ -29,7 +45,6 @@ Further contacts:
 - [lang/rust](https://cvsweb.openbsd.org/cgi-bin/cvsweb/ports/lang/rust/Makefile?rev=HEAD&content-type=text/x-cvsweb-markup) maintainer (see MAINTAINER variable)
 
 Fallback to ports@openbsd.org, OpenBSD third parties public mailing-list (with openbsd developers readers)
-
 
 ## Requirements
 
