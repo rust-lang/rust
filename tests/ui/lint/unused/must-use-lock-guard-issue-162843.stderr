@@ -1,0 +1,63 @@
+error: unused `std::sync::MutexGuard` that must be used
+  --> $DIR/must-use-lock-guard-issue-162843.rs:36:5
+   |
+LL |     mutex.lock().unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if unused the Mutex will immediately unlock
+note: the lint level is defined here
+  --> $DIR/must-use-lock-guard-issue-162843.rs:4:9
+   |
+LL | #![deny(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+help: use `let _unused = ...` to ignore the resulting value without dropping it immediately
+   |
+LL |     let _unused = mutex.lock().unwrap();
+   |     +++++++++++++
+
+error: unused return value of `guard` that must be used
+  --> $DIR/must-use-lock-guard-issue-162843.rs:37:5
+   |
+LL |     guard();
+   |     ^^^^^^^
+   |
+help: use `let _unused = ...` to ignore the resulting value without dropping it immediately
+   |
+LL |     let _unused = guard();
+   |     +++++++++++++
+
+error: unused return value of `value` that must be used
+  --> $DIR/must-use-lock-guard-issue-162843.rs:38:5
+   |
+LL |     value();
+   |     ^^^^^^^
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = value();
+   |     +++++++
+
+error: unused return value of `vec_values` that must be used
+  --> $DIR/must-use-lock-guard-issue-162843.rs:39:5
+   |
+LL |     vec_values();
+   |     ^^^^^^^^^^^^
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = vec_values();
+   |     +++++++
+
+error: unused return value of `box_value` that must be used
+  --> $DIR/must-use-lock-guard-issue-162843.rs:40:5
+   |
+LL |     box_value();
+   |     ^^^^^^^^^^^
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = box_value();
+   |     +++++++
+
+error: aborting due to 5 previous errors
+
