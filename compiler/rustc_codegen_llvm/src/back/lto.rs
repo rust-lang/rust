@@ -97,7 +97,8 @@ fn prepare_lto(
                 .expect("couldn't map rlib")
         };
         let archive = ArchiveFile::parse(&*archive_data).expect("wanted an rlib");
-        let metadata_link = rmeta_link::read(&archive, &archive_data, &path).unwrap();
+        let metadata_link =
+            rmeta_link::read(&archive, &archive_data, &path, cgcx.target_is_like_aix).unwrap();
         let obj_files = archive
             .members()
             .filter_map(|child| {

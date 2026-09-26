@@ -47,14 +47,28 @@ impl RmetaLink {
     }
 }
 
+/// Decodes the `lib.rmeta-link` member.
+fn decode_member(rlib_path: &Path, member_data: &[u8], is_like_aix: bool) -> Option<RmetaLink> {
+    let section_data = if is_like_aix {
+        get_metadata_xcoff(rlib_path, member_data).ok()?
+    } else {
+        search_for_section(rlib_path, member_data, SECTION).ok()?
+    };
+    RmetaLink::decode(section_data)
+}
+
 /// Reads the link-time metadata from an already-parsed archive.
-pub fn read(archive: &ArchiveFile<'_>, archive_data: &[u8], rlib_path: &Path) -> Option<RmetaLink> {
+pub fn read(
+    archive: &ArchiveFile<'_>,
+    archive_data: &[u8],
+    rlib_path: &Path,
+    is_like_aix: bool,
+) -> Option<RmetaLink> {
     for entry in archive.members() {
         let entry = entry.ok()?;
         if entry.name() == FILENAME.as_bytes() {
             let data = entry.data(archive_data).ok()?;
-            let section_data = search_for_section(rlib_path, data, SECTION).ok()?;
-            return RmetaLink::decode(section_data);
+            return decode_member(rlib_path, data, is_like_aix);
         }
     }
     None
@@ -63,9 +77,13 @@ pub fn read(archive: &ArchiveFile<'_>, archive_data: &[u8], rlib_path: &Path) ->
 /// Like [`read`], but parses the archive from raw bytes.
 ///
 /// Use this when the caller's `ArchiveFile` comes from a different version of the `object` crate.
-pub fn read_from_data(archive_data: &[u8], rlib_path: &Path) -> Option<RmetaLink> {
+pub fn read_from_data(
+    archive_data: &[u8],
+    rlib_path: &Path,
+    is_like_aix: bool,
+) -> Option<RmetaLink> {
     let archive = ArchiveFile::parse(archive_data).ok()?;
-    read(&archive, archive_data, rlib_path)
+    read(&archive, archive_data, rlib_path, is_like_aix)
 }
 
 #[derive(Default)]
@@ -91,7 +109,7 @@ impl RmetaLinkCache {
         if !crate_may_have_bundled_libs(native_libs) {
             return Vec::new();
         }
-        self.get_or_insert_with(rlib_path, || read_from_path(target, rlib_path))
+        self.get_or_insert_with(rlib_path, || read_from_path(rlib_path, target.is_like_aix))
             .map(|rl| {
                 rl.native_lib_filenames.iter().map(|f| f.as_deref().map(Symbol::intern)).collect()
             })
@@ -105,7 +123,7 @@ fn crate_may_have_bundled_libs(libs: &[NativeLib]) -> bool {
 }
 
 // FIXME: this is mostly a copy-paste of `DefaultMetadataLoader::get_rlib_metadata`.
-fn read_from_path(target: &Target, path: &Path) -> Option<RmetaLink> {
+fn read_from_path(path: &Path, is_like_aix: bool) -> Option<RmetaLink> {
     let Ok(file) = File::open(path) else {
         debug!("failed to open rlib for rmeta-link: {}", path.display());
         return None;
@@ -115,18 +133,5 @@ fn read_from_path(target: &Target, path: &Path) -> Option<RmetaLink> {
         return None;
     };
 
-    if target.is_like_aix {
-        let archive = ArchiveFile::parse(&*mmap).ok()?;
-        for entry in archive.members() {
-            let entry = entry.ok()?;
-            if entry.name() == FILENAME.as_bytes() {
-                let member_data = entry.data(&*mmap).ok()?;
-                let section_data = get_metadata_xcoff(path, member_data).ok()?;
-                return RmetaLink::decode(section_data);
-            }
-        }
-        return None;
-    }
-
-    read_from_data(&mmap, path)
+    read_from_data(&mmap, path, is_like_aix)
 }
