@@ -1,5 +1,6 @@
 use std::env::consts::EXE_EXTENSION;
 use std::fmt::{Display, Formatter};
+use std::path::PathBuf;
 
 use crate::core::build_steps::compile::Sysroot;
 use crate::core::build_steps::tool::{RustcPerf, Rustdoc};
@@ -50,6 +51,9 @@ enum PerfCommand {
 
         /// The name of the modified artifact to be compared.
         modified: String,
+
+        #[clap(long, global = true)]
+        database_path: Option<String>,
     },
 }
 
@@ -87,6 +91,9 @@ struct SharedOpts {
     /// Select the profiles that should be benchmarked.
     #[clap(long, global = true, value_delimiter = ',', default_value = "Check,Debug,Opt")]
     profiles: Vec<Profile>,
+
+    #[clap(long, global = true)]
+    database_path: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, clap::ValueEnum)]
@@ -152,7 +159,19 @@ pub fn perf(builder: &Builder<'_>, args: &PerfArgs, trailing_args: &[String]) {
     // with compile-time benchmarks.
     cmd.current_dir(builder.src.join("src/tools/rustc-perf"));
 
-    let db_path = results_dir.join("results.db");
+    let db_path = args
+        .cmd
+        .shared_opts()
+        .and_then(|i| i.database_path.as_ref())
+        .or_else(|| {
+            if let PerfCommand::Compare { database_path: Some(path), .. } = &args.cmd {
+                Some(path)
+            } else {
+                None
+            }
+        })
+        .map(|i| PathBuf::from(i.as_str()))
+        .unwrap_or_else(|| results_dir.join("results.db"));
 
     let is_profiling = match &args.cmd {
         PerfCommand::Eprintln { .. }
@@ -214,7 +233,7 @@ Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
             cmd.args(trailing_args);
             cmd.run(builder);
         }
-        PerfCommand::Compare { base, modified } => {
+        PerfCommand::Compare { base, modified, database_path: _ } => {
             cmd.arg("bench_cmp");
             cmd.arg("--db").arg(&db_path);
             cmd.arg(base).arg(modified);
