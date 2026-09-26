@@ -18,7 +18,9 @@ use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
 use rustc_session::config::OptLevel;
 use rustc_span::{Span, Spanned, bug, span_bug};
-use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, IndirectMode, PassMode};
+use rustc_target::callconv::{
+    ArgAbi, ArgAttribute, ArgAttributes, CastTarget, FnAbi, IndirectMode, PassMode,
+};
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
@@ -300,7 +302,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 // If the return value was retagged as it was stored,
                 // then we might be in a different basic block now.
                 // Update the cached block for `target` to point to this new
-                // block, where codegen will continue.
+                // block, where codegen will continue. Additionally, store_return() may have
+                // required a branch into a new codegen backend basic block (currently this occurs
+                // when `cast_target.x87_floating_point_stack` is set).
                 fx.cached_llbbs[target] = CachedLlbb::Some(bx.llbb());
             }
             MergingSucc::False
@@ -2562,7 +2566,7 @@ fn load_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     align: Align,
 ) -> Bx::Value {
     let cast_ty = bx.cast_backend_type(cast);
-    if let Some(offset_from_start) = cast.rest_offset {
+    let value = if let Some(offset_from_start) = cast.rest_offset {
         assert_eq!(cast.prefix.len(), 1);
         assert_eq!(cast.rest.unit.size, cast.rest.total);
         let first_ty = bx.reg_backend_type(&cast.prefix[0]);
@@ -2574,7 +2578,21 @@ fn load_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let res = bx.insert_value(res, first, 0);
         bx.insert_value(res, second, 1)
     } else {
-        bx.load(cast_ty, ptr, align)
+        let load_ty = if cast.x87_floating_point_stack {
+            match cast.rest.unit.size.bytes() {
+                4 => bx.type_f32(),
+                8 => bx.type_f64(),
+                _ => bug!(),
+            }
+        } else {
+            cast_ty
+        };
+        bx.load(load_ty, ptr, align)
+    };
+    if cast.x87_floating_point_stack {
+        bx.x87_lossless_float_to_fp_stack(value, cast.attrs.contains(ArgAttribute::NoUndef))
+    } else {
+        value
     }
 }
 
@@ -2585,6 +2603,20 @@ pub fn store_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     ptr: Bx::Value,
     align: Align,
 ) {
+    let value = if cast.x87_floating_point_stack {
+        let float_type = match cast.rest.unit.size.bytes() {
+            4 => bx.type_f32(),
+            8 => bx.type_f64(),
+            _ => bug!(),
+        };
+        bx.x87_lossless_fp_stack_to_float(
+            value,
+            float_type,
+            cast.attrs.contains(ArgAttribute::NoUndef),
+        )
+    } else {
+        value
+    };
     if let Some(offset_from_start) = cast.rest_offset {
         assert_eq!(cast.prefix.len(), 1);
         assert_eq!(cast.rest.unit.size, cast.rest.total);
