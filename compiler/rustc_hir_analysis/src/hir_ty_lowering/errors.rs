@@ -393,6 +393,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         } else {
             (ident.span, None, assoc_tag, assoc_item.tag())
         };
+        let mut def_span: MultiSpan = tcx.def_span(assoc_item.def_id).into();
+        def_span.push_span_context(tcx.def_span(tcx.parent(assoc_item.def_id)));
 
         self.dcx().emit_err(diagnostics::AssocKindMismatch {
             span,
@@ -400,7 +402,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             got: assoc_tag_str(got),
             expected_because_label,
             assoc_kind: assoc_tag_str(assoc_item.tag()),
-            def_span: tcx.def_span(assoc_item.def_id),
+            def_span,
             bound_on_assoc_const_label,
             wrap_in_braces_sugg,
         })

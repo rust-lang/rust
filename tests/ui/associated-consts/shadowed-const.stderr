@@ -7,6 +7,7 @@ LL |   const QUX: Self::BAR;
 note: the associated constant is defined here
   --> $DIR/shadowed-const.rs:18:3
    |
+LL | trait Baz3 {
 LL |   const BAR: usize;
    |   ^^^^^^^^^^^^^^^^
 

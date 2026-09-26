@@ -1361,18 +1361,21 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         );
 
                         let func = with_no_trimmed_paths!(tcx.def_path_str(method_did));
+                        let mut span: MultiSpan = self_arg.span.into();
+                        span.push_span_context(tcx.def_span(method_did).shrink_to_lo());
+                        span.push_span_context(tcx.def_span(tcx.parent(method_did)).shrink_to_lo());
                         if let Some((kind, _)) = desugaring {
                             err.subdiagnostic(CaptureReasonNote::DesugaringFuncTakeSelf {
                                 func,
                                 desugar_name: kind.name(),
                                 place_name: place_name.clone(),
-                                span: self_arg.span,
+                                span,
                             });
                         } else {
                             err.subdiagnostic(CaptureReasonNote::FuncTakeSelf {
                                 func,
                                 place_name: place_name.clone(),
-                                span: self_arg.span,
+                                span,
                             });
                         }
                     }
