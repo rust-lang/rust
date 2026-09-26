@@ -621,7 +621,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             // Isolated, starts with #! and doesn't continue with `[`
             // See [rustc_lexer::strip_shebang] and [gather_comments] from pprust/state.rs for details
             if cmnt.style == CommentStyle::Isolated
-                && cmnt.lines.first().map_or(false, |l| l.starts_with("#!"))
+                && cmnt.lines.first().is_some_and(|l| l.starts_with("#!"))
             {
                 let cmnt = self.next_comment().unwrap();
                 self.print_comment(cmnt);

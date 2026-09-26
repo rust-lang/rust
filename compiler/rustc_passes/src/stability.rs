@@ -337,7 +337,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
         }
 
         if stab.is_none()
-            && depr.map_or(false, |d| d.attr.is_since_rustc_version())
+            && depr.is_some_and(|d| d.attr.is_since_rustc_version())
             && let Some(span) = find_attr_span!(Deprecated)
         {
             self.tcx.dcx().emit_err(diagnostics::DeprecatedAttribute { span });
