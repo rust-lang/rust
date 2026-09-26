@@ -369,10 +369,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
             if matches!(conflict, Conflict::Upstream)
                 && !trait_ref.def_id.is_local()
-                && matches!(
-                    self.tcx().trait_def(trait_ref.def_id).impl_restriction,
-                    ty::RestrictionKind::Restricted(..)
-                )
+                && self.tcx().trait_def(trait_ref.def_id).coherence_future_impls
             {
                 // Check supertraits in a probe so we do not constrain inference.
                 // Skip the original goal to avoid recursing into this candidate.

@@ -1,6 +1,7 @@
 //@ check-pass
-//@ revisions: classic next
+//@ revisions: classic coherence next
 //@[classic] compile-flags: -Znext-solver=no
+//@[coherence] compile-flags: -Znext-solver=coherence
 //@[next] compile-flags: -Znext-solver=globally
 //@ aux-build: coherence-impl-restriction.rs
 

@@ -1,0 +1,8 @@
+error: `#[rustc_coherence_future_impls]` requires an impl-restricted trait
+  --> $DIR/coherence-future-impls-unrestricted.rs:4:1
+   |
+LL | pub trait Unrestricted {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

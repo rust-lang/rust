@@ -1805,6 +1805,7 @@ symbols! {
         rustc_canonical_symbol,
         rustc_capture_analysis,
         rustc_clean,
+        rustc_coherence_future_impls,
         rustc_coherence_is_core,
         rustc_coinductive,
         rustc_comptime,

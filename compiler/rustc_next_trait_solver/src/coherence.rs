@@ -55,10 +55,11 @@ where
     I: Interner,
     E: Debug,
 {
-    // The defining crate can still add impls for a restricted trait.
+    // Only traits that explicitly opt in allow future upstream impls
+    // to invalidate downstream negative reasoning.
     // Fundamental traits keep their existing coherence rules.
     if !trait_ref.def_id.is_local()
-        && infcx.cx().trait_is_impl_restricted(trait_ref.def_id)
+        && infcx.cx().trait_has_coherence_future_impls(trait_ref.def_id)
         && !infcx.cx().trait_is_fundamental(trait_ref.def_id)
     {
         return Ok(Err(Conflict::Upstream));

@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Direct` for type `Thing`
-  --> $DIR/coherence-upstream-restricted.rs:14:1
+  --> $DIR/coherence-upstream-restricted.rs:15:1
    |
 LL | impl<T: upstream::Restricted> Direct for T {}
    | ------------------------------------------ first implementation here
@@ -9,7 +9,7 @@ LL | impl Direct for Thing {}
    = note: upstream crates may add a new impl of trait `upstream::Restricted` for type `Thing` in future versions
 
 error[E0119]: conflicting implementations of trait `Fundamental` for type `&Thing`
-  --> $DIR/coherence-upstream-restricted.rs:19:1
+  --> $DIR/coherence-upstream-restricted.rs:20:1
    |
 LL | impl<T: upstream::Restricted> Fundamental for T {}
    | ----------------------------------------------- first implementation here
@@ -19,7 +19,7 @@ LL | impl Fundamental for &Thing {}
    = note: upstream crates may add a new impl of trait `upstream::Restricted` for type `&Thing` in future versions
 
 error[E0119]: conflicting implementations of trait `HigherRanked` for type `Thing`
-  --> $DIR/coherence-upstream-restricted.rs:24:1
+  --> $DIR/coherence-upstream-restricted.rs:25:1
    |
 LL | impl<T> HigherRanked for T where for<'a> &'a T: upstream::Restricted {}
    | -------------------------------------------------------------------- first implementation here
@@ -29,7 +29,7 @@ LL | impl HigherRanked for Thing {}
    = note: upstream crates may add a new impl of trait `upstream::Restricted` for type `&'a Thing` in future versions
 
 error[E0119]: conflicting implementations of trait `InCrate` for type `Thing`
-  --> $DIR/coherence-upstream-restricted.rs:30:1
+  --> $DIR/coherence-upstream-restricted.rs:31:1
    |
 LL | impl<T: upstream::InCrateRestricted> InCrate for T {}
    | -------------------------------------------------- first implementation here
@@ -39,7 +39,7 @@ LL | impl InCrate for Thing {}
    = note: upstream crates may add a new impl of trait `upstream::InCrateRestricted` for type `Thing` in future versions
 
 error[E0119]: conflicting implementations of trait `InModule` for type `Thing`
-  --> $DIR/coherence-upstream-restricted.rs:35:1
+  --> $DIR/coherence-upstream-restricted.rs:36:1
    |
 LL | impl<T: upstream::nested::InModuleRestricted> InModule for T {}
    | ------------------------------------------------------------ first implementation here
@@ -49,7 +49,7 @@ LL | impl InModule for Thing {}
    = note: upstream crates may add a new impl of trait `upstream::nested::InModuleRestricted` for type `Thing` in future versions
 
 error[E0119]: conflicting implementations of trait `InParent` for type `Thing`
-  --> $DIR/coherence-upstream-restricted.rs:40:1
+  --> $DIR/coherence-upstream-restricted.rs:41:1
    |
 LL | impl<T: upstream::nested::InParentRestricted> InParent for T {}
    | ------------------------------------------------------------ first implementation here
