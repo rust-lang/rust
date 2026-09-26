@@ -1,5 +1,6 @@
 //@ only-wasm32
 //@ revisions: WASM WASMEXN
+//@ [WASM] compile-flags: -C panic=abort
 //@ [WASMEXN] compile-flags: -C panic=unwind
 
 #![crate_type = "lib"]

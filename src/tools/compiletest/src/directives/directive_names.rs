@@ -273,7 +273,6 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-wasm32",
     "only-wasm32-unknown-emscripten",
     "only-wasm32-unknown-unknown",
-    "only-wasm32-wasip1",
     "only-watchos",
     "only-windows",
     "only-windows-gnu",
