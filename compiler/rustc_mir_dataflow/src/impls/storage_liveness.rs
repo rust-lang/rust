@@ -192,6 +192,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage {
             StatementKind::SetDiscriminant { place, .. } => {
                 state.gen_(place.local);
             }
+            StatementKind::StorageAlloc(local) => state.gen_(*local),
 
             // Nothing to do for these. Match exhaustively so this fails to compile when new
             // variants are added.
@@ -226,6 +227,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage {
             StatementKind::SetDiscriminant { place, .. } => {
                 state.gen_(place.local);
             }
+            StatementKind::StorageAlloc(local) => state.gen_(*local),
 
             StatementKind::StorageDead(_)
             | StatementKind::AscribeUserType(..)

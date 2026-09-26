@@ -97,7 +97,7 @@ fn array::{closure#0}(_1: Pin<&mut {async fn body of array()}>, _2: &mut Context
     }
 
     bb12: {
-        _12 = move _26;
+        _12 = copy _26;
         _11 = copy (_12.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
         goto -> bb11;
     }
