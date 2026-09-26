@@ -280,7 +280,10 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
         PassMode::Direct,
         SlotSize::Bytes8,
         AllowHigherAlign::Yes,
-        ForceRightAdjust::No,
+        match bx.tcx().sess.target.endian {
+            Endian::Big => ForceRightAdjust::Yes,
+            Endian::Little => ForceRightAdjust::No,
+        },
     );
     bx.br(end);
 
