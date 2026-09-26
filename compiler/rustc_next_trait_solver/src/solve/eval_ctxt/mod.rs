@@ -468,6 +468,15 @@ where
             // `PathKind::Inductive`. Keeping them as unknown until we're confident
             // about this and have an example where it is necessary.
             GoalSource::AliasBoundConstCondition | GoalSource::AliasWellFormed => PathKind::Unknown,
+            // While normalizing an opaque, its provisional hidden type is registered
+            // before we check the goals required by its item bounds. Proving one of
+            // these bounds may normalize the same opaque again, forming a cycle back
+            // to that provisional normalization.
+            //
+            // Treat crossing this edge as coinductive so that recursive normalization
+            // can reuse the provisional hidden type. This does not make cycles wholly
+            // contained in the bound proof coinductive.
+            GoalSource::OpaqueTypeBound => PathKind::Coinductive,
         }
     }
 
@@ -1497,7 +1506,7 @@ where
             hidden_ty,
             &mut goals,
         );
-        self.add_goals(GoalSource::AliasWellFormed, goals)?;
+        self.add_goals(GoalSource::OpaqueTypeBound, goals)?;
         Ok(())
     }
 

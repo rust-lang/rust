@@ -241,6 +241,7 @@ impl<'tcx> BestObligation<'tcx> {
                                         GoalSource::ImplWhereBound
                                             | GoalSource::AliasBoundConstCondition
                                             | GoalSource::AliasWellFormed
+                                            | GoalSource::OpaqueTypeBound
                                     ) && nested_goal.result().is_err()
                                 },
                             )
@@ -538,7 +539,12 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                     impl_where_bound_count += 1;
                 }
                 (ChildMode::PassThrough, _)
-                | (_, GoalSource::AliasWellFormed | GoalSource::AliasBoundConstCondition) => {
+                | (
+                    _,
+                    GoalSource::AliasWellFormed
+                    | GoalSource::AliasBoundConstCondition
+                    | GoalSource::OpaqueTypeBound,
+                ) => {
                     obligation = make_obligation(self.obligation.cause.clone());
                 }
             }
