@@ -537,6 +537,7 @@ fn clean_hir_term<'tcx>(
         hir::Term::Const(c) => {
             // FIXME(generic_const_items): this should instantiate with the alias item's args
             let ty = cx.tcx.type_of(assoc_item.unwrap()).instantiate_identity().skip_norm_wip();
+            // HACK:
             let ct = lower_const_arg_for_rustdoc(cx.tcx, c, ty);
             Term::Constant(clean_middle_const(ty::Binder::dummy(ct)))
         }
@@ -721,9 +722,13 @@ fn clean_generic_param<'tcx>(
             param.name.ident().name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_ty(ty, cx)),
-                default: default.map(|ct| {
+                default: default.map(|_| {
                     Box::new(
-                        lower_const_arg_for_rustdoc(cx.tcx, ct, lower_ty(cx.tcx, ty)).to_string(),
+                        cx.tcx
+                            .const_param_default(param.def_id)
+                            .instantiate_identity()
+                            .skip_norm_wip()
+                            .to_string(),
                     )
                 }),
             },
@@ -1327,8 +1332,8 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             hir::TraitItemKind::Type(bounds, Some(default)) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
                 let bounds = bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect();
-                let item_type =
-                    clean_middle_ty(ty::Binder::dummy(lower_ty(cx.tcx, default)), cx, None, None);
+                let ty = cx.tcx.type_of(local_did).instantiate_identity().skip_norm_wip();
+                let item_type = clean_middle_ty(ty::Binder::dummy(ty), cx, None, None);
                 AssocTypeItem(
                     Box::new(TypeAlias {
                         type_: clean_ty(default, cx),
@@ -1372,8 +1377,8 @@ pub(crate) fn clean_impl_item<'tcx>(
             hir::ImplItemKind::Type(hir_ty) => {
                 let type_ = clean_ty(hir_ty, cx);
                 let generics = clean_generics(impl_.generics, cx);
-                let item_type =
-                    clean_middle_ty(ty::Binder::dummy(lower_ty(cx.tcx, hir_ty)), cx, None, None);
+                let ty = cx.tcx.type_of(local_did).instantiate_identity().skip_norm_wip();
+                let item_type = clean_middle_ty(ty::Binder::dummy(ty), cx, None, None);
                 AssocTypeItem(
                     Box::new(TypeAlias {
                         type_,
@@ -1792,13 +1797,13 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Type {
             }
         }
         hir::QPath::Resolved(Some(qself), p) => {
-            // Try to normalize `<X as Y>::T` to a type
-            let ty = lower_ty(cx.tcx, hir_ty);
-            // `hir_to_ty` can return projection types with escaping vars for GATs, e.g. `<() as Trait>::Gat<'_>`
-            if !ty.has_escaping_bound_vars()
-                && let Some(normalized_value) = normalize(cx, ty::Binder::dummy(ty))
+            if cx.tcx.sess.opts.unstable_opts.normalize_docs
+                // HACK:
+                && let ty = lower_ty(cx.tcx, hir_ty)
+                && !ty.has_escaping_bound_vars()
+                && let Some(ty) = normalize(cx, ty::Binder::dummy(ty))
             {
-                return clean_middle_ty(normalized_value, cx, None, None);
+                return clean_middle_ty(ty, cx, None, None);
             }
 
             let trait_segments = &p.segments[..p.segments.len() - 1];
@@ -1820,10 +1825,12 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Type {
             }))
         }
         hir::QPath::TypeRelative(qself, segment) => {
-            let ty = lower_ty(cx.tcx, hir_ty);
             let self_type = clean_ty(qself, cx);
 
-            let (trait_, should_fully_qualify) = match ty.kind() {
+            // FIXME(#156711): Instead of re-HIR-ty-lowering the path, obtain the type dependent
+            //                 resolution instead.
+            // HACK:
+            let (trait_, should_fully_qualify) = match lower_ty(cx.tcx, hir_ty).kind() {
                 ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
                     let res = Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id);
                     let trait_ = clean_path(&hir::Path { span, res, segments: &[] }, cx);
@@ -1837,7 +1844,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Type {
                 ty::Alias(_, ty::AliasTy { kind: ty::Inherent { .. }, .. }) => (None, false),
                 // Rustdoc handles `ty::Error`s by turning them into `Type::Infer`s.
                 ty::Error(_) => return Type::Infer,
-                _ => bug!("clean: expected associated type, found `{ty:?}`"),
+                ty => bug!("clean: expected associated type, found `{ty:?}`"),
             };
 
             Type::QPath(Box::new(QPathData {
@@ -1936,6 +1943,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Typ
         TyKind::Pat(inner_ty, pat) => {
             // Local HIR pattern types should print the same way as cross-crate inlined ones,
             // so lower to the canonical `rustc_middle::ty::Pattern` representation first.
+            // HACK:
             let pat = match lower_ty(cx.tcx, ty).kind() {
                 ty::Pat(_, pat) => format!("{pat:?}").into_boxed_str(),
                 _ => format!("{pat:?}").into(),
@@ -1961,6 +1969,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Typ
             let length = match const_arg.kind {
                 hir::ConstArgKind::Infer(..) | hir::ConstArgKind::Error(..) => "_".to_string(),
                 hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) => {
+                    // HACK:
                     let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, cx.tcx.types.usize);
                     let typing_env = ty::TypingEnv::post_analysis(cx.tcx, *def_id);
                     let ct =
@@ -1973,6 +1982,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Typ
                 | hir::ConstArgKind::Tup(..)
                 | hir::ConstArgKind::Array(..)
                 | hir::ConstArgKind::Literal { .. } => {
+                    // HACK:
                     let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, cx.tcx.types.usize);
                     print_const(cx.tcx, ct)
                 }
@@ -2970,9 +2980,7 @@ fn clean_maybe_renamed_item<'tcx>(
             })),
             ItemKind::TyAlias(_, generics, ty) => {
                 *cx.current_type_aliases.entry(def_id).or_insert(0) += 1;
-                let rustdoc_ty = clean_ty(ty, cx);
-                let type_ =
-                    clean_middle_ty(ty::Binder::dummy(lower_ty(cx.tcx, ty)), cx, None, None);
+                let type_ = clean_ty(ty, cx);
                 let generics = clean_generics(generics, cx);
                 if let Some(count) = cx.current_type_aliases.get_mut(&def_id) {
                     *count -= 1;
@@ -2991,8 +2999,8 @@ fn clean_maybe_renamed_item<'tcx>(
                     TypeAliasItem(Box::new(TypeAlias {
                         generics,
                         inner_type,
-                        type_: rustdoc_ty,
-                        item_type: Some(type_),
+                        type_,
+                        item_type: None,
                     })),
                     item.owner_id.def_id.to_def_id(),
                     name,
