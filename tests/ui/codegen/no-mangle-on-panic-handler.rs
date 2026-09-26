@@ -9,6 +9,6 @@ use core::panic::PanicInfo;
 
 #[unsafe(no_mangle)] //~ ERROR `#[no_mangle]` cannot be used on internal language items
 #[panic_handler]
-pub unsafe fn panic_fmt(pi: &PanicInfo) -> ! {
+pub fn panic_fmt(pi: &PanicInfo) -> ! {
     loop {}
 }

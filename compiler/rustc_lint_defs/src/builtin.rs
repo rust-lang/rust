@@ -5858,3 +5858,42 @@ declare_lint! {
     "`repr(C, align)` types nested inside `repr(C, packed)` types \
     do not always have a C-compatible layout",
 }
+
+declare_lint! {
+    /// The `unsafe_panic_handlers` lint detects unsafe functions with
+    /// the `#[panic_handler]` attribute.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![no_std]
+    ///
+    /// use core::panic::PanicInfo;
+    ///
+    /// #[panic_handler]
+    /// unsafe fn handle(_: &PanicInfo<'_>) -> ! {
+    ///     loop {}
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Unsafe functions (declared as `unsafe fn`) are functions that can only be called
+    /// when the caller ensures that their safety requirements are met. On the other hand,
+    /// `#[panic_handler]` functions get called automatically by the compiler without
+    /// checking for any preconditions. Therefore, using the `#[panic_handler]` attribute
+    /// on unsafe functions is either incorrect or a misuse of `unsafe fn`.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard
+    /// error in the future. See [issue #163263] for more details.
+    ///
+    /// [issue #163263]: https://github.com/rust-lang/rust/issues/163263
+    pub UNSAFE_PANIC_HANDLERS,
+    Warn,
+    "detects unsafe functions with the `#[panic_handler]` attribute",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #163263),
+    };
+}
