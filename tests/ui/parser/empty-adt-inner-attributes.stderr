@@ -1,0 +1,39 @@
+error: an inner attribute is not permitted in this context
+  --> $DIR/empty-adt-inner-attributes.rs:2:5
+   |
+LL |     #![inline]
+   |     ^^^^^^^^^^
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+   = note: outer attributes, like `#[test]`, annotate the item following them
+
+error: an inner attribute is not permitted in this context
+  --> $DIR/empty-adt-inner-attributes.rs:7:5
+   |
+LL |     #![inline]
+   |     ^^^^^^^^^^
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+   = note: outer attributes, like `#[test]`, annotate the item following them
+
+error: an inner attribute is not permitted in this context
+  --> $DIR/empty-adt-inner-attributes.rs:13:5
+   |
+LL |     #![inline]
+   |     ^^^^^^^^^^
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+   = note: outer attributes, like `#[test]`, annotate the item following them
+
+error: unions cannot have zero fields
+  --> $DIR/empty-adt-inner-attributes.rs:11:1
+   |
+LL | / union Test3 {
+LL | |
+LL | |     #![inline]
+LL | |
+LL | | }
+   | |_^
+
+error: aborting due to 4 previous errors
+
