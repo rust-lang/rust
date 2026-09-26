@@ -2,7 +2,7 @@
 
 use rustc_abi::Size;
 use rustc_ast as ast;
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};

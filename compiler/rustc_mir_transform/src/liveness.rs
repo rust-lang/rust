@@ -1,8 +1,8 @@
 use rustc_abi::FieldIdx;
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::find_attr;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_lint_defs::builtin::{UNUSED_ASSIGNMENTS, UNUSED_VARIABLES};

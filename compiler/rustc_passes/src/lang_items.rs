@@ -315,7 +315,8 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
 /// Extracts the first `lang = "$name"` out of a list of attributes.
 /// The `#[panic_handler]` attribute is also extracted out when found.
 ///
-/// This function is used for `ast::Attribute`, for `hir::Attribute` use the `find_attr!` macro with `AttributeKind::Lang`
+/// This function is used for `ast::Attribute`, for `rustc_attr_ir::Attribute`
+/// use `find_attr!(attrs, Lang(lang_item))`.
 pub(crate) fn extract_ast(attrs: &[rustc_ast::ast::Attribute]) -> Option<(Symbol, Span)> {
     attrs.iter().find_map(|attr| {
         Some(match attr {

@@ -4,9 +4,9 @@ use std::ops::{Range, RangeFrom};
 use std::{debug_assert_matches, iter};
 
 use rustc_abi::{ExternAbi, FieldIdx};
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{InlineAttr, OptimizeAttr};
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::attrs::{InlineAttr, OptimizeAttr};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::Idx;

@@ -5,9 +5,9 @@ use core::iter;
 use hir::def_id::LocalDefId;
 use itertools::Itertools;
 use rustc_ast::util::parser::ExprPrecedence;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diag, MultiSpan, listify, msg};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{

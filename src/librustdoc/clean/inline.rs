@@ -3,11 +3,12 @@
 use std::iter::once;
 use std::sync::Arc;
 
+use rustc_attr_ir::{DocInline, find_attr};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_hir::def::{DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId, LocalModId};
-use rustc_hir::{self as hir, HirId, Mutability, find_attr};
+use rustc_hir::{self as hir, HirId, Mutability};
 use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt};
@@ -42,7 +43,7 @@ pub(crate) fn try_inline(
     cx: &mut DocContext<'_>,
     res: Res,
     name: Symbol,
-    attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
+    attrs: Option<(&[rustc_attr_ir::Attribute], Option<LocalDefId>)>,
     visited: &mut DefIdSet,
 ) -> Option<Vec<clean::Item>> {
     fn try_inline_inner(
@@ -230,7 +231,7 @@ pub(crate) fn try_inline_glob(
     }
 }
 
-pub(crate) fn load_attrs<'hir>(tcx: TyCtxt<'hir>, did: DefId) -> &'hir [hir::Attribute] {
+pub(crate) fn load_attrs<'hir>(tcx: TyCtxt<'hir>, did: DefId) -> &'hir [rustc_attr_ir::Attribute] {
     // FIXME: all uses should use `find_attr`!
     #[allow(deprecated)]
     tcx.get_all_attrs(did)
@@ -401,7 +402,7 @@ fn build_type_alias(
 pub(crate) fn build_impls(
     cx: &mut DocContext<'_>,
     did: DefId,
-    attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
+    attrs: Option<(&[rustc_attr_ir::Attribute], Option<LocalDefId>)>,
     ret: &mut Vec<clean::Item>,
 ) {
     let tcx = cx.tcx;
@@ -433,8 +434,8 @@ pub(crate) fn build_impls(
 
 pub(crate) fn merge_attrs(
     tcx: TyCtxt<'_>,
-    old_attrs: &[hir::Attribute],
-    new_attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
+    old_attrs: &[rustc_attr_ir::Attribute],
+    new_attrs: Option<(&[rustc_attr_ir::Attribute], Option<LocalDefId>)>,
     cfg_info: &mut CfgInfo,
 ) -> (clean::Attributes, Option<Arc<clean::cfg::Cfg>>) {
     // NOTE: If we have additional attributes (from a re-export),
@@ -462,7 +463,7 @@ pub(crate) fn merge_attrs(
 pub(crate) fn build_impl(
     cx: &mut DocContext<'_>,
     did: DefId,
-    attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
+    attrs: Option<(&[rustc_attr_ir::Attribute], Option<LocalDefId>)>,
     ret: &mut Vec<clean::Item>,
 ) {
     if !cx.inlined.insert(did.into()) {
@@ -717,7 +718,7 @@ fn build_module_items(
     visited: &mut DefIdSet,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
     allowed_def_ids: Option<&DefIdSet>,
-    attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
+    attrs: Option<(&[rustc_attr_ir::Attribute], Option<LocalDefId>)>,
 ) -> Vec<clean::Item> {
     let mut items = Vec::new();
 
@@ -785,7 +786,7 @@ fn build_module_items(
             && find_attr!(
                 load_attrs(cx.tcx, reexport_def_id),
                 Doc(d)
-                if d.inline.first().is_some_and(|(inline, _)| *inline == hir::attrs::DocInline::NoInline)
+                if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::NoInline)
             )
         {
             // We don't inline foreign `use`.

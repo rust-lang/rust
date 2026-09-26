@@ -6,6 +6,7 @@ use std::sync::{Arc, LazyLock, OnceLock};
 use std::{env, fs, iter};
 
 use rustc_ast as ast;
+use rustc_attr_ir::{Attribute, AttributeKind, find_attr};
 use rustc_attr_parsing::{AttributeParser, ShouldEmit};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo};
@@ -21,10 +22,8 @@ use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
-use rustc_hir::{Attribute, find_attr};
 use rustc_incremental::setup_dep_graph;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
 use rustc_metadata::EncodedMetadata;
@@ -1408,7 +1407,7 @@ pub(crate) fn parse_crate_name(
     attrs: &[ast::Attribute],
     emit_errors: ShouldEmit,
 ) -> Option<(Symbol, Span)> {
-    let rustc_hir::Attribute::Parsed(AttributeKind::CrateName { name, name_span, .. }) =
+    let Attribute::Parsed(AttributeKind::CrateName { name, name_span, .. }) =
         AttributeParser::parse_limited_sym_should_emit(
             sess,
             attrs,

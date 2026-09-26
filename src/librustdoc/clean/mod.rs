@@ -34,15 +34,15 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::mem;
 
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{AttributeKind, DocAttribute, DocInline, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::codes::*;
 use rustc_errors::{FatalError, struct_span_code_err};
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::attrs::{AttributeKind, DocAttribute, DocInline};
 use rustc_hir::def::{CtorKind, DefKind, MacroKinds, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{self as hir, HirId, PredicateOrigin, find_attr};
+use rustc_hir::{self as hir, HirId, PredicateOrigin};
 use rustc_hir_analysis::{lower_const_arg_for_rustdoc, lower_ty};
 use rustc_middle::middle::resolve::Reexport;
 use rustc_middle::middle::resolve_bound_vars as rbv;
@@ -1121,7 +1121,7 @@ fn clean_fn_or_proc_macro<'tcx>(
 /// This is needed to make it more "readable" when documenting functions using
 /// `rustc_legacy_const_generics`. More information in
 /// <https://github.com/rust-lang/rust/issues/83167>.
-fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attribute]) {
+fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[rustc_attr_ir::Attribute]) {
     let Some(indexes) = find_attr!(attrs, RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes)
     else {
         return;
@@ -2811,7 +2811,7 @@ fn get_all_import_attributes<'hir>(
     import_def_id: LocalDefId,
     target_def_id: DefId,
     is_inline: bool,
-) -> Vec<(Cow<'hir, hir::Attribute>, Option<DefId>)> {
+) -> Vec<(Cow<'hir, rustc_attr_ir::Attribute>, Option<DefId>)> {
     let mut attrs = Vec::new();
     let mut first = true;
     for def_id in reexport_chain(cx.tcx, import_def_id, target_def_id)
@@ -2857,17 +2857,17 @@ fn get_all_import_attributes<'hir>(
 /// * `doc(no_inline)`
 /// * `doc(hidden)`
 fn add_without_unwanted_attributes<'hir>(
-    attrs: &mut Vec<(Cow<'hir, hir::Attribute>, Option<DefId>)>,
-    new_attrs: &'hir [hir::Attribute],
+    attrs: &mut Vec<(Cow<'hir, rustc_attr_ir::Attribute>, Option<DefId>)>,
+    new_attrs: &'hir [rustc_attr_ir::Attribute],
     is_inline: bool,
     import_parent: Option<DefId>,
 ) {
     for attr in new_attrs {
         match attr {
-            hir::Attribute::Parsed(AttributeKind::DocComment { .. }) => {
+            rustc_attr_ir::Attribute::Parsed(AttributeKind::DocComment { .. }) => {
                 attrs.push((Cow::Borrowed(attr), import_parent));
             }
-            hir::Attribute::Parsed(AttributeKind::Doc(d)) => {
+            rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d)) => {
                 // Remove attributes from `normal` that should not be inherited by `use` re-export.
                 let DocAttribute {
                     first_span: _,
@@ -2902,13 +2902,15 @@ fn add_without_unwanted_attributes<'hir>(
                 }
                 attr.aliases = aliases.clone();
                 attrs.push((
-                    Cow::Owned(hir::Attribute::Parsed(AttributeKind::Doc(Box::new(attr)))),
+                    Cow::Owned(rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(Box::new(
+                        attr,
+                    )))),
                     import_parent,
                 ));
             }
 
             // We discard `#[cfg(...)]` attributes unless we're inlining
-            hir::Attribute::Parsed(AttributeKind::CfgTrace(..)) if !is_inline => {}
+            rustc_attr_ir::Attribute::Parsed(AttributeKind::CfgTrace(..)) if !is_inline => {}
             // We keep all other attributes
             _ => {
                 attrs.push((Cow::Borrowed(attr), import_parent));
@@ -3169,7 +3171,7 @@ fn clean_extern_crate<'tcx>(
         && attrs.iter().any(|a| {
             matches!(
             a,
-            hir::Attribute::Parsed(AttributeKind::Doc(d))
+            rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d))
             if d.inline.first().is_some_and(|(i, _)| *i == DocInline::Inline))
         })
         && !cx.is_json_output();
@@ -3324,7 +3326,7 @@ fn clean_use_statement_leaf<'tcx>(
         || pub_underscore
         || attrs.iter().any(|a| matches!(
             a,
-            hir::Attribute::Parsed(AttributeKind::Doc(d))
+            rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d))
             if d.hidden.is_some() || d.inline.first().is_some_and(|(i, _)| *i == DocInline::NoInline)
         ));
 

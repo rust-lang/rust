@@ -1,6 +1,6 @@
 use rustc_abi::ExternAbi;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;

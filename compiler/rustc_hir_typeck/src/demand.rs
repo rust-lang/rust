@@ -1,7 +1,8 @@
+use rustc_attr_ir::find_attr;
 use rustc_errors::{Applicability, Diag, MultiSpan, listify, pluralize};
+use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, find_attr};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
