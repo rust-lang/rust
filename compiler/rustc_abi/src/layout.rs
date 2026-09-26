@@ -178,7 +178,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         Self { cx }
     }
 
-    pub fn array_like<FieldIdx: Idx, VariantIdx: Idx, F>(
+    pub fn layout_of_array_like<FieldIdx: Idx, VariantIdx: Idx, F>(
         &self,
         element: &LayoutData<FieldIdx, VariantIdx>,
         count_if_sized: Option<u64>, // None for slices
@@ -201,7 +201,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         })
     }
 
-    pub fn scalable_vector_type<FieldIdx, VariantIdx, F>(
+    pub fn layout_of_scalable_vector_type<FieldIdx, VariantIdx, F>(
         &self,
         element: F,
         count: u64,
@@ -220,7 +220,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         )
     }
 
-    pub fn simd_type<FieldIdx, VariantIdx, F>(
+    pub fn layout_of_simd_type<FieldIdx, VariantIdx, F>(
         &self,
         element: F,
         count: u64,
@@ -239,7 +239,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     ///
     /// This uses dedicated code instead of [`Self::layout_of_struct_or_enum`], as coroutine
     /// fields may be shared between multiple variants (see the [`coroutine`] module for details).
-    pub fn coroutine<'a, F, VariantIdx, FieldIdx, LocalIdx>(
+    pub fn layout_of_coroutine<'a, F, VariantIdx, FieldIdx, LocalIdx>(
         &self,
         local_layouts: &IndexSlice<LocalIdx, F>,
         prefix_layouts: IndexVec<FieldIdx, F>,
@@ -263,7 +263,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         )
     }
 
-    pub fn univariant<'a, FieldIdx, VariantIdx, F>(
+    pub fn layout_of_univariant<'a, FieldIdx, VariantIdx, F>(
         &self,
         fields: &IndexSlice<FieldIdx, F>,
         repr: &ReprOptions,
@@ -275,7 +275,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     {
         let dl = self.cx.data_layout();
-        let layout = self.univariant_biased(fields, repr, kind, NicheBias::Start);
+        let layout = self.layout_of_univariant_biased(fields, repr, kind, NicheBias::Start);
         // Enums prefer niches close to the beginning or the end of the variants so that other
         // (smaller) data-carrying variants can be packed into the space after/before the niche.
         // If the default field ordering does not give us a niche at the front then we do a second
@@ -296,7 +296,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             && (fields.len() > 1 && head_space != 0 && tail_space > 0)
         {
             let alt_layout = self
-                .univariant_biased(fields, repr, kind, NicheBias::End)
+                .layout_of_univariant_biased(fields, repr, kind, NicheBias::End)
                 .expect("alt layout should always work");
             let alt_niche = alt_layout
                 .largest_niche
@@ -540,7 +540,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             StructKind::MaybeUnsized
         };
 
-        let mut st = self.univariant(&variants[v], repr, kind)?;
+        let mut st = self.layout_of_univariant(&variants[v], repr, kind)?;
         st.variants = Variants::Single { index: v };
 
         if is_special_no_niche {
@@ -608,7 +608,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let mut variant_layouts = variants
                 .iter()
                 .map(|v| {
-                    let st = self.univariant(v, repr, StructKind::AlwaysSized).ok()?;
+                    let st = self.layout_of_univariant(v, repr, StructKind::AlwaysSized).ok()?;
 
                     variants_info.push(VariantLayoutInfo { align_abi: st.align.abi });
 
@@ -810,7 +810,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         let mut layout_variants = variants
             .iter()
             .map(|field_layouts| {
-                let st = self.univariant(
+                let st = self.layout_of_univariant(
                     field_layouts,
                     repr,
                     StructKind::Prefixed(min_ity.size(), prefix_align),
@@ -1073,7 +1073,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         Ok(best_layout)
     }
 
-    fn univariant_biased<'a, FieldIdx, VariantIdx, F>(
+    fn layout_of_univariant_biased<'a, FieldIdx, VariantIdx, F>(
         &self,
         fields: &IndexSlice<FieldIdx, F>,
         repr: &ReprOptions,

@@ -235,7 +235,7 @@ fn layout_of_uncached<'tcx>(
     let univariant = |tys: &[Ty<'tcx>], kind| {
         let fields = tys.iter().map(|ty| cx.layout_of(*ty)).try_collect::<IndexVec<_, _>>()?;
         let repr = ReprOptions::default();
-        map_layout(cx.calc.univariant(&fields, &repr, kind))
+        map_layout(cx.calc.layout_of_univariant(&fields, &repr, kind))
     };
     debug_assert!(!ty.has_non_region_infer());
 
@@ -523,11 +523,11 @@ fn layout_of_uncached<'tcx>(
                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
 
             let element = cx.layout_of(element)?;
-            map_layout(cx.calc.array_like(&element, Some(count)))?
+            map_layout(cx.calc.layout_of_array_like(&element, Some(count)))?
         }
         ty::Slice(element) => {
             let element = cx.layout_of(element)?;
-            map_layout(cx.calc.array_like(&element, None).map(|mut layout| {
+            map_layout(cx.calc.layout_of_array_like(&element, None).map(|mut layout| {
                 // a randomly chosen value to distinguish slices
                 layout.randomization_seed = Hash64::new(0x2dcba99c39784102);
                 layout
@@ -535,7 +535,7 @@ fn layout_of_uncached<'tcx>(
         }
         ty::Str => {
             let element = scalar(Int(I8, false));
-            map_layout(cx.calc.array_like(&element, None).map(|mut layout| {
+            map_layout(cx.calc.layout_of_array_like(&element, None).map(|mut layout| {
                 // another random value
                 layout.randomization_seed = Hash64::new(0xc1325f37d127be22);
                 layout
@@ -586,7 +586,7 @@ fn layout_of_uncached<'tcx>(
 
             let layout = cx
                 .calc
-                .coroutine(
+                .layout_of_coroutine(
                     &local_layouts,
                     prefix_layouts,
                     &info.variant_fields,
@@ -638,7 +638,7 @@ fn layout_of_uncached<'tcx>(
             };
 
             let element_layout = cx.layout_of(element_ty)?;
-            map_layout(cx.calc.scalable_vector_type(
+            map_layout(cx.calc.layout_of_scalable_vector_type(
                 element_layout,
                 element_count as u64,
                 number_of_vectors,
@@ -683,7 +683,7 @@ fn layout_of_uncached<'tcx>(
                 }
             }
 
-            map_layout(cx.calc.simd_type(e_ly, e_len, def.repr().packed()))?
+            map_layout(cx.calc.layout_of_simd_type(e_ly, e_len, def.repr().packed()))?
         }
 
         // ADTs.
