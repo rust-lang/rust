@@ -38,11 +38,14 @@ use crate::alloc::{AllocError, Allocator, AllocatorClone, Global, Layout};
 use crate::alloc::{AllocatorNightly, handle_alloc_error};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
-use crate::rc::is_dangling;
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
 #[cfg(not(no_global_oom_handling))]
 use crate::vec::Vec;
+
+fn is_dangling<T: ?Sized>(ptr: *const T) -> bool {
+    (ptr.cast::<()>()).addr() == usize::MAX
+}
 
 /// A soft limit on the amount of references that may be made to an `Arc`.
 ///
@@ -3683,6 +3686,12 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Weak<T, A> {
     }
 }
 
+// Hack to allow specializing on `Eq` even though `Eq` has a method.
+#[unsafe(rustc_allow_lifetime_dependent_specialization)]
+trait MarkerEq: PartialEq<Self> {}
+
+impl<T: Eq + ?Sized> MarkerEq for T {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 trait ArcEqIdent<T: ?Sized + PartialEq, A: Allocator> {
     fn eq(&self, other: &Arc<T, A>) -> bool;
@@ -3709,7 +3718,7 @@ impl<T: ?Sized + PartialEq, A: Allocator> ArcEqIdent<T, A> for Arc<T, A> {
 ///
 /// We can only do this when `T: Eq` as a `PartialEq` might be deliberately irreflexive.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized + crate::rc::MarkerEq, A: Allocator> ArcEqIdent<T, A> for Arc<T, A> {
+impl<T: ?Sized + MarkerEq, A: Allocator> ArcEqIdent<T, A> for Arc<T, A> {
     #[inline]
     fn eq(&self, other: &Arc<T, A>) -> bool {
         ptr::eq(self.ptr.as_ptr(), other.ptr.as_ptr()) || **self == **other
