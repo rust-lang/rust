@@ -1,6 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/issue-26681.rs:17:39
    |
+LL | trait Baz {
 LL |     type Fv: Foo = u8;
    |     ------------ associated type defaults can't be assumed inside the trait defining them
 LL |     const C: <Self::Fv as Foo>::Bar = 6665;
