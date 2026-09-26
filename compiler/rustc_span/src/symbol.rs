@@ -2910,6 +2910,7 @@ impl Interner {
     }
 
     #[inline]
+    #[rustc_no_mir_inline]
     fn intern_inner(&self, byte_str: &[u8]) -> u32 {
         let hasher = FxBuildHasher::default();
         let hash_of_byte_str = hasher.hash_one(byte_str);
