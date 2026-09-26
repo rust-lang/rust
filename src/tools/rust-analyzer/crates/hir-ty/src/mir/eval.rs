@@ -1681,7 +1681,9 @@ impl<'a, 'db> Evaluator<'a, 'db> {
             return Ok(0);
         };
         match &layout.variants {
-            Variants::Empty => unreachable!(),
+            Variants::Empty => Err(MirEvalError::UndefinedBehavior(
+                "reading the discriminant of an uninhabited enum".to_owned(),
+            )),
             Variants::Single { index } => {
                 let r =
                     self.const_eval_discriminant(e.enum_variants(self.db).variants[index.0].0)?;
