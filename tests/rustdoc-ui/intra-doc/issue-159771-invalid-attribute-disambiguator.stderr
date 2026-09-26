@@ -1,0 +1,30 @@
+error: unknown disambiguator `attribute`
+  --> $DIR/issue-159771-invalid-attribute-disambiguator.rs:18:27
+   |
+LL | /// Link to my attribute [attribute@foo]
+   |                           ^^^^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/nightly/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+note: the lint level is defined here
+  --> $DIR/issue-159771-invalid-attribute-disambiguator.rs:2:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `foo` is both a function and an attribute macro
+  --> $DIR/issue-159771-invalid-attribute-disambiguator.rs:12:21
+   |
+LL | /// Ambiguous link [foo].
+   |                     ^^^ ambiguous link
+   |
+help: to link to the function, add parentheses
+   |
+LL | /// Ambiguous link [foo()].
+   |                        ++
+help: to link to the attribute macro, prefix with `attribute@`
+   |
+LL | /// Ambiguous link [attribute@foo].
+   |                     ++++++++++
+
+error: aborting due to 2 previous errors
+
