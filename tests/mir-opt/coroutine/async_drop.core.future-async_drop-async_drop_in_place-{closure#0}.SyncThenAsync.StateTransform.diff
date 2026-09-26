@@ -106,6 +106,8 @@
       }
   
       bb1: {
+-         _0 = const ();
++         _60 = const ();
 +         _0 = Poll::<()>::Ready(move _60);
 +         discriminant((*_62)) = 1;
           return;

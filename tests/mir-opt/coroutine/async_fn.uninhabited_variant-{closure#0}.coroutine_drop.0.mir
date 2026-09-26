@@ -68,6 +68,7 @@ fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_varia
 
     bb0: {
         _45 = discriminant((*_1));
+        _0 = const ();
         switchInt(move _45) -> [0: bb22, 3: bb23, 4: bb24, otherwise: bb25];
     }
 

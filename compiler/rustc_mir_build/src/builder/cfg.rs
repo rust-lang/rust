@@ -74,11 +74,7 @@ impl<'tcx> CFG<'tcx> {
             source_info,
             place,
             Rvalue::Use(
-                Operand::Constant(Box::new(ConstOperand {
-                    span: source_info.span,
-                    user_ty: None,
-                    const_: Const::zero_sized(tcx.types.unit),
-                })),
+                Operand::zero_sized_constant(tcx.types.unit, source_info.span),
                 WithRetag::Yes,
             ),
         );

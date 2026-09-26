@@ -48,6 +48,7 @@
           _3 = copy _4 as *mut u8 (PtrToPtr);
           StorageDead(_4);
           StorageDead(_3);
+          _0 = const ();
           StorageDead(_1);
           return;
       }
