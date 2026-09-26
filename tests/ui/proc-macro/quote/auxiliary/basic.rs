@@ -11,6 +11,15 @@ use proc_macro::*;
 
 #[proc_macro]
 pub fn run_tests(_: TokenStream) -> TokenStream {
+    test_sep1();
+    test_sep2();
+    test_sep_group1();
+    test_sep_group2();
+    test_dollar_dollar1();
+    test_dollar_dollar2();
+    test_dollar_dollar3();
+    test_dollar_dollar4();
+
     test_quote_impl();
     test_substitution();
     test_iter();
@@ -48,6 +57,75 @@ pub fn run_tests(_: TokenStream) -> TokenStream {
     test_quote_raw_id();
 
     TokenStream::new()
+}
+
+fn test_sep1() {
+    let iter = ["a", "b"].into_iter();
+    let tokens = quote!($($iter) << *);
+
+    let expected = "\"a\" << \"b\"";
+    assert_eq!(expected, tokens.to_string());
+}
+
+fn test_sep2() {
+    let iter1 = ["a", "b"].into_iter();
+    let iter2 = [1, 2, 3];
+    let tokens = quote!($($iter1) ($($iter1) $($iter2),* A) *);
+
+    let expected = "\"a\" ($(\"b\") 1i32 , 2i32 , 3i32 A) \"b\"";
+    assert_eq!(expected, tokens.to_string());
+}
+
+fn test_sep_group1() {
+    let x = "X";
+    let iter = ["a", "b"].into_iter();
+    let tokens = quote!($($x) >> $($iter) << *);
+
+    let expected = "$(\"X\") >> \"a\" << \"b\"";
+    assert_eq!(expected, tokens.to_string());
+}
+
+fn test_sep_group2() {
+    let x = "X";
+    let iter = ["a", "b"].into_iter();
+    let tokens = quote!($($x) >> > $($iter) << *);
+
+    let expected = "$(\"X\") >> > \"a\" << \"b\"";
+    assert_eq!(expected, tokens.to_string());
+}
+
+fn test_dollar_dollar1() {
+    let iter = ["a", "b"].into_iter();
+    let tokens = quote!($$ x $($$ x $iter)*);
+
+    let expected = "$x $x \"a\" $x \"b\"";
+    assert_eq!(expected, tokens.to_string());
+}
+
+fn test_dollar_dollar2() {
+    let iter = ["a", "b", "c"].into_iter();
+    let tokens = quote!($($iter) $$ *);
+
+    let expected = "\"a\" $ \"b\" $ \"c\"";
+    assert_eq!(expected, tokens.to_string());
+}
+
+fn test_dollar_dollar3() {
+    let x = "X";
+    let iter = ["a", "b", "c"].into_iter();
+    let tokens = quote!($($x)$$($x),*);
+
+    let expected = "$(\"X\") $ (\"X\"),*";
+    assert_eq!(expected, tokens.to_string());
+}
+
+fn test_dollar_dollar4() {
+    let x = "X";
+    let iter = ["a", "b", "c"].into_iter();
+    let tokens = quote!($($x)$$y$($iter)*);
+
+    let expected = "$(\"X\") $y \"a\" \"b\" \"c\"";
+    assert_eq!(expected, tokens.to_string());
 }
 
 // Based on https://github.com/dtolnay/quote/blob/0245506323a3616daa2ee41c6ad0b871e4d78ae4/tests/test.rs
@@ -106,7 +184,7 @@ fn test_iter() {
 
     assert_eq!("X, X, X, X,", quote!($($primes,)*).to_string());
 
-    assert_eq!("X, X, X, X", quote!($($primes),*).to_string());
+    assert_eq!("X , X , X , X", quote!($($primes),*).to_string());
 }
 
 fn test_array() {
@@ -320,7 +398,7 @@ fn test_fancy_repetition() {
         $($foo: $bar),*
     };
 
-    let expected = r#""a" : true, "b" : false"#;
+    let expected = r#""a" : true , "b" : false"#;
     assert_eq!(expected, tokens.to_string());
 }
 
@@ -333,7 +411,7 @@ fn test_nested_fancy_repetition() {
         ),*
     };
 
-    let expected = "'a' 'b' 'c', 'x' 'y' 'z'";
+    let expected = "'a' 'b' 'c' , 'x' 'y' 'z'";
     assert_eq!(expected, tokens.to_string());
 }
 
@@ -345,7 +423,7 @@ fn test_duplicate_name_repetition() {
         $($foo: $foo),*
     };
 
-    let expected = r#""a" : "a", "b" : "b" "a" : "a", "b" : "b""#;
+    let expected = r#""a" : "a" , "b" : "b" "a" : "a" , "b" : "b""#;
     assert_eq!(expected, tokens.to_string());
 }
 
@@ -356,7 +434,7 @@ fn test_duplicate_name_repetition_no_copy() {
         $($foo: $foo),*
     };
 
-    let expected = r#""a" : "a", "b" : "b""#;
+    let expected = r#""a" : "a" , "b" : "b""#;
     assert_eq!(expected, tokens.to_string());
 }
 
@@ -369,7 +447,7 @@ fn test_btreeset_repetition() {
         $($set: $set),*
     };
 
-    let expected = r#""a" : "a", "b" : "b""#;
+    let expected = r#""a" : "a" , "b" : "b""#;
     assert_eq!(expected, tokens.to_string());
 }
 
@@ -378,7 +456,7 @@ fn test_variable_name_conflict() {
     // fine, if a little confusing when debugging.
     let _i = vec!['a', 'b'];
     let tokens = quote! { $($_i),* };
-    let expected = "'a', 'b'";
+    let expected = "'a' , 'b'";
     assert_eq!(expected, tokens.to_string());
 }
 
@@ -390,7 +468,7 @@ fn test_nonrep_in_repetition() {
         $($rep $rep : $nonrep $nonrep),*
     };
 
-    let expected = r#""a" "a" : "c" "c", "b" "b" : "c" "c""#;
+    let expected = r#""a" "a" : "c" "c" , "b" "b" : "c" "c""#;
     assert_eq!(expected, tokens.to_string());
 }
 
