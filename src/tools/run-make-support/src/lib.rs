@@ -16,11 +16,11 @@ pub mod diff;
 pub mod env;
 pub mod external_deps;
 pub mod linker;
+pub mod obj;
 pub mod path_helpers;
 pub mod run;
 pub mod scoped_run;
 pub mod string;
-pub mod symbols;
 pub mod targets;
 
 // Internally we call our fs-related support module as `fs`, but re-export its content as `rfs`
@@ -31,6 +31,16 @@ mod fs;
 /// confused with [`std::fs`].
 pub mod rfs {
     pub use crate::fs::*;
+}
+
+/// Older version of the [`obj`] module. Prefer importing from there instead.
+pub mod symbols {
+    pub use crate::obj::{
+        ContainsAllSymbolSubstringsOutcome, ContainsAllSymbolsOutcome,
+        exported_dynamic_symbol_names, object_contains_all_symbol_substring,
+        object_contains_all_symbols, object_contains_any_symbol,
+        object_contains_any_symbol_substring,
+    };
 }
 
 // Re-exports of third-party library crates.

@@ -1,7 +1,95 @@
-use std::collections::BTreeSet;
-use std::path::Path;
+//! Helpers for working with types from the [`object`] crate.
 
-use object::{self, Object, ObjectSymbol};
+use std::collections::BTreeSet;
+#[cfg(unix)]
+use std::os::unix::ffi::OsStrExt;
+use std::path::{Path, PathBuf};
+
+use bstr::BStr;
+pub use object::read::archive::ArchiveFile;
+use object::{self, Object, ObjectSymbol, Symbol};
+pub use object::{File as ObjFile, Result as ObjResult};
+
+use crate::rfs;
+
+/// Thin wrapper for owning data used by `object`, which may be either an archive or a single
+/// object file.
+pub struct BinFile {
+    path: PathBuf,
+    data: Vec<u8>,
+}
+
+impl BinFile {
+    /// Read an archive or object file at `path`.
+    pub fn read_path<P: Into<PathBuf>>(path: P) -> Self {
+        let path = path.into();
+        Self { data: rfs::read(&path), path }
+    }
+
+    /// Access the owned buffer as an archive file.
+    pub fn parse_as_archive_file(&self) -> ObjResult<ArchiveFile<'_>> {
+        ArchiveFile::parse(self.data.as_slice())
+    }
+
+    /// Access the owned buffer as an archive file.
+    pub fn parse_as_obj_file(&self) -> ObjResult<ObjFile<'_>> {
+        ObjFile::parse(self.data.as_slice())
+    }
+
+    /// If the file is an archive, run the callback for each object file. If it is an object
+    /// file, the callback will run once.
+    ///
+    /// The callback receives the parsed object file and its name in the archive or on disk.
+    pub fn for_each_object(&self, mut f: impl FnMut(ObjFile<'_>, &BStr)) {
+        // Try as an archive first.
+        let as_archive = self.parse_as_archive_file();
+        if let Ok(archive) = as_archive {
+            for member in archive.members() {
+                let member = member.expect("failed to access member");
+                let obj_data = member.data(self.data.as_slice()).expect("failed to access object");
+                let obj = ObjFile::parse(obj_data).expect("failed to parse object");
+                f(obj, BStr::new(member.name()));
+            }
+
+            return;
+        }
+
+        // Fall back to parsing as an object file.
+        let as_obj = self.parse_as_obj_file();
+        if let Ok(obj) = as_obj {
+            let path_os = self.path.as_os_str();
+            let path = cfg_select! {
+                unix => path_os.as_bytes(),
+                _ => path_os
+                    .to_str()
+                    .unwrap_or_else(|| panic!("non-utf-8 path on non-unix: {:?}", self.path))
+                    .as_bytes(),
+            };
+            f(obj, BStr::new(path));
+            return;
+        }
+
+        panic!(
+            "failed to parse {:?} as either an archive or a object file: {:?}, {:?}",
+            self.path,
+            as_archive.unwrap_err(),
+            as_obj.unwrap_err(),
+        );
+    }
+
+    /// Do something with each symbol in an archive or object file.
+    ///
+    /// The callback receives:
+    ///
+    /// * The symbol.
+    /// * The parsed object file that contains tye symbol.
+    /// * The name of the object file in its archive or on disk.
+    pub fn for_each_symbol(&self, mut f: impl FnMut(Symbol<'_, '_>, &ObjFile<'_>, &BStr)) {
+        self.for_each_object(|obj, obj_path| {
+            obj.symbols().for_each(|sym| f(sym, &obj, obj_path));
+        });
+    }
+}
 
 /// Given an [`object::File`], find the exported dynamic symbol names via
 /// [`object::Object::exports`]. This does not distinguish between which section the symbols appear
