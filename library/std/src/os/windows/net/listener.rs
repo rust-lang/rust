@@ -164,7 +164,9 @@ impl UnixListener {
     /// }
     /// ```
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        SocketAddr::new(|addr, len| unsafe { getsockname(self.0.as_raw(), addr, len) })
+        no_code! {
+            SocketAddr::new(|addr, len| unsafe { getsockname(self.0.as_raw(), addr, len) })
+        }
     }
 
     /// Creates a new independently owned handle to the underlying socket.
@@ -326,21 +328,27 @@ impl<'a> Iterator for Incoming<'a> {
 impl AsRawSocket for UnixListener {
     #[inline]
     fn as_raw_socket(&self) -> RawSocket {
-        self.0.as_raw_socket()
+        no_code! {
+            self.0.as_raw_socket()
+        }
     }
 }
 
 impl FromRawSocket for UnixListener {
     #[inline]
     unsafe fn from_raw_socket(sock: RawSocket) -> Self {
-        UnixListener(unsafe { Socket::from_raw_socket(sock) })
+        no_code! {
+            UnixListener(unsafe { Socket::from_raw_socket(sock) })
+        }
     }
 }
 
 impl IntoRawSocket for UnixListener {
     #[inline]
     fn into_raw_socket(self) -> RawSocket {
-        self.0.into_raw_socket()
+        no_code! {
+            self.0.into_raw_socket()
+        }
     }
 }
 
