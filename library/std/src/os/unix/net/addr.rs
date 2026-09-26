@@ -87,7 +87,7 @@ enum AddressKind<'a> {
 ///         return
 ///     }
 /// };
-/// let addr = socket.local_addr().expect("Couldn't get local address");
+/// let addr = socket.local_addr().expect("`UnixListener::local_addr` should not fail");
 /// ```
 #[derive(Clone)]
 #[stable(feature = "unix_socket", since = "1.10.0")]
@@ -188,7 +188,7 @@ impl SocketAddr {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixListener::bind("/tmp/sock")?;
-    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     let addr = socket.local_addr().expect("`UnixListener::local_addr` should not fail");
     ///     assert_eq!(addr.is_unnamed(), false);
     ///     Ok(())
     /// }
@@ -202,7 +202,7 @@ impl SocketAddr {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixDatagram::unbound()?;
-    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     let addr = socket.local_addr().expect("`UnixListener::local_addr` should not fail");
     ///     assert_eq!(addr.is_unnamed(), true);
     ///     Ok(())
     /// }
@@ -226,7 +226,7 @@ impl SocketAddr {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixListener::bind("/tmp/sock")?;
-    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     let addr = socket.local_addr().expect("`UnixListener::local_addr` should not fail");
     ///     assert_eq!(addr.as_pathname(), Some(Path::new("/tmp/sock")));
     ///     Ok(())
     /// }
@@ -240,7 +240,7 @@ impl SocketAddr {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixDatagram::unbound()?;
-    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     let addr = socket.local_addr().expect("`UnixListener::local_addr` should not fail");
     ///     assert_eq!(addr.as_pathname(), None);
     ///     Ok(())
     /// }
