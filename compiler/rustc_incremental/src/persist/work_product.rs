@@ -6,8 +6,8 @@ use std::path::Path;
 
 use rustc_data_structures::unord::UnordMap;
 use rustc_fs_util::link_or_copy;
-use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_session::{IncrCompSession, Session};
+use rustc_middle::dep_graph::{IncrCompSession, WorkProduct, WorkProductId};
+use rustc_session::Session;
 use tracing::debug;
 
 use crate::diagnostics;
