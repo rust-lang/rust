@@ -7,7 +7,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_errors::timings::TimingSection;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_metadata::EncodedMetadata;
-use rustc_middle::dep_graph::{DepGraph, IncrCompSession, WorkProduct, WorkProductMap};
+use rustc_middle::dep_graph::{DepGraph, IncrCompSession, WorkProduct};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, OutputFilenames, OutputType};
@@ -49,18 +49,18 @@ impl Linker {
     pub fn link(
         self,
         sess: &Session,
-        incr_comp_session: Option<IncrCompSession>,
+        mut incr_comp_session: Option<IncrCompSession>,
         codegen_backend: &dyn CodegenBackend,
     ) {
-        let (compiled_modules, mut work_products) = sess.time("finish_ongoing_codegen", || {
+        let compiled_modules = sess.time("finish_ongoing_codegen", || {
             match self.ongoing_codegen.downcast::<CompiledModules>() {
                 // This was a check only build
-                Ok(compiled_modules) => (*compiled_modules, WorkProductMap::default()),
+                Ok(compiled_modules) => *compiled_modules,
 
                 Err(ongoing_codegen) => codegen_backend.join_codegen(
                     ongoing_codegen,
                     sess,
-                    incr_comp_session.as_ref(),
+                    incr_comp_session.as_mut(),
                     &self.output_filenames,
                     &self.crate_info,
                 ),
@@ -72,13 +72,12 @@ impl Linker {
         if sess.opts.incremental.is_some()
             && let Some(path) = self.metadata.path()
         {
-            let (id, product) = rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
+            rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
                 sess,
-                incr_comp_session.as_ref().unwrap(),
+                incr_comp_session.as_mut().unwrap(),
                 WorkProduct::METADATA_WORKPRODUCT_CGU_NAME,
                 &[(OutputType::Metadata.extension(), path)],
             );
-            work_products.insert(id, product);
         }
 
         if let Some(guar) = sess.dcx().has_errors_or_delayed_bugs() {
@@ -89,12 +88,7 @@ impl Linker {
 
         if let Some(incr_comp_session) = &incr_comp_session {
             sess.time("serialize_work_products", || {
-                rustc_incremental::save_work_product_index(
-                    sess,
-                    incr_comp_session,
-                    &self.dep_graph,
-                    work_products,
-                )
+                rustc_incremental::save_work_product_index(sess, incr_comp_session, &self.dep_graph)
             });
         }
 

@@ -33,6 +33,7 @@ pub struct IncrCompSession {
     /// The directory to which cached data for the current session can be
     /// written to.
     pub new_session_directory: flock::LockedDir,
+    pub new_work_products: WorkProductMap,
     borrows: Arc<()>,
 }
 
@@ -41,7 +42,12 @@ impl IncrCompSession {
         old_session_directory: Option<flock::LockedDir>,
         new_session_directory: flock::LockedDir,
     ) -> Self {
-        IncrCompSession { old_session_directory, new_session_directory, borrows: Arc::new(()) }
+        IncrCompSession {
+            old_session_directory,
+            new_session_directory,
+            new_work_products: WorkProductMap::default(),
+            borrows: Arc::new(()),
+        }
     }
 
     pub fn borrow(&self) -> BorrowedIncrCompSession {

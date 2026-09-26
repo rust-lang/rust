@@ -19,10 +19,10 @@ use crate::persist::fs::*;
 /// Panics when incr comp is disabled.
 pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
     sess: &Session,
-    incr_comp_session: &IncrCompSession,
+    incr_comp_session: &mut IncrCompSession,
     cgu_name: &str,
     files: &[(&'static str, &Path)],
-) -> (WorkProductId, WorkProduct) {
+) {
     debug!(?cgu_name, ?files);
     assert!(sess.opts.incremental.is_some());
 
@@ -47,5 +47,5 @@ pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
     let work_product = WorkProduct { cgu_name: cgu_name.to_string(), saved_files };
     debug!(?work_product);
     let work_product_id = WorkProductId::from_cgu_name(cgu_name);
-    (work_product_id, work_product)
+    incr_comp_session.new_work_products.insert(work_product_id, work_product);
 }
