@@ -78,6 +78,10 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     with_native_path(old, &|old| with_native_path(new, &|new| imp::rename(old, new)))
 }
 
+pub fn rename_noreplace(old: &Path, new: &Path) -> io::Result<()> {
+    with_native_path(old, &|old| with_native_path(new, &|new| imp::rename_noreplace(old, new)))
+}
+
 pub fn remove_dir(path: &Path) -> io::Result<()> {
     with_native_path(path, &imp::rmdir)
 }

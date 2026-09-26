@@ -324,6 +324,10 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     moto_rt::fs::rename(old, new).map_err(map_motor_error)
 }
 
+pub fn rename_noreplace(_old: &Path, _new: &Path) -> io::Result<()> {
+    unsupported()
+}
+
 pub fn rmdir(path: &Path) -> io::Result<()> {
     let path = path.to_str().ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?;
     moto_rt::fs::rmdir(path).map_err(map_motor_error)
