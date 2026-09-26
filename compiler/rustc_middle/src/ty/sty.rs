@@ -1524,6 +1524,11 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn is_byte_sized_integral(self) -> bool {
+        matches!(self.kind(), Int(ty::IntTy::I8) | Uint(ty::UintTy::U8))
+    }
+
+    #[inline]
     pub fn has_concrete_skeleton(self) -> bool {
         !matches!(self.kind(), Param(_) | Infer(_) | Error(_))
     }
