@@ -13,6 +13,7 @@ extern crate rustc_interface;
 extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_public;
+extern crate rustc_target;
 
 use rustc_public::abi::{
     ArgAbi, ArgExtension, CallConvention, FieldsShape, IndirectMode, IntegerLength, PassMode,
@@ -33,6 +34,8 @@ const CRATE_NAME: &str = "input";
 
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_stable_mir() -> ControlFlow<()> {
+    check_regular_attributes();
+
     // Find items in the local crate.
     let items = rustc_public::all_local_items();
 
@@ -78,6 +81,93 @@ fn test_stable_mir() -> ControlFlow<()> {
     let repr_c_struct = adt_defs.iter().find(|def| def.trimmed_name() == "ReprCStruct").unwrap();
     assert!(repr_c_struct.repr().flags.is_c);
 
+    ControlFlow::Continue(())
+}
+
+fn check_regular_attributes() {
+    use rustc_target::callconv::{ArgAttribute, ArgAttributes};
+
+    let flags = [
+        ArgAttribute::CapturesNone,
+        ArgAttribute::CapturesAddress,
+        ArgAttribute::CapturesReadOnly,
+        ArgAttribute::NoAlias,
+        ArgAttribute::NonNull,
+        ArgAttribute::ReadOnly,
+        ArgAttribute::InReg,
+        ArgAttribute::NoUndef,
+        ArgAttribute::Writable,
+        ArgAttribute::NoFree,
+    ];
+    for regular in [ArgAttribute::empty(), ArgAttribute::all()].iter().copied().chain(flags) {
+        let attrs = rustc_public::rustc_internal::stable(ArgAttributes::from(regular)).regular();
+        assert_eq!(
+            [
+                attrs.captures_none,
+                attrs.captures_address,
+                attrs.captures_read_only,
+                attrs.no_alias,
+                attrs.non_null,
+                attrs.read_only,
+                attrs.in_reg,
+                attrs.no_undef,
+                attrs.writable,
+                attrs.no_free,
+            ],
+            flags.map(|flag| regular.contains(flag)),
+            "{regular:?}",
+        );
+    }
+}
+
+fn test_pointer_attributes() -> ControlFlow<()> {
+    let items = rustc_public::all_local_items();
+    let target_fn = get_item(&items, (ItemKind::Fn, "input::pointer_attributes")).unwrap();
+    // Use the signature to exclude attributes deduced from the body.
+    let abi = target_fn.ty().kind().fn_sig().unwrap().fn_ptr_abi().unwrap();
+    assert_eq!(abi.args.len(), 6);
+
+    for (arg, expected) in abi.args.iter().zip([
+        (true, true, true, true, 4),
+        (false, true, false, false, 4),
+        (false, false, false, false, 0),
+        (true, false, true, true, 4),
+    ]) {
+        let PassMode::Direct(attrs) = &arg.mode else { panic!("{:?}", arg.mode) };
+        let regular = attrs.regular();
+        assert_eq!(
+            (
+                regular.no_alias,
+                regular.non_null,
+                regular.read_only,
+                regular.no_free,
+                attrs.pointee_size().bytes(),
+            ),
+            expected,
+        );
+        assert!(regular.no_undef);
+        assert_eq!(regular.captures_read_only, regular.read_only);
+        assert!(!regular.captures_none && !regular.captures_address);
+    }
+
+    let PassMode::Pair(data, len) = &abi.args[4].mode else { panic!("{:?}", abi.args[4]) };
+    assert!(data.regular().non_null && data.regular().no_free);
+    assert!(data.regular().no_alias && data.regular().read_only);
+    assert!(data.regular().captures_read_only);
+    assert!(len.regular().no_undef && !len.regular().non_null);
+
+    let PassMode::Indirect { attrs, .. } = &abi.args[5].mode else { panic!("{:?}", abi.args[5]) };
+    let regular = attrs.regular();
+    assert!(regular.no_alias && regular.non_null && regular.no_undef && regular.no_free);
+    assert!(!regular.captures_none && regular.captures_address && regular.captures_read_only);
+    assert_eq!(attrs.pointee_size().bytes(), 256);
+
+    let PassMode::Direct(attrs) = &abi.ret.mode else { panic!("{:?}", abi.ret) };
+    let regular = attrs.regular();
+    assert!(regular.non_null && regular.no_undef);
+    assert!(!regular.no_alias && !regular.read_only && !regular.no_free);
+    assert!(!regular.captures_none && !regular.captures_address && !regular.captures_read_only);
+    assert_eq!(attrs.pointee_size().bytes(), 4);
     ControlFlow::Continue(())
 }
 
@@ -188,14 +278,16 @@ impl MirVisitor for AdtDefVisitor {
 fn main() {
     let path = "alloc_input.rs";
     generate_input(&path).unwrap();
-    let args = &[
+    let mut args = vec![
         "rustc".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),
         path.to_string(),
     ];
-    run!(args, test_stable_mir).unwrap();
+    run!(&args, test_stable_mir).unwrap();
+    args.push("-Copt-level=1".to_string());
+    run!(&args, test_pointer_attributes).unwrap();
 }
 
 fn generate_input(path: &str) -> std::io::Result<()> {
@@ -214,6 +306,17 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         ) -> Result<usize, &'static str> {{
                 // We only care about the signature.
                 todo!()
+        }}
+
+        pub fn pointer_attributes<'a>(
+            shared: &'a u32,
+            cell: &std::cell::Cell<u32>,
+            raw: *const u32,
+            nullable: Option<&u32>,
+            slice: &[u32],
+            indirect: [u64; 32],
+        ) -> &'a u32 {{
+            shared
         }}
 
         pub unsafe extern "C" fn variadic_fn(n: usize, mut args: ...) -> usize {{
