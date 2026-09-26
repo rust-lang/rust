@@ -725,6 +725,9 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 }
                 CastKind::Transmute | CastKind::Subtype => {
                     let value = self.eval_to_const(value)?;
+                    if value.is_immediate_uninit() {
+                        return Some(ImmTy::uninit(ty).into());
+                    }
                     // `offset` for immediates generally only supports projections that match the
                     // type of the immediate. However, as a HACK, we exploit that it can also do
                     // limited transmutes: it only works between types with the same layout, and
