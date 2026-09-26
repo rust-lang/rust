@@ -108,8 +108,11 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
             input.deferred_opaque_type_errors = compute_definition_site_hidden_types(
                 *def_id,
                 &input.infcx,
+                &input.body_owned,
                 &input.universal_region_relations,
-                &input.constraints,
+                &input.region_bound_pairs,
+                &input.known_type_outlives_obligations,
+                &mut input.constraints,
                 Rc::clone(&input.location_map),
                 &mut self.hidden_types,
                 &mut self.unconstrained_hidden_type_errors,
