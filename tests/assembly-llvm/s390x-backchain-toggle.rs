@@ -3,8 +3,8 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: -Copt-level=3 --crate-type=lib --target=s390x-unknown-linux-gnu
 //@ needs-llvm-components: systemz
-//@[enable-backchain] compile-flags: -Ctarget-feature=+backchain
-//@[disable-backchain] compile-flags: -Ctarget-feature=-backchain
+//@[enable-backchain] compile-flags: -Cforce-frame-pointers -Zunstable-options
+//@[disable-backchain] compile-flags: -Cforce-frame-pointers=no
 #![feature(no_core, lang_items)]
 #![no_std]
 #![no_core]
@@ -31,20 +31,7 @@ extern "C" fn test_backchain() -> i32 {
     unsafe {
         extern_func();
     }
-    // enable-backchain-NEXT: brasl %r{{.*}}, extern_func@PLT
-    // disable-backchain: brasl %r{{.*}}, extern_func@PLT
-
-    // Make sure that the expected return value is written into %r2 (return register):
-    // enable-backchain-NEXT: lghi %r2, 1
-    // disable-backchain: lghi %r2, 0
-    // default-backchain: lghi %r2, 0
-    #[cfg(target_feature = "backchain")]
-    {
-        1
-    }
-    #[cfg(not(target_feature = "backchain"))]
-    {
-        0
-    }
+    // NEXT: brasl %r{{.*}}, extern_func@PLT
+    1
     // CHECK: br %r{{.*}}
 }

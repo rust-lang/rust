@@ -222,7 +222,12 @@ pub(crate) fn frame_pointer(sess: &Session) -> FramePointer {
     if let InstrumentMcount::Mcount(_) = opts.unstable_opts.instrument_mcount {
         fp.ratchet(FramePointer::Always);
     }
-    fp.ratchet(opts.cg.force_frame_pointers);
+    // On s390x, `-Cforce-frame-pointers` + `-Zunstable-options` opts in to the `backchain` LLVM
+    // function attribute (set in `s390x_fn_attrs`) instead of the generic `frame-pointer`
+    // attribute. Without `-Zunstable-options`, `-Cforce-frame-pointers` behaves normally.
+    if !(sess.target.arch == Arch::S390x && sess.unstable_options()) {
+        fp.ratchet(opts.cg.force_frame_pointers);
+    }
     fp
 }
 
@@ -396,34 +401,50 @@ fn stackprotector_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll A
     Some(sspattr.create_attr(cx.llcx))
 }
 
-fn packed_stack_attr<'ll>(
+/// s390x specific function attributes
+/// - `-Cforce-frame-pointers` + `-Zunstable-options` emits "backchain" instead of normal fp
+/// - "backchain" + "packed_stack" enforces "softfloat"
+fn s390x_fn_attrs<'ll>(
     cx: &SimpleCx<'ll>,
     sess: &Session,
-    function_attributes: &Vec<TargetFeature>,
-) -> Option<&'ll Attribute> {
+    fn_target_features: &Vec<TargetFeature>,
+) -> Vec<&'ll Attribute> {
     if sess.target.arch != Arch::S390x {
-        return None;
-    }
-    if !sess.opts.unstable_opts.packed_stack {
-        return None;
+        return vec![];
     }
 
-    // The backchain and softfloat flags can be set via -Ctarget-features=...
-    // or via #[target_features(enable = ...)] so we have to check both possibilities
-    let have_backchain = sess.internal_target_features.contains(&sym::backchain)
-        || function_attributes.iter().any(|feature| feature.name == sym::backchain);
+    let mut attrs = Vec::new();
+
+    // `-Cforce-frame-pointers` + `-Zunstable-options` -> `backchain`
+    let force_backchain =
+        sess.opts.cg.force_frame_pointers != FramePointer::MayOmit && sess.unstable_options();
+    if force_backchain {
+        attrs.push(llvm::CreateAttrString(cx.llcx, "backchain"));
+    }
+
+    // only continue if we have packed_stack
+    if !sess.opts.unstable_opts.packed_stack {
+        return attrs;
+    }
+
+    // Backchain may be set via -Ctarget-feature=+backchain, #[target_feature(enable = "backchain")],
+    // -Cforce-frame-pointerr, so we have to check all possibilities
+    let have_backchain = force_backchain
+        || sess.internal_target_features.contains(&sym::backchain)
+        || fn_target_features.iter().any(|f| f.name == sym::backchain);
     let have_softfloat = sess.internal_target_features.contains(&sym::soft_float)
-        || function_attributes.iter().any(|feature| feature.name == sym::soft_float);
+        || fn_target_features.iter().any(|f| f.name == sym::soft_float);
 
     // If both, backchain and packedstack, are enabled LLVM cannot generate valid function entry points
     // with the default ABI. However if the softfloat flag is set LLVM will switch to the softfloat
     // ABI, where this works.
     if have_backchain && !have_softfloat {
         sess.dcx().emit_err(PackedStackBackchainNeedsSoftfloat);
-        return None;
+        return attrs;
     }
 
-    Some(llvm::CreateAttrString(cx.llcx, "packed-stack"))
+    attrs.push(llvm::CreateAttrString(cx.llcx, "packed-stack"));
+    attrs
 }
 
 pub(crate) fn target_cpu_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> &'ll Attribute {
@@ -650,9 +671,12 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     if let Some(align) = codegen_fn_attrs.alignment {
         llvm::set_alignment(llfn, align);
     }
-    if let Some(packed_stack) = packed_stack_attr(cx, sess, &codegen_fn_attrs.target_features) {
-        to_add.push(packed_stack);
+
+    // Apply and check s390x-specific attributes: backchain and packed-stack.
+    if sess.target.arch == Arch::S390x {
+        to_add.extend(s390x_fn_attrs(cx, sess, &codegen_fn_attrs.target_features));
     }
+
     to_add.extend(patchable_function_entry_attrs(
         cx,
         sess,
