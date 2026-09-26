@@ -7,6 +7,8 @@ LL |     struct Foo(NonExistent);
 error[E0425]: cannot find type `NonExistent` in this scope
   --> $DIR/issue-119493-type-error-ice.rs:5:16
    |
+LL |     #[derive(Copy, Clone)]
+   |                    ----- in this derive macro
 LL |     struct Foo(NonExistent);
    |                ^^^^^^^^^^^ not found in this scope
    |

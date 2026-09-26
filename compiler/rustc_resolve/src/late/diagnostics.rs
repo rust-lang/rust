@@ -706,6 +706,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         self.suggest_at_operator_in_slice_pat_with_range(&mut err, path);
         self.suggest_range_struct_destructuring(&mut err, path, source);
         self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);
+        self.detect_resolution_error_in_derive(&mut err, base_error.span);
 
         if let Some((span, label)) = base_error.span_label {
             err.span_label(span, label);
@@ -1885,6 +1886,23 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     vec![(trait_ref.path.span, self_ty_str), (self_ty.span, trait_ref_str)],
                     Applicability::MaybeIncorrect,
                 );
+        }
+    }
+
+    /// If the name resolution error occurs in an ident that has no span context, but the enclosing
+    /// item is within a derive macro, silence the error, as the error can either be because of an
+    /// invalid derive macro *or* a non-existing item that will already have been reported through
+    /// the annotated item.
+    fn detect_resolution_error_in_derive(&self, err: &mut Diag<'_>, span: Span) {
+        if let Some(item) = self.diag_metadata.current_item
+            && !item.span.eq_ctxt(span)
+            && item.span.in_derive_expansion()
+        {
+            // `item` comes from a `#[derive()]`, but the error `span` doesn't, which means that the
+            // derive is referencing a name coming from the annotated item. If the item exists, then
+            // the derive macro itself is buggy. If the item exists, then an error will have already
+            // been emitted while evaluating the annotated item itself.
+            err.span_label(item.span, "in this derive macro");
         }
     }
 

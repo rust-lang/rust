@@ -18,6 +18,8 @@ LL | struct Foo(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
 error[E0425]: cannot find type `N` in this scope
   --> $DIR/issue-50480.rs:2:12
    |
+LL | #[derive(Clone, Copy)]
+   |          ----- in this derive macro
 LL | struct Foo(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |            ^ not found in this scope
    |
@@ -29,6 +31,8 @@ LL | struct Foo<N>(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
 error[E0425]: cannot find type `NotDefined` in this scope
   --> $DIR/issue-50480.rs:2:15
    |
+LL | #[derive(Clone, Copy)]
+   |          ----- in this derive macro
 LL | struct Foo(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |               ^^^^^^^^^^ not found in this scope
    |

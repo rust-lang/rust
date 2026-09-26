@@ -1,6 +1,9 @@
 error[E0425]: cannot find type `T` in this scope
   --> $DIR/derive-macro-unsupported-type-params.rs:11:13
    |
+LL | #[derive(A)]
+   |          - in this derive macro
+...
 LL |     Variant(T),
    |             ^ not found in this scope
 
@@ -26,6 +29,9 @@ LL +                     let _: A = val;
 error[E0425]: cannot find type `T` in this scope
   --> $DIR/derive-macro-unsupported-type-params.rs:25:13
    |
+LL | #[derive(C)]
+   |          - in this derive macro
+LL | enum C<T> {
 LL |     Variant(T),
    |             ^ not found in this scope
    |
@@ -48,6 +54,9 @@ LL |         fn foo<T>(val: $name<$arg>) {
 error[E0425]: cannot find value `T` in this scope
   --> $DIR/derive-macro-unsupported-type-params.rs:25:13
    |
+LL | #[derive(C)]
+   |          - in this derive macro
+LL | enum C<T> {
 LL |     Variant(T),
    |             ^ not found in this scope
    |

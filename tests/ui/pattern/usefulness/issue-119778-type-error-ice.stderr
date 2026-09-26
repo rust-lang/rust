@@ -12,6 +12,8 @@ LL |     struct Foo<const S: /* Type */>([u8; S]);
 error[E0425]: cannot find value `S` in this scope
   --> $DIR/issue-119778-type-error-ice.rs:5:21
    |
+LL |     #[derive(Copy, Clone)]
+   |                    ----- in this derive macro
 LL |     struct Foo([u8; S]);
    |                     ^ not found in this scope
    |
