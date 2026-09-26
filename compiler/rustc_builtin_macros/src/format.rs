@@ -630,6 +630,7 @@ fn make_format_args(
             foreign_fmt_str,
             uncooked_fmt_str.1.as_str(),
             fmt_span,
+            is_source_literal,
         );
     }
 
@@ -736,6 +737,7 @@ fn report_missing_placeholders(
     fmt_str: &str,
     uncooked_fmt_str: &str,
     fmt_span: Span,
+    is_source_literal: bool,
 ) {
     let mut diag = if let &[(span, named)] = &unused[..] {
         ecx.dcx().create_err(diagnostics::FormatUnusedArg { span, named })
@@ -805,8 +807,8 @@ fn report_missing_placeholders(
                         _ => continue,
                     };
 
-                    let pos = sub.position();
-                    if !explained.insert(sub.to_string()) {
+                    let sub_str = sub.to_string();
+                    if !explained.insert(sub_str.clone()) {
                         continue;
                     }
 
@@ -815,14 +817,29 @@ fn report_missing_placeholders(
                         show_doc_note = true;
                     }
 
-                    let sp = fmt_span.from_inner(pos);
+                    if is_source_literal {
+                        let sp = fmt_span.from_inner(sub.position());
 
-                    if success {
-                        suggestions.push((sp, trn));
+                        if success {
+                            suggestions.push((sp, trn));
+                        } else {
+                            diag.span_note(
+                                sp,
+                                format!("format specifiers use curly braces, and {}", trn),
+                            );
+                        }
+                    } else if success {
+                        // The offsets of `sub` are relative to the expanded format string, so
+                        // they cannot be mapped back to the source. Explain the translation in
+                        // text instead of suggesting a replacement at a bogus location.
+                        diag.note(format!(
+                            "format specifiers use curly braces: `{sub_str}` should be written as \
+                            `{trn}`"
+                        ));
                     } else {
                         diag.span_note(
-                            sp,
-                            format!("format specifiers use curly braces, and {}", trn),
+                            fmt_span,
+                            format!("format specifiers use curly braces, and {trn}"),
                         );
                     }
                 }
