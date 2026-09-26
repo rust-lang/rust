@@ -285,12 +285,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     #[inline(always)]
     pub fn frame(&self) -> &Frame<'tcx, M::Provenance, M::FrameExtra> {
-        self.stack().last().expect("no call frames exist")
+        self.stack().last().expect("a call frame should exist")
     }
 
     #[inline(always)]
     pub fn frame_mut(&mut self) -> &mut Frame<'tcx, M::Provenance, M::FrameExtra> {
-        self.stack_mut().last_mut().expect("no call frames exist")
+        self.stack_mut().last_mut().expect("a call frame should exist")
     }
 
     #[inline(always)]
