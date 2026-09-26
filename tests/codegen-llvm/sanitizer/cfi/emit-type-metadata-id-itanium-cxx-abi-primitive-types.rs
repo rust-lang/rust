@@ -3,6 +3,13 @@
 //
 //@ add-minicore
 //@ needs-sanitizer-cfi
+//@ revisions: aarch64 x64 darwin
+//@ [aarch64] needs-llvm-components: aarch64
+//@ [aarch64] compile-flags: --target aarch64-unknown-linux-gnu
+//@ [x64] needs-llvm-components: x86
+//@ [x64] compile-flags: --target x86_64-unknown-linux-gnu
+//@ [darwin] needs-llvm-components: aarch64
+//@ [darwin] compile-flags: --target aarch64-apple-darwin
 //@ compile-flags: -Cno-prepopulate-passes -Copt-level=0 -C link-dead-code
 //@ compile-flags: -Clto -Zsanitizer=cfi -Ctarget-feature=-crt-static -C unsafe-allow-abi-mismatch=sanitizer
 //@ minicore-compile-flags: -Ccodegen-units=1
@@ -229,6 +236,12 @@ pub fn foo66(_: f128, _: f128, _: f128) {}
 // CHECK: ![[TYPE61]] = !{i64 0, !"_ZTSFvDhE"}
 // CHECK: ![[TYPE62]] = !{i64 0, !"_ZTSFvDhDhE"}
 // CHECK: ![[TYPE63]] = !{i64 0, !"_ZTSFvDhDhDhE"}
-// CHECK: ![[TYPE64]] = !{i64 0, !"_ZTSFvgE"}
-// CHECK: ![[TYPE65]] = !{i64 0, !"_ZTSFvggE"}
-// CHECK: ![[TYPE66]] = !{i64 0, !"_ZTSFvgggE"}
+// aarch64: ![[TYPE64]] = !{i64 0, !"_ZTSFveE"}
+// x64: ![[TYPE64]] = !{i64 0, !"_ZTSFvgE"}
+// darwin: ![[TYPE64]] = !{i64 0, !"_ZTSFvgE"}
+// aarch64: ![[TYPE65]] = !{i64 0, !"_ZTSFveeE"}
+// x64: ![[TYPE65]] = !{i64 0, !"_ZTSFvggE"}
+// darwin: ![[TYPE65]] = !{i64 0, !"_ZTSFvggE"}
+// aarch64: ![[TYPE66]] = !{i64 0, !"_ZTSFveeeE"}
+// x64: ![[TYPE66]] = !{i64 0, !"_ZTSFvgggE"}
+// darwin: ![[TYPE66]] = !{i64 0, !"_ZTSFvgggE"}
