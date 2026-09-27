@@ -1027,7 +1027,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .segments
                         .last()
                         .and_then(|seg| seg.args)
-                        .map_or(false, |args| !args.constraints.is_empty())
+                        .is_some_and(|args| !args.constraints.is_empty())
                 {
                     // Use the path to get the trait name string
                     let trait_name = trait_ref

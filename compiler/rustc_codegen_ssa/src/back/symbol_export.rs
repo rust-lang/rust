@@ -354,9 +354,8 @@ fn exported_generic_symbols_provider_local<'tcx>(
                     .types()
                     .chain(did.into_iter().map(move |did| tcx.type_of(did).skip_binder()))
                     .all(move |arg| {
-                        arg.walk().all(|ty| {
-                            ty.as_type().map_or(true, |ty| !is_local_to_current_crate(ty))
-                        })
+                        arg.walk()
+                            .all(|ty| ty.as_type().is_none_or(|ty| !is_local_to_current_crate(ty)))
                     })
             };
 
