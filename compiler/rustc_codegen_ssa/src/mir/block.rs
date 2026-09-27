@@ -1859,7 +1859,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
             }
-            FieldsShape::Primitive | FieldsShape::Union(_) => { /* nothing to visit */ }
+            FieldsShape::Opaque | FieldsShape::Primitive | FieldsShape::Union(_) => {
+                /* nothing to visit */
+            }
         }
 
         // If this is not a multi-variant enum, we're done.

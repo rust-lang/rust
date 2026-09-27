@@ -197,6 +197,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::Tuple(_)
             | ty::Alias(_, _)
             | ty::Param(_)
+            | ty::Erased(..)
             | ty::Bound(_, _)
             | ty::Placeholder(_)
             | ty::Infer(_)
