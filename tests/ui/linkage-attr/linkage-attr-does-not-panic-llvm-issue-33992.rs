@@ -7,9 +7,6 @@
 #[linkage = "external"]
 pub static TEST2: bool = true;
 
-#[linkage = "internal"]
-pub static TEST3: bool = true;
-
 #[cfg(not(target_env = "msvc"))]
 #[linkage = "linkonce"]
 pub static TEST4: bool = true;

@@ -1176,7 +1176,6 @@ symbols! {
         integer_max,
         integer_min,
         integral,
-        internal,
         internal_eq_trait_method_impls,
         internal_features,
         interrupt,

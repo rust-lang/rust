@@ -22,7 +22,3 @@ fn external_linkage() {}
 
 #[inline]
 fn normal() {}
-
-#[inline]
-#[linkage = "internal"] // not exported
-fn internal_linkage() {}
