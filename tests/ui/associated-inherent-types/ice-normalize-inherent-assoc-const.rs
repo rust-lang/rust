@@ -2,7 +2,7 @@
 
 #![feature(trivial_bounds)]
 #![feature(generic_const_exprs)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![feature(inherent_associated_types)]
 
 struct Foo;
