@@ -1,11 +1,5 @@
 //@ compile-flags: -Znext-solver
 //@ check-fail
-//@ failure-status: 101
-//@ known-bug: #130516
-//@ rustc-env:RUST_BACKTRACE=0
-//@ normalize-stderr: "note: .*\n\n" -> ""
-//@ normalize-stderr: "(compiler/[a-z_/]+\.rs):\d+:\d+" -> "$1:LL:CC"
-//@ normalize-stderr: "query stack during panic:\n(.*\n)*?(end of query stack|\.\.\. and \d+ other queries.*)\n" -> ""
 
 // A pointer to an unsafe binder should be thin if a pointer to the inner type
 // would be thin; and wide if a pointer to the inner type would be wide.
@@ -35,8 +29,8 @@ fn thin() {
 }
 
 fn wide() {
-    is_thin::<unsafe<> ManuallyDrop<[u8]>>();
-    is_thin::<unsafe<'a> ManuallyDrop<dyn Debug + 'a>>();
+    is_thin::<unsafe<> ManuallyDrop<[u8]>>(); //~ ERROR the trait bound
+    is_thin::<unsafe<'a> ManuallyDrop<dyn Debug + 'a>>(); //~ ERROR the trait bound
 }
 
 fn main() {}

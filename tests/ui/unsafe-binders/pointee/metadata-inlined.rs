@@ -1,5 +1,5 @@
 //@ compile-flags: -Znext-solver -O
-//@ check-fail
+//@ build-fail
 //@ failure-status: 101
 //@ known-bug: #130516
 //@ rustc-env:RUST_BACKTRACE=0

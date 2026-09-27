@@ -1,5 +1,5 @@
 
-thread 'rustc' ($TID) panicked at compiler/rustc_next_trait_solver/src/solve/normalizes_to.rs:LL:CC:
-not implemented
+thread 'rustc' ($TID) panicked at compiler/rustc_next_trait_solver/src/placeholder.rs:LL:CC:
+Bound vars '^0 outside of `self.universe_indices`: []
 error: the compiler unexpectedly panicked. This is a bug
 
