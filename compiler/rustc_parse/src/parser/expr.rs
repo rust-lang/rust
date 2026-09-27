@@ -1889,8 +1889,19 @@ impl<'a> Parser<'a> {
 
         let expr = self.parse_expr()?;
         let ty = if self.eat(exp!(Comma)) { Some(self.parse_ty()?) } else { None };
-        // FIXME: Odd not to include the closing paren (contrary to the leading one etc.) but
-        //        it actually "improves" diagnostics slightly by not pointing into the wrapper macros.
+        if let Some(ty) = &ty {
+            // FIXME(unsafe_binders): we haven't really implemented borrowck for
+            // the ascription on unsafe binders. It's not clear that this is
+            // strictly necessary, so for now just error if anybody tries to use
+            // it; we can either remove it entirely later, or implement it properly.
+            self.dcx().emit_err(crate::diagnostics::UnsafeBinderAscription {
+                span: ty.span,
+                macro_name: match kind {
+                    UnsafeBinderCastKind::Wrap => "wrap_binder",
+                    UnsafeBinderCastKind::Unwrap => "unwrap_binder",
+                },
+            });
+        }
         let span = lo.to(self.token.span);
         self.expect(exp!(CloseParen))?;
         self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));

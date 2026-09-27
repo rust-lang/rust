@@ -1,3 +1,131 @@
+error: the type ascription argument of `wrap_binder!` is not supported yet
+  --> $DIR/macro-type-argument.rs:18:40
+   |
+LL |     let b = unsafe { wrap_binder!(&42; unsafe<'a> &'a i32) };
+   |                                        ^^^^^^^^^^^^^^^^^^
+   |
+   = help: annotate the type of the unsafe binder elsewhere, for example on a `let` binding
+
+error: the type ascription argument of `unwrap_binder!` is not supported yet
+  --> $DIR/macro-type-argument.rs:22:45
+   |
+LL |     let f = |b| unsafe { *unwrap_binder!(b; unsafe<'a> &'a i32) };
+   |                                             ^^^^^^^^^^^^^^^^^^
+   |
+   = help: annotate the type of the unsafe binder elsewhere, for example on a `let` binding
+
+error: the type ascription argument of `wrap_binder!` is not supported yet
+  --> $DIR/macro-type-argument.rs:30:60
+   |
+LL |     let _x: unsafe<'a> &'a i32 = unsafe { wrap_binder!(&0; unsafe<'a> &'a u32) };
+   |                                                            ^^^^^^^^^^^^^^^^^^
+   |
+   = help: annotate the type of the unsafe binder elsewhere, for example on a `let` binding
+
+error: the type ascription argument of `wrap_binder!` is not supported yet
+  --> $DIR/macro-type-argument.rs:34:59
+   |
+LL |     let _x: unsafe<'a> &'a u8 = unsafe { wrap_binder!(&0; unsafe<'a, 'b> &'a &'b u8) };
+   |                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: annotate the type of the unsafe binder elsewhere, for example on a `let` binding
+
+error: the type ascription argument of `wrap_binder!` is not supported yet
+  --> $DIR/macro-type-argument.rs:38:43
+   |
+LL |     let _x = unsafe { wrap_binder!(&0i64; unsafe<'a> &'a u32) };
+   |                                           ^^^^^^^^^^^^^^^^^^
+   |
+   = help: annotate the type of the unsafe binder elsewhere, for example on a `let` binding
+
+error: the type ascription argument of `unwrap_binder!` is not supported yet
+  --> $DIR/macro-type-argument.rs:42:41
+   |
+LL |     let _x = unsafe { unwrap_binder!(b; unsafe<'a> &'a u32) };
+   |                                         ^^^^^^^^^^^^^^^^^^
+   |
+   = help: annotate the type of the unsafe binder elsewhere, for example on a `let` binding
+
+error: the type ascription argument of `wrap_binder!` is not supported yet
+  --> $DIR/macro-type-argument.rs:48:39
+   |
+LL |     let _x = unsafe { wrap_binder!(0; i32) };
+   |                                       ^^^
+   |
+   = help: annotate the type of the unsafe binder elsewhere, for example on a `let` binding
+
+error: the type ascription argument of `unwrap_binder!` is not supported yet
+  --> $DIR/macro-type-argument.rs:52:41
+   |
+LL |     let _x = unsafe { unwrap_binder!(0; i32) };
+   |                                         ^^^
+   |
+   = help: annotate the type of the unsafe binder elsewhere, for example on a `let` binding
+
+error: the type ascription argument of `unwrap_binder!` is not supported yet
+  --> $DIR/macro-type-argument.rs:58:41
+   |
+LL |     let _x = unsafe { unwrap_binder!(b; unsafe<> &'static u8) };
+   |                                         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: annotate the type of the unsafe binder elsewhere, for example on a `let` binding
+
+error: the type ascription argument of `unwrap_binder!` is not supported yet
+  --> $DIR/macro-type-argument.rs:59:41
+   |
+LL |     let _x = unsafe { unwrap_binder!(c; unsafe<'a> (&'a u8, &'a u8)) };
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: annotate the type of the unsafe binder elsewhere, for example on a `let` binding
+
+error: the type ascription argument of `wrap_binder!` is not supported yet
+  --> $DIR/macro-type-argument.rs:63:39
+   |
+LL |     let _x = unsafe { wrap_binder!(r; unsafe<> &'static u8) };
+   |                                       ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: annotate the type of the unsafe binder elsewhere, for example on a `let` binding
+
+error: the type ascription argument of `wrap_binder!` is not supported yet
+  --> $DIR/macro-type-argument.rs:66:45
+   |
+LL |     let _x = unsafe { wrap_binder!((&0, r); unsafe<'a> (&'a u8, &'static u8)) };
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: annotate the type of the unsafe binder elsewhere, for example on a `let` binding
+
+error: the type ascription argument of `wrap_binder!` is not supported yet
+  --> $DIR/macro-type-argument.rs:70:30
+   |
+LL |     unsafe { wrap_binder!(r; unsafe<> &'y u8) }
+   |                              ^^^^^^^^^^^^^^^
+   |
+   = help: annotate the type of the unsafe binder elsewhere, for example on a `let` binding
+
+error: the type ascription argument of `wrap_binder!` is not supported yet
+  --> $DIR/macro-type-argument.rs:74:34
+   |
+LL |         unsafe { wrap_binder!(c; unsafe<'a> &'a Cell<&'a u8>) };
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: annotate the type of the unsafe binder elsewhere, for example on a `let` binding
+
+error: the type ascription argument of `unwrap_binder!` is not supported yet
+  --> $DIR/macro-type-argument.rs:78:41
+   |
+LL |     let _x = unsafe { unwrap_binder!(b; unsafe<'a> (&'a u8, &'static u8)) };
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: annotate the type of the unsafe binder elsewhere, for example on a `let` binding
+
+error: the type ascription argument of `unwrap_binder!` is not supported yet
+  --> $DIR/macro-type-argument.rs:81:53
+   |
+LL |     let _x = unsafe { &raw const unwrap_binder!(*p; unsafe<'a> (&'a u8, &'static u8)) };
+   |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: annotate the type of the unsafe binder elsewhere, for example on a `let` binding
+
 error[E0308]: mismatched types
   --> $DIR/macro-type-argument.rs:30:56
    |
@@ -50,6 +178,6 @@ LL |     let _x = unsafe { unwrap_binder!(0; i32) };
    |
    = note: only an unsafe binder type can be unwrapped
 
-error: aborting due to 6 previous errors
+error: aborting due to 22 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
