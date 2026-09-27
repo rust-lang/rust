@@ -1,14 +1,7 @@
 //@ run-pass
 //@ ignore-apple
-//@ ignore-wasm32 common linkage not implemented right now
 
 #![feature(linkage)]
-
-#[linkage = "external"]
-pub static TEST2: bool = true;
-
-#[linkage = "internal"]
-pub static TEST3: bool = true;
 
 #[cfg(not(target_env = "msvc"))]
 #[linkage = "linkonce"]

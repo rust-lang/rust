@@ -660,10 +660,7 @@ impl SingleAttributeParser for LinkageParser {
     ]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: [
         "available_externally",
-        "common",
         "extern_weak",
-        "external",
-        "internal",
         "linkonce",
         "linkonce_odr",
         "weak",
@@ -686,10 +683,7 @@ impl SingleAttributeParser for LinkageParser {
         // and don't have to be, LLVM treats them as no-ops.
         let linkage = match value {
             sym::available_externally => Linkage::AvailableExternally,
-            sym::common => Linkage::Common,
             sym::extern_weak => Linkage::ExternalWeak,
-            sym::external => Linkage::External,
-            sym::internal => Linkage::Internal,
             sym::linkonce => Linkage::LinkOnceAny,
             sym::linkonce_odr => Linkage::LinkOnceODR,
             sym::weak => Linkage::WeakAny,
@@ -700,10 +694,7 @@ impl SingleAttributeParser for LinkageParser {
                     name_value.value_span,
                     &[
                         sym::available_externally,
-                        sym::common,
                         sym::extern_weak,
-                        sym::external,
-                        sym::internal,
                         sym::linkonce,
                         sym::linkonce_odr,
                         sym::weak,
