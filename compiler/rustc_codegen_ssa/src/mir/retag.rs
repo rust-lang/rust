@@ -100,7 +100,7 @@ impl<'a, 'tcx, V> RetagPlan<V> {
         is_fn_entry: bool,
     ) -> Option<RetagPlan<Bx::Value>> {
         let field_plans = match &layout.fields {
-            FieldsShape::Union(_) | FieldsShape::Primitive => None,
+            FieldsShape::Union(_) | FieldsShape::Primitive | FieldsShape::Opaque => None,
             FieldsShape::Arbitrary { .. } => {
                 let mut field_plans = FxIndexMap::default();
                 for ix in layout.fields.index_by_increasing_offset() {
@@ -121,6 +121,7 @@ impl<'a, 'tcx, V> RetagPlan<V> {
 
         let mut variant_plans = FxIndexMap::default();
         match &layout.variants {
+            Variants::Opaque => {}
             Variants::Single { .. } | Variants::Empty => {}
             Variants::Multiple { variants, .. } => {
                 for ix in variants.indices() {

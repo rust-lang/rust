@@ -281,6 +281,9 @@ impl Layout {
 /// Describes the number and position of fields within a type's layout.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum FieldsShape {
+    /// Opaque layout.
+    Opaque,
+
     /// Scalar primitives and `!`, which never have fields.
     Primitive,
 
@@ -309,7 +312,7 @@ pub enum FieldsShape {
 impl FieldsShape {
     pub fn fields_by_offset_order(&self) -> Vec<FieldIdx> {
         match self {
-            FieldsShape::Primitive => vec![],
+            FieldsShape::Opaque | FieldsShape::Primitive => vec![],
             FieldsShape::Union(_) | FieldsShape::Array { .. } => (0..self.count()).collect(),
             FieldsShape::Arbitrary { offsets, .. } => {
                 let mut indices = (0..offsets.len()).collect::<Vec<_>>();
@@ -321,7 +324,7 @@ impl FieldsShape {
 
     pub fn count(&self) -> usize {
         match self {
-            FieldsShape::Primitive => 0,
+            FieldsShape::Opaque | FieldsShape::Primitive => 0,
             FieldsShape::Union(count) => count.get(),
             FieldsShape::Array { count, .. } => *count as usize,
             FieldsShape::Arbitrary { offsets, .. } => offsets.len(),
@@ -331,6 +334,9 @@ impl FieldsShape {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum VariantsShape {
+    /// Opaque layout.
+    Opaque,
+
     /// A type with no valid variants. Must be uninhabited.
     Empty,
 

@@ -405,6 +405,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             | ty::Tuple(_)
             | ty::Alias(_, _)
             | ty::Bound(_, _)
+            | ty::Erased(..)
             | ty::Error(_) => {
                 return t.super_fold_with(self);
             }

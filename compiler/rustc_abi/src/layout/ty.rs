@@ -115,6 +115,7 @@ pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug + std::fmt::Display {
         cx: &C,
         offset: Size,
     ) -> Option<PointeeInfo>;
+    fn is_erased_ty(this: TyAndLayout<'a, Self>) -> bool;
     fn is_adt(this: TyAndLayout<'a, Self>) -> bool;
     fn is_enum(this: TyAndLayout<'a, Self>) -> bool;
     fn is_never(this: TyAndLayout<'a, Self>) -> bool;
@@ -377,9 +378,9 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     {
         match self.variants {
             Variants::Multiple { .. } => true,
-            Variants::Empty => false,
+            Variants::Opaque | Variants::Empty => false,
             Variants::Single { .. } => match &self.fields {
-                FieldsShape::Primitive | FieldsShape::Union(_) => false,
+                FieldsShape::Opaque | FieldsShape::Primitive | FieldsShape::Union(_) => false,
                 FieldsShape::Array { count, .. } => {
                     *count > 0 && self.field(cx, 0).has_variant_dependent_padding(cx)
                 }
@@ -474,7 +475,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 
         // Visit the fields of this value. For enum values the fields include the discriminant.
         match &self.fields {
-            FieldsShape::Primitive => {
+            FieldsShape::Opaque | FieldsShape::Primitive => {
                 out.add_range(base_offset, self.size);
             }
             &FieldsShape::Union(field_count) => {
@@ -507,7 +508,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 
         // Visit the fields of each variant.
         match &self.variants {
-            Variants::Empty | Variants::Single { index: _ } => { /* done */ }
+            Variants::Opaque | Variants::Empty | Variants::Single { index: _ } => { /* done */ }
             Variants::Multiple { variants, .. } => {
                 for variant in variants.indices() {
                     let variant = self.for_variant(cx, variant);

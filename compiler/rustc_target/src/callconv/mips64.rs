@@ -180,6 +180,9 @@ where
         }
     } else {
         match arg.layout.fields {
+            FieldsShape::Opaque => {
+                arg.make_indirect();
+            }
             FieldsShape::Primitive => unreachable!(),
             FieldsShape::Array { .. } => {
                 // Arrays are passed indirectly

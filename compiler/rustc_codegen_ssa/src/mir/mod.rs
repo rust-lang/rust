@@ -214,6 +214,25 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // got here (`deduce_param_attrs`). That means we can *not* apply arbitrary further MIR
     // transforms as that may invalidate those deduced facts!
 
+    // TODO: this is a hacky temporary thing, remove or make proper
+    // DEBUG: dump the fully-instantiated (monomorphized) MIR going into codegen.
+    // Gate: set DUMP_MONO_MIR to a substring filter (empty string = dump everything).
+    if let Some(filter) = std::env::var_os("DUMP_MONO_MIR") {
+        ty::print::with_no_trimmed_paths!({
+            let name = instance.to_string();
+            if name.contains(&*filter.to_string_lossy()) {
+                let mono = instance.instantiate_mir_and_normalize_erasing_regions(
+                    tcx,
+                    ty::TypingEnv::fully_monomorphized(),
+                    ty::EarlyBinder::bind(tcx, (*mir).clone()),
+                );
+                let mut buf = Vec::new();
+                let _ = mir::pretty::MirWriter::new(tcx).write_mir_fn(&mono, &mut buf);
+                eprintln!("=== mono MIR for {name} ===\n{}", String::from_utf8_lossy(&buf));
+            }
+        });
+    }
+
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
 
