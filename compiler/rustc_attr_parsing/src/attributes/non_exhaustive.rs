@@ -27,10 +27,9 @@ impl NoArgsAttributeParser for NonExhaustiveParser {
         }
 
         match cx.ast_target {
-            rustc_attr_ir::target::AstTarget::Item(ast_item) => {
-                let ItemKind::Struct(_, _, data) = &ast_item.kind else {
-                    panic!("expected struct AST target item for Target::Struct");
-                };
+            rustc_attr_ir::target::AstTarget::Item(ast_item)
+                if let ItemKind::Struct(_, _, data) = &ast_item =>
+            {
                 if let VariantData::Struct { fields, .. } = data
                     && fields.iter().any(|f| f.default_value().is_some())
                 {
