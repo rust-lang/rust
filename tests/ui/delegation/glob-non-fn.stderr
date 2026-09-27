@@ -19,9 +19,11 @@ LL |     reuse Trait::* { &self.0 }
 error[E0201]: duplicate definitions with name `method`:
   --> $DIR/glob-non-fn.rs:29:5
    |
+LL | trait Trait {
 LL |     fn method(&self);
    |     ----------------- item in trait
 ...
+LL | impl Trait for Bad {
 LL |     reuse Trait::* { &self.0 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |     |

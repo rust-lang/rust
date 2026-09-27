@@ -19,6 +19,7 @@ LL |     reuse impl Trait for S { &self.0 }
 error[E0201]: duplicate definitions with name `method`:
   --> $DIR/impl-reuse-non-reuse-items.rs:22:5
    |
+LL |     trait Trait {
 LL |         fn method(&self);
    |         ----------------- item in trait
 ...
