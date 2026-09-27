@@ -43,7 +43,7 @@
 //@ lldb-check:[...] str_in_tuple = ("Hello", "World")
 
 //@ lldb-command:v str_in_rc
-//@ lldb-check:[...] str_in_rc = strong=1, weak=0 { value = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } }
+//@ lldb-check:[...] str_in_rc = strong=1, weak=1 { value = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } }
 
 //@ lldb-command:v box_str
 //@ lldb-check:[...] box_str = "World" { [0] = 'W' [1] = 'o' [2] = 'r' [3] = 'l' [4] = 'd' }
@@ -56,7 +56,7 @@
 // lldb-command:v rc_str
 
 // ignore-tidy-linelength
-// lldb-check:(alloc::rc::Rc<unsigned char[], alloc::alloc::Global>) rc_str = strong=1, weak=0 { value = "World" }
+// lldb-check:(alloc::rc::Rc<unsigned char[], alloc::alloc::Global>) rc_str = strong=1, weak=1 { value = "World" }
 
 #![allow(unused_variables)]
 
