@@ -674,6 +674,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         });
                     }
                 }
+                if kind == MacroKind::Attr
+                    && let [tool, _second, ..] = path.segments.as_slice()
+                    && self.registered_attr_tool_decls.contains_key(&IdentKey::new(tool.ident))
+                {
+                    self.dcx().emit_err(diagnostics::ToolAttrAmbiguity {
+                        path_span: path.span,
+                        attr_path: pprust::path_to_string(path),
+                        tool: tool.ident.name,
+                    });
+                }
             }
             Res::NonMacroAttr(..) | Res::Err => {}
             _ => panic!("expected `DefKind::Macro` or `Res::NonMacroAttr`"),
