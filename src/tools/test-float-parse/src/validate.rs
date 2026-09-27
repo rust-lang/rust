@@ -11,9 +11,6 @@ use num::{BigInt, BigRational, FromPrimitive, Signed, ToPrimitive};
 
 use crate::{CheckFailure, Float, Int};
 
-/// Powers of two that we store for constants. Account for binary128 which has a 15-bit exponent.
-const POWERS_OF_TWO_RANGE: RangeInclusive<i32> = (-(2 << 15))..=(2 << 15);
-
 /// Powers of ten that we cache. Account for binary128, which can fit +4932/-4931
 const POWERS_OF_TEN_RANGE: RangeInclusive<i32> = -5_000..=5_000;
 
@@ -21,6 +18,34 @@ const POWERS_OF_TEN_RANGE: RangeInclusive<i32> = -5_000..=5_000;
 static POWERS_OF_TEN: LazyLock<BTreeMap<i32, BigRational>> = LazyLock::new(|| {
     POWERS_OF_TEN_RANGE.map(|exp| (exp, BigRational::from_u32(10).unwrap().pow(exp))).collect()
 });
+
+/// Powers of two that we cache, shared by all float types. `decode` produces exponents in
+/// `EXP_MIN_SUBNORM..=EXP_MAX - MAN_BITS`, and `half_ulp` also needs the power below each one.
+/// `f64` is the widest type tested, so its range covers the others.
+const POWERS_OF_TWO_RANGE: RangeInclusive<i32> =
+    <f64 as Float>::EXP_MIN_SUBNORM - 1..=<f64 as Float>::EXP_MAX - <f64 as Float>::MAN_BITS as i32;
+
+/// Cached powers of 2, starting at `2^POWERS_OF_TWO_RANGE.start()`.
+static POWERS_OF_TWO: LazyLock<Vec<BigRational>> = LazyLock::new(|| {
+    POWERS_OF_TWO_RANGE.map(|exp| BigRational::from_u32(2).unwrap().pow(exp)).collect()
+});
+
+/// `2^exp`, if `exp` is in the cached range.
+fn power_of_two(exp: i32) -> Option<&'static BigRational> {
+    let idx = usize::try_from(exp - POWERS_OF_TWO_RANGE.start()).ok()?;
+    POWERS_OF_TWO.get(idx)
+}
+
+/// Half of the power of two at `exp`. ULP = "unit in last position".
+///
+/// This is half the precision available at that exponent. In other words, `0.5 * 2^n` =
+/// `2^(n-1)`, which is half the distance between `m * 2^n` and `(m + 1) * 2^n`, m ∈ ℤ.
+///
+/// So, this is the maximum error from a real number to its floating point representation,
+/// assuming the float type can represent the exponent.
+fn half_ulp(exp: i32) -> Option<&'static BigRational> {
+    power_of_two(exp - 1)
+}
 
 /// Rational property-related constants for a specific float type.
 #[allow(dead_code)]
@@ -36,17 +61,6 @@ pub struct Constants {
     inf_cutoff: BigRational,
     /// Opposite of `inf_cutoff`
     neg_inf_cutoff: BigRational,
-    /// The powers of two for all relevant integers.
-    powers_of_two: BTreeMap<i32, BigRational>,
-    /// Half of each power of two. ULP = "unit in last position".
-    ///
-    /// This is a mapping from integers to half the precision available at that exponent. In other
-    /// words, `0.5 * 2^n` = `2^(n-1)`, which is half the distance between `m * 2^n` and
-    /// `(m + 1) * 2^n`, m ∈ ℤ.
-    ///
-    /// So, this is the maximum error from a real number to its floating point representation,
-    /// assuming the float type can represent the exponent.
-    half_ulp: BTreeMap<i32, BigRational>,
     /// Handy to have around so we don't need to reallocate for it
     two: BigInt,
 }
@@ -70,21 +84,7 @@ impl Constants {
         let inf_cutoff = &max + two_int.pow(F::EXP_BIAS - F::MAN_BITS - 1);
         let neg_inf_cutoff = -&inf_cutoff;
 
-        let powers_of_two: BTreeMap<i32, _> =
-            (POWERS_OF_TWO_RANGE).map(|n| (n, two.pow(n))).collect();
-        let mut half_ulp = powers_of_two.clone();
-        half_ulp.iter_mut().for_each(|(_k, v)| *v = &*v / two_int);
-
-        Self {
-            min_subnormal,
-            max,
-            zero_cutoff,
-            inf_cutoff,
-            neg_inf_cutoff,
-            powers_of_two,
-            half_ulp,
-            two: two_int.clone(),
-        }
+        Self { min_subnormal, max, zero_cutoff, inf_cutoff, neg_inf_cutoff, two: two_int.clone() }
     }
 }
 
@@ -215,9 +215,7 @@ impl<F: Float> FloatRes<F> {
         let consts = F::constants();
 
         // `2^exp`. Use cached powers of two to be faster.
-        let two_exp = consts
-            .powers_of_two
-            .get(&exp)
+        let two_exp = power_of_two(exp)
             .unwrap_or_else(|| panic!("missing exponent {exp} for {}", type_name::<F>()));
 
         // Rational from the parsed value, `sig * 2^exp`
@@ -226,7 +224,7 @@ impl<F: Float> FloatRes<F> {
 
         // Determine acceptable error at this exponent, which is halfway between this value
         // (`sig * 2^exp`) and the next value up (`(sig+1) * 2^exp`).
-        let half_ulp = consts.half_ulp.get(&exp).unwrap();
+        let half_ulp = half_ulp(exp).unwrap();
 
         // If we are within one error value (but not equal) then we rounded correctly.
         if &error < half_ulp {
@@ -248,7 +246,7 @@ impl<F: Float> FloatRes<F> {
             false
         };
 
-        let one_ulp = consts.half_ulp.get(&(exp + 1)).unwrap();
+        let one_ulp = two_exp;
         assert_eq!(one_ulp, &(half_ulp * &consts.two), "ULP values are incorrect");
 
         let relative_error = error / one_ulp;
