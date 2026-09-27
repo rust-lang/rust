@@ -5282,18 +5282,22 @@ impl<T> [T] {
             panic!("elements are zero-sized");
         }
 
-        let self_start = self.as_ptr().addr();
-        let elem_start = ptr::from_ref(element).addr();
+        let self_start = self.as_ptr();
+        // SAFETY: the slice is dereferenceable for its full length.
+        let self_end = unsafe { self_start.add(self.len()) };
+        let elem_start = ptr::from_ref(element);
+        // Ensure `element` is inside the slice. Uses pointer comparison to be safe against
+        // <https://github.com/rust-lang/rust/issues/163013>.
+        if !(self_start <= elem_start && elem_start < self_end) {
+            return None;
+        }
 
-        let byte_offset = elem_start.wrapping_sub(self_start);
-
+        let byte_offset = elem_start.addr().wrapping_sub(self_start.addr());
         if !byte_offset.is_multiple_of(size_of::<T>()) {
             return None;
         }
 
-        let offset = byte_offset / size_of::<T>();
-
-        if offset < self.len() { Some(offset) } else { None }
+        Some(byte_offset / size_of::<T>())
     }
 
     /// Returns the range of indices that a subslice points to.
