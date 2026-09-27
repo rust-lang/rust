@@ -165,7 +165,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &i.attrs,
             i.span,
             Target::from_ast_item(i),
-            AstTarget::Item(i),
+            AstTarget::Item(&i.kind),
             &extra_hir_attributes,
         );
 
@@ -612,7 +612,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &i.attrs,
             i.span,
             Target::from_foreign_item_kind(&i.kind),
-            AstTarget::ForeignItem(i),
+            AstTarget::ForeignItem(&i.kind),
         );
         let (ident, kind) = match &i.kind {
             ForeignItemKind::Fn(Fn { sig, ident, generics, define_opaque, .. }) => {
@@ -798,7 +798,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &i.attrs,
             i.span,
             Target::from_assoc_item_kind(&i.kind, AssocCtxt::Trait),
-            AstTarget::AssocItem(i),
+            AstTarget::AssocItem(&i.kind),
         );
 
         let (ident, generics, kind, has_value) = match &i.kind {
@@ -1056,7 +1056,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &i.attrs,
             i.span,
             Target::from_assoc_item_kind(&i.kind, AssocCtxt::Impl { of_trait: is_in_trait_impl }),
-            AstTarget::AssocItem(i),
+            AstTarget::AssocItem(&i.kind),
         );
 
         let (ident, (generics, kind)) = match &i.kind {
