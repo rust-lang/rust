@@ -144,7 +144,8 @@ should pass on its own. When we commit our lint, we need to commit the generated
  `.stderr` and if applicable `.fixed` files, too. In general, you should only
  commit files changed by `cargo bless` for the specific lint you are creating/editing.
 
-> _Note:_ you can run multiple test files by specifying a comma separated list:
+> [!NOTE]
+> you can run multiple test files by specifying a comma separated list:
 > `TESTNAME=foo_functions,test2,test3`.
 
 ### Cargo lints
