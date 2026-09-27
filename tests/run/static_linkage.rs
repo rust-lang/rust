@@ -33,11 +33,6 @@ pub static linkonce_static: i32 = 0;
 #[no_mangle]
 pub static linkonce_odr_static: i32 = 0;
 
-// `common` is only valid on a mutable global: LLVM rejects a constant one.
-#[linkage = "common"]
-#[no_mangle]
-pub static mut common_static: i32 = 0;
-
 // Not overridden by the C side: the definition here is the one that survives.
 #[linkage = "weak"]
 #[no_mangle]

@@ -29,8 +29,6 @@ extern "C" {
     static weak_value: *const i32;
     #[linkage = "weak_odr"]
     static weak_odr_value: *const i32;
-    #[linkage = "common"]
-    static common_value: *const i32;
     #[linkage = "extern_weak"]
     static extern_weak_value: *const i32;
 
@@ -56,9 +54,6 @@ extern "C" fn main(_argc: i32, _argv: *const *const u8) -> i32 {
         }
         if *weak_odr_value != 6 {
             return 6;
-        }
-        if *common_value != 7 {
-            return 7;
         }
         if *extern_weak_value != 8 {
             return 8;

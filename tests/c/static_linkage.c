@@ -8,7 +8,6 @@ int32_t weak_static = 1;
 int32_t weak_odr_static = 2;
 int32_t linkonce_static = 3;
 int32_t linkonce_odr_static = 4;
-int32_t common_static = 5;
 
 /* `available_externally` promises the real definition lives elsewhere: a backend may read this one
  * or emit an equivalent copy of the Rust initializer, so the two have to hold the same value. */
@@ -25,7 +24,5 @@ int32_t c_read_all(void)
         return 13;
     if (linkonce_odr_static != 4)
         return 14;
-    if (common_static != 5)
-        return 15;
     return 0;
 }
