@@ -75,6 +75,7 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageLive(_7);
         _7 = copy _4;
         _4 = AddUnchecked(copy _7, const 1_usize);
+        StorageAlloc(_3);
         _8 = Option::<usize>::Some(copy _7);
         StorageDead(_7);
         StorageDead(_6);

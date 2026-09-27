@@ -6,6 +6,7 @@ use rustc_index::bit_set::{DenseBitSet, GrowableBitSet};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_mir_dataflow::impls::DefUse;
 use rustc_mir_dataflow::value_analysis::{excluded_locals, iter_fields};
 use rustc_span::bug;
 use tracing::{debug, instrument};
@@ -299,6 +300,18 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
         if let Some(repl) = self.replacements.replace_place(self.tcx, place.as_ref()) {
+            // Under RFC 3943, a write has the side effect of allocating the
+            // underlying local. When splitting, we need to replicate this
+            // effect for all other fields using StorageAlloc.
+            if matches!(DefUse::for_place(*place, context), DefUse::Def | DefUse::PartialWrite) {
+                let fragments = self.replacements.place_fragments(place.local.into()).unwrap();
+                for (_, _, local) in fragments {
+                    if local != repl.local {
+                        self.patch.add_statement(location, StatementKind::StorageAlloc(local));
+                    }
+                }
+            }
+
             *place = repl
         } else {
             self.super_place(place, context, location)
