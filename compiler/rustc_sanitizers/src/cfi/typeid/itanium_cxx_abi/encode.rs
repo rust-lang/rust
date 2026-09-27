@@ -257,6 +257,7 @@ fn encode_const_value<'tcx>(
         | ty::Dynamic(..)
         | ty::UnsafeBinder(..)
         | ty::Param(..)
+        | ty::Erased(..)
         | ty::Alias(..)
         | ty::Bound(..)
         | ty::Error(..)
@@ -734,6 +735,9 @@ pub(crate) fn encode_ty<'tcx>(
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
         }
+
+        // TODO
+        ty::Erased(..) => todo!(),
 
         // Unexpected types
         ty::Alias(..)

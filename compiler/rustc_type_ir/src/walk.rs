@@ -82,6 +82,7 @@ fn push_inner<I: Interner>(stack: &mut TypeWalkerStack<I>, parent: I::GenericArg
             | ty::Str
             | ty::Infer(_)
             | ty::Param(_)
+            | ty::Erased(..)
             | ty::Never
             | ty::Error(_)
             | ty::Placeholder(..)

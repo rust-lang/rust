@@ -258,6 +258,7 @@ impl SelfTyHead {
             | ty::Coroutine(..)
             | ty::Placeholder(..)
             | ty::CoroutineWitness(..)
+            | ty::Erased(..)
             | ty::Infer(..) => panic!("unexpected impl self ty {bound_ty}"),
 
             ty::Error(_) => FatalError.raise(),

@@ -8,7 +8,7 @@ use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::stable_hash::StableHasher;
+use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_hashes::Hash64;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -324,6 +324,20 @@ impl<'tcx> V0SymbolMangler<'tcx> {
             }
         })
     }
+
+    fn print_param_layout(
+        &mut self,
+        param_layout: ty::ParamLayout<'tcx>,
+    ) -> Result<(), std::fmt::Error> {
+        // TODO: this hashing is a really hacky temporary approach
+        let hash: Hash64 = self.tcx.with_stable_hashing_context(|mut hcx| {
+            let mut hasher = StableHasher::new();
+            param_layout.stable_hash(&mut hcx, &mut hasher);
+            hasher.finish()
+        });
+        self.push_integer_62(hash.as_u64());
+        Ok(())
+    }
 }
 
 impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
@@ -534,6 +548,11 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             }
             ty::Tuple(_) if ty.is_unit() => unreachable!(),
             ty::Param(_) => unreachable!(),
+            // TODO: this needs more thought and design work
+            ty::Erased(param_layout) => {
+                self.push("C5EP");
+                self.print_param_layout(param_layout)?;
+            }
 
             ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => bug!(),
 

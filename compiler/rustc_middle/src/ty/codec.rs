@@ -251,6 +251,19 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for mir::Place<'tcx> {
     }
 }
 
+impl<'tcx, S: TyEncoder<'tcx>> Encodable<S> for ty::ParamLayout<'tcx> {
+    fn encode(&self, s: &mut S) {
+        self.0.0.encode(s);
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::ParamLayout<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
+        let data = ty::ParamLayoutData::decode(decoder);
+        decoder.interner().mk_param_layout(data)
+    }
+}
+
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for CanonicalVarKinds<'tcx> {
     fn decode(decoder: &mut D) -> Self {
         let len = decoder.read_usize();

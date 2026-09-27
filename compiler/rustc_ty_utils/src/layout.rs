@@ -529,7 +529,7 @@ fn layout_of_uncached<'tcx>(
             let element = cx.layout_of(element)?;
             map_layout(cx.calc.array_like(&element, None).map(|mut layout| {
                 // a randomly chosen value to distinguish slices
-                layout.randomization_seed = Hash64::new(0x2dcba99c39784102);
+                layout.randomization_seed = Some(Hash64::new(0x2dcba99c39784102));
                 layout
             }))?
         }
@@ -537,7 +537,7 @@ fn layout_of_uncached<'tcx>(
             let element = scalar(Int(I8, false));
             map_layout(cx.calc.array_like(&element, None).map(|mut layout| {
                 // another random value
-                layout.randomization_seed = Hash64::new(0xc1325f37d127be22);
+                layout.randomization_seed = Some(Hash64::new(0xc1325f37d127be22));
                 layout
             }))?
         }
@@ -598,7 +598,7 @@ fn layout_of_uncached<'tcx>(
                 )
                 .map(|mut layout| {
                     // this is similar to how ReprOptions populates its field_shuffle_seed
-                    layout.randomization_seed = tcx.def_path_hash(def_id).0.to_smaller_hash();
+                    layout.randomization_seed = Some(tcx.def_path_hash(def_id).0.to_smaller_hash());
                     debug!("coroutine layout ({:?}): {:#?}", ty, layout);
                     layout
                 });
@@ -831,6 +831,8 @@ fn layout_of_uncached<'tcx>(
             cx.layout_of(ty)?.layout
         }
 
+        ty::Erased(param_layout) => layout_of_param_layout(tcx, param_layout),
+
         // Types with no meaningful known layout.
         ty::Param(_) | ty::Placeholder(..) => {
             return Err(error(cx, LayoutError::TooGeneric(ty)));
@@ -861,6 +863,25 @@ fn layout_of_uncached<'tcx>(
             // `ty::Error` is handled at the top of this function.
             bug!("layout_of: unexpected type `{ty}`")
         }
+    })
+}
+
+fn layout_of_param_layout<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_layout: ty::ParamLayout<'tcx>,
+) -> Layout<'tcx> {
+    let ty::ParamLayoutData { backend_repr, largest_niche, align, size } = *param_layout.0.0;
+    tcx.mk_layout(LayoutData {
+        fields: FieldsShape::Opaque,
+        variants: Variants::Opaque,
+        backend_repr,
+        largest_niche,
+        uninhabited: false,
+        align: rustc_abi::AbiAlign::new(align),
+        size,
+        max_repr_align: None,
+        unadjusted_abi_align: align,
+        randomization_seed: None,
     })
 }
 
@@ -949,6 +970,7 @@ fn variant_info_for_adt<'tcx>(
     };
 
     match layout.variants {
+        Variants::Opaque => unreachable!(),
         Variants::Empty => (vec![], None),
 
         Variants::Single { index } => {

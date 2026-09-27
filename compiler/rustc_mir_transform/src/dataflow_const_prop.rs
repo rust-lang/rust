@@ -925,6 +925,7 @@ fn try_write_constant<'tcx>(
         | ty::Foreign(..)
         | ty::Alias(..)
         | ty::Param(_)
+        | ty::Erased(..)
         | ty::Bound(..)
         | ty::Placeholder(..)
         | ty::Closure(..)

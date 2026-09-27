@@ -69,6 +69,7 @@ fn classify<'a, Ty, C>(
         BackendRepr::SimdVector { .. } => {}
         BackendRepr::SimdScalableVector { .. } => {}
         BackendRepr::ScalarPair { .. } | BackendRepr::Memory { .. } => match arg_layout.fields {
+            FieldsShape::Opaque => {}
             FieldsShape::Primitive => {
                 unreachable!("aggregates can't have `FieldsShape::Primitive`")
             }
@@ -82,6 +83,7 @@ fn classify<'a, Ty, C>(
             }
             FieldsShape::Array { .. } => {}
             FieldsShape::Arbitrary { .. } => match arg_layout.variants {
+                Variants::Opaque => {}
                 Variants::Multiple { .. } => {}
                 Variants::Single { .. } | Variants::Empty => {
                     // Match Clang by ignoring whether a struct is packed and just considering

@@ -68,6 +68,7 @@ where
                 }
 
                 match &layout.variants {
+                    Variants::Opaque => {}
                     Variants::Single { .. } | Variants::Empty => {}
                     Variants::Multiple { variants, .. } => {
                         // Treat enum variants like union members.

@@ -950,6 +950,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             | ty::Error(..)
             | ty::FnDef(..)
             | ty::FnPtr(..)
+            | ty::Erased(..)
             | ty::Infer(..)
             | ty::Pat(..)
             | ty::Placeholder(..)

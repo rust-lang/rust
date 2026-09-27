@@ -220,7 +220,12 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                 Unnormalized::new_wip(t),
             )),
 
-            ty::Bound(..) | ty::Error(..) | ty::Infer(..) | ty::Param(..) | ty::Placeholder(..) => {
+            ty::Bound(..)
+            | ty::Error(..)
+            | ty::Infer(..)
+            | ty::Param(..)
+            | ty::Erased(..)
+            | ty::Placeholder(..) => {
                 bug!("fold_ty: unexpected `{:?}`", t.kind());
             }
         }

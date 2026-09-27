@@ -927,6 +927,7 @@ impl TyCoercionStability {
                     continue;
                 },
                 ty::Param(_) if for_return => Self::Deref,
+                ty::Erased(..) => unreachable!(),
                 ty::Alias(
                     _,
                     ty::AliasTy {

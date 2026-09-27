@@ -1764,6 +1764,7 @@ impl PrimitiveType {
             | ty::Foreign(..)
             | ty::Infer(..)
             | ty::Param(..)
+            | ty::Erased(..)
             | ty::Placeholder(..)
             | ty::UnsafeBinder(..) => None,
         }
