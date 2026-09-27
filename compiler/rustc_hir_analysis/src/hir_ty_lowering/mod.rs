@@ -1871,6 +1871,38 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             &infcx_
         };
 
+        // The full param-env isn't available yet but the solver still needs
+        // const-parameter typing clauses. when lowering a generic parameter
+        // only include earlier parameters to avoid querying its own type
+        let (generics_def_id, cutoff) =
+            if matches!(tcx.def_kind(self.item_def_id()), DefKind::ConstParam | DefKind::TyParam) {
+                let parent = tcx.local_parent(self.item_def_id());
+                let index = tcx
+                    .generics_of(parent)
+                    .param_def_id_to_index(tcx, self.item_def_id().to_def_id())
+                    .expect("generic parameter must belong to its parent");
+                (parent, index as usize)
+            } else {
+                (self.item_def_id(), usize::MAX)
+            };
+
+        let generics = tcx.generics_of(generics_def_id);
+        let identity_args = ty::GenericArgs::identity_for_item(tcx, generics_def_id);
+        let const_param_env = ty::ParamEnv::new(
+            tcx,
+            identity_args.iter().enumerate().take(cutoff).filter_map(|(index, arg)| {
+                match arg.kind() {
+                    GenericArgKind::Const(ct) => {
+                        let param_def_id = generics.param_at(index, tcx).def_id;
+                        let ct_ty =
+                            tcx.type_of(param_def_id).instantiate_identity().skip_norm_wip();
+                        Some(ty::ClauseKind::ConstArgHasType(ct, ct_ty).upcast(tcx))
+                    }
+                    _ => None,
+                }
+            }),
+        );
+
         tcx.all_traits_including_private()
             .filter(|trait_def_id| {
                 // Consider only traits with the associated type
@@ -1896,7 +1928,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             }
                             infcx
                                 .can_eq(
-                                    ty::ParamEnv::empty(),
+                                    const_param_env,
                                     trait_ref.self_ty(),
                                     value,
                                 ) && header.polarity != ty::ImplPolarity::Negative

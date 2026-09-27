@@ -1,0 +1,31 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-suggestions-issue-163320.rs:31:17
+   |
+LL | type Positive = <<() as Identity>::Out>::Item;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL | type Positive = <<() as Identity>::Out as HasItem>::Item;
+   |                                        ++++++++++
+LL | type Positive = <<() as Identity>::Out as IntoAsyncIterator>::Item;
+   |                                        ++++++++++++++++++++
+LL | type Positive = <<() as Identity>::Out as IntoIterator>::Item;
+   |                                        +++++++++++++++
+
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-suggestions-issue-163320.rs:34:17
+   |
+LL | type Negative = <<() as Different>::Out>::Item;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL | type Negative = <<() as Different>::Out as IntoAsyncIterator>::Item;
+   |                                         ++++++++++++++++++++
+LL | type Negative = <<() as Different>::Out as IntoIterator>::Item;
+   |                                         +++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0223`.
