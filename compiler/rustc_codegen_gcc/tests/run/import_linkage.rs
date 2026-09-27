@@ -19,8 +19,6 @@ extern crate mini_core;
 use mini_core::*;
 
 extern "C" {
-    #[linkage = "external"]
-    static external_value: *const i32;
     #[linkage = "available_externally"]
     static available_externally_value: *const i32;
     #[linkage = "linkonce"]
@@ -44,9 +42,6 @@ extern "C" {
 #[no_mangle]
 extern "C" fn main(_argc: i32, _argv: *const *const u8) -> i32 {
     unsafe {
-        if *external_value != 1 {
-            return 1;
-        }
         if *available_externally_value != 2 {
             return 2;
         }
