@@ -266,7 +266,7 @@ use core::ptr::{self, NonNull, drop_in_place};
 use core::slice::from_raw_parts_mut;
 use core::{borrow, fmt, hint};
 
-use crate::alloc::{AllocError, Allocator, AllocatorClone, Global, Layout};
+use crate::alloc::{AllocError, Allocator, AllocatorClone, Global, Layout, StaticAllocator};
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::{AllocatorNightly, handle_alloc_error};
 use crate::borrow::{Cow, ToOwned};
@@ -953,7 +953,7 @@ impl<T, A: Allocator> Rc<T, A> {
     #[inline]
     pub fn pin_in(value: T, alloc: A) -> Pin<Self>
     where
-        A: 'static,
+        A: StaticAllocator,
     {
         // SAFETY: We own and create the pinned pointer.
         unsafe { Pin::new_unchecked(Rc::new_in(value, alloc)) }
@@ -2549,11 +2549,11 @@ impl<T: ?Sized, A: Allocator> Deref for Rc<T, A> {
 // accordingly. Since this type is not fundamental, downstream crates cannot
 // provide malicious implementations of any of the traits relevant for `Pin`.
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized, A: Allocator + 'static> PinSafePointer for Rc<T, A> {}
+unsafe impl<T: ?Sized, A: StaticAllocator> PinSafePointer for Rc<T, A> {}
 
 //#[unstable(feature = "unique_rc_arc", issue = "112566")]
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized, A: Allocator + 'static> PinSafePointer for UniqueRc<T, A> {}
+unsafe impl<T: ?Sized, A: StaticAllocator> PinSafePointer for UniqueRc<T, A> {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized, A: Allocator> DerefPure for Rc<T, A> {}
