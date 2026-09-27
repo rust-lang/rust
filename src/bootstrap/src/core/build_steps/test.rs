@@ -4700,7 +4700,7 @@ pub struct TestFloatParse {
 
 impl CommandLineStep for TestFloatParse {
     type Output = ();
-    const IS_HOST: bool = true;
+    const IS_HOST: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/test-float-parse")
@@ -4711,8 +4711,15 @@ impl CommandLineStep for TestFloatParse {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Self {
-            build_compiler: get_compiler_to_test(run.builder, run.target),
+        let builder = run.builder;
+
+        // Other targets usually run under an emulator, which is too slow to do by default.
+        if run.target != run.build_triple() && !builder.was_invoked_explicitly::<Self>(Kind::Test) {
+            return;
+        }
+
+        builder.ensure(Self {
+            build_compiler: builder.compiler(builder.top_stage, run.build_triple()),
             target: run.target,
         });
     }
@@ -4771,6 +4778,10 @@ impl CommandLineStep for TestFloatParse {
         let mut cargo_run = cargo_run.into_cmd();
         add_cargo_target_runner(&mut cargo_run, target, builder);
         cargo_run.run(builder);
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::test("test-float-parse", self.target))
     }
 }
 
