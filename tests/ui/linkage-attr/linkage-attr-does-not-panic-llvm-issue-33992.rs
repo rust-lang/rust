@@ -1,6 +1,5 @@
 //@ run-pass
 //@ ignore-apple
-//@ ignore-wasm32 common linkage not implemented right now
 
 #![feature(linkage)]
 
