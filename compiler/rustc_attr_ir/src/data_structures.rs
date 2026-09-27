@@ -283,7 +283,6 @@ impl<ScopeId> StrippedCfgItem<ScopeId> {
 #[derive(StableHash, PrintAttribute)]
 pub enum Linkage {
     AvailableExternally,
-    Common,
     ExternalWeak,
     External,
     Internal,
