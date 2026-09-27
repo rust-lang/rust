@@ -244,12 +244,7 @@ impl ModuleConfig {
             // backends (again, NVPTX). Therefore, allow targets to opt out of
             // the MergeFunctions pass, but otherwise keep the pass enabled (at
             // O2 and O3) since it can be useful for reducing code size.
-            merge_functions: match sess
-                .opts
-                .unstable_opts
-                .merge_functions
-                .unwrap_or(sess.target.merge_functions)
-            {
+            merge_functions: match sess.merge_functions() {
                 MergeFunctions::Disabled => false,
                 MergeFunctions::Trampolines | MergeFunctions::Aliases => {
                     use config::OptLevel::*;
@@ -2060,7 +2055,7 @@ impl SharedEmitterMain {
                     sess.dcx().abort_if_errors();
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(inner)) => {
-                    assert_matches!(inner.level, Level::Error | Level::Warning | Level::Note);
+                    assert_matches!(inner.level, Level::Error | Level::Warning(None) | Level::Note);
                     let mut err = Diag::new(sess.dcx(), inner.level, inner.msg);
                     if !inner.span.is_dummy() {
                         err.span(inner.span.span());

@@ -426,6 +426,81 @@ fn impl_self_ty(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Ty<'_> {
         .unwrap_or(ty.skip_binder())
 }
 
+fn transitive_reexport_path(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Vec<Symbol>> {
+    transitive_reexport_path_inner(tcx, def_id, &mut Vec::new())
+}
+
+/// Simplified implementation of `rustc_middle::ty::print::pretty::try_print_visible_def_path_recur`.
+fn transitive_reexport_path_inner(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    callers: &mut Vec<DefId>,
+) -> Option<Vec<Symbol>> {
+    use rustc_hir::def_id::ModId;
+    use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+
+    if let Some(cnum) = def_id.as_crate_root() {
+        return Some(vec![tcx.crate_name(cnum)]);
+    }
+
+    let visible_parent_map = tcx.visible_parent_map(());
+    let mut cur_def_key = tcx.def_key(def_id);
+
+    // For a constructor, we want the name of its parent rather than <unnamed>.
+    if let DefPathData::Ctor = cur_def_key.disambiguated_data.data {
+        let parent = DefId {
+            krate: def_id.krate,
+            index: cur_def_key
+                .parent
+                .expect("`DefPathData::Ctor` / `VariantData` missing a parent"),
+        };
+
+        cur_def_key = tcx.def_key(parent);
+    }
+
+    let visible_parent = visible_parent_map.get(&def_id).cloned()?;
+    // FIXME: Should we also check for private items?
+    if tcx.is_doc_hidden(visible_parent) {
+        return None;
+    }
+
+    let actual_parent = tcx.opt_parent(def_id);
+    let mut data = cur_def_key.disambiguated_data.data;
+    match data {
+        DefPathData::TypeNs(ref mut name) if Some(visible_parent) != actual_parent => {
+            // Item might be re-exported several times, but filter for the one
+            // that's public and whose identifier isn't `_`.
+            let reexport = tcx
+                .module_children(ModId::new_unchecked(visible_parent))
+                .iter()
+                .filter(|child| child.res.opt_def_id() == Some(def_id))
+                .find(|child| child.vis.is_public() && child.ident.name != kw::Underscore)
+                .map(|child| child.ident.name);
+
+            if let Some(new_name) = reexport {
+                *name = new_name;
+            } else {
+                // There is no name that is public and isn't `_`, so bail.
+                return None;
+            }
+        }
+        // Re-exported `extern crate`.
+        DefPathData::CrateRoot => {
+            data = DefPathData::TypeNs(tcx.crate_name(def_id.krate));
+        }
+        _ => {}
+    }
+
+    if callers.contains(&visible_parent) {
+        return None;
+    }
+    callers.push(visible_parent);
+    let mut path = transitive_reexport_path_inner(tcx, visible_parent, callers)?;
+    callers.pop();
+    path.push(DisambiguatedDefPathData { data, disambiguator: 0 }.as_sym(false));
+    Some(path)
+}
+
 fn generate_item_def_id_path(
     mut def_id: DefId,
     original_def_id: DefId,
@@ -435,10 +510,13 @@ fn generate_item_def_id_path(
     let tcx = cx.tcx();
     let crate_name = tcx.crate_name(def_id.krate);
     let mut prim = None;
+    let mut maybe_have_impl_not_in_def_crate = false;
 
     // No need to try to infer the actual parent item if it's not an associated item from the `impl`
     // block.
-    if def_id != original_def_id && matches!(tcx.def_kind(def_id), DefKind::Impl { .. }) {
+    if def_id != original_def_id
+        && let DefKind::Impl { of_trait } = tcx.def_kind(def_id)
+    {
         let ty = impl_self_ty(tcx, def_id);
         // If this is a dyn trait, we want to get the actual trait from which the method comes from.
         // Since a `dyn trait` (as of 2026) can only be composed of a trait plus auto traits, we
@@ -454,18 +532,35 @@ fn generate_item_def_id_path(
             def_id = trait_def_id;
         } else if let Some(new_def_id) = ty.ty_adt_def().map(|adt| adt.did()) {
             def_id = new_def_id;
+            maybe_have_impl_not_in_def_crate = !of_trait
+                && !original_def_id.is_local()
+                && !def_id.is_local()
+                && def_id.krate != original_def_id.krate;
         } else {
             prim = PrimitiveType::from_ty(ty);
         }
     }
 
-    let mut fqp = vec![crate_name];
-    let shortty = if let Some(prim) = prim {
-        fqp.push(prim.as_sym());
-        ItemType::Primitive
+    let (shortty, fqp) = if let Some(prim) = prim {
+        (ItemType::Primitive, vec![crate_name, prim.as_sym()])
     } else {
-        fqp.append(&mut clean::inline::item_relative_path(tcx, def_id));
-        ItemType::from_def_id(def_id, tcx)
+        (
+            ItemType::from_def_id(def_id, tcx),
+            if maybe_have_impl_not_in_def_crate
+                // We have a method, not coming from a trait, implemented from a different crate
+                // where the original item is defined. So in short, the item is using
+                // `#[rustc_allow_incoherent_impl]` and we need to keep the non-final item path.
+                // Sadly if we use `item_relative_path` which uses `def_path`, it renders the final
+                // item path and not the intermediate one.
+                && let Some(fqp) = transitive_reexport_path(tcx, def_id)
+            {
+                fqp
+            } else {
+                let mut fqp = vec![crate_name];
+                fqp.append(&mut clean::inline::item_relative_path(tcx, def_id));
+                fqp
+            },
+        )
     };
     let module_fqp = to_module_fqp(shortty, &fqp);
 

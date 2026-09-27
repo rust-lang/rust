@@ -1692,12 +1692,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let suggestion = match self.tcx.hir_maybe_get_struct_pattern_shorthand_field(expr) {
-            Some(ident) => format!(": {ident}.is_some()"),
-            None => ".is_some()".to_string(),
+            Some(ident) => vec![(expr.span.shrink_to_hi(), format!(": {ident}.is_some()"))],
+            None if self.precedence(expr) < ExprPrecedence::Unambiguous => {
+                // Apply the method to the whole expression, e.g. `(*value).is_some()`.
+                vec![
+                    (expr.span.shrink_to_lo(), "(".to_string()),
+                    (expr.span.shrink_to_hi(), ").is_some()".to_string()),
+                ]
+            }
+            None => vec![(expr.span.shrink_to_hi(), ".is_some()".to_string())],
         };
 
-        diag.span_suggestion_verbose(
-            expr.span.shrink_to_hi(),
+        diag.multipart_suggestion(
             "use `Option::is_some` to test if the `Option` has a value",
             suggestion,
             Applicability::MachineApplicable,

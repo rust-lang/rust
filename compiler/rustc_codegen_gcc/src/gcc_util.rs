@@ -9,7 +9,9 @@ use rustc_codegen_ssa::target_features;
 use rustc_data_structures::smallvec::{SmallVec, smallvec};
 use rustc_session::config::NATIVE_CPU;
 use rustc_session::{EarlySession, Session};
-use rustc_target::spec::{Arch, RelocModel, StackProbeType, StackProtector, Target};
+use rustc_target::spec::{
+    Arch, MergeFunctions, RelocModel, StackProbeType, StackProtector, Target,
+};
 
 fn gcc_features_by_flags(sess: &EarlySession, features: &mut Vec<String>) {
     target_features::retpoline_features_by_flags(sess, features);
@@ -218,6 +220,16 @@ pub fn new_context<'gcc>(sess: &Session) -> Context<'gcc> {
         StackProtector::Strong => context.add_command_line_option("-fstack-protector-strong"),
         StackProtector::Basic => context.add_command_line_option("-fstack-protector"),
         StackProtector::None => (),
+    }
+
+    match sess.merge_functions() {
+        MergeFunctions::Disabled => {
+            context.add_command_line_option("-fno-ipa-icf-functions");
+        }
+        // GCC always merges functions with trampolines rather than aliases, so we don't
+        // need to differentiate MergeFunctions::Trampolines and MergeFunctions::Aliases
+        // as trampolines are allowed either way.
+        MergeFunctions::Trampolines | MergeFunctions::Aliases => {}
     }
 
     match sess.target.stack_probes {

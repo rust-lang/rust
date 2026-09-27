@@ -49,8 +49,27 @@ unsafe extern "Rust" {
 /// to the allocator registered with the `#[global_allocator]` attribute
 /// if there is one, or the `std` crate’s default.
 ///
-/// Note: while this type is unstable, the functionality it provides can be
-/// accessed through the [free functions in `alloc`](self#functions).
+/// Similar to [`alloc`], [`dealloc`], and the other global allocation functions,
+/// the way in which calls are forwarded to the allocator registered with
+/// `#[global_allocator]` is unspecified. See their safety docs for more information.
+///
+/// This allocator must be treated like an opaque allocator that only guarantees
+/// the contract described in the docs of [`Allocator`], as well as the following
+/// things:
+/// * All instances of `Global` are [*equivalent*].
+/// * Allocations from `Global` are only invalidated by calls to de-/reallocating functions.
+///   If no such call is made, then the allocation will live for the rest of the program.
+/// * The global allocation functions are equivalent to the methods on `Global`, except
+///   that they disallow zero-sized allocations, and implicitly ignore any returned
+///   excess size.
+///
+/// Note that the current implementation of `Global` does not take advantage of
+/// some features of [`Allocator`], such as zero-sized allocations (which currently always
+/// return a dangling pointer) and overallocating.
+///
+/// This may change in the future. You must not rely on it for correctness!
+///
+/// [*equivalent*]: Allocator#equivalent-allocators
 #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
 #[derive(Copy, Debug)]
 #[derive_const(Clone, Default)]
