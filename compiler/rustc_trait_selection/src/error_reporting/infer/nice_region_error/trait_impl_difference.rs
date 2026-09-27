@@ -35,14 +35,21 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         ) = error.clone()
             && let (SubregionOrigin::Subtype(sup_trace), SubregionOrigin::Subtype(sub_trace)) =
                 (&sup_origin, &sub_origin)
-            && let &ObligationCauseCode::CompareImplItem { trait_item_def_id, .. } =
-                sub_trace.cause.code()
+            && let &ObligationCauseCode::CompareImplItem {
+                trait_item_def_id, impl_item_def_id, ..
+            } = sub_trace.cause.code()
             && sub_trace.values == sup_trace.values
             && let ValuePairs::PolySigs(ExpectedFound { expected, found }) = sub_trace.values
         {
             // FIXME(compiler-errors): Don't like that this needs `Ty`s, but
             // all of the region highlighting machinery only deals with those.
-            let guar = self.emit_err(var_origin.span(), expected, found, trait_item_def_id);
+            let guar = self.emit_err(
+                var_origin.span(),
+                expected,
+                found,
+                trait_item_def_id,
+                impl_item_def_id.into(),
+            );
             return Some(guar);
         }
         None
@@ -54,6 +61,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         expected: ty::PolyFnSig<'tcx>,
         found: ty::PolyFnSig<'tcx>,
         trait_item_def_id: DefId,
+        impl_item_def_id: DefId,
     ) -> ErrorGuaranteed {
         let trait_sp = self.tcx().def_span(trait_item_def_id);
 
@@ -135,6 +143,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             found,
             expected_short,
             found_short,
+            trait_span: self.tcx().def_span(self.tcx().parent(trait_item_def_id)).shrink_to_lo(),
+            impl_span: self.tcx().def_span(self.tcx().parent(impl_item_def_id)).shrink_to_lo(),
         };
 
         let mut diag = self.tcx().dcx().create_err(diag);
