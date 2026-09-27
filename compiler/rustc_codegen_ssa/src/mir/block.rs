@@ -7,9 +7,9 @@ use rustc_abi::{
 };
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_attr_ir::AttributeKind;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::packed::Pu128;
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};

@@ -5,9 +5,9 @@ use core::iter;
 use hir::def_id::LocalDefId;
 use itertools::Itertools;
 use rustc_ast::util::parser::ExprPrecedence;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diag, MultiSpan, listify, msg};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{
@@ -1027,7 +1027,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .segments
                         .last()
                         .and_then(|seg| seg.args)
-                        .map_or(false, |args| !args.constraints.is_empty())
+                        .is_some_and(|args| !args.constraints.is_empty())
                 {
                     // Use the path to get the trait name string
                     let trait_name = trait_ref

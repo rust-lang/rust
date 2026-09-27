@@ -63,8 +63,8 @@ use drop::{
 pub(super) use layout::mir_coroutine_witnesses;
 use layout::{CoroutineSavedLocals, compute_layout, locals_live_across_suspend_points};
 use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
 use rustc_index::bit_set::{BitMatrix, DenseBitSet};
 use rustc_index::{Idx, IndexVec, indexvec};
