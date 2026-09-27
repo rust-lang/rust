@@ -59,8 +59,9 @@ pub macro thread_local_inner {
 
         unsafe {
             $crate::thread::LocalKey::new(const {
+                // We're okay to ignore `__rust_std_internal_init` as we anyway never panic.
                 if $crate::mem::needs_drop::<$t>() {
-                    |_| {
+                    |__rust_std_internal_init| {
                         #[thread_local]
                         $(#[$align_attr])*
                         static __RUST_STD_INTERNAL_VAL: $crate::thread::local_impl::EagerStorage<$t>
@@ -68,7 +69,7 @@ pub macro thread_local_inner {
                         __RUST_STD_INTERNAL_VAL.get()
                     }
                 } else {
-                    |_| {
+                    |__rust_std_internal_init| {
                         #[thread_local]
                         $(#[$align_attr])*
                         static __RUST_STD_INTERNAL_VAL: $t = __RUST_STD_INTERNAL_INIT;
@@ -92,6 +93,8 @@ pub macro thread_local_inner {
 
         unsafe {
             $crate::thread::LocalKey::new(const {
+                // `__rust_std_internal_init_fn` may panic so we must only call it if there is no
+                // `__rust_std_internal_init`.
                 if $crate::mem::needs_drop::<$t>() {
                     |__rust_std_internal_init| {
                         #[thread_local]
