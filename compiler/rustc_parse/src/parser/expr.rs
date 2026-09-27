@@ -1973,6 +1973,19 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, Box<Expr>> {
         let expr = self.parse_expr()?;
         let ty = if self.eat(exp!(Comma)) { Some(self.parse_ty()?) } else { None };
+        if let Some(ty) = &ty {
+            // FIXME(unsafe_binders): we haven't really implemented borrowck for
+            // the ascription on unsafe binders. It's not clear that this is
+            // strictly necessary, so for now just error if anybody tries to use
+            // it; we can either remove it entirely later, or implement it properly.
+            self.dcx().emit_err(crate::diagnostics::UnsafeBinderAscription {
+                span: ty.span,
+                macro_name: match kind {
+                    UnsafeBinderCastKind::Wrap => "wrap_binder",
+                    UnsafeBinderCastKind::Unwrap => "unwrap_binder",
+                },
+            });
+        }
         let span = lo.to(self.token.span);
         Ok(self.mk_expr(span, ExprKind::UnsafeBinderCast(kind, expr, ty)))
     }
