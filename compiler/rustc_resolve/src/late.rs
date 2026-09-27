@@ -697,7 +697,7 @@ impl PathSource<'_, '_, '_> {
 /// At this point for most items we can answer whether that item is exported or not,
 /// but some items like impls require type information to determine exported-ness, so we make a
 /// conservative estimate for them (e.g. based on nominal visibility).
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum MaybeExported<'a> {
     Ok(NodeId),
     Impl(Option<DefId>),
@@ -5500,9 +5500,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         // FIXME: This caching may be incorrect in case of multiple `macro_rules`
         // items with the same name in the same module.
         // Also hygiene is not considered.
+        let mod_id = self.parent_scope.module.nearest_parent_mod().expect_local();
         let mut doc_link_resolutions = std::mem::take(&mut self.r.doc_link_resolutions);
         let res = *doc_link_resolutions
-            .entry(self.parent_scope.module.nearest_parent_mod().expect_local())
+            .entry(mod_id)
             .or_default()
             .entry((Symbol::intern(path_str), ns))
             .or_insert_with_key(|(path, ns)| {
@@ -5515,6 +5516,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     // because it will only store proc macros for it.
                     return None;
                 }
+                debug!("cached resolution of {mod_id:?} {path_str:?} as {res:?} in ns {ns:?}");
                 res
             });
         self.r.doc_link_resolutions = doc_link_resolutions;
@@ -5532,6 +5534,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     fn resolve_doc_links(&mut self, attrs: &[Attribute], maybe_exported: MaybeExported<'_>) {
+        debug!(?attrs, ?maybe_exported, ?self.r.tcx.sess.opts.resolve_doc_links);
         match self.r.tcx.sess.opts.resolve_doc_links {
             ResolveDocLinks::None => return,
             ResolveDocLinks::ExportedMetadata
@@ -5557,6 +5560,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
         let mut need_traits_in_scope = false;
         for path_str in rustdoc::attrs_to_preprocessed_links(attrs) {
+            debug!("resolving link {path_str:?}");
             // Resolve all namespaces due to no disambiguator or for diagnostics.
             let mut any_resolved = false;
             let mut need_assoc = false;
@@ -5571,6 +5575,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
 
             // Resolve all prefixes for type-relative resolution or for diagnostics.
+            debug!(?any_resolved, ?need_assoc);
             if need_assoc || !any_resolved {
                 let mut path = &path_str[..];
                 while let Some(idx) = path.rfind("::") {
