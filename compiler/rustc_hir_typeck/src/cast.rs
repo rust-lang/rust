@@ -33,7 +33,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, ExprKind};
-use rustc_infer::infer::DefineOpaqueTypes;
+use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_lint_defs::builtin::{TRIVIAL_CASTS, TRIVIAL_NUMERIC_CASTS};
 use rustc_macros::{TypeFoldable, TypeVisitable};
@@ -119,7 +119,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(&f) => self.pointer_kind(f, span)?,
             },
 
-            ty::UnsafeBinder(_) => unimplemented!("FIXME(unsafe_binder)"),
+            ty::UnsafeBinder(inner) => self.infcx.probe(|_| {
+                let inner_ty = self.infcx.instantiate_binder_with_fresh_vars(
+                    span,
+                    BoundRegionConversionTime::HigherRankedType,
+                    *inner,
+                );
+                self.pointer_kind(inner_ty, span)
+            })?,
 
             // Pointers to foreign types are thin, despite being unsized
             ty::Foreign(..) => Some(PointerKind::Thin),

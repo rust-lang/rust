@@ -1,11 +1,42 @@
+error[E0271]: type mismatch resolving `<unsafe<> ManuallyDrop<T> as Pointee>::Metadata == <T as Pointee>::Metadata`
+  --> $DIR/param-tail.rs:22:21
+   |
+LL | fn unsized_param<T: ?Sized>() {
+   |                  - expected this type parameter
+LL |     same_metadata::<unsafe<'a> MD<T>, T>();
+   |                     ^^^^^^^^^^^^^^^^ expected type parameter `T`, found `unsafe<> ManuallyDrop<T>`
+   |
+   = note: expected associated type `<T as Pointee>::Metadata`
+              found associated type `<unsafe<> ManuallyDrop<T> as Pointee>::Metadata`
+   = note: an associated type was expected, but a different one was found
+note: required by a bound in `same_metadata`
+  --> $DIR/param-tail.rs:17:16
+   |
+LL | fn same_metadata<A: ?Sized, B: ?Sized>()
+LL | where
+LL |     A: Pointee<Metadata = <B as Pointee>::Metadata>,
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `same_metadata`
 
-thread 'rustc' ($TID) panicked at compiler/rustc_next_trait_solver/src/solve/normalizes_to.rs:LL:CC:
-not implemented
-error: the compiler unexpectedly panicked. This is a bug
+error[E0271]: type mismatch resolving `<unsafe<'a> ManuallyDrop<(&u8, T)> as Pointee>::Metadata == <T as Pointee>::Metadata`
+  --> $DIR/param-tail.rs:23:21
+   |
+LL | fn unsized_param<T: ?Sized>() {
+   |                  - expected this type parameter
+LL |     same_metadata::<unsafe<'a> MD<T>, T>();
+LL |     same_metadata::<unsafe<'a> MD<(&'a u8, T)>, T>();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found `unsafe<> ManuallyDrop<T>`
+   |
+   = note: expected associated type `<T as Pointee>::Metadata`
+              found associated type `<unsafe<> ManuallyDrop<T> as Pointee>::Metadata`
+   = note: an associated type was expected, but a different one was found
+note: required by a bound in `same_metadata`
+  --> $DIR/param-tail.rs:17:16
+   |
+LL | fn same_metadata<A: ?Sized, B: ?Sized>()
+LL | where
+LL |     A: Pointee<Metadata = <B as Pointee>::Metadata>,
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `same_metadata`
 
+error: aborting due to 2 previous errors
 
-thread 'rustc' ($TID) panicked at compiler/rustc_next_trait_solver/src/solve/normalizes_to.rs:LL:CC:
-not implemented
-
-error: the compiler unexpectedly panicked. This is a bug
-
+For more information about this error, try `rustc --explain E0271`.

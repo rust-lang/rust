@@ -1,12 +1,14 @@
 //@ compile-flags: -Znext-solver
-//@ check-fail
+//@ build-fail
 //@ failure-status: 101
-//@ known-bug: #130516
+//@ known-bug: unknown
 //@ rustc-env:RUST_BACKTRACE=0
 //@ normalize-stderr: "note: .*\n\n" -> ""
 //@ normalize-stderr: "(compiler/[a-z_/]+\.rs):\d+:\d+" -> "$1:LL:CC"
 //@ normalize-stderr: "query stack during panic:\n(.*\n)*?(end of query stack|\.\.\. and \d+ other queries.*)\n" -> ""
-//@ compile-flags: -Cdebuginfo=2
+//@ normalize-stderr: "Normalizing .* without wrapping in a `Binder`" -> "Normalizing .. without wrapping in a `Binder`"
+//@ normalize-stderr: "`ProjectionClause\(.*\)` has escaping bound vars" -> "`ProjectionClause(..)` has escaping bound vars"
+//@ compile-flags: -Zunstable-options -Csymbol-mangling-version=legacy -Cdebuginfo=2
 
 // After monomorphization, the metadata of every binder must be concrete: the
 // rigid projection from `alias-tail-bound-lifetime.rs` now has a concrete tail.
@@ -42,8 +44,7 @@ impl Tr for Dyn {
 
 fn generic<T: Tr>(p: *const unsafe<'a> MD<T::Assoc<'a>>) -> (usize, usize) {
     assert_eq!(size_of::<*const unsafe<'a> MD<T::Assoc<'a>>>(), 2 * size_of::<usize>());
-    let q: *const unsafe<'a> MD<T::Assoc<'a>>
-        = ptr::from_raw_parts(p as *const (), ptr::metadata(p));
+    let q: *const unsafe<'a> MD<T::Assoc<'a>> = ptr::from_raw_parts(p as *const (), ptr::metadata(p));
     let r = unsafe { &*q };
     let inner: &MD<T::Assoc<'_>> = unsafe { &unwrap_binder!(*r) };
     assert_eq!(size_of_val(inner), size_of_val(r));
