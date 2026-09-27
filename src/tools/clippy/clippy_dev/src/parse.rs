@@ -502,7 +502,7 @@ impl<'cx> ParseCxImpl<'cx> {
     #[track_caller]
     fn parse_version(&mut self, s: &'cx str, sp: Span<'cx>) -> Option<&'cx str> {
         let s = self.parse_str_lit(s, sp)?;
-        if s.bytes().all(|c| matches!(c, b'0'..=b'9' | b'.')) || matches!(s, "pre 1.29.0" | "CURRENT_RUSTC_VERSION") {
+        if s.bytes().all(|c| matches!(c, b'0'..=b'9' | b'.')) || matches!(s, "pre 1.29.0" | "1.100.0") {
             Some(s)
         } else {
             self.dcx.emit_spanned_err(sp, "unparsable version number");

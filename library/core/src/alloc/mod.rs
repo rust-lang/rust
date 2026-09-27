@@ -27,15 +27,15 @@ use crate::ptr::{self, NonNull};
 /// that may be due to resource exhaustion or to
 /// something wrong when combining the given input arguments with this
 /// allocator.
-#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "allocator_api", since = "1.100.0")]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct AllocError;
 
-#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "allocator_api", since = "1.100.0")]
 impl Error for AllocError {}
 
 // (we need this for downstream impl of trait Error)
-#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "allocator_api", since = "1.100.0")]
 impl fmt::Display for AllocError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("memory allocation failed")
@@ -193,7 +193,7 @@ impl fmt::Display for AllocError {
 // and make sure they cannot be triggered before relaxing this:
 // https://rust.tf/156490
 // https://rust.tf/159982
-#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "allocator_api", since = "1.100.0")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 pub const unsafe trait Allocator {
     /// Attempts to allocate a block of memory.
@@ -228,7 +228,7 @@ pub const unsafe trait Allocator {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "allocator_api", since = "1.100.0")]
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
 
     /// Behaves like `allocate`, but also ensures that the returned memory is zero-initialized.
@@ -246,7 +246,7 @@ pub const unsafe trait Allocator {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "allocator_api", since = "1.100.0")]
     fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         let ptr = self.allocate(layout)?;
         // SAFETY: `alloc` returns a valid memory block
@@ -270,7 +270,7 @@ pub const unsafe trait Allocator {
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
-    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "allocator_api", since = "1.100.0")]
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout);
 
     /// Attempts to extend the memory block.
@@ -312,7 +312,7 @@ pub const unsafe trait Allocator {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "allocator_api", since = "1.100.0")]
     unsafe fn grow(
         &self,
         ptr: NonNull<u8>,
@@ -373,7 +373,7 @@ pub const unsafe trait Allocator {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "allocator_api", since = "1.100.0")]
     unsafe fn grow_zeroed(
         &self,
         ptr: NonNull<u8>,
@@ -440,7 +440,7 @@ pub const unsafe trait Allocator {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "allocator_api", since = "1.100.0")]
     unsafe fn shrink(
         &self,
         ptr: NonNull<u8>,
@@ -574,7 +574,7 @@ pub unsafe trait AllocatorClone: Allocator + Clone {}
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 pub unsafe trait StaticAllocator: Allocator {}
 
-#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "allocator_api", since = "1.100.0")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 const unsafe impl<A> Allocator for &A
 where
@@ -630,7 +630,7 @@ where
     }
 }
 
-#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "allocator_api", since = "1.100.0")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 const unsafe impl<A> Allocator for &mut A
 where
