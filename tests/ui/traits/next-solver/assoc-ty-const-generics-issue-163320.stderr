@@ -1,0 +1,123 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:11:5
+   |
+LL |     <[(); N] as IntoIterator>::Item::Item:,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     <[(); N] as IntoIterator>::Item::Item:,
+LL +     <<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item:,
+   |
+LL -     <[(); N] as IntoIterator>::Item::Item:,
+LL +     <<[(); N] as IntoIterator>::Item as IntoIterator>::Item:,
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:17:12
+   |
+LL |     Option<<[(); N] as IntoIterator>::Item::Item>: Sized,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     Option<<[(); N] as IntoIterator>::Item::Item>: Sized,
+LL +     Option<<<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item>: Sized,
+   |
+LL -     Option<<[(); N] as IntoIterator>::Item::Item>: Sized,
+LL +     Option<<<[(); N] as IntoIterator>::Item as IntoIterator>::Item>: Sized,
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:22:8
+   |
+LL |     _: <[(); N] as IntoIterator>::Item::Item,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     _: <[(); N] as IntoIterator>::Item::Item,
+LL +     _: <<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item,
+   |
+LL -     _: <[(); N] as IntoIterator>::Item::Item,
+LL +     _: <<[(); N] as IntoIterator>::Item as IntoIterator>::Item,
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:27:5
+   |
+LL |     <[(); N] as IntoIterator>::Item::Item;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     <[(); N] as IntoIterator>::Item::Item;
+LL +     <<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item;
+   |
+LL -     <[(); N] as IntoIterator>::Item::Item;
+LL +     <<[(); N] as IntoIterator>::Item as IntoIterator>::Item;
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:31:12
+   |
+LL |     field: <[(); N] as IntoIterator>::Item::Item,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     field: <[(); N] as IntoIterator>::Item::Item,
+LL +     field: <<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item,
+   |
+LL -     field: <[(); N] as IntoIterator>::Item::Item,
+LL +     field: <<[(); N] as IntoIterator>::Item as IntoIterator>::Item,
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:47:14
+   |
+LL |     const M: <[(); N] as IntoIterator>::Item::Item,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     const M: <[(); N] as IntoIterator>::Item::Item,
+LL +     const M: <<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item,
+   |
+LL -     const M: <[(); N] as IntoIterator>::Item::Item,
+LL +     const M: <<[(); N] as IntoIterator>::Item as IntoIterator>::Item,
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:53:9
+   |
+LL |     T = <[(); N] as IntoIterator>::Item::Item,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     T = <[(); N] as IntoIterator>::Item::Item,
+LL +     T = <<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item,
+   |
+LL -     T = <[(); N] as IntoIterator>::Item::Item,
+LL +     T = <<[(); N] as IntoIterator>::Item as IntoIterator>::Item,
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:40:9
+   |
+LL |         <[(); N] as IntoIterator>::Item::Item:,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -         <[(); N] as IntoIterator>::Item::Item:,
+LL +         <<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item:,
+   |
+LL -         <[(); N] as IntoIterator>::Item::Item:,
+LL +         <<[(); N] as IntoIterator>::Item as IntoIterator>::Item:,
+   |
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0223`.
