@@ -3082,7 +3082,10 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// exists.
 ///
 /// Unlike [`fs::rename`], the destination is never overwritten. The check happens as part of the
-/// same operation, which avoids check-then-rename races, but does not guarantee crash safety.
+/// same operation, which avoids check-then-rename races.
+///
+/// If the system crashes in the middle, it may be possible to end up with both copies of the file
+/// existing, but it should not be possible to end up with zero copies, or with a half-written file.
 ///
 /// This will not work if the new name is on a different mount point.
 ///
