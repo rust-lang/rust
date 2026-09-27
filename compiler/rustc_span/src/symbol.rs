@@ -1028,6 +1028,7 @@ symbols! {
         forall,
         forbid,
         force_target_feature,
+        forced_keywords,
         forget,
         format_args,
         format_args_capture,
@@ -2583,6 +2584,7 @@ impl fmt::Display for Ident {
 pub enum IdentPrintMode {
     Normal,
     RawIdent,
+    ForcedKeywordIdent,
     RawLifetime,
 }
 
@@ -2641,6 +2643,10 @@ impl fmt::Display for IdentPrinter {
             IdentPrintMode::Normal => self.symbol,
             IdentPrintMode::RawIdent => {
                 f.write_str("r#")?;
+                self.symbol
+            }
+            IdentPrintMode::ForcedKeywordIdent => {
+                f.write_str("k#")?;
                 self.symbol
             }
             IdentPrintMode::RawLifetime => {
