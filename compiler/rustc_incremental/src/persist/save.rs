@@ -26,15 +26,14 @@ pub(crate) fn save_dep_graph(tcx: TyCtxt<'_>) {
     debug!("save_dep_graph()");
     tcx.dep_graph.with_ignore(|| {
         let sess = tcx.sess;
-        if sess.opts.incremental.is_none() {
+        let Some(incr_comp_session) = tcx.incr_comp_session else {
             return;
-        }
+        };
         // This is going to be deleted in finalize_session_directory, so let's not create it.
         if sess.dcx().has_errors_or_delayed_bugs().is_some() {
             return;
         }
 
-        let incr_comp_session = tcx.incr_comp_session.unwrap();
         let query_cache_path = query_cache_path(incr_comp_session);
         let dep_graph_path = dep_graph_path(incr_comp_session);
         let staging_dep_graph_path = staging_dep_graph_path(incr_comp_session);
@@ -92,13 +91,10 @@ pub(crate) fn save_dep_graph(tcx: TyCtxt<'_>) {
 /// Saves the work product index.
 pub fn save_work_product_index(
     sess: &Session,
-    incr_comp_session: Option<&IncrCompSession>,
+    incr_comp_session: &IncrCompSession,
     dep_graph: &DepGraph,
     new_work_products: WorkProductMap,
 ) {
-    if sess.opts.incremental.is_none() {
-        return;
-    }
     // This is going to be deleted in finalize_session_directory, so let's not create it
     if sess.dcx().has_errors().is_some() {
         return;
@@ -106,7 +102,7 @@ pub fn save_work_product_index(
 
     debug!("save_work_product_index()");
     dep_graph.assert_ignored();
-    let path = work_products_path(incr_comp_session.unwrap());
+    let path = work_products_path(incr_comp_session);
     file_format::save_in(sess, path, "work product index", |mut e| {
         encode_work_product_index(&new_work_products, &mut e);
         e.finish()
@@ -117,7 +113,7 @@ pub fn save_work_product_index(
         new_work_products.items().all(|(_, wp)| {
             wp.saved_files
                 .items()
-                .all(|(_, path)| in_incr_comp_dir_sess(incr_comp_session.unwrap(), path).exists())
+                .all(|(_, path)| in_incr_comp_dir_sess(incr_comp_session, path).exists())
         })
     });
 }

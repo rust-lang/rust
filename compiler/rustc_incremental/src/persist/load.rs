@@ -118,30 +118,21 @@ fn load_dep_graph(sess: &Session, incr_comp_session: &IncrCompSession) -> LoadRe
 /// If we are not in incremental compilation mode, returns `None`.
 /// Otherwise, tries to load the query result cache from disk,
 /// creating an empty cache if it could not be loaded.
-pub fn load_query_result_cache(
-    sess: &Session,
-    incr_comp_session: Option<&IncrCompSession>,
-) -> Option<OnDiskCache> {
-    if sess.opts.incremental.is_none() {
-        return None;
-    }
-    let incr_comp_session = incr_comp_session.unwrap();
-
+pub fn load_query_result_cache(sess: &Session, incr_comp_session: &IncrCompSession) -> OnDiskCache {
     let _prof_timer = sess.prof.generic_activity("incr_comp_load_query_result_cache");
 
     let Some(path) = old_query_cache_path(incr_comp_session) else {
-        return Some(OnDiskCache::new_empty());
+        return OnDiskCache::new_empty();
     };
     match file_format::open_incremental_file(sess, &path) {
         Ok(OpenFile { mmap, start_pos }) => {
-            let cache = OnDiskCache::new(sess, mmap, start_pos).unwrap_or_else(|()| {
+            OnDiskCache::new(sess, mmap, start_pos).unwrap_or_else(|()| {
                 sess.dcx().emit_warn(diagnostics::CorruptFile { path: &path });
                 OnDiskCache::new_empty()
-            });
-            Some(cache)
+            })
         }
         Err(OpenFileError::NotFoundOrHeaderMismatch | OpenFileError::IoError { .. }) => {
-            Some(OnDiskCache::new_empty())
+            OnDiskCache::new_empty()
         }
     }
 }
