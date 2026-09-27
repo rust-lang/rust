@@ -9,7 +9,7 @@
 use rustc_data_structures::graph;
 use rustc_data_structures::union_find::UnionFind;
 use rustc_index::bit_set::DenseBitSet;
-use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec, StableIdx};
 pub(crate) use rustc_middle::mir::coverage::NodeFlowData;
 use rustc_middle::mir::coverage::Op;
 
@@ -58,7 +58,7 @@ where
 /// influence counter allocation:
 /// - Earlier nodes are more likely to receive counter expressions.
 /// - Later nodes are more likely to receive physical counters.
-pub(crate) fn make_node_counters<Node: Idx>(
+pub(crate) fn make_node_counters<Node: StableIdx>(
     node_flow_data: &NodeFlowData<Node>,
     priority_list: &[Node],
 ) -> NodeCounters<Node> {
@@ -126,7 +126,7 @@ struct SpantreeBuilder<'a, Node: Idx> {
     counter_terms: IndexVec<Node, Vec<CounterTerm<Node>>>,
 }
 
-impl<'a, Node: Idx> SpantreeBuilder<'a, Node> {
+impl<'a, Node: StableIdx> SpantreeBuilder<'a, Node> {
     fn new(node_flow_data: &'a NodeFlowData<Node>) -> Self {
         let NodeFlowData { supernodes, succ_supernodes } = node_flow_data;
         let num_nodes = supernodes.len();

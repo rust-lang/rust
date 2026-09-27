@@ -3,7 +3,7 @@ use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::graph::{DirectedGraph, Successors};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::DefId;
-use rustc_index::{Idx, IndexVec, newtype_index};
+use rustc_index::{Idx, IndexVec, StableIdx, newtype_index};
 use rustc_middle::mono::MonoItem;
 use rustc_middle::ty::TyCtxt;
 
@@ -22,6 +22,8 @@ impl Idx for StaticNodeIdx {
         self.0
     }
 }
+
+impl StableIdx for StaticNodeIdx {}
 
 impl From<usize> for StaticNodeIdx {
     fn from(value: usize) -> Self {

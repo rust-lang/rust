@@ -2,7 +2,7 @@
 
 use std::hash::{Hash, Hasher};
 
-use rustc_index::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec, StableIdx};
 use rustc_macros::StableHash;
 
 /// An indexed multi-map that preserves insertion order while permitting both *O*(log *n*) lookup of
@@ -52,26 +52,26 @@ impl<I: Idx, K: Ord, V> SortedIndexMultiMap<I, K, V> {
 
     /// Returns an iterator over the items in the map in insertion order.
     #[inline]
-    pub fn into_iter(self) -> impl DoubleEndedIterator<Item = (K, V)> {
-        self.items.into_iter()
+    pub fn unstable_into_iter(self) -> impl DoubleEndedIterator<Item = (K, V)> {
+        self.items.unstable_into_iter()
     }
 
     /// Returns an iterator over the items in the map in insertion order along with their indices.
     #[inline]
-    pub fn into_iter_enumerated(self) -> impl DoubleEndedIterator<Item = (I, (K, V))> {
-        self.items.into_iter_enumerated()
+    pub fn unstable_into_iter_enumerated(self) -> impl DoubleEndedIterator<Item = (I, (K, V))> {
+        self.items.unstable_into_iter_enumerated()
     }
 
     /// Returns an iterator over the items in the map in insertion order.
     #[inline]
-    pub fn iter(&self) -> impl '_ + DoubleEndedIterator<Item = (&K, &V)> {
-        self.items.iter().map(|(k, v)| (k, v))
+    pub fn unstable_iter(&self) -> impl '_ + DoubleEndedIterator<Item = (&K, &V)> {
+        self.items.unstable_iter().map(|(k, v)| (k, v))
     }
 
     /// Returns an iterator over the items in the map in insertion order along with their indices.
     #[inline]
-    pub fn iter_enumerated(&self) -> impl '_ + DoubleEndedIterator<Item = (I, (&K, &V))> {
-        self.items.iter_enumerated().map(|(i, (k, v))| (i, (k, v)))
+    pub fn unstable_iter_enumerated(&self) -> impl '_ + DoubleEndedIterator<Item = (I, (&K, &V))> {
+        self.items.unstable_iter_enumerated().map(|(i, (k, v))| (i, (k, v)))
     }
 
     /// Returns the item in the map with the given index.
@@ -109,6 +109,32 @@ impl<I: Idx, K: Ord, V> SortedIndexMultiMap<I, K, V> {
     }
 }
 
+impl<I: StableIdx, K: Ord, V> SortedIndexMultiMap<I, K, V> {
+    /// Returns an iterator over the items in the map in insertion order.
+    #[inline]
+    pub fn into_iter(self) -> impl DoubleEndedIterator<Item = (K, V)> {
+        self.unstable_into_iter()
+    }
+
+    /// Returns an iterator over the items in the map in insertion order along with their indices.
+    #[inline]
+    pub fn into_iter_enumerated(self) -> impl DoubleEndedIterator<Item = (I, (K, V))> {
+        self.unstable_into_iter_enumerated()
+    }
+
+    /// Returns an iterator over the items in the map in insertion order.
+    #[inline]
+    pub fn iter(&self) -> impl '_ + DoubleEndedIterator<Item = (&K, &V)> {
+        self.unstable_iter()
+    }
+
+    /// Returns an iterator over the items in the map in insertion order along with their indices.
+    #[inline]
+    pub fn iter_enumerated(&self) -> impl '_ + DoubleEndedIterator<Item = (I, (&K, &V))> {
+        self.unstable_iter_enumerated()
+    }
+}
+
 impl<I: Idx, K: Eq, V: Eq> Eq for SortedIndexMultiMap<I, K, V> {}
 impl<I: Idx, K: PartialEq, V: PartialEq> PartialEq for SortedIndexMultiMap<I, K, V> {
     fn eq(&self, other: &Self) -> bool {
@@ -133,7 +159,8 @@ impl<I: Idx, K: Ord, V> FromIterator<(K, V)> for SortedIndexMultiMap<I, K, V> {
         J: IntoIterator<Item = (K, V)>,
     {
         let items = IndexVec::<I, _>::from_iter(iter);
-        let mut idx_sorted_by_item_key: Vec<_> = items.indices().collect();
+        // its ok to use `unstable_indices` here, since we will be sorting it right away
+        let mut idx_sorted_by_item_key: Vec<_> = items.unstable_indices().collect();
 
         // `sort_by_key` is stable, so insertion order is preserved for duplicate items.
         idx_sorted_by_item_key.sort_by_key(|&idx| &items[idx].0);

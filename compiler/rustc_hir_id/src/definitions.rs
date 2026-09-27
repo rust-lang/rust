@@ -345,11 +345,11 @@ impl Definitions {
         def_id
     }
 
-    pub fn enumerated_keys_and_path_hashes(
+    pub fn unstable_enumerated_keys_and_path_hashes(
         &self,
     ) -> impl Iterator<Item = (DefIndex, &DefKey, DefPathHash)> + ExactSizeIterator {
         self.def_id_to_key
-            .iter_enumerated()
+            .unstable_iter_enumerated()
             .map(move |(def_id, key)| (def_id.local_def_index, key, self.def_path_hash(def_id)))
     }
 

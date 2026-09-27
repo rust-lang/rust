@@ -1,4 +1,4 @@
-use rustc_index::Idx;
+use rustc_index::{Idx, StableIdx};
 
 pub mod dominators;
 pub mod iterate;
@@ -12,7 +12,7 @@ pub mod vec_graph;
 mod tests;
 
 pub trait DirectedGraph {
-    type Node: Idx;
+    type Node: StableIdx;
 
     /// Returns the total number of nodes in this graph.
     ///

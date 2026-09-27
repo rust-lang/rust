@@ -4,8 +4,8 @@ use std::ops::Range;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet, StdEntry};
-use rustc_index::IndexVec;
 use rustc_index::bit_set::GrowableBitSet;
+use rustc_index::{IndexVec, StableIdx};
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
@@ -22,10 +22,14 @@ rustc_index::newtype_index!(
     pub struct PlaceIndex {}
 );
 
+impl StableIdx for PlaceIndex {}
+
 rustc_index::newtype_index!(
     /// This index uniquely identifies a tracked place and therefore a slot in [`State`].
     pub struct ValueIndex {}
 );
+
+impl StableIdx for ValueIndex {}
 
 /// See [`State`].
 #[derive(PartialEq, Eq, Debug)]

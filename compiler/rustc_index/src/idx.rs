@@ -23,6 +23,17 @@ pub trait Idx: Copy + 'static + Eq + PartialEq + Debug + Hash {
     }
 }
 
+/// An index type where iteration is stable between runs. Allows usage of iterator functions for
+/// `IndexVec` and `IndexSlice`. Otherwise only the `unstable_*` variants of these functions is
+/// available
+///
+/// Most indices should implement this, however indices into global tables, initialized from
+/// multiple threads should not. A great example of such an unstable index is `LocalDefId`, which
+/// can be created on the fly inside queries executed in parallel.
+///
+/// For index types defined with `newtype_index!`, adding `#[orderable]` automatically derives this.
+pub trait StableIdx: Idx {}
+
 impl Idx for usize {
     #[inline]
     fn new(idx: usize) -> Self {
@@ -33,6 +44,8 @@ impl Idx for usize {
         self
     }
 }
+
+impl StableIdx for usize {}
 
 impl Idx for u32 {
     #[inline]
@@ -45,6 +58,8 @@ impl Idx for u32 {
         self as usize
     }
 }
+
+impl StableIdx for u32 {}
 
 /// Helper trait for indexing operations with a custom index type.
 pub trait IntoSliceIdx<I, T: ?Sized> {

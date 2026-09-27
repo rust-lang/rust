@@ -22,7 +22,7 @@
 use std::iter;
 
 use rustc_index::bit_set::{BitMatrix, DenseBitSet};
-use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec, StableIdx};
 use tracing::{debug, trace};
 
 use crate::{
@@ -39,7 +39,11 @@ enum SavedLocalEligibility<VariantIdx, FieldIdx> {
 }
 
 /// Compute the eligibility and assignment of each local.
-fn coroutine_saved_local_eligibility<VariantIdx: Idx, FieldIdx: Idx, LocalIdx: Idx>(
+fn coroutine_saved_local_eligibility<
+    VariantIdx: StableIdx,
+    FieldIdx: StableIdx,
+    LocalIdx: StableIdx,
+>(
     nb_locals: usize,
     variant_fields: &IndexSlice<VariantIdx, IndexVec<FieldIdx, LocalIdx>>,
     storage_conflicts: &BitMatrix<LocalIdx, LocalIdx>,
@@ -139,9 +143,9 @@ fn coroutine_saved_local_eligibility<VariantIdx: Idx, FieldIdx: Idx, LocalIdx: I
 pub(super) fn layout<
     'a,
     F: core::ops::Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + core::fmt::Debug + Copy,
-    VariantIdx: Idx,
-    FieldIdx: Idx,
-    LocalIdx: Idx,
+    VariantIdx: StableIdx,
+    FieldIdx: StableIdx,
+    LocalIdx: StableIdx,
 >(
     calc: &super::LayoutCalculator<impl HasDataLayout>,
     local_layouts: &IndexSlice<LocalIdx, F>,

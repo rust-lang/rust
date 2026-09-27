@@ -4,8 +4,8 @@ use std::fmt::{self, Debug};
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_errors::ErrorGuaranteed;
-use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
+use rustc_index::{IndexVec, StableIdx};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::{Span, Symbol};
 
@@ -18,6 +18,8 @@ rustc_index::newtype_index! {
     #[debug_format = "_s{}"]
     pub struct CoroutineSavedLocal {}
 }
+
+impl StableIdx for CoroutineSavedLocal {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[derive(TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]

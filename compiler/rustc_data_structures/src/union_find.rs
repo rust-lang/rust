@@ -91,6 +91,8 @@ impl<Key: Idx> UnionFind<Key> {
     /// Takes a "snapshot" of the current state of this disjoint-set forest, in
     /// the form of a vector that directly maps each key to its current root.
     pub fn snapshot(&mut self) -> IndexVec<Key, Key> {
-        self.table.indices().map(|key| self.find(key)).collect()
+        // its ok to use unstable iteration here, since anybody trying to iterate the result will
+        // still have to use unstable iteration if Key did not implement `StableIdx`
+        self.table.unstable_indices().map(|key| self.find(key)).collect()
     }
 }

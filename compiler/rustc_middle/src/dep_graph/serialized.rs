@@ -51,7 +51,7 @@ use rustc_data_structures::outline;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal, broadcast};
 use rustc_data_structures::unhash::UnhashMap;
-use rustc_index::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec, StableIdx};
 use rustc_serialize::opaque::mem_encoder::MemEncoder;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -70,6 +70,8 @@ rustc_index::newtype_index! {
     #[max = 0x7FFF_FFFF]
     pub struct SerializedDepNodeIndex {}
 }
+
+impl StableIdx for SerializedDepNodeIndex {}
 
 impl SerializedDepNodeIndex {
     /// Converts a current-session dep node index to a "serialized" index,

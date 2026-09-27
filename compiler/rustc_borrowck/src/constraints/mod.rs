@@ -103,6 +103,7 @@ impl<'tcx> fmt::Debug for OutlivesConstraint<'tcx> {
 }
 
 rustc_index::newtype_index! {
+    #[orderable]
     #[debug_format = "OutlivesConstraintIndex({})"]
     pub(crate) struct OutlivesConstraintIndex {}
 }

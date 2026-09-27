@@ -4,6 +4,7 @@ use std::ops::{Index, IndexMut, RangeBounds};
 use std::slice::GetDisjointMutError::*;
 use std::slice::{self, SliceIndex};
 
+use crate::idx::StableIdx;
 use crate::{Idx, IndexVec, IntoSliceIdx};
 
 /// A view into contiguous `T`s, indexed by `I` rather than by `usize`.
@@ -60,19 +61,21 @@ impl<I: Idx, T> IndexSlice<I, T> {
     }
 
     #[inline]
-    pub fn iter(&self) -> slice::Iter<'_, T> {
+    pub fn unstable_iter(&self) -> slice::Iter<'_, T> {
         self.raw.iter()
     }
 
     #[inline]
-    pub fn iter_enumerated(&self) -> impl DoubleEndedIterator<Item = (I, &T)> + ExactSizeIterator {
+    pub fn unstable_iter_enumerated(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (I, &T)> + ExactSizeIterator {
         // Allow the optimizer to elide the bounds checking when creating each index.
         let _ = I::new(self.len());
         self.raw.iter().enumerate().map(|(n, t)| (I::new(n), t))
     }
 
     #[inline]
-    pub fn indices(
+    pub fn unstable_indices(
         &self,
     ) -> impl DoubleEndedIterator<Item = I> + ExactSizeIterator + Clone + 'static {
         // Allow the optimizer to elide the bounds checking when creating each index.
@@ -81,12 +84,12 @@ impl<I: Idx, T> IndexSlice<I, T> {
     }
 
     #[inline]
-    pub fn iter_mut(&mut self) -> slice::IterMut<'_, T> {
+    pub fn unstable_iter_mut(&mut self) -> slice::IterMut<'_, T> {
         self.raw.iter_mut()
     }
 
     #[inline]
-    pub fn iter_enumerated_mut(
+    pub fn unstable_iter_enumerated_mut(
         &mut self,
     ) -> impl DoubleEndedIterator<Item = (I, &mut T)> + ExactSizeIterator {
         // Allow the optimizer to elide the bounds checking when creating each index.
@@ -176,6 +179,36 @@ impl<I: Idx, T> IndexSlice<I, T> {
         }
     }
 }
+impl<I: StableIdx, T> IndexSlice<I, T> {
+    #[inline]
+    pub fn iter(&self) -> slice::Iter<'_, T> {
+        self.unstable_iter()
+    }
+
+    #[inline]
+    pub fn iter_enumerated(&self) -> impl DoubleEndedIterator<Item = (I, &T)> + ExactSizeIterator {
+        self.unstable_iter_enumerated()
+    }
+
+    #[inline]
+    pub fn indices(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = I> + ExactSizeIterator + Clone + 'static {
+        self.unstable_indices()
+    }
+
+    #[inline]
+    pub fn iter_mut(&mut self) -> slice::IterMut<'_, T> {
+        self.unstable_iter_mut()
+    }
+
+    #[inline]
+    pub fn iter_enumerated_mut(
+        &mut self,
+    ) -> impl DoubleEndedIterator<Item = (I, &mut T)> + ExactSizeIterator {
+        self.unstable_iter_enumerated_mut()
+    }
+}
 
 impl<I: Idx, J: Idx> IndexSlice<I, J> {
     /// Invert a bijective mapping, i.e. `invert(map)[y] = x` if `map[x] = y`,
@@ -184,18 +217,18 @@ impl<I: Idx, J: Idx> IndexSlice<I, J> {
     // FIXME(eddyb) build a better abstraction for permutations, if possible.
     pub fn invert_bijective_mapping(&self) -> IndexVec<J, I> {
         debug_assert_eq!(
-            self.iter().map(|x| x.index() as u128).sum::<u128>(),
+            self.unstable_iter().map(|x| x.index() as u128).sum::<u128>(),
             (0..self.len() as u128).sum::<u128>(),
             "The values aren't 0..N in input {self:?}",
         );
 
         let mut inverse = IndexVec::from_elem_n(Idx::new(0), self.len());
-        for (i1, &i2) in self.iter_enumerated() {
+        for (i1, &i2) in self.unstable_iter_enumerated() {
             inverse[i2] = i1;
         }
 
         debug_assert_eq!(
-            inverse.iter().map(|x| x.index() as u128).sum::<u128>(),
+            inverse.unstable_iter().map(|x| x.index() as u128).sum::<u128>(),
             (0..inverse.len() as u128).sum::<u128>(),
             "The values aren't 0..N in result {self:?}",
         );
@@ -226,7 +259,7 @@ impl<I: Idx, T, R: IntoSliceIdx<I, [T]>> IndexMut<R> for IndexSlice<I, T> {
     }
 }
 
-impl<'a, I: Idx, T> IntoIterator for &'a IndexSlice<I, T> {
+impl<'a, I: StableIdx, T> IntoIterator for &'a IndexSlice<I, T> {
     type Item = &'a T;
     type IntoIter = slice::Iter<'a, T>;
 
@@ -236,7 +269,7 @@ impl<'a, I: Idx, T> IntoIterator for &'a IndexSlice<I, T> {
     }
 }
 
-impl<'a, I: Idx, T> IntoIterator for &'a mut IndexSlice<I, T> {
+impl<'a, I: StableIdx, T> IntoIterator for &'a mut IndexSlice<I, T> {
     type Item = &'a mut T;
     type IntoIter = slice::IterMut<'a, T>;
 

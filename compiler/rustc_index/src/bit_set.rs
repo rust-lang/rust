@@ -7,6 +7,7 @@ use Chunk::*;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 
+use crate::idx::StableIdx;
 use crate::{Idx, IndexVec};
 
 #[cfg(test)]
@@ -1575,8 +1576,8 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         self.ensure_row(row).insert_all();
     }
 
-    pub fn rows(&self) -> impl Iterator<Item = R> {
-        self.rows.indices()
+    pub fn unstable_rows(&self) -> impl Iterator<Item = R> {
+        self.rows.unstable_indices()
     }
 
     /// Iterates through all the columns set to true in a given row of
@@ -1587,6 +1588,12 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
 
     pub fn row(&self, row: R) -> Option<&DenseBitSet<C>> {
         self.rows.get(row)?.as_ref()
+    }
+}
+
+impl<R: StableIdx, C: Idx> SparseBitMatrix<R, C> {
+    pub fn rows(&self) -> impl Iterator<Item = R> {
+        self.unstable_rows()
     }
 }
 

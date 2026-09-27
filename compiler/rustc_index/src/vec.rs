@@ -7,7 +7,7 @@ use std::{fmt, slice, vec};
 #[cfg(feature = "nightly")]
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
-use crate::{Idx, IndexSlice};
+use crate::{Idx, IndexSlice, StableIdx};
 
 /// An owned contiguous collection of `T`s, indexed by `I` rather than by `usize`.
 ///
@@ -122,12 +122,12 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn into_iter(self) -> vec::IntoIter<T> {
+    pub fn unstable_into_iter(self) -> vec::IntoIter<T> {
         self.raw.into_iter()
     }
 
     #[inline]
-    pub fn into_iter_enumerated(
+    pub fn unstable_into_iter_enumerated(
         self,
     ) -> impl DoubleEndedIterator<Item = (I, T)> + ExactSizeIterator {
         // Allow the optimizer to elide the bounds checking when creating each index.
@@ -136,12 +136,12 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn drain<R: RangeBounds<usize>>(&mut self, range: R) -> impl Iterator<Item = T> {
+    pub fn unstable_drain<R: RangeBounds<usize>>(&mut self, range: R) -> impl Iterator<Item = T> {
         self.raw.drain(range)
     }
 
     #[inline]
-    pub fn drain_enumerated<R: RangeBounds<usize>>(
+    pub fn unstable_drain_enumerated<R: RangeBounds<usize>>(
         &mut self,
         range: R,
     ) -> impl Iterator<Item = (I, T)> {
@@ -204,6 +204,33 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 }
 
+impl<I: StableIdx, T> IndexVec<I, T> {
+    #[inline]
+    pub fn into_iter(self) -> vec::IntoIter<T> {
+        self.unstable_into_iter()
+    }
+
+    #[inline]
+    pub fn into_iter_enumerated(
+        self,
+    ) -> impl DoubleEndedIterator<Item = (I, T)> + ExactSizeIterator {
+        self.unstable_into_iter_enumerated()
+    }
+
+    #[inline]
+    pub fn drain<R: RangeBounds<usize>>(&mut self, range: R) -> impl Iterator<Item = T> {
+        self.unstable_drain(range)
+    }
+
+    #[inline]
+    pub fn drain_enumerated<R: RangeBounds<usize>>(
+        &mut self,
+        range: R,
+    ) -> impl Iterator<Item = (I, T)> {
+        self.unstable_drain_enumerated(range)
+    }
+}
+
 /// `IndexVec` is often used as a map, so it provides some map-like APIs.
 impl<I: Idx, T> IndexVec<I, Option<T>> {
     #[inline]
@@ -247,7 +274,7 @@ impl<I: Idx, T: fmt::Debug> fmt::Debug for IndexVec<I, T> {
 impl<'a, I: Idx, T: fmt::Debug> fmt::Debug for IndexSliceMapView<'a, I, T> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut entries = fmt.debug_map();
-        for (idx, val) in self.0.iter_enumerated() {
+        for (idx, val) in self.0.unstable_iter_enumerated() {
             entries.entry(&idx, val);
         }
         entries.finish()
@@ -257,7 +284,7 @@ impl<'a, I: Idx, T: fmt::Debug> fmt::Debug for IndexSliceMapView<'a, I, T> {
 impl<'a, I: Idx, T: fmt::Debug> fmt::Debug for IndexSliceMapViewCompact<'a, I, T> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut entries = fmt.debug_map();
-        for (idx, val) in self.0.iter_enumerated() {
+        for (idx, val) in self.0.unstable_iter_enumerated() {
             if let Some(val) = val {
                 entries.entry(&idx, val);
             }
@@ -323,7 +350,7 @@ impl<I: Idx, T> FromIterator<T> for IndexVec<I, T> {
     }
 }
 
-impl<I: Idx, T> IntoIterator for IndexVec<I, T> {
+impl<I: StableIdx, T> IntoIterator for IndexVec<I, T> {
     type Item = T;
     type IntoIter = vec::IntoIter<T>;
 
@@ -333,7 +360,7 @@ impl<I: Idx, T> IntoIterator for IndexVec<I, T> {
     }
 }
 
-impl<'a, I: Idx, T> IntoIterator for &'a IndexVec<I, T> {
+impl<'a, I: StableIdx, T> IntoIterator for &'a IndexVec<I, T> {
     type Item = &'a T;
     type IntoIter = slice::Iter<'a, T>;
 
@@ -343,7 +370,7 @@ impl<'a, I: Idx, T> IntoIterator for &'a IndexVec<I, T> {
     }
 }
 
-impl<'a, I: Idx, T> IntoIterator for &'a mut IndexVec<I, T> {
+impl<'a, I: StableIdx, T> IntoIterator for &'a mut IndexVec<I, T> {
     type Item = &'a mut T;
     type IntoIter = slice::IterMut<'a, T>;
 

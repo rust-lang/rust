@@ -161,6 +161,8 @@ impl Parse for Newtype {
                         Some(self.cmp(other))
                     }
                 }
+
+                impl ::rustc_index::StableIdx for #name {}
             }
         } else {
             quote! {}

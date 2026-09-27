@@ -140,7 +140,7 @@
 use rustc_data_structures::union_find::UnionFind;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::SparseIntervalMatrix;
-use rustc_index::{IndexVec, newtype_index};
+use rustc_index::{IndexVec, StableIdx, newtype_index};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, VisitPlacesWith, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -309,6 +309,8 @@ newtype_index! {
     /// Represent a subset of locals which appear in candidates.
     struct RelevantLocal {}
 }
+
+impl StableIdx for RelevantLocal {}
 
 #[derive(Debug)]
 struct RelevantLocals {

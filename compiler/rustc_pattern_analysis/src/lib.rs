@@ -20,6 +20,7 @@ pub mod usefulness;
 
 use std::fmt;
 
+use rustc_index::StableIdx;
 pub use rustc_index::{Idx, IndexVec}; // re-exported to avoid rustc_index version issues
 
 use crate::constructor::{Constructor, ConstructorSet, IntRange};
@@ -39,7 +40,7 @@ pub trait PatCx: Sized + fmt::Debug {
     /// Errors that can abort analysis.
     type Error: fmt::Debug;
     /// The index of an enum variant.
-    type VariantIdx: Clone + Idx + fmt::Debug;
+    type VariantIdx: Clone + StableIdx + fmt::Debug;
     /// A string literal
     type StrLit: Clone + PartialEq + fmt::Debug;
     /// Extra data to store in a match arm.
