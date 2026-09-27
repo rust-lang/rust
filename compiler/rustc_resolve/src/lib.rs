@@ -323,6 +323,8 @@ enum ResolutionError<'ra> {
         trait_path: String,
         trait_item_span: Span,
         code: ErrCode,
+        trait_span: Span,
+        impl_span: Span,
     },
     /// Error E0201: multiple impl items for the same trait item.
     TraitImplDuplicate {

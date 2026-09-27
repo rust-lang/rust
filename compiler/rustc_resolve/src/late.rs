@@ -3924,6 +3924,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
         };
         let trait_path = path_names_to_string(path);
+        let trait_span = decl.parent_module.unwrap().span.shrink_to_lo();
+        let impl_span = self.current_trait_ref.as_ref().unwrap().1.path.span;
         self.report_error(
             span,
             ResolutionError::TraitImplMismatch {
@@ -3932,6 +3934,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 code,
                 trait_path,
                 trait_item_span: decl.span,
+                trait_span,
+                impl_span,
             },
         );
     }

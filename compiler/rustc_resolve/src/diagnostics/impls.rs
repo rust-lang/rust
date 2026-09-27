@@ -1397,6 +1397,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 code,
                 trait_item_span,
                 trait_path,
+                trait_span,
+                impl_span,
             } => self
                 .dcx()
                 .create_err(diagnostics::TraitImplMismatch {
@@ -1405,6 +1407,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     kind,
                     trait_path,
                     trait_item_span,
+                    trait_span,
+                    impl_span,
                 })
                 .with_code(code),
             ResolutionError::TraitImplDuplicate {

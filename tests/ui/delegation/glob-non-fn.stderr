@@ -1,18 +1,24 @@
 error[E0324]: item `CONST` is an associated method, which doesn't match its trait `Trait`
   --> $DIR/glob-non-fn.rs:29:5
    |
+LL | trait Trait {
+LL |     fn method(&self);
 LL |     const CONST: u8;
    |     ---------------- item in trait
 ...
+LL | impl Trait for Bad {
 LL |     reuse Trait::* { &self.0 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ does not match trait
 
 error[E0324]: item `Type` is an associated method, which doesn't match its trait `Trait`
   --> $DIR/glob-non-fn.rs:29:5
    |
+LL | trait Trait {
+...
 LL |     type Type;
    |     ---------- item in trait
 ...
+LL | impl Trait for Bad {
 LL |     reuse Trait::* { &self.0 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ does not match trait
 
