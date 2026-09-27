@@ -1,0 +1,140 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-binder-sizedness.rs:37:48
+   |
+LL | fn by_value(x: unsafe<> ManuallyDrop<[u8]>) -> unsafe<> ManuallyDrop<[u8]> {
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `unsafe<> ManuallyDrop<[u8]>`, the trait `Sized` is not implemented for `[u8]`
+note: required because it appears within the type `ManuallyDrop<[u8]>`
+  --> $SRC_DIR/core/src/mem/manually_drop.rs:LL:COL
+   = note: required because it appears within the type `unsafe<> ManuallyDrop<[u8]>`
+   = note: the return type of a function must have a statically known size
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-binder-sizedness.rs:17:22
+   |
+LL |     requires_sized::<unsafe<> ManuallyDrop<[u8]>>();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `unsafe<> ManuallyDrop<[u8]>`, the trait `Sized` is not implemented for `[u8]`
+note: required because it appears within the type `ManuallyDrop<[u8]>`
+  --> $SRC_DIR/core/src/mem/manually_drop.rs:LL:COL
+   = note: required because it appears within the type `unsafe<> ManuallyDrop<[u8]>`
+note: required by a bound in `requires_sized`
+  --> $DIR/unsized-binder-sizedness.rs:14:22
+   |
+LL | fn requires_sized<T: Sized>() {}
+   |                      ^^^^^ required by this bound in `requires_sized`
+
+error[E0277]: the size for values of type `(dyn Debug + 'a)` cannot be known at compilation time
+  --> $DIR/unsized-binder-sizedness.rs:18:22
+   |
+LL |     requires_sized::<unsafe<'a> ManuallyDrop<dyn Debug + 'a>>();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `unsafe<'a> ManuallyDrop<(dyn Debug + 'a)>`, the trait `for<'a> Sized` is not implemented for `(dyn Debug + 'a)`
+note: required because it appears within the type `ManuallyDrop<(dyn Debug + 'a)>`
+  --> $SRC_DIR/core/src/mem/manually_drop.rs:LL:COL
+   = note: required because it appears within the type `unsafe<'a> ManuallyDrop<(dyn Debug + 'a)>`
+note: required by a bound in `requires_sized`
+  --> $DIR/unsized-binder-sizedness.rs:14:22
+   |
+LL | fn requires_sized<T: Sized>() {}
+   |                      ^^^^^ required by this bound in `requires_sized`
+
+error[E0277]: the size for values of type `<T as Tr>::Assoc<'a>` cannot be known at compilation time
+  --> $DIR/unsized-binder-sizedness.rs:33:22
+   |
+LL |     requires_sized::<unsafe<'a> ManuallyDrop<T::Assoc<'a>>>();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `unsafe<'a> ManuallyDrop<<T as Tr>::Assoc<'a>>`, the trait `for<'a> Sized` is not implemented for `<T as Tr>::Assoc<'a>`
+note: required because it appears within the type `ManuallyDrop<<T as Tr>::Assoc<'a>>`
+  --> $SRC_DIR/core/src/mem/manually_drop.rs:LL:COL
+   = note: required because it appears within the type `unsafe<'a> ManuallyDrop<<T as Tr>::Assoc<'a>>`
+note: required by a bound in `requires_sized`
+  --> $DIR/unsized-binder-sizedness.rs:14:22
+   |
+LL | fn requires_sized<T: Sized>() {}
+   |                      ^^^^^ required by this bound in `requires_sized`
+help: consider further restricting the associated type
+   |
+LL | fn not_sized_generic<T: Tr, U: ?Sized>() where for<'a> <T as Tr>::Assoc<'a>: Sized {
+   |                                          +++++++++++++++++++++++++++++++++++++++++
+
+error[E0277]: the size for values of type `U` cannot be known at compilation time
+  --> $DIR/unsized-binder-sizedness.rs:34:22
+   |
+LL | fn not_sized_generic<T: Tr, U: ?Sized>() {
+   |                             - this type parameter needs to be `Sized`
+LL |     requires_sized::<unsafe<'a> ManuallyDrop<T::Assoc<'a>>>();
+LL |     requires_sized::<unsafe<'a> ManuallyDrop<(&'a u8, U)>>();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = note: required because it appears within the type `(&'a u8, U)`
+note: required because it appears within the type `ManuallyDrop<(&'a u8, U)>`
+  --> $SRC_DIR/core/src/mem/manually_drop.rs:LL:COL
+   = note: required because it appears within the type `unsafe<'a> ManuallyDrop<(&'a u8, U)>`
+note: required by a bound in `requires_sized`
+  --> $DIR/unsized-binder-sizedness.rs:14:22
+   |
+LL | fn requires_sized<T: Sized>() {}
+   |                      ^^^^^ required by this bound in `requires_sized`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn not_sized_generic<T: Tr, U: ?Sized>() {
+LL + fn not_sized_generic<T: Tr, U>() {
+   |
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-binder-sizedness.rs:37:16
+   |
+LL | fn by_value(x: unsafe<> ManuallyDrop<[u8]>) -> unsafe<> ManuallyDrop<[u8]> {
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `unsafe<> ManuallyDrop<[u8]>`, the trait `Sized` is not implemented for `[u8]`
+note: required because it appears within the type `ManuallyDrop<[u8]>`
+  --> $SRC_DIR/core/src/mem/manually_drop.rs:LL:COL
+   = note: required because it appears within the type `unsafe<> ManuallyDrop<[u8]>`
+   = help: unsized fn params are gated as an unstable feature
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-binder-sizedness.rs:44:9
+   |
+LL |     let _y = *x;
+   |         ^^ doesn't have a size known at compile-time
+   |
+   = help: within `unsafe<> ManuallyDrop<[u8]>`, the trait `Sized` is not implemented for `[u8]`
+note: required because it appears within the type `ManuallyDrop<[u8]>`
+  --> $SRC_DIR/core/src/mem/manually_drop.rs:LL:COL
+   = note: required because it appears within the type `unsafe<> ManuallyDrop<[u8]>`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -     let _y = *x;
+LL +     let _y = x;
+   |
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-binder-sizedness.rs:52:12
+   |
+LL |     size::<unsafe<> ManuallyDrop<[u8]>>();
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `unsafe<> ManuallyDrop<[u8]>`, the trait `Sized` is not implemented for `[u8]`
+note: required because it appears within the type `ManuallyDrop<[u8]>`
+  --> $SRC_DIR/core/src/mem/manually_drop.rs:LL:COL
+   = note: required because it appears within the type `unsafe<> ManuallyDrop<[u8]>`
+note: required by an implicit `Sized` bound in `size`
+  --> $DIR/unsized-binder-sizedness.rs:47:9
+   |
+LL | fn size<T>() -> usize {
+   |         ^ required by the implicit `Sized` requirement on this type parameter in `size`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn size<T: ?Sized>() -> usize {
+   |          ++++++++
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

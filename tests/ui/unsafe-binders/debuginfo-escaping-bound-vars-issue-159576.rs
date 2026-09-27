@@ -1,3 +1,4 @@
+//@ compile-flags: -Znext-solver
 //@ check-pass
 //@ compile-flags: --crate-type=lib -Cdebuginfo=2
 

@@ -1,18 +1,22 @@
 error[E0277]: the trait bound `unsafe<'a> Adt<'a>: Copy` is not satisfied
-  --> $DIR/layout-invariant.rs:9:13
+  --> $DIR/layout-invariant.rs:10:13
    |
 LL | const None: Option<unsafe<> Option<unsafe<'a> Adt<'a>>> = None;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `unsafe<'a> Adt<'a>`
    |
    = note: required for `Option<unsafe<'a> Adt<'a>>` to implement `Copy`
+note: required because it appears within the type `Option<unsafe<'a> Adt<'a>>`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error[E0277]: the trait bound `unsafe<'a> Adt<'a>: Copy` is not satisfied
-  --> $DIR/layout-invariant.rs:9:59
+  --> $DIR/layout-invariant.rs:10:59
    |
 LL | const None: Option<unsafe<> Option<unsafe<'a> Adt<'a>>> = None;
    |                                                           ^^^^ the trait `Copy` is not implemented for `unsafe<'a> Adt<'a>`
    |
    = note: required for `Option<unsafe<'a> Adt<'a>>` to implement `Copy`
+note: required because it appears within the type `Option<unsafe<'a> Adt<'a>>`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error: aborting due to 2 previous errors
 

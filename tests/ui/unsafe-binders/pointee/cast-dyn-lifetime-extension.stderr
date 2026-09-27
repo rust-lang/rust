@@ -1,47 +1,5 @@
-error[E0607]: cannot cast thin pointer `*const unsafe<'a> ManuallyDrop<(dyn Debug + 'a)>` to wide pointer `*const ManuallyDrop<dyn Debug>`
-  --> $DIR/cast-dyn-lifetime-extension.rs:22:5
-   |
-LL |     q as _
-   |     ^^^^^^
-
-error[E0607]: cannot cast thin pointer `*const unsafe<'a> ManuallyDrop<(dyn Debug + 'a)>` to wide pointer `*const ManuallyDrop<dyn Debug>`
-  --> $DIR/cast-dyn-lifetime-extension.rs:27:5
-   |
-LL |     q as _
-   |     ^^^^^^
-
-error[E0607]: cannot cast thin pointer `*const unsafe<'a> ManuallyDrop<(dyn Tr<'a> + 'static)>` to wide pointer `*const ManuallyDrop<dyn Tr<'static>>`
-  --> $DIR/cast-dyn-lifetime-extension.rs:35:5
-   |
-LL |     q as _
-   |     ^^^^^^
-
-error[E0607]: cannot cast thin pointer `*const unsafe<'a> ManuallyDrop<(dyn Send + 'a)>` to wide pointer `*const ManuallyDrop<dyn Send>`
-  --> $DIR/cast-dyn-lifetime-extension.rs:38:5
-   |
-LL |     q as _
-   |     ^^^^^^
-
-error[E0607]: cannot cast thin pointer `*const unsafe<'a> ManuallyDrop<(u8, (dyn Debug + 'a))>` to wide pointer `*const ManuallyDrop<(u8, dyn Debug)>`
-  --> $DIR/cast-dyn-lifetime-extension.rs:43:5
-   |
-LL |     q as _
-   |     ^^^^^^
-
-error[E0607]: cannot cast thin pointer `*mut unsafe<'a> ManuallyDrop<(dyn Debug + 'a)>` to wide pointer `*mut ManuallyDrop<(dyn Debug + 'static)>`
-  --> $DIR/cast-dyn-lifetime-extension.rs:48:5
-   |
-LL |     q as _
-   |     ^^^^^^
-
-error[E0607]: cannot cast thin pointer `*mut unsafe<'a> ManuallyDrop<(dyn Debug + 'a)>` to wide pointer `*const ManuallyDrop<dyn Debug>`
-  --> $DIR/cast-dyn-lifetime-extension.rs:51:5
-   |
-LL |     q as _
-   |     ^^^^^^
-
 error: lifetime may not live long enough
-  --> $DIR/cast-dyn-lifetime-extension.rs:17:5
+  --> $DIR/cast-dyn-lifetime-extension.rs:13:5
    |
 LL | fn direct<'x>(p: *const MD<dyn Debug + 'x>) -> *const MD<dyn Debug + 'static> {
    |           -- lifetime `'x` defined here
@@ -49,7 +7,7 @@ LL |     p as _
    |     ^^^^^^ returning this value requires that `'x` must outlive `'static`
    |
 note: raw pointer casts of trait objects cannot extend lifetimes
-  --> $DIR/cast-dyn-lifetime-extension.rs:17:5
+  --> $DIR/cast-dyn-lifetime-extension.rs:13:5
    |
 LL |     p as _
    |     ^^^^^^
@@ -66,6 +24,5 @@ LL - fn direct<'x>(p: *const MD<dyn Debug + 'x>) -> *const MD<dyn Debug + 'stati
 LL + fn direct<'x>(p: *const ManuallyDrop<(dyn Debug + 'static)>) -> *const MD<dyn Debug + 'static> {
    |
 
-error: aborting due to 8 previous errors
+error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0607`.

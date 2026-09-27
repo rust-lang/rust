@@ -524,9 +524,9 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     fn check_wide_ptr_meta(
         &mut self,
         meta: MemPlaceMeta<M::Provenance>,
-        pointee: TyAndLayout<'tcx>,
+        ty: Ty<'tcx>,
     ) -> InterpResult<'tcx> {
-        let tail = self.ecx.tcx.struct_tail_for_codegen(pointee.ty, self.ecx.typing_env);
+        let tail = self.ecx.tcx.struct_tail_for_codegen(ty, self.ecx.typing_env);
         match tail.kind() {
             ty::Dynamic(data, _) => {
                 let vtable = meta.unwrap_meta().to_pointer(self.ecx);
@@ -548,6 +548,9 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             }
             ty::Foreign(..) => {
                 // Unsized, but not wide.
+            }
+            &ty::UnsafeBinder(inner) => {
+                self.check_wide_ptr_meta(meta, inner.skip_binder())?;
             }
             _ => bug!("Unexpected unsized type tail: {:?}", tail),
         }
@@ -577,7 +580,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         // Handle wide pointers.
         // Check metadata early, for better diagnostics
         if place.layout.is_unsized() {
-            self.check_wide_ptr_meta(place.meta(), place.layout)?;
+            self.check_wide_ptr_meta(place.meta(), place.layout.ty)?;
         }
 
         // Determine size and alignment of pointee.
@@ -928,7 +931,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     // might actually be invalid (i.e., too big)!
                     let place = self.ecx.imm_ptr_to_mplace(&ptr)?;
                     assert!(place.layout.is_unsized());
-                    self.check_wide_ptr_meta(place.meta(), place.layout)?;
+                    self.check_wide_ptr_meta(place.meta(), place.layout.ty)?;
                 }
                 interp_ok(true)
             }

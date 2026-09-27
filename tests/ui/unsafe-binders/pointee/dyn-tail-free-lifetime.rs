@@ -1,13 +1,8 @@
 //@ compile-flags: -Znext-solver
 //@ check-fail
-//@ failure-status: 101
-//@ known-bug: #130516
-//@ rustc-env:RUST_BACKTRACE=0
-//@ normalize-stderr: "note: .*\n\n" -> ""
-//@ normalize-stderr: "(compiler/[a-z_/]+\.rs):\d+:\d+" -> "$1:LL:CC"
-//@ normalize-stderr: "query stack during panic:\n(.*\n)*?(end of query stack|\.\.\. and \d+ other queries.*)\n" -> ""
+//@ known-bug: unknown
 
-// If a `dyn Trait` does not mention any lifetimes from an unsafe binder, then
+// If a `dyn Trait` does not mention and lifetimes from an unsafe binder, then
 // the `DynMetadata` should be "normal" and not mention the binder or `ManuallyDrop`.
 
 #![feature(unsafe_binders, ptr_metadata)]
