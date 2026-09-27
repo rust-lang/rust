@@ -34,7 +34,7 @@ impl fmt::Display for TryFromIntError {
 #[stable(feature = "try_from", since = "1.34.0")]
 impl Error for TryFromIntError {}
 
-#[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "never_type", since = "1.100.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 const impl From<!> for TryFromIntError {
     #[inline]

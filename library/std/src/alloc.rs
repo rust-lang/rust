@@ -216,7 +216,7 @@ impl System {
 
 // The Allocator impl checks the layout size to be non-zero and forwards to the
 // platform functions in `std::sys::*::alloc`.
-#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "allocator_api", since = "1.100.0")]
 unsafe impl Allocator for System {
     #[inline]
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
