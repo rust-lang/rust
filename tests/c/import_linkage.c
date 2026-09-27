@@ -6,7 +6,6 @@
 
 #include <stdint.h>
 
-int32_t external_value = 1;
 int32_t available_externally_value = 2;
 int32_t linkonce_value = 3;
 int32_t linkonce_odr_value = 4;
