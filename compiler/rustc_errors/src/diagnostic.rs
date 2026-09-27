@@ -10,7 +10,7 @@ use rustc_ast::attr::version::RustcVersion;
 use rustc_data_structures::stable_hash::StableHasher;
 use rustc_error_messages::{DiagArgMap, DiagArgName, IntoDiagArg};
 use rustc_hashes::Hash128;
-use rustc_lint_defs::{Applicability, LintExpectationId};
+use rustc_lint_defs::Applicability;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::{Span, Spanned, Symbol};
 use tracing::debug;
@@ -190,7 +190,6 @@ pub struct DiagInner {
 
     pub messages: Vec<(DiagMessage, Style)>,
     pub code: Option<ErrCode>,
-    pub lint_id: Option<LintExpectationId>,
     pub span: MultiSpan,
     pub children: Vec<Subdiag>,
     pub suggestions: Suggestions,
@@ -212,7 +211,6 @@ impl DiagInner {
     pub fn new_with_messages(level: Level, messages: Vec<(DiagMessage, Style)>) -> Self {
         DiagInner {
             level,
-            lint_id: None,
             messages,
             code: None,
             span: MultiSpan::new(),
@@ -234,13 +232,7 @@ impl DiagInner {
         match self.level {
             Level::Bug | Level::Fatal | Level::Error | Level::DelayedBug => true,
 
-            Level::ForceWarning
-            | Level::Warning
-            | Level::Note
-            | Level::Help
-            | Level::FailureNote
-            | Level::Allow
-            | Level::Expect => false,
+            Level::Warning(_) | Level::Note | Level::Help | Level::FailureNote => false,
         }
     }
 
@@ -252,16 +244,6 @@ impl DiagInner {
     /// Indicates the minimum rust version this lint applies to.
     pub(crate) fn rust_version(&self) -> Option<RustcVersion> {
         self.is_lint.as_ref().and_then(|is| is.rust_version)
-    }
-
-    pub(crate) fn is_force_warn(&self) -> bool {
-        match self.level {
-            Level::ForceWarning => {
-                assert!(self.is_lint.is_some());
-                true
-            }
-            _ => false,
-        }
     }
 
     pub(crate) fn sub(
@@ -307,7 +289,6 @@ impl DiagInner {
             level,
             messages,
             code,
-            lint_id: _, // ignore
             span,
             children,
             suggestions,
@@ -317,8 +298,16 @@ impl DiagInner {
             emitted_at: _,   // ignore
         } = self;
 
-        let hashed_parts =
-            (level, messages, code, span, children, suggestions, args.as_slice(), is_lint);
+        let hashed_parts = (
+            std::mem::discriminant(level), // ignore the field within `Warning`
+            messages,
+            code,
+            span,
+            children,
+            suggestions,
+            args.as_slice(),
+            is_lint,
+        );
 
         let mut hasher = StableHasher::new();
         hashed_parts.hash(&mut hasher);
@@ -1096,16 +1085,6 @@ impl<'a> Diag<'a> {
     /// Add an error code.
     pub fn code(&mut self, code: ErrCode) -> &mut Self {
         self.code = Some(code);
-        self
-    } }
-
-    with_fn! { with_lint_id,
-    /// Add an argument.
-    pub fn lint_id(
-        &mut self,
-        id: LintExpectationId,
-    ) -> &mut Self {
-        self.lint_id = Some(id);
         self
     } }
 

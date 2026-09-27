@@ -7,7 +7,7 @@ use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{InliningThreshold, OptLevel};
-use rustc_span::bug;
+use rustc_span::{bug, sym};
 
 use crate::{inline, pass_manager as pm};
 
@@ -64,13 +64,19 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return true;
     }
 
-    let sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
-    for ty in sig.inputs().skip_binder().iter().chain(std::iter::once(&sig.output().skip_binder()))
-    {
-        // FIXME(f16_f128): in order to avoid crashes building `core`, always inline to skip
-        // codegen if the function is not used.
-        if ty == &tcx.types.f16 || ty == &tcx.types.f128 {
-            return true;
+    let reliable_f16 = tcx.sess.config.contains(&(sym::target_has_reliable_f16, None));
+    let reliable_f128 = tcx.sess.config.contains(&(sym::target_has_reliable_f128, None));
+    if !reliable_f16 || !reliable_f128 {
+        let sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
+        for ty in
+            sig.inputs().skip_binder().iter().chain(std::iter::once(&sig.output().skip_binder()))
+        {
+            // FIXME(f16,f128): in order to avoid crashes building `core`, inline on targets that
+            // have issues to skip codegen if the function is not used.
+            if (!reliable_f16 && ty == &tcx.types.f16) || (!reliable_f128 && ty == &tcx.types.f128)
+            {
+                return true;
+            }
         }
     }
 
