@@ -1302,12 +1302,7 @@ pub fn unlink(path: &WCStr) -> io::Result<()> {
     }
 }
 
-fn rename_inner(
-    old: &WCStr,
-    new: &WCStr,
-    move_flags: c::MOVE_FILE_FLAGS,
-    rename_flags: u32,
-) -> io::Result<()> {
+fn rename_inner(old: &WCStr, new: &WCStr, move_flags: u32, rename_flags: u32) -> io::Result<()> {
     if unsafe { c::MoveFileExW(old.as_ptr(), new.as_ptr(), move_flags) } == 0 {
         let err = api::get_last_error();
         // if `MoveFileExW` fails with ERROR_ACCESS_DENIED then try to move
