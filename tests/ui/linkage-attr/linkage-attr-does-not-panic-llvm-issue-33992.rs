@@ -4,9 +4,6 @@
 
 #![feature(linkage)]
 
-#[linkage = "external"]
-pub static TEST2: bool = true;
-
 #[cfg(not(target_env = "msvc"))]
 #[linkage = "linkonce"]
 pub static TEST4: bool = true;
