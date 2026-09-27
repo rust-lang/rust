@@ -1,0 +1,19 @@
+- // MIR for `assignment` before ScalarReplacementOfAggregates
++ // MIR for `assignment` after ScalarReplacementOfAggregates
+  
+  fn assignment() -> MaybeUninit<usize> {
+      let mut _0: std::mem::MaybeUninit<usize>;
+      let mut _1: (usize, std::mem::MaybeUninit<usize>);
++     let mut _2: usize;
++     let mut _3: std::mem::MaybeUninit<usize>;
+  
+      bb0: {
+-         (_1.0: usize) = const 0_usize;
+-         _0 = copy (_1.1: std::mem::MaybeUninit<usize>);
++         StorageAlloc(_3);
++         _2 = const 0_usize;
++         _0 = copy _3;
+          return;
+      }
+  }
+  
