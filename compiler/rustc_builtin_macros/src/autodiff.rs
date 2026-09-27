@@ -562,7 +562,7 @@ mod llvm_enzyme {
         let call_expr = ecx.expr_call(
             span,
             ecx.expr_path(enzyme_path),
-            vec![primal_fn_ptr, diff_path_expr, tuple_expr].into(),
+            thin_vec![primal_fn_ptr, diff_path_expr, tuple_expr],
         );
 
         ecx.stmt_expr(call_expr)
@@ -636,9 +636,7 @@ mod llvm_enzyme {
         assert!(sig.decl.inputs.len() == x.input_activity.len());
         assert!(has_ret == x.has_ret_activity());
         let mut d_decl = sig.decl.clone();
-        let mut d_inputs = Vec::new();
-        let mut new_inputs = Vec::new();
-        let mut idents = Vec::new();
+        let mut d_inputs = ThinVec::new();
         let mut act_ret = ThinVec::new();
 
         // We have two loops, a first one just to check the activities and types and possibly report
@@ -704,7 +702,6 @@ mod llvm_enzyme {
                             panic!("not an ident?");
                         };
                         let name = format!("d{}_{}", old_name, i);
-                        new_inputs.push(name.clone());
                         let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
                         *shadow_arg.pat = ecx.pat_ident(shadow_arg.pat.span, ident);
                         d_inputs.push(shadow_arg);
@@ -731,7 +728,6 @@ mod llvm_enzyme {
                             panic!("not an ident?");
                         };
                         let name = format!("b{}_{}", old_name, i);
-                        new_inputs.push(name.clone());
                         let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
 
                         *shadow_arg.pat = ecx.pat_ident(shadow_arg.pat.span, ident);
@@ -744,11 +740,6 @@ mod llvm_enzyme {
                 DiffActivity::None | DiffActivity::FakeActivitySize(_) => {
                     panic!("Should not happen");
                 }
-            }
-            if let PatKind::Ident(_, ident, _) = arg.pat.kind {
-                idents.push(ident);
-            } else {
-                panic!("not an ident?");
             }
         }
 
@@ -772,12 +763,11 @@ mod llvm_enzyme {
                     let ident = Ident::from_str_and_span(&name, ty.span);
                     let shadow_arg = ecx.param(ty.span, ident, ty);
                     d_inputs.push(shadow_arg);
-                    new_inputs.push(name);
                 }
                 _ => {}
             }
         }
-        d_decl.inputs = d_inputs.into();
+        d_decl.inputs = d_inputs;
 
         if x.mode.is_fwd() {
             let ty = match d_decl.output {
