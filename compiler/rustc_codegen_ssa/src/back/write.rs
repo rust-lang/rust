@@ -462,15 +462,17 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     incr_comp_session: Option<&IncrCompSession>,
     compiled_modules: &CompiledModules,
 ) -> WorkProductMap {
-    let mut work_products = WorkProductMap::default();
-
-    if sess.opts.incremental.is_none() || sess.opts.unstable_opts.disable_incr_comp_backend_caching
-    {
-        return work_products;
+    if sess.opts.unstable_opts.disable_incr_comp_backend_caching {
+        return WorkProductMap::default();
     }
+
+    let Some(incr_comp_session) = incr_comp_session else {
+        return WorkProductMap::default();
+    };
 
     let _timer = sess.timer("copy_all_cgu_workproducts_to_incr_comp_cache_dir");
 
+    let mut work_products = WorkProductMap::default();
     for module in compiled_modules.modules.iter().filter(|m| m.kind == ModuleKind::Regular) {
         let mut files = Vec::new();
         if let Some(object_file_path) = &module.object {
@@ -493,7 +495,7 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
         }
         let (id, product) = copy_cgu_workproduct_to_incr_comp_cache_dir(
             sess,
-            incr_comp_session.unwrap(),
+            incr_comp_session,
             &module.name,
             files.as_slice(),
         );
@@ -2264,19 +2266,19 @@ pub(crate) fn submit_post_lto_module_to_llvm<B: WriteBackendMethods>(
 }
 
 pub(crate) fn submit_pre_lto_module_to_llvm<B: WriteBackendMethods>(
-    tcx: TyCtxt<'_>,
+    sess: &Session,
+    incr_comp_session: &IncrCompSession,
     coordinator: &Coordinator<B>,
     module: CachedModuleCodegen,
 ) {
     let filename = pre_lto_bitcode_filename(&module.name);
-    let old_bitcode_path =
-        in_old_incr_comp_dir_sess(tcx.incr_comp_session.unwrap(), &filename).unwrap();
-    let bitcode_path = in_incr_comp_dir_sess(tcx.incr_comp_session.unwrap(), &filename);
+    let old_bitcode_path = in_old_incr_comp_dir_sess(incr_comp_session, &filename).unwrap();
+    let bitcode_path = in_incr_comp_dir_sess(incr_comp_session, &filename);
 
     match link_or_copy(&old_bitcode_path, &bitcode_path, false /* allow_overwrite */) {
         Ok(_) => {}
         Err(error) => {
-            tcx.sess.dcx().emit_err(diagnostics::CopyPathBuf {
+            sess.dcx().emit_err(diagnostics::CopyPathBuf {
                 source_file: old_bitcode_path,
                 output_path: bitcode_path,
                 error,

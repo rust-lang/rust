@@ -276,17 +276,10 @@ pub(crate) fn prepare_session_directory(
 /// This must not be called if there have been any compilation errors.
 pub fn finalize_session_directory(
     sess: &Session,
-    incr_comp_session: Option<IncrCompSession>,
-    svh: Option<Svh>,
+    mut incr_comp_session: IncrCompSession,
+    svh: Svh,
 ) {
     assert!(sess.dcx().has_errors_or_delayed_bugs().is_none());
-
-    if sess.opts.incremental.is_none() {
-        return;
-    }
-    let mut incr_comp_session = incr_comp_session.unwrap();
-    // The svh is always produced when incr. comp. is enabled.
-    let svh = svh.unwrap();
 
     let _timer = sess.timer("incr_comp_finalize_session_directory");
 

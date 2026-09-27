@@ -2614,8 +2614,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     let dep_node = tcx.metadata_dep_node();
 
     // If the metadata dep-node is green, try to reuse the saved work product.
-    if tcx.dep_graph.is_fully_enabled()
-        && let incr_comp_session = tcx.incr_comp_session.unwrap()
+    if let Some(incr_comp_session) = tcx.incr_comp_session
         && let Some(old_incr_comp_session_dir) = &incr_comp_session.old_session_directory
         && let work_product_id =
             WorkProductId::from_cgu_name(WorkProduct::METADATA_WORKPRODUCT_CGU_NAME)

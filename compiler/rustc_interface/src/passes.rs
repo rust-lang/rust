@@ -979,8 +979,9 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     // incr. comp. yet.
     dep_graph.assert_ignored();
 
-    let query_result_on_disk_cache =
-        rustc_incremental::load_query_result_cache(sess, incr_comp_session.as_ref());
+    let query_result_on_disk_cache = incr_comp_session.as_ref().map(|incr_comp_session| {
+        rustc_incremental::load_query_result_cache(sess, incr_comp_session)
+    });
 
     let codegen_backend = &compiler.codegen_backend;
     let mut providers = *DEFAULT_QUERY_PROVIDERS;
