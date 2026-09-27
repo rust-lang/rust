@@ -671,7 +671,6 @@ symbols! {
         cold_path,
         collapse_debuginfo,
         column,
-        common,
         compare_bytes,
         compare_exchange,
         compare_exchange_weak,
