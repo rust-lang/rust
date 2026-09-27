@@ -87,21 +87,30 @@ impl Linker {
 
         let _timer = sess.timer("link");
 
-        sess.time("serialize_work_products", || {
-            rustc_incremental::save_work_product_index(
-                sess,
-                incr_comp_session.as_ref(),
-                &self.dep_graph,
-                work_products,
-            )
-        });
+        if let Some(incr_comp_session) = &incr_comp_session {
+            sess.time("serialize_work_products", || {
+                rustc_incremental::save_work_product_index(
+                    sess,
+                    incr_comp_session,
+                    &self.dep_graph,
+                    work_products,
+                )
+            });
+        }
 
         let prof = sess.prof.clone();
         prof.generic_activity("drop_dep_graph").run(move || drop(self.dep_graph));
 
         // Now that we won't touch anything in the incremental compilation directory
         // any more, we can finalize it (which involves renaming it)
-        rustc_incremental::finalize_session_directory(sess, incr_comp_session, self.crate_hash);
+        if let Some(incr_comp_session) = incr_comp_session {
+            rustc_incremental::finalize_session_directory(
+                sess,
+                incr_comp_session,
+                // The svh is always produced when incr. comp. is enabled.
+                self.crate_hash.unwrap(),
+            );
+        }
 
         // The `HostMetadata` offload pass only writes the kernel manifest.
         // Codegen was already skipped so there are no files to link.
