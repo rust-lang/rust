@@ -236,7 +236,7 @@ jobs:
       - run: ls -al ./dist
 
       - name: Publish Release
-        uses: ./.github/actions/github-release
+        uses: $/.github/actions/github-release
         with:
           files: "dist/*"
           name: ${{ env.TAG }}
