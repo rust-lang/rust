@@ -1,6 +1,7 @@
 use std::fmt;
 
 use rustc_errors::ErrorGuaranteed;
+use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_middle::mir::{Body, ConstraintCategory};
@@ -13,7 +14,7 @@ use tracing::{debug, instrument};
 
 use super::{Locations, NormalizeLocation, TypeChecker};
 use crate::BorrowckInferCtxt;
-use crate::diagnostics::ToUniverseInfo;
+use crate::diagnostics::{ToUniverseInfo, UniverseInfo};
 use crate::type_check::{MirTypeckRegionConstraints, constraint_conversion};
 use crate::universal_regions::UniversalRegions;
 
@@ -229,22 +230,52 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         result.unwrap_or(value.skip_norm_wip())
     }
 
-    #[instrument(skip(self), level = "debug")]
+    /// For a given type, return the "tail" of the type, which is the last type
+    /// in a chain of struct fields. Any unsafe binders are treated as if they
+    /// are either universal or existential, depending on whether or not this is
+    /// a "source" or "destination" type. This effectively gives us a
+    /// higher-ranked relationship between the source and destination types. For
+    /// example if we have a source of `unsafe<'a> Foo<'a>` and a
+    /// destination of `Foo<'static>`, we'll essentially require that
+    /// `for<'X> Foo<'X> <: Foo<'static>` (which won't hold). But, if the source
+    /// and destination types were reversed, we would require that
+    /// `exists<'X> Foo<'static> <: Foo<'x>` (which does hold).
+    #[instrument(skip(self, placeholder_info), level = "debug")]
     pub(super) fn struct_tail(
         &mut self,
         ty: Ty<'tcx>,
         location: impl NormalizeLocation,
+        placeholder_info: impl Fn() -> Option<UniverseInfo<'tcx>>,
     ) -> Ty<'tcx> {
-        let tcx = self.tcx();
-        let body = self.body;
-
         let cause = ObligationCause::misc(
-            location.to_locations().span(body),
-            body.source.def_id().expect_local(),
+            location.to_locations().span(self.body),
+            self.body.source.def_id().expect_local(),
         );
 
-        let mut normalize = |ty| self.normalize(ty, location);
-        tcx.struct_tail_raw(ty, &cause, &mut normalize, || {})
+        let mut tail = ty;
+        loop {
+            tail = self.infcx.tcx.struct_tail_raw(tail, &cause, &mut |ty| self.normalize(ty, location), || {});
+            if let ty::UnsafeBinder(binder) = *tail.kind() {
+                let binder: ty::Binder<'tcx, Ty<'tcx>> = binder.into();
+                tail = if let Some(info) = placeholder_info() {
+                    let universe = self.infcx.create_next_universe();
+                    self.constraints.universe_causes.insert(universe, info);
+                    let infcx = self.infcx;
+                    let constraints = &mut self.constraints;
+                    infcx.tcx.instantiate_bound_regions_uncached(binder, |br| {
+                        constraints.placeholder_region(infcx, ty::PlaceholderRegion::new(universe, br))
+                    })
+                } else {
+                    self.infcx.instantiate_binder_with_fresh_vars(
+                        location.to_locations().span(self.body),
+                        BoundRegionConversionTime::HigherRankedType,
+                        binder,
+                    )
+                };
+                continue;
+            }
+            return tail;
+        }
     }
 
     #[instrument(skip(self), level = "debug")]
