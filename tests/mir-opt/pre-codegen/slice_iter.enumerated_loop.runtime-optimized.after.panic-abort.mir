@@ -137,15 +137,20 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb0: {
+        StorageAlloc(_11);
+        StorageAlloc(_11);
         StorageLive(_3);
         _3 = PtrMetadata(copy _1);
         StorageLive(_5);
+        StorageAlloc(_5);
         StorageLive(_4);
         _4 = &raw const (*_1);
         _5 = copy _4 as std::ptr::NonNull<[T]> (Transmute);
         StorageDead(_4);
+        StorageAlloc(_8);
         StorageLive(_7);
         StorageLive(_6);
+        StorageAlloc(_6);
         _6 = copy _5 as *mut [T] (Transmute);
         _7 = copy _6 as *mut T (PtrToPtr);
         StorageDead(_6);
@@ -158,7 +163,9 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     bb1: {
         StorageLive(_10);
         StorageLive(_9);
+        StorageAlloc(_9);
         _9 = copy _8 as *mut T (Transmute);
+        StorageAlloc(_10);
         _10 = Offset(copy _9, copy _3);
         StorageDead(_9);
         _11 = copy _10 as *const T (PtrToPtr);
@@ -167,6 +174,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb2: {
+        StorageAlloc(_11);
         _11 = copy _3 as *const T (Transmute);
         goto -> bb3;
     }
@@ -180,8 +188,10 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb4: {
         StorageLive(_32);
+        StorageAlloc(_32);
         StorageLive(_30);
         StorageLive(_27);
+        StorageAlloc(_27);
         StorageLive(_24);
         StorageLive(_16);
         StorageLive(_13);
@@ -195,8 +205,11 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageLive(_18);
         StorageLive(_15);
         _15 = copy _14 as std::ptr::NonNull<T> (Transmute);
+        StorageAlloc(_18);
+        StorageAlloc(_16);
         _16 = copy _13 as *mut T (Transmute);
         StorageLive(_17);
+        StorageAlloc(_17);
         _17 = copy _15 as *mut T (Transmute);
         _18 = Eq(copy _16, copy _17);
         StorageDead(_17);
@@ -206,6 +219,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     bb6: {
         StorageDead(_15);
         StorageDead(_18);
+        StorageAlloc(_8);
         StorageLive(_19);
         _19 = Offset(copy _16, const 1_usize);
         _8 = copy _19 as std::ptr::NonNull<T> (Transmute);
@@ -223,6 +237,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb8: {
         StorageLive(_20);
+        StorageAlloc(_20);
         _20 = copy _14 as usize (Transmute);
         switchInt(copy _20) -> [0: bb9, otherwise: bb12];
     }
@@ -238,6 +253,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageDead(_16);
         StorageDead(_24);
         StorageDead(_27);
+        StorageAlloc(_32);
         StorageLive(_21);
         StorageLive(_23);
         _21 = discriminant(_22);
@@ -256,6 +272,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb12: {
+        StorageAlloc(_24);
         _24 = SubUnchecked(copy _20, const 1_usize);
         StorageAlloc(_12);
         StorageAlloc(_8);
@@ -266,7 +283,9 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb13: {
         StorageLive(_26);
+        StorageAlloc(_26);
         StorageLive(_25);
+        StorageAlloc(_25);
         _25 = copy _13 as *const T (Transmute);
         _26 = &(*_25);
         StorageDead(_25);

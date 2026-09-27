@@ -10,6 +10,7 @@ fn outer(_1: u8) -> u8 {
 
     bb0: {
         // DBG: _2 = &_1;
+        StorageAlloc(_0);                // scope 0 at $DIR/spans.rs:11:5: 11:14
         _0 = copy _1;                    // scope 1 at $DIR/spans.rs:15:5: 15:7
         return;                          // scope 0 at $DIR/spans.rs:12:2: 12:2
     }

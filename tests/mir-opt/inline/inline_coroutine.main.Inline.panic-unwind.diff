@@ -31,10 +31,14 @@
           StorageLive(_3);
           StorageLive(_4);
 -         _4 = g() -> [return: bb1, unwind continue];
++         StorageAlloc(_4);
 +         _4 = {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8 (#0)};
 +         _3 = &mut _4;
++         StorageAlloc(_2);
++         StorageAlloc(_2);
 +         _2 = Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8}> { pointer: copy _3 };
 +         StorageDead(_3);
++         StorageAlloc(_1);
 +         StorageLive(_5);
 +         _5 = const false;
 +         StorageLive(_6);

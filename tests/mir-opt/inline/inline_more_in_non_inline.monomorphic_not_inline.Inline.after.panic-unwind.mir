@@ -14,6 +14,7 @@ fn monomorphic_not_inline(_1: i32) -> () {
         StorageLive(_2);
         StorageLive(_3);
         _3 = copy _1;
+        StorageAlloc(_2);
         StorageLive(_4);
         StorageLive(_5);
         _4 = other_thing(copy _3) -> [return: bb2, unwind continue];

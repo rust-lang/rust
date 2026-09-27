@@ -17,7 +17,9 @@ fn pad_for_alignment(_1: u32) -> Align64<u32> {
     }
 
     bb0: {
+        StorageAlloc(_0);
         StorageLive(_2);
+        StorageAlloc(_2);
         _2 = copy _1 as std::mem::ManuallyDrop<u32> (Transmute);
         StorageLive(_3);
         _3 = transmute_prefix::Transmute::<u32, Align64<u32>> { a: copy _2 };

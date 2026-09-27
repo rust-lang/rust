@@ -17,6 +17,7 @@
           StorageLive(_3);
           StorageLive(_4);
           _4 = copy _1;
+          StorageAlloc(_3);
           StorageLive(_5);
           StorageLive(_6);
           _6 = copy _4;

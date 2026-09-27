@@ -54,6 +54,7 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
     bb2: {
         StorageLive(_12);
         // DBG: _15 = &_4;
+        StorageAlloc(_12);
         StorageLive(_6);
         StorageLive(_5);
         _5 = &mut (_4.0: impl Iterator<Item = T>);
@@ -64,6 +65,7 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
         StorageDead(_5);
         StorageLive(_7);
         _7 = &mut (_4.1: impl Fn(T) -> U);
+        StorageAlloc(_12);
         StorageLive(_8);
         _8 = discriminant(_6);
         switchInt(move _8) -> [0: bb4, 1: bb6, otherwise: bb9];
@@ -88,6 +90,7 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
         StorageLive(_11);
         StorageLive(_10);
         _10 = (copy _9,);
+        StorageAlloc(_11);
         _11 = <impl Fn(T) -> U as FnMut<(T,)>>::call_mut(move _7, move _10) -> [return: bb7, unwind: bb10];
     }
 

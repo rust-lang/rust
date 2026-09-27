@@ -13,6 +13,7 @@
 -     }
 - 
 -     bb1: {
++         StorageAlloc(_2);
           StorageDead(_2);
           _0 = const ();
           return;

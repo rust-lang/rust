@@ -69,19 +69,29 @@ fn drop_generic(_1: *mut Box<T>) -> () {
     }
 
     bb0: {
+        StorageAlloc(_0);
+        StorageAlloc(_0);
         StorageLive(_4);
         StorageLive(_2);
         _2 = copy (((*_1).0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>);
+        StorageAlloc(_3);
+        StorageAlloc(_3);
         _3 = const <T as std::mem::SizedTypeProperties>::ALIGN as std::mem::Alignment (Transmute);
         switchInt(const <T as std::mem::SizedTypeProperties>::SIZE) -> [0: bb3, otherwise: bb1];
     }
 
     bb1: {
+        StorageAlloc(_4);
+        StorageAlloc(_4);
         _4 = copy _2 as std::ptr::NonNull<u8> (Transmute);
+        StorageAlloc(_5);
+        StorageAlloc(_5);
+        StorageAlloc(_5);
         switchInt(const <T as std::mem::SizedTypeProperties>::SIZE) -> [0: bb3, otherwise: bb2];
     }
 
     bb2: {
+        StorageAlloc(_5);
         _5 = alloc::alloc::__rust_dealloc(move _4, const <T as std::mem::SizedTypeProperties>::SIZE, move _3) -> [return: bb3, unwind unreachable];
     }
 

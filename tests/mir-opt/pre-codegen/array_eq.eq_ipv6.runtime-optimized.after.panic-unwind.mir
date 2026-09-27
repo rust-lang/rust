@@ -14,6 +14,9 @@ fn eq_ipv6(_1: &[u16; 8], _2: &[u16; 8]) -> bool {
     }
 
     bb0: {
+        StorageAlloc(_0);
+        StorageAlloc(_0);
+        StorageAlloc(_0);
         _3 = copy (*_1) as u128 (Transmute);
         _4 = copy (*_2) as u128 (Transmute);
         _0 = Eq(move _3, move _4);

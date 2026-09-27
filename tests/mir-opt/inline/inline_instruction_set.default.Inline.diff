@@ -30,9 +30,11 @@
 -     }
 - 
 -     bb3: {
++         StorageAlloc(_3);
           StorageDead(_3);
           StorageLive(_4);
 -         _4 = inline_always_and_using_inline_asm() -> [return: bb4, unwind unreachable];
++         StorageAlloc(_4);
 +         asm!("/* do nothing */", options()) -> [return: bb3, unwind unreachable];
       }
   

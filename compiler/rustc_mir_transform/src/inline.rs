@@ -881,6 +881,15 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
         None
     };
 
+    if !destination.is_indirect() {
+        // With -Zmir-move-elimination we need to ensure the destination place
+        // is allocated by the time the callee returns, *even if it unwinds*.
+        caller_body[callsite.block].statements.push(Statement::new(
+            callsite.source_info,
+            StatementKind::StorageAlloc(destination.local),
+        ));
+    }
+
     // If the call is something like `a[*i] = f(i)`, where
     // `i : &mut usize`, then just duplicating the `a[*i]`
     // Place could result in two different locations if `f`
@@ -892,14 +901,6 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
     // is uninhabited.
     let dest = if !destination.is_stable_offset() {
         trace!("creating temp for return destination");
-        if !destination.is_indirect() {
-            // With -Zmir-move-elimination we need to ensure the destination
-            // gets an allocation before taking its address.
-            caller_body[callsite.block].statements.push(Statement::new(
-                callsite.source_info,
-                StatementKind::StorageAlloc(destination.local),
-            ));
-        }
         let dest = Rvalue::RawPtr(RawPtrKind::Mut, destination);
         let dest_ty = dest.ty(caller_body, tcx);
         let temp = Place::from(new_call_temp(caller_body, callsite, dest_ty, return_block));
