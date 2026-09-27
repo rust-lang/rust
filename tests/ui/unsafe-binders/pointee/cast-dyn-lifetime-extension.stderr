@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/cast-dyn-lifetime-extension.rs:13:5
+  --> $DIR/cast-dyn-lifetime-extension.rs:15:5
    |
 LL | fn direct<'x>(p: *const MD<dyn Debug + 'x>) -> *const MD<dyn Debug + 'static> {
    |           -- lifetime `'x` defined here
@@ -7,7 +7,7 @@ LL |     p as _
    |     ^^^^^^ returning this value requires that `'x` must outlive `'static`
    |
 note: raw pointer casts of trait objects cannot extend lifetimes
-  --> $DIR/cast-dyn-lifetime-extension.rs:13:5
+  --> $DIR/cast-dyn-lifetime-extension.rs:15:5
    |
 LL |     p as _
    |     ^^^^^^
@@ -24,5 +24,51 @@ LL - fn direct<'x>(p: *const MD<dyn Debug + 'x>) -> *const MD<dyn Debug + 'stati
 LL + fn direct<'x>(p: *const ManuallyDrop<(dyn Debug + 'static)>) -> *const MD<dyn Debug + 'static> {
    |
 
-error: aborting due to 1 previous error
+error[E0308]: mismatched types
+  --> $DIR/cast-dyn-lifetime-extension.rs:20:5
+   |
+LL |     q as _
+   |     ^^^^^^ one type is more general than the other
+   |
+   = note: expected raw pointer `*const ManuallyDrop<dyn Debug>`
+              found raw pointer `*const unsafe<'a> ManuallyDrop<(dyn Debug + 'a)>`
 
+error[E0308]: mismatched types
+  --> $DIR/cast-dyn-lifetime-extension.rs:25:5
+   |
+LL |     q as _
+   |     ^^^^^^ one type is more general than the other
+   |
+   = note: expected raw pointer `*const ManuallyDrop<dyn Debug>`
+              found raw pointer `*const unsafe<'a> ManuallyDrop<(dyn Debug + 'a)>`
+
+error[E0308]: mismatched types
+  --> $DIR/cast-dyn-lifetime-extension.rs:33:5
+   |
+LL |     q as _
+   |     ^^^^^^ one type is more general than the other
+   |
+   = note: expected raw pointer `*const ManuallyDrop<dyn Tr<'_>>`
+              found raw pointer `*const unsafe<'a> ManuallyDrop<dyn Tr<'a>>`
+
+error[E0308]: mismatched types
+  --> $DIR/cast-dyn-lifetime-extension.rs:36:5
+   |
+LL |     q as _
+   |     ^^^^^^ one type is more general than the other
+   |
+   = note: expected raw pointer `*const ManuallyDrop<dyn Send>`
+              found raw pointer `*const unsafe<'a> ManuallyDrop<(dyn Send + 'a)>`
+
+error[E0308]: mismatched types
+  --> $DIR/cast-dyn-lifetime-extension.rs:41:5
+   |
+LL |     q as _
+   |     ^^^^^^ one type is more general than the other
+   |
+   = note: expected raw pointer `*const ManuallyDrop<(u8, dyn Debug)>`
+              found raw pointer `*const unsafe<'a> ManuallyDrop<(u8, (dyn Debug + 'a))>`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
