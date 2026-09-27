@@ -11,5 +11,4 @@ int32_t linkonce_value = 3;
 int32_t linkonce_odr_value = 4;
 int32_t weak_value = 5;
 int32_t weak_odr_value = 6;
-int32_t common_value = 7;
 int32_t extern_weak_value = 8;
