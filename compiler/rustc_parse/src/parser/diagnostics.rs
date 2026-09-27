@@ -1562,8 +1562,8 @@ impl<'a> Parser<'a> {
         self.bump(); // `+`
         let _bounds = self.parse_generic_bounds()?;
         let sub = match &ty.kind {
-            TyKind::Ref(_lifetime, mut_ty) => {
-                let lo = mut_ty.ty.span.shrink_to_lo();
+            TyKind::Ref(_lifetime, inner_ty, _) => {
+                let lo = inner_ty.span.shrink_to_lo();
                 let hi = self.prev_token.span.shrink_to_hi();
                 BadTypePlusSub::AddParen { suggestion: AddParen { lo, hi } }
             }
