@@ -15,6 +15,7 @@
 -     }
 - 
 -     bb1: {
++         StorageAlloc(_0);
 +         _0 = const 0_i32;
           StorageDead(_2);
           return;

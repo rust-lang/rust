@@ -132,17 +132,22 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb0: {
         StorageLive(_12);
+        StorageAlloc(_12);
+        StorageAlloc(_12);
         StorageLive(_11);
         StorageLive(_3);
         _3 = PtrMetadata(copy _1);
         StorageLive(_8);
         StorageLive(_5);
+        StorageAlloc(_5);
         StorageLive(_4);
         _4 = &raw const (*_1);
         _5 = copy _4 as std::ptr::NonNull<[T]> (Transmute);
         StorageDead(_4);
+        StorageAlloc(_8);
         StorageLive(_7);
         StorageLive(_6);
+        StorageAlloc(_6);
         _6 = copy _5 as *mut [T] (Transmute);
         _7 = copy _6 as *mut T (PtrToPtr);
         StorageDead(_6);
@@ -155,7 +160,9 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     bb1: {
         StorageLive(_10);
         StorageLive(_9);
+        StorageAlloc(_9);
         _9 = copy _8 as *mut T (Transmute);
+        StorageAlloc(_10);
         _10 = Offset(copy _9, copy _3);
         StorageDead(_9);
         _11 = copy _10 as *const T (PtrToPtr);
@@ -164,6 +171,7 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb2: {
+        StorageAlloc(_11);
         _11 = copy _3 as *const T (Transmute);
         goto -> bb3;
     }
@@ -173,6 +181,8 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageDead(_8);
         StorageDead(_3);
         StorageDead(_11);
+        StorageAlloc(_13);
+        StorageAlloc(_13);
         _13 = Rev::<std::slice::Iter<'_, T>> { iter: copy _12 };
         StorageDead(_12);
         StorageLive(_14);
@@ -182,6 +192,8 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb4: {
         StorageLive(_35);
+        StorageAlloc(_35);
+        StorageAlloc(_35);
         StorageLive(_20);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb5, otherwise: bb6];
     }
@@ -192,12 +204,15 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         _15 = copy ((_14.0: std::slice::Iter<'_, T>).1: *const T);
         _16 = copy _15 as std::ptr::NonNull<T> (Transmute);
         StorageDead(_15);
+        StorageAlloc(_20);
         StorageLive(_18);
         StorageLive(_17);
         _17 = copy ((_14.0: std::slice::Iter<'_, T>).0: std::ptr::NonNull<T>);
+        StorageAlloc(_18);
         _18 = copy _17 as *mut T (Transmute);
         StorageDead(_17);
         StorageLive(_19);
+        StorageAlloc(_19);
         _19 = copy _16 as *mut T (Transmute);
         _20 = Eq(copy _18, copy _19);
         StorageDead(_19);
@@ -210,6 +225,7 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageLive(_22);
         StorageLive(_21);
         _21 = copy ((_14.0: std::slice::Iter<'_, T>).1: *const T);
+        StorageAlloc(_22);
         _22 = copy _21 as usize (Transmute);
         StorageDead(_21);
         _20 = Eq(copy _22, const 0_usize);
@@ -223,7 +239,9 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb8: {
         StorageLive(_34);
+        StorageAlloc(_34);
         StorageLive(_28);
+        StorageAlloc(_28);
         StorageLive(_30);
         StorageLive(_24);
         StorageLive(_25);
@@ -233,15 +251,19 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     bb9: {
         StorageLive(_23);
         _23 = &raw mut ((_14.0: std::slice::Iter<'_, T>).1: *const T);
+        StorageAlloc(_24);
         _24 = copy _23 as *mut std::ptr::NonNull<T> (PtrToPtr);
         StorageDead(_23);
         _25 = copy (*_24);
+        StorageAlloc(_25);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb10, otherwise: bb11];
     }
 
     bb10: {
+        StorageAlloc(_25);
         StorageLive(_27);
         StorageLive(_26);
+        StorageAlloc(_26);
         _26 = copy _25 as *mut T (Transmute);
         _27 = Offset(copy _26, const -1_isize);
         StorageDead(_26);
@@ -259,6 +281,7 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     bb12: {
         StorageLive(_29);
         _29 = &raw mut ((_14.0: std::slice::Iter<'_, T>).1: *const T);
+        StorageAlloc(_30);
         _30 = copy _29 as *mut usize (PtrToPtr);
         StorageDead(_29);
         StorageLive(_32);
@@ -276,7 +299,9 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageDead(_25);
         StorageDead(_24);
         StorageDead(_30);
+        StorageAlloc(_34);
         StorageLive(_33);
+        StorageAlloc(_33);
         _33 = copy _28 as *const T (Transmute);
         _34 = &(*_33);
         StorageDead(_33);

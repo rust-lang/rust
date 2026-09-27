@@ -22,11 +22,13 @@ fn num_to_digit(_1: char) -> u32 {
 
     bb0: {
         StorageLive(_4);
+        StorageAlloc(_4);
         StorageLive(_2);
         _2 = char::methods::<impl char>::to_digit(copy _1, const 8_u32) -> [return: bb1, unwind unreachable];
     }
 
     bb1: {
+        StorageAlloc(_4);
         StorageLive(_3);
         _3 = discriminant(_2);
         _4 = Eq(copy _3, const 1_isize);
@@ -46,6 +48,7 @@ fn num_to_digit(_1: char) -> u32 {
     }
 
     bb4: {
+        StorageAlloc(_0);
         StorageLive(_6);
         _6 = discriminant(_5);
         switchInt(move _6) -> [0: bb5, 1: bb6, otherwise: bb8];

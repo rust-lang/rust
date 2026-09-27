@@ -30,6 +30,7 @@
   
       bb0: {
           StorageLive(_1);
+          StorageAlloc(_1);
           StorageLive(_4);
 -         _4 = const foo::promoted[0];
 +         nop;

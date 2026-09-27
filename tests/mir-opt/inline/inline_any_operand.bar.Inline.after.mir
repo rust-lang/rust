@@ -19,6 +19,7 @@ fn bar() -> bool {
         _1 = foo;
         StorageLive(_2);
         _2 = copy _1;
+        StorageAlloc(_0);
         StorageLive(_3);
         _3 = const 1_i32;
         StorageLive(_4);

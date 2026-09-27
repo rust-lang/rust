@@ -11,6 +11,7 @@
       bb0: {
           StorageLive(_2);
 -         _2 = sleep() -> unwind continue;
++         StorageAlloc(_2);
 +         goto -> bb1;
 +     }
 + 

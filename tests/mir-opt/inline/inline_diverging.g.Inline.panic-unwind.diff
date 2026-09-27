@@ -35,6 +35,7 @@
           StorageDead(_3);
           StorageLive(_6);
 -         _6 = panic() -> unwind continue;
++         StorageAlloc(_6);
 +         StorageLive(_7);
 +         _7 = std::rt::begin_panic::<&str>(const "explicit panic") -> unwind continue;
       }

@@ -30,6 +30,7 @@ fn slice_iter_generic_is_empty(_1: &std::slice::Iter<'_, T>) -> bool {
     }
 
     bb0: {
+        StorageAlloc(_0);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
     }
 
@@ -39,12 +40,15 @@ fn slice_iter_generic_is_empty(_1: &std::slice::Iter<'_, T>) -> bool {
         _2 = copy ((*_1).1: *const T);
         _3 = copy _2 as std::ptr::NonNull<T> (Transmute);
         StorageDead(_2);
+        StorageAlloc(_0);
         StorageLive(_5);
         StorageLive(_4);
         _4 = copy ((*_1).0: std::ptr::NonNull<T>);
+        StorageAlloc(_5);
         _5 = copy _4 as *mut T (Transmute);
         StorageDead(_4);
         StorageLive(_6);
+        StorageAlloc(_6);
         _6 = copy _3 as *mut T (Transmute);
         _0 = Eq(copy _5, copy _6);
         StorageDead(_6);
@@ -57,6 +61,7 @@ fn slice_iter_generic_is_empty(_1: &std::slice::Iter<'_, T>) -> bool {
         StorageLive(_8);
         StorageLive(_7);
         _7 = copy ((*_1).1: *const T);
+        StorageAlloc(_8);
         _8 = copy _7 as usize (Transmute);
         StorageDead(_7);
         _0 = Eq(copy _8, const 0_usize);

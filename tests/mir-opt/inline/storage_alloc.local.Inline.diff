@@ -1,0 +1,37 @@
+- // MIR for `local` before Inline
++ // MIR for `local` after Inline
+  
+  fn local() -> MaybeUninit<u8> {
+      let mut _0: std::mem::MaybeUninit<u8>;
+      let mut _1: std::mem::MaybeUninit<u8>;
++     scope 1 (inlined callee) {
++         let _2: ();
++         scope 2 (inlined MaybeUninit::<u8>::uninit) {
++         }
++     }
+  
+      bb0: {
+-         _1 = callee() -> [return: bb1, unwind: bb2];
++         StorageAlloc(_1);
++         StorageLive(_2);
++         _2 = opaque() -> [return: bb2, unwind: bb1];
+      }
+  
+-     bb1: {
++     bb1 (cleanup): {
+          _0 = copy _1;
+-         return;
++         resume;
+      }
+  
+-     bb2 (cleanup): {
++     bb2: {
++         StorageDead(_2);
++         StorageAlloc(_1);
++         _1 = MaybeUninit::<u8> { uninit: const () };
+          _0 = copy _1;
+-         resume;
++         return;
+      }
+  }
+  
