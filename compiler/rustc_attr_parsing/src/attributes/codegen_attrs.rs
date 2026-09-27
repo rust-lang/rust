@@ -348,8 +348,7 @@ impl AttributeParser for NakedParser {
                             sym::naked_functions_rustic_abi,
                             fn_sig.span,
                             format!(
-                                "`#[naked]` is currently unstable on `extern \"{}\"` functions",
-                                abi.as_str()
+                                "`#[naked]` is currently unstable on `extern {abi}` functions",
                             ),
                         )
                         .emit();
