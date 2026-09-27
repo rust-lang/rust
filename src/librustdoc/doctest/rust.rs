@@ -5,8 +5,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use proc_macro2::{TokenStream, TokenTree};
+use rustc_attr_ir::{AttributeKind, CfgEntry};
 use rustc_attr_parsing::eval_config_entry;
-use rustc_hir::attrs::{AttributeKind, CfgEntry};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, intravisit};
 use rustc_middle::hir::nested_filter;
@@ -131,7 +131,7 @@ impl HirCollector<'_> {
         // 1. Collect `#[target_feature(...)]`.
         // 2. Collect `#[doc(test(attr(...)))]`.
         for attr in hir_attrs.iter() {
-            let hir::Attribute::Parsed(attr) = attr else { continue };
+            let rustc_attr_ir::Attribute::Parsed(attr) = attr else { continue };
             if let AttributeKind::TargetFeature { features, .. } = attr {
                 for (feature, _) in features {
                     found_features += 1;

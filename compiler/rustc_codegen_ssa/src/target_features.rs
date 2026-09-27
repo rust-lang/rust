@@ -1,6 +1,6 @@
+use rustc_attr_ir::InstructionSetAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_hir::attrs::InstructionSetAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_lint_defs::builtin::{AARCH64_SOFTFLOAT_NEON, X86_SOFTFLOAT_SSE};

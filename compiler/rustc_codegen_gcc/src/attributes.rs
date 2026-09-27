@@ -4,8 +4,8 @@ use gccjit::Function;
 #[cfg(feature = "master")]
 use rustc_abi::{CanonAbi, InterruptKind};
 #[cfg(feature = "master")]
-use rustc_hir::attrs::InlineAttr;
-use rustc_hir::attrs::InstructionSetAttr;
+use rustc_attr_ir::InlineAttr;
+use rustc_attr_ir::InstructionSetAttr;
 #[cfg(feature = "master")]
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 #[cfg(feature = "master")]

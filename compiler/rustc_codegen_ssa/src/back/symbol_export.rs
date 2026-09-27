@@ -315,7 +315,7 @@ fn exported_generic_symbols_provider_local<'tcx>(
         .any(|o| matches!(o, rustc_session::config::Offload::Device(_)));
 
     if export_generics || is_device_offload {
-        use rustc_hir::attrs::Linkage;
+        use rustc_attr_ir::{InlineAttr, Linkage};
         use rustc_middle::mono::{MonoItem, Visibility};
         use rustc_middle::ty::InstanceKind;
 
@@ -386,9 +386,7 @@ fn exported_generic_symbols_provider_local<'tcx>(
             let item_is_offload = is_offload_instance(mono_item);
 
             if !item_is_offload && !tcx.sess.opts.share_generics() {
-                if tcx.codegen_fn_attrs(mono_item.def_id()).inline
-                    == rustc_hir::attrs::InlineAttr::Never
-                {
+                if tcx.codegen_fn_attrs(mono_item.def_id()).inline == InlineAttr::Never {
                     // this is OK, we explicitly allow sharing inline(never) across crates even
                     // without share-generics.
                 } else {

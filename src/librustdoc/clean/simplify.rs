@@ -11,10 +11,10 @@
 //! This module attempts to reconstruct the original where and/or parameter
 //! bounds by special casing scenarios such as these. Fun!
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{TyCtxt, Unnormalized};
 
