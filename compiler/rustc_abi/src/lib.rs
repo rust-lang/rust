@@ -2027,10 +2027,10 @@ pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
     /// 2. the never type
     Empty,
 
-    /// The type has a single valid variant.
+    /// The type has a single valid variant. Such types are called "univariant".
     ///
     /// This is the case for:
-    /// 1. enums with a single inhabited variant
+    /// 1. enums with a single inhabited variant, aka. "univariant enums"
     /// 2. structs, unions, and non-ADTs (except coroutines; see below),
     ///    as those can't have multiple variants
     Single {
@@ -2193,6 +2193,18 @@ impl Niche {
             }
         }
     }
+}
+
+/// Whether niche optimizations should be performed during layout calculation.
+///
+/// [`UnsafeCell`] and [`UnsafePinned`] both disable niche optimizations.
+///
+/// [`UnsafeCell`]: std::cell::UnsafeCell
+/// [`UnsafePinned`]: std::pin::UnsafePinned
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub enum NicheOptimizations {
+    Enabled,
+    Disabled,
 }
 
 // NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
