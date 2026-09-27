@@ -21,7 +21,7 @@ use crate::ptr::NonNull;
 ///     if let Some(location) = panic_info.location() {
 ///         println!("panic occurred in file '{}' at line {}", location.file(), location.line());
 ///     } else {
-///         println!("panic occurred but can't get location information...");
+///         println!("panicked at unknown location");
 ///     }
 /// }));
 ///
@@ -208,7 +208,7 @@ impl<'a> Location<'a> {
     ///     if let Some(location) = panic_info.location() {
     ///         println!("panic occurred in file '{}'", location.file());
     ///     } else {
-    ///         println!("panic occurred but can't get location information...");
+    ///         println!("panicked at unknown location");
     ///     }
     /// }));
     ///
@@ -255,7 +255,7 @@ impl<'a> Location<'a> {
     ///     if let Some(location) = panic_info.location() {
     ///         println!("panic occurred at line {}", location.line());
     ///     } else {
-    ///         println!("panic occurred but can't get location information...");
+    ///         println!("panicked at unknown location");
     ///     }
     /// }));
     ///
@@ -280,7 +280,7 @@ impl<'a> Location<'a> {
     ///     if let Some(location) = panic_info.location() {
     ///         println!("panic occurred at column {}", location.column());
     ///     } else {
-    ///         println!("panic occurred but can't get location information...");
+    ///         println!("panicked at unknown location");
     ///     }
     /// }));
     ///

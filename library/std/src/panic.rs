@@ -151,7 +151,7 @@ impl<'a> PanicHookInfo<'a> {
     ///             location.line(),
     ///         );
     ///     } else {
-    ///         println!("panic occurred but can't get location information...");
+    ///         println!("panicked at unknown location");
     ///     }
     /// }));
     ///
