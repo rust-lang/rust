@@ -731,11 +731,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let cause = self.cause(call_expr.span, ObligationCauseCode::Misc);
                 if self
                     .sup_at(
+                        &cause,
+                        self.param_env,
                         DefineOpaqueTypes::Yes,
                         formal_input_tys[0],
                         adjusted_arg_type,
-                        self.param_env,
-                        &cause,
                     )
                     .is_err()
                 {

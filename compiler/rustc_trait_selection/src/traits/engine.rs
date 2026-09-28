@@ -227,7 +227,7 @@ where
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
-            .eq_at(DefineOpaqueTypes::Yes, expected, actual, param_env, cause)
+            .eq_at(cause, param_env, DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -240,7 +240,7 @@ where
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
-            .eq_trace_at(DefineOpaqueTypes::Yes, trace, expected, actual, param_env, cause)
+            .eq_trace_at(cause, param_env, DefineOpaqueTypes::Yes, trace, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -253,7 +253,7 @@ where
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
-            .sub_at(DefineOpaqueTypes::Yes, expected, actual, param_env, cause)
+            .sub_at(cause, param_env, DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -266,7 +266,7 @@ where
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
-            .relate_at(DefineOpaqueTypes::Yes, expected, variance, actual, param_env, cause)
+            .relate_at(cause, param_env, DefineOpaqueTypes::Yes, expected, variance, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -279,7 +279,7 @@ where
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
-            .sup_at(DefineOpaqueTypes::Yes, expected, actual, param_env, cause)
+            .sup_at(cause, param_env, DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -292,7 +292,7 @@ where
         actual: T,
     ) -> Result<T, TypeError<'tcx>> {
         self.infcx
-            .lub_at(expected, actual, param_env, cause)
+            .lub_at(cause, param_env, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 

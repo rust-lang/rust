@@ -246,11 +246,11 @@ impl<'tcx> InferCtxt<'tcx> {
                 if let Some(prev) = prev {
                     goals.extend(
                         self.eq_at(
+                            &ObligationCause::dummy_with_span(span),
+                            param_env,
                             DefineOpaqueTypes::Yes,
                             prev,
                             hidden_ty,
-                            param_env,
-                            &ObligationCause::dummy_with_span(span),
                         )?
                         .obligations
                         .into_iter()
@@ -281,11 +281,11 @@ impl<'tcx> InferCtxt<'tcx> {
 
                 goals.extend(
                     self.eq_at(
+                        &ObligationCause::dummy_with_span(span),
+                        param_env,
                         DefineOpaqueTypes::Yes,
                         hidden_ty,
                         actual,
-                        param_env,
-                        &ObligationCause::dummy_with_span(span),
                     )?
                     .obligations
                     .into_iter()

@@ -579,11 +579,11 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
                     match infcx.eq_at(
                         // Only really exercised by generic_const_exprs
+                        &obligation.cause,
+                        obligation.param_env,
                         DefineOpaqueTypes::Yes,
                         ct_ty,
                         ty,
-                        obligation.param_env,
-                        &obligation.cause,
                     ) {
                         Ok(inf_ok) => ProcessResult::Changed(mk_pending(
                             obligation,
@@ -732,11 +732,11 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     // Can define opaque types as this is only reachable with
                                     // `generic_const_exprs`
                                     .eq_at(
+                                        &obligation.cause,
+                                        obligation.param_env,
                                         DefineOpaqueTypes::Yes,
                                         ty::AliasTerm::from(a),
                                         ty::AliasTerm::from(b),
-                                        obligation.param_env,
-                                        &obligation.cause,
                                     )
                                 {
                                     return ProcessResult::Changed(mk_pending(
@@ -751,11 +751,11 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     // Can define opaque types as this is only reachable with
                                     // `generic_const_exprs`
                                     .eq_at(
+                                        &obligation.cause,
+                                        obligation.param_env,
                                         DefineOpaqueTypes::Yes,
                                         c1,
                                         c2,
-                                        obligation.param_env,
-                                        &obligation.cause,
                                     )
                                 {
                                     return ProcessResult::Changed(mk_pending(
@@ -799,11 +799,11 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             match self.selcx.infcx.eq_at(
                                 // Can define opaque types as this is only reachable with
                                 // `generic_const_exprs`
+                                &obligation.cause,
+                                obligation.param_env,
                                 DefineOpaqueTypes::Yes,
                                 c1,
                                 c2,
-                                obligation.param_env,
-                                &obligation.cause,
                             ) {
                                 Ok(inf_ok) => ProcessResult::Changed(mk_pending(
                                     obligation,

@@ -100,12 +100,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
                 self.obligations.extend(
                     self.infcx
                         .eq_trace_at(
+                            &self.trace.cause,
+                            self.param_env,
                             DefineOpaqueTypes::Yes,
                             self.trace.clone(),
                             a,
                             b,
-                            self.param_env,
-                            &self.trace.cause,
                         )?
                         .into_obligations(),
                 );
@@ -265,24 +265,24 @@ impl<'infcx, 'tcx> LatticeOp<'infcx, 'tcx> {
             LatticeOpKind::Glb => {
                 self.obligations.extend(
                     self.infcx
-                        .sub_at(DefineOpaqueTypes::Yes, v, a, self.param_env, &self.trace.cause)?
+                        .sub_at(&self.trace.cause, self.param_env, DefineOpaqueTypes::Yes, v, a)?
                         .into_obligations(),
                 );
                 self.obligations.extend(
                     self.infcx
-                        .sub_at(DefineOpaqueTypes::Yes, v, b, self.param_env, &self.trace.cause)?
+                        .sub_at(&self.trace.cause, self.param_env, DefineOpaqueTypes::Yes, v, b)?
                         .into_obligations(),
                 );
             }
             LatticeOpKind::Lub => {
                 self.obligations.extend(
                     self.infcx
-                        .sub_at(DefineOpaqueTypes::Yes, a, v, self.param_env, &self.trace.cause)?
+                        .sub_at(&self.trace.cause, self.param_env, DefineOpaqueTypes::Yes, a, v)?
                         .into_obligations(),
                 );
                 self.obligations.extend(
                     self.infcx
-                        .sub_at(DefineOpaqueTypes::Yes, b, v, self.param_env, &self.trace.cause)?
+                        .sub_at(&self.trace.cause, self.param_env, DefineOpaqueTypes::Yes, b, v)?
                         .into_obligations(),
                 );
             }

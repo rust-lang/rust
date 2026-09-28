@@ -560,7 +560,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             self_ty, method_self_ty, self.span, pick
         );
         let cause = self.cause(self.self_expr.span, ObligationCauseCode::Misc);
-        match self.sup_at(DefineOpaqueTypes::Yes, method_self_ty, self_ty, self.param_env, &cause) {
+        match self.sup_at(&cause, self.param_env, DefineOpaqueTypes::Yes, method_self_ty, self_ty) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
             }
