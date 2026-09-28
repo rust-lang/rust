@@ -52,6 +52,7 @@ pub mod hardwired {
             FLOAT_LITERAL_F32_FALLBACK,
             FORBIDDEN_LINT_GROUPS,
             FUNCTION_ITEM_REFERENCES,
+            HARMFUL_UNUSED_ATTRIBUTES,
             HIDDEN_GLOB_REEXPORTS,
             ILL_FORMED_ATTRIBUTE_INPUT,
             INCOMPLETE_INCLUDE,
@@ -875,6 +876,52 @@ declare_lint! {
     /// [attributes]: https://doc.rust-lang.org/reference/attributes.html
     pub UNUSED_ATTRIBUTES,
     Warn,
+    "detects attributes that were not used by the compiler"
+}
+
+declare_lint! {
+    /// The `harmful_unused_attributes` lint detects [attributes] that were not used by
+    /// the compiler and whose unusedness can lead to dangerous bugs and mistakes.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// macro_rules! produce_struct {
+    ///     ($name: ident) => {
+     ///        pub struct $name {}
+    ///     };
+    /// }
+    ///
+    /// #[repr(align(64))]
+    /// produce_struct!(Foo);
+    ///
+    /// unsafe extern "C" {
+    ///     #[link_name = "foo"]
+    ///     pub fn bar();
+    ///
+    ///     #[link(name = "foo")]
+    ///     pub fn buz();
+    /// }
+    ///
+    /// #[unsafe(export_name = "foo")]
+    /// #[unsafe(export_name = "bar")]
+    /// pub fn baz() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// - Attributes applied to a macro invocation are applied on the macro invocation, they do *not*
+    /// apply to the macro's expansion. The above macro invocation produces a struct with
+    /// an alignment of 1, *not* 64.
+    /// - The declaration of `baz` declaration is ambiguous, the `link` attribute shall be used on
+    /// a extern block to specify the (name of a) native library to link to.
+    /// - Duplicate `export_name` attributes are ambiguous, only the first attribute is used.
+    ///
+    /// [attributes]: https://doc.rust-lang.org/reference/attributes.html
+    pub HARMFUL_UNUSED_ATTRIBUTES,
+    Deny,
     "detects attributes that were not used by the compiler"
 }
 

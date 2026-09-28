@@ -6,10 +6,10 @@
 
 fn main() {
     #[export_name = "x"]
-    //~^ WARN attribute cannot be used on macro calls
+    //~^ ERROR attribute cannot be used on macro calls
     //~| WARN previously accepted
     #[unsafe(naked)]
-    //~^ WARN attribute cannot be used on macro calls
+    //~^ ERROR attribute cannot be used on macro calls
     //~| WARN previously accepted
     #[track_caller]
     //~^ WARN attribute cannot be used on macro calls
@@ -18,7 +18,7 @@ fn main() {
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
     #[target_feature(enable = "x")]
-    //~^ WARN attribute cannot be used on macro calls
+    //~^ ERROR attribute cannot be used on macro calls
     //~| WARN previously accepted
     #[deprecated]
     //~^ WARN attribute cannot be used on macro calls
@@ -27,16 +27,16 @@ fn main() {
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
     #[link_name = "x"]
-    //~^ WARN attribute cannot be used on macro calls
+    //~^ ERROR attribute cannot be used on macro calls
     //~| WARN previously accepted
     #[link_section = "__TEXT,__text"]
-    //~^ WARN attribute cannot be used on macro calls
+    //~^ ERROR attribute cannot be used on macro calls
     //~| WARN previously accepted
     #[link_ordinal(42)]
-    //~^ WARN attribute cannot be used on macro calls
+    //~^ ERROR attribute cannot be used on macro calls
     //~| WARN previously accepted
     #[non_exhaustive]
-    //~^ WARN attribute cannot be used on macro calls
+    //~^ ERROR attribute cannot be used on macro calls
     //~| WARN previously accepted
     #[proc_macro]
     //~^ WARN attribute cannot be used on macro calls
@@ -45,7 +45,7 @@ fn main() {
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
     #[no_mangle]
-    //~^ WARN attribute cannot be used on macro calls
+    //~^ ERROR attribute cannot be used on macro calls
     //~| WARN previously accepted
     #[deprecated]
     //~^ WARN attribute cannot be used on macro calls
@@ -72,35 +72,35 @@ fn main() {
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
     #[link_name = "x"]
-    //~^ WARN attribute cannot be used on macro calls
+    //~^ ERROR attribute cannot be used on macro calls
     //~| WARN previously accepted
     #[sanitize(address = "off")]
     //~^ ERROR attribute cannot be used on macro calls
     unreachable!();
 
     #[repr()]
-    //~^ WARN attribute cannot be used on macro calls
+    //~^ ERROR attribute cannot be used on macro calls
     //~| WARN previously accepted
     //~| WARN unused attribute
     unreachable!();
     #[repr(u8)]
-    //~^ WARN attribute cannot be used on macro calls
+    //~^ ERROR attribute cannot be used on macro calls
     //~| WARN previously accepted
     unreachable!();
     #[repr(align(8))]
-    //~^ WARN attribute cannot be used on macro calls
+    //~^ ERROR attribute cannot be used on macro calls
     //~| WARN previously accepted
     unreachable!();
     #[repr(packed)]
-    //~^ WARN attribute cannot be used on macro calls
+    //~^ ERROR attribute cannot be used on macro calls
     //~| WARN previously accepted
     unreachable!();
     #[repr(C)]
-    //~^ WARN attribute cannot be used on macro calls
+    //~^ ERROR attribute cannot be used on macro calls
     //~| WARN previously accepted
     unreachable!();
     #[repr(Rust)]
-    //~^ WARN attribute cannot be used on macro calls
+    //~^ ERROR attribute cannot be used on macro calls
     //~| WARN previously accepted
     unreachable!();
     #[repr(simd)]

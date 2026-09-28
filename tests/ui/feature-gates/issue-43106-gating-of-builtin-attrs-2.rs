@@ -1,10 +1,5 @@
 // This is testing whether various builtin attributes signals an
 // error or warning when put in "weird" places.
-//
-// (This file sits on its own because it actually signals an error,
-// which would mess up the treatment of other cases in
-// issue-43106-gating-of-builtin-attrs.rs)
-
 
 #![macro_export]
 //~^ ERROR: the `macro_export` attribute cannot be used on crates
@@ -17,15 +12,16 @@
 //~^ ERROR: attribute cannot be used
 //~| WARN unused attribute
 //~| NOTE empty list has no effect
+//~| NOTE requested on the command line with `-W unused-attributes`
 #![path = "3800"]
 //~^ ERROR: attribute cannot be used on
 #![automatically_derived]
 //~^ ERROR: attribute cannot be used on
 #![no_mangle]
-//~^ WARN may not be used in combination with `#[export_name]`
+//~^ ERROR may not be used in combination with `#[export_name]`
 //~| NOTE is ignored
-//~| NOTE requested on the command line
-//~| WARN cannot be used on crates
+//~| NOTE `#[deny(harmful_unused_attributes)]` on by default
+//~| ERROR cannot be used on crates
 //~| WARN previously accepted
 #![no_link]
 //~^ ERROR: the `no_link` attribute cannot be used on crates

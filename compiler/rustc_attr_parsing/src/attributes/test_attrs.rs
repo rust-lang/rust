@@ -50,7 +50,7 @@ pub(crate) struct ShouldPanicParser;
 
 impl SingleAttributeParser for ShouldPanicParser {
     const PATH: &[Symbol] = &[sym::should_panic];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnAndFutureError;
     const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Fn), Error(Target::WherePredicate)]);
     const TEMPLATE: AttributeTemplate = template!(

@@ -8,7 +8,7 @@ trait Test {
     //~| WARN previously accepted
     fn method1(&self);
     #[link_section = "__TEXT,__text"]
-    //~^ ERROR cannot be used on required trait methods [unused_attributes]
+    //~^ ERROR cannot be used on required trait methods [harmful_unused_attributes]
     //~| WARN previously accepted
     fn method2(&self);
     #[linkage = "common"]
