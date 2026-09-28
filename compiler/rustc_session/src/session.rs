@@ -427,6 +427,10 @@ impl EarlySession {
     pub fn merge_functions(&self) -> MergeFunctions {
         self.opts.unstable_opts.merge_functions.unwrap_or(self.target.merge_functions)
     }
+
+    pub fn is_nightly_build(&self) -> bool {
+        self.opts.unstable_features.is_nightly_build()
+    }
 }
 
 /// Some info about the backend, returned by `CodegenBackend::init` and put into the `Session`.

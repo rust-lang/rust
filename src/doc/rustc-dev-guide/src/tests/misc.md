@@ -12,15 +12,10 @@ This is a bootstrap/compiler implementation detail, but it can also be useful fo
   This is useful because some behaviors of the compiler (e.g. diagnostics)
   can differ depending on whether the compiler is nightly or not.
 
-In `ui` tests and other test suites that support `//@ rustc-env`, you can specify
-
-```rust,ignore
-// Force unstable features to be usable on stable rustc
-//@ rustc-env:RUSTC_BOOTSTRAP=1
-
-// Or force nightly rustc to pretend it is a stable rustc
-//@ rustc-env:RUSTC_BOOTSTRAP=-1
-```
+Note that setting `RUSTC_BOOTSTRAP` in ui tests (e.g. via `//@ rustc-env`) is pointless since ui
+tests inherit the bootstrap env var from bootstrap (so it's set to `1` by default), and since
+compiletest itself passes `-Z` flags (so `-1` breaks the test). To test stable-only behavior, you
+need to write a `run-make` test instead.
 
 For `run-make`/`run-make-cargo` tests, `//@ rustc-env` is not supported.
 You can do something like the following for individual `rustc` invocations.
