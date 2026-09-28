@@ -16,7 +16,7 @@ fn check_ty<'a>(cx: &LateContext<'a>, param: &hir::Ty<'a>, param_ty: Ty<'a>, fix
         && let Some(gen_ty) = option_arg_ty(cx, *opt_ty)
         && !gen_ty.is_ref()
         // Need to gen the original spans, so first parsing mid, and hir parsing afterward
-        && let hir::TyKind::Ref(lifetime, hir::MutTy { ty, .. }) = param.kind
+        && let hir::TyKind::Ref(lifetime, ty, ..) = param.kind
         && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = ty.kind
         && let (Some(first), Some(last)) = (path.segments.first(), path.segments.last())
         && let Some(hir::GenericArgs {

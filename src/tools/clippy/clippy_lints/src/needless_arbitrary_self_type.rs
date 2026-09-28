@@ -74,11 +74,11 @@ impl EarlyLintPass for NeedlessArbitrarySelfType {
             TyKind::Path(None, path) if let PatKind::Ident(BindingMode(ByRef::No, mutbl), _, _) = p.pat.kind => {
                 (path, Mode::Value, mutbl)
             },
-            TyKind::Ref(lifetime, mut_ty)
-                if let TyKind::Path(None, path) = &mut_ty.ty.kind
+            TyKind::Ref(lifetime, ty, mutbl)
+                if let TyKind::Path(None, path) = &ty.kind
                     && let PatKind::Ident(BindingMode::NONE, _, _) = p.pat.kind =>
             {
-                (path, Mode::Ref(*lifetime), mut_ty.mutbl)
+                (path, Mode::Ref(*lifetime), *mutbl)
             },
             _ => return,
         };

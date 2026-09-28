@@ -4600,7 +4600,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                         // `return_region`. Then use the `rustc_hir` type to get only
                         // the lifetime span.
                         match &fn_decl.inputs[index].kind {
-                            hir::TyKind::Ref(lifetime, _) => {
+                            hir::TyKind::Ref(lifetime, ..) => {
                                 // With access to the lifetime, we can get
                                 // the span of it.
                                 arguments.push((*argument, lifetime.ident.span));
@@ -4615,7 +4615,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                                         .hir_node_by_def_id(alias_to)
                                         .expect_item()
                                         .expect_impl()
-                                    && let hir::TyKind::Ref(lifetime, _) = self_ty.kind
+                                    && let hir::TyKind::Ref(lifetime, ..) = self_ty.kind
                                 {
                                     arguments.push((*argument, lifetime.ident.span));
                                 }
@@ -4637,7 +4637,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 let return_ty = sig.output().skip_binder();
                 let mut return_span = fn_decl.output.span();
                 if let hir::FnRetTy::Return(ty) = &fn_decl.output
-                    && let hir::TyKind::Ref(lifetime, _) = ty.kind
+                    && let hir::TyKind::Ref(lifetime, ..) = ty.kind
                 {
                     return_span = lifetime.ident.span;
                 }

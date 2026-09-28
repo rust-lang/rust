@@ -101,7 +101,7 @@ impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
         DanglingPointerSearcher { cx, inside_call_args: false }.visit_body(body);
 
         if let FnRetTy::Return(ret_ty) = &fn_decl.output
-            && let TyKind::Ptr(_) = ret_ty.kind
+            && let TyKind::Ptr(..) = ret_ty.kind
         {
             // get the return type of the function or closure
             let ty = match cx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip().kind() {
