@@ -18,16 +18,9 @@ pub(crate) fn expand<'cx>(
         Err(err) => return ExpandResult::Ready(DummyResult::any(span, err)),
     };
 
-    let id = ast::DUMMY_NODE_ID;
     ExpandResult::Ready(Box::new(base::MacEager {
-        expr: Some(Box::new(ast::Expr {
-            id,
-            kind: ast::ExprKind::GcaMacro(expr.clone()),
-            span,
-            attrs: Default::default(),
-            tokens: None,
-        })),
-        ty: Some(Box::new(ast::Ty { id, kind: ast::TyKind::GcaMacro(expr), span })),
+        expr: Some(cx.expr(span, ast::ExprKind::GcaMacro(expr.clone()))),
+        ty: Some(cx.ty(span, ast::TyKind::GcaMacro(expr))),
         ..Default::default()
     }))
 }

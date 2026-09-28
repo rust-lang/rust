@@ -182,13 +182,13 @@ pub(crate) use rustc_ast as ast;
 use rustc_ast::token::{IdentKind, LitKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenTree};
 use rustc_ast::{
-    AttrArgs, DelimArgs, EnumDef, Expr, GenericArg, GenericParamKind, Generics, Safety, SelfKind,
-    VariantData,
+    AttrArgs, DelimArgs, EnumDef, Expr, GenericArg, GenericParam, GenericParamKind, Generics,
+    Safety, SelfKind, VariantData,
 };
 use rustc_attr_ir::{Attribute, AttributeKind, ReprPacked};
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, respan, sym};
+use rustc_span::{Ident, Span, Symbol, kw, respan, sym};
 pub(crate) use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -610,7 +610,7 @@ impl<'a> TraitDef<'a> {
                         )
                         .collect();
 
-                    cx.typaram(span, param.ident, bounds, None)
+                    cx.typaram(param.ident, bounds, None)
                 }
                 GenericParamKind::Const { ty, span, .. } => {
                     let const_nodefault_kind = GenericParamKind::Const {
@@ -708,17 +708,7 @@ impl<'a> TraitDef<'a> {
         let self_params: Vec<_> = generics
             .params
             .iter()
-            .map(|param| match param.kind {
-                GenericParamKind::Lifetime => {
-                    GenericArg::Lifetime(cx.lifetime(param.ident.span.with_ctxt(ctxt), param.ident))
-                }
-                GenericParamKind::Type { .. } => {
-                    GenericArg::Type(cx.ty_ident(param.ident.span.with_ctxt(ctxt), param.ident))
-                }
-                GenericParamKind::Const { .. } => {
-                    GenericArg::Const(cx.const_ident(param.ident.span.with_ctxt(ctxt), param.ident))
-                }
-            })
+            .map(|param| generic_param_to_arg(cx, param, param.ident.span.with_ctxt(ctxt)))
             .collect();
 
         // Create the type of `self`.
@@ -770,21 +760,15 @@ impl<'a> TraitDef<'a> {
             attrs.push(cx.attr_nested_word(sym::doc, sym::hidden, self.span));
         }
 
-        cx.item(
+        cx.item_trait_impl(
             self.span,
             attrs,
-            ast::ItemKind::Impl(ast::Impl {
-                generics: trait_generics,
-                of_trait: Some(Box::new(ast::TraitImplHeader {
-                    safety: self.safety,
-                    polarity: ast::ImplPolarity::Positive,
-                    defaultness: ast::Defaultness::Implicit,
-                    trait_ref,
-                })),
-                constness: if self.is_const { ast::Const::Yes(DUMMY_SP) } else { ast::Const::No },
-                self_ty: self_type,
-                items: methods.collect(),
-            }),
+            trait_generics,
+            self.safety,
+            self.is_const,
+            trait_ref,
+            self_type,
+            methods.collect(),
         )
     }
 }
@@ -1238,4 +1222,33 @@ fn create_struct_field_access_fields(
             })
             .collect()
     })
+}
+
+pub(crate) fn generic_param_to_arg(cx: &ExtCtxt<'_>, p: &GenericParam, span: Span) -> GenericArg {
+    match p.kind {
+        GenericParamKind::Lifetime => GenericArg::Lifetime(cx.lifetime(span, p.ident)),
+        GenericParamKind::Type { .. } => GenericArg::Type(cx.ty_ident(span, p.ident)),
+        GenericParamKind::Const { .. } => GenericArg::Const(cx.const_ident(span, p.ident)),
+    }
+}
+
+pub(crate) fn generics_without_defaults(g: &Generics) -> Generics {
+    Generics {
+        params: g
+            .params
+            .iter()
+            .map(|p| {
+                let mut p = p.clone();
+                match &mut p.kind {
+                    ast::GenericParamKind::Const { default, .. } => *default = None,
+                    ast::GenericParamKind::Type { default } => *default = None,
+                    ast::GenericParamKind::Lifetime => {}
+                };
+                p.attrs.clear();
+                p
+            })
+            .collect(),
+        where_clause: g.where_clause.clone(),
+        span: g.span,
+    }
 }

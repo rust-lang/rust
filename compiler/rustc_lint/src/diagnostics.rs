@@ -2709,6 +2709,27 @@ pub(crate) enum UnusedDefSuggestion {
         #[suggestion_part(code = ";")]
         after_span: Span,
     },
+    #[suggestion(
+        "use `let _unused = ...` to ignore the resulting value without dropping it immediately",
+        style = "verbose",
+        code = "let _unused = ",
+        applicability = "maybe-incorrect"
+    )]
+    BindingExpr {
+        #[primary_span]
+        span: Span,
+    },
+    #[multipart_suggestion(
+        "use `let _unused = ...` to ignore the resulting value without dropping it immediately",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    BindingBlockTailExpr {
+        #[suggestion_part(code = "let _unused = ")]
+        before_span: Span,
+        #[suggestion_part(code = ";")]
+        after_span: Span,
+    },
 }
 
 // Needed because of def_path_str
