@@ -1658,6 +1658,11 @@ impl<'tcx> TyCtxt<'tcx> {
         // If `-Z randomize-layout` was enabled for the type definition then we can
         // consider performing layout randomization
         if self.sess.opts.unstable_opts.randomize_layout {
+            // FIXME: figure out if these features are incompatible in cross-crate contexts too
+            assert!(
+                !self.sess.opts.unstable_opts.polymorphize,
+                "-Zpolymorphize is incompatible with -Zrandomize-layout"
+            );
             flags.insert(ReprFlags::RANDOMIZE_LAYOUT);
         }
 
