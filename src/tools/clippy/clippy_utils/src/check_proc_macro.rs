@@ -23,7 +23,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Block, BlockCheckMode, Body, BoundConstness, BoundPolarity, Closure, Destination, Expr, ExprKind, FieldDef,
     FnHeader, FnRetTy, HirId, Impl, ImplItem, ImplItemImplKind, ImplItemKind, IsAuto, Item, ItemKind, Lit, LoopSource,
-    MatchSource, MutTy, Node, PatExpr, PatExprKind, PatKind, Path, PolyTraitRef, QPath, Safety, TraitBoundModifiers,
+    MatchSource, Node, PatExpr, PatExprKind, PatKind, Path, PolyTraitRef, QPath, Safety, TraitBoundModifiers,
     TraitImplHeader, TraitItem, TraitItemKind, TraitRef, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData,
     YieldSource,
 };
@@ -391,8 +391,8 @@ fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
 fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
     match ty.kind {
         TyKind::Slice(..) | TyKind::Array(..) => (Pat::Str("["), Pat::Str("]")),
-        TyKind::Ptr(MutTy { ty, .. }) => (Pat::Str("*"), ty_search_pat(ty).1),
-        TyKind::Ref(_, MutTy { ty, .. }) => (Pat::Str("&"), ty_search_pat(ty).1),
+        TyKind::Ptr(ty, ..) => (Pat::Str("*"), ty_search_pat(ty).1),
+        TyKind::Ref(_, ty, ..) => (Pat::Str("&"), ty_search_pat(ty).1),
         TyKind::FnPtr(fn_ptr) => (
             if fn_ptr.safety.is_unsafe() {
                 Pat::Str("unsafe")
