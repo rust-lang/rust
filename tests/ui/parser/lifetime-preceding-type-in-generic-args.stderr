@@ -6,48 +6,60 @@ LL | struct A1 {
 LL |     x: Foo<'static T1>,
    |                    ^^ expected one of `,` or `>`
    |
-help: you might have meant to end the type parameters here
+help: you might have meant to write a reference type here
    |
-LL |     x: Foo<'static> T1>,
+LL |     x: Foo<&'static T1>,
+   |            +
+help: use a comma to separate type parameters
+   |
+LL |     x: Foo<'static, T1>,
    |                   +
 
 error: expected one of `,` or `>`, found keyword `mut`
-  --> $DIR/lifetime-preceding-type-in-generic-args.rs:15:20
+  --> $DIR/lifetime-preceding-type-in-generic-args.rs:16:20
    |
 LL | struct A2 {
    |        -- while parsing this struct
 LL |     x: Foo<'static mut T1>,
    |                    ^^^ expected one of `,` or `>`
    |
-help: you might have meant to end the type parameters here
+help: you might have meant to write a reference type here
    |
-LL |     x: Foo<'static> mut T1>,
-   |                   +
+LL |     x: Foo<&'static mut T1>,
+   |            +
 
 error: expected one of `,` or `>`, found `T1`
-  --> $DIR/lifetime-preceding-type-in-generic-args.rs:20:20
+  --> $DIR/lifetime-preceding-type-in-generic-args.rs:21:20
    |
 LL | struct A3 {
    |        -- while parsing this struct
 LL |     x: Bar<'static T1, T2>,
    |                    ^^ expected one of `,` or `>`
    |
-help: you might have meant to end the type parameters here
+help: you might have meant to write a reference type here
    |
-LL |     x: Bar<'static> T1, T2>,
+LL |     x: Bar<&'static T1, T2>,
+   |            +
+help: use a comma to separate type parameters
+   |
+LL |     x: Bar<'static, T1, T2>,
    |                   +
 
 error: expected one of `,` or `>`, found `T2`
-  --> $DIR/lifetime-preceding-type-in-generic-args.rs:25:24
+  --> $DIR/lifetime-preceding-type-in-generic-args.rs:27:24
    |
 LL | struct A4 {
    |        -- while parsing this struct
 LL |     x: Bar<T1, 'static T2>,
    |                        ^^ expected one of `,` or `>`
    |
-help: you might have meant to end the type parameters here
+help: you might have meant to write a reference type here
    |
-LL |     x: Bar<T1, 'static> T2>,
+LL |     x: Bar<T1, &'static T2>,
+   |                +
+help: use a comma to separate type parameters
+   |
+LL |     x: Bar<T1, 'static, T2>,
    |                       +
 
 error: aborting due to 4 previous errors
