@@ -227,7 +227,8 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
 
     let thread_stack_size = init_stack_size(thread_builder_diag);
 
-    let jobs_frontend = jobs.frontend.or(NonZero::new(1)).unwrap();
+    let jobs_frontend =
+        jobs.frontend.parallel_thread_count().unwrap_or_else(|| NonZero::new(1).unwrap());
     let registry = sync::Registry::new(jobs_frontend);
 
     let Some(proof) = sync::check_dyn_thread_safe() else {

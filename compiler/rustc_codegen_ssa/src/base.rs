@@ -820,32 +820,33 @@ pub fn codegen_crate<
     // This likely is a temporary measure. Once we don't have to support the
     // non-parallel compiler anymore, we can compile CGUs end-to-end in
     // parallel and get rid of the complicated scheduling logic.
-    let mut pre_compiled_cgus = if let Some(threads) = tcx.sess.opts.jobs.frontend {
-        tcx.sess.time("compile_first_CGU_batch", || {
-            // Try to find one CGU to compile per thread.
-            let cgus: Vec<_> = cgu_reuse
-                .iter()
-                .enumerate()
-                .filter(|&(_, reuse)| reuse == &CguReuse::No)
-                .take(threads.get())
-                .collect();
+    let mut pre_compiled_cgus =
+        if let Some(threads) = tcx.sess.opts.jobs.frontend.parallel_thread_count() {
+            tcx.sess.time("compile_first_CGU_batch", || {
+                // Try to find one CGU to compile per thread.
+                let cgus: Vec<_> = cgu_reuse
+                    .iter()
+                    .enumerate()
+                    .filter(|&(_, reuse)| reuse == &CguReuse::No)
+                    .take(threads.get())
+                    .collect();
 
-            // Compile the found CGUs in parallel.
-            let start_time = Instant::now();
+                // Compile the found CGUs in parallel.
+                let start_time = Instant::now();
 
-            let pre_compiled_cgus = par_map(cgus, |(i, _)| {
-                let module =
-                    backend.compile_codegen_unit(tcx, codegen_units[i].name(), bitcode_needed);
-                (i, IntoDynSyncSend(module))
-            });
+                let pre_compiled_cgus = par_map(cgus, |(i, _)| {
+                    let module =
+                        backend.compile_codegen_unit(tcx, codegen_units[i].name(), bitcode_needed);
+                    (i, IntoDynSyncSend(module))
+                });
 
-            total_codegen_time += start_time.elapsed();
+                total_codegen_time += start_time.elapsed();
 
-            pre_compiled_cgus
-        })
-    } else {
-        FxHashMap::default()
-    };
+                pre_compiled_cgus
+            })
+        } else {
+            FxHashMap::default()
+        };
 
     for (i, cgu) in codegen_units.iter().enumerate() {
         ongoing_codegen.wait_for_signal_to_codegen_item();

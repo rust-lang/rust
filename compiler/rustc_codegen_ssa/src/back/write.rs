@@ -1226,7 +1226,7 @@ fn start_executing_work<B: WriteBackendMethods>(
     // Note that using `jobserver::Proxy` is not necessary here, the code below always acquires
     // tokens before releasing them, so we can never accidentally release the last token
     // permanently held by rustc process.
-    let parallel = match sess.opts.jobs.backend {
+    let parallel = match sess.opts.jobs.backend.parallel_thread_count() {
         Some(n) if backend.supports_parallel() => Some(n),
         _ => None,
     };
