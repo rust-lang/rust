@@ -1,7 +1,5 @@
 //@ compile-flags: -Znext-solver
 //@ edition: 2024
-//@ check-fail
-//@ known-bug: #130516
 //@ aux-build: unsafe-binder-macros.rs
 
 #![feature(unsafe_binders, forced_keywords, internal_syntax)]
@@ -14,16 +12,20 @@ use std::unsafe_binder::{unwrap_binder, wrap_binder};
 
 fn safe_wrap(x: u8) -> unsafe<> u8 {
     wrap_binder!(x)
+    //~^ ERROR unsafe binder cast is unsafe and requires unsafe block
 }
 fn safe_unwrap(b: unsafe<> u8) -> u8 {
     unwrap_binder!(b)
+    //~^ ERROR unsafe binder cast is unsafe and requires unsafe block
 }
 
 unsafe fn unsafe_fn_wrap(x: u8) -> unsafe<> u8 {
     wrap_binder!(x)
+    //~^ ERROR unsafe binder cast is unsafe and requires unsafe block
 }
 unsafe fn unsafe_fn_unwrap(b: unsafe<> u8) -> u8 {
     unwrap_binder!(b)
+    //~^ ERROR unsafe binder cast is unsafe and requires unsafe block
 }
 unsafe fn unsafe_fn_unwrap_place(p: *const unsafe<> u8) -> *const u8 {
     unsafe { &raw const unwrap_binder!(*p) }
@@ -32,6 +34,7 @@ unsafe fn unsafe_fn_unwrap_place(p: *const unsafe<> u8) -> *const u8 {
 macro_rules! local_unwrap {
     ($e:expr) => {
         unwrap_binder!($e)
+        //~^ ERROR unsafe binder cast is unsafe and requires unsafe block
     };
 }
 unsafe fn unsafe_fn_local_macro(b: unsafe<> u8) -> u8 {
@@ -40,6 +43,7 @@ unsafe fn unsafe_fn_local_macro(b: unsafe<> u8) -> u8 {
 
 unsafe fn unsafe_fn_builtin(b: unsafe<> u8) -> u8 {
     k#unwrap_binder(b)
+    //~^ ERROR unsafe binder cast is unsafe and requires unsafe block
 }
 
 macro_rules! local_builtin_unwrap {
@@ -49,6 +53,7 @@ macro_rules! local_builtin_unwrap {
 }
 unsafe fn unsafe_fn_local_builtin_macro(b: unsafe<> u8) -> u8 {
     local_builtin_unwrap!(b)
+    //~^ ERROR unsafe binder cast is unsafe and requires unsafe block
 }
 
 unsafe fn unsafe_fn_extern_macro(b: unsafe<> u8) -> u8 {
@@ -56,6 +61,7 @@ unsafe fn unsafe_fn_extern_macro(b: unsafe<> u8) -> u8 {
 }
 unsafe fn unsafe_fn_extern_builtin_macro(b: unsafe<> u8) -> u8 {
     unsafe_binder_macros::extern_builtin_unwrap!(b)
+    //~^ ERROR unsafe binder cast is unsafe and requires unsafe block
 }
 
 unsafe fn unsafe_fn_block(b: unsafe<> u8) -> u8 {

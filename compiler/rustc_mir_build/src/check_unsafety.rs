@@ -611,7 +611,8 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::PlaceUnwrapUnsafeBinder { .. }
             | ExprKind::ValueUnwrapUnsafeBinder { .. }
             | ExprKind::WrapUnsafeBinder { .. } => {
-                self.requires_unsafe(expr.span, UnsafeBinderCast);
+                let span = expr.span.parent_callsite().unwrap_or(expr.span);
+                self.requires_unsafe(span, UnsafeBinderCast);
             }
             _ => {}
         }
