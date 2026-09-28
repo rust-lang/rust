@@ -48,6 +48,7 @@ use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
 
 use crate::eii::EiiMapEncodedKeyValue;
+use crate::rmeta::table::TableBuilderSingleIdx;
 
 mod decoder;
 mod def_path_hash_map;
@@ -143,22 +144,27 @@ impl<T> LazyArray<T> {
 /// Random-access table (i.e. offering constant-time `get`/`set`), similar to
 /// `LazyArray<T>`, but without requiring encoding or decoding all the values
 /// eagerly and in-order.
-struct LazyTable<I, T> {
+///
+/// `IdxEncode` - is a type of index that is used to write to the table,
+/// `IdxDecode` - is a type of index that is used to read from the table.
+struct LazyTable<IdxEncode, IdxDecode, T> {
     position: NonZero<usize>,
     /// The encoded size of the elements of a table is selected at runtime to drop
     /// trailing zeroes. This is the number of bytes used for each table element.
     width: usize,
     /// How many elements are in the table.
     len: usize,
-    _marker: PhantomData<fn(I) -> T>,
+    _marker: PhantomData<fn(IdxEncode, IdxDecode) -> T>,
 }
 
-impl<I, T> LazyTable<I, T> {
+type LazyTableSingleIdx<TIdx, TValue> = LazyTable<TIdx, TIdx, TValue>;
+
+impl<Ie, Id, T> LazyTable<Ie, Id, T> {
     fn from_position_and_encoded_size(
         position: NonZero<usize>,
         width: usize,
         len: usize,
-    ) -> LazyTable<I, T> {
+    ) -> LazyTable<Ie, Id, T> {
         LazyTable { position, width, len, _marker: PhantomData }
     }
 }
@@ -177,8 +183,8 @@ impl<T> Clone for LazyArray<T> {
     }
 }
 
-impl<I, T> Copy for LazyTable<I, T> {}
-impl<I, T> Clone for LazyTable<I, T> {
+impl<Ie, Id, T> Copy for LazyTable<Ie, Id, T> {}
+impl<Ie, Id, T> Clone for LazyTable<Ie, Id, T> {
     fn clone(&self) -> Self {
         *self
     }
@@ -199,9 +205,9 @@ enum LazyState {
     Previous(NonZero<usize>),
 }
 
-type SyntaxContextTable = LazyTable<u32, Option<LazyValue<SyntaxContextKey>>>;
-type ExpnDataTable = LazyTable<ExpnIndex, Option<LazyValue<ExpnData>>>;
-type ExpnHashTable = LazyTable<ExpnIndex, Option<LazyValue<ExpnHash>>>;
+type SyntaxContextTable = LazyTableSingleIdx<u32, Option<LazyValue<SyntaxContextKey>>>;
+type ExpnDataTable = LazyTableSingleIdx<ExpnIndex, Option<LazyValue<ExpnData>>>;
+type ExpnHashTable = LazyTableSingleIdx<ExpnIndex, Option<LazyValue<ExpnHash>>>;
 
 #[derive(MetadataEncodable, LazyDecodable)]
 pub(crate) struct ProcMacroData {
@@ -305,7 +311,7 @@ pub(crate) struct CrateRoot {
 
     def_path_hash_map: LazyValue<DefPathHashMapRef<'static>>,
 
-    source_map: LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>,
+    source_map: LazyTableSingleIdx<u32, Option<LazyValue<rustc_span::SourceFile>>>,
     target_modifiers: LazyArray<TargetModifier>,
     denied_partial_mitigations: LazyArray<DeniedPartialMitigation>,
 
@@ -389,14 +395,14 @@ macro_rules! define_tables {
     ) => {
         #[derive(MetadataEncodable, LazyDecodable)]
         pub(crate) struct LazyTables {
-            $($name1: LazyTable<$IDX1, $T1>,)+
-            $($name2: LazyTable<$IDX2, Option<$T2>>,)+
+            $($name1: LazyTableSingleIdx<$IDX1, $T1>,)+
+            $($name2: LazyTableSingleIdx<$IDX2, Option<$T2>>,)+
         }
 
         #[derive(Default)]
         struct TableBuilders {
-            $($name1: TableBuilder<$IDX1, $T1>,)+
-            $($name2: TableBuilder<$IDX2, Option<$T2>>,)+
+            $($name1: TableBuilderSingleIdx<$IDX1, $T1>,)+
+            $($name2: TableBuilderSingleIdx<$IDX2, Option<$T2>>,)+
         }
 
         impl TableBuilders {
