@@ -47,27 +47,27 @@ impl LocalDefIdMap<PerParentDisambiguatorState> {
     }
 }
 
-/// Struct that contains two maps: `det_part` is used at the earlier stages of compilation
-/// (see where `commit_end_of_determinism` is called, at the moment of writing
-/// it is after prefetch of `hir_crate_items` in `run_required_analysis`), `non_det_part` is used
-/// when def ids are allocated non-deterministically (in parallel compiler),
-/// i.e., order of serialized pairs may be different.
-/// In order to preserve deterministic output of the compiler we need to deterministically encode this map, so we use
-/// `SortedMap` to store the mapping between local hashes and def indices, which gives us
-/// deterministic iteration when encoding crate metadata. For encoding/decoding details see
-/// `compiler/rustc_metadata/src/rmeta/def_path_hash_map.rs`.
 #[derive(Debug, Default)]
 pub struct DefPathToIndexMap {
-    pub det_part: DefPathHashMap,
-    pub non_det_part: Option<SortedMap<Hash64, DefIndex>>,
+    /// Stores mapping from local hash to def indices which are allocated when the order
+    /// of their allocation is deterministic (see where `commit_end_of_determinism` is called,
+    /// at the moment of writing it is after prefetch of `hir_crate_items` in `run_required_analysis`).
+    pub before_parallel_alloc: DefPathHashMap,
+
+    /// Stores the same mapping as previous map but is used after the allocation order of def indices
+    /// is not deterministic, so when serializing metadata we have a ready to use sorted by stable local
+    /// hash (which does not change between compiler invocations) mapping. We use it for relatively small number
+    /// of definitions, so the majority of them would be stored in `DefPathHashMap`, which makes insertion
+    /// and serialization costs of `SortedMap` acceptable.
+    pub after_parallel_alloc: Option<SortedMap<Hash64, DefIndex>>,
 }
 
 impl DefPathToIndexMap {
     #[inline]
     pub fn get(&self, hash: Hash64) -> Option<DefIndex> {
-        self.det_part
+        self.before_parallel_alloc
             .get(&hash)
-            .or_else(|| self.non_det_part.as_ref().and_then(|map| map.get(&hash).copied()))
+            .or_else(|| self.after_parallel_alloc.as_ref().and_then(|map| map.get(&hash).copied()))
     }
 
     /// This insert function does not behave like regular `insert` of a `HashMap`,
@@ -76,10 +76,10 @@ impl DefPathToIndexMap {
     /// def index into `det_part` when we are in non-deterministic mode.
     #[inline]
     pub fn insert(&mut self, hash: Hash64, index: DefIndex) -> Option<DefIndex> {
-        match self.non_det_part.as_mut() {
-            None => self.det_part.insert(&hash, &index),
+        match self.after_parallel_alloc.as_mut() {
+            None => self.before_parallel_alloc.insert(&hash, &index),
             Some(map) => {
-                if let Some(existing) = self.det_part.get(&hash) {
+                if let Some(existing) = self.before_parallel_alloc.get(&hash) {
                     return Some(existing);
                 }
 
@@ -292,10 +292,10 @@ pub enum DefPathData {
 }
 
 impl Definitions {
-    /// This function indicates that def ids allocations are non-deterministic after
-    /// it was called.
+    /// This function indicates that the order of def id allocations
+    /// may be non-deterministic after it was called.
     pub fn commit_end_of_determinism(&mut self) {
-        self.def_path_hash_to_index.non_det_part = Some(Default::default());
+        self.def_path_hash_to_index.after_parallel_alloc = Some(Default::default());
     }
 
     #[inline(always)]

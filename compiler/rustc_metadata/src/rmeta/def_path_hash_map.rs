@@ -36,11 +36,15 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefPathHashMapRef<'tcx> {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
         match *self {
             DefPathHashMapRef::BorrowedFromTcx(map) => {
-                let bytes = map.det_part.raw_bytes();
+                let bytes = map.before_parallel_alloc.raw_bytes();
                 e.emit_usize(bytes.len());
                 e.emit_raw_bytes(bytes);
 
-                map.non_det_part.as_ref().unwrap_or(&Default::default()).range(..).encode(e);
+                map.after_parallel_alloc
+                    .as_ref()
+                    .expect("must be set before metadata encoding")
+                    .range(..)
+                    .encode(e);
             }
             DefPathHashMapRef::OwnedFromMetadata(..) => {
                 panic!("DefPathHashMap::OwnedFromMetadata variant only exists for deserialization")
