@@ -41,3 +41,24 @@ pub fn live() -> MaybeUninit<u8> {
         }
     }
 }
+
+// Remove all storage statements along with the dead store.
+// EMIT_MIR storage_alloc.unused_storage.DeadStoreElimination-initial.diff
+#[custom_mir(dialect = "runtime", phase = "post-cleanup")]
+pub fn unused_storage(value: u8) {
+    // CHECK-LABEL: fn unused_storage(
+    // CHECK-NOT: Storage
+    // CHECK: return;
+    mir! {
+        let x: &u8;
+        debug x => x;
+        {
+            StorageLive(x);
+            StorageAlloc(x);
+            x = &value;
+            StorageDead(x);
+            RET = ();
+            Return()
+        }
+    }
+}
