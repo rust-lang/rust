@@ -1,0 +1,93 @@
+//@ run-rustfix
+//! Exhaustive tests for the targeted diagnostic that suggests removing redundant `.iter()` calls.
+//! This file focuses on "safe" cases (marked as `MachineApplicable`) that are
+//! automatically handled by `cargo fix`. This includes verifying that comments
+//! OUTSIDE the removal span are correctly preserved.
+#![allow(unused)]
+
+#[rustfmt::skip]
+fn main() {
+    let receiver = vec![1, 2, 3].into_iter();
+
+    // Simple inline call.
+    let _ = receiver;
+    //~^ ERROR no method named `iter`
+
+    let receiver = vec![1, 2, 3].into_iter();
+    // Call with extra horizontal whitespace between receiver and dot.
+    let _ = receiver   ;
+    //~^ ERROR no method named `iter`
+
+    let receiver = vec![1, 2, 3].into_iter();
+    // Call with a newline and indentation before the dot.
+    let _ = receiver
+        ;
+        //~^ ERROR no method named `iter`
+
+    let receiver = vec![1, 2, 3].into_iter();
+    // Call with a block comment between the receiver and the dot.
+    // The comment is before the dot, so it is preserved.
+    let _ = receiver /* info */ ;
+    //~^ ERROR no method named `iter`
+
+    let receiver = vec![1, 2, 3].into_iter();
+    // Call with a line comment on the preceding line.
+    let _ = receiver // info
+        ;
+        //~^ ERROR no method named `iter`
+
+    let receiver = vec![1, 2, 3].into_iter();
+    // A comment containing a dot shouldn't trick the span parser.
+    let _ = receiver /* . */ ;
+    //~^ ERROR no method named `iter`
+
+    let receiver = vec![1, 2, 3].into_iter();
+    // Verify trailing comments after the call are preserved.
+    let _ = receiver /* wait, keep this! */;
+    //~^ ERROR no method named `iter`
+
+    let receiver = vec![1, 2, 3].into_iter();
+    // Chained method call after `.iter()`: only `.iter()` is removed.
+    let _ = receiver.map(|x| x);
+    //~^ ERROR no method named `iter`
+
+    // Multi-segment path receiver.
+    let _ = std::iter::empty::<i32>();
+    //~^ ERROR no method named `iter`
+}
+
+// Concrete user-defined struct implementing Iterator directly.
+struct MyIter;
+
+impl Iterator for MyIter {
+    type Item = i32;
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
+fn concrete_iterator() {
+    let it = MyIter;
+    let _ = it;
+    //~^ ERROR no method named `iter`
+}
+
+// `Box<dyn Iterator>` -- verify the trait check fires through trait objects.
+fn dyn_iterator(it: Box<dyn Iterator<Item = i32>>) {
+    let _ = it;
+    //~^ ERROR no method named `iter`
+}
+
+// Generic context with an explicit bound.
+fn generic_iterator<I: Iterator<Item = i32>>(it: I) {
+    let _ = it;
+    //~^ ERROR no method named `iter`
+}
+
+// Redundant `.iter_mut()` on a mutable iterator.
+fn iter_mut_on_mutable_iterator() {
+    let mut vec = vec![1, 2, 3];
+    let it = vec.iter_mut();
+    let _ = it;
+    //~^ ERROR no method named `iter_mut`
+}
