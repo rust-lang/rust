@@ -834,7 +834,6 @@ impl<'a> MethodDef<'a> {
         let trait_lo_sp = span.shrink_to_lo();
 
         let sig = ast::FnSig { header: ast::FnHeader::default(), decl: fn_decl, span };
-        let defaultness = ast::Defaultness::Implicit;
 
         // Create the method.
         Some(Box::new(ast::AssocItem {
@@ -842,16 +841,12 @@ impl<'a> MethodDef<'a> {
             attrs: self.attributes.clone(),
             span,
             vis: ast::Visibility { span: trait_lo_sp, kind: ast::VisibilityKind::Inherited },
-            kind: ast::AssocItemKind::Fn(Box::new(ast::Fn {
-                defaultness,
+            kind: ast::AssocItemKind::Fn(cx.item_fn(
                 sig,
-                ident: method_ident,
-                generics: fn_generics,
-                contract: None,
-                body: Some(body_block),
-                define_opaque: None,
-                eii_impl: None,
-            })),
+                method_ident,
+                fn_generics,
+                Some(body_block),
+            )),
             tokens: None,
         }))
     }
