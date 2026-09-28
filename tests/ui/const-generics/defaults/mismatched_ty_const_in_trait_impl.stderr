@@ -23,13 +23,14 @@ LL |     fn bar<T>() {}
 error[E0053]: associated function `baz` has an incompatible generic parameter for trait `Uwu`
   --> $DIR/mismatched_ty_const_in_trait_impl.rs:21:12
    |
-LL | trait Uwu {
-LL |     fn baz<const N: u32>() {}
-   |            ------------ expected const parameter of type `u32`
-LL | }
-LL | impl Uwu for () {
 LL |     fn baz<const N: i32>() {}
-   |            ^^^^^^^^^^^^ found const parameter of type `i32`
+   |            ^^^^^^^^^^^^ expected `u32`, found `i32`
+   |
+note: type in trait
+  --> $DIR/mismatched_ty_const_in_trait_impl.rs:18:12
+   |
+LL |     fn baz<const N: u32>() {}
+   |            ^^^^^^^^^^^^
 
 error[E0053]: associated function `bbbb` has an incompatible generic parameter for trait `Aaaaaa`
   --> $DIR/mismatched_ty_const_in_trait_impl.rs:29:13

@@ -1,13 +1,14 @@
 error[E0053]: associated type `Foo` has an incompatible generic parameter for trait `Trait`
   --> $DIR/const_params_have_right_type.rs:6:14
    |
-LL | trait Trait {
-LL |     type Foo<const N: u8>;
-   |              ----------- expected const parameter of type `u8`
-...
-LL | impl Trait for () {
 LL |     type Foo<const N: u64> = u32;
-   |              ^^^^^^^^^^^^ found const parameter of type `u64`
+   |              ^^^^^^^^^^^^ expected `u8`, found `u64`
+   |
+note: type in trait
+  --> $DIR/const_params_have_right_type.rs:2:14
+   |
+LL |     type Foo<const N: u8>;
+   |              ^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

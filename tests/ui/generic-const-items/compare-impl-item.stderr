@@ -30,15 +30,14 @@ LL |     const C<'a>: &'a str = "";
 error[E0053]: associated constant `D` has an incompatible generic parameter for trait `Trait`
   --> $DIR/compare-impl-item.rs:22:13
    |
-LL | trait Trait<P> {
-...
-LL |     const D<const N: usize>: usize;
-   |             -------------- expected const parameter of type `usize`
-...
-LL | impl<P> Trait<P> for () {
-...
 LL |     const D<const N: u16>: u16 = N;
-   |             ^^^^^^^^^^^^ found const parameter of type `u16`
+   |             ^^^^^^^^^^^^ expected `usize`, found `u16`
+   |
+note: type in trait
+  --> $DIR/compare-impl-item.rs:8:13
+   |
+LL |     const D<const N: usize>: usize;
+   |             ^^^^^^^^^^^^^^
 
 error[E0195]: lifetime parameters or bounds on associated constant `E` do not match the trait declaration
   --> $DIR/compare-impl-item.rs:24:12
