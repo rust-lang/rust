@@ -483,6 +483,15 @@ impl<'a> ExtCtxt<'a> {
         self.expr_call_global(sp, ok, thin_vec![expr])
     }
 
+    pub fn expr_call_intrinsic(
+        &self,
+        span: Span,
+        intrinsic: Symbol,
+        args: ThinVec<Box<ast::Expr>>,
+    ) -> Box<ast::Expr> {
+        self.expr_call_global(span, self.std_path(&[sym::intrinsics, intrinsic]), args)
+    }
+
     pub fn pat(&self, span: Span, kind: PatKind) -> ast::Pat {
         ast::Pat { id: ast::DUMMY_NODE_ID, kind, span }
     }

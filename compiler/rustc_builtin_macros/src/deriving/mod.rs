@@ -75,26 +75,14 @@ impl MultiItemModifier for BuiltinDerive {
     }
 }
 
-/// Constructs an expression that calls an intrinsic
-fn call_intrinsic(
-    cx: &ExtCtxt<'_>,
-    span: Span,
-    intrinsic: Symbol,
-    args: ThinVec<Box<ast::Expr>>,
-) -> Box<ast::Expr> {
-    let span = cx.with_def_site_ctxt(span);
-    let path = cx.std_path(&[sym::intrinsics, intrinsic]);
-    cx.expr_call_global(span, path, args)
-}
-
 /// Constructs an expression that calls the `discriminant_value` intrinsic.
 fn call_discriminant_value(cx: &ExtCtxt<'_>, span: Span, arg: Symbol) -> Box<ast::Expr> {
-    call_intrinsic(cx, span, sym::discriminant_value, thin_vec![cx.expr_ident_sym(span, arg)])
+    cx.expr_call_intrinsic(span, sym::discriminant_value, thin_vec![cx.expr_ident_sym(span, arg)])
 }
 
 /// Constructs an expression that calls the `unreachable` intrinsic.
 fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
-    let call = call_intrinsic(cx, span, sym::unreachable, ThinVec::new());
+    let call = cx.expr_call_intrinsic(span, sym::unreachable, ThinVec::new());
     cx.expr_block(Box::new(ast::Block {
         stmts: thin_vec![cx.stmt_expr(call)],
         id: ast::DUMMY_NODE_ID,
