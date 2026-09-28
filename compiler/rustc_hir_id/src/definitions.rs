@@ -295,7 +295,10 @@ impl Definitions {
     /// This function indicates that the order of def id allocations
     /// may be non-deterministic after it was called.
     pub fn commit_end_of_determinism(&mut self) {
-        self.def_path_hash_to_index.after_parallel_alloc = Some(Default::default());
+        assert!(
+            self.def_path_hash_to_index.after_parallel_alloc.replace(Default::default()).is_none(),
+            "this function should be called only once"
+        )
     }
 
     #[inline(always)]
