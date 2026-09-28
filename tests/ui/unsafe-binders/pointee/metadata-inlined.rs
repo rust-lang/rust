@@ -1,5 +1,6 @@
 //@ compile-flags: -Znext-solver -O
-//@ check-fail
+//@ compile-flags: -Zunstable-options -Csymbol-mangling-version=legacy
+//@ build-fail
 //@ failure-status: 101
 //@ known-bug: #130516
 //@ rustc-env:RUST_BACKTRACE=0

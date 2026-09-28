@@ -25,3 +25,4 @@ impl t::Tr for &Local {
     #[rustc_dump_def_path]
     fn m(&self) {}
 }
+

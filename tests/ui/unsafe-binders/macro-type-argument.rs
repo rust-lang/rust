@@ -1,6 +1,6 @@
 //@ compile-flags: -Znext-solver
 //@ check-fail
-//@ known-bug: unknown
+//@ known-bug: #130516
 
 // Any lifetimes within the type ascriptions on `wrap_binder!` or `unwrap_binder!`
 // should be enforced by borrowck.

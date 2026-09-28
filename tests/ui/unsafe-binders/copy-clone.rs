@@ -26,6 +26,7 @@ fn nested(_: unsafe<'a> (&'a u8, unsafe<'b> &'b u8)) {}
 
 fn nested_md(_: unsafe<'a> (&'a u8, MD<unsafe<'b> &'b u8>)) {}
 
+// FIXME(unsafe_binders): `unsafe<> Vec<&'a u8>` isn't `Copy`
 fn nested_outer_lifetime(_: unsafe<'a> MD<unsafe<> Vec<&'a u8>>) {}
 
 #[derive(Clone, Copy)]

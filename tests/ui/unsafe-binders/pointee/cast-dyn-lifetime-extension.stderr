@@ -69,6 +69,24 @@ LL |     q as _
    = note: expected raw pointer `*const ManuallyDrop<(u8, dyn Debug)>`
               found raw pointer `*const unsafe<'a> ManuallyDrop<(u8, (dyn Debug + 'a))>`
 
-error: aborting due to 6 previous errors
+error[E0308]: mismatched types
+  --> $DIR/cast-dyn-lifetime-extension.rs:46:5
+   |
+LL |     q as _
+   |     ^^^^^^ one type is more general than the other
+   |
+   = note: expected raw pointer `*mut ManuallyDrop<dyn Debug>`
+              found raw pointer `*mut unsafe<'a> ManuallyDrop<(dyn Debug + 'a)>`
+
+error[E0308]: mismatched types
+  --> $DIR/cast-dyn-lifetime-extension.rs:49:5
+   |
+LL |     q as _
+   |     ^^^^^^ one type is more general than the other
+   |
+   = note: expected raw pointer `*const ManuallyDrop<dyn Debug>`
+              found raw pointer `*mut unsafe<'a> ManuallyDrop<(dyn Debug + 'a)>`
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

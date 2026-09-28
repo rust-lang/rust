@@ -20,7 +20,7 @@ LL | fn nested(_: unsafe<'a> (&'a u8, unsafe<'b> &'b u8)) {}
    = note: required because it appears within the type `(&'a u8, unsafe<'b> &'b u8)`
 
 error[E0204]: the trait `Copy` cannot be implemented for this type
-  --> $DIR/copy-clone.rs:32:8
+  --> $DIR/copy-clone.rs:33:8
    |
 LL | #[derive(Clone, Copy)]
    |                 ---- in this derive macro expansion
@@ -38,7 +38,7 @@ LL |     let _ = Clone::clone(&b);
    |             required by a bound introduced by this call
 
 error[E0277]: the trait bound `unsafe<'a> &'a u8: Clone` is not satisfied
-  --> $DIR/copy-clone.rs:33:5
+  --> $DIR/copy-clone.rs:34:5
    |
 LL | #[derive(Clone, Copy)]
    |          ----- in this derive macro expansion
