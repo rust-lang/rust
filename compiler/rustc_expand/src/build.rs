@@ -492,6 +492,9 @@ impl<'a> ExtCtxt<'a> {
     pub fn pat_ident(&self, span: Span, ident: Ident) -> ast::Pat {
         self.pat_ident_binding_mode(span, ident, ast::BindingMode::NONE)
     }
+    pub fn pat_ident_sym(&self, span: Span, sym: Symbol) -> ast::Pat {
+        self.pat_ident(span, Ident::new(sym, span))
+    }
 
     pub fn pat_ident_binding_mode(
         &self,

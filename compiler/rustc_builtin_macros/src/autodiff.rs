@@ -707,8 +707,8 @@ mod llvm_enzyme {
                             panic!("not an ident?");
                         };
                         let name = format!("d{}_{}", old_name, i);
-                        let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
-                        *shadow_arg.pat = ecx.pat_ident(shadow_arg.pat.span, ident);
+                        *shadow_arg.pat =
+                            ecx.pat_ident_sym(shadow_arg.pat.span, Symbol::intern(&name));
                         d_inputs.push(shadow_arg);
                     }
                 }
@@ -733,9 +733,9 @@ mod llvm_enzyme {
                             panic!("not an ident?");
                         };
                         let name = format!("b{}_{}", old_name, i);
-                        let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
 
-                        *shadow_arg.pat = ecx.pat_ident(shadow_arg.pat.span, ident);
+                        *shadow_arg.pat =
+                            ecx.pat_ident_sym(shadow_arg.pat.span, Symbol::intern(&name));
                         d_inputs.push(shadow_arg);
                     }
                 }
