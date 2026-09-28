@@ -3,11 +3,12 @@
 //@[next] compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicit revisions)
 #![feature(
+    const_param_ty_trait,
+    gca_adts,
     gca_min_const_items,
     generic_const_parameter_types,
     inherent_associated_types,
-    min_adt_const_params,
-    const_param_ty_trait
+    min_adt_const_params
 )]
 
 use std::gca;

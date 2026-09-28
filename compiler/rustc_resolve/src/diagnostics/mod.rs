@@ -409,7 +409,7 @@ pub(crate) struct SelfInConstGenericTy {
 
 #[derive(Diagnostic)]
 #[diag(
-    "{$is_gca ->
+    "{$is_gca_const_items ->
     [true] generic parameters in const blocks are not allowed; use a named `const` item instead
     *[false] generic parameters may not be used in const operations
 }"
@@ -423,7 +423,7 @@ pub(crate) struct ParamInNonTrivialAnonConst {
     pub(crate) param_kind: ParamKindInNonTrivialAnonConst,
     #[help("add `#![feature(generic_const_exprs)]` to allow generic const expressions")]
     pub(crate) help: bool,
-    pub(crate) is_gca: bool,
+    pub(crate) is_gca_const_items: bool,
     #[help(
         "consider factoring the expression into a `type const` item and use it as the const argument instead"
     )]
