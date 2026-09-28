@@ -713,4 +713,18 @@ fn check_features_requiring_new_solver(sess: &Session, features: &Features) {
             missing: String::from("-Znext-solver=globally"),
         });
     }
+
+    if let Some(unsafe_binders_span) = features
+        .enabled_lang_features()
+        .iter()
+        .find(|feat| feat.gate_name == sym::unsafe_binders)
+        .map(|feat| feat.attr_sp)
+    {
+        #[allow(rustc::symbol_intern_string_literal)]
+        sess.dcx().emit_err(diagnostics::MissingDependentFeatures {
+            parent_span: unsafe_binders_span,
+            parent: sym::unsafe_binders,
+            missing: String::from("-Znext-solver=globally"),
+        });
+    }
 }
