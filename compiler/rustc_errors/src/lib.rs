@@ -44,7 +44,6 @@ use emitter::{DynEmitter, Emitter};
 use rustc_ast::attr::version::RustcVersion;
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_data_structures::stable_hash::StableHasher;
 use rustc_data_structures::sync::{DynSend, Lock};
 pub use rustc_error_messages::{
     DiagArg, DiagArgFromDisplay, DiagArgMap, DiagArgName, DiagArgValue, DiagMessage, IntoDiagArg,
@@ -1321,21 +1320,18 @@ impl DiagCtxtInner {
                 debug!(?diagnostic);
                 debug!(?self.emitted_diagnostics);
 
-                let not_yet_emitted = |sub: &mut Subdiag| {
+                let show_sub = |sub: &Subdiag| {
                     debug!(?sub);
                     match sub.level {
                         Sublevel::Error | Sublevel::Warning | Sublevel::Note | Sublevel::Help => {
-                            return true;
+                            true
                         }
-                        Sublevel::OnceNote | Sublevel::OnceHelp => {}
+                        Sublevel::OnceNote | Sublevel::OnceHelp => {
+                            self.emitted_diagnostics.insert(sub.dedup_hash())
+                        }
                     }
-                    let mut hasher = StableHasher::new();
-                    sub.hash(&mut hasher);
-                    let diagnostic_hash = hasher.finish();
-                    debug!(?diagnostic_hash);
-                    self.emitted_diagnostics.insert(diagnostic_hash)
                 };
-                diagnostic.children.retain_mut(not_yet_emitted);
+                diagnostic.children.retain(show_sub);
                 if already_emitted {
                     let msg = "duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`";
                     diagnostic.sub(Sublevel::Note, msg, MultiSpan::new());

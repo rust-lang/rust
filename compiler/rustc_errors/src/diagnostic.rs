@@ -324,6 +324,21 @@ pub struct Subdiag {
     pub span: MultiSpan,
 }
 
+impl Subdiag {
+    /// Hash used to determine if two subdiagnostics are the same. Used by
+    /// `DiagCtxtInner::emitted_diagnostics`.
+    pub(crate) fn dedup_hash(&self) -> Hash128 {
+        // Deconstruct to ensure all fields are considered.
+        let Subdiag { level, messages, span } = self;
+
+        let hashed_parts = (level, messages, span);
+
+        let mut hasher = StableHasher::new();
+        hashed_parts.hash(&mut hasher);
+        hasher.finish()
+    }
+}
+
 /// Used for emitting structured error messages and other diagnostic information.
 /// Wraps a `DiagInner`, adding some useful things.
 /// - The `dcx` field, allowing it to (a) emit itself, and (b) do a drop check
