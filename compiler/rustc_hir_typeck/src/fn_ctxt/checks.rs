@@ -17,11 +17,11 @@ use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, ResolvedStructPath};
 use rustc_index::IndexVec;
 use rustc_infer::infer::{
-    BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TypeTrace, relate,
+    BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk, TypeTrace, relate,
 };
 use rustc_infer::traits::WellFormedLoc;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
-use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
@@ -293,22 +293,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     expected_input_tys
                         .into_iter()
                         .zip(formal_input_tys)
-                        // if the expected input type is structurally equal to the formal input type,
-                        // i.e. we've only changed some inference variables around, keep the formal
-                        // input ty as the expected input ty. Usually fudging helps because it gains
-                        // information from a callsite of a function. However, Fudging also sometimes
-                        // loses information, when the original, formal, input type had constraints on it,
-                        // and fudging replaces all inference variables with fresh ones, those constraints
-                        // are discarded. This check makes sure we only keep fudging output if structural
-                        // changes were made to the type. If all that was changed were some typevars,
-                        // we go back to the unfudged formal input type.
                         .map(|(expected_input_ty, formal_input_ty)| {
-                            if same_type_modulo_vars(tcx, expected_input_ty, *formal_input_ty) {
-                                // if they're the same, fall back to the formal input type
-                                *formal_input_ty
-                            } else {
-                                expected_input_ty
-                            }
+                            only_keep_structural_changes(
+                                &self.infcx,
+                                *formal_input_ty,
+                                expected_input_ty,
+                            )
                         })
                         .collect()
                 }))
@@ -3612,50 +3602,63 @@ enum SuggestionText {
     DidYouMean,
 }
 
-fn same_type_modulo_vars<'tcx>(tcx: TyCtxt<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-    struct SameModuloVars<'tcx> {
-        tcx: TyCtxt<'tcx>,
+/// Postprocessing step of fudging: after fudging, any changes from the formal input type to the
+/// expected input type are only kept, if they result in structural changes. If the only change is
+/// one inference variable changing to another (fresh) inference variable, the formal one is kept,
+/// not the fresh one. This avoids cases in which those fresh inference variables are *less*
+/// constrained than the original formal ones, and making them fresh has no benefit.
+fn only_keep_structural_changes<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    formal: Ty<'tcx>,
+    expected: Ty<'tcx>,
+) -> Ty<'tcx> {
+    struct OnlyKeepStructuralChanges<'a, 'tcx> {
+        infcx: &'a InferCtxt<'tcx>,
     }
-    impl<'tcx> TypeRelation<TyCtxt<'tcx>> for SameModuloVars<'tcx> {
+    impl<'tcx> TypeRelation<TyCtxt<'tcx>> for OnlyKeepStructuralChanges<'_, 'tcx> {
         fn cx(&self) -> TyCtxt<'tcx> {
-            self.tcx
+            self.infcx.tcx
         }
 
         fn relate_ty_args(
             &mut self,
-            a_ty: Ty<'tcx>,
-            _b_ty: Ty<'tcx>,
-            _ty_def_id: DefId,
-            a_args: ty::GenericArgsRef<'tcx>,
-            b_args: ty::GenericArgsRef<'tcx>,
-            _mk: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
+            formal_ty: Ty<'tcx>,
+            _expected_ty: Ty<'tcx>,
+            _def_id: DefId,
+            formal_args: ty::GenericArgsRef<'tcx>,
+            expected_args: ty::GenericArgsRef<'tcx>,
+            mk: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
         ) -> RelateResult<'tcx, Ty<'tcx>> {
-            relate::relate_args_invariantly(self, a_args, b_args)?;
-            Ok(a_ty)
+            let new_args = relate::relate_args_invariantly(self, formal_args, expected_args)?;
+
+            if new_args == formal_args { Ok(formal_ty) } else { Ok(mk(new_args)) }
         }
 
         fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(
             &mut self,
             _variance: ty::Variance,
             _info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
-            a: T,
-            b: T,
+            formal: T,
+            expected: T,
         ) -> RelateResult<'tcx, T> {
-            self.relate(a, b)
+            self.relate(formal, expected)
         }
 
-        fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-            if a == b {
-                return Ok(a);
+        fn tys(&mut self, formal: Ty<'tcx>, expected: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+            if formal == expected {
+                return Ok(formal);
             }
 
-            match (a.kind(), b.kind()) {
+            match (formal.kind(), expected.kind()) {
+                // If both are an infer var, keep the formal one.
                 (&ty::Infer(ty::InferTy::TyVar(_)), &ty::Infer(ty::InferTy::TyVar(_)))
                 | (&ty::Infer(ty::InferTy::FloatVar(_)), &ty::Infer(ty::InferTy::FloatVar(_)))
-                | (&ty::Infer(ty::InferTy::IntVar(_)), &ty::Infer(ty::InferTy::IntVar(_))) => Ok(a),
-                (&ty::Infer(_), _) | (_, &ty::Infer(_)) => Err(TypeError::Mismatch),
+                | (&ty::Infer(ty::InferTy::IntVar(_)), &ty::Infer(ty::InferTy::IntVar(_))) => {
+                    Ok(formal)
+                }
+                (&ty::Infer(_), _) | (_, &ty::Infer(_)) => Ok(expected),
                 (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(Ty::new_error(self.cx(), guar)),
-                _ => relate::structurally_relate_tys(self, a, b),
+                _ => relate::structurally_relate_tys(self, formal, expected),
             }
         }
 
@@ -3669,42 +3672,47 @@ fn same_type_modulo_vars<'tcx>(tcx: TyCtxt<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> b
 
         fn consts(
             &mut self,
-            mut a: ty::Const<'tcx>,
-            mut b: ty::Const<'tcx>,
+            mut formal: ty::Const<'tcx>,
+            mut expected: ty::Const<'tcx>,
         ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-            if a == b {
-                return Ok(a);
+            if formal == expected {
+                return Ok(formal);
             }
 
             // Avoid ICEs when in gce, and `structurally_relate_consts`
             // turns a non-infer const into an infer const
-            if self.tcx.features().generic_const_exprs() {
-                a = self.tcx.expand_abstract_consts(a);
-                b = self.tcx.expand_abstract_consts(b);
+            if self.cx().features().generic_const_exprs() {
+                formal = self.cx().expand_abstract_consts(formal);
+                expected = self.cx().expand_abstract_consts(expected);
             }
 
-            match (a.kind(), b.kind()) {
-                (ty::ConstKind::Infer(_), ty::ConstKind::Infer(_)) => return Ok(a),
-                (ty::ConstKind::Infer(_), _) | (_, ty::ConstKind::Infer(_)) => {
-                    return Err(TypeError::ConstMismatch(ExpectedFound::new(a, b)));
-                }
+            match (formal.kind(), expected.kind()) {
+                // If both are an infer var, keep the formal one.
+                (ty::ConstKind::Infer(_), ty::ConstKind::Infer(_)) => return Ok(formal),
+                (ty::ConstKind::Infer(_), _) | (_, ty::ConstKind::Infer(_)) => return Ok(formal),
+
                 _ => {}
             }
 
-            relate::structurally_relate_consts(self, a, b)
+            relate::structurally_relate_consts(self, formal, expected)
         }
 
         fn binders<T>(
             &mut self,
-            a: ty::Binder<'tcx, T>,
-            b: ty::Binder<'tcx, T>,
+            formal: ty::Binder<'tcx, T>,
+            expected: ty::Binder<'tcx, T>,
         ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
         where
             T: Relate<TyCtxt<'tcx>>,
         {
-            Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
+            Ok(formal.rebind(self.relate(formal.skip_binder(), expected.skip_binder())?))
         }
     }
 
-    SameModuloVars { tcx }.relate(a, b).is_ok()
+    // If it errors for some reason, keep the expected type, not the formal one, keeping the fudging.
+    let res = OnlyKeepStructuralChanges { infcx }.relate(formal, expected).unwrap_or(expected);
+    tracing::debug!(
+        "formal: {formal:?} and expected {expected:?} => only keeping structural changes creates {res:?}"
+    );
+    res
 }
