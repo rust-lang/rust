@@ -2,21 +2,18 @@
 
 set -e
 
-TOOLCHAIN=${TOOLCHAIN:-$(date +%Y-%m-%d)}
-
 export GIT_CONFIG_GLOBAL=../rust/josh.gitconfig
 export RUSTC_GIT=../rust
 
 case $1 in
     "prepare")
-        echo "=> Installing new nightly"
-        rustup toolchain install --profile minimal "nightly-${TOOLCHAIN}" # Sanity check to see if the nightly exists
-        sed -i "s/\"nightly-.*\"/\"nightly-${TOOLCHAIN}\"/" rust-toolchain.toml
-
         echo "=> Uninstalling all old nightlies"
-        for nightly in $(rustup toolchain list | grep nightly | grep -v "$TOOLCHAIN" | grep -v nightly-x86_64); do
+        for nightly in $(RUSTUP_AUTO_INSTALL=0 rustup toolchain list | grep nightly | grep -v nightly-x86_64); do
             rustup toolchain uninstall "$nightly"
         done
+
+        echo "=> Installing new nightly"
+        rustup toolchain install
 
         ./clean_all.sh
 
