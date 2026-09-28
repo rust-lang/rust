@@ -1,4 +1,3 @@
-#[expect(unused_macros)]
 #[rustc_macro_transparency = "semiopaque"]
 pub(crate) macro float_impl(
     Self = $SelfT:ty,
