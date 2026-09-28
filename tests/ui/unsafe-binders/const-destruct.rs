@@ -1,6 +1,5 @@
 //@ compile-flags: -Znext-solver
-//@ check-fail
-//@ known-bug: #130516
+//@ check-pass
 
 // Unsafe binders never have drop glue, so they are `const Destruct`.
 
