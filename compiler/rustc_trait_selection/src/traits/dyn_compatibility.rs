@@ -749,6 +749,15 @@ fn receiver_is_dispatchable<'tcx>(
         let trait_predicate = ty::TraitRef::new_from_args(tcx, trait_def_id, args);
         clauses.push(trait_predicate.upcast(tcx));
 
+        // U satisfies `Trait`'s where-bounds.
+        clauses.extend(
+            tcx.clauses_of(trait_def_id)
+                .instantiate(tcx, args)
+                .clauses
+                .into_iter()
+                .map(Unnormalized::skip_norm_wip),
+        );
+
         let meta_sized_predicate = {
             let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, DUMMY_SP);
             ty::TraitRef::new(tcx, meta_sized_did, [unsized_self_ty])
