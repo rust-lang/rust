@@ -21,6 +21,7 @@ LL | static A: usize = 0;
 help: the trait `GlobalAllocator` is implemented for `System`
   --> $SRC_DIR/std/src/alloc.rs:LL:COL
    = note: required for `usize` to implement `GlobalAlloc`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
   --> $DIR/deduplicate-diagnostics-incr.rs:11:11
@@ -33,6 +34,7 @@ LL | static A: usize = 0;
 help: the trait `GlobalAllocator` is implemented for `System`
   --> $SRC_DIR/std/src/alloc.rs:LL:COL
    = note: required for `usize` to implement `GlobalAlloc`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
   --> $DIR/deduplicate-diagnostics-incr.rs:11:11
@@ -45,6 +47,7 @@ LL | static A: usize = 0;
 help: the trait `GlobalAllocator` is implemented for `System`
   --> $SRC_DIR/std/src/alloc.rs:LL:COL
    = note: required for `usize` to implement `GlobalAlloc`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 4 previous errors
 

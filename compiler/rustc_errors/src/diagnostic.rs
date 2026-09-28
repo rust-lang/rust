@@ -12,9 +12,11 @@ use rustc_error_messages::{DiagArgMap, DiagArgName, IntoDiagArg};
 use rustc_hashes::Hash128;
 use rustc_lint_defs::Applicability;
 use rustc_macros::{Decodable, Encodable};
+use rustc_serialize::Encodable;
 use rustc_span::{Span, Spanned, Symbol};
 use tracing::debug;
 
+use crate::dedup_hash::DedupHashEncoder;
 use crate::{
     CodeSuggestion, DiagCtxtHandle, DiagMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level,
     MultiSpan, StashKey, Style, Sublevel, Substitution, SubstitutionPart, SuggestionStyle,
@@ -298,20 +300,22 @@ impl DiagInner {
             emitted_at: _,   // ignore
         } = self;
 
-        let hashed_parts = (
-            std::mem::discriminant(level), // ignore the field within `Warning`
-            messages,
-            code,
-            span,
-            children,
-            suggestions,
-            args.as_slice(),
-            is_lint,
-        );
+        let mut e = DedupHashEncoder(StableHasher::new());
 
-        let mut hasher = StableHasher::new();
-        hashed_parts.hash(&mut hasher);
-        hasher.finish()
+        // We use `discriminant` because we want to ignore the field within `Warning`.
+        // `Encoder`/`SpanEncoder` can't traverse a `Discriminant<T>` so we hash it directly.
+        std::mem::discriminant(level).hash(&mut e.0);
+
+        // All the other fields are hashed via `encode`.
+        messages.encode(&mut e);
+        code.encode(&mut e);
+        span.encode(&mut e);
+        children.encode(&mut e);
+        suggestions.encode(&mut e);
+        args.encode(&mut e);
+        is_lint.encode(&mut e);
+
+        e.0.finish()
     }
 }
 
@@ -328,14 +332,9 @@ impl Subdiag {
     /// Hash used to determine if two subdiagnostics are the same. Used by
     /// `DiagCtxtInner::emitted_diagnostics`.
     pub(crate) fn dedup_hash(&self) -> Hash128 {
-        // Deconstruct to ensure all fields are considered.
-        let Subdiag { level, messages, span } = self;
-
-        let hashed_parts = (level, messages, span);
-
-        let mut hasher = StableHasher::new();
-        hashed_parts.hash(&mut hasher);
-        hasher.finish()
+        let mut e = DedupHashEncoder(StableHasher::new());
+        self.encode(&mut e);
+        e.0.finish()
     }
 }
 

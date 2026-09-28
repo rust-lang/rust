@@ -69,6 +69,7 @@ use crate::timings::TimingRecord;
 pub mod annotate_snippet_emitter_writer;
 pub mod codes;
 mod decorate_diag;
+mod dedup_hash;
 mod diagnostic;
 mod diagnostic_impls;
 pub mod emitter;

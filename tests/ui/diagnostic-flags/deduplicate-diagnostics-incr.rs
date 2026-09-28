@@ -10,8 +10,8 @@
 #[global_allocator]
 static A: usize = 0;
 //[dedup,dup,incr-dedup,incr-dup]~^ ERROR E0277
-//[dup,incr-dedup,incr-dup]~| ERROR E0277
-//[dup,incr-dedup,incr-dup]~| ERROR E0277
-//[dup,incr-dedup,incr-dup]~| ERROR E0277
+//[dup,incr-dup]~| ERROR E0277
+//[dup,incr-dup]~| ERROR E0277
+//[dup,incr-dup]~| ERROR E0277
 
 fn main() {}
