@@ -194,7 +194,7 @@ const _: () = ();
 /// [`if`]: ./keyword.if.html
 const _: () = ();
 
-#[doc(attribute = "crate_name" )]
+#[doc(attribute = "crate_name")]
 //
 /// Specifies the name of the crate.
 ///
