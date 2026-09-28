@@ -121,7 +121,7 @@ impl<'tcx> CFG<'tcx> {
             self.block_data(block)
         );
         self.block_data_mut(block).terminator =
-            Some(Terminator { source_info, kind, attributes: ThinVec::new() });
+            Some(Terminator { source_info, kind, loop_hint_attrs: ThinVec::new() });
         self.block_data_mut(block).terminator.as_mut().unwrap()
     }
 
