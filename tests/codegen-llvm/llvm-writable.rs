@@ -28,8 +28,7 @@ pub fn option_borrow_mut(_: Option<&mut i32>) {}
 #[no_mangle]
 pub fn box_moved(_: Box<i32>) {}
 
-// LLVM22: @unsafe_pinned_borrow_mut(ptr noundef nonnull align 4 %_1)
-// LLVM23: @unsafe_pinned_borrow_mut(ptr noundef align 4 dereferenceable(4) %_1)
+// CHECK: @unsafe_pinned_borrow_mut(ptr noundef nonnull align 4 %_1)
 #[no_mangle]
 pub fn unsafe_pinned_borrow_mut(_: &mut std::pin::UnsafePinned<i32>) {}
 

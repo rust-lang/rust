@@ -98,8 +98,7 @@ pub fn readonly_borrow_ret() -> &'static i32 {
     loop {}
 }
 
-// LLVM22: @unsafe_borrow(ptr noundef nonnull align 2 %_1)
-// LLVM23: @unsafe_borrow(ptr noundef align 2 dereferenceable(2) %_1)
+// CHECK: @unsafe_borrow(ptr noundef nonnull align 2 %_1)
 // unsafe interior means this isn't actually readonly and there may be aliases ...
 #[no_mangle]
 pub fn unsafe_borrow(_: &UnsafeInner) {}
@@ -121,10 +120,9 @@ pub fn mutable_borrow_ret() -> &'static mut i32 {
 }
 
 #[no_mangle]
-// LLVM22: @mutable_notunpin_borrow(ptr noundef nonnull align 4 %_1)
-// LLVM23: @mutable_notunpin_borrow(ptr noundef align 4 dereferenceable(4) %_1)
+// CHECK: @mutable_notunpin_borrow(ptr noundef nonnull align 4 %_1)
 // This one is *not* `noalias` because it might be self-referential.
-// It is also not `dereferenceable` prior to LLVM23 due to
+// It is also not `dereferenceable` due to
 // <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>.
 pub fn mutable_notunpin_borrow(_: &mut NotUnpin) {}
 
@@ -176,8 +174,7 @@ pub fn _box_custom(x: Box<i32, &std::alloc::Global>) {
     drop(x)
 }
 
-// LLVM22: noundef nonnull align 4 ptr @notunpin_box(ptr noundef nonnull align 4 %x)
-// LLVM23: noundef align 4 dereferenceable(4) ptr @notunpin_box(ptr noundef align 4 dereferenceable(4) %x)
+// CHECK: noundef nonnull align 4 ptr @notunpin_box(ptr noundef nonnull align 4 %x)
 #[no_mangle]
 pub fn notunpin_box(x: Box<NotUnpin>) -> Box<NotUnpin> {
     x
@@ -252,16 +249,14 @@ pub fn trait_box_pin1(_: Box<dyn Drop + Unpin>) {}
 pub fn trait_box_pin2(_: Box<dyn Drop + UnsafeUnpin>) {}
 
 // Same for mutable references (with a non-zero minimal size so that we also see the
-// `dereferenceable` disappear prior to llvm23).
+// `dereferenceable` disappear).
 // CHECK: @trait_mutref(ptr noalias nofree noundef align 4 dereferenceable(4){{( %_1.0)?}}, {{.+}} noalias nofree noundef readonly align {{.*}} dereferenceable({{.*}}){{( %_1.1)?}})
 #[no_mangle]
 pub fn trait_mutref(_: &mut (i32, dyn Drop + Unpin + UnsafeUnpin)) {}
-// LLVM22: @trait_mutref_pin1(ptr noundef nonnull align 4{{( %_1.0)?}}, {{.+}} noalias nofree noundef readonly align {{.*}} dereferenceable({{.*}}){{( %_1.1)?}})
-// LLVM23: @trait_mutref_pin1(ptr noundef align 4 dereferenceable(4){{( %_1.0)?}}, {{.+}} noalias nofree noundef readonly align {{.*}} dereferenceable({{.*}}){{( %_1.1)?}})
+// CHECK: @trait_mutref_pin1(ptr noundef nonnull align 4{{( %_1.0)?}}, {{.+}} noalias nofree noundef readonly align {{.*}} dereferenceable({{.*}}){{( %_1.1)?}})
 #[no_mangle]
 pub fn trait_mutref_pin1(_: &mut (i32, dyn Drop + Unpin)) {}
-// LLVM22: @trait_mutref_pin2(ptr noundef nonnull align 4{{( %_1.0)?}}, {{.+}} noalias nofree noundef readonly align {{.*}} dereferenceable({{.*}}){{( %_1.1)?}})
-// LLVM23: @trait_mutref_pin2(ptr noundef align 4 dereferenceable(4){{( %_1.0)?}}, {{.+}} noalias nofree noundef readonly align {{.*}} dereferenceable({{.*}}){{( %_1.1)?}})
+// CHECK: @trait_mutref_pin2(ptr noundef nonnull align 4{{( %_1.0)?}}, {{.+}} noalias nofree noundef readonly align {{.*}} dereferenceable({{.*}}){{( %_1.1)?}})
 #[no_mangle]
 pub fn trait_mutref_pin2(_: &mut (i32, dyn Drop + UnsafeUnpin)) {}
 
