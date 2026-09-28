@@ -1474,14 +1474,17 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	right: var(--popover-arrow-offset);
 	border: solid var(--border-color);
 	border-width: 1px 1px 0 0;
-	/* Because of the tabs, it renders weird if we pick a different color than the tab's
-	   background. */
-	background-color: var(--search-tab-button-not-selected-background);
+	background-color: var(--main-background-color);
 	padding: 4px;
 	transform: rotate(-45deg);
 	top: -5px;
 	/* So the arrow doesn't go above the content in the popover. */
 	z-index: -1;
+}
+#settings.popover::before {
+	/* Because of the tabs, it renders weird if we pick a different color than the tab's
+	   background. */
+	background-color: var(--search-tab-button-not-selected-background);
 }
 
 .setting-line {
