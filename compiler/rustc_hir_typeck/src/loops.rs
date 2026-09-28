@@ -11,7 +11,7 @@ use rustc_hir::{Destination, Node};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::{BytePos, Span, span_bug};
+use rustc_span::{BytePos, OrdSpan, Span, span_bug};
 
 use crate::diagnostics::{
     BreakInsideClosure, BreakInsideCoroutine, BreakNonLoop, ConstContinueBadLabel,
@@ -80,7 +80,7 @@ struct CheckLoopVisitor<'tcx> {
     // such as adding a label for an `if`.
     // e.g. `if 'foo: {}` would be incorrect.
     cx_stack: Vec<Context>,
-    block_breaks: BTreeMap<Span, BlockInfo>,
+    block_breaks: BTreeMap<OrdSpan, BlockInfo>,
 }
 
 pub(crate) fn check<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &'tcx hir::Body<'tcx>) {
@@ -378,12 +378,13 @@ impl<'hir> CheckLoopVisitor<'hir> {
             UnlabeledBlock { label_span, wrap_end }
                 if br_cx_kind == BreakContextKind::Break && label_span.eq_ctxt(break_span) =>
             {
-                let block = self.block_breaks.entry(label_span).or_insert_with(|| BlockInfo {
-                    name: br_cx_kind.to_string(),
-                    spans: vec![],
-                    suggs: vec![],
-                    wrap_end,
-                });
+                let block =
+                    self.block_breaks.entry(OrdSpan(label_span)).or_insert_with(|| BlockInfo {
+                        name: br_cx_kind.to_string(),
+                        spans: vec![],
+                        suggs: vec![],
+                        wrap_end,
+                    });
                 block.spans.push(span);
                 block.suggs.push(break_span);
             }
@@ -424,7 +425,7 @@ impl<'hir> CheckLoopVisitor<'hir> {
                 name: &block.name,
                 is_break: true,
                 suggestion: Some(OutsideLoopSuggestion {
-                    block_span: *s,
+                    block_span: s.0,
                     break_spans: block.suggs.clone(),
                     block_prefix: if block.wrap_end.is_some() { "{ 'block: " } else { "'block: " },
                     wrap_end: block.wrap_end,
