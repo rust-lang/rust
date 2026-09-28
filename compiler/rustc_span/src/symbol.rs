@@ -218,6 +218,7 @@ symbols! {
         Eq,
         Equal,
         Err,
+        ExitCode,
         Expected,
         ExternC,
         ExternRust,
@@ -325,6 +326,7 @@ symbols! {
         SelfTy,
         Send,
         SeqCst,
+        ShouldPanic,
         Sized,
         Slice,
         SliceIndex,
@@ -341,6 +343,7 @@ symbols! {
         Sync,
         SyncUnsafeCell,
         Target,
+        TestType,
         This,
         TokenStream,
         Transmute,
@@ -367,6 +370,8 @@ symbols! {
         __H,
         __S,
         __awaitee,
+        __ensures_checker,
+        __ret,
         __try_var,
         _t,
         _task_context,
@@ -1125,6 +1130,7 @@ symbols! {
         i128,
         i128_type,
         ident,
+        ident_from_str_and_span,
         if_let,
         if_let_guard,
         if_let_rescope,
@@ -2503,6 +2509,7 @@ impl Ident {
     }
 
     /// Maps a string and a span to an identifier.
+    #[rustc_diagnostic_item = "ident_from_str_and_span"]
     pub fn from_str_and_span(string: &str, span: Span) -> Ident {
         Ident::new(Symbol::intern(string), span)
     }
