@@ -1,8 +1,8 @@
 use rustc_ast::token::{self, Delimiter, IdentKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::{
-    BinOpKind, BorrowKind, DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, ItemKind, MacCall, MethodCall,
-    Mutability, Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeAndId, UseTreeKind,
+    BinOpKind, BorrowKind, DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, ItemKind, MacCall, Mutability,
+    Path, Stmt, StructRest, UnOp, UseTree, UseTreeAndId, UseTreeKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -382,20 +382,15 @@ impl<'cx, 'a> Context<'cx, 'a> {
         );
         let try_capture_call = self
             .cx
-            .stmt_expr(expr_method_call(
-                self.cx,
-                PathSegment {
-                    args: None,
-                    id: DUMMY_NODE_ID,
-                    ident: Ident::new(sym::try_capture, self.span),
-                },
-                expr_paren(self.cx, self.span, self.cx.expr_addr_of(self.span, wrapper)),
+            .stmt_expr(self.cx.expr_method_call(
+                self.span,
+                self.cx.expr_paren(self.span, self.cx.expr_addr_of(self.span, wrapper)),
+                Ident::new(sym::try_capture, self.span),
                 thin_vec![expr_addr_of_mut(
                     self.cx,
                     self.span,
                     self.cx.expr_path(Path::from_ident(capture)),
                 )],
-                self.span,
             ))
             .add_trailing_semicolon();
         let local_bind_path = self.cx.expr_path(Path::from_ident(local_bind));
@@ -447,18 +442,4 @@ fn escape_to_fmt(s: &str) -> String {
 
 fn expr_addr_of_mut(cx: &ExtCtxt<'_>, sp: Span, e: Box<Expr>) -> Box<Expr> {
     cx.expr(sp, ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, e))
-}
-
-fn expr_method_call(
-    cx: &ExtCtxt<'_>,
-    seg: PathSegment,
-    receiver: Box<Expr>,
-    args: ThinVec<Box<Expr>>,
-    span: Span,
-) -> Box<Expr> {
-    cx.expr(span, ExprKind::MethodCall(Box::new(MethodCall { seg, receiver, args, span })))
-}
-
-fn expr_paren(cx: &ExtCtxt<'_>, sp: Span, e: Box<Expr>) -> Box<Expr> {
-    cx.expr(sp, ExprKind::Paren(e))
 }
