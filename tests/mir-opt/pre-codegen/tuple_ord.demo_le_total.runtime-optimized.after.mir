@@ -25,10 +25,7 @@ fn demo_le_total(_1: &(u16, i16), _2: &(u16, i16)) -> bool {
     }
 
     bb0: {
-        StorageAlloc(_0);
-        StorageAlloc(_0);
         StorageLive(_7);
-        StorageAlloc(_7);
         StorageLive(_3);
         StorageLive(_4);
         _3 = copy ((*_1).0: u16);
@@ -54,7 +51,6 @@ fn demo_le_total(_1: &(u16, i16), _2: &(u16, i16)) -> bool {
         StorageDead(_5);
         StorageDead(_4);
         StorageDead(_3);
-        StorageAlloc(_0);
         StorageLive(_8);
         _8 = copy ((*_1).1: i16);
         StorageLive(_9);

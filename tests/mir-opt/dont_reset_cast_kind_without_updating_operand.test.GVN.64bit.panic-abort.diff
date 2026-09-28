@@ -82,7 +82,6 @@
           StorageAlloc(_6);
           StorageLive(_14);
           _14 = const 1_usize;
-          StorageAlloc(_6);
 -         _6 = *const [()] from (copy _7, copy _14);
 +         _6 = *const [()] from (copy _5, const 1_usize);
           StorageDead(_14);

@@ -13,8 +13,6 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
     }
 
     bb0: {
-        StorageAlloc(_0);
-        StorageAlloc(_0);
         StorageLive(_4);
         StorageLive(_3);
         _3 = PtrMetadata(copy _1);

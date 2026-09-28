@@ -27,7 +27,6 @@ fn clone_as_copy(v: &NestCopy) -> NestCopy {
     // CHECK-LABEL: fn clone_as_copy(
     // CHECK: let [[DEAD_VAR:_.*]]: &AllCopy;
     // CHECK: bb0: {
-    // CHECK-NEXT: StorageAlloc(_0);
     // CHECK-NEXT: DBG: [[DEAD_VAR]] = &((*_1).1: AllCopy)
     // CHECK-NEXT: _0 = copy (*_1);
     // CHECK-NEXT: return;
@@ -38,7 +37,6 @@ fn clone_as_copy(v: &NestCopy) -> NestCopy {
 fn enum_clone_as_copy(v: &Enum1) -> Enum1 {
     // CHECK-LABEL: fn enum_clone_as_copy(
     // CHECK: bb0: {
-    // CHECK-NEXT: StorageAlloc(_0);
     // CHECK-NEXT: _0 = copy (*_1);
     // CHECK-NEXT: return;
     v.clone()

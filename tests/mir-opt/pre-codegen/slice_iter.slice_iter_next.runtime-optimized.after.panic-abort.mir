@@ -53,7 +53,6 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
     }
 
     bb0: {
-        StorageAlloc(_0);
         StorageLive(_11);
         StorageLive(_5);
         StorageLive(_2);
@@ -67,11 +66,8 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
         StorageLive(_7);
         StorageLive(_4);
         _4 = copy _3 as std::ptr::NonNull<T> (Transmute);
-        StorageAlloc(_7);
-        StorageAlloc(_5);
         _5 = copy _2 as *mut T (Transmute);
         StorageLive(_6);
-        StorageAlloc(_6);
         _6 = copy _4 as *mut T (Transmute);
         _7 = Eq(copy _5, copy _6);
         StorageDead(_6);
@@ -82,7 +78,6 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
         StorageDead(_4);
         StorageDead(_7);
         StorageLive(_9);
-        StorageAlloc(_9);
         StorageLive(_8);
         _8 = Offset(copy _5, const 1_usize);
         _9 = copy _8 as std::ptr::NonNull<T> (Transmute);
@@ -101,7 +96,6 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
 
     bb4: {
         StorageLive(_10);
-        StorageAlloc(_10);
         _10 = copy _3 as usize (Transmute);
         switchInt(copy _10) -> [0: bb5, otherwise: bb7];
     }
@@ -119,7 +113,6 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
     }
 
     bb7: {
-        StorageAlloc(_11);
         _11 = SubUnchecked(copy _10, const 1_usize);
         ((*_1).1: *const T) = copy _11 as *const T (Transmute);
         StorageDead(_10);
@@ -128,9 +121,7 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
 
     bb8: {
         StorageLive(_13);
-        StorageAlloc(_13);
         StorageLive(_12);
-        StorageAlloc(_12);
         _12 = copy _2 as *const T (Transmute);
         _13 = &(*_12);
         StorageDead(_12);

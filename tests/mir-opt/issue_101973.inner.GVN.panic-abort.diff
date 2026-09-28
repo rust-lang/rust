@@ -30,7 +30,6 @@
           StorageLive(_4);
           StorageLive(_5);
           _5 = copy _1;
-          StorageAlloc(_4);
 -         StorageLive(_14);
 -         _14 = BitAnd(copy _5, const 255_u32);
 -         _4 = BitOr(const 0_u32, move _14);
@@ -70,7 +69,6 @@
       bb2: {
           _6 = Shl(move _7, const 1_i32);
           StorageDead(_7);
-          StorageAlloc(_3);
 -         _3 = rotate_right::<u32>(move _4, move _6) -> [return: bb3, unwind unreachable];
 +         _3 = rotate_right::<u32>(copy _14, move _6) -> [return: bb3, unwind unreachable];
       }

@@ -15,7 +15,6 @@
           StorageLive(_1);
 +         StorageAlloc(_1);
 +         StorageAlloc(_1);
-+         StorageAlloc(_1);
           _1 = <C as Call>::call() -> [return: bb1, unwind continue];
       }
   

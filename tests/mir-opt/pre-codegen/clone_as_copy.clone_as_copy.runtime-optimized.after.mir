@@ -12,7 +12,6 @@ fn clone_as_copy(_1: &NestCopy) -> NestCopy {
     }
 
     bb0: {
-        StorageAlloc(_0);
         // DBG: _2 = &((*_1).1: AllCopy);
         _0 = copy (*_1);
         return;

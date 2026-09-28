@@ -33,11 +33,9 @@
           StorageLive(_2);
           StorageAlloc(_2);
           StorageLive(_3);
-          StorageAlloc(_3);
 -         _3 = const <u8 as std::mem::SizedTypeProperties>::ALIGNMENT;
-+         _3 = const std::mem::Alignment {{ _inner_repr_trick: mem::alignment::AlignmentEnum::_Align1Shl0 }};
-          StorageAlloc(_2);
 -         _2 = copy _3 as *mut u8 (Transmute);
++         _3 = const std::mem::Alignment {{ _inner_repr_trick: mem::alignment::AlignmentEnum::_Align1Shl0 }};
 +         _2 = const {0x1 as *mut u8};
           StorageDead(_3);
           StorageAlloc(_1);

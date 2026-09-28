@@ -39,7 +39,6 @@
       bb2: {
 -         _6 = &_2[_7];
 +         _6 = &_2[0 of 1];
-          StorageAlloc(_0);
           StorageLive(_9);
 -         _9 = copy (*_3);
 +         _9 = copy _1[0 of 1];

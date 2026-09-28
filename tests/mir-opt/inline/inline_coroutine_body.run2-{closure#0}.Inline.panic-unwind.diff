@@ -199,18 +199,14 @@
 +         StorageLive(_45);
 +         StorageLive(_35);
 +         StorageLive(_36);
-+         StorageAlloc(_38);
 +         StorageLive(_41);
 +         _41 = &raw mut _19;
 +         _40 = copy _41 as *mut std::pin::helper::PinHelper<&mut std::future::Ready<()>> (PtrToPtr);
 +         StorageDead(_41);
-+         StorageAlloc(_38);
-+         StorageAlloc(_38);
 +         _38 = no_retag copy ((*_40).0: &mut std::future::Ready<()>);
 +         StorageAlloc(_36);
 +         StorageLive(_43);
 +         _43 = Option::<()>::None;
-+         StorageAlloc(_36);
 +         _36 = copy ((*_38).0: std::option::Option<()>);
 +         ((*_38).0: std::option::Option<()>) = move _43;
 +         StorageDead(_43);
