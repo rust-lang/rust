@@ -62,7 +62,7 @@ impl<'a> Components<'a> {
     }
 
     #[inline]
-    fn prefix_verbatim(&self) -> bool {
+    fn prefix_is_verbatim(&self) -> bool {
         self.prefix.as_ref().map(Prefix::is_verbatim).unwrap_or(false)
     }
 
@@ -87,8 +87,8 @@ impl<'a> Components<'a> {
     }
 
     #[inline]
-    pub fn is_sep_byte(&self, b: u8) -> bool {
-        if self.prefix_verbatim() { is_verbatim_sep(b) } else { is_sep_byte(b) }
+    pub(crate) fn is_sep_byte(&self, b: u8) -> bool {
+        if self.prefix_is_verbatim() { is_verbatim_sep(b) } else { is_sep_byte(b) }
     }
 
     /// Extracts a slice corresponding to the portion of the path remaining for iteration.
@@ -114,10 +114,10 @@ impl<'a> Components<'a> {
         if self.has_physical_root {
             return true;
         }
-        if let Some(p) = self.prefix {
-            if p.has_implicit_root() {
-                return true;
-            }
+        if let Some(p) = self.prefix
+            && p.has_implicit_root()
+        {
+            return true;
         }
         false
     }
@@ -139,7 +139,7 @@ impl<'a> Components<'a> {
     // corresponding path component
     unsafe fn parse_single_component<'b>(&self, comp: &'b [u8]) -> Option<Component<'b>> {
         match comp {
-            b"." if self.prefix_verbatim() => Some(Component::CurDir),
+            b"." if self.prefix_is_verbatim() => Some(Component::CurDir),
             b"." => None, // . components are normalized away, except at
             // the beginning of a path, which is treated
             // separately via `include_cur_dir`
@@ -153,12 +153,12 @@ impl<'a> Components<'a> {
     // remove the component
     fn parse_next_component(&self) -> (usize, Option<Component<'a>>) {
         debug_assert!(self.front == State::Body);
-        let (extra, comp) = match self.path.iter().position(|b| self.is_sep_byte(*b)) {
+        let (slash_len, comp) = match self.path.iter().position(|b| self.is_sep_byte(*b)) {
             None => (0, self.path),
             Some(i) => (1, &self.path[..i]),
         };
         // SAFETY: `comp` is a valid substring, since it is split on a separator.
-        (comp.len() + extra, unsafe { self.parse_single_component(comp) })
+        (comp.len() + slash_len, unsafe { self.parse_single_component(comp) })
     }
 
     // parse a component from the right, saying how many bytes to consume to
@@ -166,12 +166,13 @@ impl<'a> Components<'a> {
     fn parse_next_component_back(&self) -> (usize, Option<Component<'a>>) {
         debug_assert!(self.back == State::Body);
         let start = self.len_before_body();
-        let (extra, comp) = match self.path[start..].iter().rposition(|b| self.is_sep_byte(*b)) {
+        let (slash_len, comp) = match self.path[start..].iter().rposition(|b| self.is_sep_byte(*b))
+        {
             None => (0, &self.path[start..]),
             Some(i) => (1, &self.path[start + i + 1..]),
         };
         // SAFETY: `comp` is a valid substring, since it is split on a separator.
-        (comp.len() + extra, unsafe { self.parse_single_component(comp) })
+        (comp.len() + slash_len, unsafe { self.parse_single_component(comp) })
     }
 
     // trim away repeated separators (i.e., empty components) on the left
@@ -213,6 +214,7 @@ impl<'a> Iterator for Components<'a> {
                         return comp;
                     }
                 }
+                // this state occurs when self.path.is_empty()
                 State::Body => {
                     self.front = State::Done;
                 }
@@ -232,19 +234,21 @@ impl<'a> Iterator for Components<'a> {
                         return Some(Component::CurDir);
                     }
                 }
-                State::Prefix if self.prefix_len() == 0 => {
+                State::Prefix if let Some(prefix) = self.prefix => {
+                    let prefix_len = prefix.len();
                     self.front = State::StartDir;
+                    debug_assert!(prefix_len <= self.path.len());
+                    let raw = &self.path[..prefix_len];
+                    self.path = &self.path[prefix_len..];
+                    return Some(Component::Prefix(PrefixComponent {
+                        raw: unsafe { OsStr::from_encoded_bytes_unchecked(raw) },
+                        parsed: prefix,
+                    }));
                 }
                 State::Prefix => {
                     self.front = State::StartDir;
-                    debug_assert!(self.prefix_len() <= self.path.len());
-                    let raw = &self.path[..self.prefix_len()];
-                    self.path = &self.path[self.prefix_len()..];
-                    return Some(Component::Prefix(PrefixComponent {
-                        raw: unsafe { OsStr::from_encoded_bytes_unchecked(raw) },
-                        parsed: self.prefix.unwrap(),
-                    }));
                 }
+                // covered by the !self.is_finished() condition in the while loop
                 State::Done => unreachable!(),
             }
         }
@@ -280,17 +284,18 @@ impl<'a> DoubleEndedIterator for Components<'a> {
                         return Some(Component::CurDir);
                     }
                 }
-                State::Prefix if self.prefix_len() > 0 => {
+                State::Prefix if let Some(prefix) = self.prefix => {
                     self.back = State::Done;
                     return Some(Component::Prefix(PrefixComponent {
                         raw: unsafe { OsStr::from_encoded_bytes_unchecked(self.path) },
-                        parsed: self.prefix.unwrap(),
+                        parsed: prefix,
                     }));
                 }
                 State::Prefix => {
                     self.back = State::Done;
                     return None;
                 }
+                // covered by the !self.is_finished() condition in the while loop
                 State::Done => unreachable!(),
             }
         }
@@ -307,12 +312,12 @@ impl<'a> PartialEq for Components<'a> {
 
         // Fast path for exact matches, e.g. for hashmap lookups.
         // Don't explicitly compare the prefix or has_physical_root fields since they'll
-        // either be covered by the `path` buffer or are only relevant for `prefix_verbatim()`.
+        // either be covered by the `path` buffer or are only relevant for `prefix_is_verbatim()`.
         if self.path.len() == other.path.len()
             && self.front == other.front
             && self.back == State::Body
             && other.back == State::Body
-            && self.prefix_verbatim() == other.prefix_verbatim()
+            && self.prefix_is_verbatim() == other.prefix_is_verbatim()
         {
             // possible future improvement: this could bail out earlier if there were a
             // reverse memcmp/bcmp comparing back to front
@@ -420,7 +425,6 @@ pub fn push(self_path: &mut PathBuf, other_path: &Path) {
         // and will be handled below.
         parse_prefix(other_path.as_os_str()).is_some()
     } else {
-        // On Unix: prefix is always None.
         other_path.is_absolute() || parse_prefix(other_path.as_os_str()).is_some()
     };
 
@@ -429,7 +433,7 @@ pub fn push(self_path: &mut PathBuf, other_path: &Path) {
         self_path.inner.clear();
 
     // verbatim paths need . and .. removed
-    } else if comps.prefix_verbatim() && !other_path.as_os_str().is_empty() {
+    } else if comps.prefix_is_verbatim() && !other_path.as_os_str().is_empty() {
         let mut buf: Vec<_> = comps.collect();
         for c in other_path.components() {
             match c {
@@ -465,8 +469,6 @@ pub fn push(self_path: &mut PathBuf, other_path: &Path) {
 
         self_path.inner = res;
         return;
-
-    // `path` has a root but no prefix, e.g., `\windows` (Windows only)
     } else if other_path.has_root() {
         let prefix_len = self_path.components().0.prefix_remaining();
         self_path.inner.truncate(prefix_len);
