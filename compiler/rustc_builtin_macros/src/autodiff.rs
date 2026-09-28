@@ -592,7 +592,7 @@ mod llvm_enzyme {
 
         let idents =
             if is_impl { vec![Ident::new(kw::SelfUpper, span), ident] } else { vec![ident] };
-        let path = ecx.path_all(span, false, idents, generic_args);
+        let path = ecx.path_all(span, idents, generic_args);
 
         ecx.expr_path(path)
     }

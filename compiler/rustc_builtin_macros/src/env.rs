@@ -53,7 +53,6 @@ pub(crate) fn expand_option_env<'cx>(
             let lt = cx.lifetime(sp, Ident::new(kw::StaticLifetime, sp));
             cx.expr_path(cx.path_all(
                 sp,
-                true,
                 cx.std_path(&[sym::option, sym::Option, sym::None]),
                 vec![GenericArg::Type(cx.ty_ref(
                     sp,
