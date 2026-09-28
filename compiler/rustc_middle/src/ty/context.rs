@@ -1135,7 +1135,7 @@ impl<'tcx> TyCtxt<'tcx> {
             | CrateType::Cdylib
             | CrateType::Sdylib => false,
             CrateType::Rlib | CrateType::Dylib | CrateType::ProcMacro => true,
-        })
+        }) && !self.sess.opts.actually_rustdoc
     }
 
     pub fn needs_hir_hash(self) -> bool {
