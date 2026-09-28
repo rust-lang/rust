@@ -96,11 +96,13 @@
 #![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
 #![feature(disjoint_bitor)]
+#![feature(funnel_shifts)]
 #![feature(io_const_error)]
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
 #![feature(pattern_type_macro)]
 #![feature(ub_checks)]
+#![feature(wrapping_funnel_shifts)]
 // tidy-alphabetical-end
 //
 // Language features:
@@ -131,7 +133,6 @@
 #![feature(final_associated_functions)]
 #![feature(freeze_impls)]
 #![feature(fundamental)]
-#![feature(funnel_shifts)]
 #![feature(impl_restriction)]
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
