@@ -125,10 +125,9 @@ impl<'cx, 'a> Context<'cx, 'a> {
 
     /// Takes the conditional expression of `assert!` and then wraps it inside `unlikely`
     fn build_unlikely(&self, cond_expr: Box<Expr>) -> Box<Expr> {
-        let unlikely_path = self.cx.std_path(&[sym::intrinsics, sym::unlikely]);
-        self.cx.expr_call(
+        self.cx.expr_call_intrinsic(
             self.span,
-            self.cx.expr_path(self.cx.path(self.span, unlikely_path)),
+            sym::unlikely,
             thin_vec![self.cx.expr(self.span, ExprKind::Unary(UnOp::Not, cond_expr))],
         )
     }
