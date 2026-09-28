@@ -53,10 +53,7 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb1: {
         StorageLive(_8);
-        StorageAlloc(_8);
-        StorageAlloc(_8);
         StorageLive(_6);
-        StorageAlloc(_6);
         StorageLive(_5);
         _5 = copy _4;
         _6 = Lt(move _5, copy _3);
@@ -77,8 +74,6 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     bb4: {
         StorageLive(_7);
         _7 = copy _4;
-        StorageAlloc(_4);
-        StorageAlloc(_4);
         _4 = AddUnchecked(copy _7, const 1_usize);
         StorageAlloc(_3);
         _8 = Option::<usize>::Some(copy _7);

@@ -163,7 +163,6 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
 
     bb0: {
         StorageLive(_21);
-        StorageAlloc(_21);
         StorageLive(_10);
         StorageLive(_19);
         StorageLive(_4);
@@ -180,9 +179,7 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
         // DBG: _31 = &_2;
         // DBG: _30 = &((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>);
         StorageAlloc(_5);
-        StorageAlloc(_5);
         _4 = copy ((((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner).0: std::ptr::NonNull<u8>);
-        StorageAlloc(_5);
         _5 = copy _4 as std::ptr::NonNull<impl Sized> (Transmute);
         StorageLive(_6);
         StorageAlloc(_6);
@@ -201,7 +198,6 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
         _8 = Le(copy _7, const <impl Sized as std::mem::SizedTypeProperties>::MAX_SLICE_LEN);
         assume(move _8);
         StorageDead(_8);
-        StorageAlloc(_9);
         _9 = Offset(copy _6, copy _7);
         _10 = copy _9 as *const impl Sized (PtrToPtr);
         StorageDead(_7);
@@ -226,7 +222,6 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
         StorageAlloc(_17);
         StorageLive(_14);
         _14 = copy _11 as isize (IntToInt);
-        StorageAlloc(_17);
         StorageLive(_15);
         _15 = copy _4 as *const u8 (Transmute);
         _16 = arith_offset::<u8>(move _15, move _14) -> [return: bb3, unwind unreachable];
@@ -251,7 +246,6 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
         // DBG: _36 = &((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>);
         StorageAlloc(_19);
         // DBG: _38 = &(((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner);
-        StorageAlloc(_19);
         switchInt(const <impl Sized as std::mem::SizedTypeProperties>::SIZE) -> [0: bb5, otherwise: bb6];
     }
 
@@ -263,7 +257,6 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     bb6: {
         StorageLive(_20);
         _20 = copy ((((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner).1: core::num::niche_types::UsizeNoHighBit);
-        StorageAlloc(_19);
         _19 = copy _20 as usize (Transmute);
         StorageDead(_20);
         goto -> bb7;

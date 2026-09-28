@@ -73,13 +73,7 @@ fn drop_bytes(_1: *mut Box<[u8; 1024]>) -> () {
         StorageLive(_3);
         StorageLive(_2);
         _2 = copy (((*_1).0: std::ptr::Unique<[u8; 1024]>).0: std::ptr::NonNull<[u8; 1024]>);
-        StorageAlloc(_3);
-        StorageAlloc(_3);
         _3 = copy _2 as std::ptr::NonNull<u8> (Transmute);
-        StorageAlloc(_4);
-        StorageAlloc(_4);
-        StorageAlloc(_4);
-        StorageAlloc(_4);
         _4 = alloc::alloc::__rust_dealloc(move _3, const 1024_usize, const std::mem::Alignment {{ _inner_repr_trick: mem::alignment::AlignmentEnum::_Align1Shl0 }}) -> [return: bb1, unwind unreachable];
     }
 

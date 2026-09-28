@@ -9,7 +9,6 @@
   
       bb0: {
           StorageLive(_1);
-          StorageAlloc(_1);
 -         _1 = MaybeUninit::<u8> { uninit: const () };
 -         _0 = [move _1; 8];
 +         _1 = const <uninit>;

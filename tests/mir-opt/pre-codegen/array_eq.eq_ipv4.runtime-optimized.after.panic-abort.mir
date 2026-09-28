@@ -14,9 +14,6 @@ fn eq_ipv4(_1: &[u8; 4], _2: &[u8; 4]) -> bool {
     }
 
     bb0: {
-        StorageAlloc(_0);
-        StorageAlloc(_0);
-        StorageAlloc(_0);
         _3 = copy (*_1) as u32 (Transmute);
         _4 = copy (*_2) as u32 (Transmute);
         _0 = Eq(move _3, move _4);

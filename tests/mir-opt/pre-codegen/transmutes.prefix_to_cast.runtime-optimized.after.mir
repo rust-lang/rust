@@ -15,7 +15,6 @@ fn prefix_to_cast(_1: f32) -> i32 {
     }
 
     bb0: {
-        StorageAlloc(_0);
         _0 = copy _1 as i32 (Transmute);
         return;
     }

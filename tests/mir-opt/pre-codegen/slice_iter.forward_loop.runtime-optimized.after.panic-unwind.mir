@@ -101,20 +101,15 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb0: {
-        StorageAlloc(_11);
-        StorageAlloc(_11);
         StorageLive(_3);
         _3 = PtrMetadata(copy _1);
         StorageLive(_5);
-        StorageAlloc(_5);
         StorageLive(_4);
         _4 = &raw const (*_1);
         _5 = copy _4 as std::ptr::NonNull<[T]> (Transmute);
         StorageDead(_4);
-        StorageAlloc(_8);
         StorageLive(_7);
         StorageLive(_6);
-        StorageAlloc(_6);
         _6 = copy _5 as *mut [T] (Transmute);
         _7 = copy _6 as *mut T (PtrToPtr);
         StorageDead(_6);
@@ -127,9 +122,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     bb1: {
         StorageLive(_10);
         StorageLive(_9);
-        StorageAlloc(_9);
         _9 = copy _8 as *mut T (Transmute);
-        StorageAlloc(_10);
         _10 = Offset(copy _9, copy _3);
         StorageDead(_9);
         _11 = copy _10 as *const T (PtrToPtr);
@@ -138,7 +131,6 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb2: {
-        StorageAlloc(_11);
         _11 = copy _3 as *const T (Transmute);
         goto -> bb3;
     }
@@ -150,7 +142,6 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb4: {
         StorageLive(_23);
-        StorageAlloc(_23);
         StorageLive(_20);
         StorageLive(_15);
         StorageLive(_12);
@@ -164,11 +155,8 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageLive(_17);
         StorageLive(_14);
         _14 = copy _13 as std::ptr::NonNull<T> (Transmute);
-        StorageAlloc(_17);
-        StorageAlloc(_15);
         _15 = copy _12 as *mut T (Transmute);
         StorageLive(_16);
-        StorageAlloc(_16);
         _16 = copy _14 as *mut T (Transmute);
         _17 = Eq(copy _15, copy _16);
         StorageDead(_16);
@@ -178,7 +166,6 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     bb6: {
         StorageDead(_14);
         StorageDead(_17);
-        StorageAlloc(_8);
         StorageLive(_18);
         _18 = Offset(copy _15, const 1_usize);
         _8 = copy _18 as std::ptr::NonNull<T> (Transmute);
@@ -195,7 +182,6 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb8: {
         StorageLive(_19);
-        StorageAlloc(_19);
         _19 = copy _13 as usize (Transmute);
         switchInt(copy _19) -> [0: bb9, otherwise: bb12];
     }
@@ -219,7 +205,6 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb12: {
-        StorageAlloc(_20);
         _20 = SubUnchecked(copy _19, const 1_usize);
         StorageAlloc(_8);
         _11 = copy _20 as *const T (Transmute);
@@ -229,9 +214,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb13: {
         StorageLive(_22);
-        StorageAlloc(_22);
         StorageLive(_21);
-        StorageAlloc(_21);
         _21 = copy _12 as *const T (Transmute);
         _22 = &(*_21);
         StorageDead(_21);

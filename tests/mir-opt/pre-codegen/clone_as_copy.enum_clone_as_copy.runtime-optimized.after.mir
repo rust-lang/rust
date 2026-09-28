@@ -26,7 +26,6 @@ fn enum_clone_as_copy(_1: &Enum1) -> Enum1 {
     }
 
     bb0: {
-        StorageAlloc(_0);
         _0 = copy (*_1);
         return;
     }

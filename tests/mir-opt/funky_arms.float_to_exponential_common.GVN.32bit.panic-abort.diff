@@ -70,7 +70,6 @@
   
       bb3: {
           StorageLive(_6);
-          StorageAlloc(_6);
           StorageLive(_22);
           StorageLive(_23);
           _23 = copy (((*_1).0: std::fmt::FormattingOptions).0: u32);

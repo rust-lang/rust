@@ -12,9 +12,6 @@ fn eq_odd_length(_1: &[u8; 3], _2: &[u8; 3]) -> bool {
     }
 
     bb0: {
-        StorageAlloc(_0);
-        StorageAlloc(_0);
-        StorageAlloc(_0);
         _0 = raw_eq::<[u8; 3]>(move _1, move _2) -> [return: bb1, unwind unreachable];
     }
 

@@ -34,10 +34,7 @@
           StorageAlloc(_2);
           StorageLive(_3);
           StorageLive(_4);
-          StorageAlloc(_4);
           StorageLive(_5);
-          StorageAlloc(_5);
-          StorageAlloc(_5);
 -         _5 = const <[bool; 0] as std::mem::SizedTypeProperties>::ALIGNMENT as std::ptr::NonNull<[bool; 0]> (Transmute);
 -         _4 = std::ptr::Unique::<[bool; 0]> { pointer: move _5, _marker: const PhantomData::<[bool; 0]> };
 +         _5 = const NonNull::<[bool; 0]> {{ pointer: {0x1 as *const [bool; 0]} is !null }};

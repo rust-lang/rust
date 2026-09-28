@@ -16,7 +16,6 @@ fn forget_at_home(_1: String) -> () {
 
     bb0: {
         StorageAlloc(_0);
-        StorageAlloc(_0);
         return;
     }
 }

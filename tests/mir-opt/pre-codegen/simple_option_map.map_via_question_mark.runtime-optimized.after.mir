@@ -31,7 +31,6 @@ fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
     bb0: {
         StorageLive(_9);
         StorageLive(_7);
-        StorageAlloc(_7);
         StorageLive(_2);
         _2 = discriminant(_1);
         switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb4];
@@ -39,7 +38,6 @@ fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
 
     bb1: {
         StorageDead(_2);
-        StorageAlloc(_0);
         StorageLive(_3);
         StorageLive(_5);
         _3 = discriminant(_4);

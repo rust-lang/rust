@@ -16,7 +16,6 @@ fn with_let(_1: Option<std::cmp::Ordering>) -> bool {
     }
 
     bb0: {
-        StorageAlloc(_0);
         StorageLive(_2);
         _2 = discriminant(_1);
         switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb4];
@@ -28,7 +27,6 @@ fn with_let(_1: Option<std::cmp::Ordering>) -> bool {
     }
 
     bb2: {
-        StorageAlloc(_0);
         StorageLive(_3);
         _3 = discriminant(((_1 as Some).0: std::cmp::Ordering));
         _0 = Eq(move _3, const 0_i8);
