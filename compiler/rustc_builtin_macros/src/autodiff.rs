@@ -332,16 +332,7 @@ mod llvm_enzyme {
         );
 
         // The first element of it is the name of the function to be generated
-        let d_fn = Box::new(ast::Fn {
-            defaultness: ast::Defaultness::Implicit,
-            sig: d_sig,
-            ident: first_ident(&meta_item_vec[0]),
-            generics,
-            contract: None,
-            body: Some(d_body),
-            define_opaque: None,
-            eii_impl: None,
-        });
+        let d_fn = ecx.item_fn(d_sig, first_ident(&meta_item_vec[0]), generics, Some(d_body));
         let mut rustc_ad_attr =
             Box::new(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
 
