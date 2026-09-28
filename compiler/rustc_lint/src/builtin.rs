@@ -2649,7 +2649,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
 
             match &expr.kind {
                 hir::ExprKind::Cast(expr, ty) => {
-                    if let hir::TyKind::Ptr(_) = ty.kind {
+                    if let hir::TyKind::Ptr(..) = ty.kind {
                         return is_zero(expr) || is_null_ptr(cx, expr);
                     }
                 }

@@ -262,10 +262,10 @@ fn type_trailing_braced_mac_call(mut ty: &ast::Ty) -> Option<&ast::MacCall> {
                 break (mac.args.delim == Delimiter::Brace).then_some(mac);
             }
 
-            ast::TyKind::Ptr(mut_ty)
-            | ast::TyKind::Ref(_, mut_ty)
-            | ast::TyKind::PinnedRef(_, mut_ty) => {
-                ty = &mut_ty.ty;
+            ast::TyKind::Ptr(inner_ty, _)
+            | ast::TyKind::Ref(_, inner_ty, _)
+            | ast::TyKind::PinnedRef(_, inner_ty, _) => {
+                ty = inner_ty;
             }
 
             ast::TyKind::UnsafeBinder(binder) => {
