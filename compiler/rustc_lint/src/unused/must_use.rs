@@ -299,6 +299,9 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             return;
         }
 
+        let ty = cx.typeck_results().expr_ty(expr);
+        let needs_binding = ty.has_significant_drop(cx.tcx, cx.typing_env());
+
         if let hir::ExprKind::Match(await_expr, _arms, hir::MatchSource::AwaitDesugar) = expr.kind
             && let ty = cx.typeck_results().expr_ty(await_expr)
             && let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: future_def_id }, .. }) = ty.kind()
@@ -314,6 +317,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 "output of future returned by ",
                 "",
                 expr_is_from_block,
+                needs_binding,
             )
         {
             // We have a bare `foo().await;` on an opaque type from an async function that was
@@ -321,19 +325,26 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             return;
         }
 
-        let ty = cx.typeck_results().expr_ty(expr);
-
         let must_use_result = is_ty_must_use(cx, ty, expr);
         let type_lint_emitted_or_trivial = match must_use_result {
             IsTyMustUse::Yes(path) => {
-                emit_must_use_untranslated(cx, &path, "", "", 1, false, expr_is_from_block);
+                emit_must_use_untranslated(
+                    cx,
+                    &path,
+                    "",
+                    "",
+                    1,
+                    false,
+                    expr_is_from_block,
+                    needs_binding,
+                );
                 true
             }
             IsTyMustUse::Trivial => true,
             IsTyMustUse::No => false,
         };
 
-        let fn_warned = check_fn_must_use(cx, expr, expr_is_from_block);
+        let fn_warned = check_fn_must_use(cx, expr, expr_is_from_block, needs_binding);
 
         if !fn_warned && type_lint_emitted_or_trivial {
             // We don't warn about unused unit or uninhabited types.
@@ -415,7 +426,12 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
 
 /// Checks if `expr` is a \[method\] call expression marked as `#[must_use]` and emits a lint if so.
 /// Returns `true` if the lint has been emitted.
-fn check_fn_must_use(cx: &LateContext<'_>, expr: &hir::Expr<'_>, expr_is_from_block: bool) -> bool {
+fn check_fn_must_use(
+    cx: &LateContext<'_>,
+    expr: &hir::Expr<'_>,
+    expr_is_from_block: bool,
+    needs_binding: bool,
+) -> bool {
     let maybe_def_id = match expr.kind {
         hir::ExprKind::Call(callee, _) => {
             if let hir::ExprKind::Path(ref qpath) = callee.kind
@@ -434,9 +450,15 @@ fn check_fn_must_use(cx: &LateContext<'_>, expr: &hir::Expr<'_>, expr_is_from_bl
     };
 
     match maybe_def_id {
-        Some(def_id) => {
-            check_must_use_def(cx, def_id, expr.span, "return value of ", "", expr_is_from_block)
-        }
+        Some(def_id) => check_must_use_def(
+            cx,
+            def_id,
+            expr.span,
+            "return value of ",
+            "",
+            expr_is_from_block,
+            needs_binding,
+        ),
         None => false,
     }
 }
@@ -455,6 +477,7 @@ fn check_must_use_def(
     descr_pre_path: &str,
     descr_post_path: &str,
     expr_is_from_block: bool,
+    needs_binding: bool,
 ) -> bool {
     is_def_must_use(cx, def_id, span)
         .map(|must_use_path| {
@@ -466,6 +489,7 @@ fn check_must_use_def(
                 1,
                 false,
                 expr_is_from_block,
+                needs_binding,
             )
         })
         .is_some()
@@ -480,6 +504,7 @@ fn emit_must_use_untranslated(
     plural_len: usize,
     is_inner: bool,
     expr_is_from_block: bool,
+    needs_binding: bool,
 ) {
     let plural_suffix = pluralize!(plural_len);
 
@@ -494,6 +519,7 @@ fn emit_must_use_untranslated(
                 plural_len,
                 true,
                 expr_is_from_block,
+                needs_binding,
             );
         }
         MustUsePath::Pinned(path) => {
@@ -506,6 +532,7 @@ fn emit_must_use_untranslated(
                 plural_len,
                 true,
                 expr_is_from_block,
+                needs_binding,
             );
         }
         MustUsePath::Opaque(path) => {
@@ -518,6 +545,7 @@ fn emit_must_use_untranslated(
                 plural_len,
                 true,
                 expr_is_from_block,
+                needs_binding,
             );
         }
         MustUsePath::TraitObject(path) => {
@@ -530,6 +558,7 @@ fn emit_must_use_untranslated(
                 plural_len,
                 true,
                 expr_is_from_block,
+                needs_binding,
             );
         }
         MustUsePath::TupleElement(elems) => {
@@ -543,6 +572,7 @@ fn emit_must_use_untranslated(
                     plural_len,
                     true,
                     expr_is_from_block,
+                    needs_binding,
                 );
             }
         }
@@ -556,6 +586,7 @@ fn emit_must_use_untranslated(
                 plural_len,
                 true,
                 expr_is_from_block,
+                needs_binding,
             );
         }
         MustUsePath::ControlFlow(path) => {
@@ -568,6 +599,7 @@ fn emit_must_use_untranslated(
                 plural_len,
                 true,
                 expr_is_from_block,
+                needs_binding,
             );
         }
         MustUsePath::Array(path, len) => {
@@ -580,6 +612,7 @@ fn emit_must_use_untranslated(
                 plural_len.saturating_add(usize::try_from(*len).unwrap_or(usize::MAX)),
                 true,
                 expr_is_from_block,
+                needs_binding,
             );
         }
         MustUsePath::Closure(span) => {
@@ -615,14 +648,24 @@ fn emit_must_use_untranslated(
                     cx,
                     def_id: *def_id,
                     note: *reason,
-                    suggestion: (!is_inner).then_some(if expr_is_from_block {
-                        UnusedDefSuggestion::BlockTailExpr {
-                            before_span: suggestion_span.shrink_to_lo(),
-                            after_span: suggestion_span.shrink_to_hi(),
-                        }
+                    suggestion: if is_inner {
+                        None
                     } else {
-                        UnusedDefSuggestion::NormalExpr { span: suggestion_span.shrink_to_lo() }
-                    }),
+                        let lo = suggestion_span.shrink_to_lo();
+                        let hi = suggestion_span.shrink_to_hi();
+                        Some(match (needs_binding, expr_is_from_block) {
+                            (true, true) => UnusedDefSuggestion::BindingBlockTailExpr {
+                                before_span: lo,
+                                after_span: hi,
+                            },
+                            (true, false) => UnusedDefSuggestion::BindingExpr { span: lo },
+                            (false, true) => UnusedDefSuggestion::BlockTailExpr {
+                                before_span: lo,
+                                after_span: hi,
+                            },
+                            (false, false) => UnusedDefSuggestion::NormalExpr { span: lo },
+                        })
+                    },
                 },
             );
         }
