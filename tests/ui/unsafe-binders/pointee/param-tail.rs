@@ -1,9 +1,9 @@
 //@ compile-flags: -Znext-solver
 //@ check-fail
-//@ known-bug: unknown
+//@ known-bug: #130516
 
 // If the metadata ty under an unsafe binder doesn't mention any bound lifetimes,
-// then it should e "normal" and not mention the binder or `ManuallyDrop`.
+// then it should be "normal" and not mention the binder or `ManuallyDrop`.
 
 #![feature(unsafe_binders, ptr_metadata)]
 #![allow(incomplete_features, dead_code)]

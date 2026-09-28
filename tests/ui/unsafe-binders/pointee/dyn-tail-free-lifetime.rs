@@ -1,8 +1,8 @@
 //@ compile-flags: -Znext-solver
 //@ check-fail
-//@ known-bug: unknown
+//@ known-bug: #130516
 
-// If a `dyn Trait` does not mention and lifetimes from an unsafe binder, then
+// If a `dyn Trait` does not mention any lifetimes from an unsafe binder, then
 // the `DynMetadata` should be "normal" and not mention the binder or `ManuallyDrop`.
 
 #![feature(unsafe_binders, ptr_metadata)]

@@ -1,6 +1,6 @@
 //@ compile-flags: -Znext-solver
 //@ check-fail
-//@ known-bug: unknown
+//@ known-bug: #130516
 
 // Nested unsafe binders should collapse into a single binder for metadata.
 

@@ -1,6 +1,6 @@
 //@ compile-flags: -Znext-solver
 //@ check-fail
-//@ known-bug: unknown
+//@ known-bug: #130516
 
 // Tests where an alias ends up as the metadata ty and includes lifetimes
 // from an unsafe binder.

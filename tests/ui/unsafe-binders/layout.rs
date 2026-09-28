@@ -1,6 +1,5 @@
 //@ compile-flags: -Znext-solver
-//@ check-fail
-//@ known-bug: #130516
+//@ check-pass
 
 // An unsafe binder has the layout of its inner type, niches included.
 
