@@ -117,7 +117,7 @@ pub(crate) fn check_pointers<'tcx, F>(
                         // worse UB when we start unwinding.
                         unwind: UnwindAction::Unreachable,
                     },
-                    attributes: ThinVec::new(),
+                    loop_hint_attrs: ThinVec::new(),
                 });
             }
         }
