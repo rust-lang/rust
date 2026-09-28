@@ -4,10 +4,10 @@ use std::ops::Range;
 use gccjit::{FnAttribute, VarAttribute, Visibility};
 use gccjit::{Function, GlobalKind, LValue, RValue, ToRValue, Type};
 use rustc_abi::{self as abi, Align, HasDataLayout, Primitive, Size, WrappingRange};
+use rustc_attr_ir::Linkage;
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
 };
-use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_log::tracing::trace;

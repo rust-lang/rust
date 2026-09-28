@@ -33,7 +33,7 @@ use core::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use core::sync::atomic::{self, Atomic};
 use core::{borrow, fmt, hint};
 
-use crate::alloc::{AllocError, Allocator, AllocatorClone, Global, Layout};
+use crate::alloc::{AllocError, Allocator, AllocatorClone, Global, Layout, StaticAllocator};
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::{AllocatorNightly, handle_alloc_error};
 use crate::borrow::{Cow, ToOwned};
@@ -893,7 +893,7 @@ impl<T, A: Allocator> Arc<T, A> {
     #[inline]
     pub fn pin_in(data: T, alloc: A) -> Pin<Arc<T, A>>
     where
-        A: 'static,
+        A: StaticAllocator,
     {
         // SAFETY: We own and create the pinned pointer.
         unsafe { Pin::new_unchecked(Arc::new_in(data, alloc)) }
@@ -905,7 +905,7 @@ impl<T, A: Allocator> Arc<T, A> {
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
     pub fn try_pin_in(data: T, alloc: A) -> Result<Pin<Arc<T, A>>, AllocError>
     where
-        A: 'static,
+        A: StaticAllocator,
     {
         // SAFETY: We own and create the pinned pointer.
         unsafe { Ok(Pin::new_unchecked(Arc::try_new_in(data, alloc)?)) }
@@ -2580,7 +2580,7 @@ impl<T: ?Sized, A: Allocator> Deref for Arc<T, A> {
 // crates cannot provide malicious implementations of any of the traits relevant
 // for `Pin`.
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized, A: Allocator + 'static> PinSafePointer for Arc<T, A> {}
+unsafe impl<T: ?Sized, A: StaticAllocator> PinSafePointer for Arc<T, A> {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized, A: Allocator> DerefPure for Arc<T, A> {}
@@ -5127,7 +5127,7 @@ impl<T: ?Sized, A: Allocator> Deref for UniqueArc<T, A> {
 
 // #[unstable(feature = "unique_rc_arc", issue = "112566")]
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized, A: Allocator + 'static> PinSafePointer for UniqueArc<T, A> {}
+unsafe impl<T: ?Sized, A: StaticAllocator> PinSafePointer for UniqueArc<T, A> {}
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized, A: Allocator> DerefMut for UniqueArc<T, A> {

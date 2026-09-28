@@ -2455,7 +2455,7 @@ impl<G: ?Sized + Coroutine<R> + Unpin, R, A: Allocator> Coroutine<R> for Box<G, 
 #[unstable(feature = "coroutine_trait", issue = "43122")]
 impl<G: ?Sized + Coroutine<R>, R, A: Allocator> Coroutine<R> for Pin<Box<G, A>>
 where
-    A: 'static,
+    A: StaticAllocator,
 {
     type Yield = G::Yield;
     type Return = G::Return;

@@ -1,6 +1,6 @@
-use rustc_hir::attrs::CoverageAttrKind;
+use rustc_attr_ir::{CoverageAttrKind, find_attr};
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::{self as hir, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::{

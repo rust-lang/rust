@@ -16,10 +16,10 @@
 //! "top-level" constructs can be found in the `parse` submodule, while the parsing for statements,
 //! terminators, and everything below can be found in the `parse::instruction` submodule.
 //!
-
+use rustc_attr_ir as attrs;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::HirId;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{HirId, attrs};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;

@@ -1085,7 +1085,7 @@ pub(crate) fn windows_check_buffer_size((success, len): (bool, u64)) -> u32 {
 
 /// Check whether the local crate has the `#![no_core]` attribute.
 pub fn is_no_core(tcx: TyCtxt<'_>) -> bool {
-    rustc_hir::find_attr!(tcx, crate, NoCore)
+    rustc_attr_ir::find_attr!(tcx, crate, NoCore)
 }
 
 /// We don't support 16-bit systems, so let's have ergonomic conversion from `u32` to `usize`.

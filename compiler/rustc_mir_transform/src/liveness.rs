@@ -1,8 +1,8 @@
 use rustc_abi::FieldIdx;
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::find_attr;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_lint_defs::builtin::{UNUSED_ASSIGNMENTS, UNUSED_VARIABLES};
@@ -415,7 +415,7 @@ fn find_self_assignments<'tcx>(
                     // We ignore indirect self-assignment, because both occurrences of `dest` are uses.
                     let is_indirect = checked_places
                         .get(dest.as_ref())
-                        .map_or(false, |(_, projections)| is_indirect(projections));
+                        .is_some_and(|(_, projections)| is_indirect(projections));
                     if is_indirect {
                         continue;
                     }
@@ -1100,7 +1100,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                     let outer_initializer_span =
                         initializer_span.find_ancestor_in_same_ctxt(source_info.span);
                     within.is_none()
-                        && outer_initializer_span.map_or(true, |s| !s.contains(source_info.span))
+                        && outer_initializer_span.is_none_or(|s| !s.contains(source_info.span))
                 });
             }
 
