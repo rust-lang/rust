@@ -44,7 +44,8 @@ impl Tr for Dyn {
 
 fn generic<T: Tr>(p: *const unsafe<'a> MD<T::Assoc<'a>>) -> (usize, usize) {
     assert_eq!(size_of::<*const unsafe<'a> MD<T::Assoc<'a>>>(), 2 * size_of::<usize>());
-    let q: *const unsafe<'a> MD<T::Assoc<'a>> = ptr::from_raw_parts(p as *const (), ptr::metadata(p));
+    let q: *const unsafe<'a> MD<T::Assoc<'a>>
+        = ptr::from_raw_parts(p as *const (), ptr::metadata(p));
     let r = unsafe { &*q };
     let inner: &MD<T::Assoc<'_>> = unsafe { &unwrap_binder!(*r) };
     assert_eq!(size_of_val(inner), size_of_val(r));

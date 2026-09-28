@@ -1506,7 +1506,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 },
                             );
                         } else if let ty::Dynamic(src_tty, src_lt) = *self
-                            .struct_tail(src.ty, location, || Some(UniverseInfo::relate(*ty, ty_from)))
+                            .struct_tail(src.ty, location, || {
+                                Some(UniverseInfo::relate(*ty, ty_from))
+                            })
                             .kind()
                             && let ty::Dynamic(dst_tty, dst_lt) =
                                 *self.struct_tail(dst.ty, location, || None).kind()

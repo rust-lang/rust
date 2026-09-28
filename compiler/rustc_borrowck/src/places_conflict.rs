@@ -533,8 +533,6 @@ fn place_projection_conflict<'tcx>(
             pi2_elem
         ),
 
-        (ProjectionElem::UnwrapUnsafeBinder(_), _) => {
-            Overlap::EqualOrDisjoint
-        }
+        (ProjectionElem::UnwrapUnsafeBinder(_), _) => Overlap::EqualOrDisjoint,
     }
 }

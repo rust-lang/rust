@@ -254,7 +254,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         let mut tail = ty;
         loop {
-            tail = self.infcx.tcx.struct_tail_raw(tail, &cause, &mut |ty| self.normalize(ty, location), || {});
+            tail = self.infcx.tcx.struct_tail_raw(
+                tail,
+                &cause,
+                &mut |ty| self.normalize(ty, location),
+                || {},
+            );
             if let ty::UnsafeBinder(binder) = *tail.kind() {
                 let binder: ty::Binder<'tcx, Ty<'tcx>> = binder.into();
                 tail = if let Some(info) = placeholder_info() {
@@ -263,7 +268,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     let infcx = self.infcx;
                     let constraints = &mut self.constraints;
                     infcx.tcx.instantiate_bound_regions_uncached(binder, |br| {
-                        constraints.placeholder_region(infcx, ty::PlaceholderRegion::new(universe, br))
+                        constraints
+                            .placeholder_region(infcx, ty::PlaceholderRegion::new(universe, br))
                     })
                 } else {
                     self.infcx.instantiate_binder_with_fresh_vars(
