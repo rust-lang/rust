@@ -1074,13 +1074,20 @@ pub const trait Destruct: PointeeSized {}
 #[rustc_dyn_incompatible_trait]
 pub trait Tuple {}
 
+// HACK(khyperia): if this is missing, the gca macro's `implied_by = "gca_adts"` emits an error
+#[unstable(feature = "gca_adts", issue = "163420")]
+#[expect(dead_code)]
+struct HackGcaAdtsFeature;
+
 /// Creates a new style directly represented const argument.
 /// ```ignore (cannot test this from within core yet)
 /// const BAR<const N: usize>: usize = gca!(N);
 /// const FOO<const N: usize>: usize = gca!(BAR::<N>);
 /// ```
 #[rustc_builtin_macro(gca)]
-#[unstable(feature = "gca_min_const_items", issue = "132980")]
+// HACK: abuse implied_by, this should be enabled if gca_min_const_items or gca_adts is enabled,
+// neither one is more particularly special than the other
+#[unstable(feature = "gca_min_const_items", issue = "132980", implied_by = "gca_adts")]
 #[macro_export]
 macro_rules! gca {
     ($($arg:tt)*) => {

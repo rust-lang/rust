@@ -13,10 +13,14 @@
 //! tuple-variant constructor (unions, primitives, foreign types), not just structs.
 //@ compile-flags: -Znext-solver
 
-#![feature(gca_min_const_items, gca_macroless_args)]
-#![feature(gca_const_items)]
-#![feature(extern_types)]
-#![expect(incomplete_features)]
+#![feature(
+    extern_types,
+    gca_adts,
+    gca_const_items,
+    gca_macroless_args,
+    gca_min_const_items,
+    min_adt_const_params
+)]
 
 struct FieldName<const N: usize>([u8; N]);
 

@@ -56,7 +56,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::codes::*;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, ErrorGuaranteed};
-use rustc_hir::def::{DefKind, Namespace, PerNS, Res};
+use rustc_hir::def::{CtorKind, DefKind, Namespace, PerNS, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::lints::DelayedLint;
@@ -1420,10 +1420,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let ct = self.arena.alloc(ct);
                         return GenericArg::Const(ct.try_as_ambig_ct().unwrap());
                     }
-                    TyKind::GcaMacro(expr) if self.tcx.features().gca_min_const_items() => {
+                    TyKind::GcaMacro(expr) if self.tcx.features().gca() => {
                         let ct = match self.can_lower_expr_to_const_arg_direct(
                             expr,
-                            DirectConstArgContext::MacrolessMinGenericConstArgs,
+                            self.direct_const_arg_context_enabled_by_gca_macro(),
                         ) {
                             Ok(()) => self.lower_expr_to_const_arg_direct(expr, None),
                             Err(e) => e.emit(self),
@@ -2628,18 +2628,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
     ) -> hir::ConstItemRhs<'hir> {
         let is_direct = |body| {
-            if self.tcx.features().gca_macroless_items() {
-                self.can_lower_expr_to_const_arg_direct(
-                    body,
-                    DirectConstArgContext::MacrolessMinGenericConstArgs,
-                )
-                .is_ok()
+            let context = if self.tcx.features().gca_macroless_items() {
+                self.direct_const_arg_context_enabled_by_gca_macro()
             } else {
-                // do not check can_lower_expr_to_const_arg_direct, but rather just
-                // ExprKind::GcaMacro, because we don't want e.g.
-                // `impl<const N: u8> { const C: u8 = N; }` to be a direct-rhs const
-                matches!(body, Expr { kind: ExprKind::GcaMacro(_), .. })
-            }
+                DirectConstArgContext::GCA_MACRO
+            };
+            self.can_lower_expr_to_const_arg_direct(body, context).is_ok()
         };
         if self.tcx.features().gca_min_const_items()
             && let Some(body) = body
@@ -2653,13 +2647,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
+    fn direct_const_arg_context_enabled_by_gca_macro(&self) -> DirectConstArgContext {
+        let mut result = DirectConstArgContext::GCA_BASE_FEATURES;
+        if self.tcx.features().gca_min_const_items() {
+            result |= DirectConstArgContext::GCA_MIN_CONST_ITEMS;
+        }
+        if self.tcx.features().gca_adts() {
+            result |= DirectConstArgContext::GCA_ADTS;
+        }
+        result
+    }
+
+    /// Only valid for const *arg* contexts, not const *item* contexts.
     fn ambient_direct_const_arg_context(&self) -> DirectConstArgContext {
         if self.tcx.features().gca_macroless_args() {
-            DirectConstArgContext::MacrolessMinGenericConstArgs
-        } else if self.tcx.features().gca_min_const_items() {
-            DirectConstArgContext::MinGenericConstArgs
+            self.direct_const_arg_context_enabled_by_gca_macro()
+        } else if self.tcx.features().gca() {
+            DirectConstArgContext::GCA
         } else {
-            DirectConstArgContext::Stable
+            DirectConstArgContext::STABLE
         }
     }
 
@@ -2671,9 +2677,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         res: Option<Res<NodeId>>,
         context: DirectConstArgContext,
     ) -> Result<(), UnrepresentableConstArgError> {
-        if let DirectConstArgContext::MacrolessMinGenericConstArgs = context {
+        if context.contains(DirectConstArgContext::PATH_ANY) {
             Ok(())
-        } else if qself.is_none()
+        } else if context.contains(DirectConstArgContext::PATH_CONST_CTOR)
+            && matches!(res, Some(Res::Def(DefKind::Ctor(_, CtorKind::Const), _)))
+        {
+            // FIXME(gca_adts): This check is incomplete. Type-relative paths and other complicating
+            // factors make things very difficult - e.g. `<Option<T>>::None`
+            Ok(())
+        } else if context.contains(DirectConstArgContext::PATH_PLAIN_PARAM)
+            && qself.is_none()
             && path.is_single_argless_ident()
             && matches!(res, Some(Res::Def(DefKind::ConstParam, _)))
         {
@@ -2689,59 +2702,61 @@ impl<'hir> LoweringContext<'_, 'hir> {
         expr: &Expr,
         context: DirectConstArgContext,
     ) -> Result<(), UnrepresentableConstArgError> {
-        use DirectConstArgContext::*;
         // Note the only stable case is currently ExprKind::Path
-        match (&expr.kind, context) {
-            (
-                ExprKind::Call(Expr { kind: ExprKind::Path(_, _), .. }, args),
-                MacrolessMinGenericConstArgs,
-            ) => {
+        match &expr.kind {
+            ExprKind::Call(Expr { kind: ExprKind::Path(_, _), .. }, args)
+                if context.contains(DirectConstArgContext::TUPLE_CALL) =>
+            {
                 for arg in args {
                     self.can_lower_expr_to_const_arg_direct(arg, context)?;
                 }
                 Ok(())
             }
-            (ExprKind::Tup(exprs), MacrolessMinGenericConstArgs) => {
+            ExprKind::Tup(exprs) if context.contains(DirectConstArgContext::TUPLE) => {
                 for expr in exprs {
                     self.can_lower_expr_to_const_arg_direct(expr, context)?;
                 }
                 Ok(())
             }
-            (ExprKind::Path(qself, path), _) => {
+            ExprKind::Path(qself, path) => {
                 let res =
                     self.get_partial_res(expr.id).and_then(|partial_res| partial_res.full_res());
                 self.can_lower_path_to_const_arg_direct(qself, path, expr.span, res, context)
             }
-            (ExprKind::Struct(se), MacrolessMinGenericConstArgs) => {
+            ExprKind::Struct(se) if context.contains(DirectConstArgContext::STRUCT) => {
                 for f in &se.fields {
                     self.can_lower_expr_to_const_arg_direct(&f.expr, context)?;
                 }
                 Ok(())
             }
-            (ExprKind::Array(elements), MacrolessMinGenericConstArgs) => {
+            ExprKind::Array(elements) if context.contains(DirectConstArgContext::ARRAY) => {
                 for element in elements {
                     self.can_lower_expr_to_const_arg_direct(element, context)?;
                 }
                 Ok(())
             }
-            (ExprKind::Underscore, MacrolessMinGenericConstArgs) => Ok(()),
-            (ExprKind::Paren(expr), MacrolessMinGenericConstArgs) => {
+            ExprKind::Underscore if context.contains(DirectConstArgContext::UNDERSCORE) => Ok(()),
+            ExprKind::Paren(expr) if context.contains(DirectConstArgContext::PAREN) => {
                 self.can_lower_expr_to_const_arg_direct(expr, context)
             }
-            (ExprKind::Block(block, _), MacrolessMinGenericConstArgs)
-                if let [stmt] = block.stmts.as_slice()
+            ExprKind::Block(block, _)
+                if context.contains(DirectConstArgContext::BLOCK)
+                    && let [stmt] = block.stmts.as_slice()
                     && let StmtKind::Expr(expr) = &stmt.kind =>
             {
                 self.can_lower_expr_to_const_arg_direct(expr, context)
             }
-            (ExprKind::Lit(_), MacrolessMinGenericConstArgs) => Ok(()),
-            (ExprKind::Unary(UnOp::Neg, inner_expr), MacrolessMinGenericConstArgs)
-                if let ExprKind::Lit(_) = &inner_expr.kind =>
+            ExprKind::Lit(_) if context.contains(DirectConstArgContext::LIT) => Ok(()),
+            ExprKind::Unary(UnOp::Neg, inner_expr)
+                if context.contains(DirectConstArgContext::LIT)
+                    && let ExprKind::Lit(_) = &inner_expr.kind =>
             {
                 Ok(())
             }
-            (ExprKind::ConstBlock(_), MacrolessMinGenericConstArgs) => Ok(()),
-            (ExprKind::GcaMacro(_), MacrolessMinGenericConstArgs | MinGenericConstArgs) => {
+            ExprKind::ConstBlock(_) if context.contains(DirectConstArgContext::CONST_BLOCK) => {
+                Ok(())
+            }
+            ExprKind::GcaMacro(_) if context.contains(DirectConstArgContext::GCA_MACRO) => {
                 // Always report this as able to be represented directly. If it turns out not to be,
                 // `lower_expr_to_const_arg_direct` will report an error.
                 Ok(())
@@ -2927,11 +2942,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // `can_lower_expr_to_const_arg_direct` always returns success upon encountering a
                 // ExprKind::GcaMacro, which effectively forces the expression to be lowered as a
                 // direct arg. If it actually turns out to not be possible, emit an error instead.
-                // Always use MacrolessMinGenericConstArgs, even if we're under regular GCA, because
-                // that's what the macro means: to enter a context that is like macroless GCA.
                 match self.can_lower_expr_to_const_arg_direct(
                     expr,
-                    DirectConstArgContext::MacrolessMinGenericConstArgs,
+                    self.direct_const_arg_context_enabled_by_gca_macro(),
                 ) {
                     Ok(()) => self.lower_expr_to_const_arg_direct(expr, id_override),
                     Err(err) => err.emit(self),
@@ -3273,19 +3286,53 @@ impl<'hir> GenericArgsCtor<'hir> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-enum DirectConstArgContext {
+bitflags::bitflags! {
+    #[derive(Copy, Clone, Debug)]
+    struct DirectConstArgContext: u16 {
+        const TUPLE_CALL = 1 << 0;
+        const TUPLE = 1 << 1;
+        const PATH_PLAIN_PARAM = 1 << 2;
+        const PATH_CONST_CTOR = 1 << 3;
+        const PATH_ANY = 1 << 4;
+        const STRUCT = 1 << 5;
+        const ARRAY = 1 << 6;
+        const UNDERSCORE = 1 << 7;
+        const PAREN = 1 << 8;
+        const BLOCK = 1 << 9;
+        const LIT = 1 << 10;
+        const CONST_BLOCK = 1 << 11;
+        const GCA_MACRO = 1 << 12;
+    }
+}
+
+impl DirectConstArgContext {
     /// The only allowed direct const arg representation is simple paths that nameres to generic
     /// const parameters.
-    Stable,
+    const STABLE: DirectConstArgContext = Self::PATH_PLAIN_PARAM;
+
     /// The allowed representations are what is allowed on stable, plus the `gca!` macro.
-    MinGenericConstArgs,
-    /// Expressions attempt to be lowered directly, and if that fails, the expression falls back to
-    /// being represented as an anon const.
+    const GCA: DirectConstArgContext = Self::STABLE.union(Self::GCA_MACRO);
+
+    /// These expressions are allowed inside the `gca!` macro, regardless of what feature is
+    /// enabling the base `gca!` functionality.
     ///
-    /// This context is also used under MinGenericConstArgs inside a `gca!` macro, for
-    /// simplicity, as they allow the same code.
-    MacrolessMinGenericConstArgs,
+    /// These are also allowed under macroless features without a `gca!` macro.
+    const GCA_BASE_FEATURES: DirectConstArgContext = Self::GCA
+        .union(DirectConstArgContext::UNDERSCORE)
+        .union(DirectConstArgContext::PAREN)
+        .union(DirectConstArgContext::BLOCK)
+        .union(DirectConstArgContext::LIT)
+        .union(DirectConstArgContext::CONST_BLOCK);
+
+    /// These are allowed under `#![feature(gca_min_const_items)]`
+    const GCA_MIN_CONST_ITEMS: DirectConstArgContext = DirectConstArgContext::PATH_ANY;
+
+    /// These are allowed under `#![feature(gca_adts)]`
+    const GCA_ADTS: DirectConstArgContext = DirectConstArgContext::PATH_CONST_CTOR
+        .union(DirectConstArgContext::TUPLE_CALL)
+        .union(DirectConstArgContext::TUPLE)
+        .union(DirectConstArgContext::STRUCT)
+        .union(DirectConstArgContext::ARRAY);
 }
 
 #[derive(Debug)]

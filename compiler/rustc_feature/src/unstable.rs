@@ -119,6 +119,13 @@ impl Features {
             false
         }
     }
+
+    /// The generic_const_args family of features has a set of common behavior that can be enabled
+    /// by either `gca_min_const_items` or `gca_adts`. There is no actual `gca` base feature, but
+    /// this method acts as one.
+    pub fn gca(&self) -> bool {
+        self.gca_min_const_items() || self.gca_adts()
+    }
 }
 
 macro_rules! declare_features {
@@ -548,6 +555,8 @@ declare_features! (
     (internal, freeze_impls, "1.78.0", Some(121675)),
     /// Frontmatter `---` blocks for use by external tools.
     (unstable, frontmatter, "1.88.0", Some(136889)),
+    /// Allows using ADTs in directly represented generic const args.
+    (incomplete, gca_adts, "CURRENT_RUSTC_VERSION", Some(163420)),
     /// Allows using generics in more complex const expressions, based on definitional equality.
     (incomplete, gca_const_items, "1.95.0", Some(151972)),
     /// Allows directly represented gca_const_items without the `gca!` macro.
@@ -859,10 +868,25 @@ pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[
     (sym::ref_pat_eat_one_layer_2024, sym::ref_pat_eat_one_layer_2024_structural),
 ];
 
+pub enum DependentFeature {
+    And(&'static [DependentFeature]),
+    Or(&'static [DependentFeature]),
+    Leaf(Symbol),
+}
+
 /// Some features require one or more other features to be enabled.
-pub const DEPENDENT_FEATURES: &[(Symbol, &[Symbol])] = &[
-    (sym::gca_const_items, &[sym::gca_min_const_items]),
-    (sym::gca_macroless_args, &[sym::gca_min_const_items]),
-    (sym::gca_macroless_items, &[sym::gca_min_const_items]),
-    (sym::unsized_const_params, &[sym::adt_const_params]),
+pub const DEPENDENT_FEATURES: &[(Symbol, DependentFeature)] = &[
+    // tidy-alphabetical-start
+    (
+        sym::gca_adts,
+        DependentFeature::Or(&[
+            DependentFeature::Leaf(sym::min_adt_const_params),
+            DependentFeature::Leaf(sym::adt_const_params),
+        ]),
+    ),
+    (sym::gca_const_items, DependentFeature::Leaf(sym::gca_min_const_items)),
+    (sym::gca_macroless_args, DependentFeature::Leaf(sym::gca_min_const_items)),
+    (sym::gca_macroless_items, DependentFeature::Leaf(sym::gca_min_const_items)),
+    (sym::unsized_const_params, DependentFeature::Leaf(sym::adt_const_params)),
+    // tidy-alphabetical-end
 ];
