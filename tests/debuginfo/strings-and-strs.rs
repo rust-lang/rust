@@ -20,13 +20,13 @@
 //@ gdb-check:$4 = ("Hello", "World")
 
 //@ gdb-command:print str_in_rc
-//@ gdb-check:$5 = alloc::rc::Rc<&str, alloc::alloc::Global> {ptr: core::ptr::non_null::NonNull<alloc::rc::RcInner<&str>> {pointer: 0x[...]}, phantom: core::marker::PhantomData<alloc::rc::RcInner<&str>>, alloc: alloc::alloc::Global}
+//@ gdb-check:$5 = alloc::rcs::rc::Rc<&str, alloc::alloc::Global> {ptr: core::ptr::non_null::NonNull<alloc::rcs::rc::RcInner<&str>> {pointer: 0x[...]}, phantom: core::marker::PhantomData<alloc::rcs::rc::RcInner<&str>>, alloc: alloc::alloc::Global}
 
 //@ gdb-command:print box_str
 //@ gdb-check:$6 = alloc::boxed::Box<str, alloc::alloc::Global> [87, 111, 114, 108, 100]
 
 //@ gdb-command:print rc_str
-//@ gdb-check:$7 = alloc::rc::Rc<str, alloc::alloc::Global> {ptr: core::ptr::non_null::NonNull<alloc::rc::RcInner<str>> {pointer: alloc::rc::RcInner<str> {strong: core::cell::Cell<usize> {value: core::cell::UnsafeCell<usize> {value: 1}}, weak: core::cell::Cell<usize> {value: core::cell::UnsafeCell<usize> {value: 1}}, value: 0x[...]}}, phantom: core::marker::PhantomData<alloc::rc::RcInner<str>>, alloc: alloc::alloc::Global}
+//@ gdb-check:$7 = alloc::rcs::rc::Rc<str, alloc::alloc::Global> {ptr: core::ptr::non_null::NonNull<alloc::rcs::rc::RcInner<str>> {pointer: alloc::rcs::rc::RcInner<str> {strong: core::cell::Cell<usize> {value: core::cell::UnsafeCell<usize> {value: 1}}, weak: core::cell::Cell<usize> {value: core::cell::UnsafeCell<usize> {value: 1}}, value: 0x[...]}}, phantom: core::marker::PhantomData<alloc::rcs::rc::RcInner<str>>, alloc: alloc::alloc::Global}
 
 // === LLDB TESTS ==================================================================================
 //@ lldb-command:run
@@ -56,7 +56,7 @@
 // lldb-command:v rc_str
 
 // ignore-tidy-linelength
-// lldb-check:(alloc::rc::Rc<unsigned char[], alloc::alloc::Global>) rc_str = strong=1, weak=0 { value = "World" }
+// lldb-check:(alloc::rcs::rc::Rc<unsigned char[], alloc::alloc::Global>) rc_str = strong=1, weak=0 { value = "World" }
 
 #![allow(unused_variables)]
 

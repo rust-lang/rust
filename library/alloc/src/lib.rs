@@ -230,11 +230,24 @@
 // from other crates, but since this can only appear for lang items, it doesn't seem worth fixing.
 #![feature(intra_doc_pointers)]
 
+#[cfg(not(no_rc))]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use rcs::rc;
+
 // Module with internal macros used by other modules (needs to be included before other modules).
 #[macro_use]
 mod macros;
 
 mod raw_vec;
+
+/// Implementations of reference-counted pointers.
+#[cfg(not(no_rc))]
+mod rcs {
+    pub mod rc;
+
+    #[cfg(all(not(no_sync), target_has_atomic = "ptr"))]
+    pub(crate) mod arc;
+}
 
 // Heaps provided for low-level allocation strategies
 pub mod alloc;
@@ -256,8 +269,6 @@ pub mod intrinsics;
 #[unstable(feature = "alloc_io", issue = "154046")]
 pub mod io;
 pub mod panicking;
-#[cfg(not(no_rc))]
-pub mod rc;
 pub mod slice;
 pub mod str;
 pub mod string;
