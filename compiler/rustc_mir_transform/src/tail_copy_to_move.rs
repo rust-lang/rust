@@ -4,8 +4,8 @@
 //!
 //! MIR building represents reads of values whose type is `Copy` using
 //! `Operand::Copy`, including when such a local is returned. If that local's
-//! address has ever been observed, then the local's allocation is semantically
-//! valid until its `StorageDead` or function exit. This keeps the local live
+//! address has ever been observed, `MoveElimination` conservatively considers
+//! it live until its `StorageDead` or function exit. This keeps the local live
 //! across `_0 = copy local`, so its live range overlaps with the return place
 //! and `MoveElimination` cannot unify the source local with `_0`.
 //!
