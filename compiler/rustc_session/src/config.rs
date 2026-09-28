@@ -1515,7 +1515,11 @@ impl Default for Options {
             verbose: false,
             target_modifiers: BTreeMap::default(),
             mitigation_coverage_map: Default::default(),
-            jobs: Jobs { frontend: None, backend: None, linker: LinkerJobs::Default },
+            jobs: Jobs {
+                frontend: FrontendJobs::Sequential,
+                backend: BackendJobs::Sequential,
+                linker: LinkerJobs::Default,
+            },
         }
     }
 }
@@ -1705,12 +1709,79 @@ impl LinkerJobs {
     }
 }
 
-/// `None` for frontend and backend means everything is single-threaded
-/// and synchronization can be disabled.
+#[derive(Clone, Copy)]
+pub enum FrontendJobs {
+    /// The frontend will be executed on a single thread, without using parallel synchronization
+    /// (i.e. locks) unnecessarily.
+    Sequential,
+    /// The frontend will be executed potentially on multiple threads, with using parallel
+    /// synchronization.
+    /// If the number of threads is 1, the synchronization will still be applied, but it will be
+    /// pure overhead (this can be used e.g. to measure the base of that overhead).
+    /// This case with one thread corresponds to `--jobs-frontend=sync`.
+    MaybeParallel(NonZero<usize>),
+}
+
+impl FrontendJobs {
+    fn from_raw(raw: Option<NonZero<usize>>) -> Self {
+        match raw {
+            Some(n) => Self::MaybeParallel(n),
+            None => Self::Sequential,
+        }
+    }
+
+    /// Should the frontend use synchronization primitives?
+    pub fn is_synchronized(&self) -> bool {
+        match self {
+            FrontendJobs::Sequential => false,
+            FrontendJobs::MaybeParallel(_) => true,
+        }
+    }
+
+    /// Return the number of threads that we are using for the frontend.
+    /// Returns `None` if synchronization is not required.
+    pub fn parallel_thread_count(&self) -> Option<NonZero<usize>> {
+        match self {
+            FrontendJobs::Sequential => None,
+            FrontendJobs::MaybeParallel(n) => Some(*n),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum BackendJobs {
+    /// The backend will be executed on a single thread, without spinning up unnecessary
+    /// coordination/jobserver threads.
+    Sequential,
+    /// The backend will be executed potentially on multiple threads, with jobserver
+    /// synchronization.
+    MaybeParallel(NonZero<usize>),
+}
+
+impl BackendJobs {
+    fn from_raw(raw: Option<NonZero<usize>>) -> Self {
+        match raw {
+            Some(n) => Self::MaybeParallel(n),
+            None => Self::Sequential,
+        }
+    }
+
+    /// Return the number of threads that we are using for the backend.
+    /// Returns `None` if synchronization is not required.
+    pub fn parallel_thread_count(&self) -> Option<NonZero<usize>> {
+        match self {
+            BackendJobs::Sequential => None,
+            BackendJobs::MaybeParallel(n) => Some(*n),
+        }
+    }
+}
+
+/// Setting `Sequential` for frontend and backend and `Default` for linker backend
+/// means everything is single-threaded and the jobserver doesn't have to be initialized.
 #[derive(Clone, Copy)]
 pub struct Jobs {
-    pub frontend: Option<NonZero<usize>>,
-    pub backend: Option<NonZero<usize>>,
+    pub frontend: FrontendJobs,
+    pub backend: BackendJobs,
     pub linker: LinkerJobs,
 }
 
@@ -1744,7 +1815,7 @@ fn parse_jobs_all(
             if zthreads.is_some() {
                 early_dcx.early_fatal("cannot use both `--jobs-frontend` and `-Zthreads`");
             }
-            frontend
+            FrontendJobs::from_raw(frontend)
         }
         None => match zthreads {
             Some(zthreads) => {
@@ -1752,9 +1823,9 @@ fn parse_jobs_all(
                 let frontend =
                     parse_jobs_one(early_dcx, opt_name, zthreads, unstable, &mut available);
                 check_upper_limit(frontend, opt_name);
-                frontend
+                FrontendJobs::from_raw(frontend)
             }
-            None => None, // default to 1 thread irrespectively of `jobs` for now
+            None => FrontendJobs::Sequential, // default to 1 thread irrespectively of `jobs` for now
         },
     };
     let backend = match matches.opt_str("jobs-backend") {
@@ -1763,13 +1834,13 @@ fn parse_jobs_all(
             let backend =
                 parse_jobs_one(early_dcx, opt_name, &jobs_backend, unstable, &mut available);
             check_upper_limit(backend, opt_name);
-            backend
+            BackendJobs::from_raw(backend)
         }
-        None => match jobs {
+        None => BackendJobs::from_raw(match jobs {
             Some(n) => n,
             // Use all available parallelism as the default.
             None => parse_jobs_one(early_dcx, "", "0", unstable, &mut available),
-        },
+        }),
     };
     let linker = match matches.opt_str("jobs-linker") {
         Some(jobs_linker) => {

@@ -22,7 +22,7 @@ use rustc_middle::dep_graph::WorkProductMap;
 use rustc_middle::ty::{CurrentGcx, TyCtxt};
 use rustc_query_impl::{CollectActiveJobsKind, collect_active_query_jobs};
 use rustc_session::config::{
-    Cfg, Jobs, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
+    Cfg, FrontendJobs, Jobs, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
 };
 use rustc_session::{EarlyDiagCtxt, EarlySession, IncrCompSession, Session, filesearch};
 use rustc_span::edition::Edition;
@@ -227,7 +227,10 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
 
     let thread_stack_size = init_stack_size(thread_builder_diag);
 
-    let jobs_frontend = jobs.frontend.or(NonZero::new(1)).unwrap();
+    let jobs_frontend = match jobs.frontend {
+        FrontendJobs::Sequential => NonZero::new(1).unwrap(),
+        FrontendJobs::MaybeParallel(n) => n,
+    };
     let registry = sync::Registry::new(jobs_frontend);
 
     let Some(proof) = sync::check_dyn_thread_safe() else {
