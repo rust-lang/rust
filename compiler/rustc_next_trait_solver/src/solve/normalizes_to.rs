@@ -1111,12 +1111,8 @@ where
             | ty::Slice(_)
             | ty::Dynamic(_, _)
             | ty::Tuple(_)
-            | ty::Error(_) => self_ty.discriminant_ty(ecx.cx()),
-
-            ty::UnsafeBinder(_) => {
-                // FIXME(unsafe_binders): instantiate this with placeholders?? i guess??
-                unimplemented!("discr subgoal...")
-            }
+            | ty::Error(_)
+            | ty::UnsafeBinder(_) => self_ty.discriminant_ty(ecx.cx()),
 
             // Given an alias, parameter, or placeholder we add an impl candidate normalizing to a rigid
             // alias. In case there's a where-bound further constraining this alias it is preferred over

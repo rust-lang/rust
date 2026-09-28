@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/contents-require-unwrap.rs:19:9
+  --> $DIR/contents-require-unwrap.rs:13:9
    |
 LL |     let (_x, _y) = b;
    |         ^^^^^^^^   - this expression has type `unsafe<'a> (&'a u8, u8)`
@@ -14,6 +14,7 @@ error[E0308]: mismatched types
    |
 LL |     match b {
    |           - this expression has type `unsafe<> Option<u8>`
+...
 LL |         Some(_) => {}
    |         ^^^^^^^ expected `unsafe<> Option<u8>`, found `Option<_>`
    |
@@ -21,11 +22,11 @@ LL |         Some(_) => {}
                        found enum `Option<_>`
 
 error[E0308]: mismatched types
-  --> $DIR/contents-require-unwrap.rs:25:9
+  --> $DIR/contents-require-unwrap.rs:28:9
    |
 LL |     match b {
    |           - this expression has type `unsafe<> Option<u8>`
-LL |         Some(_) => {}
+...
 LL |         None => {}
    |         ^^^^
    |         |
@@ -45,7 +46,7 @@ LL +         other_none => {}
    |
 
 error[E0308]: mismatched types
-  --> $DIR/contents-require-unwrap.rs:30:12
+  --> $DIR/contents-require-unwrap.rs:37:12
    |
 LL |     if let Some(_) = b {}
    |            ^^^^^^^   - this expression has type `unsafe<> Option<u8>`
@@ -54,11 +55,6 @@ LL |     if let Some(_) = b {}
    |
    = note: expected unsafe binder `unsafe<> Option<u8>`
                        found enum `Option<_>`
-
-
-thread 'rustc' ($TID) panicked at compiler/rustc_next_trait_solver/src/solve/normalizes_to.rs:LL:CC:
-not implemented: discr subgoal...
-error: the compiler unexpectedly panicked. This is a bug
 
 error: aborting due to 4 previous errors
 
