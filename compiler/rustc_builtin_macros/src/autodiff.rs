@@ -562,11 +562,9 @@ mod llvm_enzyme {
                 .collect::<ThinVec<_>>(),
         );
 
-        let enzyme_path_idents = ecx.std_path(&[sym::intrinsics, sym::autodiff]);
-        let enzyme_path = ecx.path(span, enzyme_path_idents);
-        let call_expr = ecx.expr_call(
+        let call_expr = ecx.expr_call_intrinsic(
             span,
-            ecx.expr_path(enzyme_path),
+            sym::autodiff,
             thin_vec![primal_fn_ptr, diff_path_expr, tuple_expr],
         );
 
