@@ -3520,10 +3520,10 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--search-results-alias-color: #c5c5c5;
 	--search-results-grey-color: #999;
 	--search-tab-title-count-color: #888;
-	--search-tab-button-not-selected-border-top-color: none;
-	--search-tab-button-not-selected-background: transparent !important;
-	--search-tab-button-selected-border-top-color: none;
-	--search-tab-button-selected-background: #141920 !important;
+	--search-tab-button-not-selected-border-top-color: #1d1f20;
+	--search-tab-button-not-selected-background: #1d1f20;
+	--search-tab-button-selected-border-top-color: #ffb44c;
+	--search-tab-button-selected-background: #141920;
 	--settings-menu-filter: invert(70%);
 	--settings-menu-hover-filter: invert(100%);
 	--stab-background-color: #314559;
@@ -3648,18 +3648,6 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 :root[data-theme="ayu"] .result-name .primitive > i,
 :root[data-theme="ayu"] .result-name .keyword > i {
 	color: #788797;
-}
-
-:root[data-theme="ayu"] #search-tabs > button.selected {
-	border-bottom: 1px solid #ffb44c !important;
-	border-top: none;
-}
-:root[data-theme="ayu"] #search-tabs > button:not(.selected) {
-	border: none;
-	background-color: transparent !important;
-}
-:root[data-theme="ayu"] #search-tabs > button:hover {
-	border-bottom: 1px solid rgba(242, 151, 24, 0.3);
 }
 
 :root[data-theme="ayu"] .settings-menu > a img,
