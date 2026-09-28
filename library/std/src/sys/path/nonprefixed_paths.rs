@@ -50,7 +50,7 @@ impl<'a> Components<'a> {
 
     /// Checks if the provided byte is a separator byte (i.e. '/')
     #[inline]
-    pub fn is_sep_byte(&self, b: u8) -> bool {
+    pub(crate) fn is_sep_byte(&self, b: u8) -> bool {
         is_sep_byte(b)
     }
 
@@ -59,9 +59,10 @@ impl<'a> Components<'a> {
     /// to subslice at in the front direction.
     fn normalize_front(&mut self, mut front: usize) -> usize {
         let mut cur_dir_present = false;
-        match self.path[front..].iter().position(|b| {
-            if !is_sep_byte(*b) {
-                if *b == b'.' && !cur_dir_present {
+
+        match self.path[front..].iter().position(|&b| {
+            if !is_sep_byte(b) {
+                if b == b'.' && !cur_dir_present {
                     cur_dir_present = true;
                     false
                 } else {
@@ -92,9 +93,10 @@ impl<'a> Components<'a> {
     /// to find next separator in the back direction.
     fn normalize_back(&mut self) -> usize {
         let mut cur_dir_present = false;
-        match self.path.iter().rposition(|b| {
-            if !is_sep_byte(*b) {
-                if *b == b'.' && !cur_dir_present {
+
+        match self.path.iter().rposition(|&b| {
+            if !is_sep_byte(b) {
+                if b == b'.' && !cur_dir_present {
                     cur_dir_present = true;
                     false
                 } else {
@@ -149,12 +151,7 @@ impl<'a> Components<'a> {
                 // will observe "." at the end, and we need to return
                 // that we observed "." component instead of
                 // returning an empty path.
-                if cur_dir_present {
-                    (false, 1)
-                } else {
-                    // self.is_done = true;
-                    (true, 0)
-                }
+                if cur_dir_present { (false, 1) } else { (true, 0) }
             }
             Some(i) => {
                 if cur_dir_present {
@@ -176,15 +173,13 @@ impl<'a> Components<'a> {
 
     /// Parse a u8 slice into an OsStr, which is encoded into a `Component`
     fn parse_single_component(&self, slice: &'a [u8]) -> Option<Component<'a>> {
+        const MAIN_SEPARATOR_BYTES: &[u8] = MAIN_SEPARATOR_STR.as_bytes();
         match slice {
             [] => None,
             [b'.'] => Some(Component::CurDir),
             [b'.', b'.'] => Some(Component::ParentDir),
+            MAIN_SEPARATOR_BYTES => Some(Component::RootDir),
             _ => {
-                let root_slice = MAIN_SEPARATOR_STR.as_bytes();
-                if slice == root_slice {
-                    return Some(Component::RootDir);
-                }
                 // SAFETY: Our sliced path is guaranteed to capture the entire component
                 // due to delimiting on ascii separators from front and back.
                 let path_osstr = unsafe { OsStr::from_encoded_bytes_unchecked(slice) };
@@ -196,7 +191,7 @@ impl<'a> Components<'a> {
     /// Parses the next component in `Components<'_>` from the left. This returns both the index
     /// of the separator byte it saw (if None, it's the whole remaining slice) and the parsed
     /// component.
-    fn parse_next_component(&mut self) -> (usize, Option<Component<'a>>) {
+    fn parse_next_component(&self) -> (usize, Option<Component<'a>>) {
         let (front_ind, comp) = match self.path.iter().position(|b| is_sep_byte(*b)) {
             None => (self.path.len(), self.path),
             Some(i) => (i + 1, &self.path[..i]),
@@ -325,12 +320,9 @@ pub fn eq_components(mut left: Components<'_>, mut right: Components<'_>) -> boo
             let bytes_consumed = left.path.len().min(right.path.len());
             (left.path.len() - bytes_consumed, right.path.len() - bytes_consumed)
         }
-        Some((index, (a, b))) => {
-            let a = *a;
-            let b = *b;
+        Some((index, (&a, &b))) => {
             if a != b {
-                if a != MAIN_SEPARATOR as u8 && a != b'.' && b != MAIN_SEPARATOR as u8 && b != b'.'
-                {
+                if is_sep_byte(a) && a != b'.' && is_sep_byte(b) && b != b'.' {
                     return false;
                 }
             }
@@ -400,15 +392,10 @@ pub fn compare_components(mut left: Components<'_>, mut right: Components<'_>) -
     let first_difference =
         match left.path.iter().zip(right.path).enumerate().find(|(_, (a, b))| a != b) {
             None => left.path.len().min(right.path.len()),
-            Some((index, (a, b))) => {
-                let a = *a;
-                let b = *b;
-
-                if a != MAIN_SEPARATOR as u8 && a != b'.' && b != MAIN_SEPARATOR as u8 && b != b'.'
-                {
+            Some((index, (&a, &b))) => {
+                if is_sep_byte(a) && a != b'.' && is_sep_byte(b) && b != b'.' {
                     return a.cmp(&b);
                 }
-
                 index
             }
         };
