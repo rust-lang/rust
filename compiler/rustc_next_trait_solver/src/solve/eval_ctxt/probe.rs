@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use rustc_type_ir::search_graph::CandidateHeadUsages;
 use rustc_type_ir::solve::{
-    AccessedOpaques, CanonicalResponse, NoSolutionOrRerunNonErased, RerunResultExt,
+    AccessedOpaques, CanonicalResponse, NoSolutionOrRerunNonErased, RerunNonErased, RerunResultExt,
 };
 use rustc_type_ir::{InferCtxtLike, Interner};
 use tracing::{instrument, warn};
@@ -133,6 +133,19 @@ where
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let (result, head_usages) = self.cx.enter_single_candidate(f);
         Ok(Candidate { source: self.source, result: result?, head_usages })
+    }
+
+    /// Keep track of head usages even if the candidate does not apply.
+    #[instrument(level = "debug", skip_all, fields(source = ?self.source))]
+    pub(in crate::solve) fn enter_with_failed_candidate_head_usages(
+        self,
+        f: impl FnOnce(&mut EvalCtxt<'_, D>) -> Result<CanonicalResponse<I>, NoSolutionOrRerunNonErased>,
+    ) -> Result<Result<Candidate<I>, CandidateHeadUsages>, RerunNonErased> {
+        let (result, head_usages) = self.cx.enter_single_candidate(f);
+        Ok(match result.map_err_to_rerun()? {
+            Ok(result) => Ok(Candidate { source: self.source, result, head_usages }),
+            Err(NoSolution) => Err(head_usages),
+        })
     }
 }
 

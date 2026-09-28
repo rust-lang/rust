@@ -3,6 +3,7 @@ use std::debug_assert_matches;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
+use rustc_type_ir::search_graph::CandidateHeadUsages;
 use rustc_type_ir::solve::{
     FetchEligibleAssocItemResponse, NoSolutionOrRerunNonErased, QueryResultOrRerunNonErased,
     RerunNonErased, RerunReason, RerunResultExt,
@@ -256,7 +257,7 @@ where
         goal_trait_ref: ty::TraitRef<I>,
         impl_def_id: I::ImplId,
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+    ) -> Result<Result<Candidate<I>, CandidateHeadUsages>, RerunNonErased> {
         let cx = ecx.cx();
 
         let alias_def_id = goal.predicate.alias.expect_projection_def_id();
@@ -264,24 +265,25 @@ where
         if !DeepRejectCtxt::relate_rigid_infer(ecx.cx())
             .args_may_unify(goal_trait_ref.args, impl_trait_ref.skip_binder().args)
         {
-            return Err(NoSolution.into());
+            return Ok(Err(CandidateHeadUsages::default()));
         }
 
         // For every `default impl`, there's always a non-default `impl` that will *also* apply.
         // There's no reason to register a candidate for this impl, since it is *not* proof that
         // the trait goal holds.
         if cx.impl_is_default(impl_def_id) {
-            return Err(NoSolution.into());
+            return Ok(Err(CandidateHeadUsages::default()));
         }
 
         // We have to ignore negative impls when projecting.
         let impl_polarity = cx.impl_polarity(impl_def_id);
         match impl_polarity {
-            ty::ImplPolarity::Negative => return Err(NoSolution.into()),
+            ty::ImplPolarity::Negative => return Ok(Err(CandidateHeadUsages::default())),
             ty::ImplPolarity::Positive => {}
         };
 
-        ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
+        let probe = ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id));
+        probe.enter_with_failed_candidate_head_usages(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id.into());
             let impl_trait_ref = impl_trait_ref.instantiate(cx, impl_args).skip_norm_wip();
 
