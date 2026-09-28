@@ -191,8 +191,16 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         HandledOptions::HelpOnly(matches) => (matches, true),
     };
 
-    let sopts = config::build_session_options(&mut default_early_dcx, &matches);
-    // fully initialize ice path static once unstable options are available as context
+    // For the purposes of checking that an --edition was passed, we ignore `-`.
+    let warn_unspecified_edition = match &matches.free[..] {
+        [] => false,
+        // We explicitly don't emit the note if we're consuming code from stdin. This can happen
+        // on some cargo invocations too.
+        [name] if name == "-" => false,
+        _ => true,
+    };
+    let sopts =
+        config::build_session_options(&mut default_early_dcx, &matches, warn_unspecified_edition);
     let ice_file = ice_path_with_config(Some(&sopts.unstable_opts)).clone();
 
     if let Some(ref code) = matches.opt_str("explain") {
