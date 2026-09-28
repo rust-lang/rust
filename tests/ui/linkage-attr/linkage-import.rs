@@ -1,8 +1,8 @@
 //@ build-pass
-//@ aux-build:def_external.rs
+//@ aux-build:def_weak.rs
 
-extern crate def_external as dep;
+extern crate def_weak as dep;
 
 fn main() {
-    println!("{:p}", &dep::EXTERN);
+    println!("{:p}", &dep::WEAK);
 }
