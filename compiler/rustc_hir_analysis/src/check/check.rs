@@ -1543,6 +1543,8 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
         match element_ty.kind() {
             ty::Param(_) => (), // pass struct<T>([T; 4]) through, let monomorphization catch errors
             ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_, _) => (), // struct([u8; 4]) is ok
+            // So we can create structs like; `struct bfloat16x4_t (f16b x 4);`
+            ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::F16B) => (),
             _ => {
                 struct_span_code_err!(
                     tcx.dcx(),

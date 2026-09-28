@@ -64,7 +64,7 @@ impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
                             basic_blocks[block].terminator = Some(Terminator {
                                 source_info,
                                 kind: TerminatorKind::Goto { target: new_block },
-                                attributes: ThinVec::new(),
+                                loop_hint_attrs: ThinVec::new(),
                             });
                         }
                         EnumCheckType::Direct { source_op, discr, op_size, valid_discrs } => {
@@ -395,7 +395,7 @@ fn insert_direct_enum_check<'tcx>(
                 invalid_discr_block,
             ),
         },
-        attributes: ThinVec::new(),
+        loop_hint_attrs: ThinVec::new(),
     });
 
     // Abort in case of an invalid enum discriminant.
@@ -415,7 +415,7 @@ fn insert_direct_enum_check<'tcx>(
             // make a failing UB check turn into much worse UB when we start unwinding.
             unwind: UnwindAction::Unreachable,
         },
-        attributes: ThinVec::new(),
+        loop_hint_attrs: ThinVec::new(),
     });
 }
 
@@ -461,7 +461,7 @@ fn insert_uninhabited_enum_check<'tcx>(
             // make a failing UB check turn into much worse UB when we start unwinding.
             unwind: UnwindAction::Unreachable,
         },
-        attributes: ThinVec::new(),
+        loop_hint_attrs: ThinVec::new(),
     });
 }
 
@@ -539,6 +539,6 @@ fn insert_niche_check<'tcx>(
             // make a failing UB check turn into much worse UB when we start unwinding.
             unwind: UnwindAction::Unreachable,
         },
-        attributes: ThinVec::new(),
+        loop_hint_attrs: ThinVec::new(),
     });
 }

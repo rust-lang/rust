@@ -256,7 +256,7 @@ impl<'tcx> TransformVisitor<'tcx> {
             Some(Terminator {
                 source_info,
                 kind: TerminatorKind::Return,
-                attributes: ThinVec::new(),
+                loop_hint_attrs: ThinVec::new(),
             }),
             false,
         ));
@@ -744,14 +744,14 @@ fn insert_switch<'tcx>(
     body.basic_blocks_mut()[START_BLOCK].terminator = Some(Terminator {
         source_info: SourceInfo::outermost(body.span),
         kind: switch,
-        attributes: ThinVec::new(),
+        loop_hint_attrs: ThinVec::new(),
     });
 }
 
 fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) -> BasicBlock {
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().push(BasicBlockData::new(
-        Some(Terminator { source_info, kind, attributes: ThinVec::new() }),
+        Some(Terminator { source_info, kind, loop_hint_attrs: ThinVec::new() }),
         false,
     ))
 }
@@ -776,7 +776,11 @@ fn insert_poll_ready_block<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> Ba
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().push(BasicBlockData::new_stmts(
         [return_poll_ready_assign(tcx, source_info)].to_vec(),
-        Some(Terminator { source_info, kind: TerminatorKind::Return, attributes: ThinVec::new() }),
+        Some(Terminator {
+            source_info,
+            kind: TerminatorKind::Return,
+            loop_hint_attrs: ThinVec::new(),
+        }),
         false,
     ))
 }
@@ -835,7 +839,7 @@ fn generate_poison_block_and_redirect_unwinds_there<'tcx>(
             source_info,
             kind: TerminatorKind::UnwindResume,
 
-            attributes: ThinVec::new(),
+            loop_hint_attrs: ThinVec::new(),
         }),
         true,
     ));
@@ -851,7 +855,7 @@ fn generate_poison_block_and_redirect_unwinds_there<'tcx>(
                     source_info,
                     kind: TerminatorKind::Goto { target: poison_block },
 
-                    attributes: ThinVec::new(),
+                    loop_hint_attrs: ThinVec::new(),
                 };
             }
         } else if !block.is_cleanup
@@ -1019,7 +1023,7 @@ fn create_cases<'tcx>(
                         source_info,
                         kind: TerminatorKind::Goto { target },
 
-                        attributes: ThinVec::new(),
+                        loop_hint_attrs: ThinVec::new(),
                     }),
                     false,
                 ));

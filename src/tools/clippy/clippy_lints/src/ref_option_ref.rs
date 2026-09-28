@@ -36,9 +36,8 @@ declare_lint_pass!(RefOptionRef => [REF_OPTION_REF]);
 
 impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
     fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx, AmbigArg>) {
-        if let TyKind::Ref(_, ref mut_ty) = ty.kind
-            && mut_ty.mutbl == Mutability::Not
-            && let TyKind::Path(qpath) = &mut_ty.ty.kind
+        if let TyKind::Ref(_, ref ref_ty, Mutability::Not) = ty.kind
+            && let TyKind::Path(qpath) = &ref_ty.kind
             && let last = last_path_segment(qpath)
             && let Some(def_id) = last.res.opt_def_id()
             && cx.tcx.is_diagnostic_item(sym::Option, def_id)
@@ -48,8 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
                 GenericArg::Type(inner_ty) => Some(inner_ty),
                 _ => None,
             })
-            && let TyKind::Ref(_, ref inner_mut_ty) = inner_ty.kind
-            && inner_mut_ty.mutbl == Mutability::Not
+            && let TyKind::Ref(_, _, Mutability::Not) = inner_ty.kind
         {
             span_lint_and_sugg(
                 cx,
