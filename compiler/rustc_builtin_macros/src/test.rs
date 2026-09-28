@@ -167,11 +167,7 @@ pub(crate) fn expand_test_or_bench(
     let should_panic_path = |name| {
         cx.path(
             sp,
-            vec![
-                test_ident,
-                Ident::from_str_and_span("ShouldPanic", sp),
-                Ident::from_str_and_span(name, sp),
-            ],
+            vec![test_ident, Ident::new(sym::ShouldPanic, sp), Ident::from_str_and_span(name, sp)],
         )
     };
 
@@ -179,11 +175,7 @@ pub(crate) fn expand_test_or_bench(
     let test_type_path = |name| {
         cx.path(
             sp,
-            vec![
-                test_ident,
-                Ident::from_str_and_span("TestType", sp),
-                Ident::from_str_and_span(name, sp),
-            ],
+            vec![test_ident, Ident::new(sym::TestType, sp), Ident::from_str_and_span(name, sp)],
         )
     };
 

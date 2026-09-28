@@ -1238,9 +1238,11 @@ pub(crate) struct QueryUntracked {
 pub(crate) struct SpanUseEqCtxtDiag;
 
 #[derive(Diagnostic)]
-#[diag("using `Symbol::intern` on a string literal")]
+#[diag("using `{$fn_name}` on a string literal")]
 #[help("consider adding the symbol to `compiler/rustc_span/src/symbol.rs`")]
-pub(crate) struct SymbolInternStringLiteralDiag;
+pub(crate) struct SymbolInternStringLiteralDiag {
+    pub fn_name: &'static str,
+}
 
 #[derive(Diagnostic)]
 #[diag("usage of `ty::TyKind::<kind>`")]
