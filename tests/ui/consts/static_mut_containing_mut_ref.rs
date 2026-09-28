@@ -1,4 +1,4 @@
-//@ build-pass (FIXME(62277): could be check-pass?)
+//@ check-pass
 #![allow(static_mut_refs)]
 
 static mut STDERR_BUFFER_SPACE: [u8; 42] = [0u8; 42];
