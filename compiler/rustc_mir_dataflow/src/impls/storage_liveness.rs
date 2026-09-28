@@ -4,6 +4,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
+use rustc_span::bug;
 use smallvec::SmallVec;
 
 use super::MaybeBorrowedLocals;
@@ -192,7 +193,9 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage {
             StatementKind::SetDiscriminant { place, .. } => {
                 state.gen_(place.local);
             }
-            StatementKind::StorageAlloc(local) => state.gen_(*local),
+            StatementKind::StorageAlloc(_) => {
+                bug!("StorageAlloc is not allowed before coroutine lowering")
+            }
 
             // Nothing to do for these. Match exhaustively so this fails to compile when new
             // variants are added.
@@ -227,7 +230,9 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage {
             StatementKind::SetDiscriminant { place, .. } => {
                 state.gen_(place.local);
             }
-            StatementKind::StorageAlloc(local) => state.gen_(*local),
+            StatementKind::StorageAlloc(_) => {
+                bug!("StorageAlloc is not allowed before coroutine lowering")
+            }
 
             StatementKind::StorageDead(_)
             | StatementKind::AscribeUserType(..)
