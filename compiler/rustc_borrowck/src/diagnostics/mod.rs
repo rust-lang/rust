@@ -3,10 +3,10 @@
 use std::collections::BTreeMap;
 
 use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{Applicability, Diag, DiagMessage, MultiSpan, listify, msg};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::{
     self as hir, CoroutineKind, GenericBound, WhereBoundPredicate, WherePredicateKind,

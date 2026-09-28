@@ -52,7 +52,7 @@ impl<'a> RegionLiveness<'a> {
     }
 
     pub(super) fn is_live_at(&self, point: PointIndex) -> bool {
-        self.live_points.map_or(false, |points| points.contains(point))
+        self.live_points.is_some_and(|points| points.contains(point))
     }
 }
 

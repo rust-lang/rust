@@ -18,11 +18,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use rustc_abi::Size;
+use rustc_attr_ir::{CfgEntry, WindowsSubsystemKind};
 use rustc_crate_store::{self as cstore, CrateSource};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::CRATE_HIR_ID;
-use rustc_hir::attrs::{CfgEntry, WindowsSubsystemKind};
 use rustc_hir::def_id::CrateNum;
 use rustc_lint_defs::builtin::{LINKER_INFO, LINKER_MESSAGES};
 use rustc_macros::{Decodable, Encodable};

@@ -1,4 +1,5 @@
-use rustc_hir::{Expr, ExprKind, find_attr};
+use rustc_attr_ir::find_attr;
+use rustc_hir::{Expr, ExprKind};
 use rustc_span::sym;
 
 use crate::LateContext;

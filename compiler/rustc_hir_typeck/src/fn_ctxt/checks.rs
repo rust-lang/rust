@@ -3,12 +3,12 @@ use std::{fmt, iter};
 
 use itertools::Itertools;
 use rustc_ast as ast;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, a_or_an, listify, pluralize};
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;

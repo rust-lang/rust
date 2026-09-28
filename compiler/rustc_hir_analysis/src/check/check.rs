@@ -3,13 +3,14 @@ use std::ops::ControlFlow;
 
 use rustc_abi::{ExternAbi, FieldIdx, MAX_SIMD_LANES, ScalableElt};
 use rustc_attr_ir::ReprAttr::ReprPacked;
+use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::{Node, find_attr, intravisit};
+use rustc_hir::{Node, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode, TraitErrors, WellFormedLoc};
 use rustc_lint_defs::builtin::{
@@ -1542,6 +1543,8 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
         match element_ty.kind() {
             ty::Param(_) => (), // pass struct<T>([T; 4]) through, let monomorphization catch errors
             ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_, _) => (), // struct([u8; 4]) is ok
+            // So we can create structs like; `struct bfloat16x4_t (f16b x 4);`
+            ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::F16B) => (),
             _ => {
                 struct_span_code_err!(
                     tcx.dcx(),

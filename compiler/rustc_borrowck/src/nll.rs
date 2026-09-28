@@ -6,8 +6,8 @@ use std::rc::Rc;
 use std::str::FromStr;
 
 use polonius_engine::{Algorithm, AllFacts, Output};
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::frozen::Frozen;
-use rustc_hir::find_attr;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::pretty::PrettyPrintMirOptions;
 use rustc_middle::mir::{Body, MirDumper, PassWhere, Promoted};

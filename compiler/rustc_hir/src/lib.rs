@@ -28,12 +28,6 @@ mod target_impls;
 
 #[doc(no_inline)]
 pub use hir::*;
-// FIXME: Remove this use tree, replace by `rustc_attr_ir` imports
-#[doc(hidden)]
-pub use rustc_attr_ir::{
-    self as attrs, Attribute, ConstStability, DefaultBodyStability, Stability, StabilityLevel,
-    StableSince, find_attr, target::Target,
-};
 pub use rustc_hir_id::*;
 pub use rustc_span::def_id;
 

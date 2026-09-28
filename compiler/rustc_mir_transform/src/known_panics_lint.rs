@@ -5,11 +5,12 @@
 use std::fmt::Debug;
 
 use rustc_abi::{BackendRepr, FieldIdx, HasDataLayout, Size, TargetDataLayout, VariantIdx};
+use rustc_attr_ir::find_attr;
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{ImmTy, InterpCx, InterpResult, Projectable, Scalar, interp_ok};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::HirId;
 use rustc_hir::def::DefKind;
-use rustc_hir::{HirId, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_lint_defs::builtin::UNCONDITIONAL_PANIC;

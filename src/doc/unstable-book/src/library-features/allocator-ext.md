@@ -1,8 +1,8 @@
 # `allocator_ext`
 
-The tracking issue for this feature is [#32838]
+The tracking issue for this feature is: [#163177]
 
-[#32838]: https://github.com/rust-lang/rust/issues/32838
+[#163177]: https://github.com/rust-lang/rust/issues/163177
 
 ------------------------
 

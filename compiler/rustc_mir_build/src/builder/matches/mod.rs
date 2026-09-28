@@ -11,8 +11,8 @@ use std::{debug_assert_matches, mem};
 
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{BindingMode, ByRef, LetStmt, LocalSource, Node};
 use rustc_middle::middle::region::{self, TempLifetime};
 use rustc_middle::mir::*;
