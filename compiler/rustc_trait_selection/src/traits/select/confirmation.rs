@@ -189,8 +189,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         obligations.extend(
             self.infcx
-                .at(&obligation.cause, obligation.param_env)
-                .eq(DefineOpaqueTypes::No, placeholder_trait_predicate, candidate)
+                .eq_at(
+                    DefineOpaqueTypes::No,
+                    placeholder_trait_predicate,
+                    candidate,
+                    obligation.param_env,
+                    &obligation.cause,
+                )
                 .map(|InferOk { obligations, .. }| obligations)
                 .map_err(|_| SelectionError::Unimplemented)?,
         );
@@ -525,8 +530,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         nested.extend(
             self.infcx
-                .at(&obligation.cause, obligation.param_env)
-                .eq(DefineOpaqueTypes::No, trait_predicate.trait_ref, upcast_trait_ref)
+                .eq_at(
+                    DefineOpaqueTypes::No,
+                    trait_predicate.trait_ref,
+                    upcast_trait_ref,
+                    obligation.param_env,
+                    &obligation.cause,
+                )
                 .map(|InferOk { obligations, .. }| obligations)
                 .map_err(|_| SelectionError::Unimplemented)?,
         );
@@ -977,8 +987,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // needed to define opaque types for tests/ui/type-alias-impl-trait/assoc-projection-ice.rs
         self.infcx
-            .at(&obligation.cause, obligation.param_env)
-            .eq(DefineOpaqueTypes::Yes, obligation_trait_ref, found_trait_ref)
+            .eq_at(
+                DefineOpaqueTypes::Yes,
+                obligation_trait_ref,
+                found_trait_ref,
+                obligation.param_env,
+                &obligation.cause,
+            )
             .map(|InferOk { mut obligations, .. }| {
                 obligations.extend(nested);
                 obligations
@@ -1084,8 +1099,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // only the **lifetime bound** is changed.
                 let InferOk { mut obligations, .. } = self
                     .infcx
-                    .at(&obligation.cause, obligation.param_env)
-                    .sup(DefineOpaqueTypes::Yes, target, source_trait)
+                    .sup_at(
+                        DefineOpaqueTypes::Yes,
+                        target,
+                        source_trait,
+                        obligation.param_env,
+                        &obligation.cause,
+                    )
                     .map_err(|_| SelectionError::Unimplemented)?;
 
                 // Register one obligation for 'a: 'b.
@@ -1151,8 +1171,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             (&ty::Array(a, _), &ty::Slice(b)) => {
                 let InferOk { obligations, .. } = self
                     .infcx
-                    .at(&obligation.cause, obligation.param_env)
-                    .eq(DefineOpaqueTypes::Yes, b, a)
+                    .eq_at(DefineOpaqueTypes::Yes, b, a, obligation.param_env, &obligation.cause)
                     .map_err(|_| SelectionError::Unimplemented)?;
 
                 ImplSource::Builtin(BuiltinImplSource::Misc, obligations)
@@ -1199,8 +1218,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let new_struct = Ty::new_adt(tcx, def, args);
                 let InferOk { obligations, .. } = self
                     .infcx
-                    .at(&obligation.cause, obligation.param_env)
-                    .eq(DefineOpaqueTypes::Yes, target, new_struct)
+                    .eq_at(
+                        DefineOpaqueTypes::Yes,
+                        target,
+                        new_struct,
+                        obligation.param_env,
+                        &obligation.cause,
+                    )
                     .map_err(|_| SelectionError::Unimplemented)?;
                 nested.extend(obligations);
 

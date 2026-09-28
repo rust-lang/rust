@@ -396,10 +396,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // 3. Check if the formal type is actually equal to the checked one
             //    and register any such obligations for future type checks.
-            let formal_ty_error = self.at(&self.misc(provided_arg.span), self.param_env).eq(
+            let formal_ty_error = self.eq_at(
                 DefineOpaqueTypes::Yes,
                 formal_input_ty,
                 coerced_ty,
+                self.param_env,
+                &self.misc(provided_arg.span),
             );
 
             // If neither check failed, the types are compatible
@@ -3223,9 +3225,14 @@ impl<'a, 'tcx> ArgMatchingCtxt<'a, 'tcx> {
 
         // Using probe here, since we don't want this subtyping to affect inference.
         let subtyping_error = self.probe(|_| {
-            self.at(&self.misc(arg_span), self.param_env)
-                .sup(DefineOpaqueTypes::Yes, formal_input_ty, coerced_ty)
-                .err()
+            self.sup_at(
+                DefineOpaqueTypes::Yes,
+                formal_input_ty,
+                coerced_ty,
+                self.param_env,
+                &self.misc(arg_span),
+            )
+            .err()
         });
 
         // Same as above: if either the coerce type or the checked type is an error type,

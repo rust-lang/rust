@@ -48,10 +48,12 @@ pub(crate) fn synthesize_blanket_impls(
 
             // Require the type the impl is implemented on to match
             // our type, and ignore the impl if there was a mismatch.
-            let Ok(eq_result) = infcx.at(&traits::ObligationCause::dummy(), param_env).eq(
+            let Ok(eq_result) = infcx.eq_at(
                 DefineOpaqueTypes::Yes,
                 impl_trait_ref.self_ty(),
                 impl_ty,
+                param_env,
+                &traits::ObligationCause::dummy(),
             ) else {
                 continue;
             };

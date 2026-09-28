@@ -2103,7 +2103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 if let Some(_) = remaining_fields.remove(&ident) {
                                     let target_ty = self.field_ty(base_expr.span, f, args);
                                     let cause = self.misc(base_expr.span);
-                                    match self.at(&cause, self.param_env).sup(
+                                    match self.sup_at(
                                         // We're already using inference variables for any params,
                                         // and don't allow converting between different structs,
                                         // so there is no way this ever actually defines an opaque
@@ -2111,6 +2111,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         DefineOpaqueTypes::Yes,
                                         target_ty,
                                         fru_ty,
+                                        self.param_env,
+                                        &cause,
                                     ) {
                                         Ok(InferOk { obligations, value: () }) => {
                                             self.register_predicates(obligations)

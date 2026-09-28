@@ -165,12 +165,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         self.commit_if_ok(|snapshot| {
             let outer_universe = self.infcx.universe();
 
-            let at = self.at(&self.cause, self.fcx.param_env);
-
             let res = if self.use_lub {
-                at.lub(b, a)
+                self.lub_at(b, a, self.fcx.param_env, &self.cause)
             } else {
-                at.sup(DefineOpaqueTypes::Yes, b, a)
+                self.sup_at(DefineOpaqueTypes::Yes, b, a, self.fcx.param_env, &self.cause)
                     .map(|InferOk { value: (), obligations }| InferOk { value: b, obligations })
             };
 
@@ -1375,7 +1373,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Err(TypeError::Mismatch)
                         }
                     } else {
-                        self.at(cause, self.param_env).lub(prev_ty, new_ty)
+                        self.lub_at(prev_ty, new_ty, self.param_env, cause)
                     };
 
                     self.leak_check(outer_universe, Some(snapshot))?;
@@ -1414,8 +1412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The signature must match.
             let (a_sig, b_sig) = self.normalize(new.span, Unnormalized::new_wip((a_sig, b_sig)));
             let sig = self
-                .at(cause, self.param_env)
-                .lub(a_sig, b_sig)
+                .lub_at(a_sig, b_sig, self.param_env, cause)
                 .map(|ok| self.register_infer_ok_obligations(ok))?;
 
             // Reify both sides and return the reified fn pointer type.
@@ -1729,17 +1726,18 @@ impl<'tcx> CoerceMany<'tcx> {
             //
             // Another example is `break` with no argument expression.
             assert!(expression_ty.is_unit(), "if let hack without unit type");
-            fcx.at(cause, fcx.param_env)
-                .eq(
-                    // needed for tests/ui/type-alias-impl-trait/issue-65679-inst-opaque-ty-from-val-twice.rs
-                    DefineOpaqueTypes::Yes,
-                    expected,
-                    found,
-                )
-                .map(|infer_ok| {
-                    fcx.register_infer_ok_obligations(infer_ok);
-                    expression_ty
-                })
+            fcx.eq_at(
+                // needed for tests/ui/type-alias-impl-trait/issue-65679-inst-opaque-ty-from-val-twice.rs
+                DefineOpaqueTypes::Yes,
+                expected,
+                found,
+                fcx.param_env,
+                cause,
+            )
+            .map(|infer_ok| {
+                fcx.register_infer_ok_obligations(infer_ok);
+                expression_ty
+            })
         };
 
         debug!(?result);

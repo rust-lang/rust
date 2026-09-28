@@ -99,8 +99,14 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
             ty::Invariant => {
                 self.obligations.extend(
                     self.infcx
-                        .at(&self.trace.cause, self.param_env)
-                        .eq_trace(DefineOpaqueTypes::Yes, self.trace.clone(), a, b)?
+                        .eq_trace_at(
+                            DefineOpaqueTypes::Yes,
+                            self.trace.clone(),
+                            a,
+                            b,
+                            self.param_env,
+                            &self.trace.cause,
+                        )?
                         .into_obligations(),
                 );
                 Ok(a)
@@ -255,15 +261,30 @@ impl<'infcx, 'tcx> LatticeOp<'infcx, 'tcx> {
     // relates `v` to `a` first, which may help us to avoid unnecessary
     // type variable obligations. See caller for details.
     fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
-        let at = self.infcx.at(&self.trace.cause, self.param_env);
         match self.kind {
             LatticeOpKind::Glb => {
-                self.obligations.extend(at.sub(DefineOpaqueTypes::Yes, v, a)?.into_obligations());
-                self.obligations.extend(at.sub(DefineOpaqueTypes::Yes, v, b)?.into_obligations());
+                self.obligations.extend(
+                    self.infcx
+                        .sub_at(DefineOpaqueTypes::Yes, v, a, self.param_env, &self.trace.cause)?
+                        .into_obligations(),
+                );
+                self.obligations.extend(
+                    self.infcx
+                        .sub_at(DefineOpaqueTypes::Yes, v, b, self.param_env, &self.trace.cause)?
+                        .into_obligations(),
+                );
             }
             LatticeOpKind::Lub => {
-                self.obligations.extend(at.sub(DefineOpaqueTypes::Yes, a, v)?.into_obligations());
-                self.obligations.extend(at.sub(DefineOpaqueTypes::Yes, b, v)?.into_obligations());
+                self.obligations.extend(
+                    self.infcx
+                        .sub_at(DefineOpaqueTypes::Yes, a, v, self.param_env, &self.trace.cause)?
+                        .into_obligations(),
+                );
+                self.obligations.extend(
+                    self.infcx
+                        .sub_at(DefineOpaqueTypes::Yes, b, v, self.param_env, &self.trace.cause)?
+                        .into_obligations(),
+                );
             }
         }
         Ok(())
