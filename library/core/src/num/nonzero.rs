@@ -2470,23 +2470,23 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[doc = concat!("let limit = NonZero::<", stringify!($Uint), ">::new(100).unwrap();")]
         ///
         /// assert_eq!(
-        #[doc = concat!("\tNonZero::<", stringify!($Int), ">::new(120).unwrap().clamp_magnitude(limit),")]
-        #[doc = "\tNonZero::new(100).unwrap(),"]
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(120).unwrap().clamp_magnitude(limit),")]
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(100).unwrap(),")]
         /// );
         ///
         /// assert_eq!(
-        #[doc = concat!("\tNonZero::<", stringify!($Int), ">::new(-120).unwrap().clamp_magnitude(limit),")]
-        #[doc = "\tNonZero::new(-100).unwrap(),"]
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(-120).unwrap().clamp_magnitude(limit),")]
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(-100).unwrap(),")]
         /// );
         ///
         /// assert_eq!(
-        #[doc = concat!("\tNonZero::<", stringify!($Int), ">::new(80).unwrap().clamp_magnitude(limit),")]
-        #[doc = "\tNonZero::new(80).unwrap(),"]
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(80).unwrap().clamp_magnitude(limit),")]
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(80).unwrap(),")]
         /// );
         ///
         /// assert_eq!(
-        #[doc = concat!("\tNonZero::<", stringify!($Int), ">::new(-80).unwrap().clamp_magnitude(limit),")]
-        #[doc = "\tNonZero::new(-80).unwrap(),"]
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(-80).unwrap().clamp_magnitude(limit),")]
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(-80).unwrap(),")]
         /// );
         /// ```
         #[inline]
