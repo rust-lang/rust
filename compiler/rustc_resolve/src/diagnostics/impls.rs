@@ -346,9 +346,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.lint_buffer.buffer_lint(
                 MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
                 CRATE_NODE_ID,
-                span_use,
+                span_use.0,
                 diagnostics::MacroExpandedMacroExportsAccessedByAbsolutePaths {
-                    definition: span_def,
+                    definition: span_def.0,
                 },
             );
         }
@@ -943,11 +943,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let BindingError { name, target, origin, could_be_path } = binding_error;
 
                 let mut target_sp = target.iter().map(|pat| pat.span).collect::<Vec<_>>();
-                target_sp.sort();
-                target_sp.dedup();
+                target_sp.sort_by_key(|sp| sp.lo_hi());
+                target_sp.dedup_by_key(|sp| sp.lo_hi());
                 let mut origin_sp = origin.iter().map(|(span, _)| *span).collect::<Vec<_>>();
-                origin_sp.sort();
-                origin_sp.dedup();
+                origin_sp.sort_by_key(|sp| sp.lo_hi());
+                origin_sp.dedup_by_key(|sp| sp.lo_hi());
 
                 let msp = MultiSpan::from_spans(target_sp.clone());
                 let mut err = self.dcx().create_err(diagnostics::VariableIsNotBoundInAllPatterns {

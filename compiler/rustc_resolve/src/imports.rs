@@ -20,7 +20,7 @@ use rustc_middle::ty::Visibility;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
-use rustc_span::{Ident, Span, Symbol, kw, span_bug, sym};
+use rustc_span::{Ident, OrdSpan, Span, Symbol, kw, span_bug, sym};
 use tracing::debug;
 
 use crate::Namespace::{self, *};
@@ -1765,7 +1765,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             && !other_binding.is_ambiguity_recursive();
                         if is_redundant {
                             redundant_span[ns] =
-                                Some((other_binding.span, other_binding.is_import()));
+                                Some((OrdSpan(other_binding.span), other_binding.is_import()));
                         }
                     }
                     Err(_) => is_redundant = false,
@@ -1785,7 +1785,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     let ident = source;
                     let subs = redundant_spans
                         .into_iter()
-                        .map(|(span, is_imported)| match (span.is_dummy(), is_imported) {
+                        .map(|(OrdSpan(span), is_imported)| match (span.is_dummy(), is_imported) {
                             (false, true) => {
                                 diagnostics::RedundantImportSub::ImportedHere { span, ident }
                             }

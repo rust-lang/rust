@@ -100,7 +100,7 @@ pub(super) fn check_static_initializers_are_acyclic<'tcx, 'a, 'b>(
     // Emit errors for all cycles
     for nodes in nodes_of_sccs.iter_mut().filter(|nodes| is_cyclic(nodes)) {
         // We sort the nodes by their Span to have consistent error line numbers
-        nodes.sort_by_key(|node| tcx.def_span(statics[node.index()]));
+        nodes.sort_by_key(|node| tcx.def_span(statics[node.index()]).lo_hi());
 
         let head_def = statics[nodes[0].index()];
         let head_span = tcx.def_span(head_def);
