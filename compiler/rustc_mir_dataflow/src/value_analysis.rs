@@ -797,6 +797,12 @@ impl<'tcx> Map<'tcx> {
         };
         let elems = place.projection.iter().map(|&elem| elem.try_into()).chain(tail_elem.map(Ok));
         for elem in elems {
+            // All fields of a union alias each other.
+            if self.places[index].ty.is_union() {
+                self.for_each_value_inside(index, f);
+                return;
+            }
+
             // A field aliases the parent place.
             if let Some(vi) = self.places[index].value_index {
                 f(vi);
