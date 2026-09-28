@@ -2288,8 +2288,7 @@ pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// transmuted to `Foo<U>` we aim to create probalistically distinct seeds so that Foo can choose
     /// to reorder its fields based on that information. The current implementation is a conservative
     /// approximation of this goal.
-    // TODO: making randomization_seed an Option is maybe hacky?
-    pub randomization_seed: Option<Hash64>,
+    pub randomization_seed: Hash64,
 }
 
 impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
