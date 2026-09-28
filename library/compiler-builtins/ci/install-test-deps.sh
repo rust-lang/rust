@@ -43,6 +43,7 @@ if [ ${#to_install[@]} -ne 0 ]; then
 fi
 
 # Install the correct Rust version
+rustup set profile minimal
 rustup update "$channel" --no-self-update
 rustup default "$channel"
 rustup target add "$target"
