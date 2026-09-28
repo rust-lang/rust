@@ -51,12 +51,14 @@ use askama::Template;
 use indexmap::IndexMap;
 use itertools::Either;
 use rustc_ast::join_path_syms;
+use rustc_attr_ir::{
+    AttributeKind, ConstStability, DeprecatedSince, Deprecation, RustcVersion, StabilityLevel,
+    StableSince, find_attr,
+};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation, RustcVersion};
+use rustc_hir::Mutability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet};
-use rustc_hir::{ConstStability, Mutability, StabilityLevel, StableSince};
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::DUMMY_SP;
@@ -3021,7 +3023,7 @@ pub(super) fn render_attributes_in_code_with_options(
         render_code_attribute(&prefix, "#[doc(hidden)]", w)?;
     }
     for attr in &item.attrs.other_attrs {
-        let hir::Attribute::Parsed(kind) = attr else { continue };
+        let rustc_attr_ir::Attribute::Parsed(kind) = attr else { continue };
         let attr = match kind {
             AttributeKind::LinkSection { name, .. } => {
                 Cow::Owned(format!("#[unsafe(link_section = {})]", Escape(&format!("{name:?}"))))
@@ -3089,7 +3091,7 @@ fn repr_attribute<'tcx>(
     // - the item is annotated with internal attribute `#[rustc_pub_transparent]`
     if repr.transparent() {
         let is_public = 'is_public: {
-            if hir::find_attr!(tcx, def_id, AttributeKind::RustcPubTransparent(_)) {
+            if find_attr!(tcx, def_id, RustcPubTransparent(_)) {
                 break 'is_public true;
             }
 

@@ -2023,7 +2023,7 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
             ("(", ")")
         }
         Node::Ty(ty) => match ty.kind {
-            rustc_hir::TyKind::Ptr(_) | rustc_hir::TyKind::Ref(..) => ("(", ")"),
+            rustc_hir::TyKind::Ptr(..) | rustc_hir::TyKind::Ref(..) => ("(", ")"),
             // FIXME: RPITs are not allowed to be nested in `impl Fn() -> ...`,
             // but we eventually could support that, and that would necessitate
             // making this more sophisticated.
@@ -2082,4 +2082,16 @@ pub(crate) struct NonGenericOpaqueTypeParam<'a, 'tcx> {
         *[other] this generic parameter must be used with a generic {$kind} parameter
     }")]
     pub param_span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "there is an associated type with the same name",
+    style = "verbose",
+    code = "Self::",
+    applicability = "maybe-incorrect"
+)]
+pub struct AssocTypeWithSameName {
+    #[primary_span]
+    pub span: Span,
 }

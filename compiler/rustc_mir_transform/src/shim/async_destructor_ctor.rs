@@ -1,4 +1,4 @@
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource};
 use rustc_index::{Idx, IndexVec};
@@ -86,7 +86,7 @@ pub(super) fn build_async_drop_shim<'tcx>(
     let mut blocks = IndexVec::with_capacity(2);
     let block = |blocks: &mut IndexVec<_, _>, kind| {
         blocks.push(BasicBlockData::new(
-            Some(Terminator { source_info, kind, attributes: ThinVec::new() }),
+            Some(Terminator { source_info, kind, loop_hint_attrs: ThinVec::new() }),
             false,
         ))
     };
@@ -394,7 +394,7 @@ fn build_adrop_for_adrop_shim<'tcx>(
                 fn_span: span,
             },
 
-            attributes: ThinVec::new(),
+            loop_hint_attrs: ThinVec::new(),
         }),
         false,
     ));
@@ -419,12 +419,16 @@ fn build_adrop_for_adrop_shim<'tcx>(
                 fn_span: span,
             },
 
-            attributes: ThinVec::new(),
+            loop_hint_attrs: ThinVec::new(),
         }),
         false,
     ));
     blocks.push(BasicBlockData::new(
-        Some(Terminator { source_info, kind: TerminatorKind::Return, attributes: ThinVec::new() }),
+        Some(Terminator {
+            source_info,
+            kind: TerminatorKind::Return,
+            loop_hint_attrs: ThinVec::new(),
+        }),
         false,
     ));
 

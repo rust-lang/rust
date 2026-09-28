@@ -6,9 +6,9 @@
 
 use std::ops::ControlFlow;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::FatalError;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
@@ -368,10 +368,10 @@ pub fn dyn_compatibility_violations_for_assoc_item(
 
             let mut errors = Vec::new();
 
-            if tcx.features().min_generic_const_args() {
+            if tcx.features().gca_min_const_items() {
                 if !tcx.generics_of(item.def_id).is_own_empty() {
                     errors.push(AssocConstViolation::Generic);
-                } else if !tcx.is_always_gca(item.def_id) && !tcx.features().generic_const_args() {
+                } else if !tcx.is_always_gca(item.def_id) && !tcx.features().gca_const_items() {
                     errors.push(AssocConstViolation::NonType);
                 }
 
@@ -526,10 +526,10 @@ fn virtual_call_violations_for_method<'tcx>(
             {
                 // If we have `self: &'a Ty`, get `'a`, so that we can suggest `&'a self`.
                 let lt = match sig.decl.inputs[0].kind {
-                    hir::TyKind::Ref(lt, _) if lt.ident.name == kw::UnderscoreLifetime => {
+                    hir::TyKind::Ref(lt, ..) if lt.ident.name == kw::UnderscoreLifetime => {
                         sym::empty
                     }
-                    hir::TyKind::Ref(lt, _) => lt.ident.name,
+                    hir::TyKind::Ref(lt, ..) => lt.ident.name,
                     _ => sym::empty,
                 };
                 // Get the `Span` for all of `self: Ty`, not just `Ty`.
@@ -790,7 +790,7 @@ enum AllowSelfProjections {
 /// associated type of the current trait, since we retain the value of those associated
 /// types in the trait object type itself.
 ///
-/// The same thing holds for associated consts under feature `min_generic_const_args`.
+/// The same thing holds for associated consts under feature `gca_min_const_items`.
 ///
 /// ```rust,ignore (example)
 /// trait SuperTrait {
@@ -914,7 +914,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
             ty::ConstKind::Alias(
                 _,
                 ty::AliasConst { kind: ty::AliasConstKind::Projection { def_id }, args, .. },
-            ) if self.tcx.features().min_generic_const_args() => {
+            ) if self.tcx.features().gca_min_const_items() => {
                 match self.allow_self_projections {
                     AllowSelfProjections::Yes => {
                         let trait_def_id = self.tcx.parent(def_id);

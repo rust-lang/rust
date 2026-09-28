@@ -215,6 +215,7 @@ impl<'a> State<'a> {
             Node::LetStmt(a) => self.print_local_decl(a),
             Node::Crate(..) => panic!("cannot print Crate"),
             Node::WherePredicate(pred) => self.print_where_predicate(pred),
+            Node::NestedUseTree(tree) => self.print_use_tree(tree),
             Node::TestBinderForall(_) => panic!("cannot print Node::TestBinderForall"),
             Node::TestBinderExists(_) => panic!("cannot print Node::TestBinderExists"),
             Node::TestBinderBoundTypeConstraint(_) => {
@@ -395,14 +396,16 @@ impl<'a> State<'a> {
                 self.print_type(ty);
                 self.word("]");
             }
-            hir::TyKind::Ptr(ref mt) => {
+            hir::TyKind::Ptr(ref ty, mutbl) => {
                 self.word("*");
-                self.print_mt(mt, true);
+                self.print_mutability(mutbl, true);
+                self.print_type(ty);
             }
-            hir::TyKind::Ref(lifetime, ref mt) => {
+            hir::TyKind::Ref(lifetime, ref ty, mutbl) => {
                 self.word("&");
                 self.print_opt_lifetime(lifetime);
-                self.print_mt(mt, false);
+                self.print_mutability(mutbl, false);
+                self.print_type(ty);
             }
             hir::TyKind::Never => {
                 self.word("!");
@@ -608,22 +611,11 @@ impl<'a> State<'a> {
                 self.end(ib);
                 self.end(cb);
             }
-            hir::ItemKind::Use(path, kind) => {
+            hir::ItemKind::Use(ref tree) => {
                 let (cb, ib) = self.head("use");
-                self.print_path(path, false);
 
-                match kind {
-                    hir::UseKind::Single(ident) => {
-                        if path.segments.last().unwrap().ident != ident {
-                            self.space();
-                            self.word_space("as");
-                            self.print_ident(ident);
-                        }
-                        self.word(";");
-                    }
-                    hir::UseKind::Glob => self.word("::*;"),
-                    hir::UseKind::ListStem => self.word("::{};"),
-                }
+                self.print_use_tree(tree);
+                self.word(";");
                 self.end(ib);
                 self.end(cb);
             }
@@ -816,6 +808,29 @@ impl<'a> State<'a> {
             }
         }
         self.ann.post(self, AnnNode::Item(item))
+    }
+
+    fn print_use_tree(&mut self, tree: &hir::UseTree<'_>) {
+        let hir::UseTree { prefix, kind } = *tree;
+        self.print_path(prefix, false);
+        match kind {
+            hir::UseKind::Single(ident) => {
+                if tree.prefix.segments.last().unwrap().ident != ident {
+                    self.space();
+                    self.word_space("as");
+                    self.print_ident(ident);
+                }
+            }
+            hir::UseKind::Glob => self.word("::*"),
+            hir::UseKind::Nested { items } => {
+                self.word("::{");
+                for (item, _, _) in items {
+                    self.print_use_tree(item);
+                    self.word(",");
+                }
+                self.word("}");
+            }
+        }
     }
 
     fn print_trait_ref(&mut self, t: &hir::TraitRef<'_>) {
@@ -2553,11 +2568,6 @@ impl<'a> State<'a> {
                 }
             }
         }
-    }
-
-    fn print_mt(&mut self, mt: &hir::MutTy<'_>, print_const: bool) {
-        self.print_mutability(mt.mutbl, print_const);
-        self.print_type(mt.ty);
     }
 
     fn print_fn_output(&mut self, decl: &hir::FnDecl<'_>) {

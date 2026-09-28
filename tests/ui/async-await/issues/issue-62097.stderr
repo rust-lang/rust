@@ -11,6 +11,14 @@ LL |         foo(|| self.bar()).await;
    |         |
    |         `self` escapes the method body here
    |         argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `foo` introduced here
+  --> $DIR/issue-62097.rs:4:19
+   |
+LL | async fn foo<F>(fun: F)
+LL | where
+LL |     F: FnOnce() + 'static
+   |                   ^^^^^^^ lifetime requirement introduced here
 
 error[E0373]: closure may outlive the current function, but it borrows `self`, which is owned by the current function
   --> $DIR/issue-62097.rs:13:13

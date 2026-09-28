@@ -6,18 +6,19 @@ use std::path::PathBuf;
 
 use rustc_ast::ast::LitKind;
 use rustc_ast::{LitIntType, TraitObjectSyntax};
+use rustc_attr_ir::diagnostic::CustomDiagnostic;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, StringPart, Sublevel, Suggestions,
-    msg, pluralize, struct_span_code_err,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, StringPart, Sublevel, msg, pluralize,
+    struct_span_code_err,
 };
-use rustc_hir::attrs::diagnostic::CustomDiagnostic;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, Node, expr_needs_parens, find_attr};
+use rustc_hir::{self as hir, Node, expr_needs_parens};
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::{ImplSource, TraitErrors};
@@ -41,7 +42,8 @@ use tracing::{debug, instrument};
 use super::suggestions::get_explanation_based_on_obligation;
 use super::{ArgKind, CandidateSimilarity, GetSafeTransmuteErrorAndReason, ImplCandidate};
 use crate::diagnostics::{
-    ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch, CoroClosureNotFn,
+    AssocTypeWithSameName, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
+    CoroClosureNotFn,
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
@@ -1176,7 +1178,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             type Result = ControlFlow<&'v hir::Expr<'v>>;
             fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) -> Self::Result {
                 if let hir::ExprKind::Match(expr, _arms, hir::MatchSource::TryDesugar(_)) = ex.kind
-                    && ex.span.with_lo(ex.span.hi() - BytePos(1)).source_equal(self.search_span)
+                    && ex.span.with_lo(ex.span.hi() - BytePos(1)).lo_hi()
+                        == self.search_span.lo_hi()
                     && let hir::ExprKind::Call(_, [expr, ..]) = expr.kind
                 {
                     ControlFlow::Break(expr)
@@ -3106,13 +3109,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             );
             self.suggest_unsized_bound_if_applicable(err, obligation);
             if let Some(span) = err.span.primary_span()
-                && let Some(mut diag) =
-                    self.dcx().steal_non_err(span, StashKey::AssociatedTypeSuggestion)
-                && let Suggestions::Enabled(ref mut s1) = err.suggestions
-                && let Suggestions::Enabled(ref mut s2) = diag.suggestions
+                && self
+                    .tcx
+                    .resolutions(())
+                    .paths_matching_assoc_types
+                    .contains(&span.with_parent(None))
             {
-                s1.append(s2);
-                diag.cancel()
+                err.subdiagnostic(AssocTypeWithSameName { span: span.shrink_to_lo() });
             }
         }
     }
@@ -3982,9 +3985,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         span: Span,
     ) -> Result<Diag<'a>, ErrorGuaranteed> {
-        if !self.tcx.features().generic_const_exprs()
-            && !self.tcx.features().min_generic_const_args()
-        {
+        if !self.tcx.features().generic_const_exprs() && !self.tcx.features().gca() {
             let guar = self
                 .dcx()
                 .struct_span_err(span, "constant expression depends on a generic parameter")

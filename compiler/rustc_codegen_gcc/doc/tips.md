@@ -41,7 +41,7 @@ COLLECT_NO_DEMANGLE=1
 ### How to use a custom-build rustc
 
  * Build the stage2 compiler (`rustup toolchain link debug-current build/x86_64-unknown-linux-gnu/stage2`).
- * Clean and rebuild the codegen with `debug-current` in the file `rust-toolchain`.
+ * Clean and rebuild the codegen with `debug-current` in the file `rust-toolchain.toml`.
 
 ### How to use a custom sysroot source path
 

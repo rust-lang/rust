@@ -1,10 +1,9 @@
-use std::rc::Rc;
-
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::IndexVec;
 use rustc_middle::mir::{Body, Location};
 use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
+use smallvec::SmallVec;
 
 use crate::BorrowSet;
 use crate::constraints::OutlivesConstraint;
@@ -40,16 +39,14 @@ pub(super) struct LocalizedNode {
 /// The localized constraint graph indexes the physical and logical edges to lazily compute a given
 /// node's successors during traversal.
 pub(super) struct LocalizedConstraintGraph {
-    location_map: Rc<DenseLocationMap>,
-
     /// The actual, physical, edges we have recorded for a given node. We localize them on-demand
     /// when traversing from the node to the successor region.
-    edges: FxHashMap<LocalizedNode, FxIndexSet<RegionVid>>,
+    edges: FxHashMap<LocalizedNode, SmallVec<[RegionVid; 4]>>,
 
     /// The logical edges representing the outlives constraints that hold at all points in the CFG,
     /// which we don't localize to avoid creating a lot of unnecessary edges in the graph. Some CFGs
     /// can be big, and we don't need to create such a physical edge for every point in the CFG.
-    logical_edges: IndexVec<RegionVid, FxIndexSet<RegionVid>>,
+    logical_edges: IndexVec<RegionVid, SmallVec<[RegionVid; 4]>>,
 }
 
 /// The visitor interface when traversing a `LocalizedConstraintGraph`.
@@ -66,18 +63,20 @@ pub(super) trait LocalizedConstraintGraphVisitor {
 impl LocalizedConstraintGraph {
     /// Traverses the constraints and returns the indexed graph of edges per node.
     pub(super) fn new<'tcx>(
-        location_map: Rc<DenseLocationMap>,
+        location_map: &DenseLocationMap,
         outlives_constraints: impl Iterator<Item = OutlivesConstraint<'tcx>>,
     ) -> Self {
-        let mut edges: FxHashMap<_, FxIndexSet<_>> = FxHashMap::default();
-        let mut logical_edges: IndexVec<_, FxIndexSet<_>> = IndexVec::new();
+        let mut edges: FxHashMap<_, SmallVec<[RegionVid; 4]>> = FxHashMap::default();
+        let mut logical_edges: IndexVec<_, SmallVec<[RegionVid; 4]>> = IndexVec::new();
 
         for outlives_constraint in outlives_constraints {
             match outlives_constraint.locations {
                 Locations::All(_) => {
-                    logical_edges
-                        .ensure_contains_elem(outlives_constraint.sup, FxIndexSet::default)
-                        .insert(outlives_constraint.sub);
+                    let succs =
+                        logical_edges.ensure_contains_elem(outlives_constraint.sup, SmallVec::new);
+                    if !succs.contains(&outlives_constraint.sub) {
+                        succs.push(outlives_constraint.sub);
+                    }
                 }
 
                 Locations::Single(location) => {
@@ -85,12 +84,15 @@ impl LocalizedConstraintGraph {
                         region: outlives_constraint.sup,
                         point: location_map.point_from_location(location),
                     };
-                    edges.entry(node).or_default().insert(outlives_constraint.sub);
+                    let succs = edges.entry(node).or_default();
+                    if !succs.contains(&outlives_constraint.sub) {
+                        succs.push(outlives_constraint.sub);
+                    }
                 }
             }
         }
 
-        LocalizedConstraintGraph { location_map, edges, logical_edges }
+        LocalizedConstraintGraph { edges, logical_edges }
     }
 
     /// Traverses the localized constraint graph per-loan, and notifies the `visitor` of discovered
@@ -99,6 +101,7 @@ impl LocalizedConstraintGraph {
         &self,
         body: &Body<'tcx>,
         borrow_set: &BorrowSet<'tcx>,
+        location_map: &DenseLocationMap,
         liveness_source: &mut impl LivenessSource,
         visitor: &mut impl LocalizedConstraintGraphVisitor,
     ) {
@@ -113,7 +116,7 @@ impl LocalizedConstraintGraph {
 
             let start_node = LocalizedNode {
                 region: loan.region,
-                point: self.location_map.point_from_location(loan.reserve_location),
+                point: location_map.point_from_location(loan.reserve_location),
             };
             visited.insert(start_node);
             stack.push(start_node);
@@ -121,7 +124,7 @@ impl LocalizedConstraintGraph {
             while let Some(node) = stack.pop() {
                 let liveness = liveness_source.liveness_for_region(node.region);
                 // We've reached a node we haven't visited before.
-                let location = self.location_map.to_location(node.point);
+                let location = location_map.to_location(node.point);
                 visitor.on_node_traversed(loan_idx, node, liveness.is_live_at(node.point));
 
                 // When we find a _new_ successor, we'd like to
@@ -177,7 +180,7 @@ impl LocalizedConstraintGraph {
                         for successor_block in body[location.block].terminator().successors() {
                             let next_location =
                                 Location { block: successor_block, statement_index: 0 };
-                            let next_point = self.location_map.point_from_location(next_location);
+                            let next_point = location_map.point_from_location(next_location);
                             if liveness.is_live_at(next_point) {
                                 successor_found(LocalizedNode {
                                     region: node.region,
@@ -220,7 +223,7 @@ impl LocalizedConstraintGraph {
                                 statement_index: body[pred_block].statements.len(),
                             };
                             let previous_point =
-                                self.location_map.point_from_location(previous_location);
+                                location_map.point_from_location(previous_location);
                             successor_found(LocalizedNode {
                                 region: node.region,
                                 point: previous_point,

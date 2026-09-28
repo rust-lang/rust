@@ -65,7 +65,6 @@
 #![feature(fmt_internals)]
 #![feature(formatting_options)]
 #![feature(freeze)]
-#![feature(funnel_shifts)]
 #![feature(future_join)]
 #![feature(generic_assert_internals)]
 #![feature(hasher_prefixfree_extras)]
@@ -130,7 +129,6 @@
 #![feature(uint_gather_scatter_bits)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
-#![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 #![allow(internal_features)]
 #![deny(implicit_provenance_casts)]

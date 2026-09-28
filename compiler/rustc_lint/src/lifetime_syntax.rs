@@ -564,8 +564,8 @@ impl<'tcx> Info<'tcx> {
     // FIXME: Ideally, we'd also remove the lifetime declaration.
     fn removing_span(&self) -> Span {
         let mut span = self.lifetime.ident.span;
-        if let hir::TyKind::Ref(_, mut_ty) = self.ty.kind {
-            span = span.until(mut_ty.ty.span);
+        if let hir::TyKind::Ref(_, ty, _) = self.ty.kind {
+            span = span.until(ty.span);
         }
         span
     }

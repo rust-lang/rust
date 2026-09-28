@@ -1,7 +1,7 @@
 use rustc_ast as ast;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level, msg};
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw};
@@ -143,7 +143,14 @@ impl<'a, 'b, 'tcx> Diagnostic<'a> for PanicMessageNotLiteral<'b, 'tcx> {
                     .get_diagnostic_item(sym::Debug)
                     .is_some_and(|t| infcx.type_implements_trait(t, [ty], param_env).may_apply());
 
-            let suggest_panic_any = !is_str && panic == Some(sym::std_panic_macro);
+            let suggest_panic_any = !is_str
+                && panic == Some(sym::std_panic_macro)
+                && cx
+                    .tcx
+                    .all_diagnostic_items(())
+                    .name_to_id
+                    .keys()
+                    .any(|name| name.as_str() == "panic_any");
 
             let fmt_applicability = if suggest_panic_any {
                 // If we can use panic_any, use that as the MachineApplicable suggestion.
@@ -360,5 +367,5 @@ fn is_arg_inside_call(arg: Span, call: Span) -> bool {
     // panic call in the source file, to avoid invalid suggestions when macros are involved.
     // We specifically check for the spans to not be identical, as that happens sometimes when
     // proc_macros lie about spans and apply the same span to all the tokens they produce.
-    call.contains(arg) && !call.source_equal(arg)
+    call.contains(arg) && call.lo_hi() != arg.lo_hi()
 }

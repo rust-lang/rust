@@ -1,9 +1,11 @@
 //@ compile-flags: -Znext-solver
 // Test that anonymous const blocks using generic parameters are rejected
-// under `generic_const_args`. Users should use named const items instead:
+// under `gca_const_items`. Users should use named const items instead:
 // `const FOO<const N: usize>: usize = N + 1;`
-#![feature(generic_const_args, min_generic_const_args, generic_const_items)]
+#![feature(gca_const_items, gca_min_const_items, generic_const_items)]
 
-const FOO<const N: usize>: usize = core::direct_const_arg!(const { N + 1 }); //~ ERROR generic parameters in const blocks are not allowed; use a named `const` item instead
+use std::gca;
+
+const FOO<const N: usize>: usize = gca!(const { N + 1 }); //~ ERROR generic parameters in const blocks are not allowed; use a named `const` item instead
 
 fn main() {}

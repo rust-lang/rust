@@ -12,6 +12,8 @@
 #![feature(derive_const)]
 #![feature(exhaustive_patterns)]
 #![feature(final_associated_functions)]
+#![feature(iter_macro)]
+#![feature(yield_expr)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
@@ -24,17 +26,8 @@ pub mod pat_util;
 mod stable_hash_impls;
 mod target_impls;
 
-// FIXME: Remove this use tree, replace by `rustc_attr_ir` imports
-#[doc(hidden)]
-pub use attrs::{
-    Attribute, ConstStability, DefaultBodyStability, Stability, StabilityLevel, StableSince,
-    UnstableReason, target::Target,
-};
 #[doc(no_inline)]
 pub use hir::*;
-// FIXME: Remove this use tree, replace by `rustc_attr_ir` imports
-#[doc(hidden)]
-pub use rustc_attr_ir::{self as attrs, find_attr};
 pub use rustc_hir_id::*;
 pub use rustc_span::def_id;
 

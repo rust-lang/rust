@@ -448,16 +448,24 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_fn(self, fk, fd, b, id)
     }
 
-    fn visit_use(&mut self, p: &'v hir::UsePath<'v>, _hir_id: HirId) {
+    fn visit_use(&mut self, tree: &'v hir::UseTree<'v>, _hir_id: HirId, _def_id: LocalDefId) {
         // This is `visit_use`, but the type is `Path` so record it that way.
-        self.record("Path", None, p);
+        self.record("Path", None, tree);
         // Don't call `hir_visit::walk_use(self, p, hir_id)`: it calls
         // `visit_path` up to three times, once for each namespace result in
         // `p.res`, by building temporary `Path`s that are not part of the real
         // HIR, which causes `p` to be double- or triple-counted. Instead just
         // walk the path internals (i.e. the segments) directly.
-        let hir::Path { span: _, res: _, segments } = *p;
+        let hir::Path { span: _, res: _, segments } = *tree.prefix;
         ast_visit::walk_list!(self, visit_path_segment, segments);
+        match tree.kind {
+            hir::UseKind::Single(_) | hir::UseKind::Glob => {}
+            hir::UseKind::Nested { items } => {
+                for (tree, id, def_id) in items {
+                    self.visit_use(tree, *id, *def_id);
+                }
+            }
+        }
     }
 
     fn visit_trait_item(&mut self, ti: &'v hir::TraitItem<'v>) {
@@ -547,7 +555,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_assoc_item_constraint(self, constraint)
     }
 
-    fn visit_attribute(&mut self, attr: &'v hir::Attribute) {
+    fn visit_attribute(&mut self, attr: &'v rustc_attr_ir::Attribute) {
         self.record("Attribute", None, attr);
     }
 
@@ -661,7 +669,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 If, While, ForLoop, Loop, Match, Closure, Block, Await, Move, Use, TryBlock, Assign,
                 AssignOp, Field, Index, Range, Underscore, Path, AddrOf, Break, Continue, Ret,
                 InlineAsm, FormatArgs, OffsetOf, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet,
-                Become, IncludedBytes, Gen, UnsafeBinderCast, Err, Dummy, DirectConstArg
+                Become, IncludedBytes, Gen, UnsafeBinderCast, GcaMacro, Err, Dummy
             ]
         );
         ast_visit::walk_expr(self, e)
@@ -691,7 +699,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 CVarArgs,
                 FieldOf,
                 View,
-                DirectConstArg,
+                GcaMacro,
                 Dummy,
                 Err
             ]

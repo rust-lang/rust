@@ -205,8 +205,17 @@ pub struct BTreeMap<
 #[stable(feature = "btree_drop", since = "1.7.0")]
 unsafe impl<#[may_dangle] K, #[may_dangle] V, A: AllocatorClone> Drop for BTreeMap<K, V, A> {
     fn drop(&mut self) {
-        // ignore-tidy-undocumented-unsafe
-        drop(unsafe { ptr::read(self) }.into_iter())
+        // Skip `into_iter` for an empty map: `dying_next` is too costly to inline, so the
+        // empty drop isn't optimised away (see #161375).
+        if self.root.is_some() {
+            // SAFETY: `self` is not used after this and none of its fields are dropped again:
+            // `alloc` is `ManuallyDrop` and `root` has no drop glue.
+            drop(unsafe { ptr::read(self) }.into_iter())
+        } else {
+            // SAFETY: With no root there are no nodes to free, so only the allocator needs
+            // dropping. `self` is not used after this, and `alloc` is dropped only here.
+            unsafe { ManuallyDrop::drop(&mut self.alloc) }
+        }
     }
 }
 

@@ -4,15 +4,15 @@
 
 use rustc_abi::ExternAbi;
 use rustc_ast::ast;
+use rustc_attr_ir::{
+    self, DeprecatedSince, DocAttribute, DocCfgHideShow, DocInline, HideOrShow, RustcVersion,
+    find_attr,
+};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir as hir;
-use rustc_hir::attrs::{
-    self, DeprecatedSince, DocAttribute, DocCfgHideShow, DocInline, HideOrShow, RustcVersion,
-};
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{HeaderSafety, Safety, find_attr, intravisit};
+use rustc_hir::{HeaderSafety, Safety, intravisit};
 use rustc_hir_pretty::PpAnn;
 use rustc_metadata::rendered_const;
 use rustc_middle::ty::{self, TyCtxt};
@@ -222,9 +222,9 @@ impl FromClean<Option<ty::Visibility<ModId>>> for Visibility {
     }
 }
 
-impl FromClean<attrs::Deprecation> for Deprecation {
-    fn from_clean(deprecation: &attrs::Deprecation, _renderer: &JsonRenderer<'_>) -> Self {
-        let attrs::Deprecation { since, note, suggestion: _ } = deprecation;
+impl FromClean<rustc_attr_ir::Deprecation> for Deprecation {
+    fn from_clean(deprecation: &rustc_attr_ir::Deprecation, _renderer: &JsonRenderer<'_>) -> Self {
+        let rustc_attr_ir::Deprecation { since, note, suggestion: _ } = deprecation;
         let since = match since {
             DeprecatedSince::RustcVersion(version) => Some(version.to_string()),
             DeprecatedSince::Future => Some("TBD".to_string()),
@@ -235,45 +235,48 @@ impl FromClean<attrs::Deprecation> for Deprecation {
     }
 }
 
-impl FromClean<hir::Stability> for Stability {
-    fn from_clean(stab: &hir::Stability, _renderer: &JsonRenderer<'_>) -> Self {
+impl FromClean<rustc_attr_ir::Stability> for Stability {
+    fn from_clean(stab: &rustc_attr_ir::Stability, _renderer: &JsonRenderer<'_>) -> Self {
         let feature = stab.feature.to_string();
         let level = match stab.level {
-            hir::StabilityLevel::Stable { since, .. } => StabilityLevel::Stable {
+            rustc_attr_ir::StabilityLevel::Stable { since, .. } => StabilityLevel::Stable {
                 since: match since {
-                    hir::StableSince::Version(since) => Some(since.to_string()),
-                    hir::StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
+                    rustc_attr_ir::StableSince::Version(since) => Some(since.to_string()),
+                    rustc_attr_ir::StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
                     // Match rustdoc HTML: malformed stable-since values are omitted.
-                    hir::StableSince::Err(_) => None,
+                    rustc_attr_ir::StableSince::Err(_) => None,
                 },
             },
-            hir::StabilityLevel::Unstable { .. } => StabilityLevel::Unstable,
+            rustc_attr_ir::StabilityLevel::Unstable { .. } => StabilityLevel::Unstable,
         };
         Stability { feature, level }
     }
 }
 
-impl FromClean<hir::ConstStability> for Stability {
-    fn from_clean(stab: &hir::ConstStability, _renderer: &JsonRenderer<'_>) -> Self {
+impl FromClean<rustc_attr_ir::ConstStability> for Stability {
+    fn from_clean(stab: &rustc_attr_ir::ConstStability, _renderer: &JsonRenderer<'_>) -> Self {
         let feature = stab.feature.to_string();
         let level = match stab.level {
-            hir::StabilityLevel::Stable { since, .. } => StabilityLevel::Stable {
+            rustc_attr_ir::StabilityLevel::Stable { since, .. } => StabilityLevel::Stable {
                 since: match since {
-                    hir::StableSince::Version(since) => Some(since.to_string()),
-                    hir::StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
+                    rustc_attr_ir::StableSince::Version(since) => Some(since.to_string()),
+                    rustc_attr_ir::StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
                     // Match rustdoc HTML: malformed stable-since values are omitted.
-                    hir::StableSince::Err(_) => None,
+                    rustc_attr_ir::StableSince::Err(_) => None,
                 },
             },
-            hir::StabilityLevel::Unstable { .. } => StabilityLevel::Unstable,
+            rustc_attr_ir::StabilityLevel::Unstable { .. } => StabilityLevel::Unstable,
         };
         Stability { feature, level }
     }
 }
 
-impl FromClean<hir::DefaultBodyStability> for Box<ProvidedDefaultUnstable> {
-    fn from_clean(stab: &hir::DefaultBodyStability, _renderer: &JsonRenderer<'_>) -> Self {
-        let hir::StabilityLevel::Unstable { .. } = stab.level else {
+impl FromClean<rustc_attr_ir::DefaultBodyStability> for Box<ProvidedDefaultUnstable> {
+    fn from_clean(
+        stab: &rustc_attr_ir::DefaultBodyStability,
+        _renderer: &JsonRenderer<'_>,
+    ) -> Self {
+        let rustc_attr_ir::StabilityLevel::Unstable { .. } = stab.level else {
             bug!(
                 "unexpected stable default-body stability, \
                  there's no stable equivalent of `#[rustc_default_body_unstable]`"
@@ -1013,15 +1016,18 @@ impl FromClean<ItemType> for ItemKind {
 fn default_body_stability_for_def_id(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> Option<hir::DefaultBodyStability> {
+) -> Option<rustc_attr_ir::DefaultBodyStability> {
     let stability = tcx.lookup_default_body_stability(def_id)?;
     match stability.level {
-        hir::StabilityLevel::Unstable { .. } => Some(stability),
-        hir::StabilityLevel::Stable { .. } => None,
+        rustc_attr_ir::StabilityLevel::Unstable { .. } => Some(stability),
+        rustc_attr_ir::StabilityLevel::Stable { .. } => None,
     }
 }
 
-fn const_stability_for_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::ConstStability> {
+fn const_stability_for_def_id(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+) -> Option<rustc_attr_ir::ConstStability> {
     if !tcx.is_conditionally_const(def_id) {
         // The item cannot be conditionally-const. No const stability here.
         //
@@ -1064,7 +1070,7 @@ fn const_stability_for_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::Con
     } else {
         std::debug_assert_matches!(
             tcx.lookup_stability(def_id).map(|s| s.level),
-            Some(hir::StabilityLevel::Unstable { .. })
+            Some(rustc_attr_ir::StabilityLevel::Unstable { .. })
         );
         None
     }
@@ -1073,13 +1079,17 @@ fn const_stability_for_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::Con
 /// Maybe convert a attribute from hir to json.
 ///
 /// Returns `None` if the attribute shouldn't be in the output.
-fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) -> Vec<Attribute> {
-    use attrs::AttributeKind as AK;
+fn maybe_from_hir_attr(
+    attr: &rustc_attr_ir::Attribute,
+    item_id: ItemId,
+    tcx: TyCtxt<'_>,
+) -> Vec<Attribute> {
+    use rustc_attr_ir::AttributeKind as AK;
 
     let kind = match attr {
-        hir::Attribute::Parsed(kind) => kind,
+        rustc_attr_ir::Attribute::Parsed(kind) => kind,
 
-        hir::Attribute::Unparsed(_) => {
+        rustc_attr_ir::Attribute::Unparsed(_) => {
             // FIXME: We should handle `#[doc(hidden)]`.
             return vec![other_attr(tcx, attr)];
         }
@@ -1242,7 +1252,7 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
     }]
 }
 
-fn other_attr(tcx: TyCtxt<'_>, attr: &hir::Attribute) -> Attribute {
+fn other_attr(tcx: TyCtxt<'_>, attr: &rustc_attr_ir::Attribute) -> Attribute {
     let mut s = rustc_hir_pretty::attribute_to_string(
         &(&tcx as &dyn intravisit::HirTyCtxt<'_>) as &dyn PpAnn,
         attr,

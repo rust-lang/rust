@@ -38,12 +38,11 @@ LL |     test(ms);
    |
    = help: within `MySync<NoSync>`, the trait `Sync` is not implemented for `UnsafeCell<NoSync>`
 note: required because it appears within the type `MySync<NoSync>`
-  --> $DIR/typeck-unsafe-always-share.rs:8:8
+  --> $DIR/typeck-unsafe-always-share.rs:9:5
    |
 LL | struct MySync<T> {
-   |        ^^^^^^
 LL |     u: UnsafeCell<T>
-   |     ---------------- required by this field
+   |     ^^^^^^^^^^^^^^^^ required by this field
 note: required by a bound in `test`
   --> $DIR/typeck-unsafe-always-share.rs:15:12
    |

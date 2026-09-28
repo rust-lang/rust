@@ -347,7 +347,7 @@ fn borrowck_collect_region_constraints<'tcx>(
 
     let location_map = Rc::new(DenseLocationMap::new(body));
 
-    let polonius_input = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_input())
+    let polonius_input = root_cx.consumer.as_ref().is_some_and(|c| c.polonius_input())
         || infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
     let mut polonius_facts =
         (polonius_input || PoloniusFacts::enabled(infcx.tcx)).then_some(PoloniusFacts::default());

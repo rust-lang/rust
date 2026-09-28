@@ -51,12 +51,13 @@ use std::path::PathBuf;
 use std::{cmp, fmt, iter};
 
 use rustc_abi::ExternAbi;
+use rustc_attr_ir::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, DiagStyledString, IntoDiagArg, StringPart, pluralize};
-use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
+use rustc_hir as hir;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, find_attr};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_macros::extension;
 use rustc_middle::traits::PatternOriginExpr;

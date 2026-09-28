@@ -1656,8 +1656,8 @@ pub(crate) enum ExpectedSemiSugg {
         style = "short"
     )]
     ChangeToSemi(#[primary_span] Span),
-    #[suggestion("add `;` here", code = ";", applicability = "machine-applicable", style = "short")]
-    AddSemi(#[primary_span] Span),
+    #[suggestion("add `;` here", code = ";", style = "short")]
+    AddSemi(#[primary_span] Span, #[applicability] Applicability),
 }
 
 #[derive(Diagnostic)]
@@ -2439,6 +2439,23 @@ pub(crate) struct TraitAliasCannotBeImplRestricted {
 pub(crate) struct AssociatedStaticItemNotAllowed {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum FieldNotAllowedInTraitSugg {
+    #[help("consider using a method instead: `fn {$ident}(&self) -> {$ty};`")]
+    Method { ident: String, ty: String },
+    #[note("`self` can only appear as a method receiver; consider `fn method(self: {$ty})`")]
+    SelfReceiver { ty: String },
+}
+
+#[derive(Diagnostic)]
+#[diag("fields are not allowed in trait definitions")]
+pub(crate) struct FieldNotAllowedInTrait {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: FieldNotAllowedInTraitSugg,
 }
 
 #[derive(Diagnostic)]

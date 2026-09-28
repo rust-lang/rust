@@ -1185,6 +1185,10 @@ cc = ["@rust-lang/miri", "@RalfJung", "@oli-obk", "@lcnr"]
 message = "Some changes occurred in float parsing"
 cc = ["@tgross35"]
 
+[mentions."src/tools/test-float-parse"]
+message = "Some changes occurred in float parsing"
+cc = ["@tgross35"]
+
 [mentions."library/core/src/fmt/num.rs"]
 message = "Some changes occurred in integer formatting"
 cc = ["@tgross35"]

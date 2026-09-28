@@ -1,5 +1,5 @@
 error: `#[eii]` cannot be used on mutable statics
-  --> $DIR/mut.rs:7:1
+  --> $DIR/mut.rs:6:1
    |
 LL | #[eii(hello)]
    | ^^^^^^^^^^^^^

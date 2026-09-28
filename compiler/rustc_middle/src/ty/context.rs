@@ -110,8 +110,8 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
         self.generic_const_exprs()
     }
 
-    fn generic_const_args(self) -> bool {
-        self.generic_const_args()
+    fn gca_const_items(self) -> bool {
+        self.gca_const_items()
     }
 
     fn coroutine_clone(self) -> bool {
@@ -1030,7 +1030,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// because it has a directly represented RHS, or is a trait definition that is marked as
     /// requiring its implementation to have a directly represented RHS.
     ///
-    /// Note: Be very careful with using this method - under `generic_const_args`, a trait can
+    /// Note: Be very careful with using this method - under `gca_const_items`, a trait can
     /// declare a regular const, but an `impl` could implement it with a directly represented const
     /// (a la refinement). This method would return false in such a case.
     pub fn is_direct_const(self, def_id: DefId) -> bool {
@@ -1155,6 +1155,27 @@ impl<'tcx> TyCtxt<'tcx> {
             || self.needs_metadata()
             || self.sess.instrument_coverage()
             || self.sess.opts.unstable_opts.metrics_dir.is_some()
+    }
+
+    /// Whether the combined per-owner HIR hash (`OwnerInfo::opt_hash`, which folds `parenting`,
+    /// `trait_map` and `children` on top of the node/attr hashes) needs to be computed during
+    /// lowering.
+    ///
+    /// This is a strict subset of [`Self::needs_hir_hash`]: notably it drops the plain
+    /// `needs_metadata` case. With metadata-based crate hashing (the default) the crate hash is
+    /// built from the encoded metadata plus each owner's cheaper `OwnerInfo::fingerprint` (just the
+    /// node and attr sub-hashes), so the combined hash is never read and computing it is wasted
+    /// work. It is still required for:
+    /// - `-Z metadata-crate-hash=no`, where `crate_hash` falls back to hashing each `OwnerInfo`;
+    /// - incremental, where the `lower_to_hir` result is fingerprinted for red/green tracking;
+    /// - debug assertions, where every query result is fingerprinted to catch nondeterminism.
+    ///
+    /// The `needs_hir_hash()` conjunct guarantees the node/attr sub-hashes it folds in are present.
+    pub fn needs_owner_info_hash(self) -> bool {
+        self.needs_hir_hash()
+            && (!self.sess.opts.unstable_opts.metadata_crate_hash
+                || self.sess.opts.incremental.is_some()
+                || cfg!(debug_assertions))
     }
 
     #[inline]
@@ -1378,9 +1399,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.untracked.definitions.freeze()
     }
 
-    pub fn def_path_hash_to_def_index_map(
-        self,
-    ) -> &'tcx rustc_hir::def_path_hash_map::DefPathHashMap {
+    pub fn def_path_hash_to_def_index_map(self) -> &'tcx rustc_hir::definitions::DefPathToIndexMap {
         // Create a dependency to the crate to be sure we re-execute this when the amount of
         // definitions change.
         self.ensure_ok().hir_crate_items(());

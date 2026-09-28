@@ -24,10 +24,11 @@ use std::ops;
 
 use itertools::izip;
 use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::{self as hir, find_attr};
+use rustc_hir as hir;
 use rustc_index::bit_set::{BitMatrix, DenseBitSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_infer::traits::TraitErrors;

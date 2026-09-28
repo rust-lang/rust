@@ -143,7 +143,7 @@ impl AssocItem {
         match self.kind {
             ty::AssocKind::Type { .. } => true,
             ty::AssocKind::Const { .. } => {
-                tcx.features().generic_const_args() || tcx.is_direct_const(self.def_id)
+                tcx.features().gca_const_items() || tcx.is_direct_const(self.def_id)
             }
             ty::AssocKind::Fn { .. } => false,
         }

@@ -1,5 +1,5 @@
 error: multiple implementations of `#[hello]`
-  --> $DIR/duplicate.rs:11:1
+  --> $DIR/duplicate.rs:10:1
    |
 LL | static HELLO_IMPL1: u64 = 5;
    | ^^^^^^^^^^^^^^^^^^^^^^^ first implemented here in crate `duplicate`

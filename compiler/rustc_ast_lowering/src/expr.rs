@@ -544,8 +544,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             ExprKind::MacCall(_) => panic!("{:?} shouldn't exist here", e.span),
 
-            ExprKind::DirectConstArg(expr) => {
-                let e = self.emit_bad_direct_const_arg(e.span, expr, "expression");
+            ExprKind::GcaMacro(expr) => {
+                let e = self.emit_bad_gca_macro(e.span, expr, "expression");
                 hir::ExprKind::Err(e)
             }
         };
