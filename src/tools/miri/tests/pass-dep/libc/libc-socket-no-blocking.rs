@@ -228,8 +228,14 @@ fn test_connect_nonblock() {
     // Yield to server thread to ensure that it's currently accepting.
     thread::sleep(Duration::from_millis(10));
 
-    // Non-blocking connects always "fail" with EINPROGRESS.
-    let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
+    let Err(err) = net::connect_ipv4(client_sockfd, addr) else {
+        // The connection could be established immediately. We don't
+        // need to enter the loop and check whether the connection could
+        // really be established.
+        return server_thread.join().unwrap();
+    };
+    // The connection could not be established immediately. The `connect`
+    // should thus return EINPROGRESS.
     assert_eq!(err.kind(), ErrorKind::InProgress);
 
     loop {
@@ -671,9 +677,10 @@ fn test_getsockname_ipv4_connect_nonblock() {
     // a zero port.
     let addr = net::sock_addr_ipv4([192, 0, 2, 1], 12321);
 
-    // Non-blocking connect should fail with EINPROGRESS.
     let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::InProgress);
+    // Since we're connecting to a blackhole address, the `connect` can
+    // never succeed immediately and thus it always "fails" with EINPROGRESS.
+    assert!(err.kind() == ErrorKind::InProgress);
 
     let (_, sock_addr) = net::sockname_ipv4(|storage, len| unsafe {
         libc::getsockname(client_sockfd, storage, len)
@@ -716,8 +723,14 @@ fn test_getpeername_ipv4_nonblock() {
     // Yield to server thread to ensure that it's currently accepting.
     thread::sleep(Duration::from_millis(10));
 
-    // Non-blocking connects always "fail" with EINPROGRESS.
-    let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
+    let Err(err) = net::connect_ipv4(client_sockfd, addr) else {
+        // The connection could be established immediately. We don't
+        // need to enter the loop and check whether the connection could
+        // really be established.
+        return server_thread.join().unwrap();
+    };
+    // The connection could not be established immediately. The `connect`
+    // should thus return EINPROGRESS.
     assert_eq!(err.kind(), ErrorKind::InProgress);
 
     loop {
@@ -768,9 +781,10 @@ fn test_getpeername_ipv4_nonblock_no_peer() {
     // a zero port.
     let addr = net::sock_addr_ipv4([192, 0, 2, 1], 12321);
 
-    // Non-blocking connect should fail with EINPROGRESS.
     let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::InProgress);
+    // Since we're connecting to a blackhole address, the `connect` can
+    // never succeed immediately and thus it always "fails" with EINPROGRESS.
+    assert!(err.kind() == ErrorKind::InProgress);
 
     // There should be no error during async connection.
     let so_error =
