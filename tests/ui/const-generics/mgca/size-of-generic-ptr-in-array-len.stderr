@@ -1,17 +1,17 @@
 error: function items cannot be used as const args
-  --> $DIR/size-of-generic-ptr-in-array-len.rs:6:9
+  --> $DIR/size-of-generic-ptr-in-array-len.rs:5:9
    |
 LL |     [0; size_of::<*mut T>()];
    |         ^^^^^^^^^^^^^^^^^
 
 error: tuple constructor with invalid base path
-  --> $DIR/size-of-generic-ptr-in-array-len.rs:6:9
+  --> $DIR/size-of-generic-ptr-in-array-len.rs:5:9
    |
 LL |     [0; size_of::<*mut T>()];
    |         ^^^^^^^^^^^^^^^^^^^
 
 error: generic parameters may not be used in const operations
-  --> $DIR/size-of-generic-ptr-in-array-len.rs:9:32
+  --> $DIR/size-of-generic-ptr-in-array-len.rs:8:32
    |
 LL |     [0; const { size_of::<*mut T>() }];
    |                                ^

@@ -3120,7 +3120,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         })
     }
 
-    /// `def_id` is a const item used in the type system. Checks if that's OK.
+    /// `alias_const` is a const item used in the type system. Checks if that's OK.
     fn check_const_item_in_type_system(
         &self,
         alias_const: ty::AliasConstKind<'tcx>,

@@ -1,13 +1,13 @@
-#![feature(gca_min_const_items, gca_macroless_args, adt_const_params)]
+#![feature(gca_adts, gca_min_const_items, gca_macroless_args, adt_const_params)]
 
 #[derive(Eq, PartialEq, std::marker::ConstParamTy)]
 enum E {
-    S {}
+    S {},
 }
 
 fn foo<const N: E>() {}
 
 fn main() {
-    foo::<{E::S { x: const { 1 } }}>();
-        //~^ ERROR variant `E::S` has no field named `x` [E0559]
+    foo::<{ E::S { x: const { 1 } } }>();
+    //~^ ERROR variant `E::S` has no field named `x` [E0559]
 }

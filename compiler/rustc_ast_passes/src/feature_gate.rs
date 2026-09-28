@@ -3,7 +3,7 @@ use rustc_ast::{self as ast, AttrVec, GenericBound, NodeId, PatKind, attr, token
 use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::msg;
-use rustc_feature::Features;
+use rustc_feature::{DependentFeature, Features};
 use rustc_session::Session;
 use rustc_session::diagnostics::{feature_err, feature_warn};
 use rustc_span::{Span, Spanned, sym};
@@ -651,26 +651,47 @@ fn check_incompatible_features(sess: &Session, features: &Features) {
 }
 
 fn check_dependent_features(sess: &Session, features: &Features) {
-    for &(parent, children) in
-        rustc_feature::DEPENDENT_FEATURES.iter().filter(|(parent, _)| features.enabled(*parent))
+    for &(parent, ref children) in
+        rustc_feature::DEPENDENT_FEATURES.iter().filter(|(parent, children)| {
+            features.enabled(*parent) && !check_enabled(features, children)
+        })
     {
-        if children.iter().any(|f| !features.enabled(*f)) {
-            let parent_span = features
-                .enabled_features_iter_stable_order()
-                .find_map(|(name, span)| (name == parent).then_some(span))
-                .unwrap();
-            // FIXME: should probably format this in fluent instead of here
-            let missing = children
+        let parent_span = features
+            .enabled_features_iter_stable_order()
+            .find_map(|(name, span)| (name == parent).then_some(span))
+            .unwrap();
+        // FIXME: should probably format this in fluent instead of here
+        let missing = format(features, &children);
+        sess.dcx().emit_err(diagnostics::MissingDependentFeatures { parent_span, parent, missing });
+    }
+
+    fn check_enabled(features: &Features, feature: &DependentFeature) -> bool {
+        match feature {
+            DependentFeature::And(children) => {
+                children.iter().all(|child| check_enabled(features, child))
+            }
+            DependentFeature::Or(children) => {
+                children.iter().any(|child| check_enabled(features, child))
+            }
+            DependentFeature::Leaf(symbol) => features.enabled(*symbol),
+        }
+    }
+
+    fn format(features: &Features, feature: &DependentFeature) -> String {
+        // FIXME: parentheses/precedence
+        match feature {
+            DependentFeature::And(children) => children
                 .iter()
-                .filter(|f| !features.enabled(**f))
-                .map(|s| format!("`{}`", s.as_str()))
-                .intersperse(String::from(", "))
-                .collect();
-            sess.dcx().emit_err(diagnostics::MissingDependentFeatures {
-                parent_span,
-                parent,
-                missing,
-            });
+                .filter(|child| !check_enabled(features, child))
+                .map(|child| format(features, child))
+                .intersperse(String::from(" and "))
+                .collect(),
+            DependentFeature::Or(children) => children
+                .iter()
+                .map(|child| format(features, child))
+                .intersperse(String::from(" or "))
+                .collect(),
+            DependentFeature::Leaf(symbol) => format!("`{}`", symbol.as_str()),
         }
     }
 }
