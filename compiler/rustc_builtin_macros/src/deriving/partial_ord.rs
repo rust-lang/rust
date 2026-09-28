@@ -143,7 +143,7 @@ pub(crate) fn cmp_body(
     } else {
         cx.std_path(&[sym::cmp, sym::Ord, sym::cmp])
     };
-    let equal_path = cx.path_global(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
+    let equal_path = cx.path(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
 
     // The combination of two field expressions. E.g. for `Ord::cmp` this
     // is something like `<field1 comparison> && <field2 comparison>`.

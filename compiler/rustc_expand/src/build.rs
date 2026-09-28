@@ -21,7 +21,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn path(&self, span: Span, strs: Vec<Ident>) -> ast::Path {
-        self.path_all(span, false, strs, vec![])
+        self.path_all(span, strs, vec![])
     }
     pub fn path_ident(&self, span: Span, id: Ident) -> ast::Path {
         self.path(span, vec![id])
@@ -29,22 +29,14 @@ impl<'a> ExtCtxt<'a> {
     pub fn path_sym(&self, span: Span, name: Symbol) -> ast::Path {
         ast::Path::from_ident(Ident::new(name, span))
     }
-    pub fn path_global(&self, span: Span, strs: Vec<Ident>) -> ast::Path {
-        self.path_all(span, true, strs, vec![])
-    }
     pub fn path_all(
         &self,
         span: Span,
-        global: bool,
         mut idents: Vec<Ident>,
         args: Vec<ast::GenericArg>,
     ) -> ast::Path {
         assert!(!idents.is_empty());
-        let add_root = global && !idents[0].is_path_segment_keyword();
-        let mut segments = ThinVec::with_capacity(idents.len() + add_root as usize);
-        if add_root {
-            segments.push(ast::PathSegment::path_root(span));
-        }
+        let mut segments = ThinVec::with_capacity(idents.len());
         let last_ident = idents.pop().unwrap();
         segments.extend(
             idents.into_iter().map(|ident| ast::PathSegment::from_ident(ident.with_span_pos(span))),
@@ -391,7 +383,7 @@ impl<'a> ExtCtxt<'a> {
         fn_path: Vec<Ident>,
         args: ThinVec<Box<ast::Expr>>,
     ) -> Box<ast::Expr> {
-        let pathexpr = self.expr_path(self.path_global(sp, fn_path));
+        let pathexpr = self.expr_path(self.path(sp, fn_path));
         self.expr_call(sp, pathexpr, args)
     }
     pub fn expr_block(&self, b: Box<ast::Block>) -> Box<ast::Expr> {
@@ -477,7 +469,7 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn expr_none(&self, sp: Span) -> Box<ast::Expr> {
         let none = self.std_path(&[sym::option, sym::Option, sym::None]);
-        self.expr_path(self.path_global(sp, none))
+        self.expr_path(self.path(sp, none))
     }
     pub fn expr_tuple(&self, sp: Span, exprs: ThinVec<Box<ast::Expr>>) -> Box<ast::Expr> {
         self.expr(sp, ast::ExprKind::Tup(exprs))
@@ -541,7 +533,7 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn pat_some(&self, span: Span, pat: ast::Pat) -> ast::Pat {
         let some = self.std_path(&[sym::option, sym::Option, sym::Some]);
-        let path = self.path_global(span, some);
+        let path = self.path(span, some);
         self.pat_tuple_struct(span, path, thin_vec![pat])
     }
 
