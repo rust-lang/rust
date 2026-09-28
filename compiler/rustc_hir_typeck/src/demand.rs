@@ -190,7 +190,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
     ) -> Result<(), Diag<'a>> {
-        self.sup_at(DefineOpaqueTypes::Yes, expected, actual, self.param_env, cause)
+        self.sup_at(cause, self.param_env, DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
             .map_err(|e| {
                 self.err_ctxt().report_mismatched_types(cause, self.param_env, expected, actual, e)
@@ -218,7 +218,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
     ) -> Result<(), Diag<'a>> {
-        self.eq_at(DefineOpaqueTypes::Yes, expected, actual, self.param_env, cause)
+        self.eq_at(cause, self.param_env, DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
             .map_err(|e| {
                 self.err_ctxt().report_mismatched_types(cause, self.param_env, expected, actual, e)
@@ -415,11 +415,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     };
                     let _ = self
                         .eq_at(
+                            &ObligationCause::dummy(),
+                            self.param_env,
                             DefineOpaqueTypes::Yes,
                             *input_arg,
                             arg_ty,
-                            self.param_env,
-                            &ObligationCause::dummy(),
                         )
                         .ok()?;
                     self.select_obligations_where_possible(|errs| {
@@ -502,11 +502,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .and_then(|method| {
                         let _ = self
                             .eq_at(
+                                &ObligationCause::dummy(),
+                                self.param_env,
                                 DefineOpaqueTypes::Yes,
                                 ideal_rcvr_ty,
                                 expected_ty,
-                                self.param_env,
-                                &ObligationCause::dummy(),
                             )
                             .ok()?;
                         Some(method)

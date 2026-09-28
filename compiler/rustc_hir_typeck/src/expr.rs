@@ -2108,11 +2108,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         // and don't allow converting between different structs,
                                         // so there is no way this ever actually defines an opaque
                                         // type. Thus choosing `Yes` is fine.
+                                        &cause,
+                                        self.param_env,
                                         DefineOpaqueTypes::Yes,
                                         target_ty,
                                         fru_ty,
-                                        self.param_env,
-                                        &cause,
                                     ) {
                                         Ok(InferOk { obligations, value: () }) => {
                                             self.register_predicates(obligations)

@@ -220,7 +220,7 @@ fn check<'tcx>(
     // Compare the two signatures with an inference context
     let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
     let cause = rustc_middle::traits::ObligationCause::misc(sp, did);
-    let result = infcx.eq_at(DefineOpaqueTypes::No, lang_sig, user_sig, cx.param_env, &cause);
+    let result = infcx.eq_at(&cause, cx.param_env, DefineOpaqueTypes::No, lang_sig, user_sig);
 
     // If they don't match, emit our own mismatch signatures
     if result.is_err() {

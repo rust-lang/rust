@@ -5409,11 +5409,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     // Doesn't actually matter if we define opaque types here, this is just used for
                                     // diagnostics, and the result is never kept around.
                                     .eq_at(
+                                        &ObligationCause::misc(expr.span, body_def_id),
+                                        param_env,
                                         DefineOpaqueTypes::Yes,
                                         expected,
                                         actual,
-                                        param_env,
-                                        &ObligationCause::misc(expr.span, body_def_id),
                                     ) {
                                     Ok(_) => (), // We ignore nested obligations here for now.
                                     Err(err) => type_diffs.push(err),
