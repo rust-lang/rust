@@ -703,8 +703,7 @@ impl<'a> TraitDef<'a> {
             .collect();
 
         // Create the type of `self`.
-        let path =
-            cx.path_all(type_ident.span.with_ctxt(ctxt), false, vec![type_ident], self_params);
+        let path = cx.path_all(type_ident.span.with_ctxt(ctxt), vec![type_ident], self_params);
         let self_type = cx.ty_path(path);
 
         let mut attrs = thin_vec![cx.attr_word(sym::automatically_derived, self.span),];

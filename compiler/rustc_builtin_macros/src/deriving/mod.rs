@@ -100,12 +100,12 @@ fn assert_ty_bounds(
 ) {
     // Generate statement `let _: assert_path<ty>;`.
     let span = cx.with_def_site_ctxt(span);
-    let assert_path = cx.path_all(span, true, cx.std_path(assert_path), vec![GenericArg::Type(ty)]);
+    let assert_path = cx.path_all(span, cx.std_path(assert_path), vec![GenericArg::Type(ty)]);
     stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
 }
 
 fn new_path(cx: &ExtCtxt<'_>, span: Span, path: &[Symbol], params: Vec<Box<ast::Ty>>) -> ast::Path {
     let params = params.into_iter().map(GenericArg::Type).collect();
     let idents = cx.std_path(path);
-    cx.path_all(span, false, idents, params)
+    cx.path_all(span, idents, params)
 }

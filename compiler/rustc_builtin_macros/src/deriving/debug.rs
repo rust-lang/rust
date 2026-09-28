@@ -172,7 +172,7 @@ fn show_substructure(
         });
 
         // `let values: &[&dyn Debug] = &[&&self.field1, &&self.field2];`
-        let path_debug = cx.path_global(span, cx.std_path(&[sym::fmt, sym::Debug]));
+        let path_debug = cx.path(span, cx.std_path(&[sym::fmt, sym::Debug]));
         let ty_dyn_debug = cx.ty(
             span,
             ast::TyKind::TraitObject(
