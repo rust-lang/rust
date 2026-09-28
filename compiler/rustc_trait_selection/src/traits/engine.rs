@@ -227,8 +227,7 @@ where
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
-            .at(cause, param_env)
-            .eq(DefineOpaqueTypes::Yes, expected, actual)
+            .eq_at(DefineOpaqueTypes::Yes, expected, actual, param_env, cause)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -241,8 +240,7 @@ where
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
-            .at(cause, param_env)
-            .eq_trace(DefineOpaqueTypes::Yes, trace, expected, actual)
+            .eq_trace_at(DefineOpaqueTypes::Yes, trace, expected, actual, param_env, cause)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -255,8 +253,7 @@ where
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
-            .at(cause, param_env)
-            .sub(DefineOpaqueTypes::Yes, expected, actual)
+            .sub_at(DefineOpaqueTypes::Yes, expected, actual, param_env, cause)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -269,8 +266,7 @@ where
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
-            .at(cause, param_env)
-            .relate(DefineOpaqueTypes::Yes, expected, variance, actual)
+            .relate_at(DefineOpaqueTypes::Yes, expected, variance, actual, param_env, cause)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -283,8 +279,7 @@ where
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
-            .at(cause, param_env)
-            .sup(DefineOpaqueTypes::Yes, expected, actual)
+            .sup_at(DefineOpaqueTypes::Yes, expected, actual, param_env, cause)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -297,8 +292,7 @@ where
         actual: T,
     ) -> Result<T, TypeError<'tcx>> {
         self.infcx
-            .at(cause, param_env)
-            .lub(expected, actual)
+            .lub_at(expected, actual, param_env, cause)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 

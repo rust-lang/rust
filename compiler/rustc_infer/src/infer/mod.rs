@@ -881,9 +881,9 @@ impl<'tcx> InferCtxt<'tcx> {
 
         self.enter_forall(predicate, |ty::SubtypePredicate { a_is_expected, a, b }| {
             if a_is_expected {
-                Ok(self.at(cause, param_env).sub(DefineOpaqueTypes::Yes, a, b))
+                Ok(self.sub_at(DefineOpaqueTypes::Yes, a, b, param_env, cause))
             } else {
-                Ok(self.at(cause, param_env).sup(DefineOpaqueTypes::Yes, b, a))
+                Ok(self.sup_at(DefineOpaqueTypes::Yes, b, a, param_env, cause))
             }
         })
     }

@@ -730,8 +730,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // adjustments search for mapped arguments.
                 let cause = self.cause(call_expr.span, ObligationCauseCode::Misc);
                 if self
-                    .at(&cause, self.param_env)
-                    .sup(DefineOpaqueTypes::Yes, formal_input_tys[0], adjusted_arg_type)
+                    .sup_at(
+                        DefineOpaqueTypes::Yes,
+                        formal_input_tys[0],
+                        adjusted_arg_type,
+                        self.param_env,
+                        &cause,
+                    )
                     .is_err()
                 {
                     return do_check();

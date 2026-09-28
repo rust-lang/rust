@@ -113,8 +113,13 @@ fn match_candidate<'tcx>(
     nested.extend(
         selcx
             .infcx
-            .at(&obligation.cause, obligation.param_env)
-            .eq(DefineOpaqueTypes::Yes, obligation.predicate.trait_ref, candidate.trait_ref)?
+            .eq_at(
+                DefineOpaqueTypes::Yes,
+                obligation.predicate.trait_ref,
+                candidate.trait_ref,
+                obligation.param_env,
+                &obligation.cause,
+            )?
             .into_obligations(),
     );
 

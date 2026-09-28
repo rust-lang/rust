@@ -354,18 +354,23 @@ fn equate_impl_headers<'tcx>(
     impl1: &ImplHeader<'tcx>,
     impl2: &ImplHeader<'tcx>,
 ) -> Option<PredicateObligations<'tcx>> {
-    let result =
-        match (impl1.trait_ref, impl2.trait_ref) {
-            (Some(impl1_ref), Some(impl2_ref)) => infcx
-                .at(&ObligationCause::dummy(), param_env)
-                .eq(DefineOpaqueTypes::Yes, impl1_ref, impl2_ref),
-            (None, None) => infcx.at(&ObligationCause::dummy(), param_env).eq(
-                DefineOpaqueTypes::Yes,
-                impl1.self_ty,
-                impl2.self_ty,
-            ),
-            _ => bug!("equate_impl_headers given mismatched impl kinds"),
-        };
+    let result = match (impl1.trait_ref, impl2.trait_ref) {
+        (Some(impl1_ref), Some(impl2_ref)) => infcx.eq_at(
+            DefineOpaqueTypes::Yes,
+            impl1_ref,
+            impl2_ref,
+            param_env,
+            &ObligationCause::dummy(),
+        ),
+        (None, None) => infcx.eq_at(
+            DefineOpaqueTypes::Yes,
+            impl1.self_ty,
+            impl2.self_ty,
+            param_env,
+            &ObligationCause::dummy(),
+        ),
+        _ => bug!("equate_impl_headers given mismatched impl kinds"),
+    };
 
     result.map(|infer_ok| infer_ok.obligations).ok()
 }
@@ -582,20 +587,20 @@ fn plug_infer_with_placeholders<'tcx>(
         fn visit_ty(&mut self, ty: Ty<'tcx>) {
             let ty = self.infcx.shallow_resolve(ty);
             if ty.is_ty_var() {
-                let Ok(InferOk { value: (), obligations }) =
-                    self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
-                        // Comparing against a type variable never registers hidden types anyway
-                        DefineOpaqueTypes::Yes,
-                        ty,
-                        Ty::new_placeholder(
-                            self.infcx.tcx,
-                            ty::PlaceholderType::new(
-                                self.universe,
-                                ty::BoundTy { var: self.next_var(), kind: ty::BoundTyKind::Anon },
-                            ),
+                let Ok(InferOk { value: (), obligations }) = self.infcx.eq_at(
+                    // Comparing against a type variable never registers hidden types anyway
+                    DefineOpaqueTypes::Yes,
+                    ty,
+                    Ty::new_placeholder(
+                        self.infcx.tcx,
+                        ty::PlaceholderType::new(
+                            self.universe,
+                            ty::BoundTy { var: self.next_var(), kind: ty::BoundTyKind::Anon },
                         ),
-                    )
-                else {
+                    ),
+                    ty::ParamEnv::empty(),
+                    &ObligationCause::dummy(),
+                ) else {
                     bug!("we always expect to be able to plug an infer var with placeholder")
                 };
                 assert_eq!(obligations.len(), 0);
@@ -607,21 +612,21 @@ fn plug_infer_with_placeholders<'tcx>(
         fn visit_const(&mut self, ct: ty::Const<'tcx>) {
             let ct = self.infcx.shallow_resolve_const(ct);
             if ct.is_ct_infer() {
-                let Ok(InferOk { value: (), obligations }) =
-                    self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
-                        // The types of the constants are the same, so there is no hidden type
-                        // registration happening anyway.
-                        DefineOpaqueTypes::Yes,
-                        ct,
-                        ty::Const::new_placeholder(
-                            self.infcx.tcx,
-                            ty::PlaceholderConst::new(
-                                self.universe,
-                                ty::BoundConst::new(self.next_var()),
-                            ),
+                let Ok(InferOk { value: (), obligations }) = self.infcx.eq_at(
+                    // The types of the constants are the same, so there is no hidden type
+                    // registration happening anyway.
+                    DefineOpaqueTypes::Yes,
+                    ct,
+                    ty::Const::new_placeholder(
+                        self.infcx.tcx,
+                        ty::PlaceholderConst::new(
+                            self.universe,
+                            ty::BoundConst::new(self.next_var()),
                         ),
-                    )
-                else {
+                    ),
+                    ty::ParamEnv::empty(),
+                    &ObligationCause::dummy(),
+                ) else {
                     bug!("we always expect to be able to plug an infer var with placeholder")
                 };
                 assert_eq!(obligations.len(), 0);
@@ -639,23 +644,23 @@ fn plug_infer_with_placeholders<'tcx>(
                     .unwrap_region_constraints()
                     .shallow_resolve_region_var(self.infcx.tcx, vid);
                 if r.is_var() {
-                    let Ok(InferOk { value: (), obligations }) =
-                        self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
-                            // Lifetimes don't contain opaque types (or any types for that matter).
-                            DefineOpaqueTypes::Yes,
-                            r,
-                            ty::Region::new_placeholder(
-                                self.infcx.tcx,
-                                ty::PlaceholderRegion::new(
-                                    self.universe,
-                                    ty::BoundRegion {
-                                        var: self.next_var(),
-                                        kind: ty::BoundRegionKind::Anon,
-                                    },
-                                ),
+                    let Ok(InferOk { value: (), obligations }) = self.infcx.eq_at(
+                        // Lifetimes don't contain opaque types (or any types for that matter).
+                        DefineOpaqueTypes::Yes,
+                        r,
+                        ty::Region::new_placeholder(
+                            self.infcx.tcx,
+                            ty::PlaceholderRegion::new(
+                                self.universe,
+                                ty::BoundRegion {
+                                    var: self.next_var(),
+                                    kind: ty::BoundRegionKind::Anon,
+                                },
                             ),
-                        )
-                    else {
+                        ),
+                        ty::ParamEnv::empty(),
+                        &ObligationCause::dummy(),
+                    ) else {
                         bug!("we always expect to be able to plug an infer var with placeholder")
                     };
                     assert_eq!(obligations.len(), 0);
