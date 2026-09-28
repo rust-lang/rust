@@ -252,6 +252,74 @@ assert: "#preferred-light-theme.setting-line:not(.hidden)"
 assert-text: ("#preferred-dark-theme .setting-radio-name", "Preferred dark theme")
 assert-text: ("#preferred-light-theme .setting-radio-name", "Preferred light theme")
 
+// We check the display of the settings popover tabs.
+define-function: (
+    "check-tabs",
+    [theme, background, background_selected, background_hover, border_bottom,
+     border_bottom_selected, border_bottom_hover, border_top, border_top_selected,
+     border_top_hover],
+    block {
+        call-function: ("switch-theme-and-keep-open", {"theme": |theme|})
+
+        assert-css: ("#settings .tabs > button.tab:not(.selected)", {
+            "background-color": |background|,
+            "border-bottom": |border_bottom|,
+            "border-top": |border_top|,
+        })
+        assert-css: ("#settings .tabs > button.tab.selected", {
+            "background-color": |background_selected|,
+            "border-bottom": |border_bottom_selected|,
+            "border-top": |border_top_selected|,
+        })
+        // We ensure that the popover "top arrow" has the same color as the tabs background.
+        assert-css: ("#settings::before", {
+            "background-color": |background|,
+        })
+        move-cursor-to: "#settings .tabs > button.tab:not(.selected)"
+        assert-css: ("#settings .tabs > button.tab:not(.selected):hover", {
+            "background-color": |background_hover|,
+            "border-bottom": |border_bottom_hover|,
+            "border-top": |border_top_hover|,
+        })
+})
+
+call-function: ("check-tabs", {
+    "theme": "ayu",
+    "background": "#1d1f20",
+    "background_selected": "#141920",
+    "background_hover": "#141920",
+    "border_bottom": "0px none #c5c5c5",
+    "border_bottom_selected": "0px none #c5c5c5",
+    "border_bottom_hover": "0px none #c5c5c5",
+    "border_top": "2px solid #1d1f20",
+    "border_top_selected": "2px solid #ffb44c",
+    "border_top_hover": "2px solid #ffb44c",
+})
+call-function: ("check-tabs", {
+    "theme": "dark",
+    "background": "#252525",
+    "background_selected": "#353535",
+    "background_hover": "#353535",
+    "border_bottom": "0px none #ddd",
+    "border_bottom_selected": "0px none #ddd",
+    "border_bottom_hover": "0px none #ddd",
+    "border_top": "2px solid #252525",
+    "border_top_selected": "2px solid #0089ff",
+    "border_top_hover": "2px solid #0089ff",
+})
+call-function: ("check-tabs", {
+    "theme": "light",
+    "background": "#e6e6e6",
+    "background_selected": "#fff",
+    "background_hover": "#fff",
+    "border_bottom": "0px none #000",
+    "border_bottom_selected": "0px none #000",
+    "border_bottom_hover": "0px none #000",
+    "border_top": "2px solid #e6e6e6",
+    "border_top_selected": "2px solid #0089ff",
+    "border_top_hover": "2px solid #0089ff",
+})
+
 // We now check that clicking on the toggles' text is like clicking on the checkbox.
 // To test it, we use the "Disable keyboard shortcuts".
 call-function: ("change-settings-tab", {'tab_name': 'Interface'})

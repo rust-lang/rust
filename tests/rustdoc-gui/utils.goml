@@ -76,16 +76,25 @@ define-function: (
 )
 
 define-function: (
-    "switch-theme",
+    "switch-theme-and-keep-open",
     [theme],
     block {
         // Open the settings menu.
         call-function: ("change-settings-tab", {'tab_name': 'Appearance'})
         // Change the setting.
         click: "#theme-"+ |theme|
-        call-function: ("close-settings-menu", {})
         // Ensure that the local storage was correctly updated.
         assert-local-storage: {"rustdoc-theme": |theme|}
+    },
+)
+
+define-function: (
+    "switch-theme",
+    [theme],
+    block {
+        call-function: ("switch-theme-and-keep-open", {'theme': |theme|})
+        // Close the settings menu.
+        call-function: ("close-settings-menu", {})
     },
 )
 
