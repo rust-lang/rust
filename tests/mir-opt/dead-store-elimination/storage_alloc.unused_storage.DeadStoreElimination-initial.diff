@@ -1,0 +1,19 @@
+- // MIR for `unused_storage` before DeadStoreElimination-initial
++ // MIR for `unused_storage` after DeadStoreElimination-initial
+  
+  fn unused_storage(_1: u8) -> () {
+      debug x => _2;
+      let mut _0: ();
+      let mut _2: &u8;
+  
+      bb0: {
+-         StorageLive(_2);
+-         StorageAlloc(_2);
+-         _2 = &_1;
+-         StorageDead(_2);
++         // DBG: _2 = &_1;
+          _0 = ();
+          return;
+      }
+  }
+  

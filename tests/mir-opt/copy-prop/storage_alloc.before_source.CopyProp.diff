@@ -1,0 +1,23 @@
+- // MIR for `before_source` before CopyProp
++ // MIR for `before_source` after CopyProp
+  
+  fn before_source() -> u8 {
+      let mut _0: u8;
+      let mut _1: u8;
+      let mut _2: u8;
+  
+      bb0: {
+-         StorageLive(_2);
+-         StorageAlloc(_2);
+-         StorageLive(_1);
++         StorageAlloc(_1);
+          _1 = const 42_u8;
+-         _2 = copy _1;
+-         _0 = Add(copy _2, const 1_u8);
+-         StorageDead(_1);
+-         StorageDead(_2);
++         _0 = Add(copy _1, const 1_u8);
+          return;
+      }
+  }
+  
