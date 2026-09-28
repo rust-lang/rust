@@ -313,12 +313,6 @@ where
 // Cross-platform, iterator-independent parsing
 ////////////////////////////////////////////////////////////////////////////////
 
-// /// Says whether the first byte after the prefix is a separator.
-// fn has_physical_root(s: &[u8], prefix: Option<Prefix<'_>>) -> bool {
-//     let path = if let Some(p) = prefix { &s[p.len()..] } else { s };
-//     !path.is_empty() && is_sep_byte(path[0])
-// }
-
 // basic workhorse for splitting stem and extension
 fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
     if file.as_encoded_bytes() == b".." {
