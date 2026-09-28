@@ -1,4 +1,6 @@
 //! Definition of `InferCtxtLike` from the librarified type layer.
+use std::range::RangeInclusive;
+
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::traits::ObligationCause;
@@ -49,7 +51,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     fn insert_placeholder_assumptions(
         &self,
         u: ty::UniverseIndex,
-        assumptions: Option<rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>>,
+        assumptions: rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>,
     ) {
         self.insert_placeholder_assumptions(u, assumptions);
     }
@@ -57,7 +59,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     fn get_placeholder_assumptions(
         &self,
         u: ty::UniverseIndex,
-    ) -> Option<rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>> {
+    ) -> rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>> {
         self.get_placeholder_assumptions(u)
     }
 
@@ -65,6 +67,10 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         &self,
     ) -> rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>> {
         self.get_solver_region_constraint().without_spans()
+    }
+
+    fn has_placeholder_assumptions(&self, range: RangeInclusive<ty::UniverseIndex>) -> bool {
+        self.has_placeholder_assumptions(range)
     }
 
     fn overwrite_solver_region_constraint(
@@ -189,7 +195,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
             let u = self.universe();
             self.placeholder_assumptions_for_next_solver
                 .borrow_mut()
-                .insert(u, Some(rustc_type_ir::region_constraint::Assumptions::empty()));
+                .insert(u, rustc_type_ir::region_constraint::Assumptions::empty());
             f(value)
         })
     }
