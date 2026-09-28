@@ -1,7 +1,5 @@
 use rustc_ast::expand::allocator::{ALLOC_ERROR_HANDLER, global_fn_name};
-use rustc_ast::{
-    self as ast, Fn, FnHeader, FnSig, Generics, ItemKind, Safety, Stmt, StmtKind, TyKind,
-};
+use rustc_ast::{self as ast, FnHeader, FnSig, Generics, ItemKind, Safety, Stmt, StmtKind, TyKind};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -83,16 +81,12 @@ fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span
     let sig = FnSig { decl, header, span };
 
     let body = Some(cx.block_expr(call));
-    let kind = ItemKind::Fn(Box::new(Fn {
-        defaultness: ast::Defaultness::Implicit,
+    let kind = ItemKind::Fn(cx.item_fn(
         sig,
-        ident: Ident::from_str_and_span(&global_fn_name(ALLOC_ERROR_HANDLER), span),
-        generics: Generics::default(),
-        contract: None,
+        Ident::from_str_and_span(&global_fn_name(ALLOC_ERROR_HANDLER), span),
+        Generics::default(),
         body,
-        define_opaque: None,
-        eii_impl: None,
-    }));
+    ));
 
     let attrs = thin_vec![cx.attr_word(sym::rustc_std_internal_symbol, span)];
 

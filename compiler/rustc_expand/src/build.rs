@@ -718,6 +718,25 @@ impl<'a> ExtCtxt<'a> {
         )
     }
 
+    pub fn item_fn(
+        &self,
+        sig: ast::FnSig,
+        ident: Ident,
+        generics: ast::Generics,
+        body: Option<Box<ast::Block>>,
+    ) -> Box<ast::Fn> {
+        Box::new(ast::Fn {
+            defaultness: ast::Defaultness::Implicit,
+            sig,
+            ident,
+            generics,
+            contract: None,
+            body,
+            define_opaque: None,
+            eii_impl: None,
+        })
+    }
+
     // Builds `#[name]`.
     pub fn attr_word(&self, name: Symbol, span: Span) -> ast::Attribute {
         let g = &self.sess.psess.attr_id_generator;

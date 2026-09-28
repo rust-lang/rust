@@ -335,24 +335,14 @@ fn add_main(cx: &mut TestCtxt<'_>, c: &mut ast::Crate) {
 
     let decl = ecx.fn_decl(ThinVec::new(), ast::FnRetTy::Ty(main_ret_ty));
     let sig = ast::FnSig { decl, header: ast::FnHeader::default(), span: sp };
-    let defaultness = ast::Defaultness::Implicit;
-
     // Honor the reexport_test_harness_main attribute
     let main_ident = match cx.reexport_test_harness_main {
         Some(sym) => Ident::new(sym, sp.with_ctxt(SyntaxContext::root())),
         None => Ident::new(sym::main, sp),
     };
 
-    let main = ast::ItemKind::Fn(Box::new(ast::Fn {
-        defaultness,
-        sig,
-        ident: main_ident,
-        generics: ast::Generics::default(),
-        contract: None,
-        body: Some(main_body),
-        define_opaque: None,
-        eii_impl: None,
-    }));
+    let main =
+        ast::ItemKind::Fn(ecx.item_fn(sig, main_ident, ast::Generics::default(), Some(main_body)));
 
     let main = Box::new(ast::Item {
         attrs: thin_vec![main_attr, coverage_attr, doc_hidden_attr],
