@@ -94,8 +94,8 @@ jobs:
         #   os: ["self-hosted", "linux", "riscv64"]
         - target: riscv64gc-unknown-linux-gnu
           os: ubuntu-26.04
-        - target: s390x-unknown-linux-gnu
-          os: self-hosted-linux-s390x-resolute-large-rust # resolute == ubuntu-26.04
+        # - target: s390x-unknown-linux-gnu
+        #   os: self-hosted-linux-s390x-resolute-large-rust # resolute == ubuntu-26.04
         - target: s390x-unknown-linux-gnu
           os: ubuntu-24.04-s390x
         - target: thumbv6m-none-eabi
