@@ -10,20 +10,30 @@
 fn main() {
     let b = &mut true;
     match b {
-        //~^ ERROR use of moved value: `b` [E0382]
-        &mut false => {},
-        _ if { (|| { let bar = b; *bar = false; })();
-                     false } => { },
-        &mut true => { println!("You might think we should get here"); },
+        &mut false => {}
+        _ if {
+            (|| {
+                //~^ ERROR cannot mutably borrow `*b` in match guard
+                let bar = b;
+                *bar = false;
+            })();
+            false
+        } => {}
+        &mut true => {
+            println!("You might think we should get here");
+        }
         _ => panic!("surely we could never get here, since rustc warns it is unreachable."),
     }
 
     let b = &mut true;
     match b {
-        //~^ ERROR use of moved value: `b` [E0382]
         &mut false => {}
         _ if let Some(()) = {
-            (|| { let bar = b; *bar = false; })();
+            (|| {
+                //~^ ERROR cannot mutably borrow `*b` in match guard
+                let bar = b;
+                *bar = false;
+            })();
             None
         } => {}
         &mut true => {}
