@@ -14,7 +14,7 @@ use rustc_crate_store::Untracked;
 use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
-    AppendOnlyIndexVec, DynSend, DynSync, FreezeLock, WorkerLocal, par_fns,
+    AppendOnlyIndexVec, DynSend, DynSync, FreezeLock, WorkerLocal, par_fns, par_for_each_in,
 };
 use rustc_data_structures::thousands;
 use rustc_errors::timings::TimingSection;
@@ -22,14 +22,14 @@ use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
-use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
+use rustc_hir::def_id::{DefIndex, LOCAL_CRATE, LocalDefId, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
 use rustc_incremental::setup_dep_graph;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
-use rustc_middle::middle::resolve::{ResolverAstLowering, ResolverGlobalCtxt};
+use rustc_middle::middle::resolve::{AstOwner, ResolverAstLowering, ResolverGlobalCtxt};
 use rustc_middle::ty::{self, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_parse::lexer::StripTokens;
@@ -1090,9 +1090,24 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
 /// Runs all analyses that we guarantee to run, even if errors were reported in earlier analyses.
 /// This function never fails.
 fn run_required_analyses(tcx: TyCtxt<'_>) {
+    tcx.untracked().definitions.write().commit_end_of_determinism();
+    tcx.ensure_done().resolve_type_relative_delegations(());
+
+    let index = tcx.index_ast(());
+    let index = (0..index.len())
+        .into_iter()
+        .map(|i| LocalDefId { local_def_index: DefIndex::from_usize(i) })
+        .filter(|&id| index.get(id).is_some_and(|x| !matches!(x.borrow().1, AstOwner::NonOwner)))
+        .collect::<Vec<_>>();
+
+    par_for_each_in(index, |&def_id| {
+        tcx.ensure_done().lower_to_hir(def_id);
+    });
+
     if tcx.sess.opts.unstable_opts.input_stats {
         rustc_passes::input_stats::print_hir_stats(tcx);
     }
+
     // When using rustdoc's "jump to def" feature, it enters this code and `check_crate`
     // is not defined. So we need to cfg it out.
     #[cfg(all(not(doc), debug_assertions))]
@@ -1102,8 +1117,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // This is needed since the `hir_id_validator::check_crate` call above is not guaranteed
     // to use `hir_crate_items`.
     tcx.ensure_done().hir_crate_items(());
-
-    tcx.untracked().definitions.write().commit_end_of_determinism();
 
     rustc_passes::delegation::check_glob_and_list_delegations_target_expr(tcx);
 
