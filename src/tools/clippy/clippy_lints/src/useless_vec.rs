@@ -16,7 +16,7 @@ use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, LetStmt, Mutability, Node, Pa
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf as _;
-use rustc_span::{DesugaringKind, Span};
+use rustc_span::{DesugaringKind, OrdSpan, Span};
 
 pub struct UselessVec {
     too_large_for_stack: u64,
@@ -41,7 +41,7 @@ pub struct UselessVec {
     /// the first `vec![1, 2]` (which is shared with the other expn) to an array which indeed would
     /// work, we get a false positive warning on the `$v.push(3)` which really requires `$v` to
     /// be a vector.
-    span_to_state: BTreeMap<Span, VecState>,
+    span_to_state: BTreeMap<OrdSpan, VecState>,
     allow_in_test: bool,
 }
 
@@ -223,7 +223,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
                         },
                     };
 
-                    if let Entry::Vacant(entry) = self.span_to_state.entry(vec_span) {
+                    if let Entry::Vacant(entry) = self.span_to_state.entry(OrdSpan(vec_span)) {
                         entry.insert(VecState::Change {
                             suggest_ty,
                             vec_snippet,
@@ -232,7 +232,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
                     }
                 },
                 VecToArray::Impossible => {
-                    self.span_to_state.insert(vec_span, VecState::NoChange);
+                    self.span_to_state.insert(OrdSpan(vec_span), VecState::NoChange);
                 },
             }
         }
@@ -246,6 +246,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
                 expr_hir_id,
             } = state
             {
+                let span = span.0;
                 span_lint_hir_and_then(cx, USELESS_VEC, expr_hir_id, span, "useless use of `vec!`", |diag| {
                     let help_msg = format!("you can use {} directly", suggest_ty.desc());
                     // If the `vec!` macro contains comment, better not make the suggestion machine applicable as it

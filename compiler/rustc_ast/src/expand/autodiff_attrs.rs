@@ -160,7 +160,7 @@ pub fn valid_ty_for_activity(ty: &Box<Ty>, activity: DiffActivity) -> bool {
     if matches!(activity, Active | ActiveOnly) {
         return true;
     }
-    matches!(ty.kind, TyKind::Ptr(_) | TyKind::Ref(..))
+    matches!(ty.kind, TyKind::Ptr(..) | TyKind::Ref(..))
         && matches!(activity, Duplicated | DuplicatedOnly)
 }
 pub fn valid_input_activity(mode: DiffMode, activity: DiffActivity) -> bool {

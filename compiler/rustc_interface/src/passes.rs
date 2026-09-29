@@ -433,7 +433,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     // Gate identifiers containing invalid Unicode codepoints that were recovered during lexing.
     sess.psess.bad_unicode_identifiers.with_lock(|identifiers| {
         for (ident, mut spans) in identifiers.drain(..) {
-            spans.sort();
+            spans.sort_by_key(|span| span.lo_hi());
             if ident == sym::ferris {
                 enum FerrisFix {
                     SnakeCase,
@@ -1102,6 +1102,8 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // This is needed since the `hir_id_validator::check_crate` call above is not guaranteed
     // to use `hir_crate_items`.
     tcx.ensure_done().hir_crate_items(());
+
+    tcx.untracked().definitions.write().commit_end_of_determinism();
 
     rustc_passes::delegation::check_glob_and_list_delegations_target_expr(tcx);
 

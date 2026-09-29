@@ -1123,6 +1123,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--exclude=[Select the benchmarks matching a prefix in this comma-separated list that you don'\''t want to run]:EXCLUDE:_default' \
 '*--scenarios=[Select the scenarios that should be benchmarked]:SCENARIOS:(Full IncrFull IncrUnchanged IncrPatched)' \
 '*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc DocJson Opt Clippy)' \
+'--database-path=[]:DATABASE_PATH:_default' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
 '--build=[host target of the stage0 compiler]:BUILD:' \
@@ -1172,6 +1173,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--exclude=[Select the benchmarks matching a prefix in this comma-separated list that you don'\''t want to run]:EXCLUDE:_default' \
 '*--scenarios=[Select the scenarios that should be benchmarked]:SCENARIOS:(Full IncrFull IncrUnchanged IncrPatched)' \
 '*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc DocJson Opt Clippy)' \
+'--database-path=[]:DATABASE_PATH:_default' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
 '--build=[host target of the stage0 compiler]:BUILD:' \
@@ -1221,6 +1223,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--exclude=[Select the benchmarks matching a prefix in this comma-separated list that you don'\''t want to run]:EXCLUDE:_default' \
 '*--scenarios=[Select the scenarios that should be benchmarked]:SCENARIOS:(Full IncrFull IncrUnchanged IncrPatched)' \
 '*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc DocJson Opt Clippy)' \
+'--database-path=[]:DATABASE_PATH:_default' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
 '--build=[host target of the stage0 compiler]:BUILD:' \
@@ -1270,6 +1273,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--exclude=[Select the benchmarks matching a prefix in this comma-separated list that you don'\''t want to run]:EXCLUDE:_default' \
 '*--scenarios=[Select the scenarios that should be benchmarked]:SCENARIOS:(Full IncrFull IncrUnchanged IncrPatched)' \
 '*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc DocJson Opt Clippy)' \
+'--database-path=[]:DATABASE_PATH:_default' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
 '--build=[host target of the stage0 compiler]:BUILD:' \
@@ -1316,6 +1320,7 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (compare)
 _arguments "${_arguments_options[@]}" : \
+'--database-path=[]:DATABASE_PATH:_default' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
 '--build=[host target of the stage0 compiler]:BUILD:' \

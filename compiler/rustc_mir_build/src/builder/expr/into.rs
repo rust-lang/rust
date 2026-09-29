@@ -238,8 +238,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let body_block_end = this.expr_into_dest(tmp, body_block, body).into_block();
 
                     let goto = this.cfg.goto(body_block_end, source_info, loop_block);
-                    if let Some(attrs) = this.thir.attributes.get(&expr_id) {
-                        goto.attributes = attrs.clone();
+                    if let Some(attrs) = this.thir.loop_hint_attrs.get(&expr_id) {
+                        goto.loop_hint_attrs = attrs.clone();
                     }
 
                     // Loops are only exited by `break` expressions.

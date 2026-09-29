@@ -2160,8 +2160,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
 
                 // Due to macros, there might be several predicates with the same span
                 // and we only want to suggest removing them once.
-                lint_spans.sort_unstable();
-                lint_spans.dedup();
+                lint_spans.sort_unstable_by_key(|span| span.lo_hi());
+                lint_spans.dedup_by_key(|span| span.lo_hi());
 
                 cx.emit_span_lint(
                     EXPLICIT_OUTLIVES_REQUIREMENTS,
@@ -2649,7 +2649,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
 
             match &expr.kind {
                 hir::ExprKind::Cast(expr, ty) => {
-                    if let hir::TyKind::Ptr(_) = ty.kind {
+                    if let hir::TyKind::Ptr(..) = ty.kind {
                         return is_zero(expr) || is_null_ptr(cx, expr);
                     }
                 }

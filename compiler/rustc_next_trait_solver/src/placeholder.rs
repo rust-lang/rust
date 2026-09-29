@@ -75,7 +75,7 @@ where
                     // context to compute placeholder assumptions for the binders it enters.
                     infcx.insert_placeholder_assumptions(
                         *new,
-                        Some(rustc_type_ir::region_constraint::Assumptions::empty()),
+                        rustc_type_ir::region_constraint::Assumptions::empty(),
                     );
                 }
             }
