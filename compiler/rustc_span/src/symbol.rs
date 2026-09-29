@@ -1073,6 +1073,7 @@ symbols! {
         future_trait,
         fxsr,
         gca,
+        gca_adts,
         gca_const_items,
         gca_macroless_args,
         gca_macroless_items,

@@ -1,6 +1,6 @@
 # gca_min_const_items
 
-Enables the generic const args MVP (paths to direct const items and constructors for ADTs and primitives).
+Enables the generic const args MVP (paths to direct const items and primitives).
 
 The tracking issue for this feature is: [#132980]
 
