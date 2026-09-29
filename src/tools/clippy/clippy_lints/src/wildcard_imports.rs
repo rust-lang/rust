@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_in_test;
-use clippy_utils::source::{snippet, snippet_with_applicability};
+use clippy_utils::source::{snippet_opt, snippet_with_applicability};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -164,14 +164,19 @@ impl WildcardImports {
                 // `;`. In nested imports, like `use _::{inner::*, _}` there is no `;` and we
                 // can just use the end of the item span
                 let mut span = use_path.span;
-                if snippet(cx, span, "").ends_with(';') {
-                    span = use_path.span.with_hi(span.hi() - BytePos(1));
-                }
-                while !snippet(cx, span, "").ends_with('*') {
-                    span = use_path.span.with_hi(span.hi() + BytePos(1));
+                if snippet_opt(cx, span).is_some_and(|snippet| snippet.ends_with(';')) {
+                    span = span.with_hi(span.hi() - BytePos(1));
                 }
 
-                (span, false)
+                let Ok(extended) = cx.sess().source_map().span_extend_while(span, |c| c != '*') else {
+                    return;
+                };
+                let with_star = extended.with_hi(extended.hi() + BytePos(1));
+                if !snippet_opt(cx, with_star).is_some_and(|snippet| snippet.ends_with('*')) {
+                    return;
+                }
+
+                (with_star, false)
             };
 
             let mut imports: Vec<_> = used_imports.iter().map(ToString::to_string).collect();
