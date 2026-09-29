@@ -277,6 +277,9 @@ pub fn is_ty_must_use<'tcx>(
                 IsTyMustUse::Yes(MustUsePath::Coroutine(expr.span))
             }
         }
+        ty::UnsafeBinder(bound_ty) => {
+            is_ty_must_use(cx, cx.tcx.instantiate_bound_regions_with_erased(bound_ty.into()), expr)
+        }
         _ => IsTyMustUse::No,
     }
 }

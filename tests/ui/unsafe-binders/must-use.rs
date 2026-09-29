@@ -1,6 +1,5 @@
 //@ compile-flags: -Znext-solver
-//@ check-pass
-//@ known-bug: #130516
+//@ check-fail
 
 // `#[must_use]` looks through unsafe binders.
 
@@ -19,5 +18,5 @@ fn bound() -> unsafe<> M {
 }
 
 fn main() {
-    bound();
+    bound(); //~ ERROR unused `M` that must be used
 }
