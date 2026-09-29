@@ -56,6 +56,7 @@ use rustc_attr_ir::{
     StableSince, find_attr,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_feature::EnabledLibFeature;
 use rustc_hir::Mutability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet};
@@ -879,6 +880,10 @@ enum ShortItemInfo {
         feature: String,
         tracking: Option<(String, u32)>,
     },
+    /// Internal feature, which won't have a tracking issue.
+    Internal {
+        feature: String,
+    },
     Portability {
         message: String,
     },
@@ -924,11 +929,11 @@ fn short_item_info(
 
     // Render unstable items. But don't render "rustc_private" crates (internal compiler crates).
     // Those crates are permanently unstable so it makes no sense to render "unstable" everywhere.
-    if let Some((StabilityLevel::Unstable { reason: _, issue, .. }, feature)) = item
+    if let Some((StabilityLevel::Unstable { reason: _, issue, .. }, span, feature)) = item
         .stability(cx.tcx())
         .as_ref()
         .filter(|stab| stab.feature != sym::rustc_private)
-        .map(|stab| (stab.level, stab.feature))
+        .map(|stab| (stab.level, stab.span, stab.feature))
     {
         let tracking = if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, issue)
         {
@@ -936,7 +941,18 @@ fn short_item_info(
         } else {
             None
         };
-        extra_info.push(ShortItemInfo::Unstable { feature: feature.to_string(), tracking });
+
+        // NOTE: normally, `rustc_expand` does this, but we don't do that by this point
+        let feat = cx.tcx().features();
+        if !feat.enabled_features().contains(&feature) {
+            feat.set_enabled_lib_feature(EnabledLibFeature { gate_name: feature, attr_sp: span });
+        }
+
+        if feat.internal(feature) {
+            extra_info.push(ShortItemInfo::Internal { feature: feature.to_string() });
+        } else {
+            extra_info.push(ShortItemInfo::Unstable { feature: feature.to_string(), tracking });
+        }
     }
 
     if let Some(message) = portability(item, parent) {
