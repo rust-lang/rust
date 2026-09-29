@@ -227,6 +227,10 @@ impl<'tcx> Value<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::ValueConst<TyCtxt<'tcx>> for Value<'tcx> {
+    fn new(ty: Ty<'tcx>, valtree: ValTree<'tcx>) -> Self {
+        Self { ty, valtree }
+    }
+
     fn ty(self) -> Ty<'tcx> {
         self.ty
     }
@@ -235,8 +239,8 @@ impl<'tcx> rustc_type_ir::inherent::ValueConst<TyCtxt<'tcx>> for Value<'tcx> {
         self.valtree
     }
 
-    fn new(ty: Ty<'tcx>, valtree: ValTree<'tcx>) -> Self {
-        Self { ty, valtree }
+    fn try_to_target_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
+        self.try_to_target_usize(tcx)
     }
 }
 

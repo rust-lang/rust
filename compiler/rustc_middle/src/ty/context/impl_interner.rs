@@ -757,14 +757,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             .unwrap_or_else(|e| panic!("could not compute layout for {ty:?}: {e:?}"))
             .size
     }
-
-    fn try_const_value_to_target_usize(self, const_v: ty::Value<'tcx>) -> Option<u64> {
-        if !const_v.ty.is_usize() {
-            None
-        } else {
-            const_v.try_to_leaf().map(|s| s.to_target_usize(self))
-        }
-    }
 }
 
 impl<'tcx, T: Clone + Copy> rustc_type_ir::intern::Interned<TyCtxt<'tcx>> for Interned<'tcx, T> {

@@ -245,7 +245,7 @@ impl<I: Interner> Const<I> {
     /// Note that this does not evaluate the constant.
     #[inline]
     pub fn try_to_target_usize(self, interner: I) -> Option<u64> {
-        interner.try_const_value_to_target_usize(self.try_to_value()?)
+        self.try_to_value()?.try_to_target_usize(interner)
     }
 
     /// Iterator that walks `self` and any types reachable from
