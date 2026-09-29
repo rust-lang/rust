@@ -7,7 +7,7 @@ fn main() {
         None => {},
         ref mut foo
             if { (|| { let mut bar = foo; bar.take() })(); false } => {},
-        //~^ ERROR cannot move out of `foo` in pattern guard [E0507]
+        //~^ ERROR cannot borrow `*foo` as mutable, as it is immutable for the pattern guard [E0596]
         Some(s) => std::process::exit(*s),
     }
 
@@ -15,7 +15,7 @@ fn main() {
         None => {},
         ref mut foo
             if let Some(()) = { (|| { let mut bar = foo; bar.take() })(); None } => {},
-        //~^ ERROR cannot move out of `foo` in pattern guard [E0507]
+        //~^ ERROR cannot borrow `*foo` as mutable, as it is immutable for the pattern guard [E0596]
         Some(s) => std::process::exit(*s),
     }
 }

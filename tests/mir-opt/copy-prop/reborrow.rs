@@ -5,28 +5,6 @@
 #[inline(never)]
 fn opaque(_: impl Sized) {}
 
-// EMIT_MIR reborrow.remut.CopyProp.diff
-fn remut(mut x: u8) {
-    // CHECK-LABEL: fn remut(
-    // CHECK: debug a => [[a:_.*]];
-    // CHECK: debug c => [[a]];
-    let a = &mut x;
-    let b = &mut *a; //< this cannot mutate a.
-    let c = a; //< so `c` and `a` can be merged.
-    opaque(c);
-}
-
-// EMIT_MIR reborrow.reraw.CopyProp.diff
-fn reraw(mut x: u8) {
-    // CHECK-LABEL: fn reraw(
-    // CHECK: debug a => [[a:_.*]];
-    // CHECK: debug c => [[a]];
-    let a = &mut x;
-    let b = &raw mut *a; //< this cannot mutate a.
-    let c = a; //< so `c` and `a` can be merged.
-    opaque(c);
-}
-
 // EMIT_MIR reborrow.miraw.CopyProp.diff
 fn miraw(mut x: u8) {
     // CHECK-LABEL: fn miraw(
@@ -50,8 +28,6 @@ fn demiraw(mut x: u8) {
 }
 
 fn main() {
-    remut(0);
-    reraw(0);
     miraw(0);
     demiraw(0);
 }

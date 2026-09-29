@@ -17,21 +17,20 @@ fn errors_caught_in_hir_typeck_on_stable() {
     let [&x] = &[&mut 0];
     //[stable2021]~^ ERROR mismatched types
     //[stable2021]~| NOTE types differ in mutability
-    //[classic2024]~^^^ ERROR: cannot move out of type
+    //[classic2024]~^^^ ERROR: cannot borrow data in a `&` reference as mutable [E0596]
     #[cfg(any(classic2021, structural2021))] let _: u32 = x;
     #[cfg(structural2024)] let _: &u32 = x;
 
     let [&x] = &mut [&mut 0];
     //[stable2021]~^ ERROR mismatched types
     //[stable2021]~| NOTE types differ in mutability
-    //[classic2024]~^^^ ERROR: cannot move out of type
     #[cfg(any(classic2021, structural2021))] let _: u32 = x;
     #[cfg(structural2024)] let _: &u32 = x;
 }
 
 pub fn main() {
     if let Some(&Some(x)) = Some(&Some(&mut 0)) {
-        //~^ ERROR: cannot move out of a shared reference [E0507]
+        //~^ ERROR: cannot borrow data in a `&` reference as mutable [E0596]
         let _: &u32 = x;
     }
 
@@ -50,7 +49,6 @@ pub fn main() {
     #[cfg(any(structural2021, structural2024))] let _: &u32 = x;
 
     let [&mut x] = &mut [&mut 0];
-    //[classic2024]~^ ERROR: cannot move out of type
     #[cfg(any(stable2021, classic2021, structural2021))] let _: u32 = x;
     #[cfg(structural2024)] let _: &mut u32 = x;
 }

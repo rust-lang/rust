@@ -1,22 +1,14 @@
-error[E0505]: cannot move out of `t0` because it is borrowed
+error[E0502]: cannot borrow `*t0` as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-move-mut-base-ptr.rs:10:14
    |
-LL | fn foo(t0: &mut isize) {
-   |        -- binding `t0` declared here
 LL |     let p: &isize = &*t0; // Freezes `*t0`
-   |                     ---- borrow of `*t0` occurs here
+   |                     ---- immutable borrow occurs here
 LL |     let t1 = t0;
-   |              ^^ move out of `t0` occurs here
+   |              ^^ mutable borrow occurs here
 LL |     *t1 = 22;
 LL |     p.use_ref();
-   |     - borrow later used here
-   |
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL -     let p: &isize = &*t0; // Freezes `*t0`
-LL +     let p: &isize = &t0.clone(); // Freezes `*t0`
-   |
+   |     - immutable borrow later used here
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0505`.
+For more information about this error, try `rustc --explain E0502`.
