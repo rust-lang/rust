@@ -1807,7 +1807,10 @@ impl<'tcx> Ty<'tcx> {
             // metadata of `tail`.
             ty::Param(_) | ty::Alias(..) => Err(tail),
 
-            ty::UnsafeBinder(inner) => inner.skip_binder().ptr_metadata_ty_or_tail(tcx, normalize),
+            // We *could* try to be a bit clever here by recursing and returning
+            // `Ok` on the "simple" types. That's not easy. And this seems to
+            // work? So, do it this way for now.
+            ty::UnsafeBinder(_) => Err(tail),
 
             ty::Infer(ty::TyVar(_))
             | ty::Pat(..)
