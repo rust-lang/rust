@@ -50,11 +50,14 @@ pub(crate) fn detect_features() -> cache::Initializer {
     let dpb = _sysctlbyname(c"hw.optional.arm.FEAT_DPB");
     let dpb2 = _sysctlbyname(c"hw.optional.arm.FEAT_DPB2");
     let ecv = _sysctlbyname(c"hw.optional.arm.FEAT_ECV");
+    let faminmax = _sysctlbyname(c"hw.optional.arm.FEAT_FAMINMAX");
     let fcma = _sysctlbyname(c"hw.optional.arm.FEAT_FCMA");
     let fhm = _sysctlbyname(c"hw.optional.arm.FEAT_FHM");
     let flagm = _sysctlbyname(c"hw.optional.arm.FEAT_FlagM");
     let flagm2 = _sysctlbyname(c"hw.optional.arm.FEAT_FlagM2");
     let fp16 = _sysctlbyname(c"hw.optional.arm.FEAT_FP16");
+    let fp8 = _sysctlbyname(c"hw.optional.arm.FEAT_FP8");
+    let fpmr = _sysctlbyname(c"hw.optional.arm.FEAT_FPMR");
     let frintts = _sysctlbyname(c"hw.optional.arm.FEAT_FRINTTS");
     let hbc = _sysctlbyname(c"hw.optional.arm.FEAT_HBC");
     let i8mm = _sysctlbyname(c"hw.optional.arm.FEAT_I8MM");
@@ -66,6 +69,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
     let mte = _sysctlbyname(c"hw.optional.arm.FEAT_MTE");
     let mte2 = _sysctlbyname(c"hw.optional.arm.FEAT_MTE2");
     let pauth = _sysctlbyname(c"hw.optional.arm.FEAT_PAuth");
+    let pauth_lr = _sysctlbyname(c"hw.optional.arm.FEAT_PAuth_LR");
     let pmull = _sysctlbyname(c"hw.optional.arm.FEAT_PMULL");
     let rdm = _sysctlbyname(c"hw.optional.arm.FEAT_RDM");
     let sb = _sysctlbyname(c"hw.optional.arm.FEAT_SB");
@@ -89,6 +93,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
     // exist, and may potentially be exposed later.
     /*
     let afp = _sysctlbyname(c"hw.optional.arm.FEAT_AFP");
+    let cpa = _sysctlbyname(c"hw.optional.arm.FEAT_CPA");
+    let cpa2 = _sysctlbyname(c"hw.optional.arm.FEAT_CPA2");
     let csv2 = _sysctlbyname(c"hw.optional.arm.FEAT_CSV2");
     let csv3 = _sysctlbyname(c"hw.optional.arm.FEAT_CSV3");
     let ebf16 = _sysctlbyname(c"hw.optional.arm.FEAT_EBF16");
@@ -131,12 +137,15 @@ pub(crate) fn detect_features() -> cache::Initializer {
     enable_feature(Feature::dpb, dpb);
     enable_feature(Feature::dpb2, dpb2);
     enable_feature(Feature::ecv, ecv);
+    enable_feature(Feature::faminmax, faminmax);
     enable_feature(Feature::fcma, fcma);
     enable_feature(Feature::fhm, fhm);
     enable_feature(Feature::flagm, flagm);
     enable_feature(Feature::flagm2, flagm2);
     enable_feature(Feature::fp, fp);
     enable_feature(Feature::fp16, fp16);
+    enable_feature(Feature::fp8, fp8);
+    enable_feature(Feature::fpmr, fpmr);
     enable_feature(Feature::frintts, frintts);
     enable_feature(Feature::hbc, hbc);
     enable_feature(Feature::i8mm, i8mm);
@@ -146,6 +155,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
     enable_feature(Feature::mte, mte && mte2);
     enable_feature(Feature::paca, pauth);
     enable_feature(Feature::pacg, pauth);
+    enable_feature(Feature::pauth_lr, pauth_lr);
     enable_feature(Feature::pmull, aes && pmull);
     enable_feature(Feature::rcpc, rcpc);
     enable_feature(Feature::rcpc2, rcpc2);
