@@ -208,6 +208,7 @@ macro_rules! check_float_clamp {
 }
 
 #[test]
+#[cfg(target_has_reliable_f16)]
 fn test_clamp_magnitude_f16() {
     check_float_clamp!(f16, 1e3);
 }
@@ -223,11 +224,13 @@ fn test_clamp_magnitude_f64() {
 }
 
 #[test]
+#[cfg(target_has_reliable_f128)]
 fn test_clamp_magnitude_f128() {
     check_float_clamp!(f128, 1e3000);
 }
 
 #[test]
+#[cfg(target_has_reliable_f16)]
 #[should_panic(expected = "limit must be non-negative and not NaN")]
 fn test_clamp_magnitude_f16_panic_negative_limit() {
     let _ = 1.0f16.clamp_magnitude(-1.0);
@@ -246,12 +249,14 @@ fn test_clamp_magnitude_f64_panic_negative_limit() {
 }
 
 #[test]
+#[cfg(target_has_reliable_f128)]
 #[should_panic(expected = "limit must be non-negative and not NaN")]
 fn test_clamp_magnitude_f128_panic_negative_limit() {
     let _ = 1.0f128.clamp_magnitude(-1.0);
 }
 
 #[test]
+#[cfg(target_has_reliable_f16)]
 #[should_panic(expected = "limit must be non-negative and not NaN")]
 fn test_clamp_magnitude_f16_panic_nan_limit() {
     let _ = 1.0f16.clamp_magnitude(f16::NAN);
@@ -270,6 +275,7 @@ fn test_clamp_magnitude_f64_panic_nan_limit() {
 }
 
 #[test]
+#[cfg(target_has_reliable_f128)]
 #[should_panic(expected = "limit must be non-negative and not NaN")]
 fn test_clamp_magnitude_f128_panic_nan_limit() {
     let _ = 1.0f128.clamp_magnitude(f128::NAN);
