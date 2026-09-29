@@ -1,5 +1,5 @@
 error[E0261]: use of undeclared lifetime name `'missing`
-  --> $DIR/lifetime-resolution.rs:6:28
+  --> $DIR/lifetime-resolution.rs:7:28
    |
 LL |     let missing: unsafe<> &'missing ();
    |                            ^^^^^^^^ undeclared lifetime
@@ -15,7 +15,7 @@ LL | fn foo<'missing, 'a>() {
    |        +++++++++
 
 error[E0401]: can't use generic parameters from outer item
-  --> $DIR/lifetime-resolution.rs:10:30
+  --> $DIR/lifetime-resolution.rs:11:30
    |
 LL | fn foo<'a>() {
    |        -- lifetime parameter from outer item

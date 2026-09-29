@@ -1,0 +1,27 @@
+error[E0277]: `u32` cannot be safely transmuted into `unsafe<> u32`
+  --> $DIR/transmute-from.rs:13:28
+   |
+LL |     is_transmutable::<u32, unsafe<> u32>();
+   |                            ^^^^^^^^^^^^ analyzing the transmutability of `unsafe<> u32` is not yet supported
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/transmute-from.rs:10:30
+   |
+LL | fn is_transmutable<Src, Dst: TransmuteFrom<Src>>() {}
+   |                              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: `unsafe<> u32` cannot be safely transmuted into `u32`
+  --> $DIR/transmute-from.rs:15:37
+   |
+LL |     is_transmutable::<unsafe<> u32, u32>();
+   |                                     ^^^ analyzing the transmutability of `unsafe<> u32` is not yet supported
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/transmute-from.rs:10:30
+   |
+LL | fn is_transmutable<Src, Dst: TransmuteFrom<Src>>() {}
+   |                              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

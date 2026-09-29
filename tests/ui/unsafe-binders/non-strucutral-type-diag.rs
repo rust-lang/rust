@@ -1,3 +1,4 @@
+//@ compile-flags: -Znext-solver
 // regression test for <https://github.com/rust-lang/rust/issues/141422>.
 
 #![feature(unsafe_binders)]

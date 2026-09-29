@@ -1,0 +1,21 @@
+error: internal compiler error: compiler/rustc_mir_build/src/builder/expr/as_place.rs:LL:CC: could not resolve upvar: LocalVarId(HirId(DefId(0:5 ~ closure_capture_wrap[HASH]::capture_copy).2)) + []
+  --> $DIR/closure-capture-wrap.rs:20:17
+   |
+LL | fn capture_copy(x: u8) -> (unsafe<> u8, u8) {
+   |                 ^
+
+
+thread 'rustc' ($TID) panicked at compiler/rustc_mir_build/src/builder/expr/as_place.rs:LL:CC:
+Box<dyn Any>
+error: internal compiler error: compiler/rustc_mir_build/src/builder/expr/as_place.rs:LL:CC: could not resolve upvar: LocalVarId(HirId(DefId(0:7 ~ closure_capture_wrap[HASH]::capture_move).2)) + []
+  --> $DIR/closure-capture-wrap.rs:25:17
+   |
+LL | fn capture_move(x: MD<String>) -> unsafe<> MD<String> {
+   |                 ^
+
+
+thread 'rustc' ($TID) panicked at compiler/rustc_mir_build/src/builder/expr/as_place.rs:LL:CC:
+Box<dyn Any>
+
+error: aborting due to 2 previous errors
+

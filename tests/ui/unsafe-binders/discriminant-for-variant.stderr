@@ -1,18 +1,22 @@
 error[E0277]: the trait bound `Box<(dyn Send + 'static)>: Copy` is not satisfied
-  --> $DIR/discriminant-for-variant.rs:3:13
+  --> $DIR/discriminant-for-variant.rs:4:13
    |
 LL | const None: Option<unsafe<> Option<Box<dyn Send>>> = None;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Box<(dyn Send + 'static)>`
    |
    = note: required for `Option<Box<(dyn Send + 'static)>>` to implement `Copy`
+note: required because it appears within the type `Option<Box<(dyn Send + 'static)>>`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error[E0277]: the trait bound `Box<(dyn Send + 'static)>: Copy` is not satisfied
-  --> $DIR/discriminant-for-variant.rs:3:54
+  --> $DIR/discriminant-for-variant.rs:4:54
    |
 LL | const None: Option<unsafe<> Option<Box<dyn Send>>> = None;
    |                                                      ^^^^ the trait `Copy` is not implemented for `Box<(dyn Send + 'static)>`
    |
    = note: required for `Option<Box<(dyn Send + 'static)>>` to implement `Copy`
+note: required because it appears within the type `Option<Box<(dyn Send + 'static)>>`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error: aborting due to 2 previous errors
 

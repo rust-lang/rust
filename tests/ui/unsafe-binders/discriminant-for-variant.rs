@@ -1,3 +1,4 @@
+//@ compile-flags: -Znext-solver
 #![feature(unsafe_binders)]
 
 const None: Option<unsafe<> Option<Box<dyn Send>>> = None;

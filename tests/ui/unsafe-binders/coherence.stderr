@@ -1,0 +1,48 @@
+error[E0119]: conflicting implementations of trait `Tr` for type `unsafe<'a> &'a Local`
+  --> $DIR/coherence.rs:14:1
+   |
+LL | impl Tr for unsafe<'a> &'a Local {}
+   | -------------------------------- first implementation here
+LL | impl Tr for unsafe<'b> &'b Local {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `unsafe<'a> &'a Local`
+   |
+   = note: this behavior recently changed as a result of a bug fix; see rust-lang/rust#56105 for details
+
+warning: conflicting implementations of trait `Tr` for type `unsafe<'a> &'a Local`
+  --> $DIR/coherence.rs:17:1
+   |
+LL | impl Tr for unsafe<'a> &'a Local {}
+   | -------------------------------- first implementation here
+...
+LL | impl<'x> Tr for unsafe<> &'x Local {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `unsafe<'a> &'a Local`
+   |
+   = note: this behavior recently changed as a result of a bug fix; see rust-lang/rust#56105 for details
+   = warning: the behavior may change in a future release
+   = note: for more information, see issue #56105 <https://github.com/rust-lang/rust/issues/56105>
+   = note: `#[warn(coherence_leak_check)]` (part of `#[warn(future_incompatible)]`) on by default
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence.rs:21:1
+   |
+LL | impl Clone for unsafe<'a> &'a Local {
+   | ^^^^^^^^^^^^^^^--------------------
+   |                |
+   |                `unsafe<'a> &'a Local` is not defined in the current crate
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error[E0390]: cannot define inherent `impl` for primitive types
+  --> $DIR/coherence.rs:28:1
+   |
+LL | impl unsafe<'a> &'a Local {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an extension trait instead
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0117, E0119, E0390.
+For more information about an error, try `rustc --explain E0117`.
