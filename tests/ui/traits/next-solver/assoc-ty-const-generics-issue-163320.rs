@@ -1,5 +1,5 @@
-// Regression test for issue #163320: probing associated-type suggestions
-// must retain const-parameter typing information under the next solver.
+// Regression test for issue #163320: ambiguous associated-type paths
+// involving const generics must not ICE during item lowering or type checking.
 
 //@ compile-flags: -Znext-solver=globally
 //@ check-fail
@@ -53,5 +53,10 @@ struct TypeParameterDefault<
     T = <[(); N] as IntoIterator>::Item::Item,
     //~^ ERROR ambiguous associated type
 >(std::marker::PhantomData<T>);
+
+fn in_body<const N: usize>() {
+    let _: <[(); N] as IntoIterator>::Item::Item;
+    //~^ ERROR ambiguous associated type
+}
 
 fn main() {}
