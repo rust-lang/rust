@@ -1,13 +1,5 @@
 //@ compile-flags: -Znext-solver
-//@ build-fail
-//@ failure-status: 101
-//@ known-bug: #130516
-//@ rustc-env:RUST_BACKTRACE=0
-//@ normalize-stderr: "note: .*\n\n" -> ""
-//@ normalize-stderr: "(compiler/[a-z_/]+\.rs):\d+:\d+" -> "$1:LL:CC"
-//@ normalize-stderr: "query stack during panic:\n(.*\n)*?(end of query stack|\.\.\. and \d+ other queries.*)\n" -> ""
-//@ normalize-stderr: "Normalizing .* without wrapping in a `Binder`" -> "Normalizing .. without wrapping in a `Binder`"
-//@ normalize-stderr: "`ProjectionClause\(.*\)` has escaping bound vars" -> "`ProjectionClause(..)` has escaping bound vars"
+//@ build-pass
 //@ compile-flags: -Cdebuginfo=2
 
 // After monomorphization, the metadata of every binder must be concrete: the
