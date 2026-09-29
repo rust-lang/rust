@@ -7,7 +7,7 @@ use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
 
-use crate::builder::Builder;
+use crate::builder::{Builder, PlaceBuilder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Adds a new temporary value of type `ty` storing the result of
@@ -58,11 +58,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         temp
     }
 
-    pub(crate) fn consume_by_copy_or_move(&self, place: Place<'tcx>) -> Operand<'tcx> {
+    pub(crate) fn consume_by_copy_reborrow_or_move(
+        &mut self,
+        place: Place<'tcx>,
+        block: BasicBlock,
+        span: Span,
+    ) -> Operand<'tcx> {
         let tcx = self.tcx;
         let ty = place.ty(&self.local_decls, tcx).ty;
+
         if self.infcx.type_is_copy_modulo_regions(self.param_env, ty) {
             Operand::Copy(place)
+        } else if let ty::Ref(_, _, Mutability::Mut) = ty.kind() {
+            // Reborrow the mutable reference.
+            let reborrow = self.temp(ty, span);
+            let deref = PlaceBuilder::from(place).project(ProjectionElem::Deref).to_place(self);
+            self.cfg.push_assign(
+                block,
+                self.source_info(span),
+                reborrow,
+                Rvalue::Ref(
+                    tcx.lifetimes.re_erased,
+                    BorrowKind::Mut { kind: MutBorrowKind::Default },
+                    deref,
+                ),
+            );
+            Operand::Move(reborrow)
         } else {
             Operand::Move(place)
         }

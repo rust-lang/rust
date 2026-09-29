@@ -5,8 +5,10 @@
       debug x => _1;
       let mut _0: ();
       let _2: &mut u8;
-      let _5: ();
-      let mut _6: &mut u8;
+      let mut _5: &mut u8;
+      let _6: ();
+      let mut _7: &mut u8;
+      let mut _8: &mut u8;
       scope 1 {
           debug a => _2;
           let _3: &mut u8;
@@ -15,7 +17,7 @@
               let _4: &mut u8;
               scope 3 {
 -                 debug c => _4;
-+                 debug c => _2;
++                 debug c => _5;
               }
           }
       }
@@ -26,17 +28,20 @@
           StorageLive(_3);
           _3 = &mut (*_2);
 -         StorageLive(_4);
--         _4 = move _2;
-          StorageLive(_5);
--         StorageLive(_6);
--         _6 = move _4;
--         _5 = opaque::<&mut u8>(move _6) -> [return: bb1, unwind continue];
-+         _5 = opaque::<&mut u8>(copy _2) -> [return: bb1, unwind continue];
+          _5 = &mut (*_2);
+-         _4 = move _5;
+          StorageLive(_6);
+-         StorageLive(_7);
+-         _8 = &mut (*_4);
+-         _7 = move _8;
+-         _6 = opaque::<&mut u8>(move _7) -> [return: bb1, unwind continue];
++         _8 = &mut (*_5);
++         _6 = opaque::<&mut u8>(copy _8) -> [return: bb1, unwind continue];
       }
   
       bb1: {
--         StorageDead(_6);
-          StorageDead(_5);
+-         StorageDead(_7);
+          StorageDead(_6);
           _0 = const ();
 -         StorageDead(_4);
           StorageDead(_3);

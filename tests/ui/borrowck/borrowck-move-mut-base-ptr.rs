@@ -7,7 +7,7 @@
 
 fn foo(t0: &mut isize) {
     let p: &isize = &*t0; // Freezes `*t0`
-    let t1 = t0;        //~ ERROR cannot move out of `t0`
+    let t1 = t0;        //~ ERROR cannot borrow `*t0` as mutable because it is also borrowed as immutable
     *t1 = 22;
     p.use_ref();
 }

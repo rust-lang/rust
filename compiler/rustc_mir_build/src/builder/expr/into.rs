@@ -371,14 +371,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                             )
                                             .into_block();
 
+                                        let arg = this.consume_by_copy_reborrow_or_move(
+                                            state_result_place,
+                                            block,
+                                            scrutinee_span,
+                                        );
                                         this.cfg.push_assign(
                                             block,
                                             source_info,
                                             state_place,
-                                            Rvalue::Use(
-                                                this.consume_by_copy_or_move(state_result_place),
-                                                WithRetag::Yes,
-                                            ),
+                                            Rvalue::Use(arg, WithRetag::Yes),
                                         );
                                         block.unit()
                                     },
@@ -642,7 +644,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 None => {
                                     let place =
                                         place_builder.clone_project(PlaceElem::Field(n, *ty));
-                                    this.consume_by_copy_or_move(place.to_place(this))
+                                    this.consume_by_copy_reborrow_or_move(
+                                        place.to_place(this),
+                                        block,
+                                        this.thir.exprs[*base].span,
+                                    )
                                 }
                             })
                             .collect()
@@ -839,7 +845,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
 
                 let place = unpack!(block = this.as_place(block, expr_id));
-                let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place), WithRetag::Yes);
+                let rvalue = Rvalue::Use(
+                    this.consume_by_copy_reborrow_or_move(place, block, expr.span),
+                    WithRetag::Yes,
+                );
                 this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
@@ -854,7 +863,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
 
                 let place = unpack!(block = this.as_place(block, expr_id));
-                let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place), WithRetag::Yes);
+                let rvalue = Rvalue::Use(
+                    this.consume_by_copy_reborrow_or_move(place, block, expr.span),
+                    WithRetag::Yes,
+                );
                 this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
