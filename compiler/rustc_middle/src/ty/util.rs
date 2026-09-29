@@ -218,14 +218,19 @@ impl<'tcx> TyCtxt<'tcx> {
         ty: Ty<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
     ) -> Ty<'tcx> {
-        struct ReplaceUnsafeBinders<'tcx> { tcx: TyCtxt<'tcx> }
+        struct ReplaceUnsafeBinders<'tcx> {
+            tcx: TyCtxt<'tcx>,
+        }
         impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceUnsafeBinders<'tcx> {
             fn cx(&self) -> TyCtxt<'tcx> {
                 self.tcx
             }
             fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
                 match t.kind() {
-                    &ty::UnsafeBinder(inner) => self.tcx.instantiate_bound_regions_with_erased(inner.into()).super_fold_with(self),
+                    &ty::UnsafeBinder(inner) => self
+                        .tcx
+                        .instantiate_bound_regions_with_erased(inner.into())
+                        .super_fold_with(self),
                     _ => t.super_fold_with(self),
                 }
             }
