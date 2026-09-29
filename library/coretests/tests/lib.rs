@@ -129,7 +129,6 @@
 #![feature(uint_gather_scatter_bits)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
-#![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 #![allow(internal_features)]
 #![deny(implicit_provenance_casts)]
