@@ -140,11 +140,8 @@ impl AllocFnFactory<'_, '_> {
                 let ty_align = self.ptr_alignment();
                 args.push(self.cx.param(self.span, align, ty_align));
 
-                let layout_new = self.cx.std_path([
-                    sym::alloc,
-                    sym::Layout,
-                    sym::from_size_alignment_unchecked,
-                ]);
+                let layout_new =
+                    self.cx.std_path([sym::alloc, sym::Layout, sym::from_size_alignment_unchecked]);
                 let layout_new = self.cx.expr_path(self.cx.path(self.span, layout_new));
                 let size = self.cx.expr_ident(self.span, size);
                 let align = self.cx.expr_ident(self.span, align);

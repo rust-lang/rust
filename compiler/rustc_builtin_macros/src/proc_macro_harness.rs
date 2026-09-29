@@ -299,11 +299,11 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> Box<ast::Item> {
                 ProcMacro::Derive(m) => m.span,
                 ProcMacro::Attr(m) | ProcMacro::Bang(m) => m.span,
             };
-            let local_path = |cx: &ExtCtxt<'_>, ident| cx.expr_path(cx.path(span, vec![ident]));
+            let local_path = |cx: &ExtCtxt<'_>, ident| cx.expr_path(cx.path(span, [ident]));
             let proc_macro_ty_method_path = |cx: &ExtCtxt<'_>, method| {
                 cx.expr_path(cx.path(
                     span.with_ctxt(harness_span.ctxt()),
-                    vec![proc_macro, bridge, client, client_ty, method],
+                    [proc_macro, bridge, client, client_ty, method],
                 ))
             };
             match m {
@@ -346,7 +346,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> Box<ast::Item> {
             cx.ty(
                 span,
                 ast::TyKind::Slice(
-                    cx.ty_path(cx.path(span, vec![proc_macro, bridge, client, client_ty])),
+                    cx.ty_path(cx.path(span, [proc_macro, bridge, client, client_ty])),
                 ),
             ),
             None,

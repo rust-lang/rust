@@ -175,7 +175,6 @@
 //! ```
 
 use std::ops::Not;
-use std::vec;
 
 pub(crate) use Substructure::*;
 pub(crate) use rustc_ast as ast;
@@ -703,7 +702,7 @@ impl<'a> TraitDef<'a> {
             .collect();
 
         // Create the type of `self`.
-        let path = cx.path_all(type_ident.span.with_ctxt(ctxt), vec![type_ident], self_params);
+        let path = cx.path_all(type_ident.span.with_ctxt(ctxt), [type_ident], self_params);
         let self_type = cx.ty_path(path);
 
         let mut attrs = thin_vec![cx.attr_word(sym::automatically_derived, self.span),];
@@ -995,8 +994,7 @@ impl<'a> MethodDef<'a> {
                 let fields = create_struct_pattern_fields(span, cx, &variant.data, &prefixes);
 
                 let sp = variant.span.with_ctxt(span.ctxt());
-                let variant_path =
-                    cx.path(sp, vec![Ident::new(kw::SelfUpper, span), variant.ident]);
+                let variant_path = cx.path(sp, [Ident::new(kw::SelfUpper, span), variant.ident]);
                 let mut subpats =
                     create_struct_patterns(span, cx, variant_path, &variant.data, &prefixes);
 

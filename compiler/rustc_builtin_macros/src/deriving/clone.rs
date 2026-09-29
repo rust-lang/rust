@@ -175,12 +175,12 @@ fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> Blo
     let vdata;
     match substr {
         Struct(vdata_, af) => {
-            ctor_path = cx.path(trait_span, vec![self_ident]);
+            ctor_path = cx.path(trait_span, &[self_ident][..]);
             all_fields = af;
             vdata = vdata_;
         }
         EnumMatching(.., variant, af) => {
-            ctor_path = cx.path(trait_span, vec![self_ident, variant.ident]);
+            ctor_path = cx.path(trait_span, &[self_ident, variant.ident][..]);
             all_fields = af;
             vdata = &variant.data;
         }

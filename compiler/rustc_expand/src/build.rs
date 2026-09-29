@@ -40,12 +40,18 @@ impl<const N: usize> ToPath for StdPath<N> {
     }
 }
 
-impl ToPath for Vec<Ident> {
-    fn to_path(mut self, cx: &ExtCtxt<'_>, span: Span, args: Vec<rustc_ast::GenericArg>) -> Path {
+impl<const N: usize> ToPath for [Ident; N] {
+    fn to_path(self, cx: &ExtCtxt<'_>, span: Span, args: Vec<rustc_ast::GenericArg>) -> Path {
+        self.as_slice().to_path(cx, span, args)
+    }
+}
+
+impl<'a> ToPath for &'a [Ident] {
+    fn to_path(self, _: &ExtCtxt<'_>, span: Span, args: Vec<rustc_ast::GenericArg>) -> Path {
         let mut segments = ThinVec::with_capacity(self.len());
-        let last_ident = self.pop().expect("cannot construct empty path");
+        let (last, rest) = self.split_last().expect("cannot construct empty path");
         segments.extend(
-            self.into_iter().map(|ident| ast::PathSegment::from_ident(ident.with_span_pos(span))),
+            rest.iter().map(|ident| ast::PathSegment::from_ident(ident.with_span_pos(span))),
         );
         let args = if !args.is_empty() {
             let args = args.into_iter().map(ast::AngleBracketedArg::Arg).collect();
@@ -54,7 +60,7 @@ impl ToPath for Vec<Ident> {
             None
         };
         segments.push(ast::PathSegment {
-            ident: last_ident.with_span_pos(span),
+            ident: last.with_span_pos(span),
             id: ast::DUMMY_NODE_ID,
             args,
         });
@@ -84,24 +90,6 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn path_all(&self, span: Span, idents: impl ToPath, args: Vec<ast::GenericArg>) -> Path {
         idents.to_path(self, span, args)
-        /*assert!(!idents.is_empty());
-        let mut segments = ThinVec::with_capacity(idents.len());
-        let last_ident = idents.pop().unwrap();
-        segments.extend(
-            idents.into_iter().map(|ident| ast::PathSegment::from_ident(ident.with_span_pos(span))),
-        );
-        let args = if !args.is_empty() {
-            let args = args.into_iter().map(ast::AngleBracketedArg::Arg).collect();
-            Some(ast::AngleBracketedArgs { args, span }.into())
-        } else {
-            None
-        };
-        segments.push(ast::PathSegment {
-            ident: last_ident.with_span_pos(span),
-            id: ast::DUMMY_NODE_ID,
-            args,
-        });
-        Path { span, segments }*/
     }
 
     pub fn macro_call(

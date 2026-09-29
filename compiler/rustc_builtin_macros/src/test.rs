@@ -161,22 +161,19 @@ pub(crate) fn expand_test_or_bench(
     let test_ident = Ident::new(sym::test, attr_sp);
 
     // creates test::$name
-    let test_path = |name| cx.path(ret_ty_sp, vec![test_ident, Ident::from_str_and_span(name, sp)]);
+    let test_path = |name| cx.path(ret_ty_sp, [test_ident, Ident::from_str_and_span(name, sp)]);
 
     // creates test::ShouldPanic::$name
     let should_panic_path = |name| {
         cx.path(
             sp,
-            vec![test_ident, Ident::new(sym::ShouldPanic, sp), Ident::from_str_and_span(name, sp)],
+            [test_ident, Ident::new(sym::ShouldPanic, sp), Ident::from_str_and_span(name, sp)],
         )
     };
 
     // creates test::TestType::$name
     let test_type_path = |name| {
-        cx.path(
-            sp,
-            vec![test_ident, Ident::new(sym::TestType, sp), Ident::from_str_and_span(name, sp)],
-        )
+        cx.path(sp, [test_ident, Ident::new(sym::TestType, sp), Ident::from_str_and_span(name, sp)])
     };
 
     // creates $name: $expr
@@ -212,7 +209,7 @@ pub(crate) fn expand_test_or_bench(
                             // super::$test_fn(__bench_fn_name)
                             cx.expr_call(
                                 ret_ty_sp,
-                                cx.expr_path(cx.path(sp, vec![fn_.ident])),
+                                cx.expr_path(cx.path(sp, [fn_.ident])),
                                 thin_vec![cx.expr_ident(sp, bencher_param)],
                             ),
                         ],
@@ -238,7 +235,7 @@ pub(crate) fn expand_test_or_bench(
                             // $test_fn()
                             cx.expr_call(
                                 ret_ty_sp,
-                                cx.expr_path(cx.path(sp, vec![fn_.ident])),
+                                cx.expr_path(cx.path(sp, [fn_.ident])),
                                 ThinVec::new(),
                             ), // )
                         ],

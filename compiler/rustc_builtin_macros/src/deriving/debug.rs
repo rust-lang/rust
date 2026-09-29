@@ -243,7 +243,7 @@ fn show_fieldless_enum(
         .variants
         .iter()
         .map(|v| {
-            let variant_path = cx.path(span, vec![type_ident, v.ident]);
+            let variant_path = cx.path(span, [type_ident, v.ident]);
             let pat = match &v.data {
                 ast::VariantData::Tuple(fields, _) => {
                     debug_assert!(fields.is_empty());

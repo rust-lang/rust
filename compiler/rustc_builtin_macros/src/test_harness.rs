@@ -301,7 +301,7 @@ fn add_main(cx: &mut TestCtxt<'_>, c: &mut ast::Crate) {
         } else {
             "test_main_env_args_abort"
         };
-        ecx.path(sp, vec![test_ident, Ident::from_str_and_span(runner_name, sp)])
+        ecx.path(sp, [test_ident, Ident::from_str_and_span(runner_name, sp)])
     });
 
     test_runner.span = sp;
@@ -324,7 +324,7 @@ fn add_main(cx: &mut TestCtxt<'_>, c: &mut ast::Crate) {
     // pub fn main() -> ExitCode { ... }
     let main_ret_ty = if cx.test_runner.is_none() {
         // Built-in runner has return type `ExitCode`.
-        let exit_code_path = vec![test_ident, Ident::new(sym::ExitCode, sp)];
+        let exit_code_path = [test_ident, Ident::new(sym::ExitCode, sp)];
         ecx.ty(sp, ast::TyKind::Path(None, ecx.path(sp, exit_code_path)))
     } else {
         // User-defined runners have return type `()`.
@@ -379,7 +379,7 @@ fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> Box<ast::Expr> {
         tests
             .iter()
             .map(|test| {
-                ecx.expr_addr_of(test.span, ecx.expr_path(ecx.path(test.span, vec![test.ident])))
+                ecx.expr_addr_of(test.span, ecx.expr_path(ecx.path(test.span, [test.ident])))
             })
             .collect(),
     )

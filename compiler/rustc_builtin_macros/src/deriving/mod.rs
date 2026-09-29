@@ -104,7 +104,12 @@ fn assert_ty_bounds<const N: usize>(
     stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
 }
 
-fn new_path<const N: usize>(cx: &ExtCtxt<'_>, span: Span, path: [Symbol; N], params: Vec<Box<ast::Ty>>) -> ast::Path {
+fn new_path<const N: usize>(
+    cx: &ExtCtxt<'_>,
+    span: Span,
+    path: [Symbol; N],
+    params: Vec<Box<ast::Ty>>,
+) -> ast::Path {
     let params = params.into_iter().map(GenericArg::Type).collect();
     let idents = cx.std_path(path);
     cx.path_all(span, idents, params)
