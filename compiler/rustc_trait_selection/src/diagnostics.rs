@@ -1221,6 +1221,10 @@ pub(crate) struct TraitImplDiff {
     pub found_short: String,
     pub expected: String,
     pub found: String,
+    #[context]
+    pub trait_span: Span,
+    #[context]
+    pub impl_span: Span,
 }
 
 #[derive(Diagnostic)]
