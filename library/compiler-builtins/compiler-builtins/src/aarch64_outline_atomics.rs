@@ -167,6 +167,26 @@ macro_rules! lse {
     };
 }
 
+// Ensure the register holding the pointer is zero-extended on ilp32 targets
+// before dereferencing it. This may not work, see llvm/llvm-project#225834.
+//
+// This write requires the pointer argument to be made `inout` in the asm!
+// sections. If the ilp32 targets are removed, this macro should be removed
+// and the pointer argument changed to `in`.
+#[cfg(target_pointer_width = "32")]
+macro_rules! sanitize_ptr {
+    ($num:literal) => {
+        concat!("mov w", $num, ", w", $num)
+    };
+}
+
+#[cfg(not(target_pointer_width = "32"))]
+macro_rules! sanitize_ptr {
+    ($num:literal) => {
+        ""
+    };
+}
+
 /// See <https://doc.rust-lang.org/stable/std/sync/atomic/struct.AtomicI8.html#method.compare_and_swap>.
 macro_rules! compare_and_swap {
     ($ordering:ident, $bytes:tt, $name:ident) => {
@@ -180,15 +200,17 @@ macro_rules! compare_and_swap {
                     if HAVE_LSE_ATOMICS.load(Ordering::Relaxed) != 0 {
                         core::arch::asm!(
                             ".arch_extension lse",
+                            sanitize_ptr!(2),
                             // CAS    s(0), s(1), [x2]; if LSE supported.
                             concat!(lse!("cas", $ordering, $bytes), " ", reg!($bytes, 0), ", ", reg!($bytes, 1),", [x2]"),
                             inlateout("x0") expected,
                             in("x1") desired,
-                            in("x2") ptr,
+                            inout("x2") ptr => _,
                             options(nostack, preserves_flags),
                         );
                     } else {
                         core::arch::asm!(
+                            sanitize_ptr!(2),
                             // UXT    s(tmp0), s(0)
                             concat!(uxt!($bytes), " ", reg!($bytes, 16), ", ", reg!($bytes, 0)),
                             "1:",
@@ -203,7 +225,7 @@ macro_rules! compare_and_swap {
                             "2:",
                             inlateout("x0") expected,
                             in("x1") desired,
-                            in("x2") ptr,
+                            inout("x2") ptr => _,
                             out("x16") _,
                             out("w17") _,
                             options(nostack),
@@ -233,17 +255,19 @@ macro_rules! compare_and_swap_u128 {
                     if HAVE_LSE_ATOMICS.load(Ordering::Relaxed) != 0 {
                         core::arch::asm!(
                             ".arch_extension lse",
+                            sanitize_ptr!(4),
                             // CASP   x0, x1, x2, x3, [x4]; if LSE supported.
                             concat!(lse!("cas", $ordering, 16), " x0, x1, x2, x3, [x4]"),
                             inlateout("x0") expected_lo,
                             inlateout("x1") expected_hi,
                             in("x2") desired_lo,
                             in("x3") desired_hi,
-                            in("x4") ptr,
+                            inout("x4") ptr => _,
                             options(nostack, preserves_flags),
                         );
                     } else {
                         core::arch::asm!(
+                            sanitize_ptr!(4),
                             "mov x16, x0",
                             "mov x17, x1",
                             "1:",
@@ -260,7 +284,7 @@ macro_rules! compare_and_swap_u128 {
                             inlateout("x1") expected_hi,
                             in("x2") desired_lo,
                             in("x3") desired_hi,
-                            in("x4") ptr,
+                            inout("x4") ptr => _,
                             out("w15") _,
                             out("x16") _,
                             out("x17") _,
@@ -287,14 +311,16 @@ macro_rules! swap {
                     if HAVE_LSE_ATOMICS.load(Ordering::Relaxed) != 0 {
                         core::arch::asm! {
                             ".arch_extension lse",
+                            sanitize_ptr!(1),
                             // SWP    s(0), s(0), [x1]; if LSE supported.
                             concat!(lse!("swp", $ordering, $bytes), " ", reg!($bytes, 0), ", ", reg!($bytes, 0), ", [x1]"),
                             inlateout("x0") left,
-                            in("x1") right_ptr,
+                            inout("x1") right_ptr => _,
                             options(nostack, preserves_flags),
                         };
                     } else {
                         core::arch::asm! {
+                            sanitize_ptr!(1),
                             concat!("mov ", reg!($bytes, 16), ", ", reg!($bytes, 0)),
                             "1:",
                             // LDXR   s(0), [x1]
@@ -303,7 +329,7 @@ macro_rules! swap {
                             concat!(stxr!($ordering, $bytes), " w17, ", reg!($bytes, 16), ", [x1]"),
                             "cbnz w17, 1b",
                             inlateout("x0") left,
-                            in("x1") right_ptr,
+                            inout("x1") right_ptr => _,
                             out("x16") _,
                             out("w17") _,
                             options(nostack, preserves_flags),
@@ -329,14 +355,16 @@ macro_rules! fetch_op {
                     if HAVE_LSE_ATOMICS.load(Ordering::Relaxed) != 0 {
                         core::arch::asm! {
                             ".arch_extension lse",
+                            sanitize_ptr!(1),
                             // LSEOP  s(0), s(0), [x1]; if LSE supported.
                             concat!(lse!($lse_op, $ordering, $bytes), " ", reg!($bytes, 0), ", ", reg!($bytes, 0),", [x1]"),
                             inlateout("x0") val,
-                            in("x1") ptr,
+                            inout("x1") ptr => _,
                             options(nostack, preserves_flags),
                         };
                     } else {
                         core::arch::asm! {
+                            sanitize_ptr!(1),
                             // mov    s(tmp0), s(0)
                             concat!("mov ", reg!($bytes, 16), ", ", reg!($bytes, 0)),
                             "1:",
@@ -348,7 +376,7 @@ macro_rules! fetch_op {
                             concat!(stxr!($ordering, $bytes), " w15, ", reg!($bytes, 17), ", [x1]"),
                             "cbnz w15, 1b",
                             inlateout("x0") val,
-                            in("x1") ptr,
+                            inout("x1") ptr => _,
                             out("w15") _,
                             out("x16") _,
                             out("x17") _,
