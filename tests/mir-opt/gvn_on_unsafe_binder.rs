@@ -1,3 +1,4 @@
+//@ compile-flags: -Znext-solver
 //@ skip-filecheck
 //@ test-mir-pass: GVN
 
