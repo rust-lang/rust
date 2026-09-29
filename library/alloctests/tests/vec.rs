@@ -2534,6 +2534,94 @@ fn test_vec_dedup_panicking() {
     }
 }
 
+#[test]
+fn test_vec_dedup_long() {
+    fn check<T: Clone + Debug + PartialEq>(template: &[T]) {
+        let mut expected = template.to_vec();
+        let (kept, _) = expected.partition_dedup();
+        let kept_len = kept.len();
+        expected.truncate(kept_len);
+
+        let mut vec = template.to_vec();
+        vec.dedup();
+        assert_eq!(vec, expected, "input: {template:?}");
+    }
+
+    macro_rules! check_type {
+        ($ty:ty) => {
+            for len in [0, 1, 2, 3, 4, 5, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64, 65] {
+                let distinct: Vec<$ty> = (0..len).map(|x| x as $ty).collect();
+                check(&distinct);
+                check(&vec![7 as $ty; len]);
+
+                for dup_at in 1..len {
+                    let mut v = distinct.clone();
+                    v[dup_at] = v[dup_at - 1];
+                    check(&v);
+
+                    if dup_at + 1 < len {
+                        let mut w = v.clone();
+                        w[len - 1] = w[len - 2];
+                        check(&w);
+                    }
+                }
+            }
+        };
+    }
+
+    check_type!(u8);
+    check_type!(u16);
+    check_type!(u32);
+    check_type!(u64);
+}
+
+#[test]
+fn test_vec_dedup_long_boxed() {
+    for len in [9, 10, 16, 17, 24, 25, 33] {
+        for dup_at in 1..len {
+            let mut v: Vec<Box<u32>> = (0..len as u32).map(Box::new).collect();
+            v[dup_at] = Box::new(*v[dup_at - 1]);
+            let expected: Vec<u32> = (0..len as u32).filter(|&x| x != dup_at as u32).collect();
+            v.dedup();
+            let got: Vec<u32> = v.iter().map(|b| **b).collect();
+            assert_eq!(got, expected, "len={len} dup_at={dup_at}");
+        }
+    }
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_vec_dedup_eq_panics_for_simd_sized_type() {
+    static EQ_COUNT: AtomicU32 = AtomicU32::new(0);
+    static DROP_COUNT: AtomicU32 = AtomicU32::new(0);
+
+    #[derive(Debug)]
+    #[repr(transparent)]
+    struct Panic(u32);
+
+    impl PartialEq for Panic {
+        fn eq(&self, other: &Self) -> bool {
+            if EQ_COUNT.fetch_add(1, Ordering::SeqCst) == 2 {
+                panic!("comparison panic");
+            }
+            self.0 == other.0
+        }
+    }
+
+    impl Drop for Panic {
+        fn drop(&mut self) {
+            DROP_COUNT.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    EQ_COUNT.store(0, Ordering::SeqCst);
+    DROP_COUNT.store(0, Ordering::SeqCst);
+    let mut vec: Vec<_> = [0, 0, 1, 2, 3, 4, 5, 6, 7].into_iter().map(Panic).collect();
+    assert!(catch_unwind(AssertUnwindSafe(|| vec.dedup())).is_err());
+    drop(vec);
+    assert_eq!(DROP_COUNT.load(Ordering::SeqCst), 9);
+}
+
 // Regression test for issue #82533
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]

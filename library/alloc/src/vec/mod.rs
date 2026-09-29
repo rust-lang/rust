@@ -2717,7 +2717,24 @@ impl<T, A: Allocator> Vec<T, A> {
         if first_duplicate_idx == len {
             return;
         }
+        // SAFETY: first_duplicate_idx always in range [1..len)
+        unsafe {
+            self.dedup_tail(same_bucket, first_duplicate_idx);
+        }
+    }
 
+    /// Continues deduplication after the first duplicate is found.
+    ///
+    /// The function treats `self[first_duplicate]` as the first duplicated
+    /// element and drops it.
+    ///
+    /// # Safety
+    ///
+    /// `1 <= first_duplicate < self.len()`
+    unsafe fn dedup_tail<F>(&mut self, mut same_bucket: F, first_duplicate: usize)
+    where
+        F: FnMut(&mut T, &mut T) -> bool,
+    {
         /* INVARIANT: vec.len() > read > write > write-1 >= 0 */
         struct FillGapOnDrop<'a, T, A: core::alloc::Allocator> {
             /* Offset of the element we want to check if it is duplicate */
@@ -2764,16 +2781,20 @@ impl<T, A: Allocator> Vec<T, A> {
             }
         }
 
+        let start = self.as_mut_ptr();
+        let len = self.len();
+
         /* Drop items while going through Vec, it should be more efficient than
          * doing slice partition_dedup + truncate */
 
         // Construct gap first and then drop item to avoid memory corruption if `T::drop` panics.
         let mut gap =
-            FillGapOnDrop { read: first_duplicate_idx + 1, write: first_duplicate_idx, vec: self };
-        // SAFETY: we checked that first_duplicate_idx in bounds before.
+            FillGapOnDrop { read: first_duplicate + 1, write: first_duplicate, vec: self };
+
+        // SAFETY: By this function's safety contract, `first_duplicate < self.len()`.
         // If drop panics, `gap` would remove this item without drop.
         unsafe {
-            ptr::drop_in_place(start.add(first_duplicate_idx));
+            ptr::drop_in_place(start.add(first_duplicate));
         }
 
         // SAFETY: Because of the invariant, read_ptr, prev_ptr and write_ptr
@@ -3792,8 +3813,142 @@ impl<T: PartialEq, A: Allocator> Vec<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn dedup(&mut self) {
-        self.dedup_by(|a, b| a == b)
+        // Vectorize the process of finding first duplicate if possible
+        if let Some(chunk_size) = dedup_simd_chunk_size::<T>() {
+            // Unlike dedup_by, we don't guarantee the order
+            // and time in which we call `PartialEq::eq`.
+            let Some(first_duplicate) = find_first_duplicate(self.as_slice(), chunk_size) else {
+                return;
+            };
+
+            // SAFETY: `1 <= first_duplicate < self.len()`
+            unsafe {
+                self.dedup_tail(|a, b| a == b, first_duplicate);
+            }
+        } else {
+            self.dedup_by(|a, b| a == b);
+        }
     }
+}
+
+const fn dedup_simd_chunk_size<T>() -> Option<usize> {
+    // The minimal SIMD width on supported platforms
+    #[allow(unused)]
+    const SIMD_WIDTH: usize = 16;
+    let size = size_of::<T>();
+
+    // We only have SIMD implementations for these element sizes.
+    if !matches!(size, 1 | 2 | 4 | 8) {
+        return None;
+    }
+
+    let simd_width: Option<usize> = cfg_select! {
+        all(target_arch = "arm", target_feature = "neon") => {
+            // Packed 64-bit integer lane equality is unavailable on arm neon
+            if size == 8 { None } else { Some(SIMD_WIDTH) }
+        }
+
+        all(target_arch = "aarch64", target_feature = "neon") => {
+            Some(SIMD_WIDTH)
+        }
+
+        all(
+            any(target_arch = "x86", target_arch = "x86_64"),
+            target_feature = "sse4.1"
+        ) => Some(SIMD_WIDTH),
+
+        all(
+            any(target_arch = "x86", target_arch = "x86_64"),
+            target_feature = "sse2"
+        ) => {
+            // Packed 64-bit integer lane equality is only available on sse4.1
+            if size == 8 { None } else { Some(SIMD_WIDTH) }
+        }
+
+        all(
+            any(target_arch = "riscv32", target_arch = "riscv64"),
+            target_feature = "v"
+        ) => Some(SIMD_WIDTH),
+
+        all(
+            any(target_arch = "loongarch32", target_arch = "loongarch64"),
+            target_feature = "lsx"
+        ) => Some(SIMD_WIDTH),
+
+        _ => None,
+    };
+
+    if let Some(simd_width) = simd_width { Some(simd_width * 2 / size) } else { None }
+}
+
+fn find_first_duplicate<T: PartialEq>(v: &[T], chunk_size: usize) -> Option<usize> {
+    let len = v.len();
+    if len <= 1 {
+        return None;
+    }
+
+    let mut i = 1;
+
+    // The scalar fallback path if the length is not long enough
+    if len < chunk_size + 1 {
+        while i < len {
+            // It keeps the same comparison order as `dedup_tail`
+            //
+            // SAFETY: i always in range [1..len)
+            if unsafe { v.get_unchecked(i) == v.get_unchecked(i - 1) } {
+                return Some(i);
+            }
+            i += 1;
+        }
+        return None;
+    }
+
+    /// # Safety
+    /// - `start > 0` and `start + chunk_size <= v.len()`
+    /// - `0 < chunk_size <= 32`
+    #[inline(always)]
+    unsafe fn find_duplicate<T: PartialEq>(
+        v: &[T],
+        start: usize,
+        chunk_size: usize,
+    ) -> Option<usize> {
+        let mut mask: u32 = 0;
+        debug_assert!(
+            u32::BITS as usize >= chunk_size,
+            "the bit width of mask must be greater than or equal to chunk_size"
+        );
+        for j in 0..chunk_size {
+            // SAFETY: start + j always in range [1..v.len())
+            let eq = unsafe { v.get_unchecked(start + j) == v.get_unchecked(start + j - 1) };
+            mask |= (eq as u32) << j;
+        }
+        if mask != 0 {
+            return Some(start + mask.trailing_zeros() as usize);
+        }
+        None
+    }
+
+    // This loop performs chunk_size comparisons in parallel without early exit,
+    // which is what allows for SIMD optimization.
+    while i + chunk_size <= len {
+        // SAFETY: `i >= 1` and `i + chunk_size <= len`
+        if let Some(duplicate) = unsafe { find_duplicate(v, i, chunk_size) } {
+            return Some(duplicate);
+        }
+        i += chunk_size;
+    }
+
+    // This may check the same elements multiple times.
+    // However we don't guarantee `PartialEq::eq` is only called once per pair.
+    if i < len {
+        let start = len - chunk_size;
+        // SAFETY: `len - chunk_size >= 1` and `start + chunk_size <= len`
+        if let Some(duplicate) = unsafe { find_duplicate(v, start, chunk_size) } {
+            return Some(duplicate);
+        }
+    }
+
+    None
 }
 
 ////////////////////////////////////////////////////////////////////////////////
