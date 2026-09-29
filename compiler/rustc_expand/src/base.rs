@@ -689,7 +689,7 @@ pub enum SyntaxExtensionKind {
     ),
 
     /// An AST-based function-like macro.
-    LegacyBang(
+    AstBang(
         /// An expander with signature TokenStream -> AST.
         Arc<dyn TTMacroExpander + sync::DynSync + sync::DynSend>,
     ),
@@ -703,7 +703,7 @@ pub enum SyntaxExtensionKind {
     ),
 
     /// An AST-based attribute macro.
-    LegacyAttr(
+    AstAttr(
         /// An expander with signature (AST, AST) -> AST.
         /// The first AST fragment is the attribute itself, the second is the annotated item.
         /// The produced AST fragment replaces the input AST fragment.
@@ -722,14 +722,14 @@ pub enum SyntaxExtensionKind {
         /// The produced TokenStream is appended to the input TokenStream.
         ///
         /// FIXME: The text above describes how this should work. Currently it
-        /// is handled identically to `LegacyDerive`. It should be migrated to
+        /// is handled identically to `AstDerive`. It should be migrated to
         /// a token-based representation like `Bang` and `Attr`, instead of
         /// using `MultiItemModifier`.
         Arc<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
     ),
 
     /// An AST-based derive macro.
-    LegacyDerive(
+    AstDerive(
         /// An expander with signature AST -> AST.
         /// The produced AST fragment is appended to the input AST fragment.
         Arc<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
@@ -742,12 +742,12 @@ pub enum SyntaxExtensionKind {
 }
 
 impl SyntaxExtensionKind {
-    /// Returns `Some(expander)` for a macro usable as a `LegacyBang`; otherwise returns `None`
+    /// Returns `Some(expander)` for a macro usable as a `AstBang`; otherwise returns `None`
     ///
     /// This includes a `MacroRules` with function-like rules.
-    pub fn as_legacy_bang(&self) -> Option<&(dyn TTMacroExpander + sync::DynSync + sync::DynSend)> {
+    pub fn as_ast_bang(&self) -> Option<&(dyn TTMacroExpander + sync::DynSync + sync::DynSend)> {
         match self {
-            SyntaxExtensionKind::LegacyBang(exp) => Some(exp.as_ref()),
+            SyntaxExtensionKind::AstBang(exp) => Some(exp.as_ref()),
             SyntaxExtensionKind::MacroRules(exp) if exp.kinds().contains(MacroKinds::BANG) => {
                 Some(exp.as_ref())
             }
@@ -805,12 +805,12 @@ impl SyntaxExtension {
     pub fn macro_kinds(&self) -> MacroKinds {
         match self.kind {
             SyntaxExtensionKind::Bang(..)
-            | SyntaxExtensionKind::LegacyBang(..)
+            | SyntaxExtensionKind::AstBang(..)
             | SyntaxExtensionKind::GlobDelegation(..) => MacroKinds::BANG,
             SyntaxExtensionKind::Attr(..)
-            | SyntaxExtensionKind::LegacyAttr(..)
+            | SyntaxExtensionKind::AstAttr(..)
             | SyntaxExtensionKind::NonMacroAttr => MacroKinds::ATTR,
-            SyntaxExtensionKind::Derive(..) | SyntaxExtensionKind::LegacyDerive(..) => {
+            SyntaxExtensionKind::Derive(..) | SyntaxExtensionKind::AstDerive(..) => {
                 MacroKinds::DERIVE
             }
             SyntaxExtensionKind::MacroRules(ref m) => m.kinds(),
