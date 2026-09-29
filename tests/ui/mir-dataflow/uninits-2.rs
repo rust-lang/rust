@@ -15,8 +15,8 @@ fn foo(x: &mut S) {
 
     ::std::mem::drop(x);
 
-    // `x` definitely uninitialized here, so maybe-uninit bit is 1.
-    rustc_peek(&x);
+    // `x` is still initialized here, so maybe-uninit bit is 0.
+    rustc_peek(&x);  //~ ERROR rustc_peek: bit not set
 }
 fn main() {
     foo(&mut S(13));

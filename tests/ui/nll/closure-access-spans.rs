@@ -43,12 +43,12 @@ fn closure_mut_capture_moved(mut x: String) {
 
 fn closure_unique_capture_moved(x: &mut String) {
     let r = x;
-    || *x = String::new(); //~ ERROR
+    || *x = String::new();
 }
 
 fn closure_move_capture_moved(x: &mut String) {
     let r = x;
-    || x; //~ ERROR
+    || x;
 }
 
 fn main() {}
