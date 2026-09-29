@@ -240,6 +240,38 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 // Function pointers cannot be `const`
                 self.check_late_bound_lifetime_defs(&fn_ptr_ty.generic_params);
             }
+            ast::TyKind::UnsafeBinder(bound_ty) => {
+                let params = &bound_ty.generic_params;
+
+                // Inline `check_late_bound_lifetime_defs` somewhat - we *always* error for these
+                let non_lt_param_spans: Vec<Span> = params
+                    .iter()
+                    .filter_map(|param| match param.kind {
+                        ast::GenericParamKind::Lifetime { .. } => None,
+                        _ => Some(param.ident.span),
+                    })
+                    .collect();
+                if !non_lt_param_spans.is_empty() {
+                    self.sess
+                        .dcx()
+                        .struct_span_err(
+                            non_lt_param_spans,
+                            msg!("only lifetime parameters can be used in this context"),
+                        )
+                        .emit();
+                }
+                for param in params {
+                    if !param.bounds.is_empty() {
+                        let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
+                        if param.bounds.iter().any(|bound| matches!(bound, GenericBound::Trait(_)))
+                        {
+                            self.sess.dcx().emit_fatal(diagnostics::ForbiddenBound { spans });
+                        } else {
+                            self.sess.dcx().emit_err(diagnostics::ForbiddenBound { spans });
+                        }
+                    }
+                }
+            }
             ast::TyKind::Pat(..) => {
                 gate!(self, pattern_types, ty.span, "pattern types are unstable");
             }
