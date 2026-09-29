@@ -159,7 +159,7 @@ fn test_statx_on_file_descriptor() {
 fn test_statx_on_file_path() {
     let bytes = b"hello";
     let path = utils::prepare_with_content("miri_test_libc_statx.txt", bytes);
-    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_path = utils::into_c_string(&path);
     let meta = fs::metadata(&path).unwrap();
 
     // Relative to working directory.
@@ -257,14 +257,14 @@ fn test_statx_empty_path_on_pipe() {
 
 fn test_file_open_allow_two_args() {
     let path = utils::prepare_with_content("test_file_open_allow_two_args.txt", &[]);
-    let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let name = utils::into_c_string(path);
 
     let _fd = errno_result(unsafe { libc::open(name.as_ptr(), libc::O_RDONLY) }).unwrap();
 }
 
 fn test_file_open_needs_three_args() {
     let path = utils::prepare_with_content("test_file_open_needs_three_args.txt", &[]);
-    let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let name = utils::into_c_string(path);
 
     let _fd =
         errno_result(unsafe { libc::open(name.as_ptr(), libc::O_CREAT | libc::O_RDWR, 0o666) })
@@ -273,7 +273,7 @@ fn test_file_open_needs_three_args() {
 
 fn test_file_open_extra_third_arg() {
     let path = utils::prepare_with_content("test_file_open_extra_third_arg.txt", &[]);
-    let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let name = utils::into_c_string(path);
 
     let _fd = errno_result(unsafe { libc::open(name.as_ptr(), libc::O_RDONLY, 42) }).unwrap();
 }
@@ -281,7 +281,7 @@ fn test_file_open_extra_third_arg() {
 fn test_file_open_nofollow() {
     let bytes = b"Hello, World!\n";
     let path = utils::prepare_with_content("test_nofollow_not_symlink.txt", bytes);
-    let cpath = CString::new(path.as_os_str().as_bytes()).unwrap();
+    let cpath = utils::into_c_string(path);
     let fd =
         errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC) })
             .unwrap();
@@ -292,7 +292,7 @@ fn test_file_open_nofollow() {
     let symlink_path = utils::prepare("miri_test_open_nofollow_symlink.txt");
     std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
 
-    let symlink_cpath = CString::new(symlink_path.as_os_str().as_bytes()).unwrap();
+    let symlink_cpath = utils::into_c_string(symlink_path);
 
     let err = errno_result(unsafe {
         libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC)
@@ -315,7 +315,7 @@ fn test_dup_stdout_stderr() {
 fn test_dup() {
     let bytes = b"dup and dup2";
     let path = utils::prepare_with_content("miri_test_libc_dup.txt", bytes);
-    let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let name = utils::into_c_string(path);
 
     unsafe {
         let fd = errno_result(libc::open(name.as_ptr(), libc::O_RDONLY)).unwrap();
@@ -377,8 +377,8 @@ fn test_rename() {
     let file = File::create(&path1).unwrap();
     drop(file);
 
-    let c_path1 = CString::new(path1.as_os_str().as_bytes()).expect("CString::new failed");
-    let c_path2 = CString::new(path2.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_path1 = utils::into_c_string(&path1);
+    let c_path2 = utils::into_c_string(&path2);
 
     // Renaming should succeed
     unsafe { libc::rename(c_path1.as_ptr(), c_path2.as_ptr()) };
@@ -408,7 +408,7 @@ fn test_ftruncate<T: From<i32>>(
     file.sync_all().unwrap();
     assert_eq!(file.metadata().unwrap().len(), 5);
 
-    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_path = utils::into_c_string(&path);
     let fd = unsafe { libc::open(c_path.as_ptr(), libc::O_RDWR) };
 
     // Truncate to a bigger size
@@ -510,11 +510,11 @@ fn test_posix_mkstemp() {
 
 /// Test allocating variant of `realpath`.
 fn test_posix_realpath_alloc() {
-    use std::os::unix::ffi::{OsStrExt, OsStringExt};
+    use std::os::unix::ffi::OsStringExt;
 
     let buf;
     let path = utils::prepare("miri_test_libc_posix_realpath_alloc");
-    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_path = utils::into_c_string(&path);
 
     // Create file.
     drop(File::create(&path).unwrap());
@@ -533,11 +533,10 @@ fn test_posix_realpath_alloc() {
 
 /// Test non-allocating variant of `realpath`.
 fn test_posix_realpath_noalloc() {
-    use std::ffi::{CStr, CString};
-    use std::os::unix::ffi::OsStrExt;
+    use std::ffi::CStr;
 
     let path = utils::prepare("miri_test_libc_posix_realpath_noalloc");
-    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_path = utils::into_c_string(&path);
 
     let mut v = vec![0; libc::PATH_MAX as usize];
 
@@ -558,16 +557,12 @@ fn test_posix_realpath_noalloc() {
 
 /// Test failure cases for `realpath`.
 fn test_posix_realpath_errors() {
-    use std::ffi::CString;
-    use std::io::ErrorKind;
-
     // Test nonexistent path returns an error.
-    let c_path = CString::new("./nothing_to_see_here").expect("CString::new failed");
+    let c_path = c"./nothing_to_see_here";
     let r = unsafe { libc::realpath(c_path.as_ptr(), std::ptr::null_mut()) };
     assert!(r.is_null());
     let e = std::io::Error::last_os_error();
     assert_eq!(e.raw_os_error(), Some(libc::ENOENT));
-    assert_eq!(e.kind(), ErrorKind::NotFound);
 }
 
 #[cfg(target_os = "linux")]
@@ -619,7 +614,7 @@ fn test_posix_fallocate<T: From<i32>>(
         assert_eq!(ret, libc::EINVAL);
 
         // fd not writable
-        let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+        let c_path = utils::into_c_string(path);
         let fd = unsafe { libc::open(c_path.as_ptr(), libc::O_RDONLY) };
         let ret = unsafe { posix_fallocate(fd, T::from(0), T::from(10)) };
         assert_eq!(ret, libc::EBADF);
@@ -633,7 +628,7 @@ fn test_posix_fallocate<T: From<i32>>(
         file.sync_all().unwrap();
         assert_eq!(file.metadata().unwrap().len(), 5);
 
-        let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+        let c_path = utils::into_c_string(&path);
         let fd = unsafe { libc::open(c_path.as_ptr(), libc::O_RDWR) };
 
         // Allocate to a bigger size from offset 0
@@ -696,7 +691,7 @@ fn test_fallocate<T: From<i32>>(
     assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
 
     // fd not writable
-    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_path = utils::into_c_string(path);
     let fd = errno_result(unsafe { libc::open(c_path.as_ptr(), libc::O_RDONLY) }).unwrap();
     let err = errno_result(unsafe { fallocate(fd, 0, T::from(0), T::from(10)) }).unwrap_err();
     assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
@@ -709,7 +704,7 @@ fn test_fallocate<T: From<i32>>(
     file.sync_all().unwrap();
     assert_eq!(file.metadata().unwrap().len(), 5);
 
-    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_path = utils::into_c_string(&path);
     let fd = errno_result(unsafe { libc::open(c_path.as_ptr(), libc::O_RDWR) }).unwrap();
 
     // Allocate to a bigger size from offset 0
@@ -1001,7 +996,7 @@ fn test_read_and_uninit() {
     {
         // We test that libc::read initializes its buffer.
         let path = utils::prepare_with_content("pass-libc-read-and-uninit.txt", &[1u8, 2, 3]);
-        let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+        let cpath = utils::into_c_string(path);
         unsafe {
             let fd = libc::open(cpath.as_ptr(), libc::O_RDONLY);
             assert_ne!(fd, -1);
@@ -1018,7 +1013,7 @@ fn test_read_and_uninit() {
         // 3 bytes (not 4) will be overwritten, and remaining byte will be left as-is.
         let data = [1u8, 2, 3];
         let path = utils::prepare_with_content("pass-libc-read-and-uninit-2.txt", &data);
-        let cpath = CString::new(path.clone().into_os_string().into_encoded_bytes()).unwrap();
+        let cpath = utils::into_c_string(&path);
         unsafe {
             let fd = libc::open(cpath.as_ptr(), libc::O_RDONLY);
             assert_ne!(fd, -1);
@@ -1041,7 +1036,7 @@ fn test_read_and_uninit() {
 #[cfg(target_os = "macos")]
 fn test_ioctl() {
     let path = utils::prepare_with_content("miri_test_libc_ioctl.txt", &[]);
-    let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let name = utils::into_c_string(path);
 
     unsafe {
         // 100 surely is an invalid FD.
@@ -1058,7 +1053,7 @@ fn test_opendir_closedir() {
     // dir should exist
     let path = utils::prepare_dir("miri_test_libc_opendir_closedir");
     create_dir(&path).expect("create_dir failed");
-    let cpath = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let cpath = utils::into_c_string(&path);
     let dir: *mut libc::DIR = unsafe { libc::opendir(cpath.as_ptr()) };
     assert!(!dir.is_null());
     errno_check(unsafe { libc::closedir(dir) });
@@ -1073,7 +1068,7 @@ fn test_opendir_closedir() {
 
     // open normal file as dir should fail
     let file_path = utils::prepare_with_content("test_not_a_dir.txt", b"hello");
-    let cfile = CString::new(file_path.as_os_str().as_bytes()).expect("CString::new failed");
+    let cfile = utils::into_c_string(&file_path);
     let dir: *mut libc::DIR = unsafe { libc::opendir(cfile.as_ptr()) };
     assert!(dir.is_null());
     let e = std::io::Error::last_os_error();
@@ -1094,7 +1089,7 @@ fn test_readdir() {
     write(&file1, b"content1").unwrap();
     write(&file2, b"content2").unwrap();
 
-    let c_path = CString::new(dir_path.as_os_str().as_bytes()).unwrap();
+    let c_path = utils::into_c_string(&dir_path);
 
     unsafe {
         let dirp = libc::opendir(c_path.as_ptr());
@@ -1123,7 +1118,7 @@ fn test_readdir() {
 fn test_dirfd() {
     let path = utils::prepare_dir("miri_test_libc_opendir_closedir");
     create_dir(&path).expect("create_dir failed");
-    let cpath = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let cpath = utils::into_c_string(path);
     let dir: *mut libc::DIR = unsafe { libc::opendir(cpath.as_ptr()) };
     assert!(!dir.is_null());
 
@@ -1170,7 +1165,7 @@ pub fn check_stat_fields(stat: &libc::stat) {
 fn test_readv() {
     let file_contents = [1u8, 2, 3, 4, 5, 6];
     let path = utils::prepare_with_content("pass-libc-readv.txt", &file_contents);
-    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
     assert_ne!(fd, -1);
 
@@ -1206,7 +1201,7 @@ fn test_readv_empty_bufs() {
     }
 
     let path = utils::prepare_with_content("pass-libc-readv-empty-bufs.txt", &[1u8, 2, 3]);
-    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
     assert_ne!(fd, -1);
     unsafe { assert_eq!(errno_result(libc::readv(fd, ptr::null::<libc::iovec>(), 0)).unwrap(), 0) };
@@ -1220,7 +1215,7 @@ fn test_readv_empty_bufs() {
 fn test_preadv() {
     let file_contents = [1u8, 2, 3, 4, 5, 6];
     let path = utils::prepare_with_content("pass-libc-preadv.txt", &file_contents);
-    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
     assert_ne!(fd, -1);
 
@@ -1261,7 +1256,7 @@ fn test_preadv() {
 fn test_pread() {
     let file_contents = [1u8, 2, 3, 4, 5, 6];
     let path = utils::prepare_with_content("pass-libc-pread.txt", &file_contents);
-    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
     assert_ne!(fd, -1);
 
@@ -1288,7 +1283,7 @@ fn test_pread() {
 /// Test vectored writes with multiple buffers.
 fn test_writev() {
     let path = utils::prepare_with_content("pass-libc-writev.txt", &[]);
-    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
     assert_ne!(fd, -1);
 
@@ -1339,7 +1334,7 @@ fn test_writev_empty_bufs() {
     }
 
     let path = utils::prepare_with_content("pass-libc-writev-empty-bufs.txt", &[1u8, 2, 3]);
-    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
     assert_ne!(fd, -1);
     unsafe {
@@ -1354,7 +1349,7 @@ fn test_writev_empty_bufs() {
 #[cfg(not(target_os = "solaris"))]
 fn test_pwritev() {
     let path = utils::prepare_with_content("pass-libc-pwritev.txt", &[]);
-    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
     assert_ne!(fd, -1);
 
@@ -1410,7 +1405,7 @@ fn test_pwritev() {
 /// Test writing with an offset.
 fn test_pwrite() {
     let path = utils::prepare_with_content("pass-libc-pwritev.txt", &[]);
-    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
     assert_ne!(fd, -1);
 
@@ -1460,7 +1455,7 @@ fn test_readlink() {
 
     // Test that the expected string gets written to a buffer of proper
     // length, and that a trailing null byte is not written.
-    let symlink_c_str = CString::new(symlink_path.as_os_str().as_bytes()).unwrap();
+    let symlink_c_str = utils::into_c_string(symlink_path);
     let symlink_c_ptr = symlink_c_str.as_ptr();
 
     // Make the buf one byte larger than it needs to be,
@@ -1501,8 +1496,8 @@ fn test_linkat() {
     let source = utils::prepare_with_content("miri_test_libc_linkat_source.txt", b"hello");
     let link = utils::prepare("miri_test_libc_linkat_link.txt");
 
-    let c_source = CString::new(source.as_os_str().as_bytes()).expect("CString::new failed");
-    let c_link = CString::new(link.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_source = utils::into_c_string(&source);
+    let c_link = utils::into_c_string(&link);
 
     // Call linkat
     unsafe {

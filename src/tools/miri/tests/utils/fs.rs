@@ -1,8 +1,8 @@
-use std::ffi::{CStr, CString, OsString};
+use std::ffi::{CStr, OsString};
 use std::path::PathBuf;
 use std::{fs, io};
 
-use super::miri_extern;
+use super::{into_c_string, miri_extern};
 
 pub fn host_to_target_path(path: OsString) -> PathBuf {
     let path = into_c_string(path);
@@ -47,9 +47,4 @@ pub fn prepare_dir(dirname: &str) -> PathBuf {
     // Clean the directory for robustness.
     fs::remove_dir_all(&path).ok();
     path
-}
-
-/// Return a `CString` version of the given path.
-pub fn into_c_string(path: impl Into<OsString>) -> CString {
-    CString::new(path.into().into_string().unwrap()).unwrap()
 }
