@@ -170,8 +170,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                     // picked by the linker.
 
                                     // Make sure we are consistent wrt what is 'first' and 'second'.
-                                    let original_span =
-                                        tcx.def_span(original.instance.def_id());
+                                    let original_span = tcx.def_span(original.instance.def_id());
                                     let span = tcx.def_span(def_id);
                                     if original_span.lo_hi() < span.lo_hi() {
                                         throw_machine_stop!(
