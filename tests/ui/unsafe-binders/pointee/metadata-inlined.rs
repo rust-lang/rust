@@ -1,5 +1,4 @@
 //@ compile-flags: -Znext-solver -O
-//@ compile-flags: -Zunstable-options -Csymbol-mangling-version=legacy
 //@ build-fail
 //@ failure-status: 101
 //@ known-bug: #130516

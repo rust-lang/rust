@@ -8,7 +8,7 @@
 //@ normalize-stderr: "query stack during panic:\n(.*\n)*?(end of query stack|\.\.\. and \d+ other queries.*)\n" -> ""
 //@ normalize-stderr: "Normalizing .* without wrapping in a `Binder`" -> "Normalizing .. without wrapping in a `Binder`"
 //@ normalize-stderr: "`ProjectionClause\(.*\)` has escaping bound vars" -> "`ProjectionClause(..)` has escaping bound vars"
-//@ compile-flags: -Zunstable-options -Csymbol-mangling-version=legacy -Cdebuginfo=2
+//@ compile-flags: -Cdebuginfo=2
 
 // After monomorphization, the metadata of every binder must be concrete: the
 // rigid projection from `alias-tail-bound-lifetime.rs` now has a concrete tail.

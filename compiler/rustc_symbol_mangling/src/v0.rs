@@ -642,8 +642,25 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                 })?;
             }
 
-            // FIXME(unsafe_binder):
-            ty::UnsafeBinder(..) => unimplemented!(),
+            ty::UnsafeBinder(b) => {
+                // We mangle something like `unsafe<'a, 'b> Foo<'a, 'b>` as
+                // `unsafe_binder::<for<'a, 'b> fn(Foo<'a, 'b>) -> ()>>`.
+                // FIXME(unsafe_binders): if this ever gets on a clear path to
+                // stabilization, we should *properly* mangle this (or, at least),
+                // we should be in support for *arbitrary* bound types should we
+                // could mange as `unsafe_binder::<for<'a, 'b> Foo<'a, 'b>>`.
+                self.push("I");
+                self.push("C");
+                self.push_ident("unsafe_binder");
+                self.push("F");
+                self.wrap_binder(&(*b).into(), |p, ty| {
+                    ty.print(p)?;
+                    p.push("E");
+                    p.push("u");
+                    Ok(())
+                })?;
+                self.push("E");
+            }
 
             ty::Dynamic(predicates, r) => {
                 self.push("D");
