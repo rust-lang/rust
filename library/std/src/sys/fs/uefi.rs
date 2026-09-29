@@ -263,7 +263,9 @@ impl File {
             return Err(io::const_error!(io::ErrorKind::InvalidInput, "Invalid open options"));
         }
 
-        if opts.create_new && exists(path)? {
+        let path = crate::path::absolute(path)?;
+
+        if opts.create_new && exists(path.clone())? {
             return Err(io::const_error!(io::ErrorKind::AlreadyExists, "File already exists"));
         }
 
@@ -412,7 +414,7 @@ impl fmt::Debug for File {
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let path = crate::path::absolute(p)?;
-    let f = uefi_fs::File::from_path(&path, file::MODE_READ, 0)?;
+    let f = uefi_fs::File::from_path(path, file::MODE_READ, 0)?;
     let file_info = f.file_info()?;
     let file_attr = FileAttr::from_uefi(file_info);
 
@@ -444,11 +446,8 @@ pub fn unlink(p: &Path) -> io::Result<()> {
 /// 3. Construct the target path relative to the current disk root.
 /// 4. Set this target path as the file_name in the file_info structure.
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    let old_absolute = crate::path::absolute(old)?;
-    let new_absolute = crate::path::absolute(new)?;
-
-    let mut old_components = old_absolute.components();
-    let mut new_components = new_absolute.components();
+    let mut old_components = old.components();
+    let mut new_components = new.components();
 
     let Some(old_disk) = old_components.next() else {
         return Err(io::const_error!(io::ErrorKind::InvalidInput, "Old path is not valid"));
@@ -538,7 +537,7 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
 }
 
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
-    crate::path::absolute(p)
+    Ok(p)
 }
 
 fn set_perm_inner(f: &uefi_fs::File, perm: FilePermissions) -> io::Result<()> {
@@ -577,7 +576,7 @@ mod uefi_fs {
     use crate::ffi::OsString;
     use crate::io;
     use crate::os::uefi::ffi::OsStringExt;
-    use crate::path::Path;
+    use crate::path::{Path, PathBuf};
     use crate::ptr::NonNull;
     use crate::sys::pal::helpers::{self, UefiBox};
     use crate::sys::pal::system_time;
@@ -585,7 +584,7 @@ mod uefi_fs {
 
     pub(crate) struct File {
         protocol: NonNull<file::Protocol>,
-        path: crate::path::PathBuf,
+        path: PathBuf,
     }
 
     // SAFETY: UEFI has no regular threads, and as per <https://github.com/rust-lang/rust/issues/133604>
@@ -595,13 +594,11 @@ mod uefi_fs {
 
     impl File {
         pub(crate) fn from_path(path: &Path, open_mode: u64, attr: u64) -> io::Result<Self> {
-            let absolute = crate::path::absolute(path)?;
-
-            let p = helpers::OwnedDevicePath::from_text(absolute.as_os_str())?;
+            let p = helpers::OwnedDevicePath::from_text(path.as_os_str())?;
             let (vol, mut path_remaining) = Self::open_volume_from_device_path(p.borrow())?;
 
             let protocol = Self::open(vol, &mut path_remaining, open_mode, attr)?;
-            Ok(Self { protocol, path: absolute })
+            Ok(Self { protocol, path: path.to_path_buf() })
         }
 
         /// Open Filesystem volume given a devicepath to the volume, or a file/directory in the

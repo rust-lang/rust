@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::ffi::{CStr, CString, OsStr, OsString};
+use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt;
 use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
@@ -9,9 +9,10 @@ use crate::os::raw::{c_int, c_short};
 use crate::os::solid::ffi::OsStrExt;
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
-pub use crate::sys::fs::common::{Dir, exists};
+pub use crate::sys::fs::common::Dir;
 use crate::sys::helpers::ignore_notfound;
 use crate::sys::pal::{abi, error};
+use crate::sys::path::cstr;
 use crate::sys::time::SystemTime;
 use crate::sys::{unsupported, unsupported_err};
 
@@ -206,7 +207,8 @@ impl DirEntry {
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        lstat(&self.path())
+        let cstr = cstr(&self.path())?;
+        lstat(&cstr)
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
@@ -216,7 +218,7 @@ impl DirEntry {
             abi::DT_REG => Ok(FileType(abi::S_IFREG)),
             abi::DT_DIR => Ok(FileType(abi::S_IFDIR)),
             abi::DT_BLK => Ok(FileType(abi::S_IFBLK)),
-            _ => lstat(&self.path()).map(|m| m.file_type()),
+            _ => lstat(&cstr(&self.path())?).map(|m| m.file_type()),
         }
     }
 }
@@ -294,26 +296,6 @@ impl OpenOptions {
             (_, _, true) => abi::O_CREAT | abi::O_EXCL,
         })
     }
-}
-
-fn cstr(path: &Path) -> io::Result<CString> {
-    let path = path.as_os_str().as_bytes();
-
-    if !path.starts_with(br"\") {
-        // Relative paths aren't supported
-        return Err(crate::io::const_error!(
-            crate::io::ErrorKind::Unsupported,
-            "relative path is not supported on this platform",
-        ));
-    }
-
-    // Apply the thread-safety wrapper
-    const SAFE_PREFIX: &[u8] = br"\TS";
-    let wrapped_path = [SAFE_PREFIX, &path, &[0]].concat();
-
-    CString::from_vec_with_nul(wrapped_path).map_err(|_| {
-        crate::io::const_error!(io::ErrorKind::InvalidInput, "path provided contains a nul byte")
-    })
 }
 
 impl File {
@@ -512,52 +494,56 @@ impl fmt::Debug for File {
     }
 }
 
-pub fn unlink(p: &Path) -> io::Result<()> {
+pub fn unlink(p: &CStr) -> io::Result<()> {
     if stat(p)?.file_type().is_dir() {
         Err(io::const_error!(io::ErrorKind::IsADirectory, "is a directory"))
     } else {
-        error::SolidError::err_if_negative(unsafe { abi::SOLID_FS_Unlink(cstr(p)?.as_ptr()) })
+        error::SolidError::err_if_negative(unsafe { abi::SOLID_FS_Unlink(p.as_ptr()) })
             .map_err(|e| e.as_io_error())?;
         Ok(())
     }
 }
 
-pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    error::SolidError::err_if_negative(unsafe {
-        abi::SOLID_FS_Rename(cstr(old)?.as_ptr(), cstr(new)?.as_ptr())
-    })
-    .map_err(|e| e.as_io_error())?;
+pub fn rename(old: &CStr, new: &CStr) -> io::Result<()> {
+    error::SolidError::err_if_negative(unsafe { abi::SOLID_FS_Rename(old.as_ptr(), new.as_ptr()) })
+        .map_err(|e| e.as_io_error())?;
     Ok(())
 }
 
-pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
+pub fn set_perm(p: &CStr, perm: FilePermissions) -> io::Result<()> {
     // Solid does not support symlinks
     set_perm_nofollow(p, perm)
 }
 
-pub fn set_perm_nofollow(p: &Path, perm: FilePermissions) -> io::Result<()> {
-    error::SolidError::err_if_negative(unsafe {
-        abi::SOLID_FS_Chmod(cstr(p)?.as_ptr(), perm.0.into())
-    })
-    .map_err(|e| e.as_io_error())?;
+pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
+    error::SolidError::err_if_negative(unsafe { abi::SOLID_FS_Chmod(p.as_ptr(), perm.0.into()) })
+        .map_err(|e| e.as_io_error())?;
     Ok(())
 }
 
-pub fn set_times(_p: &Path, _times: FileTimes) -> io::Result<()> {
+pub fn set_times(_p: &CStr, _times: FileTimes) -> io::Result<()> {
     unsupported()
 }
 
-pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
+pub fn set_times_nofollow(_p: &CStr, _times: FileTimes) -> io::Result<()> {
     unsupported()
 }
 
-pub fn rmdir(p: &Path) -> io::Result<()> {
+pub fn rmdir(p: &CStr) -> io::Result<()> {
     if stat(p)?.file_type().is_dir() {
-        error::SolidError::err_if_negative(unsafe { abi::SOLID_FS_Unlink(cstr(p)?.as_ptr()) })
+        error::SolidError::err_if_negative(unsafe { abi::SOLID_FS_Unlink(p.as_ptr()) })
             .map_err(|e| e.as_io_error())?;
         Ok(())
     } else {
         Err(io::const_error!(io::ErrorKind::NotADirectory, "not a directory"))
+    }
+}
+
+pub fn exists(path: &CStr) -> io::Result<bool> {
+    match stat(path) {
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error),
     }
 }
 
@@ -569,7 +555,7 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
             if child_type.is_dir() {
                 remove_dir_all(&child.path())?;
             } else {
-                unlink(&child.path())?;
+                unlink(&cstr(&child.path())?)?;
             }
         };
         // ignore internal NotFound errors
@@ -579,43 +565,40 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
             return result;
         }
     }
-    ignore_notfound(rmdir(path))
+    ignore_notfound(rmdir(&cstr(path)?))
 }
 
-pub fn readlink(p: &Path) -> io::Result<PathBuf> {
+pub fn readlink(p: &CStr) -> io::Result<PathBuf> {
     // This target doesn't support symlinks
     stat(p)?;
     Err(io::const_error!(io::ErrorKind::InvalidInput, "not a symbolic link"))
 }
 
-pub fn symlink(_original: &Path, _link: &Path) -> io::Result<()> {
+pub fn symlink(_original: &CStr, _link: &CStr) -> io::Result<()> {
     // This target doesn't support symlinks
     unsupported()
 }
 
-pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
+pub fn link(_src: &CStr, _dst: &CStr) -> io::Result<()> {
     // This target doesn't support symlinks
     unsupported()
 }
 
-pub fn stat(p: &Path) -> io::Result<FileAttr> {
+pub fn stat(p: &CStr) -> io::Result<FileAttr> {
     // This target doesn't support symlinks
     lstat(p)
 }
 
-pub fn lstat(p: &Path) -> io::Result<FileAttr> {
+pub fn lstat(p: &CStr) -> io::Result<FileAttr> {
     unsafe {
         let mut out_stat = MaybeUninit::uninit();
-        error::SolidError::err_if_negative(abi::SOLID_FS_Stat(
-            cstr(p)?.as_ptr(),
-            out_stat.as_mut_ptr(),
-        ))
-        .map_err(|e| e.as_io_error())?;
+        error::SolidError::err_if_negative(abi::SOLID_FS_Stat(p.as_ptr(), out_stat.as_mut_ptr()))
+            .map_err(|e| e.as_io_error())?;
         Ok(FileAttr { stat: out_stat.assume_init() })
     }
 }
 
-pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
+pub fn canonicalize(_p: &CStr) -> io::Result<PathBuf> {
     unsupported()
 }
 
