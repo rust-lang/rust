@@ -326,7 +326,7 @@ pub struct Rc<
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     ptr: NonNull<RcInner<T>>,
-    phantom: PhantomData<RcInner<T>>,
+    phantom: PhantomData<Box<RcInner<T>>>,
     alloc: A,
 }
 
