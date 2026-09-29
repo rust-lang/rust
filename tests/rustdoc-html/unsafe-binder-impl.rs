@@ -1,3 +1,5 @@
+//@ compile-flags: -Znext-solver
+
 // If impls on unsafe binders are allowed, they should be listed wherever the
 // inner type is.
 
