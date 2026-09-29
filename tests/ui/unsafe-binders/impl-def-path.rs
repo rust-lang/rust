@@ -1,6 +1,5 @@
 //@ compile-flags: -Znext-solver
 //@ build-fail
-//@ known-bug: #130516
 
 // Impls for unsafe binders should have the correct def-path.
 
@@ -17,11 +16,11 @@ pub mod t {
 }
 
 impl t::Tr for unsafe<'a> &'a Local {
-    #[rustc_dump_def_path]
+    #[rustc_dump_def_path] //~ ERROR def-path(<unsafe<'a> &'a Local as t::Tr>::m)
     fn m(&self) {}
 }
 
 impl t::Tr for &Local {
-    #[rustc_dump_def_path]
+    #[rustc_dump_def_path] //~ ERROR def-path(<&Local as t::Tr>::m)
     fn m(&self) {}
 }
