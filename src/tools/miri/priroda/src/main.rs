@@ -1,4 +1,9 @@
+#![allow(
+    unused_features,
+    reason = "FIXME: try_trait_v2 shows unused if only needed for desugaring"
+)]
 #![feature(rustc_private)]
+#![feature(try_trait_v2)]
 
 extern crate rustc_abi;
 extern crate rustc_driver;

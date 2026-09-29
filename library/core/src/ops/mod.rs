@@ -150,6 +150,7 @@ mod index;
 mod index_range;
 mod range;
 mod try_trait;
+mod try_trait_old;
 mod unsize;
 
 #[stable(feature = "rust1", since = "1.0.0")]
