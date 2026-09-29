@@ -1,10 +1,6 @@
-//@ check-pass
-//@ edition: 2021
-//@ compile-flags: --crate-type=dylib -Znext-solver=globally -Clink-dead-code
-//@ needs-dynamic-linking
-//@ needs-crate-type: dylib
-
-#![allow(unused)]
+//~ ERROR overflow evaluating the requirement `(): RawMessage<'_>`
+//@ build-fail
+//@ compile-flags: --crate-type=lib -Znext-solver=globally -Awarnings
 
 trait RawMessage<'a> {
     fn baz() {}
@@ -15,7 +11,7 @@ where
     (): RawMessage<'a>,
 {}
 
-pub trait EmptyState2 {
+trait EmptyState2 {
     fn bar() {}
 }
 
