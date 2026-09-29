@@ -3,7 +3,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::internal)]
-#![cfg_attr(bootstrap, feature(never_type))]
 #![doc(test(attr(allow(unused_variables), deny(warnings))))]
 #![feature(core_intrinsics)]
 #![feature(min_specialization)]

@@ -436,10 +436,7 @@ mod sve_retain;
 #[rustc_insignificant_dtor]
 #[doc(alias = "list")]
 #[doc(alias = "vector")]
-pub struct Vec<
-    T,
-    #[stable(feature = "allocator_api", since = "1.100.0")] A: Allocator = Global,
-> {
+pub struct Vec<T, #[stable(feature = "allocator_api", since = "1.100.0")] A: Allocator = Global> {
     buf: RawVec<T, A>,
     len: usize,
 }
