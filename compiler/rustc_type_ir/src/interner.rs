@@ -569,8 +569,6 @@ pub trait Interner:
     fn const_zst(self) -> Self::ValTree;
 
     fn layout_of_typing_env_size(self, typing_env: Self::TypingEnv, ty: Self::Ty) -> Size;
-
-    fn try_const_value_to_target_usize(self, const_v: Self::ValueConst) -> Option<u64>;
 }
 
 macro_rules! declare_lift_into {
