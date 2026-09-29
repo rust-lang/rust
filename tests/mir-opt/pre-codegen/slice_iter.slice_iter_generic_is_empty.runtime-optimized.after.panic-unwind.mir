@@ -59,7 +59,7 @@ fn slice_iter_generic_is_empty(_1: &std::slice::Iter<'_, T>) -> bool {
         _7 = copy ((*_1).1: *const T);
         _8 = copy _7 as usize (Transmute);
         StorageDead(_7);
-        _0 = Eq(copy _8, const 0_usize);
+        _0 = Eq(const 0_usize, copy _8);
         StorageDead(_8);
         goto -> bb3;
     }

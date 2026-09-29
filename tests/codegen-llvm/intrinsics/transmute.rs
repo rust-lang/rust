@@ -120,7 +120,7 @@ pub unsafe fn check_from_uninhabited(x: BigNever) -> u16 {
 pub unsafe fn check_intermediate_passthrough(x: u32) -> i32 {
     // CHECK: start
     // CHECK: %[[TMP:.+]] = add i32 1, %x
-    // CHECK: %[[RET:.+]] = add i32 %[[TMP]], 1
+    // CHECK: %[[RET:.+]] = add i32 1, %[[TMP]]
     // CHECK: ret i32 %[[RET]]
     unsafe { transmute::<u32, i32>(1 + x) + 1 }
 }

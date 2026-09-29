@@ -29,7 +29,7 @@ fn num_to_digit(_1: char) -> u32 {
     bb1: {
         StorageLive(_3);
         _3 = discriminant(_2);
-        _4 = Eq(copy _3, const 1_isize);
+        _4 = Eq(const 1_isize, copy _3);
         StorageDead(_3);
         StorageDead(_2);
         switchInt(move _4) -> [0: bb2, otherwise: bb3];

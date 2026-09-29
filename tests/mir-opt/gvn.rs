@@ -103,7 +103,7 @@ fn subexpression_elimination(x: u64, y: u64, mut z: u64) {
     // We can substitute through an immutable reference.
     // CHECK: [[ref:_.*]] = &_3;
     // CHECK: [[deref:_.*]] = copy (*[[ref]]);
-    // CHECK: [[addref:_.*]] = Add(copy [[deref]], copy _1);
+    // CHECK: [[addref:_.*]] = Add(copy _1, copy [[deref]]);
     // CHECK: opaque::<u64>(copy [[addref]])
     // CHECK: [[deref2:_.*]] = copy [[deref]];
     // CHECK: [[addref2:_.*]] = copy [[addref]];
@@ -143,7 +143,7 @@ fn subexpression_elimination(x: u64, y: u64, mut z: u64) {
     // Important: `e` is not `a`!
     // CHECK: [[ref2:_.*]] = &_3;
     // CHECK: [[deref2:_.*]] = copy (*[[ref2]]);
-    // CHECK: [[addref2:_.*]] = Add(copy [[deref2]], copy _1);
+    // CHECK: [[addref2:_.*]] = Add(copy _1, copy [[deref2]]);
     // CHECK: opaque::<u64>(copy [[addref2]])
     // CHECK: [[deref3:_.*]] = copy [[deref2]];
     // CHECK: [[addref3:_.*]] = copy [[addref2]];
@@ -185,14 +185,14 @@ fn unary(x: i64) {
     opaque(!!b); // This is `b`.
 
     // Both lines should test the same thing.
-    // CHECK: [[c:_.*]] = Ne(copy _1, const 15_i64);
+    // CHECK: [[c:_.*]] = Ne(const 15_i64, copy _1);
     // CHECK: opaque::<bool>(copy [[c]])
     // CHECK: opaque::<bool>(copy [[c]])
     opaque(x != 15);
     opaque(!(x == 15));
 
     // Both lines should test the same thing.
-    // CHECK: [[d:_.*]] = Eq(copy _1, const 35_i64);
+    // CHECK: [[d:_.*]] = Eq(const 35_i64, copy _1);
     // CHECK: opaque::<bool>(copy [[d]])
     // CHECK: opaque::<bool>(copy [[d]])
     opaque(x == 35);
@@ -290,13 +290,13 @@ fn arithmetic_checked(x: u64) {
 /// Verify that we do not apply arithmetic simplifications on floats.
 fn arithmetic_float(x: f64) {
     // CHECK-LABEL: fn arithmetic_float(
-    // CHECK: [[add:_.*]] = Add(copy _1, const 0f64);
+    // CHECK: [[add:_.*]] = Add(const 0f64, copy _1);
     // CHECK: opaque::<f64>(move [[add]])
     opaque(x + 0.);
     // CHECK: [[sub:_.*]] = Sub(copy _1, const 0f64);
     // CHECK: opaque::<f64>(move [[sub]])
     opaque(x - 0.);
-    // CHECK: [[mul:_.*]] = Mul(copy _1, const 0f64);
+    // CHECK: [[mul:_.*]] = Mul(const 0f64, copy _1);
     // CHECK: opaque::<f64>(move [[mul]])
     opaque(x * 0.);
     // CHECK: [[div0:_.*]] = Div(copy _1, const 0f64);
@@ -1091,7 +1091,7 @@ fn dereference_indexing(array: [u8; 2], index: usize) {
     // CHECK: debug i => [[i:_.*]];
 
     let a = {
-        // CHECK: [[i]] = Add(copy _2, const 1_usize);
+        // CHECK: [[i]] = Add(const 1_usize, copy _2);
         let i = index + 1;
         // CHECK: [[a]] = &_1[[[i]]];
         &array[i]

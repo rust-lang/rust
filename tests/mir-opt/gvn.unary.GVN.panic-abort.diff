@@ -81,7 +81,7 @@
           StorageLive(_14);
           _14 = copy _1;
 -         _13 = Ne(move _14, const 15_i64);
-+         _13 = Ne(copy _1, const 15_i64);
++         _13 = Ne(const 15_i64, copy _1);
           StorageDead(_14);
 -         _12 = opaque::<bool>(move _13) -> [return: bb3, unwind unreachable];
 +         _12 = opaque::<bool>(copy _13) -> [return: bb3, unwind unreachable];
@@ -97,7 +97,7 @@
           StorageLive(_18);
           _18 = copy _1;
 -         _17 = Eq(move _18, const 15_i64);
-+         _17 = Eq(copy _1, const 15_i64);
++         _17 = Eq(const 15_i64, copy _1);
           StorageDead(_18);
 -         _16 = Not(move _17);
 +         _16 = copy _13;
@@ -115,7 +115,7 @@
           StorageLive(_21);
           _21 = copy _1;
 -         _20 = Eq(move _21, const 35_i64);
-+         _20 = Eq(copy _1, const 35_i64);
++         _20 = Eq(const 35_i64, copy _1);
           StorageDead(_21);
 -         _19 = opaque::<bool>(move _20) -> [return: bb5, unwind unreachable];
 +         _19 = opaque::<bool>(copy _20) -> [return: bb5, unwind unreachable];
@@ -131,7 +131,7 @@
           StorageLive(_25);
           _25 = copy _1;
 -         _24 = Ne(move _25, const 35_i64);
-+         _24 = Ne(copy _1, const 35_i64);
++         _24 = Ne(const 35_i64, copy _1);
           StorageDead(_25);
 -         _23 = Not(move _24);
 +         _23 = copy _20;

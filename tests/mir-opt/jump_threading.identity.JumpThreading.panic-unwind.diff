@@ -76,7 +76,7 @@
           StorageLive(_14);
           StorageLive(_17);
           _14 = discriminant(_8);
-          _17 = Eq(copy _14, const 1_isize);
+          _17 = Eq(const 1_isize, copy _14);
           assume(move _17);
           StorageLive(_15);
           _15 = move ((_8 as Err).0: i32);
