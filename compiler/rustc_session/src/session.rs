@@ -954,6 +954,11 @@ impl Session {
             }
         }
     }
+
+    /// Should metadata be embedded within .rlib and .dylib files?
+    pub fn embed_metadata(&self) -> bool {
+        self.opts.cg.embed_metadata.or(self.opts.unstable_opts.embed_metadata).unwrap_or(true)
+    }
 }
 
 // JUSTIFICATION: defn of the suggested wrapper fns
