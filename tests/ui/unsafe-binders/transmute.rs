@@ -1,6 +1,5 @@
 //@ compile-flags: -Znext-solver
-//@ check-fail
-//@ known-bug: #130516
+//@ check-pass
 
 // Transmuting between `&T` and `unsafe<'a> &'a T` works for any `T`.
 
