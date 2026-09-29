@@ -1,5 +1,5 @@
 
 thread 'rustc' ($TID) panicked at compiler/rustc_codegen_llvm/src/debuginfo/utils.rs:LL:CC:
-wide_pointer_kind() - Encountered unexpected `pointee_tail_ty`: Binder { value: std::mem::ManuallyDrop<[&'^0 u8]>, bound_vars: [Region(BrAnon)] }
+wide_pointer_kind() - Encountered unexpected `pointee_tail_ty`: Binder { value: std::mem::ManuallyDrop<dyn [Binder { value: Trait(std::fmt::Debug), bound_vars: [] }] + '^0>, bound_vars: [Region(BrAnon)] }
 error: the compiler unexpectedly panicked. This is a bug
 

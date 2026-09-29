@@ -3,7 +3,6 @@
 //@ needs-sanitizer-kcfi
 //@ no-prefer-dynamic
 //@ compile-flags: -Cpanic=abort -Zsanitizer=kcfi -Cunsafe-allow-abi-mismatch=sanitizer
-//@ compile-flags: -Zunstable-options -Csymbol-mangling-version=legacy
 
 // KCFI sanitizer works with unsafe binders.
 
