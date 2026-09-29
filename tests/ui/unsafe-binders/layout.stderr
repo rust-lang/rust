@@ -1,0 +1,14 @@
+error[E0080]: evaluation panicked: assertion failed: size_of::<Option<*const unsafe<'a> MD<dyn Debug + 'a>>>() ==
+                  size_of::<*const unsafe<'a> MD<dyn Debug + 'a>>()
+  --> $DIR/layout.rs:23:15
+   |
+LL |   const _: () = assert!(
+   |  _______________^
+LL | |     size_of::<Option<*const unsafe<'a> MD<dyn Debug + 'a>>>()
+LL | |         == size_of::<*const unsafe<'a> MD<dyn Debug + 'a>>()
+LL | | );
+   | |_^ evaluation of `_` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

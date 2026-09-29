@@ -1,0 +1,53 @@
+
+thread 'rustc' ($TID) panicked at compiler/rustc_next_trait_solver/src/solve/normalizes_to.rs:LL:CC:
+not implemented
+error: the compiler unexpectedly panicked. This is a bug
+
+
+thread 'rustc' ($TID) panicked at compiler/rustc_next_trait_solver/src/solve/normalizes_to.rs:LL:CC:
+not implemented
+
+error: the compiler unexpectedly panicked. This is a bug
+
+
+thread 'rustc' ($TID) panicked at compiler/rustc_next_trait_solver/src/solve/normalizes_to.rs:LL:CC:
+not implemented
+
+error: the compiler unexpectedly panicked. This is a bug
+
+
+thread 'rustc' ($TID) panicked at compiler/rustc_next_trait_solver/src/solve/normalizes_to.rs:LL:CC:
+not implemented
+
+error: the compiler unexpectedly panicked. This is a bug
+
+
+thread 'rustc' ($TID) panicked at compiler/rustc_next_trait_solver/src/solve/normalizes_to.rs:LL:CC:
+not implemented
+
+error: the compiler unexpectedly panicked. This is a bug
+
+
+thread 'rustc' ($TID) panicked at compiler/rustc_next_trait_solver/src/solve/normalizes_to.rs:LL:CC:
+not implemented
+
+error: the compiler unexpectedly panicked. This is a bug
+
+
+thread 'rustc' ($TID) panicked at compiler/rustc_next_trait_solver/src/solve/normalizes_to.rs:LL:CC:
+not implemented
+
+error: the compiler unexpectedly panicked. This is a bug
+
+
+thread 'rustc' ($TID) panicked at compiler/rustc_next_trait_solver/src/solve/normalizes_to.rs:LL:CC:
+not implemented
+
+error: the compiler unexpectedly panicked. This is a bug
+
+
+thread 'rustc' ($TID) panicked at compiler/rustc_next_trait_solver/src/solve/normalizes_to.rs:LL:CC:
+not implemented
+
+error: the compiler unexpectedly panicked. This is a bug
+
