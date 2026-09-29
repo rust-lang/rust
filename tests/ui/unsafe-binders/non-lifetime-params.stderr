@@ -1,0 +1,36 @@
+error: internal compiler error: late-bound type parameter not allowed on function pointer types
+  --> $DIR/non-lifetime-params.rs:15:24
+   |
+LL | type WithType = unsafe<T> ();
+   |                        ^
+   |
+note: delayed at compiler/rustc_hir_analysis/src/collect/resolve_bound_vars.rs:LL:CC - disabled backtrace
+  --> $DIR/non-lifetime-params.rs:15:24
+   |
+LL | type WithType = unsafe<T> ();
+   |                        ^
+
+error: internal compiler error: late-bound const parameter not allowed on function pointer types
+  --> $DIR/non-lifetime-params.rs:16:25
+   |
+LL | type WithConst = unsafe<const N: usize> [u8; N];
+   |                         ^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_hir_analysis/src/collect/resolve_bound_vars.rs:LL:CC - disabled backtrace
+  --> $DIR/non-lifetime-params.rs:16:25
+   |
+LL | type WithConst = unsafe<const N: usize> [u8; N];
+   |                         ^^^^^^^^^^^^^^
+
+error: internal compiler error: `Res::Err` but no error emitted
+  --> $DIR/non-lifetime-params.rs:16:46
+   |
+LL | type WithConst = unsafe<const N: usize> [u8; N];
+   |                                              ^
+   |
+note: delayed at compiler/rustc_hir_typeck/src/expr.rs:LL:CC - disabled backtrace
+  --> $DIR/non-lifetime-params.rs:16:46
+   |
+LL | type WithConst = unsafe<const N: usize> [u8; N];
+   |                                              ^
+

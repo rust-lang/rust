@@ -1,0 +1,21 @@
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/elided-lifetimes.rs:8:24
+   |
+LL | type Elided = unsafe<> &u8;
+   |                        ^ explicit lifetime name needed here
+
+error[E0637]: `'_` cannot be used here
+  --> $DIR/elided-lifetimes.rs:11:29
+   |
+LL | type Underscore = unsafe<> &'_ u8;
+   |                             ^^ `'_` is a reserved lifetime name
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/elided-lifetimes.rs:14:20
+   |
+LL | fn arg(_: unsafe<> &u8) {}
+   |                    ^ explicit lifetime name needed here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0637`.

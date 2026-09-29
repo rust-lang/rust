@@ -1,0 +1,65 @@
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+  --> $DIR/copy-clone.rs:22:5
+   |
+LL |     a: unsafe<'a> &'a u8,
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
+   |
+LL |     a: std::mem::ManuallyDrop<unsafe<'a> &'a u8>,
+   |        +++++++++++++++++++++++                 +
+
+error[E0277]: the trait bound `unsafe<'b> &'b u8: Copy` is not satisfied in `(&'a u8, unsafe<'b> &'b u8)`
+  --> $DIR/copy-clone.rs:25:14
+   |
+LL | fn nested(_: unsafe<'a> (&'a u8, unsafe<'b> &'b u8)) {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ within `(&'a u8, unsafe<'b> &'b u8)`, the trait `Copy` is not implemented for `unsafe<'b> &'b u8`
+   |
+   = note: required because it appears within the type `unsafe<'b> &'b u8`
+   = note: required because it appears within the type `(&'a u8, unsafe<'b> &'b u8)`
+
+error[E0204]: the trait `Copy` cannot be implemented for this type
+  --> $DIR/copy-clone.rs:32:8
+   |
+LL | #[derive(Clone, Copy)]
+   |                 ---- in this derive macro expansion
+LL | struct S {
+   |        ^
+LL |     b: unsafe<'a> &'a u8,
+   |     -------------------- this field does not implement `Copy`
+
+error[E0277]: the trait bound `unsafe<'a> &'a u8: Clone` is not satisfied
+  --> $DIR/copy-clone.rs:18:26
+   |
+LL |     let _ = Clone::clone(&b);
+   |             ------------ ^^ the trait `Clone` is not implemented for `unsafe<'a> &'a u8`
+   |             |
+   |             required by a bound introduced by this call
+
+error[E0277]: the trait bound `unsafe<'a> &'a u8: Clone` is not satisfied
+  --> $DIR/copy-clone.rs:33:5
+   |
+LL | #[derive(Clone, Copy)]
+   |          ----- in this derive macro expansion
+LL | struct S {
+LL |     b: unsafe<'a> &'a u8,
+   |     ^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `unsafe<'a> &'a u8`
+   |
+note: required by a bound in `std::clone::AssertParamIsClone`
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
+
+error[E0382]: use of moved value: `b`
+  --> $DIR/copy-clone.rs:14:14
+   |
+LL | fn twice(b: unsafe<'a> &'a u8) {
+   |          - move occurs because `b` has type `unsafe<'a> &'a u8`, which does not implement the `Copy` trait
+LL |     let _c = b;
+   |              - value moved here
+LL |     let _d = b;
+   |              ^ value used here after move
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0204, E0277, E0382, E0740.
+For more information about an error, try `rustc --explain E0204`.

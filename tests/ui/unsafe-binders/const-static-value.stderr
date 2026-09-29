@@ -1,0 +1,11 @@
+
+thread 'rustc' ($TID) panicked at compiler/rustc_const_eval/src/interpret/validity.rs:LL:CC:
+not implemented: FIXME(unsafe_binder)
+error: the compiler unexpectedly panicked. This is a bug
+
+
+thread 'rustc' ($TID) panicked at compiler/rustc_const_eval/src/interpret/validity.rs:LL:CC:
+not implemented: FIXME(unsafe_binder)
+
+error: the compiler unexpectedly panicked. This is a bug
+

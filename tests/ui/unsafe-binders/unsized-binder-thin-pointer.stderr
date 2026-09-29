@@ -1,0 +1,26 @@
+error[E0080]: evaluation panicked: assertion failed: size_of::<&unsafe ManuallyDrop<[u8]>>() == WIDE
+  --> $DIR/unsized-binder-thin-pointer.rs:26:15
+   |
+LL | const _: () = assert!(size_of::<&unsafe<> ManuallyDrop<[u8]>>() == WIDE);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
+
+error[E0080]: evaluation panicked: assertion failed: size_of::<&unsafe<'a> ManuallyDrop<dyn Debug + 'a>>() == WIDE
+  --> $DIR/unsized-binder-thin-pointer.rs:28:15
+   |
+LL | const _: () = assert!(size_of::<&unsafe<'a> ManuallyDrop<dyn Debug + 'a>>() == WIDE);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
+
+
+thread 'rustc' ($TID) panicked at compiler/rustc_next_trait_solver/src/solve/normalizes_to.rs:LL:CC:
+not implemented
+error: the compiler unexpectedly panicked. This is a bug
+
+
+thread 'rustc' ($TID) panicked at compiler/rustc_next_trait_solver/src/solve/normalizes_to.rs:LL:CC:
+not implemented
+
+error: the compiler unexpectedly panicked. This is a bug
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

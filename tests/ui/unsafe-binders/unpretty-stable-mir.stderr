@@ -1,0 +1,5 @@
+
+thread 'rustc' ($TID) panicked at compiler/rustc_public/src/unstable/convert/stable/mir.rs:LL:CC:
+not implemented: FIXME(unsafe_binders):
+error: the compiler unexpectedly panicked. This is a bug
+
