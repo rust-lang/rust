@@ -479,7 +479,7 @@ define_Conf! {
     /// The maximum cognitive complexity a function can have
     #[lints(cognitive_complexity)]
     cognitive_complexity_threshold("cognitive-complexity-threshold"): u64 = 25,
-    /// The minimum digits a const float literal must have to supress the `excessive_precicion` lint
+    /// The minimum digits a const float literal must have to suppress the `excessive_precision` lint
     #[lints(excessive_precision)]
     const_literal_digits_threshold("const-literal-digits-threshold"): u32 = 30,
     #[rename = cognitive_complexity_threshold]

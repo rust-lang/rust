@@ -544,7 +544,7 @@ The maximum cognitive complexity a function can have
 
 
 ## `const-literal-digits-threshold`
-The minimum digits a const float literal must have to supress the `excessive_precicion` lint
+The minimum digits a const float literal must have to suppress the `excessive_precision` lint
 
 **Default Value:** `30`
 
