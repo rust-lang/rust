@@ -29,9 +29,6 @@ fn main() {
     // -Zshare-generics.
     global_function(&rdylib, "public_naked_generic");
 
-    global_function(&rdylib, "vanilla_external_linkage");
-    global_function(&rdylib, "naked_external_linkage");
-
     // FIXME: make this work on windows (gnu and msvc). See the PR
     // https://github.com/rust-lang/rust/pull/128362 for some approaches
     // that don't work
