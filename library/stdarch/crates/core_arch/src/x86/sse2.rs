@@ -294,14 +294,8 @@ pub const fn _mm_min_epu8(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pmulhw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_mulhi_epi16(a: __m128i, b: __m128i) -> __m128i {
-    unsafe {
-        let a = simd_cast::<_, i32x8>(a.as_i16x8());
-        let b = simd_cast::<_, i32x8>(b.as_i16x8());
-        let r = simd_shr(simd_mul(a, b), i32x8::splat(16));
-        transmute(simd_cast::<i32x8, i16x8>(r))
-    }
+pub fn _mm_mulhi_epi16(a: __m128i, b: __m128i) -> __m128i {
+    unsafe { transmute(pmulhw(a.as_i16x8(), b.as_i16x8())) }
 }
 
 /// Multiplies the packed unsigned 16-bit integers in `a` and `b`.
@@ -314,14 +308,8 @@ pub const fn _mm_mulhi_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pmulhuw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_mulhi_epu16(a: __m128i, b: __m128i) -> __m128i {
-    unsafe {
-        let a = simd_cast::<_, u32x8>(a.as_u16x8());
-        let b = simd_cast::<_, u32x8>(b.as_u16x8());
-        let r = simd_shr(simd_mul(a, b), u32x8::splat(16));
-        transmute(simd_cast::<u32x8, u16x8>(r))
-    }
+pub fn _mm_mulhi_epu16(a: __m128i, b: __m128i) -> __m128i {
+    unsafe { transmute(pmulhuw(a.as_u16x8(), b.as_u16x8())) }
 }
 
 /// Multiplies the packed 16-bit integers in `a` and `b`.
@@ -3202,6 +3190,10 @@ unsafe extern "llvm-intrinsic" {
     fn mfence();
     #[link_name = "llvm.x86.sse2.pmadd.wd"]
     fn pmaddwd(a: i16x8, b: i16x8) -> i32x4;
+    #[link_name = "llvm.x86.sse2.pmulh.w"]
+    fn pmulhw(a: i16x8, b: i16x8) -> i16x8;
+    #[link_name = "llvm.x86.sse2.pmulhu.w"]
+    fn pmulhuw(a: u16x8, b: u16x8) -> u16x8;
     #[link_name = "llvm.x86.sse2.psad.bw"]
     fn psadbw(a: u8x16, b: u8x16) -> u64x2;
     #[link_name = "llvm.x86.sse2.psll.w"]
@@ -3547,14 +3539,14 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
-    const fn test_mm_mulhi_epi16() {
+    fn test_mm_mulhi_epi16() {
         let (a, b) = (_mm_set1_epi16(1000), _mm_set1_epi16(-1001));
         let r = _mm_mulhi_epi16(a, b);
         assert_eq_m128i(r, _mm_set1_epi16(-16));
     }
 
     #[simd_test(enable = "sse2")]
-    const fn test_mm_mulhi_epu16() {
+    fn test_mm_mulhi_epu16() {
         let (a, b) = (_mm_set1_epi16(1000), _mm_set1_epi16(1001));
         let r = _mm_mulhi_epu16(a, b);
         assert_eq_m128i(r, _mm_set1_epi16(15));

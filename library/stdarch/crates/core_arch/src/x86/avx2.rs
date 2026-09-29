@@ -2231,14 +2231,8 @@ pub const fn _mm256_mul_epu32(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmulhw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_mulhi_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let a = simd_cast::<_, i32x16>(a.as_i16x16());
-        let b = simd_cast::<_, i32x16>(b.as_i16x16());
-        let r = simd_shr(simd_mul(a, b), i32x16::splat(16));
-        transmute(simd_cast::<i32x16, i16x16>(r))
-    }
+pub fn _mm256_mulhi_epi16(a: __m256i, b: __m256i) -> __m256i {
+    unsafe { transmute(pmulhw(a.as_i16x16(), b.as_i16x16())) }
 }
 
 /// Multiplies the packed unsigned 16-bit integers in `a` and `b`, producing
@@ -2250,14 +2244,8 @@ pub const fn _mm256_mulhi_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmulhuw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_mulhi_epu16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let a = simd_cast::<_, u32x16>(a.as_u16x16());
-        let b = simd_cast::<_, u32x16>(b.as_u16x16());
-        let r = simd_shr(simd_mul(a, b), u32x16::splat(16));
-        transmute(simd_cast::<u32x16, u16x16>(r))
-    }
+pub fn _mm256_mulhi_epu16(a: __m256i, b: __m256i) -> __m256i {
+    unsafe { transmute(pmulhuw(a.as_u16x16(), b.as_u16x16())) }
 }
 
 /// Multiplies the packed 16-bit integers in `a` and `b`, producing
@@ -3765,6 +3753,10 @@ unsafe extern "llvm-intrinsic" {
     fn pmaddubsw(a: u8x32, b: i8x32) -> i16x16;
     #[link_name = "llvm.x86.avx2.mpsadbw"]
     fn mpsadbw(a: u8x32, b: u8x32, imm8: i8) -> u16x16;
+    #[link_name = "llvm.x86.avx2.pmulhu.w"]
+    fn pmulhuw(a: u16x16, b: u16x16) -> u16x16;
+    #[link_name = "llvm.x86.avx2.pmulh.w"]
+    fn pmulhw(a: i16x16, b: i16x16) -> i16x16;
     #[link_name = "llvm.x86.avx2.pmul.hr.sw"]
     fn pmulhrsw(a: i16x16, b: i16x16) -> i16x16;
     #[link_name = "llvm.x86.avx2.packsswb"]
@@ -4895,7 +4887,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_mulhi_epi16() {
+    fn test_mm256_mulhi_epi16() {
         let a = _mm256_set1_epi16(6535);
         let b = _mm256_set1_epi16(6535);
         let r = _mm256_mulhi_epi16(a, b);
@@ -4904,7 +4896,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_mulhi_epu16() {
+    fn test_mm256_mulhi_epu16() {
         let a = _mm256_set1_epi16(6535);
         let b = _mm256_set1_epi16(6535);
         let r = _mm256_mulhi_epu16(a, b);

@@ -1450,14 +1450,8 @@ pub const fn _mm_maskz_subs_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_mulhi_epu16(a: __m512i, b: __m512i) -> __m512i {
-    unsafe {
-        let a = simd_cast::<_, u32x32>(a.as_u16x32());
-        let b = simd_cast::<_, u32x32>(b.as_u16x32());
-        let r = simd_shr(simd_mul(a, b), u32x32::splat(16));
-        transmute(simd_cast::<u32x32, u16x32>(r))
-    }
+pub fn _mm512_mulhi_epu16(a: __m512i, b: __m512i) -> __m512i {
+    unsafe { transmute(vpmulhuw(a.as_u16x32(), b.as_u16x32())) }
 }
 
 /// Multiply the packed unsigned 16-bit integers in a and b, producing intermediate 32-bit integers, and store the high 16 bits of the intermediate integers in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1467,13 +1461,7 @@ pub const fn _mm512_mulhi_epu16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_mask_mulhi_epu16(
-    src: __m512i,
-    k: __mmask32,
-    a: __m512i,
-    b: __m512i,
-) -> __m512i {
+pub fn _mm512_mask_mulhi_epu16(src: __m512i, k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let mul = _mm512_mulhi_epu16(a, b).as_u16x32();
         transmute(simd_select_bitmask(k, mul, src.as_u16x32()))
@@ -1487,8 +1475,7 @@ pub const fn _mm512_mask_mulhi_epu16(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_maskz_mulhi_epu16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
+pub fn _mm512_maskz_mulhi_epu16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let mul = _mm512_mulhi_epu16(a, b).as_u16x32();
         transmute(simd_select_bitmask(k, mul, u16x32::ZERO))
@@ -1502,13 +1489,7 @@ pub const fn _mm512_maskz_mulhi_epu16(k: __mmask32, a: __m512i, b: __m512i) -> _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_mask_mulhi_epu16(
-    src: __m256i,
-    k: __mmask16,
-    a: __m256i,
-    b: __m256i,
-) -> __m256i {
+pub fn _mm256_mask_mulhi_epu16(src: __m256i, k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let mul = _mm256_mulhi_epu16(a, b).as_u16x16();
         transmute(simd_select_bitmask(k, mul, src.as_u16x16()))
@@ -1522,8 +1503,7 @@ pub const fn _mm256_mask_mulhi_epu16(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_maskz_mulhi_epu16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
+pub fn _mm256_maskz_mulhi_epu16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let mul = _mm256_mulhi_epu16(a, b).as_u16x16();
         transmute(simd_select_bitmask(k, mul, u16x16::ZERO))
@@ -1537,8 +1517,7 @@ pub const fn _mm256_maskz_mulhi_epu16(k: __mmask16, a: __m256i, b: __m256i) -> _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_mask_mulhi_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
+pub fn _mm_mask_mulhi_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let mul = _mm_mulhi_epu16(a, b).as_u16x8();
         transmute(simd_select_bitmask(k, mul, src.as_u16x8()))
@@ -1552,8 +1531,7 @@ pub const fn _mm_mask_mulhi_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m1
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_maskz_mulhi_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
+pub fn _mm_maskz_mulhi_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let mul = _mm_mulhi_epu16(a, b).as_u16x8();
         transmute(simd_select_bitmask(k, mul, u16x8::ZERO))
@@ -1567,14 +1545,8 @@ pub const fn _mm_maskz_mulhi_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m12
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_mulhi_epi16(a: __m512i, b: __m512i) -> __m512i {
-    unsafe {
-        let a = simd_cast::<_, i32x32>(a.as_i16x32());
-        let b = simd_cast::<_, i32x32>(b.as_i16x32());
-        let r = simd_shr(simd_mul(a, b), i32x32::splat(16));
-        transmute(simd_cast::<i32x32, i16x32>(r))
-    }
+pub fn _mm512_mulhi_epi16(a: __m512i, b: __m512i) -> __m512i {
+    unsafe { transmute(vpmulhw(a.as_i16x32(), b.as_i16x32())) }
 }
 
 /// Multiply the packed signed 16-bit integers in a and b, producing intermediate 32-bit integers, and store the high 16 bits of the intermediate integers in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1584,13 +1556,7 @@ pub const fn _mm512_mulhi_epi16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_mask_mulhi_epi16(
-    src: __m512i,
-    k: __mmask32,
-    a: __m512i,
-    b: __m512i,
-) -> __m512i {
+pub fn _mm512_mask_mulhi_epi16(src: __m512i, k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let mul = _mm512_mulhi_epi16(a, b).as_i16x32();
         transmute(simd_select_bitmask(k, mul, src.as_i16x32()))
@@ -1604,8 +1570,7 @@ pub const fn _mm512_mask_mulhi_epi16(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_maskz_mulhi_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
+pub fn _mm512_maskz_mulhi_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let mul = _mm512_mulhi_epi16(a, b).as_i16x32();
         transmute(simd_select_bitmask(k, mul, i16x32::ZERO))
@@ -1619,13 +1584,7 @@ pub const fn _mm512_maskz_mulhi_epi16(k: __mmask32, a: __m512i, b: __m512i) -> _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_mask_mulhi_epi16(
-    src: __m256i,
-    k: __mmask16,
-    a: __m256i,
-    b: __m256i,
-) -> __m256i {
+pub fn _mm256_mask_mulhi_epi16(src: __m256i, k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let mul = _mm256_mulhi_epi16(a, b).as_i16x16();
         transmute(simd_select_bitmask(k, mul, src.as_i16x16()))
@@ -1639,8 +1598,7 @@ pub const fn _mm256_mask_mulhi_epi16(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_maskz_mulhi_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
+pub fn _mm256_maskz_mulhi_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let mul = _mm256_mulhi_epi16(a, b).as_i16x16();
         transmute(simd_select_bitmask(k, mul, i16x16::ZERO))
@@ -1654,8 +1612,7 @@ pub const fn _mm256_maskz_mulhi_epi16(k: __mmask16, a: __m256i, b: __m256i) -> _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_mask_mulhi_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
+pub fn _mm_mask_mulhi_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let mul = _mm_mulhi_epi16(a, b).as_i16x8();
         transmute(simd_select_bitmask(k, mul, src.as_i16x8()))
@@ -1669,8 +1626,7 @@ pub const fn _mm_mask_mulhi_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m1
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_maskz_mulhi_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
+pub fn _mm_maskz_mulhi_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let mul = _mm_mulhi_epi16(a, b).as_i16x8();
         transmute(simd_select_bitmask(k, mul, i16x8::ZERO))
@@ -12499,6 +12455,11 @@ unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.x86.avx512.pmul.hr.sw.512"]
     fn vpmulhrsw(a: i16x32, b: i16x32) -> i16x32;
 
+    #[link_name = "llvm.x86.avx512.pmulhu.w.512"]
+    fn vpmulhuw(a: u16x32, b: u16x32) -> u16x32;
+    #[link_name = "llvm.x86.avx512.pmulh.w.512"]
+    fn vpmulhw(a: i16x32, b: i16x32) -> i16x32;
+
     #[link_name = "llvm.x86.avx512.pmaddw.d.512"]
     fn vpmaddwd(a: i16x32, b: i16x32) -> i32x16;
     #[link_name = "llvm.x86.avx512.pmaddubs.w.512"]
@@ -13818,7 +13779,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bw")]
-    const fn test_mm512_mulhi_epu16() {
+    fn test_mm512_mulhi_epu16() {
         let a = _mm512_set1_epi16(1);
         let b = _mm512_set1_epi16(1);
         let r = _mm512_mulhi_epu16(a, b);
@@ -13827,7 +13788,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bw")]
-    const fn test_mm512_mask_mulhi_epu16() {
+    fn test_mm512_mask_mulhi_epu16() {
         let a = _mm512_set1_epi16(1);
         let b = _mm512_set1_epi16(1);
         let r = _mm512_mask_mulhi_epu16(a, 0, a, b);
@@ -13840,7 +13801,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bw")]
-    const fn test_mm512_maskz_mulhi_epu16() {
+    fn test_mm512_maskz_mulhi_epu16() {
         let a = _mm512_set1_epi16(1);
         let b = _mm512_set1_epi16(1);
         let r = _mm512_maskz_mulhi_epu16(0, a, b);
@@ -13853,7 +13814,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bw,avx512vl")]
-    const fn test_mm256_mask_mulhi_epu16() {
+    fn test_mm256_mask_mulhi_epu16() {
         let a = _mm256_set1_epi16(1);
         let b = _mm256_set1_epi16(1);
         let r = _mm256_mask_mulhi_epu16(a, 0, a, b);
@@ -13864,7 +13825,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bw,avx512vl")]
-    const fn test_mm256_maskz_mulhi_epu16() {
+    fn test_mm256_maskz_mulhi_epu16() {
         let a = _mm256_set1_epi16(1);
         let b = _mm256_set1_epi16(1);
         let r = _mm256_maskz_mulhi_epu16(0, a, b);
@@ -13875,7 +13836,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bw,avx512vl")]
-    const fn test_mm_mask_mulhi_epu16() {
+    fn test_mm_mask_mulhi_epu16() {
         let a = _mm_set1_epi16(1);
         let b = _mm_set1_epi16(1);
         let r = _mm_mask_mulhi_epu16(a, 0, a, b);
@@ -13886,7 +13847,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bw,avx512vl")]
-    const fn test_mm_maskz_mulhi_epu16() {
+    fn test_mm_maskz_mulhi_epu16() {
         let a = _mm_set1_epi16(1);
         let b = _mm_set1_epi16(1);
         let r = _mm_maskz_mulhi_epu16(0, a, b);
@@ -13897,7 +13858,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bw")]
-    const fn test_mm512_mulhi_epi16() {
+    fn test_mm512_mulhi_epi16() {
         let a = _mm512_set1_epi16(1);
         let b = _mm512_set1_epi16(1);
         let r = _mm512_mulhi_epi16(a, b);
@@ -13906,7 +13867,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bw")]
-    const fn test_mm512_mask_mulhi_epi16() {
+    fn test_mm512_mask_mulhi_epi16() {
         let a = _mm512_set1_epi16(1);
         let b = _mm512_set1_epi16(1);
         let r = _mm512_mask_mulhi_epi16(a, 0, a, b);
@@ -13919,7 +13880,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bw")]
-    const fn test_mm512_maskz_mulhi_epi16() {
+    fn test_mm512_maskz_mulhi_epi16() {
         let a = _mm512_set1_epi16(1);
         let b = _mm512_set1_epi16(1);
         let r = _mm512_maskz_mulhi_epi16(0, a, b);
@@ -13932,7 +13893,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bw,avx512vl")]
-    const fn test_mm256_mask_mulhi_epi16() {
+    fn test_mm256_mask_mulhi_epi16() {
         let a = _mm256_set1_epi16(1);
         let b = _mm256_set1_epi16(1);
         let r = _mm256_mask_mulhi_epi16(a, 0, a, b);
@@ -13943,7 +13904,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bw,avx512vl")]
-    const fn test_mm256_maskz_mulhi_epi16() {
+    fn test_mm256_maskz_mulhi_epi16() {
         let a = _mm256_set1_epi16(1);
         let b = _mm256_set1_epi16(1);
         let r = _mm256_maskz_mulhi_epi16(0, a, b);
@@ -13954,7 +13915,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bw,avx512vl")]
-    const fn test_mm_mask_mulhi_epi16() {
+    fn test_mm_mask_mulhi_epi16() {
         let a = _mm_set1_epi16(1);
         let b = _mm_set1_epi16(1);
         let r = _mm_mask_mulhi_epi16(a, 0, a, b);
@@ -13965,7 +13926,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bw,avx512vl")]
-    const fn test_mm_maskz_mulhi_epi16() {
+    fn test_mm_maskz_mulhi_epi16() {
         let a = _mm_set1_epi16(1);
         let b = _mm_set1_epi16(1);
         let r = _mm_maskz_mulhi_epi16(0, a, b);
