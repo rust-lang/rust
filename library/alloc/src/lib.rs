@@ -186,7 +186,6 @@
 #![feature(ub_checks)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
-#![feature(unwrap_infallible)]
 #![feature(write_all_vectored)]
 #![feature(wtf8_internals)]
 // tidy-alphabetical-end
