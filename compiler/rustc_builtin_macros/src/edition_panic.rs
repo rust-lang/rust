@@ -47,7 +47,7 @@ fn expand<'cx>(
         sp,
         cx.macro_call(
             sp,
-            cx.path(sp, cx.std_path(&[sym::panic, mac])),
+            cx.path(sp, cx.std_path([sym::panic, mac])),
             Delimiter::Parenthesis,
             tts,
         ),

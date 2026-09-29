@@ -66,7 +66,7 @@ fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span
     let size = Ident::new(sym::size, span);
     let align = Ident::new(sym::align, span);
 
-    let layout_new = cx.std_path(&[sym::alloc, sym::Layout, sym::from_size_align_unchecked]);
+    let layout_new = cx.std_path([sym::alloc, sym::Layout, sym::from_size_align_unchecked]);
     let layout_new = cx.expr_path(cx.path(span, layout_new));
     let layout = cx.expr_call(
         span,

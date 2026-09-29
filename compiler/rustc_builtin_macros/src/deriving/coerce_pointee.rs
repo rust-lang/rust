@@ -102,7 +102,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
         ));
     }
     let mut add_impl_block = |generics, trait_symbol, trait_args| {
-        let trait_path = new_path(cx, span, &[sym::ops, trait_symbol], trait_args);
+        let trait_path = new_path(cx, span, [sym::ops, trait_symbol], trait_args);
         let trait_ref = cx.trait_ref(trait_path);
         let item = cx.item_trait_impl(
             span,
@@ -146,7 +146,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
             return;
         }
         let arg = GenericArg::Type(s_ty.clone());
-        let unsize = cx.path_all(span, cx.std_path(&[sym::marker, sym::Unsize]), vec![arg]);
+        let unsize = cx.path_all(span, cx.std_path([sym::marker, sym::Unsize]), vec![arg]);
         pointee.bounds.push(cx.trait_bound(unsize, false));
         // Drop `#[pointee]` attribute since it should not be recognized outside `derive(CoercePointee)`
         pointee.attrs.retain(|attr| !attr.has_name(sym::pointee));

@@ -60,7 +60,7 @@ pub fn inject(
             EditionFuture => sym::rust_future,
         }])
         .map(|&symbol| Ident::new(symbol, span))
-        .collect();
+        .collect::<Vec<_>>();
 
     // Inject the relevant crate's prelude.
     let use_item = cx.item(

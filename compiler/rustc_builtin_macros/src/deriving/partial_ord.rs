@@ -103,7 +103,7 @@ pub(crate) fn discr_data_order(item: &ast::Item) -> bool {
 // Some(::core::cmp::Ord::cmp(self, other))
 // ```
 fn cs_partial_cmp_simple(cx: &ExtCtxt<'_>, span: Span, other_expr: Box<ast::Expr>) -> BlockOrExpr {
-    let ord_cmp_path = cx.std_path(&[sym::cmp, sym::Ord, sym::cmp]);
+    let ord_cmp_path = cx.std_path([sym::cmp, sym::Ord, sym::cmp]);
     let cmp_expr =
         cx.expr_call_global(span, ord_cmp_path, thin_vec![cx.expr_self(span), other_expr]);
     BlockOrExpr::new_expr(cx.expr_some(span, cmp_expr))
@@ -141,11 +141,11 @@ pub(crate) fn cmp_body(
 ) -> Box<Expr> {
     let is_partial_ord = derive == OrdlikeDerive::PartialOrd;
     let method_path = if is_partial_ord {
-        cx.std_path(&[sym::cmp, sym::PartialOrd, sym::partial_cmp])
+        cx.std_path([sym::cmp, sym::PartialOrd, sym::partial_cmp])
     } else {
-        cx.std_path(&[sym::cmp, sym::Ord, sym::cmp])
+        cx.std_path([sym::cmp, sym::Ord, sym::cmp])
     };
-    let equal_path = cx.path(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
+    let equal_path = cx.path(span, cx.std_path([sym::cmp, sym::Ordering, sym::Equal]));
 
     // The combination of two field expressions. E.g. for `Ord::cmp` this
     // is something like `<field1 comparison> && <field2 comparison>`.

@@ -7,7 +7,7 @@ use rustc_span::{Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 macro pathvec($($rest:ident)::+) {{
-    &[ $( sym::$rest ),+ ]
+    [ $( sym::$rest ),+ ]
 }}
 
 macro path_std($cx: expr, $span: expr, $($x:tt)*) {
@@ -91,12 +91,12 @@ fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
     }))
 }
 
-fn assert_ty_bounds(
+fn assert_ty_bounds<const N: usize>(
     cx: &ExtCtxt<'_>,
     stmts: &mut ThinVec<ast::Stmt>,
     ty: Box<ast::Ty>,
     span: Span,
-    assert_path: &[Symbol],
+    assert_path: [Symbol; N],
 ) {
     // Generate statement `let _: assert_path<ty>;`.
     let span = cx.with_def_site_ctxt(span);
@@ -104,7 +104,7 @@ fn assert_ty_bounds(
     stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
 }
 
-fn new_path(cx: &ExtCtxt<'_>, span: Span, path: &[Symbol], params: Vec<Box<ast::Ty>>) -> ast::Path {
+fn new_path<const N: usize>(cx: &ExtCtxt<'_>, span: Span, path: [Symbol; N], params: Vec<Box<ast::Ty>>) -> ast::Path {
     let params = params.into_iter().map(GenericArg::Type).collect();
     let idents = cx.std_path(path);
     cx.path_all(span, idents, params)

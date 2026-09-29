@@ -110,7 +110,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 self.span,
                 thin_vec![self.cx.attr_nested_word(sym::allow, sym::unused_imports, self.span)],
                 ItemKind::Use(UseTree {
-                    prefix: self.cx.path(self.span, self.cx.std_path(&[sym::asserting])),
+                    prefix: self.cx.path(self.span, self.cx.std_path([sym::asserting])),
                     kind: UseTreeKind::Nested {
                         items: thin_vec![
                             nested_tree(self, sym::TryCaptureGeneric),
@@ -341,7 +341,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         let curr_capture_idx = self.capture_decls.len();
         let capture_string = format!("__capture{curr_capture_idx}");
         let ident = Ident::new(Symbol::intern(&capture_string), self.span);
-        let init_std_path = self.cx.std_path(&[sym::asserting, sym::Capture, sym::new]);
+        let init_std_path = self.cx.std_path([sym::asserting, sym::Capture, sym::new]);
         let init = self.cx.expr_call(
             self.span,
             self.cx.expr_path(self.cx.path(self.span, init_std_path)),
@@ -375,7 +375,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         let wrapper = self.cx.expr_call(
             self.span,
             self.cx.expr_path(
-                self.cx.path(self.span, self.cx.std_path(&[sym::asserting, sym::Wrapper])),
+                self.cx.path(self.span, self.cx.std_path([sym::asserting, sym::Wrapper])),
             ),
             thin_vec![self.cx.expr_path(Path::from_ident(local_bind))],
         );

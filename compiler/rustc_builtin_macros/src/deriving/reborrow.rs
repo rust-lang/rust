@@ -108,7 +108,7 @@ fn push_marker_impl(
     trait_args: Vec<Box<ast::Ty>>,
     push: &mut dyn FnMut(Box<ast::Item>),
 ) {
-    let trait_path = new_path(cx, span, &[sym::core, sym::marker, trait_name], trait_args);
+    let trait_path = new_path(cx, span, [sym::core, sym::marker, trait_name], trait_args);
     let trait_ref = cx.trait_ref(trait_path);
 
     let self_params: Vec<_> =

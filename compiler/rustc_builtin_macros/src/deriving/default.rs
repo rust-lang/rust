@@ -22,7 +22,7 @@ pub(crate) fn expand_deriving_default(
 
     let trait_def = TraitDef {
         span,
-        path: new_path(cx, span, &[kw::Default, sym::Default], vec![]),
+        path: new_path(cx, span, [kw::Default, sym::Default], vec![]),
         skip_path_as_bound: has_a_default_variant(item),
         needs_copy_as_bound_if_packed: false,
         additional_bounds: SmallVec::new(),
@@ -59,7 +59,7 @@ pub(crate) fn expand_deriving_default(
 
 fn default_call(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
     // Note that `kw::Default` is "default" and `sym::Default` is "Default"!
-    let default_ident = cx.std_path(&[kw::Default, sym::Default, kw::Default]);
+    let default_ident = cx.std_path([kw::Default, sym::Default, kw::Default]);
     cx.expr_call_global(span, default_ident, ThinVec::new())
 }
 
