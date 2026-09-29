@@ -3,6 +3,7 @@
 
 use std::ops::Deref;
 
+use rustc_data_structures::hash_table::Entry;
 use rustc_data_structures::sharded;
 use rustc_errors::FatalError;
 use rustc_hir::def_id::LocalDefId;
@@ -11,7 +12,8 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, bug};
 use crate::dep_graph;
 use crate::dep_graph::DepNodeKey;
 use crate::query::erase::{self, Erasable, Erased};
-use crate::query::{ActiveKeyStatus, IntoQueryKey, QueryCache, QueryMode, QueryVTable};
+use crate::query::job::{ActiveJobGuard, current_query_job, next_job_id};
+use crate::query::{ActiveKeyStatus, IntoQueryKey, QueryCache, QueryJob, QueryMode, QueryVTable};
 use crate::ty::{self, TyCtxt};
 
 #[derive(Copy, Clone)]
@@ -223,9 +225,9 @@ pub(crate) fn query_feed<'tcx, C>(
     C: QueryCache,
     C::Key: DepNodeKey<'tcx>,
 {
-    let format_value = query.format_value;
-
     let check_consistency = |old| {
+        let format_value = query.format_value;
+
         // The query already has a cached value for this key.
         // That's OK if both values are the same, i.e. they have the same hash,
         // so now we check their hashes.
@@ -257,55 +259,63 @@ pub(crate) fn query_feed<'tcx, C>(
         }
     };
 
-    let cache = &query.cache;
+    let key_hash = sharded::make_hash(&key);
 
-    // Check whether the in-memory cache already has a value for this key.
-    match try_get_cached(tcx, cache, key) {
-        Some(old) => check_consistency(old),
-        None => {
-            let key_hash = sharded::make_hash(&key);
+    // This code does several things:
+    // 1) First we acquire state lock and check if there is already a cached value for this key,
+    //    if so, we drop the lock and check consistency of a new and existing values. If there is
+    //    no cached value then we start a query job as it is done in `try_execute_query`, next we drop
+    //    the lock and execute dep node creation operations, this section is mutually exclusive,
+    //    finally we store fed value into the cache. If regular query execution will be executed
+    //    at the same time as feeding, it will wait on the latch inside `ActiveJobGuard` and then
+    //    the fed value will be used.
+    // 2) If we try to feed query while it is executing we emit a bug, as in a single threaded
+    //    compiler it may be possible to feed query during its execution technically, but it
+    //    does not seem right semantically, and in a multi-threaded compiler if we wait
+    //    until other thread sets the value for further consistency checks we may encounter
+    //    deadlocks.
+    // 3) If query has poisoned status we emit fatal error as in other handlers of this status.
+    // 4) Checking for cached value in `try_execute_query` is performed under the state lock too,
+    //    so if we fed the value here, when trying to execute this query fed value will be seen.
+    let mut shard = query.state.active.lock_shard_by_hash(key_hash);
+    match shard.entry(key_hash, |kv| kv.0 == key, |(k, _)| sharded::make_hash(k)) {
+        Entry::Vacant(entry) => {
+            match try_get_cached(tcx, &query.cache, key) {
+                Some(existing) => {
+                    drop(shard);
+                    check_consistency(existing)
+                }
+                None => {
+                    let current_job_id = current_query_job();
+                    let id = next_job_id(tcx);
+                    let job = QueryJob::new(id, DUMMY_SP, current_job_id);
 
-            // This code does several things:
-            // 1) It updates query cache with fed value under state lock meaning if
-            //    we try to feed query for a single key from different threads we
-            //    will not encounter ICE from #162316 (races on `VecCache`'s slot initialization).
-            //    In this scenario, after we acquired lock we perform second attempt to get cached
-            //    value as other thread may have updated it under this lock just before we entered.
-            //    In this case we need to check the consistency of fed value.
-            // 2) If we try to feed query while it is executing we emit a bug, as in a single threaded
-            //    compiler it may be possible to feed query during its execution technically, but it
-            //    does not seem right semantically, and in a multi-threaded compiler if we wait
-            //    until other thread sets the value for further consistency checks we may encounter
-            //    deadlocks.
-            // 3) If query has poisoned status we emit fatal error as in other handlers of this status.
-            // 4) Checking for cached value in `try_execute_query` is performed under the state lock too,
-            //    so if we fed the value here, when trying to execute this query fed value will be seen.
-            let shard = query.state.active.lock_shard_by_hash(key_hash);
-            match shard.find(key_hash, |kv| kv.0 == key) {
-                None => match try_get_cached(tcx, cache, key) {
-                    Some(old) => check_consistency(old),
-                    None => {
-                        // There is no cached value for this key, so feed the query by
-                        // adding the provided value to the cache.
-                        let dep_node = dep_graph::DepNode::construct(tcx, query.dep_kind, &key);
-                        let dep_node_index = tcx.dep_graph.with_feed_task(
-                            dep_node,
-                            tcx,
-                            &value,
-                            query.hash_value_fn,
-                            query.format_value,
-                        );
+                    entry.insert((key, ActiveKeyStatus::Started(job)));
 
-                        query.cache.complete(key, value, dep_node_index)
-                    }
-                },
-                Some((_, status)) => match status {
-                    ActiveKeyStatus::Started(_) => {
-                        bug!("trying to feed query while it is executing")
-                    }
-                    ActiveKeyStatus::Poisoned => FatalError.raise(),
-                },
+                    drop(shard);
+
+                    let job_guard = ActiveJobGuard { state: &query.state, key, key_hash };
+
+                    // There is no cached value for this key, so feed the query by
+                    // adding the provided value to the cache.
+                    let dep_node = dep_graph::DepNode::construct(tcx, query.dep_kind, &key);
+                    let dep_node_index = tcx.dep_graph.with_feed_task(
+                        dep_node,
+                        tcx,
+                        &value,
+                        query.hash_value_fn,
+                        query.format_value,
+                    );
+
+                    job_guard.complete(&query.cache, value, dep_node_index);
+                }
             }
         }
+        Entry::Occupied(status) => match status.get().1 {
+            ActiveKeyStatus::Started(_) => {
+                bug!("trying to feed query while it is executing")
+            }
+            ActiveKeyStatus::Poisoned => FatalError.raise(),
+        },
     }
 }
