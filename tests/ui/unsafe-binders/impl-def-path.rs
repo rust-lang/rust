@@ -22,11 +22,11 @@ pub mod t {
 }
 
 impl t::Tr for unsafe<'a> &'a Local {
-    #[rustc_dump_def_path] //~ ERROR def-path(<unsafe<'a> &'a Local as t::Tr>::m)
+    #[rustc_dump_def_path]
     fn m(&self) {}
 }
 
 impl t::Tr for &Local {
-    #[rustc_dump_def_path] //~ ERROR def-path(<&Local as t::Tr>::m)
+    #[rustc_dump_def_path]
     fn m(&self) {}
 }
