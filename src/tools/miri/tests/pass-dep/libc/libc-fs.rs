@@ -63,11 +63,9 @@ fn main() {
     #[cfg(target_os = "macos")]
     test_ioctl();
     #[cfg(target_os = "linux")]
-    test_statx_on_file_path();
+    test_statx();
     #[cfg(target_os = "linux")]
-    test_statx_on_file_descriptor();
-    #[cfg(target_os = "linux")]
-    test_statx_empty_path_on_pipe();
+    test_statx_on_empty_path();
     test_readv();
     test_readv_empty_bufs();
     #[cfg(not(target_os = "solaris"))]
@@ -117,46 +115,7 @@ fn assert_statx_matches_metadata(stx: &libc::statx, meta: &fs::Metadata, expecte
 }
 
 #[cfg(target_os = "linux")]
-fn test_statx_on_file_descriptor() {
-    let bytes = b"hello";
-    let path = utils::prepare_with_content("miri_test_libc_statx_fd.txt", bytes);
-    let file = File::open(&path).unwrap();
-    let meta = file.metadata().unwrap();
-
-    unsafe {
-        let mut stx = MaybeUninit::<libc::statx>::zeroed();
-        errno_check(libc::statx(
-            file.as_raw_fd(),
-            c"".as_ptr(),
-            libc::AT_EMPTY_PATH,
-            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
-            stx.as_mut_ptr(),
-        ));
-
-        let stx = stx.assume_init();
-        assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
-    }
-
-    // If we don't set AT_EMPTY_PATH, we get an error.
-    unsafe {
-        let mut stx = MaybeUninit::<libc::statx>::zeroed();
-        let err = errno_result(libc::statx(
-            file.as_raw_fd(),
-            c"".as_ptr(),
-            0,
-            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
-            stx.as_mut_ptr(),
-        ))
-        .unwrap_err();
-        assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
-    }
-
-    drop(file);
-    remove_file(&path).unwrap();
-}
-
-#[cfg(target_os = "linux")]
-fn test_statx_on_file_path() {
+fn test_statx() {
     let bytes = b"hello";
     let path = utils::prepare_with_content("miri_test_libc_statx.txt", bytes);
     let c_path = utils::into_c_string(&path);
@@ -213,11 +172,101 @@ fn test_statx_on_file_path() {
         assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
     }
 
+    // Symlink following.
+    let symlinkpath = utils::prepare("miri_test_libc_statx.link");
+    let c_symlinkpath = utils::into_c_string(&symlinkpath);
+    std::os::unix::fs::symlink(&path, &symlinkpath).unwrap();
+    unsafe {
+        let mut stx = MaybeUninit::<libc::statx>::zeroed();
+        errno_check(libc::statx(
+            999, // dirfd
+            c_symlinkpath.as_ptr(),
+            libc::AT_EMPTY_PATH,
+            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+            stx.as_mut_ptr(),
+        ));
+        let stx = stx.assume_init();
+        assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
+    }
+    unsafe {
+        let mut stx = MaybeUninit::<libc::statx>::zeroed();
+        errno_check(libc::statx(
+            999, // dirfd
+            c_symlinkpath.as_ptr(),
+            libc::AT_SYMLINK_NOFOLLOW,
+            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+            stx.as_mut_ptr(),
+        ));
+        let stx = stx.assume_init();
+        assert!(stx.stx_mask & libc::STATX_TYPE != 0);
+        assert_eq!((stx.stx_mode as libc::mode_t) & libc::S_IFMT, libc::S_IFLNK);
+        assert!(stx.stx_mask & libc::STATX_MODE != 0);
+        assert_ne!((stx.stx_mode as libc::mode_t) & !libc::S_IFMT, 0);
+    }
+
+    // Relative to a dirfd.
+    // The only way to get a dirfd in Miri currently is via a `dirfd`. Slightly silly, but whatever.
+    let dirstream = unsafe { libc::opendir(utils::into_c_string(path.parent().unwrap()).as_ptr()) };
+    assert!(!dirstream.is_null());
+    let dirfd = unsafe { libc::dirfd(dirstream) };
+    unsafe {
+        let mut stx = MaybeUninit::<libc::statx>::zeroed();
+        errno_check(libc::statx(
+            dirfd,
+            c"miri_test_libc_statx.txt".as_ptr(),
+            libc::AT_EMPTY_PATH,
+            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+            stx.as_mut_ptr(),
+        ));
+
+        let stx = stx.assume_init();
+        assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
+    }
+    errno_check(unsafe { libc::closedir(dirstream) });
+
     remove_file(&path).unwrap();
+    remove_file(&symlinkpath).unwrap();
 }
 
 #[cfg(target_os = "linux")]
-fn test_statx_empty_path_on_pipe() {
+fn test_statx_on_empty_path() {
+    let bytes = b"hello";
+    let path = utils::prepare_with_content("miri_test_libc_statx_fd.txt", bytes);
+    let file = File::open(&path).unwrap();
+    let meta = file.metadata().unwrap();
+
+    unsafe {
+        let mut stx = MaybeUninit::<libc::statx>::zeroed();
+        errno_check(libc::statx(
+            file.as_raw_fd(),
+            c"".as_ptr(),
+            libc::AT_EMPTY_PATH,
+            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+            stx.as_mut_ptr(),
+        ));
+
+        let stx = stx.assume_init();
+        assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
+    }
+
+    // If we don't set AT_EMPTY_PATH, we get an error.
+    unsafe {
+        let mut stx = MaybeUninit::<libc::statx>::zeroed();
+        let err = errno_result(libc::statx(
+            file.as_raw_fd(),
+            c"".as_ptr(),
+            0,
+            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+            stx.as_mut_ptr(),
+        ))
+        .unwrap_err();
+        assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
+    }
+
+    drop(file);
+    remove_file(&path).unwrap();
+
+    // Test it on a pipe as well.
     unsafe {
         let mut fds = [0; 2];
         errno_check(libc::pipe(fds.as_mut_ptr()));
