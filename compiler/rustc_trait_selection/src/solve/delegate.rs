@@ -215,6 +215,11 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     return Outcome::NoFastPath;
                 }
 
+                // We use `VisibleForLeakCheck::Yes` for `RegionOutlives` goals without
+                // the fast path. However, we always change region constraints from nested
+                // goals to `VisibleForLeakCheck::No`, so to be consistent with this
+                // behavior as we avoid the nested goal boundary, we have to manually
+                // set the flag.
                 self.0.sub_regions(
                     SubregionOrigin::RelateRegionParamBound(span, None),
                     outlives.1,
