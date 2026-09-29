@@ -193,7 +193,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     ) -> U {
         self.enter_forall(value, |value| {
             let u = self.universe();
-            if !self.tcx.assumptions_on_binders_min_coroutines() {
+            if self.tcx.assumptions_on_binders_full() {
                 self.placeholder_assumptions_for_next_solver
                     .borrow_mut()
                     .insert(u, rustc_type_ir::region_constraint::Assumptions::empty());
