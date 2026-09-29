@@ -1,29 +1,27 @@
-error[E0382]: use of moved value: `b`
-  --> $DIR/issue-27282-move-match-input-into-guard.rs:12:5
+error[E0510]: cannot mutably borrow `*b` in match guard
+  --> $DIR/issue-27282-move-match-input-into-guard.rs:15:14
    |
-LL |     let b = &mut true;
-   |         - move occurs because `b` has type `&mut bool`, which does not implement the `Copy` trait
 LL |     match b {
-   |     ^^^^^^^ value used here after move
+   |           - value is immutable in match guard
 ...
-LL |         _ if { (|| { let bar = b; *bar = false; })();
-   |                 --             - variable moved due to use in closure
-   |                 |
-   |                 value moved into closure here
+LL |             (|| {
+   |              ^^ cannot mutably borrow
+LL |
+LL |                 let bar = b;
+   |                           - borrow occurs due to use of `*b` in closure
 
-error[E0382]: use of moved value: `b`
-  --> $DIR/issue-27282-move-match-input-into-guard.rs:22:5
+error[E0510]: cannot mutably borrow `*b` in match guard
+  --> $DIR/issue-27282-move-match-input-into-guard.rs:32:14
    |
-LL |     let b = &mut true;
-   |         - move occurs because `b` has type `&mut bool`, which does not implement the `Copy` trait
 LL |     match b {
-   |     ^^^^^^^ value used here after move
+   |           - value is immutable in match guard
 ...
-LL |             (|| { let bar = b; *bar = false; })();
-   |              --             - variable moved due to use in closure
-   |              |
-   |              value moved into closure here
+LL |             (|| {
+   |              ^^ cannot mutably borrow
+LL |
+LL |                 let bar = b;
+   |                           - borrow occurs due to use of `*b` in closure
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0382`.
+For more information about this error, try `rustc --explain E0510`.

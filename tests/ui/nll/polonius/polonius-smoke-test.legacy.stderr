@@ -14,46 +14,30 @@ LL |     let z = x;
 LL |     let w = y;
    |             - borrow later used here
 
-error[E0505]: cannot move out of `x` because it is borrowed
+error[E0499]: cannot borrow `*x` as mutable more than once at a time
   --> $DIR/polonius-smoke-test.rs:22:13
    |
 LL | pub fn use_while_mut_fr(x: &mut i32) -> &mut i32 {
-   |                         -  - let's call the lifetime of this reference `'1`
-   |                         |
-   |                         binding `x` declared here
+   |                            - let's call the lifetime of this reference `'1`
 LL |     let y = &mut *x;
-   |             ------- borrow of `*x` occurs here
+   |             ------- first mutable borrow occurs here
 LL |     let z = x;
-   |             ^ move out of `x` occurs here
+   |             ^ second mutable borrow occurs here
 LL |     y
    |     - returning this value requires that `*x` is borrowed for `'1`
-   |
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL -     let y = &mut *x;
-LL +     let y = &mut x.clone();
-   |
 
-error[E0505]: cannot move out of `s` because it is borrowed
+error[E0499]: cannot borrow `*s` as mutable more than once at a time
   --> $DIR/polonius-smoke-test.rs:46:5
    |
-LL |     let s = &mut 1;
-   |         - binding `s` declared here
 LL |     let r = &mut *s;
-   |             ------- borrow of `*s` occurs here
+   |             ------- first mutable borrow occurs here
 LL |     let tmp = foo(&r);
 LL |     s;
-   |     ^ move out of `s` occurs here
+   |     ^ second mutable borrow occurs here
 LL |     tmp;
-   |     --- borrow later used here
-   |
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL -     let r = &mut *s;
-LL +     let r = &mut s.clone();
-   |
+   |     --- first borrow later used here
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0503, E0505, E0515.
-For more information about an error, try `rustc --explain E0503`.
+Some errors have detailed explanations: E0499, E0503, E0515.
+For more information about an error, try `rustc --explain E0499`.
