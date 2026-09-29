@@ -4,13 +4,10 @@ error[E0223]: ambiguous associated type
 LL |     <[(); N] as IntoIterator>::Item::Item:,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: use fully-qualified syntax
+help: if there were a trait named `Example` with associated type `Item` implemented for `<[(); N] as IntoIterator>::Item`, you could use the fully-qualified path
    |
 LL -     <[(); N] as IntoIterator>::Item::Item:,
-LL +     <<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item:,
-   |
-LL -     <[(); N] as IntoIterator>::Item::Item:,
-LL +     <<[(); N] as IntoIterator>::Item as IntoIterator>::Item:,
+LL +     <<[(); N] as IntoIterator>::Item as Example>::Item:,
    |
 
 error[E0223]: ambiguous associated type
@@ -19,13 +16,10 @@ error[E0223]: ambiguous associated type
 LL |     Option<<[(); N] as IntoIterator>::Item::Item>: Sized,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: use fully-qualified syntax
+help: if there were a trait named `Example` with associated type `Item` implemented for `<[(); N] as IntoIterator>::Item`, you could use the fully-qualified path
    |
 LL -     Option<<[(); N] as IntoIterator>::Item::Item>: Sized,
-LL +     Option<<<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item>: Sized,
-   |
-LL -     Option<<[(); N] as IntoIterator>::Item::Item>: Sized,
-LL +     Option<<<[(); N] as IntoIterator>::Item as IntoIterator>::Item>: Sized,
+LL +     Option<<<[(); N] as IntoIterator>::Item as Example>::Item>: Sized,
    |
 
 error[E0223]: ambiguous associated type
@@ -34,13 +28,10 @@ error[E0223]: ambiguous associated type
 LL |     _: <[(); N] as IntoIterator>::Item::Item,
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: use fully-qualified syntax
+help: if there were a trait named `Example` with associated type `Item` implemented for `<[(); N] as IntoIterator>::Item`, you could use the fully-qualified path
    |
 LL -     _: <[(); N] as IntoIterator>::Item::Item,
-LL +     _: <<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item,
-   |
-LL -     _: <[(); N] as IntoIterator>::Item::Item,
-LL +     _: <<[(); N] as IntoIterator>::Item as IntoIterator>::Item,
+LL +     _: <<[(); N] as IntoIterator>::Item as Example>::Item,
    |
 
 error[E0223]: ambiguous associated type
@@ -49,13 +40,10 @@ error[E0223]: ambiguous associated type
 LL |     <[(); N] as IntoIterator>::Item::Item;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: use fully-qualified syntax
+help: if there were a trait named `Example` with associated type `Item` implemented for `<[(); N] as IntoIterator>::Item`, you could use the fully-qualified path
    |
 LL -     <[(); N] as IntoIterator>::Item::Item;
-LL +     <<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item;
-   |
-LL -     <[(); N] as IntoIterator>::Item::Item;
-LL +     <<[(); N] as IntoIterator>::Item as IntoIterator>::Item;
+LL +     <<[(); N] as IntoIterator>::Item as Example>::Item;
    |
 
 error[E0223]: ambiguous associated type
@@ -64,13 +52,10 @@ error[E0223]: ambiguous associated type
 LL |     field: <[(); N] as IntoIterator>::Item::Item,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: use fully-qualified syntax
+help: if there were a trait named `Example` with associated type `Item` implemented for `<[(); N] as IntoIterator>::Item`, you could use the fully-qualified path
    |
 LL -     field: <[(); N] as IntoIterator>::Item::Item,
-LL +     field: <<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item,
-   |
-LL -     field: <[(); N] as IntoIterator>::Item::Item,
-LL +     field: <<[(); N] as IntoIterator>::Item as IntoIterator>::Item,
+LL +     field: <<[(); N] as IntoIterator>::Item as Example>::Item,
    |
 
 error[E0223]: ambiguous associated type
@@ -79,13 +64,10 @@ error[E0223]: ambiguous associated type
 LL |     const M: <[(); N] as IntoIterator>::Item::Item,
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: use fully-qualified syntax
+help: if there were a trait named `Example` with associated type `Item` implemented for `<[(); N] as IntoIterator>::Item`, you could use the fully-qualified path
    |
 LL -     const M: <[(); N] as IntoIterator>::Item::Item,
-LL +     const M: <<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item,
-   |
-LL -     const M: <[(); N] as IntoIterator>::Item::Item,
-LL +     const M: <<[(); N] as IntoIterator>::Item as IntoIterator>::Item,
+LL +     const M: <<[(); N] as IntoIterator>::Item as Example>::Item,
    |
 
 error[E0223]: ambiguous associated type
@@ -94,13 +76,10 @@ error[E0223]: ambiguous associated type
 LL |     T = <[(); N] as IntoIterator>::Item::Item,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: use fully-qualified syntax
+help: if there were a trait named `Example` with associated type `Item` implemented for `<[(); N] as IntoIterator>::Item`, you could use the fully-qualified path
    |
 LL -     T = <[(); N] as IntoIterator>::Item::Item,
-LL +     T = <<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item,
-   |
-LL -     T = <[(); N] as IntoIterator>::Item::Item,
-LL +     T = <<[(); N] as IntoIterator>::Item as IntoIterator>::Item,
+LL +     T = <<[(); N] as IntoIterator>::Item as Example>::Item,
    |
 
 error[E0223]: ambiguous associated type
@@ -109,15 +88,27 @@ error[E0223]: ambiguous associated type
 LL |         <[(); N] as IntoIterator>::Item::Item:,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: use fully-qualified syntax
+help: if there were a trait named `Example` with associated type `Item` implemented for `<[(); N] as IntoIterator>::Item`, you could use the fully-qualified path
    |
 LL -         <[(); N] as IntoIterator>::Item::Item:,
-LL +         <<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item:,
-   |
-LL -         <[(); N] as IntoIterator>::Item::Item:,
-LL +         <<[(); N] as IntoIterator>::Item as IntoIterator>::Item:,
+LL +         <<[(); N] as IntoIterator>::Item as Example>::Item:,
    |
 
-error: aborting due to 8 previous errors
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:58:12
+   |
+LL |     let _: <[(); N] as IntoIterator>::Item::Item;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     let _: <[(); N] as IntoIterator>::Item::Item;
+LL +     let _: <<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item;
+   |
+LL -     let _: <[(); N] as IntoIterator>::Item::Item;
+LL +     let _: <<[(); N] as IntoIterator>::Item as IntoIterator>::Item;
+   |
+
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0223`.
