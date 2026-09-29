@@ -6,11 +6,6 @@ LL |     fn dup(&self, t: &T) -> impl Sized + use<'_> { (self, t) }
    |                      |      |
    |                      |      opaque type defined here
    |                      hidden type `(&T, &T)` captures the anonymous lifetime defined here
-   |
-help: add `'_` to the `use<...>` bound to explicitly capture it
-   |
-LL |     fn dup(&self, t: &T) -> impl Sized + use<'_, '_> { (self, t) }
-   |                                                ++++
 
 error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
   --> $DIR/duplicate-anon-lifetime-suggestion-issue-132199.rs:16:51
