@@ -634,13 +634,25 @@ pub enum Spacing {
 static EMPTY_TOKEN_STREAM: LazyLock<TokenStream> =
     LazyLock::new(|| TokenStream(Arc::new(Vec::new())));
 
+// Token streams are usually short, and shrinking a tiny `Vec` just pays for a
+// realloc without freeing anything meaningful. Only reclaim space on the few
+// very long ones.
+const SHRINK_TO_FIT_THRESHOLD: usize = 64;
+
 /// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub struct TokenStream(Arc<Vec<TokenTree>>);
 
 impl TokenStream {
-    pub fn new(tts: Vec<TokenTree>) -> TokenStream {
-        if tts.is_empty() { TokenStream::default() } else { TokenStream(Arc::new(tts)) }
+    pub fn new(mut tts: Vec<TokenTree>) -> TokenStream {
+        if tts.is_empty() {
+            TokenStream::default()
+        } else {
+            if tts.len() > SHRINK_TO_FIT_THRESHOLD {
+                tts.shrink_to_fit();
+            }
+            TokenStream(Arc::new(tts))
+        }
     }
 
     pub fn is_empty(&self) -> bool {
