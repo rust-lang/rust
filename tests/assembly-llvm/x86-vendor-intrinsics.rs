@@ -27,9 +27,13 @@ extern "C" fn test_packus_epi16(a: __m128i, b: __m128i) -> __m128i {
 extern "C" fn shlv_u16x16(a: __m256i, count: __m256i) -> __m256i {
     // CHECK: .cfi_startproc
     // CHECK-NOT: vpcmp
+    // CHECK-NOT: vpmin
+    // CHECK-NOT: vpmax
     // CHECK-NOT: vmov
-    // CHECK: vpsllvw
+    // CHECK: vpsllvd
     // CHECK-NOT: vpcmp
+    // CHECK-NOT: vpmin
+    // CHECK-NOT: vpmax
     // CHECK-NOT: vmov
     // CHECK: ret
     let low_words = _mm256_set1_epi32(0x0000_ffff);
@@ -51,9 +55,13 @@ extern "C" fn shlv_u16x16(a: __m256i, count: __m256i) -> __m256i {
 extern "C" fn shrv_u16x16(a: __m256i, count: __m256i) -> __m256i {
     // CHECK: .cfi_startproc
     // CHECK-NOT: vpcmp
+    // CHECK-NOT: vpmin
+    // CHECK-NOT: vpmax
     // CHECK-NOT: vmov
-    // CHECK: vpsrlvw
+    // CHECK: vpsrlvd
     // CHECK-NOT: vpcmp
+    // CHECK-NOT: vpmin
+    // CHECK-NOT: vpmax
     // CHECK-NOT: vmov
     // CHECK: ret
     let low_words = _mm256_set1_epi32(0x0000_ffff);
@@ -121,4 +129,54 @@ extern "C" fn test_mulhi(a: __m256i) -> __m256i {
     // CHECK-NEXT: ret
     let a = _mm256_and_si256(a, _mm256_set1_epi16(0x7FFF));
     _mm256_mulhi_epi16(a, _mm256_set1_epi16(1000))
+}
+
+// See <https://github.com/rust-lang/rust/issues/124216> for context.
+// CHECK-LABEL: test_avg_epu8:
+#[no_mangle]
+#[target_feature(enable = "avx2")]
+pub unsafe fn test_avg_epu8(
+    x: __m256i,
+    ch: __m256i,
+    ct: __m256i,
+    dh: __m256i,
+    dt: __m256i,
+) -> Result<__m256i, ()> {
+    // CHECK: .cfi_startproc
+    let shr3 = _mm256_srli_epi32::<3>(x);
+
+    // Things get moved around as `h2` is only needed if we don't return `Err`.
+    // There is an early return path in bewteen the two `_mm256_avg_epu8` calls.
+    // But we should still see `vpavgb` for both of them.
+    // CHECK: vpavgb
+    // CHECK: ret
+    let h1 = _mm256_avg_epu8(shr3, _mm256_shuffle_epi8(ch, x));
+    // CHECK: vpavgb
+    // CHECK: ret
+    let h2 = _mm256_avg_epu8(shr3, _mm256_shuffle_epi8(dh, x));
+
+    let o1 = _mm256_shuffle_epi8(ct, h1);
+    let o2 = _mm256_shuffle_epi8(dt, h2);
+
+    let c1 = _mm256_adds_epi8(x, o1);
+    let c2 = _mm256_add_epi8(x, o2);
+
+    if _mm256_movemask_epi8(c1) != 0 {
+        return Err(());
+    }
+
+    Ok(c2)
+}
+
+// See <https://github.com/rust-lang/rust/issues/124216> for context.
+// CHECK-LABEL: test_movemask_avg_epu8:
+#[no_mangle]
+#[target_feature(enable = "avx2")]
+pub unsafe extern "C" fn test_movemask_avg_epu8(x: __m256i, y: __m256i) -> i32 {
+    // CHECK: .cfi_startproc
+    // CHECK-NEXT: vpavgb
+    // CHECK-NEXT: vpmovmskb
+    // CHECK-NEXT: vzeroupper
+    // CHECK-NEXT: ret
+    _mm256_movemask_epi8(_mm256_avg_epu8(x, y))
 }
