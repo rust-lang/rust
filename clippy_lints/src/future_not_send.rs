@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::ty_is_future;
+use clippy_utils::{is_lint_allowed, ty_is_future};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl};
 use rustc_infer::infer::TyCtxtInferExt as _;
@@ -87,11 +87,15 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             Some(cx.tcx.instantiate_bound_regions_with_erased(ret_ty))
         }
 
-        if let FnKind::Closure = kind {
+        let hir_id = cx.tcx.local_def_id_to_hir_id(fn_def_id);
+        // Proving `Send` for large, deeply nested futures can be very expensive, if this lint is only enabled for parts
+        // of a crate. Therefore check if the lint is enabled here before proceeding. See `matrix-sdk` for benchmarking
+        // example :(
+        if matches!(kind, FnKind::Closure) || is_lint_allowed(cx, FUTURE_NOT_SEND, hir_id) {
             return;
         }
 
-        if let Some(ret_ty) = normalized_return_ty(cx, cx.tcx.local_def_id_to_hir_id(fn_def_id).expect_owner())
+        if let Some(ret_ty) = normalized_return_ty(cx, hir_id.expect_owner())
             && let Some(send_trait) = cx.tcx.get_diagnostic_item(sym::Send)
             && ty_is_future(cx, ret_ty)
         {
