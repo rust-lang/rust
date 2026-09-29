@@ -1,15 +1,11 @@
-use std::ffi::OsString;
+use std::ffi::{CStr, CString, OsString};
 use std::path::PathBuf;
 use std::{fs, io};
 
 use super::miri_extern;
 
 pub fn host_to_target_path(path: OsString) -> PathBuf {
-    use std::ffi::{CStr, CString};
-
-    // Once into_encoded_bytes is stable we can use it here.
-    // (Unstable features would need feature flags in each test...)
-    let path = CString::new(path.into_string().unwrap()).unwrap();
+    let path = into_c_string(path);
     let mut out = Vec::with_capacity(1024);
 
     unsafe {
@@ -51,4 +47,9 @@ pub fn prepare_dir(dirname: &str) -> PathBuf {
     // Clean the directory for robustness.
     fs::remove_dir_all(&path).ok();
     path
+}
+
+/// Return a `CString` version of the given path.
+pub fn into_c_string(path: impl Into<OsString>) -> CString {
+    CString::new(path.into().into_string().unwrap()).unwrap()
 }

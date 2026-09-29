@@ -20,14 +20,14 @@ use crate::shims::sig::Varargs;
 use crate::shims::unix::fd::{EvalContextExt as _, FlockOp, UnixFileDescription};
 use crate::*;
 
-/// An open directory stream, tracked by DirTable.
+/// An open directory stream (`DIR`), tracked by DirTable.
 #[derive(Debug)]
 struct DirStream {
-    /// The directory reader on the host.
+    /// The directory stream on the host.
     read_dir: fs::ReadDir,
-    /// An FD number for the same handle. Unix directory streams have an "underlying FD" that
-    /// can be exposed; this is that FD. We also store the FD ID to catch cases where
-    /// the FD was closed and a different one re-opened.
+    /// Unix directory streams have an "underlying FD" that can be exposed; this is that FD. This is
+    /// not a reference; it *can* be separately closed, leading to UB if the DIR is used again. We
+    /// also store the FD ID to catch cases where the FD was closed and a different one re-opened.
     fd_num: FdNum,
     fd_id: FdId,
     /// The "special" entries that must still be yielded by the iterator.
