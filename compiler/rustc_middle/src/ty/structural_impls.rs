@@ -447,6 +447,7 @@ impl<'tcx> PredicateProxy<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
 
 // FIXME(clause): This is wonky
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
+    #[inline]
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         folder: &mut F,
