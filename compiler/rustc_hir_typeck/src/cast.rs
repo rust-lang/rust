@@ -39,7 +39,7 @@ use rustc_lint_defs::builtin::{TRIVIAL_CASTS, TRIVIAL_NUMERIC_CASTS};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
-use rustc_middle::ty::cast::{CastKind, CastTy};
+use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, Unnormalized, VariantDef, elaborate,
@@ -51,6 +51,22 @@ use tracing::{debug, instrument};
 
 use super::FnCtxt;
 use crate::{diagnostics, type_error_struct};
+
+/// Cast Kind. See [RFC 401](https://rust-lang.github.io/rfcs/0401-coercions.html)
+/// (or rustc_hir_typeck/src/cast.rs).
+#[derive(Copy, Clone, Debug)]
+pub enum CastKind {
+    PtrPtrCast,
+    PtrAddrCast,
+    AddrPtrCast,
+    NumericCast,
+    EnumCast,
+    PrimIntCast,
+    U8CharCast,
+    ArrayPtrCast,
+    FnPtrPtrCast,
+    FnPtrAddrCast,
+}
 
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.

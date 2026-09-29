@@ -22,22 +22,6 @@ pub enum CastTy<'tcx> {
     Ptr(ty::TypeAndMut<'tcx>),
 }
 
-/// Cast Kind. See [RFC 401](https://rust-lang.github.io/rfcs/0401-coercions.html)
-/// (or rustc_hir_typeck/src/cast.rs).
-#[derive(Copy, Clone, Debug)]
-pub enum CastKind {
-    PtrPtrCast,
-    PtrAddrCast,
-    AddrPtrCast,
-    NumericCast,
-    EnumCast,
-    PrimIntCast,
-    U8CharCast,
-    ArrayPtrCast,
-    FnPtrPtrCast,
-    FnPtrAddrCast,
-}
-
 impl<'tcx> CastTy<'tcx> {
     /// Returns `Some` for integral/pointer casts.
     /// Casts like unsizing casts will return `None`.
