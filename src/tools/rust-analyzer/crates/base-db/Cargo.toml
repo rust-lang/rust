@@ -2,7 +2,7 @@
 name = "base-db"
 version = "0.0.0"
 repository.workspace = true
-description = "Basic database traits for rust-analyzer. The concrete DB is defined by `ide` (aka `ra_ap_ide`)."
+description = "Basic database trait and infra for rust-analyzer's crate and source root inputs. The concrete DB is defined by `ide` (aka `ra_ap_ide`)."
 
 authors.workspace = true
 edition.workspace = true

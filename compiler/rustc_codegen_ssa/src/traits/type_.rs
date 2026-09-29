@@ -1,7 +1,7 @@
 use rustc_abi::{AddressSpace, Float, Integer, Primitive, Reg, Scalar};
-use rustc_middle::bug;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout};
+use rustc_span::bug;
 use rustc_target::callconv::{ArgAbi, CastTarget, FnAbi};
 
 use super::BackendTypes;
@@ -18,6 +18,7 @@ pub trait BaseTypeCodegenMethods: BackendTypes {
     fn type_isize(&self) -> Self::Type;
 
     fn type_f16(&self) -> Self::Type;
+    fn type_f16b(&self) -> Self::Type;
     fn type_f32(&self) -> Self::Type;
     fn type_f64(&self) -> Self::Type;
     fn type_f128(&self) -> Self::Type;
@@ -67,6 +68,7 @@ pub trait DerivedTypeCodegenMethods<'tcx>:
         use Float::*;
         match f {
             F16 => self.type_f16(),
+            F16B => self.type_f16b(),
             F32 => self.type_f32(),
             F64 => self.type_f64(),
             F128 => self.type_f128(),

@@ -7,13 +7,13 @@ fn foo1<'a, 'b, 'c, 'd>(x: &'a usize, y: &'b usize) -> (&'c usize, &'d usize) {
 }
 
 // Should suggest: 'a: 'c and use 'static instead of 'b
-fn foo2<'a, 'b, 'c>(x: &'a usize, y: &'b usize) -> (&'c usize, &'static usize) {
+fn foo2<'a, 'b, 'c>(x: &'a usize, y: &'b usize) -> (&'c usize, &'static usize) { //~ ERROR one or
     (x, y) //~ERROR lifetime may not live long enough
            //~^ERROR lifetime may not live long enough
 }
 
 // Should suggest: 'a and 'b are the same and use 'static instead of 'c
-fn foo3<'a, 'b, 'c, 'd, 'e>(
+fn foo3<'a, 'b, 'c, 'd, 'e>( //~ ERROR one or more lifetime errors
     x: &'a usize,
     y: &'b usize,
     z: &'c usize,

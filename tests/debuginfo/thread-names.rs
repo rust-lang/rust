@@ -17,11 +17,14 @@
 // === LLDB TESTS =================================================================================
 //
 //@ lldb-command:run
-//
-//@ lldb-command:thread info 1
-//@ lldb-check:thread #1:[...]name = 'main'[...]
-//@ lldb-command:thread info 2
-//@ lldb-check:thread #2:[...]name = 'my new thread'[...]
+
+// We list all threads and check the full results because we're not guaranteed to have only 2
+// threads, nor are we guaranteed to have `my new thread` be thread 2.
+// We use the python API to do this because `thread list` refuses to print anything inside the test
+// harness for some reason.
+//@ lldb-command:script print(lldb.debugger.GetTargetAtIndex(0).GetProcess().threads)
+//@ lldb-check:[...]name = 'main'[...]
+//@ lldb-check:[...]name = 'my new thread'[...]
 
 // === CDB TESTS ==================================================================================
 //

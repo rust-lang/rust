@@ -108,6 +108,8 @@ LL + }
 error: `IntoIterator` implemented for a reference type without an `iter` method
   --> tests/ui/into_iter_without_iter.rs:120:9
    |
+LL |   macro_rules! generate_impl {
+LL |       () => {
 LL | /         impl<'a> IntoIterator for &'a Issue12037 {
 LL | |
 LL | |             type IntoIter = std::slice::Iter<'a, u8>;
@@ -119,7 +121,6 @@ LL | |         }
 LL |   generate_impl!();
    |   ---------------- in this macro invocation
    |
-   = note: this error originates in the macro `generate_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider implementing `iter`
    |
 LL ~         

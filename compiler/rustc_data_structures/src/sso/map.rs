@@ -356,7 +356,9 @@ impl<K: Eq + Hash, V> Extend<(K, V)> for SsoHashMap<K, V> {
     where
         I: IntoIterator<Item = (K, V)>,
     {
-        for (key, value) in iter.into_iter() {
+        let iter = iter.into_iter();
+        self.reserve(iter.size_hint().0);
+        for (key, value) in iter {
             self.insert(key, value);
         }
     }

@@ -6,9 +6,10 @@ use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir::CastKind;
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::ty::adjustment::PointerCoercion;
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, Ty};
-use rustc_middle::{bug, span_bug};
+use rustc_span::{bug, span_bug};
 use tracing::trace;
 
 use super::util::ensure_monomorphic_enough;

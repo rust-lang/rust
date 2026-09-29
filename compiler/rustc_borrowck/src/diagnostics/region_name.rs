@@ -2,13 +2,12 @@ use std::fmt::{self, Display};
 use std::iter;
 
 use rustc_data_structures::fx::IndexEntry;
-use rustc_errors::{Diag, EmissionGuarantee};
+use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, RegionVid, Ty, Unnormalized};
-use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol, bug, kw, span_bug, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use tracing::{debug, instrument};
 
@@ -105,7 +104,7 @@ impl RegionName {
         }
     }
 
-    pub(crate) fn highlight_region_name<G: EmissionGuarantee>(&self, diag: &mut Diag<'_, G>) {
+    pub(crate) fn highlight_region_name(&self, diag: &mut Diag<'_>) {
         match &self.source {
             RegionNameSource::NamedLateParamRegion(span)
             | RegionNameSource::NamedEarlyParamRegion(span) => {
@@ -622,7 +621,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 //
                 //     &
                 //     - let's call the lifetime of this reference `'1`
-                (ty::Ref(region, referent_ty, _), hir::TyKind::Ref(_lifetime, referent_hir_ty)) => {
+                (
+                    ty::Ref(region, referent_ty, _),
+                    hir::TyKind::Ref(_lifetime, referent_hir_ty, _),
+                ) => {
                     if region.as_var() == needle_fr {
                         // Just grab the first character, the `&`.
                         let source_map = self.infcx.tcx.sess.source_map();
@@ -632,7 +634,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     }
 
                     // Otherwise, let's descend into the referent types.
-                    search_stack.push((*referent_ty, referent_hir_ty.ty));
+                    search_stack.push((*referent_ty, referent_hir_ty));
                 }
 
                 // Match up something like `Foo<'1>`
@@ -670,8 +672,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     search_stack.push((*elem_ty, elem_hir_ty));
                 }
 
-                (ty::RawPtr(mut_ty, _), hir::TyKind::Ptr(mut_hir_ty)) => {
-                    search_stack.push((*mut_ty, mut_hir_ty.ty));
+                (ty::RawPtr(inner_ty, _), hir::TyKind::Ptr(hir_ty, _)) => {
+                    search_stack.push((*inner_ty, hir_ty));
                 }
 
                 _ => {

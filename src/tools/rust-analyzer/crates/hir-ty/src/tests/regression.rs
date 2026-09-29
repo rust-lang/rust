@@ -3039,6 +3039,7 @@ fn array_repeat_closure() {
         r#"
 fn f() {[_; || ()]}
      // ^^^^^^^^^^ expected (), got [{unknown}; _]
+         // ^^^^^ expected usize, got impl Fn()
     "#,
     );
 }
@@ -3129,22 +3130,6 @@ fn rpit_function_with_non_trivial_anon_const() {
         r#"
 fn f() -> impl Sized {
     let x = [0u8; 1 + 2];
-}
-    "#,
-    );
-}
-
-#[test]
-fn regression_22836() {
-    check(
-        r#"
-fn main() {
-  match () {
-    const {
-      async | v | ()
-   // ^^^^^^^^^^^^^^ expected (), got impl AsyncFn({unknown})
-    }
-  }
 }
     "#,
     );

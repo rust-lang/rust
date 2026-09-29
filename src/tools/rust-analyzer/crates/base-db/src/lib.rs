@@ -1,5 +1,6 @@
-//! base_db defines basic database traits. The concrete DB is defined by ide.
-// FIXME: Rename this crate, base db is non descriptive
+//! This crate defines the basic database trait for interacting with source code using [`salsa`].
+//!
+//! The concrete implementation DB is defined by ide.
 
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
@@ -18,6 +19,7 @@ use std::{
     cell::RefCell,
     hash::BuildHasherDefault,
     panic,
+    str::FromStr as _,
     sync::{Once, atomic::AtomicUsize},
 };
 
@@ -326,7 +328,7 @@ impl CrateWorkspaceData {
 }
 
 pub fn toolchain_channel(db: &dyn salsa::Database, krate: Crate) -> Option<ReleaseChannel> {
-    krate.workspace_data(db).toolchain.as_ref().and_then(|v| ReleaseChannel::from_str(&v.pre))
+    krate.workspace_data(db).toolchain.as_ref().and_then(|v| ReleaseChannel::from_str(&v.pre).ok())
 }
 
 #[salsa::input(singleton, debug)]

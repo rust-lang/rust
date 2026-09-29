@@ -5,7 +5,7 @@ use std::path::Path;
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_ast::expand::allocator::NO_ALLOC_SHIM_IS_UNSTABLE;
 use rustc_data_structures::either::Either;
-use rustc_hir::attrs::Linkage;
+use rustc_attr_ir::Linkage;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -171,15 +171,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                                     // Make sure we are consistent wrt what is 'first' and 'second'.
                                     let original_span =
-                                        tcx.def_span(original.instance.def_id()).data();
-                                    let span = tcx.def_span(def_id).data();
-                                    if original_span < span {
+                                        tcx.def_span(original.instance.def_id());
+                                    let span = tcx.def_span(def_id);
+                                    if original_span.lo_hi() < span.lo_hi() {
                                         throw_machine_stop!(
                                             TerminationInfo::MultipleSymbolDefinitions {
                                                 link_name,
-                                                first: original_span,
+                                                first: original_span.data(),
                                                 first_crate: tcx.crate_name(original.cnum),
-                                                second: span,
+                                                second: span.data(),
                                                 second_crate: tcx.crate_name(cnum),
                                             }
                                         );
@@ -187,9 +187,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                         throw_machine_stop!(
                                             TerminationInfo::MultipleSymbolDefinitions {
                                                 link_name,
-                                                first: span,
+                                                first: span.data(),
                                                 first_crate: tcx.crate_name(cnum),
-                                                second: original_span,
+                                                second: original_span.data(),
                                                 second_crate: tcx.crate_name(original.cnum),
                                             }
                                         );
@@ -324,7 +324,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Miri-specific extern functions
             "miri_alloc" => {
                 let [size, align] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(usize, usize) -> *_),
+                    shim_sig!(extern "Rust" fn(usize, usize) -> *()),
                     (link_name, abi, args),
                 )?;
                 let size = this.read_target_usize(size)?;
@@ -343,7 +343,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "miri_dealloc" => {
                 let [ptr, old_size, align] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*_, usize, usize) -> ()),
+                    shim_sig!(extern "Rust" fn(*(), usize, usize) -> ()),
                     (link_name, abi, args),
                 )?;
                 let ptr = this.read_pointer(ptr)?;
@@ -359,7 +359,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "miri_track_alloc" => {
                 let [ptr] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*_) -> ()),
+                    shim_sig!(extern "Rust" fn(*()) -> ()),
                     (link_name, abi, args),
                 )?;
                 let ptr = this.read_pointer(ptr)?;
@@ -376,8 +376,10 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
             "miri_start_unwind" => {
-                let [payload] = this
-                    .check_shim_sig(shim_sig!(extern "Rust" fn(*_) -> !), (link_name, abi, args))?;
+                let [payload] = this.check_shim_sig(
+                    shim_sig!(extern "Rust" fn(*()) -> !),
+                    (link_name, abi, args),
+                )?;
                 this.handle_miri_start_unwind(payload)?;
                 return interp_ok(EmulateItemResult::NeedsUnwind);
             }
@@ -388,7 +390,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "miri_get_alloc_id" => {
                 let [ptr] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*_) -> u64),
+                    shim_sig!(extern "Rust" fn(*()) -> u64),
                     (link_name, abi, args),
                 )?;
                 let ptr = this.read_pointer(ptr)?;
@@ -418,7 +420,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // This associates a name to a tag. Very useful for debugging, and also makes
                 // tests more strict.
                 let [ptr, nth_parent, name] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*_, u8, &[u8]) -> ()),
+                    shim_sig!(extern "Rust" fn(*(), u8, &[u8]) -> ()),
                     (link_name, abi, args),
                 )?;
                 let ptr = this.read_pointer(ptr)?;
@@ -434,7 +436,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "miri_static_root" => {
                 let [ptr] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*_) -> ()),
+                    shim_sig!(extern "Rust" fn(*()) -> ()),
                     (link_name, abi, args),
                 )?;
                 let ptr = this.read_pointer(ptr)?;
@@ -448,7 +450,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "miri_host_to_target_path" => {
                 let [ptr, out, out_size] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*_, *_, usize) -> usize),
+                    shim_sig!(extern "Rust" fn(*(), *(), usize) -> usize),
                     (link_name, abi, args),
                 )?;
                 let ptr = this.read_pointer(ptr)?;
@@ -468,7 +470,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "miri_thread_spawn" => {
                 let [start_routine, func_arg] = this.check_shim_sig(
                     // FIXME: The first argument is actually a function pointer.
-                    shim_sig!(extern "Rust" fn(fn(..) -> _, *_) -> usize),
+                    shim_sig!(extern "Rust" fn(fn(..) -> _, *()) -> usize),
                     (link_name, abi, args),
                 )?;
                 let start_routine = this.read_pointer(start_routine)?;
@@ -551,7 +553,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 use rustc_abi::AlignFromBytesError;
 
                 let [ptr, align] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*_, usize) -> ()),
+                    shim_sig!(extern "Rust" fn(*(), usize) -> ()),
                     (link_name, abi, args),
                 )?;
 

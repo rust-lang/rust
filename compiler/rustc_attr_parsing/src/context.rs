@@ -102,7 +102,7 @@ pub(crate) type FinalizeFn = fn(&mut FinalizeContext<'_, '_>) -> FinalizeOutput;
 /// finalized, so it can inspect the fully parsed attributes via
 /// [`FinalizeCheckContext::parsed_attrs`]. The [`Span`] is the span of the attribute the
 /// check is associated with, used for diagnostics.
-pub(crate) type FinalizeCheckFn = fn(&FinalizeCheckContext<'_, '_>, Span);
+pub(crate) type FinalizeCheckFn = fn(&mut FinalizeCheckContext<'_, '_>, Span);
 
 /// The result of finalizing a single attribute parser.
 pub(crate) struct FinalizeOutput {
@@ -259,6 +259,7 @@ attribute_parsers!(
         Single<UnrollParser>,
         Single<WindowsSubsystemParser>,
         Single<WithoutArgs<AllowInternalUnsafeParser>>,
+        Single<WithoutArgs<AlwaysGcaParser>>,
         Single<WithoutArgs<AutomaticallyDerivedParser>>,
         Single<WithoutArgs<ColdParser>>,
         Single<WithoutArgs<CompilerBuiltinsParser>>,
@@ -417,7 +418,7 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
     pub(crate) fn emit_lint(
         &mut self,
         lint: &'static Lint,
-        diagnostic: impl for<'x> Diagnostic<'x, ()> + DynSend + DynSync + 'static,
+        diagnostic: impl for<'x> Diagnostic<'x> + DynSend + DynSync + 'static,
         span: impl Into<MultiSpan>,
     ) {
         self.emit_lint_inner(
@@ -428,7 +429,7 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
     }
 
     pub(crate) fn emit_lint_with_sess<
-        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &Session) -> Diag<'a, ()>
+        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &Session) -> Diag<'a>
             + DynSend
             + DynSync
             + 'static,
@@ -833,6 +834,10 @@ pub(crate) struct FinalizeCheckContext<'p, 'sess> {
     ///
     /// Unlike [`all_attrs`](Self::all_attrs), this contains the fully parsed attributes.
     pub(crate) parsed_attrs: &'p [Attribute],
+
+    /// The AST item these attributes were applied to, when the target is an item.
+    /// Used by `finalize_check` to inspect item structure that is not encoded in [`Target`].
+    pub(crate) target_item: Option<&'p rustc_ast::ast::Item>,
 }
 
 impl<'p, 'sess: 'p> Deref for FinalizeCheckContext<'p, 'sess> {
@@ -890,9 +895,9 @@ pub enum ShouldEmit {
 impl ShouldEmit {
     pub(crate) fn emit_err(self, diag: Diag<'_>) -> ErrorGuaranteed {
         match self {
-            ShouldEmit::EarlyFatal { .. } if diag.level() == Level::DelayedBug => diag.emit(),
-            ShouldEmit::EarlyFatal { .. } => diag.upgrade_to_fatal().emit(),
-            ShouldEmit::ErrorsAndLints { .. } => diag.emit(),
+            ShouldEmit::EarlyFatal { .. } if diag.level() == Level::DelayedBug => diag.emit_err(),
+            ShouldEmit::EarlyFatal { .. } => diag.upgrade_to_fatal().emit_fatal(),
+            ShouldEmit::ErrorsAndLints { .. } => diag.emit_err(),
             ShouldEmit::Nothing => diag.delay_as_bug(),
         }
     }

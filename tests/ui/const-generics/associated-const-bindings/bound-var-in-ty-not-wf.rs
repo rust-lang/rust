@@ -1,17 +1,18 @@
 // Check that we eventually catch types of assoc const bounds
 // (containing late-bound vars) that are ill-formed.
 #![feature(
-    min_generic_const_args,
+    gca_min_const_items,
     adt_const_params,
     const_param_ty_trait,
-    generic_const_parameter_types,
+    generic_const_parameter_types
 )]
 #![allow(incomplete_features)]
 
 use std::marker::ConstParamTy_;
 
 trait Trait<T: ConstParamTy_> {
-    type const K: T;
+    #[rustc_always_gca]
+    const K: T;
 }
 
 fn take(
@@ -23,10 +24,18 @@ fn take(
 //~^^^ ERROR higher-ranked subtype error
 //~| ERROR higher-ranked subtype error
 
-trait Project { type Out; }
-impl<T> Project for fn(T) -> T { type Out = T; }
+trait Project {
+    type Out;
+}
+impl<T> Project for fn(T) -> T {
+    type Out = T;
+}
 
-trait Discard { type Out; }
-impl<T: ?Sized> Discard for T { type Out = (); }
+trait Discard {
+    type Out;
+}
+impl<T: ?Sized> Discard for T {
+    type Out = ();
+}
 
 fn main() {}

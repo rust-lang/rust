@@ -86,7 +86,8 @@ fn rewrite_pairs_one_line<T: Rewrite>(
 
     let prefix_len = result.len();
     let last = list.list.last()?.0;
-    let cur_shape = base_shape.offset_left_opt(last_line_width(&result))?;
+    let cur_shape =
+        base_shape.offset_left_opt(last_line_width(&result, context.config.tab_spaces()))?;
     let last_rewrite = last.rewrite(context, cur_shape)?;
     result.push_str(&last_rewrite);
 
@@ -102,7 +103,12 @@ fn rewrite_pairs_one_line<T: Rewrite>(
         return None;
     }
 
-    wrap_str(result, context.config.max_width(), shape)
+    wrap_str(
+        result,
+        context.config.max_width(),
+        context.config.tab_spaces(),
+        shape,
+    )
 }
 
 fn rewrite_pairs_multiline<T: Rewrite>(
@@ -132,7 +138,9 @@ fn rewrite_pairs_multiline<T: Rewrite>(
         } else {
             shape.used_width()
         };
-        if last_line_width(&result) + offset <= nested_shape.used_width() {
+        if last_line_width(&result, context.config.tab_spaces()) + offset
+            <= nested_shape.used_width()
+        {
             // We must snuggle the next line onto the previous line to avoid an orphan.
             if let Some(line_shape) =
                 shape.offset_left_opt(s.len() + 2 + trimmed_last_line_width(&result))
@@ -193,7 +201,7 @@ where
 
     // Try to put both lhs and rhs on the same line.
     let rhs_orig_result = shape
-        .offset_left_opt(last_line_width(&lhs_result) + pp.infix.len())
+        .offset_left_opt(last_line_width(&lhs_result, tab_spaces) + pp.infix.len())
         .and_then(|s| s.sub_width_opt(pp.suffix.len()))
         .and_then(|rhs_shape| rhs.rewrite_result(context, rhs_shape).ok());
 
@@ -208,7 +216,7 @@ where
                 .map(|first_line| first_line.ends_with('{'))
                 .unwrap_or(false);
         if !rhs_result.contains('\n') || allow_same_line {
-            let one_line_width = last_line_width(&lhs_result)
+            let one_line_width = last_line_width(&lhs_result, tab_spaces)
                 + pp.infix.len()
                 + first_line_width(rhs_result)
                 + pp.suffix.len();

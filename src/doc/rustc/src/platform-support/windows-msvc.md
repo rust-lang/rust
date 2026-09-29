@@ -5,8 +5,10 @@ Windows MSVC targets.
 **Tier 1 with host tools:**
 
 - `aarch64-pc-windows-msvc`: Windows on ARM64.
-- `i686-pc-windows-msvc`: Windows on 32-bit x86.
 - `x86_64-pc-windows-msvc`: Windows on 64-bit x86.
+
+**Tier 1 without host tools:**
+- `i686-pc-windows-msvc`: Windows on 32-bit x86.
 
 ## Target maintainers
 
@@ -26,7 +28,9 @@ Windows 10 or higher is required for client installs, Windows Server 2016 or hig
 ### Host tooling
 
 The minimum supported Visual Studio version is 2017 but this support is not actively tested in CI.
-It is **highly** recommended to use the latest version of VS (currently VS 2022).
+It is **highly** recommended to use the latest version of VS (currently VS 2026).
+
+Only 64-bit `*-pc-windows-msvc` targets support host tools.
 
 ### Platform details
 

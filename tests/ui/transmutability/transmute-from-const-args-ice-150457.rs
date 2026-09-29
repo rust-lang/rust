@@ -1,4 +1,4 @@
-//! Ensure `TransmuteFrom` with `min_generic_const_args` doesn't ICE
+//! Ensure `TransmuteFrom` with `gca_min_const_items` doesn't ICE
 //! during well-formedness checking.
 //!
 //! Regression test for <https://github.com/rust-lang/rust/issues/150457>.
@@ -6,7 +6,7 @@
 //@ check-pass
 
 #![feature(transmutability)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 use std::mem::{Assume, TransmuteFrom};
 

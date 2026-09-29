@@ -243,6 +243,7 @@ fn riscv_linux() {
     println!("zicboz: {}", is_riscv_feature_detected!("zicboz"));
     println!("zicond: {}", is_riscv_feature_detected!("zicond"));
     println!("m: {}", is_riscv_feature_detected!("m"));
+    println!("zmmul: {}", is_riscv_feature_detected!("zmmul"));
     println!("a: {}", is_riscv_feature_detected!("a"));
     println!("zalrsc: {}", is_riscv_feature_detected!("zalrsc"));
     println!("zaamo: {}", is_riscv_feature_detected!("zaamo"));

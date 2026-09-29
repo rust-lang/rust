@@ -5,7 +5,7 @@
 //! Run with `RUST_LOG=lsp_server=debug` to see all the messages.
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
-#![allow(clippy::print_stdout, clippy::disallowed_types)]
+#![allow(clippy::print_stdout)]
 
 mod error;
 mod msg;

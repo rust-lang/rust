@@ -1,16 +1,15 @@
 use std::assert_matches;
 
 use hir::Node;
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::find_attr;
 use rustc_middle::ty::{
     self, GenericClauses, ImplTraitInTraitData, Ty, TyCtxt, TypeVisitable, TypeVisitor, Upcast,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Ident, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, bug, span_bug};
 use tracing::{debug, instrument, trace};
 
 use super::item_bounds::explicit_item_bounds_with_filter;

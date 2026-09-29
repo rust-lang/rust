@@ -6,9 +6,9 @@ use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, GenericArg};
 use rustc_middle::middle::resolve::PartialRes;
-use rustc_middle::{span_bug, ty};
+use rustc_middle::ty;
 use rustc_session::diagnostics::add_feature_diagnostics;
-use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, span_bug, sym};
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 
@@ -75,7 +75,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let bound_modifier_allowed_features = if let Res::Def(DefKind::Trait, async_def_id) = res
             && self.tcx.async_fn_trait_kind_from_def_id(async_def_id).is_some()
         {
-            Some(Arc::clone(&self.allow_async_fn_traits))
+            Some(Arc::clone(&crate::ALLOW_ASYNC_FN_TRAITS))
         } else {
             None
         };
@@ -113,7 +113,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         }
                         // `a::b::Trait(Args)::TraitItem`
                         Res::Def(DefKind::AssocFn, _)
-                        | Res::Def(DefKind::AssocConst { .. }, _)
+                        | Res::Def(DefKind::AssocConst, _)
                         | Res::Def(DefKind::AssocTy, _)
                             if i + 2 == proj_start =>
                         {

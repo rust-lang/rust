@@ -1,9 +1,9 @@
 //@ add-minicore
 //@ revisions: x86_64 arm
-//@[x86_64] compile-flags: --target x86_64-unknown-linux-gnu
+//@[x86_64] compile-flags: --target x86_64-unknown-linux-gnu -Cembed-bitcode=false -Clto=no
 //@[x86_64] check-pass
 //@[x86_64] needs-llvm-components: x86
-//@[arm] compile-flags: --target armv7-unknown-linux-gnueabihf
+//@[arm] compile-flags: --target armv7-unknown-linux-gnueabihf -Cembed-bitcode=false -Clto=no
 //@[arm] build-fail
 //@[arm] needs-llvm-components: arm
 //@[arm] min-llvm-version: 23
@@ -48,5 +48,4 @@ global_asm!(".intel_syntax noprefix", "nop");
 //[x86_64]~^ WARN avoid using `.intel_syntax`
 // Global assembly errors don't have line numbers, so no error on ARM.
 
-//[arm]~? ERROR unknown directive
 //[arm]~? ERROR unknown directive

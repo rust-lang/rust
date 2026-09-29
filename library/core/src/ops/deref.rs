@@ -367,6 +367,7 @@ unsafe impl<T: ?Sized> DerefPure for &mut T {}
 /// ```
 #[lang = "receiver"]
 #[unstable(feature = "arbitrary_self_types", issue = "44874")]
+#[rustc_dyn_incompatible_trait]
 pub trait Receiver: PointeeSized {
     /// The target type on which the method may be called.
     #[rustc_diagnostic_item = "receiver_target"]

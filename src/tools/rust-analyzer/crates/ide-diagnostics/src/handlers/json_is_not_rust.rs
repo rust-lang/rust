@@ -23,9 +23,21 @@ struct State {
     has_serialize: bool,
     has_deserialize: bool,
     names: FxHashMap<String, usize>,
+    edition: Option<Edition>,
 }
 
 impl State {
+    fn make_name(&self, name: &str) -> ast::Name {
+        let edition = self.edition.unwrap();
+        if syntax::utils::is_identifier(name, edition)
+            || syntax::utils::is_raw_identifier(name, edition)
+        {
+            make::name(name)
+        } else {
+            make::name("INVALID")
+        }
+    }
+
     fn generate_new_name(&mut self, name: &str) -> ast::Name {
         let name = stdx::to_camel_case(name);
         let count = if let Some(count) = self.names.get_mut(&name) {
@@ -35,7 +47,7 @@ impl State {
             self.names.insert(name.clone(), 1);
             1
         };
-        make::name(&format!("{name}{count}"))
+        self.make_name(&format!("{name}{count}"))
     }
 
     fn serde_derive(&self) -> String {
@@ -70,7 +82,7 @@ impl State {
             None,
             make::record_field_list(value.iter().sorted_unstable_by_key(|x| x.0).map(
                 |(name, value)| {
-                    make::record_field(None, make::name(name), self.type_of(name, value))
+                    make::record_field(None, self.make_name(name), self.type_of(name, value))
                 },
             ))
             .into(),
@@ -125,6 +137,7 @@ pub(crate) fn json_in_items(
                 let serialize_resolved = scope_resolve("::serde::Serialize");
                 state.has_deserialize = deserialize_resolved.is_some();
                 state.has_serialize = serialize_resolved.is_some();
+                state.edition = Some(edition);
                 state.build_struct("Root", &it);
                 edit.insert(range.start(), state.result);
                 let vfs_file_id = file_id.file_id(sema.db);
@@ -337,6 +350,36 @@ mod tests {
             struct OfObject1 { x: i64, y: i64 }
             #[derive(Serialize, Deserialize)]
             struct Root1 { empty: Vec<_>, nested: Vec<Vec<Vec<i64>>>, of_object: Vec<OfObject1>, of_string: Vec<String> }
+
+            "#,
+        );
+    }
+
+    #[test]
+    fn invalid_fields() {
+        check_fix(
+            r#"
+            //- /lib.rs crate:lib deps:serde
+            {$0
+                "$": "",
+                "self": "",
+                "valided": ""
+            }
+            //- /serde.rs crate:serde
+
+            pub trait Serialize {
+                fn serialize() -> u8;
+            }
+            pub trait Deserialize {
+                fn deserialize() -> u8;
+            }
+            "#,
+            r#"
+            use serde::Serialize;
+            use serde::Deserialize;
+
+            #[derive(Serialize, Deserialize)]
+            struct Root1 { INVALID: String, INVALID: String, valided: String }
 
             "#,
         );

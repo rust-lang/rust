@@ -35,7 +35,8 @@ fn try_extend_selection(
 ) -> Option<TextRange> {
     let range = frange.range;
 
-    let string_kinds = [COMMENT, STRING, BYTE_STRING, C_STRING];
+    let string_kinds =
+        [COMMENT, INNER_DOC_COMMENT, OUTER_DOC_COMMENT, STRING, BYTE_STRING, C_STRING];
     let list_kinds = [
         RECORD_PAT_FIELD_LIST,
         MATCH_ARM_LIST,
@@ -81,7 +82,7 @@ fn try_extend_selection(
             if token.text_range() != range {
                 return Some(token.text_range());
             }
-            if let Some(comment) = ast::Comment::cast(token.clone())
+            if let Some(comment) = ast::AnyComment::cast(token.clone())
                 && let Some(range) = extend_comments(comment)
             {
                 return Some(range);
@@ -292,7 +293,7 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
     None
 }
 
-fn extend_comments(comment: ast::Comment) -> Option<TextRange> {
+fn extend_comments(comment: ast::AnyComment) -> Option<TextRange> {
     let prev = adj_comments(&comment, Direction::Prev);
     let next = adj_comments(&comment, Direction::Next);
     if prev != next {
@@ -302,14 +303,14 @@ fn extend_comments(comment: ast::Comment) -> Option<TextRange> {
     }
 }
 
-fn adj_comments(comment: &ast::Comment, dir: Direction) -> ast::Comment {
+fn adj_comments(comment: &ast::AnyComment, dir: Direction) -> ast::AnyComment {
     let mut res = comment.clone();
     for element in comment.syntax().siblings_with_tokens(dir) {
         let token = match element.as_token() {
             None => break,
             Some(token) => token,
         };
-        if let Some(c) = ast::Comment::cast(token.clone()) {
+        if let Some(c) = ast::AnyComment::cast(token.clone()) {
             res = c
         } else if token.kind() != WHITESPACE || token.text().contains("\n\n") {
             break;

@@ -9,13 +9,13 @@ use rustc_index::{Idx, IndexVec};
 use rustc_lint_defs::builtin::{NON_CONTIGUOUS_RANGE_ENDPOINTS, OVERLAPPING_RANGE_ENDPOINTS};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary};
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, VariantDef,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalModId;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, bug, span_bug};
 
 use crate::constructor::Constructor::*;
 use crate::constructor::{
@@ -930,6 +930,10 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
 
     fn bug(&self, fmt: fmt::Arguments<'_>) -> Self::Error {
         span_bug!(self.scrut_span, "{}", fmt)
+    }
+
+    fn delayed_bug(&self, fmt: fmt::Arguments<'_>) -> Self::Error {
+        self.tcx.dcx().span_delayed_bug(self.scrut_span, format!("{fmt}"))
     }
 
     fn lint_overlapping_range_endpoints(

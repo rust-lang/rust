@@ -1,9 +1,8 @@
 use std::fmt::Debug;
 use std::ops::Deref;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir as hir;
-use rustc_hir::GenericArg;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_hir_analysis::hir_ty_lowering::generics::{
     check_generic_arg_count_for_value_path, lower_generic_args,
@@ -26,8 +25,7 @@ use rustc_middle::ty::{
     self, AssocContainer, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt,
     TypeFoldable, TypeVisitableExt, Unnormalized, UserArgs,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, bug, span_bug};
 use rustc_trait_selection::traits;
 use tracing::debug;
 
@@ -347,7 +345,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 })
             }
 
-            probe::TraitPick(_) => {
+            probe::TraitPick { .. } => {
                 let trait_def_id = pick.item.container_id(self.tcx);
 
                 // Make a trait reference `$0 : Trait<$1...$n>`
@@ -451,23 +449,23 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 &mut self,
                 preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
-                arg: &GenericArg<'_>,
+                arg: &hir::GenericArg<'_>,
             ) -> ty::GenericArg<'tcx> {
                 match (&param.kind, arg) {
-                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => self
+                    (GenericParamDefKind::Lifetime, hir::GenericArg::Lifetime(lt)) => self
                         .cfcx
                         .fcx
                         .lowerer()
                         .lower_lifetime(lt, RegionInferReason::Param(param))
                         .into(),
-                    (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
+                    (GenericParamDefKind::Type { .. }, hir::GenericArg::Type(ty)) => {
                         // We handle the ambig portions of `Ty` in the match arms below
                         self.cfcx.lower_ty(ty.as_unambig_ty()).raw.into()
                     }
-                    (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
+                    (GenericParamDefKind::Type { .. }, hir::GenericArg::Infer(inf)) => {
                         self.cfcx.lower_ty(&inf.to_ty()).raw.into()
                     }
-                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => self
+                    (GenericParamDefKind::Const { .. }, hir::GenericArg::Const(ct)) => self
                         .cfcx
                         // We handle the ambig portions of `ConstArg` in the match arms below
                         .lower_const_arg(
@@ -479,7 +477,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                                 .skip_norm_wip(),
                         )
                         .into(),
-                    (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
+                    (GenericParamDefKind::Const { .. }, hir::GenericArg::Infer(inf)) => {
                         self.cfcx.ct_infer(Some(param), inf.span).into()
                     }
                     (kind, arg) => {
@@ -756,7 +754,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         pick: &probe::Pick<'_>,
         segment: &hir::PathSegment<'tcx>,
     ) {
-        if pick.kind != probe::PickKind::TraitPick(true) {
+        if pick.kind != (probe::PickKind::TraitPick { is_ambiguously_imported: true }) {
             return;
         }
         let trait_name = self.tcx.item_name(pick.item.container_id(self.tcx));
@@ -767,11 +765,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             segment.hir_id,
             rustc_errors::DiagDecorator(|diag| {
                 diag.primary_message(format!(
-                    "Use of ambiguously glob imported trait `{trait_name}`"
+                    "use of ambiguously glob imported trait `{trait_name}`"
                 ))
                 .span(segment.ident.span)
                 .span_label(import_span, format!("`{trait_name}` imported ambiguously here"))
-                .help(format!("Import `{trait_name}` explicitly"));
+                .help(format!("import `{trait_name}` explicitly"));
             }),
         );
     }

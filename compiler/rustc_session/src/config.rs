@@ -51,6 +51,9 @@ mod native_libs;
 mod print_request;
 pub mod sigpipe;
 
+/// A recommended stack size for worker threads spawned within a session.
+pub const DEFAULT_STACK_SIZE: usize = 17 * 1024 * 1024;
+
 /// Special CPU name requesting the CPU of the current host.
 pub const NATIVE_CPU: &str = "native";
 
@@ -1516,6 +1519,7 @@ impl Default for Options {
             target_modifiers: BTreeMap::default(),
             mitigation_coverage_map: Default::default(),
             jobs: Jobs { frontend: None, backend: None, linker: LinkerJobs::Default },
+            recommended_stack_size: DEFAULT_STACK_SIZE,
         }
     }
 }
@@ -1754,7 +1758,7 @@ fn parse_jobs_all(
                 check_upper_limit(frontend, opt_name);
                 frontend
             }
-            None => jobs.flatten(),
+            None => None, // default to 1 thread irrespectively of `jobs` for now
         },
     };
     let backend = match matches.opt_str("jobs-backend") {
@@ -1866,7 +1870,7 @@ pub fn build_target_config(
             {
                 err.help(format!("did you mean `{suggestion}`?"));
             }
-            err.emit()
+            err.emit_fatal()
         }
     }
 }
@@ -2571,7 +2575,7 @@ pub fn parse_externs(
     let mut externs: BTreeMap<String, ExternEntry> = BTreeMap::new();
     for arg in matches.opt_strs("extern") {
         let ExternOpt { crate_name: name, path, options } =
-            split_extern_opt(early_dcx, unstable_opts, &arg).unwrap_or_else(|e| e.emit());
+            split_extern_opt(early_dcx, unstable_opts, &arg).unwrap_or_else(|e| e.emit_fatal());
 
         let entry = externs.entry(name.to_owned());
 
@@ -3074,6 +3078,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         target_modifiers: collected_options.target_modifiers,
         mitigation_coverage_map: collected_options.mitigations,
         jobs,
+        recommended_stack_size: DEFAULT_STACK_SIZE,
     }
 }
 
@@ -3194,29 +3199,28 @@ pub mod nightly_options {
             if really_allows_unstable_options {
                 continue;
             }
-            match opt.stability {
-                OptionStability::Unstable => {
-                    nightly_options_on_stable += 1;
-                    let msg = format!(
-                        "the option `{}` is only accepted on the nightly compiler",
-                        opt.name
-                    );
-                    // The non-zero nightly_options_on_stable will force an early_fatal eventually.
-                    let _ = early_dcx.early_err(msg);
-                }
-                OptionStability::Stable => {}
-            }
+
+            nightly_options_on_stable += 1;
+            let msg = format!("the option `{}` is only accepted on the nightly compiler", opt.name);
+            // The non-zero nightly_options_on_stable will force an early_fatal eventually.
+            let _ = early_dcx.early_err(msg);
         }
+
         if nightly_options_on_stable > 0 {
-            early_dcx
-                .early_help("consider switching to a nightly toolchain: `rustup default nightly`");
-            early_dcx.early_note("selecting a toolchain with `+toolchain` arguments require a rustup proxy; see <https://rust-lang.github.io/rustup/concepts/index.html>");
-            early_dcx.early_note("for more information about Rust's stability policy, see <https://doc.rust-lang.org/book/appendix-07-nightly-rust.html#unstable-features>");
-            early_dcx.early_fatal(format!(
-                "{} nightly option{} were parsed",
-                nightly_options_on_stable,
-                if nightly_options_on_stable > 1 { "s" } else { "" }
+            let (s, were) = if nightly_options_on_stable > 1 { ("s", "were") } else { ("", "was") };
+            let mut err = early_dcx.early_struct_fatal(format!(
+                "{nightly_options_on_stable} nightly option{s} {were} parsed",
             ));
+            err.help("consider switching to a nightly toolchain: `rustup default nightly`");
+            err.note(
+                "selecting a toolchain with `+toolchain` arguments require a rustup proxy; \
+                see <https://rust-lang.github.io/rustup/concepts/index.html>",
+            );
+            err.note(
+                "for more information about Rust's stability policy, see \
+                <https://doc.rust-lang.org/book/appendix-07-nightly-rust.html#unstable-features>",
+            );
+            err.emit();
         }
     }
 }

@@ -4,17 +4,19 @@ use std::{fmt, iter};
 
 use rustc_abi::{Float, Integer, IntegerType, Size};
 use rustc_apfloat::Float as _;
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hashes::Hash128;
+use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
-use rustc_hir::{self as hir, find_attr};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
-use rustc_span::sym;
+use rustc_span::{bug, span_bug, sym};
 use rustc_structures::Limit;
+use rustc_type_ir::PredicateProxy;
 use rustc_type_ir::solve::SizedTraitKind;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
@@ -24,10 +26,11 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
 use crate::query::Providers;
 use crate::traits::ObligationCause;
+use crate::ty::consts::ConstExt;
 use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
     self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -164,7 +167,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 | DefKind::AssocTy
                 | DefKind::Fn
                 | DefKind::AssocFn
-                | DefKind::AssocConst { .. }
+                | DefKind::AssocConst
                 | DefKind::Impl { .. },
                 def_id,
             ) => Some(def_id),
@@ -613,12 +616,12 @@ impl<'tcx> TyCtxt<'tcx> {
             | DefKind::AssocTy
             | DefKind::TyParam
             | DefKind::Fn
-            | DefKind::Const { .. }
+            | DefKind::Const
             | DefKind::ConstParam
             | DefKind::Static { .. }
             | DefKind::Ctor(_, _)
             | DefKind::AssocFn
-            | DefKind::AssocConst { .. }
+            | DefKind::AssocConst
             | DefKind::Macro(_)
             | DefKind::ExternCrate
             | DefKind::Use
@@ -1037,24 +1040,23 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
         }
     }
 
-    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
-        if let ty::PredicateKind::Clause(clause) = p.kind().skip_binder()
-            && let ty::ClauseKind::Projection(projection_pred) = clause
-        {
-            p.kind()
-                .rebind(ty::ProjectionClause {
-                    projection_term: projection_pred.projection_term.fold_with(self),
-                    // Don't fold the term on the RHS of the projection predicate.
-                    // This is because for default trait methods with RPITITs, we
-                    // install a `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))`
-                    // predicate, which would trivially cause a cycle when we do
-                    // anything that requires `TypingEnv::with_post_analysis_normalized`.
-                    term: projection_pred.term,
-                })
-                .upcast(self.tcx)
-        } else {
-            p.super_fold_with(self)
-        }
+    fn fold_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, p: P) -> P {
+        // We use `map_projection` to execute the closure only if `p` is a projection clause,
+        // to implement the logic described below (i.e. avoid folding the `term`).
+        // In all other cases, fold recursively, as normal.
+        p.map_projection(self.tcx, |bound_clause| {
+            let projection_clause = bound_clause.skip_binder();
+            bound_clause.rebind(ty::ProjectionClause {
+                projection_term: projection_clause.projection_term.fold_with(self),
+                // Don't fold the term on the RHS of the projection predicate.
+                // This is because for default trait methods with RPITITs, we
+                // install a `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))`
+                // predicate, which would trivially cause a cycle when we do
+                // anything that requires `TypingEnv::with_post_analysis_normalized`.
+                term: projection_clause.term,
+            })
+        })
+        .unwrap_or_else(|| p.super_fold_with(self))
     }
 }
 
@@ -1720,7 +1722,7 @@ pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Intrinsi
         Some(ty::IntrinsicDef {
             name: tcx.item_name(def_id),
             must_be_overridden,
-            const_stable: find_attr!(tcx, def_id, RustcIntrinsicConstStableIndirect),
+            const_stable_indirect: find_attr!(tcx, def_id, RustcIntrinsicConstStableIndirect),
         })
     } else {
         None

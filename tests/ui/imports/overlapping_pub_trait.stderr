@@ -12,7 +12,7 @@ LL |     pub trait Tr { fn method(&self); }
    = help: items from traits can only be used if the trait is in scope
 help: trait `Tr` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
-LL + use overlapping_pub_trait_source::m::Tr;
+LL + use crate::overlapping_pub_trait_source::m::Tr;
    |
 
 error: aborting due to 1 previous error

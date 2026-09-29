@@ -12,7 +12,7 @@ This target will enable all mandatory features of rva23u64 by default.
 
 ## Requirements
 
-This target can be sucessfully build on the following platform: ubuntu 24.04 (Linux Kernel version 6.8.0, glibc 2.39).
+This target can be successfully built on the following platform: ubuntu 24.04 (Linux Kernel version 6.8.0, glibc 2.39).
 
 Other platforms may work, but are not tested. Please contact us if you encounter any issues.
 

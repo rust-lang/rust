@@ -8,7 +8,7 @@
 //@ gdb-command:run
 
 //@ gdb-command:print plain_string
-//@ gdb-check:$1 = alloc::string::String {vec: alloc::vec::Vec<u8, alloc::alloc::Global> {buf: alloc::raw_vec::RawVec<u8, alloc::alloc::Global> {inner: alloc::raw_vec::RawVecInner<alloc::alloc::Global> {ptr: core::ptr::unique::Unique<u8> {pointer: core::ptr::non_null::NonNull<u8> {pointer: 0x[...]}, _marker: core::marker::PhantomData<u8>}, cap: core::num::niche_types::UsizeNoHighBit (5), alloc: alloc::alloc::Global}, _marker: core::marker::PhantomData<u8>}, len: 5}}
+//@ gdb-check:$1 = alloc::string::String {vec: alloc::vec::Vec<u8, alloc::alloc::Global> {buf: alloc::raw_vec::RawVec<u8, alloc::alloc::Global> {inner: alloc::raw_vec::RawVecInner<alloc::alloc::Global> {ptr: core::ptr::non_null::NonNull<u8> {pointer: 0x[...]}, cap: core::num::niche_types::UsizeNoHighBit (5), alloc: alloc::alloc::Global}, _marker: core::marker::PhantomData<u8>}, len: 5}}
 
 //@ gdb-command:print plain_str
 //@ gdb-check:$2 = "Hello"
@@ -40,13 +40,13 @@
 //@ lldb-check:(strings_and_strs::Foo) str_in_struct = {inner:"Hello"}
 
 //@ lldb-command:v str_in_tuple
-//@ lldb-check:((&str, &str)) str_in_tuple = ("Hello", "World")
+//@ lldb-check:[...] str_in_tuple = ("Hello", "World")
 
 //@ lldb-command:v str_in_rc
-//@ lldb-check:(alloc::rc::Rc<&str, alloc::alloc::Global>) str_in_rc = strong=1, weak=0 { value = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } }
+//@ lldb-check:[...] str_in_rc = strong=1, weak=1 { value = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } }
 
 //@ lldb-command:v box_str
-//@ lldb-check:(alloc::boxed::Box<str, alloc::alloc::Global>) box_str = "World" { [0] = 'W' [1] = 'o' [2] = 'r' [3] = 'l' [4] = 'd' }
+//@ lldb-check:[...] box_str = "World" { [0] = 'W' [1] = 'o' [2] = 'r' [3] = 'l' [4] = 'd' }
 
 // Disabled temporarily since it only "works" by accident
 // `value` is a wide pointer, whose `data_ptr` type, according to LLDB, is `unsigned char[]`. LLDB
@@ -56,7 +56,7 @@
 // lldb-command:v rc_str
 
 // ignore-tidy-linelength
-// lldb-check:(alloc::rc::Rc<unsigned char[], alloc::alloc::Global>) rc_str = strong=1, weak=0 { value = "World" }
+// lldb-check:(alloc::rc::Rc<unsigned char[], alloc::alloc::Global>) rc_str = strong=1, weak=1 { value = "World" }
 
 #![allow(unused_variables)]
 

@@ -1,17 +1,20 @@
 //! regression test for <https://github.com/rust-lang/rust/issues/141014>
 //@ run-pass
 #![expect(incomplete_features)]
-#![feature(min_generic_const_args, macroless_generic_const_args)]
+#![feature(gca_min_const_items, gca_macroless_args)]
 #![allow(dead_code)]
+
+use std::gca;
 
 trait Abc {}
 
 trait A {
-    type const VALUE: usize;
+    #[rustc_always_gca]
+    const VALUE: usize;
 }
 
 impl<T: Abc> A for T {
-    type const VALUE: usize = 0;
+    const VALUE: usize = gca!(0);
 }
 
 trait S<const K: usize> {}

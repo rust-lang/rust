@@ -7,11 +7,10 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PerNS};
 use rustc_lint_defs::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_middle::middle::resolve::PartialRes;
-use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
-use rustc_span::{Ident, Span, kw, sym};
+use rustc_span::{Ident, OrdSpan, Span, bug, kw, span_bug, sym};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -143,11 +142,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // used to avoid long scope chains, see the comments on `MacroRulesScopeRef`.
                     // As another consequence of this optimization visitors never observe invocation
                     // scopes for macros that were already expanded.
-                    let mut scope = macro_rules_scope.get();
+                    // We need to lock this scope, such that the compression is always final.
+                    let mut write_scope = macro_rules_scope.write();
+                    let mut scope = *write_scope;
                     while let MacroRulesScope::Invocation(invoc_id) = scope {
                         if let Some(next) = self.output_macro_rules_scopes.get(&invoc_id) {
-                            scope = next.get();
-                            macro_rules_scope.set(scope);
+                            scope = *next.borrow();
+                            *write_scope = scope;
                         } else {
                             break;
                         }
@@ -188,7 +189,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 }
                 Scope::DeriveHelpersCompat => Scope::MacroRules(parent_scope.macro_rules),
-                Scope::MacroRules(macro_rules_scope) => match macro_rules_scope.get() {
+                Scope::MacroRules(macro_rules_scope) => match *macro_rules_scope.read() {
                     MacroRulesScope::Def(binding) => {
                         Scope::MacroRules(binding.parent_macro_rules_scope)
                     }
@@ -593,7 +594,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 result
             }
-            Scope::MacroRules(macro_rules_scope) => match macro_rules_scope.get() {
+            Scope::MacroRules(macro_rules_scope) => match *macro_rules_scope.read() {
                 MacroRulesScope::Def(macro_rules_def) if ident == macro_rules_def.ident => {
                     Ok(macro_rules_def.decl)
                 }
@@ -1031,11 +1032,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 )
             }
             ModuleOrUniformRoot::OpenModule(sym) => {
-                let open_ns_name = format!("{}::{}", sym.as_str(), ident.name);
-                let ns_ident = IdentKey::with_root_ctxt(Symbol::intern(&open_ns_name));
-                match self.extern_prelude_get_flag(ns_ident, ident.span, finalize.is_some()) {
-                    Some(decl) => Ok(decl),
-                    None => Err(Determinacy::Determined),
+                if ns != TypeNS {
+                    Err(Determined)
+                } else {
+                    if ident.name == kw::SelfLower {
+                        let res = Res::OpenMod(sym);
+                        return Ok(self.arenas.new_pub_def_decl(
+                            res,
+                            ident.span,
+                            LocalExpnId::ROOT,
+                        ));
+                    }
+
+                    let open_ns_name = format!("{}::{}", sym.as_str(), ident.name);
+                    let ns_ident = IdentKey::with_root_ctxt(Symbol::intern(&open_ns_name));
+                    match self.extern_prelude_get_flag(ns_ident, ident.span, finalize.is_some()) {
+                        Some(decl) => Ok(decl),
+                        None => Err(Determined),
+                    }
                 }
             }
             ModuleOrUniformRoot::ModuleAndExternPrelude(module) => self.resolve_ident_in_scope_set(
@@ -1379,7 +1393,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && let DeclKind::Import { import, .. } = binding.kind
             && matches!(import.kind, ImportKind::MacroExport)
         {
-            self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
+            self.macro_expanded_macro_export_errors
+                .insert((OrdSpan(path_span), OrdSpan(binding.span)));
         }
 
         self.record_use(ident, binding, used);
@@ -1491,6 +1506,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 use ResolutionError::*;
                 let mut res_err = None;
 
+                let suggest_closure =
+                    !ribs.iter().any(|rib| matches!(rib.kind, RibKind::AssocItem));
+
                 for rib in ribs {
                     match rib.kind {
                         RibKind::Normal
@@ -1510,7 +1528,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 // we want certain other resolution errors (namely those
                                 // emitted for `ConstantItemRibKind` below) to take
                                 // precedence.
-                                res_err = Some((span, CannotCaptureDynamicEnvironmentInFnItem));
+                                res_err = Some((
+                                    span,
+                                    CannotCaptureDynamicEnvironmentInFnItem { suggest_closure },
+                                ));
                             }
                         }
                         RibKind::ConstantItem(_, item, requires_type) => {
@@ -1638,7 +1659,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         }
                                         NoConstantGenericsReason::NonTrivialConstArg => {
                                             ResolutionError::ParamInNonTrivialAnonConst {
-                                                is_gca: self.features.generic_const_args(),
+                                                is_gca: self.features.gca_const_items(),
                                                 name: rib_ident.name,
                                                 param_kind: ParamKindInNonTrivialAnonConst::Type,
                                             }
@@ -1730,7 +1751,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         }
                                         NoConstantGenericsReason::NonTrivialConstArg => {
                                             ResolutionError::ParamInNonTrivialAnonConst {
-                                                is_gca: self.features.generic_const_args(),
+                                                is_gca: self.features.gca_const_items(),
                                                 name: rib_ident.name,
                                                 param_kind: ParamKindInNonTrivialAnonConst::Const {
                                                     name: rib_ident.name,

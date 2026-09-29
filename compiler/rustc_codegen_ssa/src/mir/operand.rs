@@ -5,13 +5,14 @@ use rustc_abi as abi;
 use rustc_abi::{
     Align, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, TagEncoding, VariantIdx, Variants,
 };
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_middle::mir::interpret::{Pointer, Scalar, alloc_range};
 use rustc_middle::mir::{self, ConstValue};
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
-use rustc_middle::{bug, span_bug};
 use rustc_session::config::{AnnotateMoves, DebugInfo, OptLevel};
+use rustc_span::{bug, span_bug};
 use tracing::{debug, instrument};
 
 use super::place::{PlaceRef, PlaceValue};

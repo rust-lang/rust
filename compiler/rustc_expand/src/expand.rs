@@ -898,7 +898,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             }
                         }
                         Err(err) => {
-                            let _guar = err.emit();
+                            err.emit();
                             fragment_kind.expect_from_annotatables(iter::once(item))
                         }
                     }
@@ -1068,7 +1068,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     err.span(span);
                 }
                 annotate_err_with_kind(&mut err, kind, span);
-                let guar = err.emit();
+                let guar = err.emit_err();
                 self.cx.macro_error_and_trace_macros_diag();
                 kind.dummy(span, guar)
             }
@@ -1382,7 +1382,11 @@ impl InvocationCollectorNode for Box<ast::Item> {
                 // This lets `parse_external_mod` catch cycles if it's self-referential.
                 let file_path = match inline {
                     Inline::Yes => None,
-                    Inline::No { .. } => mod_file_path_from_attr(ecx.sess, &node.attrs, &dir_path),
+                    Inline::No { .. } => mod_file_path_from_attr(
+                        ecx.sess,
+                        &node.attrs,
+                        &ecx.current_expansion.module.dir_path,
+                    ),
                 };
                 (file_path, dir_path, dir_ownership)
             }
@@ -1459,8 +1463,8 @@ impl DeclaredIdents for Box<ast::Item> {
                     ast::UseTreeKind::Glob(_) => {}
                     ast::UseTreeKind::Simple(_) => idents.push(ut.ident()),
                     ast::UseTreeKind::Nested { items, .. } => {
-                        for (ut, _) in items {
-                            collect_use_tree_leaves(ut, idents);
+                        for tree in items {
+                            collect_use_tree_leaves(&tree.inner, idents);
                         }
                     }
                 }
@@ -1744,22 +1748,10 @@ impl InvocationCollectorNode for ast::GenericParam {
         walk_flat_map_generic_param(collector, self)
     }
     fn as_target(&self) -> Target {
-        let mut has_default = false;
-        Target::GenericParam {
-            kind: match &self.kind {
-                rustc_ast::GenericParamKind::Lifetime => {
-                    rustc_attr_ir::target::GenericParamKind::Lifetime
-                }
-                rustc_ast::GenericParamKind::Type { default } => {
-                    has_default = default.is_some();
-                    rustc_attr_ir::target::GenericParamKind::Type
-                }
-                rustc_ast::GenericParamKind::Const { default, .. } => {
-                    has_default = default.is_some();
-                    rustc_attr_ir::target::GenericParamKind::Const
-                }
-            },
-            has_default,
+        match self.kind {
+            rustc_ast::GenericParamKind::Lifetime => Target::LifetimeParam,
+            rustc_ast::GenericParamKind::Type { .. } => Target::TypeParam,
+            rustc_ast::GenericParamKind::Const { .. } => Target::ConstParam,
         }
     }
 }
@@ -2366,13 +2358,13 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         let res = self.expand_cfg_true(&mut node, attr, pos);
                         match res {
                             EvalConfigResult::True => continue,
-                            EvalConfigResult::False { reason, reason_span } => {
+                            EvalConfigResult::False { reason } => {
                                 for ident in node.declared_idents() {
                                     self.cx.resolver.append_stripped_cfg_item(
                                         self.cx.current_expansion.lint_node_id,
                                         ident,
                                         reason.clone(),
-                                        reason_span,
+                                        reason.span(),
                                     )
                                 }
                             }

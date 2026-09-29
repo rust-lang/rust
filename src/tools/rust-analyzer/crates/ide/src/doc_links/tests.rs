@@ -449,7 +449,7 @@ fn doc_links_items_simple() {
     check_doc_links(
         r#"
 //- /main.rs crate:main deps:krate
-/// [`krate`]
+//! [`krate`]
 //! [`Trait`]
 //! [`function`]
 //! [`CONST`]

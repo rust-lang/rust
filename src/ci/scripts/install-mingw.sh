@@ -84,12 +84,9 @@ if isWindows && isKnownToBeMingwBuild; then
 
     ciCommandAddPath "$(cygpath -m "$(pwd)/${mingw_dir}/bin")"
 
-    # MSYS2 is not installed on AArch64 runners
-    if [[ "${CI_JOB_NAME}" != *aarch64-llvm* ]]; then
-        # Initialize mingw for the user.
-        # This should be done by github but isn't for some reason.
-        # (see https://github.com/actions/runner-images/issues/12600)
-        /c/msys64/usr/bin/bash -lc ' '
-    fi
+    # Initialize mingw for the user.
+    # This should be done by github but isn't for some reason.
+    # (see https://github.com/actions/runner-images/issues/12600)
+    /c/msys64/usr/bin/bash -lc ' '
     done
 fi

@@ -76,9 +76,9 @@ use std::num::NonZero;
 
 pub use check::check_abi;
 use rustc_abi::VariantIdx;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{ErrorGuaranteed, pluralize, struct_span_code_err};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::DenseBitSet;
@@ -91,10 +91,9 @@ use rustc_middle::ty::print::with_types_for_signature;
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, OutlivesClause, Region, Ty, TyCtxt, TypingMode,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::CRATE_DEF_ID;
-use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, kw};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, bug, kw, span_bug};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::infer::ObligationCauseExt as _;
 use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
@@ -717,7 +716,7 @@ pub fn check_function_signature<'tcx>(
                 false,
                 None,
             );
-            return Err(diag.emit());
+            return Err(diag.emit_err());
         }
     }
 

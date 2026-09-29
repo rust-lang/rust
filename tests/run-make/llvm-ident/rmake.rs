@@ -1,5 +1,7 @@
 //@ only-linux
 //@ ignore-cross-compile
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::llvm::llvm_bin_dir;
 use run_make_support::{

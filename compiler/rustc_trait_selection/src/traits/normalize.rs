@@ -7,12 +7,12 @@ use rustc_infer::traits::{
     FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine, TraitErrors,
 };
 use rustc_macros::extension;
-use rustc_middle::span_bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{
-    self, AliasTerm, Term, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
-    TypeVisitableExt, TypingMode, Unnormalized,
+    self, AliasTerm, PredicateProxy, Term, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitable, TypeVisitableExt, TypingMode, Unnormalized,
 };
+use rustc_span::span_bug;
 use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
@@ -78,7 +78,7 @@ impl<'tcx> At<'_, 'tcx> {
                 .normalize(value)
                 .into_value_registering_obligations(self.infcx, &mut *fulfill_cx);
             let errors = fulfill_cx.evaluate_obligations_error_on_ambiguity(self.infcx);
-            let value = self.infcx.resolve_vars_if_possible(value);
+            let value = self.infcx.deeply_resolve_ignoring_regions(value);
             match errors {
                 TraitErrors::NoErrors => Ok(value),
                 TraitErrors::HasErrors(errors) => {
@@ -171,7 +171,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
     }
 
     fn fold<T: TypeFoldable<TyCtxt<'tcx>>>(&mut self, value: T) -> T {
-        let value = self.selcx.infcx.resolve_vars_if_possible(value);
+        let value = self.selcx.infcx.deeply_resolve_ignoring_regions(value);
         debug!(?value);
 
         assert!(
@@ -479,7 +479,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
         };
 
         // Note that the Projection/Inherent/Free cases are unreachable on stable,
-        // unless a `min_generic_const_args` feature gate error has already
+        // unless a `gca_min_const_items` feature gate error has already
         // been emitted earlier in compilation.
         //
         // That's because we can only end up with an Alias ty::Const for a const item
@@ -512,7 +512,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
     }
 
     #[inline]
-    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+    fn fold_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, p: P) -> P {
         if p.allow_normalization() && needs_normalization(self.selcx.infcx, &p) {
             p.super_fold_with(self)
         } else {

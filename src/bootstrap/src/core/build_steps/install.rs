@@ -324,12 +324,12 @@ impl CommandLineStep for Src {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src")
+        run.alias("rust-src")
     }
 
     fn is_default_step(builder: &Builder<'_>) -> bool {
         let config = &builder.config;
-        config.extended && config.tools.as_ref().is_none_or(|t| t.contains("src"))
+        config.extended && config.tools.as_ref().is_none_or(|t| t.contains("rust-src"))
     }
 
     fn make_run(run: RunConfig<'_>) {

@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
+use clippy_utils::mir::{block_in_cycle, enclosing_mir, function_call_basic_block};
 use clippy_utils::paths;
 use clippy_utils::paths::PathLookup;
 use clippy_utils::res::MaybeQPath as _;
@@ -144,6 +145,9 @@ impl<'tcx> LateLintPass<'tcx> for Regex {
             if let Some(&(loop_item_id, loop_span)) = self.loop_stack.last()
                 && loop_item_id == fun.hir_id.owner
                 && (matches!(arg.kind, ExprKind::Lit(_)) || const_str(cx, arg).is_some())
+                && let Some(mir_body) = enclosing_mir(cx.tcx, fun.hir_id)
+                && let Some(mir_fun) = function_call_basic_block(mir_body, fun)
+                && block_in_cycle(mir_body, mir_fun)
             {
                 span_lint_and_help(
                     cx,

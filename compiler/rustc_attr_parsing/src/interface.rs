@@ -27,7 +27,7 @@ use crate::{AttributeTemplate, ShouldEmit};
 
 pub struct EmitAttribute(
     pub  Box<
-        dyn for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &Session) -> Diag<'a, ()>
+        dyn for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &Session) -> Diag<'a>
             + DynSend
             + DynSync
             + 'static,
@@ -161,6 +161,7 @@ impl<'sess> AttributeParser<'sess> {
             attrs,
             target_span,
             target,
+            None,
             std::convert::identity,
             |lint_id, span, kind| {
                 sess.psess.dyn_buffer_lint_sess(lint_id.lint, span, target_node_id, kind.0)
@@ -315,6 +316,7 @@ impl<'sess> AttributeParser<'sess> {
         attrs: &[ast::Attribute],
         target_span: Span,
         target: Target,
+        target_item: Option<&ast::Item>,
         lower_span: impl Copy + Fn(Span) -> Span,
         mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
     ) -> Vec<Attribute> {
@@ -510,7 +512,7 @@ impl<'sess> AttributeParser<'sess> {
         // inspect the fully parsed attributes via `FinalizeCheckContext::parsed_attrs`.
         for (check, attr_span) in deferred_checks {
             check(
-                &FinalizeCheckContext {
+                &mut FinalizeCheckContext {
                     shared: SharedContext {
                         cx: self,
                         target_span,
@@ -521,6 +523,7 @@ impl<'sess> AttributeParser<'sess> {
                     },
                     all_attrs: &attr_paths,
                     parsed_attrs: &attributes,
+                    target_item,
                 },
                 attr_span,
             );

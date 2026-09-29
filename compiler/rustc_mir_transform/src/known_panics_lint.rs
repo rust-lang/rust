@@ -5,23 +5,24 @@
 use std::fmt::Debug;
 
 use rustc_abi::{BackendRepr, FieldIdx, HasDataLayout, Size, TargetDataLayout, VariantIdx};
+use rustc_attr_ir::find_attr;
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{ImmTy, InterpCx, InterpResult, Projectable, Scalar, interp_ok};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::HirId;
 use rustc_hir::def::DefKind;
-use rustc_hir::{HirId, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_lint_defs::builtin::UNCONDITIONAL_PANIC;
-use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::{
     self, ConstInt, GenericArgKind, GenericParamDefKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
     Unnormalized,
 };
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 use tracing::{debug, instrument, trace};
 
 use crate::diagnostics::{AssertLint, AssertLintKind, ConstNIsZero};
@@ -37,7 +38,7 @@ impl<'tcx> crate::MirLint<'tcx> for KnownPanicsLint {
         let def_id = body.source.def_id().expect_local();
         let def_kind = tcx.def_kind(def_id);
         let is_fn_like = def_kind.is_fn_like();
-        let is_assoc_const = matches!(def_kind, DefKind::AssocConst { .. });
+        let is_assoc_const = def_kind == DefKind::AssocConst;
 
         // Only run const prop on functions, methods, closures and associated constants
         if !is_fn_like && !is_assoc_const {

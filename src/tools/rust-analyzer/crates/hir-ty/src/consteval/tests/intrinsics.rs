@@ -469,7 +469,8 @@ fn floating_point() {
             IsSigned::Yes,
         )),
     );
-    #[allow(unknown_lints, clippy::unnecessary_min_or_max)]
+    // FIXME: this should be an `expect`, but that currently results in `lint_expectation_unfulfilled`
+    #[allow(clippy::unnecessary_min_or_max, reason = "for symmetry with the expression in `GOAL`")]
     check_number(
         r#"
         #[rustc_intrinsic]

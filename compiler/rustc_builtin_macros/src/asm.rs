@@ -314,7 +314,7 @@ fn expand_preparsed_asm(
                 Ok(template_part) => template_part,
                 Err(err) => {
                     return ExpandResult::Ready(Err(match err {
-                        Ok((err, _)) => err.emit(),
+                        Ok((err, _)) => err.emit_err(),
                         Err(guar) => guar,
                     }));
                 }
@@ -407,7 +407,7 @@ fn expand_preparsed_asm(
             if let Some((label, span)) = err.secondary_label {
                 e.span_label(span_in_template(span), label);
             }
-            let guar = e.emit();
+            let guar = e.emit_err();
             return ExpandResult::Ready(Err(guar));
         }
 
@@ -437,7 +437,7 @@ fn expand_preparsed_asm(
 
                                 let positional_args = args.operands.len()
                                     - args.named_args.len()
-                                    - args.reg_args.len();
+                                    - args.reg_args.count();
                                 let positional = if positional_args != args.operands.len() {
                                     "positional "
                                 } else {
@@ -481,12 +481,10 @@ fn expand_preparsed_asm(
                                 Some(&idx) => Some(idx),
                                 None => {
                                     let span = arg.position_span;
-                                    ecx.dcx()
-                                        .create_err(diagnostics::AsmNoMatchedArgumentName {
-                                            name: name.to_owned(),
-                                            span: span_in_template(span),
-                                        })
-                                        .emit();
+                                    ecx.dcx().emit_err(diagnostics::AsmNoMatchedArgumentName {
+                                        name: name.to_owned(),
+                                        span: span_in_template(span),
+                                    });
                                     None
                                 }
                             }
@@ -590,19 +588,13 @@ pub(super) fn expand_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             let expr = match mac {
-                Ok(inline_asm) => Box::new(ast::Expr {
-                    id: ast::DUMMY_NODE_ID,
-                    kind: ast::ExprKind::InlineAsm(Box::new(inline_asm)),
-                    span: sp,
-                    attrs: ast::AttrVec::new(),
-                    tokens: None,
-                }),
+                Ok(inline_asm) => ecx.expr(sp, ast::ExprKind::InlineAsm(Box::new(inline_asm))),
                 Err(guar) => DummyResult::raw_expr(sp, Some(guar)),
             };
             MacEager::expr(expr)
         }
         Err(err) => {
-            let guar = err.emit();
+            let guar = err.emit_err();
             DummyResult::any(sp, guar)
         }
     })
@@ -620,19 +612,13 @@ pub(super) fn expand_naked_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             let expr = match mac {
-                Ok(inline_asm) => Box::new(ast::Expr {
-                    id: ast::DUMMY_NODE_ID,
-                    kind: ast::ExprKind::InlineAsm(Box::new(inline_asm)),
-                    span: sp,
-                    attrs: ast::AttrVec::new(),
-                    tokens: None,
-                }),
+                Ok(inline_asm) => ecx.expr(sp, ast::ExprKind::InlineAsm(Box::new(inline_asm))),
                 Err(guar) => DummyResult::raw_expr(sp, Some(guar)),
             };
             MacEager::expr(expr)
         }
         Err(err) => {
-            let guar = err.emit();
+            let guar = err.emit_err();
             DummyResult::any(sp, guar)
         }
     })
@@ -650,22 +636,16 @@ pub(super) fn expand_global_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             match mac {
-                Ok(inline_asm) => MacEager::items(smallvec![Box::new(ast::Item {
-                    attrs: ast::AttrVec::new(),
-                    id: ast::DUMMY_NODE_ID,
-                    kind: ast::ItemKind::GlobalAsm(Box::new(inline_asm)),
-                    vis: ast::Visibility {
-                        span: sp.shrink_to_lo(),
-                        kind: ast::VisibilityKind::Inherited,
-                    },
-                    span: sp,
-                    tokens: None,
-                })]),
+                Ok(inline_asm) => MacEager::items(smallvec![ecx.item(
+                    sp,
+                    ast::AttrVec::new(),
+                    ast::ItemKind::GlobalAsm(Box::new(inline_asm))
+                )]),
                 Err(guar) => DummyResult::any(sp, guar),
             }
         }
         Err(err) => {
-            let guar = err.emit();
+            let guar = err.emit_err();
             DummyResult::any(sp, guar)
         }
     })

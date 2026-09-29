@@ -15,6 +15,7 @@ use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BinOpKind, BorrowKind, Closure, Expr, ExprKind, HirId, Mutability, Pat, PatKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::middle::region;
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{Symbol, sym};
 use rustc_span::{Span, SyntaxContext};
@@ -333,7 +334,7 @@ impl<'tcx> VarVisitor<'_, 'tcx> {
                     }
                     return false; // no need to walk further *on the variable*
                 },
-                Res::Def(DefKind::Static { .. } | DefKind::Const { .. }, ..) => {
+                Res::Def(DefKind::Static { .. } | DefKind::Const, ..) => {
                     if index_used_directly {
                         self.indexed_directly.insert(
                             (

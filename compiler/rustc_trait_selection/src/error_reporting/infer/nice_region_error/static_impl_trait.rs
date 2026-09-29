@@ -3,7 +3,7 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty};
+use rustc_hir::intravisit::{Visitor, walk_ty};
 use rustc_hir::{
     self as hir, AmbigArg, GenericBound, GenericParam, GenericParamKind, Item, ItemKind, Lifetime,
     LifetimeKind, LifetimeParamKind, MissingLifetimeKind, Node, TyKind,
@@ -73,16 +73,17 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         if mention_influencer {
             spans.push(sup_origin.span());
         }
-        // We dedup the spans *ignoring* expansion context.
-        spans.sort();
-        spans.dedup_by_key(|span| (span.lo(), span.hi()));
+        // We sort and dedup the spans *ignoring* expansion context.
+        spans.sort_by_key(|span| span.lo_hi());
+        spans.dedup_by_key(|span| span.lo_hi());
 
         // We try to make the output have fewer overlapping spans if possible.
         let require_span =
             if sup_origin.span().overlaps(return_sp) { sup_origin.span() } else { return_sp };
 
         let spans_empty = spans.is_empty();
-        let require_as_note = spans.iter().any(|sp| sp.overlaps(return_sp) || *sp > return_sp);
+        let require_as_note =
+            spans.iter().any(|sp| sp.overlaps(return_sp) || sp.lo_hi() > return_sp.lo_hi());
         let bound = if let SubregionOrigin::RelateParamBound(_, _, Some(bound)) = sub_origin {
             Some(*bound)
         } else {
@@ -128,8 +129,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             Some(anon_reg_sup.scope),
         );
 
-        let reported = err.emit();
-        Some(reported)
+        let guar = err.emit_err();
+        Some(guar)
     }
 }
 

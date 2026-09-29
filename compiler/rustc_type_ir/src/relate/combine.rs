@@ -10,7 +10,7 @@ use crate::inherent::*;
 use crate::relate::VarianceDiagInfo;
 use crate::solve::Goal;
 use crate::visit::TypeVisitableExt as _;
-use crate::{self as ty, InferCtxtLike, Interner, TypingMode, Upcast};
+use crate::{self as ty, Const, InferCtxtLike, Interner, TypingMode, Upcast};
 
 pub trait PredicateEmittingRelation<Infcx, I = <Infcx as InferCtxtLike>::Interner>:
     TypeRelation<I>
@@ -143,9 +143,9 @@ where
 pub fn super_combine_consts<Infcx, I, R>(
     infcx: &Infcx,
     relation: &mut R,
-    a: I::Const,
-    b: I::Const,
-) -> RelateResult<I, I::Const>
+    a: Const<I>,
+    b: Const<I>,
+) -> RelateResult<I, Const<I>>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
@@ -243,7 +243,7 @@ where
             ty::Bivariant => {
                 let has_non_region_infer = |arg: I::GenericArg| {
                     arg.has_non_region_infer()
-                        && infcx.resolve_vars_if_possible(arg).has_non_region_infer()
+                        && infcx.deeply_resolve_ignoring_regions(arg).has_non_region_infer()
                 };
                 if has_non_region_infer(a) || has_non_region_infer(b) {
                     has_unconstrained_bivariant_arg = true;

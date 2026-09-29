@@ -1,7 +1,7 @@
 error: generic parameters in const blocks are not allowed; use a named `const` item instead
-  --> $DIR/rhs-but-not-root.rs:8:54
+  --> $DIR/rhs-but-not-root.rs:10:54
    |
-LL | type const FOO<const N: usize>: usize = ID::<const { N + 1 }>;
+LL | const FOO<const N: usize>: usize = gca!(ID::<const { N + 1 }>);
    |                                                      ^
    |
    = help: consider factoring the expression into a `type const` item and use it as the const argument instead

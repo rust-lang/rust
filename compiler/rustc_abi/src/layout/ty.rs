@@ -7,7 +7,7 @@ use rustc_macros::StableHash;
 
 use crate::layout::{FieldIdx, VariantIdx};
 use crate::{
-    AbiAlign, Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche,
+    AbiAlign, Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche, Numeric,
     PointeeInfo, Primitive, Size, Variants,
 };
 
@@ -116,6 +116,7 @@ pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug + std::fmt::Display {
         offset: Size,
     ) -> Option<PointeeInfo>;
     fn is_adt(this: TyAndLayout<'a, Self>) -> bool;
+    fn is_enum(this: TyAndLayout<'a, Self>) -> bool;
     fn is_never(this: TyAndLayout<'a, Self>) -> bool;
     fn is_tuple(this: TyAndLayout<'a, Self>) -> bool;
     fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
@@ -155,26 +156,6 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty::ty_and_layout_pointee_info_at(self, cx, offset)
     }
 
-    pub fn is_single_fp_element<C>(self, cx: &C) -> bool
-    where
-        Ty: TyAbiInterface<'a, C>,
-        C: HasDataLayout,
-    {
-        match self.backend_repr {
-            BackendRepr::Scalar(scalar) => {
-                matches!(scalar.primitive(), Primitive::Float(Float::F32 | Float::F64))
-            }
-            BackendRepr::Memory { .. } => {
-                if self.fields.count() == 1 && self.fields.offset(0).bytes() == 0 {
-                    self.field(cx, 0).is_single_fp_element(cx)
-                } else {
-                    false
-                }
-            }
-            _ => false,
-        }
-    }
-
     pub fn is_single_vector_element<C>(self, cx: &C, expected_size: Size) -> bool
     where
         Ty: TyAbiInterface<'a, C>,
@@ -198,6 +179,13 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty: TyAbiInterface<'a, C>,
     {
         Ty::is_adt(self)
+    }
+
+    pub fn is_enum<C>(self) -> bool
+    where
+        Ty: TyAbiInterface<'a, C>,
+    {
+        Ty::is_enum(self)
     }
 
     pub fn is_never<C>(self) -> bool
@@ -229,12 +217,12 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     }
 
     /// Returns `true` if this type needs to match the ABI of the C `_Complex` type. See
-    /// [`TyAndLayout::complex_number_primitive`] for details.
+    /// [`TyAndLayout::complex_number`] for details.
     pub fn is_complex_number<C>(self, cx: &C) -> bool
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
-        self.complex_number_primitive(cx).is_some()
+        self.complex_number(cx).is_some()
     }
 
     pub fn is_scalable_vector<C>(self) -> bool
@@ -245,8 +233,8 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     }
 
     /// If this method returns `true`, then this type should always have a `PassMode` of
-    /// `Indirect { on_stack: false, .. }` when being used as the argument type of a function with a
-    /// non-Rustic ABI (this is true for structs annotated with the
+    /// `Indirect { mode: IndirectMode::Pointer, .. }` when being used as the argument type of a
+    /// function with a non-Rustic ABI (this is true for structs annotated with the
     /// `#[rustc_pass_indirectly_in_non_rustic_abis]` attribute).
     ///
     /// This is used to replicate some of the behaviour of C array-to-pointer decay; however unlike
@@ -301,10 +289,35 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         found
     }
 
+    /// Finds the one field that is not a ZST.
+    /// Returns `None` if there are multiple non-ZST fields or only ZST-fields.
+    ///
+    /// Note that this function checks for ZSTs, not just 1-ZSTs.
+    pub fn non_zst_field_ignore_alignment<C>(&self, cx: &C) -> Option<(FieldIdx, Self)>
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        let mut found = None;
+        for field_idx in 0..self.fields.count() {
+            let field = self.field(cx, field_idx);
+            if field.is_zst() {
+                continue;
+            }
+            if found.is_some() {
+                // More than one non-ZST field.
+                return None;
+            }
+            found = Some((FieldIdx::from_usize(field_idx), field));
+        }
+        found
+    }
+
     /// If this type should match the ABI of the C `_Complex` type, returns the primitive that is
-    /// used for its parts. This only returns `Some(T)` for `core::num::Complex<T>` where `T` is
+    /// used for its components.
+    ///
+    /// This function only returns `Some(T)` for `core::num::Complex<T>` where `T` is
     /// either a float or an integer. `repr(transparent)` wrapper types are automatically handled.
-    pub fn complex_number_primitive<C>(&self, cx: &C) -> Option<Primitive>
+    pub fn complex_number<C>(&self, cx: &C) -> Option<Numeric>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
@@ -313,35 +326,35 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             return None;
         }
 
-        let part = complex.field(cx, 0).peel_transparent_wrappers(cx);
+        let component = complex.field(cx, 0).peel_transparent_wrappers(cx);
 
-        if let BackendRepr::Scalar(scalar) = part.backend_repr {
-            // Only Complex<{ float }> and Complex<{ integer }> have special layout.
-            let primitive = scalar.primitive();
-            match primitive {
-                // Explicitly spell out all the float types so that any new ones have to be added to
-                // one of the match branches.
-                Primitive::Int(..)
-                | Primitive::Float(Float::F16 | Float::F32 | Float::F64 | Float::F128) => {
-                    Some(primitive)
-                }
-                Primitive::Pointer(..) => None,
+        let BackendRepr::Scalar(scalar) = component.backend_repr else {
+            return None;
+        };
+
+        // Only Complex<{ float }> and Complex<{ integer }> have special layout.
+        //
+        // Explicitly spell out all the float types so that any new ones have to be added to
+        // one of the match branches.
+        let primitive = scalar.primitive();
+        match primitive {
+            Primitive::Int(integer, is_signed) => Some(Numeric::Int(integer, is_signed)),
+            Primitive::Float(float @ (Float::F16 | Float::F32 | Float::F64 | Float::F128)) => {
+                Some(Numeric::Float(float))
             }
-        } else {
-            None
+            Primitive::Pointer(..) | Primitive::Float(Float::F16B) => None,
         }
     }
 
-    /// Returns `Some` if this type has the ABI of the C `_Complex` type with float parts. See
-    /// [`TyAndLayout::complex_number_primitive`] for details.
+    /// Returns `Some` if this type has the ABI of the C `_Complex` type with float components.
+    /// See [`TyAndLayout::complex_number`] for details.
     pub fn complex_float<C>(&self, cx: &C) -> Option<Float>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
-        if let Some(Primitive::Float(float)) = self.complex_number_primitive(cx) {
-            Some(float)
-        } else {
-            None
+        match self.complex_number(cx) {
+            Some(Numeric::Float(float)) => Some(float),
+            _ => None,
         }
     }
 

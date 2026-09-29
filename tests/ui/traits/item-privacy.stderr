@@ -8,7 +8,7 @@ LL |     S.a();
    |       ^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = help: trait `method::A` which provides `a` is implemented but not reachable
+   = help: trait `crate::method::A` which provides `a` is implemented but not reachable
 help: there is a method `b` with a similar name
    |
 LL -     S.a();
@@ -30,7 +30,7 @@ LL |     S.b();
    = help: items from traits can only be used if the trait is in scope
 help: trait `B` which provides `b` is implemented but not in scope; perhaps you want to import it
    |
-LL + use method::B;
+LL + use crate::method::B;
    |
 help: there is a method `c` with a similar name
    |
@@ -57,7 +57,7 @@ LL |     S::a(&S);
    |        ^ associated function or constant not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = help: trait `method::A` which provides `a` is implemented but not reachable
+   = help: trait `crate::method::A` which provides `a` is implemented but not reachable
 help: there is an associated constant `B` with a similar name
   --> $DIR/item-privacy.rs:30:9
    |
@@ -81,7 +81,7 @@ LL |         const B: u8 = 0;
    |         ^^^^^^^^^^^
 help: trait `B` which provides `b` is implemented but not in scope; perhaps you want to import it
    |
-LL + use method::B;
+LL + use crate::method::B;
    |
 
 error[E0624]: method `a` is private
@@ -103,7 +103,7 @@ LL |     S::A;
    |        ^ associated function or constant not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = help: trait `assoc_const::A` which provides `A` is implemented but not reachable
+   = help: trait `crate::assoc_const::A` which provides `A` is implemented but not reachable
 help: there is an associated constant `B` with a similar name
    |
 LL -     S::A;
@@ -127,7 +127,7 @@ LL |         fn b(&self) { }
    |         ^^^^^^^^^^^
 help: trait `B` which provides `B` is implemented but not in scope; perhaps you want to import it
    |
-LL + use assoc_const::B;
+LL + use crate::assoc_const::B;
    |
 
 error[E0038]: the trait `assoc_const::C` is not dyn compatible

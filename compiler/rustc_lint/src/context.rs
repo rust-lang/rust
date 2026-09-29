@@ -22,7 +22,6 @@ use rustc_lint_defs::{
     FutureIncompatibleInfo, Lint, LintExpectationId, LintId, StableLintExpectationId,
     UnstableLintExpectationId,
 };
-use rustc_middle::bug;
 use rustc_middle::lint::{LevelSpec, StableLevelSpec, UnstableLevelSpec};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
@@ -32,7 +31,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::{DynLintStore, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, bug, sym};
 use tracing::debug;
 
 use self::TargetLint::*;
@@ -522,7 +521,7 @@ pub trait LintContext {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        decorate: impl for<'a> Diagnostic<'a, ()>,
+        decorate: impl for<'a> Diagnostic<'a>,
     );
 
     /// Emit a lint at `span` from a lint struct (some type that implements `Diagnostic`,
@@ -532,7 +531,7 @@ pub trait LintContext {
         &self,
         lint: &'static Lint,
         span: S,
-        decorator: impl for<'a> Diagnostic<'a, ()>,
+        decorator: impl for<'a> Diagnostic<'a>,
     ) {
         self.opt_span_lint(lint, Some(span), decorator);
     }
@@ -548,17 +547,7 @@ pub trait LintContext {
     /// retrieved from the current lint pass. Buffered or manually created ids can
     /// cause ICEs.
     fn fulfill_expectation(&self, expectation: Self::LintExpectationId) {
-        // We need to make sure that submitted expectation ids are correctly fulfilled suppressed
-        // and stored between compilation sessions. To not manually do these steps, we simply create
-        // a dummy diagnostic and emit it as usual, which will be suppressed and stored like a
-        // normal expected lint diagnostic.
-        self.sess()
-            .dcx()
-            .struct_expect(
-                "this is a dummy diagnostic, to submit and store an expectation",
-                expectation.into(),
-            )
-            .emit();
+        self.sess().dcx().fulfill_expectation(expectation);
     }
 }
 
@@ -596,7 +585,7 @@ impl<'tcx> LintContext for LateContext<'tcx> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        decorate: impl for<'a> Diagnostic<'a, ()>,
+        decorate: impl for<'a> Diagnostic<'a>,
     ) {
         let hir_id = self.last_node_with_lint_attrs;
 
@@ -623,7 +612,7 @@ impl LintContext for EarlyContext<'_> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        decorator: impl for<'a> Diagnostic<'a, ()>,
+        decorator: impl for<'a> Diagnostic<'a>,
     ) {
         self.builder.opt_span_lint(lint, span.map(|s| s.into()), decorator)
     }
@@ -843,7 +832,10 @@ impl<'tcx> LateContext<'tcx> {
     /// be used for pretty-printing HIR by rustc_hir_pretty.
     pub fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
         let has_attr = |id: hir::HirId| -> bool {
-            self.tcx.hir_attrs(id).iter().any(hir::Attribute::is_prefix_attr_for_suggestions)
+            self.tcx
+                .hir_attrs(id)
+                .iter()
+                .any(rustc_attr_ir::Attribute::is_prefix_attr_for_suggestions)
         };
         expr.precedence(&has_attr)
     }

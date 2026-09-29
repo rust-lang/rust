@@ -1,10 +1,10 @@
 use rustc_hir::def::DefKind;
-use rustc_hir::intravisit::{self, Visitor, VisitorExt};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, AmbigArg, ForeignItem, ForeignItemKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode, WellFormedLoc};
-use rustc_middle::bug;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingMode, fold_regions};
+use rustc_span::bug;
 use rustc_span::def_id::LocalDefId;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 use tracing::debug;
@@ -104,7 +104,7 @@ pub(super) fn diagnostic_hir_wf_check<'tcx>(
                     if self.depth >= self.cause_depth {
                         self.cause = Some(error.obligation.cause);
                         if let hir::TyKind::TraitObject(..) = ty.kind
-                            && let DefKind::AssocTy | DefKind::AssocConst { .. } | DefKind::AssocFn =
+                            && let DefKind::AssocTy | DefKind::AssocConst | DefKind::AssocFn =
                                 self.tcx.def_kind(self.def_id)
                         {
                             self.cause = Some(ObligationCause::new(

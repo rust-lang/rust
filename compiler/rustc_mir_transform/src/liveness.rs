@@ -1,12 +1,11 @@
 use rustc_abi::FieldIdx;
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::find_attr;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_lint_defs::builtin::{UNUSED_ASSIGNMENTS, UNUSED_VARIABLES};
-use rustc_middle::bug;
 use rustc_middle::mir::visit::{
     MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
 };
@@ -15,9 +14,9 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::{Analysis, Backward, ResultsCursor};
-use rustc_span::Span;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{Span, bug};
 
 use crate::diagnostics;
 
@@ -203,7 +202,7 @@ fn maybe_suggest_unit_pattern_typo<'tcx>(
     let constants = tcx
         .hir_body_owners()
         .filter(|&def_id| {
-            matches!(tcx.def_kind(def_id), DefKind::Const { .. })
+            tcx.def_kind(def_id) == DefKind::Const
                 && tcx.type_of(def_id).instantiate_identity().skip_norm_wip() == ty
                 && tcx.visibility(def_id).is_accessible_from(body_def_id, tcx)
         })
@@ -294,7 +293,7 @@ fn annotate_mut_binding_to_immutable_binding<'tcx>(
         local.as_usize() - if tcx.is_closure_like(body_def_id.to_def_id()) { 2 } else { 1 };
     let fn_decl = tcx.hir_node_by_def_id(body_def_id).fn_decl()?;
     let ty = fn_decl.inputs[hir_param_index];
-    let hir::TyKind::Ref(lt, mut_ty) = ty.kind else { return None };
+    let hir::TyKind::Ref(lt, inner_ty, mutbl) = ty.kind else { return None };
 
     // ... as a binding pattern.
     let hir_body = tcx.hir_maybe_body_owned_by(body_def_id)?;
@@ -313,12 +312,12 @@ fn annotate_mut_binding_to_immutable_binding<'tcx>(
 
     // Changes to the parameter's type.
     let pre = if lt.ident.span.is_empty() { "" } else { " " };
-    let ty_span = if mut_ty.mutbl.is_mut() {
+    let ty_span = if mutbl.is_mut() {
         // Leave `&'name mut Ty` and `&mut Ty` as they are (#136028).
         None
     } else {
         // `&'name Ty` -> `&'name mut Ty` or `&Ty` -> `&mut Ty`
-        Some(mut_ty.ty.span.shrink_to_lo())
+        Some(inner_ty.span.shrink_to_lo())
     };
 
     return Some(diagnostics::UnusedAssignSuggestion {
@@ -416,7 +415,7 @@ fn find_self_assignments<'tcx>(
                     // We ignore indirect self-assignment, because both occurrences of `dest` are uses.
                     let is_indirect = checked_places
                         .get(dest.as_ref())
-                        .map_or(false, |(_, projections)| is_indirect(projections));
+                        .is_some_and(|(_, projections)| is_indirect(projections));
                     if is_indirect {
                         continue;
                     }
@@ -1101,7 +1100,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                     let outer_initializer_span =
                         initializer_span.find_ancestor_in_same_ctxt(source_info.span);
                     within.is_none()
-                        && outer_initializer_span.map_or(true, |s| !s.contains(source_info.span))
+                        && outer_initializer_span.is_none_or(|s| !s.contains(source_info.span))
                 });
             }
 

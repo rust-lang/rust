@@ -2,7 +2,8 @@
 
 use std::{fmt, mem};
 
-use hir::Mutability;
+use hir::db::HirDatabase;
+use hir::{DisplayTarget, Mutability};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
     RootDatabase, SnippetCap, SymbolKind, documentation::Documentation,
@@ -12,7 +13,7 @@ use itertools::Itertools;
 use macros::UpmapFromRaFixture;
 use smallvec::SmallVec;
 use stdx::{format_to, impl_from, never};
-use syntax::{Edition, SmolStr, TextRange, TextSize, format_smolstr};
+use syntax::{Edition, SmolStr, TextRange, TextSize, ToSmolStr, format_smolstr};
 
 use crate::{
     context::{CompletionContext, PathCompletionCtx},
@@ -497,6 +498,7 @@ impl CompletionItem {
             imports_to_add: Default::default(),
             doc_aliases: vec![],
             adds_text: None,
+            const_value: None,
             edition,
         }
     }
@@ -534,6 +536,7 @@ pub(crate) struct Builder {
     trait_name: Option<SmolStr>,
     doc_aliases: Vec<SmolStr>,
     adds_text: Option<SmolStr>,
+    const_value: Option<SmolStr>,
     label: SmolStr,
     insert_text: Option<String>,
     is_snippet: bool,
@@ -602,6 +605,9 @@ impl Builder {
             if !lookup_doc_aliases.is_empty() {
                 lookup = format_smolstr!("{lookup}{lookup_doc_aliases}");
             }
+        }
+        if let Some(const_value) = self.const_value {
+            to_detail_left(format_args!(" = {}", const_value.trim()));
         }
         if let Some(adds_text) = self.adds_text {
             to_detail_left(format_args!("(adds {})", adds_text.trim()));
@@ -679,6 +685,21 @@ impl Builder {
     }
     pub(crate) fn adds_text(&mut self, adds_text: SmolStr) -> &mut Builder {
         self.adds_text = Some(adds_text);
+        self
+    }
+    pub(crate) fn const_value(
+        &mut self,
+        const_value: Option<hir::Const>,
+        db: &dyn HirDatabase,
+        display_target: DisplayTarget,
+    ) -> &mut Builder {
+        if let Some(const_value) = const_value {
+            if let Ok(evaluated_value) = const_value.eval(db) {
+                self.const_value = Some(evaluated_value.render(db, display_target).to_smolstr());
+            } else if let Some(written_value) = const_value.value(db) {
+                self.const_value = Some(written_value.to_smolstr());
+            }
+        }
         self
     }
     pub(crate) fn insert_text(&mut self, insert_text: impl Into<String>) -> &mut Builder {

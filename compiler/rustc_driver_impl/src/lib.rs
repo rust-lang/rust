@@ -5,11 +5,11 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(trim_prefix_suffix))]
 #![feature(decl_macro)]
 #![feature(file_buffered)]
 #![feature(panic_backtrace_config)]
 #![feature(panic_update_hook)]
-#![feature(trim_prefix_suffix)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
@@ -35,7 +35,7 @@ use rustc_data_structures::profiling::{
 };
 pub use rustc_errors::catch_fatal_errors;
 use rustc_errors::emitter::stderr_destination;
-use rustc_errors::{ColorConfig, DiagCtxt, ErrCode, PResult, markdown};
+use rustc_errors::{ColorConfig, DiagCtxt, DiagCtxtHandle, ErrCode, PResult, markdown};
 use rustc_feature::find_gated_cfg;
 // This avoids a false positive with `-Wunused_crate_dependencies`.
 // `rust_index` isn't used in this crate's code, but it must be named in the
@@ -315,10 +315,6 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
 
             tcx.ensure_ok().analysis(());
 
-            if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
-                dump_feature_usage_metrics(tcx, metrics_dir);
-            }
-
             if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
                 return None;
             }
@@ -330,6 +326,10 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
             }
 
             let linker = Linker::codegen_and_build_linker(tcx, codegen_backend);
+
+            if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
+                dump_feature_usage_metrics(tcx, metrics_dir);
+            }
 
             tcx.report_unused_features();
 
@@ -1344,15 +1344,17 @@ fn warn_on_confusing_output_filename_flag(
             || config::CG_OPTIONS.iter().any(|option| eq_ignore_separators(option.name(), filename))
             || fake_args.iter().any(|arg| eq_ignore_separators(arg, filename))
         {
-            early_dcx.early_warn(
-                "option `-o` has no space between flag name and value, which can be confusing",
-            );
-            early_dcx.early_note(format!(
-                "output filename `-o {name}` is applied instead of a flag named `o{name}`"
-            ));
-            early_dcx.early_help(format!(
-                "insert a space between `-o` and `{name}` if this is intentional: `-o {name}`"
-            ));
+            early_dcx
+                .early_struct_warn(
+                    "option `-o` has no space between flag name and value, which can be confusing",
+                )
+                .with_note(format!(
+                    "output filename `-o {name}` is applied instead of a flag named `o{name}`"
+                ))
+                .with_help(format!(
+                    "insert a space between `-o` and `{name}` if this is intentional: `-o {name}`"
+                ))
+                .emit();
         }
     }
 }
@@ -1442,7 +1444,7 @@ pub static USING_INTERNAL_FEATURES: AtomicBool = AtomicBool::new(false);
 /// extra_info.
 ///
 /// A custom rustc driver can skip calling this to set up a custom ICE hook.
-pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&DiagCtxt)) {
+pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(DiagCtxtHandle<'_>)) {
     // If the user has not explicitly overridden "RUST_BACKTRACE", then produce
     // full backtraces. When a compiler ICE happens, we want to gather
     // as much information as possible to present in the issue opened
@@ -1524,14 +1526,14 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&DiagCtxt))
 fn report_ice(
     info: &panic::PanicHookInfo<'_>,
     bug_report_url: &str,
-    extra_info: fn(&DiagCtxt),
+    extra_info: fn(DiagCtxtHandle<'_>),
     using_internal_features: &AtomicBool,
 ) {
     let emitter =
         Box::new(rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter::new(
             stderr_destination(rustc_errors::ColorConfig::Auto),
         ));
-    let dcx = rustc_errors::DiagCtxt::new(emitter);
+    let dcx = DiagCtxt::new(emitter);
     let dcx = dcx.handle();
 
     // a .span_bug or .bug call has already printed what
@@ -1598,11 +1600,11 @@ fn report_ice(
 
     let limit_frames = if backtrace { None } else { Some(2) };
 
-    interface::try_print_query_stack(dcx, limit_frames, file);
+    interface::try_print_query_stack(limit_frames, file);
 
     // We don't trust this callback not to panic itself, so run it at the end after we're sure we've
     // printed all the relevant info.
-    extra_info(&dcx);
+    extra_info(dcx);
 
     #[cfg(windows)]
     if env::var("RUSTC_BREAK_ON_ICE").is_ok() {

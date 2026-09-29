@@ -1,13 +1,15 @@
 // This test ensures proper diagnostics emission during HIR ty lowering
 // See https://github.com/rust-lang/rust/issues/153254
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
 
-type const T0: _ = ();
+use std::gca;
+
+const T0: _ = gca!(());
 //~^ ERROR: the placeholder `_` is not allowed within types on item signatures for constants [E0121]
 
-type const T1 = [0];
+const T1 = gca!([0]);
 //~^ ERROR: missing type for `const` item
 
 fn main() {}

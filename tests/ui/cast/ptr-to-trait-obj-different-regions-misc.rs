@@ -3,7 +3,7 @@
 
 trait Trait<'a> {}
 
-fn change_lt<'a, 'b>(x: *mut dyn Trait<'a>) -> *mut dyn Trait<'b> {
+fn change_lt<'a, 'b>(x: *mut dyn Trait<'a>) -> *mut dyn Trait<'b> { //~ ERROR one or more
     x as _ //~ error: lifetime may not live long enough
            //~| error: lifetime may not live long enough
 }
@@ -26,14 +26,14 @@ trait Assocked {
     type Assoc: ?Sized;
 }
 
-fn change_assoc_0<'a, 'b>(
+fn change_assoc_0<'a, 'b>( //~ ERROR one or more lifetime errors
     x: *mut dyn Assocked<Assoc = dyn Send + 'a>,
 ) -> *mut dyn Assocked<Assoc = dyn Send + 'b> {
     x as _ //~ error: lifetime may not live long enough
            //~| error: lifetime may not live long enough
 }
 
-fn change_assoc_1<'a, 'b>(
+fn change_assoc_1<'a, 'b>( //~ ERROR one or more lifetime errors
     x: *mut dyn Assocked<Assoc = dyn Trait<'a>>,
 ) -> *mut dyn Assocked<Assoc = dyn Trait<'b>> {
     x as _ //~ error: lifetime may not live long enough

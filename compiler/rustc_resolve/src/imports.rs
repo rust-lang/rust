@@ -16,12 +16,11 @@ use rustc_lint_defs::builtin::{
     PUB_USE_OF_PRIVATE_EXTERN_CRATE, REDUNDANT_IMPORTS, UNUSED_IMPORTS,
 };
 use rustc_middle::middle::resolve::{AmbigModChild, ModChild, PartialRes, Reexport};
-use rustc_middle::span_bug;
 use rustc_middle::ty::Visibility;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
-use rustc_span::{Ident, Span, Symbol, kw, sym};
+use rustc_span::{Ident, OrdSpan, Span, Symbol, kw, span_bug, sym};
 use tracing::debug;
 
 use crate::Namespace::{self, *};
@@ -1073,7 +1072,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         && !binding.vis().is_public()
                     {
                         let binding_id = match binding.kind {
-                            DeclKind::Def(res) => {
+                            DeclKind::Def(res, ..) => {
                                 Some(self.def_id_to_node_id(res.def_id().expect_local()))
                             }
                             DeclKind::Import { import, .. } => import.id(),
@@ -1226,9 +1225,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         span_bug!(import.span, "inconsistent resolution for an import");
                     }
                 } else if self.privacy_errors.is_empty() {
-                    self.dcx()
-                        .create_err(CannotDetermineImportResolution { span: import.span })
-                        .emit();
+                    self.dcx().emit_err(CannotDetermineImportResolution { span: import.span });
                 }
 
                 module
@@ -1460,9 +1457,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             span_bug!(import.span, "inconsistent resolution for an import");
                         }
                     } else if this.privacy_errors.is_empty() {
-                        this.dcx()
-                            .create_err(CannotDetermineImportResolution { span: import.span })
-                            .emit();
+                        this.dcx().emit_err(CannotDetermineImportResolution { span: import.span });
                     }
                 }
                 Err(..) => {
@@ -1513,7 +1508,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                             match source_decl.kind {
                                                 // Never suggest names that previously could not
                                                 // be resolved.
-                                                DeclKind::Def(Res::Err) => None,
+                                                DeclKind::Def(Res::Err, ..) => None,
                                                 _ => Some(i.name),
                                             }
                                         }
@@ -1650,7 +1645,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // purposes it's good enough to just favor one over the other.
         self.per_ns_mut(|this, ns| {
             if let Some(binding) = bindings[ns].get().decl().map(|b| b.import_source()) {
-                this.owners.get_mut(&import_id).unwrap().import_res[ns] = Some(binding.res());
+                this.owners
+                    .get_mut(&import.root_id)
+                    .unwrap()
+                    .import_res
+                    .entry(import_id)
+                    .or_default()[ns] = Some(binding.res());
             }
         });
 
@@ -1673,8 +1673,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if let Some(extern_crate_id) = pub_use_of_private_extern_crate_hack(import.summary(), decl)
         {
             let ImportKind::Single { id, .. } = import.kind else { unreachable!() };
-            let sugg = self.tcx.source_span(extern_crate_id).shrink_to_lo();
-            let diagnostic = crate::diagnostics::PrivateExternCrateReexport { ident, sugg };
+            let sugg = self.tcx.source_span(extern_crate_id);
+            let diagnostic = crate::diagnostics::PrivateExternCrateReexport {
+                ident,
+                sugg: sugg.can_be_used_for_suggestions().then(|| sugg.shrink_to_lo()),
+            };
             return Some(BufferedEarlyLint {
                 lint_id: LintId::of(PUB_USE_OF_PRIVATE_EXTERN_CRATE),
                 node_id: id,
@@ -1682,12 +1685,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 diagnostic: diagnostic.into(),
             });
         } else if ns == TypeNS {
-            let err = if crate_private_reexport {
-                self.dcx().create_err(CannotBeReexportedCratePublicNS { span: import.span, ident })
+            if crate_private_reexport {
+                self.dcx().emit_err(CannotBeReexportedCratePublicNS { span: import.span, ident });
             } else {
-                self.dcx().create_err(CannotBeReexportedPrivateNS { span: import.span, ident })
-            };
-            err.emit();
+                self.dcx().emit_err(CannotBeReexportedPrivateNS { span: import.span, ident });
+            }
         } else {
             let mut err = if crate_private_reexport {
                 self.dcx().create_err(CannotBeReexportedCratePublic { span: import.span, ident })
@@ -1697,7 +1699,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             match decl.kind {
                 // exclude decl_macro
-                DeclKind::Def(Res::Def(DefKind::Macro(_), def_id))
+                DeclKind::Def(Res::Def(DefKind::Macro(_), def_id), _)
                     if let SyntaxExtensionKind::MacroRules(mr) =
                         &self.get_macro_by_def_id(def_id).kind
                         && mr.is_macro_rules() =>
@@ -1763,7 +1765,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             && !other_binding.is_ambiguity_recursive();
                         if is_redundant {
                             redundant_span[ns] =
-                                Some((other_binding.span, other_binding.is_import()));
+                                Some((OrdSpan(other_binding.span), other_binding.is_import()));
                         }
                     }
                     Err(_) => is_redundant = false,
@@ -1783,7 +1785,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     let ident = source;
                     let subs = redundant_spans
                         .into_iter()
-                        .map(|(span, is_imported)| match (span.is_dummy(), is_imported) {
+                        .map(|(OrdSpan(span), is_imported)| match (span.is_dummy(), is_imported) {
                             (false, true) => {
                                 diagnostics::RedundantImportSub::ImportedHere { span, ident }
                             }

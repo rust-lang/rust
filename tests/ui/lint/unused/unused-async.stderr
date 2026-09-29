@@ -17,10 +17,10 @@ error: unused return value of `foo` that must be used
 LL |     foo();
    |     ^^^^^
    |
-help: use `let _ = ...` to ignore the resulting value
+help: use `let _unused = ...` to ignore the resulting value without dropping it immediately
    |
-LL |     let _ = foo();
-   |     +++++++
+LL |     let _unused = foo();
+   |     +++++++++++++
 
 error: unused output of future returned by `foo` that must be used
   --> $DIR/unused-async.rs:33:5
@@ -47,10 +47,10 @@ error: unused return value of `bar` that must be used
 LL |     bar();
    |     ^^^^^
    |
-help: use `let _ = ...` to ignore the resulting value
+help: use `let _unused = ...` to ignore the resulting value without dropping it immediately
    |
-LL |     let _ = bar();
-   |     +++++++
+LL |     let _unused = bar();
+   |     +++++++++++++
 
 error: unused implementer of `Future` that must be used
   --> $DIR/unused-async.rs:37:5

@@ -20,7 +20,6 @@ from lldb import (
     eBasicTypeUnsignedLongLong,
     eBasicTypeUnsignedShort,
     eFormatChar,
-    eTypeIsInteger,
 )
 from rust_types import is_tuple_fields
 
@@ -169,12 +168,6 @@ def unwrap_unique_or_non_null(unique_or_nonnull: SBValue) -> SBValue:
     # https://github.com/rust-lang/rust/commit/2a91eeac1a2d27dd3de1bf55515d765da20fd86f
     ptr = unique_or_nonnull.GetChildMemberWithName("pointer")
     return ptr if ptr.TypeIsPointerType() else ptr.GetChildAtIndex(0)
-
-
-def unwrap_scalar_wrappers(wrapper: SBValue) -> SBValue:
-    while (wrapper.type.GetTypeFlags() & eTypeIsInteger) == 0:
-        wrapper = wrapper.GetChildAtIndex(0)
-    return wrapper
 
 
 class DefaultSyntheticProvider:
@@ -424,12 +417,10 @@ def StdStringSummaryProvider(valobj: SBValue, dict: LLDBOpaque):
         .GetNonSyntheticValue()
     )
 
-    pointer = (
+    pointer = unwrap_unique_or_non_null(
         inner_vec.GetChildMemberWithName("buf")
         .GetChildMemberWithName("inner")
         .GetChildMemberWithName("ptr")
-        .GetChildMemberWithName("pointer")
-        .GetChildMemberWithName("pointer")
     )
 
     length = inner_vec.GetChildMemberWithName("len").GetValueAsUnsigned()
@@ -462,12 +453,10 @@ def StdOsStringSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     if is_windows:
         inner_vec = inner_vec.GetChildAtIndex(0)
 
-    pointer = (
+    pointer = unwrap_unique_or_non_null(
         inner_vec.GetChildMemberWithName("buf")
         .GetChildMemberWithName("inner")
         .GetChildMemberWithName("ptr")
-        .GetChildMemberWithName("pointer")
-        .GetChildMemberWithName("pointer")
     )
 
     length = inner_vec.GetChildMemberWithName("len").GetValueAsUnsigned()
@@ -542,8 +531,17 @@ def f16SummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     )
 
 
+def f128SummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
+    from lldb import eBasicTypeFloat128
+
+    return valobj.Cast(valobj.GetTarget().GetBasicType(eBasicTypeFloat128)).GetValue()
+
+
 def sequence_formatter(output: str, valobj: SBValue, _dict: LLDBOpaque):
     length: int = valobj.GetNumChildren()
+
+    if length == 0:
+        return output
 
     long: bool = False
     for i in range(0, length):
@@ -618,12 +616,10 @@ class StdStringSyntheticProvider:
 
     def update(self):
         inner_vec = self.valobj.GetChildMemberWithName("vec").GetNonSyntheticValue()
-        self.data_ptr = (
+        self.data_ptr = unwrap_unique_or_non_null(
             inner_vec.GetChildMemberWithName("buf")
             .GetChildMemberWithName("inner")
             .GetChildMemberWithName("ptr")
-            .GetChildMemberWithName("pointer")
-            .GetChildMemberWithName("pointer")
         )
 
         self.capacity = (
@@ -1129,6 +1125,10 @@ class StdVecSyntheticProvider:
     rust 1.62.0: struct Unique<T: ?Sized> { pointer: NonNull<T>, ... }
     struct NonZero<T>(T)
     struct NonNull<T> { pointer: *const T }
+
+    FIXME: This version history has been incomplete for a long time.
+    Maybe either update it to reflect all the version changes,
+    including addition of RawVecInner and allocators, or just delete it entirely.
     """
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
@@ -1542,9 +1542,17 @@ class StdHashMapSyntheticProvider:
 
 
 def StdRcSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
-    strong = valobj.GetChildMemberWithName("strong").GetValueAsUnsigned()
-    weak = valobj.GetChildMemberWithName("weak").GetValueAsUnsigned()
-    return "strong={}, weak={}".format(strong, weak)
+    strong = valobj.GetChildMemberWithName("strong")
+    weak = valobj.GetChildMemberWithName("weak")
+
+    if not (strong.IsValid() and weak.IsValid()):
+        strong = "?"
+        weak = "?"
+    else:
+        strong = strong.GetValueAsUnsigned()
+        weak = weak.GetValueAsUnsigned()
+
+    return f"strong={strong}, weak={weak}"
 
 
 class StdRcSyntheticProvider:
@@ -1567,8 +1575,24 @@ class StdRcSyntheticProvider:
 
         self.value = self.ptr.GetChildMemberWithName("data" if is_atomic else "value")
 
-        self.strong = unwrap_scalar_wrappers(self.ptr.GetChildMemberWithName("strong"))
-        self.weak = unwrap_scalar_wrappers(self.ptr.GetChildMemberWithName("weak"))
+        # infallibly gets an unsigned integer type of at least 64 bits. We don't need to worry about
+        # whether or not `usize` is actually smaller than that since we don't ever display the
+        # underlying type to the user anyway
+        usize_type = valobj.GetTarget().GetBasicType(eBasicTypeUnsignedLongLong)
+
+        self.strong = self.ptr.GetChildMemberWithName("strong").Cast(usize_type)
+        self.weak = self.ptr.GetChildMemberWithName("weak").Cast(usize_type)
+
+        # If the usize type isn't valid due to llvm/llvm-project#196812, not even the type's fields
+        # will populate. Luckily, `RcInner` is `#[repr(C)]`, so we can infallibly find the strong
+        # and weak values in memory
+        if not self.strong.IsValid() or not self.weak.IsValid():
+            raw_ptr = self.ptr.Cast(usize_type.GetPointerType())
+            addr = raw_ptr.GetValueAsAddress()
+            self.strong = self.valobj.CreateValueFromAddress("strong", addr, usize_type)
+            self.weak = self.valobj.CreateValueFromAddress(
+                "weak", addr + usize_type.GetByteSize(), usize_type
+            )
 
         self.value_builder = ValueBuilder(valobj)
 
@@ -1591,15 +1615,14 @@ class StdRcSyntheticProvider:
         if index == 0:
             return self.value
         if index == 1:
-            return self.value_builder.from_uint("strong", self.strong_count)
+            return self.strong
         if index == 2:
-            return self.value_builder.from_uint("weak", self.weak_count)
+            return self.weak
 
         return None
 
     def update(self):
-        self.strong_count = self.strong.GetValueAsUnsigned()
-        self.weak_count = self.weak.GetValueAsUnsigned() - 1
+        pass
 
     def has_children(self) -> bool:
         return True

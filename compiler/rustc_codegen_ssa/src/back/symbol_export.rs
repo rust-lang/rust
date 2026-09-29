@@ -8,7 +8,6 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
     ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
@@ -18,7 +17,7 @@ use rustc_middle::ty::{
     self, GenericArgKind, GenericArgsRef, Instance, ShimKind, SymbolName, Ty, TyCtxt,
 };
 use rustc_middle::util::Providers;
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 use rustc_structures::CrateType;
 use rustc_symbol_mangling::{is_offload_kernel, mangle_internal_symbol};
 use rustc_target::spec::{Arch, Os, TlsModel};
@@ -316,7 +315,7 @@ fn exported_generic_symbols_provider_local<'tcx>(
         .any(|o| matches!(o, rustc_session::config::Offload::Device(_)));
 
     if export_generics || is_device_offload {
-        use rustc_hir::attrs::Linkage;
+        use rustc_attr_ir::{InlineAttr, Linkage};
         use rustc_middle::mono::{MonoItem, Visibility};
         use rustc_middle::ty::InstanceKind;
 
@@ -355,9 +354,8 @@ fn exported_generic_symbols_provider_local<'tcx>(
                     .types()
                     .chain(did.into_iter().map(move |did| tcx.type_of(did).skip_binder()))
                     .all(move |arg| {
-                        arg.walk().all(|ty| {
-                            ty.as_type().map_or(true, |ty| !is_local_to_current_crate(ty))
-                        })
+                        arg.walk()
+                            .all(|ty| ty.as_type().is_none_or(|ty| !is_local_to_current_crate(ty)))
                     })
             };
 
@@ -387,9 +385,7 @@ fn exported_generic_symbols_provider_local<'tcx>(
             let item_is_offload = is_offload_instance(mono_item);
 
             if !item_is_offload && !tcx.sess.opts.share_generics() {
-                if tcx.codegen_fn_attrs(mono_item.def_id()).inline
-                    == rustc_hir::attrs::InlineAttr::Never
-                {
+                if tcx.codegen_fn_attrs(mono_item.def_id()).inline == InlineAttr::Never {
                     // this is OK, we explicitly allow sharing inline(never) across crates even
                     // without share-generics.
                 } else {

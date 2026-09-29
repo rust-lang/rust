@@ -7,11 +7,11 @@ pub mod suggestions;
 
 use std::{fmt, iter};
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_crate_store::{ExternCrate, ExternCrateSource};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Applicability, Diag, E0038, E0276, MultiSpan, struct_span_code_err};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, AmbigArg};
@@ -280,7 +280,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // roots, like `need_type_info` does when looking for the annotation source.
         let ambiguity_infer_var = |error: &FulfillmentError<'tcx>| match error.code {
             FulfillmentErrorCode::Ambiguity { overflow: None } => self
-                .ambiguity_term(self.resolve_vars_if_possible(error.obligation.predicate))
+                .ambiguity_term(self.deeply_resolve_ignoring_regions(error.obligation.predicate))
                 .and_then(|term| {
                     ty::GenericArg::from(term)
                         .walk()
@@ -425,7 +425,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     error.obligation.cause.span,
                     "higher-ranked lifetime bound could not be satisfied",
                 )
-                .emit(),
+                .emit_err(),
             FulfillmentErrorCode::Ambiguity { overflow: None } => {
                 self.maybe_report_ambiguity(&error.obligation, related)
             }
@@ -440,7 +440,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     expected_found.found,
                     *err,
                 )
-                .emit(),
+                .emit_err(),
             FulfillmentErrorCode::ConstEquate(ref expected_found, ref err) => {
                 let mut diag = self.report_mismatched_consts(
                     &error.obligation.cause,
@@ -463,7 +463,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         &mut Default::default(),
                     );
                 }
-                diag.emit()
+                diag.emit_err()
             }
             FulfillmentErrorCode::Cycle(ref cycle) => self.report_overflow_obligation_cycle(cycle),
         }

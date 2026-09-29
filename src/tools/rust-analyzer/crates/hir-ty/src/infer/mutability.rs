@@ -86,8 +86,7 @@ impl<'db> InferenceContext<'db> {
                 self.infer_mut_expr(*id, Mutability::Not);
             }
             Expr::Let { pat, expr } => self.infer_mut_expr(*expr, self.pat_bound_mutability(*pat)),
-            Expr::Block { id: _, statements, tail, label: _ }
-            | Expr::Unsafe { id: _, statements, tail } => {
+            Expr::Block { id: _, statements, tail, label: _, unsafe_: _ } => {
                 for st in statements.iter() {
                     match st {
                         Statement::Let { pat, type_ref: _, initializer, else_branch } => {
@@ -172,7 +171,6 @@ impl<'db> InferenceContext<'db> {
             &Expr::Assignment { target, value } => {
                 self.store.walk_pats(target, &mut |pat| match self.store[pat] {
                     Pat::Expr(expr) => self.infer_mut_expr(expr, Mutability::Mut),
-                    Pat::ConstBlock(block) => self.infer_mut_expr(block, Mutability::Not),
                     _ => {}
                 });
                 self.infer_mut_expr(value, Mutability::Not);

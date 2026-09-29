@@ -885,7 +885,7 @@ impl<T> [T] {
 
     /// Swaps two elements in the slice.
     ///
-    /// If `a` equals to `b`, it's guaranteed that elements won't change value.
+    /// If `a` equals `b`, it's guaranteed that elements won't change value.
     ///
     /// # Arguments
     ///
@@ -2125,7 +2125,7 @@ impl<T> [T] {
     /// Divides one slice into two at an index, returning `None` if the slice is
     /// too short.
     ///
-    /// If `mid ≤ len` returns a pair of slices where the first will contain all
+    /// If `mid ≤ len`, returns a pair of slices where the first will contain all
     /// indices from `[0, mid)` (excluding the index `mid` itself) and the
     /// second will contain all indices from `[mid, len)` (excluding the index
     /// `len` itself).
@@ -2174,7 +2174,7 @@ impl<T> [T] {
     /// Divides one mutable slice into two at an index, returning `None` if the
     /// slice is too short.
     ///
-    /// If `mid ≤ len` returns a pair of slices where the first will contain all
+    /// If `mid ≤ len`, returns a pair of slices where the first will contain all
     /// indices from `[0, mid)` (excluding the index `mid` itself) and the
     /// second will contain all indices from `[mid, len)` (excluding the index
     /// `len` itself).
@@ -2786,8 +2786,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(trim_prefix_suffix)]
-    ///
     /// let v = &[10, 40, 30];
     ///
     /// // Prefix present - removes it
@@ -2803,7 +2801,7 @@ impl<T> [T] {
     /// assert_eq!(b"hello".trim_prefix(prefix.as_bytes()), b"llo".as_ref());
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
-    #[unstable(feature = "trim_prefix_suffix", issue = "142312")]
+    #[stable(feature = "trim_prefix_suffix", since = "CURRENT_RUSTC_VERSION")]
     pub fn trim_prefix<P: SlicePattern<Item = T> + ?Sized>(&self, prefix: &P) -> &[T]
     where
         T: PartialEq,
@@ -2829,8 +2827,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(trim_prefix_suffix)]
-    ///
     /// let v = &[10, 40, 30];
     ///
     /// // Suffix present - removes it
@@ -2843,7 +2839,7 @@ impl<T> [T] {
     /// assert_eq!(v.trim_suffix(&[50, 30]), &[10, 40, 30][..]);
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
-    #[unstable(feature = "trim_prefix_suffix", issue = "142312")]
+    #[stable(feature = "trim_prefix_suffix", since = "CURRENT_RUSTC_VERSION")]
     pub fn trim_suffix<P: SlicePattern<Item = T> + ?Sized>(&self, suffix: &P) -> &[T]
     where
         T: PartialEq,
@@ -5628,11 +5624,8 @@ where
         // But since it can't be relied on we also have an explicit specialization for T: Copy.
         let len = self.len();
         let src = &src[..len];
-        // FIXME(const_hack): make this a `for idx in 0..self.len()` loop.
-        let mut idx = 0;
-        while idx < self.len() {
-            self[idx].clone_from(&src[idx]);
-            idx += 1;
+        for i in 0..len {
+            self[i].clone_from(&src[i]);
         }
     }
 }

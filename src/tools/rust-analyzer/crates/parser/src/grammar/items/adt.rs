@@ -1,4 +1,4 @@
-use crate::grammar::attributes::ATTRIBUTE_FIRST;
+use crate::grammar::attributes::OUTER_ATTR_FIRST;
 
 use super::*;
 
@@ -180,7 +180,7 @@ pub(crate) fn record_field_list(p: &mut Parser<'_>) {
 }
 
 const TUPLE_FIELD_FIRST: TokenSet =
-    types::TYPE_FIRST.union(ATTRIBUTE_FIRST).union(VISIBILITY_FIRST);
+    types::TYPE_FIRST.union(OUTER_ATTR_FIRST).union(VISIBILITY_FIRST);
 
 // test_err tuple_field_list_recovery
 // struct S(struct S;

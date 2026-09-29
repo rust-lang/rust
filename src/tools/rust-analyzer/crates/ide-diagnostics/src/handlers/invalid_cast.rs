@@ -465,7 +465,7 @@ fn foo<T: ?Sized>() {
           //^^^^^^^^^^^^^ error: cannot cast `usize` to a fat pointer `*const T`
 }
 "#,
-            &["E0308", "unused_variables"],
+            &["E0308"],
         );
     }
 

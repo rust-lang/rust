@@ -8,14 +8,13 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_lint_defs::builtin::{INLINE_NO_SANITIZE, RTSAN_NONBLOCKING_ASYNC};
 use rustc_macros::Diagnostic;
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
 };
 use rustc_middle::mono::Visibility;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self as ty, TyCtxt};
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 use rustc_target::spec::Os;
 
 use crate::diagnostics;
@@ -54,7 +53,7 @@ struct InterestingAttributeDiagnosticSpans {
     no_mangle: Option<Span>,
 }
 
-/// Process the builtin attrs ([`hir::Attribute`]) on the item.
+/// Process the builtin attrs ([`rustc_attr_ir::Attribute`]) on the item.
 /// Many of them directly translate to codegen attrs.
 fn process_builtin_attrs(
     tcx: TyCtxt<'_>,
@@ -67,7 +66,7 @@ fn process_builtin_attrs(
 
     let parsed_attrs = attrs
         .iter()
-        .filter_map(|attr| if let hir::Attribute::Parsed(attr) = attr { Some(attr) } else { None });
+        .filter_map(|attr| if let Attribute::Parsed(attr) = attr { Some(attr) } else { None });
     for attr in parsed_attrs {
         match attr {
             AttributeKind::Cold => codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD,
@@ -488,7 +487,7 @@ fn check_result(
     }
 
     if let Some(features) = check_tied_features(
-        tcx.sess,
+        &tcx.sess.target,
         &codegen_fn_attrs
             .target_features
             .iter()
@@ -498,13 +497,11 @@ fn check_result(
         let span = find_attr!(tcx, did, TargetFeature{attr_span: span, ..} => *span)
             .unwrap_or_else(|| tcx.def_span(did));
 
-        tcx.dcx()
-            .create_err(diagnostics::TargetFeatureDisableOrEnable {
-                features,
-                span: Some(span),
-                missing_features: Some(diagnostics::MissingFeatures),
-            })
-            .emit();
+        tcx.dcx().emit_err(diagnostics::TargetFeatureDisableOrEnable {
+            features,
+            span: Some(span),
+            missing_features: Some(diagnostics::MissingFeatures),
+        });
     }
 }
 

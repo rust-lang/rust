@@ -1,6 +1,9 @@
 //@ ignore-cross-compile
 //@ ignore-wasm (`object` can't handle wasm object files)
 //@ ignore-windows
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
+
 // This test should be replaced with one in tests/debuginfo once GDB or LLDB support 128-bit enums.
 
 use std::collections::HashMap;

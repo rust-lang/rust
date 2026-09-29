@@ -1,4 +1,4 @@
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![allow(incomplete_features)]
 
 trait T {
@@ -8,7 +8,8 @@ trait T {
 }
 
 trait S {
-    type const C: i32;
+    #[rustc_always_gca]
+    const C: i32;
 }
 
 fn main() {}

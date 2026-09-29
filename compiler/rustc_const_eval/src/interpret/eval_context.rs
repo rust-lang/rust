@@ -5,6 +5,7 @@ use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
+use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
@@ -14,8 +15,7 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{
     self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingEnv, Variance,
 };
-use rustc_middle::{mir, span_bug};
-use rustc_span::Span;
+use rustc_span::{Span, span_bug};
 use rustc_structures::Limit;
 use rustc_target::callconv::FnAbi;
 use tracing::{debug, trace};
@@ -285,12 +285,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     #[inline(always)]
     pub fn frame(&self) -> &Frame<'tcx, M::Provenance, M::FrameExtra> {
-        self.stack().last().expect("no call frames exist")
+        self.stack().last().expect("a call frame should exist")
     }
 
     #[inline(always)]
     pub fn frame_mut(&mut self) -> &mut Frame<'tcx, M::Provenance, M::FrameExtra> {
-        self.stack_mut().last_mut().expect("no call frames exist")
+        self.stack_mut().last_mut().expect("a call frame should exist")
     }
 
     #[inline(always)]

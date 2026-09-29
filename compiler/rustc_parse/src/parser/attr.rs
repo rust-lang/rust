@@ -507,4 +507,42 @@ impl<'a> Parser<'a> {
 
         Err(self.dcx().create_err(err))
     }
+
+    /// Recover from outer attributes in places where none were expected.
+    pub fn recover_from_outer_attributes(&mut self, target: &str) -> PResult<'a, ()> {
+        // We check the token ourselves first to prevent `#`
+        // from getting added to the set of expected tokens.
+        if !self.may_recover() || !matches!(self.token.kind, token::Pound | token::DocComment(..)) {
+            return Ok(());
+        }
+
+        let attrs = self.parse_outer_attributes()?;
+        if attrs.is_empty() {
+            return Ok(());
+        }
+
+        let attrs = attrs.take_for_recovery(self.psess);
+        let span = attrs.first().unwrap().span.to(attrs.last().unwrap().span);
+
+        let subject = if attrs.iter().all(|attr| matches!(attr.kind, ast::AttrKind::DocComment(..)))
+        {
+            "doc comments"
+        } else {
+            "attributes"
+        };
+
+        self.dcx()
+            .struct_span_err(span, format!("{subject} cannot be applied to {target}"))
+            .with_span_label(span, format!("{subject} are not allowed here"))
+            .with_span_suggestion_with_style(
+                span.until(self.token.span),
+                format!("remove these {subject}"),
+                String::new(),
+                rustc_errors::Applicability::MachineApplicable,
+                rustc_errors::SuggestionStyle::CompletelyHidden,
+            )
+            .emit();
+
+        Ok(())
+    }
 }

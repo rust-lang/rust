@@ -10,7 +10,6 @@ note: required by a bound in `Y`
   --> $DIR/hr-associated-type-bound-param-1.rs:4:36
    |
 LL | trait Y<'a, T: ?Sized>
-   |       - required by a bound in this trait
 ...
 LL |     for<'b> <Self as Y<'b, T>>::V: Clone,
    |                                    ^^^^^ required by this bound in `Y`
@@ -26,11 +25,13 @@ help: the trait `Clone` is implemented for `String`
 note: required by a bound in `Y::g`
   --> $DIR/hr-associated-type-bound-param-1.rs:4:36
    |
+LL | trait Y<'a, T: ?Sized>
+...
 LL |     for<'b> <Self as Y<'b, T>>::V: Clone,
    |                                    ^^^^^ required by this bound in `Y::g`
 ...
 LL |     fn g(&self, x: &Self::V) {
-   |        - required by a bound in this associated function
+   |
 
 error: aborting due to 2 previous errors
 

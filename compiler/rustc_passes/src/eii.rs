@@ -3,8 +3,8 @@
 
 use std::iter;
 
+use rustc_attr_ir::{EiiDecl, EiiImpl};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_hir::attrs::{EiiDecl, EiiImpl};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_middle::diagnostics::DuplicateEiiImpls;
 use rustc_middle::ty::TyCtxt;

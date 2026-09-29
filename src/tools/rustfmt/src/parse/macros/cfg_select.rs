@@ -64,7 +64,11 @@ fn parse_items_from_cfg_select_inner<'a>(
                 .parse_item(ForceCollect::No, AllowConstBlockItems::DoesNotMatter)
             {
                 Ok(Some(item_ptr)) => *item_ptr,
-                Ok(None) => continue,
+                Ok(None) => {
+                    // Advance the parser by at least one token to prevent an infinite loop
+                    parser.bump();
+                    continue;
+                }
                 Err(err) => {
                     err.cancel();
                     parser.psess.dcx().reset_err_count();

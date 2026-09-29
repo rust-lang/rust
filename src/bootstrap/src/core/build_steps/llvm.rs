@@ -832,6 +832,40 @@ fn debuginfo_map_cflags(builder: &Builder<'_>, target: TargetSelection) -> Vec<S
     flags
 }
 
+/// Tries to reuse a locally built LLD as a linker.
+/// If it is not available, uses a global LLD from PATH.
+fn try_link_with_in_tree_lld(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    llvm_output: &LlvmOutput,
+    cfg: &mut cmake::Config,
+    ldflags: &mut LdFlags,
+) {
+    // Apple has it's own ld64 linker, so don't use LLD on Darwin.
+    if target.contains("apple") {
+        return;
+    }
+
+    if builder.config.llvm_use_linker.is_some() || !builder.config.lld_enabled || target.is_msvc() {
+        // Logic derived from `configure_llvm`
+        // ThinLTO is only available when building with LLVM, enabling LLD is required.
+        if builder.config.llvm_thin_lto {
+            ldflags.push_all("-fuse-ld=lld");
+        }
+        return;
+    }
+
+    let lld_bin = builder.ensure(Lld { target }).join("bin");
+    ldflags.push_all(format!("-B{} -fuse-ld=lld", lld_bin.display()));
+
+    if llvm_output.link_shared() {
+        // LLD in this case needs the LLVM lib, so tell where to look for it.
+        let mut dylib_path = helpers::dylib_path();
+        dylib_path.insert(0, llvm_output.root_dir().join("lib"));
+        cfg.env(helpers::dylib_path_var(), t!(env::join_paths(&dylib_path)));
+    }
+}
+
 fn configure_cmake(
     builder: &Builder<'_>,
     target: TargetSelection,
@@ -1180,22 +1214,14 @@ impl CommandLineStep for RustOffload {
         let mut cfg =
             cmake::Config::new(builder.src.join("compiler/rustc_llvm/llvm-wrapper/offload/"));
 
-        // Logic copied from `configure_llvm`
-        // ThinLTO is only available when building with LLVM, enabling LLD is required.
-        // Apple's linker ld64 supports ThinLTO out of the box though, so don't use LLD on Darwin.
         let mut ldflags = LdFlags::default();
-        if builder.config.llvm_thin_lto && !target.contains("apple") {
-            ldflags.push_all("-fuse-ld=lld");
-        }
+        try_link_with_in_tree_lld(builder, target, &llvm_output, &mut cfg, &mut ldflags);
 
         configure_cmake(builder, target, &mut cfg, true, ldflags, CcFlags::default(), &[]);
 
         let profile = get_llvm_profile(&builder.config);
 
-        cfg.out_dir(&out_dir)
-            .profile(profile)
-            .env("LLVM_CONFIG_REAL", llvm_output.llvm_config())
-            .define("LLVM_DIR", llvm_output.cmake_dir());
+        cfg.out_dir(&out_dir).profile(profile).define("LLVM_DIR", llvm_output.cmake_dir());
 
         cfg.build();
 
@@ -1215,9 +1241,15 @@ impl CommandLineStep for RustOffload {
 pub struct BuiltOmpOffload {
     /// Path to the omp and offload dylibs.
     offload: Vec<PathBuf>,
+    /// Directory the dylibs were installed into.
+    lib_dir: PathBuf,
 }
 
 impl BuiltOmpOffload {
+    pub fn lib_dir(&self) -> &Path {
+        &self.lib_dir
+    }
+
     pub fn artifact_paths_with_symlink_targets(&self) -> Vec<PathBuf> {
         let mut paths = self.offload.clone();
 
@@ -1272,48 +1304,21 @@ impl CommandLineStep for OmpOffload {
     #[allow(unused)]
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         if builder.config.dry_run() {
-            return BuiltOmpOffload {
-                offload: vec![builder.config.tempdir().join("llvm-offload-dry-run")],
-            };
+            let dry_run = builder.config.tempdir().join("llvm-offload-dry-run");
+            return BuiltOmpOffload { offload: vec![dry_run.clone()], lib_dir: dry_run };
         }
         let target = self.target;
 
         let llvm_output = builder.ensure(Llvm { target });
 
-        // Running cmake twice in the same folder is known to cause issues, like deleting existing
-        // binaries. We therefore write our offload artifacts into it's own folder, instead of
-        // using the llvm build dir.
         let out_dir = builder.out.join(self.target.triple).join("offload");
 
-        let mut files = vec![];
         let lib_ext = std::env::consts::DLL_EXTENSION;
-        files.push(out_dir.join("lib").join("libLLVMOffload").with_extension(lib_ext));
-        files.push(out_dir.join("lib").join("libomp").with_extension(lib_ext));
-        files.push(out_dir.join("lib").join("libomptarget").with_extension(lib_ext));
-        files.push(
-            out_dir.join("lib").join("amdgcn-amd-amdhsa").join("libompdevice").with_extension("a"),
-        );
-        files.push(
-            out_dir
-                .join("lib")
-                .join("amdgcn-amd-amdhsa")
-                .join("libomptarget-amdgpu")
-                .with_extension("bc"),
-        );
-        files.push(
-            out_dir
-                .join("lib")
-                .join("nvptx64-nvidia-cuda")
-                .join("libompdevice")
-                .with_extension("a"),
-        );
-        files.push(
-            out_dir
-                .join("lib")
-                .join("nvptx64-nvidia-cuda")
-                .join("libomptarget-nvptx")
-                .with_extension("bc"),
-        );
+        let files = vec![
+            out_dir.join("lib").join("libLLVMOffload").with_extension(lib_ext),
+            out_dir.join("lib").join("libomp").with_extension(lib_ext),
+            out_dir.join("lib").join("libomptarget").with_extension(lib_ext),
+        ];
 
         // Offload/OpenMP are just subfolders of LLVM, so we can use the LLVM sha.
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
@@ -1339,7 +1344,7 @@ impl CommandLineStep for OmpOffload {
                     stamp.path().display()
                 ));
             }
-            return BuiltOmpOffload { offload: files };
+            return BuiltOmpOffload { offload: files, lib_dir: out_dir.join("lib") };
         }
 
         trace!(?target, "(re)building offload/openmp artifacts");
@@ -1408,78 +1413,70 @@ impl CommandLineStep for OmpOffload {
             libstdcxx.parent().map(Path::to_path_buf)
         });
 
-        // In the context of OpenMP offload, some libraries must be compiled for the gpu target,
-        // some for the host, and others for both. We do not perform a full cross-compilation, since
-        // we don't want to run rustc on a GPU.
-        let omp_targets = vec![target.triple.as_ref(), "amdgcn-amd-amdhsa", "nvptx64-nvidia-cuda"];
-        for omp_target in omp_targets {
-            let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/runtimes/"));
+        let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/runtimes/"));
 
-            // If we use an external clang as opposed to building our own llvm_clang, than that clang will
-            // come with it's own set of default include directories, which are based on a potentially older
-            // LLVM. This can cause issues, so we overwrite it to include headers based on our
-            // `src/llvm-project` submodule instead.
-            let mut cflags = CcFlags::default();
-            if !builder.config.llvm_clang {
-                let base = llvm_output.root_dir().join("include");
-                let inc_dir = base.display();
-                cflags.push_all(format!(" -I {inc_dir}"));
-            }
-
-            // Logic copied from `configure_llvm`
-            // ThinLTO is only available when building with LLVM, enabling LLD is required.
-            // Apple's linker ld64 supports ThinLTO out of the box though, so don't use LLD on Darwin.
-            let mut ldflags = LdFlags::default();
-            if builder.config.llvm_thin_lto && !target.contains("apple") {
-                ldflags.push_all("-fuse-ld=lld");
-            }
-            if *omp_target == *target.triple
-                && let Some(dir) = &cxx_lib_dir
-            {
-                ldflags.push_all(format!("-L{}", dir.display()));
-            }
-
-            configure_cmake(builder, target, &mut cfg, true, ldflags, cflags, &[]);
-
-            cfg.define("CMAKE_C_COMPILER", &clang)
-                .define("CMAKE_CXX_COMPILER", &clangxx)
-                .define("CMAKE_ASM_COMPILER", &clang);
-
-            // Re-use the same flags as llvm to control the level of debug information
-            // generated for offload.
-            let profile = get_llvm_profile(&builder.config);
-            trace!(?profile);
-
-            // FIXME(offload): Once we move from OMP to Offload (Ol) APIs, we should drop the openmp
-            // runtime to simplify our build. So far, these are still under development.
-            cfg.out_dir(&out_dir)
-                .profile(profile)
-                .env("LLVM_CONFIG_REAL", llvm_output.llvm_config())
-                .define("LLVM_ENABLE_ASSERTIONS", "ON")
-                .define("LLVM_INCLUDE_TESTS", "OFF")
-                .define("OFFLOAD_INCLUDE_TESTS", "OFF")
-                .define("LLVM_ROOT", llvm_output.root_dir().join("build"))
-                .define("LLVM_DIR", llvm_output.cmake_dir())
-                .define("LLVM_DEFAULT_TARGET_TRIPLE", omp_target);
-            if let Some(p) = offload_clang_dir.clone() {
-                cfg.define("Clang_DIR", p);
-            }
-
-            // We don't perform a full cross-compilation of rustc, therefore our target.triple
-            // will still be a CPU target.
-            if *omp_target == *target.triple {
-                // The offload library provides functionality which only makes sense on the host.
-                cfg.define("LLVM_ENABLE_RUNTIMES", "openmp;offload");
-            } else {
-                // OpenMP provides some device libraries, so we also compile it for all gpu targets.
-                cfg.define("OPENMP_INSTALL_LIBDIR", Path::new("lib").join(omp_target));
-                cfg.define("LLVM_USE_LINKER", "lld");
-                cfg.define("LLVM_ENABLE_RUNTIMES", "openmp");
-                cfg.define("CMAKE_C_COMPILER_TARGET", omp_target);
-                cfg.define("CMAKE_CXX_COMPILER_TARGET", omp_target);
-            }
-            cfg.build();
+        // If we use an external clang as opposed to building our own llvm_clang, than that clang will
+        // come with it's own set of default include directories, which are based on a potentially older
+        // LLVM. This can cause issues, so we overwrite it to include headers based on our
+        // `src/llvm-project` submodule instead.
+        let mut cflags = CcFlags::default();
+        if !builder.config.llvm_clang {
+            let base = llvm_output.root_dir().join("include");
+            let inc_dir = base.display();
+            cflags.push_all(format!(" -I {inc_dir}"));
         }
+
+        let mut ldflags = LdFlags::default();
+        try_link_with_in_tree_lld(builder, target, &llvm_output, &mut cfg, &mut ldflags);
+
+        if let Some(dir) = &cxx_lib_dir {
+            ldflags.push_all(format!("-L{}", dir.display()));
+        }
+
+        if builder.config.rpath_enabled(target)
+            && helpers::use_host_linker(target)
+            && llvm_output.link_shared()
+            && target.contains("linux")
+        {
+            // Same logic as in Lld::run
+            // We inform libomptarget.so where it can find LLVM's libraries
+            // by adding an rpath entry to the expected parent `lib` directory.
+            //
+            // Be careful when changing this path, we need to ensure it's quoted or escaped:
+            // `$ORIGIN` would otherwise be expanded when the `LdFlags` are passed verbatim to
+            // cmake.
+            ldflags.push_all("-Wl,-rpath,'$ORIGIN/../../../'");
+        }
+
+        configure_cmake(builder, target, &mut cfg, true, ldflags, cflags, &[]);
+
+        cfg.define("CMAKE_C_COMPILER", &clang)
+            .define("CMAKE_CXX_COMPILER", &clangxx)
+            .define("CMAKE_ASM_COMPILER", &clang);
+
+        // Re-use the same flags as llvm to control the level of debug information
+        // generated for offload.
+        let profile = get_llvm_profile(&builder.config);
+        trace!(?profile);
+
+        // FIXME(offload): Once we move from OMP to Offload (Ol) APIs, we should drop the openmp
+        // runtime to simplify our build. So far, these are still under development.
+        cfg.out_dir(&out_dir)
+            .profile(profile)
+            .define("LLVM_ENABLE_ASSERTIONS", "ON")
+            .define("LLVM_INCLUDE_TESTS", "OFF")
+            .define("OFFLOAD_INCLUDE_TESTS", "OFF")
+            .define("LLVM_ROOT", llvm_output.root_dir().join("build"))
+            .define("LLVM_DIR", llvm_output.cmake_dir())
+            .define("LLVM_DEFAULT_TARGET_TRIPLE", &*target.triple);
+        if let Some(p) = offload_clang_dir {
+            cfg.define("Clang_DIR", p);
+        }
+
+        // The offload library provides functionality which only makes sense on the host.
+        cfg.define("LLVM_ENABLE_RUNTIMES", "openmp;offload");
+
+        cfg.build();
 
         t!(stamp.write());
 
@@ -1494,7 +1491,7 @@ impl CommandLineStep for OmpOffload {
                 helpers::exit_process(1);
             }
         }
-        BuiltOmpOffload { offload: files }
+        BuiltOmpOffload { offload: files, lib_dir: out_dir.join("lib") }
     }
 }
 
@@ -1623,7 +1620,6 @@ impl CommandLineStep for Enzyme {
 
         cfg.out_dir(&out_dir)
             .profile(profile)
-            .env("LLVM_CONFIG_REAL", llvm_output.llvm_config())
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("ENZYME_EXTERNAL_SHARED_LIB", "ON")
             .define("ENZYME_BC_LOADER", "OFF")
@@ -2231,30 +2227,37 @@ impl Step for FileCheck {
         };
 
         // There is a LLVM config set, take filecheck from it
-        // Note: because `download-ci-llvm` currently overrides `llvm-config`, when the LLVM is
-        // downloaded, we go through this branch. Ideally, this should be changed so that
-        // `download-ci-llvm` doesn't override the config.
-        if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-            let llvm_bindir = command(s).arg("--bindir").run_capture_stdout(builder).stdout();
-            let filecheck = Path::new(llvm_bindir.trim()).join(exe("FileCheck", self.target));
-            let filecheck = if filecheck.exists() {
-                filecheck
-            } else {
-                // On Fedora the system LLVM installs FileCheck in the
-                // llvm subdirectory of the libdir.
-                let llvm_libdir = command(s).arg("--libdir").run_capture_stdout(builder).stdout();
-                let lib_filecheck =
-                    Path::new(llvm_libdir.trim()).join("llvm").join(exe("FileCheck", self.target));
-                if lib_filecheck.exists() {
-                    lib_filecheck
-                } else {
-                    // Return the most normal file name, even though
-                    // it doesn't exist, so that any error message
-                    // refers to that.
+        if let Some(llvm_config) = target_config.and_then(|c| c.llvm_config.as_ref()) {
+            // We can only execute llvm-config if we're on the same host target
+            return if builder.is_host_target(self.target) {
+                let llvm_bindir =
+                    command(llvm_config).arg("--bindir").run_capture_stdout(builder).stdout();
+                let filecheck = Path::new(llvm_bindir.trim()).join(exe("FileCheck", self.target));
+
+                if filecheck.exists() {
                     filecheck
+                } else {
+                    // On Fedora the system LLVM installs FileCheck in the
+                    // llvm subdirectory of the libdir.
+                    let llvm_libdir =
+                        command(llvm_config).arg("--libdir").run_capture_stdout(builder).stdout();
+                    let lib_filecheck = Path::new(llvm_libdir.trim())
+                        .join("llvm")
+                        .join(exe("FileCheck", self.target));
+                    if lib_filecheck.exists() {
+                        lib_filecheck
+                    } else {
+                        // Return the most normal file name, even though
+                        // it doesn't exist, so that any error message
+                        // refers to that.
+                        filecheck
+                    }
                 }
+            } else {
+                // In other cases, just guess that Filecheck is available in the same directory
+                // as the llvm-config
+                llvm_config.parent().unwrap().join(exe("FileCheck", self.target))
             };
-            return filecheck;
         }
         // Here we take the filecheck from LLVM directly
         let llvm_output = builder.ensure(Llvm { target: self.target });

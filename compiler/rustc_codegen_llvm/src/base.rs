@@ -13,12 +13,12 @@
 
 use std::time::Instant;
 
+use rustc_attr_ir::Linkage;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_hir::attrs::Linkage;
 use rustc_middle::dep_graph;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrs, SanitizerFnAttrs};
 use rustc_middle::mono::Visibility;
@@ -27,12 +27,11 @@ use rustc_session::config::{DebugInfo, Offload};
 use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
 
-use super::ModuleLlvm;
-use crate::attributes;
 use crate::builder::Builder;
 use crate::builder::gpu_offload::OffloadGlobals;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Value};
+use crate::{ModuleLlvm, attributes};
 
 pub(crate) struct ValueIter<'ll> {
     cur: Option<&'ll Value>,
@@ -64,6 +63,7 @@ pub(crate) fn iter_global_aliases(llmod: &llvm::Module) -> ValueIter<'_> {
 pub(crate) fn compile_codegen_unit(
     tcx: TyCtxt<'_>,
     cgu_name: Symbol,
+    bitcode_needed: bool,
 ) -> (ModuleCodegen<ModuleLlvm>, u64) {
     let start_time = Instant::now();
 
@@ -71,7 +71,7 @@ pub(crate) fn compile_codegen_unit(
     let (module, _) = tcx.dep_graph.with_task(
         dep_node,
         tcx,
-        || module_codegen(tcx, cgu_name),
+        || module_codegen(tcx, cgu_name, bitcode_needed),
         Some(dep_graph::hash_result),
     );
     let time_to_codegen = start_time.elapsed();
@@ -80,7 +80,11 @@ pub(crate) fn compile_codegen_unit(
     // the time we needed for codegenning it.
     let cost = time_to_codegen.as_nanos() as u64;
 
-    fn module_codegen(tcx: TyCtxt<'_>, cgu_name: Symbol) -> ModuleCodegen<ModuleLlvm> {
+    fn module_codegen(
+        tcx: TyCtxt<'_>,
+        cgu_name: Symbol,
+        needs_bitcode: bool,
+    ) -> ModuleCodegen<ModuleLlvm> {
         let cgu = tcx.codegen_unit(cgu_name);
         let _prof_timer =
             tcx.prof.generic_activity_with_arg_recorder("codegen_module", |recorder| {
@@ -90,7 +94,7 @@ pub(crate) fn compile_codegen_unit(
         // Instantiate monomorphizations without filling out definitions yet...
         let llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
         {
-            let mut cx = CodegenCx::new(tcx, cgu, &llvm_module);
+            let mut cx = CodegenCx::new(tcx, cgu, &llvm_module, needs_bitcode);
 
             // Declare and store globals shared by all offload kernels
             //

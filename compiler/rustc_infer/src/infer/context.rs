@@ -1,4 +1,6 @@
 //! Definition of `InferCtxtLike` from the librarified type layer.
+use std::range::RangeInclusive;
+
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::traits::ObligationCause;
@@ -49,7 +51,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     fn insert_placeholder_assumptions(
         &self,
         u: ty::UniverseIndex,
-        assumptions: Option<rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>>,
+        assumptions: rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>,
     ) {
         self.insert_placeholder_assumptions(u, assumptions);
     }
@@ -57,7 +59,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     fn get_placeholder_assumptions(
         &self,
         u: ty::UniverseIndex,
-    ) -> Option<rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>> {
+    ) -> rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>> {
         self.get_placeholder_assumptions(u)
     }
 
@@ -65,6 +67,10 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         &self,
     ) -> rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>> {
         self.get_solver_region_constraint().without_spans()
+    }
+
+    fn has_placeholder_assumptions(&self, range: RangeInclusive<ty::UniverseIndex>) -> bool {
+        self.has_placeholder_assumptions(range)
     }
 
     fn overwrite_solver_region_constraint(
@@ -82,14 +88,14 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         }
     }
 
-    fn universe_of_lt(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex> {
-        match self.inner.borrow_mut().unwrap_region_constraints().probe_value(lt) {
+    fn universe_of_region(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex> {
+        match self.inner.borrow_mut().unwrap_region_constraints().try_resolve_region_var(lt) {
             Err(universe) => Some(universe),
             Ok(_) => None,
         }
     }
 
-    fn universe_of_ct(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex> {
+    fn universe_of_const(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex> {
         match self.try_resolve_const_var(ct) {
             Err(universe) => Some(universe),
             Ok(_) => None,
@@ -118,30 +124,27 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.root_const_var(var)
     }
 
-    fn opportunistic_resolve_ty_var(&self, vid: ty::TyVid) -> Ty<'tcx> {
-        match self.try_resolve_ty_var(vid) {
-            Ok(ty) => ty,
-            Err(_) => Ty::new_var(self.tcx, self.root_var(vid)),
-        }
+    fn shallow_resolve_ty_var(&self, vid: ty::TyVid) -> Ty<'tcx> {
+        self.shallow_resolve_ty_var(vid)
     }
 
-    fn opportunistic_resolve_int_var(&self, vid: ty::IntVid) -> Ty<'tcx> {
-        self.opportunistic_resolve_int_var(vid)
+    fn shallow_resolve_int_var(&self, vid: ty::IntVid) -> Ty<'tcx> {
+        self.shallow_resolve_int_var(vid)
     }
 
-    fn opportunistic_resolve_float_var(&self, vid: ty::FloatVid) -> Ty<'tcx> {
-        self.opportunistic_resolve_float_var(vid)
+    fn shallow_resolve_float_var(&self, vid: ty::FloatVid) -> Ty<'tcx> {
+        self.shallow_resolve_float_var(vid)
     }
 
-    fn opportunistic_resolve_ct_var(&self, vid: ty::ConstVid) -> ty::Const<'tcx> {
-        match self.try_resolve_const_var(vid) {
-            Ok(ct) => ct,
-            Err(_) => ty::Const::new_var(self.tcx, self.root_const_var(vid)),
-        }
+    fn shallow_resolve_const_var(&self, vid: ty::ConstVid) -> ty::Const<'tcx> {
+        self.shallow_resolve_const_var(vid)
     }
 
-    fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> ty::Region<'tcx> {
-        self.inner.borrow_mut().unwrap_region_constraints().opportunistic_resolve_var(self.tcx, vid)
+    fn shallow_resolve_region_var(&self, vid: ty::RegionVid) -> ty::Region<'tcx> {
+        self.inner
+            .borrow_mut()
+            .unwrap_region_constraints()
+            .shallow_resolve_region_var(self.tcx, vid)
     }
 
     fn ty_or_const_infer_var_changed(&self, var: TyOrConstInferVar) -> bool {
@@ -192,7 +195,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
             let u = self.universe();
             self.placeholder_assumptions_for_next_solver
                 .borrow_mut()
-                .insert(u, Some(rustc_type_ir::region_constraint::Assumptions::empty()));
+                .insert(u, rustc_type_ir::region_constraint::Assumptions::empty());
             f(value)
         })
     }
@@ -278,11 +281,11 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.shallow_resolve_const(ct)
     }
 
-    fn resolve_vars_if_possible<T>(&self, value: T) -> T
+    fn deeply_resolve_ignoring_regions<T>(&self, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.resolve_vars_if_possible(value)
+        self.deeply_resolve_ignoring_regions(value)
     }
 
     fn probe<T>(&self, probe: impl FnOnce() -> T) -> T {

@@ -9,7 +9,6 @@ use std::fs;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 use rustc_hir::def_id::{DefId, DefIndex, LOCAL_CRATE, StableCrateId};
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mono::MonoItem;
 use rustc_middle::ty::codec::{TyDecoder, TyEncoder};
@@ -18,6 +17,7 @@ use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{
     BlobDecoder, BytePos, ByteSymbol, Pos, Span, SpanDecoder, SpanEncoder, Symbol, SyntaxContext,
+    bug,
 };
 
 pub(crate) struct OffloadManifestEncoder<'a, 'tcx> {

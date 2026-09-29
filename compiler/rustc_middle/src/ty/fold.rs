@@ -1,5 +1,7 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
+use rustc_span::bug;
+use rustc_type_ir::PredicateProxy;
 use rustc_type_ir::data_structures::DelayedMap;
 
 use crate::ty::{
@@ -180,7 +182,7 @@ where
         }
     }
 
-    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+    fn fold_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, p: P) -> P {
         if p.has_vars_bound_at_or_above(self.current_index) { p.super_fold_with(self) } else { p }
     }
 

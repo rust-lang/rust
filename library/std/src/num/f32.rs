@@ -13,7 +13,7 @@
 #![allow(missing_docs)]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::f32::{
     DIGITS, EPSILON, INFINITY, MANTISSA_DIGITS, MAX, MAX_10_EXP, MAX_EXP, MIN, MIN_10_EXP, MIN_EXP,
     MIN_POSITIVE, NAN, NEG_INFINITY, RADIX, consts,
@@ -79,6 +79,11 @@ impl f32 {
     /// integers, round away from `0.0`.
     ///
     /// This function always returns the precise result.
+    ///
+    /// On most hardware platforms, [`round_ties_even`](Self::round_ties_even) may execute faster
+    /// than `round`. If both rounding methods fit the use case, consider using `round_ties_even`.
+    /// Note that the two methods apply different rounding rules to values exactly halfway between
+    /// two integers.
     ///
     /// # Examples
     ///

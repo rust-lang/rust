@@ -6,16 +6,16 @@ use std::ops::{Deref, DerefMut};
 use rustc_abi::{ExternAbi, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_crate_store::{ExternCrate, ExternCrateSource};
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefIdMap, DefIdSet, LOCAL_CRATE, ModId};
 use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_macros::{Lift, extension};
-use rustc_span::{Ident, RemapPathScopeComponents, Symbol, kw, sym};
+use rustc_span::{Ident, RemapPathScopeComponents, Symbol, bug, kw, sym};
 use rustc_structures::Limit;
 use rustc_type_ir::{FieldInfo, Unnormalized, Upcast as _, elaborate};
 use smallvec::SmallVec;
@@ -24,6 +24,7 @@ use smallvec::SmallVec;
 use super::*;
 use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
 use crate::query::{IntoQueryKey, Providers};
+use crate::ty::consts::ConstExt;
 use crate::ty::{
     ConstInt, Expr, GenericArgKind, ParamConst, ScalarInt, Term, TermKind, TraitClause,
     TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -409,7 +410,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             return Ok(true);
         }
         if let Some(symbol) = key.get_opt_name() {
-            if let DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy = kind
+            if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = kind
                 && let Some(parent) = self.tcx().opt_parent(def_id)
                 && let parent_key = self.tcx().def_key(parent)
                 && let Some(symbol) = parent_key.get_opt_name()
@@ -434,7 +435,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             | DefKind::Trait
             | DefKind::TyAlias
             | DefKind::Fn
-            | DefKind::Const { .. }
+            | DefKind::Const
             | DefKind::Static { .. } = kind
             {
             } else {
@@ -2395,12 +2396,9 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
         self.empty_path = true;
         if cnum == LOCAL_CRATE && !with_resolve_crate_name() {
-            if self.tcx.sess.at_least_rust_2018() {
-                // We add the `crate::` keyword on Rust 2018, only when desired.
-                if with_crate_prefix() {
-                    write!(self, "{}", kw::Crate)?;
-                    self.empty_path = false;
-                }
+            if with_crate_prefix() {
+                write!(self, "{}", kw::Crate)?;
+                self.empty_path = false;
             }
         } else {
             write!(self, "{}", self.tcx.crate_name(cnum))?;
@@ -3143,8 +3141,7 @@ macro_rules! define_print_and_forward_display {
 
 forward_display_to_print! {
     Ty<'tcx>,
-    &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-    ty::Const<'tcx>
+    &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>
 }
 
 define_print! {

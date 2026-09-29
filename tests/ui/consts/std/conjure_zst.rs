@@ -1,5 +1,3 @@
-#![feature(mem_conjure_zst)]
-
 use std::{convert::Infallible, mem};
 
 const INVALID: Infallible = unsafe { mem::conjure_zst() };

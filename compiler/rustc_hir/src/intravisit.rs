@@ -68,7 +68,7 @@ use rustc_ast::Label;
 use rustc_ast::visit::{VisitorResult, try_visit, visit_opt, walk_list};
 use rustc_attr_ir::Attribute;
 use rustc_hir_id::HirId;
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{LocalDefId, LocalModId};
 use rustc_span::{Ident, Span, Symbol};
 
 use crate::hir::*;
@@ -311,7 +311,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_ident(&mut self, ident: Ident) -> Self::Result {
         walk_ident(self, ident)
     }
-    fn visit_mod(&mut self, m: &'v Mod<'v>, _s: Span, _n: HirId) -> Self::Result {
+    fn visit_mod(&mut self, m: &'v Mod<'v>, _s: Span, _id: LocalModId) -> Self::Result {
         walk_mod(self, m)
     }
     fn visit_foreign_item(&mut self, i: &'v ForeignItem<'v>) -> Self::Result {
@@ -421,8 +421,13 @@ pub trait Visitor<'v>: Sized {
     ) -> Self::Result {
         walk_fn(self, fk, fd, b, id)
     }
-    fn visit_use(&mut self, path: &'v UsePath<'v>, hir_id: HirId) -> Self::Result {
-        walk_use(self, path, hir_id)
+    fn visit_use(
+        &mut self,
+        tree: &'v UseTree<'v>,
+        hir_id: HirId,
+        _def_id: LocalDefId,
+    ) -> Self::Result {
+        walk_use(self, tree, hir_id)
     }
     fn visit_trait_item(&mut self, ti: &'v TraitItem<'v>) -> Self::Result {
         walk_trait_item(self, ti)
@@ -518,27 +523,23 @@ pub trait Visitor<'v>: Sized {
     ) -> Self::Result {
         walk_test_binder_bound_type_constraint(self, bound_type)
     }
-}
 
-pub trait VisitorExt<'v>: Visitor<'v> {
-    /// Extension trait method to visit types in unambiguous positions, this is not
-    /// directly on the [`Visitor`] trait as this method should never be overridden.
-    ///
     /// Named `visit_ty_unambig` instead of `visit_unambig_ty` to aid in discovery
     /// by IDes when `v.visit_ty` is written.
-    fn visit_ty_unambig(&mut self, t: &'v Ty<'v>) -> Self::Result {
+    ///
+    /// This method cannot be overridden.
+    final fn visit_ty_unambig(&mut self, t: &'v Ty<'v>) -> Self::Result {
         walk_unambig_ty(self, t)
     }
-    /// Extension trait method to visit consts in unambiguous positions, this is not
-    /// directly on the [`Visitor`] trait as this method should never be overridden.
-    ///
+
     /// Named `visit_const_arg_unambig` instead of `visit_unambig_const_arg` to aid in
     /// discovery by IDes when `v.visit_const_arg` is written.
-    fn visit_const_arg_unambig(&mut self, c: &'v ConstArg<'v>) -> Self::Result {
+    ///
+    /// This method cannot be overridden.
+    final fn visit_const_arg_unambig(&mut self, c: &'v ConstArg<'v>) -> Self::Result {
         walk_unambig_const_arg(self, c)
     }
 }
-impl<'v, V: Visitor<'v>> VisitorExt<'v> for V {}
 
 pub fn walk_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Param<'v>) -> V::Result {
     let Param { hir_id, pat, ty_span: _, span: _ } = param;
@@ -554,12 +555,8 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             visit_opt!(visitor, visit_name, orig_name);
             try_visit!(visitor.visit_ident(ident));
         }
-        ItemKind::Use(ref path, kind) => {
-            try_visit!(visitor.visit_use(path, item.hir_id()));
-            match kind {
-                UseKind::Single(ident) => try_visit!(visitor.visit_ident(ident)),
-                UseKind::Glob | UseKind::ListStem => {}
-            }
+        ItemKind::Use(ref tree) => {
+            try_visit!(visitor.visit_use(tree, item.hir_id(), item.owner_id.def_id));
         }
         ItemKind::Static(_, ident, ref typ, body) => {
             try_visit!(visitor.visit_ident(ident));
@@ -587,7 +584,11 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
         }
         ItemKind::Mod(ident, ref module) => {
             try_visit!(visitor.visit_ident(ident));
-            try_visit!(visitor.visit_mod(module, item.span, item.hir_id()));
+            try_visit!(visitor.visit_mod(
+                module,
+                item.span,
+                LocalModId::new_unchecked(item.owner_id.def_id)
+            ));
         }
         ItemKind::ForeignMod { abi: _, items } => {
             walk_list!(visitor, visit_foreign_item_ref, items);
@@ -1026,10 +1027,10 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v, AmbigArg>) -
 
     match *kind {
         TyKind::Slice(ref ty) => try_visit!(visitor.visit_ty_unambig(ty)),
-        TyKind::Ptr(ref mutable_type) => try_visit!(visitor.visit_ty_unambig(mutable_type.ty)),
-        TyKind::Ref(ref lifetime, ref mutable_type) => {
+        TyKind::Ptr(ref ty, _) => try_visit!(visitor.visit_ty_unambig(ty)),
+        TyKind::Ref(ref lifetime, ref ty, _) => {
             try_visit!(visitor.visit_lifetime(lifetime));
-            try_visit!(visitor.visit_ty_unambig(mutable_type.ty));
+            try_visit!(visitor.visit_ty_unambig(ty));
         }
         TyKind::Never => {}
         TyKind::Tup(tuple_element_types) => {
@@ -1268,12 +1269,24 @@ pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V, function_kind: FnKind<'
 
 pub fn walk_use<'v, V: Visitor<'v>>(
     visitor: &mut V,
-    path: &'v UsePath<'v>,
+    tree: &'v UseTree<'v>,
     hir_id: HirId,
 ) -> V::Result {
-    let UsePath { segments, ref res, span } = *path;
+    visitor.visit_id(hir_id);
+    let UseTree { prefix, kind } = *tree;
+    let UsePath { segments, ref res, span } = *prefix;
     for res in res.present_items() {
         try_visit!(visitor.visit_path(&Path { segments, res, span }, hir_id));
+    }
+
+    match kind {
+        UseKind::Single(ident) => try_visit!(visitor.visit_ident(ident)),
+        UseKind::Glob => {}
+        UseKind::Nested { items } => {
+            for (tree, id, def_id) in items {
+                try_visit!(visitor.visit_use(tree, *id, *def_id));
+            }
+        }
     }
     V::Result::output()
 }

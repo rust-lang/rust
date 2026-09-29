@@ -138,10 +138,10 @@ LL |     pub(crate) use m5_1::*;
    |     help: consider using: `pub`
 
 error: pub(crate) import inside private module
-  --> tests/ui/redundant_pub_crate.rs:138:27
+  --> tests/ui/redundant_pub_crate.rs:138:5
    |
 LL |     pub(crate) use m5_1::{*};
-   |     ----------            ^
+   |     ----------^^^^^^^^^^^^^^^
    |     |
    |     help: consider using: `pub`
 

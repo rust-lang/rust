@@ -1,5 +1,6 @@
 use core::fmt;
 use std::hash::{Hash, Hasher};
+use std::range::RangeInclusive;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
@@ -11,8 +12,8 @@ use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
 use crate::solve::{TyOrConstInferVar, VisibleForLeakCheck};
 use crate::{
-    self as ty, Interner, Region, TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt,
+    self as ty, Const, Interner, PredicateProxy, Region, TyVid, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt,
 };
 
 mod private {
@@ -407,12 +408,13 @@ pub trait InferCtxtLike: Sized {
     fn insert_placeholder_assumptions(
         &self,
         u: ty::UniverseIndex,
-        assumptions: Option<crate::region_constraint::Assumptions<Self::Interner>>,
+        assumptions: crate::region_constraint::Assumptions<Self::Interner>,
     );
     fn get_placeholder_assumptions(
         &self,
         u: ty::UniverseIndex,
-    ) -> Option<crate::region_constraint::Assumptions<Self::Interner>>;
+    ) -> crate::region_constraint::Assumptions<Self::Interner>;
+    fn has_placeholder_assumptions(&self, range: RangeInclusive<ty::UniverseIndex>) -> bool;
     fn get_solver_region_constraint(
         &self,
     ) -> crate::region_constraint::RegionConstraint<Self::Interner>;
@@ -423,31 +425,25 @@ pub trait InferCtxtLike: Sized {
     );
 
     fn universe_of_ty(&self, ty: ty::TyVid) -> Option<ty::UniverseIndex>;
-    fn universe_of_lt(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex>;
-    fn universe_of_ct(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex>;
+    fn universe_of_region(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex>;
+    fn universe_of_const(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex>;
 
     fn root_ty_var(&self, var: ty::TyVid) -> ty::TyVid;
     fn sub_unification_table_root_var(&self, var: ty::TyVid) -> ty::TyVid;
     fn is_sub_unification_table_root_var(&self, var: ty::TyVid) -> bool;
     fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid;
 
-    fn opportunistic_resolve_ty_var(&self, vid: ty::TyVid) -> <Self::Interner as Interner>::Ty;
-    fn opportunistic_resolve_int_var(&self, vid: ty::IntVid) -> <Self::Interner as Interner>::Ty;
-    fn opportunistic_resolve_float_var(
-        &self,
-        vid: ty::FloatVid,
-    ) -> <Self::Interner as Interner>::Ty;
-    fn opportunistic_resolve_ct_var(
-        &self,
-        vid: ty::ConstVid,
-    ) -> <Self::Interner as Interner>::Const;
-    fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> Region<Self::Interner>;
+    fn shallow_resolve_ty_var(&self, vid: ty::TyVid) -> <Self::Interner as Interner>::Ty;
+    fn shallow_resolve_int_var(&self, vid: ty::IntVid) -> <Self::Interner as Interner>::Ty;
+    fn shallow_resolve_float_var(&self, vid: ty::FloatVid) -> <Self::Interner as Interner>::Ty;
+    fn shallow_resolve_const_var(&self, vid: ty::ConstVid) -> Const<Self::Interner>;
+    fn shallow_resolve_region_var(&self, vid: ty::RegionVid) -> Region<Self::Interner>;
 
     fn ty_or_const_infer_var_changed(&self, var: TyOrConstInferVar) -> bool;
 
     fn next_region_infer(&self) -> Region<Self::Interner>;
     fn next_ty_infer(&self) -> <Self::Interner as Interner>::Ty;
-    fn next_const_infer(&self) -> <Self::Interner as Interner>::Const;
+    fn next_const_infer(&self) -> Const<Self::Interner>;
     fn fresh_args_for_item(
         &self,
         def_id: <Self::Interner as Interner>::DefId,
@@ -484,7 +480,7 @@ pub trait InferCtxtLike: Sized {
     fn instantiate_ty_var_raw(&self, vid: ty::TyVid, ty: <Self::Interner as Interner>::Ty);
     /// Use `instantiate_const_var` instead unless you have reasons to skip
     /// generalization.
-    fn instantiate_const_var_raw(&self, vid: ty::ConstVid, ct: <Self::Interner as Interner>::Const);
+    fn instantiate_const_var_raw(&self, vid: ty::ConstVid, ct: Const<Self::Interner>);
     fn instantiate_ty_var<R: PredicateEmittingRelation<Self>>(
         &self,
         relation: &mut R,
@@ -500,7 +496,7 @@ pub trait InferCtxtLike: Sized {
         relation: &mut R,
         target_is_expected: bool,
         target_vid: ty::ConstVid,
-        source_ct: <Self::Interner as Interner>::Const,
+        source_ct: Const<Self::Interner>,
     ) -> RelateResult<Self::Interner, ()>;
 
     fn set_tainted_by_errors(&self, e: <Self::Interner as Interner>::ErrorGuaranteed);
@@ -509,12 +505,9 @@ pub trait InferCtxtLike: Sized {
         &self,
         ty: <Self::Interner as Interner>::Ty,
     ) -> <Self::Interner as Interner>::Ty;
-    fn shallow_resolve_const(
-        &self,
-        ty: <Self::Interner as Interner>::Const,
-    ) -> <Self::Interner as Interner>::Const;
+    fn shallow_resolve_const(&self, ty: Const<Self::Interner>) -> Const<Self::Interner>;
 
-    fn resolve_vars_if_possible<T>(&self, value: T) -> T
+    fn deeply_resolve_ignoring_regions<T>(&self, value: T) -> T
     where
         T: TypeFoldable<Self::Interner>;
 
@@ -582,6 +575,20 @@ pub trait InferCtxtLike: Sized {
     );
 
     fn reset_opaque_types(&self);
+
+    /// Where possible, replaces type/const/region variables in `value` with their final value.
+    /// If a type/const/region variable has not (yet) been unified, it is left as is.
+    ///
+    /// This is an idempotent operation that does not affect inference state in any way,
+    /// which means it's safe to call this function at will.
+    fn deeply_resolve_via_unification_table<T: TypeFoldable<Self::Interner>>(&self, value: T) -> T {
+        if value.has_infer() {
+            let mut folder = DeepVariableResolver::new(self);
+            value.fold_with(&mut folder)
+        } else {
+            value
+        }
+    }
 }
 
 pub fn may_use_unstable_feature<'a, I: Interner, Infcx>(
@@ -628,20 +635,7 @@ where
     }
 }
 
-/// Resolves ty, region, and const vars to their inferred values or their root vars.
-pub fn eager_resolve_vars<Infcx: InferCtxtLike, T: TypeFoldable<Infcx::Interner>>(
-    infcx: &Infcx,
-    value: T,
-) -> T {
-    if value.has_infer() {
-        let mut folder = EagerResolver::new(infcx);
-        value.fold_with(&mut folder)
-    } else {
-        value
-    }
-}
-
-struct EagerResolver<'a, D, I = <D as InferCtxtLike>::Interner>
+struct DeepVariableResolver<'a, D, I = <D as InferCtxtLike>::Interner>
 where
     D: InferCtxtLike<Interner = I>,
     I: Interner,
@@ -652,13 +646,15 @@ where
     cache: DelayedMap<I::Ty, I::Ty>,
 }
 
-impl<'a, Infcx: InferCtxtLike> EagerResolver<'a, Infcx> {
+impl<'a, Infcx: InferCtxtLike> DeepVariableResolver<'a, Infcx> {
     fn new(delegate: &'a Infcx) -> Self {
-        EagerResolver { delegate, cache: Default::default() }
+        DeepVariableResolver { delegate, cache: Default::default() }
     }
 }
 
-impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerResolver<'_, Infcx> {
+impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
+    for DeepVariableResolver<'_, Infcx>
+{
     fn cx(&self) -> I {
         self.delegate.cx()
     }
@@ -666,15 +662,15 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerRes
     fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
         match t.kind() {
             ty::Infer(ty::TyVar(vid)) => {
-                let resolved = self.delegate.opportunistic_resolve_ty_var(vid);
+                let resolved = self.delegate.shallow_resolve_ty_var(vid);
                 if t != resolved && resolved.has_infer() {
                     resolved.fold_with(self)
                 } else {
                     resolved
                 }
             }
-            ty::Infer(ty::IntVar(vid)) => self.delegate.opportunistic_resolve_int_var(vid),
-            ty::Infer(ty::FloatVar(vid)) => self.delegate.opportunistic_resolve_float_var(vid),
+            ty::Infer(ty::IntVar(vid)) => self.delegate.shallow_resolve_int_var(vid),
+            ty::Infer(ty::FloatVar(vid)) => self.delegate.shallow_resolve_float_var(vid),
             _ => {
                 if t.has_infer() {
                     if let Some(&ty) = self.cache.get(&t) {
@@ -692,15 +688,15 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerRes
 
     fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         match r.kind() {
-            ty::ReVar(vid) => self.delegate.opportunistic_resolve_lt_var(vid),
+            ty::ReVar(vid) => self.delegate.shallow_resolve_region_var(vid),
             _ => r,
         }
     }
 
-    fn fold_const(&mut self, c: I::Const) -> I::Const {
+    fn fold_const(&mut self, c: Const<I>) -> Const<I> {
         match c.kind() {
             ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
-                let resolved = self.delegate.opportunistic_resolve_ct_var(vid);
+                let resolved = self.delegate.shallow_resolve_const_var(vid);
                 if c != resolved && resolved.has_infer() {
                     resolved.fold_with(self)
                 } else {
@@ -717,7 +713,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerRes
         }
     }
 
-    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+    fn fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> P {
         if p.has_infer() { p.super_fold_with(self) } else { p }
     }
 

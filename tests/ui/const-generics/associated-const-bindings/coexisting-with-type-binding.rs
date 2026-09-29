@@ -5,22 +5,26 @@
 
 //@ check-pass
 
-#![feature(adt_const_params, min_generic_const_args, unsized_const_params)]
+#![feature(adt_const_params, gca_min_const_items, unsized_const_params)]
 #![allow(incomplete_features)]
+
+use std::gca;
 
 trait Trait: SuperTrait {
     type N;
     type Q;
 
-    type const N: usize;
+    #[rustc_always_gca]
+    const N: usize;
 }
 
 trait SuperTrait {
-    type const Q: &'static str;
+    #[rustc_always_gca]
+    const Q: &'static str;
 }
 
 fn take0(_: impl Trait<N = 0, N = ()>) {}
 
-fn take1(_: impl Trait<Q = "...", Q = [()]>) {}
+fn take1(_: impl Trait<Q = { gca!("...") }, Q = [()]>) {}
 
 fn main() {}

@@ -1889,6 +1889,7 @@ dependencies = [
  "line-index 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "paths",
  "proc-macro-test",
+ "rustc-hash 2.1.2",
  "span",
  "stdx",
 ]

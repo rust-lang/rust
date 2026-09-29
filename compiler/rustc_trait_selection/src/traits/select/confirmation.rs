@@ -9,15 +9,15 @@
 
 use std::ops::ControlFlow;
 
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
 use rustc_middle::ty::{
     self, GenericArgsRef, Region, SizedTraitKind, Ty, TyCtxt, Unnormalized, Upcast,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
+use rustc_span::{bug, span_bug};
 use thin_vec::thin_vec;
 use tracing::{debug, instrument};
 

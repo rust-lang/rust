@@ -337,7 +337,6 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 generics: lg,
                 ty: lt,
                 body: lb,
-                kind: lk,
                 define_opaque: _,
             }),
             Const(ConstItem {
@@ -347,7 +346,6 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 ty: rt,
 
                 body: rb,
-                kind: rk,
                 define_opaque: _,
             }),
         ) => {
@@ -355,7 +353,6 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_ty(lt, rt)
-                && lk == rk
                 && both(lb.as_deref(), rb.as_deref(), eq_expr)
         },
         (
@@ -606,7 +603,6 @@ fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 generics: lg,
                 ty: lt,
                 body: lb,
-                kind: lk,
                 define_opaque: _,
             }),
             Const(ConstItem {
@@ -615,7 +611,6 @@ fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 generics: rg,
                 ty: rt,
                 body: rb,
-                kind: rk,
                 define_opaque: _,
             }),
         ) => {
@@ -623,7 +618,6 @@ fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_ty(lt, rt)
-                && lk == rk
                 && both(lb.as_deref(), rb.as_deref(), eq_expr)
         },
         (
@@ -784,7 +778,7 @@ fn eq_use_tree_kind(l: &UseTreeKind, r: &UseTreeKind) -> bool {
     match (l, r) {
         (Glob(_), Glob(_)) => true,
         (Simple(l), Simple(r)) => both(l.as_ref(), r.as_ref(), |l, r| eq_id(*l, *r)),
-        (Nested { items: l, .. }, Nested { items: r, .. }) => over(l, r, |(l, _), (r, _)| eq_use_tree(l, r)),
+        (Nested { items: l, .. }, Nested { items: r, .. }) => over(l, r, |l, r| eq_use_tree(&l.inner, &r.inner)),
         _ => false,
     }
 }
@@ -873,12 +867,12 @@ fn eq_ty(l: &Ty, r: &Ty) -> bool {
         },
         (Slice(l), Slice(r)) => eq_ty(l, r),
         (Array(le, ls), Array(re, rs)) => eq_ty(le, re) && eq_expr(&ls.value, &rs.value),
-        (Ptr(l), Ptr(r)) => l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty),
-        (Ref(ll, l), Ref(rl, r)) => {
-            both(ll.as_ref(), rl.as_ref(), |l, r| eq_id(l.ident, r.ident)) && l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty)
+        (Ptr(l_ty, l_mutbl), Ptr(r_ty, r_mutbl)) => l_mutbl == r_mutbl && eq_ty(l_ty, r_ty),
+        (Ref(ll, l_ty, l_mutbl), Ref(rl, r_ty, r_mutbl)) => {
+            both(ll.as_ref(), rl.as_ref(), |l, r| eq_id(l.ident, r.ident)) && l_mutbl == r_mutbl && eq_ty(l_ty, r_ty)
         },
-        (PinnedRef(ll, l), PinnedRef(rl, r)) => {
-            both(ll.as_ref(), rl.as_ref(), |l, r| eq_id(l.ident, r.ident)) && l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty)
+        (PinnedRef(ll, l_ty, l_mutbl), PinnedRef(rl, r_ty, r_mutbl)) => {
+            both(ll.as_ref(), rl.as_ref(), |l, r| eq_id(l.ident, r.ident)) && l_mutbl == r_mutbl && eq_ty(l_ty, r_ty)
         },
         (FnPtr(l), FnPtr(r)) => {
             l.safety == r.safety

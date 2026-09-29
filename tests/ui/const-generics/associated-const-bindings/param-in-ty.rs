@@ -1,7 +1,7 @@
 // Regression test for issue #108271.
 // Detect and reject generic params in the type of assoc consts used in an equality bound.
 #![feature(
-    min_generic_const_args,
+    gca_min_const_items,
     adt_const_params,
     unsized_const_params,
     generic_const_parameter_types,
@@ -11,7 +11,8 @@
 use std::marker::ConstParamTy_;
 
 trait Trait<'a, T: 'a + ConstParamTy_, const N: usize> {
-    type const K: &'a [T; N];
+    #[rustc_always_gca]
+    const K: &'a [T; N];
 }
 
 fn take0<'r, A: 'r + ConstParamTy_, const Q: usize>(
@@ -31,7 +32,8 @@ fn take0<'r, A: 'r + ConstParamTy_, const Q: usize>(
 ) {}
 
 trait Project: ConstParamTy_ {
-    type const SELF: Self;
+    #[rustc_always_gca]
+    const SELF: Self;
 }
 
 fn take1(_: impl Project<SELF = const {}>) {}

@@ -211,7 +211,10 @@ impl WorkspaceBuildScripts {
             let proc_macro_dylibs: Vec<(String, AbsPathBuf)> = std::fs::read_dir(target_libdir)?
                 .filter_map(|entry| {
                     let dir_entry = entry.ok()?;
-                    if dir_entry.file_type().ok()?.is_file() {
+                    // Use `fs::metadata` rather than `DirEntry::file_type` so that symlinks
+                    // are followed; sysroots assembled out of symlinks (e.g. by nix) link
+                    // the proc-macro dylibs into the target libdir.
+                    if std::fs::metadata(dir_entry.path()).ok()?.is_file() {
                         let path = dir_entry.path();
                         let extension = path.extension()?;
                         if extension == std::env::consts::DLL_EXTENSION {

@@ -469,7 +469,10 @@ impl Module {
                     syntax.children_with_tokens().find(|nt| {
                         !matches!(
                             nt.kind(),
-                            SyntaxKind::COMMENT | SyntaxKind::ATTR | SyntaxKind::WHITESPACE
+                            SyntaxKind::COMMENT
+                                | SyntaxKind::DOC_COMMENT
+                                | SyntaxKind::ATTR
+                                | SyntaxKind::WHITESPACE
                         )
                     })
                 })

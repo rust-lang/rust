@@ -4,7 +4,9 @@
 // This lead to collector.rs to try and evaluate a type_const
 // which will fail since they do not have bodies.
 #![expect(incomplete_features)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
-type const TYPE_CONST: usize = 0;
+use std::gca;
+
+const TYPE_CONST: usize = gca!(0);
 fn main() {}

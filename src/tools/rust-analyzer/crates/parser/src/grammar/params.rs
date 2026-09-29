@@ -1,4 +1,4 @@
-use crate::grammar::attributes::ATTRIBUTE_FIRST;
+use crate::grammar::attributes::OUTER_ATTR_FIRST;
 
 use super::*;
 
@@ -64,7 +64,7 @@ fn list_(p: &mut Parser<'_>, flavor: Flavor) {
             }
         };
 
-        if !p.at_ts(PARAM_FIRST.union(ATTRIBUTE_FIRST)) {
+        if !p.at_ts(PARAM_FIRST.union(OUTER_ATTR_FIRST)) {
             p.error("expected value parameter");
             m.abandon(p);
             if p.eat(T![,]) {
@@ -74,7 +74,7 @@ fn list_(p: &mut Parser<'_>, flavor: Flavor) {
         }
         param(p, m, flavor);
         if !p.eat(T![,]) {
-            if p.at_ts(PARAM_FIRST.union(ATTRIBUTE_FIRST)) {
+            if p.at_ts(PARAM_FIRST.union(OUTER_ATTR_FIRST)) {
                 p.error("expected `,`");
             } else {
                 break;
@@ -165,7 +165,23 @@ fn variadic_param(p: &mut Parser<'_>) -> bool {
 //     fn e(mut self) {}
 // }
 fn opt_self_param(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
-    if p.at(T![self]) || p.at(T![mut]) && p.nth(1) == T![self] {
+    let is_isolated_self = |p: &mut Parser<'_>, n| {
+        // test non_isolated_self
+        // fn f(self::S: S) {}
+        // fn g(&self::S: &S) {}
+        // fn h(&mut self::S: &mut S) {}
+
+        // test_err non_isolated_self_err
+        // fn f(mut self::S: S) {}
+        // fn g(&'l self::S: &S) {}
+        // fn h(&'l mut self::S: &mut S) {}
+        p.nth_at(n, T![self]) && !p.nth_at(n + 1, T![::])
+    };
+    let mut self_pos = 0;
+    if p.at(T![mut]) {
+        self_pos += 1;
+    }
+    if is_isolated_self(p, self_pos) {
         p.eat(T![mut]);
         self_as_name(p);
         // test arb_self_types
@@ -177,17 +193,20 @@ fn opt_self_param(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
             types::ascription(p);
         }
     } else {
-        let la1 = p.nth(1);
-        let la2 = p.nth(2);
-        let la3 = p.nth(3);
-        if !matches!(
-            (p.current(), la1, la2, la3),
-            (T![&], T![self], _, _)
-                | (T![&], T![mut] | LIFETIME_IDENT, T![self], _)
-                | (T![&], LIFETIME_IDENT, T![mut], T![self])
-        ) {
+        if !p.at(T![&]) {
             return Err(m);
         }
+        let mut self_pos = 1;
+        if p.nth_at(self_pos, LIFETIME_IDENT) {
+            self_pos += 1;
+        }
+        if p.nth_at(self_pos, T![mut]) {
+            self_pos += 1;
+        }
+        if !is_isolated_self(p, self_pos) {
+            return Err(m);
+        }
+
         p.bump(T![&]);
         if p.at(LIFETIME_IDENT) {
             lifetime(p);

@@ -3,7 +3,6 @@
 //@ aux-build: decl_with_default.rs
 //@ run-pass
 //@ check-run-results
-//@ ignore-backends: gcc
 // FIXME(#125418): linking on Windows GNU targets is not yet supported.
 //@ ignore-windows-gnu
 // FIXME(#157649): static EII defaults currently fail to link on Apple targets.

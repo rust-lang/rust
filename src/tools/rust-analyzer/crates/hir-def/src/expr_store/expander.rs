@@ -111,7 +111,8 @@ impl<'db> Expander<'db> {
                 call_site.ctx,
                 expands_to,
                 krate,
-                this.macro_depth,
+                this.macro_depth + 1,
+                this.recursion_limit,
                 |path| resolver(path).map(|it| it.definition(db)),
                 eager_callback,
             ) {

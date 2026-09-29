@@ -2,9 +2,11 @@
 //! `Copy` type, and any `!Copy` type explicitly listed below.
 
 use rustc_serialize::Decodable;
+use rustc_span::{Span, Spanned};
 
+use crate::mono::MonoItem;
 use crate::ty::codec::{RefDecodable, TyDecoder};
-use crate::ty::{Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt};
 
 // If a type `T` supported by the arena also needs to support decoding into `&'tcx T`
 // backed by an arena allocation (via `RefDecodable`), add it to the list in
@@ -105,9 +107,9 @@ rustc_arena::declare_arena! {
     upvars_mentioned: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
     dyn_compatibility_violations: rustc_middle::traits::DynCompatibilityViolation,
     codegen_unit: rustc_middle::mono::CodegenUnit<'tcx>,
-    attribute: rustc_hir::Attribute,
+    attribute: rustc_attr_ir::Attribute,
     name_set: rustc_data_structures::unord::UnordSet<rustc_span::Symbol>,
-    autodiff_item: rustc_hir::attrs::AutoDiffItem,
+    autodiff_item: rustc_attr_ir::AutoDiffItem,
     ordered_name_set: rustc_data_structures::fx::FxIndexSet<rustc_span::Symbol>,
     stable_order_of_exportable_impls:
         rustc_data_structures::fx::FxIndexMap<rustc_hir::def_id::DefId, usize>,
@@ -129,7 +131,7 @@ rustc_arena::declare_arena! {
         >,
     external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<TyCtxt<'tcx>>,
     doc_link_resolutions: rustc_middle::middle::resolve::DocLinkResMap,
-    stripped_cfg_items: rustc_hir::attrs::StrippedCfgItem,
+    stripped_cfg_items: rustc_attr_ir::StrippedCfgItem,
     mod_child: rustc_middle::middle::resolve::ModChild,
     features: rustc_feature::Features,
     specialization_graph: rustc_middle::traits::specialization_graph::Graph,
@@ -157,8 +159,10 @@ where
     D: TyDecoder<'tcx>,
     T: ArenaAllocatable<'tcx, C> + Decodable<D>,
 {
-    let values: Vec<T> = Decodable::decode(decoder);
-    decoder.interner().arena.alloc_from_iter(values)
+    // The decoder for slices must match the decoder for `Vec<T>`,
+    // which is a `usize` length followed by that many `T`.
+    let len = decoder.read_usize();
+    decoder.interner().arena.alloc_from_iter((0..len).map(|_| T::decode(decoder)))
 }
 
 macro_rules! impl_ref_decodable_into_arena {
@@ -168,16 +172,16 @@ macro_rules! impl_ref_decodable_into_arena {
         )*
     ) => {
         $(
-            impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for $ty {
+            impl<'tcx> RefDecodable<'tcx> for $ty {
                 #[inline]
-                fn decode(decoder: &mut D) -> &'tcx Self {
+                fn decode(decoder: &mut impl TyDecoder<'tcx>) -> &'tcx Self {
                     decode_arena_allocatable(decoder)
                 }
             }
 
-            impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [$ty] {
+            impl<'tcx> RefDecodable<'tcx> for [$ty] {
                 #[inline]
-                fn decode(decoder: &mut D) -> &'tcx Self {
+                fn decode(decoder: &mut impl TyDecoder<'tcx>) -> &'tcx Self {
                     decode_arena_allocatable_slice(decoder)
                 }
             }
@@ -190,14 +194,19 @@ macro_rules! impl_ref_decodable_into_arena {
 //
 // Types in this list must be `ArenaAllocatable`, either because they are `Copy`
 // or because they are listed in the `declare_arena!` invocation.
+//
+// Types in this list must also implement `Decodable<D>` for all `D: TyDecoder<'tcx>`.
 impl_ref_decodable_into_arena! {
     // tidy-alphabetical-start
     (rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>, rustc_middle::middle::exported_symbols::SymbolExportInfo),
+    (ty::Clause<'tcx>, Span),
+    (ty::PolyTraitRef<'tcx>, Span),
+    Spanned<MonoItem<'tcx>>,
     rustc_ast::InlineAsmTemplatePiece,
     rustc_ast::tokenstream::TokenStream,
+    rustc_attr_ir::Attribute,
     rustc_data_structures::unord::UnordMap<rustc_span::def_id::DefId, rustc_middle::ty::EarlyBinder<'tcx, Ty<'tcx>>>,
     rustc_data_structures::unord::UnordSet<rustc_span::def_id::LocalDefId>,
-    rustc_hir::Attribute,
     rustc_index::IndexVec<rustc_middle::mir::Promoted, rustc_middle::mir::Body<'tcx>>,
     rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs,
     rustc_middle::mir::Body<'tcx>,

@@ -14,6 +14,14 @@ LL | enum SomeEnum<'a> { Nothing }
    |
    = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
 
-error: aborting due to 2 previous errors
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/variance-unused-region-param.rs:5:17
+   |
+LL | union SomeUnion<'a> { x: u32 }
+   |                 ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0392`.

@@ -2,15 +2,16 @@
 //! structures into the THIR. The `builder` is generally ignorant of the tcx,
 //! etc., and instead goes through the `Cx` for most of its work.
 
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::steal::Steal;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, HirId, find_attr};
-use rustc_middle::bug;
+use rustc_hir::{self as hir, HirId};
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::bug;
 
 /// Query implementation for [`TyCtxt::thir_body`].
 pub(crate) fn thir_body<'tcx>(
@@ -18,7 +19,7 @@ pub(crate) fn thir_body<'tcx>(
     owner_def: LocalDefId,
 ) -> Result<(&'tcx Steal<Thir<'tcx>>, ExprId), ErrorGuaranteed> {
     if cfg!(debug_assertions)
-        && matches!(tcx.def_kind(owner_def), DefKind::Const { .. } | DefKind::AssocConst { .. })
+        && matches!(tcx.def_kind(owner_def), DefKind::Const | DefKind::AssocConst)
     {
         debug_assert!(
             tcx.const_of_item(owner_def.to_def_id()).is_none(),

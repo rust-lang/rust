@@ -2,6 +2,7 @@
 // the last value is used both for the corresponding target modifier in the
 // crate metadata and for the target CPU recorded in the LLVM IR.
 //@ needs-llvm-components: nvptx
+//@ ignore-backends: gcc
 
 use run_make_support::*;
 

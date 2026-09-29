@@ -1,7 +1,7 @@
 use arrayvec::ArrayVec;
 use rustc_abi::{
-    Align, BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, Size, TyAbiInterface,
-    TyAndLayout, Variants,
+    Align, BackendRepr, FieldsShape, Float, HasDataLayout, Integer, Numeric, Primitive, Reg,
+    RegKind, Size, TyAbiInterface, TyAndLayout, Variants,
 };
 
 use crate::callconv::{ArgAbi, ArgAttribute, CastTarget, FnAbi, Uniform};
@@ -58,6 +58,7 @@ fn classify<'a, Ty, C>(
                         Float::F16 => {
                             // Match LLVM by passing `f16` in integer registers.
                         }
+                        Float::F16B => unreachable!("`f16b` unsupported on sparc64"),
                     }
                 } else {
                     /* pass unaligned floats in integer registers */
@@ -142,6 +143,12 @@ fn classify_arg<'a, Ty, C>(
     }
 
     *total_double_word_count = start_double_word_count + double_word_count;
+
+    // Compatible with GCC and Clang 24.
+    if let Some(Numeric::Int(Integer::I8 | Integer::I16, _)) = arg.layout.complex_number(cx) {
+        arg.cast_to(Reg { kind: RegKind::Integer, size: total });
+        return;
+    }
 
     const ARGUMENT_REGISTERS: usize = 8;
 

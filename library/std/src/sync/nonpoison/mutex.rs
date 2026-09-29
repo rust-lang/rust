@@ -277,7 +277,7 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// thread::spawn(move || {
     ///     *c_mutex.lock() = 10;
-    /// }).join().expect("thread::spawn failed");
+    /// }).join().expect("`thread::spawn` should not fail");
     /// assert_eq!(*mutex.lock(), 10);
     /// ```
     #[unstable(feature = "nonpoison_mutex", issue = "134645")]
@@ -316,7 +316,7 @@ impl<T: ?Sized> Mutex<T> {
     ///     } else {
     ///         println!("try_lock failed");
     ///     }
-    /// }).join().expect("thread::spawn failed");
+    /// }).join().expect("`thread::spawn` should not fail");
     /// assert_eq!(*mutex.lock().unwrap(), 10);
     /// ```
     #[unstable(feature = "nonpoison_mutex", issue = "134645")]

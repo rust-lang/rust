@@ -48,7 +48,10 @@ const _: () = {
 };
 
 impl<'db> Const<'db> {
-    pub fn new(_interner: DbInterner<'db>, kind: ConstKind<'db>) -> Self {
+    /// You should avoid using this if you can, since we want `Ty` to be defined in `rustc_type_ir` and then this method
+    /// will become more difficult to use.
+    #[inline]
+    pub fn new_without_interner(kind: ConstKind<'db>) -> Self {
         let kind = unsafe { std::mem::transmute::<ConstKind<'db>, ConstKind<'static>>(kind) };
         let flags = FlagComputation::for_const_kind(&kind);
         let cached = WithCachedTypeInfo {
@@ -57,6 +60,10 @@ impl<'db> Const<'db> {
             outer_exclusive_binder: flags.outer_exclusive_binder,
         };
         Self { interned: Interned::new_gc(ConstInterned(cached)) }
+    }
+
+    pub fn new(_interner: DbInterner<'db>, kind: ConstKind<'db>) -> Self {
+        Self::new_without_interner(kind)
     }
 
     pub fn inner(&self) -> &WithCachedTypeInfo<ConstKind<'db>> {

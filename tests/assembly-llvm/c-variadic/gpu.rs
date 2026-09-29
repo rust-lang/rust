@@ -12,32 +12,8 @@
 #![crate_type = "lib"]
 
 extern crate minicore;
+use minicore::ffi::VaList;
 use minicore::*;
-
-#[lang = "va_arg_safe"]
-pub unsafe trait VaArgSafe {}
-
-unsafe impl VaArgSafe for i32 {}
-unsafe impl VaArgSafe for i64 {}
-unsafe impl VaArgSafe for i128 {}
-unsafe impl VaArgSafe for f64 {}
-unsafe impl<T> VaArgSafe for *const T {}
-
-#[repr(transparent)]
-struct VaListInner {
-    ptr: *const c_void,
-}
-
-#[repr(transparent)]
-#[lang = "va_list"]
-pub struct VaList<'a> {
-    inner: VaListInner,
-    _marker: PhantomData<&'a mut ()>,
-}
-
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaList<'_>) -> T;
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn read_f64(ap: &mut VaList<'_>) -> f64 {
@@ -64,7 +40,7 @@ unsafe extern "C" fn read_f64(ap: &mut VaList<'_>) -> f64 {
     // NVPTX-NEXT: ld.b64 %rd6, [%rd4];
     // NVPTX-NEXT: st.param.b64 [func_retval0], %rd6;
     // NVPTX-NEXT: ret;
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -91,7 +67,7 @@ unsafe extern "C" fn read_i32(ap: &mut VaList<'_>) -> i32 {
     // NVPTX-NEXT: ld.b32 %r1, [%rd4];
     // NVPTX-NEXT: st.param.b32 [func_retval0], %r1;
     // NVPTX-NEXT: ret;
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -119,7 +95,7 @@ unsafe extern "C" fn read_i64(ap: &mut VaList<'_>) -> i64 {
     // NVPTX-NEXT: ld.b64 %rd6, [%rd4];
     // NVPTX-NEXT: st.param.b64 [func_retval0], %rd6;
     // NVPTX-NEXT: ret;
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -147,7 +123,7 @@ unsafe extern "C" fn read_i128(ap: &mut VaList<'_>) -> i128 {
     // NVPTX-NEXT: ld.v2.b64 {%rd6, %rd7}, [%rd4];
     // NVPTX-NEXT: st.param.v2.b64 [func_retval0], {%rd6, %rd7};
     // NVPTX-NEXT: ret;
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -175,5 +151,5 @@ unsafe extern "C" fn read_ptr(ap: &mut VaList<'_>) -> *const u8 {
     // NVPTX-NEXT: ld.b64 %rd6, [%rd4];
     // NVPTX-NEXT: st.param.b64 [func_retval0], %rd6;
     // NVPTX-NEXT: ret;
-    va_arg(ap)
+    ap.next_arg()
 }

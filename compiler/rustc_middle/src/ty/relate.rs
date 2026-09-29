@@ -1,10 +1,10 @@
 use std::iter;
 
+use rustc_span::bug;
 pub use rustc_type_ir::relate::*;
 
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::{self as ty, Ty, TyCtxt};
-
 pub type RelateResult<'tcx, T> = rustc_type_ir::relate::RelateResult<TyCtxt<'tcx>, T>;
 
 impl<'tcx> Relate<TyCtxt<'tcx>> for Ty<'tcx> {
@@ -95,16 +95,6 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for ty::GenericArgsRef<'tcx> {
         b: ty::GenericArgsRef<'tcx>,
     ) -> RelateResult<'tcx, ty::GenericArgsRef<'tcx>> {
         relate_args_invariantly(relation, a, b)
-    }
-}
-
-impl<'tcx> Relate<TyCtxt<'tcx>> for ty::Const<'tcx> {
-    fn relate<R: TypeRelation<TyCtxt<'tcx>>>(
-        relation: &mut R,
-        a: ty::Const<'tcx>,
-        b: ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        relation.consts(a, b)
     }
 }
 

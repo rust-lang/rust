@@ -1,6 +1,7 @@
 use rustc_middle::mir::BinOp;
-use rustc_middle::{mir, span_bug, ty};
-use rustc_span::{Symbol, sym};
+use rustc_middle::ty::consts::ConstExt;
+use rustc_middle::{mir, ty};
+use rustc_span::{Symbol, span_bug, sym};
 use tracing::trace;
 
 use super::{

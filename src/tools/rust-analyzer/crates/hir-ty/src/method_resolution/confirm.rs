@@ -395,16 +395,16 @@ impl<'a, 'db> ConfirmContext<'a, 'db> {
                     (
                         GenericParamDataRef::LifetimeParamData(_),
                         HirGenericArg::Lifetime(lifetime),
-                    ) => self.ctx.make_body_lifetime(*lifetime).into(),
+                    ) => self.ctx.make_lifetime(*lifetime).into(),
                     (GenericParamDataRef::TypeParamData(_), HirGenericArg::Type(type_ref)) => {
-                        self.ctx.make_body_ty(*type_ref).into()
+                        self.ctx.make_ty(*type_ref).into()
                     }
                     (GenericParamDataRef::ConstParamData(_), HirGenericArg::Const(konst)) => {
                         let GenericParamId::ConstParamId(const_id) = param_id else {
                             unreachable!("non-const param ID for const param");
                         };
                         let const_ty = self.ctx.db.const_param_ty(const_id);
-                        self.ctx.create_body_anon_const(konst.expr, const_ty, false).into()
+                        self.ctx.create_anon_const(konst.expr, const_ty, false).into()
                     }
                     _ => unreachable!("unmatching param kinds were passed to `provided_kind()`"),
                 }
@@ -417,7 +417,7 @@ impl<'a, 'db> ConfirmContext<'a, 'db> {
                 arg: TypeLikeConst<'_>,
             ) -> Const<'db> {
                 match arg {
-                    TypeLikeConst::Path(path) => self.ctx.make_path_as_body_const(path),
+                    TypeLikeConst::Path(path) => self.ctx.make_path_as_const(path),
                     TypeLikeConst::Infer => self.ctx.table.next_const_var(Span::Dummy),
                 }
             }

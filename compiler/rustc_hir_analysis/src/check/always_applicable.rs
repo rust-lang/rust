@@ -4,15 +4,15 @@
 //!
 //! This is necessary for `Drop` and negative impls to be well-formed.
 
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
-use rustc_middle::span_bug;
 use rustc_middle::ty::util::CheckRegions;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
-use rustc_span::sym;
+use rustc_span::{span_bug, sym};
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
@@ -173,7 +173,7 @@ fn ensure_impl_params_and_item_params_correspond<'tcx>(
                      as the {self_descr} definition",
         ),
     );
-    Err(err.emit())
+    Err(err.emit_err())
 }
 
 fn ensure_all_fields_are_const_destruct<'tcx>(
@@ -240,7 +240,7 @@ fn ensure_all_fields_are_const_destruct<'tcx>(
                     None,
                 );
             }
-            Err(diag.emit())
+            Err(diag.emit_err())
         })
         .collect()
 }
@@ -324,7 +324,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
                         but the {self_descr} it is implemented for does not",
                     )
                     .with_span_note(item_span, "the implementor must specify the same requirement")
-                    .emit(),
+                    .emit_err(),
                 );
             }
         }
@@ -357,7 +357,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
                     but the {self_descr} it is implemented for does not",
                 )
                 .with_span_note(item_span, "the implementor must specify the same requirement")
-                .emit(),
+                .emit_err(),
             );
         }
         return Err(guar.unwrap());
@@ -404,7 +404,7 @@ fn check_drop_xor_pin_drop<'tcx>(
         }
         (Some(span), None) => {
             if tcx.adt_def(adt_def_id).is_pin_project() {
-                let pin_v2_span = rustc_hir::find_attr!(tcx, adt_def_id, PinV2(attr) => *attr);
+                let pin_v2_span = find_attr!(tcx, adt_def_id, PinV2(attr) => *attr);
                 let adt_name = tcx.item_name(adt_def_id);
                 return Err(tcx.dcx().emit_err(crate::diagnostics::PinV2WithoutPinDrop {
                     span,

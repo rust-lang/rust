@@ -35,7 +35,8 @@ error: fn_abi_of(pass_zst) = FnAbi {
                            ),
                        },
                        meta_attrs: None,
-                       on_stack: false,
+                       address_space: None,
+                       mode: Pointer,
                    },
                },
            ],
@@ -71,7 +72,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
            conv: C,
            can_unwind: false,
        }
-  --> $DIR/c-zst.rs:65:1
+  --> $DIR/c-zst.rs:67:1
    |
 LL | extern "C" fn pass_zst(_: ()) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

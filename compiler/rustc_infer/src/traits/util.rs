@@ -47,6 +47,8 @@ impl<'tcx> PredicateSet<'tcx> {
 
 impl<'tcx> Extend<ty::Predicate<'tcx>> for PredicateSet<'tcx> {
     fn extend<I: IntoIterator<Item = ty::Predicate<'tcx>>>(&mut self, iter: I) {
+        let iter = iter.into_iter();
+        self.set.reserve(iter.size_hint().0);
         for pred in iter {
             self.insert(pred);
         }

@@ -25,7 +25,7 @@ use crate::{
 
 use super::{
     AggregateKind, BasicBlockId, BorrowKind, LocalId, MirBody, MutBorrowKind, Operand, OperandKind,
-    Place, Rvalue, UnOp,
+    Rvalue, StoredPlace, UnOp,
 };
 
 macro_rules! w {
@@ -319,7 +319,7 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
         }
     }
 
-    fn place(&mut self, p: &Place) {
+    fn place(&mut self, p: &StoredPlace) {
         fn f<'db>(this: &mut MirPrettyCtx<'_, 'db>, local: LocalId, projections: &[PlaceElem]) {
             let Some((last, head)) = projections.split_last() else {
                 // no projection
@@ -398,7 +398,7 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
                 }
             }
         }
-        f(self, p.local, p.projection.lookup());
+        f(self, p.local, p.projection.as_slice());
     }
 
     fn operand(&mut self, r: &Operand) {

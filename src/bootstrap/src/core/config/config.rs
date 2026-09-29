@@ -1008,11 +1008,6 @@ impl Config {
                     target.llvm_has_rust_patches = Some(patches);
                 }
                 if let Some(ref s) = target_llvm_filecheck {
-                    if target_llvm_config.is_none() {
-                        panic!(
-                            "You must also configure `llvm-config` when setting `llvm-filecheck` for target {triple}",
-                        );
-                    }
                     target.llvm_filecheck = Some(src.join(s));
                 }
                 target.llvm_libunwind = target_llvm_libunwind.as_ref().map(|v| {
@@ -1130,7 +1125,7 @@ impl Config {
         let is_host_system_llvm =
             target_config.get(&host_target).and_then(|c| c.llvm_config.as_ref()).is_some();
 
-        for (target, linker_override) in default_linux_linker_overrides() {
+        for (target, linker_override) in default_linux_linker_overrides(&channel) {
             // If the user overrode the default Linux linker, do not apply bootstrap defaults
             if targets_with_user_linker_override.contains(&target) {
                 continue;

@@ -26,11 +26,10 @@
 use std::borrow::Cow;
 use std::fmt;
 
+use rustc_attr_ir::{CguFields, CguKind, find_attr};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{DiagArgValue, IntoDiagArg};
-use rustc_hir::attrs::{CguFields, CguKind};
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_hir::{self as hir, find_attr};
 use rustc_middle::mono::CodegenUnitNameBuilder;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -87,7 +86,7 @@ struct AssertModuleSource<'tcx> {
 }
 
 impl<'tcx> AssertModuleSource<'tcx> {
-    fn check_attrs(&mut self, attrs: &[hir::Attribute]) {
+    fn check_attrs(&mut self, attrs: &[rustc_attr_ir::Attribute]) {
         for &(span, cgu_fields) in find_attr!(attrs,
             RustcCguTestAttr(e) => e)
         .into_flat_iter()

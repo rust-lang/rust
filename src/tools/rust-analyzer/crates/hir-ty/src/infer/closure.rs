@@ -967,7 +967,7 @@ impl<'db> InferenceContext<'db> {
         let interner = self.interner();
 
         let supplied_return = match decl_output {
-            Some(output) => self.make_body_ty(output),
+            Some(output) => self.make_ty(output),
             None => match closure_kind {
                 // In the case of the async block that we create for a function body,
                 // we expect the return type of the block to match that of the enclosing
@@ -1005,7 +1005,7 @@ impl<'db> InferenceContext<'db> {
         };
         // First, convert the types that the user supplied (if any).
         let supplied_arguments = decl_inputs.iter().map(|&input| match input {
-            Some(input) => self.make_body_ty(input),
+            Some(input) => self.make_ty(input),
             None => self.table.next_ty_var(closure_expr.into()),
         });
 
@@ -1134,11 +1134,11 @@ impl<'db> InferenceContext<'db> {
         let err_ty = Ty::new_error(interner, ErrorGuaranteed);
 
         if let Some(output) = decl_output {
-            self.make_body_ty(output);
+            self.make_ty(output);
         }
         let supplied_arguments = decl_inputs.iter().map(|&input| match input {
             Some(input) => {
-                self.make_body_ty(input);
+                self.make_ty(input);
                 err_ty
             }
             None => err_ty,

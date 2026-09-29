@@ -1,12 +1,10 @@
 use rustc_abi::{HasDataLayout, TargetDataLayout};
-use rustc_hir::attrs::RustcDumpLayoutKind;
+use rustc_attr_ir::{RustcDumpLayoutKind, find_attr};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::find_attr;
-use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers};
 use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
-use rustc_span::Span;
+use rustc_span::{Span, span_bug};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt;
 use rustc_trait_selection::traits::{self, TraitErrors};

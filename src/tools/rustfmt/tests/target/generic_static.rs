@@ -10,3 +10,7 @@ pub const SORT<
     FFFFF,
     G,
 >: &[T] = const { 4 };
+
+pub const POLY_CONST_1<const C: bool>: () = if C {
+    func3()
+};

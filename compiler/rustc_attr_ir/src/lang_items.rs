@@ -281,6 +281,7 @@ language_item_table! {
     PartialEq,               sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(1);
     PartialOrd,              sym::partial_ord,         partial_ord_trait,          Target::Trait,          GenericRequirement::Exact(1);
     CVoid,                   sym::c_void,              c_void,                     Target::Enum,           GenericRequirement::None;
+    F16B,                    sym::f16b,                f16b,                       Target::Struct,         GenericRequirement::Exact(0);
 
     Type,                    sym::type_info,           type_struct,                Target::Struct,         GenericRequirement::None;
     TypeGeneric,             sym::type_info_generic,   type_generic,               Target::Enum,         GenericRequirement::None;
@@ -465,6 +466,9 @@ language_item_table! {
     // Used to fallback `{float}` to `f32` when `f32: From<{float}>`
     From,                    sym::From,                from_trait,                 Target::Trait,          GenericRequirement::Exact(1);
     FromFn,                  sym::from,                from_fn,                    Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+
+    // Experimental lang item for `Reflection and comptime`(https://goals.rust-lang.org/2025h2/reflection-and-comptime.html)
+    FnPtr,                   sym::FnPtr,               fn_ptr,                     Target::Struct,         GenericRequirement::None;
 }
 
 /// The requirement imposed on the generics of a lang item

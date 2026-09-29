@@ -46,7 +46,7 @@ fn variances_of_query(db: &dyn HirDatabase, def: GenericDefId) -> StoredVariance
         GenericDefId::AdtId(adt) => {
             if let AdtId::StructId(id) = adt {
                 let flags = &StructSignature::of(db, id).flags;
-                let types = || crate::next_solver::default_types(db);
+                let types = || crate::next_solver::default_types();
                 if flags.contains(StructFlags::IS_UNSAFE_CELL) {
                     return types().one_invariant.store();
                 } else if flags.intersects(
@@ -56,13 +56,13 @@ fn variances_of_query(db: &dyn HirDatabase, def: GenericDefId) -> StoredVariance
                 }
             }
         }
-        _ => return VariancesOf::empty(DbInterner::new_no_crate(db)).store(),
+        _ => return VariancesOf::empty().store(),
     }
 
     let generics = generics(db, def);
     let count = generics.len(true);
     if count == 0 {
-        return VariancesOf::empty(DbInterner::new_no_crate(db)).store();
+        return VariancesOf::empty().store();
     }
     let variances =
         Context { generics, variances: vec![Variance::Bivariant; count].into_boxed_slice(), db }

@@ -632,6 +632,27 @@ fn test_partial_eq_array() {
 }
 
 #[test]
+fn test_partial_eq_vecdeque_reverse() {
+    let mut d = VecDeque::with_capacity(4);
+    d.push_back(1);
+    d.push_back(2);
+    d.push_back(3);
+    d.pop_front();
+    d.push_back(4);
+
+    let v = vec![2, 3, 4];
+    let a = [2, 3, 4];
+    let mut b = [2, 3, 4];
+
+    assert!(v == d);
+    assert!(&v[..] == d);
+    assert!(&mut b[..] == d);
+    assert!(a == d);
+    assert!(&a == d);
+    assert!(&mut b == d);
+}
+
+#[test]
 fn test_hash() {
     let mut x = VecDeque::new();
     let mut y = VecDeque::new();
@@ -2494,4 +2515,19 @@ fn truncate_to_range_start_past_len() {
 fn truncate_to_range_inclusive_end_overflow() {
     let mut v: VecDeque<_> = (0..6).collect();
     v.truncate_to_range(0..=usize::MAX);
+}
+
+#[test]
+fn issue_162452_vec_deque_from_empty_vec_into_iter() {
+    for n in 1..20 {
+        let v = Vec::from_iter(0..n);
+
+        let mut it = v.into_iter();
+        for _ in &mut it {}
+
+        let mut d: VecDeque<_> = it.collect();
+
+        d.push_back(n);
+        assert_eq!(Some(n), d.pop_front());
+    }
 }

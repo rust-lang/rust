@@ -4,27 +4,27 @@
 //@ check-pass
 
 #![feature(
-    min_generic_const_args,
+    gca_min_const_items,
     adt_const_params,
     const_param_ty_trait,
-    generic_const_parameter_types,
+    generic_const_parameter_types
 )]
 #![allow(incomplete_features)]
 
 use std::marker::ConstParamTy_;
 
 trait Trait<T: ConstParamTy_> {
-    type const K: T;
+    #[rustc_always_gca]
+    const K: T;
 }
 
-fn take(
-    _: impl Trait<
-        <for<'a> fn(&'a str) -> &'a str as Discard>::Out,
-        K = const { }
-    >,
-) {}
+fn take(_: impl Trait<<for<'a> fn(&'a str) -> &'a str as Discard>::Out, K = const {}>) {}
 
-trait Discard { type Out; }
-impl<T: ?Sized> Discard for T { type Out = (); }
+trait Discard {
+    type Out;
+}
+impl<T: ?Sized> Discard for T {
+    type Out = ();
+}
 
 fn main() {}

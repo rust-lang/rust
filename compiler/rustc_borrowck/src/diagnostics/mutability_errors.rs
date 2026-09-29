@@ -3,12 +3,11 @@ use core::ops::ControlFlow;
 use either::Either;
 use hir::{ExprKind, Param};
 use rustc_abi::FieldIdx;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::{Applicability, Diag};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, BindingMode, ByRef, Expr, Node};
-use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::visit::PlaceContext;
 use rustc_middle::mir::{
@@ -17,7 +16,7 @@ use rustc_middle::mir::{
     StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, Upcast};
-use rustc_span::{BytePos, DesugaringKind, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, DesugaringKind, Span, Symbol, bug, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
@@ -928,8 +927,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 if let Node::TraitItem(ti) = self.infcx.tcx.hir_node_by_def_id(f_in_trait)
                     && let hir::TraitItemKind::Fn(sig, _) = ti.kind
                     && let Some(ty) = sig.decl.inputs.get(local.index() - 1)
-                    && let hir::TyKind::Ref(_, mut_ty) = ty.kind
-                    && let hir::Mutability::Not = mut_ty.mutbl
+                    && let hir::TyKind::Ref(_, _, hir::Mutability::Not) = ty.kind
                     && sig.decl.implicit_self().has_implicit_self()
                 {
                     Some(ty.span)
@@ -1347,7 +1345,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     kind: hir::ImplItemKind::Fn(sig, _),
                     ..
                 }) => {
-                    err.span_label(ident.span, "");
+                    err.span_context(ident.span);
                     err.span_label(
                         sig.decl.output.span(),
                         "change this to return `FnMut` instead of `Fn`",
@@ -2021,7 +2019,7 @@ fn get_mut_span_in_struct_field<'tcx>(
         // Now we're dealing with the actual struct that we're going to suggest a change to,
         // we can expect a field that is an immutable reference to a type.
         && let hir::Node::Field(field) = tcx.hir_node_by_def_id(field.did.as_local()?)
-        && let hir::TyKind::Ref(lt, hir::MutTy { mutbl: hir::Mutability::Not, ty }) = field.ty.kind
+        && let hir::TyKind::Ref(lt, ty, hir::Mutability::Not) = field.ty.kind
     {
         return Some(lt.ident.span.between(ty.span));
     }

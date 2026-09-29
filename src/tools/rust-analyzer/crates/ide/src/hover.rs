@@ -156,7 +156,6 @@ pub(crate) fn hover(
     Some(res)
 }
 
-#[allow(clippy::field_reassign_with_default)]
 fn hover_offset(
     sema: &Semantics<'_, RootDatabase>,
     FilePosition { file_id, offset }: FilePosition,
@@ -182,8 +181,12 @@ fn hover_offset(
         _ => 1,
     })?;
 
-    if let Some(doc_comment) = token_as_doc_comment(&original_token) {
+    if ast::Comment::can_cast(original_token.kind()) {
         cov_mark::hit!(no_highlight_on_comment_hover);
+        return None;
+    }
+
+    if let Some(doc_comment) = token_as_doc_comment(&original_token) {
         return doc_comment.get_definition_with_descend_at(sema, offset, |def, node, range| {
             let res = hover_for_definition(
                 sema,

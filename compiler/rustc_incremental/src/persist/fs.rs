@@ -1,14 +1,14 @@
 //! This module manages how the incremental compilation cache is represented in
 //! the file system.
 //!
-//! Incremental compilation caches are managed according to a copy-on-write
-//! strategy: Once a complete, consistent cache version is finalized, it is
-//! never modified. Instead, when a subsequent compilation session is started,
-//! the compiler will allocate a new version of the cache that starts out as
-//! a copy of the previous version. Then only this new copy is modified and it
-//! will not be visible to other processes until it is finalized. This ensures
-//! that multiple compiler processes can be executed concurrently for the same
-//! crate without interfering with each other or blocking each other.
+//! Incremental compilation caches are managed according to a rebuild from
+//! scratch strategy: Once a complete, consistent cache version is finalized, it
+//! is never modified. Instead, when a subsequent compilation session is started,
+//! the compiler will allocate a new version of the cache that starts out empty.
+//! Then only this new directory is written to and it will not be visible to
+//! other processes until it is finalized. This ensures that multiple compiler
+//! processes can be executed concurrently for the same crate without
+//! interfering with each other or blocking each other.
 //!
 //! More concretely this is implemented via the following protocol:
 //!
@@ -22,12 +22,12 @@
 //!    considered finalized if the "-working" suffix in the directory name has
 //!    been replaced by the SVH of the crate.
 //! 3. Once the compiler has found a valid, finalized session directory, it will
-//!    hard-link/copy its contents into the new "-working" directory. If all
-//!    goes well, it will have its own, private copy of the source directory and
-//!    subsequently not have to worry about synchronizing with other compiler
-//!    processes.
+//!    obtain a shared lock on the directory. If this succeeds, it will have
+//!    read-only access to the old session directory without having to worry
+//!    about synchronizing with other compiler processes.
 //! 4. Now the compiler can do its normal compilation process, which involves
-//!    reading and updating its private session directory.
+//!    writing to its private session directory. Possibly by hardlinking
+//!    existing files from the old session directory if they haven't changed.
 //! 5. When compilation finishes without errors, the private session directory
 //!    will be in a state where it can be used as input for other compilation
 //!    sessions. That is, it will contain a dependency graph and cache artifacts
@@ -71,23 +71,15 @@
 //!
 //! Another case that has to be considered is what happens if one process
 //! deletes a finalized session directory that another process is currently
-//! trying to copy from. This case is also handled via the lock file. Before
-//! a process starts copying a finalized session directory, it will acquire a
-//! shared lock on the directory's lock file. Any garbage collecting process,
-//! on the other hand, will acquire an exclusive lock on the lock file.
-//! Thus, if a directory is being collected, any reader process will fail
-//! acquiring the shared lock and will leave the directory alone. Conversely,
-//! if a collecting process can't acquire the exclusive lock because the
-//! directory is currently being read from, it will leave collecting that
-//! directory to another process at a later point in time.
-//! The exact same scheme is also used when reading the metadata hashes file
-//! from an extern crate. When a crate is compiled, the hash values of its
-//! metadata are stored in a file in its session directory. When the
-//! compilation session of another crate imports the first crate's metadata,
-//! it also has to read in the accompanying metadata hashes. It thus will access
-//! the finalized session directory of all crates it links to and while doing
-//! so, it will also place a read lock on that the respective session directory
-//! so that it won't be deleted while the metadata hashes are loaded.
+//! reading from. This case is also handled via the lock file. Before a process
+//! starts reading from a finalized session directory, it will acquire a shared
+//! lock on the directory's lock file. Any garbage collecting process, on the
+//! other hand, will acquire an exclusive lock on the lock file. Thus, if a
+//! directory is being collected, any reader process will fail acquiring the
+//! shared lock and will leave the directory alone. Conversely, if a collecting
+//! process can't acquire the exclusive lock because the directory is currently
+//! being read from, it will leave collecting that directory to another process
+//! at a later point in time.
 //!
 //! ## Preconditions
 //!
@@ -110,14 +102,15 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rand::{RngCore, rng};
 use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_data_structures::{base_n, flock};
-use rustc_fs_util::{LinkOrCopy, link_or_copy, try_canonicalize};
-use rustc_middle::bug;
+use rustc_fs_util::try_canonicalize;
+use rustc_middle::dep_graph::WorkProduct;
+use rustc_session::config::OutputType;
 use rustc_session::{IncrCompSession, Session, StableCrateId};
-use rustc_span::Symbol;
+use rustc_span::{Symbol, bug};
 use tracing::debug;
 
 use crate::diagnostics;
@@ -137,6 +130,11 @@ const QUERY_CACHE_FILENAME: &str = "query-cache.bin";
 // case-sensitive (as opposed to base64, for example).
 const INT_ENCODE_BASE: usize = base_n::CASE_INSENSITIVE;
 
+/// Returns the path to a previous session's dependency graph.
+pub(crate) fn old_dep_graph_path(incr_comp_session: &IncrCompSession) -> Option<PathBuf> {
+    in_old_incr_comp_dir_sess(incr_comp_session, DEP_GRAPH_FILENAME)
+}
+
 /// Returns the path to a session's dependency graph.
 pub(crate) fn dep_graph_path(incr_comp_session: &IncrCompSession) -> PathBuf {
     in_incr_comp_dir_sess(incr_comp_session, DEP_GRAPH_FILENAME)
@@ -150,8 +148,17 @@ pub(crate) fn staging_dep_graph_path(incr_comp_session: &IncrCompSession) -> Pat
     in_incr_comp_dir_sess(incr_comp_session, STAGING_DEP_GRAPH_FILENAME)
 }
 
+pub(crate) fn old_work_products_path(incr_comp_session: &IncrCompSession) -> Option<PathBuf> {
+    in_old_incr_comp_dir_sess(incr_comp_session, WORK_PRODUCTS_FILENAME)
+}
+
 pub(crate) fn work_products_path(incr_comp_session: &IncrCompSession) -> PathBuf {
     in_incr_comp_dir_sess(incr_comp_session, WORK_PRODUCTS_FILENAME)
+}
+
+/// Returns the path to a previous session's query cache.
+pub(crate) fn old_query_cache_path(incr_comp_session: &IncrCompSession) -> Option<PathBuf> {
+    in_old_incr_comp_dir_sess(incr_comp_session, QUERY_CACHE_FILENAME)
 }
 
 /// Returns the path to a session's query cache.
@@ -182,9 +189,18 @@ fn lock_file_path(session_dir: &Path) -> PathBuf {
 }
 
 /// Returns the path for a given filename within the incremental compilation directory
+/// in the previous session.
+pub fn in_old_incr_comp_dir_sess(
+    incr_comp_session: &IncrCompSession,
+    file_name: &str,
+) -> Option<PathBuf> {
+    incr_comp_session.old_session_directory.as_ref().map(|dir| dir.join(file_name))
+}
+
+/// Returns the path for a given filename within the incremental compilation directory
 /// in the current session.
 pub fn in_incr_comp_dir_sess(incr_comp_session: &IncrCompSession, file_name: &str) -> PathBuf {
-    incr_comp_session.session_directory.join(file_name)
+    incr_comp_session.new_session_directory.join(file_name)
 }
 
 /// Allocates the private session directory.
@@ -229,65 +245,30 @@ pub(crate) fn prepare_session_directory(
         }
     };
 
-    let mut source_directories_already_tried = FxHashSet::default();
+    // Generate a session directory of the form:
+    //
+    // {incr-comp-dir}/{crate-name-and-disambiguator}/s-{timestamp}-{random}-working
+    let new_session_dir = generate_session_dir_path(&crate_dir);
+    debug!("session-dir: {}", new_session_dir.display());
 
-    loop {
-        // Generate a session directory of the form:
-        //
-        // {incr-comp-dir}/{crate-name-and-disambiguator}/s-{timestamp}-{random}-working
-        let session_dir = generate_session_dir_path(&crate_dir);
-        debug!("session-dir: {}", session_dir.display());
+    // Lock the new session directory. If this fails, return an
+    // error without retrying
+    let new_session_directory = lock_directory(sess, &new_session_dir, true /* new_session */)
+        .expect("should emit fatal error on lock fail");
 
-        // Lock the new session directory. If this fails, return an
-        // error without retrying
-        let (directory_lock, lock_file_path) = lock_directory(sess, &session_dir);
+    // Find a suitable source directory to copy from. Ignore those that we
+    // have already tried before.
+    let old_source_directory = find_source_directory(sess, &crate_dir);
 
-        // Now that we have the lock, we can actually create the session
-        // directory
-        create_dir(sess, &session_dir, "session");
+    let old_session_directory = if let Some(old_source_directory) = old_source_directory {
+        debug!("attempting to use: {}", old_source_directory.display());
+        Some(old_source_directory)
+    } else {
+        debug!("no source directory found. Continuing with empty session directory.");
+        None
+    };
 
-        // Find a suitable source directory to copy from. Ignore those that we
-        // have already tried before.
-        let source_directory = find_source_directory(&crate_dir, &source_directories_already_tried);
-
-        let Some(source_directory) = source_directory else {
-            // There's nowhere to copy from, we're done
-            debug!(
-                "no source directory found. Continuing with empty session \
-                    directory."
-            );
-
-            return IncrCompSession { session_directory: session_dir, _lock_file: directory_lock };
-        };
-
-        debug!("attempting to copy data from source: {}", source_directory.display());
-
-        // Try copying over all files from the source directory
-        if let Ok(allows_links) = copy_files(sess, &session_dir, &source_directory) {
-            debug!("successfully copied data from: {}", source_directory.display());
-
-            if !allows_links {
-                sess.dcx().emit_warn(diagnostics::HardLinkFailed { path: &session_dir });
-            }
-
-            return IncrCompSession { session_directory: session_dir, _lock_file: directory_lock };
-        } else {
-            debug!("copying failed - trying next directory");
-
-            // Something went wrong while trying to copy/link files from the
-            // source directory. Try again with a different one.
-            source_directories_already_tried.insert(source_directory);
-
-            // Try to remove the session directory we just allocated. We don't
-            // know if there's any garbage in it from the failed copy action.
-            if let Err(err) = std_fs::remove_dir_all(&session_dir) {
-                sess.dcx().emit_warn(diagnostics::DeletePartial { path: &session_dir, err });
-            }
-
-            delete_session_dir_lock_file(sess, &lock_file_path);
-            drop(directory_lock);
-        }
-    }
+    IncrCompSession { old_session_directory, new_session_directory }
 }
 
 /// This function finalizes and thus 'publishes' the session directory by
@@ -303,13 +284,13 @@ pub fn finalize_session_directory(
     if sess.opts.incremental.is_none() {
         return;
     }
-    let incr_comp_session = incr_comp_session.unwrap();
+    let mut incr_comp_session = incr_comp_session.unwrap();
     // The svh is always produced when incr. comp. is enabled.
     let svh = svh.unwrap();
 
     let _timer = sess.timer("incr_comp_finalize_session_directory");
 
-    let incr_comp_session_dir = incr_comp_session.session_directory.clone();
+    let incr_comp_session_dir = &*incr_comp_session.new_session_directory;
 
     debug!("finalize_session_directory() - session directory: {}", incr_comp_session_dir.display());
 
@@ -333,88 +314,64 @@ pub fn finalize_session_directory(
     let new_path = incr_comp_session_dir.parent().unwrap().join(&*sub_dir_name);
     debug!("finalize_session_directory() - new path: {}", new_path.display());
 
-    match rename_path_with_retry(&*incr_comp_session_dir, &new_path, 3) {
+    let result = std_fs::rename(incr_comp_session_dir, &new_path).or_else(|e| {
+        if !cfg!(windows) || e.kind() != ErrorKind::PermissionDenied {
+            return Err(e);
+        }
+
+        // On ReFS, renaming a directory that contains a hard link to the metadata workproduct file
+        // can fail if it is being used by another process (such as another rustc instance).
+        // As a fallback, we try to replace the hard link with a copy, which should allow the
+        // rename to succeed.
+        // See https://github.com/rust-lang/rust/issues/151181
+        if let Err(err) = replace_hard_link_with_copy(&in_incr_comp_dir_sess(
+            &incr_comp_session,
+            &format!(
+                "{}.{}",
+                WorkProduct::METADATA_WORKPRODUCT_CGU_NAME,
+                OutputType::Metadata.extension()
+            ),
+        )) {
+            debug!("finalize_session_directory() - error replacing hard link with copy: {}", err);
+        }
+
+        rename_path_with_retry(incr_comp_session_dir, &new_path, 3)
+    });
+
+    match result {
         Ok(_) => {
             debug!("finalize_session_directory() - directory renamed successfully");
         }
         Err(e) => {
             // Warn about the error. However, no need to abort compilation now.
-            sess.dcx().emit_note(diagnostics::Finalize { path: &incr_comp_session_dir, err: e });
+            sess.dcx().emit_note(diagnostics::Finalize { path: incr_comp_session_dir, err: e });
 
             debug!("finalize_session_directory() - error");
         }
     }
 
-    drop(incr_comp_session); // Unlock incr comp session dir
+    // Unlock the old session directory now that we will no longer read from it.
+    incr_comp_session.old_session_directory = None;
 
-    let _ = garbage_collect_session_directories(sess, &new_path);
+    let _ = garbage_collect_session_directories(sess, &incr_comp_session);
 }
 
-pub(crate) fn delete_all_session_dir_contents(
-    incr_comp_session: &IncrCompSession,
-) -> io::Result<()> {
-    let sess_dir_iterator = incr_comp_session.session_directory.read_dir()?;
-    for entry in sess_dir_iterator {
-        let entry = entry?;
-        safe_remove_file(&entry.path())?
-    }
-    Ok(())
-}
-
-fn copy_files(sess: &Session, target_dir: &Path, source_dir: &Path) -> Result<bool, ()> {
-    // We acquire a shared lock on the lock file of the directory, so that
-    // nobody deletes it out from under us while we are reading from it.
-    let lock_file_path = lock_file_path(source_dir);
-
-    // not exclusive
-    let Ok(_lock) = flock::Lock::new(
-        &lock_file_path,
-        false, // don't wait,
-        false, // don't create
-        false,
-    ) else {
-        // Could not acquire the lock, don't try to copy from here
-        return Err(());
-    };
-
-    let Ok(source_dir_iterator) = source_dir.read_dir() else {
-        return Err(());
-    };
-
-    let mut files_linked = 0;
-    let mut files_copied = 0;
-
-    for entry in source_dir_iterator {
-        match entry {
-            Ok(entry) => {
-                let file_name = entry.file_name();
-
-                let target_file_path = target_dir.join(file_name);
-                let source_path = entry.path();
-
-                debug!("copying into session dir: {}", source_path.display());
-                match link_or_copy(source_path, target_file_path) {
-                    Ok(LinkOrCopy::Link) => files_linked += 1,
-                    Ok(LinkOrCopy::Copy) => files_copied += 1,
-                    Err(_) => return Err(()),
-                }
+pub(crate) fn invalidate_old_session_dir(sess: &Session, incr_comp_session: &mut IncrCompSession) {
+    if let Some(old_incr_comp_session_dir) = incr_comp_session.old_session_directory.take() {
+        let res = try {
+            let sess_dir_iterator = old_incr_comp_session_dir.read_dir()?;
+            for entry in sess_dir_iterator {
+                let entry = entry?;
+                safe_remove_file(&entry.path())?
             }
-            Err(_) => return Err(()),
+        };
+        if let Err(err) = res {
+            sess.dcx().emit_err(diagnostics::DeleteIncompatible {
+                path: (*old_incr_comp_session_dir).to_owned(),
+                err,
+            });
         }
     }
-
-    if sess.opts.unstable_opts.incremental_info {
-        eprintln!(
-            "[incremental] session directory: \
-                  {files_linked} files hard-linked"
-        );
-        eprintln!(
-            "[incremental] session directory: \
-                 {files_copied} files copied"
-        );
-    }
-
-    Ok(files_linked > 0 || files_copied == 0)
 }
 
 /// Generates unique directory path of the form:
@@ -447,27 +404,44 @@ fn create_dir(sess: &Session, path: &Path, dir_tag: &str) {
     }
 }
 
-/// Allocate the lock-file and lock it.
-fn lock_directory(sess: &Session, session_dir: &Path) -> (flock::Lock, PathBuf) {
+/// Allocate the lock-file, lock it and create the session directory if requested.
+fn lock_directory(
+    sess: &Session,
+    session_dir: &Path,
+    new_session: bool,
+) -> Option<flock::LockedDir> {
     let lock_file_path = lock_file_path(session_dir);
     debug!("lock_directory() - lock_file: {}", lock_file_path.display());
 
-    match flock::Lock::new(
+    match flock::LockedDir::try_lock(
+        session_dir.to_owned(),
         &lock_file_path,
-        false, // don't wait
-        true,  // create the lock file
-        true,
+        new_session, // create
+        new_session, // exclusive
     ) {
-        // the lock should be exclusive
-        Ok(lock) => (lock, lock_file_path),
+        Ok(lock) => {
+            // Now that we have the lock, we can actually create the session
+            // directory
+            if new_session {
+                create_dir(sess, &session_dir, "session");
+            }
+
+            Some(lock)
+        }
         Err(lock_err) => {
             let is_unsupported_lock = flock::Lock::error_unsupported(&lock_err);
-            sess.dcx().emit_fatal(diagnostics::CreateLock {
+            let diag = diagnostics::CreateLock {
                 lock_err,
                 session_dir,
                 is_unsupported_lock,
                 is_cargo: rustc_session::utils::was_invoked_from_cargo(),
-            });
+            };
+            if new_session {
+                sess.dcx().emit_fatal(diag);
+            } else {
+                sess.dcx().emit_warn(diag);
+                None
+            }
         }
     }
 }
@@ -478,24 +452,18 @@ fn delete_session_dir_lock_file(sess: &Session, lock_file_path: &Path) {
     }
 }
 
-/// Finds the most recent published session directory that is not in the
-/// ignore-list.
-fn find_source_directory(
-    crate_dir: &Path,
-    source_directories_already_tried: &FxHashSet<PathBuf>,
-) -> Option<PathBuf> {
+/// Finds the most recent published session directory.
+fn find_source_directory(sess: &Session, crate_dir: &Path) -> Option<flock::LockedDir> {
     let iter = crate_dir
         .read_dir()
         .unwrap() // FIXME
         .filter_map(|e| e.ok().map(|e| e.path()));
 
-    find_source_directory_in_iter(iter, source_directories_already_tried)
+    find_source_directory_in_iter(iter)
+        .and_then(|session_dir| lock_directory(sess, &session_dir, false /* new_session */))
 }
 
-fn find_source_directory_in_iter<I>(
-    iter: I,
-    source_directories_already_tried: &FxHashSet<PathBuf>,
-) -> Option<PathBuf>
+fn find_source_directory_in_iter<I>(iter: I) -> Option<PathBuf>
 where
     I: Iterator<Item = PathBuf>,
 {
@@ -509,10 +477,7 @@ where
             continue;
         };
 
-        if source_directories_already_tried.contains(&session_dir)
-            || !is_session_directory(&directory_name)
-            || !is_finalized(&directory_name)
-        {
+        if !is_session_directory(&directory_name) || !is_finalized(&directory_name) {
             debug!("find_source_directory_in_iter - ignoring");
             continue;
         }
@@ -589,9 +554,11 @@ fn is_old_enough_to_be_collected(timestamp: SystemTime) -> bool {
 /// Runs garbage collection for the current session.
 pub(crate) fn garbage_collect_session_directories(
     sess: &Session,
-    session_directory: &Path,
+    incr_comp_session: &IncrCompSession,
 ) -> io::Result<()> {
     debug!("garbage_collect_session_directories() - begin");
+
+    let session_directory = &*incr_comp_session.new_session_directory;
 
     debug!(
         "garbage_collect_session_directories() - session directory: {}",
@@ -694,36 +661,10 @@ pub(crate) fn garbage_collect_session_directories(
         }
     }
 
-    let current_session_directory_name =
-        session_directory.file_name().expect("session directory is not `..`");
-
     // Now garbage collect the valid session directories.
     let deletion_candidates =
         lock_file_to_session_dir.items().filter_map(|(lock_file_name, directory_name)| {
             debug!("garbage_collect_session_directories() - inspecting: {}", directory_name);
-
-            if directory_name.as_str() == current_session_directory_name {
-                // Skipping our own directory is, unfortunately, important for correctness.
-                //
-                // To summarize #147821: we will try to lock directories before deciding they can be
-                // garbage collected, but the ability of `flock::Lock` to detect a lock held *by the
-                // same process* varies across file locking APIs. Then, if our own session directory
-                // has become old enough to be eligible for GC, we are beholden to platform-specific
-                // details about detecting the our own lock on the session directory.
-                //
-                // POSIX `fcntl(F_SETLK)`-style file locks are maintained across a process. On
-                // systems where this is the mechanism for `flock::Lock`, there is no way to
-                // discover if an `flock::Lock` has been created in the same process on the same
-                // file. Attempting to set a lock on the lockfile again will succeed, even if the
-                // lock was set by another thread, on another file descriptor. Then we would
-                // garbage collect our own live directory, unable to tell it was locked perhaps by
-                // this same thread.
-                //
-                // It's not clear that `flock::Lock` can be fixed for this in general, and our own
-                // incremental session directory is the only one which this process may own, so skip
-                // it here and avoid the problem. We know it's not garbage anyway: we're using it.
-                return None;
-            }
 
             let Ok(timestamp) = extract_timestamp_from_session_dir(directory_name) else {
                 debug!(
@@ -736,9 +677,8 @@ pub(crate) fn garbage_collect_session_directories(
 
             if is_finalized(directory_name) {
                 let lock_file_path = crate_directory.join(lock_file_name);
-                match flock::Lock::new(
+                match flock::Lock::try_lock(
                     &lock_file_path,
-                    false, // don't wait
                     false, // don't create the lock-file
                     true,
                 ) {
@@ -755,10 +695,7 @@ pub(crate) fn garbage_collect_session_directories(
                         );
 
                         // Note that we are holding on to the lock
-                        return Some((
-                            (timestamp, crate_directory.join(directory_name)),
-                            Some(lock),
-                        ));
+                        return Some((crate_directory.join(directory_name), lock));
                     }
                     Err(_) => {
                         debug!(
@@ -780,9 +717,8 @@ pub(crate) fn garbage_collect_session_directories(
                 // means that the owning process is still alive and we
                 // leave this directory alone.
                 let lock_file_path = crate_directory.join(lock_file_name);
-                match flock::Lock::new(
+                match flock::Lock::try_lock(
                     &lock_file_path,
-                    false, // don't wait
                     false, // don't create the lock-file
                     true,
                 ) {
@@ -814,10 +750,9 @@ pub(crate) fn garbage_collect_session_directories(
             }
             None
         });
-    let deletion_candidates = deletion_candidates.into();
 
     // Delete all but the most recent of the candidates
-    all_except_most_recent(deletion_candidates).into_items().all(|(path, lock)| {
+    deletion_candidates.all(|(path, lock)| {
         debug!("garbage_collect_session_directories() - deleting `{}`", path.display());
 
         if let Err(err) = std_fs::remove_dir_all(&path) {
@@ -842,22 +777,6 @@ fn delete_old(sess: &Session, path: &Path) {
         sess.dcx().emit_warn(diagnostics::SessionGcFailed { path, err });
     } else {
         delete_session_dir_lock_file(sess, &lock_file_path(path));
-    }
-}
-
-fn all_except_most_recent(
-    deletion_candidates: UnordMap<(SystemTime, PathBuf), Option<flock::Lock>>,
-) -> UnordMap<PathBuf, Option<flock::Lock>> {
-    let most_recent = deletion_candidates.items().map(|(&(timestamp, _), _)| timestamp).max();
-
-    if let Some(most_recent) = most_recent {
-        deletion_candidates
-            .into_items()
-            .filter(|&((timestamp, _), _)| timestamp != most_recent)
-            .map(|((_, path), lock)| (path, lock))
-            .collect()
-    } else {
-        UnordMap::default()
     }
 }
 
@@ -887,4 +806,16 @@ fn rename_path_with_retry(from: &Path, to: &Path, mut retries_left: usize) -> st
             }
         }
     }
+}
+
+/// Turns a hard link of the file at `path` into a copy.
+fn replace_hard_link_with_copy(path: &Path) -> std::io::Result<()> {
+    let tmp_name = path.with_added_extension("tmp");
+
+    // In case a stale temporary file was linked from a previous failed attempt.
+    safe_remove_file(&tmp_name)?;
+
+    std_fs::copy(path, &tmp_name).and_then(|_| std_fs::rename(&tmp_name, path)).inspect_err(|_| {
+        let _ = safe_remove_file(&tmp_name);
+    })
 }

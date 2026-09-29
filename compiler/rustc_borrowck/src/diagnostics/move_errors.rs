@@ -3,12 +3,11 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, CaptureBy, ExprKind, HirId, Node};
-use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{LookupResult, MovePathIndex};
 use rustc_span::def_id::DefId;
-use rustc_span::{BytePos, ExpnKind, MacroKind, Span, sym};
+use rustc_span::{BytePos, ExpnKind, MacroKind, Span, bug, sym};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
@@ -1207,8 +1206,8 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 suggestions.push((binding_span.shrink_to_lo(), msg, "ref ".to_string()));
             }
         }
-        suggestions.sort_unstable_by_key(|&(span, _, _)| span);
-        suggestions.dedup_by_key(|&mut (span, _, _)| span);
+        suggestions.sort_unstable_by_key(|&(span, _, _)| span.lo_hi());
+        suggestions.dedup_by_key(|&mut (span, _, _)| span.lo_hi());
         for (span, msg, suggestion) in suggestions {
             err.span_suggestion_verbose(span, msg, suggestion, Applicability::MachineApplicable);
         }

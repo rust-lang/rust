@@ -10,7 +10,7 @@ pub fn f( //~ NOTE function defined here
 ) {}
 
 fn bar(id: #[allow(dead_code)] i32) {}
-//~^ ERROR attributes cannot be applied to a function parameter's type
+//~^ ERROR attributes cannot be applied to types
 //~| NOTE attributes are not allowed here
 //~| NOTE function defined here
 

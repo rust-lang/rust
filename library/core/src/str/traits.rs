@@ -15,7 +15,8 @@ use crate::{ops, range};
 /// culturally-accepted standards requires locale-specific data that is outside the scope of
 /// the `str` type.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Ord for str {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl Ord for str {
     #[inline]
     fn cmp(&self, other: &str) -> Ordering {
         self.as_bytes().cmp(other.as_bytes())
@@ -43,7 +44,8 @@ const impl Eq for str {}
 /// culturally-accepted standards requires locale-specific data that is outside the scope of
 /// the `str` type.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl PartialOrd for str {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl PartialOrd for str {
     #[inline]
     fn partial_cmp(&self, other: &str) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -367,12 +369,12 @@ unsafe impl SliceIndex<str> for (ops::Bound<usize>, ops::Bound<usize>) {
 
     #[inline]
     fn get(self, slice: &str) -> Option<&str> {
-        crate::slice::index::try_into_slice_range(slice.len(), self)?.get(slice)
+        crate::slice::index::try_into_slice_range(slice.len(), self).ok()?.get(slice)
     }
 
     #[inline]
     fn get_mut(self, slice: &mut str) -> Option<&mut str> {
-        crate::slice::index::try_into_slice_range(slice.len(), self)?.get_mut(slice)
+        crate::slice::index::try_into_slice_range(slice.len(), self).ok()?.get_mut(slice)
     }
 
     #[inline]

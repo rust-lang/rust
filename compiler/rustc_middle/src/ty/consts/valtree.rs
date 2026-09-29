@@ -7,9 +7,11 @@ use rustc_hir::def::Namespace;
 use rustc_macros::{
     Lift, StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable, extension,
 };
+use rustc_span::bug;
 
 use super::ScalarInt;
 use crate::mir::interpret::{ErrorHandled, Scalar};
+use crate::ty::consts::ConstExt;
 use crate::ty::print::{FmtPrinter, PrettyPrinter};
 use crate::ty::{self, Ty, TyCtxt, ValTreeKind};
 

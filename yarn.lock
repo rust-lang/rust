@@ -154,10 +154,10 @@ braces@^3.0.3:
   dependencies:
     fill-range "^7.1.1"
 
-browser-ui-test@^0.25.0:
-  version "0.25.1"
-  resolved "https://registry.yarnpkg.com/browser-ui-test/-/browser-ui-test-0.25.1.tgz#c7f22a5e2b9e51be4ba34df3adf7bd7a9249bce6"
-  integrity sha512-woRwKU1dPBIwYmCI6npox8qlPO0WQ8GZH2YbL39mNkiWymByebiB4EK0PlaGMbmEja0MEqfMQD+d33LCW4S2AA==
+browser-ui-test@^0.25.2:
+  version "0.25.2"
+  resolved "https://registry.yarnpkg.com/browser-ui-test/-/browser-ui-test-0.25.2.tgz#31db7386497b3eef4d79e236bd2091c1162148a9"
+  integrity sha512-74njL1/xjg5UumbhQblWa6oAn/PcaOnlJmoSe9FabJaXrLsI2f8DJ3B8vunvCJwZa90V4Jm94xyg/JPi+l+zZQ==
   dependencies:
     css-unit-converter "^1.1.2"
     pngjs "^3.4.0"

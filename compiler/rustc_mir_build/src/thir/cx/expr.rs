@@ -1,12 +1,12 @@
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::UnsafeBinderCastKind;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{AttributeKind, HasAttrs, find_attr};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::attrs::{AttributeKind, HasAttrs};
+use rustc_hir::HirId;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::{HirId, find_attr};
 use rustc_index::Idx;
 use rustc_middle::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
@@ -21,8 +21,7 @@ use rustc_middle::ty::{
     self, AdtKind, GenericArgs, InlineConstArgs, InlineConstArgsParts, ScalarInt, SplattedDef, Ty,
     TyCtxt, UpvarArgs,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{DesugaringKind, Span};
+use rustc_span::{DesugaringKind, Span, bug, span_bug};
 use tracing::{debug, info, instrument, trace};
 
 use crate::diagnostics::*;
@@ -58,12 +57,14 @@ impl<'tcx> SplattedFunc<'tcx> {
     }
 }
 
-fn parsed_attrs(id: HirId, tcx: TyCtxt<'_>) -> ThinVec<AttributeKind> {
+fn filter_loop_hint_attrs(id: HirId, tcx: TyCtxt<'_>) -> ThinVec<AttributeKind> {
     HasAttrs::get_attrs(id, &tcx)
         .into_iter()
         .filter_map(|attr| match attr {
-            hir::Attribute::Parsed(attrkind) => Some(attrkind.clone()),
-            hir::Attribute::Unparsed(_) => None,
+            rustc_attr_ir::Attribute::Parsed(attrkind @ AttributeKind::Unroll(_)) => {
+                Some(attrkind.clone())
+            }
+            _ => None,
         })
         .collect()
 }
@@ -92,7 +93,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
         trace!(?expr.ty);
 
-        let mut attrs = ThinVec::new();
+        let mut loop_hint_attrs = ThinVec::new();
 
         if let hir::ExprKind::Loop(_, _, _, span) = hir_expr.kind {
             match span.desugaring_kind() {
@@ -104,12 +105,12 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     // ignore async for loops
                     if let hir::Node::Expr(expr) = self.tcx.parent_hir_node(expr.hir_id) {
                         std::assert_matches!(expr.kind, hir::ExprKind::DropTemps(..));
-                        attrs = parsed_attrs(expr.hir_id, self.tcx)
+                        loop_hint_attrs = filter_loop_hint_attrs(expr.hir_id, self.tcx)
                     }
                 }
                 // For loops defined with `loop` and `while`, the expr already has the attrs
                 Some(DesugaringKind::WhileLoop) | None => {
-                    attrs = parsed_attrs(hir_expr.hir_id, self.tcx);
+                    loop_hint_attrs = filter_loop_hint_attrs(hir_expr.hir_id, self.tcx);
                 }
                 _ => (),
             }
@@ -129,8 +130,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
         let ty = expr.ty;
         let value = self.thir.exprs.push(expr);
 
-        if !attrs.is_empty() {
-            self.thir.attributes.insert(value, attrs);
+        if !loop_hint_attrs.is_empty() {
+            self.thir.loop_hint_attrs.insert(value, loop_hint_attrs);
         }
 
         // Finally, wrap this up in the expr's scope.
@@ -328,7 +329,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         } else if let hir::ExprKind::Path(ref qpath) = source.kind
             && let res = self.typeck_results.qpath_res(qpath, source.hir_id)
             && let ty = self.typeck_results.node_type(source.hir_id)
-            && let ty::Adt(adt_def, args) = ty.kind()
+            && let ty::Adt(adt_def, _) = ty.kind()
             && let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), variant_ctor_id) = res
         {
             // Check whether this is casting an enum variant discriminant.
@@ -370,6 +371,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 // in case we are offsetting from a computed discriminant
                 // and not the beginning of discriminants (which is always `0`)
                 Some(did) => {
+                    let args = self.tcx.mk_args(&[]);
+                    self.tcx.debug_assert_args_compatible(did, args);
                     let kind = ExprKind::NamedConst { def_id: did, args, user_ty: None };
                     let lhs =
                         self.thir.exprs.push(Expr { temp_scope_id, ty: discr_ty, span, kind });
@@ -826,22 +829,27 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     .operands
                     .iter()
                     .map(|(op, _op_sp)| match *op {
-                        hir::InlineAsmOperand::In { reg, expr } => {
-                            InlineAsmOperand::In { reg, expr: self.mirror_expr(expr) }
-                        }
+                        hir::InlineAsmOperand::In { reg, expr } => InlineAsmOperand::In {
+                            reg: reg.as_target(),
+                            expr: self.mirror_expr(expr),
+                        },
                         hir::InlineAsmOperand::Out { reg, late, ref expr } => {
                             InlineAsmOperand::Out {
-                                reg,
+                                reg: reg.as_target(),
                                 late,
                                 expr: expr.map(|expr| self.mirror_expr(expr)),
                             }
                         }
                         hir::InlineAsmOperand::InOut { reg, late, expr } => {
-                            InlineAsmOperand::InOut { reg, late, expr: self.mirror_expr(expr) }
+                            InlineAsmOperand::InOut {
+                                reg: reg.as_target(),
+                                late,
+                                expr: self.mirror_expr(expr),
+                            }
                         }
                         hir::InlineAsmOperand::SplitInOut { reg, late, in_expr, ref out_expr } => {
                             InlineAsmOperand::SplitInOut {
-                                reg,
+                                reg: reg.as_target(),
                                 late,
                                 in_expr: self.mirror_expr(in_expr),
                                 out_expr: out_expr.map(|expr| self.mirror_expr(expr)),
@@ -1207,8 +1215,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
             Res::Def(DefKind::Fn, _)
             | Res::Def(DefKind::AssocFn, _)
             | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
-            | Res::Def(DefKind::Const { .. }, _)
-            | Res::Def(DefKind::AssocConst { .. }, _) => {
+            | Res::Def(DefKind::Const, _)
+            | Res::Def(DefKind::AssocConst, _) => {
                 self.typeck_results.user_provided_types().get(hir_id).copied().map(Box::new)
             }
 
@@ -1448,8 +1456,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 ExprKind::ConstParam { param, def_id }
             }
 
-            Res::Def(DefKind::Const { .. }, def_id)
-            | Res::Def(DefKind::AssocConst { .. }, def_id) => {
+            Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
                 let user_ty = self.user_args_applied_to_res(expr.hir_id, res);
                 ExprKind::NamedConst { def_id, args, user_ty }
             }

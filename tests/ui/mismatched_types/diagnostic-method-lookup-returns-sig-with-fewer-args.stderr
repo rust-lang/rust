@@ -1,16 +1,16 @@
 error[E0308]: mismatched types
-  --> $DIR/diagnostic-method-lookup-returns-sig-with-fewer-args.rs:4:16
+  --> $DIR/diagnostic-method-lookup-returns-sig-with-fewer-args.rs:4:24
    |
-LL |     target.get(10.0); // (used to crash here)
-   |            --- ^^^^ expected `i32`, found floating-point number
+LL |     target.unique_name(10.0); // (used to crash here)
+   |            ----------- ^^^^ expected `i32`, found floating-point number
    |            |
    |            arguments to this method are incorrect
    |
 note: method defined here
   --> $DIR/diagnostic-method-lookup-returns-sig-with-fewer-args.rs:22:12
    |
-LL |     pub fn get(&self, data: i32) {
-   |            ^^^        ---------
+LL |     pub fn unique_name(&self, data: i32) {
+   |            ^^^^^^^^^^^        ---------
 
 error: aborting due to 1 previous error
 

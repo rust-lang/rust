@@ -3,12 +3,12 @@ use std::iter;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::mir;
 use rustc_middle::mir::{Body, Local, UnwindTerminateReason, traversal};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
-use rustc_middle::{bug, mir, span_bug};
-use rustc_span::ErrorGuaranteed;
-use rustc_target::callconv::{FnAbi, PassMode};
+use rustc_span::{ErrorGuaranteed, bug, span_bug};
+use rustc_target::callconv::{FnAbi, IndirectMode, PassMode};
 use tracing::{debug, instrument};
 
 use crate::base;
@@ -217,14 +217,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
 
-    let nop_landing_pads = rustc_mir_transform::remove_noop_landing_pads::find_noop_landing_pads(
-        mir,
-        Some(rustc_mir_transform::remove_noop_landing_pads::ExtraInfo {
-            tcx,
-            instance,
-            typing_env: cx.typing_env(),
-        }),
-    );
+    let nop_landing_pads = tcx.find_noop_landing_pads_for_instance(mir, instance, cx.typing_env());
 
     if tcx.features().ergonomic_clones() {
         let monomorphized_mir = instance.instantiate_mir_and_normalize_erasing_regions(
@@ -245,7 +238,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         start_bx.set_personality_fn(cx.eh_personality());
     }
 
-    let cleanup_kinds = base::wants_new_eh_instructions(tcx.sess)
+    let cleanup_kinds = base::wants_new_eh_instructions(&tcx.sess.target)
         .then(|| analyze::cleanup_kinds(&mir, &nop_landing_pads));
 
     let cached_llbbs: IndexVec<mir::BasicBlock, CachedLlbb<Bx::BasicBlock>> =
@@ -568,15 +561,21 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             match arg.mode {
                 // Sized indirect arguments
-                PassMode::Indirect { attrs, meta_attrs: None, on_stack: _ } => {
+                PassMode::Indirect { attrs, meta_attrs: None, address_space: _, mode } => {
                     // Don't copy an indirect argument to an alloca, the caller already put it
                     // in a temporary alloca and gave it up.
+                    // AmdgpuKernelArg/byref arguments must not be modified, so always create a
+                    // local alloca for them.
+                    // If the argument is underaligned, then we need to copy it to a higher-aligned
+                    // alloca.
                     // FIXME: lifetimes
+                    let mut needs_alloca = mode == IndirectMode::AmdgpuKernelArg;
                     if let Some(pointee_align) = attrs.pointee_align
                         && pointee_align < arg.layout.align.abi
                     {
-                        // ...unless the argument is underaligned, then we need to copy it to
-                        // a higher-aligned alloca.
+                        needs_alloca = true;
+                    }
+                    if needs_alloca {
                         let tmp = PlaceRef::alloca(bx, arg.layout);
                         bx.store_fn_arg(arg, &mut llarg_idx, tmp);
                         LocalRef::Place(tmp)
@@ -587,7 +586,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     }
                 }
                 // Unsized indirect arguments
-                PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
+                PassMode::Indirect { attrs: _, meta_attrs: Some(_), address_space: _, mode: _ } => {
                     // As the storage for the indirect argument lives during
                     // the whole function call, we just copy the wide pointer.
                     let llarg = bx.get_param(llarg_idx);

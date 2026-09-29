@@ -17,6 +17,7 @@
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
 extern crate rustc_abi;
 extern crate rustc_ast;
+extern crate rustc_attr_ir;
 extern crate rustc_attr_parsing;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
@@ -81,13 +82,13 @@ use itertools::Itertools as _;
 use rustc_abi::Integer;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
 use rustc_ast::{LitIntType, join_path_syms};
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
+use rustc_attr_ir::{CfgEntry, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexmap;
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnindexMap;
-use rustc_hir::attrs::CfgEntry;
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::attrs::lang_items::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModId};
 use rustc_hir::definitions::{DefPath, DefPathData};
@@ -98,7 +99,6 @@ use rustc_hir::{
     FieldDef, FnDecl, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, HirIdSet, Impl, ImplItem, ImplItemKind, Item,
     ItemKind, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode, Param, Pat, PatExpr, PatExprKind, PatKind,
     Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp, Variant, def,
-    find_attr,
 };
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext as _};
@@ -111,6 +111,7 @@ use rustc_middle::ty::{
     self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, GenericArgKind, GenericArgsRef, IntTy, Ty, TyCtxt,
     TypeFlags, TypeVisitableExt as _, TypeckResults, UintTy, UpvarCapture,
 };
+use rustc_session::config::Input;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
@@ -1670,7 +1671,18 @@ pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: UintTy) -> u128 {
     (u << amt) >> amt
 }
 
-pub fn has_attr(attrs: &[hir::Attribute], symbol: Symbol) -> bool {
+/// Checks if an attribute is present. 
+///
+/// NOTE: this does not work for most attributes:
+/// - parsed attributes: use `find_attr!` for these
+/// - tool attributes: these have multi-segmented names
+/// (and diagnostic attrs are parsed anyway)
+///
+/// At this time, these only work for lint attributes (allow, warn, etc)
+/// and derive helpers.
+///
+/// FIXME: remove after lint attributes are parsed
+pub fn has_attr(attrs: &[rustc_attr_ir::Attribute], symbol: Symbol) -> bool {
     attrs.iter().any(|attr| attr.has_name(symbol))
 }
 
@@ -2292,8 +2304,8 @@ pub fn peel_hir_ty_refs<'a>(mut ty: &'a hir::Ty<'a>) -> (&'a hir::Ty<'a>, usize)
     let mut count = 0;
     loop {
         match &ty.kind {
-            TyKind::Ref(_, ref_ty) => {
-                ty = ref_ty.ty;
+            TyKind::Ref(_, inner_ty, _) => {
+                ty = inner_ty;
                 count += 1;
             },
             _ => break (ty, count),
@@ -2304,7 +2316,7 @@ pub fn peel_hir_ty_refs<'a>(mut ty: &'a hir::Ty<'a>) -> (&'a hir::Ty<'a>, usize)
 /// Returns the base type for HIR references and pointers.
 pub fn peel_hir_ty_refs_and_ptrs<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
     match &ty.kind {
-        TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => peel_hir_ty_refs_and_ptrs(mut_ty.ty),
+        TyKind::Ptr(inner_ty, _) | TyKind::Ref(_, inner_ty, _) => peel_hir_ty_refs_and_ptrs(inner_ty),
         _ => ty,
     }
 }
@@ -2361,9 +2373,9 @@ fn test_item_names(tcx: TyCtxt<'_>, module: LocalModId) -> Vec<Symbol> {
         Entry::Vacant(entry) => {
             let mut names = Vec::new();
             for id in tcx.hir_module_free_items(module) {
-                if matches!(tcx.def_kind(id.owner_id), DefKind::Const { .. })
+                if matches!(tcx.def_kind(id.owner_id), DefKind::Static { .. })
                     && let item = tcx.hir_item(id)
-                    && let ItemKind::Const(ident, _generics, ty, _body) = item.kind
+                    && let ItemKind::Static(_mut, ident, ty, _body) = item.kind
                     && let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
                     // We could also check for the type name `test::TestDescAndFn`
                     && let Res::Def(DefKind::Struct, _) = path.res
@@ -2445,7 +2457,18 @@ pub fn is_in_cfg_test(tcx: TyCtxt<'_>, id: HirId) -> bool {
 
 /// Checks if the node is in a `#[test]` function or has any parent node marked `#[cfg(test)]`
 pub fn is_in_test(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
-    is_in_test_function(tcx, hir_id) || is_in_cfg_test(tcx, hir_id)
+    is_in_test_function(tcx, hir_id) || is_in_cfg_test(tcx, hir_id) || is_in_integration_test_file(tcx)
+}
+
+/// Check if the node is in an integration test file (i.e. under `tests/`).
+fn is_in_integration_test_file(tcx: TyCtxt<'_>) -> bool {
+    if let Input::File(ref path) = tcx.sess.io.input
+        && !tcx.sess.opts.unstable_opts.ui_testing
+    {
+        path.starts_with("tests")
+    } else {
+        false
+    }
 }
 
 /// Checks if the item of any of its parents has `#[cfg(...)]` attribute applied.
@@ -2789,6 +2812,7 @@ pub fn expr_use_sites<'tcx>(
                 | Node::TraitRef(_)
                 | Node::Ty(_)
                 | Node::TyPat(_)
+                | Node::NestedUseTree(_)
                 | Node::WherePredicate(_)
                 | Node::TestBinderForall(_)
                 | Node::TestBinderExists(_)

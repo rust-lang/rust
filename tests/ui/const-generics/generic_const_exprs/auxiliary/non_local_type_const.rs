@@ -1,4 +1,6 @@
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![allow(incomplete_features)]
 
-pub type const NON_LOCAL_CONST: char = 'a';
+use std::gca;
+
+pub const NON_LOCAL_CONST: char = gca!('a');

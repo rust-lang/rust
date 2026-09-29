@@ -1,5 +1,5 @@
 error[E0539]: malformed `cfi_encoding` attribute input
-  --> $DIR/invalid-attr-encoding.rs:10:3
+  --> $DIR/invalid-attr-encoding.rs:6:3
    |
 LL | #[cfi_encoding]
    |   ^^^^^^^^^^^^ expected this to be of the form `cfi_encoding = "..."`
@@ -9,6 +9,22 @@ help: must be of the form
 LL | #[cfi_encoding = "encoding"]
    |                ++++++++++++
 
-error: aborting due to 1 previous error
+error: the `cfi_encoding` attribute cannot be used on traits
+  --> $DIR/invalid-attr-encoding.rs:9:3
+   |
+LL | #[cfi_encoding = "Foo"]
+   |   ^^^^^^^^^^^^
+   |
+   = help: the `cfi_encoding` attribute can only be applied to data types
+
+error: the `cfi_encoding` attribute cannot be used on type aliases
+  --> $DIR/invalid-attr-encoding.rs:12:3
+   |
+LL | #[cfi_encoding = "Bar"]
+   |   ^^^^^^^^^^^^
+   |
+   = help: the `cfi_encoding` attribute can only be applied to data types
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0539`.

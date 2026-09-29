@@ -61,7 +61,7 @@ fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::IncorrectCase) -> Option<Vec
 
 #[cfg(test)]
 mod change_case {
-    use crate::tests::{check_diagnostics, check_diagnostics_with_disabled, check_fix};
+    use crate::tests::{check_diagnostics, check_fix, check_fix_with_disabled};
 
     #[test]
     fn test_rename_incorrect_case() {
@@ -108,7 +108,7 @@ pub fn some_fn(val: u8) -> u8 {
 "#,
         );
 
-        check_fix(
+        check_fix_with_disabled(
             r#"
 fn some_fn() {
     let whatAWeird_Formatting$0 = 10;
@@ -121,6 +121,7 @@ fn some_fn() {
     another_func(what_aweird_formatting);
 }
 "#,
+            &["E0425"],
         );
 
         check_fix(
@@ -247,6 +248,16 @@ struct SCREAMING_CASE {}
     }
 
     #[test]
+    fn incorrect_raw_struct_name() {
+        check_diagnostics(
+            r#"
+struct r#pub {}
+    // ^^^^^ 💡 warn: Structure `r#pub` should have UpperCamelCase name, e.g. `Pub`
+"#,
+        );
+    }
+
+    #[test]
     fn no_diagnostic_for_camel_cased_acronyms_in_struct_name() {
         check_diagnostics(
             r#"
@@ -335,6 +346,16 @@ enum AABB {}
             r#"
 enum SomeEnum { SOME_VARIANT(u8) }
              // ^^^^^^^^^^^^ 💡 warn: Variant `SOME_VARIANT` should have UpperCamelCase name, e.g. `SomeVariant`
+"#,
+        );
+    }
+
+    #[test]
+    fn incorrect_raw_enum_variant_name() {
+        check_diagnostics(
+            r#"
+enum SomeEnum { r#pub }
+             // ^^^^^ 💡 warn: Variant `r#pub` should have UpperCamelCase name, e.g. `Pub`
 "#,
         );
     }
@@ -617,7 +638,7 @@ trait BAD_TRAIT {
         cov_mark::check!(trait_impl_assoc_const_incorrect_case_ignored);
         cov_mark::check!(trait_impl_assoc_type_incorrect_case_ignored);
         cov_mark::check_count!(trait_impl_assoc_func_name_incorrect_case_ignored, 2);
-        check_diagnostics_with_disabled(
+        check_diagnostics(
             r#"
 trait BAD_TRAIT {
    // ^^^^^^^^^ 💡 warn: Trait `BAD_TRAIT` should have UpperCamelCase name, e.g. `BadTrait`
@@ -643,7 +664,6 @@ impl BAD_TRAIT for () {
     fn BadFunction() {}
 }
     "#,
-            &["unused_variables"],
         );
     }
 
@@ -854,8 +874,6 @@ static FOO: () = {
     }
 
     #[test]
-    // FIXME
-    #[should_panic]
     fn enum_variant_body_inner_item() {
         check_diagnostics(
             r#"
@@ -1006,7 +1024,6 @@ fn func() {
     fn override_lint_level() {
         check_diagnostics(
             r#"
-#![allow(unused_variables)]
 #[warn(nonstandard_style)]
 fn foo() {
     let BAR: i32;

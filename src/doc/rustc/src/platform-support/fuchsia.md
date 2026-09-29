@@ -7,8 +7,11 @@ updatable, and performant.
 
 ## Target maintainers
 
-[@erickt](https://github.com/erickt)
-[@Nashenas88](https://github.com/Nashenas88)
+- [@Nashenas88](https://github.com/Nashenas88)
+- [@PiJoules](https://github.com/PiJoules)
+- [@erickt](https://github.com/erickt)
+- [@ilovepi](https://github.com/ilovepi)
+- [@petrhosek](https://github.com/petrhosek)
 
 The up-to-date list can be also found via the
 [fuchsia marker team](https://github.com/rust-lang/team/blob/master/teams/fuchsia.toml).
@@ -181,12 +184,12 @@ Before building Rust for Fuchsia, you'll need a clang toolchain that supports
 Fuchsia as well. A recent version (14+) of clang should be sufficient to compile
 Rust for Fuchsia.
 
-x86-64 and AArch64 Fuchsia targets can be enabled using the following
+x86-64, AArch64, and riscv64gc Fuchsia targets can be enabled using the following
 configuration in `bootstrap.toml`:
 
 ```toml
 [build]
-target = ["<host_platform>", "aarch64-unknown-fuchsia", "x86_64-unknown-fuchsia"]
+target = ["<host_platform>", "aarch64-unknown-fuchsia", "x86_64-unknown-fuchsia", "riscv64gc-unknown-fuchsia"]
 
 [rust]
 lld = true
@@ -199,6 +202,10 @@ cc = "clang"
 cxx = "clang++"
 
 [target.aarch64-unknown-fuchsia]
+cc = "clang"
+cxx = "clang++"
+
+[target.riscv64gc-unknown-fuchsia]
 cc = "clang"
 cxx = "clang++"
 ```
@@ -237,6 +244,10 @@ export CFLAGS_x86_64_unknown_fuchsia="--target=x86_64-unknown-fuchsia --sysroot=
 export CXXFLAGS_x86_64_unknown_fuchsia="--target=x86_64-unknown-fuchsia --sysroot=${SDK_PATH}/arch/x64/sysroot -I${SDK_PATH}/pkg/fdio/include"
 export LDFLAGS_x86_64_unknown_fuchsia="--target=x86_64-unknown-fuchsia --sysroot=${SDK_PATH}/arch/x64/sysroot -L${SDK_PATH}/arch/x64/lib"
 export CARGO_TARGET_X86_64_UNKNOWN_FUCHSIA_RUSTFLAGS="-C link-arg=--sysroot=${SDK_PATH}/arch/x64/sysroot -Lnative=${SDK_PATH}/arch/x64/sysroot/lib -Lnative=${SDK_PATH}/arch/x64/lib"
+export CFLAGS_riscv64gc_unknown_fuchsia="--target=riscv64gc-unknown-fuchsia --sysroot=${SDK_PATH}/arch/riscv64/sysroot -I${SDK_PATH}/pkg/fdio/include"
+export CXXFLAGS_riscv64gc_unknown_fuchsia="--target=riscv64gc-unknown-fuchsia --sysroot=${SDK_PATH}/arch/riscv64/sysroot -I${SDK_PATH}/pkg/fdio/include"
+export LDFLAGS_riscv64gc_unknown_fuchsia="--target=riscv64gc-unknown-fuchsia --sysroot=${SDK_PATH}/arch/riscv64/sysroot -L${SDK_PATH}/arch/riscv64/lib"
+export CARGO_TARGET_RISCV64GC_UNKNOWN_FUCHSIA_RUSTFLAGS="-C link-arg=--sysroot=${SDK_PATH}/arch/riscv64/sysroot -Lnative=${SDK_PATH}/arch/riscv64/sysroot/lib -Lnative=${SDK_PATH}/arch/riscv64/lib"
 ```
 
 Finally, the Rust compiler can be built and installed:
@@ -281,8 +292,9 @@ hello_fuchsia/
 Using your freshly installed `rustc`, you can compile a binary for Fuchsia using
 the following options:
 
-* `--target x86_64-unknown-fuchsia`/`--target aarch64-unknown-fuchsia`: Targets the Fuchsia
-  platform of your choice
+* `--target x86_64-unknown-fuchsia` / `--target aarch64-unknown-fuchsia` /
+  `--target riscv64gc-unknown-fuchsia`: Targets the Fuchsia platform of your
+  choice
 * `-Lnative ${SDK_PATH}/arch/${ARCH}/lib`: Link against Fuchsia libraries from
   the SDK
 * `-Lnative ${SDK_PATH}/arch/${ARCH}/sysroot/lib`: Link against Fuchsia sysroot
@@ -292,8 +304,8 @@ Putting it all together:
 
 ```sh
 # Configure these for the Fuchsia target of your choice
-TARGET_ARCH="<x86_64-unknown-fuchsia|aarch64-unknown-fuchsia>"
-ARCH="<x64|aarch64>"
+TARGET_ARCH="<x86_64-unknown-fuchsia|aarch64-unknown-fuchsia|riscv64gc-unknown-fuchsia>"
+ARCH="<x64|aarch64|riscv64>"
 
 rustc \
     --target ${TARGET_ARCH} \
@@ -688,12 +700,12 @@ We can then use the script to start our test environment with:
 
 ```sh
 ( \
-    source config-env.sh &&                                                   \
-    src/ci/docker/scripts/fuchsia-test-runner.py start                        \
-    --rust-build ${RUST_SRC_PATH}/build                                       \
-    --sdk ${SDK_PATH}                                                         \
-    --target {x86_64-unknown-fuchsia|aarch64-unknown-fuchsia}                 \
-    --verbose                                                                 \
+    source config-env.sh &&                                                  \
+    src/ci/docker/scripts/fuchsia-test-runner.py start                       \
+    --rust-build ${RUST_SRC_PATH}/build                                      \
+    --sdk ${SDK_PATH}                                                        \
+    --target {x86_64-unknown-fuchsia|aarch64-unknown-fuchsia|riscv64gc-unknown-fuchsia} \
+    --verbose                                                                \
 )
 ```
 
@@ -707,7 +719,7 @@ run the full `tests/ui` test suite:
 ( \
     source config-env.sh &&                                                   \
     ./x.py                                                                    \
-    --config bootstrap.toml                                                      \
+    --config bootstrap.toml                                                   \
     --stage=2                                                                 \
     test tests/ui                                                             \
     --target x86_64-unknown-fuchsia                                           \

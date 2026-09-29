@@ -12,6 +12,7 @@ use rustc_hir::intravisit::{Visitor, walk_pat};
 use rustc_hir::{Arm, Expr, ExprKind, HirId, Node, Pat, PatExpr, PatExprKind, PatKind, QPath, StmtKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, AdtDef, TyCtxt, TypeckResults, VariantDef};
+use rustc_middle::ty::consts::ConstExt;
 use rustc_span::Span;
 
 use super::{MATCH_BOOL, SINGLE_MATCH, SINGLE_MATCH_ELSE};
@@ -90,7 +91,7 @@ fn report_single_pattern(
 ) {
     let lint = if els.is_some() { SINGLE_MATCH_ELSE } else { SINGLE_MATCH };
     let ctxt = expr.span.ctxt();
-    let note = |diag: &mut Diag<'_, ()>| {
+    let note = |diag: &mut Diag<'_>| {
         if contains_comments {
             diag.note("you might want to preserve the comments from inside the `match`");
         }

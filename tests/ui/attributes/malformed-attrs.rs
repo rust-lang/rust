@@ -9,7 +9,7 @@
 #![feature(dropck_eyepatch)]
 #![feature(export_stable)]
 #![allow(incomplete_features)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![feature(ffi_const, ffi_pure)]
 #![feature(coverage_attribute)]
 #![feature(sanitize)]
@@ -39,6 +39,8 @@
 #[deprecated = 5]
 //~^ ERROR malformed
 #[doc]
+//~^ ERROR
+#[doc()]
 //~^ ERROR
 #[rustc_macro_transparency]
 //~^ ERROR malformed
@@ -76,8 +78,6 @@
 #[crate_name]
 //~^ ERROR malformed
 //~| WARN crate-level attribute should be an inner attribute
-#[doc]
-//~^ ERROR
 #[target_feature]
 //~^ ERROR malformed
 #[export_stable = 1]

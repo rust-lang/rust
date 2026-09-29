@@ -1,4 +1,8 @@
-#![allow(clippy::disallowed_types)]
+#![expect(
+    clippy::disallowed_types,
+    reason = "the hash maps are only used in tests -- adding a dependency on `rustc_hash` to avoid that is not justified"
+)]
+
 use std::sync::Arc;
 
 #[cfg(not(miri))]

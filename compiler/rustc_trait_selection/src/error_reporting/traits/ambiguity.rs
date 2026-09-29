@@ -1,8 +1,8 @@
 use std::ops::ControlFlow;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::{Applicability, Diag, E0283, E0284, E0790, MultiSpan, struct_span_code_err};
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor as _;
@@ -11,6 +11,7 @@ use rustc_infer::traits::util::elaborate;
 use rustc_infer::traits::{
     Obligation, ObligationCause, ObligationCauseCode, PolyTraitObligation, PredicateObligation,
 };
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::print::PrintPolyTraitClauseExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable as _, TypeVisitableExt as _, Unnormalized};
 use rustc_session::diagnostics::feature_err_unstable_feature_bound;
@@ -213,7 +214,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // ambiguous impls. The latter *ought* to be a
         // coherence violation, so we don't report it here.
 
-        let predicate = self.resolve_vars_if_possible(obligation.predicate);
+        let predicate = self.deeply_resolve_ignoring_regions(obligation.predicate);
         let span = obligation.cause.span;
         let mut long_ty_path = None;
 
@@ -266,7 +267,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 TypeAnnotationNeeded::E0282,
                                 false,
                             )
-                            .emit(),
+                            .emit_err(),
                         Some(e) => e,
                     };
                 }
@@ -711,7 +712,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut mentioned = vec![predicate];
         let mut mentioned_strs: Vec<String> = vec![];
         for &error in related {
-            let related_pred = self.resolve_vars_if_possible(error.obligation.predicate);
+            let related_pred = self.deeply_resolve_ignoring_regions(error.obligation.predicate);
             if mentioned.contains(&related_pred) {
                 continue;
             }
@@ -779,7 +780,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.note_obligation_cause(&mut err, &error.obligation);
             }
         }
-        err.emit()
+        err.emit_err()
     }
 
     /// The `impl`s and `where` clauses that could have satisfied `trait_pred`, when listing them

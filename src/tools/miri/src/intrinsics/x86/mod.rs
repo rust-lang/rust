@@ -506,6 +506,56 @@ fn shift_simd_by_scalar<'tcx>(
     interp_ok(())
 }
 
+fn shift_simd_by_simd<'tcx>(
+    ecx: &mut crate::MiriInterpCx<'tcx>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    which: ShiftOp,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    let (left, left_len) = ecx.project_to_simd(left)?;
+    let (right, right_len) = ecx.project_to_simd(right)?;
+    let (dest, dest_len) = ecx.project_to_simd(dest)?;
+
+    assert_eq!(dest_len, left_len);
+    assert_eq!(dest_len, right_len);
+
+    for i in 0..dest_len {
+        let left = ecx.read_scalar(&ecx.project_index(&left, i)?)?;
+        let right = ecx.read_scalar(&ecx.project_index(&right, i)?)?;
+        let dest = ecx.project_index(&dest, i)?;
+
+        // It is ok to saturate the value to u32::MAX because any value
+        // above BITS - 1 will produce the same result.
+        let shift = u32::try_from(right.to_uint(dest.layout.size)?).unwrap_or(u32::MAX);
+
+        let res = match which {
+            ShiftOp::Left => {
+                let left = left.to_uint(dest.layout.size)?;
+                let res = left.checked_shl(shift).unwrap_or(0);
+                // `truncate` is needed as left-shift can make the absolute value larger.
+                Scalar::from_uint(dest.layout.size.truncate(res), dest.layout.size)
+            }
+            ShiftOp::RightLogic => {
+                let left = left.to_uint(dest.layout.size)?;
+                let res = left.checked_shr(shift).unwrap_or(0);
+                // No `truncate` needed as right-shift can only make the absolute value smaller.
+                Scalar::from_uint(res, dest.layout.size)
+            }
+            ShiftOp::RightArith => {
+                let left = left.to_int(dest.layout.size)?;
+                // On overflow, copy the sign bit to the remaining bits
+                let res = left.checked_shr(shift).unwrap_or(left >> 127);
+                // No `truncate` needed as right-shift can only make the absolute value smaller.
+                Scalar::from_int(res, dest.layout.size)
+            }
+        };
+        ecx.write_scalar(res, &dest)?;
+    }
+
+    interp_ok(())
+}
+
 /// Takes a 128-bit vector, transmutes it to `[u64; 2]` and extracts
 /// the first value.
 fn extract_first_u64<'tcx>(

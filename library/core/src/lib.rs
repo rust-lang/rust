@@ -230,6 +230,11 @@ pub mod offload;
 #[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;
 
+#[allow(clippy::useless_attribute)]
+#[expect(
+    ineffective_unstable_reexports,
+    reason = "accepted as stable after accidental stabilization in 1.96, see #154645"
+)]
 #[unstable(feature = "derive_macro_global_path", issue = "154645")]
 pub use crate::macros::builtin::derive;
 #[stable(feature = "cfg_select", since = "1.95.0")]
@@ -362,7 +367,6 @@ pub mod primitive;
     unused_imports,
     unsafe_op_in_unsafe_fn,
     ambiguous_glob_reexports,
-    deprecated_in_future,
     unreachable_pub,
     // FIXME: stdach is a submodule so clippy lints should be fixed (and ideally enforced) there
     clippy::all,

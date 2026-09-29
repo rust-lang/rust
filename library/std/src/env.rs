@@ -592,7 +592,7 @@ impl fmt::Display for JoinPathsError {
 
 #[stable(feature = "env", since = "1.0.0")]
 impl Error for JoinPathsError {
-    #[allow(deprecated, deprecated_in_future)]
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         self.inner.description()
     }
@@ -606,7 +606,6 @@ impl Error for JoinPathsError {
 /// For example, [XDG Base Directories] on Unix or the `LOCALAPPDATA` and `APPDATA` environment variables on Windows.
 ///
 /// [XDG Base Directories]: https://specifications.freedesktop.org/basedir-spec/latest/
-//  feature(xdg_basedir): This should link to std::os::unix::xdg once it's stabilized
 ///
 /// # Unix
 ///
@@ -718,6 +717,11 @@ pub fn temp_dir() -> PathBuf {
 /// If the executable is renamed while it is running, platforms may return the
 /// path at the time it was loaded instead of the new path.
 ///
+/// On Linux, if the executable is deleted while it is running, this function
+/// may return the path with the string `" (deleted)"` appended.
+///
+/// Note that the platform-specific behavior [may change in the future][changes].
+///
 /// # Errors
 ///
 /// Acquiring the path of the current executable is a platform-specific operation
@@ -753,6 +757,8 @@ pub fn temp_dir() -> PathBuf {
 ///     Err(e) => println!("failed to get current exe path: {e}"),
 /// };
 /// ```
+///
+/// [changes]: crate::io#platform-specific-behavior
 #[stable(feature = "env", since = "1.0.0")]
 pub fn current_exe() -> io::Result<PathBuf> {
     paths_imp::current_exe()

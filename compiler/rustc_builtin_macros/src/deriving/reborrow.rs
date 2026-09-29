@@ -1,22 +1,18 @@
-use rustc_ast::{
-    self as ast, AttrArgs, GenericArg, GenericParamKind, Generics, ItemKind, MetaItem, token,
-};
+use rustc_ast::{self as ast, AttrArgs, Generics, ItemKind, token};
 use rustc_errors::E0802;
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::ExtCtxt;
 use rustc_macros::Diagnostic;
 use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::ThinVec;
 
-macro_rules! path {
-    ($span:expr, $($part:ident)::*) => { vec![$(Ident::new(sym::$part, $span),)*] }
-}
+use crate::deriving::generic::*;
+use crate::deriving::new_path;
 
 pub(crate) fn expand_deriving_reborrow(
     cx: &ExtCtxt<'_>,
     span: Span,
-    _mitem: &MetaItem,
-    item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    item: &ast::Item,
+    push: &mut dyn FnMut(Box<ast::Item>),
     _is_const: bool,
 ) {
     let Some((ident, generics)) = struct_def(cx, span, item, sym::Reborrow) else {
@@ -29,9 +25,8 @@ pub(crate) fn expand_deriving_reborrow(
 pub(crate) fn expand_deriving_coerce_shared(
     cx: &ExtCtxt<'_>,
     span: Span,
-    _mitem: &MetaItem,
-    item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    item: &ast::Item,
+    push: &mut dyn FnMut(Box<ast::Item>),
     _is_const: bool,
 ) {
     let Some((ident, generics)) = struct_def(cx, span, item, sym::CoerceShared) else {
@@ -41,39 +36,25 @@ pub(crate) fn expand_deriving_coerce_shared(
         return;
     };
 
-    push_marker_impl(
-        cx,
-        span,
-        ident,
-        generics,
-        sym::CoerceShared,
-        vec![GenericArg::Type(target)],
-        push,
-    );
+    push_marker_impl(cx, span, ident, generics, sym::CoerceShared, vec![target], push);
 }
 
 fn struct_def<'a>(
     cx: &ExtCtxt<'_>,
     span: Span,
-    item: &'a Annotatable,
+    item: &'a ast::Item,
     trait_name: Symbol,
 ) -> Option<(Ident, &'a Generics)> {
-    match item {
-        Annotatable::Item(item) => match &item.kind {
-            ItemKind::Struct(ident, generics, _) => Some((*ident, generics)),
-            ItemKind::Enum(..) => {
-                cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "enum" });
-                None
-            }
-            ItemKind::Union(..) => {
-                cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "union" });
-                None
-            }
-            _ => {
-                cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "item" });
-                None
-            }
-        },
+    match &item.kind {
+        ItemKind::Struct(ident, generics, _) => Some((*ident, generics)),
+        ItemKind::Enum(..) => {
+            cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "enum" });
+            None
+        }
+        ItemKind::Union(..) => {
+            cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "union" });
+            None
+        }
         _ => {
             cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "item" });
             None
@@ -81,12 +62,7 @@ fn struct_def<'a>(
     }
 }
 
-fn coerce_shared_target(cx: &ExtCtxt<'_>, span: Span, item: &Annotatable) -> Option<Box<ast::Ty>> {
-    let Annotatable::Item(item) = item else {
-        cx.dcx().emit_err(MissingTarget { span });
-        return None;
-    };
-
+fn coerce_shared_target(cx: &ExtCtxt<'_>, span: Span, item: &ast::Item) -> Option<Box<ast::Ty>> {
     let mut attrs = item.attrs.iter().filter(|attr| attr.has_name(sym::coerce_shared));
     let Some(attr) = attrs.next() else {
         cx.dcx().emit_err(MissingTarget { span });
@@ -129,76 +105,26 @@ fn push_marker_impl(
     ident: Ident,
     generics: &Generics,
     trait_name: Symbol,
-    trait_args: Vec<GenericArg>,
-    push: &mut dyn FnMut(Annotatable),
+    trait_args: Vec<Box<ast::Ty>>,
+    push: &mut dyn FnMut(Box<ast::Item>),
 ) {
-    let mut trait_parts = path!(span, core::marker);
-    trait_parts.push(Ident::new(trait_name, span));
-    let trait_path = cx.path_all(span, true, trait_parts, trait_args);
+    let trait_path = new_path(cx, span, &[sym::core, sym::marker, trait_name], trait_args);
     let trait_ref = cx.trait_ref(trait_path);
 
-    let self_params: Vec<_> = generics
-        .params
-        .iter()
-        .map(|param| match param.kind {
-            GenericParamKind::Lifetime => {
-                GenericArg::Lifetime(cx.lifetime(param.span(), param.ident))
-            }
-            GenericParamKind::Type { .. } => {
-                GenericArg::Type(cx.ty_ident(param.span(), param.ident))
-            }
-            GenericParamKind::Const { .. } => {
-                GenericArg::Const(cx.const_ident(param.span(), param.ident))
-            }
-        })
-        .collect();
+    let self_params: Vec<_> =
+        generics.params.iter().map(|p| generic_param_to_arg(cx, p, p.span())).collect();
     let self_ty = cx.ty_path(cx.path_all(span, false, vec![ident], self_params));
 
-    push(Annotatable::Item(cx.item(
+    push(cx.item_trait_impl(
         span,
         thin_vec::thin_vec![cx.attr_word(sym::automatically_derived, span)],
-        ast::ItemKind::Impl(ast::Impl {
-            generics: impl_generics(cx, generics),
-            of_trait: Some(Box::new(ast::TraitImplHeader {
-                safety: ast::Safety::Default,
-                polarity: ast::ImplPolarity::Positive,
-                defaultness: ast::Defaultness::Implicit,
-                trait_ref,
-            })),
-            constness: ast::Const::No,
-            self_ty,
-            items: ThinVec::new(),
-        }),
-    )));
-}
-
-fn impl_generics(cx: &ExtCtxt<'_>, generics: &Generics) -> Generics {
-    // Rebuild the generic parameter declarations because defaults are allowed on structs but
-    // rejected on impls. Preserve lifetime, type, and const parameters and their bounds, const
-    // parameter types, and the where-clause, while omitting type and const defaults.
-    Generics {
-        params: generics
-            .params
-            .iter()
-            .map(|param| match &param.kind {
-                GenericParamKind::Lifetime => {
-                    cx.lifetime_param(param.span(), param.ident, param.bounds.clone())
-                }
-                GenericParamKind::Type { default: _ } => {
-                    cx.typaram(param.span(), param.ident, param.bounds.clone(), None)
-                }
-                GenericParamKind::Const { ty, span: _, default: _ } => cx.const_param(
-                    param.span(),
-                    param.ident,
-                    param.bounds.clone(),
-                    ty.clone(),
-                    None,
-                ),
-            })
-            .collect(),
-        where_clause: generics.where_clause.clone(),
-        span: generics.span,
-    }
+        generics_without_defaults(generics),
+        ast::Safety::Default,
+        false,
+        trait_ref,
+        self_ty,
+        ThinVec::new(),
+    ));
 }
 
 #[derive(Diagnostic)]

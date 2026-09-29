@@ -1,6 +1,5 @@
 //! Generates descriptor structures for unstable features from the unstable book
 //! and lints from rustc, rustdoc, and clippy.
-#![allow(clippy::disallowed_types)]
 
 use std::{
     collections::{HashMap, HashSet, hash_map},

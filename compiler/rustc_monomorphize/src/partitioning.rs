@@ -98,16 +98,15 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{InlineAttr, Linkage};
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::par_join;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::attrs::{InlineAttr, Linkage};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathDataName;
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::mir::StatementKind;
@@ -120,7 +119,7 @@ use rustc_middle::ty::{self, InstanceKind, ShimKind, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::CodegenUnits;
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
-use rustc_span::Symbol;
+use rustc_span::{Symbol, bug};
 use rustc_target::spec::SymbolVisibility;
 use tracing::debug;
 

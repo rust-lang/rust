@@ -97,12 +97,10 @@ pub(super) fn infer_clauses(
             } else {
                 "overflow computing implied lifetime bounds".to_string()
             };
-            tcx.dcx()
-                .struct_span_fatal(
-                    clauses_added.iter().map(|id| tcx.def_span(*id)).collect::<Vec<_>>(),
-                    msg,
-                )
-                .emit();
+            tcx.dcx().span_fatal(
+                clauses_added.iter().map(|id| tcx.def_span(*id)).collect::<Vec<_>>(),
+                msg,
+            );
         }
     }
 

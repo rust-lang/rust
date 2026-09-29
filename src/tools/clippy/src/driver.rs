@@ -203,7 +203,7 @@ fn main() -> ExitCode {
         // as simple as moving the call from the hook to main, because `install_ice_hook` doesn't
         // accept a generic closure.
         let version_info = rustc_tools_util::get_version_info!();
-        dcx.handle().note(format!("Clippy version: {version_info}"));
+        dcx.note(format!("Clippy version: {version_info}"));
     });
 
     rustc_driver::catch_with_exit_code(move || {

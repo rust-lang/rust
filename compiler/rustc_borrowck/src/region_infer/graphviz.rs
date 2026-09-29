@@ -8,6 +8,7 @@ use std::io::{self, Write};
 use itertools::Itertools;
 use rustc_graphviz as dot;
 use rustc_middle::ty::UniverseIndex;
+use rustc_span::bug;
 
 use super::*;
 

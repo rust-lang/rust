@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use rustc_ast::*;
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::target::Target;
+use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{self as hir, Target};
-use rustc_middle::span_bug;
-use rustc_span::{DesugaringKind, Ident, Span, Spanned, respan};
+use rustc_span::{DesugaringKind, Ident, Span, Spanned, respan, span_bug};
 
 use crate::diagnostics::{
     ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,
@@ -293,7 +293,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             hir_id
                         } else {
                             hir::HirId {
-                                owner: self.curr_owner.owner_id,
+                                owner: self.curr_owner.owner_id(),
                                 local_id: self.curr_owner.ident_and_label_to_local_id[&id],
                             }
                         }
@@ -483,7 +483,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let unstable_span = self.mark_span_with_reason(
             DesugaringKind::PatTyRange,
             span,
-            Some(Arc::clone(&self.allow_pattern_type)),
+            Some(Arc::clone(&crate::ALLOW_PATTERN_TYPE)),
         );
         let anon_const = self.with_new_scopes(span, |this| {
             let def_id = this.local_def_id(e.id);
@@ -536,7 +536,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let unstable_span = self.mark_span_with_reason(
             DesugaringKind::PatTyRange,
             self.lower_span(span),
-            Some(Arc::clone(&self.allow_pattern_type)),
+            Some(Arc::clone(&crate::ALLOW_PATTERN_TYPE)),
         );
         let span = self.lower_span(base_type);
 

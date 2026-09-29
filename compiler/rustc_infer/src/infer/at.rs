@@ -26,9 +26,9 @@
 //! things. (That system should probably be refactored.)
 
 use relate::lattice::{LatticeOp, LatticeOpKind};
-use rustc_middle::bug;
 use rustc_middle::ty::relate::solver_relating::RelateExt as NextSolverRelate;
 use rustc_middle::ty::{Const, TypingMode};
+use rustc_span::bug;
 
 use super::*;
 use crate::infer::relate::type_relating::TypeRelating;

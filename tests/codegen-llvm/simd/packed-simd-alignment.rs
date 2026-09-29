@@ -38,7 +38,7 @@ pub fn add_f32x3(x: f32x3, y: f32x3) -> f32x3 {
 
 // CHECK-LABEL: add_f32x4
 #[no_mangle]
-pub fn add_f32x4(x: f32x4, y: f32x4) -> f32x4 {
+pub fn add_f32x4(x: &f32x4, y: &f32x4) -> f32x4 {
     // CHECK: load <4 x float>, ptr %{{[a-z0-9_]*}}, align {{4|8|16}}
-    unsafe { intrinsics::simd_add(x, y) }
+    unsafe { intrinsics::simd_add(*x, *y) }
 }

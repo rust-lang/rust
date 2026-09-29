@@ -1,13 +1,14 @@
 // Decoding metadata from a single crate's metadata
 
 use std::iter::TrustedLen;
-use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 use std::{io, mem};
 
 pub(super) use cstore_impl::provide;
 use rustc_ast as ast;
+use rustc_attr_ir::CanonicalSymbols;
+use rustc_attr_ir::diagnostic_items::DiagnosticItems;
 use rustc_crate_store::{CrateSource, ExternCrate};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
@@ -17,17 +18,14 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
 use rustc_hir::Safety;
-use rustc_hir::attrs::CanonicalSymbols;
-use rustc_hir::attrs::diagnostic_items::DiagnosticItems;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_index::Idx;
 use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use rustc_middle::ty::codec::TyDecoder;
+use rustc_middle::ty::codec::{TyDecoder, forward_all_decoder_methods_to};
 use rustc_middle::ty::{RestrictionKind, Visibility};
-use rustc_middle::{bug, implement_ty_decoder};
 use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
@@ -37,7 +35,7 @@ use rustc_span::def_id::ModId;
 use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::{
     BlobDecoder, BytePos, ByteSymbol, DUMMY_SP, Pos, RemapPathScopeComponents, SpanData,
-    SpanDecoder, Symbol, SyntaxContext, kw,
+    SpanDecoder, Symbol, SyntaxContext, bug, kw,
 };
 use tracing::debug;
 
@@ -97,6 +95,8 @@ pub(crate) struct CrateMetadata {
     // --- Some data pre-decoded from the metadata blob, usually for performance ---
     /// Data about the top-level items in a crate, as well as various crate-level metadata.
     root: CrateRoot,
+    /// Crate-level metadata that is not in the SVH.
+    unhashed: CrateRootUnhashed,
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
@@ -236,25 +236,11 @@ pub(super) struct MetadataDecodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> LazyDecoder for MetadataDecodeContext<'a, 'tcx> {
     fn set_lazy_state(&mut self, state: LazyState) {
-        self.lazy_state = state;
+        self.blob_decoder.lazy_state = state;
     }
 
     fn get_lazy_state(&self) -> LazyState {
-        self.lazy_state
-    }
-}
-
-impl<'a, 'tcx> DerefMut for MetadataDecodeContext<'a, 'tcx> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.blob_decoder
-    }
-}
-
-impl<'a, 'tcx> Deref for MetadataDecodeContext<'a, 'tcx> {
-    type Target = BlobDecodeContext<'a>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.blob_decoder
+        self.blob_decoder.lazy_state
     }
 }
 
@@ -667,12 +653,6 @@ impl<'a, 'tcx> Decodable<MetadataDecodeContext<'a, 'tcx>> for SpanData {
     }
 }
 
-impl<'a, 'tcx> Decodable<MetadataDecodeContext<'a, 'tcx>> for &'tcx [(ty::Clause<'tcx>, Span)] {
-    fn decode(d: &mut MetadataDecodeContext<'a, 'tcx>) -> Self {
-        ty::codec::RefDecodable::decode(d)
-    }
-}
-
 impl<D: LazyDecoder, T> Decodable<D> for LazyValue<T> {
     fn decode(decoder: &mut D) -> Self {
         decoder.read_lazy()
@@ -695,13 +675,12 @@ impl<I: Idx, D: LazyDecoder, T> Decodable<D> for LazyTable<I, T> {
     }
 }
 
-mod meta {
-    use super::*;
-    implement_ty_decoder!(MetadataDecodeContext<'a, 'tcx>);
+impl<'a, 'tcx> Decoder for MetadataDecodeContext<'a, 'tcx> {
+    forward_all_decoder_methods_to!(|self| self.blob_decoder.opaque);
 }
-mod blob {
-    use super::*;
-    implement_ty_decoder!(BlobDecodeContext<'a>);
+
+impl<'a> Decoder for BlobDecodeContext<'a> {
+    forward_all_decoder_methods_to!(|self| self.opaque);
 }
 
 impl MetadataBlob {
@@ -717,8 +696,7 @@ impl MetadataBlob {
         }
 
         let found_version =
-            LazyValue::<String>::from_position(NonZero::new(METADATA_HEADER.len() + 8).unwrap())
-                .decode(self);
+            LazyValue::<String>::from_position(NonZero::new(VERSION_OFFSET).unwrap()).decode(self);
         if rustc_version(cfg_version) != found_version {
             return Err(Some(found_version));
         }
@@ -727,8 +705,13 @@ impl MetadataBlob {
     }
 
     fn root_pos(&self) -> NonZero<usize> {
-        let offset = METADATA_HEADER.len();
-        let pos_bytes = self[offset..][..8].try_into().unwrap();
+        let pos_bytes = self[ROOT_POS_OFFSET..][..8].try_into().unwrap();
+        let pos = u64::from_le_bytes(pos_bytes);
+        NonZero::new(pos as usize).unwrap()
+    }
+
+    fn unhashed_pos(&self) -> NonZero<usize> {
+        let pos_bytes = self[UNHASHED_POS_OFFSET..][..8].try_into().unwrap();
         let pos = u64::from_le_bytes(pos_bytes);
         NonZero::new(pos as usize).unwrap()
     }
@@ -743,12 +726,28 @@ impl MetadataBlob {
         LazyValue::<CrateRoot>::from_position(pos).decode(self)
     }
 
+    pub(crate) fn get_root_unhashed(&self) -> CrateRootUnhashed {
+        let pos = self.unhashed_pos();
+        LazyValue::<CrateRootUnhashed>::from_position(pos).decode(self)
+    }
+
+    pub(crate) fn get_dep_extra_filenames(&self) -> IndexVec<CrateNum, String> {
+        self.get_root_unhashed().dep_extra_filenames
+    }
+
+    pub(crate) fn get_crate_hash(&self) -> Svh {
+        let bytes: [u8; CRATE_HASH_LEN] =
+            self[CRATE_HASH_OFFSET..][..CRATE_HASH_LEN].try_into().unwrap();
+        Svh::new(Fingerprint::from_le_bytes(bytes))
+    }
+
     pub(crate) fn list_crate_metadata(
         &self,
         out: &mut dyn io::Write,
         ls_kinds: &[String],
     ) -> io::Result<()> {
         let root = self.get_root();
+        let extra_filename = self.get_root_unhashed().extra_filename;
 
         let all_ls_kinds = vec![
             "root".to_owned(),
@@ -763,11 +762,11 @@ impl MetadataBlob {
             match &**kind {
                 "root" => {
                     writeln!(out, "Crate info:")?;
-                    writeln!(out, "name {}{}", root.name(), root.extra_filename)?;
+                    writeln!(out, "name {}{}", root.name(), extra_filename)?;
                     writeln!(
                         out,
                         "hash {} stable_crate_id {:?}",
-                        root.hash(),
+                        self.get_crate_hash(),
                         root.stable_crate_id
                     )?;
                     writeln!(out, "proc_macro {:?}", root.proc_macro_data.is_some())?;
@@ -801,10 +800,15 @@ impl MetadataBlob {
                     writeln!(out, "=External Dependencies=")?;
                     let dylib_dependency_formats =
                         root.dylib_dependency_formats.decode(self).collect::<Vec<_>>();
+                    // `extra_filename` is stored outside the hashed root; see
+                    // `CrateRootUnhashed::dep_extra_filenames`.
+                    let dep_extra_filenames = self.get_dep_extra_filenames();
                     for (i, dep) in root.crate_deps.decode(self).enumerate() {
-                        let CrateDep { name, extra_filename, hash, host_hash, kind, is_private } =
-                            dep;
+                        let CrateDep { name, hash, host_hash, kind, is_private } = dep;
                         let number = i + 1;
+                        let extra_filename = dep_extra_filenames
+                            .get(CrateNum::new(number))
+                            .map_or("", |name| name.as_str());
 
                         writeln!(
                             out,
@@ -973,10 +977,6 @@ impl CrateRoot {
 
     pub(crate) fn name(&self) -> Symbol {
         self.header.name
-    }
-
-    pub(crate) fn hash(&self) -> Svh {
-        self.header.hash
     }
 
     pub(crate) fn stable_crate_id(&self) -> StableCrateId {
@@ -1308,6 +1308,18 @@ impl CrateMetadata {
         canonical_symbols
     }
 
+    /// Iterates over the fake_doc_items in the given crate.
+    fn get_fake_doc_items(&self, tcx: TyCtxt<'_>) -> Vec<DefId> {
+        let mut fake_doc_items = Vec::new();
+
+        for def_index in self.root.fake_doc_items.decode((self, tcx)) {
+            let id = self.local_def_id(def_index);
+            fake_doc_items.push(id);
+        }
+
+        fake_doc_items
+    }
+
     fn get_mod_child(&self, tcx: TyCtxt<'_>, id: DefIndex) -> ModChild {
         let ident = self.item_ident(tcx, id);
         let res = Res::Def(self.def_kind(id), self.local_def_id(id));
@@ -1399,9 +1411,7 @@ impl CrateMetadata {
 
     fn get_associated_item(&self, tcx: TyCtxt<'_>, id: DefIndex) -> ty::AssocItem {
         let kind = match self.def_kind(id) {
-            DefKind::AssocConst { is_type_const } => {
-                ty::AssocKind::Const { name: self.item_name(id), is_type_const }
-            }
+            DefKind::AssocConst => ty::AssocKind::Const { name: self.item_name(id) },
             DefKind::AssocFn => ty::AssocKind::Fn {
                 name: self.item_name(id),
                 has_self: self.get_fn_has_self_parameter(tcx, id),
@@ -1437,7 +1447,7 @@ impl CrateMetadata {
         &self,
         tcx: TyCtxt<'_>,
         id: DefIndex,
-    ) -> impl Iterator<Item = hir::Attribute> {
+    ) -> impl Iterator<Item = rustc_attr_ir::Attribute> {
         self.root
             .tables
             .attributes
@@ -1449,7 +1459,6 @@ impl CrateMetadata {
                         // Structure and variant constructors don't have any attributes encoded for them,
                         // but we assume that someone passing a constructor ID actually wants to look at
                         // the attributes on the corresponding struct or variant.
-                        assert_eq!(def_key.disambiguated_data.data, DefPathData::Ctor);
                         let parent_id = def_key.parent.expect("no parent for a constructor");
                         self.root
                             .tables
@@ -1944,6 +1953,7 @@ impl CrateMetadata {
         tcx: TyCtxt<'_>,
         blob: MetadataBlob,
         root: CrateRoot,
+        unhashed: CrateRootUnhashed,
         raw_proc_macros: Option<&'static [ProcMacroClient]>,
         cnum: CrateNum,
         cnum_map: CrateNumMap,
@@ -1967,6 +1977,7 @@ impl CrateMetadata {
         let mut cdata = CrateMetadata {
             blob,
             root,
+            unhashed,
             trait_impls,
             incoherent_impls: Default::default(),
             raw_proc_macros,
@@ -2108,7 +2119,7 @@ impl CrateMetadata {
     }
 
     pub(crate) fn hash(&self) -> Svh {
-        self.root.header.hash
+        self.blob.get_crate_hash()
     }
 
     pub(crate) fn has_async_drops(&self) -> bool {

@@ -1,9 +1,9 @@
 use arrayvec::ArrayVec;
 use core::str::FromStr as _;
 use itertools::Itertools as _;
+use rustc_attr_ir::RustcVersion;
 use rustc_attr_parsing::parse_version;
 use rustc_errors::{DiagCtxtHandle, DiagMessage};
-use rustc_hir::attrs::RustcVersion;
 use rustc_session::Session;
 use rustc_session::config::ErrorOutputType;
 use rustc_span::edit_distance::edit_distance;

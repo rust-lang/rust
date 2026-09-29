@@ -168,7 +168,9 @@ impl<T: Eq + Hash> Extend<T> for SsoHashSet<T> {
     where
         I: IntoIterator<Item = T>,
     {
-        for val in iter.into_iter() {
+        let iter = iter.into_iter();
+        self.reserve(iter.size_hint().0);
+        for val in iter {
             self.insert(val);
         }
     }

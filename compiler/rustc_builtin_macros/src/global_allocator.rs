@@ -55,13 +55,8 @@ pub(crate) fn expand(
     // Generate anonymous constant serving as container for the allocator methods.
     let const_ty = ecx.ty(ty_span, TyKind::Tup(ThinVec::new()));
     let const_body = ecx.expr_block(ecx.block(span, stmts));
-    let const_item = ecx.item_const(
-        span,
-        Ident::new(kw::Underscore, span),
-        const_ty,
-        Some(const_body),
-        ast::ConstItemKind::Body,
-    );
+    let const_item =
+        ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, Some(const_body));
     let const_item = if is_stmt {
         Annotatable::Stmt(Box::new(ecx.stmt_item(span, const_item)))
     } else {
@@ -136,8 +131,8 @@ impl AllocFnFactory<'_, '_> {
                 // disambiguated somehow. Currently the generated code would
                 // fail to compile with "identifier is bound more than once in
                 // this parameter list".
-                let size = Ident::from_str_and_span("size", self.span);
-                let align = Ident::from_str_and_span("align", self.span);
+                let size = Ident::new(sym::size, self.span);
+                let align = Ident::new(sym::align, self.span);
 
                 let usize = self.cx.path_ident(self.span, Ident::new(sym::usize, self.span));
                 let ty_usize = self.cx.ty_path(usize);

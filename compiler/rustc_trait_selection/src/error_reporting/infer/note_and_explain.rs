@@ -1,8 +1,9 @@
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{Diag, MultiSpan, pluralize};
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::{self as hir, find_attr};
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
@@ -444,9 +445,9 @@ impl<T> Trait<T> for X {
                                 tcx.def_kind(body_owner_def_id),
                                 DefKind::Fn
                                     | DefKind::Static { .. }
-                                    | DefKind::Const { .. }
+                                    | DefKind::Const
                                     | DefKind::AssocFn
-                                    | DefKind::AssocConst { .. }
+                                    | DefKind::AssocConst
                             )
                             && matches!(
                                 tcx.opaque_ty_origin(def_id),
@@ -990,7 +991,7 @@ fn foo(&self) -> Self::T { String::new() }
         msg: impl Fn() -> String,
         is_bound_surely_present: bool,
     ) -> bool {
-        // FIXME: we would want to call `resolve_vars_if_possible` on `ty` before suggesting.
+        // FIXME: we would want to call `deeply_resolve_ignoring_regions` on `ty` before suggesting.
 
         let trait_bounds = bounds.iter().filter_map(|bound| match bound {
             hir::GenericBound::Trait(ptr) if ptr.modifiers == hir::TraitBoundModifiers::NONE => {

@@ -2,18 +2,16 @@ use std::mem;
 
 use rustc_ast::visit::FnKind;
 use rustc_ast::*;
-use rustc_attr_parsing as attr;
+use rustc_attr_ir::target::Target;
 use rustc_attr_parsing::{AttributeParser, ShouldEmit};
 use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
-use rustc_hir::Target;
 use rustc_hir::def::DefKind;
 use rustc_hir::def::Namespace::{TypeNS, ValueNS};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::middle::resolve::PerOwnerResolverData;
-use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxtFeed;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol, span_bug, sym};
 use tracing::{debug, instrument};
 
 use crate::macros::MacroRulesScopeRef;
@@ -166,11 +164,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 mutability: s.mutability,
                 nested: false,
             },
-            ItemKind::Const(citem) => {
-                let is_type_const = citem.kind == ConstItemKind::TypeConst;
-                DefKind::Const { is_type_const }
-            }
-            ItemKind::ConstBlock(..) => DefKind::Const { is_type_const: false },
+            ItemKind::Const(..) => DefKind::Const,
+            ItemKind::ConstBlock(..) => DefKind::Const,
             ItemKind::Fn(..) | ItemKind::Delegation(..) => DefKind::Fn,
             ItemKind::MacroDef(ident, def) => {
                 let edition = i.span.edition();
@@ -188,6 +183,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     &i.attrs,
                     i.span,
                     Target::MacroDef,
+                    None,
                     std::convert::identity,
                     |_lint_id, _span, _kind| {
                         // FIXME(jdonszelmann): emit lints here properly
@@ -204,7 +200,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
             ItemKind::Use(_) => {
                 return self.with_owner(i.id, None, DefKind::Use, i.span, |this, feed| {
-                    this.brg_visit_item(i, feed);
+                    this.with_parent(feed.def_id(), |this| {
+                        this.brg_visit_item(i, feed);
+                    })
                 });
             }
             ItemKind::MacCall(..) => {
@@ -393,11 +391,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             | AssocItemKind::Delegation(Delegation { ident, .. }) => {
                 (*ident, DefKind::AssocFn, ValueNS)
             }
-            AssocItemKind::Const(ConstItem { ident, kind, .. }) => (
-                *ident,
-                DefKind::AssocConst { is_type_const: *kind == ConstItemKind::TypeConst },
-                ValueNS,
-            ),
+            AssocItemKind::Const(ConstItem { ident, .. }) => (*ident, DefKind::AssocConst, ValueNS),
             AssocItemKind::Type(TyAlias { ident, .. }) => (*ident, DefKind::AssocTy, TypeNS),
             AssocItemKind::MacCall(..) => {
                 self.visit_macro_invoc(i.id);
@@ -565,7 +559,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         let orig_in_attr = mem::replace(&mut self.invocation_parent.in_attr, true);
         match &attr.kind {
             AttrKind::Normal(normal) => {
-                if attr::is_builtin_attr(&normal.item) {
+                if rustc_attr_parsing::is_builtin_attr(&normal.item) {
                     self.r
                         .builtin_attrs
                         .push((normal.item.path.segments[0].ident, self.parent_scope));

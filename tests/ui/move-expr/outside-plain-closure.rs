@@ -3,5 +3,5 @@
 
 fn main() {
     let _ = move(String::from("nope"));
-    //~^ ERROR `move(expr)` is only supported in plain closures
+    //~^ ERROR `move(expr)` is only supported in closures, `async`, `gen`, and `async gen` blocks
 }

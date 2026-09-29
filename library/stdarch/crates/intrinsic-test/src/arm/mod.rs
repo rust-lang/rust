@@ -37,6 +37,8 @@ impl SupportedArchitecture for Arm {
 "#;
     const RUST_PRELUDE: &str = RUST_PRELUDE;
 
+    const C_NAME_PREFIX: &str = "";
+
     fn c_compiler_flags(&self, cli_options: &ProcessedCli) -> Vec<&str> {
         // GCC uses an extra `-` in the arch name
         let big_endian = cli_options.target.starts_with("aarch64_be");

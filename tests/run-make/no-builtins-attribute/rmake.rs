@@ -1,4 +1,7 @@
 //@ needs-target-std
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
+
 // `no_builtins` is an attribute related to LLVM's optimizations. In order to ensure that it has an
 // effect on link-time optimizations (LTO), it should be added to function declarations in a crate.
 // This test uses the `llvm-filecheck` tool to determine that this attribute is successfully

@@ -4,12 +4,11 @@ use std::ops::ControlFlow;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{self, Visitor, VisitorExt};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, AmbigArg, GenericParamKind, HirId, Node};
 use rustc_lint_defs::builtin::INVALID_TYPE_PARAM_DEFAULT;
-use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::{Span, kw, sym};
+use rustc_span::{Span, kw, span_bug, sym};
 use tracing::{debug, instrument};
 
 use crate::middle::resolve_bound_vars as rbv;
@@ -22,8 +21,8 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         msg: &'static str,
     }
 
-    impl<'a> Diagnostic<'a, ()> for GenericParametersForbiddenHere {
-        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+    impl<'a> Diagnostic<'a> for GenericParametersForbiddenHere {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
             let Self { msg } = self;
             Diag::new(dcx, level, msg)
         }
@@ -225,7 +224,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             // Node::AnonConst, or whether it will be represented directly, so it must generate a
             // DefId. If it ends up being direct, this DefId is then attached to the top-level
             // ConstArg, which is what we are seeing here.
-            debug_assert!(tcx.features().min_generic_const_args());
+            debug_assert!(tcx.features().gca_min_const_items());
             // Forward to the real parent.
             Some(tcx.local_parent(def_id))
         }

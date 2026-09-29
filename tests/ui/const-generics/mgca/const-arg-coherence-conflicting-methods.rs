@@ -1,10 +1,11 @@
 // Regression test for #140729
 
 #![expect(incomplete_features)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
+use std::gca;
 
-type const C: usize = 0;
+const C: usize = gca!(0);
 pub struct A<const M: usize> {}
 impl A<C> {
     fn fun1() {}

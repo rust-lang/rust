@@ -20,37 +20,36 @@ trait Trait: Sized {
     fn get_s(self) -> S<(), 123>;
 
     reuse S::<(), 123>::by_value { self.get_s() }
-    //~^ ERROR: cannot find function `by_value` in `S`
 
     reuse S::<(), 123>::by_ref { self.get_s() }
-    //~^ ERROR: cannot find function `by_ref` in `S`
+    //~^ ERROR: cannot move out of `*self` which is behind a shared reference
 
     reuse S::<(), 123>::by_mut_ref { self.get_s() }
-    //~^ ERROR: cannot find function `by_mut_ref` in `S`
+    //~^ ERROR: cannot move out of `*self` which is behind a mutable reference
 
     reuse S::<(), 123>::by_box { self.get_s() }
-    //~^ ERROR: cannot find function `by_box` in `S`
+    //~^ ERROR: mismatched types
 
     reuse S::<(), 123>::by_rc { self.get_s() }
-    //~^ ERROR: cannot find function `by_rc` in `S`
+    //~^ ERROR: mismatched types
 
     reuse S::<(), 123>::by_pin { self.get_s() }
-    //~^ ERROR: cannot find function `by_pin` in `S`
+    //~^ ERROR: mismatched types
 }
 
 trait Trait2: Sized {
     reuse S::<(), 123>::by_value { self.get_s() }
-    //~^ ERROR: cannot find function `by_value` in `S`
+    //~^ ERROR: no method named `get_s` found for type parameter `Self` in the current scope
     reuse S::<(), 123>::by_ref { self.get_s() }
-    //~^ ERROR: cannot find function `by_ref` in `S`
+    //~^ ERROR: no method named `get_s` found for reference `&Self` in the current scope
     reuse S::<(), 123>::by_mut_ref { self.get_s() }
-    //~^ ERROR: cannot find function `by_mut_ref` in `S`
+    //~^ ERROR: no method named `get_s` found for mutable reference `&mut Self` in the current scope
     reuse S::<(), 123>::by_box { self.get_s() }
-    //~^ ERROR: cannot find function `by_box` in `S`
+    //~^ ERROR: no method named `get_s` found for struct `Box<Self>` in the current scope
     reuse S::<(), 123>::by_rc { self.get_s() }
-    //~^ ERROR: cannot find function `by_rc` in `S`
+    //~^ ERROR: no method named `get_s` found for struct `Rc<Self>` in the current scope
     reuse S::<(), 123>::by_pin { self.get_s() }
-    //~^ ERROR: cannot find function `by_pin` in `S`
+    //~^ ERROR: no method named `get_s` found for struct `Pin<Box<Self>>` in the current scope
 }
 
 fn main() {}

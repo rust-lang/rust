@@ -1,14 +1,17 @@
 // Ensure that we actually enforce equality constraints found in trait object types.
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
 
+use std::gca;
+
 trait Trait {
-    type const N: usize;
+    #[rustc_always_gca]
+    const N: usize;
 }
 
 impl Trait for () {
-    type const N: usize = 1;
+    const N: usize = gca!(1);
 }
 
 fn main() {

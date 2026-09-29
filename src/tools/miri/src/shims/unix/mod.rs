@@ -20,7 +20,7 @@ mod macos;
 mod netbsd;
 mod solarish;
 
-// All the Unix-specific extension traits
+// All the Unix-specific extension traits, and some types needed elsewhere
 pub use self::env::{EvalContextExt as _, UnixEnvVars};
 pub use self::fd::{EvalContextExt as _, UnixFileDescription};
 pub use self::fs::{DirTable, EvalContextExt as _};

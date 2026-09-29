@@ -8,6 +8,7 @@ LL |     type Item = dyn Trait;
 note: required by a bound in `TraitWithAType::Item`
   --> $DIR/assoc_type_bounds_implicit_sized.rs:4:5
    |
+LL | trait TraitWithAType {
 LL |     type Item;
    |     ^^^^^^^^^^ required by this bound in `TraitWithAType::Item`
 help: consider relaxing the implicit `Sized` restriction

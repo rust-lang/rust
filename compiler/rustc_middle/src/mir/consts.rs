@@ -1,14 +1,16 @@
 use std::fmt::{self, Debug, Display, Formatter};
 
 use rustc_abi::{HasDataLayout, Size};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_span::{DUMMY_SP, RemapPathScopeComponents, Span, Symbol};
+use rustc_span::{DUMMY_SP, RemapPathScopeComponents, Span, Symbol, bug};
 use rustc_type_ir::TypeVisitableExt;
 
 use super::interpret::ReportedErrorInfo;
 use crate::mir::interpret::{AllocId, AllocRange, ErrorHandled, GlobalAlloc, Scalar, alloc_range};
 use crate::mir::{Promoted, pretty_print_const_value};
+use crate::ty::consts::ConstExt;
 use crate::ty::print::{pretty_print_const, with_no_trimmed_paths};
 use crate::ty::{self, ConstKind, GenericArgsRef, ScalarInt, Ty, TyCtxt};
 
@@ -478,15 +480,21 @@ impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
     pub fn shrink(self, tcx: TyCtxt<'tcx>) -> ty::AliasConst<'tcx> {
         assert_eq!(self.promoted, None);
-        ty::AliasConst::new(
-            tcx,
-            ty::AliasConstKind::new_from_def_id(
-                tcx,
-                self.def,
-                ty::AliasConstInherentArgsKind::Impl,
-            ),
-            self.args,
-        )
+
+        let kind = match tcx.def_kind(self.def) {
+            DefKind::AssocConst => {
+                if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(self.def)) {
+                    ty::AliasConstKind::InherentImpl { def_id: self.def }
+                } else {
+                    ty::AliasConstKind::Projection { def_id: self.def }
+                }
+            }
+            DefKind::Const => ty::AliasConstKind::Free { def_id: self.def },
+            DefKind::AnonConst => ty::AliasConstKind::Anon { def_id: self.def },
+            kind => bug!("unexpected DefKind in MIR UnevaluatedConst: {kind:?}"),
+        };
+
+        ty::AliasConst::new(tcx, kind, self.args)
     }
 }
 

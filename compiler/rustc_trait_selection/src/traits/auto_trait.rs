@@ -173,7 +173,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }
 
         let outlives_env = OutlivesEnvironment::new(&infcx, CRATE_DEF_ID, full_env, []);
-        let _ = infcx.process_registered_region_obligations(&outlives_env, DUMMY_SP);
+        let _ = infcx.process_registered_region_obligations(&outlives_env);
 
         let region_data = infcx.inner.borrow_mut().unwrap_region_constraints().data().clone();
 
@@ -334,9 +334,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 continue;
             }
 
-            // Call `infcx.resolve_vars_if_possible` to see if we can
+            // Call `infcx.deeply_resolve_ignoring_regions` to see if we can
             // get rid of any inference variables.
-            let obligation = infcx.resolve_vars_if_possible(Obligation::new(
+            let obligation = infcx.deeply_resolve_ignoring_regions(Obligation::new(
                 tcx,
                 dummy_cause.clone(),
                 new_env,
@@ -658,7 +658,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 fresh_preds.insert(self.clean_pred(selcx.infcx, obligation.predicate));
 
             // Resolve any inference variables that we can, to help selection succeed
-            let predicate = selcx.infcx.resolve_vars_if_possible(obligation.predicate);
+            let predicate = selcx.infcx.deeply_resolve_ignoring_regions(obligation.predicate);
 
             // We only add a predicate as a user-displayable bound if
             // it involves a generic parameter, and doesn't contain

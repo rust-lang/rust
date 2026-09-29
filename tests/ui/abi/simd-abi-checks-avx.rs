@@ -4,7 +4,7 @@
 
 #![feature(portable_simd)]
 #![feature(simd_ffi)]
-#![allow(improper_ctypes_definitions)]
+#![expect(improper_ctypes_definitions)]
 
 use std::arch::x86_64::*;
 

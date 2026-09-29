@@ -68,4 +68,4 @@ alone suffices for that. `*mut fn()` is a pointer to a fn pointer.
 (Since these values are typically just passed to C code, however, this rarely
 makes a difference in practice.)
 
-[rfc401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
+[rfc401]: https://rust-lang.github.io/rfcs/0401-coercions.html

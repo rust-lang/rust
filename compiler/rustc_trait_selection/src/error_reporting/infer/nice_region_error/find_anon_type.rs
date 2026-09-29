@@ -1,7 +1,7 @@
 use core::ops::ControlFlow;
 
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{self, Visitor, VisitorExt};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars as rbv;
@@ -90,7 +90,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                 }
             }
 
-            hir::TyKind::Ref(lifetime, _) => {
+            hir::TyKind::Ref(lifetime, ..) => {
                 // the lifetime of the Ref
                 let hir_id = lifetime.hir_id;
                 match self.tcx.named_bound_var(hir_id) {

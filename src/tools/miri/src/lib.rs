@@ -62,6 +62,7 @@
 extern crate rustc_abi;
 extern crate rustc_apfloat;
 extern crate rustc_ast;
+extern crate rustc_attr_ir;
 extern crate rustc_codegen_ssa;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
@@ -107,7 +108,7 @@ pub use rustc_const_eval::interpret::*;
 pub use rustc_const_eval::interpret::{self, AllocMap, Provenance as _};
 pub use rustc_data_structures::either::Either;
 pub use rustc_log::tracing::{self, info, trace, warn};
-pub use rustc_middle::{bug, span_bug};
+pub use rustc_span::{bug, span_bug};
 
 #[cfg(all(feature = "native-lib", unix))]
 pub mod native_lib {
@@ -137,7 +138,6 @@ pub use crate::clock::{Deadline, Instant, MonotonicClock, TimeoutClock, TimeoutS
 pub use crate::concurrency::blocking_io::{
     BlockingIoInterest, BlockingIoManager, EvalContextExt as _, SourceFileDescription,
 };
-pub use crate::concurrency::cpu_affinity::MAX_CPUS;
 pub use crate::concurrency::data_race::{
     AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _,
 };
@@ -166,6 +166,7 @@ pub use crate::machine::{
 pub use crate::operator::EvalContextExt as _;
 pub use crate::provenance_gc::{EvalContextExt as _, LiveAllocs, VisitProvenance, VisitWith};
 pub use crate::shims::EmulateItemResult;
+pub use crate::shims::cpu_affinity::MAX_CPUS;
 pub use crate::shims::env::{EnvVars, EvalContextExt as _};
 pub use crate::shims::foreign_items::{DynSym, EvalContextExt as _};
 pub use crate::shims::io_error::{EvalContextExt as _, IoError, LibcError};

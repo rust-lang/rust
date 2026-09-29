@@ -15,7 +15,9 @@ use crate::data_structures::SsoHashSet;
 use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::inherent::*;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use crate::{self as ty, DebruijnIndex, Interner, Region, UniverseIndex, Unnormalized};
+use crate::{
+    self as ty, Const, DebruijnIndex, Interner, PredicateProxy, Region, UniverseIndex, Unnormalized,
+};
 
 /// `Binder` is a binder for higher-ranked lifetimes or types. It is part of the
 /// compiler's representation for things like `for<'a> Fn(&'a isize)`
@@ -260,7 +262,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
         t.super_visit_with(self)
     }
 
-    fn visit_const(&mut self, c: I::Const) -> Self::Result {
+    fn visit_const(&mut self, c: Const<I>) -> Self::Result {
         if c.outer_exclusive_binder() < self.binder_index {
             return ControlFlow::Break(());
         }
@@ -739,7 +741,7 @@ impl<'a, I: Interner> TypeFolder<I> for ArgFolder<'a, I> {
         }
     }
 
-    fn fold_const(&mut self, c: I::Const) -> I::Const {
+    fn fold_const(&mut self, c: Const<I>) -> Const<I> {
         if let ty::ConstKind::Param(p) = c.kind() {
             self.const_for_param(p, c)
         } else {
@@ -747,7 +749,7 @@ impl<'a, I: Interner> TypeFolder<I> for ArgFolder<'a, I> {
         }
     }
 
-    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+    fn fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> P {
         if p.has_param() { p.super_fold_with(self) } else { p }
     }
 
@@ -794,7 +796,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
         )
     }
 
-    fn const_for_param(&self, p: I::ParamConst, source_ct: I::Const) -> I::Const {
+    fn const_for_param(&self, p: I::ParamConst, source_ct: Const<I>) -> Const<I> {
         // Look up the const in the args. It really should be in there.
         let opt_ct = self.args.get(p.index() as usize).map(|arg| arg.kind());
         let ct = match opt_ct {
@@ -811,7 +813,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     fn const_param_expected(
         &self,
         p: I::ParamConst,
-        ct: I::Const,
+        ct: Const<I>,
         kind: ty::GenericArgKind<I>,
     ) -> ! {
         panic!(
@@ -826,7 +828,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
 
     #[cold]
     #[inline(never)]
-    fn const_param_out_of_range(&self, p: I::ParamConst, ct: I::Const) -> ! {
+    fn const_param_out_of_range(&self, p: I::ParamConst, ct: Const<I>) -> ! {
         panic!(
             "const parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
             p,

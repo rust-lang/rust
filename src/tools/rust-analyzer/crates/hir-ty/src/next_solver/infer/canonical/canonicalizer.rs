@@ -498,7 +498,7 @@ impl<'cx, 'db> Canonicalizer<'cx, 'db> {
     {
         let base = Canonical {
             max_universe: UniverseIndex::ROOT,
-            var_kinds: CanonicalVarKinds::empty(tcx),
+            var_kinds: CanonicalVarKinds::empty(),
             value: (),
         };
         Canonicalizer::canonicalize_with_base(

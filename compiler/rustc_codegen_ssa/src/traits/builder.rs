@@ -3,7 +3,7 @@ use std::ops::Deref;
 
 use rustc_abi::{Align, Scalar, Size, WrappingRange};
 use rustc_ast::expand::typetree::{FncTree, TypeTree};
-use rustc_hir::attrs::AttributeKind;
+use rustc_attr_ir::AttributeKind;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
@@ -32,6 +32,20 @@ pub enum OverflowOp {
     Add,
     Sub,
     Mul,
+}
+
+/// The location of the return value for the call.
+#[derive(Copy, Clone, Debug)]
+pub enum ReturnSlot<V> {
+    Direct,
+    /// The return value will be passed via sret (e.g. `PassMode::Indirect`).
+    Indirect(V),
+}
+
+impl<V> ReturnSlot<V> {
+    pub fn is_indirect(&self) -> bool {
+        matches!(self, ReturnSlot::Indirect(_))
+    }
 }
 
 pub trait BuilderMethods<'a, 'tcx>:
@@ -80,7 +94,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn ret_void(&mut self);
     fn ret(&mut self, v: Self::Value);
     fn br(&mut self, dest: Self::BasicBlock);
-    fn br_with_attrs(&mut self, dest: Self::BasicBlock, _attributes: &[AttributeKind]) {
+    fn br_with_attrs(&mut self, dest: Self::BasicBlock, _loop_hint_attrs: &[AttributeKind]) {
         self.br(dest)
     }
     fn cond_br(
@@ -135,6 +149,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: Self::Value,
+        return_slot: ReturnSlot<Self::Value>,
         args: &[Self::Value],
         then: Self::BasicBlock,
         catch: Self::BasicBlock,
@@ -638,16 +653,20 @@ pub trait BuilderMethods<'a, 'tcx>:
     /// The typical case that they are None is during the codegen of intrinsics and lang-items,
     /// as those are "fake functions" with only a trivial ABI if any, et cetera.
     ///
+    /// `return_slot` must be `ReturnSlot::Indirect` if an argument uses `PassMode::Indirect`.
+    ///
     /// ## Return
     ///
-    /// Must return the value the function will return so it can be written to the destination,
-    /// assuming the function does not explicitly pass the destination as a pointer in `args`.
+    /// Must return the value the function will return so it can be written to the destination.
+    /// For calls with an indirect return, the returned value is meaningless and must not be
+    /// used: the return value lives in the return slot.
     fn call(
         &mut self,
         llty: Self::FunctionSignature,
         caller_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         fn_val: Self::Value,
+        return_slot: ReturnSlot<Self::Value>,
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,
         callee_instance: Option<Instance<'tcx>>,
@@ -659,6 +678,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         caller_attrs: Option<&CodegenFnAttrs>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         llfn: Self::Value,
+        return_slot: ReturnSlot<Self::Value>,
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,
         callee_instance: Option<Instance<'tcx>>,

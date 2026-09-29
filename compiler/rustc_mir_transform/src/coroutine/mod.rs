@@ -63,19 +63,19 @@ use drop::{
 pub(super) use layout::mir_coroutine_witnesses;
 use layout::{CoroutineSavedLocals, compute_layout, locals_live_across_suspend_points};
 use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
-use rustc_index::bit_set::{BitMatrix, DenseBitSet, GrowableBitSet};
+use rustc_index::bit_set::{BitMatrix, DenseBitSet};
 use rustc_index::{Idx, IndexVec, indexvec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{
     self, CoroutineArgs, CoroutineArgsExt, GenericArgsRef, InstanceKind, ShimKind, Ty, TyCtxt,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::impls::always_storage_live_locals;
 use rustc_span::def_id::DefId;
+use rustc_span::{bug, span_bug};
 use tracing::{debug, instrument};
 
 use crate::deref_separator::deref_finder;
@@ -172,7 +172,7 @@ struct SuspensionPoint<'tcx> {
     /// Which block to jump to if the coroutine is dropped in this state.
     drop: Option<BasicBlock>,
     /// Set of locals that have live storage while at this suspension point.
-    storage_liveness: GrowableBitSet<Local>,
+    storage_liveness: DenseBitSet<Local>,
 }
 
 struct TransformVisitor<'tcx> {
@@ -256,7 +256,7 @@ impl<'tcx> TransformVisitor<'tcx> {
             Some(Terminator {
                 source_info,
                 kind: TerminatorKind::Return,
-                attributes: ThinVec::new(),
+                loop_hint_attrs: ThinVec::new(),
             }),
             false,
         ));
@@ -510,8 +510,8 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
                     replace_base(&mut resume_arg, self.make_field(variant, idx, ty), self.tcx);
                 }
 
-                let storage_liveness: GrowableBitSet<Local> =
-                    self.storage_liveness[block].clone().unwrap().into();
+                let storage_liveness: DenseBitSet<Local> =
+                    self.storage_liveness[block].clone().unwrap();
 
                 for i in 0..self.always_live_locals.domain_size() {
                     let l = Local::new(i);
@@ -744,14 +744,14 @@ fn insert_switch<'tcx>(
     body.basic_blocks_mut()[START_BLOCK].terminator = Some(Terminator {
         source_info: SourceInfo::outermost(body.span),
         kind: switch,
-        attributes: ThinVec::new(),
+        loop_hint_attrs: ThinVec::new(),
     });
 }
 
 fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) -> BasicBlock {
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().push(BasicBlockData::new(
-        Some(Terminator { source_info, kind, attributes: ThinVec::new() }),
+        Some(Terminator { source_info, kind, loop_hint_attrs: ThinVec::new() }),
         false,
     ))
 }
@@ -776,7 +776,11 @@ fn insert_poll_ready_block<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> Ba
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().push(BasicBlockData::new_stmts(
         [return_poll_ready_assign(tcx, source_info)].to_vec(),
-        Some(Terminator { source_info, kind: TerminatorKind::Return, attributes: ThinVec::new() }),
+        Some(Terminator {
+            source_info,
+            kind: TerminatorKind::Return,
+            loop_hint_attrs: ThinVec::new(),
+        }),
         false,
     ))
 }
@@ -835,7 +839,7 @@ fn generate_poison_block_and_redirect_unwinds_there<'tcx>(
             source_info,
             kind: TerminatorKind::UnwindResume,
 
-            attributes: ThinVec::new(),
+            loop_hint_attrs: ThinVec::new(),
         }),
         true,
     ));
@@ -851,7 +855,7 @@ fn generate_poison_block_and_redirect_unwinds_there<'tcx>(
                     source_info,
                     kind: TerminatorKind::Goto { target: poison_block },
 
-                    attributes: ThinVec::new(),
+                    loop_hint_attrs: ThinVec::new(),
                 };
             }
         } else if !block.is_cleanup
@@ -991,7 +995,7 @@ fn create_cases<'tcx>(
 
                 // Create StorageLive instructions for locals with live storage
                 for l in body.local_decls.indices() {
-                    let needs_storage_live = point.storage_liveness.contains(l)
+                    let needs_storage_live = point.storage_liveness.contains_loose(l)
                         && !transform.remap.contains(l)
                         && !transform.always_live_locals.contains(l);
                     if needs_storage_live {
@@ -1019,7 +1023,7 @@ fn create_cases<'tcx>(
                         source_info,
                         kind: TerminatorKind::Goto { target },
 
-                        attributes: ThinVec::new(),
+                        loop_hint_attrs: ThinVec::new(),
                     }),
                     false,
                 ));

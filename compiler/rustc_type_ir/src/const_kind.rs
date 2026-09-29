@@ -146,20 +146,7 @@ pub enum AliasConstKind<I: Interner> {
     Anon { def_id: I::AnonConstId },
 }
 
-pub enum AliasConstInherentArgsKind {
-    WithSelf,
-    Impl,
-}
-
 impl<I: Interner> AliasConstKind<I> {
-    pub fn new_from_def_id(
-        interner: I,
-        def_id: I::DefId,
-        inherent_args: AliasConstInherentArgsKind,
-    ) -> Self {
-        interner.alias_const_kind_from_def_id(def_id, inherent_args)
-    }
-
     pub fn is_direct_const(self, interner: I) -> bool {
         interner.is_direct_const(self)
     }
@@ -171,16 +158,6 @@ impl<I: Interner> AliasConstKind<I> {
             AliasConstKind::InherentImpl { def_id } => interner.def_span(def_id.into()),
             AliasConstKind::Free { def_id } => interner.def_span(def_id.into()),
             AliasConstKind::Anon { def_id } => interner.def_span(def_id.into()),
-        }
-    }
-
-    pub fn opt_def_id(self) -> Option<I::DefId> {
-        match self {
-            AliasConstKind::Projection { def_id } => Some(def_id.into()),
-            AliasConstKind::InherentSelf { def_id } => Some(def_id.into()),
-            AliasConstKind::InherentImpl { def_id } => Some(def_id.into()),
-            AliasConstKind::Free { def_id } => Some(def_id.into()),
-            AliasConstKind::Anon { def_id } => Some(def_id.into()),
         }
     }
 }
@@ -304,7 +281,7 @@ pub enum AnonConstKind {
     GCE,
     /// stable `min_const_generics` anon consts are not allowed to use any generic parameters
     ///
-    /// under `feature(min_generic_const_args)`, these may be inline consts as well, and should be
+    /// under `feature(gca_min_const_items)`, these may be inline consts as well, and should be
     /// treated the same as anon consts.
     MCG,
     /// anon consts used as the length of a repeat expr are syntactically allowed to use generic parameters

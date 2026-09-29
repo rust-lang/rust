@@ -1,7 +1,8 @@
 SOURCE_FILE
   COMMENT "// https://github.com/rust-lang/rust-analyzer/issues/357"
   WHITESPACE "\n\n"
-  COMMENT "//! docs"
+  DOC_COMMENT
+    INNER_DOC_COMMENT "//! docs"
   WHITESPACE "\n"
   MODULE
     COMMENT "// non-docs"

@@ -10,6 +10,9 @@
 #![deny(missing_debug_implementations)]
 #![deny(missing_docs)]
 #![deny(rust_2018_idioms)]
+// 1. We want to be dependency-free
+// 2. Speed of hash maps doesn't matter, as ungrammar is only used in local dev tooling
+#![expect(clippy::disallowed_types)]
 
 mod error;
 mod lexer;

@@ -1,6 +1,7 @@
 error[E0364]: `f` is private, and cannot be re-exported
   --> $DIR/privacy-early.rs:10:13
    |
+LL |     pub macro m() {
 LL |         use f as g;
    |             ^^^^^^
 ...
@@ -15,11 +16,11 @@ LL |         use f as g;
 ...
 LL |     foo::m!();
    |     --------- in this macro invocation
-   = note: this error originates in the macro `foo::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0364]: `f` is private, and cannot be re-exported
   --> $DIR/privacy-early.rs:10:13
    |
+LL |     pub macro m() {
 LL |         use f as g;
    |             ^^^^^^
 ...
@@ -35,7 +36,6 @@ LL |         use f as g;
 LL |     foo::m!();
    |     --------- in this macro invocation
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-   = note: this error originates in the macro `foo::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

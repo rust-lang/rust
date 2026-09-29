@@ -21,7 +21,7 @@ use core::mem::{ManuallyDrop, SizedTypeProperties};
 use core::ops::{Index, IndexMut, Range, RangeBounds};
 use core::{fmt, ptr, slice};
 
-use crate::alloc::{Allocator, Global};
+use crate::alloc::{Allocator, AllocatorNightly, Global};
 use crate::collections::{TryReserveError, TryReserveErrorKind};
 use crate::raw_vec::RawVec;
 use crate::vec::Vec;
@@ -103,7 +103,7 @@ mod tests;
 #[rustc_insignificant_dtor]
 pub struct VecDeque<
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     // `self[0]`, if it exists, is `buf[head]`.
     // `head < buf.capacity()`, unless `buf.capacity() == 0` when `head == 0`.
@@ -904,7 +904,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(allocator_api)]
+    /// # #![feature(allocator_ext)]
     ///
     /// use std::collections::VecDeque;
     /// use std::alloc::Global;
@@ -912,7 +912,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// let deque: VecDeque<i32> = VecDeque::new_in(Global);
     /// ```
     #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
     pub const fn new_in(alloc: A) -> VecDeque<T, A> {
         VecDeque { head: WrappedIndex::zero(), len: 0, buf: RawVec::new_in(alloc) }
     }
@@ -922,14 +922,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(allocator_api)]
+    /// # #![feature(allocator_ext)]
     ///
     /// use std::collections::VecDeque;
     /// use std::alloc::Global;
     ///
     /// let deque: VecDeque<i32> = VecDeque::with_capacity_in(10, Global);
     /// ```
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {
         VecDeque {
             head: WrappedIndex::zero(),
@@ -949,6 +949,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// `Vec::from_raw_parts_in`, but takes a *range* of elements that are
     /// initialized rather than only supporting `0..len`.  Requires that
     /// `initialized.start` ≤ `initialized.end` ≤ `capacity`.
+    /// Also, `initialized.start` < `capacity`, unless both are 0.
     #[inline]
     #[cfg(not(test))]
     pub(crate) unsafe fn from_contiguous_raw_parts_in(
@@ -959,9 +960,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ) -> Self {
         debug_assert!(initialized.start <= initialized.end);
         debug_assert!(initialized.end <= capacity);
+        debug_assert!(initialized.start == 0 && capacity == 0 || initialized.start < capacity);
 
         // SAFETY: Our safety precondition guarantees the range length won't wrap,
-        // and that the allocation is valid for use in `RawVec`.
+        // that the allocation is valid for use in `RawVec` with `alloc`,
+        // and that the range contains valid elements.
+        // We have `head`, `len` ≤ `cap`, since `start`, `end` ≤ `cap`.
+        // Also, `head` < `cap` unless `head` = `cap` = `0`.
         unsafe {
             VecDeque {
                 head: WrappedIndex::from_arbitrary_number(initialized.start),
@@ -1643,7 +1648,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     /// Returns a reference to the underlying allocator.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
     #[inline]
     pub fn allocator(&self) -> &A {
         self.buf.allocator()
@@ -3902,6 +3907,13 @@ __impl_slice_eq1! { [const N: usize] VecDeque<T, A>, [U; N], }
 __impl_slice_eq1! { [const N: usize] VecDeque<T, A>, &[U; N], }
 __impl_slice_eq1! { [const N: usize] VecDeque<T, A>, &mut [U; N], }
 
+__impl_slice_eq2! { #[stable(feature = "slice_partial_eq_vec_deque", since = "CURRENT_RUSTC_VERSION")], [] Vec<T, A>, VecDeque<U, A>, }
+__impl_slice_eq2! { #[stable(feature = "slice_partial_eq_vec_deque", since = "CURRENT_RUSTC_VERSION")], [] &[T], VecDeque<U, A>, }
+__impl_slice_eq2! { #[stable(feature = "slice_partial_eq_vec_deque", since = "CURRENT_RUSTC_VERSION")], [] &mut [T], VecDeque<U, A>, }
+__impl_slice_eq2! { #[stable(feature = "slice_partial_eq_vec_deque", since = "CURRENT_RUSTC_VERSION")], [const N: usize] [T; N], VecDeque<U, A>, }
+__impl_slice_eq2! { #[stable(feature = "slice_partial_eq_vec_deque", since = "CURRENT_RUSTC_VERSION")], [const N: usize] &[T; N], VecDeque<U, A>, }
+__impl_slice_eq2! { #[stable(feature = "slice_partial_eq_vec_deque", since = "CURRENT_RUSTC_VERSION")], [const N: usize] &mut [T; N], VecDeque<U, A>, }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd, A: Allocator> PartialOrd for VecDeque<T, A> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -4046,7 +4058,7 @@ impl<T: fmt::Debug, A: Allocator> fmt::Debug for VecDeque<T, A> {
 }
 
 #[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
-impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
+impl<T, A: AllocatorNightly> From<Vec<T, A>> for VecDeque<T, A> {
     /// Turn a [`Vec<T>`] into a [`VecDeque<T>`].
     ///
     /// [`Vec<T>`]: crate::vec::Vec

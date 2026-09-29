@@ -3,6 +3,7 @@ use std::cmp::Ordering;
 use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, extension};
+use rustc_span::bug;
 use rustc_type_ir as ir;
 
 use crate::ty::{self, EarlyBinder, Ty, TyCtxt, TypeFlags, Upcast, UpcastFrom, WithCachedTypeInfo};

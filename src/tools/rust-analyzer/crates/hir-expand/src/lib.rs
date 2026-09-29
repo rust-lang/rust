@@ -519,7 +519,7 @@ impl MacroCallId {
     /// This is not connected to the database so it does not cache the result. However, the inner [macro_arg] query is
     ///
     /// [macro_arg]: Self::macro_arg
-    #[allow(deprecated)] // we are macro_arg_considering_derives
+    #[expect(deprecated, reason = "we are `macro_arg_considering_derives`")]
     pub fn macro_arg_considering_derives<'db>(
         self,
         db: &'db dyn SourceDatabase,
@@ -537,6 +537,12 @@ impl MacroCallId {
     /// query, only typing in the macro call itself changes the returned
     /// subtree.
     #[salsa::tracked(returns(ref))]
+    #[allow(
+        useless_deprecated,
+        unused_attributes,
+        reason = "salsa bug, see https://github.com/salsa-rs/salsa/issues/1307"
+    )]
+    #[deprecated = "calling this is incorrect, call `macro_arg_considering_derives` instead"]
     fn macro_arg(self, db: &dyn SourceDatabase) -> MacroArgResult {
         let loc = self.loc(db);
 

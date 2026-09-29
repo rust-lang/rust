@@ -1,19 +1,17 @@
 use rustc_abi::ExternAbi;
+use rustc_attr_ir::{PeImportNameType, find_attr};
 use rustc_attr_parsing::eval_config_entry;
 use rustc_crate_store::{
     DllCallingConvention, DllImport, DllImportSymbolType, ForeignModule, NativeLib,
 };
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::attrs::PeImportNameType;
 use rustc_hir::def::DefKind;
-use rustc_hir::find_attr;
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_session::Session;
-use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
+use rustc_span::{Symbol, bug};
 use rustc_structures::NativeLibKind;
 use rustc_target::spec::{Arch, BinaryFormat, CfgAbi};
 
@@ -274,7 +272,8 @@ impl<'tcx> Collector<'tcx> {
                     DllCallingConvention::Vectorcall(self.i686_arg_list_size(item))
                 }
                 _ => {
-                    self.tcx.dcx().emit_fatal(diagnostics::RawDylibUnsupportedAbi { span });
+                    self.tcx.dcx().emit_err(diagnostics::RawDylibUnsupportedAbi { span });
+                    return None;
                 }
             }
         } else {
@@ -283,7 +282,8 @@ impl<'tcx> Collector<'tcx> {
                     DllCallingConvention::C
                 }
                 _ => {
-                    self.tcx.dcx().emit_fatal(diagnostics::RawDylibUnsupportedAbi { span });
+                    self.tcx.dcx().emit_err(diagnostics::RawDylibUnsupportedAbi { span });
+                    return None;
                 }
             }
         };

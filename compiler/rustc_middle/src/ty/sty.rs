@@ -8,12 +8,12 @@ use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
 use rustc_abi::{FIRST_VARIANT, FieldIdx, NumScalableVectors, ScalableElt, VariantIdx};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, extension};
-use rustc_span::{DUMMY_SP, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol, bug, kw, sym};
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::walk::TypeWalker;
@@ -27,6 +27,7 @@ use super::{AdtFlags, GenericParamDefKind};
 use crate::infer::canonical::Canonical;
 use crate::traits::ObligationCause;
 use crate::ty::InferTy::*;
+use crate::ty::consts::ConstExt;
 use crate::ty::{
     self, AdtDef, Const, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv, Region,
     Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy, ValTree,
@@ -188,15 +189,9 @@ impl<'tcx> UpvarArgs<'tcx> {
     /// empty iterator is returned.
     #[inline]
     pub fn upvar_tys(self) -> &'tcx List<Ty<'tcx>> {
-        let tupled_tys = match self {
-            UpvarArgs::Closure(args) => args.as_closure().tupled_upvars_ty(),
-            UpvarArgs::Coroutine(args) => args.as_coroutine().tupled_upvars_ty(),
-            UpvarArgs::CoroutineClosure(args) => args.as_coroutine_closure().tupled_upvars_ty(),
-        };
-
-        match tupled_tys.kind() {
+        match self.tupled_upvars_ty().kind() {
             TyKind::Error(_) => ty::List::empty(),
-            TyKind::Tuple(..) => self.tupled_upvars_ty().tuple_fields(),
+            TyKind::Tuple(args) => args,
             TyKind::Infer(_) => bug!("upvar_tys called before capture types are inferred"),
             ty => bug!("Unexpected representation of upvar types tuple {:?}", ty),
         }
@@ -646,12 +641,12 @@ impl<'tcx> Ty<'tcx> {
                 | DefKind::AssocTy
                 | DefKind::TyParam
                 | DefKind::Fn
-                | DefKind::Const { .. }
+                | DefKind::Const
                 | DefKind::ConstParam
                 | DefKind::Static { .. }
                 | DefKind::Ctor(..)
                 | DefKind::AssocFn
-                | DefKind::AssocConst { .. }
+                | DefKind::AssocConst
                 | DefKind::Macro(..)
                 | DefKind::ExternCrate
                 | DefKind::Use
@@ -2195,7 +2190,7 @@ impl<'tcx> Ty<'tcx> {
                 def.flags().contains(AdtFlags::IS_MAYBE_DANGLING)
                     || def.flags().contains(AdtFlags::IS_MANUALLY_DROP)
             }
-            ty::Closure(..) | ty::Coroutine(..) | ty::CoroutineClosure(..) => true,
+            ty::Coroutine(..) => true,
             _ => false,
         }
     }

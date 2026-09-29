@@ -1,9 +1,10 @@
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
+use std::gca;
 trait Trait {
-    type const N: usize = 10;
+    #[rustc_always_gca]
+    const N: usize = gca!(10);
     //~^ ERROR associated type defaults are unstable
 }
 
-fn main(){
-}
+fn main() {}

@@ -339,5 +339,5 @@ fn emit_unknown_print_request_help(
         diag.help("for more information, see the rustc book: https://doc.rust-lang.org/rustc/command-line-arguments.html#--print-print-compiler-information");
     }
 
-    diag.emit()
+    diag.emit_fatal()
 }

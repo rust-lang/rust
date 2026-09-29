@@ -40,6 +40,7 @@ from lldb_providers import (
     ClangEncodedEnumSummaryProvider,
     StructSummaryProvider,
     f16SummaryProvider,
+    f128SummaryProvider,
     # re-exports
     get_template_args as get_template_args,
     resolve_msvc_template_arg as resolve_msvc_template_arg,
@@ -180,6 +181,17 @@ def register_providers_compatibility():
             ),
             DEFAULT_TYPE_OPTIONS | lldb.eTypeOptionHideChildren,
         )
+
+        if LLDBFeature.Float128 in FEATURE_FLAGS:
+            # Force f128 summary on windows-msvc since most Windows debuggers don't support PDB f128
+            register_summary(
+                f128SummaryProvider,
+                lldb.SBTypeNameSpecifier(
+                    MOD_PREFIX + is_msvc_f128.__name__,
+                    lldb.eFormatterMatchCallback,
+                ),
+                DEFAULT_TYPE_OPTIONS | lldb.eTypeOptionHideChildren,
+            )
 
         # Tuple-structs
         register_synth(
@@ -499,6 +511,11 @@ def is_tuple_type(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
 def is_msvc_f16(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
     # DWARF has a proper tag for f16, PDB does not.
     return type.GetName() == "f16" and type.IsAggregateType()
+
+
+def is_msvc_f128(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
+    # Most Windows debuggers don't support PDB f128.
+    return type.GetName() == "f128" and type.IsAggregateType()
 
 
 def classify_rust_type(type: lldb.SBType, is_msvc: bool) -> RustType:

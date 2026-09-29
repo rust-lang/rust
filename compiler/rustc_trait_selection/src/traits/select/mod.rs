@@ -8,10 +8,10 @@ use std::fmt::{self, Display};
 use std::ops::ControlFlow;
 
 use hir::def::DefKind;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_errors::{Diag, EmissionGuarantee};
+use rustc_errors::Diag;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::BoundRegionConversionTime::{self, HigherRankedType};
 use rustc_infer::infer::DefineOpaqueTypes;
@@ -19,7 +19,6 @@ use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::relate::TypeRelation;
 use rustc_infer::traits::{ImplSource, PredicateObligations, TraitObligation};
 use rustc_macros::{TypeFoldable, TypeVisitable};
-use rustc_middle::bug;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 pub use rustc_middle::traits::select::*;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
@@ -31,6 +30,7 @@ use rustc_middle::ty::{
     Unnormalized, Upcast, elaborate, may_use_unstable_feature,
 };
 use rustc_next_trait_solver::solve::AliasBoundKind;
+use rustc_span::bug;
 use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;
@@ -63,7 +63,7 @@ pub enum IntercrateAmbiguityCause<'tcx> {
 impl<'tcx> IntercrateAmbiguityCause<'tcx> {
     /// Emits notes when the overlap is caused by complex intercrate ambiguities.
     /// See #23980 for details.
-    pub fn add_intercrate_ambiguity_hint<G: EmissionGuarantee>(&self, err: &mut Diag<'_, G>) {
+    pub fn add_intercrate_ambiguity_hint(&self, err: &mut Diag<'_>) {
         err.note(self.intercrate_ambiguity_hint());
     }
 
@@ -379,7 +379,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     if !candidate_set.ambiguous && no_candidates_apply {
-                        let trait_ref = self.infcx.resolve_vars_if_possible(
+                        let trait_ref = self.infcx.deeply_resolve_ignoring_regions(
                             stack.obligation.predicate.skip_binder().trait_ref,
                         );
                         if !trait_ref.references_error() {
@@ -508,15 +508,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<EvaluationResult, OverflowError> {
         debug_assert!(!self.infcx.next_trait_solver());
         self.evaluation_probe(|this| {
-            let goal =
-                this.infcx.resolve_vars_if_possible((obligation.predicate, obligation.param_env));
+            let goal = this
+                .infcx
+                .deeply_resolve_ignoring_regions((obligation.predicate, obligation.param_env));
             let mut result = this.evaluate_predicate_recursively(
                 TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
                 obligation.clone(),
             )?;
             // If the predicate has done any inference, then downgrade the
             // result to ambiguous.
-            if this.infcx.resolve_vars_if_possible(goal) != goal {
+            if this.infcx.deeply_resolve_ignoring_regions(goal) != goal {
                 result = result.max(EvaluatedToAmbig);
             }
             Ok(result)
@@ -569,7 +570,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut result = EvaluatedToOk;
         for mut obligation in predicates {
             obligation.set_depth_from_parent(stack.depth());
-            let eval = self.evaluate_predicate_recursively(stack, obligation.clone())?;
+            let eval = self.evaluate_predicate_recursively(stack, obligation)?;
             if let EvaluatedToErr = eval {
                 // fast-path - EvaluatedToErr is the top of the lattice,
                 // so we don't need to look on the other predicates.
@@ -1208,7 +1209,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // terms of `Fn` etc, but we could probably make this more
         // precise still.
         //
-        // FIXME(min_generic_const_args): Consider consts as well?
+        // FIXME(gca_min_const_items): Consider consts as well?
         let unbound_input_types =
             stack.fresh_trait_pred.skip_binder().trait_ref.args.types().any(|ty| ty.is_fresh());
 
@@ -1445,7 +1446,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!("is_knowable()");
 
-        let predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
+        let predicate = self.infcx.deeply_resolve_ignoring_regions(obligation.predicate);
 
         // Okay to skip binder because of the nature of the
         // trait-ref-is-knowable check, which does not care about
@@ -2470,7 +2471,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         match self.match_impl(impl_def_id, impl_trait_header, obligation) {
             Ok(args) => args,
             Err(()) => {
-                let predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
+                let predicate = self.infcx.deeply_resolve_ignoring_regions(obligation.predicate);
                 bug!("impl {impl_def_id:?} was matchable against {predicate:?} but now is not")
             }
         }
@@ -3081,16 +3082,16 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
 
     /// Invoked when the node with dfn `dfn` does not get a successful
     /// result. This will clear out any provisional cache entries
-    /// that were added since `dfn` was created. This is because the
-    /// provisional entries are things which must assume that the
-    /// things on the stack at the time of their creation succeeded --
-    /// since the failing node is presently at the top of the stack,
-    /// these provisional entries must either depend on it or some
-    /// ancestor of it.
+    /// originating from nodes visited before this node (`from_dfn < dfn`).
+    /// This is because the provisional entries are things which must
+    /// assume that the things on the stack at the time of their creation
+    /// succeeded -- since the failing node is presently at the top of
+    /// the stack, these provisional entries must either depend on it or
+    /// some ancestor of it.
     fn on_failure(&self, dfn: usize) {
         debug!(?dfn, "on_failure");
         self.map.borrow_mut().retain(|key, eval| {
-            if !eval.from_dfn >= dfn {
+            if eval.from_dfn < dfn {
                 debug!("on_failure: removing {:?}", key);
                 false
             } else {

@@ -181,7 +181,7 @@ fn offer_suggestion(
     expr: &Expr<'_>,
     cast_expr: &Expr<'_>,
     cast_to_span: Span,
-    diag: &mut Diag<'_, ()>,
+    diag: &mut Diag<'_>,
 ) {
     let cast_to_snip = snippet(cx, cast_to_span, "..");
     let mut applicability = Applicability::Unspecified;

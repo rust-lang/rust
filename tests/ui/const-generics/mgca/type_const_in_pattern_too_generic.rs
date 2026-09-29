@@ -1,8 +1,9 @@
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
 
 trait Trait {
-    type const ASSOC: usize;
+    #[rustc_always_gca]
+    const ASSOC: usize;
 }
 
 fn test<T: Trait>() {

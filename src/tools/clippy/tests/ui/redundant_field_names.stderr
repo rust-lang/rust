@@ -46,13 +46,13 @@ LL |     let _ = RangeToInclusive { end: end };
 error: redundant field names in struct initialization
   --> tests/ui/redundant_field_names.rs:77:25
    |
+LL |     macro_rules! internal {
+LL |         ($i:ident) => {
 LL |             let _ = S { v: v };
    |                         ^^^^ help: replace it with: `v`
 ...
 LL |     internal!(v);
    |     ------------ in this macro invocation
-   |
-   = note: this error originates in the macro `internal` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: redundant field names in struct initialization
   --> tests/ui/redundant_field_names.rs:106:25

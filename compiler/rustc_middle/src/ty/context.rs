@@ -17,6 +17,8 @@ use std::{debug_assert_matches, fmt, iter, mem};
 
 use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
 use rustc_ast as ast;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_crate_store::{CrateStoreDyn, Untracked};
 use rustc_data_structures::defer;
 use rustc_data_structures::fx::FxHashMap;
@@ -29,19 +31,18 @@ use rustc_data_structures::sync::{
     self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
 };
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, MultiSpan};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefPathData, Definitions, PerParentDisambiguatorState};
-use rustc_hir::intravisit::VisitorExt;
-use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, Node, TraitCandidate, find_attr};
+use rustc_hir::intravisit::Visitor;
+use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, Node, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_lint_defs::Lint;
 use rustc_lint_defs::builtin::UNUSED_FEATURES;
 use rustc_macros::Diagnostic;
 use rustc_session::{IncrCompSession, Session};
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, sym};
 use rustc_structures::{CrateType, Limit};
 use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::lift::Lift;
@@ -69,11 +70,11 @@ use crate::traits::solve::{
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, ClausePolarity, Clauses, Const, FnSigKind,
-    GenericArg, GenericArgs, GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo,
-    ParamConst, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate,
-    PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid, ValTree,
-    ValTreeKind, Visibility,
+    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, ClausePolarity, Clauses, Const, ConstKind,
+    FnSigKind, GenericArg, GenericArgs, GenericArgsRef, GenericParamDefKind, List,
+    ListWithCachedTypeInfo, ParamConst, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig,
+    Predicate, PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind,
+    TyVid, ValTree, ValTreeKind, Visibility,
 };
 
 impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
@@ -109,8 +110,8 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
         self.generic_const_exprs()
     }
 
-    fn generic_const_args(self) -> bool {
-        self.generic_const_args()
+    fn gca_const_items(self) -> bool {
+        self.gca_const_items()
     }
 
     fn coroutine_clone(self) -> bool {
@@ -858,10 +859,7 @@ impl<'tcx> TyCtxt<'tcx> {
             self.codegen_fn_attrs(def_id)
         } else if matches!(
             def_kind,
-            DefKind::AnonConst
-                | DefKind::AssocConst { .. }
-                | DefKind::Const { .. }
-                | DefKind::GlobalAsm
+            DefKind::AnonConst | DefKind::AssocConst | DefKind::Const | DefKind::GlobalAsm
         ) {
             CodegenFnAttrs::EMPTY
         } else {
@@ -993,7 +991,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Obtain all lang items of this crate and all dependencies (recursively)
-    pub fn lang_items(self) -> &'tcx rustc_hir::attrs::lang_items::LanguageItems {
+    pub fn lang_items(self) -> &'tcx rustc_attr_ir::lang_items::LanguageItems {
         self.get_lang_items(())
     }
 
@@ -1032,29 +1030,17 @@ impl<'tcx> TyCtxt<'tcx> {
     /// because it has a directly represented RHS, or is a trait definition that is marked as
     /// requiring its implementation to have a directly represented RHS.
     ///
-    /// Note: Be very careful with using this method - under `generic_const_args`, a trait can
+    /// Note: Be very careful with using this method - under `gca_const_items`, a trait can
     /// declare a regular const, but an `impl` could implement it with a directly represented const
     /// (a la refinement). This method would return false in such a case.
     pub fn is_direct_const(self, def_id: DefId) -> bool {
-        debug_assert_matches!(
-            self.def_kind(def_id),
-            DefKind::Const { .. } | DefKind::AssocConst { .. }
-        );
-        self.is_type_const_syntax(def_id) || self.const_of_item(def_id).is_some()
+        debug_assert_matches!(self.def_kind(def_id), DefKind::Const | DefKind::AssocConst);
+        self.is_always_gca(def_id) || self.const_of_item(def_id).is_some()
     }
 
-    /// Check if the given `def_id` is declared with `type const` syntax (mgca)
-    ///
-    /// This is NOT the same as whether the `def_id` can be represented in/used by the type system.
-    /// For that, you probably want to ask `is_direct_const()` or `const_of_item().is_some()`.
-    pub fn is_type_const_syntax(self, def_id: impl IntoQueryKey<DefId>) -> bool {
-        let def_id = def_id.into_query_key();
-        match self.def_kind(def_id) {
-            DefKind::Const { is_type_const } | DefKind::AssocConst { is_type_const } => {
-                is_type_const
-            }
-            _ => false,
-        }
+    /// Whether this is a projection const marked with `#[always_gca]`
+    pub fn is_always_gca(self, def_id: DefId) -> bool {
+        find_attr!(self, def_id, AlwaysGca)
     }
 
     /// Returns the movability of the coroutine of `def_id`, or panics
@@ -1171,6 +1157,27 @@ impl<'tcx> TyCtxt<'tcx> {
             || self.sess.opts.unstable_opts.metrics_dir.is_some()
     }
 
+    /// Whether the combined per-owner HIR hash (`OwnerInfo::opt_hash`, which folds `parenting`,
+    /// `trait_map` and `children` on top of the node/attr hashes) needs to be computed during
+    /// lowering.
+    ///
+    /// This is a strict subset of [`Self::needs_hir_hash`]: notably it drops the plain
+    /// `needs_metadata` case. With metadata-based crate hashing (the default) the crate hash is
+    /// built from the encoded metadata plus each owner's cheaper `OwnerInfo::fingerprint` (just the
+    /// node and attr sub-hashes), so the combined hash is never read and computing it is wasted
+    /// work. It is still required for:
+    /// - `-Z metadata-crate-hash=no`, where `crate_hash` falls back to hashing each `OwnerInfo`;
+    /// - incremental, where the `lower_to_hir` result is fingerprinted for red/green tracking;
+    /// - debug assertions, where every query result is fingerprinted to catch nondeterminism.
+    ///
+    /// The `needs_hir_hash()` conjunct guarantees the node/attr sub-hashes it folds in are present.
+    pub fn needs_owner_info_hash(self) -> bool {
+        self.needs_hir_hash()
+            && (!self.sess.opts.unstable_opts.metadata_crate_hash
+                || self.sess.opts.incremental.is_some()
+                || cfg!(debug_assertions))
+    }
+
     #[inline]
     pub fn stable_crate_id(self, crate_num: CrateNum) -> StableCrateId {
         if crate_num == LOCAL_CRATE {
@@ -1283,6 +1290,10 @@ impl<'tcx> TyCtxt<'tcx> {
             None => Err(VarError::NotPresent),
         }
     }
+
+    pub fn is_method(self, id: DefId) -> bool {
+        self.opt_associated_item(id).is_some_and(|item| item.is_method())
+    }
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {
@@ -1388,9 +1399,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.untracked.definitions.freeze()
     }
 
-    pub fn def_path_hash_to_def_index_map(
-        self,
-    ) -> &'tcx rustc_hir::def_path_hash_map::DefPathHashMap {
+    pub fn def_path_hash_to_def_index_map(self) -> &'tcx rustc_hir::definitions::DefPathToIndexMap {
         // Create a dependency to the crate to be sure we re-execute this when the amount of
         // definitions change.
         self.ensure_ok().hir_crate_items(());
@@ -1722,7 +1731,6 @@ macro_rules! nop_list_lift {
 }
 
 nop_lift! { type_; Ty<'a> => Ty<'tcx> }
-nop_lift! { const_; Const<'a> => Const<'tcx> }
 nop_lift! { pat; Pattern<'a> => Pattern<'tcx> }
 nop_lift! { const_allocation; ConstAllocation<'a> => ConstAllocation<'tcx> }
 nop_lift! { predicate; Predicate<'a> => Predicate<'tcx> }
@@ -1736,6 +1744,19 @@ impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for Interned<'a, RegionKind<'a>> {
     #[track_caller]
     fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Self::Lifted {
         assert!(tcx.interners.region.contains_pointer_to(&InternedInSet(&*self.0)));
+        // SAFETY: we just checked that `self` is interned in this `TyCtxt`, so
+        // its pointee is valid for the entire lifetime of the target `TyCtxt`.
+        unsafe { mem::transmute(self) }
+    }
+}
+
+// FIXME: unclear why exactly the macro doesn't work.
+impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for Interned<'a, WithCachedTypeInfo<ConstKind<'a>>> {
+    type Lifted = Interned<'tcx, WithCachedTypeInfo<ConstKind<'tcx>>>;
+
+    #[track_caller]
+    fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Self::Lifted {
+        assert!(tcx.interners.const_.contains_pointer_to(&InternedInSet(&*self.0)));
         // SAFETY: we just checked that `self` is interned in this `TyCtxt`, so
         // its pointee is valid for the entire lifetime of the target `TyCtxt`.
         unsafe { mem::transmute(self) }
@@ -2275,7 +2296,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 debug_assert_matches!(self.def_kind(def_id), DefKind::AnonConst);
             }
             ty::AliasTermKind::ProjectionConst { def_id } => {
-                debug_assert_matches!(self.def_kind(def_id), DefKind::AssocConst { .. });
+                debug_assert_matches!(self.def_kind(def_id), DefKind::AssocConst);
                 debug_assert_matches!(
                     self.def_kind(self.parent(def_id)),
                     DefKind::Trait | DefKind::Impl { of_trait: true }
@@ -2283,14 +2304,14 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             ty::AliasTermKind::InherentConstSelf { def_id }
             | ty::AliasTermKind::InherentConstImpl { def_id } => {
-                debug_assert_matches!(self.def_kind(def_id), DefKind::AssocConst { .. });
+                debug_assert_matches!(self.def_kind(def_id), DefKind::AssocConst);
                 debug_assert_matches!(
                     self.def_kind(self.parent(def_id)),
                     DefKind::Impl { of_trait: false }
                 );
             }
             ty::AliasTermKind::FreeConst { def_id } => {
-                debug_assert_matches!(self.def_kind(def_id), DefKind::Const { .. });
+                debug_assert_matches!(self.def_kind(def_id), DefKind::Const);
             }
         }
     }
@@ -2620,7 +2641,7 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         hir_id: HirId,
         span: impl Into<MultiSpan>,
-        decorator: impl for<'a> Diagnostic<'a, ()>,
+        decorator: impl for<'a> Diagnostic<'a>,
     ) {
         let level_spec = self.lint_level_spec_at_node(lint, hir_id);
         emit_lint_base(self.sess, lint, level_spec, Some(span.into()), decorator)
@@ -2633,9 +2654,9 @@ impl<'tcx> TyCtxt<'tcx> {
         m.spans.inject_use_span.shrink_to_lo()
     }
 
-    pub fn disabled_nightly_features<E: rustc_errors::EmissionGuarantee>(
+    pub fn disabled_nightly_features(
         self,
-        diag: &mut Diag<'_, E>,
+        diag: &mut Diag<'_>,
         features: impl IntoIterator<Item = (String, Symbol)>,
     ) {
         if !self.sess.is_nightly_build() {
@@ -2663,7 +2684,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         lint: &'static Lint,
         id: HirId,
-        decorator: impl for<'a> Diagnostic<'a, ()>,
+        decorator: impl for<'a> Diagnostic<'a>,
     ) {
         let level_spec = self.lint_level_spec_at_node(lint, id);
         emit_lint_base(self.sess, lint, level_spec, None, decorator);

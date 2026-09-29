@@ -9,6 +9,8 @@ use rustc_macros::StableHash_NoContext;
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::{debug, instrument};
 
+use crate::Const;
+
 // Workaround for TransitiveRelation being in rustc_data_structures which isn't accessible on stable
 #[cfg(not(feature = "nightly"))]
 #[derive(Default, Clone, Debug)]
@@ -51,14 +53,19 @@ use crate::fold::TypeSuperFoldable;
 use crate::inherent::*;
 use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
 use crate::{
-    AliasTy, Binder, BoundRegion, BoundVar, BoundVariableKind, DebruijnIndex, InferCtxtLike,
-    Interner, IsRigid, OutlivesClause, Region, RegionKind, TyKind, TypeFoldable, TypeFolder,
-    TypingMode, UniverseIndex, Variance, max_universe, set_aliases_to_non_rigid,
+    AliasTy, Binder, BoundRegion, BoundVar, BoundVariableKind, ClauseKind, DebruijnIndex,
+    InferCtxtLike, Interner, IsRigid, OutlivesClause, Region, RegionKind, TyKind, TypeFoldable,
+    TypeFolder, TypingMode, UniverseIndex, Variance, elaborate, max_universe,
+    set_aliases_to_non_rigid,
 };
 
 #[derive_where(Clone, Debug; I: Interner)]
 pub struct Assumptions<I: Interner> {
     pub type_outlives: Vec<Binder<I, OutlivesClause<I, I::Ty>>>,
+    /// Known `'a: 'b` assumptions, stored as an edge from the outliving region to the
+    /// outlived one, i.e. an edge `('a, 'b)` means `'a: 'b`. Constructors expect a relation
+    /// with this direction, see [`regions_outlived_by`] and [`regions_outliving`] for how it
+    /// is consumed.
     pub region_outlives: TransitiveRelation<Region<I>>,
     pub inverse_region_outlives: TransitiveRelation<Region<I>>,
 }
@@ -72,7 +79,66 @@ impl<I: Interner> Assumptions<I> {
         }
     }
 
+    /// Builds assumptions from `clauses`, elaborating them and keeping the outlives ones.
+    ///
+    /// Callers hand us their clauses straight from the environment, so we have to elaborate
+    /// here to get at the implied outlives bounds:
+    /// - a `Ty: 'a` clause tells us that every region component of `Ty` outlives `'a`, e.g.
+    ///   `&'b u8: 'a` implies `'b: 'a`. Without it we'd fail to prove `'b: 'a` when leaving
+    ///   the binder these assumptions belong to.
+    /// - it also gives us the components as type outlives, e.g. `Vec<T>: 'a` implies `T: 'a`,
+    ///   which we need for placeholder and alias outlives.
+    /// - trait clauses imply their supertraits, so `T: Bound<'a>` where `trait Bound<'c>: 'c`
+    ///   gives us `T: 'a`. This is why we take clauses rather than just the outlives ones:
+    ///   filtering down to outlives before elaborating would throw those away.
+    ///
+    /// Only the clauses whose max universe is exactly `universe` are kept, which is what the
+    /// solver wants when computing the assumptions of a single binder. This happens after
+    /// elaboration on purpose, so a clause whose regions live in more than one universe still
+    /// contributes its implied bounds to each of them: `(&'b u8, &'c u8): 'a` gives us
+    /// `'c: 'a` in `'c`s universe even though the clause itself is in `'b`s.
+    ///
+    /// Use [`Assumptions::new_unelaborated`] when the caller needs the assumptions to be
+    /// exactly the clauses it passed in.
     pub fn new(
+        infcx: &impl InferCtxtLike<Interner = I>,
+        clauses: impl IntoIterator<Item = I::Clause>,
+        region_outlives: TransitiveRelation<Region<I>>,
+        universe: UniverseIndex,
+    ) -> Self {
+        let mut type_outlives = vec![];
+        let mut region_outlives_builder = TransitiveRelationBuilder::default();
+        for (r1, r2) in region_outlives.base_edges() {
+            region_outlives_builder.add(r1, r2);
+        }
+
+        let clauses = elaborate::elaborate(infcx.cx(), clauses)
+            .filter(|clause| max_universe(infcx, *clause) == universe);
+        for clause in clauses {
+            match clause.kind().skip_binder() {
+                // The type outlives assumptions are kept around as they are required for
+                // proving placeholder and alias outlives.
+                ClauseKind::TypeOutlives(_) => {
+                    type_outlives.push(clause.as_type_outlives_clause().unwrap());
+                }
+                ClauseKind::RegionOutlives(OutlivesClause(r1, r2)) => {
+                    // `elaborate` drops the components which are bound inside of the type and
+                    // bails on `for<'a> Ty: 'a`, so both regions here are free even though the
+                    // clause itself may still be under a binder.
+                    debug_assert!(!r1.is_bound() && !r2.is_bound());
+                    region_outlives_builder.add(r1, r2);
+                }
+                // Anything else can't be used as an outlives assumption.
+                _ => (),
+            }
+        }
+
+        Self::new_unelaborated(type_outlives, region_outlives_builder.freeze())
+    }
+
+    /// Builds assumptions from exactly the given clauses, see [`Assumptions::new`] for when
+    /// the clauses should get elaborated instead.
+    pub fn new_unelaborated(
         type_outlives: Vec<Binder<I, OutlivesClause<I, I::Ty>>>,
         region_outlives: TransitiveRelation<Region<I>>,
     ) -> Self {
@@ -165,6 +231,13 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> LeafRegionC
 /// An OR of AND of LEAF constraints. Always in "canonical form" meaning:
 /// - No two ANDs are equivalent
 /// - All ANDs are in canonical form
+/// - If any AND is empty, i.e. trivially true, it is the only AND
+///
+/// FIXME(-Zassumptions-on-binders): We should consider a more general canonical form which also
+/// drops any AND that is a superset of another AND. Proving the superset requires strictly more
+/// than proving the subset, so it can never be the candidate which makes the OR hold. E.g.
+/// `OR(AND('a: 'b), AND('a: 'b, 'b: 'c))` really ought to just be `OR(AND('a: 'b))`. Only keeping
+/// an empty AND is the degenerate case of that rule.
 pub struct Or<I: Interner, S: Clone + std::fmt::Debug = ()>(pub Box<[And<I, S>]>);
 impl<I: Interner> Or<I> {
     pub fn with_spans<S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
@@ -176,7 +249,7 @@ impl<I: Interner> Or<I> {
 }
 impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
     pub fn new_true() -> Self {
-        Self(Box::new([And::new([])]))
+        Self(Box::new([And::new_true()]))
     }
 
     pub fn is_true(&self) -> bool {
@@ -204,6 +277,17 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
         let mut new_ands: Vec<And<I, S>> = Vec::new();
 
         for and in ands {
+            // An empty AND is trivially true, which makes the whole OR true no matter what the
+            // other candidates are. `And::new` discards leaf constraints which are trivially
+            // true, so this is how e.g. a reflexive `'a: 'a` candidate discharges an OR.
+            if and.0.is_empty() {
+                return Self::new_true();
+            }
+
+            // FIXME(-Zassumptions-on-binders): We only discard an AND which is equivalent to one
+            // we already have. More generally we should discard any AND which is a superset of
+            // another, as it requires strictly more to hold. E.g. the second AND in
+            // `OR(AND('a: 'b), AND('a: 'b, 'b: 'c))` is never the one which makes the OR true.
             if new_ands.iter().all(|c| !c.is_and_equivalent_to(&and)) {
                 new_ands.push(and)
             }
@@ -217,7 +301,7 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
     }
 
     pub fn new_leaf(l: LeafRegionConstraint<I, S>) -> Self {
-        Or(Box::new([And(Box::new([l]))]))
+        Or::new([And::new([l])])
     }
 
     pub fn build_and(a: Or<I, S>, b: Or<I, S>) -> Self {
@@ -249,6 +333,7 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 /// An AND of leaf constraints. Always in "canonical form", meaning:
 /// - No leaf constraints are present twice in this AND
+/// - No leaf constraint is trivially true, i.e. a reflexive `'a: 'a`
 pub struct And<I: Interner, S: Clone + std::fmt::Debug = ()>(pub Box<[LeafRegionConstraint<I, S>]>);
 impl<I: Interner> And<I> {
     pub fn with_spans<S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
@@ -259,11 +344,24 @@ impl<I: Interner> And<I> {
     }
 }
 impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> And<I, S> {
+    pub fn new_true() -> Self {
+        Self(Box::new([]))
+    }
+
     pub fn new(i: impl IntoIterator<Item = LeafRegionConstraint<I, S>>) -> Self {
         let mut seen = IndexSet::new();
         And(i
             .into_iter()
             .filter(|leaf| {
+                // Outlives is reflexive so a `'a: 'a` leaf is always true and carries no
+                // information. Dropping it here keeps the rest of the code from having to special
+                // case it, and is what lets an OR with a reflexive candidate be recognized as true.
+                if let LeafRegionConstraint::RegionOutlives(r1, r2, _) = leaf
+                    && r1 == r2
+                {
+                    return false;
+                }
+
                 if seen.contains(&leaf.clone().without_span()) {
                     false
                 } else {
@@ -342,7 +440,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConst
         }));
 
         Self {
-            and_constraint: if or_constraint.is_false() { And::new([]) } else { and_constraint },
+            and_constraint: if or_constraint.is_false() { And::new_true() } else { and_constraint },
             or_constraint,
         }
     }
@@ -358,7 +456,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConst
         let or_constraint = Or::build_and(a.or_constraint, b.or_constraint);
 
         Self {
-            and_constraint: if or_constraint.is_false() { And::new([]) } else { and_constraint },
+            and_constraint: if or_constraint.is_false() { And::new_true() } else { and_constraint },
             or_constraint,
         }
     }
@@ -368,7 +466,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConst
     }
 
     pub fn new_true() -> Self {
-        Self { and_constraint: And::new([]), or_constraint: Or::new_true() }
+        Self { and_constraint: And::new_true(), or_constraint: Or::new_true() }
     }
 
     pub fn is_true(&self) -> bool {
@@ -376,7 +474,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConst
     }
 
     pub fn new_false() -> Self {
-        Self { and_constraint: And::new([]), or_constraint: Or::new_false() }
+        Self { and_constraint: And::new_true(), or_constraint: Or::new_false() }
     }
 
     pub fn is_false(&self) -> bool {
@@ -409,13 +507,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConst
     }
 
     pub fn new_leaf(l: LeafRegionConstraint<I, S>) -> Self {
-        RegionConstraint { and_constraint: And(Box::new([l])), or_constraint: Or::new_true() }
-    }
-}
-
-impl<I: Interner> Default for RegionConstraint<I> {
-    fn default() -> Self {
-        Self::new_true()
+        RegionConstraint { and_constraint: And::new([l]), or_constraint: Or::new_true() }
     }
 }
 
@@ -466,8 +558,7 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
     let constraint =
         pull_region_outlives_constraints_out_of_universe(infcx, constraint, u, &assumptions);
 
-    // 4. force the constraint to ambiguous if it could be `false` in future reruns
-    propagate_ambiguity(constraint)
+    constraint
 }
 
 /// Filter our region constraints to not include constraints between region variables from `u` and
@@ -551,50 +642,6 @@ fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interne
     )
 }
 
-/// Force the whole constraint to be ambiguous if it contains ambiguities which could
-/// have caused the constraint to be `false` if they had been `false` themselves.
-///
-/// For example if we have `'a: 'b AND ambig`  it's possible that if we had more inference
-/// information we could have produced a better region constraint than `ambig`, and that
-/// constraint may then have gone on to be false, at which point we would have `'a: 'b AND false`
-/// causing the whole constraint to be `false`.
-///
-/// If we're not careful we can wind up returning `'a: 'b AND ambig` from passing trait solver
-/// goals and then upon rerunning wind up returning `NoSolution` which would be dubious :3
-///
-/// This is inherently conservative and this method should be called as little as possible as it
-/// can cause us to get ambiguities instead of `NoSolution` (for example if `'a: 'b` is `false`),
-/// which can affect coherence, candidate selection, etc.
-///
-/// FIXME(-Zassumptions-on-binders): this method should probably be trait-solver internal as it only
-/// matters at trait solver query boundaries. We currently call it in more than just that location
-#[instrument(level = "debug", ret)]
-pub fn propagate_ambiguity<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
-    constraint: RegionConstraint<I, S>,
-) -> RegionConstraint<I, S> {
-    if let Some(ambig) = constraint.and_constraint.0.iter().find(|c| c.is_ambig()) {
-        return RegionConstraint::new_leaf(ambig.clone());
-    }
-
-    for and in constraint.or_constraint.0.iter() {
-        // FIXME(-Zassumptions-on-binders): This is overly conservative. If we have:
-        // `'a: 'b OR ambig` we don't necessarily want to propagate ambiguity here
-        // as we might end up with `'a: 'b` being satisfied in which case we unnecessarily
-        // errored here.
-        //
-        // It's fine if the `ambig` wound up being `false` as that wouldn't cause a goal to
-        // become `NoSolution`, it would instead result in us returning the `'a: 'b` constraint
-        // by itself.
-        //
-        // `rust-lang/project-assumptions-on-binders#21`
-        if let Some(ambig) = and.0.iter().find(|c| c.is_ambig()) {
-            return RegionConstraint::new_leaf(ambig.clone());
-        }
-    }
-
-    constraint
-}
-
 /// Handles converting region outlives constraints involving placeholders from `u` into OR constraints
 /// involving regions from smaller universes with known relationships to the placeholder. For example:
 /// ```ignore (not rust)
@@ -623,7 +670,7 @@ fn pull_region_outlives_constraints_out_of_universe<
     infcx: &Infcx,
     constraint: RegionConstraint<I>,
     u: UniverseIndex,
-    assumptions: &Option<Assumptions<I>>,
+    assumptions: &Assumptions<I>,
 ) -> RegionConstraint<I> {
     assert!(max_universe(infcx, constraint.clone()) <= u);
 
@@ -653,13 +700,13 @@ fn pull_region_outlives_constraints_out_of_universe<
                         continue;
                     }
 
-                    let assumptions = match assumptions {
-                        Some(assumptions) => assumptions,
-                        None => {
-                            pulled_constraints.push(Or::new_ambig(()));
-                            continue;
-                        }
-                    };
+                    // The constraint may already be entailed by the assumptions of the binder we are
+                    // leaving, e.g. `for<'a, 'b> where 'b: 'a { 'b: 'a }`. There is nothing to lift into
+                    // a smaller universe in that case, and looking for lower universe candidates would
+                    // wrongly result in `Or([])` whenever the placeholders have no lower universe bounds.
+                    if regions_outlived_by(region_1, assumptions).any(|r| r == region_2) {
+                        continue;
+                    }
 
                     let mut candidates = vec![];
 
@@ -775,7 +822,7 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
     infcx: &Infcx,
     constraint: RegionConstraint<I>,
     u: UniverseIndex,
-    assumptions: &Option<Assumptions<I>>,
+    assumptions: &Assumptions<I>,
 ) -> RegionConstraint<I> {
     use LeafRegionConstraint::*;
 
@@ -820,7 +867,7 @@ fn rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder
     ty: I::Ty,
     region: Region<I>,
     u: UniverseIndex,
-    assumptions: &Option<Assumptions<I>>,
+    assumptions: &Assumptions<I>,
 ) -> Or<I> {
     use LeafRegionConstraint::*;
 
@@ -830,11 +877,6 @@ fn rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder
     if region_u != u && ty_u != u {
         return Or::new_leaf(PlaceholderTyOutlives(ty, region, ()));
     }
-
-    let assumptions = match assumptions {
-        Some(assumptions) => assumptions,
-        None => return Or::new_ambig(()),
-    };
 
     let mut candidates = vec![];
 
@@ -866,7 +908,7 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
     infcx: &Infcx,
     bound_outlives: Binder<I, (AliasTy<I>, Region<I>)>,
     u: UniverseIndex,
-    assumptions: &Option<Assumptions<I>>,
+    assumptions: &Assumptions<I>,
 ) -> Or<I> {
     use LeafRegionConstraint::*;
 
@@ -915,14 +957,6 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
             candidates.push(Or::new_ambig(()));
         }
     }
-
-    let assumptions = match assumptions {
-        Some(assumptions) => assumptions,
-        None => {
-            candidates.push(Or::new_ambig(()));
-            return candidates.into_iter().fold(Or::new_false(), |acc, c| Or::build_or(acc, c));
-        }
-    };
 
     // Actually look at the assumptions and matching our higher ranked alias outlives goal
     // against potentially higher ranked type outlives assumptions.
@@ -992,7 +1026,6 @@ pub fn regions_outlived_by<I: Interner>(
     r: Region<I>,
     assumptions: &Assumptions<I>,
 ) -> impl Iterator<Item = Region<I>> {
-    // FIXME(-Zassumptions-on-binders): do we need to be adding the reflexive edge here?
     assumptions.region_outlives.reachable_from(r).into_iter().chain([r])
 }
 
@@ -1165,7 +1198,7 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
         Ok(a)
     }
 
-    fn consts(&mut self, a: I::Const, b: I::Const) -> RelateResult<I, I::Const> {
+    fn consts(&mut self, a: Const<I>, b: Const<I>) -> RelateResult<I, Const<I>> {
         rustc_type_ir::relate::structurally_relate_consts(self, a, b)
     }
 
@@ -1175,14 +1208,14 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
     {
         self.infcx.enter_forall_with_empty_assumptions(a, |a| {
             let u = self.infcx.universe();
-            self.infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
+            self.infcx.insert_placeholder_assumptions(u, Assumptions::empty());
             let b = self.infcx.instantiate_binder_with_infer(b);
             self.relate(a, b)
         })?;
 
         self.infcx.enter_forall_with_empty_assumptions(b, |b| {
             let u = self.infcx.universe();
-            self.infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
+            self.infcx.insert_placeholder_assumptions(u, Assumptions::empty());
             let a = self.infcx.instantiate_binder_with_infer(a);
             self.relate(a, b)
         })?;

@@ -365,7 +365,7 @@ fn collect_variant_comments(
 
     for child in node.children_with_tokens() {
         match child.kind() {
-            COMMENT => {
+            COMMENT | DOC_COMMENT => {
                 after_comment = true;
                 to_insert.push(child.clone());
                 to_delete.push(child);

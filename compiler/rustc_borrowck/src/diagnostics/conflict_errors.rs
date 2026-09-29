@@ -5,18 +5,18 @@ use std::ops::ControlFlow;
 
 use either::Either;
 use hir::{ClosureKind, Path};
+use rustc_attr_ir::diagnostic::{CustomDiagnostic, FormatArgs};
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, MultiSpan, struct_span_code_err};
 use rustc_hir as hir;
-use rustc_hir::attrs::diagnostic::{CustomDiagnostic, FormatArgs};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr};
-use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, PatField, find_attr};
+use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, PatField};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::traits::TraitErrors;
-use rustc_middle::bug;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
@@ -32,7 +32,7 @@ use rustc_middle::ty::{
 use rustc_mir_dataflow::move_paths::{Init, InitKind, InitLocation, MoveOutIndex, MovePathIndex};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::{BytePos, ExpnKind, Ident, MacroKind, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, ExpnKind, Ident, MacroKind, Span, Symbol, bug, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use rustc_trait_selection::error_reporting::traits::call_kind::CallKind;
@@ -894,7 +894,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 .errors
                 .iter()
                 .map(|error| error.span)
-                .any(|sp| span < sp && !sp.contains(span))
+                .any(|sp| span.lo_hi() < sp.lo_hi() && !sp.contains(span))
         }) {
             show_assign_sugg = true;
             if all_init_spans.iter().any(|init_span| !init_span.contains(span))
@@ -930,7 +930,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let mut shown = false;
         let mut shown_condition_value = false;
         for error in visitor.errors {
-            if error.span < span && !error.span.overlaps(span) {
+            if error.span.lo_hi() < span.lo_hi() && !error.span.overlaps(span) {
                 // When we have a case like `match-cfg-fake-edges.rs`, we don't want to mention
                 // match arms coming after the primary span because they aren't relevant:
                 // ```
@@ -951,7 +951,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         }
         if !shown {
             for sp in &reachable_spans {
-                if *sp < span && !sp.overlaps(span) {
+                if sp.lo_hi() < span.lo_hi() && !sp.overlaps(span) {
                     err.span_label(*sp, "binding initialized here in some conditions");
                 }
             }
@@ -1202,17 +1202,15 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 }
                 // Point at all the loops that are between this move and the parent item.
                 for span in loop_spans {
-                    spans.push_span_label(sm.guess_head_span(span), "");
+                    spans.push_span_context(sm.guess_head_span(span));
                 }
 
                 // note: verify that your loop breaking logic is correct
                 //   --> $DIR/nested-loop-moved-value-wrong-continue.rs:41:17
                 //    |
                 // 28 |     for foo in foos {
-                //    |     ---------------
                 // ...
                 // 33 |         for bar in &bars {
-                //    |         ----------------
                 // ...
                 // 41 |                 continue;
                 //    |                 ^^^^^^^^ this `continue` advances the loop at line 33
@@ -1271,10 +1269,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = base.kind else { return };
         let (hir::def::Res::Local(_)
         | hir::def::Res::Def(
-            DefKind::Const { .. }
-            | DefKind::ConstParam
-            | DefKind::Static { .. }
-            | DefKind::AssocConst { .. },
+            DefKind::Const | DefKind::ConstParam | DefKind::Static { .. } | DefKind::AssocConst,
             _,
         )) = path.res
         else {
@@ -2550,7 +2545,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
 
                 if let hir::ExprKind::MethodCall(body_call, recv, ..) = ex.kind
                     && body_call.ident.name == sym::next
-                    && recv.span.source_equal(self.expr_span)
+                    && recv.span.lo_hi() == self.expr_span.lo_hi()
                 {
                     self.body_expr = Some(ex);
                 }
@@ -4605,7 +4600,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                         // `return_region`. Then use the `rustc_hir` type to get only
                         // the lifetime span.
                         match &fn_decl.inputs[index].kind {
-                            hir::TyKind::Ref(lifetime, _) => {
+                            hir::TyKind::Ref(lifetime, ..) => {
                                 // With access to the lifetime, we can get
                                 // the span of it.
                                 arguments.push((*argument, lifetime.ident.span));
@@ -4620,7 +4615,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                                         .hir_node_by_def_id(alias_to)
                                         .expect_item()
                                         .expect_impl()
-                                    && let hir::TyKind::Ref(lifetime, _) = self_ty.kind
+                                    && let hir::TyKind::Ref(lifetime, ..) = self_ty.kind
                                 {
                                     arguments.push((*argument, lifetime.ident.span));
                                 }
@@ -4642,7 +4637,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 let return_ty = sig.output().skip_binder();
                 let mut return_span = fn_decl.output.span();
                 if let hir::FnRetTy::Return(ty) = &fn_decl.output
-                    && let hir::TyKind::Ref(lifetime, _) = ty.kind
+                    && let hir::TyKind::Ref(lifetime, ..) = ty.kind
                 {
                     return_span = lifetime.ident.span;
                 }

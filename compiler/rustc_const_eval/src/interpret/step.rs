@@ -8,9 +8,9 @@ use either::Either;
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexSlice;
+use rustc_middle::mir;
 use rustc_middle::ty::{self, Instance, Ty};
-use rustc_middle::{bug, mir, span_bug};
-use rustc_span::Spanned;
+use rustc_span::{Spanned, bug, span_bug};
 use rustc_target::callconv::FnAbi;
 use tracing::field::Empty;
 use tracing::{info, instrument, trace};
@@ -583,7 +583,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     with_caller_location,
                     &dest_place,
                     target,
-                    if fn_abi.map_or(false, |fn_abi| fn_abi.can_unwind) {
+                    if fn_abi.is_some_and(|fn_abi| fn_abi.can_unwind) {
                         unwind
                     } else {
                         mir::UnwindAction::Unreachable

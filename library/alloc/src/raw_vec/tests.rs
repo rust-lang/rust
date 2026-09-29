@@ -84,7 +84,7 @@ struct ZST;
 // A `RawVec` holding zero-sized elements should always look like this.
 fn zst_sanity<T>(v: &RawVec<T>) {
     assert_eq!(v.capacity(), usize::MAX);
-    assert_eq!(v.ptr(), core::ptr::Unique::<T>::dangling().as_ptr());
+    assert_eq!(v.ptr(), core::ptr::dangling_mut::<T>());
     assert_eq!(unsafe { v.inner.current_memory(T::LAYOUT) }, None);
 }
 

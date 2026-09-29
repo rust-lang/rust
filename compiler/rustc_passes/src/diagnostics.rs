@@ -2,9 +2,7 @@ use std::io::Error;
 use std::path::{Path, PathBuf};
 
 use rustc_errors::codes::*;
-use rustc_errors::{
-    Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level, MultiSpan, msg,
-};
+use rustc_errors::{Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, Level, MultiSpan, msg};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::middle::resolve::MainDefinition;
 use rustc_middle::ty::Ty;
@@ -28,33 +26,6 @@ pub(crate) struct MixedExportNameAndNoMangle {
     pub export_name_span: Span,
     pub no_mangle_attr: &'static str,
     pub export_name_attr: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag("crate-level attribute should be an inner attribute")]
-pub(crate) struct OuterCrateLevelAttr {
-    #[subdiagnostic]
-    pub suggestion: OuterCrateLevelAttrSuggestion,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion("add a `!`", style = "verbose")]
-pub(crate) struct OuterCrateLevelAttrSuggestion {
-    #[suggestion_part(code = "!")]
-    pub bang_position: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("crate-level attribute should be in the root module")]
-pub(crate) struct InnerCrateLevelAttr;
-
-#[derive(Diagnostic)]
-#[diag("`#[non_exhaustive]` can't be used to annotate items with default field values")]
-pub(crate) struct NonExhaustiveWithDefaultFieldValues {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label("this struct has default field values")]
-    pub defn_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -156,13 +127,6 @@ pub(crate) struct BothOptimizeNoneAndInline {
 }
 
 #[derive(Diagnostic)]
-#[diag("attribute should be applied to an `extern` block with non-Rust ABI")]
-#[warning(
-    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
-)]
-pub(crate) struct Link;
-
-#[derive(Diagnostic)]
 #[diag("#[rustc_legacy_const_generics] functions must only have const generics")]
 pub(crate) struct RustcLegacyConstGenericsOnly {
     #[primary_span]
@@ -248,8 +212,6 @@ pub(crate) enum UnusedNote {
     EmptyList { name: Symbol },
     #[note("attribute `{$name}` without any lints has no effect")]
     NoLints { name: Symbol },
-    #[note("`default_method_body_is_const` has been replaced with `const` on traits")]
-    DefaultMethodBodyConst,
     #[note(
         "the `linker_messages` and `linker_info` lints can only be controlled at the root of a crate that needs to be linked"
     )]
@@ -423,9 +385,9 @@ pub(crate) struct NoMainErr {
     pub add_teach_note: bool,
 }
 
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NoMainErr {
+impl<'a> Diagnostic<'a> for NoMainErr {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag =
             Diag::new(dcx, level, msg!("`main` function not found in crate `{$crate_name}`"));
         diag.span(DUMMY_SP);
@@ -489,9 +451,9 @@ pub(crate) struct DuplicateLangItem {
     pub(crate) duplicate: Duplicate,
 }
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for DuplicateLangItem {
+impl Diagnostic<'_> for DuplicateLangItem {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let mut diag = Diag::new(
             dcx,
             level,
@@ -592,13 +554,6 @@ pub(crate) struct UselessAssignment<'a> {
     pub is_field_assign: bool,
     pub ty: Ty<'a>,
 }
-
-#[derive(Diagnostic)]
-#[diag("`#[inline]` is ignored on externally exported functions")]
-#[help(
-    "externally exported functions are functions with `#[no_mangle]`, `#[export_name]`, or `#[linkage]`"
-)]
-pub(crate) struct InlineIgnoredForExported;
 
 #[derive(Diagnostic)]
 #[diag("transparent {$target} cannot have other repr hints", code = E0692)]
@@ -958,6 +913,10 @@ pub(crate) struct UnnecessaryPartialStableFeature {
 #[diag("an `#[unstable]` annotation here has no effect")]
 #[note("see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information")]
 pub(crate) struct IneffectiveUnstableImpl;
+
+#[derive(Diagnostic)]
+#[diag("`#[unstable]` does not make this re-exported path unstable")]
+pub(crate) struct IneffectiveUnstableReexport;
 
 // FIXME(jdonszelmann): move back to rustc_attr
 #[derive(Diagnostic)]

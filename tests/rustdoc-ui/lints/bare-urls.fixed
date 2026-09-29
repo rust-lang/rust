@@ -92,3 +92,72 @@ pub fn trailing_period() {}
 /// <https://bloob.blob>]
 //~^ ERROR this URL is not a hyperlink
 pub fn lint_with_brackets() {}
+
+/// See <https://example.com/test_.html>
+//~^ ERROR this URL is not a hyperlink
+pub fn underscore_without_parens_1() {}
+
+/// See <https://example.com/test._html>
+//~^ ERROR this URL is not a hyperlink
+pub fn underscore_without_parens_2() {}
+
+/// See _<https://example.com/test.html_>
+//~^ ERROR this URL is not a hyperlink
+pub fn underscore_emphasis_without_parens() {}
+
+/// See <https://en.wikipedia.org/wiki/Rust_(programming_language)>
+//~^ ERROR this URL is not a hyperlink
+pub fn wikipedia_example() {}
+
+/// See (<http://example.com/(1(2))>)
+//~^ ERROR this URL is not a hyperlink
+pub fn nested_parens_balanced_1() {}
+
+/// See (1(<http://example.com/1(2)>))
+//~^ ERROR this URL is not a hyperlink
+pub fn nested_parens_balanced_2() {}
+
+/// See (1(<http://example.com/1(.)>
+//~^ ERROR this URL is not a hyperlink
+pub fn nested_parens_balanced_3() {}
+
+/// See <http://example.com/(1(2))>)
+//~^ ERROR this URL is not a hyperlink
+pub fn nested_parens_unbalanced_1() {}
+
+/// See <http://example.com/test>(.
+//~^ ERROR this URL is not a hyperlink
+pub fn nested_parens_unbalanced_2() {}
+
+/// See <http://example.com/test>.(
+//~^ ERROR this URL is not a hyperlink
+pub fn nested_parens_unbalanced_3() {}
+
+/// See <http://example.com/test>).
+//~^ ERROR this URL is not a hyperlink
+pub fn nested_parens_unbalanced_4() {}
+
+/// See <http://example.com/test>.)
+//~^ ERROR this URL is not a hyperlink
+pub fn nested_parens_unbalanced_5() {}
+
+/// See http://ex(amp)le.com/
+pub fn nested_parens_cannot_appear_in_host() {}
+
+/// The path component of a URL must be separated from the rest by a `/`,
+/// so the `=a` isn't part of the URL.
+/// <https://foo.bar>=a
+//~^ ERROR this URL is not a hyperlink
+pub fn equal_sign_after_host() {}
+
+/// A URL can, however, have a fragment or query without a slash.
+/// <https://foo.bar#a> or <https://foo.bar?a>
+//~^ ERROR this URL is not a hyperlink
+//~| ERROR this URL is not a hyperlink
+pub fn hash_or_question_after_host() {}
+
+/// This URL contains italics,
+/// but should still produce a suggestion that wraps the whole thing.
+/// <https://example.com/_foo_/bar>
+//~^ ERROR this URL is not a hyperlink
+pub fn italics() {}

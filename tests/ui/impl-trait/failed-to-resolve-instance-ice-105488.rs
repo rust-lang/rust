@@ -1,7 +1,11 @@
+//@ revisions: next old
+//@[next] compile-flags: -Znext-solver
+//@ build-fail
 // ICE failed to resolve instance for <fn() -> impl MyFnOnce  ...
 // issue: rust-lang/rust#105488
-//@ build-fail
-//~^^^ ERROR overflow evaluating the requirement `fn() -> impl MyFnOnce
+
+//[old]~^^^^^^ ERROR overflow evaluating the requirement `fn() -> impl MyFnOnce
+//[next]~^^^^^^^ ERROR: overflow evaluating the requirement `<fn() -> impl MyFnOnce {my_fn_2} as MyFnOnce>::Output == _` [E0275]
 
 pub trait MyFnOnce {
     type Output;

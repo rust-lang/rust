@@ -1,9 +1,9 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
 use rustc_abi::{ExternAbi, FIRST_VARIANT, Size};
+use rustc_attr_ir::InlineAttr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::attrs::InlineAttr;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -15,8 +15,8 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, InstanceKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast, Variance,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::debuginfo::debuginfo_locals;
+use rustc_span::{bug, span_bug};
 use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::PassPolicy;
@@ -429,6 +429,26 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                                     terminator.kind,
                                 ),
                             );
+                        }
+
+                        // Call arguments are moved by reference, so they must be plain locals
+                        // or the contents of a box; other moved places violate MIR invariants.
+                        if self.tcx.sess.opts.unstable_opts.validate_mir
+                            && self.body.phase < MirPhase::Runtime(RuntimePhase::Initial)
+                        {
+                            let is_plain_local = place.projection.is_empty();
+                            let is_box_deref =
+                                matches!(place.projection.as_ref(), [ProjectionElem::Deref])
+                                    && self.body.local_decls[place.local].ty.is_box();
+                            if !is_plain_local && !is_box_deref {
+                                self.fail(
+                                    location,
+                                    format!(
+                                        "encountered `Move` of a non-local, non-box place in `Call` terminator: {:?}",
+                                        terminator.kind,
+                                    ),
+                                );
+                            }
                         }
                     }
                 }

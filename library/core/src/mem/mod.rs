@@ -59,7 +59,7 @@ mod transmutability;
 pub use transmutability::{Assume, TransmuteFrom};
 
 mod drop_guard;
-#[unstable(feature = "drop_guard", issue = "144426")]
+#[stable(feature = "drop_guard", since = "CURRENT_RUSTC_VERSION")]
 pub use drop_guard::DropGuard;
 
 // This one has to be a re-export (rather than wrapping the underlying intrinsic) so that we can do
@@ -712,15 +712,17 @@ pub const fn needs_drop<T: ?Sized>() -> bool {
 /// This means that, for example, the padding byte in `(u8, u16)` is not
 /// necessarily zeroed.
 ///
-/// There is no guarantee that an all-zero byte-pattern represents a valid value
-/// of some type `T`. For example, the all-zero byte-pattern is not a valid value
-/// for reference types (`&T`, `&mut T`) and function pointers. Using `zeroed`
-/// on such types causes immediate [undefined behavior][ub] because [the Rust
-/// compiler assumes][inv] that there always is a valid value in a variable it
-/// considers initialized.
-///
 /// This has the same effect as [`MaybeUninit::zeroed().assume_init()`][zeroed].
 /// It is useful for FFI sometimes, but should generally be avoided.
+///
+///
+/// # Safety
+///
+/// The all-zero byte-pattern must represent a valid value of type `T`.
+/// For example, it is not valid for reference types (`&T`, `&mut T`) or function
+/// pointers. Using `zeroed` on such types causes immediate [undefined behavior][ub]
+/// because [the Rust compiler assumes][inv] that there always is a valid value in a
+/// variable it considers initialized.
 ///
 /// [zeroed]: MaybeUninit::zeroed
 /// [ub]: ../../reference/behavior-considered-undefined.html
@@ -1243,6 +1245,13 @@ pub const unsafe fn transmute_prefix<Src, Dst>(src: Src) -> Dst {
 ///
 /// It will not be stabilized under this name.
 ///
+/// # Safety
+///
+/// Refer to [`transmute`] for safety requirements.
+/// This function is semantically identical to `transmute`.
+///
+/// [`transmute`]: crate::mem::transmute
+///
 /// # Examples
 ///
 /// ```
@@ -1692,7 +1701,6 @@ pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
 /// # Examples
 ///
 /// ```
-/// #![feature(mem_conjure_zst)]
 /// use std::mem::conjure_zst;
 ///
 /// assert_eq!(unsafe { conjure_zst::<()>() }, ());
@@ -1700,8 +1708,9 @@ pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
 /// ```
 ///
 /// [inhabited]: https://doc.rust-lang.org/reference/glossary.html#inhabited
-#[unstable(feature = "mem_conjure_zst", issue = "95383")]
-#[rustc_const_unstable(feature = "mem_conjure_zst", issue = "95383")]
+#[stable(feature = "mem_conjure_zst", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "mem_conjure_zst", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_allow_const_fn_unstable(const_type_name)] // type_name() called only at run time
 pub const unsafe fn conjure_zst<T>() -> T {
     const_assert!(
         T::IS_ZST,

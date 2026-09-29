@@ -76,7 +76,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
         return None;
     }
 
-    if node.kind() == COMMENT {
+    if ast::AnyComment::can_cast(node.kind()) {
         cov_mark::hit!(extract_function_in_comment_is_not_applicable);
         return None;
     }

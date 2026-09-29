@@ -4,7 +4,7 @@
 //@ build-fail
 //@ revisions: riscv32e_llvm23 riscv32em_llvm23 riscv32emc_llvm23
 //@ revisions: riscv32e_llvm24 riscv32em_llvm24 riscv32emc_llvm24
-//@ compile-flags: --crate-type=rlib
+//@ compile-flags: --crate-type=rlib -Cembed-bitcode=false -Clto=no
 //@ [riscv32e_llvm23] needs-llvm-components: riscv
 //@ [riscv32e_llvm23] compile-flags: --target=riscv32e-unknown-none-elf
 //@ [riscv32e_llvm23] max-llvm-major-version: 23

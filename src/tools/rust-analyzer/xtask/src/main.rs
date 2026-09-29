@@ -13,6 +13,8 @@
     clippy::print_stderr,
     clippy::print_stdout,
     clippy::disallowed_methods,
+    // 1. We want to be dependency-light
+    // 2. Speed of hash maps doesn't matter, as xtask is dev tooling
     clippy::disallowed_types
 )]
 
@@ -72,7 +74,7 @@ fn run_fuzzer(sh: &Shell) -> anyhow::Result<()> {
     let _d = sh.push_dir("./crates/syntax");
     let _e = sh.push_env("RUSTUP_TOOLCHAIN", "nightly");
     if cmd!(sh, "cargo fuzz --help").read().is_err() {
-        cmd!(sh, "cargo install cargo-fuzz").run()?;
+        cmd!(sh, "cargo install --locked cargo-fuzz").run()?;
     };
 
     // Expecting nightly rustc

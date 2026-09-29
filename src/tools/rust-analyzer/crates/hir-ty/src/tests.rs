@@ -527,7 +527,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             if store.expr_roots().next().is_none() {
                 continue;
             }
-            for &anon_const in AnonConstId::all_from_signature(&db, def).into_iter().flatten() {
+            for anon_const in AnonConstId::all_from_signature(&db, def) {
                 let infer = InferenceResult::of(&db, anon_const);
                 infer_def(infer, store, source_map, None, krate);
             }

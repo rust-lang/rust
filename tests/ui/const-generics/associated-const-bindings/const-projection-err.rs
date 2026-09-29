@@ -1,8 +1,9 @@
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![allow(incomplete_features)]
 
 trait TraitWAssocConst {
-    type const A: usize;
+    #[rustc_always_gca]
+    const A: usize;
 }
 
 fn foo<T: TraitWAssocConst<A = 1>>() {}

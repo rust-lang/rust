@@ -2,18 +2,16 @@
 
 #[cfg(feature = "nightly")]
 use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
-use rustc_type_ir::ClauseKind::*;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::outlives::{Component, push_outlives_components};
 #[cfg(not(feature = "nightly"))]
 use rustc_type_ir::region_constraint::TransitiveRelationBuilder;
 use rustc_type_ir::region_constraint::{
     And, Assumptions, LeafRegionConstraint, Or, eagerly_handle_placeholders_in_universe,
-    propagate_ambiguity,
 };
 use rustc_type_ir::{
-    AliasTy, Binder, ClauseKind, InferCtxtLike, Interner, OutlivesClause, Region, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, UniverseIndex, max_universe,
+    AliasTy, Binder, ClauseKind, Const, InferCtxtLike, Interner, Region, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, UniverseIndex,
 };
 use tracing::{debug, instrument};
 
@@ -64,7 +62,7 @@ where
                 );
             }
 
-            fn visit_const(&mut self, c: I::Const) {
+            fn visit_const(&mut self, c: Const<I>) {
                 self.out.extend(
                     self.ecx
                         .well_formed_goals(self.param_env, c.into())
@@ -81,9 +79,6 @@ where
         let mut reqs_builder = RawAssumptions { ecx: self, param_env, out: vec![] };
         t.visit_with(&mut reqs_builder);
         let reqs = reqs_builder.out;
-
-        let mut region_outlives_builder = TransitiveRelationBuilder::default();
-        let mut type_outlives = vec![];
 
         // If there are inference variables in type outlives then we may not be able
         // to elaborate to the full set of implied bounds right now. To avoid incorrectly
@@ -102,42 +97,44 @@ where
 
         // FIXME(-Zassumptions-on-binders): we need to normalize here/somewhere
         // as we assume the type outlives assumptions only have rigid types :>
-        let clauses = rustc_type_ir::elaborate::elaborate(
-            self.cx(),
-            reqs.into_iter().filter_map(|goal| goal.predicate.as_clause()),
-        );
+        //
+        // `Assumptions::new` elaborates, restricts the clauses to `u` and picks out the
+        // outlives ones for us, so we just hand over everything the requirements gave us.
+        let clauses = reqs.into_iter().filter_map(|goal| goal.predicate.as_clause());
 
-        clauses.filter(move |clause| max_universe(&**self.delegate, *clause) == u).for_each(
-            |clause| match clause.kind().skip_binder() {
-                RegionOutlives(OutlivesClause(r1, r2)) => {
-                    assert!(clause.kind().no_bound_vars().is_some());
-                    region_outlives_builder.add(r1, r2);
-                }
-                TypeOutlives(p) => {
-                    type_outlives.push(clause.kind().map_bound(|_| p));
-                }
-                _ => (),
-            },
-        );
-
-        Some(Assumptions::new(type_outlives, region_outlives_builder.freeze()))
+        Some(Assumptions::new(
+            &**self.delegate,
+            clauses,
+            TransitiveRelationBuilder::default().freeze(),
+            u,
+        ))
     }
 
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn eagerly_handle_placeholders(&mut self) -> Result<Certainty, NoSolution> {
         let constraint = self.delegate.get_solver_region_constraint();
 
-        let smallest_universe = self.max_input_universe.index();
-        let largest_universe = self.delegate.universe().index();
-        debug!(?smallest_universe, largest_universe);
+        let smallest_universe = self.max_input_universe;
+        let largest_universe = self.delegate.universe();
+        debug!("smallest_universe={smallest_universe:#?}, largest_universe={largest_universe:#?}");
 
-        let constraint = ((smallest_universe + 1)..=largest_universe)
-            .map(|u| UniverseIndex::from_usize(u))
+        // We rely on placeholder assumptions to evaluate region constraints with placeholders.
+        // But we can fail to compute assumptions due to unresolved type variables. In that case,
+        // we conservatively bail with ambiguity.
+        if !self
+            .delegate
+            .has_placeholder_assumptions(((smallest_universe + 1)..=largest_universe).into())
+        {
+            return Ok(Certainty::AMBIGUOUS);
+        }
+
+        // Walk around that `Step` trait is nightly only.
+        let constraint = ((smallest_universe.index() + 1)..=largest_universe.index())
+            .map(UniverseIndex::from_usize)
             .rev()
             .fold(constraint, |constraint, u| {
                 eagerly_handle_placeholders_in_universe(&**self.delegate, constraint, u)
             });
-        let constraint = propagate_ambiguity(constraint);
 
         debug!("final constraint={:?}", constraint);
         self.delegate.overwrite_solver_region_constraint(constraint.clone(), self.origin_span);
@@ -176,7 +173,9 @@ where
                 Or::new_leaf(PlaceholderTyOutlives(Ty::new_placeholder(self.cx(), *p), r, ()))
             }
             Alias(_, alias) => self.destructure_alias_outlives(*alias, r),
-            UnresolvedInferenceVariable(_) => Or::new_ambig(()),
+            UnresolvedInferenceVariable(_) => {
+                panic!("Shouldn't destructure type outlives when ty vars exist")
+            }
             Param(_) => panic!("Params should have been canonicalized to placeholders"),
             EscapingAlias(components) => self.destructure_components(components, r),
         }

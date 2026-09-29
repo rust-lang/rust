@@ -1246,7 +1246,7 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                         def,
                         &args,
                         // FIXME: wrong for manual impls of `FnOnce`
-                        GenericArgs::empty(self.interner()),
+                        GenericArgs::empty(),
                         locals,
                         destination,
                         None,

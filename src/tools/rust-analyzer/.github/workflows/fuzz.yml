@@ -38,6 +38,6 @@ jobs:
 
       - name: Build fuzzers
         run: |
-          cargo install cargo-fuzz
+          cargo install --locked cargo-fuzz
           cd crates/syntax
           cargo +nightly fuzz build

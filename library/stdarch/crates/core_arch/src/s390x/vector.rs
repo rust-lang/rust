@@ -122,8 +122,6 @@ unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.s390.vsrlb"] fn vsrlb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
     #[link_name = "llvm.s390.vslb"] fn vslb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
 
-    #[link_name = "llvm.s390.vsrd"] fn vsrd(a: i8x16, b: i8x16, c: u32) -> i8x16;
-
     #[link_name = "llvm.s390.verimb"] fn verimb(a: vector_signed_char, b: vector_signed_char, c: vector_signed_char, d: i32) -> vector_signed_char;
     #[link_name = "llvm.s390.verimh"] fn verimh(a: vector_signed_short, b: vector_signed_short, c: vector_signed_short, d: i32) -> vector_signed_short;
     #[link_name = "llvm.s390.verimf"] fn verimf(a: vector_signed_int, b: vector_signed_int, c: vector_signed_int, d: i32) -> vector_signed_int;
@@ -139,9 +137,6 @@ unsafe extern "llvm-intrinsic" {
 
     #[link_name = "llvm.s390.vsumqf"] fn vsumqf(a: vector_unsigned_int, b: vector_unsigned_int) -> u128;
     #[link_name = "llvm.s390.vsumqg"] fn vsumqg(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> u128;
-
-    #[link_name = "llvm.s390.vaccq"] fn vaccq(a: u128, b: u128) -> u128;
-    #[link_name = "llvm.s390.vacccq"] fn vacccq(a: u128, b: u128, c: u128) -> u128;
 
     #[link_name = "llvm.s390.vscbiq"] fn vscbiq(a: u128, b: u128) -> u128;
     #[link_name = "llvm.s390.vsbiq"] fn vsbiq(a: u128, b: u128, c: u128) -> u128;
@@ -3664,12 +3659,7 @@ mod sealed {
                     #[target_feature(enable = "vector-enhancements-2")]
                     unsafe fn vec_srdb<const C: u32>(self, b: Self) -> Self {
                         static_assert_uimm_bits!(C, 3);
-                        transmute(vsrd(transmute(self), transmute(b), C))
-                        // FIXME(llvm): https://github.com/llvm/llvm-project/issues/129955#issuecomment-3207488190
-                        // LLVM currently rewrites `fshr` to `fshl`, and the logic in the s390x
-                        // backend cannot deal with that yet.
-                        // #[link_name = "llvm.fshr.i128"] fn fshr_i128(a: u128, b: u128, c: u128) -> u128;
-                        // transmute(fshr_i128(transmute(self), transmute(b), const { C as u128 }))
+                        transmute(u128::funnel_shr(transmute(self), transmute(b), C))
                     }
                 }
             )*
@@ -4849,9 +4839,7 @@ pub unsafe fn vec_addc_u128(
 ) -> vector_unsigned_char {
     let a: u128 = transmute(a);
     let b: u128 = transmute(b);
-    // FIXME(llvm) https://github.com/llvm/llvm-project/pull/153557
-    // transmute(a.overflowing_add(b).1 as u128)
-    transmute(vaccq(a, b))
+    transmute(a.overflowing_add(b).1 as u128)
 }
 
 /// Vector Add With Carry unsigned 128-bits
@@ -4886,10 +4874,8 @@ pub unsafe fn vec_addec_u128(
     let a: u128 = transmute(a);
     let b: u128 = transmute(b);
     let c: u128 = transmute(c);
-    // FIXME(llvm) https://github.com/llvm/llvm-project/pull/153557
-    // let (_d, carry) = a.carrying_add(b, c & 1 != 0);
-    // transmute(carry as u128)
-    transmute(vacccq(a, b, c))
+    let (_d, carry) = a.carrying_add(b, c & 1 != 0);
+    transmute(carry as u128)
 }
 
 /// Vector Subtract with Carryout

@@ -148,6 +148,7 @@ pub use rustc_lint_defs::{
     Applicability, FutureIncompatibleInfo, Lint, LintId, LintPass, LintVec, declare_lint,
     declare_lint_pass, declare_tool_lint, impl_lint_pass,
 };
+pub use utils::std_or_core;
 
 pub fn provide(providers: &mut Providers) {
     levels::provide(providers);
@@ -572,7 +573,7 @@ fn register_builtins(store: &mut LintStore) {
     store.register_removed(
         "unsupported_naked_functions",
         "converted into hard error, see RFC 2972 \
-         <https://github.com/rust-lang/rfcs/blob/master/text/2972-constrained-naked.md> for more information",
+         <https://rust-lang.github.io/rfcs/2972-constrained-naked.html> for more information",
     );
     store.register_removed(
         "mutable_borrow_reservation_conflict",

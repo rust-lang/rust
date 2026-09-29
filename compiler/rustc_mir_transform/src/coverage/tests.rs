@@ -29,8 +29,8 @@ use rustc_data_structures::graph::{DirectedGraph, Successors};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::*;
-use rustc_middle::{bug, ty};
-use rustc_span::{BytePos, DUMMY_SP, Pos, Span};
+use rustc_middle::ty;
+use rustc_span::{BytePos, DUMMY_SP, Pos, Span, bug};
 
 use super::graph::{self, BasicCoverageBlock};
 
@@ -73,7 +73,7 @@ impl<'tcx> MockBlocks<'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(Span::with_root_ctxt(next_lo, next_hi)),
                 kind,
-                attributes: ThinVec::new(),
+                loop_hint_attrs: ThinVec::new(),
             }),
             false,
         ))

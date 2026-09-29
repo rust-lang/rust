@@ -17,7 +17,7 @@ fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p }
 
 fn take_indirect1(p: Indirect1) -> Indirect1 { p }
 
-fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
+fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p } //~ ERROR one or more lifetime
 //~^ ERROR lifetime may not live long enough
 //~| ERROR lifetime may not live long enough
 

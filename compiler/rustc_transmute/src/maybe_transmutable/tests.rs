@@ -43,10 +43,101 @@ fn is_transmutable<R: Representation + Clone>(
 ) -> crate::Answer<!, !> {
     let src = src.clone();
     let dst = dst.clone();
-    // The only dimension of the transmutability analysis we want to test
-    // here is the safety analysis. To ensure this, we disable all other
-    // toggleable aspects of the transmutability analysis.
     R::is_transmutable(src, dst, assume)
+}
+
+mod answers {
+    use crate::maybe_transmutable::Quantifier;
+    use crate::{Condition, Reason};
+
+    type Answer = crate::Answer<usize, ()>;
+
+    const OUTLIVES: Condition<usize, ()> = Condition::Outlives { long: 1, short: 0 };
+    const IMMUTABLE: Condition<usize, ()> = Condition::Immutable { ty: () };
+    const TRANSMUTABLE: Condition<usize, ()> = Condition::Transmutable { src: (), dst: () };
+
+    #[test]
+    fn and_yes_is_identity() {
+        for answer in [Answer::Yes, Answer::No(Reason::DstIsTooBig), Answer::If(IMMUTABLE)] {
+            assert_eq!(Answer::Yes.and(answer.clone()), answer);
+            assert_eq!(answer.clone().and(Answer::Yes), answer);
+        }
+    }
+
+    #[test]
+    fn and_no_absorbs_conditions() {
+        let no = Answer::No(Reason::DstIsTooBig);
+        let conditional = Answer::If(IMMUTABLE);
+        assert_eq!(no.clone().and(conditional.clone()), no);
+        assert_eq!(conditional.and(no.clone()), no);
+    }
+
+    #[test]
+    fn or_bit_incompatibility_is_identity() {
+        for answer in [Answer::Yes, Answer::No(Reason::DstIsTooBig), Answer::If(IMMUTABLE)] {
+            let no = Answer::No(Reason::DstIsBitIncompatible);
+            assert_eq!(no.clone().or(answer.clone()), answer);
+            assert_eq!(answer.clone().or(no), answer);
+        }
+    }
+
+    #[test]
+    fn or_yes_preserves_conditions() {
+        let conditional = Answer::If(IMMUTABLE);
+        assert_eq!(Answer::Yes.or(conditional.clone()), conditional);
+        assert_eq!(conditional.clone().or(Answer::Yes), conditional);
+    }
+
+    #[test]
+    fn and_flattens_condition_groups() {
+        let pair = Answer::If(OUTLIVES).and(Answer::If(IMMUTABLE));
+        assert_eq!(pair, Answer::If(Condition::IfAll(vec![OUTLIVES, IMMUTABLE])));
+
+        let expected = Answer::If(Condition::IfAll(vec![OUTLIVES, IMMUTABLE, TRANSMUTABLE]));
+        assert_eq!(pair.clone().and(Answer::If(TRANSMUTABLE)), expected);
+        assert_eq!(Answer::If(TRANSMUTABLE).and(pair.clone()), expected);
+        assert_eq!(pair.and(Answer::If(Condition::IfAll(vec![TRANSMUTABLE]))), expected);
+    }
+
+    #[test]
+    fn or_flattens_condition_groups() {
+        let pair = Answer::If(OUTLIVES).or(Answer::If(IMMUTABLE));
+        assert_eq!(pair, Answer::If(Condition::IfAny(vec![OUTLIVES, IMMUTABLE])));
+
+        let expected = Answer::If(Condition::IfAny(vec![OUTLIVES, IMMUTABLE, TRANSMUTABLE]));
+        assert_eq!(pair.clone().or(Answer::If(TRANSMUTABLE)), expected);
+        assert_eq!(Answer::If(TRANSMUTABLE).or(pair.clone()), expected);
+        assert_eq!(pair.or(Answer::If(Condition::IfAny(vec![TRANSMUTABLE]))), expected);
+    }
+
+    #[test]
+    fn specific_errors_take_precedence_over_bit_incompatibility() {
+        let combinators: [fn(Answer, Answer) -> Answer; 2] = [Answer::and, Answer::or];
+        for combine in combinators {
+            let generic = Answer::No(Reason::DstIsBitIncompatible);
+            let specific = Answer::No(Reason::DstIsTooBig);
+            assert_eq!(combine(generic.clone(), specific.clone()), specific);
+            assert_eq!(combine(specific.clone(), generic), specific);
+        }
+    }
+
+    #[test]
+    fn empty_quantifiers() {
+        assert_eq!(Quantifier::ForAll.apply([]), Answer::Yes);
+        assert_eq!(Quantifier::ThereExists.apply([]), Answer::No(Reason::DstIsBitIncompatible));
+    }
+
+    #[test]
+    fn quantifiers_short_circuit_after_a_decisive_answer() {
+        let no = Answer::No(Reason::DstIsTooBig);
+        let mut answers = [Answer::If(IMMUTABLE), no.clone(), Answer::Yes].into_iter();
+        assert_eq!(Quantifier::ForAll.apply(&mut answers), no);
+        assert_eq!(answers.next(), Some(Answer::Yes));
+
+        let mut answers = [no, Answer::Yes, Answer::If(IMMUTABLE)].into_iter();
+        assert_eq!(Quantifier::ThereExists.apply(&mut answers), Answer::Yes);
+        assert_eq!(answers.next(), Some(Answer::If(IMMUTABLE)));
+    }
 }
 
 mod safety {
@@ -205,33 +296,22 @@ mod bool {
                 let dst_layout = into_layout(dst_alts.clone());
                 let dst_set = into_set(dst_alts.clone());
 
-                if src_set.is_subset(&dst_set) {
+                for validity in [false, true] {
+                    let permitted = if validity {
+                        src_set.is_empty() || !src_set.is_disjoint(&dst_set)
+                    } else {
+                        src_set.is_subset(&dst_set)
+                    };
+                    let expected = if permitted {
+                        Answer::Yes
+                    } else {
+                        Answer::No(Reason::DstIsBitIncompatible)
+                    };
+                    let assume = Assume { validity, ..Assume::default() };
                     assert_eq!(
-                        Answer::Yes,
-                        is_transmutable(&src_layout, &dst_layout, Assume::default()),
-                        "{:?} SHOULD be transmutable into {:?}",
-                        src_layout,
-                        dst_layout
-                    );
-                } else if !src_set.is_disjoint(&dst_set) {
-                    assert_eq!(
-                        Answer::Yes,
-                        is_transmutable(
-                            &src_layout,
-                            &dst_layout,
-                            Assume { validity: true, ..Assume::default() }
-                        ),
-                        "{:?} SHOULD be transmutable (assuming validity) into {:?}",
-                        src_layout,
-                        dst_layout
-                    );
-                } else {
-                    assert_eq!(
-                        Answer::No(Reason::DstIsBitIncompatible),
-                        is_transmutable(&src_layout, &dst_layout, Assume::default()),
-                        "{:?} should NOT be transmutable into {:?}",
-                        src_layout,
-                        dst_layout
+                        is_transmutable(&src_layout, &dst_layout, assume),
+                        expected,
+                        "src: {src_layout:?}, dst: {dst_layout:?}, validity: {validity}"
                     );
                 }
             }

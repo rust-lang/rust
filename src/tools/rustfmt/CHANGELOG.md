@@ -3,6 +3,51 @@
 ## [Unreleased]
 
 
+<!-- These changes will be available on the stable released channel alongside Rust 1.100 -->
+## [1.11.0] 2026-11-12
+
+### Fixed
+- Preserve attributes on `fn` type parameters [#6590](https://github.com/rust-lang/rustfmt/pull/6590).
+- Preserve inner attributes from `loop`, `for` and `while` expressions [#6010](https://github.com/rust-lang/rustfmt/pull/6010).
+- Fixed ICE when formatting inner attributes of a loop body defined inside a closure [#6978](https://github.com/rust-lang/rustfmt/pull/6978).
+- Fixed ICE when whitespace separated `macro_rules` and `!` [#6990](https://github.com/rust-lang/rustfmt/pull/6990).
+- Correct `#[cfg]` struct field pattern indentation when using `style_edition=2027` [#6983](https://github.com/rust-lang/rustfmt/pull/6983).
+- rustfmt now wraps a braceless closure that ends with an open range in parentheses if it's followed by a field access. For example, `|| 1.. .field` is formatted as `(|| 1..).field` [#7013](https://github.com/rust-lang/rustfmt/pull/7013).
+- Handle `cargo fmt --manifest-path` correctly when specifying the workspace's root `Cargo.toml` [#6524](https://github.com/rust-lang/rustfmt/pull/6524).
+- Prevent comment duplication between attributes and struct field patterns [#7004](https://github.com/rust-lang/rustfmt/pull/7004).
+- Fix char boundary panics when reporting formatting errors [#7029](https://github.com/rust-lang/rustfmt/pull/7029).
+- Correct comment wrapping at or before `comment_width` when using `wrap_comments=true` [#6802](https://github.com/rust-lang/rustfmt/pull/6802).
+- Adjust opening brace placement when setting `style_edition=2027` to better align with the style guide for multi-line control flow expressions [#7005](https://github.com/rust-lang/rustfmt/pull/7005).
+- Remove repeated `--style-edition` CLI help text [#7050](https://github.com/rust-lang/rustfmt/pull/7050).
+- Fix ICE when `for await` had extra whitespace between `for` and `await` [#7063](https://github.com/rust-lang/rustfmt/pull/7063).
+- Use the correct span when rewriting `ast::TyKind::FnPtr` to prevent comment recovery code from copying `cfg_attr` content into `fn` type [#7066](https://github.com/rust-lang/rustfmt/pull/7066).
+- Prevent infinite loops when parsing items from `cfg_select!` arms [#7089](https://github.com/rust-lang/rustfmt/pull/7089).
+- Correct visibility and defaultness order on associated impl type alias [#7064](https://github.com/rust-lang/rustfmt/pull/7064).
+- Correctly calculate the `shape` for inline const blocks when using `style_edition=2027` [#7065](https://github.com/rust-lang/rustfmt/pull/7065).
+- Prevent invalid code generation in macros that use raw identifiers [#7110](https://github.com/rust-lang/rustfmt/pull/7110).
+- Prevent rustfmt from reporting on `max_width` configuration issues when formatting macros [#6651](https://github.com/rust-lang/rustfmt/pull/6651).
+
+### Changed
+- No longer apply `use_field_init_shorthand` when formatting macros [#6981](https://github.com/rust-lang/rustfmt/pull/6981).
+- Include trailing commas when rewriting single parameter `fn` declaration when setting `style_edition=2027` and `fn_params_layout="Vertical"` [#6890](https://github.com/rust-lang/rustfmt/pull/6890).
+- The rustfmt CLI now prevents users from setting `--check` and `--config=emit_mode` as well as `--config=emit_mode` and `--emit` [#7002](https://github.com/rust-lang/rustfmt/pull/7002).
+> [!IMPORTANT]
+> Potential breaking changes.
+> - Formatting doc comments within macros is now more consistent across doc-comment styles. For example, `///` vs `#[doc]`. Users may notice indentation changes `[#7042](https://github.com/rust-lang/rustfmt/pull/7042).
+> - Block doc-comment closer formatting change to prevent an idempotence issue. This might impact users who use block doc-comments [#7017](https://github.com/rust-lang/rustfmt/pull/7017).
+> - Correct binary operator expression indentation when using `hard_tabs=true`. Binary expression formatting might change if you're using `hard_tabs=true` [#6883](https://github.com/rust-lang/rustfmt/pull/6883).
+
+### Added
+- Support formatting for `#![feature(generic_const_items)]` [#6956](https://github.com/rust-lang/rustfmt/pull/6956).
+- Format `cfg_select!` macros on the nightly release channel [rust-lang/rust#154202](https://github.com/rust-lang/rust/pull/154202) [rust-lang/rust#160998](https://github.com/rust-lang/rust/pull/160998).
+
+### Misc
+- Bump `annotate-snippets` to 0.12 [#6947](https://github.com/rust-lang/rustfmt/pull/6947).
+- Bump `toml` to 1.1 [#7008](https://github.com/rust-lang/rustfmt/pull/7008).
+- Bump `tracing-subscriber` to 0.3.20 [#6760](https://github.com/rust-lang/rustfmt/pull/6760) [#6772](https://github.com/rust-lang/rustfmt/pull/6772).
+- Add clippy linting to all rustfmt packages [#7116](https://github.com/rust-lang/rustfmt/pull/7116) [#7124](https://github.com/rust-lang/rustfmt/pull/7124).
+
+
 ## [1.10.0] 2026-07-21
 
 ### Fixed

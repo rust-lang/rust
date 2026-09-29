@@ -14,6 +14,9 @@ impl TestCx<'_> {
                 "If you want to check `--test`, put this test into `rustdoc-ui` testsuite instead",
             );
         }
+        if self.props.should_fail {
+            panic!("`should-fail` should not be used in `rustdoc-html` testsuite");
+        }
         let out_dir = self.output_base_dir();
         remove_and_create_dir_all(&out_dir).unwrap_or_else(|e| {
             panic!("failed to remove and recreate output directory `{out_dir}`: {e}")

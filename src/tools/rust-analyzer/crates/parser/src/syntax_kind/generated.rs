@@ -162,8 +162,10 @@ pub enum SyntaxKind {
     ERROR,
     FRONTMATTER,
     IDENT,
+    INNER_DOC_COMMENT,
     LIFETIME_IDENT,
     NEWLINE,
+    OUTER_DOC_COMMENT,
     SHEBANG,
     WHITESPACE,
     ABI,
@@ -204,6 +206,7 @@ pub enum SyntaxKind {
     CONST_PARAM,
     CONTINUE_EXPR,
     DEREF_PAT,
+    DOC_COMMENT,
     DYN_TRAIT_TYPE,
     ENUM,
     EXPR_STMT,
@@ -391,6 +394,7 @@ impl SyntaxKind {
             | CONST_PARAM
             | CONTINUE_EXPR
             | DEREF_PAT
+            | DOC_COMMENT
             | DYN_TRAIT_TYPE
             | ENUM
             | EXPR_STMT
@@ -526,8 +530,10 @@ impl SyntaxKind {
             | ERROR
             | FRONTMATTER
             | IDENT
+            | INNER_DOC_COMMENT
             | LIFETIME_IDENT
             | NEWLINE
+            | OUTER_DOC_COMMENT
             | SHEBANG
             | WHITESPACE => panic!("no text for these `SyntaxKind`s"),
             DOLLAR => "$",
@@ -1226,6 +1232,8 @@ macro_rules ! T_ {
     [string] => { $ crate :: SyntaxKind :: STRING };
     [shebang] => { $ crate :: SyntaxKind :: SHEBANG };
     [frontmatter] => { $ crate :: SyntaxKind :: FRONTMATTER };
+    [inner_doc_comment] => { $ crate :: SyntaxKind :: INNER_DOC_COMMENT };
+    [outer_doc_comment] => { $ crate :: SyntaxKind :: OUTER_DOC_COMMENT };
 }
 
 impl ::core::marker::Copy for SyntaxKind {}

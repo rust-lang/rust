@@ -8,7 +8,10 @@ use hir_def::{
     AdtId, CallableDefId, DefWithBodyId, ExpressionStoreOwnerId, FieldId, FunctionId, GenericDefId,
     VariantId,
     expr_store::{Body, ExpressionStore, path::Path},
-    hir::{AsmOperand, Expr, ExprId, ExprOrPatId, InlineAsmKind, Pat, PatId, Statement, UnaryOp},
+    hir::{
+        AsmOperand, Expr, ExprId, ExprOrPatId, InlineAsmKind, Pat, PatId, Statement, UnaryOp,
+        Unsafe,
+    },
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
     signatures::{FunctionSignature, StaticFlags, StaticSignature},
     type_ref::Rawness,
@@ -96,25 +99,6 @@ enum UnsafeDiagnostic {
     },
     /// A lint.
     DeprecatedSafe2024 { node: ExprId, inside_unsafe_block: InsideUnsafeBlock },
-}
-
-pub fn unsafe_operations_for_body(
-    db: &dyn HirDatabase,
-    infer: &InferenceResult<'_>,
-    def: DefWithBodyId,
-    body: &Body,
-    callback: &mut dyn FnMut(ExprOrPatId),
-) {
-    let mut visitor_callback = |diag| {
-        if let UnsafeDiagnostic::UnsafeOperation { node, .. } = diag {
-            callback(node);
-        }
-    };
-    let mut visitor = UnsafeVisitor::new(db, infer, body, def.into(), &mut visitor_callback);
-    visitor.walk_expr(body.root_expr());
-    for param in &body.params {
-        visitor.walk_pat(param.formal);
-    }
 }
 
 pub fn unsafe_operations(
@@ -255,7 +239,6 @@ impl<'db> UnsafeVisitor<'db> {
                 | Pat::Box { .. }
                 | Pat::Deref { .. }
                 | Pat::Expr(..)
-                | Pat::ConstBlock(..)
                 | Pat::NotNull => self.on_unsafe_op(current.into(), UnsafetyReason::UnionField),
                 // `Or` only wraps other patterns, and `Missing`/`Wild` do not constitute a read.
                 Pat::Missing | Pat::Rest | Pat::Wild | Pat::Or(_) => {}
@@ -273,11 +256,6 @@ impl<'db> UnsafeVisitor<'db> {
                 }
             }
             Pat::Path(path) => self.mark_unsafe_path(current.into(), path),
-            &Pat::ConstBlock(expr) => {
-                let old_inside_assignment = mem::replace(&mut self.inside_assignment, false);
-                self.walk_expr(expr);
-                self.inside_assignment = old_inside_assignment;
-            }
             &Pat::Expr(expr) => self.walk_expr(expr),
             _ => {}
         }
@@ -391,7 +369,7 @@ impl<'db> UnsafeVisitor<'db> {
                     self.on_unsafe_op(current.into(), UnsafetyReason::UnionField);
                 }
             }
-            Expr::Unsafe { statements, .. } => {
+            Expr::Block { unsafe_: Unsafe::Yes, statements, .. } => {
                 self.with_inside_unsafe_block(InsideUnsafeBlock::Yes, |this| {
                     this.walk_pats_top(
                         statements.iter().filter_map(|statement| match statement {
@@ -404,7 +382,7 @@ impl<'db> UnsafeVisitor<'db> {
                 });
                 return;
             }
-            Expr::Block { statements, .. } => {
+            Expr::Block { unsafe_: Unsafe::No, statements, .. } => {
                 self.walk_pats_top(
                     statements.iter().filter_map(|statement| match statement {
                         &Statement::Let { pat, .. } => Some(pat),

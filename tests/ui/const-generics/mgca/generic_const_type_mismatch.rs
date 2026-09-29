@@ -4,16 +4,18 @@
     adt_const_params,
     generic_const_items,
     generic_const_parameter_types,
-    min_generic_const_args,
+    gca_min_const_items,
     const_param_ty_trait
 )]
+
+use std::gca;
 use std::marker::ConstParamTy_;
 
 struct Foo<T> {
     field: T,
 }
 
-type const WRAP<T : ConstParamTy_> : T = Foo::<T>{field : 1};
+const WRAP<T: ConstParamTy_>: T = gca!(Foo::<T> { field: 1 });
 //~^ ERROR: type annotations needed for the literal
 
 fn main() {}

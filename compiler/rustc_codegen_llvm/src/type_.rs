@@ -7,9 +7,9 @@ use rustc_abi::{AddressSpace, Align, Integer, Reg, Size};
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_middle::bug;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty};
+use rustc_span::bug;
 use rustc_target::callconv::{CastTarget, FnAbi};
 
 use crate::abi::{FnAbiLlvmExt, LlvmType};
@@ -212,6 +212,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
 
     fn type_f16(&self) -> &'ll Type {
         unsafe { llvm::LLVMHalfTypeInContext(self.llcx()) }
+    }
+
+    fn type_f16b(&self) -> &'ll Type {
+        unsafe { llvm::LLVMBFloatTypeInContext(self.llcx()) }
     }
 
     fn type_f32(&self) -> &'ll Type {

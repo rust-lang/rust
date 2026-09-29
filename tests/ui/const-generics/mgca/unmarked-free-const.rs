@@ -1,11 +1,13 @@
 // regression test, used to ICE
 
-#![feature(min_generic_const_args, macroless_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![allow(incomplete_features)]
+
+use std::gca;
 
 const N: usize = 4;
 
 fn main() {
-    let x = [(); N];
-    //~^ ERROR use of `const` in the type system not defined as `type const`
+    let x = [(); gca!(N)];
+    //~^ ERROR use of `const` in the type system not marked as direct
 }

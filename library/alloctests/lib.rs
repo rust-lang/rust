@@ -1,5 +1,4 @@
 #![cfg(test)]
-#![allow(unused_attributes)]
 #![unstable(feature = "alloctests", issue = "none")]
 #![no_std]
 // Lints:
@@ -14,7 +13,7 @@
 //
 // Library features:
 // tidy-alphabetical-start
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 #![feature(array_into_iter_constructors)]
 #![feature(char_internals)]
 #![feature(const_alloc_error)]
@@ -28,7 +27,6 @@
 #![feature(const_try)]
 #![feature(copied_into_inner)]
 #![feature(core_intrinsics)]
-#![feature(drop_guard)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
 #![feature(extend_one_unchecked)]
@@ -39,7 +37,6 @@
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(ptr_alignment_type)]
 #![feature(ptr_cast_slice)]
-#![feature(ptr_internals)]
 #![feature(rev_into_inner)]
 #![feature(sized_type_properties)]
 #![feature(slice_iter_mut_as_mut_slice)]

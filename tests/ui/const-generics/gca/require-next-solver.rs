@@ -1,4 +1,4 @@
-#![feature(min_generic_const_args)]
-#![feature(generic_const_args)]
+#![feature(gca_min_const_items)]
+#![feature(gca_const_items)]
 //~^ ERROR next-solver
 fn main() {}

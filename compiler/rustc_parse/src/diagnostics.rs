@@ -7,8 +7,8 @@ use rustc_ast::token::{self, InvisibleOrigin, MetaVarKind, Token};
 use rustc_ast_pretty::pprust;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg,
-    Level, Subdiagnostic, SuggestionStyle, msg,
+    Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, IntoDiagArg, Level,
+    Subdiagnostic, SuggestionStyle, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
@@ -257,7 +257,7 @@ pub(crate) enum InvalidComparisonOperatorSub {
 pub(crate) struct InvalidLogicalOperator {
     #[primary_span]
     pub span: Span,
-    pub incorrect: String,
+    pub incorrect: Symbol,
     #[subdiagnostic]
     pub sub: InvalidLogicalOperatorSub,
 }
@@ -797,7 +797,7 @@ pub(crate) struct EqFieldInit {
 
 #[derive(Diagnostic)]
 #[diag("unexpected token: `...`")]
-pub(crate) struct DotDotDot {
+pub(crate) struct DotDotDotExprOp {
     #[primary_span]
     #[suggestion(
         "use `..` for an exclusive range",
@@ -816,7 +816,7 @@ pub(crate) struct DotDotDot {
 
 #[derive(Diagnostic)]
 #[diag("unexpected token: `<-`")]
-pub(crate) struct LeftArrowOperator {
+pub(crate) struct LArrowExprOp {
     #[primary_span]
     #[suggestion(
         "if you meant to write a comparison against a negative value, add a space in between `<` and `-`",
@@ -1537,9 +1537,9 @@ pub(crate) struct ExpectedIdentifier {
     pub help_cannot_start_number: Option<HelpIdentifierStartsWithNumber>,
 }
 
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedIdentifier {
+impl<'a> Diagnostic<'a> for ExpectedIdentifier {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut add_token = true;
@@ -1603,9 +1603,9 @@ pub(crate) struct ExpectedSemi {
     pub sugg: ExpectedSemiSugg,
 }
 
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedSemi {
+impl<'a> Diagnostic<'a> for ExpectedSemi {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut add_token = true;
@@ -1656,8 +1656,8 @@ pub(crate) enum ExpectedSemiSugg {
         style = "short"
     )]
     ChangeToSemi(#[primary_span] Span),
-    #[suggestion("add `;` here", code = ";", applicability = "machine-applicable", style = "short")]
-    AddSemi(#[primary_span] Span),
+    #[suggestion("add `;` here", code = ";", style = "short")]
+    AddSemi(#[primary_span] Span, #[applicability] Applicability),
 }
 
 #[derive(Diagnostic)]
@@ -1824,60 +1824,6 @@ pub(crate) struct ParenthesesInMatchPatSugg {
     pub left: Span,
     #[suggestion_part(code = "")]
     pub right: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("documentation comments cannot be applied to a function parameter's type")]
-pub(crate) struct DocCommentOnParamType {
-    #[primary_span]
-    #[label("doc comments are not allowed here")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("attributes cannot be applied to a function parameter's type")]
-pub(crate) struct AttributeOnParamType {
-    #[primary_span]
-    #[label("attributes are not allowed here")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("attributes cannot be applied to types")]
-pub(crate) struct AttributeOnType {
-    #[primary_span]
-    #[label("attributes are not allowed here")]
-    pub span: Span,
-    #[suggestion(
-        "remove attribute from here",
-        code = "",
-        applicability = "machine-applicable",
-        style = "tool-only"
-    )]
-    pub fix_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("attributes cannot be applied to generic arguments")]
-pub(crate) struct AttributeOnGenericArg {
-    #[primary_span]
-    #[label("attributes are not allowed here")]
-    pub span: Span,
-    #[suggestion(
-        "remove attribute from here",
-        code = "",
-        applicability = "machine-applicable",
-        style = "tool-only"
-    )]
-    pub fix_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("attributes cannot be applied here")]
-pub(crate) struct AttributeOnEmptyType {
-    #[primary_span]
-    #[label("attributes are not allowed here")]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -2064,7 +2010,7 @@ pub(crate) struct FnTraitMissingParen {
 }
 
 impl Subdiagnostic for FnTraitMissingParen {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         diag.span_label(self.span, msg!("`Fn` bounds require arguments in parentheses"));
         diag.span_suggestion_short(
             self.span.shrink_to_hi(),
@@ -2493,6 +2439,23 @@ pub(crate) struct TraitAliasCannotBeImplRestricted {
 pub(crate) struct AssociatedStaticItemNotAllowed {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum FieldNotAllowedInTraitSugg {
+    #[help("consider using a method instead: `fn {$ident}(&self) -> {$ty};`")]
+    Method { ident: String, ty: String },
+    #[note("`self` can only appear as a method receiver; consider `fn method(self: {$ty})`")]
+    SelfReceiver { ty: String },
+}
+
+#[derive(Diagnostic)]
+#[diag("fields are not allowed in trait definitions")]
+pub(crate) struct FieldNotAllowedInTrait {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: FieldNotAllowedInTraitSugg,
 }
 
 #[derive(Diagnostic)]
@@ -3751,7 +3714,7 @@ pub(crate) struct UseDerefMacro {
 }
 
 impl Subdiagnostic for UseDerefMacro {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let Self { field, before, after } = self;
 
         let mut parts = Vec::new();
@@ -4409,7 +4372,7 @@ pub(crate) struct HiddenUnicodeCodepointsDiagLabels {
 }
 
 impl Subdiagnostic for HiddenUnicodeCodepointsDiagLabels {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         for (c, span) in self.spans {
             diag.span_label(span, format!("{c:?}"));
         }
@@ -4423,7 +4386,7 @@ pub(crate) enum HiddenUnicodeCodepointsDiagSub {
 
 // Used because of multiple multipart_suggestion and note
 impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         match self {
             HiddenUnicodeCodepointsDiagSub::Escape { spans } => {
                 diag.multipart_suggestion_with_style(
@@ -4704,4 +4667,16 @@ pub(crate) struct SuggestIntroduceTypeParameter {
     #[primary_span]
     pub span: Span,
     pub parameters: String,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "you might have meant to write a diverging block on a refutable `let` statement by using `let-else`
+    for more information, visit <https://doc.rust-lang.org/beta/rust-by-example/flow_control/let_else.html>",
+    code = " else ",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct MissingElseInLet {
+    #[primary_span]
+    pub span: Span,
 }

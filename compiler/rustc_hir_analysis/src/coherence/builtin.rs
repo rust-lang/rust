@@ -3,11 +3,11 @@
 
 use std::collections::BTreeMap;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::ItemKind;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::{self, InferCtxt, RegionResolutionError, SubregionOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, TraitErrors};
@@ -1003,7 +1003,7 @@ fn infringing_fields_error<'tcx>(
         None,
     );
 
-    err.emit()
+    err.emit_err()
 }
 
 fn visit_implementation_of_coerce_pointee_validity(

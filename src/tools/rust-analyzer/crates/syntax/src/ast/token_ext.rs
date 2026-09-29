@@ -3,6 +3,7 @@
 use std::ops::Range;
 use std::{borrow::Cow, num::ParseIntError};
 
+use parser::SyntaxKind;
 use rustc_literal_escaper::{
     EscapeError, MixedUnit, unescape_byte, unescape_byte_str, unescape_c_str, unescape_char,
     unescape_str,
@@ -10,47 +11,23 @@ use rustc_literal_escaper::{
 use stdx::always;
 
 use crate::{
-    TextRange, TextSize,
-    ast::{self, AstToken},
+    SyntaxToken, TextRange, TextSize,
+    ast::{self, AstToken, AttrKind},
 };
 
 impl ast::Comment {
-    pub fn kind(&self) -> CommentKind {
-        CommentKind::from_text(self.text())
+    pub fn shape(&self) -> CommentShape {
+        CommentShape::from_text(self.text())
     }
 
-    pub fn is_doc(&self) -> bool {
-        self.kind().doc.is_some()
-    }
-
-    pub fn is_inner(&self) -> bool {
-        self.kind().doc == Some(CommentPlacement::Inner)
-    }
-
-    pub fn is_outer(&self) -> bool {
-        self.kind().doc == Some(CommentPlacement::Outer)
-    }
-
-    pub fn prefix(&self) -> &'static str {
-        self.kind().prefix()
-    }
-
-    /// Returns the textual content of a doc comment node as a single string with prefix and suffix
-    /// removed, plus the offset of the returned string from the beginning of the comment.
-    pub fn doc_comment(&self) -> Option<(&str, TextSize)> {
-        let kind = self.kind();
-        match kind {
-            CommentKind { shape, doc: Some(_) } => {
-                let prefix = kind.prefix();
-                let text = &self.text()[prefix.len()..];
-                let text = if shape == CommentShape::Block {
-                    text.strip_suffix("*/").unwrap_or(text)
-                } else {
-                    text
-                };
-                Some((text, TextSize::of(prefix)))
-            }
-            _ => None,
+    /// Returns the text without the `//` or `/*...*/` markers.
+    pub fn text_without_markers(&self) -> &str {
+        let text = self.text();
+        let shape = CommentShape::from_text(text);
+        let text = &text[2..];
+        match shape {
+            CommentShape::Block => text.strip_suffix("*/").unwrap_or(text),
+            CommentShape::Line => text,
         }
     }
 }
@@ -58,7 +35,20 @@ impl ast::Comment {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct CommentKind {
     pub shape: CommentShape,
-    pub doc: Option<CommentPlacement>,
+    pub doc: Option<AttrKind>,
+}
+
+impl CommentKind {
+    pub fn prefix(&self) -> &'static str {
+        match (self.shape, self.doc) {
+            (CommentShape::Line, None) => "//",
+            (CommentShape::Line, Some(AttrKind::Inner)) => "//!",
+            (CommentShape::Line, Some(AttrKind::Outer)) => "///",
+            (CommentShape::Block, None) => "/*",
+            (CommentShape::Block, Some(AttrKind::Inner)) => "/*!",
+            (CommentShape::Block, Some(AttrKind::Outer)) => "/**",
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -68,6 +58,11 @@ pub enum CommentShape {
 }
 
 impl CommentShape {
+    #[inline]
+    pub fn from_text(text: &str) -> CommentShape {
+        if text.starts_with("/*") { CommentShape::Block } else { CommentShape::Line }
+    }
+
     pub fn is_line(self) -> bool {
         self == CommentShape::Line
     }
@@ -77,37 +72,80 @@ impl CommentShape {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum CommentPlacement {
-    Inner,
-    Outer,
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AnyComment {
+    syntax: SyntaxToken,
 }
 
-impl CommentKind {
-    const BY_PREFIX: [(&'static str, CommentKind); 9] = [
-        ("/**/", CommentKind { shape: CommentShape::Block, doc: None }),
-        ("/***", CommentKind { shape: CommentShape::Block, doc: None }),
-        ("////", CommentKind { shape: CommentShape::Line, doc: None }),
-        ("///", CommentKind { shape: CommentShape::Line, doc: Some(CommentPlacement::Outer) }),
-        ("//!", CommentKind { shape: CommentShape::Line, doc: Some(CommentPlacement::Inner) }),
-        ("/**", CommentKind { shape: CommentShape::Block, doc: Some(CommentPlacement::Outer) }),
-        ("/*!", CommentKind { shape: CommentShape::Block, doc: Some(CommentPlacement::Inner) }),
-        ("//", CommentKind { shape: CommentShape::Line, doc: None }),
-        ("/*", CommentKind { shape: CommentShape::Block, doc: None }),
-    ];
+impl AstToken for AnyComment {
+    fn can_cast(kind: SyntaxKind) -> bool
+    where
+        Self: Sized,
+    {
+        matches!(
+            kind,
+            SyntaxKind::COMMENT | SyntaxKind::INNER_DOC_COMMENT | SyntaxKind::OUTER_DOC_COMMENT
+        )
+    }
 
-    pub(crate) fn from_text(text: &str) -> CommentKind {
-        let &(_prefix, kind) = CommentKind::BY_PREFIX
-            .iter()
-            .find(|&(prefix, _kind)| text.starts_with(prefix))
-            .unwrap();
-        kind
+    fn cast(syntax: SyntaxToken) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+
+    fn syntax(&self) -> &SyntaxToken {
+        &self.syntax
+    }
+}
+
+impl AnyComment {
+    pub fn shape(&self) -> CommentShape {
+        CommentShape::from_text(self.text_with_markers())
+    }
+
+    pub fn doc_kind(&self) -> Option<AttrKind> {
+        match self.syntax.kind() {
+            SyntaxKind::COMMENT => None,
+            SyntaxKind::INNER_DOC_COMMENT => Some(AttrKind::Inner),
+            SyntaxKind::OUTER_DOC_COMMENT => Some(AttrKind::Outer),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn kind(&self) -> CommentKind {
+        CommentKind { shape: self.shape(), doc: self.doc_kind() }
     }
 
     pub fn prefix(&self) -> &'static str {
-        let &(prefix, _) =
-            CommentKind::BY_PREFIX.iter().rev().find(|(_, kind)| kind == self).unwrap();
-        prefix
+        self.kind().prefix()
+    }
+
+    pub fn is_inner(&self) -> bool {
+        self.doc_kind() == Some(AttrKind::Inner)
+    }
+
+    pub fn is_outer(&self) -> bool {
+        self.doc_kind() == Some(AttrKind::Outer)
+    }
+
+    /// Returns the text with the `/*...*/` or `//...` or `/**...*/` or `/*!...*/` or `///...` or `//!...` markers.
+    pub fn text_with_markers(&self) -> &str {
+        self.syntax.text()
+    }
+
+    /// Returns the textual content of a doc comment node as a single string with prefix and suffix removed.
+    pub fn text(&self) -> &str {
+        let shape = self.shape();
+        let prefix_len = if self.doc_kind().is_some() { 3 } else { 2 };
+        let text = &self.text_with_markers()[prefix_len..];
+        if shape == CommentShape::Block {
+            // The `*/` may not exist because of recovery.
+            text.strip_suffix("*/").unwrap_or(text)
+        } else {
+            text
+        }
     }
 }
 

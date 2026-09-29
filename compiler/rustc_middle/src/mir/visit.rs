@@ -518,7 +518,7 @@ macro_rules! make_mir_visitor {
                 terminator: &$($mutability)? Terminator<'tcx>,
                 location: Location
             ) {
-                let Terminator { source_info, kind, attributes: _ } = terminator;
+                let Terminator { source_info, kind, loop_hint_attrs: _ } = terminator;
 
                 self.visit_source_info(source_info);
                 match kind {
@@ -918,7 +918,7 @@ macro_rules! make_mir_visitor {
                 }) = composite {
                     self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     for elem in projection {
-                        let ProjectionElem::Field(_, ty) = elem else { bug!() };
+                        let ProjectionElem::Field(_, ty) = elem else { rustc_span::bug!() };
                         self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     }
                 }

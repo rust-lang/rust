@@ -237,42 +237,39 @@ pub fn eval_config_entry(sess: &Session, cfg_entry: &CfgEntry) -> EvalConfigResu
             }
             EvalConfigResult::True
         }
-        CfgEntry::Any(subs, span) => {
+        CfgEntry::Any(subs, _) => {
             for sub in subs {
                 let res = eval_config_entry(sess, sub);
                 if res.as_bool() {
                     return res;
                 }
             }
-            EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
+            EvalConfigResult::False { reason: cfg_entry.clone() }
         }
-        CfgEntry::Not(sub, span) => {
+        CfgEntry::Not(sub, _) => {
             if eval_config_entry(sess, sub).as_bool() {
-                EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
+                EvalConfigResult::False { reason: cfg_entry.clone() }
             } else {
                 EvalConfigResult::True
             }
         }
-        CfgEntry::Bool(b, span) => {
+        CfgEntry::Bool(b, _) => {
             if *b {
                 EvalConfigResult::True
             } else {
-                EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
+                EvalConfigResult::False { reason: cfg_entry.clone() }
             }
         }
-        CfgEntry::NameValue { name, value, span } => {
+        CfgEntry::NameValue { name, value, span: _ } => {
             if sess.config.contains(&(*name, *value)) {
                 EvalConfigResult::True
             } else {
-                EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
+                EvalConfigResult::False { reason: cfg_entry.clone() }
             }
         }
-        CfgEntry::Version(min_version, version_span) => {
+        CfgEntry::Version(min_version, _) => {
             let Some(min_version) = min_version else {
-                return EvalConfigResult::False {
-                    reason: cfg_entry.clone(),
-                    reason_span: *version_span,
-                };
+                return EvalConfigResult::False { reason: cfg_entry.clone() };
             };
             // See https://github.com/rust-lang/rust/issues/64796#issuecomment-640851454 for details
             let min_version_ok = if sess.opts.unstable_opts.assume_incomplete_release {
@@ -283,7 +280,7 @@ pub fn eval_config_entry(sess: &Session, cfg_entry: &CfgEntry) -> EvalConfigResu
             if min_version_ok {
                 EvalConfigResult::True
             } else {
-                EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *version_span }
+                EvalConfigResult::False { reason: cfg_entry.clone() }
             }
         }
     }
@@ -291,7 +288,7 @@ pub fn eval_config_entry(sess: &Session, cfg_entry: &CfgEntry) -> EvalConfigResu
 
 pub enum EvalConfigResult {
     True,
-    False { reason: CfgEntry, reason_span: Span },
+    False { reason: CfgEntry },
 }
 
 impl EvalConfigResult {

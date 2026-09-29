@@ -3,13 +3,13 @@ use std::collections::BTreeMap;
 
 use clippy_utils::res::MaybeDef as _;
 use rustc_errors::{Applicability, Diag};
-use rustc_hir::intravisit::{Visitor, VisitorExt as _, walk_body, walk_expr, walk_ty};
+use rustc_hir::intravisit::{Visitor, walk_body, walk_expr, walk_ty};
 use rustc_hir::{self as hir, AmbigArg, Body, Expr, ExprKind, GenericArg, Item, ItemKind, QPath, TyKind};
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{Ty, TypeckResults};
-use rustc_span::Span;
+use rustc_span::{OrdSpan, Span};
 
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{IntoSpan as _, SpanExt as _, snippet, snippet_with_context};
@@ -61,7 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         fn suggestion(
             cx: &LateContext<'_>,
-            diag: &mut Diag<'_, ()>,
+            diag: &mut Diag<'_>,
             generics_span: Span,
             generics_suggestion_span: Span,
             target: &ImplicitHasherType<'_>,
@@ -94,7 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                     format!("{}<{}, S>", target.type_name(), target.type_arguments()),
                 ),
             ];
-            suggestions.extend(vis.suggestions);
+            suggestions.extend(vis.suggestions.into_iter().map(|(span, s)| (span.0, s)));
 
             diag.multipart_suggestion(
                 "add a type parameter for `BuildHasher`",
@@ -295,7 +295,7 @@ struct ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
     cx: &'a LateContext<'tcx>,
     maybe_typeck_results: Option<&'tcx TypeckResults<'tcx>>,
     target: &'b ImplicitHasherType<'tcx>,
-    suggestions: BTreeMap<Span, String>,
+    suggestions: BTreeMap<OrdSpan, String>,
 }
 
 impl<'a, 'b, 'tcx> ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
@@ -337,7 +337,7 @@ impl<'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'_, '_, 'tcx> {
 
             match method.ident.name {
                 sym::new => {
-                    self.suggestions.insert(e.span, format!("{container_name}::default()"));
+                    self.suggestions.insert(OrdSpan(e.span), format!("{container_name}::default()"));
                 },
                 sym::with_capacity => {
                     let (arg_snippet, _) = snippet_with_context(
@@ -350,7 +350,7 @@ impl<'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'_, '_, 'tcx> {
                         &mut Applicability::MaybeIncorrect,
                     );
                     self.suggestions.insert(
-                        e.span,
+                        OrdSpan(e.span),
                         format!("{container_name}::with_capacity_and_hasher({arg_snippet}, Default::default())"),
                     );
                 },

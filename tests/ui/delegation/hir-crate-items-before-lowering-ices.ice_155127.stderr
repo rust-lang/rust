@@ -1,5 +1,5 @@
 error: the `deprecated` attribute cannot be used on delegations
-  --> $DIR/hir-crate-items-before-lowering-ices.rs:27:11
+  --> $DIR/hir-crate-items-before-lowering-ices.rs:28:11
    |
 LL |         #[deprecated]
    |           ^^^^^^^^^^

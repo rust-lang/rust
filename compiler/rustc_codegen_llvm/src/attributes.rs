@@ -8,6 +8,7 @@ use rustc_middle::middle::codegen_fn_attrs::{
 };
 use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_sanitizers::ignorelist::SanitizerIgnoreList;
+use rustc_session::Session;
 use rustc_session::config::{
     BranchProtection, FunctionReturn, InstrumentMcount, InstrumentMcountOpts, OptLevel, PAuthKey,
     PacRet,
@@ -23,7 +24,7 @@ use crate::llvm::AttributePlace::Function;
 use crate::llvm::{
     self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects, Value,
 };
-use crate::{Session, attributes, llvm_util};
+use crate::{attributes, llvm_util};
 
 pub(crate) fn apply_to_llfn(llfn: &Value, idx: AttributePlace, attrs: &[&Attribute]) {
     if !attrs.is_empty() {
@@ -174,7 +175,7 @@ pub(crate) fn sanitize_attrs<'ll, 'tcx>(
     }
     if enabled.contains(SanitizerSet::MEMTAG) {
         // Check to make sure the mte target feature is actually enabled.
-        let features = tcx.global_backend_features(());
+        let features = &tcx.sess.global_backend_features;
         let mte_feature =
             features.iter().map(|s| &s[..]).rfind(|n| ["+mte", "-mte"].contains(&&n[..]));
         if let None | Some("-mte") = mte_feature {
@@ -441,7 +442,7 @@ pub(crate) fn target_features_attr<'ll, 'tcx>(
     tcx: TyCtxt<'tcx>,
     function_features: Vec<String>,
 ) -> Option<&'ll Attribute> {
-    let global_features = tcx.global_backend_features(()).iter().map(String::as_str);
+    let global_features = tcx.sess.global_backend_features.iter().map(String::as_str);
     let function_features = function_features.iter().map(String::as_str);
     let target_features =
         global_features.chain(function_features).intersperse(",").collect::<String>();
@@ -672,7 +673,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     let function_features = function_features
         .iter()
         // Convert to LLVMFeatures and filter out unavailable ones
-        .flat_map(|feat| llvm_util::to_llvm_features(sess, feat))
+        .flat_map(|feat| llvm_util::to_llvm_features(&sess.target, feat))
         // Convert LLVMFeatures & dependencies to +<feats>s
         .flat_map(|feat| feat.into_iter().map(|f| format!("+{f}")))
         .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match x {

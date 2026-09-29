@@ -9,8 +9,8 @@
 use std::ops::ControlFlow;
 
 use hir::def_id::DefId;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
 use rustc_infer::traits::{Obligation, PolyTraitObligation, PredicateObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
@@ -18,8 +18,7 @@ use rustc_middle::ty::{
     self, ExistentialPredicate, FieldInfo, SizedTraitKind, TraitRef, Ty, TypeVisitableExt,
     elaborate,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::DUMMY_SP;
+use rustc_span::{DUMMY_SP, bug, span_bug};
 use tracing::{debug, instrument, trace};
 
 use super::SelectionCandidate::*;
@@ -38,7 +37,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             param_env: obligation.param_env,
             cause: obligation.cause.clone(),
             recursion_depth: obligation.recursion_depth,
-            predicate: self.infcx.resolve_vars_if_possible(obligation.predicate),
+            predicate: self.infcx.deeply_resolve_ignoring_regions(obligation.predicate),
         };
 
         if obligation.predicate.skip_binder().self_ty().is_ty_var() {
@@ -209,7 +208,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         self.infcx.probe(|_| {
-            let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
+            let poly_trait_predicate =
+                self.infcx.deeply_resolve_ignoring_regions(obligation.predicate);
             let placeholder_trait_predicate =
                 self.infcx.enter_forall_and_leak_universe(poly_trait_predicate);
 
@@ -927,7 +927,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         self.infcx.probe(|_snapshot| {
-            let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
+            let poly_trait_predicate =
+                self.infcx.deeply_resolve_ignoring_regions(obligation.predicate);
             self.infcx.enter_forall(poly_trait_predicate, |placeholder_trait_predicate| {
                 let self_ty = placeholder_trait_predicate.self_ty();
                 let principal_trait_ref = match self_ty.kind() {
@@ -1373,7 +1374,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let self_ty = self.infcx.resolve_vars_if_possible(obligation.self_ty());
+        let self_ty = self.infcx.deeply_resolve_ignoring_regions(obligation.self_ty());
 
         match self_ty.skip_binder().kind() {
             ty::FnPtr(..) => candidates.vec.push(BuiltinCandidate),
@@ -1493,6 +1494,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
+        // FIXME(field_projections): We should not use `evaluate_obligation` in
+        // the trait solver. Doing so means we don't track overflow and cycles properly
+        // encountering query cycles instead.
         if let ty::Adt(def, args) = obligation.predicate.self_ty().skip_binder().kind()
             && let Some(FieldInfo { base, ty, .. }) =
                 def.field_representing_type_info(self.tcx(), args)

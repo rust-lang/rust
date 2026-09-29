@@ -5,17 +5,16 @@
 
 use std::iter;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligation, PredicateObligations};
-use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, DelayedSet, GenericArgsRef, Term, TermKind, Ty, TyCtxt, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, DelayedSet, GenericArgsRef, PredicateProxy, Term, TermKind, Ty, TyCtxt,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::{Span, sym};
+use rustc_span::{Span, bug, sym};
 use tracing::{debug, instrument};
 
 use crate::infer::InferCtxt;
@@ -98,7 +97,7 @@ pub fn unnormalized_obligations<'tcx>(
     span: Span,
     body_def_id: LocalDefId,
 ) -> Option<PredicateObligations<'tcx>> {
-    debug_assert_eq!(term, infcx.resolve_vars_if_possible(term));
+    debug_assert_eq!(term, infcx.deeply_resolve_ignoring_regions(term));
 
     // However, if `term` IS an unresolved inference variable, returns `None`,
     // because we are not able to make any progress at all. This is to prevent
@@ -1003,7 +1002,10 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                         let kind = obligation.predicate.kind().skip_binder();
                         let keep = match kind {
                             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _))
-                                if matches!(ct.kind(), ty::ConstKind::Param(..)) =>
+                                if matches!(
+                                    ct.kind(),
+                                    ty::ConstKind::Param(..) | ty::ConstKind::Placeholder(..)
+                                ) =>
                             {
                                 // ConstArgHasType clauses are not higher kinded. Assert as
                                 // such so we can fix this up if that ever changes.
@@ -1088,9 +1090,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             ty::ConstKind::Alias(_, alias_const) => {
                 if !c.has_escaping_bound_vars() {
                     // Skip type consts as mGCA doesn't support evaluatable clauses
-                    if !alias_const.kind.is_direct_const(tcx)
-                        && !tcx.features().generic_const_args()
-                    {
+                    if !alias_const.kind.is_direct_const(tcx) && !tcx.features().gca_const_items() {
                         let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
                             ty::ClauseKind::ConstEvaluatable(c),
                         ));
@@ -1169,7 +1169,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             }
             ty::ConstKind::Value(val) => {
                 // FIXME(mgca): no need to feature-gate once valtree lifetimes are not erased
-                if tcx.features().min_generic_const_args() {
+                if tcx.features().gca_min_const_items() {
                     match val.ty.kind() {
                         ty::Adt(adt_def, args) => {
                             let adt_val = val.destructure_adt_const();
@@ -1240,7 +1240,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
         c.super_visit_with(self)
     }
 
-    fn visit_predicate(&mut self, _p: ty::Predicate<'tcx>) -> Self::Result {
+    fn visit_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, _p: P) -> Self::Result {
         bug!("predicate should not be checked for well-formedness");
     }
 }

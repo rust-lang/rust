@@ -14,7 +14,7 @@ use crate::{
     db::HirDatabase,
     display::DisplayTarget,
     mir::{IsSigned, pad16},
-    next_solver::{Allocation, DbInterner, GenericArgs},
+    next_solver::{Allocation, GenericArgs},
     setup_tracing,
     test_db::TestDB,
 };
@@ -120,7 +120,6 @@ fn pretty_print_err(e: ConstEvalError<'_>, db: &TestDB) -> String {
 
 fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Allocation<'_>, ConstEvalError<'_>> {
     let _tracing = setup_tracing();
-    let interner = DbInterner::new_no_crate(db);
     let module_id = db.module_for_file(file_id.file_id(db));
     let def_map = module_id.def_map(db);
     let scope = &def_map[module_id].scope;
@@ -143,7 +142,7 @@ fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Allocation<'_>, Co
             _ => None,
         })
         .expect("No const named GOAL found in the test");
-    db.const_eval(const_id, GenericArgs::empty(interner), None)
+    db.const_eval(const_id, GenericArgs::empty(), None)
 }
 
 #[test]

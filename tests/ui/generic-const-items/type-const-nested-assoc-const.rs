@@ -1,16 +1,19 @@
 //@ check-pass
 
-#![feature(generic_const_items, min_generic_const_args)]
+#![feature(generic_const_items, gca_min_const_items)]
 #![allow(incomplete_features)]
 
-type const CT<T: ?Sized>: usize = { <T as Trait>::N };
+use std::gca;
+
+const CT<T: ?Sized>: usize = gca!(<T as Trait>::N);
 
 trait Trait {
-    type const N: usize;
+    #[rustc_always_gca]
+    const N: usize;
 }
 
 impl<T: ?Sized> Trait for T {
-    type const N:usize = 0;
+    const N: usize = gca!(0);
 }
 
 fn f(_x: [(); CT::<()>]) {}

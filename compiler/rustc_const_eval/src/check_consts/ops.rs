@@ -1,22 +1,21 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
 use hir::ConstContext;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, MultiSpan, msg};
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::CallSource;
-use rustc_middle::span_bug;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
     self, AssocContainer, Closure, FnDef, FnPtr, GenericArgKind, GenericArgsRef, Param, TraitRef,
     Ty, suggest_constraining_type_param,
 };
 use rustc_session::diagnostics::add_feature_diagnostics;
-use rustc_span::{BytePos, Pos, Span, Symbol, sym};
+use rustc_span::{BytePos, Pos, Span, Symbol, span_bug, sym};
 use rustc_trait_selection::error_reporting::traits::call_kind::{
     CallDesugaringKind, CallKind, call_kind,
 };

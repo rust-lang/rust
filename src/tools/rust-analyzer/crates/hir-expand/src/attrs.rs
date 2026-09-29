@@ -114,7 +114,7 @@ pub fn expand_cfg_attr_with_doc_comments<'a, DocComment, BreakValue>(
     mut callback: impl FnMut(Either<(ast::Meta, ast::Attr), DocComment>) -> ControlFlow<BreakValue>,
 ) -> Option<BreakValue> {
     let mut stack = SmallVec::<[_; 1]>::new();
-    loop {
+    'process_attrs: loop {
         let (mut meta, top_attr) = if let Some(it) = stack.pop() {
             it
         } else {
@@ -134,7 +134,7 @@ pub fn expand_cfg_attr_with_doc_comments<'a, DocComment, BreakValue>(
         };
 
         while let ast::Meta::UnsafeMeta(unsafe_meta) = &meta {
-            let Some(inner) = unsafe_meta.meta() else { continue };
+            let Some(inner) = unsafe_meta.meta() else { continue 'process_attrs };
             meta = inner;
         }
 

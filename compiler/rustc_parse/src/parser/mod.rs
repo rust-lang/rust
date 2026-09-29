@@ -27,7 +27,7 @@ pub(crate) use function::{FnContext, FnParseMode, FrontMatterParsingMode, IsDotD
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 use rustc_ast::token::{
-    self, IdentIsRaw, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token, TokenKind,
+    self, IdentKind, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token, TokenKind,
 };
 use rustc_ast::tokenstream::{
     ParserRange, ParserReplacement, Spacing, TokenCursor, TokenStream, TokenTree, WithTokens,
@@ -125,6 +125,9 @@ bitflags::bitflags! {
         /// expression, but halts parsing the expression when reaching certain
         /// tokens like `=`.
         const IS_PAT            = 1 << 5;
+        /// Used to detect a missing `else` in a let statement.
+        /// e.g. let Some(foo) = bar{return;};
+        const IN_LET            = 1 << 6;
     }
 }
 
@@ -454,21 +457,23 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
-        let (ident, is_raw) = self.ident_or_err(recover)?;
+        let (ident, kind) = self.ident_or_err(recover)?;
 
-        if is_raw == IdentIsRaw::No && ident.is_reserved() {
+        if token::ident_of_kind_is_reserved(ident, kind) {
             let err = self.expected_ident_found_err();
-            if recover {
+            if recover && kind != IdentKind::ForcedKeyword {
                 err.emit();
             } else {
                 return Err(err);
             }
         }
+
         self.bump();
+
         Ok(ident)
     }
 
-    fn ident_or_err(&mut self, recover: bool) -> PResult<'a, (Ident, IdentIsRaw)> {
+    fn ident_or_err(&mut self, recover: bool) -> PResult<'a, (Ident, IdentKind)> {
         match self.token.ident() {
             Some(ident) => Ok(ident),
             None => self.expected_ident_found(recover),
@@ -550,7 +555,7 @@ impl<'a> Parser<'a> {
         if self.check_keyword(exp) {
             true
         } else if case == Case::Insensitive
-            && let Some((ident, IdentIsRaw::No)) = self.token.ident()
+            && let Some(ident) = self.token.non_raw_ident()
             // Do an ASCII case-insensitive match, because all keywords are ASCII.
             && ident.as_str().eq_ignore_ascii_case(exp.kw.as_str())
         {
@@ -582,7 +587,7 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(exp) {
             true
         } else if case == Case::Insensitive
-            && let Some((ident, IdentIsRaw::No)) = self.token.ident()
+            && let Some(ident) = self.token.non_raw_ident()
             // Do an ASCII case-insensitive match, because all keywords are ASCII.
             && ident.as_str().eq_ignore_ascii_case(exp.kw.as_str())
         {
@@ -714,10 +719,15 @@ impl<'a> Parser<'a> {
     }
 
     fn check_const_closure(&self) -> bool {
+        // FIXME(#146122): Parse `const async ...`, `const gen ...` & `const async gen ...`
+        //                 closures. We already parse `const static async ...` ones etc.
+
         self.is_keyword_ahead(0, &[kw::Const])
-            && self.look_ahead(1, |t| match &t.kind {
-                // async closures do not work with const closures, so we do not parse that here.
-                token::Ident(kw::Move | kw::Use | kw::Static, IdentIsRaw::No)
+            && self.look_ahead(1, |t| match t.uninterpolate().kind {
+                token::Ident(
+                    kw::Move | kw::Use | kw::Static,
+                    IdentKind::Normal | IdentKind::ForcedKeyword,
+                )
                 | token::OrOr
                 | token::Or => true,
                 _ => false,
@@ -1287,7 +1297,7 @@ impl<'a> Parser<'a> {
                 .with_help(
                     "use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead",
                 )
-                .emit();
+                .emit_err();
             ExprKind::Err(guar)
         } else {
             ExprKind::ConstBlock(anon_const)
@@ -1793,7 +1803,7 @@ impl<'a> Parser<'a> {
                 ";",
                 Applicability::MaybeIncorrect,
             );
-            return Some((lhs.span, err.emit()));
+            return Some((lhs.span, err.emit_err()));
         }
         None
     }
@@ -1807,8 +1817,8 @@ impl<'a> Parser<'a> {
 #[derive(Clone, Debug)]
 pub enum ParseNtResult {
     Tt(TokenTree),
-    Ident(Ident, IdentIsRaw),
-    Lifetime(Ident, IdentIsRaw),
+    Ident(Ident, IdentKind),
+    Lifetime(Ident, IdentKind),
     Item(Box<ast::Item>),
     Block(WithTokens<Box<ast::Block>>),
     Stmt(Box<ast::Stmt>),
