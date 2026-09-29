@@ -9,7 +9,7 @@ struct Foo {
 fn main() {
     let mut y = 1;
     let x = Some(&mut y);
-    for &a in x.iter() {    //~ ERROR cannot move out
+    for &a in x.iter() {    //~ ERROR cannot borrow data in a `&` reference as mutable
     }
 
     let f = Foo {

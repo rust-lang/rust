@@ -2723,9 +2723,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.schedule_drop_for_binding(binding.var_id, binding.span, OutsideGuard);
             }
             let rvalue = match binding.binding_mode.0 {
-                ByRef::No => {
-                    Rvalue::Use(self.consume_by_copy_or_move(binding.source), WithRetag::Yes)
-                }
+                ByRef::No => Rvalue::Use(
+                    self.consume_by_copy_reborrow_or_move(binding.source, block, binding.span),
+                    WithRetag::Yes,
+                ),
                 ByRef::Yes(pinnedness, mutbl) => {
                     let rvalue =
                         Rvalue::Ref(re_erased, util::ref_pat_borrow_kind(mutbl), binding.source);

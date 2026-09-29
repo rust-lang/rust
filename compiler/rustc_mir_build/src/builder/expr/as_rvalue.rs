@@ -294,7 +294,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             // by reference captures use as_operand
                             Some(Category::Place) => {
                                 let place = unpack!(block = this.as_place(block, upvar));
-                                this.consume_by_copy_or_move(place)
+                                this.consume_by_copy_reborrow_or_move(place, block, upvar_expr.span)
                             }
                             _ => {
                                 // Turn mutable borrow captures into unique
