@@ -1,34 +1,26 @@
-use std::marker::PhantomData;
 use std::mem;
 
-use rustc_infer::infer::InferCtxt;
-use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::{
-    FromSolverError, PredicateObligation, PredicateObligations, TraitEngine, TraitErrors,
-};
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingMode};
-use rustc_next_trait_solver::solve::fast_path::compute_goal_fast_path;
-use rustc_next_trait_solver::solve::{
-    GoalEvaluation, GoalStalledOn, HasChanged, SolverDelegateEvalExt as _, StalledOnCoroutines,
-};
+use rustc_type_ir::inherent::*;
+use rustc_type_ir::solve::{NoSolution, Obligation};
+use rustc_type_ir::{self as ty, InferCtxtLike as _, Interner, TypingMode};
 use thin_vec::ThinVec;
 use tracing::instrument;
 
-use self::derive_errors::*;
-use super::Certainty;
-use super::delegate::SolverDelegate;
-use crate::error_reporting::InferCtxtErrorExt;
-use crate::traits::{FulfillmentError, FulfillmentErrorCode, ScrubbedTraitError};
-
-mod derive_errors;
+use super::fast_path::compute_goal_fast_path;
+use super::{
+    Certainty, GoalEvaluation, GoalStalledOn, HasChanged, SolverDelegateEvalExt as _,
+    StalledOnCoroutines,
+};
+use crate::delegate::SolverDelegate;
 
 // `ThinVec` is important for performance, but not for the usual memory layout reasons.
 // `try_evaluate_obligations` is extremely hot and uses `retain_mut`. `ThinVec::retain_mut` is
 // simple and sub-optimal in terms of how it moves elements, but it can be inlined.
 // `Vec::retain_mut` is more sophisticated and minimizes element moves, but also contains more code
 // and doesn't get inlined in `try_evaluate_obligations`, giving worse performance overall.
-type PendingObligations<'tcx> =
-    ThinVec<(PredicateObligation<'tcx>, Option<GoalStalledOn<TyCtxt<'tcx>>>)>;
+type PredicateObligation<I> = Obligation<I, <I as Interner>::Predicate>;
+type PredicateObligations<I> = ThinVec<PredicateObligation<I>>;
+type PendingObligations<I> = ThinVec<(PredicateObligation<I>, Option<GoalStalledOn<I>>)>;
 
 /// A trait engine using the new trait solver.
 ///
@@ -41,27 +33,32 @@ type PendingObligations<'tcx> =
 ///
 /// It is also likely that we want to use slightly different datastructures
 /// here as this will have to deal with far more root goals than `evaluate_all`.
-pub struct FulfillmentCtxt<'tcx, E: 'tcx> {
-    obligations: ObligationStorage<'tcx>,
+pub struct FulfillmentCtxt<I: Interner> {
+    obligations: ObligationStorage<I>,
 
     /// The snapshot in which this context was created. Using the context
     /// outside of this snapshot leads to subtle bugs if the snapshot
     /// gets rolled back. Because of this we explicitly check that we only
     /// use the context in exactly this snapshot.
     usable_in_snapshot: usize,
-    _errors: PhantomData<E>,
 }
 
-#[derive(Default, Debug)]
-struct ObligationStorage<'tcx> {
-    pending: PendingObligations<'tcx>,
+#[derive(Debug)]
+struct ObligationStorage<I: Interner> {
+    pending: PendingObligations<I>,
 }
 
-impl<'tcx> ObligationStorage<'tcx> {
+impl<I: Interner> Default for ObligationStorage<I> {
+    fn default() -> Self {
+        Self { pending: ThinVec::new() }
+    }
+}
+
+impl<I: Interner> ObligationStorage<I> {
     fn register(
         &mut self,
-        obligation: PredicateObligation<'tcx>,
-        stalled_on: Option<GoalStalledOn<TyCtxt<'tcx>>>,
+        obligation: PredicateObligation<I>,
+        stalled_on: Option<GoalStalledOn<I>>,
     ) {
         self.pending.push((obligation, stalled_on));
     }
@@ -70,21 +67,21 @@ impl<'tcx> ObligationStorage<'tcx> {
         !self.pending.is_empty()
     }
 
-    fn clone_pending(&self) -> PredicateObligations<'tcx> {
+    fn clone_pending(&self) -> PredicateObligations<I> {
         self.pending.iter().map(|(o, _)| o.clone()).collect()
     }
 
-    fn clone_pending_filtered<F>(&self, f: F) -> PredicateObligations<'tcx>
+    fn clone_pending_filtered<F>(&self, f: F) -> PredicateObligations<I>
     where
-        F: FnMut(&&(PredicateObligation<'tcx>, Option<GoalStalledOn<TyCtxt<'tcx>>>)) -> bool,
+        F: FnMut(&&(PredicateObligation<I>, Option<GoalStalledOn<I>>)) -> bool,
     {
         self.pending.iter().filter(f).map(|(o, _)| o.clone()).collect()
     }
 
     fn drain_pending(
         &mut self,
-        cond: impl Fn(&PredicateObligation<'tcx>, &Option<GoalStalledOn<TyCtxt<'tcx>>>) -> bool,
-    ) -> PendingObligations<'tcx> {
+        cond: impl Fn(&PredicateObligation<I>, &Option<GoalStalledOn<I>>) -> bool,
+    ) -> PendingObligations<I> {
         let (unstalled, pending) =
             mem::take(&mut self.pending).into_iter().partition(|(o, s)| cond(o, s));
         self.pending = pending;
@@ -92,50 +89,32 @@ impl<'tcx> ObligationStorage<'tcx> {
     }
 }
 
-impl<'tcx, E: 'tcx> FulfillmentCtxt<'tcx, E> {
-    pub fn new(infcx: &InferCtxt<'tcx>) -> FulfillmentCtxt<'tcx, E> {
+impl<I: Interner> FulfillmentCtxt<I> {
+    pub fn new<D>(delegate: &D, usable_in_snapshot: usize) -> Self
+    where
+        D: SolverDelegate<Interner = I>,
+    {
         assert!(
-            infcx.next_trait_solver(),
+            delegate.next_trait_solver(),
             "new trait solver fulfillment context created when \
             infcx is set up for old trait solver"
         );
-        FulfillmentCtxt {
-            obligations: Default::default(),
-            usable_in_snapshot: infcx.num_open_snapshots(),
-            _errors: PhantomData,
-        }
+        FulfillmentCtxt { obligations: Default::default(), usable_in_snapshot }
     }
 
-    fn inspect_evaluated_obligation(
-        infcx: &InferCtxt<'tcx>,
-        obligation: &PredicateObligation<'tcx>,
-        result: &Result<GoalEvaluation<TyCtxt<'tcx>>, NoSolution>,
-    ) {
-        if let Some(inspector) = infcx.obligation_inspector.get() {
-            let result = match result {
-                Ok(GoalEvaluation { certainty, .. }) => Ok(*certainty),
-                Err(NoSolution) => Err(NoSolution),
-            };
-            (inspector)(infcx, &obligation, result);
-        }
-    }
-}
-
-impl<'tcx, E> TraitEngine<'tcx, E> for FulfillmentCtxt<'tcx, E>
-where
-    E: FromSolverError<'tcx, NextSolverError<'tcx>>,
-{
-    #[instrument(level = "trace", skip(self, infcx))]
-    fn register_predicate_obligation(
+    #[instrument(level = "trace", skip(self, delegate))]
+    pub fn register<D>(
         &mut self,
-        infcx: &InferCtxt<'tcx>,
-        obligation: PredicateObligation<'tcx>,
-    ) {
-        assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
+        delegate: &D,
+        current_snapshot: usize,
+        obligation: PredicateObligation<I>,
+    ) where
+        D: SolverDelegate<Interner = I>,
+    {
+        assert_eq!(self.usable_in_snapshot, current_snapshot);
 
-        let delegate = <&SolverDelegate<'tcx>>::from(infcx);
         if let Some(GoalEvaluation { goal: _, certainty, has_changed: _, stalled_on }) =
-            compute_goal_fast_path(delegate, obligation.as_goal(), obligation.cause.span)
+            compute_goal_fast_path(delegate, obligation.as_goal(), obligation.cause.span())
         {
             // If we can take the fast path, don't even bother adding the goal to obligations,
             // or if `Certainty::Maybe`, add it with precise stalled_on information.
@@ -150,22 +129,22 @@ where
         }
     }
 
-    #[inline]
-    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
-        if self.obligations.pending.is_empty() {
-            // Typically in more than 99.9% of cases this condition is true, therefore we outline
-            // the other case.
-            TraitErrors::NoErrors
-        } else {
-            let errors = collect_remaining_errors_impl(self, infcx);
-            TraitErrors::from_iter(errors.into_iter())
-        }
-    }
-
-    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
-        assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
-        let mut errors = TraitErrors::NoErrors;
-        let delegate = <&SolverDelegate<'tcx>>::from(infcx);
+    pub fn try_evaluate_obligations<D, Inspect, OnError, OnSuccess, OnOverflow>(
+        &mut self,
+        delegate: &D,
+        current_snapshot: usize,
+        mut inspect: Inspect,
+        mut on_error: OnError,
+        mut on_success: OnSuccess,
+        mut on_overflow: OnOverflow,
+    ) where
+        D: SolverDelegate<Interner = I>,
+        Inspect: FnMut(&PredicateObligation<I>, &Result<GoalEvaluation<I>, NoSolution>),
+        OnError: FnMut(PredicateObligation<I>),
+        OnSuccess: FnMut(&PredicateObligation<I>),
+        OnOverflow: FnMut(&PredicateObligation<I>),
+    {
+        assert_eq!(self.usable_in_snapshot, current_snapshot);
         loop {
             let mut any_changed = false;
 
@@ -180,17 +159,14 @@ where
 
                 let result = delegate.evaluate_root_goal(
                     obligation.as_goal(),
-                    obligation.cause.span,
+                    obligation.cause.span(),
                     opt_stalled_on.take(),
                 );
-                Self::inspect_evaluated_obligation(infcx, &obligation, &result);
+                inspect(obligation, &result);
                 let GoalEvaluation { goal, certainty, has_changed, stalled_on } = match result {
                     Ok(result) => result,
                     Err(NoSolution) => {
-                        errors.push(E::from_solver_error(
-                            infcx,
-                            NextSolverError::TrueError(obligation.clone()),
-                        ));
+                        on_error(obligation.clone());
                         return false;
                     }
                 };
@@ -200,7 +176,7 @@ where
                 // constrained by evaluating the goal.
                 obligation.predicate = goal.predicate;
                 if has_changed == HasChanged::Yes {
-                    if !infcx.tcx.recursion_limit().value_within_limit(obligation.recursion_depth) {
+                    if obligation.recursion_depth > delegate.cx().recursion_limit() {
                         // We limit the total count of inference progress to avoid hang so we don't
                         // try to recover from this.
                         // It's more complicated to collect all overflows thus we stopped doing that.
@@ -211,7 +187,8 @@ where
                         // a `recursion_depth` number of times. This mostly happens in bugs or with
                         // `Subtype` obligations because we no longer use the `sub_unification_table`
                         // in generalization.
-                        infcx.err_ctxt().report_overflow_obligation(obligation, true);
+                        on_overflow(obligation);
+                        unreachable!("fulfillment overflow handler must not return");
                     } else {
                         // We increment the recursion depth here to track the number of times
                         // this goal has resulted in inference progress. This doesn't precisely
@@ -226,24 +203,7 @@ where
 
                 match certainty {
                     Certainty::Yes => {
-                        // Goals may depend on structural identity. Region uniquification at the
-                        // start of MIR borrowck may cause things to no longer be so, potentially
-                        // causing an ICE.
-                        //
-                        // While we uniquify root goals in HIR this does not handle cases where
-                        // regions are hidden inside of a type or const inference variable.
-                        //
-                        // FIXME(-Znext-solver): This does not handle inference variables hidden
-                        // inside of an opaque type, e.g. if there's `Opaque = (?x, ?x)` in the
-                        // storage, we can also rely on structural identity of `?x` even if we
-                        // later uniquify it in MIR borrowck.
-                        if infcx.in_hir_typeck
-                            && (obligation.has_non_region_infer() || obligation.has_free_regions())
-                        {
-                            infcx.push_hir_typeck_potentially_region_dependent_goal(
-                                obligation.clone(),
-                            );
-                        }
+                        on_success(obligation);
                         false
                     }
                     Certainty::Maybe(_) => {
@@ -259,25 +219,26 @@ where
                 break;
             }
         }
-
-        errors
     }
 
-    fn has_pending_obligations(&self) -> bool {
+    pub fn has_pending_obligations(&self) -> bool {
         self.obligations.has_pending_obligations()
     }
 
-    fn pending_obligations(&self) -> PredicateObligations<'tcx> {
+    pub fn pending_obligations(&self) -> PredicateObligations<I> {
         self.obligations.clone_pending()
     }
 
-    fn pending_obligations_potentially_referencing_sub_root(
+    pub fn pending_obligations_potentially_referencing_sub_root<D>(
         &self,
-        infcx: &InferCtxt<'tcx>,
+        delegate: &D,
         vid: ty::TyVid,
-    ) -> PredicateObligations<'tcx> {
+    ) -> PredicateObligations<I>
+    where
+        D: SolverDelegate<Interner = I>,
+    {
         // `-Zdisable-fast-paths`: same gate as the other new-solver fast paths.
-        if infcx.tcx.disable_trait_solver_fast_paths() {
+        if delegate.disable_trait_solver_fast_paths() {
             return self.obligations.clone_pending();
         }
         self.obligations.clone_pending_filtered(|(_, stalled_on)| {
@@ -290,21 +251,24 @@ where
             // Conservative here: if a stalled var no longer resolves to an
             // infer var, some unification happened, so the goal is no longer
             // stalled. Include it to be re-evaluated downstream.
-            stalled_on.stalled_vars.iter().filter_map(|arg| arg.as_type(infcx.tcx)).any(|ty| {
-                match *infcx.shallow_resolve(ty).kind() {
-                    ty::Infer(ty::TyVar(tv)) => infcx.sub_unification_table_root_var(tv) == vid,
+            stalled_on.stalled_vars.iter().filter_map(|arg| arg.as_type(delegate.cx())).any(|ty| {
+                match delegate.shallow_resolve(ty).kind() {
+                    ty::Infer(ty::TyVar(tv)) => delegate.sub_unification_table_root_var(tv) == vid,
                     _ => true,
                 }
             })
         })
     }
 
-    fn pending_obligations_potentially_referencing_float_infer(
+    pub fn pending_obligations_potentially_referencing_float_infer<D>(
         &self,
-        infcx: &InferCtxt<'tcx>,
-    ) -> PredicateObligations<'tcx> {
+        delegate: &D,
+    ) -> PredicateObligations<I>
+    where
+        D: SolverDelegate<Interner = I>,
+    {
         // `-Zdisable-fast-paths`: same gate as the other new-solver fast paths.
-        if infcx.tcx.disable_trait_solver_fast_paths() {
+        if delegate.disable_trait_solver_fast_paths() {
             return self.obligations.clone_pending();
         }
 
@@ -315,16 +279,19 @@ where
             stalled_on
                 .stalled_vars
                 .iter()
-                .filter_map(|arg| arg.as_type(infcx.tcx))
-                .any(|ty| matches!(infcx.shallow_resolve(ty).kind(), ty::Infer(ty::FloatVar(_))))
+                .filter_map(|arg| arg.as_type(delegate.cx()))
+                .any(|ty| matches!(delegate.shallow_resolve(ty).kind(), ty::Infer(ty::FloatVar(_))))
         })
     }
 
-    fn drain_stalled_obligations_for_coroutines(
+    pub fn drain_stalled_obligations_for_coroutines<D>(
         &mut self,
-        infcx: &InferCtxt<'tcx>,
-    ) -> PredicateObligations<'tcx> {
-        let stalled_coroutines = match infcx.typing_mode_raw().assert_not_erased() {
+        delegate: &D,
+    ) -> PredicateObligations<I>
+    where
+        D: SolverDelegate<Interner = I>,
+    {
+        let stalled_coroutines = match delegate.typing_mode_raw().assert_not_erased() {
             TypingMode::Typeck { defining_opaque_types_and_generators } => {
                 defining_opaque_types_and_generators
             }
@@ -350,78 +317,13 @@ where
                 })
             })
             .into_iter()
-            .map(|(o, _)| o)
+            .map(|(obligation, _)| obligation)
             .collect()
     }
-}
 
-#[cold]
-#[inline(never)]
-fn collect_remaining_errors_impl<'tcx, E>(
-    cx: &mut FulfillmentCtxt<'tcx, E>,
-    infcx: &InferCtxt<'tcx>,
-) -> ThinVec<E>
-where
-    E: FromSolverError<'tcx, NextSolverError<'tcx>>,
-{
-    cx.obligations
-        .pending
-        .drain(..)
-        .filter_map(|(obligation, _)| {
-            try_ambiguity_error_for_stalled(infcx, obligation).map(NextSolverError::Ambiguity)
-        })
-        .map(|e| E::from_solver_error(infcx, e))
-        .collect()
-}
-
-// We evaluate stalled obligations while collecting remaining errors because a
-// previously ambiguous goal may have become successful. In that case we emit a
-// delayed bug instead of producing a fulfillment error. Store the diagnostic
-// information here so error conversion does not reevaluate the goal.
-pub struct NextSolverAmbiguityError<'tcx> {
-    root_obligation: PredicateObligation<'tcx>,
-    code: FulfillmentErrorCode<'tcx>,
-    refine_obligation: bool,
-}
-
-pub enum NextSolverError<'tcx> {
-    TrueError(PredicateObligation<'tcx>),
-    Ambiguity(NextSolverAmbiguityError<'tcx>),
-}
-
-impl<'tcx> FromSolverError<'tcx, NextSolverError<'tcx>> for FulfillmentError<'tcx> {
-    fn from_solver_error(infcx: &InferCtxt<'tcx>, error: NextSolverError<'tcx>) -> Self {
-        match error {
-            NextSolverError::TrueError(obligation) => {
-                fulfillment_error_for_no_solution(infcx, obligation)
-            }
-            NextSolverError::Ambiguity(ambiguity) => {
-                fulfillment_error_for_stalled(infcx, ambiguity)
-            }
-        }
+    pub fn drain_remaining_obligations(
+        &mut self,
+    ) -> impl Iterator<Item = PredicateObligation<I>> + '_ {
+        self.obligations.pending.drain(..).map(|(obligation, _)| obligation)
     }
-}
-
-impl<'tcx> FromSolverError<'tcx, NextSolverError<'tcx>> for ScrubbedTraitError<'tcx> {
-    fn from_solver_error(_infcx: &InferCtxt<'tcx>, error: NextSolverError<'tcx>) -> Self {
-        match error {
-            NextSolverError::TrueError(_) => ScrubbedTraitError::TrueError,
-            NextSolverError::Ambiguity(_) => ScrubbedTraitError::Ambiguity,
-        }
-    }
-}
-
-// Some types are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(target_pointer_width = "64")]
-mod size_asserts {
-    use rustc_data_structures::static_assert_size;
-
-    use super::*;
-    // tidy-alphabetical-start
-    // Before #160005 this pair was greater than 128 bytes, which triggered the use of (slow)
-    // `memcpy` for moving elements of `PendingObligations`. Then #160479 greatly reduced the
-    // number of `memcpy` operations in `try_evaluate_obligations`. So the size of this pair is
-    // much less important than it was, but still shouldn't be changed without some thought.
-    static_assert_size!((PredicateObligation<'_>, Option<GoalStalledOn<TyCtxt<'_>>>), 104);
-    // tidy-alphabetical-end
 }
