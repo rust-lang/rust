@@ -1328,18 +1328,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     enable_feature: self.tcx().sess.is_nightly_build(),
                 })
             }
-            ResolutionError::ParamInNonTrivialAnonConst { is_gca, name, param_kind: is_type } => {
-                self.dcx().create_err(diagnostics::ParamInNonTrivialAnonConst {
-                    span,
-                    name,
-                    param_kind: is_type,
-                    help: self.tcx.sess.is_nightly_build()
-                        && !self.tcx.features().gca_min_const_items(),
-                    is_gca,
-                    help_gca: is_gca,
-                    help_suggest_gca: self.tcx.sess.is_nightly_build() && !is_gca,
-                })
-            }
+            ResolutionError::ParamInNonTrivialAnonConst {
+                is_gca_const_items,
+                name,
+                param_kind,
+            } => self.dcx().create_err(diagnostics::ParamInNonTrivialAnonConst {
+                span,
+                name,
+                param_kind,
+                help: self.tcx.sess.is_nightly_build() && !self.tcx.features().gca(),
+                is_gca_const_items,
+                help_gca: is_gca_const_items,
+                help_suggest_gca: self.tcx.sess.is_nightly_build() && !is_gca_const_items,
+            }),
             ResolutionError::ParamInEnumDiscriminant { name, param_kind: is_type } => {
                 self.dcx().create_err(diagnostics::ParamInEnumDiscriminant {
                     span,

@@ -1,6 +1,5 @@
 //@ run-pass
-#![feature(gca_min_const_items, gca_macroless_args, adt_const_params)]
-#![expect(incomplete_features)]
+#![feature(gca_adts, gca_min_const_items, gca_macroless_args, adt_const_params)]
 
 use std::marker::ConstParamTy;
 
