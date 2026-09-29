@@ -86,7 +86,7 @@ fn useless_check<'a, 'tcx: 'a>(
             return Some(UselessPtrNullChecksDiag::FnRet { fn_name });
         }
         e = if let ExprKind::Cast(expr, t) = e.kind
-            && let TyKind::Ptr(_) = t.kind
+            && let TyKind::Ptr(..) = t.kind
         {
             had_at_least_one_cast = true;
             expr

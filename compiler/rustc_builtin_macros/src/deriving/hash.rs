@@ -21,7 +21,7 @@ pub(crate) fn expand_deriving_hash(
 
     let param = {
         let path = path_std!(cx, span, hash::Hasher);
-        cx.typaram(span, typaram, thin_vec![cx.trait_bound(path, false)], None)
+        cx.typaram(typaram, thin_vec![cx.trait_bound(path, false)], None)
     };
 
     let generics = ast::Generics {

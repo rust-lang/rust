@@ -927,8 +927,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 if let Node::TraitItem(ti) = self.infcx.tcx.hir_node_by_def_id(f_in_trait)
                     && let hir::TraitItemKind::Fn(sig, _) = ti.kind
                     && let Some(ty) = sig.decl.inputs.get(local.index() - 1)
-                    && let hir::TyKind::Ref(_, mut_ty) = ty.kind
-                    && let hir::Mutability::Not = mut_ty.mutbl
+                    && let hir::TyKind::Ref(_, _, hir::Mutability::Not) = ty.kind
                     && sig.decl.implicit_self().has_implicit_self()
                 {
                     Some(ty.span)
@@ -2020,7 +2019,7 @@ fn get_mut_span_in_struct_field<'tcx>(
         // Now we're dealing with the actual struct that we're going to suggest a change to,
         // we can expect a field that is an immutable reference to a type.
         && let hir::Node::Field(field) = tcx.hir_node_by_def_id(field.did.as_local()?)
-        && let hir::TyKind::Ref(lt, hir::MutTy { mutbl: hir::Mutability::Not, ty }) = field.ty.kind
+        && let hir::TyKind::Ref(lt, ty, hir::Mutability::Not) = field.ty.kind
     {
         return Some(lt.ident.span.between(ty.span));
     }

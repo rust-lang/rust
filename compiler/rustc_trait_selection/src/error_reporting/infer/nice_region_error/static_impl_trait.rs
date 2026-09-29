@@ -73,16 +73,17 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         if mention_influencer {
             spans.push(sup_origin.span());
         }
-        // We dedup the spans *ignoring* expansion context.
-        spans.sort();
-        spans.dedup_by_key(|span| (span.lo(), span.hi()));
+        // We sort and dedup the spans *ignoring* expansion context.
+        spans.sort_by_key(|span| span.lo_hi());
+        spans.dedup_by_key(|span| span.lo_hi());
 
         // We try to make the output have fewer overlapping spans if possible.
         let require_span =
             if sup_origin.span().overlaps(return_sp) { sup_origin.span() } else { return_sp };
 
         let spans_empty = spans.is_empty();
-        let require_as_note = spans.iter().any(|sp| sp.overlaps(return_sp) || *sp > return_sp);
+        let require_as_note =
+            spans.iter().any(|sp| sp.overlaps(return_sp) || sp.lo_hi() > return_sp.lo_hi());
         let bound = if let SubregionOrigin::RelateParamBound(_, _, Some(bound)) = sub_origin {
             Some(*bound)
         } else {

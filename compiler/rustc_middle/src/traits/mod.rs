@@ -21,7 +21,7 @@ use rustc_macros::{
     Decodable, Encodable, StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
 };
 use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
-use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, OrdSpan, Span, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 
@@ -863,15 +863,15 @@ impl DynCompatibilityViolation {
             | Self::SupertraitConst(_) => DynCompatibilityViolationSolution::None,
             Self::Method(
                 name,
-                MethodViolation::StaticMethod(Some((add_self_sugg, make_sized_sugg))),
+                MethodViolation::StaticMethod(Some(((add_s, add_sp), (make_s, make_sp)))),
                 _,
             ) => DynCompatibilityViolationSolution::AddSelfOrMakeSized {
                 name: *name,
-                add_self_sugg: add_self_sugg.clone(),
-                make_sized_sugg: make_sized_sugg.clone(),
+                add_self_sugg: (add_s.clone(), OrdSpan(*add_sp)),
+                make_sized_sugg: (make_s.clone(), OrdSpan(*make_sp)),
             },
             Self::Method(name, MethodViolation::UndispatchableReceiver(Some((span, lt))), _) => {
-                DynCompatibilityViolationSolution::ChangeToRefSelf(*name, *span, *lt)
+                DynCompatibilityViolationSolution::ChangeToRefSelf(*name, OrdSpan(*span), *lt)
             }
             Self::Method(name, ..) | Self::AssocConst(name, ..) | Self::GenericAssocTy(name, _) => {
                 DynCompatibilityViolationSolution::MoveToAnotherTrait(*name)
@@ -901,15 +901,15 @@ impl DynCompatibilityViolation {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DynCompatibilityViolationSolution {
     None,
     AddSelfOrMakeSized {
         name: Symbol,
-        add_self_sugg: (String, Span),
-        make_sized_sugg: (String, Span),
+        add_self_sugg: (String, OrdSpan),
+        make_sized_sugg: (String, OrdSpan),
     },
-    ChangeToRefSelf(Symbol, Span, Symbol),
+    ChangeToRefSelf(Symbol, OrdSpan, Symbol),
     MoveToAnotherTrait(Symbol),
 }
 
@@ -923,7 +923,7 @@ impl DynCompatibilityViolationSolution {
                 make_sized_sugg,
             } => {
                 err.span_suggestion_verbose(
-                    add_self_sugg.1,
+                    add_self_sugg.1.0,
                     format!(
                         "consider turning `{name}` into a method by giving it a `&self` argument, \
                          so that it is accessible through the trait object's vtable",
@@ -932,7 +932,7 @@ impl DynCompatibilityViolationSolution {
                     Applicability::MaybeIncorrect,
                 );
                 err.span_suggestion_verbose(
-                    make_sized_sugg.1,
+                    make_sized_sugg.1.0,
                     format!(
                         "alternatively, consider constraining `{name}` so it is explicitly marked \
                          as not applying to trait objects",
@@ -943,7 +943,7 @@ impl DynCompatibilityViolationSolution {
             }
             DynCompatibilityViolationSolution::ChangeToRefSelf(name, span, lt) => {
                 err.span_suggestion_verbose(
-                    span,
+                    span.0,
                     format!("consider changing method `{name}`'s `self` parameter to be `&self`"),
                     format!("&{lt}{}self", if lt != sym::empty { " " } else { "" }),
                     Applicability::MachineApplicable,

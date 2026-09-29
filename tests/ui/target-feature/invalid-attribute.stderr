@@ -160,14 +160,6 @@ LL |     #[target_feature(enable = "sse2")]
    |
    = help: the `target_feature` attribute can be applied to functions and methods
 
-error: cannot use `#[inline(always)]` with `#[target_feature]`
-  --> $DIR/invalid-attribute.rs:69:1
-   |
-LL | #[inline(always)]
-   | ^^^^^^^^^^^^^^^^^
-   |
-   = note: See this issue for full discussion: https://github.com/rust-lang/rust/issues/145574
-
 error: the feature named `foo` is not valid for this target
   --> $DIR/invalid-attribute.rs:27:18
    |
@@ -175,6 +167,14 @@ LL | #[target_feature(enable = "foo")]
    |                  ^^^^^^^^^^^^^^ `foo` is not valid for this target
    |
    = help: valid names are: `fma`, `xop`, `adx`, `aes`, and `avx` and X more
+
+error: cannot use `#[inline(always)]` with `#[target_feature]`
+  --> $DIR/invalid-attribute.rs:69:1
+   |
+LL | #[inline(always)]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: See this issue for full discussion: https://github.com/rust-lang/rust/issues/145574
 
 error[E0046]: not all trait items implemented, missing: `foo`
   --> $DIR/invalid-attribute.rs:81:1

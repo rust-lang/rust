@@ -944,8 +944,7 @@ pub(crate) enum RedefiningRuntimeSymbolsDiag<'tcx> {
         "invalid definition of the runtime `{$symbol_name}` symbol used by the standard library"
     )]
     #[note(
-        "expected `{$expected_fn_sig}` (for the current target)
-    found    `{$found_fn_sig}`"
+        "expected `{$expected_fn_sig}` (for the current target)\n{\"   \"}found `{$found_fn_sig}`"
     )]
     #[help(
         "either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = \"{$symbol_name}\")]`, or `#[link_name = \"{$symbol_name}\"]`"
@@ -955,8 +954,7 @@ pub(crate) enum RedefiningRuntimeSymbolsDiag<'tcx> {
         "suspicious definition of the runtime `{$symbol_name}` symbol used by the standard library"
     )]
     #[note(
-        "expected `{$expected_fn_sig}` (for the current target)
-    found    `{$found_fn_sig}`"
+        "expected `{$expected_fn_sig}` (for the current target)\n{\"   \"}found `{$found_fn_sig}`"
     )]
     #[help(
         "either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = \"{$symbol_name}\")]`, or `#[link_name = \"{$symbol_name}\"]`"
@@ -1238,9 +1236,11 @@ pub(crate) struct QueryUntracked {
 pub(crate) struct SpanUseEqCtxtDiag;
 
 #[derive(Diagnostic)]
-#[diag("using `Symbol::intern` on a string literal")]
+#[diag("using `{$fn_name}` on a string literal")]
 #[help("consider adding the symbol to `compiler/rustc_span/src/symbol.rs`")]
-pub(crate) struct SymbolInternStringLiteralDiag;
+pub(crate) struct SymbolInternStringLiteralDiag {
+    pub fn_name: &'static str,
+}
 
 #[derive(Diagnostic)]
 #[diag("usage of `ty::TyKind::<kind>`")]
@@ -2705,6 +2705,27 @@ pub(crate) enum UnusedDefSuggestion {
     )]
     BlockTailExpr {
         #[suggestion_part(code = "let _ = ")]
+        before_span: Span,
+        #[suggestion_part(code = ";")]
+        after_span: Span,
+    },
+    #[suggestion(
+        "use `let _unused = ...` to ignore the resulting value without dropping it immediately",
+        style = "verbose",
+        code = "let _unused = ",
+        applicability = "maybe-incorrect"
+    )]
+    BindingExpr {
+        #[primary_span]
+        span: Span,
+    },
+    #[multipart_suggestion(
+        "use `let _unused = ...` to ignore the resulting value without dropping it immediately",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    BindingBlockTailExpr {
+        #[suggestion_part(code = "let _unused = ")]
         before_span: Span,
         #[suggestion_part(code = ";")]
         after_span: Span,
