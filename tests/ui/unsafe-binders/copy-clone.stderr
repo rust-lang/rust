@@ -1,5 +1,5 @@
 error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
-  --> $DIR/copy-clone.rs:22:5
+  --> $DIR/copy-clone.rs:23:5
    |
 LL |     a: unsafe<'a> &'a u8,
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -11,7 +11,7 @@ LL |     a: std::mem::ManuallyDrop<unsafe<'a> &'a u8>,
    |        +++++++++++++++++++++++                 +
 
 error[E0277]: the trait bound `unsafe<'b> &'b u8: Copy` is not satisfied in `(&'a u8, unsafe<'b> &'b u8)`
-  --> $DIR/copy-clone.rs:25:14
+  --> $DIR/copy-clone.rs:27:14
    |
 LL | fn nested(_: unsafe<'a> (&'a u8, unsafe<'b> &'b u8)) {}
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ within `(&'a u8, unsafe<'b> &'b u8)`, the trait `Copy` is not implemented for `unsafe<'b> &'b u8`
@@ -19,13 +19,23 @@ LL | fn nested(_: unsafe<'a> (&'a u8, unsafe<'b> &'b u8)) {}
    = note: required because it appears within the type `unsafe<'b> &'b u8`
    = note: required because it appears within the type `(&'a u8, unsafe<'b> &'b u8)`
 
+error[E0277]: the trait bound `for<'a> Vec<&'a u8>: Copy` is not satisfied in `Vec<&u8>`
+  --> $DIR/copy-clone.rs:32:43
+   |
+LL | fn nested_outer_lifetime(_: unsafe<'a> MD<unsafe<> Vec<&'a u8>>) {}
+   |                                           ^^^^^^^^^^^^^^^^^^^^ within `Vec<&u8>`, the trait `for<'a> Copy` is not implemented for `Vec<&'a u8>`
+   |
+note: required because it appears within the type `Vec<&u8>`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+
 error[E0204]: the trait `Copy` cannot be implemented for this type
-  --> $DIR/copy-clone.rs:33:8
+  --> $DIR/copy-clone.rs:36:8
    |
 LL | #[derive(Clone, Copy)]
    |                 ---- in this derive macro expansion
 LL | struct S {
    |        ^
+LL |
 LL |     b: unsafe<'a> &'a u8,
    |     -------------------- this field does not implement `Copy`
 
@@ -38,11 +48,11 @@ LL |     let _ = Clone::clone(&b);
    |             required by a bound introduced by this call
 
 error[E0277]: the trait bound `unsafe<'a> &'a u8: Clone` is not satisfied
-  --> $DIR/copy-clone.rs:34:5
+  --> $DIR/copy-clone.rs:38:5
    |
 LL | #[derive(Clone, Copy)]
    |          ----- in this derive macro expansion
-LL | struct S {
+...
 LL |     b: unsafe<'a> &'a u8,
    |     ^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `unsafe<'a> &'a u8`
    |
@@ -50,7 +60,7 @@ note: required by a bound in `std::clone::AssertParamIsClone`
   --> $SRC_DIR/core/src/clone.rs:LL:COL
 
 error[E0382]: use of moved value: `b`
-  --> $DIR/copy-clone.rs:14:14
+  --> $DIR/copy-clone.rs:13:14
    |
 LL | fn twice(b: unsafe<'a> &'a u8) {
    |          - move occurs because `b` has type `unsafe<'a> &'a u8`, which does not implement the `Copy` trait
@@ -59,7 +69,7 @@ LL |     let _c = b;
 LL |     let _d = b;
    |              ^ value used here after move
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
 Some errors have detailed explanations: E0204, E0277, E0382, E0740.
 For more information about an error, try `rustc --explain E0204`.
