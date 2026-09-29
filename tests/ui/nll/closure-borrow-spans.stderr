@@ -110,17 +110,17 @@ LL |     x = 1;
 LL |     f.use_ref();
    |     - borrow later used here
 
-error[E0505]: cannot move out of `x` because it is borrowed
+error[E0501]: cannot borrow `*x` as mutable because previous closure requires unique access
   --> $DIR/closure-borrow-spans.rs:66:13
    |
 LL |     let f = || *x = 0;
-   |             -- -- borrow occurs due to use in closure
+   |             -- -- first borrow occurs due to use of `x` in closure
    |             |
-   |             borrow of `x` occurs here
+   |             closure construction occurs here
 LL |     let y = x;
-   |             ^ move out of `x` occurs here
+   |             ^ second borrow occurs here
 LL |     f.use_ref();
-   |     - borrow later used here
+   |     - first borrow later used here
 
 error[E0501]: cannot borrow `x` as immutable because previous closure requires unique access
   --> $DIR/closure-borrow-spans.rs:72:13

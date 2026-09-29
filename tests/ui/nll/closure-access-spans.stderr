@@ -97,31 +97,7 @@ help: consider cloning the value if the performance cost is acceptable
 LL |     let r = x.clone();
    |              ++++++++
 
-error[E0382]: borrow of moved value: `x`
-  --> $DIR/closure-access-spans.rs:46:5
-   |
-LL | fn closure_unique_capture_moved(x: &mut String) {
-   |                                 - move occurs because `x` has type `&mut String`, which does not implement the `Copy` trait
-LL |     let r = x;
-   |             - value moved here
-LL |     || *x = String::new();
-   |     ^^ -- borrow occurs due to use in closure
-   |     |
-   |     value borrowed here after move
-
-error[E0382]: use of moved value: `x`
-  --> $DIR/closure-access-spans.rs:51:5
-   |
-LL | fn closure_move_capture_moved(x: &mut String) {
-   |                               - move occurs because `x` has type `&mut String`, which does not implement the `Copy` trait
-LL |     let r = x;
-   |             - value moved here
-LL |     || x;
-   |     ^^ - use occurs due to use in closure
-   |     |
-   |     value used here after move
-
-error: aborting due to 9 previous errors
+error: aborting due to 7 previous errors
 
 Some errors have detailed explanations: E0382, E0499, E0500, E0502, E0503, E0505.
 For more information about an error, try `rustc --explain E0382`.
