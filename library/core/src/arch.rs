@@ -73,6 +73,7 @@ pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?
 /// The precise instruction is guaranteed only on the following targets:
 /// - On x86 targets, this produces an `int3` instruction.
 /// - On aarch64 targets, this produces a `brk #0xf000` instruction.
+// When adding more items above, also add cases to the test in `tests/assembly-llvm/breakpoint.rs`.
 // When stabilizing this, update the comment on `core::intrinsics::breakpoint`.
 #[unstable(feature = "breakpoint", issue = "133724")]
 #[inline(always)]
