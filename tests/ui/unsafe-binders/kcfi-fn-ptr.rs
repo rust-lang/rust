@@ -1,16 +1,9 @@
 //@ compile-flags: -Znext-solver
-//@ build-fail
-//@ failure-status: 101
-//@ known-bug: #130516
-//@ rustc-env:RUST_BACKTRACE=0
-//@ normalize-stderr: "note: .*\n\n" -> ""
-//@ normalize-stderr: "(compiler/[a-z_/]+\.rs):\d+:\d+" -> "$1:LL:CC"
-//@ normalize-stderr: "query stack during panic:\n(.*\n)*?(end of query stack|\.\.\. and \d+ other queries.*)\n" -> ""
+//@ build-pass
 //@ needs-sanitizer-kcfi
 //@ no-prefer-dynamic
 //@ compile-flags: -Cpanic=abort -Zsanitizer=kcfi -Cunsafe-allow-abi-mismatch=sanitizer
 //@ compile-flags: -Zunstable-options -Csymbol-mangling-version=legacy
-//@ ignore-backends: gcc
 
 // KCFI sanitizer works with unsafe binders.
 
