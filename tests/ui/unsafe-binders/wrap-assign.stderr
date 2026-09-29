@@ -1,5 +1,5 @@
 error: the type ascription argument of `wrap_binder!` is not supported yet
-  --> $DIR/wrap-assign.rs:17:30
+  --> $DIR/wrap-assign.rs:18:30
    |
 LL |     unsafe { wrap_binder!(x; unsafe<> u8) = y };
    |                              ^^^^^^^^^^^
@@ -7,11 +7,28 @@ LL |     unsafe { wrap_binder!(x; unsafe<> u8) = y };
    = help: annotate the type of the unsafe binder elsewhere, for example on a `let` binding
 
 error[E0282]: type annotations needed
-  --> $DIR/wrap-assign.rs:13:27
+  --> $DIR/wrap-assign.rs:12:27
    |
 LL |     unsafe { wrap_binder!(x) = y };
    |                           ^ cannot infer type
 
-error: aborting due to 2 previous errors
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/wrap-assign.rs:12:30
+   |
+LL |     unsafe { wrap_binder!(x) = y };
+   |              --------------- ^
+   |              |
+   |              cannot assign to this expression
 
-For more information about this error, try `rustc --explain E0282`.
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/wrap-assign.rs:18:43
+   |
+LL |     unsafe { wrap_binder!(x; unsafe<> u8) = y };
+   |              ---------------------------- ^
+   |              |
+   |              cannot assign to this expression
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0070, E0282.
+For more information about an error, try `rustc --explain E0070`.
