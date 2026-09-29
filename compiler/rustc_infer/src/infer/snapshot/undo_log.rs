@@ -69,7 +69,7 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
             UndoLog::DuplicateOpaqueType => self.opaque_type_storage.pop_duplicate_entry(),
             UndoLog::OpaqueTypes(key, idx) => self.opaque_type_storage.remove(key, idx),
             UndoLog::PseudoRigidDueToOpaques(ty, len) => {
-                self.opaque_type_storage.truncate_pseudo_rigids_due_to_opaques(ty, len)
+                self.opaque_type_storage.undo_pseudo_rigid_due_to_opaques(ty, len)
             }
             UndoLog::TypeVariables(undo) => self.type_variable_storage.reverse(undo),
             UndoLog::ConstUnificationTable(undo) => self.const_unification_storage.reverse(undo),

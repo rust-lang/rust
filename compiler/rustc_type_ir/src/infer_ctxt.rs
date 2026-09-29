@@ -578,7 +578,7 @@ pub trait InferCtxtLike: Sized {
         &self,
         prev_entries: Self::OpaqueTypeStorageEntries,
     ) -> Vec<(<Self::Interner as Interner>::Ty, ty::PseudoRigidDueToOpaquesBound<Self::Interner>)>;
-    fn pseudo_rigids_due_to_opaques_modulo_sub_unification(
+    fn pseudo_rigids_due_to_opaques(
         &self,
         ty_vid: TyVid,
     ) -> Vec<(

@@ -547,7 +547,7 @@ where
         }
 
         delegate.register_pseudo_rigid_due_to_opaques_in_storage_with_flattened(
-            input.pseudo_rigid_due_to_opaques_bounds_in_body.as_slice(),
+            input.pseudo_rigid_due_to_opaques_bounds.as_slice(),
         );
 
         let initial_opaque_types_storage_num_entries = delegate.opaque_types_storage_num_entries();
@@ -1001,7 +1001,7 @@ where
         let num_opaques_in_storage =
             canonical_goal.canonical.value.predefined_opaques_in_body.len();
         let num_hidden_ty_bounds_in_storage =
-            canonical_goal.canonical.value.pseudo_rigid_due_to_opaques_bounds_in_body.len();
+            canonical_goal.canonical.value.pseudo_rigid_due_to_opaques_bounds.len();
 
         GoalStalledOn {
             stalled_vars,
@@ -1523,7 +1523,7 @@ where
         self.delegate.register_hidden_type_in_storage(opaque_type_key, hidden_ty, self.origin_span)
     }
 
-    pub(super) fn add_hidden_type_of_opaque_in_storage(
+    pub(super) fn register_pseudo_rigid_due_to_opaques_in_storage(
         &self,
         hidden_ty: I::Ty,
         bounds: impl IntoIterator<Item = ty::PseudoRigidDueToOpaquesBound<I>>,
@@ -1643,12 +1643,12 @@ where
         Ok(may_use_unstable_feature(&**self.delegate, param_env, symbol))
     }
 
-    pub(crate) fn pseudo_rigids_due_to_opaques_modulo_sub_unification(
+    pub(crate) fn pseudo_rigids_due_to_opaques(
         &self,
         self_ty: I::Ty,
     ) -> Vec<(I::Ty, Vec<ty::PseudoRigidDueToOpaquesBound<I>>)> {
         if let ty::Infer(ty::TyVar(vid)) = self_ty.kind() {
-            self.delegate.pseudo_rigids_due_to_opaques_modulo_sub_unification(vid)
+            self.delegate.pseudo_rigids_due_to_opaques(vid)
         } else {
             vec![]
         }

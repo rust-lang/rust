@@ -429,13 +429,8 @@ fn check_opaque_meets_bounds<'tcx>(
         let _ = infcx.take_opaque_types();
         Ok(())
     } else {
-        let (opaques, pseudo_rigids) = infcx.take_opaque_types();
-        debug_assert!(
-            pseudo_rigids.is_empty(),
-            "We don't track anything in `pseudo_rigids_due_to_opaques` with the old solver"
-        );
         // Check that any hidden types found during wf checking match the hidden types that `type_of` sees.
-        for (mut key, mut ty) in opaques {
+        for (mut key, mut ty) in infcx.take_opaque_types_old_solver() {
             ty.ty = infcx.deeply_resolve_ignoring_regions(ty.ty);
             key = infcx.deeply_resolve_ignoring_regions(key);
             sanity_check_found_hidden_type(tcx, key, ty)?;
@@ -2356,14 +2351,9 @@ pub(super) fn check_coroutine_obligations(
     }
 
     if !tcx.next_trait_solver_globally() {
-        let (opaques, pseudo_rigids) = infcx.take_opaque_types();
-        debug_assert!(
-            pseudo_rigids.is_empty(),
-            "We don't track anything in `pseudo_rigids_due_to_opaques` with the old solver"
-        );
         // Check that any hidden types found when checking these stalled coroutine obligations
         // are valid.
-        for (key, ty) in opaques {
+        for (key, ty) in infcx.take_opaque_types_old_solver() {
             let hidden_type = infcx.deeply_resolve_ignoring_regions(ty);
             let key = infcx.deeply_resolve_ignoring_regions(key);
             sanity_check_found_hidden_type(tcx, key, hidden_type)?;

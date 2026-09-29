@@ -456,7 +456,7 @@ pub enum GoalSource {
 pub struct QueryInput<I: Interner, P> {
     pub goal: Goal<I, P>,
     pub predefined_opaques_in_body: I::PredefinedOpaques,
-    pub pseudo_rigid_due_to_opaques_bounds_in_body: I::PseudoRigidDueToOpaquesBounds,
+    pub pseudo_rigid_due_to_opaques_bounds: I::PseudoRigidDueToOpaquesBounds,
 }
 
 impl<I: Interner, P: Eq> Eq for QueryInput<I, P> {}
@@ -650,8 +650,7 @@ impl<I: Interner> ExternalConstraintsData<I> {
         Self {
             region_constraints,
             opaque_types: cx.mk_predefined_opaques_in_body(&[]),
-            pseudo_rigid_due_to_opaques_bounds: cx
-                .mk_pseudo_rigid_due_to_opaques_bounds_in_body(&[]),
+            pseudo_rigid_due_to_opaques_bounds: cx.mk_pseudo_rigid_due_to_opaques_bounds(&[]),
             normalization_nested_goals: NestedNormalizationGoals::default(),
         }
     }

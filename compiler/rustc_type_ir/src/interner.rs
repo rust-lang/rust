@@ -135,7 +135,7 @@ pub trait Interner:
         + Eq
         + TypeFoldable<Self>
         + SliceLike<Item = (Self::Ty, ty::PseudoRigidDueToOpaquesBound<Self>)>;
-    fn mk_pseudo_rigid_due_to_opaques_bounds_in_body(
+    fn mk_pseudo_rigid_due_to_opaques_bounds(
         self,
         data: &[(Self::Ty, ty::PseudoRigidDueToOpaquesBound<Self>)],
     ) -> Self::PseudoRigidDueToOpaquesBounds;

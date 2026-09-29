@@ -88,7 +88,19 @@ where
                     // inference variables. In borrowck we instead use the type
                     // computed in HIR typeck as the initial value.
                     match self.typing_mode().assert_not_erased() {
-                        TypingMode::Typeck { .. } => {}
+                        TypingMode::Typeck { .. } => {
+                            self.register_pseudo_rigid_due_to_opaques_in_storage(
+                                expected,
+                                ty::PseudoRigidDueToOpaquesBound::iter_item_self_bounds_for_hidden_ty(
+                                    cx,
+                                    ty::AliasTy::new_from_args(
+                                        cx,
+                                        ty::AliasTyKind::Opaque { def_id: def_id.into() },
+                                        normalized_args,
+                                    ),
+                                ),
+                            );
+                        }
                         TypingMode::PostTypeckUntilBorrowck { .. } => {
                             let actual = cx
                                 .type_of_opaque_hir_typeck(def_id)
@@ -109,18 +121,6 @@ where
                         | TypingMode::Reflection
                         | TypingMode::Codegen => unreachable!(),
                     }
-
-                    self.add_hidden_type_of_opaque_in_storage(
-                        expected,
-                        ty::PseudoRigidDueToOpaquesBound::iter_item_self_bounds_for_hidden_ty(
-                            cx,
-                            ty::AliasTy::new_from_args(
-                                cx,
-                                ty::AliasTyKind::Opaque { def_id: def_id.into() },
-                                normalized_args,
-                            ),
-                        ),
-                    );
                 }
 
                 self.add_item_bounds_for_hidden_type(

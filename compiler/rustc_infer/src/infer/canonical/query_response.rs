@@ -155,14 +155,13 @@ impl<'tcx> InferCtxt<'tcx> {
         });
         debug!(?region_constraints);
 
-        let opaque_types = self
-            .inner
-            .borrow_mut()
-            .opaque_type_storage
-            .take_opaque_types()
-            .0
-            .map(|(k, v)| (k, v.ty))
-            .collect();
+        let mut inner = self.inner.borrow_mut();
+        let (opaque_types, mut pseudo_rigids) = inner.opaque_type_storage.take_opaque_types();
+        let opaque_types = opaque_types.map(|(k, v)| (k, v.ty)).collect();
+
+        // We register pseudo-rigid types only during HIR typeck, with the next-solver,
+        // and we shouldn't call the old solver style canonical queries there.
+        debug_assert!(pseudo_rigids.next().is_none());
 
         Ok(QueryResponse {
             var_values: inference_vars,

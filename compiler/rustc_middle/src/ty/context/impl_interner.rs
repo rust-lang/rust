@@ -78,11 +78,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     type PseudoRigidDueToOpaquesBounds = solve::PseudoRigidDueToOpaquesBounds<'tcx>;
 
-    fn mk_pseudo_rigid_due_to_opaques_bounds_in_body(
+    fn mk_pseudo_rigid_due_to_opaques_bounds(
         self,
         data: &[(Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)],
     ) -> Self::PseudoRigidDueToOpaquesBounds {
-        self.mk_pseudo_rigid_due_to_opaques_bounds_in_body(data)
+        self.mk_pseudo_rigid_due_to_opaques_bounds(data)
     }
 
     type LocalDefIds = &'tcx ty::List<LocalDefId>;

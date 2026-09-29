@@ -418,8 +418,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             ty::List::empty()
         };
-        let pseudo_rigid_due_to_opaques_bounds_in_body = if self.next_trait_solver() {
-            self.tcx.mk_pseudo_rigid_due_to_opaques_bounds_in_body_from_iter(
+        let pseudo_rigid_due_to_opaques_bounds = if self.next_trait_solver() {
+            self.tcx.mk_pseudo_rigid_due_to_opaques_bounds_from_iter(
                 self.inner.borrow_mut().opaque_types().iter_pseudo_rigid_due_to_opaques_bounds(),
             )
         } else {
@@ -427,7 +427,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let value = query::MethodAutoderefSteps {
             predefined_opaques_in_body,
-            pseudo_rigid_due_to_opaques_bounds_in_body,
+            pseudo_rigid_due_to_opaques_bounds,
             self_ty,
         };
         let query_input = self
@@ -446,7 +446,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     infcx.instantiate_canonical(span, &query_input.canonical);
                 let query::MethodAutoderefSteps {
                     predefined_opaques_in_body: _,
-                    pseudo_rigid_due_to_opaques_bounds_in_body: _,
+                    pseudo_rigid_due_to_opaques_bounds: _,
                     self_ty,
                 } = value;
                 debug!(?self_ty, ?query_input, "probe_op: Mode::Path");
@@ -458,7 +458,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self_ty,
                             prev_opaque_entries,
                         ),
-                        self_ty_is_pseudo_rigid_opaques: false,
+                        self_ty_is_pseudo_rigid_due_to_opaques: false,
                         autoderefs: 0,
                         from_unsafe_deref: false,
                         unsize: false,
@@ -659,7 +659,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
         value:
             query::MethodAutoderefSteps {
                 predefined_opaques_in_body,
-                pseudo_rigid_due_to_opaques_bounds_in_body,
+                pseudo_rigid_due_to_opaques_bounds,
                 self_ty,
             },
     } = goal;
@@ -682,7 +682,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
         }
     }
     infcx.register_pseudo_rigid_due_to_opaques_in_storage_with_flattened(
-        pseudo_rigid_due_to_opaques_bounds_in_body,
+        pseudo_rigid_due_to_opaques_bounds,
     );
     let prev_opaque_entries = infcx.inner.borrow_mut().opaque_types().num_entries();
 
@@ -691,7 +691,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
     // infer var is not an opaque.
     let self_ty_is_pseudo_rigid_due_to_opaques = |ty: Ty<'_>| {
         if let &ty::Infer(ty::TyVar(vid)) = ty.kind() {
-            infcx.is_pseudo_rigid_due_to_opaques_modulo_sub_unification(vid)
+            infcx.is_pseudo_rigid_due_to_opaques(vid)
         } else {
             false
         }
@@ -714,64 +714,67 @@ pub(crate) fn method_autoderef_steps<'tcx>(
     let mut reached_raw_pointer = false;
     let arbitrary_self_types_enabled =
         tcx.features().arbitrary_self_types() || tcx.features().arbitrary_self_types_pointers();
-    let (mut steps, reached_recursion_limit): (Vec<_>, bool) = if arbitrary_self_types_enabled {
-        let reachable_via_deref =
-            autoderef_via_deref.by_ref().map(|_| true).chain(std::iter::repeat(false));
+    let (mut steps, reached_recursion_limit): (Vec<_>, bool) =
+        if arbitrary_self_types_enabled {
+            let reachable_via_deref =
+                autoderef_via_deref.by_ref().map(|_| true).chain(std::iter::repeat(false));
 
-        let mut autoderef_via_receiver =
-            Autoderef::new(infcx, param_env, hir::def_id::CRATE_DEF_ID, DUMMY_SP, self_ty)
-                .include_raw_pointers()
-                .use_receiver_trait()
-                .silence_errors();
-        let steps = autoderef_via_receiver
-            .by_ref()
-            .zip(reachable_via_deref)
-            .map(|((ty, d), reachable_via_deref)| {
-                let step = CandidateStep {
-                    self_ty: infcx.make_query_response_ignoring_pending_obligations(
-                        inference_vars,
-                        ty,
-                        prev_opaque_entries,
-                    ),
-                    self_ty_is_pseudo_rigid_opaques: self_ty_is_pseudo_rigid_due_to_opaques(ty),
-                    autoderefs: d,
-                    from_unsafe_deref: reached_raw_pointer,
-                    unsize: false,
-                    reachable_via_deref,
-                };
-                if ty.is_raw_ptr() {
-                    // all the subsequent steps will be from_unsafe_deref
-                    reached_raw_pointer = true;
-                }
-                step
-            })
-            .collect();
-        (steps, autoderef_via_receiver.reached_recursion_limit())
-    } else {
-        let steps = autoderef_via_deref
-            .by_ref()
-            .map(|(ty, d)| {
-                let step = CandidateStep {
-                    self_ty: infcx.make_query_response_ignoring_pending_obligations(
-                        inference_vars,
-                        ty,
-                        prev_opaque_entries,
-                    ),
-                    self_ty_is_pseudo_rigid_opaques: self_ty_is_pseudo_rigid_due_to_opaques(ty),
-                    autoderefs: d,
-                    from_unsafe_deref: reached_raw_pointer,
-                    unsize: false,
-                    reachable_via_deref: true,
-                };
-                if ty.is_raw_ptr() {
-                    // all the subsequent steps will be from_unsafe_deref
-                    reached_raw_pointer = true;
-                }
-                step
-            })
-            .collect();
-        (steps, autoderef_via_deref.reached_recursion_limit())
-    };
+            let mut autoderef_via_receiver =
+                Autoderef::new(infcx, param_env, hir::def_id::CRATE_DEF_ID, DUMMY_SP, self_ty)
+                    .include_raw_pointers()
+                    .use_receiver_trait()
+                    .silence_errors();
+            let steps = autoderef_via_receiver
+                .by_ref()
+                .zip(reachable_via_deref)
+                .map(|((ty, d), reachable_via_deref)| {
+                    let step = CandidateStep {
+                        self_ty: infcx.make_query_response_ignoring_pending_obligations(
+                            inference_vars,
+                            ty,
+                            prev_opaque_entries,
+                        ),
+                        self_ty_is_pseudo_rigid_due_to_opaques:
+                            self_ty_is_pseudo_rigid_due_to_opaques(ty),
+                        autoderefs: d,
+                        from_unsafe_deref: reached_raw_pointer,
+                        unsize: false,
+                        reachable_via_deref,
+                    };
+                    if ty.is_raw_ptr() {
+                        // all the subsequent steps will be from_unsafe_deref
+                        reached_raw_pointer = true;
+                    }
+                    step
+                })
+                .collect();
+            (steps, autoderef_via_receiver.reached_recursion_limit())
+        } else {
+            let steps = autoderef_via_deref
+                .by_ref()
+                .map(|(ty, d)| {
+                    let step = CandidateStep {
+                        self_ty: infcx.make_query_response_ignoring_pending_obligations(
+                            inference_vars,
+                            ty,
+                            prev_opaque_entries,
+                        ),
+                        self_ty_is_pseudo_rigid_due_to_opaques:
+                            self_ty_is_pseudo_rigid_due_to_opaques(ty),
+                        autoderefs: d,
+                        from_unsafe_deref: reached_raw_pointer,
+                        unsize: false,
+                        reachable_via_deref: true,
+                    };
+                    if ty.is_raw_ptr() {
+                        // all the subsequent steps will be from_unsafe_deref
+                        reached_raw_pointer = true;
+                    }
+                    step
+                })
+                .collect();
+            (steps, autoderef_via_deref.reached_recursion_limit())
+        };
     let final_ty = autoderef_via_deref.final_ty();
     let opt_bad_ty = match final_ty.kind() {
         ty::Infer(ty::TyVar(_)) if !self_ty_is_pseudo_rigid_due_to_opaques(final_ty) => {
@@ -800,7 +803,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
                     Ty::new_slice(infcx.tcx, *elem_ty),
                     prev_opaque_entries,
                 ),
-                self_ty_is_pseudo_rigid_opaques: false,
+                self_ty_is_pseudo_rigid_due_to_opaques: false,
                 autoderefs,
                 // this could be from an unsafe deref if we had
                 // a *mut/const [T; N]
@@ -2339,10 +2342,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
         }
 
-        // Check whether any hidden type of opaque in the autoderef chain have been
+        // Check whether any pseudo-rigid type in the autoderef chain has been
         // constrained.
         for step in self.steps {
-            if step.self_ty_is_pseudo_rigid_opaques {
+            if step.self_ty_is_pseudo_rigid_due_to_opaques {
                 debug!(?step.autoderefs, ?step.self_ty, "self_type_is_opaque");
                 let constrained_opaque = self.probe(|_| {
                     // If we fail to instantiate the self type of this

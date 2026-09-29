@@ -1327,7 +1327,7 @@ where
         // inference state. This is safe after typeck, where hidden types are already
         // fixed and only regions are inferred, but not during typeck while hidden
         // types may still contain inference variables.
-        if !opaque_types.is_empty() || !pseudo_rigid_due_to_opaques_bounds.is_empty() {
+        if !(opaque_types.is_empty() && pseudo_rigid_due_to_opaques_bounds.is_empty()) {
             let typing_mode = self.typing_mode();
 
             match typing_mode {

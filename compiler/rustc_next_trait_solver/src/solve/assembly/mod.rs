@@ -1157,9 +1157,8 @@ where
                     if let Some(ty::NormalizesTo { alias, term }) =
                         G::as_normalizes_to(goal.predicate)
                         && let ty::AliasTermKind::ProjectionTy { def_id } = alias.kind
-                        && ecx.typing_mode().should_register_pseudo_rigids_due_to_opaques()
                     {
-                        ecx.add_hidden_type_of_opaque_in_storage(
+                        ecx.register_pseudo_rigid_due_to_opaques_in_storage(
                             term.expect_ty(),
                             ty::PseudoRigidDueToOpaquesBound::iter_item_self_bounds_for_hidden_ty(
                                 cx,
@@ -1181,10 +1180,8 @@ where
 
         let self_ty = goal.predicate.self_ty();
         // We only use this hack during HIR typeck.
-        let hidden_tys_of_opaques = match self.typing_mode() {
-            TypingMode::Typeck { .. } => {
-                self.pseudo_rigids_due_to_opaques_modulo_sub_unification(self_ty)
-            }
+        let pseudo_rigids = match self.typing_mode() {
+            TypingMode::Typeck { .. } => self.pseudo_rigids_due_to_opaques(self_ty),
             TypingMode::Coherence
             | TypingMode::PostTypeckUntilBorrowck { .. }
             | TypingMode::PostBorrowck { .. }
@@ -1198,13 +1195,13 @@ where
             }
         };
 
-        if hidden_tys_of_opaques.is_empty() {
+        if pseudo_rigids.is_empty() {
             candidates.extend(self.forced_ambiguity(MaybeInfo::AMBIGUOUS));
             return Ok(());
         }
 
-        for (hidden_ty, bounds) in &hidden_tys_of_opaques {
-            debug!("self ty is sub unified with {hidden_ty:?}");
+        for (pseudo_rigid, bounds) in &pseudo_rigids {
+            debug!("self ty is sub unified with {pseudo_rigid:?}");
 
             // We look at all item-bounds of the type being pseudo rigid due to opaques,
             // instantiating the self type of the bound with the current self
@@ -1218,7 +1215,7 @@ where
             }
         }
 
-        // This is rather hacky and unprincipled, but we nee this anyway :(
+        // This is rather hacky and unprincipled, but we need this anyway :(
         // See the comments on
         // `[ty::PseudoRigidDueToOpaquesBound::opt_unmentioned_projection_bound]`
         // for details.
@@ -1229,11 +1226,10 @@ where
             && let Some(unmentioned) =
                 ty::PseudoRigidDueToOpaquesBound::opt_unmentioned_projection_bound(
                     self.cx(),
-                    hidden_tys_of_opaques.into_iter().flat_map(|(_, bounds)| bounds),
+                    pseudo_rigids.into_iter().flat_map(|(_, bounds)| bounds),
                     ty::ProjectionClause { projection_term: alias, term },
                 )
         {
-            self.add_hidden_type_of_opaque_in_storage(goal.predicate.self_ty(), [unmentioned]);
             candidates.extend(consider_pseudo_rigid_due_to_opaques_bound(self, goal, unmentioned));
         }
 

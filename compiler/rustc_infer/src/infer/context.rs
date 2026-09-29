@@ -375,11 +375,11 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
             .pseudo_rigid_due_to_opaques_bounds_added_since(prev_entries)
             .collect()
     }
-    fn pseudo_rigids_due_to_opaques_modulo_sub_unification(
+    fn pseudo_rigids_due_to_opaques(
         &self,
         ty_vid: ty::TyVid,
     ) -> Vec<(Ty<'tcx>, Vec<ty::PseudoRigidDueToOpaquesBound<'tcx>>)> {
-        self.pseudo_rigids_due_to_opaques_modulo_self_unification(ty_vid)
+        self.pseudo_rigids_due_to_opaques(ty_vid)
     }
 
     fn register_hidden_type_in_storage(

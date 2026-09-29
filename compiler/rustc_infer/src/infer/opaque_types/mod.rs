@@ -8,6 +8,7 @@ use rustc_middle::ty::{
     TypeVisitableExt, Unnormalized,
 };
 use rustc_span::{Span, bug};
+use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use super::{DefineOpaqueTypes, RegionVariableOrigin};
@@ -212,12 +213,17 @@ impl<'tcx> InferCtxt<'tcx> {
         pseudo_rigid: Ty<'tcx>,
         bounds: impl IntoIterator<Item = ty::PseudoRigidDueToOpaquesBound<'tcx>>,
     ) {
+        assert!(self.next_trait_solver());
+
         let ty::Infer(ty::TyVar(vid)) = *pseudo_rigid.kind() else {
             return;
         };
         if self.try_resolve_ty_var(vid).is_ok() {
             return;
         }
+
+        let bounds: SmallVec<[_; 8]> =
+            bounds.into_iter().map(|bound| self.deeply_resolve_ignoring_regions(bound)).collect();
 
         let ty_sub_vid = self.sub_unification_table_root_var(vid);
         let inner = &mut *self.inner.borrow_mut();

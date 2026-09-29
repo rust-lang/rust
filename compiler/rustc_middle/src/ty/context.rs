@@ -159,7 +159,7 @@ pub struct CtxtInterners<'tcx> {
     adt_def: InternedSet<'tcx, AdtDefData>,
     external_constraints: InternedSet<'tcx, ExternalConstraintsData<TyCtxt<'tcx>>>,
     predefined_opaques_in_body: InternedSet<'tcx, List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>>,
-    pseudo_rigid_due_to_opaques_bounds_in_body:
+    pseudo_rigid_due_to_opaques_bounds:
         InternedSet<'tcx, List<(Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
     local_def_ids: InternedSet<'tcx, List<LocalDefId>>,
@@ -200,7 +200,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             adt_def: InternedSet::with_capacity(N),
             external_constraints: InternedSet::with_capacity(N),
             predefined_opaques_in_body: InternedSet::with_capacity(N),
-            pseudo_rigid_due_to_opaques_bounds_in_body: InternedSet::with_capacity(N * 2),
+            pseudo_rigid_due_to_opaques_bounds: InternedSet::with_capacity(N * 2),
             fields: InternedSet::with_capacity(N * 4),
             local_def_ids: InternedSet::with_capacity(N),
             captures: InternedSet::with_capacity(N),
@@ -2066,7 +2066,7 @@ slice_interners!(
     patterns: pub mk_patterns(Pattern<'tcx>),
     outlives: pub mk_outlives(ty::ArgOutlivesClause<'tcx>),
     predefined_opaques_in_body: pub mk_predefined_opaques_in_body((ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)),
-    pseudo_rigid_due_to_opaques_bounds_in_body: pub mk_pseudo_rigid_due_to_opaques_bounds_in_body((Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)),
+    pseudo_rigid_due_to_opaques_bounds: pub mk_pseudo_rigid_due_to_opaques_bounds((Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -2562,7 +2562,7 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.mk_predefined_opaques_in_body(xs))
     }
 
-    pub fn mk_pseudo_rigid_due_to_opaques_bounds_in_body_from_iter<I, T>(self, iter: I) -> T::Output
+    pub fn mk_pseudo_rigid_due_to_opaques_bounds_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
         T: CollectAndApply<
@@ -2570,7 +2570,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 PseudoRigidDueToOpaquesBounds<'tcx>,
             >,
     {
-        T::collect_and_apply(iter, |xs| self.mk_pseudo_rigid_due_to_opaques_bounds_in_body(xs))
+        T::collect_and_apply(iter, |xs| self.mk_pseudo_rigid_due_to_opaques_bounds(xs))
     }
 
     pub fn mk_clauses_from_iter<I, T>(self, iter: I) -> T::Output

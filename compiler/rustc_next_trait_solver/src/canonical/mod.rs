@@ -69,9 +69,9 @@ where
         QueryInput {
             goal,
             predefined_opaques_in_body: delegate.cx().mk_predefined_opaques_in_body(opaque_types),
-            pseudo_rigid_due_to_opaques_bounds_in_body: delegate
+            pseudo_rigid_due_to_opaques_bounds: delegate
                 .cx()
-                .mk_pseudo_rigid_due_to_opaques_bounds_in_body(pseudo_rigid_due_to_opaques_bounds),
+                .mk_pseudo_rigid_due_to_opaques_bounds(pseudo_rigid_due_to_opaques_bounds),
         },
     );
 

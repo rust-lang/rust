@@ -5,7 +5,7 @@
 
 // This is rather an implementation-detail-related test.
 //
-// We track self-bounds of opaque-hidden-types in the `InferCtxt` and pass them via both query
+// We track self-bounds of pseudo rigid infers in the `InferCtxt` and pass them via both query
 // inputs and responses. We try to dedup them per eager resolving and structural equality but they
 // don't always work well, especially due to canonicalizations.
 //
@@ -17,7 +17,7 @@
 // again.
 //
 // This pathetic reevaluation never stops and until we hit the recursion limit and end up with an
-// overflow. To prevent this, we simply check whether the number of opaque hidden ty bounds has
+// overflow. To prevent this, we simply check whether the number of pseudo rigid bounds has
 // actually increased from the evaluation after instantiating the response from the callers side to
 // decide evaluation's `has_changed`.
 

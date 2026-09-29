@@ -148,9 +148,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                 opaque_types: delegate.cx().mk_predefined_opaques_in_body(&opaque_types),
                 pseudo_rigid_due_to_opaques_bounds: delegate
                     .cx()
-                    .mk_pseudo_rigid_due_to_opaques_bounds_in_body(
-                        &pseudo_rigid_due_to_opaques_bounds,
-                    ),
+                    .mk_pseudo_rigid_due_to_opaques_bounds(&pseudo_rigid_due_to_opaques_bounds),
                 normalization_nested_goals,
             }),
         };
@@ -286,21 +284,17 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                 predefined_opaques_in_body
             };
 
-        let pseudo_rigid_due_to_opaques_bounds_in_body = rest_canonicalizer
+        let pseudo_rigid_due_to_opaques_bounds = rest_canonicalizer
             .filter_and_canonicalize_pseudo_rigids_due_to_opaques_bounds(
-                input.pseudo_rigid_due_to_opaques_bounds_in_body.to_vec(),
+                input.pseudo_rigid_due_to_opaques_bounds.to_vec(),
             );
 
-        let pseudo_rigid_due_to_opaques_bounds_in_body =
-            delegate.cx().mk_pseudo_rigid_due_to_opaques_bounds_in_body(
-                &pseudo_rigid_due_to_opaques_bounds_in_body,
-            );
+        let pseudo_rigid_due_to_opaques_bounds = delegate
+            .cx()
+            .mk_pseudo_rigid_due_to_opaques_bounds(&pseudo_rigid_due_to_opaques_bounds);
 
-        let value = QueryInput {
-            goal,
-            predefined_opaques_in_body,
-            pseudo_rigid_due_to_opaques_bounds_in_body,
-        };
+        let value =
+            QueryInput { goal, predefined_opaques_in_body, pseudo_rigid_due_to_opaques_bounds };
 
         debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
         debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
@@ -497,7 +491,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         &mut self,
         mut pseudo_rigid_due_to_opaques_bounds: Vec<(I::Ty, ty::PseudoRigidDueToOpaquesBound<I>)>,
     ) -> Vec<(I::Ty, ty::PseudoRigidDueToOpaquesBound<I>)> {
-        let mut filtered = vec![];
+        let mut res = vec![];
 
         // This should be done in fixed-point iteration, because we may have some pseudo-rigid
         // that sub-unified with an infer var in another one's bounds.
@@ -507,26 +501,26 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         // appears nowhere in preexisting `var_values` when we check it, but it becomes relevant
         // after we check and canonicalize the second one.
         while !pseudo_rigid_due_to_opaques_bounds.is_empty() {
-            let prev_len = filtered.len();
-            pseudo_rigid_due_to_opaques_bounds.retain(|bounds @ (hidden_ty, _)| {
-                if let ty::Infer(ty::TyVar(vid)) = hidden_ty.kind()
+            let prev_len = res.len();
+            pseudo_rigid_due_to_opaques_bounds.retain(|entry @ (pseudo_rigid, _)| {
+                if let ty::Infer(ty::TyVar(vid)) = pseudo_rigid.kind()
                     && self
                         .state
                         .sub_root_lookup_table
                         .contains_key(&self.delegate.sub_unification_table_root_var(vid))
                 {
-                    filtered.push(bounds.clone().fold_with(self));
+                    res.push((*entry).fold_with(self));
                     false
                 } else {
                     true
                 }
             });
-            if filtered.len() == prev_len {
+            if res.len() == prev_len {
                 break;
             }
         }
 
-        filtered
+        res
     }
 }
 

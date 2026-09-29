@@ -1125,8 +1125,22 @@ impl<'tcx> InferCtxt<'tcx> {
         Vec<(Ty<'tcx>, FxIndexSet<ty::PseudoRigidDueToOpaquesBound<'tcx>>)>,
     ) {
         let mut inner = self.inner.borrow_mut();
-        let (opaques, hiddens) = inner.opaque_type_storage.take_opaque_types();
-        (opaques.collect(), hiddens.collect())
+        let (opaques, pseudo_rigids) = inner.opaque_type_storage.take_opaque_types();
+        (opaques.collect(), pseudo_rigids.collect())
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    pub fn take_opaque_types_old_solver(
+        &self,
+    ) -> Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)> {
+        assert!(!self.next_trait_solver());
+        let mut inner = self.inner.borrow_mut();
+        let (opaques, mut pseudo_rigids) = inner.opaque_type_storage.take_opaque_types();
+        debug_assert!(
+            pseudo_rigids.next().is_none(),
+            "We don't track any pseudo-rigids with the old solver"
+        );
+        opaques.collect()
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -1137,7 +1151,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// In the next solver, we normalize alias types by replacing them with infer vars and
     /// registering/evaluating projection goals
     /// They often but when we are in the defining scope of an opaque type and we haven't fully
-    pub fn is_pseudo_rigid_due_to_opaques_modulo_sub_unification(&self, ty_vid: TyVid) -> bool {
+    pub fn is_pseudo_rigid_due_to_opaques(&self, ty_vid: TyVid) -> bool {
         if !self.next_trait_solver() {
             return false;
         }
@@ -1194,7 +1208,7 @@ impl<'tcx> InferCtxt<'tcx> {
             .collect()
     }
 
-    pub fn pseudo_rigids_due_to_opaques_modulo_self_unification(
+    pub fn pseudo_rigids_due_to_opaques(
         &self,
         ty_vid: TyVid,
     ) -> Vec<(Ty<'tcx>, Vec<ty::PseudoRigidDueToOpaquesBound<'tcx>>)> {

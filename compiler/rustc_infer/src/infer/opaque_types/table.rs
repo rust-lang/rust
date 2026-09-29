@@ -14,16 +14,21 @@ use crate::infer::snapshot::undo_log::{InferCtxtUndoLogs, UndoLog};
 pub struct OpaqueTypeStorage<'tcx> {
     opaque_types: FxIndexMap<OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>>,
     duplicate_entries: Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)>,
-    /// Note:
-    ///   ```text
-    ///   PseudoRigid ::= OpaqueTy
-    ///                   | Projection(<PseudoRigid as Trait>::AssocTy),
-    ///                       where PseudoRigid: Trait is from PseudoRigid's bound
-    ///   ```
+    /// We define and register unresolved infer vars as *pseudo-rigid* types and there bounds
+    /// in the following, recursive manner:
     ///
-    /// When we normalize a `PseudoRigid`, we store its self-bounds here, to support non-defining
-    /// usages of sucu hidden types. The key is an expected term for the normalization and the value
-    /// is those self-bounds.
+    /// - Opaque types are pseudo-rigids in their defining scopes. We register their item-self
+    ///   bounds along with them, e.g., if we have `impl Iterator<Item = i32>`, the bounds are
+    ///   `?pseudo-rigid: Iterator` and `<?pseudo-rigid as Iterator>::Item = i32`.
+    /// - When we assemble candidates for a goal whose self-ty is pseudo-rigid, we match those
+    ///   bounds for that pseudo-rigid with the goal.
+    /// - From the above case, when we normalize an associated type whose self-ty is pseudo-rigid,
+    ///   and the relevant candidate is one of those pseudo-rigid bounds,  we register that
+    ///   projection term as a new pseudo-rigid, along with the self-bounds for that associated
+    ///   type.
+    ///
+    /// We consider those registered unresolved infer vars as pseudo-rigid and allow them to be
+    /// used in some of the non-defining usages such as being a self-type in a method call.
     pseudo_rigids_due_to_opaques:
         FxIndexMap<Ty<'tcx>, FxIndexSet<ty::PseudoRigidDueToOpaquesBound<'tcx>>>,
     /// The flattened version of the above `pseudo_rigids_due_to_opaques`. This is a pure duplication
@@ -77,21 +82,21 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         assert!(entry.is_some());
     }
 
-    pub(crate) fn truncate_pseudo_rigids_due_to_opaques(
+    pub(crate) fn undo_pseudo_rigid_due_to_opaques(
         &mut self,
-        hidden_ty: Ty<'tcx>,
+        pseudo_rigid: Ty<'tcx>,
         len: Option<usize>,
     ) {
         let removed = if let Some(len) = len {
-            let bounds = self.pseudo_rigids_due_to_opaques.get_mut(&hidden_ty).unwrap();
+            let bounds = self.pseudo_rigids_due_to_opaques.get_mut(&pseudo_rigid).unwrap();
             let removed = bounds.len() - len;
             bounds.truncate(len);
             removed
         } else {
-            match self.pseudo_rigids_due_to_opaques.swap_remove(&hidden_ty) {
+            match self.pseudo_rigids_due_to_opaques.swap_remove(&pseudo_rigid) {
                 None => bug!(
                     "reverted pseudo-rigid type inference that was never registered: {:?}",
-                    hidden_ty
+                    pseudo_rigid
                 ),
                 Some(bounds) => bounds.len(),
             }
@@ -101,7 +106,7 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         debug_assert!(
             (&self.pseudo_rigid_due_to_opaques_bounds[truncate_to..])
                 .iter()
-                .all(|(h, _)| *h == hidden_ty)
+                .all(|(pr, _)| *pr == pseudo_rigid)
         );
         self.pseudo_rigid_due_to_opaques_bounds.truncate(truncate_to);
     }
