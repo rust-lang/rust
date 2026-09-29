@@ -442,7 +442,7 @@ macro_rules! create_config {
             ///
             /// This method is intended to be used when creating a forked
             /// configuration for a particular formatting context in which the
-            /// total available width needs to be reduced. This increases the
+            /// total available width needs to be increased. This increases the
             /// size of max_width, and all other properties affected by small
             /// heuristics, without treating those adjustments as overrides.
             ///
