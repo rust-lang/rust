@@ -1385,6 +1385,15 @@ fn suggest_precise_capturing<'tcx>(
         hir::GenericBound::Use(args, span) => Some((args, span)),
         _ => None,
     }) {
+        // '_ is an elision marker, not a lifetime name, so it cannot appear twice in a
+        // capture list. the branch for opaques with no use<..> yet already skips captured
+        // lifetimes; do the same here to avoid suggesting use<'_, '_>.
+        if args.iter().any(|arg| {
+            matches!(arg, hir::PreciseCapturingArg::Lifetime(lt) if lt.ident.name == new_lifetime)
+        }) {
+            return;
+        }
+
         let last_lifetime_span = args.iter().rev().find_map(|arg| match arg {
             hir::PreciseCapturingArg::Lifetime(lt) => Some(lt.ident.span),
             _ => None,
