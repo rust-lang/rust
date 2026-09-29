@@ -18,7 +18,8 @@ use rustc_type_ir::TyKind::*;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::walk::TypeWalker;
 use rustc_type_ir::{
-    self as ir, BoundVar, CollectAndApply, MayBeErased, TypeVisitableExt, elaborate,
+    self as ir, BoundVar, CollectAndApply, MayBeErased, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, elaborate,
 };
 use tracing::instrument;
 use ty::util::IntTypeExt;
@@ -1829,7 +1830,25 @@ impl<'tcx> Ty<'tcx> {
         tcx: TyCtxt<'tcx>,
         normalize: impl FnMut(Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx>,
     ) -> Ty<'tcx> {
-        match self.ptr_metadata_ty_or_tail(tcx, normalize) {
+        struct ReplaceUnsafeBinders<'tcx> {
+            tcx: TyCtxt<'tcx>,
+        }
+        impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceUnsafeBinders<'tcx> {
+            fn cx(&self) -> TyCtxt<'tcx> {
+                self.tcx
+            }
+            fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+                match t.kind() {
+                    &ty::UnsafeBinder(inner) => self
+                        .tcx
+                        .instantiate_bound_regions_with_erased(inner.into())
+                        .super_fold_with(self),
+                    _ => t.super_fold_with(self),
+                }
+            }
+        }
+        let ty = ReplaceUnsafeBinders { tcx }.fold_ty(self);
+        match ty.ptr_metadata_ty_or_tail(tcx, normalize) {
             Ok(metadata) => metadata,
             Err(tail) => bug!(
                 "`ptr_metadata_ty` failed to get metadata for type: {self:?} (tail = {tail:?})"
