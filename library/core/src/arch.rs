@@ -65,9 +65,12 @@ pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?
 /// to a trapping instruction (e.g. an undefined instruction) instead, or to some other form of
 /// target-specific abort that may or may not support convenient resumption.
 ///
-/// The precise behavior and the precise instruction generated are not guaranteed, except that in
-/// normal execution with no debug tooling involved this will not continue executing.
+/// The precise behavior is not guaranteed, it depends on the architecture and operating system.
+/// Not all architectures guarantee that a breakpoint instruction interrupts execution in the absence
+/// of a debugger, and not all operating systems and execution environments guarantee that such an
+/// interrupt aborts the current process.
 ///
+/// The precise instruction is guaranteed only on the following targets:
 /// - On x86 targets, this produces an `int3` instruction.
 /// - On aarch64 targets, this produces a `brk #0xf000` instruction.
 // When stabilizing this, update the comment on `core::intrinsics::breakpoint`.
