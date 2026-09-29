@@ -283,3 +283,114 @@ const _: () = ();
 /// [#156920]:https://github.com/rust-lang/rust/issues/156920 "`dyn Allocator` together with `Allocator + Clone` requirements is unsound, leading to UB with `Arc`"
 /// [#160045]:https://github.com/rust-lang/rust/issues/160045 "`iter::Rev`'s `TrustedLen` impl is unsound with trait objects"
 const _: () = ();
+
+#[doc(attribute = "rustc_on_unimplemented")]
+/// Customize the error message when a trait is not implemented.
+///
+/// It must be used on the declaration of said trait.
+///
+/// # Syntax
+///
+/// ```grammar
+/// RustcOnUnimplementedAttribute ->
+///     rustc_on_unimplemented ( ( Directive ),+ )
+///
+/// Directive ->
+///       on ( Filter, ( DirectiveOption ),+ )
+///     | ( DirectiveOption ),*
+///
+/// DirectiveOption ->
+///       message = STRING_LITERAL
+///     | label = STRING_LITERAL
+///     | note = STRING_LITERAL
+///
+/// Filter ->
+///       FilterAll
+///     | FilterAny
+///     | FilterNot
+///     | FilterOption
+///
+/// FilterAll ->
+///    all ( ( Filter ),* )
+///
+/// FilterAny ->
+///    any ( ( Filter ),* )
+///
+/// FilterNot ->
+///    not ( Filter )
+///
+/// FilterOption ->
+///       crate_local
+///     | direct
+///     | from_desugaring ( = STRING_LITERAL )?
+///     | cause = STRING_LITERAL
+///     | IDENTIFIER = STRING_LITERAL
+///
+/// ```
+///
+/// The following keys have the given meaning. At least one must be specified.
+/// - `on` - filters the application of the attribute. See [#Filters](#filters).
+/// - `message` — The text for the top level error message. May only be specified at most once.
+/// - `label` — The text for the label shown inline in the broken code in the error message.
+///   May only be specified at most once.
+/// - `note` — Provides additional note(s)
+///
+/// `message`, `label`, and `note` are available with the [`diagnostic::on_unimplemented`]
+/// attribute. If possible, use that instead.
+///
+/// # Example
+///
+#[doc = include_example!("rustc_on_unimplemented")]
+///
+/// # Filters
+///
+/// To allow more targeted error messages, it is possible to filter the
+/// application of these keys with `on`.
+///
+/// You can filter on the following boolean flags:
+///  - `crate_local`: whether the code causing the trait bound to not be
+///    fulfilled is part of the user's crate.
+///    This is used to avoid suggesting code changes that would require modifying a dependency.
+///  - `direct`: whether this is a user-specified rather than derived obligation.
+///  - `from_desugaring`: whether we are in some kind of desugaring, like `?`
+///    or a `try` block for example.
+///    This flag can also be matched on, see below.
+///
+/// You can match on the following names and values, using `name = "value"`:
+///  - `cause`: Match against one variant of the `ObligationCauseCode` enum.
+///    Only `"MainFunctionType"` is supported.
+///  - `from_desugaring`: Match against a particular variant of the `DesugaringKind` enum.
+///    The desugaring is identified by its variant name, for example
+///    `"QuestionMark"` for `?` desugaring, or `"TryBlock"` for `try` blocks.
+///  - `Self` and any generic arguments of the trait, like `Self = "alloc::string::String"`
+///    or `Rhs="i32"`.
+///
+/// The compiler provides several values to match on, for example:
+///   - the self_ty, pretty printed with and without type arguments resolved.
+///   - `"{integral}"`, if self_ty is an integral of which the type is known.
+///   - `"[]"`, `"[{ty}]"`, `"[{ty}; _]"`, `"[{ty}; $N]"` when applicable.
+///   - references to said slices and arrays.
+///   - `"fn"`, `"unsafe fn"` or `"#[target_feature] fn"` when self is a function.
+///   - `"{integer}"` and `"{float}"` if the type is a number but we haven't inferred it yet.
+///   - `"{struct}"`, `"{enum}"` and `"{union}"` to match self as an ADT
+///   - combinations of the above, like `"[{integral}; _]"`.
+///
+#[doc = include_example!("rustc_on_unimplemented_filter")]
+///
+/// # Formatting
+///
+/// The string literals are format strings that accept parameters wrapped in braces -
+/// positional and listed parameters are not accepted.
+/// The following parameter names are valid:
+/// - `Self` and all generic parameters of the trait.
+/// - `This`: the name of the trait the attribute is on, without generics.
+/// - `This:path`: the full path of the trait the attribute is on, with unresolved generics.
+/// - `This:resolved`: the full path of the trait the attribute is on, with resolved generics.
+/// Additionally, this will "sugar" the `Fn(...)` traits.
+/// - `ItemContext`: the kind of `hir::Node` we're in, things like `"an async block"`,
+///    `"a function"`, `"an async function"`, etc.
+///
+#[doc = include_example!("rustc_on_unimplemented_format")]
+///
+/// [`diagnostic::on_unimplemented`]: https://doc.rust-lang.org/nightly/reference/attributes/diagnostics.html#the-diagnosticon_unimplemented-attribute
+const _: () = ();
