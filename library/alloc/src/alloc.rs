@@ -43,30 +43,38 @@ unsafe extern "Rust" {
     fn __rust_no_alloc_shim_is_unstable_v2();
 }
 
-/// The global memory allocator.
+/// A wrapper for the global allocator.
 ///
 /// This type implements the [`Allocator`] trait by forwarding calls
 /// to the allocator registered with the `#[global_allocator]` attribute
 /// if there is one, or the `std` crate’s default.
 ///
+/// `Global` is not "the global allocator", but a wrapper for it.
+/// If the global allocator used `Global`, it would call itself recursively.
+/// To avoid this, `Global` does not implement [`GlobalAlloc`].
+///
 /// Similar to [`alloc`], [`dealloc`], and the other global allocation functions,
-/// the way in which calls are forwarded to the allocator registered with
+/// when and how calls are forwarded to the allocator registered with
 /// `#[global_allocator]` is unspecified. See their safety docs for more information.
 ///
-/// This allocator must be treated like an opaque allocator that only guarantees
-/// the contract described in the docs of [`Allocator`], as well as the following
-/// things:
+/// In particular, even if you know which allocator was registered
+/// as the global allocator, calling it directly is not the same as calling
+/// `Global`. You cannot deallocate memory from one using the other.
+///
+/// `Global` must be treated like an opaque allocator that only guarantees the contract
+/// described in the docs of [`Allocator`], as well as the following:
 /// * All instances of `Global` are [*equivalent*].
 /// * Allocations from `Global` are only invalidated by calls to de-/reallocating functions.
 ///   If no such call is made, then the allocation will live for the rest of the program.
-/// * The global allocation functions are equivalent to the methods on `Global`, except
-///   that they disallow zero-sized allocations, and implicitly ignore any returned
-///   excess size.
+/// * The global allocation functions in the [`alloc`](self) module are equivalent to the
+///   methods on `Global`, except that they disallow zero-sized allocations, and implicitly
+///   ignore any returned excess size.
+///   In particular, you may deallocate memory from [`alloc::alloc`](self::alloc) using
+///   [`Global.deallocate`](Global::deallocate) and vice-versa.
 ///
 /// Note that the current implementation of `Global` does not take advantage of
-/// some features of [`Allocator`], such as zero-sized allocations (which currently always
+/// some features of [`Allocator`], such as zero-sized allocations (which currently
 /// return a dangling pointer) and overallocating.
-///
 /// This may change in the future. You must not rely on it for correctness!
 ///
 /// [*equivalent*]: Allocator#equivalent-allocators
