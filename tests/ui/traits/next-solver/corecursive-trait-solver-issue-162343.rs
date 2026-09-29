@@ -1,4 +1,5 @@
-//@ check-pass
+//~ ERROR overflow evaluating the requirement
+//@ build-fail
 //@ edition: 2021
 //@ compile-flags: --crate-type=lib -Znext-solver=globally -Clink-dead-code
 

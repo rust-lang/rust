@@ -9,8 +9,8 @@ use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::{self, PseudoCanonicalInput, TyCtxt, TypeVisitableExt};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{
-    ImplSource, Obligation, ObligationCause, ObligationCtxt, ScrubbedTraitError, SelectionContext,
-    SelectionError,
+    FulfillmentErrorCode, ImplSource, Obligation, ObligationCause, ObligationCtxt,
+    SelectionContext, SelectionError,
 };
 use tracing::debug;
 
@@ -51,7 +51,7 @@ pub(crate) fn codegen_select_candidate<'tcx>(
     // Currently, we use a fulfillment context to completely resolve
     // all nested obligations. This is because they can inform the
     // inference of the impl's type parameters.
-    let ocx = ObligationCtxt::new(&infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     let impl_source = selection.map(|obligation| {
         ocx.register_obligation(obligation);
     });
@@ -62,11 +62,19 @@ pub(crate) fn codegen_select_candidate<'tcx>(
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.no_errors() {
         // `rustc_monomorphize::collector` assumes there are no type errors.
-        // Cycle errors are the only post-monomorphization errors possible; emit them now so
-        // `rustc_ty_utils::resolve_associated_item` doesn't return `None` post-monomorphization.
+        // Report post-monomorphization overflows here so instance resolution does not
+        // silently depend on the recursion limit.
         for err in errors {
-            if let ScrubbedTraitError::Cycle(cycle) = err {
-                infcx.err_ctxt().report_overflow_obligation_cycle(&cycle);
+            match err.code {
+                FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) } => {
+                    infcx
+                        .err_ctxt()
+                        .report_overflow_obligation(&err.obligation, suggest_increasing_limit);
+                }
+                FulfillmentErrorCode::Cycle(cycle) => {
+                    infcx.err_ctxt().report_overflow_obligation_cycle(&cycle);
+                }
+                _ => {}
             }
         }
         return Err(CodegenObligationError::Unimplemented);

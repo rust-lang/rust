@@ -866,10 +866,12 @@ pub fn impossible_clauses<'tcx>(tcx: TyCtxt<'tcx>, clauses: Vec<ty::Clause<'tcx>
     !ocx.try_evaluate_obligations().no_errors()
 }
 
-fn instantiated_clauses<'tcx>(
+fn instantiate_and_check_impossible_clauses<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (DefId, GenericArgsRef<'tcx>),
-) -> Vec<ty::Clause<'tcx>> {
+) -> bool {
+    debug!("instantiate_and_check_impossible_clauses(key={:?})", key);
+
     let mut clauses: Vec<_> = tcx
         .clauses_of(key.0)
         .instantiate(tcx, key.1)
@@ -886,47 +888,9 @@ fn instantiated_clauses<'tcx>(
     }
 
     clauses.retain(|clause| !clause.has_param());
-    clauses
-}
-
-fn instantiate_and_check_impossible_clauses<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    key: (DefId, GenericArgsRef<'tcx>),
-) -> bool {
-    debug!("instantiate_and_check_impossible_clauses(key={:?})", key);
-
-    let result = impossible_clauses(tcx, instantiated_clauses(tcx, key));
+    let result = impossible_clauses(tcx, clauses);
 
     debug!("instantiate_and_check_impossible_clauses(key={:?}) = {:?}", key, result);
-
-    result
-}
-
-fn mono_item_is_instantiable<'tcx>(tcx: TyCtxt<'tcx>, key: (DefId, GenericArgsRef<'tcx>)) -> bool {
-    debug!("mono_item_is_instantiable(key={:?})", key);
-
-    let clauses = instantiated_clauses(tcx, key);
-
-    let (infcx, param_env) = tcx
-        .infer_ctxt()
-        .with_next_trait_solver(true)
-        .enable_next_solver_overflow_fcw(false)
-        .build_with_typing_env(ty::TypingEnv::fully_monomorphized());
-
-    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
-    let clauses =
-        ocx.normalize(&ObligationCause::dummy(), param_env, Unnormalized::new_wip(clauses));
-
-    for clause in clauses {
-        let obligation = Obligation::new(tcx, ObligationCause::dummy(), param_env, clause);
-        ocx.register_obligation(obligation);
-    }
-
-    let errors = ocx.evaluate_obligations_error_on_ambiguity();
-
-    let result = errors.no_errors();
-
-    debug!("mono_item_is_instantiable(key={:?}) = {:?}", key, result);
     result
 }
 
@@ -1021,7 +985,6 @@ pub fn provide(providers: &mut Providers) {
         specializes: specialize::specializes,
         specialization_enabled_in: specialize::specialization_enabled_in,
         instantiate_and_check_impossible_clauses,
-        mono_item_is_instantiable,
         is_impossible_associated_item,
         live_args_for_alias_from_outlives_bounds:
             outlives_for_liveness::live_args_for_alias_from_outlives_bounds,
