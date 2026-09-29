@@ -28,6 +28,8 @@ pub fn tmp() -> PathBuf {
 
 /// Prepare: compute filename and make sure the file does not exist.
 pub fn prepare(filename: &str) -> PathBuf {
+    assert!(filename.starts_with("miri"));
+
     let path = tmp().join(filename);
     // Clean the paths for robustness.
     fs::remove_file(&path).ok();
@@ -43,6 +45,8 @@ pub fn prepare_with_content(filename: &str, content: &[u8]) -> PathBuf {
 
 /// Prepare directory: compute directory name and make sure it does not exist.
 pub fn prepare_dir(dirname: &str) -> PathBuf {
+    assert!(dirname.starts_with("miri"));
+
     let path = tmp().join(&dirname);
     // Clean the directory for robustness.
     fs::remove_dir_all(&path).ok();

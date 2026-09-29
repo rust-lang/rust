@@ -305,14 +305,14 @@ fn test_statx_on_empty_path() {
 }
 
 fn test_file_open_allow_two_args() {
-    let path = utils::prepare_with_content("test_file_open_allow_two_args.txt", &[]);
+    let path = utils::prepare_with_content("miri_test_file_open_allow_two_args.txt", &[]);
     let name = utils::into_c_string(path);
 
     let _fd = errno_result(unsafe { libc::open(name.as_ptr(), libc::O_RDONLY) }).unwrap();
 }
 
 fn test_file_open_needs_three_args() {
-    let path = utils::prepare_with_content("test_file_open_needs_three_args.txt", &[]);
+    let path = utils::prepare_with_content("miri_test_file_open_needs_three_args.txt", &[]);
     let name = utils::into_c_string(path);
 
     let _fd =
@@ -321,7 +321,7 @@ fn test_file_open_needs_three_args() {
 }
 
 fn test_file_open_extra_third_arg() {
-    let path = utils::prepare_with_content("test_file_open_extra_third_arg.txt", &[]);
+    let path = utils::prepare_with_content("miri_test_file_open_extra_third_arg.txt", &[]);
     let name = utils::into_c_string(path);
 
     let _fd = errno_result(unsafe { libc::open(name.as_ptr(), libc::O_RDONLY, 42) }).unwrap();
@@ -329,7 +329,7 @@ fn test_file_open_extra_third_arg() {
 
 fn test_file_open_nofollow() {
     let bytes = b"Hello, World!\n";
-    let path = utils::prepare_with_content("test_nofollow_not_symlink.txt", bytes);
+    let path = utils::prepare_with_content("miri_test_nofollow_not_symlink.txt", bytes);
     let cpath = utils::into_c_string(path);
     let fd =
         errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC) })
@@ -856,7 +856,7 @@ fn test_fstat() {
 }
 
 fn test_fstatat() {
-    let testdir = utils::prepare_dir("test_fstatat");
+    let testdir = utils::prepare_dir("miri_test_fstatat");
     fs::create_dir(&testdir).unwrap();
     let filename = "file.txt";
     let cfilename = c"file.txt";
@@ -1029,7 +1029,7 @@ fn test_isatty() {
         libc::isatty(libc::STDERR_FILENO);
 
         // But when we open a file, it is definitely not a TTY.
-        let path = utils::prepare("notatty.txt");
+        let path = utils::prepare("miri_notatty.txt");
         let file = File::create(&path).unwrap();
 
         assert_eq!(libc::isatty(file.as_raw_fd()), 0);
@@ -1044,7 +1044,7 @@ fn test_isatty() {
 fn test_read_and_uninit() {
     {
         // We test that libc::read initializes its buffer.
-        let path = utils::prepare_with_content("pass-libc-read-and-uninit.txt", &[1u8, 2, 3]);
+        let path = utils::prepare_with_content("miri-pass-libc-read-and-uninit.txt", &[1u8, 2, 3]);
         let cpath = utils::into_c_string(path);
         unsafe {
             let fd = libc::open(cpath.as_ptr(), libc::O_RDONLY);
@@ -1061,7 +1061,7 @@ fn test_read_and_uninit() {
         // We test that if we requested to read 4 bytes, but actually read 3 bytes, then
         // 3 bytes (not 4) will be overwritten, and remaining byte will be left as-is.
         let data = [1u8, 2, 3];
-        let path = utils::prepare_with_content("pass-libc-read-and-uninit-2.txt", &data);
+        let path = utils::prepare_with_content("miri-pass-libc-read-and-uninit-2.txt", &data);
         let cpath = utils::into_c_string(&path);
         unsafe {
             let fd = libc::open(cpath.as_ptr(), libc::O_RDONLY);
@@ -1116,7 +1116,7 @@ fn test_opendir_closedir() {
     assert_eq!(e.kind(), ErrorKind::NotFound);
 
     // open normal file as dir should fail
-    let file_path = utils::prepare_with_content("test_not_a_dir.txt", b"hello");
+    let file_path = utils::prepare_with_content("miri_test_not_a_dir.txt", b"hello");
     let cfile = utils::into_c_string(&file_path);
     let dir: *mut libc::DIR = unsafe { libc::opendir(cfile.as_ptr()) };
     assert!(dir.is_null());
@@ -1213,7 +1213,7 @@ pub fn check_stat_fields(stat: &libc::stat) {
 /// Test vectored reads with multiple buffers.
 fn test_readv() {
     let file_contents = [1u8, 2, 3, 4, 5, 6];
-    let path = utils::prepare_with_content("pass-libc-readv.txt", &file_contents);
+    let path = utils::prepare_with_content("miri-pass-libc-readv.txt", &file_contents);
     let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
     assert_ne!(fd, -1);
@@ -1249,7 +1249,7 @@ fn test_readv_empty_bufs() {
         return;
     }
 
-    let path = utils::prepare_with_content("pass-libc-readv-empty-bufs.txt", &[1u8, 2, 3]);
+    let path = utils::prepare_with_content("miri-pass-libc-readv-empty-bufs.txt", &[1u8, 2, 3]);
     let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
     assert_ne!(fd, -1);
@@ -1263,7 +1263,7 @@ fn test_readv_empty_bufs() {
 #[cfg(not(target_os = "solaris"))]
 fn test_preadv() {
     let file_contents = [1u8, 2, 3, 4, 5, 6];
-    let path = utils::prepare_with_content("pass-libc-preadv.txt", &file_contents);
+    let path = utils::prepare_with_content("miri-pass-libc-preadv.txt", &file_contents);
     let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
     assert_ne!(fd, -1);
@@ -1304,7 +1304,7 @@ fn test_preadv() {
 /// Test reading with an offset.
 fn test_pread() {
     let file_contents = [1u8, 2, 3, 4, 5, 6];
-    let path = utils::prepare_with_content("pass-libc-pread.txt", &file_contents);
+    let path = utils::prepare_with_content("miri-pass-libc-pread.txt", &file_contents);
     let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
     assert_ne!(fd, -1);
@@ -1331,7 +1331,7 @@ fn test_pread() {
 
 /// Test vectored writes with multiple buffers.
 fn test_writev() {
-    let path = utils::prepare_with_content("pass-libc-writev.txt", &[]);
+    let path = utils::prepare_with_content("miri-pass-libc-writev.txt", &[]);
     let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
     assert_ne!(fd, -1);
@@ -1382,7 +1382,7 @@ fn test_writev_empty_bufs() {
         return;
     }
 
-    let path = utils::prepare_with_content("pass-libc-writev-empty-bufs.txt", &[1u8, 2, 3]);
+    let path = utils::prepare_with_content("miri-pass-libc-writev-empty-bufs.txt", &[1u8, 2, 3]);
     let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
     assert_ne!(fd, -1);
@@ -1397,7 +1397,7 @@ fn test_writev_empty_bufs() {
 /// doesn't have `pwritev`.
 #[cfg(not(target_os = "solaris"))]
 fn test_pwritev() {
-    let path = utils::prepare_with_content("pass-libc-pwritev.txt", &[]);
+    let path = utils::prepare_with_content("miri-pass-libc-pwritev.txt", &[]);
     let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
     assert_ne!(fd, -1);
@@ -1453,7 +1453,7 @@ fn test_pwritev() {
 
 /// Test writing with an offset.
 fn test_pwrite() {
-    let path = utils::prepare_with_content("pass-libc-pwritev.txt", &[]);
+    let path = utils::prepare_with_content("miri-pass-libc-pwritev.txt", &[]);
     let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
     assert_ne!(fd, -1);

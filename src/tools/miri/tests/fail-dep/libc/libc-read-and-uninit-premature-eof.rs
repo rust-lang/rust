@@ -15,7 +15,7 @@ mod libc_utils;
 
 fn main() {
     let path =
-        utils::prepare_with_content("fail-libc-read-and-uninit-premature-eof.txt", &[1u8, 2, 3]);
+        utils::prepare_with_content("miri-libc-read-and-uninit-premature-eof.txt", &[1u8, 2, 3]);
     let cpath = utils::into_c_string(&path);
     unsafe {
         let fd = libc::open(cpath.as_ptr(), libc::O_RDONLY);
