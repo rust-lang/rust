@@ -18,6 +18,8 @@ where
     //~| ERROR the size for values of type `Self` cannot be known at compilation time
     //~| ERROR type mismatch resolving
     //~| ERROR the size for values of type `Self` cannot be known at compilation time
+    //~| ERROR type mismatch resolving
+    //~| ERROR the size for values of type `RustaceansAreAwesome` cannot be known at compilation time
 }
 
 trait Mirror {
