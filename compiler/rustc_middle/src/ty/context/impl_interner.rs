@@ -2,7 +2,6 @@
 
 use std::{debug_assert_matches, fmt};
 
-use rustc_abi::Size;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::ErrorGuaranteed;
@@ -752,10 +751,19 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.consts.valtree_zst
     }
 
-    fn layout_of_typing_env_size(self, typing_env: ty::TypingEnv<'tcx>, ty: Ty<'tcx>) -> Size {
-        self.layout_of(typing_env.as_query_input(ty))
+    fn const_from_bits(
+        self,
+        bits: u128,
+        typing_env: ty::TypingEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> ty::Const<'tcx> {
+        let size = self
+            .layout_of(typing_env.as_query_input(ty))
             .unwrap_or_else(|e| panic!("could not compute layout for {ty:?}: {e:?}"))
-            .size
+            .size;
+        let scalar_int = ty::ScalarInt::try_from_uint(bits, size).unwrap();
+        let valtree = self.intern_valtree(ty::ValTreeKind::Leaf(scalar_int));
+        ty::Const::new_value(self, valtree, ty)
     }
 }
 

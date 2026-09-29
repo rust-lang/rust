@@ -3,7 +3,6 @@ use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::ops::Deref;
 
-use rustc_abi::Size;
 use rustc_ast_ir::Movability;
 use rustc_ast_ir::visit::VisitorResult;
 #[cfg(feature = "nightly")]
@@ -568,7 +567,7 @@ pub trait Interner:
 
     fn const_zst(self) -> Self::ValTree;
 
-    fn layout_of_typing_env_size(self, typing_env: Self::TypingEnv, ty: Self::Ty) -> Size;
+    fn const_from_bits(self, bits: u128, typing_env: Self::TypingEnv, ty: Self::Ty) -> Const<Self>;
 }
 
 macro_rules! declare_lift_into {
