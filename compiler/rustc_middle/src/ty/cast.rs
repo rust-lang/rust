@@ -1,29 +1,20 @@
-// Helpers for handling cast expressions, used in both
-// typeck and codegen.
+// Helpers for handling cast expressions.
 
-use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_span::bug;
 
 use crate::mir;
 use crate::ty::{self, Ty};
 
-/// Types that are represented as ints.
+/// Valid types for the result of a non-coercion cast
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum IntTy {
-    U(ty::UintTy),
-    I,
+pub enum CastTy<'tcx> {
+    /// `iN`, `uN`, and integer inference variables.
+    Int,
+    /// C-like (fieldless) enums.
     CEnum,
     Bool,
     Char,
-}
-
-// Valid types for the result of a non-coercion cast
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum CastTy<'tcx> {
-    /// Various types that are represented as ints and handled mostly
-    /// in the same way, merged for easier matching.
-    Int(IntTy),
-    /// Floating-point types.
+    /// `fN` and float inference variables.
     Float,
     /// Function pointers.
     FnPtr,
@@ -32,8 +23,8 @@ pub enum CastTy<'tcx> {
 }
 
 /// Cast Kind. See [RFC 401](https://rust-lang.github.io/rfcs/0401-coercions.html)
-/// (or rustc_hir_analysis/check/cast.rs).
-#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, StableHash)]
+/// (or rustc_hir_typeck/src/cast.rs).
+#[derive(Copy, Clone, Debug)]
 pub enum CastKind {
     PtrPtrCast,
     PtrAddrCast,
@@ -52,17 +43,21 @@ impl<'tcx> CastTy<'tcx> {
     /// Casts like unsizing casts will return `None`.
     pub fn from_ty(t: Ty<'tcx>) -> Option<CastTy<'tcx>> {
         match *t.kind() {
-            ty::Bool => Some(CastTy::Int(IntTy::Bool)),
-            ty::Char => Some(CastTy::Int(IntTy::Char)),
-            ty::Int(_) => Some(CastTy::Int(IntTy::I)),
-            ty::Infer(ty::InferTy::IntVar(_)) => Some(CastTy::Int(IntTy::I)),
-            ty::Infer(ty::InferTy::FloatVar(_)) => Some(CastTy::Float),
-            ty::Uint(u) => Some(CastTy::Int(IntTy::U(u))),
-            ty::Float(_) => Some(CastTy::Float),
-            ty::Adt(d, _) if d.is_enum() && d.is_payloadfree() => Some(CastTy::Int(IntTy::CEnum)),
+            ty::Bool => Some(CastTy::Bool),
+            ty::Char => Some(CastTy::Char),
+            ty::Int(_) | ty::Uint(_) | ty::Infer(ty::InferTy::IntVar(_)) => Some(CastTy::Int),
+            ty::Float(_) | ty::Infer(ty::InferTy::FloatVar(_)) => Some(CastTy::Float),
+            ty::Adt(d, _) if d.is_enum() && d.is_payloadfree() => Some(CastTy::CEnum),
             ty::RawPtr(ty, mutbl) => Some(CastTy::Ptr(ty::TypeAndMut { ty, mutbl })),
             ty::FnPtr(..) => Some(CastTy::FnPtr),
             _ => None,
+        }
+    }
+
+    pub fn is_int_like(self) -> bool {
+        match self {
+            CastTy::Int | CastTy::CEnum | CastTy::Bool | CastTy::Char => true,
+            CastTy::Float | CastTy::FnPtr | CastTy::Ptr(_) => false,
         }
     }
 }
@@ -72,15 +67,17 @@ pub fn mir_cast_kind<'tcx>(from_ty: Ty<'tcx>, cast_ty: Ty<'tcx>) -> mir::CastKin
     let from = CastTy::from_ty(from_ty);
     let cast = CastTy::from_ty(cast_ty);
     let cast_kind = match (from, cast) {
-        (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int(_))) => {
+        (Some(from), Some(cast)) if from.is_int_like() && cast.is_int_like() => {
+            mir::CastKind::IntToInt
+        }
+        (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int)) => {
             mir::CastKind::PointerExposeProvenance
         }
-        (Some(CastTy::Int(_)), Some(CastTy::Ptr(_))) => mir::CastKind::PointerWithExposedProvenance,
-        (Some(CastTy::Int(_)), Some(CastTy::Int(_))) => mir::CastKind::IntToInt,
+        (Some(CastTy::Int), Some(CastTy::Ptr(_))) => mir::CastKind::PointerWithExposedProvenance,
         (Some(CastTy::FnPtr), Some(CastTy::Ptr(_))) => mir::CastKind::FnPtrToPtr,
 
-        (Some(CastTy::Float), Some(CastTy::Int(_))) => mir::CastKind::FloatToInt,
-        (Some(CastTy::Int(_)), Some(CastTy::Float)) => mir::CastKind::IntToFloat,
+        (Some(CastTy::Float), Some(CastTy::Int)) => mir::CastKind::FloatToInt,
+        (Some(CastTy::Int), Some(CastTy::Float)) => mir::CastKind::IntToFloat,
         (Some(CastTy::Float), Some(CastTy::Float)) => mir::CastKind::FloatToFloat,
         (Some(CastTy::Ptr(_)), Some(CastTy::Ptr(_))) => mir::CastKind::PtrToPtr,
 
