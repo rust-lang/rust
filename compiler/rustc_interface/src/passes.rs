@@ -14,7 +14,8 @@ use rustc_crate_store::Untracked;
 use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
-    AppendOnlyIndexVec, DynSend, DynSync, FreezeLock, WorkerLocal, par_fns, par_range,
+    AppendOnlyIndexVec, DynSend, DynSync, FreezeLock, WorkerLocal, is_dyn_thread_safe, par_fns,
+    par_range,
 };
 use rustc_data_structures::thousands;
 use rustc_errors::timings::TimingSection;
@@ -22,6 +23,7 @@ use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
+use rustc_hir::OwnerId;
 use rustc_hir::def_id::{DefIndex, LOCAL_CRATE, LocalDefId, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
 use rustc_incremental::setup_dep_graph;
@@ -1090,17 +1092,24 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
 /// Runs all analyses that we guarantee to run, even if errors were reported in earlier analyses.
 /// This function never fails.
 fn run_required_analyses(tcx: TyCtxt<'_>) {
-    tcx.untracked().definitions.write().commit_end_of_determinism();
-    tcx.ensure_done().resolve_type_relative_delegations(());
+    let is_parallel = is_dyn_thread_safe();
 
-    let index = tcx.index_ast(());
+    // There is no point in prefectching hir owners when parallel compiler is
+    // deisabled, `print_hir_stats`, `check_crate` or `hir_crate_items` below will do it.
+    if is_parallel {
+        tcx.untracked().definitions.write().commit_end_of_determinism();
+        tcx.ensure_done().resolve_type_relative_delegations(());
 
-    par_range(0..index.len(), |idx| {
-        let id = LocalDefId { local_def_index: DefIndex::from_usize(idx) };
-        if index[id].is_some() {
-            tcx.ensure_done().lower_to_hir(id);
-        }
-    });
+        let index = tcx.index_ast(());
+
+        par_range(0..index.len(), |idx| {
+            let id = LocalDefId { local_def_index: DefIndex::from_usize(idx) };
+            if index[id].is_some() {
+                tcx.ensure_done().hir_owner(id);
+                tcx.ensure_done().hir_attr_map(OwnerId { def_id: id });
+            }
+        });
+    }
 
     if tcx.sess.opts.unstable_opts.input_stats {
         rustc_passes::input_stats::print_hir_stats(tcx);
@@ -1115,6 +1124,10 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // This is needed since the `hir_id_validator::check_crate` call above is not guaranteed
     // to use `hir_crate_items`.
     tcx.ensure_done().hir_crate_items(());
+
+    if !is_parallel {
+        tcx.untracked().definitions.write().commit_end_of_determinism();
+    }
 
     rustc_passes::delegation::check_glob_and_list_delegations_target_expr(tcx);
 
