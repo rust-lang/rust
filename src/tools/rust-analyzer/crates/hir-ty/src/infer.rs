@@ -47,7 +47,7 @@ use hir_def::{
     VariantId,
     attrs::AttrFlags,
     expr_store::{Body, ExpressionStore, HygieneId, body::Param, path::Path},
-    hir::{BindingId, ExprId, ExprOrPatId, ExprOrPatIdPacked, LabelId, PatId, UnaryOp},
+    hir::{BindingId, Expr, ExprId, ExprOrPatId, ExprOrPatIdPacked, LabelId, PatId, UnaryOp},
     lang_item::LangItems,
     layout::Integer,
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
@@ -2107,6 +2107,13 @@ impl<'db> InferenceContext<'db> {
     ) -> Ty<'db> {
         let result = self.table.try_structurally_resolve_type(node.into(), ty);
         if result.is_ty_var() { self.type_must_be_known_at_this_point(node, ty) } else { result }
+    }
+
+    pub(crate) fn innermost_tail_expr(&self, mut expr: ExprId) -> ExprId {
+        while let Expr::Block { tail: Some(tail), label: None, .. } = self.store[expr] {
+            expr = tail;
+        }
+        expr
     }
 
     pub(crate) fn emit_type_mismatch(

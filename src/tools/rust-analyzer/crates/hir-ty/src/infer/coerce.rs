@@ -1399,6 +1399,7 @@ impl<'db, 'exprs> CoerceMany<'db, 'exprs> {
 
                 self.final_ty = Some(icx.types.types.error);
 
+                let expression = icx.innermost_tail_expr(expression);
                 if label_expression_as_expected {
                     icx.emit_type_mismatch(expression.into(), found, expected);
                 } else {

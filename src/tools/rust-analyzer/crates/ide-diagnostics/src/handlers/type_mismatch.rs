@@ -511,6 +511,39 @@ mod tests {
     };
 
     #[test]
+    fn str_ref_to_owned_in_block() {
+        check_has_fix(
+            r#"
+struct String;
+fn main() {
+    if true { String } else { ""$0 };
+}
+            "#,
+            r#"
+struct String;
+fn main() {
+    if true { String } else { "".to_owned() };
+}
+            "#,
+        );
+
+        check_has_fix(
+            r#"
+struct String;
+fn main() {
+    if true { String } else { { ""$0 } };
+}
+            "#,
+            r#"
+struct String;
+fn main() {
+    if true { String } else { { "".to_owned() } };
+}
+            "#,
+        );
+    }
+
+    #[test]
     fn missing_reference() {
         check_diagnostics(
             r#"
