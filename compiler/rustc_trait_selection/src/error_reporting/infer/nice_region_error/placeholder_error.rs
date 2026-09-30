@@ -297,10 +297,14 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             } else {
                 (None, None, Some(span), String::new())
             };
-        if let Some(span) = satisfy_span && span.is_dummy() {
+        if let Some(span) = satisfy_span
+            && span.is_dummy()
+        {
             satisfy_span = None;
         }
-        if let Some(span) = item_span && span.is_dummy() {
+        if let Some(span) = item_span
+            && span.is_dummy()
+        {
             item_span = None;
         }
 

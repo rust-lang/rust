@@ -8,10 +8,9 @@ note: closure with signature `fn(&'2 mut [u8]) -> Result<usize, isize>` must imp
   --> $DIR/hrtb-closure-suggest-type-annotation.rs:8:8
    |
 LL | fn inner<F>(buf: &mut [u8], func: F) -> usize
-   |    ----- due to a where-clause on `inner`
 LL | where
 LL |     F: FnOnce(&mut [u8]) -> Result<usize, isize>,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `inner`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `inner`
    = note: ...but it actually implements `FnOnce<(&'2 mut [u8],)>`, for some specific lifetime `'2`
 help: consider adding an explicit type annotation to the closure's argument
    |
@@ -28,10 +27,9 @@ note: closure with signature `fn(&'2 mut [u8]) -> Result<usize, isize>` must imp
   --> $DIR/hrtb-closure-suggest-type-annotation.rs:8:29
    |
 LL | fn inner<F>(buf: &mut [u8], func: F) -> usize
-   |    ----- due to a where-clause on `inner`
 LL | where
 LL |     F: FnOnce(&mut [u8]) -> Result<usize, isize>,
-   |                             ^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `inner`
+   |                             ^^^^^^^^^^^^^^^^^^^^ required by this bound in `inner`
    = note: ...but it actually implements `FnOnce<(&'2 mut [u8],)>`, for some specific lifetime `'2`
 help: consider adding an explicit type annotation to the closure's argument
    |

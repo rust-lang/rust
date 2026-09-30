@@ -8,9 +8,7 @@ note: closure with signature `fn(&'0 _) -> Iter<'_, i32>` must implement `FnOnce
   --> $DIR/higher-ranked-auto-trait-15.rs:16:20
    |
 LL | fn require_send<T: Send>(_x: T) {}
-   |    ------------    ^^^^ unsatisfied where-clause on `require_send`
-   |    |
-   |    due to a where-clause on `require_send`
+   |                    ^^^^ required by this bound in `require_send`
    = note: ...but it actually implements `FnOnce<(&Vec<i32>,)>`
 help: consider adding an explicit type annotation to the closure's argument
    |
@@ -27,9 +25,7 @@ note: closure with signature `fn(&'0 _) -> Iter<'_, i32>` must implement `FnOnce
   --> $DIR/higher-ranked-auto-trait-15.rs:16:20
    |
 LL | fn require_send<T: Send>(_x: T) {}
-   |    ------------    ^^^^ unsatisfied where-clause on `require_send`
-   |    |
-   |    due to a where-clause on `require_send`
+   |                    ^^^^ required by this bound in `require_send`
    = note: ...but it actually implements `FnOnce<(&Vec<i32>,)>`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider adding an explicit type annotation to the closure's argument

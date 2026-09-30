@@ -8,7 +8,7 @@ note: `Y` would have to be implemented for the type `for<'a> fn(&'a ())`
   --> $DIR/impl-fn-ignore-binder-via-bottom.rs:18:8
    |
 LL |     fn make_f() -> Self::F;
-   |        ^^^^^^ due to a where-clause on `Y::make_f`
+   |        ^^^^^^ required due to a bound in `Y::make_f`
    = note: ...but `Y` is actually implemented for the type `fn(&'0 ())`, for some specific lifetime `'0`
 
 error: implementation of `Y` is not general enough
@@ -21,7 +21,7 @@ note: `Y` would have to be implemented for the type `for<'a> fn(&'a ())`
   --> $DIR/impl-fn-ignore-binder-via-bottom.rs:16:7
    |
 LL | trait Y {
-   |       ^ due to a where-clause on `Y`
+   |       ^ required due to a bound in `Y`
    = note: ...but `Y` is actually implemented for the type `fn(&'0 ())`, for some specific lifetime `'0`
 
 error: implementation of `Y` is not general enough

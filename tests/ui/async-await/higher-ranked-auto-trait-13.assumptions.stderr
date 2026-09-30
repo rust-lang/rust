@@ -8,9 +8,7 @@ note: `Getter<'1>` would have to be implemented for the type `GetterImpl<'0, Con
   --> $DIR/higher-ranked-auto-trait-13.rs:52:24
    |
 LL | fn assert_send(_: impl Send + Sync) {}
-   |    -----------         ^^^^ unsatisfied where-clause on `assert_send`
-   |    |
-   |    due to a where-clause on `assert_send`
+   |                        ^^^^ required by this bound in `assert_send`
    = note: ...but `Getter<'2>` is actually implemented for the type `GetterImpl<'2, ConstructableImpl<'_>>`, for some specific lifetime `'2`
 
 error: implementation of `Getter` is not general enough
@@ -23,9 +21,7 @@ note: `Getter<'1>` would have to be implemented for the type `GetterImpl<'0, Con
   --> $DIR/higher-ranked-auto-trait-13.rs:52:24
    |
 LL | fn assert_send(_: impl Send + Sync) {}
-   |    -----------         ^^^^ unsatisfied where-clause on `assert_send`
-   |    |
-   |    due to a where-clause on `assert_send`
+   |                        ^^^^ required by this bound in `assert_send`
    = note: ...but `Getter<'2>` is actually implemented for the type `GetterImpl<'2, ConstructableImpl<'_>>`, for some specific lifetime `'2`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
@@ -39,9 +35,7 @@ note: `Getter<'1>` would have to be implemented for the type `GetterImpl<'0, Con
   --> $DIR/higher-ranked-auto-trait-13.rs:52:31
    |
 LL | fn assert_send(_: impl Send + Sync) {}
-   |    -----------                ^^^^ unsatisfied where-clause on `assert_send`
-   |    |
-   |    due to a where-clause on `assert_send`
+   |                               ^^^^ required by this bound in `assert_send`
    = note: ...but `Getter<'2>` is actually implemented for the type `GetterImpl<'2, ConstructableImpl<'_>>`, for some specific lifetime `'2`
 
 error: implementation of `Getter` is not general enough
@@ -54,9 +48,7 @@ note: `Getter<'1>` would have to be implemented for the type `GetterImpl<'0, Con
   --> $DIR/higher-ranked-auto-trait-13.rs:52:31
    |
 LL | fn assert_send(_: impl Send + Sync) {}
-   |    -----------                ^^^^ unsatisfied where-clause on `assert_send`
-   |    |
-   |    due to a where-clause on `assert_send`
+   |                               ^^^^ required by this bound in `assert_send`
    = note: ...but `Getter<'2>` is actually implemented for the type `GetterImpl<'2, ConstructableImpl<'_>>`, for some specific lifetime `'2`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

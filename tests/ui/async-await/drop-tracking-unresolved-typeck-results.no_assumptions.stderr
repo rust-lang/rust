@@ -10,9 +10,7 @@ note: `fn(&'0 ()) -> Ready<&'0 ()> {std::future::ready::<&'0 ()>}` must implemen
   --> $DIR/drop-tracking-unresolved-typeck-results.rs:13:12
    |
 LL | fn send<T: Send>(_: T) {}
-   |    ----    ^^^^ unsatisfied where-clause on `send`
-   |    |
-   |    due to a where-clause on `send`
+   |            ^^^^ required by this bound in `send`
    = note: ...but it actually implements `FnOnce<(&(),)>`
 
 error: implementation of `FnOnce` is not general enough
@@ -27,9 +25,7 @@ note: `fn(&'0 ()) -> Ready<&'0 ()> {std::future::ready::<&'0 ()>}` must implemen
   --> $DIR/drop-tracking-unresolved-typeck-results.rs:13:12
    |
 LL | fn send<T: Send>(_: T) {}
-   |    ----    ^^^^ unsatisfied where-clause on `send`
-   |    |
-   |    due to a where-clause on `send`
+   |            ^^^^ required by this bound in `send`
    = note: ...but it actually implements `FnOnce<(&(),)>`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

@@ -1096,17 +1096,17 @@ impl<'tcx> ActualImplExplNotes<'tcx> {
         item_span: Option<Span>,
         item_name: String,
     ) -> Self {
-        let label = format!("unsatisfied where-clause on `{item_name}`");
-        let item_label = format!("due to a where-clause on `{item_name}`");
+        let label = format!("required by this bound in `{item_name}`");
         let span = match (satisfy_span, item_span) {
             (Some(satisfy_span), Some(item_span)) => {
                 let mut span = MultiSpan::from(satisfy_span);
                 span.push_span_label(satisfy_span, label);
-                span.push_span_label(item_span, item_label);
+                span.push_span_context(item_span);
                 span
             }
             (None, Some(item_span)) => {
                 let mut span = MultiSpan::from(item_span);
+                let item_label = format!("required due to a bound in `{item_name}`");
                 span.push_span_label(item_span, item_label);
                 span
             }

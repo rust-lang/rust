@@ -8,9 +8,7 @@ note: closure with signature `for<'a> fn(&'2 u32, &'a u32, u32)` must implement 
   --> $DIR/issue-105675.rs:1:18
    |
 LL | fn thing(x: impl FnOnce(&u32, &u32, u32)) {}
-   |    -----         ^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `thing`
-   |    |
-   |    due to a where-clause on `thing`
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `thing`
    = note: ...but it actually implements `FnOnce<(&'2 u32, &u32, u32)>`, for some specific lifetime `'2`
 help: consider adding explicit type annotations to the closure's arguments
    |
@@ -27,9 +25,7 @@ note: closure with signature `for<'a> fn(&'2 u32, &'a u32, u32)` must implement 
   --> $DIR/issue-105675.rs:1:18
    |
 LL | fn thing(x: impl FnOnce(&u32, &u32, u32)) {}
-   |    -----         ^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `thing`
-   |    |
-   |    due to a where-clause on `thing`
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `thing`
    = note: ...but it actually implements `FnOnce<(&'2 u32, &u32, u32)>`, for some specific lifetime `'2`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider adding explicit type annotations to the closure's arguments
@@ -47,9 +43,7 @@ note: closure with signature `fn(&'2 u32, &u32, u32)` must implement `FnOnce<(&'
   --> $DIR/issue-105675.rs:1:18
    |
 LL | fn thing(x: impl FnOnce(&u32, &u32, u32)) {}
-   |    -----         ^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `thing`
-   |    |
-   |    due to a where-clause on `thing`
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `thing`
    = note: ...but it actually implements `FnOnce<(&'2 u32, &u32, u32)>`, for some specific lifetime `'2`
 help: consider adding an explicit type annotation to the closure's argument
    |
@@ -66,9 +60,7 @@ note: closure with signature `fn(&u32, &'2 u32, u32)` must implement `FnOnce<(&u
   --> $DIR/issue-105675.rs:1:18
    |
 LL | fn thing(x: impl FnOnce(&u32, &u32, u32)) {}
-   |    -----         ^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `thing`
-   |    |
-   |    due to a where-clause on `thing`
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `thing`
    = note: ...but it actually implements `FnOnce<(&u32, &'2 u32, u32)>`, for some specific lifetime `'2`
 help: consider adding an explicit type annotation to the closure's argument
    |
@@ -85,9 +77,7 @@ note: closure with signature `fn(&'2 u32, &u32, u32)` must implement `FnOnce<(&'
   --> $DIR/issue-105675.rs:1:18
    |
 LL | fn thing(x: impl FnOnce(&u32, &u32, u32)) {}
-   |    -----         ^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `thing`
-   |    |
-   |    due to a where-clause on `thing`
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `thing`
    = note: ...but it actually implements `FnOnce<(&'2 u32, &u32, u32)>`, for some specific lifetime `'2`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider adding an explicit type annotation to the closure's argument
@@ -105,9 +95,7 @@ note: closure with signature `fn(&u32, &'2 u32, u32)` must implement `FnOnce<(&u
   --> $DIR/issue-105675.rs:1:18
    |
 LL | fn thing(x: impl FnOnce(&u32, &u32, u32)) {}
-   |    -----         ^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `thing`
-   |    |
-   |    due to a where-clause on `thing`
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `thing`
    = note: ...but it actually implements `FnOnce<(&u32, &'2 u32, u32)>`, for some specific lifetime `'2`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider adding an explicit type annotation to the closure's argument

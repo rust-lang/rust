@@ -12,10 +12,9 @@ note: `Wrap<{closure@...}>` must implement `Foo<'0>`, for any lifetime `'0`...
   --> $DIR/obligation-with-leaking-placeholders.rs:10:22
    |
 LL | fn needs_foo<T>(_: T)
-   |    --------- due to a where-clause on `needs_foo`
 LL | where
 LL |     for<'a> Wrap<T>: Foo<'a>,
-   |                      ^^^^^^^ unsatisfied where-clause on `needs_foo`
+   |                      ^^^^^^^ required by this bound in `needs_foo`
 note: ...but it actually implements `Foo<'1>`, for some specific lifetime `'1`
   --> $DIR/obligation-with-leaking-placeholders.rs:15:1
    |

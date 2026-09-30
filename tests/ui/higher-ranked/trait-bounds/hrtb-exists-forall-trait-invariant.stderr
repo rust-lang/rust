@@ -8,10 +8,9 @@ note: `()` must implement `Trait<for<'b> fn(Cell<&'b u32>)>`
   --> $DIR/hrtb-exists-forall-trait-invariant.rs:12:8
    |
 LL | fn foo<T>()
-   |    --- due to a where-clause on `foo`
 LL | where
 LL |     T: Trait<for<'b> fn(Cell<&'b u32>)>,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `foo`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `foo`
 note: ...but it actually implements `Trait<fn(Cell<&'0 u32>)>`, for some specific lifetime `'0`
   --> $DIR/hrtb-exists-forall-trait-invariant.rs:16:1
    |

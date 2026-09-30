@@ -11,9 +11,7 @@ note: `&'0 OnlyFooIfStaticRef` must implement `Foo`, for any lifetime `'0`...
   --> $DIR/auto-trait-regions.rs:21:18
    |
 LL | fn assert_foo<T: Foo>(f: T) {}
-   |    ----------    ^^^ unsatisfied where-clause on `assert_foo`
-   |    |
-   |    due to a where-clause on `assert_foo`
+   |                  ^^^ required by this bound in `assert_foo`
    = note: ...but `Foo` is actually implemented for the type `&'static OnlyFooIfStaticRef`
 
 error[E0626]: borrow may still be in use when coroutine yields
@@ -61,9 +59,7 @@ note: `Foo` would have to be implemented for the type `A<'0, '1>`, for any two l
   --> $DIR/auto-trait-regions.rs:21:18
    |
 LL | fn assert_foo<T: Foo>(f: T) {}
-   |    ----------    ^^^ unsatisfied where-clause on `assert_foo`
-   |    |
-   |    due to a where-clause on `assert_foo`
+   |                  ^^^ required by this bound in `assert_foo`
    = note: ...but `Foo` is actually implemented for the type `A<'_, '2>`, for some specific lifetime `'2`
 
 error: aborting due to 4 previous errors

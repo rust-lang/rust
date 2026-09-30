@@ -8,9 +8,7 @@ note: `LoadQuery<'0>` would have to be implemented for the type `&u8`, for any l
   --> $DIR/implementation-not-general-enough-ice-133252.rs:16:18
    |
 LL | fn force_send<T: Send>(_: T) {}
-   |    ----------    ^^^^ unsatisfied where-clause on `force_send`
-   |    |
-   |    due to a where-clause on `force_send`
+   |                  ^^^^ required by this bound in `force_send`
    = note: ...but `LoadQuery<'1>` is actually implemented for the type `&'1 u8`, for some specific lifetime `'1`
 
 error[E0597]: `not_static` does not live long enough

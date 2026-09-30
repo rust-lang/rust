@@ -50,10 +50,9 @@ note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lif
   --> $DIR/associated-types-eq-hr.rs:59:8
    |
 LL | fn tuple_one<T>()
-   |    --------- due to a where-clause on `tuple_one`
 LL | where
 LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `tuple_one`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `tuple_one`
 note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
   --> $DIR/associated-types-eq-hr.rs:35:1
    |
@@ -70,10 +69,9 @@ note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lif
   --> $DIR/associated-types-eq-hr.rs:59:8
    |
 LL | fn tuple_one<T>()
-   |    --------- due to a where-clause on `tuple_one`
 LL | where
 LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `tuple_one`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `tuple_one`
 note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
   --> $DIR/associated-types-eq-hr.rs:35:1
    |
@@ -91,10 +89,9 @@ note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lif
   --> $DIR/associated-types-eq-hr.rs:59:53
    |
 LL | fn tuple_one<T>()
-   |    --------- due to a where-clause on `tuple_one`
 LL | where
 LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>,
-   |                                                     ^^^^^^^^^^^^^ unsatisfied where-clause on `tuple_one`
+   |                                                     ^^^^^^^^^^^^^ required by this bound in `tuple_one`
 note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
   --> $DIR/associated-types-eq-hr.rs:35:1
    |
@@ -111,10 +108,9 @@ note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lif
   --> $DIR/associated-types-eq-hr.rs:59:53
    |
 LL | fn tuple_one<T>()
-   |    --------- due to a where-clause on `tuple_one`
 LL | where
 LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>,
-   |                                                     ^^^^^^^^^^^^^ unsatisfied where-clause on `tuple_one`
+   |                                                     ^^^^^^^^^^^^^ required by this bound in `tuple_one`
 note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
   --> $DIR/associated-types-eq-hr.rs:35:1
    |
@@ -132,10 +128,9 @@ note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lif
   --> $DIR/associated-types-eq-hr.rs:66:8
    |
 LL | fn tuple_two<T>()
-   |    --------- due to a where-clause on `tuple_two`
 LL | where
 LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `tuple_two`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `tuple_two`
 note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
   --> $DIR/associated-types-eq-hr.rs:35:1
    |
@@ -152,10 +147,9 @@ note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lif
   --> $DIR/associated-types-eq-hr.rs:66:8
    |
 LL | fn tuple_two<T>()
-   |    --------- due to a where-clause on `tuple_two`
 LL | where
 LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `tuple_two`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `tuple_two`
 note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
   --> $DIR/associated-types-eq-hr.rs:35:1
    |
@@ -202,10 +196,9 @@ note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lif
   --> $DIR/associated-types-eq-hr.rs:80:8
    |
 LL | fn tuple_four<T>()
-   |    ---------- due to a where-clause on `tuple_four`
 LL | where
 LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize)>,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `tuple_four`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `tuple_four`
 note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
   --> $DIR/associated-types-eq-hr.rs:35:1
    |
@@ -222,10 +215,9 @@ note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lif
   --> $DIR/associated-types-eq-hr.rs:80:8
    |
 LL | fn tuple_four<T>()
-   |    ---------- due to a where-clause on `tuple_four`
 LL | where
 LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize)>,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `tuple_four`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `tuple_four`
 note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
   --> $DIR/associated-types-eq-hr.rs:35:1
    |

@@ -8,7 +8,7 @@ note: `Foo<'static, u32>` would have to be implemented for the type `&'0 u32`, f
   --> $DIR/issue-54302-cases.rs:51:8
    |
 LL |     fn ref_foo(&self) -> &'static T;
-   |        ^^^^^^^ due to a where-clause on `RefFoo::ref_foo`
+   |        ^^^^^^^ required due to a bound in `RefFoo::ref_foo`
    = note: ...but `Foo<'_, u32>` is actually implemented for the type `&'1 u32`, for some specific lifetime `'1`
 
 error: implementation of `Foo` is not general enough
@@ -21,7 +21,7 @@ note: `Foo<'static, i32>` would have to be implemented for the type `&'0 i32`, f
   --> $DIR/issue-54302-cases.rs:51:8
    |
 LL |     fn ref_foo(&self) -> &'static T;
-   |        ^^^^^^^ due to a where-clause on `RefFoo::ref_foo`
+   |        ^^^^^^^ required due to a bound in `RefFoo::ref_foo`
    = note: ...but `Foo<'_, i32>` is actually implemented for the type `&'1 i32`, for some specific lifetime `'1`
 
 error: implementation of `Foo` is not general enough
@@ -34,7 +34,7 @@ note: `Foo<'static, u64>` would have to be implemented for the type `&'0 u64`, f
   --> $DIR/issue-54302-cases.rs:51:8
    |
 LL |     fn ref_foo(&self) -> &'static T;
-   |        ^^^^^^^ due to a where-clause on `RefFoo::ref_foo`
+   |        ^^^^^^^ required due to a bound in `RefFoo::ref_foo`
    = note: ...but `Foo<'_, u64>` is actually implemented for the type `&'1 u64`, for some specific lifetime `'1`
 
 error: implementation of `Foo` is not general enough
@@ -47,7 +47,7 @@ note: `Foo<'static, i64>` would have to be implemented for the type `&'0 i64`, f
   --> $DIR/issue-54302-cases.rs:51:8
    |
 LL |     fn ref_foo(&self) -> &'static T;
-   |        ^^^^^^^ due to a where-clause on `RefFoo::ref_foo`
+   |        ^^^^^^^ required due to a bound in `RefFoo::ref_foo`
    = note: ...but `Foo<'_, i64>` is actually implemented for the type `&'1 i64`, for some specific lifetime `'1`
 
 error: aborting due to 4 previous errors

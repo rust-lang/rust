@@ -8,10 +8,9 @@ note: `()` must implement `Trait<for<'b> fn(fn(&'b u32))>`
   --> $DIR/hrtb-exists-forall-trait-covariant.rs:10:8
    |
 LL | fn foo<T>()
-   |    --- due to a where-clause on `foo`
 LL | where
 LL |     T: Trait<for<'b> fn(fn(&'b u32))>,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `foo`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `foo`
 note: ...but it actually implements `Trait<fn(fn(&'0 u32))>`, for some specific lifetime `'0`
   --> $DIR/hrtb-exists-forall-trait-covariant.rs:14:1
    |

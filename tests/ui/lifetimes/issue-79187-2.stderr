@@ -8,9 +8,7 @@ note: closure with signature `fn(&'2 i32) -> &i32` must implement `FnOnce<(&'1 i
   --> $DIR/issue-79187-2.rs:5:21
    |
 LL | fn take_foo(_: impl Foo) {}
-   |    --------         ^^^ unsatisfied where-clause on `take_foo`
-   |    |
-   |    due to a where-clause on `take_foo`
+   |                     ^^^ required by this bound in `take_foo`
    = note: ...but it actually implements `FnOnce<(&'2 i32,)>`, for some specific lifetime `'2`
 help: consider adding an explicit type annotation to the closure's argument
    |
@@ -27,9 +25,7 @@ note: closure with signature `fn(&'2 i32) -> &i32` must implement `Fn<(&'1 i32,)
   --> $DIR/issue-79187-2.rs:5:21
    |
 LL | fn take_foo(_: impl Foo) {}
-   |    --------         ^^^ unsatisfied where-clause on `take_foo`
-   |    |
-   |    due to a where-clause on `take_foo`
+   |                     ^^^ required by this bound in `take_foo`
    = note: ...but it actually implements `Fn<(&'2 i32,)>`, for some specific lifetime `'2`
 help: consider adding an explicit type annotation to the closure's argument
    |

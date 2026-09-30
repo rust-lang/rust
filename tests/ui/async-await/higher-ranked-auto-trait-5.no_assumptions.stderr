@@ -10,10 +10,9 @@ note: `Send` would have to be implemented for the type `&'0 str`, for any lifeti
   --> $DIR/higher-ranked-auto-trait-5.rs:20:17
    |
 LL | pub fn assert_send<F>(_future: F)
-   |        ----------- due to a where-clause on `assert_send`
 LL | where
 LL |     F: Future + Send,
-   |                 ^^^^ unsatisfied where-clause on `assert_send`
+   |                 ^^^^ required by this bound in `assert_send`
    = note: ...but `Send` is actually implemented for the type `&'1 str`, for some specific lifetime `'1`
 
 error: aborting due to 1 previous error

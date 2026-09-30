@@ -8,9 +8,8 @@ note: `SomeStruct` must implement `Foo<(&'0 isize, &'1 isize)>`, for any two lif
   --> $DIR/hrtb-conflate-regions.rs:9:15
    |
 LL | fn want_foo2<T>()
-   |    --------- due to a where-clause on `want_foo2`
 LL |     where T : for<'a,'b> Foo<(&'a isize, &'b isize)>
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `want_foo2`
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `want_foo2`
 note: ...but it actually implements `Foo<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
   --> $DIR/hrtb-conflate-regions.rs:22:1
    |
@@ -27,9 +26,8 @@ note: `SomeStruct` must implement `Foo<(&'0 isize, &'1 isize)>`, for any two lif
   --> $DIR/hrtb-conflate-regions.rs:9:15
    |
 LL | fn want_foo2<T>()
-   |    --------- due to a where-clause on `want_foo2`
 LL |     where T : for<'a,'b> Foo<(&'a isize, &'b isize)>
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `want_foo2`
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `want_foo2`
 note: ...but it actually implements `Foo<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
   --> $DIR/hrtb-conflate-regions.rs:22:1
    |
