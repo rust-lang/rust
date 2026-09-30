@@ -1,9 +1,9 @@
 # Using tracing to debug the compiler
 
-The compiler has a lot of [`debug!`] (or `trace!`) calls, which print out logging information
-at many points.
-These are very useful to at least narrow down the location of
-a bug if not to find it entirely, or just to orient yourself as to why the
+The compiler has a lot of [`debug!`] (or `trace!`) calls,
+which print out logging information at many points.
+These are very useful to at least narrow down the location of a bug if not to find it entirely,
+or just to orient yourself as to why the
 compiler is doing a particular thing.
 
 [`debug!`]: https://docs.rs/tracing/0.1/tracing/macro.debug.html
@@ -66,8 +66,8 @@ RUSTC_LOG=rustc_borrowck[do_mir_borrowck]
 
 ### I don't want all calls
 
-If you are compiling libcore, you likely don't want *all* borrowck dumps, but only one
-for a specific function.
+If you are compiling libcore, you likely don't want *all* borrowck dumps,
+but only one for a specific function.
 You can filter function calls by their arguments by regexing them.
 
 ```
@@ -75,8 +75,8 @@ RUSTC_LOG=[do_mir_borrowck{id=\.\*from_utf8_unchecked\.\*}]
 ```
 
 will only give you the logs of borrowchecking `from_utf8_unchecked`.
-Note that you will
-still get a short message per ignored `do_mir_borrowck`, but none of the things inside those calls.
+Note that you will still get a short message per ignored `do_mir_borrowck`,
+but none of the things inside those calls.
 This helps you in looking through the calls that are happening and helps you adjust
 your regex if you mistyped it.
 
@@ -105,40 +105,41 @@ You can find a list of queries and their arguments in
 
 ## Broad module level filters
 
-You can also use filters similar to the `log` crate's filters, which will enable
-everything within a specific module.
+You can also use filters similar to the `log` crate's filters,
+which will enable everything within a specific module.
 This is often too verbose and too unstructured,
 so it is recommended to use function level filters.
 
 Your log filter can be just `debug` to get all `debug!` output and
 higher (e.g., it will also include `info!`), or `path::to::module` to get *all*
-output (which will include `trace!`) from a particular module, or
-`path::to::module=debug` to get `debug!` output and higher from a particular module.
+output (which will include `trace!`) from a particular module,
+or `path::to::module=debug` to get `debug!` output and higher from a particular module.
 
-For example, to get the `debug!` output and higher for a specific module, you
-can run the compiler with `RUSTC_LOG=path::to::module=debug rustc my-file.rs`.
+For example, to get the `debug!` output and higher for a specific module,
+you can run the compiler with `RUSTC_LOG=path::to::module=debug rustc my-file.rs`.
 All `debug!` output will then appear in standard error.
 
 Note that you can use a partial path and the filter will still work.
 For example, if you want to see `info!` output from only
-`rustdoc::passes::collect_intra_doc_links`, you could use
-`RUSTDOC_LOG=rustdoc::passes::collect_intra_doc_links=info` *or* you could use
+`rustdoc::passes::collect_intra_doc_links`,
+you could use `RUSTDOC_LOG=rustdoc::passes::collect_intra_doc_links=info` *or* you could use
 `RUSTDOC_LOG=rustdoc::passes::collect_intra=info`.
 
 If you are developing rustdoc, use `RUSTDOC_LOG` instead.
 If you are developing Miri, use `MIRI_LOG` instead.
 You get the idea :)
 
-See the [`tracing`] crate's docs, and specifically the docs for [`debug!`] to
-see the full syntax you can use.
-(Note: unlike the compiler, the [`tracing`]
-crate and its examples use the `RUSTC_LOG` environment variable.
+See the [`tracing`] crate's docs,
+and specifically the docs for [`debug!`] to see the full syntax you can use.
+(Note: unlike the compiler,
+the [`tracing`] crate and its examples use the `RUSTC_LOG` environment variable.
 rustc, rustdoc,
 and other tools set custom environment variables.)
 
-**Note that unless you use a very strict filter, the logger will emit a lot of
-output, so use the most specific module(s) you can (comma-separated if
-multiple)**. It's typically a good idea to pipe standard error to a file and
+**Note that unless you use a very strict filter, the logger will emit a lot of output,
+so use the most specific module(s) you can (comma-separated if
+multiple)**.
+It's typically a good idea to pipe standard error to a file and
 look at the log output with a text editor.
 
 So, to put it together:
@@ -180,13 +181,13 @@ $ RUSTDOC_LOG=rustdoc=debug rustdoc +stage1 my-file.rs
 
 ## Log colors
 
-By default, rustc (and other tools, like rustdoc and Miri) will be smart about
-when to use ANSI colors in the log output.
+By default, rustc (and other tools,
+like rustdoc and Miri) will be smart about when to use ANSI colors in the log output.
 If they are outputting to a terminal,
-they will use colors, and if they are outputting to a file or being piped
-somewhere else, they will not.
-However, it's hard to read log output in your
-terminal unless you have a very strict filter, so you may want to pipe the
+they will use colors, and if they are outputting to a file or being piped somewhere else,
+they will not.
+However, it's hard to read log output in your terminal unless you have a very strict filter,
+so you may want to pipe the
 output to a pager like `less`.
 But then there won't be any colors, which makes it hard to pick out what you're looking for!
 
@@ -201,18 +202,18 @@ So, if you want to enable colors when piping to `less`, use something similar to
 $ RUSTC_LOG=debug RUSTC_LOG_COLOR=always rustc +stage1 ... | less -R
 ```
 
-Note that `MIRI_LOG_COLOR` will only color logs that come from Miri, not logs
-from rustc functions that Miri calls.
+Note that `MIRI_LOG_COLOR` will only color logs that come from Miri,
+not logs from rustc functions that Miri calls.
 Use `RUSTC_LOG_COLOR` to color logs from rustc.
 
 ## How to keep or remove `debug!` and `trace!` calls from the resulting binary
 
 While calls to `error!`, `warn!` and `info!` are included in every build of the compiler,
 calls to `debug!` and `trace!` are only included in the program if
-`rust.debug-logging=true` is turned on in bootstrap.toml (it is
-turned off by default), so if you don't see `DEBUG` logs, especially
-if you run the compiler with `RUSTC_LOG=rustc rustc some.rs` and only see
-`INFO` logs, make sure that `rust.debug-logging=true` is turned on in your bootstrap.toml.
+`rust.debug-logging=true` is turned on in bootstrap.toml (it is turned off by default),
+so if you don't see `DEBUG` logs, especially
+if you run the compiler with `RUSTC_LOG=rustc rustc some.rs` and only see `INFO` logs,
+make sure that `rust.debug-logging=true` is turned on in your bootstrap.toml.
 
 ## Logging etiquette and conventions
 
@@ -220,11 +221,11 @@ Because calls to `debug!` are removed by default, in most cases, don't worry
 about the performance of adding "unnecessary" calls to `debug!` and leaving them in code you
 commit - they won't slow down the performance of what we ship.
 
-That said, there can also be excessive tracing calls, especially
-when they are redundant with other calls nearby or in functions called from here.
+That said, there can also be excessive tracing calls,
+especially when they are redundant with other calls nearby or in functions called from here.
 There is no perfect balance to hit here, and it is left to the reviewer's
-discretion to decide whether to let you leave `debug!` statements in, or whether to ask
-you to remove them before merging.
+discretion to decide whether to let you leave `debug!` statements in,
+or whether to ask you to remove them before merging.
 
 It may be preferable to use `trace!` over `debug!` for very noisy logs.
 
@@ -243,8 +244,8 @@ If in the module `rustc::foo` you have a statement
 debug!(x = ?random_operation(tcx));
 ```
 
-Then if someone runs a debug `rustc` with `RUSTC_LOG=rustc::foo`, then
-`random_operation()` will run.
+Then if someone runs a debug `rustc` with `RUSTC_LOG=rustc::foo`,
+then `random_operation()` will run.
 `RUSTC_LOG` filters that do not enable this debug statement will not execute `random_operation`.
 
 This means that you should not put anything too expensive or likely to crash
