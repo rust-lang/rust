@@ -189,7 +189,7 @@ const _: () = ();
 ///
 /// For more information, see the Reference on [the `cfg` attribute].
 ///
-/// [`cfg_attr`]: ../reference/conditional-compilation.html#the-cfg_attr-attribute
+/// [`cfg_attr`]: ./attribute.cfg_attr.html
 /// [the `cfg` attribute]: ../reference/conditional-compilation.html#the-cfg-attribute
 /// [`if`]: ./keyword.if.html
 const _: () = ();
@@ -715,11 +715,9 @@ const _: () = ();
 /// Example:
 ///
 /// ```rust
-/// // This function is annotated with `#[test]` only on Linux platforms.
-/// #[cfg_attr(target_os = "linux", test)]
-/// fn my_function() {
-///     // ...
-/// }
+/// // The struct derives `Debug` when the `debug_impls` feature is enabled.
+/// #[cfg_attr(feature = "debug_impls", derive(Debug))]
+/// struct X;
 /// ```
 ///
 /// You can apply multiple attributes by separating them with commas:
@@ -742,7 +740,7 @@ const _: () = ();
 /// ```rust
 /// #[cfg_attr(
 ///     all(feature = "system", feature = "disk"),
-///     doc = "For module documentation, both `system`, and `disk` need to be enabled.",
+///     doc = "These docs only show up if both `system`, and `disk` are enabled.",
 /// )]
 /// mod my_module {
 ///     // ...
