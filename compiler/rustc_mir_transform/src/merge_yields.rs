@@ -89,13 +89,16 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::Successors;
 use rustc_data_structures::indexmap::{IndexMap, IndexSet};
 use rustc_middle::mir::{
-    AssertKind, BasicBlock, BasicBlockData, Body, Local, NonDivergingIntrinsic,
+    AssertKind, BasicBlock, BasicBlockData, Body, Local, MirDumper, NonDivergingIntrinsic,
     OUTERMOST_SOURCE_SCOPE, Operand, Place, Rvalue, SourceInfo, Statement, StatementKind,
     Terminator, TerminatorKind, WithRetag,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::Analysis;
-use rustc_mir_dataflow::impls::{MaybeStorageLive, always_storage_live_locals};
+use rustc_mir_dataflow::impls::{
+    MaybeInitializedPlaces, MaybeStorageLive, always_storage_live_locals,
+};
+use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_span::DUMMY_SP;
 use tracing::instrument;
 
@@ -110,6 +113,10 @@ impl<'tcx> MirPass<'tcx> for MergeYields {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         if body.coroutine_kind().is_none() {
             return;
+        }
+
+        if let Some(dumper) = MirDumper::new(tcx, "merge_yields_before", body) {
+            dumper.dump_mir(body);
         }
 
         tracing::debug!("running pass for {}", tcx.def_path_debug_str(body.source.def_id()));
@@ -170,6 +177,10 @@ impl<'tcx> MirPass<'tcx> for MergeYields {
         }
 
         remove_dead_blocks(body);
+
+        if let Some(dumper) = MirDumper::new(tcx, "merge_yields_after", body) {
+            dumper.dump_mir(body);
+        }
     }
 
     fn policy(&self, _ctx: &PassCtx<'_>) -> PassPolicy {
@@ -310,16 +321,30 @@ impl TranslationMap {
     fn redirect_entry_points<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let body_predecessors = body.basic_blocks.predecessors().clone();
         let always_live_locals = always_storage_live_locals(body);
-        let mut results = MaybeStorageLive::new(Cow::Borrowed(&always_live_locals))
-            .iterate_to_fixpoint(tcx, body, Some("callapse_yields"))
+        let mut maybe_live_cursor = MaybeStorageLive::new(Cow::Borrowed(&always_live_locals))
+            .iterate_to_fixpoint(tcx, body, Some("merge_yields"))
             .into_results_cursor(body);
 
-        let from_live_locals = self
+        let bb_live_locals = self
             .blocks
             .keys()
-            .map(|from| {
-                results.seek_to_block_start(*from);
-                (*from, results.get().clone())
+            .map(|bb| {
+                maybe_live_cursor.seek_to_block_start(*bb);
+                (*bb, maybe_live_cursor.get().clone())
+            })
+            .collect::<FxHashMap<_, _>>();
+
+        let move_data = MoveData::gather_moves(body, tcx, |_| true);
+        let mut maybe_initialized_cursor = MaybeInitializedPlaces::new(tcx, body, &move_data)
+            .iterate_to_fixpoint(tcx, body, Some("merge_yields"))
+            .into_results_cursor(body);
+
+        let bb_initialized_locals = self
+            .blocks
+            .keys()
+            .map(|bb| {
+                maybe_initialized_cursor.seek_to_block_start(*bb);
+                (*bb, maybe_initialized_cursor.get().clone())
             })
             .collect::<FxHashMap<_, _>>();
 
@@ -352,32 +377,45 @@ impl TranslationMap {
                 let inbetween_data = &mut body.basic_blocks_mut()[inbetween];
                 inbetween_data.is_cleanup = is_cleanup;
 
-                let live_locals = &from_live_locals[from];
-                for from_local in live_locals.iter() {
-                    if let Some(to_local) = self.locals.locals.get(&from_local) {
-                        if from_local == *to_local {
-                            continue;
-                        }
+                for (from_local, to_local) in self.locals.locals.iter() {
+                    if from_local == to_local {
+                        // This local doesn't need translation
+                        continue;
+                    }
 
-                        if !always_live_locals.contains(*to_local) {
-                            inbetween_data.statements.push(Statement::new(
-                                SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE },
-                                StatementKind::StorageLive(*to_local),
-                            ));
-                        }
+                    if !bb_live_locals[from].contains(*from_local) {
+                        // This local isn't live at this point
+                        continue;
+                    }
+
+                    if !always_live_locals.contains(*to_local) {
+                        // Mark the new (to) local live
+                        inbetween_data.statements.push(Statement::new(
+                            SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE },
+                            StatementKind::StorageLive(*to_local),
+                        ));
+                    }
+                    if let Some(mpi) = move_data.rev_lookup.find_local(*from_local)
+                        && bb_initialized_locals[&from].contains(mpi)
+                    {
+                        // Move the initialized local `from` -> `to`
                         inbetween_data.statements.push(Statement::new(
                             SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE },
                             StatementKind::Assign(Box::new((
                                 Place::from(*to_local),
-                                Rvalue::Use(Operand::Move(Place::from(from_local)), WithRetag::Yes),
+                                Rvalue::Use(
+                                    Operand::Move(Place::from(*from_local)),
+                                    WithRetag::Yes,
+                                ),
                             ))),
                         ));
-                        if !always_live_locals.contains(from_local) {
-                            inbetween_data.statements.push(Statement::new(
-                                SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE },
-                                StatementKind::StorageDead(from_local),
-                            ));
-                        }
+                    }
+                    if !always_live_locals.contains(*from_local) {
+                        // Mark the old (from) local dead
+                        inbetween_data.statements.push(Statement::new(
+                            SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE },
+                            StatementKind::StorageDead(*from_local),
+                        ));
                     }
                 }
             }
