@@ -1,36 +1,47 @@
-//! The string Pattern API.
+//! [The Pattern API] implementation for searching in `&str`.
 //!
-//! The Pattern API provides a generic mechanism for using different pattern
-//! types when searching through a string.
+//! The implementation provides generic mechanism for using different pattern
+//! types when searching through a string.  Although this API is unstable, it is
+//! exposed via stable APIs on the [`str`] type.
 //!
-//! For more details, see the traits [`Pattern`], [`Searcher`],
-//! [`ReverseSearcher`], and [`DoubleEndedSearcher`].
+//! Depending on the type of the pattern, the behaviour of methods like
+//! [`str::find`] and [`str::contains`] can change. The table below describes
+//! some of those behaviours.
 //!
-//! Although this API is unstable, it is exposed via stable APIs on the
-//! [`str`] type.
+//! | Pattern type             | Match condition                           |
+//! |--------------------------|-------------------------------------------|
+//! | `&str`                   | is substring                              |
+//! | `char`                   | is contained in string                    |
+//! | `&[char]`                | any char in slice is contained in string  |
+//! | `F: FnMut(char) -> bool` | `F` returns `true` for a char in string   |
+//! | `&&str`                  | is substring                              |
+//! | `&String`                | is substring                              |
 //!
 //! # Examples
-//!
-//! [`Pattern`] is [implemented][pattern-impls] in the stable API for
-//! [`&str`][`str`], [`char`], slices of [`char`], and functions and closures
-//! implementing `FnMut(char) -> bool`.
 //!
 //! ```
 //! let s = "Can you find a needle in a haystack?";
 //!
 //! // &str pattern
 //! assert_eq!(s.find("you"), Some(4));
+//! assert_eq!(s.find("thou"), None);
+//!
 //! // char pattern
 //! assert_eq!(s.find('n'), Some(2));
-//! // array of chars pattern
+//! assert_eq!(s.find('N'), None);
+//!
+//! // Array of chars pattern and slices thereof
 //! assert_eq!(s.find(&['a', 'e', 'i', 'o', 'u']), Some(1));
-//! // slice of chars pattern
 //! assert_eq!(s.find(&['a', 'e', 'i', 'o', 'u'][..]), Some(1));
-//! // closure pattern
+//! assert_eq!(s.find(&['q', 'v', 'x']), None);
+//!
+//! // Predicate closure
 //! assert_eq!(s.find(|c: char| c.is_ascii_punctuation()), Some(35));
+//! assert_eq!(s.find(|c: char| c.is_lowercase()), Some(1));
+//! assert_eq!(s.find(|c: char| !c.is_ascii()), None);
 //! ```
 //!
-//! [pattern-impls]: Pattern#implementors
+//! [The Pattern API]: crate::pattern
 
 #![unstable(
     feature = "pattern",
@@ -41,6 +52,9 @@
 use crate::cmp::Ordering;
 use crate::convert::TryInto as _;
 use crate::ops::Range;
+pub use crate::pattern::{
+    DoubleEndedSearcher, Haystack, Pattern, ReverseSearcher, SearchStep, Searcher, Utf8Pattern,
+};
 use crate::slice::memchr;
 use crate::{cmp, fmt};
 

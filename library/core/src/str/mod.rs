@@ -13,9 +13,9 @@ mod iter;
 mod traits;
 mod validations;
 
-use self::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use crate::char::{self, EscapeDebugExtArgs};
 use crate::hint::assert_unchecked;
+use crate::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use crate::range::Range;
 use crate::slice::{self, SliceIndex};
 use crate::ub_checks::assert_unsafe_precondition;
