@@ -203,7 +203,7 @@ fn block_abort(file: &mut Vec<String>, path: &PathBuf, cache: &mut ResultCache) 
         // ..and insert an unconditional call to abort.
         file_copy.insert(
             block_starts,
-            "Call(tmp = core::intrinsics::abort(), ReturnTo(bb1), UnwindUnreachable())\n"
+            "Call(tmp = core::intrinsics::abort_immediate(), ReturnTo(bb1), UnwindUnreachable())\n"
                 .to_string(),
         );
         file_copy.insert(block_starts, "let tmp = ();\n".to_string());
