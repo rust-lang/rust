@@ -2027,7 +2027,7 @@ fn normalize<'tcx>(
     let infcx = cx.tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let normalized = infcx
         .query_normalize(ty, cx.param_env, ObligationCause::dummy())
-        .map(|resolved| infcx.resolve_vars_if_possible(resolved.value));
+        .map(|resolved| infcx.deeply_resolve_ignoring_regions(resolved.value));
     match normalized {
         Ok(normalized_value) => {
             debug!("normalized {ty:?} to {normalized_value:?}");
