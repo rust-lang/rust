@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 use std::ffi::OsString;
-use std::fs::{self, Dir, DirBuilder, File, FileTimes, FileType, OpenOptions, TryLockError};
+use std::fs::{self, DirBuilder, File, FileTimes, FileType, OpenOptions, TryLockError};
 use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{self, Path};
 use std::time::SystemTime;
@@ -20,14 +20,14 @@ use crate::shims::sig::Varargs;
 use crate::shims::unix::fd::{EvalContextExt as _, FlockOp, UnixFileDescription};
 use crate::*;
 
-/// An open directory stream, tracked by DirTable.
+/// An open directory stream (`DIR`), tracked by DirTable.
 #[derive(Debug)]
 struct DirStream {
-    /// The directory reader on the host.
+    /// The directory stream on the host.
     read_dir: fs::ReadDir,
-    /// An FD number for the same handle. Unix directory streams have an "underlying FD" that
-    /// can be exposed; this is that FD. We also store the FD ID to catch cases where
-    /// the FD was closed and a different one re-opened.
+    /// Unix directory streams have an "underlying FD" that can be exposed; this is that FD. This is
+    /// not a reference; it *can* be separately closed, leading to UB if the DIR is used again. We
+    /// also store the FD ID to catch cases where the FD was closed and a different one re-opened.
     fd_num: FdNum,
     fd_id: FdId,
     /// The "special" entries that must still be yielded by the iterator.
@@ -782,11 +782,88 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`fstat`", reject_with)?;
-            // Set error code as "EBADF" (bad fd)
+            // Set error code as "EBADF" (bad fd); "EACCESS" does not make much sense here.
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         }
 
         let metadata = match FileMetadata::from_fd_num(this, fd)? {
+            Ok(metadata) => metadata,
+            Err(err) => return this.set_errno_and_return_neg1_i32(err),
+        };
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
+    }
+
+    fn fstatat(
+        &mut self,
+        dirfd_op: &OpTy<'tcx>,
+        path_op: &OpTy<'tcx>,
+        buf_op: &OpTy<'tcx>,
+        flags_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        if !matches!(
+            &this.tcx.sess.target.os,
+            Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos | Os::Linux | Os::Android
+        ) {
+            panic!("`fstatat` should not be called on {}", this.tcx.sess.target.os);
+        }
+
+        let dirfd = this.read_scalar(dirfd_op)?.to_i32()?;
+        let path = this.read_pointer(path_op)?;
+        let flags = this.read_scalar(flags_op)?.to_i32()?;
+
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`fstatat`", reject_with)?;
+            return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
+        }
+
+        // Parse flags.
+        let mut flags = flags;
+        // AT_SYMLINK_NOFOLLOW
+        let at_symlink_nofollow = this.eval_libc_i32("AT_SYMLINK_NOFOLLOW");
+        let symlink_nofollow_flag = flags & at_symlink_nofollow == at_symlink_nofollow;
+        flags &= !at_symlink_nofollow;
+        // Complain about unknown flags.
+        if flags != 0 {
+            throw_unsup_format!("unsupported flags for `fstatat`: {flags:#x}")
+        }
+
+        let path = this.read_path_from_c_str(path)?.into_owned();
+        let metadata = if path.is_empty() {
+            throw_unsup_format!("fstatat: empty path is not supported");
+        } else if path.is_absolute() || dirfd == this.eval_libc_i32("AT_FDCWD") {
+            // Either absolute path (dirfd is ignored) or relative to working directory.
+            FileMetadata::from_host(
+                this,
+                if symlink_nofollow_flag { path.symlink_metadata() } else { path.metadata() },
+            )?
+        } else {
+            // relative to dirfd, which must be a directory handle
+            let Some(fd) = this.machine.fds.get(dirfd) else {
+                return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+            };
+            let Some(dir) = fd.downcast::<DirHandle>() else {
+                return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+            };
+
+            #[cfg(not(bootstrap))]
+            let metadata = if symlink_nofollow_flag {
+                dir.dir.symlink_metadata(path)
+            } else {
+                dir.dir.metadata(path)
+            };
+            #[cfg(bootstrap)]
+            let metadata = if symlink_nofollow_flag {
+                dir.fallback.join(path).symlink_metadata()
+            } else {
+                dir.fallback.join(path).metadata()
+            };
+            FileMetadata::from_host(this, metadata)?
+        };
+
+        let metadata = match metadata {
             Ok(metadata) => metadata,
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
@@ -852,18 +929,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Either absolute path (dirfd is ignored) or relative to working directory.
             FileMetadata::from_host(
                 this,
-                if symlink_nofollow_flag { fs::symlink_metadata(path) } else { fs::metadata(path) },
+                if symlink_nofollow_flag { path.symlink_metadata() } else { path.metadata() },
             )?
         } else {
             // relative to dirfd, which must be a directory handle
             let Some(fd) = this.machine.fds.get(dirfd) else {
                 return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
             };
-            let Some(_dir) = fd.downcast::<DirHandle>() else {
+            let Some(dir) = fd.downcast::<DirHandle>() else {
                 return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
             };
 
-            throw_unsup_format!("statx relative to a directory handle is not supported");
+            #[cfg(not(bootstrap))]
+            let metadata = if symlink_nofollow_flag {
+                dir.dir.symlink_metadata(path)
+            } else {
+                dir.dir.metadata(path)
+            };
+            #[cfg(bootstrap)]
+            let metadata = if symlink_nofollow_flag {
+                dir.fallback.join(path).symlink_metadata()
+            } else {
+                dir.fallback.join(path).metadata()
+            };
+            FileMetadata::from_host(this, metadata)?
         };
 
         let metadata = match metadata {
@@ -1133,12 +1222,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // in between above and here. One day, the standard library will support converting
                 // between `Dir` and `ReadDir` (one of the two directions would suffice for our
                 // needs), then we'll use that.
-                let Ok(dir) = Dir::open(name) else {
+                let Ok(dir) = DirHandle::open(&name) else {
                     throw_unsup_format!(
                         "cannot `opendir` this directory: failed to create directory handle"
                     );
                 };
-                let dir = this.machine.fds.new_ref(DirHandle { dir });
+                let dir = this.machine.fds.new_ref(dir);
                 let dir_fd_id = dir.id();
                 let dir_fd_num = this.machine.fds.insert(dir);
 
