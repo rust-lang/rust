@@ -46,6 +46,9 @@ struct S12;
 //~| WARN previously accepted
 struct S13;
 
+#[cfg_attr(true, cfg_attr(true, 3))] //~ ERROR expected identifier, found `3`
+struct S14;
+
 #[cfg_attr(true, inline())] //~ ERROR malformed `inline` attribute input
 fn f1() {}
 
