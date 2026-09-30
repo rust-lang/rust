@@ -1,4 +1,6 @@
 //@compile-flags: -Zmiri-num-cpus=1024
+// FIXME: Disabled on FreeBSD due to <https://github.com/rust-lang/miri/issues/5344>
+//@ignore-target: freebsd
 
 use std::num::NonZero;
 use std::thread::available_parallelism;

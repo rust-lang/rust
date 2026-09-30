@@ -4,8 +4,8 @@ use std::path::Path;
 
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_ast::expand::allocator::NO_ALLOC_SHIM_IS_UNSTABLE;
-use rustc_data_structures::either::Either;
 use rustc_attr_ir::Linkage;
+use rustc_data_structures::either::Either;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -170,8 +170,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                     // picked by the linker.
 
                                     // Make sure we are consistent wrt what is 'first' and 'second'.
-                                    let original_span =
-                                        tcx.def_span(original.instance.def_id());
+                                    let original_span = tcx.def_span(original.instance.def_id());
                                     let span = tcx.def_span(def_id);
                                     if original_span.lo_hi() < span.lo_hi() {
                                         throw_machine_stop!(

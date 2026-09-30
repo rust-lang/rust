@@ -1,7 +1,6 @@
-use std::fs::{self, Dir};
-use std::io;
 use std::io::SeekFrom;
 use std::time::SystemTime;
+use std::{fs, io};
 
 use bitflags::bitflags;
 use rustc_abi::Size;
@@ -214,7 +213,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Open this as a directory.
                 // FIXME: shouldn't we check `creation_disposition` here? We do know that it already
                 // exists.
-                let dir = match Dir::open(&file_name) {
+                let dir = match DirHandle::open(&file_name) {
                     Ok(dir) => dir,
                     Err(e) => {
                         if e.kind() == io::ErrorKind::NotADirectory {
@@ -226,9 +225,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                 };
                 #[cfg(bootstrap)]
-                let metadata = dir.metadata();
+                let metadata = dir.dir.metadata();
                 #[cfg(not(bootstrap))]
-                let metadata = dir.self_metadata();
+                let metadata = dir.dir.self_metadata();
                 if !metadata.unwrap().is_dir() {
                     // This changed from a directory to a file. Retry.
                     continue;
@@ -239,7 +238,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.set_last_error(IoError::WindowsError("ERROR_ALREADY_EXISTS"))?;
                 }
 
-                let fd_num = this.machine.fds.insert_new(DirHandle { dir });
+                let fd_num = this.machine.fds.insert_new(dir);
                 return interp_ok(Handle::File(fd_num));
             } else {
                 // Per the documentation:
@@ -381,7 +380,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let attributes = if file_type.is_dir() {
             this.eval_windows_u32("c", "FILE_ATTRIBUTE_DIRECTORY")
         } else if file_type.is_file() {
-            this.eval_windows_u32("c", "FILE_ATTRIBUTE_NORMAL")
+            // Normal files seem to have the "archive" attribute. There's also
+            // `FILE_ATTRIBUTE_NORMAL` but that's for files without any other attribute which,
+            // apparently, is not normal.
+            this.eval_windows_u32("c", "FILE_ATTRIBUTE_ARCHIVE")
         } else {
             this.eval_windows_u32("c", "FILE_ATTRIBUTE_DEVICE")
         };
