@@ -90,7 +90,7 @@ where
         goal: Goal<I, ty::OutlivesClause<I, I::Ty>>,
     ) -> QueryResultOrRerunNonErased<I> {
         let ty::OutlivesClause(ty, lt) = goal.predicate;
-        let ty = self.normalize(GoalSource::Misc, goal.param_env, ty::Unnormalized::new_wip(ty))?;
+        let ty = self.normalize(goal.param_env, ty::Unnormalized::new_wip(ty))?;
 
         // The normalized type can still contain non-rigid higher ranked aliases if their
         // normalization ends up with ambiguity. Or we have non-rigid aliases inside rigid ones.
@@ -405,7 +405,7 @@ where
             );
             // We normalize the self type to be able to relate it with
             // types from candidates.
-            self.add_goal(GoalSource::TypeRelating, projection_goal)?;
+            self.add_goal(GoalSource::Normalization, projection_goal)?;
             self.try_evaluate_added_goals()?;
             Ok(self.deeply_resolve_ignoring_regions(normalized_term))
         } else {
