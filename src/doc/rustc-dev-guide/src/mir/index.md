@@ -7,18 +7,18 @@ It is a radically simplified form of Rust that is used for
 certain flow-sensitive safety checks – notably the borrow checker!
 – and also for optimization and code generation.
 
-If you'd like a very high-level introduction to MIR, as well as some
-of the compiler concepts that it relies on (such as control-flow
+If you'd like a very high-level introduction to MIR,
+as well as some of the compiler concepts that it relies on (such as control-flow
 graphs and desugaring), you may enjoy the [rust-lang blog post that introduced MIR][blog].
 
 [blog]: https://blog.rust-lang.org/2016/04/19/MIR.html
 
 ## Introduction to MIR
 
-MIR is defined in the [`compiler/rustc_middle/src/mir/`][mir] module, but much of the code
-that manipulates it is found in [`compiler/rustc_mir_build`][mirmanip_build],
-[`compiler/rustc_mir_transform`][mirmanip_transform], and
-[`compiler/rustc_mir_dataflow`][mirmanip_dataflow].
+MIR is defined in the [`compiler/rustc_middle/src/mir/`][mir] module,
+but much of the code that manipulates it is found in [`compiler/rustc_mir_build`][mirmanip_build],
+[`compiler/rustc_mir_transform`][mirmanip_transform],
+and [`compiler/rustc_mir_dataflow`][mirmanip_dataflow].
 
 [RFC 1211]: https://rust-lang.github.io/rfcs/1211-mir.html
 
@@ -38,22 +38,22 @@ This section introduces the key concepts of MIR, summarized here:
   - **statements:** actions with one successor
   - **terminators:** actions with potentially multiple successors; always at the end of a block
   - (if you're not familiar with the term *basic block*, see the [background chapter][cfg])
-- **Locals:** Memory locations allocated on the stack (conceptually, at
-  least), such as function arguments, local variables, and temporaries.
+- **Locals:** Memory locations allocated on the stack (conceptually, at least),
+  such as function arguments, local variables, and temporaries.
   These are identified by an index, written with a leading underscore, like `_1`.
   There is also a special "local" (`_0`) allocated to store the return value.
 - **Places:** expressions that identify a location in memory, like `_1` or `_1.f`.
 - **Rvalues:** expressions that produce a value.
   The "R" stands for the fact that these are the "right-hand side" of an assignment.
-  - **Operands:** the arguments to an rvalue, which can either be a
-    constant (like `22`) or a place (like `_1`).
+  - **Operands:** the arguments to an rvalue,
+    which can either be a constant (like `22`) or a place (like `_1`).
 
 You can get a feeling for how MIR is constructed by translating simple
 programs into MIR and reading the pretty printed output.
-In fact, the playground makes this easy, since it supplies a MIR button that will
-show you the MIR for your program.
-Try putting this program into play
-(or [clicking on this link][sample-play]), and then clicking the "MIR" button on the top:
+In fact, the playground makes this easy,
+since it supplies a MIR button that will show you the MIR for your program.
+Try putting this program into play (or [clicking on this link][sample-play]),
+and then clicking the "MIR" button on the top:
 
 [sample-play]: https://play.rust-lang.org/?gist=30074856e62e74e91f06abd19bd72ece&version=stable&edition=2021
 
@@ -83,8 +83,8 @@ We can use `rustc [filename].rs -Z mir-opt-level=0 --emit mir` to view unoptimiz
 This requires the nightly toolchain.
 
 
-**Variable declarations.** If we drill in a bit, we'll see it begins
-with a bunch of variable declarations.
+**Variable declarations.** If we drill in a bit,
+we'll see it begins with a bunch of variable declarations.
 They look like this:
 
 ```mir
@@ -101,8 +101,8 @@ like `_0` or `_1`.  We also intermingle the user's variables (e.g.,
 `_1`) with temporary values (e.g., `_2` or `_3`). You can tell apart
 user-defined variables because they have debuginfo associated to them (see below).
 
-**User variable debuginfo.** Below the variable declarations, we find the only
-hint that `_1` represents a user variable:
+**User variable debuginfo.** Below the variable declarations,
+we find the only hint that `_1` represents a user variable:
 ```mir
 scope 1 {
     debug vec => _1;                 // in scope 1 at src/main.rs:2:9: 2:16
@@ -130,15 +130,15 @@ bb0: {
 }
 ```
 
-A basic block is defined by a series of **statements** and a final
-**terminator**.  In this case, there is one statement:
+A basic block is defined by a series of **statements** and a final **terminator**.
+ In this case, there is one statement:
 
 ```mir
 StorageLive(_1);
 ```
 
-This statement indicates that the variable `_1` is "live", meaning
-that it may be used later – this will persist until we encounter a
+This statement indicates that the variable `_1` is "live",
+meaning that it may be used later – this will persist until we encounter a
 `StorageDead(_1)` statement, which indicates that the variable `_1` is done being used.
 These "storage statements" are used by LLVM to allocate stack space.
 
@@ -151,8 +151,8 @@ _1 = const <std::vec::Vec<T>>::new() -> bb2;
 Terminators are different from statements because they can have more
 than one successor – that is, control may flow to different places.
 Function calls like the call to `Vec::new` are always
-terminators because of the possibility of unwinding, although in the
-case of `Vec::new` we are able to see that indeed unwinding is not
+terminators because of the possibility of unwinding,
+although in the case of `Vec::new` we are able to see that indeed unwinding is not
 possible, and hence we list only one successor block, `bb2`.
 
 If we look ahead to `bb2`, we will see it looks like this:
@@ -165,8 +165,8 @@ bb2: {
 }
 ```
 
-Here there are two statements: another `StorageLive`, introducing the `_3`
-temporary, and then an assignment:
+Here there are two statements: another `StorageLive`, introducing the `_3` temporary,
+and then an assignment:
 
 ```mir
 _3 = &mut _1;
@@ -179,8 +179,8 @@ Assignments in general have the form:
 ```
 
 A place is an expression like `_3`, `_3.f` or `*_3` – it denotes a location in memory.
-An **Rvalue** is an expression that creates a
-value: in this case, the rvalue is a mutable borrow expression, which looks like `&mut <Place>`.
+An **Rvalue** is an expression that creates a value: in this case,
+the rvalue is a mutable borrow expression, which looks like `&mut <Place>`.
 So we can kind of define a grammar for rvalues like so:
 
 ```text
@@ -194,21 +194,21 @@ So we can kind of define a grammar for rvalues like so:
           | move Place
 ```
 
-As you can see from this grammar, rvalues cannot be nested – they can
-only reference places and constants.
+As you can see from this grammar,
+rvalues cannot be nested – they can only reference places and constants.
 Moreover, when you use a place,
 we indicate whether we are **copying it** (which requires that the
 place have a type `T` where `T: Copy`) or **moving it** (which works for a place of any type).
-So, for example, if we had the expression `x
-= a + b + c` in Rust, that would get compiled to two statements and a temporary:
+So, for example, if we had the expression `x = a + b + c` in Rust,
+that would get compiled to two statements and a temporary:
 
 ```mir
 TMP1 = a + b
 x = TMP1 + c
 ```
 
-([Try it and see][play-abc], though you may want to do release mode to skip
-over the overflow checks.)
+([Try it and see][play-abc],
+though you may want to do release mode to skip over the overflow checks.)
 
 [play-abc]: https://play.rust-lang.org/?gist=1751196d63b2a71f8208119e59d8a5b6&version=stable
 
@@ -225,8 +225,8 @@ but [you can read about those below](#promoted-constants)).
 
 - **Basic blocks**: The basic blocks are stored in the field
   [`Body::basic_blocks`][basicblocks]; this is a vector of [`BasicBlockData`] structures.
-  Nobody ever references a basic block directly: instead, we pass around [`BasicBlock`]
-  values, which are [newtype'd] indices into this vector.
+  Nobody ever references a basic block directly: instead, we pass around [`BasicBlock`] values,
+  which are [newtype'd] indices into this vector.
 - **Statements** are represented by the type [`Statement`].
 - **Terminators** are represented by the [`Terminator`].
 - **Locals** are represented by a [newtype'd] index type [`Local`].
@@ -240,8 +240,8 @@ but [you can read about those below](#promoted-constants)).
     These are represented by the [newtype'd] type
     [`ProjectionElem`]. So e.g. the place `_1.f` is a projection,
     with `f` being the "projection element" and `_1` being the base path.
-    `*_1` is also a projection, with the `*` being represented
-    by the [`ProjectionElem::Deref`] element.
+    `*_1` is also a projection,
+    with the `*` being represented by the [`ProjectionElem::Deref`] element.
 - **Rvalues** are represented by the enum [`Rvalue`].
 - **Operands** are represented by the enum [`Operand`].
 
@@ -251,8 +251,8 @@ When code has reached the MIR stage, constants can generally come in two forms:
 *MIR constants* ([`mir::Constant`]) and *type system constants* ([`ty::Const`]).
 MIR constants are used as operands: in `x + CONST`, `CONST` is a MIR constant;
 similarly, in `x + 2`, `2` is a MIR constant.
-Type system constants are used in
-the type system, in particular for array lengths but also for const generics.
+Type system constants are used in the type system,
+in particular for array lengths but also for const generics.
 
 Generally, both kinds of constants can be "unevaluated" or "already evaluated".
 An unevaluated constant simply stores the `DefId` of what needs to be evaluated
@@ -270,8 +270,8 @@ parameter is used as an operand.
 
 ### MIR constant values
 
-In general, a MIR constant value (`mir::ConstValue`) was computed by evaluating
-some constant the user wrote.
+In general,
+a MIR constant value (`mir::ConstValue`) was computed by evaluating some constant the user wrote.
 This [const evaluation](../const-eval.md) produces
 a very low-level representation of the result in terms of individual bytes.
 We call this an "indirect" constant (`mir::ConstValue::Indirect`) since the value
@@ -280,8 +280,8 @@ is stored in-memory.
 However, storing everything in-memory would be awfully inefficient.
 Hence there are some other variants in `mir::ConstValue` that can represent certain simple
 and common values more efficiently.
-In particular, everything that can be
-directly written as a literal in Rust (integers, floats, chars, bools, but also
+In particular, everything that can be directly written as a literal in Rust (integers,
+floats, chars, bools, but also
 `"string literals"` and `b"byte string literals"`) has an optimized variant that
 avoids the full overhead of the in-memory representation.
 
@@ -301,8 +301,8 @@ In other words, a specific value must only be representable in one specific way.
 For example, there is only one way to represent an array of two integers as a `ValTree`:
 `Branch([Leaf(first_int), Leaf(second_int)])`.
 Even though theoretically a `[u32; 2]` could be encoded in a `u64` and thus just be a
-`Leaf(bits_of_two_u32)`, that is not a legal construction of `ValTree`
-(and is very complex to do, so it is unlikely anyone is tempted to do so).
+`Leaf(bits_of_two_u32)`, that is not a legal construction of `ValTree` (and is very complex to do,
+so it is unlikely anyone is tempted to do so).
 
 These rules also mean that some values are not representable.
 There can be no `union`s in type level constants,
