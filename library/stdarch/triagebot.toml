@@ -93,7 +93,7 @@ check-commits = false
 zulip_stream = 639962 # #t-libs/nominated
 topic = "stdarch#{number}: {title}"
 message_on_add = """\
-@*T-libs-ping* [stdarch#{number} "{title}"](https://github.com/rust-lang/stdarch/pull/{number}) has been nominated for discussion.
+[stdarch#{number} "{title}"](https://github.com/rust-lang/stdarch/pull/{number}) has been nominated for discussion.
 """
 message_on_remove = """\
 stdarch#{number} is no longer nominated.
