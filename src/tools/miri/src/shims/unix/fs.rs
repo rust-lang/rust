@@ -556,10 +556,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(file) => file,
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
+        let metadata = file.metadata().expect("a just-opened file should have metadata");
+        if metadata.is_dir() {
+            throw_unsup_format!("open: opening directories is not supported");
+        }
         if nofollow && !cfg!(unix) {
             // On Windows, FILE_FLAG_OPEN_REPARSE_POINT makes opening still succeed, it just
             // opens the symlink rather than the target. Turn that into an error.
-            if file.metadata().unwrap().is_symlink() {
+            if metadata.is_symlink() {
                 return this.set_errno_and_return_neg1_i32(LibcError("ELOOP"));
             }
         }
