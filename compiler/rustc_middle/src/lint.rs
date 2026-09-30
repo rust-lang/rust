@@ -5,7 +5,7 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::{Diag, DiagLocation, Diagnostic, EmissionOverride, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_lint_defs::{
-    EditionFcw, FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId,
+    EditionFcw, FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId, ReportInDeps,
     StableLintExpectationId, UnstableLintExpectationId, builtin,
 };
 use rustc_macros::{Decodable, Encodable, StableHash};
@@ -409,7 +409,7 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a> + 'a>(
         let has_future_breakage = future_incompatible.map_or(
             // Default allow lints trigger too often for testing.
             sess.opts.unstable_opts.future_incompat_test && lint.default_level != Level::Allow,
-            |incompat| incompat.report_in_deps,
+            |incompat| matches!(incompat.reason.report_in_deps(), ReportInDeps::Yes),
         );
 
         // Convert lint level to error level.
@@ -558,6 +558,7 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a> + 'a>(
                 }
                 FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(
                     EditionFcw { edition, .. },
+                    _,
                 ) => {
                     format!(
                         "this changes meaning in Rust {edition} and in a future release in all editions!"

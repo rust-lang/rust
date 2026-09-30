@@ -32,7 +32,7 @@ use rustc_hir::intravisit::FnKind as HirFnKind;
 use rustc_hir::{self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin};
 // Lints from rustc_lint_defs
 pub use rustc_lint_defs::builtin::*;
-use rustc_lint_defs::{declare_lint, declare_lint_pass, impl_lint_pass};
+use rustc_lint_defs::{ReportInDeps, declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -3143,7 +3143,7 @@ declare_lint! {
     pub INTERNAL_EQ_TRAIT_METHOD_IMPLS,
     Warn,
     "manual implementation of the internal `Eq::assert_receiver_is_total_eq` method",
-    @future_incompatible = future_release_error(152336).report_in_deps(false);
+    @future_incompatible = future_release_error(152336, ReportInDeps::No);
 }
 
 declare_lint_pass!(InternalEqTraitMethodImpls => [INTERNAL_EQ_TRAIT_METHOD_IMPLS]);
