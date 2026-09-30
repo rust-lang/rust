@@ -1361,7 +1361,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int(_))) => (),
+                            (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int)) => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1379,7 +1379,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Int(_)), Some(CastTy::Ptr(_))) => (),
+                            (Some(CastTy::Int), Some(CastTy::Ptr(_))) => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1396,7 +1396,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Int(_)), Some(CastTy::Int(_))) => (),
+                            (Some(from), Some(to)) if from.is_int_like() && to.is_int_like() => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1413,7 +1413,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Int(_)), Some(CastTy::Float)) => (),
+                            (Some(CastTy::Int), Some(CastTy::Float)) => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1430,7 +1430,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Float), Some(CastTy::Int(_))) => (),
+                            (Some(CastTy::Float), Some(CastTy::Int)) => (),
                             _ => {
                                 span_mirbug!(
                                     self,
