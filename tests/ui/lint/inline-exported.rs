@@ -17,12 +17,8 @@ fn export_name() {}
 
 #[inline]
 //~^ ERROR: `#[inline]` is ignored on externally exported functions
-#[linkage = "external"]
-fn external_linkage() {}
+#[linkage = "weak"]
+fn weak_linkage() {}
 
 #[inline]
 fn normal() {}
-
-#[inline]
-#[linkage = "internal"] // not exported
-fn internal_linkage() {}
