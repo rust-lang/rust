@@ -3,10 +3,10 @@ use std::path::PathBuf;
 use rustc_ast::{LitIntType, LitKind, MetaItemLit};
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{
-    BorrowckGraphvizFormatKind, CguFields, CguKind, RustcCleanAttribute, RustcCleanQueries,
-    RustcMirKind,
+    BorrowckGraphvizFormatKind, CguFields, CguKind, RustcAssertVariance, RustcAssertVarianceKind,
+    RustcCleanAttribute, RustcCleanQueries, RustcMirKind,
 };
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_feature::AttributeStability;
 use rustc_span::Symbol;
 
@@ -1113,4 +1113,67 @@ impl NoArgsAttributeParser for RustcCanonicalSymbolParser {
         lints"
     );
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcCanonicalSymbol;
+}
+
+pub(crate) struct RustcAssertVarianceParser;
+
+impl CombineAttributeParser for RustcAssertVarianceParser {
+    const PATH: &[Symbol] = &[sym::rustc_assert_variance];
+
+    type Item = (Ident, RustcAssertVarianceKind);
+
+    const CONVERT: ConvertFn<Self::Item> = |items, _| {
+        let mut map = FxIndexMap::default();
+        for item in items {
+            map.insert(item.0, item.1);
+        }
+        AttributeKind::RustcAssertVariance(RustcAssertVariance { variances: map })
+    };
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::Enum),
+        Allow(Target::Struct),
+        Allow(Target::Union),
+    ]);
+    const TEMPLATE: AttributeTemplate =
+        template!(List: &[r#"Type1 = "variance", Type2 = "variance", ..."#]);
+
+    fn extend(
+        cx: &mut AcceptContext<'_, '_>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
+        let Some(args) = cx.expect_list(args, cx.attr_span) else { return ThinVec::default() };
+
+        let mut result = ThinVec::default();
+        for arg in args.mixed() {
+            let Some((ident, val)) = cx.expect_name_value(arg, arg.span(), None) else {
+                continue;
+            };
+            let Some(val_sym) = val.value_as_str() else {
+                cx.adcx().expected_specific_argument_strings(
+                    val.value_span,
+                    &[sym::covariant, sym::invariant, sym::contravariant],
+                );
+                continue;
+            };
+
+            let kind = match val_sym {
+                sym::covariant => RustcAssertVarianceKind::Covariant,
+                sym::invariant => RustcAssertVarianceKind::Invariant,
+                sym::contravariant => RustcAssertVarianceKind::Contravariant,
+                _ => {
+                    cx.adcx().expected_specific_argument_strings(
+                        val.value_span,
+                        &[sym::covariant, sym::invariant, sym::contravariant],
+                    );
+                    continue;
+                }
+            };
+
+            result.push((ident, kind));
+        }
+
+        result
+    }
 }

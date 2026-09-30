@@ -718,6 +718,20 @@ impl fmt::Display for AutoDiffItem {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
+pub struct RustcAssertVariance {
+    pub variances: FxIndexMap<Ident, RustcAssertVarianceKind>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
+pub enum RustcAssertVarianceKind {
+    Covariant,
+    Invariant,
+    Contravariant,
+}
+
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct UnstableRemovedFeature {
     pub feature: Symbol,
@@ -1144,6 +1158,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
     RustcAsPtr,
+
+    /// Represents `#[rustc_assert_variance]`.
+    RustcAssertVariance(RustcAssertVariance),
 
     /// Represents `#[rustc_autodiff]`.
     RustcAutodiff(Option<Box<RustcAutodiff>>),
