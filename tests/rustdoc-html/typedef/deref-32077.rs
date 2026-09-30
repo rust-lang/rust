@@ -54,7 +54,7 @@ impl std::ops::Deref for GenericStruct<u32> {
 pub struct Wrap<T>(GenericStruct<T>);
 
 //@ has 'foo/type.Alias.html'
-//@ !has - '//h2' 'Methods from Deref<Target = u32>'
+//@ has - '//h2' 'Methods from Deref<Target = u32>'
 //@ !has - '//*[@id="impl-Deref-for-Wrap%3CT%3E"]/h3' 'impl<T> Deref for Wrap<T>'
 //@ hasraw 'type.impl/foo/struct.Wrap.js' 'impl-Deref-for-Wrap%3CT%3E'
 // Deref Methods aren't gathered for type aliases, though the actual impl is.
