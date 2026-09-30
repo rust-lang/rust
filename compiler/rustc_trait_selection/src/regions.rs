@@ -99,8 +99,10 @@ pub fn ty_known_to_outlive<'tcx>(
         // Types in region obligations should be normalized.
         let ty = if infcx.next_trait_solver() {
             let Ok(ty) = crate::solve::deeply_normalize::<_, ScrubbedTraitError<'tcx>>(
-                infcx.at(&ObligationCause::dummy_with_span(DUMMY_SP), param_env),
+                infcx,
                 ty,
+                param_env,
+                &ObligationCause::dummy_with_span(DUMMY_SP),
             ) else {
                 return Err(());
             };

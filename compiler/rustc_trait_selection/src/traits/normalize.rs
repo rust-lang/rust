@@ -82,7 +82,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 .normalize(value, param_env, cause)
                 .into_value_registering_obligations(&self, &mut *fulfill_cx);
             let errors = fulfill_cx.evaluate_obligations_error_on_ambiguity(&self);
-            let value = self.resolve_vars_if_possible(value);
+            let value = self.deeply_resolve_ignoring_regions(value);
             match errors {
                 TraitErrors::NoErrors => Ok(value),
                 TraitErrors::HasErrors(errors) => {

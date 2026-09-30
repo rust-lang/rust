@@ -18,6 +18,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, MacroKinds};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::ObligationCause;
 use rustc_metadata::creader::CStore;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypingMode};
 use rustc_span::symbol::kw;
@@ -420,8 +422,11 @@ fn impl_self_ty(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Ty<'_> {
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ty = tcx.type_of(impl_def_id);
     infcx
-        .at(&ObligationCause::dummy(), tcx.param_env(impl_def_id))
-        .query_normalize(ty::Binder::dummy(ty.instantiate_identity().skip_norm_wip()))
+        .query_normalize(
+            ty::Binder::dummy(ty.instantiate_identity().skip_norm_wip()),
+            tcx.param_env(impl_def_id),
+            ObligationCause::dummy(),
+        )
         .map(|resolved| infcx.deeply_resolve_ignoring_regions(resolved.value).skip_binder())
         .unwrap_or(ty.skip_binder())
 }
@@ -514,7 +519,9 @@ fn generate_item_def_id_path(
 
     // No need to try to infer the actual parent item if it's not an associated item from the `impl`
     // block.
-    if def_id != original_def_id && matches!(tcx.def_kind(def_id), DefKind::Impl { .. }) {
+    if def_id != original_def_id
+        && let DefKind::Impl { of_trait } = tcx.def_kind(def_id)
+    {
         let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
         let ty = tcx.type_of(def_id);
         let ty = infcx
@@ -523,7 +530,7 @@ fn generate_item_def_id_path(
                 tcx.param_env(def_id),
                 ObligationCause::dummy(),
             )
-            .map(|resolved| infcx.resolve_vars_if_possible(resolved.value).skip_binder())
+            .map(|resolved| infcx.deeply_resolve_ignoring_regions(resolved.value).skip_binder())
             .unwrap_or(ty.skip_binder());
         if let Some(new_def_id) = ty.ty_adt_def().map(|adt| adt.did()) {
             def_id = new_def_id;

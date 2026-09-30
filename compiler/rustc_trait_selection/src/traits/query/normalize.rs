@@ -19,10 +19,7 @@ use crate::error_reporting::traits::OverflowCause;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::normalize::needs_normalization;
-use crate::traits::{
-    BoundVarReplacer, FulfillmentError, FulfillmentErrorCode, Normalized, ObligationCause,
-    PlaceholderReplacer,
-};
+use crate::traits::{BoundVarReplacer, Normalized, ObligationCause, PlaceholderReplacer};
 
 #[extension(pub trait QueryNormalizeExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
@@ -80,13 +77,11 @@ impl<'tcx> InferCtxt<'tcx> {
         };
 
         if self.next_trait_solver() {
-            match crate::solve::deeply_normalize_with_skipped_universes::<_, ScrubbedTraitError<'tcx>>(
-                &self,
-                Unnormalized::new_wip(value),
-                universes,
-                param_env,
-                &cause,
-            ) {
+            match crate::solve::deeply_normalize_with_skipped_universes::<
+                _,
+                rustc_infer::traits::ScrubbedTraitError<'tcx>,
+            >(&self, Unnormalized::new_wip(value), universes, param_env, &cause)
+            {
                 Ok(value) => {
                     return Ok(Normalized { value, obligations: PredicateObligations::new() });
                 }
