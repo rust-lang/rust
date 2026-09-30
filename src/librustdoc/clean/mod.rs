@@ -34,16 +34,15 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::mem;
 
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{AttributeKind, DocAttribute, DocInline, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::codes::*;
 use rustc_errors::{FatalError, struct_span_code_err};
-use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::attrs::{AttributeKind, DocAttribute, DocInline};
-use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
+use rustc_hir::def::{CtorKind, DefKind, MacroKinds, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{PredicateOrigin, find_attr};
+use rustc_hir::{self as hir, HirId, PredicateOrigin};
 use rustc_hir_analysis::{lower_const_arg_for_rustdoc, lower_ty};
 use rustc_middle::middle::resolve::Reexport;
 use rustc_middle::middle::resolve_bound_vars as rbv;
@@ -64,6 +63,14 @@ use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 use crate::visit_ast;
 
+#[derive(Copy, Clone, Debug)]
+enum ImportLowerMode {
+    Everything,
+    GlobsOnly,
+    NoGlobs,
+}
+
+#[instrument(level = "trace", skip(cx))]
 pub(crate) fn clean_doc_module<'tcx>(
     doc: &visit_ast::Module<'tcx>,
     cx: &mut DocContext<'tcx>,
@@ -101,9 +108,6 @@ pub(crate) fn clean_doc_module<'tcx>(
     items.extend(doc.items.values().flat_map(
         |visit_ast::ItemEntry { item, renamed, import_ids }| {
             // First, lower everything other than glob imports.
-            if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
-                return Vec::new();
-            }
             let v = clean_maybe_renamed_item(cx, item, *renamed, import_ids);
             for item in &v {
                 if let Some(name) = item.name
@@ -119,18 +123,26 @@ pub(crate) fn clean_doc_module<'tcx>(
         |((_, renamed), visit_ast::InlinedForeign { res, import_id })| {
             let Some(def_id) = res.opt_def_id() else { return Vec::new() };
             let name = renamed.unwrap_or_else(|| cx.tcx.item_name(def_id));
-            let import = cx.tcx.hir_expect_item(*import_id);
-            match import.kind {
-                hir::ItemKind::Use(path, kind) => {
-                    let hir::UsePath { segments, span, .. } = *path;
-                    let path = hir::Path { segments, res: *res, span };
-                    clean_use_statement_inner(
-                        import,
+            let import = cx.tcx.hir_node_by_def_id(*import_id);
+            match import {
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Use(tree), .. })
+                | hir::Node::NestedUseTree(tree) => {
+                    let hir::UsePath { segments, span, .. } = *tree.prefix;
+                    let path = hir::UsePath {
+                        segments,
+                        res: PerNS { value_ns: Some(*res), type_ns: None, macro_ns: None },
+                        span,
+                    };
+                    clean_use_statement(
+                        *import_id,
+                        cx.tcx.local_def_id_to_hir_id(*import_id),
+                        tree.prefix.span,
                         Some(name),
                         &path,
-                        kind,
+                        tree.kind,
                         cx,
                         &mut Default::default(),
+                        ImportLowerMode::Everything,
                     )
                 }
                 _ => unreachable!(),
@@ -140,8 +152,18 @@ pub(crate) fn clean_doc_module<'tcx>(
     items.extend(doc.items.values().flat_map(
         |visit_ast::ItemEntry { item, renamed, import_ids: _ }| {
             // Now we actually lower the imports, skipping everything else.
-            if let hir::ItemKind::Use(path, hir::UseKind::Glob) = item.kind {
-                clean_use_statement(item, *renamed, path, hir::UseKind::Glob, cx, &mut inserted)
+            if let hir::ItemKind::Use(tree) = item.kind {
+                clean_use_statement(
+                    item.owner_id.def_id,
+                    item.hir_id(),
+                    item.span,
+                    *renamed,
+                    tree.prefix,
+                    tree.kind,
+                    cx,
+                    &mut inserted,
+                    ImportLowerMode::GlobsOnly,
+                )
             } else {
                 // skip everything else
                 Vec::new()
@@ -178,10 +200,10 @@ pub(crate) fn clean_doc_module<'tcx>(
 }
 
 fn is_glob_import(tcx: TyCtxt<'_>, import_id: LocalDefId) -> bool {
-    if let hir::Node::Item(item) = tcx.hir_node_by_def_id(import_id)
-        && let hir::ItemKind::Use(_, use_kind) = item.kind
+    if let hir::Node::Item(hir::Item { kind: hir::ItemKind::Use(tree), .. })
+    | hir::Node::NestedUseTree(tree) = tcx.hir_node_by_def_id(import_id)
     {
-        use_kind == hir::UseKind::Glob
+        matches!(tree.kind, hir::UseKind::Glob)
     } else {
         false
     }
@@ -1099,7 +1121,7 @@ fn clean_fn_or_proc_macro<'tcx>(
 /// This is needed to make it more "readable" when documenting functions using
 /// `rustc_legacy_const_generics`. More information in
 /// <https://github.com/rust-lang/rust/issues/83167>.
-fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attribute]) {
+fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[rustc_attr_ir::Attribute]) {
     let Some(indexes) = find_attr!(attrs, RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes)
     else {
         return;
@@ -1679,10 +1701,32 @@ fn first_non_private<'tcx>(
             'reexps: for reexp in child.reexport_chain.iter() {
                 if let Some(use_def_id) = reexp.id()
                     && let Some(local_use_def_id) = use_def_id.as_local()
-                    && let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(local_use_def_id)
-                    && let hir::ItemKind::Use(path, hir::UseKind::Single(_)) = item.kind
+                    && let hir::Node::Item(hir::Item { kind: hir::ItemKind::Use(tree), .. })
+                    | hir::Node::NestedUseTree(tree) =
+                        cx.tcx.hir_node_by_def_id(local_use_def_id)
+                    && let hir::UseKind::Single(_) = tree.kind
                 {
-                    for res in path.res.present_items() {
+                    let mut segments = tree.prefix.segments.to_vec();
+                    let mut span = tree.prefix.span;
+                    let mut parent = cx.tcx.local_parent(local_use_def_id);
+                    loop {
+                        match cx.tcx.hir_node_by_def_id(parent) {
+                            hir::Node::Item(hir::Item {
+                                kind: hir::ItemKind::Use(tree), ..
+                            }) => {
+                                span = tree.prefix.span.to(span);
+                                segments.splice(0..0, tree.prefix.segments.iter().copied());
+                                break;
+                            }
+                            hir::Node::NestedUseTree(tree) => {
+                                span = tree.prefix.span.to(span);
+                                segments.splice(0..0, tree.prefix.segments.iter().copied());
+                                parent = cx.tcx.local_parent(local_use_def_id);
+                            }
+                            _ => break,
+                        }
+                    }
+                    for res in tree.prefix.res.present_items() {
                         if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
                             continue;
                         }
@@ -1695,7 +1739,7 @@ fn first_non_private<'tcx>(
                         {
                             break 'reexps;
                         }
-                        last_path_res = Some((path, res));
+                        last_path_res = Some((segments, span, res));
                         continue 'reexps;
                     }
                 }
@@ -1706,13 +1750,8 @@ fn first_non_private<'tcx>(
                 //
                 // 1. We found a public reexport.
                 // 2. We didn't find a public reexport so it's the "end type" path.
-                if let Some((new_path, _)) = last_path_res {
-                    return Some(first_non_private_clean_path(
-                        cx,
-                        path,
-                        new_path.segments,
-                        new_path.span,
-                    ));
+                if let Some((segments, span, _)) = last_path_res {
+                    return Some(first_non_private_clean_path(cx, path, &segments, span));
                 }
                 // If `last_path_res` is `None`, it can mean two things:
                 //
@@ -1888,10 +1927,10 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Typ
 
     match ty.kind {
         TyKind::Never => Primitive(PrimitiveType::Never),
-        TyKind::Ptr(ref m) => RawPointer(m.mutbl, Box::new(clean_ty(m.ty, cx))),
-        TyKind::Ref(l, ref m) => {
+        TyKind::Ptr(inner_ty, mutbl) => RawPointer(mutbl, Box::new(clean_ty(inner_ty, cx))),
+        TyKind::Ref(l, inner_ty, mutbl) => {
             let lifetime = if l.is_anonymous() { None } else { Some(clean_lifetime(l, cx)) };
-            BorrowedRef { lifetime, mutability: m.mutbl, type_: Box::new(clean_ty(m.ty, cx)) }
+            BorrowedRef { lifetime, mutability: mutbl, type_: Box::new(clean_ty(inner_ty, cx)) }
         }
         TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
         TyKind::Pat(inner_ty, pat) => {
@@ -2743,12 +2782,20 @@ fn clean_unsafe_binder_ty<'tcx>(
     UnsafeBinderTy { generic_params, ty }
 }
 
+#[instrument(level = "trace", skip(tcx), ret)]
 pub(crate) fn reexport_chain(
     tcx: TyCtxt<'_>,
     import_def_id: LocalDefId,
     target_def_id: DefId,
 ) -> &[Reexport] {
-    for child in tcx.module_children_local(tcx.local_parent(import_def_id)) {
+    let mut module_id = import_def_id;
+    loop {
+        module_id = tcx.local_parent(module_id);
+        if !matches!(tcx.def_kind(module_id), DefKind::Use) {
+            break;
+        }
+    }
+    for child in tcx.module_children_local(module_id) {
         if child.res.opt_def_id() == Some(target_def_id)
             && child.reexport_chain.first().and_then(|r| r.id()) == Some(import_def_id.to_def_id())
         {
@@ -2764,7 +2811,7 @@ fn get_all_import_attributes<'hir>(
     import_def_id: LocalDefId,
     target_def_id: DefId,
     is_inline: bool,
-) -> Vec<(Cow<'hir, hir::Attribute>, Option<DefId>)> {
+) -> Vec<(Cow<'hir, rustc_attr_ir::Attribute>, Option<DefId>)> {
     let mut attrs = Vec::new();
     let mut first = true;
     for def_id in reexport_chain(cx.tcx, import_def_id, target_def_id)
@@ -2810,17 +2857,17 @@ fn get_all_import_attributes<'hir>(
 /// * `doc(no_inline)`
 /// * `doc(hidden)`
 fn add_without_unwanted_attributes<'hir>(
-    attrs: &mut Vec<(Cow<'hir, hir::Attribute>, Option<DefId>)>,
-    new_attrs: &'hir [hir::Attribute],
+    attrs: &mut Vec<(Cow<'hir, rustc_attr_ir::Attribute>, Option<DefId>)>,
+    new_attrs: &'hir [rustc_attr_ir::Attribute],
     is_inline: bool,
     import_parent: Option<DefId>,
 ) {
     for attr in new_attrs {
         match attr {
-            hir::Attribute::Parsed(AttributeKind::DocComment { .. }) => {
+            rustc_attr_ir::Attribute::Parsed(AttributeKind::DocComment { .. }) => {
                 attrs.push((Cow::Borrowed(attr), import_parent));
             }
-            hir::Attribute::Parsed(AttributeKind::Doc(d)) => {
+            rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d)) => {
                 // Remove attributes from `normal` that should not be inherited by `use` re-export.
                 let DocAttribute {
                     first_span: _,
@@ -2855,13 +2902,15 @@ fn add_without_unwanted_attributes<'hir>(
                 }
                 attr.aliases = aliases.clone();
                 attrs.push((
-                    Cow::Owned(hir::Attribute::Parsed(AttributeKind::Doc(Box::new(attr)))),
+                    Cow::Owned(rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(Box::new(
+                        attr,
+                    )))),
                     import_parent,
                 ));
             }
 
             // We discard `#[cfg(...)]` attributes unless we're inlining
-            hir::Attribute::Parsed(AttributeKind::CfgTrace(..)) if !is_inline => {}
+            rustc_attr_ir::Attribute::Parsed(AttributeKind::CfgTrace(..)) if !is_inline => {}
             // We keep all other attributes
             _ => {
                 attrs.push((Cow::Borrowed(attr), import_parent));
@@ -2892,14 +2941,17 @@ fn clean_maybe_renamed_item<'tcx>(
                 // generate an impl placeholder and not a "real" impl item.
                 return clean_impl(impl_, item.owner_id.def_id, cx, renamed.is_some());
             }
-            ItemKind::Use(path, kind) => {
+            ItemKind::Use(tree) => {
                 return clean_use_statement(
-                    item,
+                    item.owner_id.def_id,
+                    item.hir_id(),
+                    item.span,
                     get_name(cx.tcx, item, renamed),
-                    path,
-                    kind,
+                    tree.prefix,
+                    tree.kind,
                     cx,
                     &mut FxHashSet::default(),
+                    ImportLowerMode::NoGlobs,
                 );
             }
             _ => {}
@@ -3119,7 +3171,7 @@ fn clean_extern_crate<'tcx>(
         && attrs.iter().any(|a| {
             matches!(
             a,
-            hir::Attribute::Parsed(AttributeKind::Doc(d))
+            rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d))
             if d.inline.first().is_some_and(|(i, _)| *i == DocInline::Inline))
         })
         && !cx.is_json_output();
@@ -3147,27 +3199,76 @@ fn clean_extern_crate<'tcx>(
 }
 
 fn clean_use_statement<'tcx>(
-    import: &hir::Item<'tcx>,
+    import_def_id: LocalDefId,
+    import_hir_id: HirId,
+    import_span: rustc_span::Span,
     name: Option<Symbol>,
-    path: &hir::UsePath<'tcx>,
-    kind: hir::UseKind,
+    path: &hir::UsePath<'_>,
+    kind: hir::UseKind<'tcx>,
     cx: &mut DocContext<'tcx>,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
+    mode: ImportLowerMode,
 ) -> Vec<Item> {
-    let mut items = Vec::new();
-    let hir::UsePath { segments, ref res, span } = *path;
-    for res in res.present_items() {
-        let path = hir::Path { segments, res, span };
-        items.append(&mut clean_use_statement_inner(import, name, &path, kind, cx, inlined_names));
-    }
-    items
+    let name = match (kind, mode) {
+        (hir::UseKind::Single(n), ImportLowerMode::Everything | ImportLowerMode::NoGlobs) => {
+            name.or(Some(n.name))
+        }
+        (hir::UseKind::Glob, ImportLowerMode::NoGlobs)
+        | (hir::UseKind::Single(_), ImportLowerMode::GlobsOnly) => return vec![],
+        (hir::UseKind::Glob, ImportLowerMode::Everything | ImportLowerMode::GlobsOnly) => name,
+        (hir::UseKind::Nested { items }, _) => {
+            let mut all = vec![];
+            for (tree, hir_id, def_id) in items {
+                let mut segments = path.segments.to_vec();
+                segments.extend(tree.prefix.segments.iter());
+                if segments.last().unwrap().ident.name == kw::SelfLower {
+                    segments.pop();
+                }
+                let path = hir::UsePath {
+                    segments: &segments,
+                    res: tree.prefix.res,
+                    span: path.span.to(tree.prefix.span),
+                };
+                all.append(&mut clean_use_statement(
+                    *def_id,
+                    *hir_id,
+                    tree.prefix.span,
+                    None,
+                    &path,
+                    tree.kind,
+                    cx,
+                    inlined_names,
+                    mode,
+                ));
+            }
+            return all;
+        }
+    };
+    path.res
+        .present_items()
+        .flat_map(|res| {
+            let path = hir::Path { span: path.span, res, segments: path.segments };
+            clean_use_statement_leaf(
+                import_def_id,
+                import_hir_id,
+                import_span,
+                name,
+                &path,
+                kind,
+                cx,
+                inlined_names,
+            )
+        })
+        .collect()
 }
 
-fn clean_use_statement_inner<'tcx>(
-    import: &hir::Item<'tcx>,
+fn clean_use_statement_leaf<'tcx>(
+    import_id: LocalDefId,
+    import_hir_id: HirId,
+    import_span: rustc_span::Span,
     name: Option<Symbol>,
     path: &hir::Path<'_>,
-    kind: hir::UseKind,
+    kind: hir::UseKind<'tcx>,
     cx: &mut DocContext<'tcx>,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
 ) -> Vec<Item> {
@@ -3177,20 +3278,20 @@ fn clean_use_statement_inner<'tcx>(
     // We need this comparison because some imports (for std types for example)
     // are "inserted" as well but directly by the compiler and they should not be
     // taken into account.
-    if import.span.ctxt().outer_expn_data().kind == ExpnKind::AstPass(AstPass::StdImports) {
+    if import_span.ctxt().outer_expn_data().kind == ExpnKind::AstPass(AstPass::StdImports) {
         return Vec::new();
     }
 
-    let visibility = cx.tcx.visibility(import.owner_id);
-    let attrs = cx.tcx.hir_attrs(import.hir_id());
+    let visibility = cx.tcx.visibility(import_id);
+    let attrs = cx.tcx.hir_attrs(import_hir_id);
     let inline_attr = find_attr!(
         attrs,
         Doc(d) if d.inline.first().is_some_and(|(i, _)| *i == DocInline::Inline) => d
     )
     .and_then(|d| d.inline.first());
     let pub_underscore = visibility.is_public() && name == Some(kw::Underscore);
-    let current_mod = cx.tcx.parent_module_from_def_id(import.owner_id.def_id);
-    let import_def_id = import.owner_id.def_id;
+    let current_mod = cx.tcx.parent_module_from_def_id(import_id);
+    let import_def_id = import_id;
 
     // The parent of the module in which this import resides. This
     // is the same as `current_mod` if that's already the top
@@ -3212,7 +3313,7 @@ fn clean_use_statement_inner<'tcx>(
             E0780,
             "anonymous imports cannot be inlined"
         )
-        .with_span_label(import.span, "anonymous import")
+        .with_span_label(import_span, "anonymous import")
         .emit();
     }
 
@@ -3225,14 +3326,14 @@ fn clean_use_statement_inner<'tcx>(
         || pub_underscore
         || attrs.iter().any(|a| matches!(
             a,
-            hir::Attribute::Parsed(AttributeKind::Doc(d))
+            rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d))
             if d.hidden.is_some() || d.inline.first().is_some_and(|(i, _)| *i == DocInline::NoInline)
         ));
 
     // Also check whether imports were asked to be inlined, in case we're trying to re-export a
     // crate in Rust 2018+
     let path = clean_path(path, cx);
-    let inner = if kind == hir::UseKind::Glob {
+    let inner = if matches!(kind, hir::UseKind::Glob) {
         if !denied {
             let mut visited = DefIdSet::default();
             if let Some(items) = inline::try_inline_glob(
@@ -3241,7 +3342,8 @@ fn clean_use_statement_inner<'tcx>(
                 current_mod,
                 &mut visited,
                 inlined_names,
-                import,
+                import_id,
+                import_hir_id,
             ) {
                 return items;
             }
@@ -3249,6 +3351,8 @@ fn clean_use_statement_inner<'tcx>(
         Import::new_glob(resolve_use_source(cx, path), true)
     } else {
         let name = name.unwrap();
+        let name = if name == kw::SelfLower { path.last() } else { name };
+
         if inline_attr.is_none()
             && let Res::Def(DefKind::Mod, did) = path.res
             && !did.is_local()

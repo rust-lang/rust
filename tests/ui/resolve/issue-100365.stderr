@@ -40,6 +40,8 @@ LL +     let _ = Into::<()>::into;
 error[E0423]: cannot find value `Iterator` in module `::std::iter`
   --> $DIR/issue-100365.rs:17:22
    |
+LL | macro_rules! Trait {
+LL |     () => {
 LL |         ::std::iter::Iterator
    |                      ^^^^^^^^ not found in `::std::iter`
 ...
@@ -47,11 +49,12 @@ LL |     Trait!().map(std::convert::identity); // no `help` here!
    |     -------- in this macro invocation
    |
    = note: a trait named `::std::iter::Iterator` exists in another namespace
-   = note: this error originates in the macro `Trait` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0423]: cannot find value `Iterator` in module `::std::iter`
   --> $DIR/issue-100365.rs:17:22
    |
+LL | macro_rules! Trait {
+LL |     () => {
 LL |         ::std::iter::Iterator
    |                      ^^^^^^^^ not found in `::std::iter`
 ...
@@ -59,11 +62,12 @@ LL |     Trait!().map; // no `help` here!
    |     -------- in this macro invocation
    |
    = note: a trait named `::std::iter::Iterator` exists in another namespace
-   = note: this error originates in the macro `Trait` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0423]: cannot find value `Into` in this scope
   --> $DIR/issue-100365.rs:25:9
    |
+LL | macro_rules! create {
+LL |     () => {
 LL |         Into::<String>.into("")
    |         ^^^^
 ...
@@ -71,7 +75,6 @@ LL |     let _ = create!();
    |             --------- in this macro invocation
    |
    = note: a trait named `Into` exists in another namespace
-   = note: this error originates in the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
 LL -         Into::<String>.into("")

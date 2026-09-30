@@ -3,14 +3,13 @@ use std::mem;
 use std::ops::Bound;
 
 use ast::Label;
-use rustc_ast as ast;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::util::classify::{self, TrailingBrace};
 use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
-    AttrStyle, AttrVec, Block, BlockCheckMode, DUMMY_NODE_ID, Expr, ExprKind, HasAttrs, Local,
-    LocalKind, MacCall, MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind,
+    self as ast, AttrStyle, AttrVec, Block, BlockCheckMode, DUMMY_NODE_ID, Expr, ExprKind,
+    HasAttrs, Local, LocalKind, MacCall, MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind,
 };
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
@@ -517,7 +516,7 @@ impl<'a> Parser<'a> {
             _ => self.eat(exp!(Eq)),
         };
 
-        Ok(if eq_consumed || eq_optional { Some(self.parse_expr()?) } else { None })
+        Ok(if eq_consumed || eq_optional { Some(self.parse_expr_in_let()?) } else { None })
     }
 
     /// Parses a block. No inner attributes are allowed.
@@ -796,7 +795,7 @@ impl<'a> Parser<'a> {
                         }
                     }
 
-                    let guar = err.emit();
+                    let guar = err.emit_err();
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
                     self.mk_stmt_err(self.token.span, guar)
                 }
@@ -1036,7 +1035,7 @@ impl<'a> Parser<'a> {
                                 && self.look_ahead(1, |t| {
                                     t.is_metavar_block()
                                         || t.kind == token::OpenBrace
-                                        || t.is_non_raw_ident_where(|ident| {
+                                        || t.non_raw_ident().is_some_and(|ident| {
                                             matches!(ident.name, kw::For | kw::Loop | kw::While)
                                         })
                                 })
@@ -1073,7 +1072,7 @@ impl<'a> Parser<'a> {
                             } else {
                                 res.unwrap_or_else(|mut e| {
                                     self.recover_missing_dot(&mut e);
-                                    let guar = e.emit();
+                                    let guar = e.emit_err();
                                     self.recover_stmt();
                                     guar
                                 })

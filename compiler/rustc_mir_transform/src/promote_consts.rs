@@ -23,6 +23,7 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{self, GenericArgs, List, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{Span, Spanned, bug, span_bug};
 use tracing::{debug, instrument};
@@ -756,7 +757,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(span),
                 kind: TerminatorKind::Return,
-                attributes: ThinVec::new(),
+                loop_hint_attrs: ThinVec::new(),
             }),
             false,
         ))
@@ -845,7 +846,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 Terminator {
                     source_info: terminator.source_info,
                     kind: mem::replace(&mut terminator.kind, TerminatorKind::Goto { target }),
-                    attributes: ThinVec::new(),
+                    loop_hint_attrs: ThinVec::new(),
                 }
             };
 

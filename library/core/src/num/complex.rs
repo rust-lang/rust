@@ -1,4 +1,5 @@
-use crate::ops::{Add, Neg, Sub};
+use crate::num::imp::libm::complex::*;
+use crate::ops::{Add, Div, Mul, Neg, Sub};
 
 /// A complex number.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -91,3 +92,54 @@ impl<T: Sub<Output = T>> Sub<T> for Complex<T> {
         Complex::new(self.re - rhs, self.im)
     }
 }
+
+macro_rules! impl_complex_mul_div {
+    ($ty:ty, $mul:ident, $div:ident) => {
+        #[unstable(feature = "complex_numbers", issue = "154023")]
+        impl Mul for Complex<$ty> {
+            type Output = Self;
+
+            #[inline]
+            fn mul(self, rhs: Self) -> Self::Output {
+                let Complex { re: a, im: b } = self;
+                let Complex { re: c, im: d } = rhs;
+
+                let ac = a * c;
+                let bd = b * d;
+                let ad = a * d;
+                let bc = b * c;
+
+                let z = Complex::new(ac - bd, ad + bc);
+
+                // Only call the libcall when both components are NaN.
+                //
+                // The naive algorithm would return NaN + NaNi for an input like
+                // (1 + 0i) * (inf + infi). The libcall instead returns inf + infi.
+                //
+                // We duplicate the fast path here so that it can be inlined. We use a libcall
+                // for the NaN correction to reduce the size of `core`.
+                if z.re.is_nan() && z.im.is_nan() {
+                    crate::hint::cold_path();
+                    $mul(a, b, c, d)
+                } else {
+                    z
+                }
+            }
+        }
+
+        #[unstable(feature = "complex_numbers", issue = "154023")]
+        impl Div for Complex<$ty> {
+            type Output = Self;
+
+            #[inline]
+            fn div(self, rhs: Self) -> Self::Output {
+                $div(self.re, self.im, rhs.re, rhs.im)
+            }
+        }
+    };
+}
+
+impl_complex_mul_div!(f16, __rust_mulhc3, __rust_divhc3);
+impl_complex_mul_div!(f32, __mulsc3, __divsc3);
+impl_complex_mul_div!(f64, __muldc3, __divdc3);
+impl_complex_mul_div!(f128, __rust_multc3, __rust_divtc3);

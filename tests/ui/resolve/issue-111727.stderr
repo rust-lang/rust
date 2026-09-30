@@ -2,7 +2,7 @@ error[E0782]: expected a type, found a trait
   --> $DIR/issue-111727.rs:4:5
    |
 LL |     std::any::Any::create();
-   |     ^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^  ------ not an associated item of trait `Any`, so `Any` is interpreted as a type
    |
 help: you can add the `dyn` keyword if you want a trait object
    |

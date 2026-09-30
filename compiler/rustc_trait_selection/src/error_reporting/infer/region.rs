@@ -72,10 +72,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     RegionResolutionError::ConcreteFailure(origin, sub, sup) => {
                         if sub.is_placeholder() || sup.is_placeholder() {
                             self.report_placeholder_failure(generic_param_scope, origin, sub, sup)
-                                .emit()
+                                .emit_err()
                         } else {
                             self.report_concrete_failure(generic_param_scope, origin, sub, sup)
-                                .emit()
+                                .emit_err()
                         }
                     }
 
@@ -104,7 +104,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 sub_r,
                                 sup_r,
                             )
-                            .emit()
+                            .emit_err()
                         } else if sup_r.is_placeholder() {
                             self.report_placeholder_failure(
                                 generic_param_scope,
@@ -112,7 +112,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 sub_r,
                                 sup_r,
                             )
-                            .emit()
+                            .emit_err()
                         } else {
                             self.report_sub_sup_conflict(
                                 generic_param_scope,
@@ -147,7 +147,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             sub_r,
                             sup_r,
                         )
-                        .emit()
+                        .emit_err()
                     }
 
                     RegionResolutionError::CannotNormalize(clause, origin) => {
@@ -156,7 +156,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         self.tcx
                             .dcx()
                             .struct_span_err(origin.span(), format!("cannot normalize `{clause}`"))
-                            .emit()
+                            .emit_err()
                     }
                 }
             };
@@ -210,12 +210,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         // sort the errors by span, for better error message stability.
-        errors.sort_by_key(|u| match *u {
-            RegionResolutionError::ConcreteFailure(ref sro, _, _) => sro.span(),
-            RegionResolutionError::GenericBoundFailure(ref sro, _, _) => sro.span(),
-            RegionResolutionError::SubSupConflict(_, ref rvo, _, _, _, _, _) => rvo.span(),
-            RegionResolutionError::UpperBoundUniverseConflict(_, ref rvo, _, _, _) => rvo.span(),
-            RegionResolutionError::CannotNormalize(_, ref sro) => sro.span(),
+        errors.sort_by_key(|u| {
+            match *u {
+                RegionResolutionError::ConcreteFailure(ref sro, _, _) => sro.span(),
+                RegionResolutionError::GenericBoundFailure(ref sro, _, _) => sro.span(),
+                RegionResolutionError::SubSupConflict(_, ref rvo, _, _, _, _, _) => rvo.span(),
+                RegionResolutionError::UpperBoundUniverseConflict(_, ref rvo, _, _, _) => {
+                    rvo.span()
+                }
+                RegionResolutionError::CannotNormalize(_, ref sro) => sro.span(),
+            }
+            .lo_hi()
         });
         errors
     }
@@ -289,7 +294,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             SubregionOrigin::CheckAssociatedTypeBounds { ref parent, .. } => {
                 self.note_region_origin(err, parent);
             }
-            SubregionOrigin::AscribeUserTypeProvePredicate(span) => {
+            SubregionOrigin::AscribeUserTypeProvePredicate(span, _) => {
                 RegionOriginNote::Plain { span, msg: msg!("...so that the where clause holds") }
                     .add_to_diag(err);
             }
@@ -546,7 +551,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 err
             }
-            SubregionOrigin::AscribeUserTypeProvePredicate(span) => {
+            SubregionOrigin::AscribeUserTypeProvePredicate(span, _) => {
                 let instantiated = note_and_explain::RegionExplanation::new(
                     self.tcx,
                     generic_param_scope,
@@ -704,7 +709,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         sub: Region<'tcx>,
     ) -> ErrorGuaranteed {
         self.construct_generic_bound_failure(generic_param_scope, span, origin, bound_kind, sub)
-            .emit()
+            .emit_err()
     }
 
     pub fn construct_generic_bound_failure(
@@ -1051,7 +1056,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return if sub_region.is_error() | sup_region.is_error() {
                 err.delay_as_bug()
             } else {
-                err.emit()
+                err.emit_err()
             };
         }
 
@@ -1068,7 +1073,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
 
         self.note_region_origin(&mut err, &sub_origin);
-        if sub_region.is_error() | sup_region.is_error() { err.delay_as_bug() } else { err.emit() }
+        if sub_region.is_error() | sup_region.is_error() {
+            err.delay_as_bug()
+        } else {
+            err.emit_err()
+        }
     }
 
     fn report_inference_failure(&self, var_origin: RegionVariableOrigin<'tcx>) -> Diag<'_> {
@@ -1376,6 +1385,15 @@ fn suggest_precise_capturing<'tcx>(
         hir::GenericBound::Use(args, span) => Some((args, span)),
         _ => None,
     }) {
+        // '_ is an elision marker, not a lifetime name, so it cannot appear twice in a
+        // capture list. the branch for opaques with no use<..> yet already skips captured
+        // lifetimes; do the same here to avoid suggesting use<'_, '_>.
+        if args.iter().any(|arg| {
+            matches!(arg, hir::PreciseCapturingArg::Lifetime(lt) if lt.ident.name == new_lifetime)
+        }) {
+            return;
+        }
+
         let last_lifetime_span = args.iter().rev().find_map(|arg| match arg {
             hir::PreciseCapturingArg::Lifetime(lt) => Some(lt.ident.span),
             _ => None,

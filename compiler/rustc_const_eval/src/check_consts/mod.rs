@@ -4,9 +4,10 @@
 //! has interior mutability or needs to be dropped, as well as the visitor that emits errors when
 //! it finds operations that are invalid in a certain context.
 
+use rustc_attr_ir::find_attr;
 use rustc_errors::DiagCtxtHandle;
+use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, find_attr};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, PolyFnSig, TyCtxt};
 use rustc_span::{Symbol, bug};

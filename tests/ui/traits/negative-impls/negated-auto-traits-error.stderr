@@ -109,10 +109,10 @@ help: within `Outer2<dummy3::TestType>`, the trait `Send` is not implemented for
 LL |     struct TestType;
    |     ^^^^^^^^^^^^^^^
 note: required because it appears within the type `Outer2<dummy3::TestType>`
-  --> $DIR/negated-auto-traits-error.rs:12:8
+  --> $DIR/negated-auto-traits-error.rs:12:18
    |
 LL | struct Outer2<T>(T);
-   |        ^^^^^^    - required by this field
+   |                  ^ required by this field
    = note: required for `std::ptr::Unique<Outer2<dummy3::TestType>>` to implement `Send`
 note: required because it appears within the type `Box<Outer2<dummy3::TestType>>`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL

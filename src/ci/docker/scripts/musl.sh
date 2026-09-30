@@ -78,12 +78,14 @@ EOF
   # project, so we just apply them directly on top of the version we were distributing already. The
   # patches should be removed once we upgrade to musl >= 1.2.7.
   #
+  SCRIPT_DIR=$(cd -- "$(dirname -- "$0")" && pwd)
+  MUSL_PATCH_DIR="$SCRIPT_DIR"
   # Advisory: https://www.openwall.com/lists/oss-security/2026/04/09/19
   # Patches:  https://www.openwall.com/lists/musl/2026/04/03/2/1
-  patch -p1 -d $MUSL </build/musl-cve-2026-6042.diff
+  patch -p1 -d $MUSL <"$MUSL_PATCH_DIR/musl-cve-2026-6042.diff"
   # Advisory: https://www.openwall.com/lists/musl/2026/04/10/3
   # Patches:  https://www.openwall.com/lists/musl/2026/04/10/3/1
-  patch -p1 -d $MUSL </build/musl-cve-2026-40200.diff
+  patch -p1 -d $MUSL <"$MUSL_PATCH_DIR/musl-cve-2026-40200.diff"
 fi
 
 cd $MUSL

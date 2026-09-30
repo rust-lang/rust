@@ -333,7 +333,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for manual implementations of Iterator::find
+    /// Checks for manual implementations of `Iterator::find`
     ///
     /// ### Why is this bad?
     /// It doesn't affect performance, but using `find` is shorter and easier to read.

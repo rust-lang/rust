@@ -84,5 +84,29 @@ LL + #[must_use]
 LL | pub fn result_never_1() -> Result<i32, !> {
    |
 
-error: aborting due to 7 previous errors
+error: this function could have a `#[must_use]` attribute
+  --> tests/ui/must_use_candidates.rs:137:12
+   |
+LL |     pub fn pure(i: u8) -> u8 {
+   |            ^^^^
+   |
+help: add the attribute
+   |
+LL ~     #[must_use = "<REASON>"]
+LL ~     pub fn pure(i: u8) -> u8 {
+   |
+
+error: this function could have a `#[must_use]` attribute
+  --> tests/ui/must_use_candidates.rs:143:12
+   |
+LL |     pub fn reason_lint_allowed(i: u8) -> u8 {
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+help: add the attribute
+   |
+LL ~     #[must_use]
+LL ~     pub fn reason_lint_allowed(i: u8) -> u8 {
+   |
+
+error: aborting due to 9 previous errors
 

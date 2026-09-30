@@ -80,7 +80,6 @@ note: required by a bound in `e0658`
   --> $DIR/fn-trait-notation.rs:4:8
    |
 LL | fn e0658<F, G, H>(f: F, g: G, h: H) -> i32
-   |    ----- required by a bound in this function
 LL | where
 LL |     F: Fn<i32, Output = i32>,
    |        ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `e0658`

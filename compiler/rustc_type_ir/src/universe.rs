@@ -4,7 +4,7 @@ use crate::data_structures::HashSet;
 use crate::inherent::*;
 use crate::visit::TypeVisitableExt;
 use crate::{
-    ConstKind, InferCtxtLike, InferTy, Interner, Region, RegionKind, TyKind, TypeFoldable,
+    Const, ConstKind, InferCtxtLike, InferTy, Interner, Region, RegionKind, TyKind, TypeFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitor, UniverseIndex,
 };
 
@@ -130,7 +130,7 @@ impl<
         assert!(self.cache.insert(t), "we shouldn't visit {t:?} twice");
     }
 
-    fn visit_const(&mut self, c: I::Const) {
+    fn visit_const(&mut self, c: Const<I>) {
         if !Self::needs_visit(&c) {
             return;
         }

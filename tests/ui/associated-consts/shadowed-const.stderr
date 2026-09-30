@@ -1,6 +1,8 @@
 error: expected type, found constant
   --> $DIR/shadowed-const.rs:19:20
    |
+LL | trait Baz3 {
+LL |   const BAR: usize;
 LL |   const QUX: Self::BAR;
    |                    ^^^ unexpected constant
    |

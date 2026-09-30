@@ -8,7 +8,7 @@
 //! *another*, unrelated, anon const). This test checks that case, a directly-represented
 //! fake-anon-const directly containing another anon const.
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![allow(incomplete_features)]
 extern crate anon_const_def_id_on_const_arg_with_anon;
 fn main() {

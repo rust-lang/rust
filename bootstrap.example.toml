@@ -431,7 +431,7 @@
 #    "rust-analyzer",
 #    "rust-analyzer-proc-macro-srv",
 #    "analysis",
-#    "src",
+#    "rust-src",
 #    "wasm-component-ld",
 #    "miri", "cargo-miri" # for dev/nightly channels
 #]

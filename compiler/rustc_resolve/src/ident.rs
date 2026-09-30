@@ -10,7 +10,7 @@ use rustc_middle::middle::resolve::PartialRes;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
-use rustc_span::{Ident, Span, bug, kw, span_bug, sym};
+use rustc_span::{Ident, OrdSpan, Span, bug, kw, span_bug, sym};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -1393,7 +1393,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && let DeclKind::Import { import, .. } = binding.kind
             && matches!(import.kind, ImportKind::MacroExport)
         {
-            self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
+            self.macro_expanded_macro_export_errors
+                .insert((OrdSpan(path_span), OrdSpan(binding.span)));
         }
 
         self.record_use(ident, binding, used);
@@ -1505,6 +1506,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 use ResolutionError::*;
                 let mut res_err = None;
 
+                let suggest_closure =
+                    !ribs.iter().any(|rib| matches!(rib.kind, RibKind::AssocItem));
+
                 for rib in ribs {
                     match rib.kind {
                         RibKind::Normal
@@ -1524,7 +1528,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 // we want certain other resolution errors (namely those
                                 // emitted for `ConstantItemRibKind` below) to take
                                 // precedence.
-                                res_err = Some((span, CannotCaptureDynamicEnvironmentInFnItem));
+                                res_err = Some((
+                                    span,
+                                    CannotCaptureDynamicEnvironmentInFnItem { suggest_closure },
+                                ));
                             }
                         }
                         RibKind::ConstantItem(_, item, requires_type) => {
@@ -1652,7 +1659,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         }
                                         NoConstantGenericsReason::NonTrivialConstArg => {
                                             ResolutionError::ParamInNonTrivialAnonConst {
-                                                is_gca: self.features.generic_const_args(),
+                                                is_gca_const_items: self.features.gca_const_items(),
                                                 name: rib_ident.name,
                                                 param_kind: ParamKindInNonTrivialAnonConst::Type,
                                             }
@@ -1744,7 +1751,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         }
                                         NoConstantGenericsReason::NonTrivialConstArg => {
                                             ResolutionError::ParamInNonTrivialAnonConst {
-                                                is_gca: self.features.generic_const_args(),
+                                                is_gca_const_items: self.features.gca_const_items(),
                                                 name: rib_ident.name,
                                                 param_kind: ParamKindInNonTrivialAnonConst::Const {
                                                     name: rib_ident.name,

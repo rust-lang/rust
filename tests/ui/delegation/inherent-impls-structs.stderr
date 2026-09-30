@@ -27,6 +27,7 @@ LL |     reuse S::<(), 1>::foo_static::<'static, _, _> as foo_static_4;
 note: required by a const generic parameter in `S::<A, C>::foo_static`
   --> $DIR/inherent-impls-structs.rs:8:34
    |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
 LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
    |                                  ^^^^^^^^^^^^^ required by this const generic parameter in `S::<A, C>::foo_static`
 

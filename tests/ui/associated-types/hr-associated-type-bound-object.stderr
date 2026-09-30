@@ -8,7 +8,6 @@ note: required by a bound in `X`
   --> $DIR/hr-associated-type-bound-object.rs:3:33
    |
 LL | trait X<'a>
-   |       - required by a bound in this trait
 LL | where
 LL |     for<'b> <Self as X<'b>>::U: Clone,
    |                                 ^^^^^ required by this bound in `X`
@@ -26,11 +25,13 @@ LL |     <<T as X<'_>>::U>::clone(x);
 note: required by a bound in `X::U`
   --> $DIR/hr-associated-type-bound-object.rs:3:33
    |
+LL | trait X<'a>
+LL | where
 LL |     for<'b> <Self as X<'b>>::U: Clone,
    |                                 ^^^^^ required by this bound in `X::U`
 LL | {
 LL |     type U: ?Sized;
-   |          - required by a bound in this associated type
+   |
 help: consider further restricting the associated type
    |
 LL | fn f<'a, T: X<'a> + ?Sized>(x: &<T as X<'a>>::U) where for<'b> <T as X<'b>>::U: Clone {
@@ -57,7 +58,6 @@ note: required by a bound in `X`
   --> $DIR/hr-associated-type-bound-object.rs:3:33
    |
 LL | trait X<'a>
-   |       - required by a bound in this trait
 LL | where
 LL |     for<'b> <Self as X<'b>>::U: Clone,
    |                                 ^^^^^ required by this bound in `X`
@@ -76,7 +76,6 @@ note: required by a bound in `X`
   --> $DIR/hr-associated-type-bound-object.rs:3:33
    |
 LL | trait X<'a>
-   |       - required by a bound in this trait
 LL | where
 LL |     for<'b> <Self as X<'b>>::U: Clone,
    |                                 ^^^^^ required by this bound in `X`

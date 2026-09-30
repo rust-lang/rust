@@ -3,7 +3,7 @@
 // Check that debug information exists for structures containing loops (cyclic references).
 // Previously it may incorrectly prune member information during recursive type inference check.
 
-// CHECK: !DICompositeType(tag: DW_TAG_structure_type, name: "Arc<debuginfo_cyclic_structure::Inner<alloc::sync::Arc<debuginfo_cyclic_structure::Handle{{.*}}elements: ![[FIELDS:[0-9]+]]
+// CHECK: !DICompositeType(tag: DW_TAG_structure_type, name: "Arc<debuginfo_cyclic_structure::Inner<alloc::rcs::arc::Arc<debuginfo_cyclic_structure::Handle{{.*}}elements: ![[FIELDS:[0-9]+]]
 // CHECK: ![[FIELDS]] = !{!{{.*}}}
 // CHECK-NOT: ![[FIELDS]] = !{}
 

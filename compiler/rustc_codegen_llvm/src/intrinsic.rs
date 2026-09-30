@@ -6,6 +6,7 @@ use rustc_abi::{
     AddressSpace, Align, BackendRepr, CVariadicStatus, Float, HasDataLayout, NumScalableVectors,
     Primitive, Size, WrappingRange,
 };
+use rustc_attr_ir::find_attr;
 use rustc_codegen_ssa::RetagInfo;
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -16,9 +17,9 @@ use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_hir::find_attr;
 use rustc_lint_defs::builtin::DEPRECATED_LLVM_INTRINSIC;
 use rustc_middle::mir::BinOp;
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::offload_meta::OffloadMetadata;
 use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
@@ -191,7 +192,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let simple = call_simple_intrinsic(self, name, args);
         let llval = match name {
             _ if simple.is_some() => simple.unwrap(),
-            // Need at least LLVM 22 for `min/maximumnum` to not crash LLVM.
             sym::minimum_number_nsz_f16
             | sym::minimum_number_nsz_f32
             | sym::minimum_number_nsz_f64
@@ -199,9 +199,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::maximum_number_nsz_f16
             | sym::maximum_number_nsz_f32
             | sym::maximum_number_nsz_f64
-            | sym::maximum_number_nsz_f128
-                if llvm_version >= (22, 0, 0) =>
-            {
+            | sym::maximum_number_nsz_f128 => {
                 let intrinsic_name = if name.as_str().starts_with("min") {
                     "llvm.minimumnum"
                 } else {
@@ -337,6 +335,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     Primitive::Float(Float::F16) => {
                         bug!("the va_arg intrinsic does not support `f16`")
                     }
+                    Primitive::Float(Float::F16B) => {
+                        bug!("the va_arg intrinsic does not support `f16b`")
+                    }
                     Primitive::Float(Float::F32) => {
                         // c_double is actually f32 on avr.
                         if self.cx().sess().target.arch != Arch::Avr {
@@ -453,26 +454,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 pair
             }
 
-            // FIXME move into the branch below when LLVM 22 is the lowest version we support.
-            sym::carryless_mul if llvm_version >= (22, 0, 0) => {
-                let ty = args[0].layout.ty;
-                if !ty.is_integral() {
-                    let err = tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
-                        span,
-                        name,
-                        ty,
-                    });
-                    return IntrinsicResult::Err(err);
-                }
-                let (size, _) = ty.int_size_and_signed(self.tcx);
-                let width = size.bits();
-                let llty = self.type_ix(width);
-
-                let lhs = args[0].immediate();
-                let rhs = args[1].immediate();
-                self.call_intrinsic("llvm.clmul", &[llty], &[lhs, rhs])
-            }
-
             sym::ctlz
             | sym::ctlz_nonzero
             | sym::cttz
@@ -480,6 +461,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::ctpop
             | sym::bswap
             | sym::bitreverse
+            | sym::carryless_mul
             | sym::integer_max
             | sym::integer_min
             | sym::saturating_add
@@ -525,6 +507,11 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     }
                     sym::bitreverse => {
                         self.call_intrinsic("llvm.bitreverse", &[llty], &[args[0].immediate()])
+                    }
+                    sym::carryless_mul => {
+                        let lhs = args[0].immediate();
+                        let rhs = args[1].immediate();
+                        self.call_intrinsic("llvm.clmul", &[llty], &[lhs, rhs])
                     }
                     sym::integer_min | sym::integer_max => {
                         let lhs = args[0].immediate();
@@ -2114,8 +2101,6 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         };
     }
 
-    let llvm_version = crate::llvm_util::get_version();
-
     /// Converts a vector mask, where each element has a bit width equal to the data elements it is used with,
     /// down to an i1 based mask that can be used by llvm intrinsics.
     ///
@@ -2662,22 +2647,16 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // Type of the vector of elements:
         let llvm_elem_vec_ty = llvm_vector_ty(bx, element_ty0, in_len);
 
-        let args: &[&'ll Value] = if llvm_version < (22, 0, 0) {
-            let alignment = bx.const_i32(alignment as i32);
-            &[args[1].immediate(), alignment, mask, args[0].immediate()]
-        } else {
-            &[args[1].immediate(), mask, args[0].immediate()]
-        };
-
-        let call =
-            bx.call_intrinsic("llvm.masked.gather", &[llvm_elem_vec_ty, llvm_pointer_vec_ty], args);
-        if llvm_version >= (22, 0, 0) {
-            crate::attributes::apply_to_callsite(
-                call,
-                crate::llvm::AttributePlace::Argument(0),
-                &[crate::llvm::CreateAlignmentAttr(bx.llcx, alignment)],
-            )
-        }
+        let call = bx.call_intrinsic(
+            "llvm.masked.gather",
+            &[llvm_elem_vec_ty, llvm_pointer_vec_ty],
+            &[args[1].immediate(), mask, args[0].immediate()],
+        );
+        crate::attributes::apply_to_callsite(
+            call,
+            crate::llvm::AttributePlace::Argument(0),
+            &[crate::llvm::CreateAlignmentAttr(bx.llcx, alignment)],
+        );
         return Ok(call);
     }
 
@@ -2768,22 +2747,16 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // Type of the vector of elements:
         let llvm_elem_vec_ty = llvm_vector_ty(bx, values_elem, values_len);
 
-        let args: &[&'ll Value] = if llvm_version < (22, 0, 0) {
-            let alignment = bx.const_i32(alignment as i32);
-
-            &[args[1].immediate(), alignment, mask, args[2].immediate()]
-        } else {
-            &[args[1].immediate(), mask, args[2].immediate()]
-        };
-
-        let call = bx.call_intrinsic("llvm.masked.load", &[llvm_elem_vec_ty, llvm_pointer], args);
-        if llvm_version >= (22, 0, 0) {
-            crate::attributes::apply_to_callsite(
-                call,
-                crate::llvm::AttributePlace::Argument(0),
-                &[crate::llvm::CreateAlignmentAttr(bx.llcx, alignment)],
-            )
-        }
+        let call = bx.call_intrinsic(
+            "llvm.masked.load",
+            &[llvm_elem_vec_ty, llvm_pointer],
+            &[args[1].immediate(), mask, args[2].immediate()],
+        );
+        crate::attributes::apply_to_callsite(
+            call,
+            crate::llvm::AttributePlace::Argument(0),
+            &[crate::llvm::CreateAlignmentAttr(bx.llcx, alignment)],
+        );
         return Ok(call);
     }
 
@@ -2855,21 +2828,16 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // Type of the vector of elements:
         let llvm_elem_vec_ty = llvm_vector_ty(bx, values_elem, values_len);
 
-        let args: &[&'ll Value] = if llvm_version < (22, 0, 0) {
-            let alignment = bx.const_i32(alignment as i32);
-            &[args[2].immediate(), args[1].immediate(), alignment, mask]
-        } else {
-            &[args[2].immediate(), args[1].immediate(), mask]
-        };
-
-        let call = bx.call_intrinsic("llvm.masked.store", &[llvm_elem_vec_ty, llvm_pointer], args);
-        if llvm_version >= (22, 0, 0) {
-            crate::attributes::apply_to_callsite(
-                call,
-                crate::llvm::AttributePlace::Argument(1),
-                &[crate::llvm::CreateAlignmentAttr(bx.llcx, alignment)],
-            )
-        }
+        let call = bx.call_intrinsic(
+            "llvm.masked.store",
+            &[llvm_elem_vec_ty, llvm_pointer],
+            &[args[2].immediate(), args[1].immediate(), mask],
+        );
+        crate::attributes::apply_to_callsite(
+            call,
+            crate::llvm::AttributePlace::Argument(1),
+            &[crate::llvm::CreateAlignmentAttr(bx.llcx, alignment)],
+        );
         return Ok(call);
     }
 
@@ -2945,24 +2913,17 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         // Type of the vector of elements:
         let llvm_elem_vec_ty = llvm_vector_ty(bx, element_ty0, in_len);
-        let args: &[&'ll Value] = if llvm_version < (22, 0, 0) {
-            let alignment = bx.const_i32(alignment as i32);
-            &[args[0].immediate(), args[1].immediate(), alignment, mask]
-        } else {
-            &[args[0].immediate(), args[1].immediate(), mask]
-        };
+
         let call = bx.call_intrinsic(
             "llvm.masked.scatter",
             &[llvm_elem_vec_ty, llvm_pointer_vec_ty],
-            args,
+            &[args[0].immediate(), args[1].immediate(), mask],
         );
-        if llvm_version >= (22, 0, 0) {
-            crate::attributes::apply_to_callsite(
-                call,
-                crate::llvm::AttributePlace::Argument(1),
-                &[crate::llvm::CreateAlignmentAttr(bx.llcx, alignment)],
-            )
-        }
+        crate::attributes::apply_to_callsite(
+            call,
+            crate::llvm::AttributePlace::Argument(1),
+            &[crate::llvm::CreateAlignmentAttr(bx.llcx, alignment)],
+        );
         return Ok(call);
     }
 
@@ -3444,17 +3405,11 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 &[vec_ty],
                 &[args[0].immediate(), args[1].immediate(), args[2].immediate()],
             )),
-            sym::simd_carryless_mul => {
-                if crate::llvm_util::get_version() >= (22, 0, 0) {
-                    Ok(bx.call_intrinsic(
-                        llvm_intrinsic,
-                        &[vec_ty],
-                        &[args[0].immediate(), args[1].immediate()],
-                    ))
-                } else {
-                    span_bug!(span, "`simd_carryless_mul` needs LLVM 22 or higher");
-                }
-            }
+            sym::simd_carryless_mul => Ok(bx.call_intrinsic(
+                llvm_intrinsic,
+                &[vec_ty],
+                &[args[0].immediate(), args[1].immediate()],
+            )),
             _ => unreachable!(),
         };
     }

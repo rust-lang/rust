@@ -29,6 +29,8 @@
     rustc_attrs,
     decl_macro,
     f16,
+    f16b,
+    cfg_target_has_reliable_f16b,
     f128,
     repr_simd,
     transparent_unions,
@@ -79,6 +81,10 @@ impl<T: PointeeSized> LegacyReceiver for &mut T {}
 
 #[lang = "copy"]
 pub trait Copy: Sized {}
+
+pub trait From<T>: Sized {
+    fn from(value: T) -> Self;
+}
 
 #[lang = "bikeshed_guaranteed_no_drop"]
 pub trait BikeshedGuaranteedNoDrop {}
@@ -360,7 +366,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 pub mod mem {
     #[rustc_nounwind]
     #[rustc_intrinsic]
-    pub unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
+    pub const unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
 
     #[rustc_nounwind]
     #[rustc_intrinsic]
@@ -392,7 +398,40 @@ pub mod hint {
 }
 
 pub mod num {
-    use super::Copy;
+    use super::{Copy, From, mem};
+
+    #[rustc_intrinsic]
+    const unsafe fn unchecked_shl<T: Copy, U: Copy>(value: T, shift: U) -> T;
+
+    #[cfg(target_has_reliable_f16b)]
+    #[allow(non_camel_case_types)]
+    #[lang = "f16b"]
+    #[repr(transparent)]
+    pub struct f16b(u16);
+
+    #[cfg(target_has_reliable_f16b)]
+    impl f16b {
+        #[inline]
+        pub const fn from_bits(bits: u16) -> Self {
+            unsafe { mem::transmute(bits) }
+        }
+
+        #[inline]
+        pub const fn to_bits(self) -> u16 {
+            unsafe { mem::transmute(self) }
+        }
+    }
+
+    #[cfg(target_has_reliable_f16b)]
+    impl Copy for f16b {}
+
+    #[cfg(target_has_reliable_f16b)]
+    impl From<f16b> for f32 {
+        #[inline]
+        fn from(value: f16b) -> Self {
+            unsafe { mem::transmute(unchecked_shl(value.to_bits() as u32, 16u32)) }
+        }
+    }
 
     #[repr(C)]
     #[lang = "complex"]

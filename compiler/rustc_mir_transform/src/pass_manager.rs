@@ -2,8 +2,8 @@ use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::sync::atomic::Ordering;
 
+use rustc_attr_ir::OptimizeAttr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_hir::attrs::OptimizeAttr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{Body, MirDumper, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
@@ -314,7 +314,7 @@ fn run_passes_inner<'tcx>(
             for name in rest {
                 err.note(format!("pass `{name}` is also not declared in `PASS_NAMES`"));
             }
-            err.emit();
+            err.emit_bug();
         }
     }
 

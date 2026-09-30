@@ -1,13 +1,19 @@
 error: implementation of `DistributedIteratorMulti` is not general enough
   --> $DIR/hrtb-associated-type-leak-check-55731.rs:49:5
    |
+LL |   fn multi<I>(_reducer: I)
+   |      ----- due to a where-clause on `multi`...
+LL |   where
+LL |       I: for<'a> DistributedIteratorMulti<&'a ()>,
+   |          ---------------------------------------- unsatisfied where-clause on `multi`
+...
 LL | /     multi(Map {
 LL | |         i: Cloned(PhantomData),
 LL | |         f: X,
 LL | |     });
-   | |______^ implementation of `DistributedIteratorMulti` is not general enough
+   | |______^
    |
-   = note: `DistributedIteratorMulti<&'0 ()>` would have to be implemented for the type `Cloned<&()>`, for any lifetime `'0`...
+   = note: ...`DistributedIteratorMulti<&'0 ()>` would have to be implemented for the type `Cloned<&()>`, for any lifetime `'0`...
    = note: ...but `DistributedIteratorMulti<&'1 ()>` is actually implemented for the type `Cloned<&'1 ()>`, for some specific lifetime `'1`
 
 error: aborting due to 1 previous error

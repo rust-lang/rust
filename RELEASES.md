@@ -1,3 +1,134 @@
+Version 1.99.0 (2026-10-01)
+==========================
+
+<a id="1.99.0-Language"></a>
+
+Language
+--------
+- [Add allow-by-default `raw_borrows_via_references` lint that checks for references that decay immediately into raw borrows](https://github.com/rust-lang/rust/pull/138230)
+- [Extend `unconditional_panic` lint to function calls that panic when the chunks/windows size is zero](https://github.com/rust-lang/rust/pull/153563)
+- [Stabilize C-variadic function definitions](https://github.com/rust-lang/rust/pull/155697)
+- [Stabilize the ability to use `#[unsafe(naked)]` functions to define C-variadic functions (`#![feature(c_variadic_naked_functions)]`).](https://github.com/rust-lang/rust/pull/159746)
+- [Trait methods are now resolved on an adjusted never type (producing a FCW)](https://github.com/rust-lang/rust/pull/156047)
+- [Coerce from inference variables to trait objects if the inference variable is related via subtyping to a type that is known to be `Sized`](https://github.com/rust-lang/rust/pull/157820)
+- [Stabilize `#[my_macro] mod foo;`](https://github.com/rust-lang/rust/pull/157857). This allows outlined modules (`mod foo;`) anywhere in the body of a custom attribute or derive macro.
+- [Fix the `overflowing_literals` lint with repeated negation](https://github.com/rust-lang/rust/pull/158302). For instance, it will now no longer lint on `--128_i8`, which is already detected by the `arithmetic_overflow` lint.
+- [Add POSIX symbols to the `invalid_runtime_symbol_definitions` and `suspicious_runtime_symbol_definitions` lints](https://github.com/rust-lang/rust/pull/158522)
+- [Lint unused `#[path]` attributes on inline modules](https://github.com/rust-lang/rust/pull/158835)
+- [Enable `unreachable_cfg_select_predicates` lint as part of `unused` lint group](https://github.com/rust-lang/rust/pull/159179)
+- [Stabilize passing 128-bit integers via vector registers with `asm!` on x86](https://github.com/rust-lang/rust/pull/159525)
+- [Explicitly document that some allocations are allowed to grow in-place (but none are allowed to shrink)](https://github.com/rust-lang/rust/pull/159729)
+- We now [guarantee](https://github.com/rust-lang/rust/pull/159730) that the contents of an `UnsafeCell` can be accessed without going through `get`
+  - [The `invalid_reference_casting` lint was adjusted accordingly](https://github.com/rust-lang/rust/pull/159960)
+- [Account for globally enabled target features in `global_asm!`](https://github.com/rust-lang/rust/pull/160594)
+- [Warn if an invalid `doc` attribute is used on a macro invocation](https://github.com/rust-lang/rust/pull/161003)
+
+
+<a id="1.99.0-Compiler"></a>
+
+Compiler
+--------
+- [Convert `-Ctarget-cpu` into a target-modifier for AVR, AMDGCN and NVPTX](https://github.com/rust-lang/rust/pull/150732)
+- [Enable `static_position_independent_executables` on all gnu targets](https://github.com/rust-lang/rust/pull/158510)
+- When providing a suggestion about a missing method, rustc now prefers an exactly matching name from a [doc alias attribute](https://doc.rust-lang.org/rustdoc/advanced-features.html#add-aliases-for-an-item-in-documentation-search) over a similarity search from other method names. If your new users sometimes expect a method under a different name, adding a doc alias will now help them find it via rustc suggestions, in addition to helping them find it via rustdoc search: [When suggesting method names, prefer *exact* doc aliases over similar names](https://github.com/rust-lang/rust/pull/160369)
+
+
+<a id="1.99.0-Platform-Support"></a>
+
+Platform Support
+----------------
+- [Promote `riscv64-unknown-linux-musl` to Tier 2 with host tools](https://github.com/rust-lang/rust/pull/158766)
+
+
+Refer to Rust's [platform support page][platform-support-doc]
+for more information on Rust's tiered platform support.
+
+[platform-support-doc]: https://doc.rust-lang.org/rustc/platform-support.html
+
+<a id="1.99.0-Libraries"></a>
+
+Libraries
+---------
+- Iteration on `RangeInclusive` (`a..=b` ranges) is now [optimized better in some circumstances](https://github.com/rust-lang/rust/pull/155114). As a side effect of this, the behavior of `RangeInclusive` values that has already been exhausted (as an iterator) has changed. For example, the return values of `start()` and `end()` on such ranges may return different values, and using such ranges as slice indexes may have different behavior. These behaviors were not guaranteed to be stable, so these changes are considered to not be breaking changes.
+- [Relax `transmute_copy` to accept `?Sized` types](https://github.com/rust-lang/rust/pull/155989)
+- [Update `transmute_copy` to use a non-unwinding panic](https://github.com/rust-lang/rust/pull/155989)
+- [Don't escape U+FF9E and U+FF9F in `escape_debug_ext`](https://github.com/rust-lang/rust/pull/158057)
+- [Re-export `core::fmt::NumBuffer` in `alloc` (and `std`)](https://github.com/rust-lang/rust/pull/161430)
+
+
+<a id="1.99.0-Stabilized-APIs"></a>
+
+Stabilized APIs
+---------------
+
+- [`IntoIterator` for `Box<[T; N]>`](https://doc.rust-lang.org/stable/std/iter/trait.IntoIterator.html#impl-IntoIterator-for-Box%3C%5BT;+N%5D,+A%3E)
+- [`IntoIterator` for `&Box<[T; N]>`](https://doc.rust-lang.org/stable/std/iter/trait.IntoIterator.html#impl-IntoIterator-for-%26Box%3C%5BT;+N%5D,+A%3E)
+- [`IntoIterator` for `&mut Box<[T; N]>`](https://doc.rust-lang.org/stable/std/iter/trait.IntoIterator.html#impl-IntoIterator-for-%26mut+Box%3C%5BT;+N%5D,+A%3E)
+- [`VecDeque::retain_back`](https://doc.rust-lang.org/stable/std/collections/struct.VecDeque.html#method.retain_back)
+- [`core::ffi::VaList`](https://doc.rust-lang.org/stable/core/ffi/struct.VaList.html)
+- [`Box::into_non_null`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.into_non_null)
+- [`Box::from_non_null`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.from_non_null)
+- [`Vec::into_parts`](https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.into_parts)
+- [`Vec::from_parts`](https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.from_parts)
+- [`core::mem::size_of_val_raw`](https://doc.rust-lang.org/stable/core/mem/fn.size_of_val_raw.html)
+- [`core::mem::align_of_val_raw`](https://doc.rust-lang.org/stable/core/mem/fn.align_of_val_raw.html)
+- [`core::alloc::Layout::for_value_raw`](https://doc.rust-lang.org/stable/core/alloc/struct.Layout.html#method.for_value_raw)
+- [`String::from_utf8_lossy_owned`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.from_utf8_lossy_owned)
+- [`string::FromUtf8Error::into_utf8_lossy`](https://doc.rust-lang.org/stable/std/string/struct.FromUtf8Error.html#method.into_utf8_lossy)
+- [`FusedIterator for StepBy<I>`](https://doc.rust-lang.org/stable/std/iter/struct.StepBy.html#impl-FusedIterator-for-StepBy%3CI%3E)
+- [`std::fs::set_times`](https://doc.rust-lang.org/stable/std/fs/fn.set_times.html)
+- [`std::fs::set_times_nofollow`](https://doc.rust-lang.org/stable/std/fs/fn.set_times_nofollow.html)
+
+<a id="1.99.0-Cargo"></a>
+
+Cargo
+-----
+- Add a new built-in profile `debug`. This is a preparation for transitioning the `dev` profile away from debugging to give a saner default for faster development iterations. Currently there is no difference between `dev` and `debug` profiles. [docs](https://doc.rust-lang.org/nightly/cargo/reference/profiles.html#debug-1) [#17214](https://github.com/rust-lang/cargo/pull/17214)
+- Workspace members on edition 2024 or later can now override an inherited workspace dependency's `default-features` field. For example, `serde = { workspace = true, default-features = false }` now turns off default features even when the workspace definition enables them. On earlier editions, `default-features = false` is ignored with a warning. ([RFC 3945](https://github.com/rust-lang/rfcs/pull/3945)) [#17126](https://github.com/rust-lang/cargo/pull/17126)
+
+See also the [full Cargo changelog](https://doc.rust-lang.org/nightly/cargo/CHANGELOG.html#cargo-199-2026-10-01)
+
+<a id="1.99.0-Rustdoc"></a>
+
+Rustdoc
+-----
+- [Add new `unused_footnote_definition` rustdoc lint](https://github.com/rust-lang/rust/pull/137858)
+- Smarter filtering of trait impls yields performance improvements of 20% on average and up to 40% on some real-world crates. ([1](https://github.com/rust-lang/rust/pull/159623), [2](https://github.com/rust-lang/rust/pull/159721), [3](https://github.com/rust-lang/rust/pull/159779), [4](https://github.com/rust-lang/rust/pull/159854), [5](https://github.com/rust-lang/rust/pull/159091))
+
+<a id="1.99.0-Compatibility-Notes"></a>
+
+Compatibility Notes
+-------------------
+- [Fully deprecate the legacy integral modules](https://github.com/rust-lang/rust/pull/146882). For example, `std::i32::MAX` should be accessed via `i32::MAX` instead.
+- [Upgrade `no_mangle_generic_items` into hard error](https://github.com/rust-lang/rust/pull/154585)
+- [The `Pin::new_unchecked` has had its safety invariants changed slightly](https://github.com/rust-lang/rust/pull/156935)
+- [Do not promote references to extern statics](https://github.com/rust-lang/rust/pull/157641)
+- [Ensure that the inferred types of `let` patterns typecheck](https://github.com/rust-lang/rust/pull/157841)
+- [hermit/fs: Return `unsupported()` instead of `from_raw_os_error(22)`](https://github.com/rust-lang/rust/pull/158247)
+- [Fixed a bug where `#[repr(simd)]` was accidentally allowed on macro invocations on stable Rust](https://github.com/rust-lang/rust/pull/158523)
+- [Abort const-eval when there are generics in the type of the value being produced](https://github.com/rust-lang/rust/pull/159504)
+- [Attributes not applying to anything are now an error in code blocks in doc comments](https://github.com/rust-lang/rust/pull/159849)
+- [`Box::leak`: tell people to avoid unleaking](https://github.com/rust-lang/rust/pull/160323)
+- [PowerPC inline ASM: Fix scalar floats being in the wrong vector lane on little endian](https://github.com/rust-lang/rust/pull/160441)
+- [Do not take `doc(cfg())` into account when filtering doctests](https://github.com/rust-lang/rust/pull/159014)
+- [Infer anonymous lifetimes in the types of associated consts as `'static`](https://github.com/rust-lang/rust/pull/156508)
+- Macros that expand to a semicolon now produce a warning lint (`semicolon_in_expressions_from_non_local_macros`) even when the macro comes from another crate. Previously, such warnings only appeared for macros from the same crate, to avoid showing warnings that can't be fixed locally; however, this masked problems, as integration tests from the crate providing the macro get compiled as a separate crate, so tests often wouldn't reveal this issue. If you encounter a lint like this, please make sure to report it to the crate providing the macro so they can fix it; don't just silence it in your own crate.
+  - [`semicolon_in_expressions_from_macros`: Lint on non-local macros too](https://github.com/rust-lang/rust/pull/159222)
+  - [Split non-local `semicolon_in_expressions_from_macros` into a separate lint](https://github.com/rust-lang/rust/pull/159700)
+- In Cargo, incremental compilation is now disabled by default when running in CI. CI is detected via the `CI` environment variable. [#17220](https://github.com/rust-lang/cargo/pull/17220)
+- [The Rust Reference no longer recommends using a single pattern to match a union alongside another value, such as in a manually-written tagged union](https://github.com/rust-lang/reference/pull/2303). This was because it was found that such code would, in some circumstances, result in the compiler reading the contents of the union before checking if the rest of the scrutinee matches the rest of the pattern. This can cause undefined behavior in code similar to what the reference previously recommended.
+
+<a id="1.99.0-Internal-Changes"></a>
+
+Internal Changes
+----------------
+
+These changes do not affect any public interfaces of Rust, but they represent
+significant improvements to the performance or internals of rustc and related
+tools.
+
+- [Update to LLVM 23](https://github.com/rust-lang/rust/pull/158734)
+
 Version 1.98.1 (2026-09-03)
 ===========================
 

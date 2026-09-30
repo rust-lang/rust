@@ -1,12 +1,15 @@
 error[E0201]: duplicate definitions with name `foo`:
   --> $DIR/impl_items-2.rs:14:5
    |
+LL | trait Trait {
 LL |     fn foo() {}
    |     ----------- item in trait
 ...
 LL |     fn foo() {}
    |     ----------- previous definition here
 ...
+LL | impl Trait for i32 {
+LL |     trait_impl!();
 LL |     fn foo() {}
    |     ^^^^^^^^^^^ duplicate definition
 

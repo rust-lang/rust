@@ -19,6 +19,7 @@ use std::{assert_matches, debug_assert_matches, iter};
 
 use rustc_abi::{ExternAbi, Size};
 use rustc_ast::Recovered;
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_errors::{
@@ -27,7 +28,7 @@ use rustc_errors::{
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{InferKind, Visitor};
-use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind, find_attr};
+use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind};
 use rustc_infer::infer::{InferCtxt, SolverRegionConstraint, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
 use rustc_lint_defs::builtin::REPR_C_ENUMS_LARGER_THAN_INT;
@@ -239,7 +240,7 @@ fn bad_placeholder<'cx, 'tcx>(
 ) -> Diag<'cx> {
     let kind = if kind.ends_with('s') { format!("{kind}es") } else { format!("{kind}s") };
 
-    spans.sort();
+    spans.sort_by_key(|span| span.lo_hi());
     cx.dcx().create_err(diagnostics::PlaceholderNotAllowedItemSignatures { spans, kind })
 }
 
@@ -319,7 +320,7 @@ impl<'tcx> ItemCtxt<'tcx> {
             );
         }
 
-        diag.emit()
+        diag.emit_err()
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -519,7 +520,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                     " + /* 'a */",
                     Applicability::HasPlaceholders,
                 )
-                .emit();
+                .emit_err();
             ty::Region::new_error(self.tcx(), guar)
         } else {
             // If we found elided lifetime during lowering of delegation parent or child
@@ -812,8 +813,8 @@ pub(super) fn check_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         msg: &'static str,
     }
 
-    impl<'a> Diagnostic<'a, ()> for ReprCIssue {
-        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+    impl<'a> Diagnostic<'a> for ReprCIssue {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
             let Self { msg } = self;
             Diag::new(dcx, level, msg)
                 .with_note("`repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C")
@@ -1417,7 +1418,7 @@ fn recover_infer_ret_ty<'tcx>(
                      https://doc.rust-lang.org/book/ch13-01-closures.html",
         );
     }
-    let guar = diag.emit();
+    let guar = diag.emit_err();
 
     // If we return a dummy binder here, we can ICE later in borrowck when it encounters
     // `ReLateParam` regions (e.g. in a local type annotation) which weren't registered via the
@@ -1802,7 +1803,7 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
             debug_assert_matches!(const_arg.kind, hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) if *def_id == def);
             if tcx.features().generic_const_exprs() {
                 ty::AnonConstKind::GCE
-            } else if tcx.features().min_generic_const_args() {
+            } else if tcx.features().gca() {
                 ty::AnonConstKind::MCG
             } else if let hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Repeat(_, repeat_count),

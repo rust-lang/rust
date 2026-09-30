@@ -12,6 +12,7 @@
 
 extern crate rustc_abi;
 extern crate rustc_ast;
+extern crate rustc_attr_ir;
 extern crate rustc_codegen_ssa;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
@@ -196,6 +197,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             // available in Cranelift.
             has_reliable_f16: has_reliable_f16_f128,
             has_reliable_f16_math: has_reliable_f16_f128,
+            has_reliable_f16b: false,
             has_reliable_f128: has_reliable_f16_f128,
             has_reliable_f128_math,
         }

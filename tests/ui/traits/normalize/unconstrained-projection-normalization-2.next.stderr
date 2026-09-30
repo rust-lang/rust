@@ -25,6 +25,7 @@ LL |     type Assoc = T;
 note: required by a bound in `Every::Assoc`
   --> $DIR/unconstrained-projection-normalization-2.rs:12:5
    |
+LL | pub trait Every {
 LL |     type Assoc;
    |     ^^^^^^^^^^^ required by this bound in `Every::Assoc`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`

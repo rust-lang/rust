@@ -1,0 +1,24 @@
+error[E0365]: extern crate `std` is private and cannot be re-exported
+  --> $DIR/pub-reexport-extern-std-issue-163293.rs:1:9
+   |
+LL | pub use std as x;
+   |         ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #127909 <https://github.com/rust-lang/rust/issues/127909>
+   = note: `#[deny(pub_use_of_private_extern_crate)]` (part of `#[deny(future_incompatible)]`) on by default
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0365`.
+Future incompatibility report: Future breakage diagnostic:
+error[E0365]: extern crate `std` is private and cannot be re-exported
+  --> $DIR/pub-reexport-extern-std-issue-163293.rs:1:9
+   |
+LL | pub use std as x;
+   |         ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #127909 <https://github.com/rust-lang/rust/issues/127909>
+   = note: `#[deny(pub_use_of_private_extern_crate)]` (part of `#[deny(future_incompatible)]`) on by default
+

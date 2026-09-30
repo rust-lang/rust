@@ -2376,8 +2376,8 @@ impl<T> UnsafeCell<T> {
     /// assert_eq!(old, 5);
     /// ```
     #[inline]
-    #[stable(feature = "unsafe_cell_access", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "unsafe_cell_access", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "unsafe_cell_access", since = "1.100.0")]
+    #[rustc_const_stable(feature = "unsafe_cell_access", since = "1.100.0")]
     #[rustc_should_not_be_called_on_const_items]
     pub const unsafe fn replace(&self, value: T) -> T {
         // SAFETY: pointer comes from `&self` so naturally satisfies invariants.
@@ -2518,8 +2518,8 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// assert_eq!(val, &5);
     /// ```
     #[inline]
-    #[stable(feature = "unsafe_cell_access", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "unsafe_cell_access", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "unsafe_cell_access", since = "1.100.0")]
+    #[rustc_const_stable(feature = "unsafe_cell_access", since = "1.100.0")]
     #[rustc_should_not_be_called_on_const_items]
     pub const unsafe fn as_ref_unchecked(&self) -> &T {
         // SAFETY: pointer comes from `&self` so naturally satisfies ptr-to-ref invariants.
@@ -2546,8 +2546,8 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// assert_eq!(uc.into_inner(), 6);
     /// ```
     #[inline]
-    #[stable(feature = "unsafe_cell_access", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "unsafe_cell_access", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "unsafe_cell_access", since = "1.100.0")]
+    #[rustc_const_stable(feature = "unsafe_cell_access", since = "1.100.0")]
     #[allow(clippy::mut_from_ref)]
     #[rustc_should_not_be_called_on_const_items]
     pub const unsafe fn as_mut_unchecked(&self) -> &mut T {

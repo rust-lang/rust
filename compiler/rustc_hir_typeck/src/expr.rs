@@ -8,6 +8,8 @@
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordMap;
@@ -17,15 +19,15 @@ use rustc_errors::{
     struct_span_code_err,
 };
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{ExprKind, HirId, QPath, find_attr, is_range_literal};
+use rustc_hir::{ExprKind, HirId, QPath, is_range_literal};
 use rustc_hir_analysis::diagnostics::{NoFieldOnType, NoVariantNamed};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, RegionVariableOrigin};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TypeVisitableExt, Unnormalized};
 use rustc_session::diagnostics::feature_err;
@@ -55,7 +57,10 @@ use crate::{
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
         let has_attr = |id: HirId| -> bool {
-            self.tcx.hir_attrs(id).iter().any(hir::Attribute::is_prefix_attr_for_suggestions)
+            self.tcx
+                .hir_attrs(id)
+                .iter()
+                .any(rustc_attr_ir::Attribute::is_prefix_attr_for_suggestions)
         };
 
         // Special case: range expressions are desugared to struct literals in HIR,
@@ -439,7 +444,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .may_apply()
                         })
                 });
-                Ty::new_error(tcx, err.emit())
+                Ty::new_error(tcx, err.emit_err())
             }),
             hir::UnOp::Not => {
                 let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
@@ -1399,7 +1404,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If the assignment expression itself is ill-formed, don't
         // bother emitting another error
-        err.emit_unless_delay(lhs_ty.references_error() || rhs_ty.references_error())
+        err.emit_err_unless_delay(lhs_ty.references_error() || rhs_ty.references_error())
     }
 
     pub(super) fn check_expr_let(
@@ -1619,7 +1624,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ),
                             )
                             .with_note("unsafe binders are the only valid output of wrap")
-                            .emit();
+                            .emit_err();
                         Ty::new_error(self.tcx, guar)
                     }
                 };
@@ -1657,7 +1662,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ),
                             )
                             .with_note("only an unsafe binder type can be unwrapped")
-                            .emit();
+                            .emit_err();
                         Ty::new_error(self.tcx, guar)
                     }
                 }
@@ -1701,32 +1706,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.next_ty_var(expr.span)
         };
         let array_len = args.len() as u64;
-        self.suggest_array_len(expr, array_len);
         Ty::new_array(self.tcx, element_ty, array_len)
-    }
-
-    fn suggest_array_len(&self, expr: &'tcx hir::Expr<'tcx>, array_len: u64) {
-        let parent_node = self.tcx.hir_parent_iter(expr.hir_id).find(|(_, node)| {
-            !matches!(node, hir::Node::Expr(hir::Expr { kind: hir::ExprKind::AddrOf(..), .. }))
-        });
-        let Some((_, hir::Node::LetStmt(hir::LetStmt { ty: Some(ty), .. }))) = parent_node else {
-            return;
-        };
-        if let hir::TyKind::Array(_, ct) = ty.peel_refs().kind {
-            let span = ct.span;
-            self.dcx().try_steal_modify_and_emit_err(
-                span,
-                StashKey::UnderscoreForArrayLengths,
-                |err| {
-                    err.span_suggestion(
-                        span,
-                        "consider specifying the array length",
-                        array_len,
-                        Applicability::MaybeIncorrect,
-                    );
-                },
-            );
-        }
     }
 
     pub(super) fn check_expr_const_block(
@@ -1762,10 +1742,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Unnormalized::new_wip(self.lower_const_arg(count, tcx.types.usize)),
             ),
         );
-
-        if let Some(count) = count.try_to_target_usize(tcx) {
-            self.suggest_array_len(expr, count);
-        }
 
         let uty = match expected {
             ExpectHasType(uty) => uty.builtin_index(),
@@ -2699,7 +2675,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
             }
         }
-        err.emit()
+        err.emit_err()
     }
 
     fn available_field_names(
@@ -2929,7 +2905,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
             }
-            err.emit()
+            err.emit_err()
         };
 
         Ty::new_error(self.tcx(), guar)
@@ -3040,7 +3016,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             HelpUseLatestEdition::new().add_to_diag(&mut err);
         }
 
-        err.emit()
+        err.emit_err()
     }
 
     fn ban_private_field_access(
@@ -3066,7 +3042,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None,
             );
         }
-        err.emit()
+        err.emit_err()
     }
 
     fn ban_take_value_of_method(
@@ -3523,8 +3499,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                     }
 
-                    let reported = err.emit();
-                    Ty::new_error(self.tcx, reported)
+                    let guar = err.emit_err();
+                    Ty::new_error(self.tcx, guar)
                 }
             }
         }
@@ -3834,7 +3810,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.dcx()
                             .create_err(NoVariantNamed { span: ident.span, ident, ty: container })
                             .with_span_label(field.span, "variant not found")
-                            .emit_unless_delay(container.references_error());
+                            .emit_err_unless_delay(container.references_error());
                         break;
                     };
                     let Some(&subfield) = fields.next() else {
@@ -3866,7 +3842,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 enum_span: field.span,
                                 field_span: subident.span,
                             })
-                            .emit_unless_delay(container.references_error());
+                            .emit_err_unless_delay(container.references_error());
                         break;
                     };
 

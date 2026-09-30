@@ -7,7 +7,7 @@ use crate::os::windows::io::{
 };
 use crate::path::Path;
 use crate::sys::api::{UnicodeStrRef, WinError};
-use crate::sys::fs::windows::debug_path_handle;
+use crate::sys::fs::windows::{ReparsePoint, debug_path_handle};
 use crate::sys::fs::{File, FileAttr, OpenOptions};
 use crate::sys::handle::Handle;
 use crate::sys::path::{WCStr, with_native_path};
@@ -82,19 +82,18 @@ impl Dir {
             return File::open(path, opts);
         }
         let path = to_u16s_without_nul(path)?;
-        self.open_file_native(&path, opts, false).map(|handle| File { handle })
+        self.open_file_native(&path, opts, c::FILE_NON_DIRECTORY_FILE).map(|handle| File { handle })
     }
 
     pub fn remove_file(&self, path: &Path) -> io::Result<()> {
         let path = to_u16s_without_nul(path)?;
-        self.remove_native(&path, false)
+        self.remove_native(&path, /* dir */ false)
     }
 
     pub fn rename(&self, from: &Path, to_dir: &Self, to: &Path) -> io::Result<()> {
-        let is_dir = from.is_dir();
         let from = to_u16s_without_nul(from)?;
         let to = to_u16s_without_nul(to)?;
-        self.rename_native(&from, to_dir, &to, is_dir)
+        self.rename_native(&from, to_dir, &to)
     }
 
     pub fn create_dir(&self, path: &Path) -> io::Result<()> {
@@ -107,12 +106,12 @@ impl Dir {
 
     pub fn open_dir(&self, path: &Path, opts: &OpenOptions) -> io::Result<Self> {
         let path = to_u16s_without_nul(&path)?;
-        self.open_file_native(&path, &opts, true).map(|handle| Self { handle })
+        self.open_file_native(&path, &opts, c::FILE_DIRECTORY_FILE).map(|handle| Self { handle })
     }
 
     pub fn remove_dir(&self, path: &Path) -> io::Result<()> {
         let path = to_u16s_without_nul(&path)?;
-        self.remove_native(&path, true)
+        self.remove_native(&path, /* dir */ true)
     }
 
     fn open_with_native(path: &WCStr, opts: &OpenOptions) -> io::Result<Self> {
@@ -140,29 +139,35 @@ impl Dir {
         }
     }
 
-    fn open_file_native(&self, path: &[u16], opts: &OpenOptions, dir: bool) -> io::Result<Handle> {
+    fn open_file_native(
+        &self,
+        path: &[u16],
+        opts: &OpenOptions,
+        create_opt: u32,
+    ) -> io::Result<Handle> {
         let name = UnicodeStrRef::from_slice(path);
         let object_attributes = c::OBJECT_ATTRIBUTES {
             RootDirectory: self.handle.as_raw_handle(),
             ObjectName: name.as_ptr().cast_mut(),
             ..c::OBJECT_ATTRIBUTES::with_length()
         };
-        let create_opt = if dir { c::FILE_DIRECTORY_FILE } else { c::FILE_NON_DIRECTORY_FILE };
         unsafe { nt_create_file(opts, &object_attributes, create_opt) }
     }
 
     fn remove_native(&self, path: &[u16], dir: bool) -> io::Result<()> {
         let mut opts = OpenOptions::new();
         opts.access_mode(c::DELETE);
-        let handle = self.open_file_native(path, &opts, dir)?;
+        let create_opt = if dir { c::FILE_DIRECTORY_FILE } else { c::FILE_NON_DIRECTORY_FILE };
+        let handle = self.open_file_native(path, &opts, create_opt)?;
         File::from_inner(handle).delete().io_result()
     }
 
-    fn rename_native(&self, from: &[u16], to_dir: &Self, to: &[u16], dir: bool) -> io::Result<()> {
+    fn rename_native(&self, from: &[u16], to_dir: &Self, to: &[u16]) -> io::Result<()> {
         let mut opts = OpenOptions::new();
         opts.access_mode(c::DELETE);
+        // FIXME: custom_flags is ignored by `open_file_native`!
         opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
-        let handle = self.open_file_native(from, &opts, dir)?;
+        let handle = self.open_file_native(from, &opts, /* create_opt */ 0)?;
         // Calculate the layout of the `FILE_RENAME_INFORMATION` we pass to `NtSetInformationFile`
         // This is a dynamically sized struct so we need to get the position of the last field to calculate the actual size.
         const too_long_err: io::Error =
@@ -218,7 +223,7 @@ impl Dir {
         .io_result()
     }
 
-    pub fn metadata(&self) -> io::Result<FileAttr> {
+    pub fn self_metadata(&self) -> io::Result<FileAttr> {
         // Reuse the implementation for files, which should work for all handles.
         let handle = self.handle.as_raw_handle();
         let f = core::mem::ManuallyDrop::new(File {
@@ -226,6 +231,45 @@ impl Dir {
             handle: unsafe { Handle::from_raw_handle(handle) },
         });
         f.file_attr()
+    }
+
+    pub fn metadata(&self, path: &Path) -> io::Result<FileAttr> {
+        let path = to_u16s_without_nul(path)?;
+        // Same as the `stat` logic used for `fs::metadata`
+        match self.metadata_native(&path, ReparsePoint::Follow) {
+            Err(err) if err.raw_os_error() == Some(c::ERROR_CANT_ACCESS_FILE as i32) => {
+                // Fallback to opening reparse points when following fails. Needed for UNIX domain
+                // sockets. See <https://github.com/rust-lang/rust/issues/109106>.
+                if let Ok(attrs) = self.metadata_native(&path, ReparsePoint::Open) {
+                    if !attrs.file_type().is_symlink() {
+                        return Ok(attrs);
+                    }
+                }
+                Err(err)
+            }
+            result => result,
+        }
+    }
+
+    pub fn symlink_metadata(&self, path: &Path) -> io::Result<FileAttr> {
+        let path = to_u16s_without_nul(path)?;
+        self.metadata_native(&path, ReparsePoint::Open)
+    }
+
+    fn metadata_native(&self, path: &[u16], reparse: ReparsePoint) -> io::Result<FileAttr> {
+        let mut opts = OpenOptions::new();
+        // the NT functions need at least c::FILE_READ_ATTRIBUTES
+        opts.access_mode(c::FILE_READ_ATTRIBUTES);
+        let create_opt = if reparse == ReparsePoint::Open { c::FILE_OPEN_REPARSE_POINT } else { 0 };
+
+        let name = UnicodeStrRef::from_slice(path);
+        let object_attributes = c::OBJECT_ATTRIBUTES {
+            RootDirectory: self.handle.as_raw_handle(),
+            ObjectName: name.as_ptr().cast_mut(),
+            ..c::OBJECT_ATTRIBUTES::with_length()
+        };
+        let handle = unsafe { nt_create_file(&opts, &object_attributes, create_opt)? };
+        File { handle }.file_attr()
     }
 }
 

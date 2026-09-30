@@ -111,7 +111,7 @@ fn check_op(cx: &LateContext<'_>, outer: &Expr<'_>, expr: &Expr<'_>, other: &Exp
             } else {
                 let span = expr.span.to(other.span);
 
-                let cmp_span = if other.span < expr.span {
+                let cmp_span = if other.span.lo_hi() < expr.span.lo_hi() {
                     other.span.between(expr.span)
                 } else {
                     expr.span.between(other.span)

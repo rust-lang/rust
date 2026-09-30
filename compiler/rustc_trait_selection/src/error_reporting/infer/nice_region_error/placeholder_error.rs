@@ -255,15 +255,43 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
     ) -> Diag<'tcx> {
         let span = cause.span;
 
+        let mut code = cause.code();
+        loop {
+            match code {
+                ObligationCauseCode::MatchImpl(inner_cause, _) => {
+                    code = inner_cause.code();
+                }
+                ObligationCauseCode::ImplDerived(derived) => {
+                    code = &derived.derived.parent_code;
+                }
+                ObligationCauseCode::BuiltinDerived(derived) => {
+                    code = &derived.parent_code;
+                }
+                ObligationCauseCode::WellFormedDerived(derived) => {
+                    code = &derived.parent_code;
+                }
+                ObligationCauseCode::ImplDerivedHost(derived) => {
+                    code = &derived.derived.parent_code;
+                }
+                ObligationCauseCode::BuiltinDerivedHost(derived) => {
+                    code = &derived.parent_code;
+                }
+                _ => break,
+            }
+        }
         let (leading_ellipsis, satisfy_span, where_span, dup_span, def_id) =
             if let ObligationCauseCode::WhereClause(def_id, span)
-            | ObligationCauseCode::WhereClauseInExpr(def_id, span, ..) = *cause.code()
+            | ObligationCauseCode::WhereClauseInExpr(def_id, span, ..) = *code
                 && def_id != CRATE_DEF_ID.to_def_id()
             {
                 (
                     true,
                     Some(span),
-                    Some(self.tcx().def_span(def_id)),
+                    Some(
+                        self.tcx()
+                            .opt_item_ident(def_id)
+                            .map_or_else(|| self.tcx().def_span(def_id), |n| n.span),
+                    ),
                     None,
                     self.tcx().def_path_str(def_id),
                 )
@@ -356,6 +384,17 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
 
         let mut current_code = cause.code();
         let mut coroutine_def_id = None;
+        if cause.body_def_id != CRATE_DEF_ID {
+            self.cx.note_obligation_cause_code(
+                cause.body_def_id,
+                &mut err,
+                actual_trait_ref,
+                self.tcx().param_env(cause.body_def_id),
+                cause.code(),
+                &mut vec![],
+                &mut Default::default(),
+            );
+        }
 
         loop {
             match current_code {

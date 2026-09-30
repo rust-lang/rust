@@ -5,20 +5,43 @@ use rustc_index::IndexVec;
 use rustc_middle::mir::pretty::{MirDumper, PassWhere, PrettyPrintMirOptions};
 use rustc_middle::mir::{Body, Location};
 use rustc_middle::ty::{RegionVid, TyCtxt};
-use rustc_mir_dataflow::points::PointIndex;
+use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use rustc_session::config::MirIncludeSpans;
 
 use crate::borrow_set::BorrowSet;
 use crate::constraints::OutlivesConstraint;
 use crate::dataflow::BorrowIndex;
-use crate::polonius::{LocalizedConstraintGraphVisitor, LocalizedNode, PoloniusContext};
+use crate::polonius::liveness::RegionLiveness;
+use crate::polonius::{
+    LiveRegionVariances, LivenessSource, LocalizedConstraintGraphVisitor, LocalizedNode,
+    PoloniusContext,
+};
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::Locations;
+use crate::universal_regions::UniversalRegions;
 use crate::{BorrowckInferCtxt, ClosureRegionRequirements, RegionInferenceContext};
 
 /// The polonius MIR dump template: a regular HTML file for easy editing, with special dummy
 /// sections to be replaced by real contents.
 const TEMPLATE: &str = include_str!("./dump/polonius-mir-dump.template.html");
+
+/// A `LivenessSource` for already-existing liveness and variance data.
+struct CachedLivenessSource<'a, 'tcx> {
+    live_region_variances: &'a LiveRegionVariances,
+    universal_regions: &'a UniversalRegions<'tcx>,
+    liveness: &'a LivenessValues,
+}
+
+impl<'a, 'tcx> LivenessSource for CachedLivenessSource<'a, 'tcx> {
+    fn liveness_for_region(&mut self, region: RegionVid) -> RegionLiveness<'_> {
+        RegionLiveness::new(
+            region,
+            self.live_region_variances,
+            self.universal_regions,
+            self.liveness.points(),
+        )
+    }
+}
 
 /// `-Zdump-mir=polonius` dumps MIR annotated with NLL and polonius specific information.
 pub(crate) fn dump_polonius_mir<'tcx>(
@@ -27,7 +50,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
-    polonius_context: Option<&PoloniusContext>,
+    polonius_context: Option<&PoloniusContext<'tcx>>,
 ) {
     let tcx = infcx.tcx;
     if !tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
@@ -41,16 +64,15 @@ pub(crate) fn dump_polonius_mir<'tcx>(
 
     // If we have a polonius graph to dump along the rest of the MIR and NLL info, we extract its
     // constraints here.
+    let mut liveness_source = CachedLivenessSource {
+        live_region_variances: &polonius_context.live_region_variances,
+        universal_regions: regioncx.universal_regions(),
+        liveness: regioncx.liveness_constraints(),
+    };
     let mut collector = MirDumpCollector::default();
     if let Some(graph) = &polonius_context.graph {
-        graph.traverse(
-            body,
-            regioncx.liveness_constraints(),
-            &polonius_context.live_region_variances,
-            regioncx.universal_regions(),
-            borrow_set,
-            &mut collector,
-        );
+        let location_map = regioncx.liveness_constraints().location_map();
+        graph.traverse(body, borrow_set, location_map, &mut liveness_source, &mut collector);
     }
 
     let extra_data = &|pass_where, out: &mut dyn io::Write| {
@@ -98,7 +120,7 @@ struct MirDumpCollector {
 }
 
 impl LocalizedConstraintGraphVisitor for MirDumpCollector {
-    fn on_node_traversed(&mut self, loan: BorrowIndex, node: LocalizedNode) {
+    fn on_node_traversed(&mut self, loan: BorrowIndex, node: LocalizedNode, _is_live: bool) {
         self.reachability.entry(loan).or_default().push(node);
     }
 
@@ -151,7 +173,7 @@ fn emit_polonius_dump<'tcx>(
                     "POLONIUS_CONSTRAINTS" => {
                         edge_count = emit_mermaid_constraint_graph(
                             borrow_set,
-                            regioncx.liveness_constraints(),
+                            regioncx.liveness_constraints().location_map(),
                             &collector.constraints,
                             out,
                         )?;
@@ -250,7 +272,7 @@ fn emit_polonius_mir<'tcx>(
         out,
     )?;
 
-    let liveness = regioncx.liveness_constraints();
+    let location_map = regioncx.liveness_constraints().location_map();
 
     // Add localized outlives constraints
     match pass_where {
@@ -260,8 +282,8 @@ fn emit_polonius_mir<'tcx>(
 
                 for constraint in localized_outlives_constraints {
                     let LocalizedOutlivesConstraint { source, from, target, to } = constraint;
-                    let from = liveness.location_from_point(*from);
-                    let to = liveness.location_from_point(*to);
+                    let from = location_map.to_location(*from);
+                    let to = location_map.to_location(*to);
                     writeln!(out, "| {source:?} at {from:?} -> {target:?} at {to:?}")?;
                 }
                 writeln!(out, "|")?;
@@ -441,12 +463,12 @@ fn emit_mermaid_nll_sccs<'tcx>(
 /// region, and loan introductions.
 fn emit_mermaid_constraint_graph<'tcx>(
     borrow_set: &BorrowSet<'tcx>,
-    liveness: &LivenessValues,
+    location_map: &DenseLocationMap,
     localized_outlives_constraints: &[LocalizedOutlivesConstraint],
     out: &mut dyn io::Write,
 ) -> io::Result<usize> {
     let node_label = |region: RegionVid, point: PointIndex| {
-        let location = liveness.location_from_point(point);
+        let location = location_map.to_location(point);
         node_name(region, location)
     };
 
@@ -512,6 +534,7 @@ fn emit_loan_reachability(
     reachability: &FxIndexMap<BorrowIndex, Vec<LocalizedNode>>,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
+    let location_map = liveness.location_map();
     for (loan, _) in borrow_set.iter_enumerated() {
         let Some(reachability) = reachability.get(&loan) else {
             continue;
@@ -532,7 +555,7 @@ fn emit_loan_reachability(
         for (idx, node) in reachability.iter().enumerate() {
             writeln!(out, "<li>")?;
 
-            let location = liveness.location_from_point(node.point);
+            let location = location_map.to_location(node.point);
             let kind = if idx == 0 { "starts in" } else { "reaches" };
             writeln!(
                 out,

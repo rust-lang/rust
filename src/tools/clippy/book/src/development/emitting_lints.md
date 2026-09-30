@@ -24,7 +24,8 @@ By far the most common method used for Clippy lints is [`check_expr`
 method][late_check_expr], this is because Rust is an expression language and,
 more often than not, the lint we want to work on must examine expressions.
 
-> _Note:_ If you don't fully understand what expressions are in Rust, take a
+> [!NOTE]
+> If you don't fully understand what expressions are in Rust, take a
 > look at the official documentation on [expressions][rust_expressions]
 
 Other common ones include the [`check_fn` method][late_check_fn] and the
@@ -65,7 +66,8 @@ impl<'tcx> LateLintPass<'tcx> for LintName {
 }
 ```
 
-> Note: The message should be matter of fact and avoid capitalization and
+> [!NOTE]
+> The message should be matter of fact and avoid capitalization and
 > punctuation. If multiple sentences are needed, the messages should probably be
 > split up into an error + a help / note / suggestion message.
 

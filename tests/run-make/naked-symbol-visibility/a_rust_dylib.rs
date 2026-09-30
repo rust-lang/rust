@@ -51,17 +51,6 @@ pub extern "C" fn public_naked_generic<T: TraitWithConst>() -> u32 {
     naked_asm!("mov rax, {}", "ret", const T::COUNT)
 }
 
-#[linkage = "external"]
-extern "C" fn vanilla_external_linkage() -> u32 {
-    42
-}
-
-#[unsafe(naked)]
-#[linkage = "external"]
-extern "C" fn naked_external_linkage() -> u32 {
-    naked_asm!("mov rax, 42", "ret")
-}
-
 #[cfg(not(windows))]
 #[linkage = "weak"]
 extern "C" fn vanilla_weak_linkage() -> u32 {

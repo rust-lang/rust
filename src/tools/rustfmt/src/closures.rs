@@ -348,7 +348,7 @@ fn rewrite_closure_fn_decl(
         prefix.push_str(&ret_str);
     }
     // 1 = space between `|...|` and body.
-    let extra_offset = last_line_width(&prefix) + 1;
+    let extra_offset = last_line_width(&prefix, context.config.tab_spaces()) + 1;
 
     Ok((prefix, extra_offset))
 }

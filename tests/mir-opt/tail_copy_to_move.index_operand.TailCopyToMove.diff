@@ -1,0 +1,13 @@
+- // MIR for `index_operand` before TailCopyToMove
++ // MIR for `index_operand` after TailCopyToMove
+  
+  fn index_operand(_1: [u32; 4], _2: usize) -> (usize, u32) {
+      let mut _0: (usize, u32);
+  
+      bb0: {
+-         _0 = (copy _2, copy _1[_2]);
++         _0 = (copy _2, move _1[_2]);
+          return;
+      }
+  }
+  

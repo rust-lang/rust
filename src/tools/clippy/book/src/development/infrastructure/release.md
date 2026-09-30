@@ -1,6 +1,7 @@
 # Release a new Clippy Version
 
-> _NOTE:_ This document is probably only relevant to you, if you're a member of
+> [!NOTE]
+> This document is probably only relevant to you, if you're a member of
 > the Clippy team.
 
 Clippy is released together with stable Rust releases. The dates for these
@@ -103,7 +104,8 @@ The `clippy_utils` crate is published to `crates.io` without any stability
 guarantees. To do this, after the [sync] and the release is done, switch back to
 the `upstream/master` branch and publish `clippy_utils`:
 
-> Note: The Rustup PR bumping the nightly and Clippy version **must** be merged
+> [!NOTE]
+> The Rustup PR bumping the nightly and Clippy version **must** be merged
 > before doing this.
 
 ```bash

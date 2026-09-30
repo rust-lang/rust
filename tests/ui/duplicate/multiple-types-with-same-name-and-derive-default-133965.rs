@@ -4,9 +4,6 @@ struct NonGeneric {}
 
 #[derive(Default)]
 struct NonGeneric<'a, const N: usize> {}
-//~^ ERROR: struct takes 0 lifetime arguments but 1 lifetime argument was supplied
-//~| ERROR: struct takes 0 generic arguments but 1 generic argument was supplied
-//~| ERROR: lifetime parameter `'a` is never used
-//~| ERROR: the name `NonGeneric` is defined multiple times
+//~^ ERROR: the name `NonGeneric` is defined multiple times
 
 pub fn main() {}

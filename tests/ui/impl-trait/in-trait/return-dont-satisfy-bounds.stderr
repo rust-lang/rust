@@ -21,6 +21,7 @@ LL | impl Foo<char> for Bar {
 note: required by a bound in `Foo::foo::{anon_assoc#0}`
   --> $DIR/return-dont-satisfy-bounds.rs:2:30
    |
+LL | trait Foo<T> {
 LL |     fn foo<F2>(self) -> impl Foo<T>;
    |                              ^^^^^^ required by this bound in `Foo::foo::{anon_assoc#0}`
 

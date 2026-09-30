@@ -270,7 +270,9 @@ impl CodegenFnAttrs {
     /// * `#[export_name(...)]` is present
     /// * `#[linkage]` is present
     ///
-    /// Keep this in sync with the logic for the unused_attributes for `#[inline]` lint.
+    /// Keep this in sync with [`AttributeKind::is_extern_indicator`].
+    ///
+    /// [`AttributeKind::is_extern_indicator`]: rustc_attr_ir::AttributeKind::is_extern_indicator
     pub fn contains_extern_indicator(&self) -> bool {
         if self.flags.contains(CodegenFnAttrFlags::FOREIGN_ITEM) {
             return false;

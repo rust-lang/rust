@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 
 use rustc_ast::*;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_session::config::FmtDebug;
 use rustc_span::{ByteSymbol, DesugaringKind, Ident, Span, Symbol, sym};
 

@@ -43,12 +43,13 @@ APIs, the `wasm32-unknown-emscripten` target may be preferable.
 ## Requirements
 
 This target is cross-compiled. The Emscripten compiler toolchain `emcc` must be
-installed to link WASM binaries for this target. You can install `emcc` using:
+installed to link WASM binaries for this target. Emscripten 4.0.0 or newer is
+required. You can install `emcc` using:
 
 ```sh
 git clone https://github.com/emscripten-core/emsdk.git --depth 1
-./emsdk/emsdk install 3.1.68
-./emsdk/emsdk activate 3.1.68
+./emsdk/emsdk install latest
+./emsdk/emsdk activate latest
 source ./emsdk/emsdk_env.sh
 ```
 

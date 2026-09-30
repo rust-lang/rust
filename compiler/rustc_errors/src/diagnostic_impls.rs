@@ -42,7 +42,7 @@ pub struct SingleLabelManySpans {
     pub label: &'static str,
 }
 impl Subdiagnostic for SingleLabelManySpans {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         diag.span_labels(self.spans, self.label);
     }
 }

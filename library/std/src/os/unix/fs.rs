@@ -22,6 +22,13 @@ use crate::{io, sys};
 #[cfg(test)]
 mod tests;
 
+pub(crate) mod dirs;
+
+#[unstable(feature = "fs_media_dirs", issue = "162083")]
+pub use dirs::MediaDirsExt;
+#[unstable(feature = "fs_home_dirs", issue = "162082")]
+pub use dirs::{HomeDirsExt, XdgDirs};
+
 /// Unix-specific extensions to [`fs::File`].
 #[stable(feature = "file_offset", since = "1.15.0")]
 pub trait FileExt {

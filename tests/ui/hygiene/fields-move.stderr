@@ -1,6 +1,8 @@
 error[E0382]: use of moved value: `foo.x`
   --> $DIR/fields-move.rs:18:9
    |
+LL | macro_rules! copy_legacy {
+LL |     ($foo: ident) => {
 LL |         $foo.x
    |         ^^^^^^ value used here after move
 ...
@@ -10,7 +12,6 @@ LL |     assert_two_copies(copy_legacy!(foo), foo.x);
    |                       ----------------- in this macro invocation
    |
    = note: move occurs because `foo.x` has type `NonCopy`, which does not implement the `Copy` trait
-   = note: this error originates in the macro `copy_legacy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0382]: use of moved value: `foo.x`
   --> $DIR/fields-move.rs:28:42

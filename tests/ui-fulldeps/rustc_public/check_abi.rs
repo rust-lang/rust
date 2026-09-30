@@ -15,8 +15,8 @@ extern crate rustc_middle;
 extern crate rustc_public;
 
 use rustc_public::abi::{
-    ArgAbi, ArgExtension, CallConvention, FieldsShape, IntegerLength, PassMode, Primitive, Scalar,
-    ValueRepr, VariantsShape,
+    ArgAbi, ArgExtension, CallConvention, FieldsShape, IndirectMode, IntegerLength, PassMode,
+    Primitive, Scalar, ValueRepr, VariantsShape,
 };
 use rustc_public::mir::MirVisitor;
 use rustc_public::mir::mono::Instance;
@@ -110,7 +110,12 @@ fn check_primitive(abi: &ArgAbi) {
         panic!("Expected PassMode::Direct for char, got: {:?}", abi.mode);
     };
     // A char (32-bit) doesn't need sign/zero extension on most platforms.
+    #[cfg(not(any(target_arch = "loongarch64", target_arch = "riscv64")))]
     assert_eq!(attrs.arg_extension(), ArgExtension::None);
+    // However, LoongArch64 and RiscV64 ABIs require that 32-bit integers
+    // (signed or unsigned) are sign-extended when passed in registers.
+    #[cfg(any(target_arch = "loongarch64", target_arch = "riscv64"))]
+    assert_eq!(attrs.arg_extension(), ArgExtension::Sext);
     // Direct arguments are not pointers, so no pointee alignment.
     assert_eq!(attrs.pointee_align(), None);
     let layout = abi.layout.shape();
@@ -122,14 +127,14 @@ fn check_primitive(abi: &ArgAbi) {
 /// Check the return value: `Result<usize, &str>`.
 fn check_result(abi: &ArgAbi) {
     assert!(abi.ty.kind().is_enum());
-    let PassMode::Indirect { ref attrs, ref meta_attrs, on_stack } = abi.mode else {
+    let PassMode::Indirect { ref attrs, ref meta_attrs, address_space: _, mode } = abi.mode else {
         panic!("Expected PassMode::Indirect for Result, got: {:?}", abi.mode);
     };
     // Indirect arguments have a pointee alignment (the pointer must be aligned).
     assert!(attrs.pointee_align().is_some());
     // Result is a sized type, so no metadata pointer.
     assert!(meta_attrs.is_none());
-    assert!(!on_stack);
+    assert!(mode == IndirectMode::Pointer);
     let layout = abi.layout.shape();
     assert!(layout.is_sized());
     assert_matches!(layout.fields, FieldsShape::Arbitrary { .. });

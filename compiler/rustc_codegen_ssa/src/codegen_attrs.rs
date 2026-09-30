@@ -53,7 +53,7 @@ struct InterestingAttributeDiagnosticSpans {
     no_mangle: Option<Span>,
 }
 
-/// Process the builtin attrs ([`hir::Attribute`]) on the item.
+/// Process the builtin attrs ([`rustc_attr_ir::Attribute`]) on the item.
 /// Many of them directly translate to codegen attrs.
 fn process_builtin_attrs(
     tcx: TyCtxt<'_>,
@@ -66,7 +66,7 @@ fn process_builtin_attrs(
 
     let parsed_attrs = attrs
         .iter()
-        .filter_map(|attr| if let hir::Attribute::Parsed(attr) = attr { Some(attr) } else { None });
+        .filter_map(|attr| if let Attribute::Parsed(attr) = attr { Some(attr) } else { None });
     for attr in parsed_attrs {
         match attr {
             AttributeKind::Cold => codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD,
@@ -497,13 +497,11 @@ fn check_result(
         let span = find_attr!(tcx, did, TargetFeature{attr_span: span, ..} => *span)
             .unwrap_or_else(|| tcx.def_span(did));
 
-        tcx.dcx()
-            .create_err(diagnostics::TargetFeatureDisableOrEnable {
-                features,
-                span: Some(span),
-                missing_features: Some(diagnostics::MissingFeatures),
-            })
-            .emit();
+        tcx.dcx().emit_err(diagnostics::TargetFeatureDisableOrEnable {
+            features,
+            span: Some(span),
+            missing_features: Some(diagnostics::MissingFeatures),
+        });
     }
 }
 

@@ -43,7 +43,13 @@ impl Trait for S {
 
 mod prefix {}
 reuse unresolved_prefix::{a, b, c}; //~ ERROR cannot find module or crate `unresolved_prefix`
+//~| ERROR failed to resolve delegation callee
+//~| ERROR failed to resolve delegation callee
+//~| ERROR failed to resolve delegation callee
 reuse prefix::{self, super, crate}; //~ ERROR `crate` in paths can only be used in start position
-//~^ ERROR cannot find function `self` in module `prefix`
+//~| ERROR failed to resolve delegation callee
+//~| ERROR failed to resolve delegation callee
+//~| ERROR cannot find function `self` in module `prefix`
+//~| ERROR failed to resolve delegation callee
 
 fn main() {}

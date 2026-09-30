@@ -875,7 +875,7 @@ impl<'doc, 'tcx> ExtraInfo<'doc, 'tcx> {
     fn error_invalid_codeblock_attr_with_help(
         &self,
         msg: impl Into<DiagMessage>,
-        f: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
+        f: impl for<'a, 'b> FnOnce(&'b mut Diag<'a>),
     ) {
         self.tcx.emit_node_span_lint(
             crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,

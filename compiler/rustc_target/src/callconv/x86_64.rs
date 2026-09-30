@@ -131,17 +131,16 @@ where
 }
 
 fn reg_component(cls: &[Option<Class>], i: &mut usize, size: Size) -> Option<Reg> {
-    if *i >= cls.len() {
+    let Some(Some(class)) = cls.get(*i) else {
         return None;
-    }
+    };
 
-    match cls[*i] {
-        None => None,
-        Some(Class::Int) => {
+    match class {
+        Class::Int => {
             *i += 1;
             Some(if size.bytes() < 8 { Reg { kind: RegKind::Integer, size } } else { Reg::i64() })
         }
-        Some(Class::Sse) => {
+        Class::Sse => {
             let vec_len =
                 1 + cls[*i + 1..].iter().take_while(|&&c| c == Some(Class::SseUp)).count();
             *i += vec_len;
@@ -154,7 +153,7 @@ fn reg_component(cls: &[Option<Class>], i: &mut usize, size: Size) -> Option<Reg
                 Reg::opaque_vector(Size::from_bytes(8) * (vec_len as u64))
             })
         }
-        Some(c) => unreachable!("reg_component: unhandled class {:?}", c),
+        c => unreachable!("reg_component: unhandled class {:?}", c),
     }
 }
 

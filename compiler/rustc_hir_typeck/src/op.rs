@@ -557,7 +557,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &mut err,
         );
 
-        Ty::new_error(self.tcx, err.emit())
+        Ty::new_error(self.tcx, err.emit_err())
     }
 
     fn suggest_deref_or_call_for_binop_error(
@@ -1060,7 +1060,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     }
-                    err.emit()
+                    err.emit_err()
                 });
                 Ty::new_error(self.tcx, guar)
             }

@@ -360,7 +360,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // but std treats both the same.
         let reason = this.eval_windows("c", "DLL_THREAD_DETACH");
         let null_ptr =
-            ImmTy::from_scalar(Scalar::null_ptr(this), this.machine.layouts.const_raw_ptr);
+            ImmTy::from_scalar(Scalar::null_ptr(this), this.machine.layouts.unit_ptr_const);
 
         // The signature of this function is `unsafe extern "system" fn(h: c::LPVOID, dwReason: c::DWORD, pv: c::LPVOID)`.
         // FIXME: `h` should be a handle to the current module and what `pv` should be is unknown
@@ -389,7 +389,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.call_thread_root_function(
                 instance,
                 ExternAbi::C { unwind: false },
-                &[ImmTy::from_scalar(data, this.machine.layouts.mut_raw_ptr)],
+                &[ImmTy::from_scalar(data, this.machine.layouts.unit_ptr_mut)],
                 None,
                 span,
             )?;
@@ -426,7 +426,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.call_thread_root_function(
                 instance,
                 ExternAbi::C { unwind: false },
-                &[ImmTy::from_scalar(ptr, this.machine.layouts.mut_raw_ptr)],
+                &[ImmTy::from_scalar(ptr, this.machine.layouts.unit_ptr_mut)],
                 None,
                 span,
             )?;
@@ -492,7 +492,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.call_thread_root_function(
                 instance,
                 ExternAbi::System { unwind: false },
-                &[ImmTy::from_scalar(ptr, this.machine.layouts.mut_raw_ptr)],
+                &[ImmTy::from_scalar(ptr, this.machine.layouts.unit_ptr_mut)],
                 None,
                 span,
             )?;

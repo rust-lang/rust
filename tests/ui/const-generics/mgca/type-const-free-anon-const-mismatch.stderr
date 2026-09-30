@@ -1,15 +1,15 @@
 error[E0284]: type annotations needed
-  --> $DIR/type-const-free-anon-const-mismatch.rs:5:1
+  --> $DIR/type-const-free-anon-const-mismatch.rs:7:1
    |
-LL | const X: usize = core::direct_const_arg!(const { N });
+LL | const X: usize = gca!(const { N });
    | ^^^^^^^^^^^^^^ cannot infer the value of the constant `_`
    |
    = note: cannot satisfy `X::{constant#0} == _`
 
 error: the constant `"this isn't a usize"` is not of type `usize`
-  --> $DIR/type-const-free-anon-const-mismatch.rs:8:1
+  --> $DIR/type-const-free-anon-const-mismatch.rs:10:1
    |
-LL | const N: usize = core::direct_const_arg!("this isn't a usize");
+LL | const N: usize = gca!("this isn't a usize");
    | ^^^^^^^^^^^^^^ expected `usize`, found `&'static str`
 
 error: aborting due to 2 previous errors

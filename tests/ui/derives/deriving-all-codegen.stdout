@@ -46,7 +46,7 @@ impl ::core::fmt::Debug for Empty {
 #[automatically_derived]
 impl ::core::default::Default for Empty {
     #[inline]
-    fn default() -> Self { Empty }
+    fn default() -> Self { Self }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Empty {
@@ -109,7 +109,7 @@ impl ::core::fmt::Debug for Point {
 impl ::core::default::Default for Point {
     #[inline]
     fn default() -> Self {
-        Point {
+        Self {
             x: ::core::default::Default::default(),
             y: ::core::default::Default::default(),
         }
@@ -193,7 +193,7 @@ impl ::core::fmt::Debug for PackedPoint {
 impl ::core::default::Default for PackedPoint {
     #[inline]
     fn default() -> Self {
-        PackedPoint {
+        Self {
             x: ::core::default::Default::default(),
             y: ::core::default::Default::default(),
         }
@@ -270,9 +270,7 @@ impl ::core::fmt::Debug for TupleSingleField {
 #[automatically_derived]
 impl ::core::default::Default for TupleSingleField {
     #[inline]
-    fn default() -> Self {
-        TupleSingleField(::core::default::Default::default())
-    }
+    fn default() -> Self { Self(::core::default::Default::default()) }
 }
 #[automatically_derived]
 impl ::core::convert::From<u32> for TupleSingleField {
@@ -345,9 +343,7 @@ impl ::core::fmt::Debug for SingleField {
 #[automatically_derived]
 impl ::core::default::Default for SingleField {
     #[inline]
-    fn default() -> Self {
-        SingleField { foo: ::core::default::Default::default() }
-    }
+    fn default() -> Self { Self { foo: ::core::default::Default::default() } }
 }
 #[automatically_derived]
 impl ::core::convert::From<bool> for SingleField {
@@ -435,7 +431,7 @@ impl ::core::fmt::Debug for Big {
 impl ::core::default::Default for Big {
     #[inline]
     fn default() -> Self {
-        Big {
+        Self {
             b1: ::core::default::Default::default(),
             b2: ::core::default::Default::default(),
             b3: ::core::default::Default::default(),
@@ -626,7 +622,7 @@ struct NonCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for NonCopy {
     #[inline]
-    fn clone(&self) -> Self { NonCopy(::core::clone::Clone::clone(&self.0)) }
+    fn clone(&self) -> Self { Self(::core::clone::Clone::clone(&self.0)) }
 }
 
 // A packed struct that doesn't impl `Copy`, which means it gets the non-trivial
@@ -636,9 +632,7 @@ struct PackedNonCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for PackedNonCopy {
     #[inline]
-    fn clone(&self) -> Self {
-        PackedNonCopy(::core::clone::Clone::clone(&{ self.0 }))
-    }
+    fn clone(&self) -> Self { Self(::core::clone::Clone::clone(&{ self.0 })) }
 }
 
 // A struct that impls `Copy` manually, which means it gets the non-trivial
@@ -647,9 +641,7 @@ struct ManualCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for ManualCopy {
     #[inline]
-    fn clone(&self) -> Self {
-        ManualCopy(::core::clone::Clone::clone(&self.0))
-    }
+    fn clone(&self) -> Self { Self(::core::clone::Clone::clone(&self.0)) }
 }
 impl Copy for ManualCopy {}
 
@@ -660,9 +652,7 @@ struct PackedManualCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for PackedManualCopy {
     #[inline]
-    fn clone(&self) -> Self {
-        PackedManualCopy(::core::clone::Clone::clone(&{ self.0 }))
-    }
+    fn clone(&self) -> Self { Self(::core::clone::Clone::clone(&{ self.0 })) }
 }
 impl Copy for PackedManualCopy {}
 
@@ -735,7 +725,7 @@ impl<T: ::core::clone::Clone + Trait, U: ::core::clone::Clone>
     ::core::clone::Clone for Generic<T, U> where T::A: ::core::clone::Clone {
     #[inline]
     fn clone(&self) -> Self {
-        Generic {
+        Self {
             t: ::core::clone::Clone::clone(&self.t),
             ta: ::core::clone::Clone::clone(&self.ta),
             u: ::core::clone::Clone::clone(&self.u),
@@ -761,7 +751,7 @@ impl<T: ::core::default::Default + Trait, U: ::core::default::Default>
     T::A: ::core::default::Default {
     #[inline]
     fn default() -> Self {
-        Generic {
+        Self {
             t: ::core::default::Default::default(),
             ta: ::core::default::Default::default(),
             u: ::core::default::Default::default(),
@@ -854,7 +844,7 @@ impl<T: ::core::clone::Clone + ::core::marker::Copy + Trait,
     ::core::marker::Copy {
     #[inline]
     fn clone(&self) -> Self {
-        PackedGeneric(::core::clone::Clone::clone(&{ self.0 }),
+        Self(::core::clone::Clone::clone(&{ self.0 }),
             ::core::clone::Clone::clone(&{ self.1 }),
             ::core::clone::Clone::clone(&{ self.2 }))
     }
@@ -881,7 +871,7 @@ impl<T: ::core::default::Default + Trait, U: ::core::default::Default>
     T::A: ::core::default::Default {
     #[inline]
     fn default() -> Self {
-        PackedGeneric(::core::default::Default::default(),
+        Self(::core::default::Default::default(),
             ::core::default::Default::default(),
             ::core::default::Default::default())
     }
@@ -1028,8 +1018,8 @@ impl ::core::clone::Clone for Enum1 {
     #[inline]
     fn clone(&self) -> Self {
         match self {
-            Enum1::Single { x: __self_0 } =>
-                Enum1::Single { x: ::core::clone::Clone::clone(__self_0) },
+            Self::Single { x: __self_0 } =>
+                Self::Single { x: ::core::clone::Clone::clone(__self_0) },
         }
     }
 }
@@ -1038,7 +1028,7 @@ impl ::core::fmt::Debug for Enum1 {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
-            Enum1::Single { x: __self_0 } =>
+            Self::Single { x: __self_0 } =>
                 ::core::fmt::Formatter::debug_struct_field1_finish(f,
                     "Single", "x", &__self_0),
         }
@@ -1049,7 +1039,7 @@ impl ::core::hash::Hash for Enum1 {
     #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
         match self {
-            Enum1::Single { x: __self_0 } =>
+            Self::Single { x: __self_0 } =>
                 ::core::hash::Hash::hash(__self_0, state),
         }
     }
@@ -1061,7 +1051,7 @@ impl ::core::cmp::PartialEq for Enum1 {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
+            (Self::Single { x: __self_0 }, Self::Single { x: __arg1_0 }) =>
                 __self_0 == __arg1_0,
         }
     }
@@ -1088,7 +1078,7 @@ impl ::core::cmp::Ord for Enum1 {
     #[inline]
     fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         match (self, other) {
-            (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
+            (Self::Single { x: __self_0 }, Self::Single { x: __arg1_0 }) =>
                 ::core::cmp::Ord::cmp(__self_0, __arg1_0),
         }
     }
@@ -1103,7 +1093,7 @@ enum Fieldless1 {
 #[automatically_derived]
 impl ::core::clone::Clone for Fieldless1 {
     #[inline]
-    fn clone(&self) -> Self { Fieldless1::A }
+    fn clone(&self) -> Self { Self::A }
 }
 #[automatically_derived]
 impl ::core::fmt::Debug for Fieldless1 {
@@ -1186,8 +1176,8 @@ impl ::core::default::Default for Fieldless {
 impl ::core::hash::Hash for Fieldless {
     #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
-        let __self_discr = ::core::intrinsics::discriminant_value(self);
-        ::core::hash::Hash::hash(&__self_discr, state)
+        ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
+            state)
     }
 }
 #[automatically_derived]
@@ -1196,9 +1186,8 @@ impl ::core::marker::StructuralPartialEq for Fieldless { }
 impl ::core::cmp::PartialEq for Fieldless {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        let __self_discr = ::core::intrinsics::discriminant_value(self);
-        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
-        __self_discr == __arg1_discr
+        ::core::intrinsics::discriminant_value(self) ==
+            ::core::intrinsics::discriminant_value(other)
     }
 }
 #[automatically_derived]
@@ -1215,9 +1204,8 @@ impl ::core::cmp::PartialOrd for Fieldless {
 impl ::core::cmp::Ord for Fieldless {
     #[inline]
     fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
-        let __self_discr = ::core::intrinsics::discriminant_value(self);
-        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
-        ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr)
+        ::core::cmp::Ord::cmp(&::core::intrinsics::discriminant_value(self),
+            &::core::intrinsics::discriminant_value(other))
     }
 }
 
@@ -1253,12 +1241,12 @@ impl ::core::fmt::Debug for Mixed {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
-            Mixed::P => ::core::fmt::Formatter::write_str(f, "P"),
-            Mixed::Q => ::core::fmt::Formatter::write_str(f, "Q"),
-            Mixed::R(__self_0) =>
+            Self::P => ::core::fmt::Formatter::write_str(f, "P"),
+            Self::Q => ::core::fmt::Formatter::write_str(f, "Q"),
+            Self::R(__self_0) =>
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "R",
                     &__self_0),
-            Mixed::S { d1: __self_0, d2: __self_1 } =>
+            Self::S { d1: __self_0, d2: __self_1 } =>
                 ::core::fmt::Formatter::debug_struct_field2_finish(f, "S",
                     "d1", __self_0, "d2", &__self_1),
         }
@@ -1273,11 +1261,11 @@ impl ::core::default::Default for Mixed {
 impl ::core::hash::Hash for Mixed {
     #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
-        let __self_discr = ::core::intrinsics::discriminant_value(self);
-        ::core::hash::Hash::hash(&__self_discr, state);
+        ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
+            state);
         match self {
-            Mixed::R(__self_0) => ::core::hash::Hash::hash(__self_0, state),
-            Mixed::S { d1: __self_0, d2: __self_1 } => {
+            Self::R(__self_0) => ::core::hash::Hash::hash(__self_0, state),
+            Self::S { d1: __self_0, d2: __self_1 } => {
                 ::core::hash::Hash::hash(__self_0, state);
                 ::core::hash::Hash::hash(__self_1, state)
             }
@@ -1291,13 +1279,12 @@ impl ::core::marker::StructuralPartialEq for Mixed { }
 impl ::core::cmp::PartialEq for Mixed {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        let __self_discr = ::core::intrinsics::discriminant_value(self);
-        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
-        __self_discr == __arg1_discr &&
+        ::core::intrinsics::discriminant_value(self) ==
+                ::core::intrinsics::discriminant_value(other) &&
             match (self, other) {
-                (Mixed::R(__self_0), Mixed::R(__arg1_0)) =>
+                (Self::R(__self_0), Self::R(__arg1_0)) =>
                     __self_0 == __arg1_0,
-                (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
+                (Self::S { d1: __self_0, d2: __self_1 }, Self::S {
                     d1: __arg1_0, d2: __arg1_1 }) =>
                     __self_0 == __arg1_0 && __self_1 == __arg1_1,
                 _ => true,
@@ -1327,23 +1314,19 @@ impl ::core::cmp::PartialOrd for Mixed {
 impl ::core::cmp::Ord for Mixed {
     #[inline]
     fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
-        let __self_discr = ::core::intrinsics::discriminant_value(self);
-        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
-        match ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr) {
-            ::core::cmp::Ordering::Equal =>
-                match (self, other) {
-                    (Mixed::R(__self_0), Mixed::R(__arg1_0)) =>
-                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
-                    (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
-                        d1: __arg1_0, d2: __arg1_1 }) =>
-                        match ::core::cmp::Ord::cmp(__self_0, __arg1_0) {
-                            ::core::cmp::Ordering::Equal =>
-                                ::core::cmp::Ord::cmp(__self_1, __arg1_1),
-                            cmp => cmp,
-                        },
-                    _ => ::core::cmp::Ordering::Equal,
+        match (self, other) {
+            (Self::R(__self_0), Self::R(__arg1_0)) =>
+                ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+            (Self::S { d1: __self_0, d2: __self_1 }, Self::S {
+                d1: __arg1_0, d2: __arg1_1 }) =>
+                match ::core::cmp::Ord::cmp(__self_0, __arg1_0) {
+                    ::core::cmp::Ordering::Equal =>
+                        ::core::cmp::Ord::cmp(__self_1, __arg1_1),
+                    cmp => cmp,
                 },
-            cmp => cmp,
+            _ =>
+                ::core::cmp::Ord::cmp(&::core::intrinsics::discriminant_value(self),
+                    &::core::intrinsics::discriminant_value(other)),
         }
     }
 }
@@ -1366,16 +1349,15 @@ impl ::core::marker::StructuralPartialEq for ReorderEnum { }
 impl ::core::cmp::PartialEq for ReorderEnum {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        let __self_discr = ::core::intrinsics::discriminant_value(self);
-        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
-        __self_discr == __arg1_discr &&
+        ::core::intrinsics::discriminant_value(self) ==
+                ::core::intrinsics::discriminant_value(other) &&
             match (self, other) {
-                (ReorderEnum::A(__self_0), ReorderEnum::A(__arg1_0)) =>
+                (Self::A(__self_0), Self::A(__arg1_0)) =>
                     __self_0 == __arg1_0,
-                (ReorderEnum::C(__self_0), ReorderEnum::C(__arg1_0)) =>
+                (Self::C(__self_0), Self::C(__arg1_0)) =>
                     __self_0 == __arg1_0,
-                (ReorderEnum::G(__self_0, __self_1, __self_2),
-                    ReorderEnum::G(__arg1_0, __arg1_1, __arg1_2)) =>
+                (Self::G(__self_0, __self_1, __self_2),
+                    Self::G(__arg1_0, __arg1_1, __arg1_2)) =>
                     __self_1 == __arg1_1 && __self_0 == __arg1_0 &&
                         __self_2 == __arg1_2,
                 _ => true,
@@ -1387,18 +1369,16 @@ impl ::core::cmp::PartialOrd for ReorderEnum {
     #[inline]
     fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        let __self_discr = ::core::intrinsics::discriminant_value(self);
-        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
-        match ::core::cmp::PartialOrd::partial_cmp(&__self_discr,
-                &__arg1_discr) {
+        match ::core::cmp::PartialOrd::partial_cmp(&::core::intrinsics::discriminant_value(self),
+                &::core::intrinsics::discriminant_value(other)) {
             ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
                 match (self, other) {
-                    (ReorderEnum::A(__self_0), ReorderEnum::A(__arg1_0)) =>
+                    (Self::A(__self_0), Self::A(__arg1_0)) =>
                         ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
-                    (ReorderEnum::C(__self_0), ReorderEnum::C(__arg1_0)) =>
+                    (Self::C(__self_0), Self::C(__arg1_0)) =>
                         ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
-                    (ReorderEnum::G(__self_0, __self_1, __self_2),
-                        ReorderEnum::G(__arg1_0, __arg1_1, __arg1_2)) =>
+                    (Self::G(__self_0, __self_1, __self_2),
+                        Self::G(__arg1_0, __arg1_1, __arg1_2)) =>
                         match ::core::cmp::PartialOrd::partial_cmp(__self_0,
                                 __arg1_0) {
                             ::core::option::Option::Some(::core::cmp::Ordering::Equal)
@@ -1427,12 +1407,12 @@ impl ::core::clone::Clone for Fielded {
     #[inline]
     fn clone(&self) -> Self {
         match self {
-            Fielded::X(__self_0) =>
-                Fielded::X(::core::clone::Clone::clone(__self_0)),
-            Fielded::Y(__self_0) =>
-                Fielded::Y(::core::clone::Clone::clone(__self_0)),
-            Fielded::Z(__self_0) =>
-                Fielded::Z(::core::clone::Clone::clone(__self_0)),
+            Self::X(__self_0) =>
+                Self::X(::core::clone::Clone::clone(__self_0)),
+            Self::Y(__self_0) =>
+                Self::Y(::core::clone::Clone::clone(__self_0)),
+            Self::Z(__self_0) =>
+                Self::Z(::core::clone::Clone::clone(__self_0)),
         }
     }
 }
@@ -1441,13 +1421,13 @@ impl ::core::fmt::Debug for Fielded {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
-            Fielded::X(__self_0) =>
+            Self::X(__self_0) =>
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "X",
                     &__self_0),
-            Fielded::Y(__self_0) =>
+            Self::Y(__self_0) =>
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Y",
                     &__self_0),
-            Fielded::Z(__self_0) =>
+            Self::Z(__self_0) =>
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Z",
                     &__self_0),
         }
@@ -1457,12 +1437,12 @@ impl ::core::fmt::Debug for Fielded {
 impl ::core::hash::Hash for Fielded {
     #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
-        let __self_discr = ::core::intrinsics::discriminant_value(self);
-        ::core::hash::Hash::hash(&__self_discr, state);
+        ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
+            state);
         match self {
-            Fielded::X(__self_0) => ::core::hash::Hash::hash(__self_0, state),
-            Fielded::Y(__self_0) => ::core::hash::Hash::hash(__self_0, state),
-            Fielded::Z(__self_0) => ::core::hash::Hash::hash(__self_0, state),
+            Self::X(__self_0) => ::core::hash::Hash::hash(__self_0, state),
+            Self::Y(__self_0) => ::core::hash::Hash::hash(__self_0, state),
+            Self::Z(__self_0) => ::core::hash::Hash::hash(__self_0, state),
         }
     }
 }
@@ -1472,15 +1452,14 @@ impl ::core::marker::StructuralPartialEq for Fielded { }
 impl ::core::cmp::PartialEq for Fielded {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        let __self_discr = ::core::intrinsics::discriminant_value(self);
-        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
-        __self_discr == __arg1_discr &&
+        ::core::intrinsics::discriminant_value(self) ==
+                ::core::intrinsics::discriminant_value(other) &&
             match (self, other) {
-                (Fielded::X(__self_0), Fielded::X(__arg1_0)) =>
+                (Self::X(__self_0), Self::X(__arg1_0)) =>
                     __self_0 == __arg1_0,
-                (Fielded::Y(__self_0), Fielded::Y(__arg1_0)) =>
+                (Self::Y(__self_0), Self::Y(__arg1_0)) =>
                     __self_0 == __arg1_0,
-                (Fielded::Z(__self_0), Fielded::Z(__arg1_0)) =>
+                (Self::Z(__self_0), Self::Z(__arg1_0)) =>
                     __self_0 == __arg1_0,
                 _ => unsafe { ::core::intrinsics::unreachable() }
             }
@@ -1509,20 +1488,16 @@ impl ::core::cmp::PartialOrd for Fielded {
 impl ::core::cmp::Ord for Fielded {
     #[inline]
     fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
-        let __self_discr = ::core::intrinsics::discriminant_value(self);
-        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
-        match ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr) {
-            ::core::cmp::Ordering::Equal =>
-                match (self, other) {
-                    (Fielded::X(__self_0), Fielded::X(__arg1_0)) =>
-                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
-                    (Fielded::Y(__self_0), Fielded::Y(__arg1_0)) =>
-                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
-                    (Fielded::Z(__self_0), Fielded::Z(__arg1_0)) =>
-                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
-                    _ => unsafe { ::core::intrinsics::unreachable() }
-                },
-            cmp => cmp,
+        match (self, other) {
+            (Self::X(__self_0), Self::X(__arg1_0)) =>
+                ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+            (Self::Y(__self_0), Self::Y(__arg1_0)) =>
+                ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+            (Self::Z(__self_0), Self::Z(__arg1_0)) =>
+                ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+            _ =>
+                ::core::cmp::Ord::cmp(&::core::intrinsics::discriminant_value(self),
+                    &::core::intrinsics::discriminant_value(other)),
         }
     }
 }
@@ -1535,10 +1510,10 @@ impl<T: ::core::clone::Clone, U: ::core::clone::Clone> ::core::clone::Clone
     #[inline]
     fn clone(&self) -> Self {
         match self {
-            EnumGeneric::One(__self_0) =>
-                EnumGeneric::One(::core::clone::Clone::clone(__self_0)),
-            EnumGeneric::Two(__self_0) =>
-                EnumGeneric::Two(::core::clone::Clone::clone(__self_0)),
+            Self::One(__self_0) =>
+                Self::One(::core::clone::Clone::clone(__self_0)),
+            Self::Two(__self_0) =>
+                Self::Two(::core::clone::Clone::clone(__self_0)),
         }
     }
 }
@@ -1552,10 +1527,10 @@ impl<T: ::core::fmt::Debug, U: ::core::fmt::Debug> ::core::fmt::Debug for
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
-            EnumGeneric::One(__self_0) =>
+            Self::One(__self_0) =>
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "One",
                     &__self_0),
-            EnumGeneric::Two(__self_0) =>
+            Self::Two(__self_0) =>
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Two",
                     &__self_0),
         }
@@ -1566,13 +1541,11 @@ impl<T: ::core::hash::Hash, U: ::core::hash::Hash> ::core::hash::Hash for
     EnumGeneric<T, U> {
     #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
-        let __self_discr = ::core::intrinsics::discriminant_value(self);
-        ::core::hash::Hash::hash(&__self_discr, state);
+        ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
+            state);
         match self {
-            EnumGeneric::One(__self_0) =>
-                ::core::hash::Hash::hash(__self_0, state),
-            EnumGeneric::Two(__self_0) =>
-                ::core::hash::Hash::hash(__self_0, state),
+            Self::One(__self_0) => ::core::hash::Hash::hash(__self_0, state),
+            Self::Two(__self_0) => ::core::hash::Hash::hash(__self_0, state),
         }
     }
 }
@@ -1585,13 +1558,12 @@ impl<T: ::core::cmp::PartialEq, U: ::core::cmp::PartialEq>
     ::core::cmp::PartialEq for EnumGeneric<T, U> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        let __self_discr = ::core::intrinsics::discriminant_value(self);
-        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
-        __self_discr == __arg1_discr &&
+        ::core::intrinsics::discriminant_value(self) ==
+                ::core::intrinsics::discriminant_value(other) &&
             match (self, other) {
-                (EnumGeneric::One(__self_0), EnumGeneric::One(__arg1_0)) =>
+                (Self::One(__self_0), Self::One(__arg1_0)) =>
                     __self_0 == __arg1_0,
-                (EnumGeneric::Two(__self_0), EnumGeneric::Two(__arg1_0)) =>
+                (Self::Two(__self_0), Self::Two(__arg1_0)) =>
                     __self_0 == __arg1_0,
                 _ => unsafe { ::core::intrinsics::unreachable() }
             }
@@ -1614,16 +1586,14 @@ impl<T: ::core::cmp::PartialOrd, U: ::core::cmp::PartialOrd>
     #[inline]
     fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        let __self_discr = ::core::intrinsics::discriminant_value(self);
-        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
         match (self, other) {
-            (EnumGeneric::One(__self_0), EnumGeneric::One(__arg1_0)) =>
+            (Self::One(__self_0), Self::One(__arg1_0)) =>
                 ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
-            (EnumGeneric::Two(__self_0), EnumGeneric::Two(__arg1_0)) =>
+            (Self::Two(__self_0), Self::Two(__arg1_0)) =>
                 ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
             _ =>
-                ::core::cmp::PartialOrd::partial_cmp(&__self_discr,
-                    &__arg1_discr),
+                ::core::cmp::PartialOrd::partial_cmp(&::core::intrinsics::discriminant_value(self),
+                    &::core::intrinsics::discriminant_value(other)),
         }
     }
 }
@@ -1632,18 +1602,14 @@ impl<T: ::core::cmp::Ord, U: ::core::cmp::Ord> ::core::cmp::Ord for
     EnumGeneric<T, U> {
     #[inline]
     fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
-        let __self_discr = ::core::intrinsics::discriminant_value(self);
-        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
-        match ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr) {
-            ::core::cmp::Ordering::Equal =>
-                match (self, other) {
-                    (EnumGeneric::One(__self_0), EnumGeneric::One(__arg1_0)) =>
-                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
-                    (EnumGeneric::Two(__self_0), EnumGeneric::Two(__arg1_0)) =>
-                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
-                    _ => unsafe { ::core::intrinsics::unreachable() }
-                },
-            cmp => cmp,
+        match (self, other) {
+            (Self::One(__self_0), Self::One(__arg1_0)) =>
+                ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+            (Self::Two(__self_0), Self::Two(__arg1_0)) =>
+                ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+            _ =>
+                ::core::cmp::Ord::cmp(&::core::intrinsics::discriminant_value(self),
+                    &::core::intrinsics::discriminant_value(other)),
         }
     }
 }
@@ -1662,8 +1628,8 @@ impl ::core::cmp::PartialEq for NonCopyEnum {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (NonCopyEnum::NonCopyField(__self_0),
-                NonCopyEnum::NonCopyField(__arg1_0)) => __self_0 == __arg1_0,
+            (Self::NonCopyField(__self_0), Self::NonCopyField(__arg1_0)) =>
+                __self_0 == __arg1_0,
         }
     }
 }
@@ -1746,9 +1712,7 @@ impl ::core::marker::Copy for FooCloneAndCopy { }
 #[automatically_derived]
 impl ::core::clone::Clone for FooCloneAndCopy {
     #[inline]
-    fn clone(&self) -> Self {
-        FooCloneAndCopy(::core::clone::Clone::clone(&self.0))
-    }
+    fn clone(&self) -> Self { Self(::core::clone::Clone::clone(&self.0)) }
 }
 
 struct FooPartialOrdOrd(i32);

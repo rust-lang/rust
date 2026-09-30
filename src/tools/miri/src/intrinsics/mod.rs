@@ -96,6 +96,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match intrinsic_name {
             // Basic control flow
             "abort" => {
+                // Note that `abort` is also hooked separately in CTFE.
                 throw_machine_stop!(TerminationInfo::Abort(
                     "the program aborted execution".to_owned()
                 ));

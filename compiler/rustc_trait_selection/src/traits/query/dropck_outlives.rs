@@ -2,6 +2,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_infer::traits::TraitErrors;
 use rustc_infer::traits::query::type_op::DropckOutlives;
 use rustc_middle::traits::query::{DropckConstraint, DropckOutlivesResult};
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, Ty, TyCtxt, Unnormalized};
 use rustc_span::Span;
 use thin_vec::ThinVec;

@@ -11,7 +11,6 @@
 //@[sparc64] filecheck-flags: --check-prefix v9
 //@ compile-flags: -Zmerge-functions=disabled -Copt-level=3
 //@ compile-flags: --check-cfg=cfg(v9)
-//@ min-llvm-version: 22
 
 #![deny(unexpected_cfgs)]
 #![feature(no_core, asm_experimental_arch, f128)]

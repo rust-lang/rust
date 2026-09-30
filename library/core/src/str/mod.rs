@@ -510,7 +510,6 @@ impl str {
     #[rustc_const_stable(feature = "str_as_bytes", since = "1.39.0")]
     #[must_use]
     #[inline(always)]
-    #[allow(unused_attributes)]
     pub const fn as_bytes(&self) -> &[u8] {
         // SAFETY: const sound because we transmute two types with the same layout
         unsafe { mem::transmute(self) }
@@ -2557,7 +2556,7 @@ impl str {
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
-    #[stable(feature = "trim_prefix_suffix", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "trim_prefix_suffix", since = "1.100.0")]
     pub fn trim_prefix<P: Pattern>(&self, prefix: P) -> &str {
         prefix.strip_prefix_of(self).unwrap_or(self)
     }
@@ -2592,7 +2591,7 @@ impl str {
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
-    #[stable(feature = "trim_prefix_suffix", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "trim_prefix_suffix", since = "1.100.0")]
     pub fn trim_suffix<P: Pattern>(&self, suffix: P) -> &str
     where
         for<'a> P::Searcher<'a>: ReverseSearcher<'a>,

@@ -348,7 +348,7 @@ impl fmt::Debug for Once {
     }
 }
 
-#[stable(feature = "once_default", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_default", since = "1.100.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
 const impl Default for Once {
     /// Creates a new `Once` value, same as [`Once::new`].

@@ -301,6 +301,7 @@ impl<'tcx> ReachableContext<'tcx> {
             | Node::Field(_)
             | Node::Ty(_)
             | Node::Crate(_)
+            | Node::NestedUseTree(_)
             | Node::Synthetic
             | Node::OpaqueTy(..) => {}
             _ => {

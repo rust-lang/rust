@@ -1,20 +1,20 @@
 error[E0271]: type mismatch resolving `N<u32> == _`
-  --> $DIR/normalize-const-item-type.rs:26:12
+  --> $DIR/normalize-const-item-type.rs:27:12
    |
-LL | fn func(_: [(); core::direct_const_arg!(N::<u32>)])
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+LL | fn func(_: [(); gca!(N::<u32>)])
+   |            ^^^^^^^^^^^^^^^^^^^^ types differ
 
 error: the type `[(); N::<u32>]` is not well-formed
-  --> $DIR/normalize-const-item-type.rs:26:12
+  --> $DIR/normalize-const-item-type.rs:27:12
    |
-LL | fn func(_: [(); core::direct_const_arg!(N::<u32>)])
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn func(_: [(); gca!(N::<u32>)])
+   |            ^^^^^^^^^^^^^^^^^^^^
 
 error[E0271]: type mismatch resolving `N<u32> == _`
-  --> $DIR/normalize-const-item-type.rs:26:12
+  --> $DIR/normalize-const-item-type.rs:27:12
    |
-LL | fn func(_: [(); core::direct_const_arg!(N::<u32>)])
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+LL | fn func(_: [(); gca!(N::<u32>)])
+   |            ^^^^^^^^^^^^^^^^^^^^ types differ
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

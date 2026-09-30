@@ -45,6 +45,8 @@ static DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "TeX", "LaTeX", "BibTeX", "BibLaTeX",
     "MinGW",
     "CamelCase",
+    "x86_64",
+    "CommonMark", "IntelliJ",
 ];
 static DEFAULT_DISALLOWED_NAMES: &[&str] = &["foo", "baz", "quux"];
 static DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS: &[&str] = &["i", "j", "x", "y", "z", "w", "n"];
@@ -477,7 +479,7 @@ define_Conf! {
     /// The maximum cognitive complexity a function can have
     #[lints(cognitive_complexity)]
     cognitive_complexity_threshold("cognitive-complexity-threshold"): u64 = 25,
-    /// The minimum digits a const float literal must have to supress the `excessive_precicion` lint
+    /// The minimum digits a const float literal must have to suppress the `excessive_precision` lint
     #[lints(excessive_precision)]
     const_literal_digits_threshold("const-literal-digits-threshold"): u32 = 30,
     #[rename = cognitive_complexity_threshold]
@@ -712,6 +714,7 @@ define_Conf! {
         repeat_vec_with_capacity,
         same_item_push,
         seek_from_current,
+        swap_ptr_to_ref,
         to_digit_is_some,
         transmute_ptr_to_ref,
         tuple_array_conversions,

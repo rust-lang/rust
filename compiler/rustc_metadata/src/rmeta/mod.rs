@@ -1,4 +1,5 @@
 use std::marker::PhantomData;
+use std::mem::size_of;
 use std::num::NonZero;
 
 use decoder::LazyDecoder;
@@ -9,16 +10,17 @@ pub use encoder::{EncodedMetadata, encode_metadata, rendered_const};
 pub(crate) use parameterized::ParameterizedOverTcx;
 use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
 use rustc_ast as ast;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{Stability, StrippedCfgItem};
 use rustc_crate_store::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
-use rustc_hir::attrs::StrippedCfgItem;
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::PreciseCapturingArgKind;
 use rustc_hir::def::{CtorKind, DefKind, MacroKinds};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
-use rustc_hir::{PreciseCapturingArgKind, attrs};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_macros::{
@@ -46,6 +48,7 @@ use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
 
 use crate::eii::EiiMapEncodedKeyValue;
+use crate::rmeta::table::TableBuilderSingleIdx;
 
 mod decoder;
 mod def_path_hash_map;
@@ -60,14 +63,26 @@ pub(crate) fn rustc_version(cfg_version: &'static str) -> String {
 /// Metadata encoding version.
 /// N.B., increment this if you change the format of metadata such that
 /// the rustc version can't be found to compare with `rustc_version()`.
-const METADATA_VERSION: u8 = 10;
+const METADATA_VERSION: u8 = 11;
 
 /// Metadata header which includes `METADATA_VERSION`.
 ///
-/// This header is followed by the length of the compressed data, then
-/// the position of the `CrateRoot`, which is encoded as a 64-bit little-endian
-/// unsigned integer, and further followed by the rustc version string.
+/// This header is followed by the `CrateRoot` and `CrateRootUnhashed` positions
+/// which represent the hashed and unhashed metadata contents respectively, the
+/// crate hash (SVH), and the rustc version string. See the offset constants
+/// below for the exact layout.
 pub const METADATA_HEADER: &[u8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
+
+/// Fixed-size fields encoded immediately after `METADATA_HEADER`, in order:
+/// `CrateRoot` position (u64), `CrateRootUnhashed` position (u64), crate hash
+/// (`Fingerprint`/SVH), then the variable-length rustc version string.
+const ROOT_POS_OFFSET: usize = METADATA_HEADER.len();
+const ROOT_POS_LEN: usize = size_of::<u64>();
+const UNHASHED_POS_OFFSET: usize = ROOT_POS_OFFSET + ROOT_POS_LEN;
+const UNHASHED_POS_LEN: usize = size_of::<u64>();
+const CRATE_HASH_OFFSET: usize = UNHASHED_POS_OFFSET + UNHASHED_POS_LEN;
+const CRATE_HASH_LEN: usize = size_of::<Fingerprint>();
+const VERSION_OFFSET: usize = CRATE_HASH_OFFSET + CRATE_HASH_LEN;
 
 /// A value of type T referred to by its absolute position
 /// in the metadata, and which can be decoded lazily.
@@ -129,22 +144,27 @@ impl<T> LazyArray<T> {
 /// Random-access table (i.e. offering constant-time `get`/`set`), similar to
 /// `LazyArray<T>`, but without requiring encoding or decoding all the values
 /// eagerly and in-order.
-struct LazyTable<I, T> {
+///
+/// `IdxEncode` - is a type of index that is used to write to the table,
+/// `IdxDecode` - is a type of index that is used to read from the table.
+struct LazyTable<IdxEncode, IdxDecode, T> {
     position: NonZero<usize>,
     /// The encoded size of the elements of a table is selected at runtime to drop
     /// trailing zeroes. This is the number of bytes used for each table element.
     width: usize,
     /// How many elements are in the table.
     len: usize,
-    _marker: PhantomData<fn(I) -> T>,
+    _marker: PhantomData<fn(IdxEncode, IdxDecode) -> T>,
 }
 
-impl<I, T> LazyTable<I, T> {
+type LazyTableSingleIdx<TIdx, TValue> = LazyTable<TIdx, TIdx, TValue>;
+
+impl<Ie, Id, T> LazyTable<Ie, Id, T> {
     fn from_position_and_encoded_size(
         position: NonZero<usize>,
         width: usize,
         len: usize,
-    ) -> LazyTable<I, T> {
+    ) -> LazyTable<Ie, Id, T> {
         LazyTable { position, width, len, _marker: PhantomData }
     }
 }
@@ -163,8 +183,8 @@ impl<T> Clone for LazyArray<T> {
     }
 }
 
-impl<I, T> Copy for LazyTable<I, T> {}
-impl<I, T> Clone for LazyTable<I, T> {
+impl<Ie, Id, T> Copy for LazyTable<Ie, Id, T> {}
+impl<Ie, Id, T> Clone for LazyTable<Ie, Id, T> {
     fn clone(&self) -> Self {
         *self
     }
@@ -185,15 +205,16 @@ enum LazyState {
     Previous(NonZero<usize>),
 }
 
-type SyntaxContextTable = LazyTable<u32, Option<LazyValue<SyntaxContextKey>>>;
-type ExpnDataTable = LazyTable<ExpnIndex, Option<LazyValue<ExpnData>>>;
-type ExpnHashTable = LazyTable<ExpnIndex, Option<LazyValue<ExpnHash>>>;
+type SyntaxContextTable = LazyTableSingleIdx<u32, Option<LazyValue<SyntaxContextKey>>>;
+type ExpnDataTable = LazyTableSingleIdx<ExpnIndex, Option<LazyValue<ExpnData>>>;
+type ExpnHashTable = LazyTableSingleIdx<ExpnIndex, Option<LazyValue<ExpnHash>>>;
 
 #[derive(MetadataEncodable, LazyDecodable)]
 pub(crate) struct ProcMacroData {
     proc_macro_decls_static: DefIndex,
-    stability: Option<hir::Stability>,
+    stability: Option<Stability>,
     macros: LazyArray<(DefIndex, LazyValue<ProcMacroKind>)>,
+    proc_macro_quoted_spans: LazyTableSingleIdx<usize, Option<LazyValue<Span>>>,
 }
 
 #[derive(MetadataEncodable, LazyDecodable)]
@@ -213,7 +234,6 @@ pub enum ProcMacroKind {
 #[derive(MetadataEncodable, BlobDecodable)]
 pub(crate) struct CrateHeader {
     pub(crate) triple: TargetTuple,
-    pub(crate) hash: Svh,
     pub(crate) name: Symbol,
     /// Whether this is the header for a proc-macro crate.
     ///
@@ -250,7 +270,6 @@ pub(crate) struct CrateRoot {
     /// A header used to detect if this is the right crate to load.
     header: CrateHeader,
 
-    extra_filename: String,
     stable_crate_id: StableCrateId,
     required_panic_strategy: Option<PanicStrategy>,
     panic_in_drop_strategy: PanicStrategy,
@@ -293,7 +312,7 @@ pub(crate) struct CrateRoot {
 
     def_path_hash_map: LazyValue<DefPathHashMapRef<'static>>,
 
-    source_map: LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>,
+    source_map: LazyTableSingleIdx<u32, Option<LazyValue<rustc_span::SourceFile>>>,
     target_modifiers: LazyArray<TargetModifier>,
     denied_partial_mitigations: LazyArray<DeniedPartialMitigation>,
 
@@ -306,6 +325,18 @@ pub(crate) struct CrateRoot {
     symbol_mangling_version: SymbolManglingVersion,
 
     specialization_enabled_in: bool,
+}
+
+/// A separate struct for extra metadata that must be encoded *after*
+/// the main crate hash is finalized.
+#[derive(MetadataEncodable, LazyDecodable)]
+pub(crate) struct CrateRootUnhashed {
+    extra_filename: String,
+
+    /// The `-C extra-filename` of each dependency, indexed by the `CrateNum` they had in *this*
+    /// crate's encoding. The `LOCAL_CRATE` slot is unused filler so that dependency `CrateNum`s
+    /// can index this directly; this crate's own value is `extra_filename` above.
+    dep_extra_filenames: IndexVec<CrateNum, String>,
 }
 
 /// On-disk representation of `DefId`.
@@ -332,13 +363,16 @@ impl RawDefId {
     }
 }
 
+/// A dependency record, as stored in the hashed [`CrateRoot`].
+///
+/// Note the absence of the dependency's `-C extra-filename`: it lives in
+/// [`CrateRootUnhashed::dep_extra_filenames`] instead, deliberately outside the hash.
 #[derive(Encodable, BlobDecodable)]
 pub(crate) struct CrateDep {
     pub name: Symbol,
     pub hash: Svh,
     pub host_hash: Option<Svh>,
     pub kind: CrateDepKind,
-    pub extra_filename: String,
     pub is_private: bool,
 }
 
@@ -362,14 +396,14 @@ macro_rules! define_tables {
     ) => {
         #[derive(MetadataEncodable, LazyDecodable)]
         pub(crate) struct LazyTables {
-            $($name1: LazyTable<$IDX1, $T1>,)+
-            $($name2: LazyTable<$IDX2, Option<$T2>>,)+
+            $($name1: LazyTableSingleIdx<$IDX1, $T1>,)+
+            $($name2: LazyTableSingleIdx<$IDX2, Option<$T2>>,)+
         }
 
         #[derive(Default)]
         struct TableBuilders {
-            $($name1: TableBuilder<$IDX1, $T1>,)+
-            $($name2: TableBuilder<$IDX2, Option<$T2>>,)+
+            $($name1: TableBuilderSingleIdx<$IDX1, $T1>,)+
+            $($name2: TableBuilderSingleIdx<$IDX2, Option<$T2>>,)+
         }
 
         impl TableBuilders {
@@ -417,7 +451,7 @@ define_tables! {
     impl_is_fully_generic_for_reflection: Table<DefIndex, bool>,
 
 - optional:
-    attributes: Table<DefIndex, LazyArray<hir::Attribute>>,
+    attributes: Table<DefIndex, LazyArray<rustc_attr_ir::Attribute>>,
     // For non-reexported names in a module every name is associated with a separate `DefId`,
     // so we can take their names, visibilities etc from other encoded tables.
     module_children_non_reexports: Table<DefIndex, LazyArray<DefIndex>>,
@@ -426,10 +460,10 @@ define_tables! {
     visibility: Table<DefIndex, LazyValue<ty::Visibility<DefIndex>>>,
     def_span: Table<DefIndex, LazyValue<Span>>,
     def_ident_span: Table<DefIndex, LazyValue<Span>>,
-    lookup_stability: Table<DefIndex, LazyValue<hir::Stability>>,
-    lookup_const_stability: Table<DefIndex, LazyValue<hir::ConstStability>>,
-    lookup_default_body_stability: Table<DefIndex, LazyValue<hir::DefaultBodyStability>>,
-    lookup_deprecation_entry: Table<DefIndex, LazyValue<attrs::Deprecation>>,
+    lookup_stability: Table<DefIndex, LazyValue<Stability>>,
+    lookup_const_stability: Table<DefIndex, LazyValue<rustc_attr_ir::ConstStability>>,
+    lookup_default_body_stability: Table<DefIndex, LazyValue<rustc_attr_ir::DefaultBodyStability>>,
+    lookup_deprecation_entry: Table<DefIndex, LazyValue<rustc_attr_ir::Deprecation>>,
     explicit_clauses_of: Table<DefIndex, LazyValue<ty::GenericClauses<'static>>>,
     generics_of: Table<DefIndex, LazyValue<ty::Generics>>,
     type_of: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, Ty<'static>>>>,
@@ -470,7 +504,6 @@ define_tables! {
     // `DefPathTable` up front, since we may only ever use a few
     // definitions from any given crate.
     def_keys: Table<DefIndex, LazyValue<DefKey>>,
-    proc_macro_quoted_spans: Table<usize, LazyValue<Span>>,
     variant_data: Table<DefIndex, LazyValue<VariantData>>,
     assoc_container: Table<DefIndex, LazyValue<ty::AssocContainer>>,
     macro_definition: Table<DefIndex, LazyValue<ast::DelimArgs>>,

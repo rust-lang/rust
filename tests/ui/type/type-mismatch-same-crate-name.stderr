@@ -2,21 +2,21 @@ error[E0308]: mismatched types
   --> $DIR/type-mismatch-same-crate-name.rs:17:20
    |
 LL |         a::try_foo(foo2);
-   |         ---------- ^^^^ expected `main::a::Foo`, found a different `main::a::Foo`
+   |         ---------- ^^^^ expected `crate_a1::Foo`, found `crate_a2::Foo`
    |         |
    |         arguments to this function are incorrect
    |
-note: there are multiple different versions of crate `crate_a1` in the dependency graph
+   = note: `crate_a2::Foo` and `crate_a1::Foo` have similar names, but are actually distinct types
+note: `crate_a2::Foo` is defined in crate `crate_a2`
+  --> $DIR/auxiliary/crate_a2.rs:1:1
+   |
+LL | pub struct Foo;
+   | ^^^^^^^^^^^^^^
+note: `crate_a1::Foo` is defined in crate `crate_a1`
   --> $DIR/auxiliary/crate_a1.rs:1:1
    |
 LL | pub struct Foo;
-   | ^^^^^^^^^^^^^^ this is the expected type
-   |
-  ::: $DIR/auxiliary/crate_a2.rs:1:1
-   |
-LL | pub struct Foo;
-   | -------------- this is the found type
-   = help: you can use `cargo tree` to explore your dependency tree
+   | ^^^^^^^^^^^^^^
 note: function defined here
   --> $DIR/auxiliary/crate_a1.rs:10:8
    |
@@ -24,24 +24,15 @@ LL | pub fn try_foo(x: Foo){}
    |        ^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch-same-crate-name.rs:24:20
+  --> $DIR/type-mismatch-same-crate-name.rs:25:20
    |
 LL |         a::try_bar(bar2);
-   |         ---------- ^^^^ expected trait `main::a::Bar`, found a different trait `main::a::Bar`
+   |         ---------- ^^^^ expected trait `crate_a1::Bar`, found trait `crate_a2::Bar`
    |         |
    |         arguments to this function are incorrect
    |
-note: there are multiple different versions of crate `crate_a1` in the dependency graph
-  --> $DIR/auxiliary/crate_a1.rs:3:1
-   |
-LL | pub trait Bar {}
-   | ^^^^^^^^^^^^^ this is the expected trait
-   |
-  ::: $DIR/auxiliary/crate_a2.rs:3:1
-   |
-LL | pub trait Bar {}
-   | ------------- this is the found trait
-   = help: you can use `cargo tree` to explore your dependency tree
+   = note: expected struct `Box<(dyn crate_a1::Bar + 'static)>`
+              found struct `Box<dyn crate_a2::Bar>`
 note: function defined here
   --> $DIR/auxiliary/crate_a1.rs:11:8
    |

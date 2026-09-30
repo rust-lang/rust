@@ -17,8 +17,7 @@ use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, std
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::timings::TimingSectionHandler;
 use rustc_errors::{
-    Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort, PResult,
-    TerminalUrl,
+    Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, PResult, TerminalUrl,
 };
 use rustc_feature::UnstableFeatures;
 use rustc_macros::StableHash;
@@ -29,9 +28,9 @@ use rustc_span::{RealFileName, Span, Symbol};
 use rustc_structures::{CrateType, Limit};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
-    Arch, CfgAbi, CodeModel, DebuginfoKind, Os, PanicStrategy, RelocModel, RelroLevel,
-    SanitizerSet, SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility,
-    Target, TargetTuple, TlsModel, apple,
+    Arch, CfgAbi, CodeModel, DebuginfoKind, MergeFunctions, Os, PanicStrategy, RelocModel,
+    RelroLevel, SanitizerSet, SmallDataThresholdSupport, SplitDebuginfo, StackProtector,
+    SymbolVisibility, Target, TargetTuple, TlsModel, apple,
 };
 
 use crate::code_stats::CodeStats;
@@ -424,6 +423,14 @@ impl EarlySession {
             .sanitizer
             .combine_with_defaults(self.target.options.default_sanitizers)
     }
+
+    pub fn merge_functions(&self) -> MergeFunctions {
+        self.opts.unstable_opts.merge_functions.unwrap_or(self.target.merge_functions)
+    }
+
+    pub fn is_nightly_build(&self) -> bool {
+        self.opts.unstable_features.is_nightly_build()
+    }
 }
 
 /// Some info about the backend, returned by `CodegenBackend::init` and put into the `Session`.
@@ -744,6 +751,10 @@ impl Session {
 
     pub fn is_sanitizer_cfi_diag_enabled(&self) -> bool {
         self.opts.unstable_opts.sanitizer_cfi_diag == Some(true)
+    }
+
+    pub fn is_sanitizer_cfi_minimal_runtime_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_cfi_minimal_runtime == Some(true)
     }
 
     pub fn is_sanitizer_kcfi_arity_enabled(&self) -> bool {
@@ -1684,6 +1695,16 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
+    // LLVM CFI minimal runtime requires CFI recovery or CFI diagnostics.
+    if sess.is_sanitizer_cfi_minimal_runtime_enabled() {
+        if !sess.is_sanitizer_cfi_enabled() {
+            sess.dcx().emit_err(diagnostics::SanitizerCfiMinimalRuntimeRequiresCfi);
+        } else if !(sess.is_sanitizer_cfi_recover_enabled() || sess.is_sanitizer_cfi_diag_enabled())
+        {
+            sess.dcx().emit_err(diagnostics::SanitizerCfiMinimalRuntimeRequiresCfiRecoverOrDiag);
+        }
+    }
+
     // LLVM CFI integer normalization requires CFI or KCFI.
     if sess.is_sanitizer_cfi_normalize_integers_enabled() {
         if !(sess.is_sanitizer_cfi_enabled() || sess.is_sanitizer_kcfi_enabled()) {
@@ -1841,14 +1862,11 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
 /// Holds data on the current incremental compilation session, if there is one.
 pub struct IncrCompSession {
-    /// The directory containing all cached data. Cached data from a previous
-    /// session can be read out of it and new data for the current session will
-    /// be written into it.
-    pub session_directory: PathBuf,
-    /// `_lock_file` is never directly used, but its presence
-    /// alone has an effect, because the file will unlock when the session is
-    /// dropped.
-    pub _lock_file: flock::Lock,
+    /// The directory from which cached data of a previous session can be read.
+    pub old_session_directory: Option<flock::LockedDir>,
+    /// The directory to which cached data for the current session can be
+    /// written to.
+    pub new_session_directory: flock::LockedDir,
 }
 
 /// A wrapper around an [`DiagCtxt`] that is used for early error emissions.
@@ -1880,7 +1898,7 @@ impl EarlyDiagCtxt {
         self.dcx.handle().fatal(msg)
     }
 
-    pub fn early_struct_fatal(&self, msg: impl Into<DiagMessage>) -> Diag<'_, FatalAbort> {
+    pub fn early_struct_fatal(&self, msg: impl Into<DiagMessage>) -> Diag<'_> {
         self.dcx.handle().struct_fatal(msg)
     }
 
@@ -1888,7 +1906,7 @@ impl EarlyDiagCtxt {
         self.dcx.handle().warn(msg)
     }
 
-    pub fn early_struct_warn(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
+    pub fn early_struct_warn(&self, msg: impl Into<DiagMessage>) -> Diag<'_> {
         self.dcx.handle().struct_warn(msg)
     }
 }

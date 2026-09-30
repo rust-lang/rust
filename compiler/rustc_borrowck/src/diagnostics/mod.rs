@@ -3,10 +3,10 @@
 use std::collections::BTreeMap;
 
 use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{Applicability, Diag, DiagMessage, MultiSpan, listify, msg};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::{
     self as hir, CoroutineKind, GenericBound, WhereBoundPredicate, WherePredicateKind,
@@ -94,13 +94,19 @@ pub(crate) struct BorrowckDiagnosticsBuffer<'diag, 'tcx> {
 
     buffered_mut_errors: FxIndexMap<Span, (Diag<'diag>, usize)>,
 
-    /// Buffer of diagnostics to be reported.
-    buffered_diags: Vec<Diag<'diag>>,
+    /// Buffer of diagnostics to be reported. Each one is paired with a span for sorting purposes;
+    /// by default it's the primary span.
+    buffered_diags: Vec<(Span, Diag<'diag>)>,
 }
 
 impl<'diag, 'tcx> BorrowckDiagnosticsBuffer<'diag, 'tcx> {
     pub(crate) fn buffer_error(&mut self, diag: Diag<'diag>) {
-        self.buffered_diags.push(diag);
+        let sort_span = diag.span.primary_span().unwrap_or(DUMMY_SP);
+        self.buffered_diags.push((sort_span, diag));
+    }
+
+    pub(crate) fn buffer_error_with_sort_span(&mut self, diag: Diag<'diag>, sort_span: Span) {
+        self.buffered_diags.push((sort_span, diag));
     }
 
     pub(crate) fn emit_errors(&mut self) {
@@ -117,8 +123,8 @@ impl<'diag, 'tcx> BorrowckDiagnosticsBuffer<'diag, 'tcx> {
         }
 
         if !self.buffered_diags.is_empty() {
-            self.buffered_diags.sort_by_key(|diag| diag.sort_span);
-            for diag in self.buffered_diags.drain(..) {
+            self.buffered_diags.sort_by_key(|(sort_span, _)| sort_span.lo_hi());
+            for (_, diag) in self.buffered_diags.drain(..) {
                 diag.emit();
             }
         }
@@ -128,6 +134,10 @@ impl<'diag, 'tcx> BorrowckDiagnosticsBuffer<'diag, 'tcx> {
 impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
     pub(crate) fn buffer_error(&mut self, diag: Diag<'_>) {
         self.diags_buffer.buffer_error(diag.with_dcx(self.dcx()));
+    }
+
+    pub(crate) fn buffer_error_with_sort_span(&mut self, diag: Diag<'_>, sort_span: Span) {
+        self.diags_buffer.buffer_error_with_sort_span(diag.with_dcx(self.dcx()), sort_span);
     }
 
     pub(crate) fn buffer_move_error(
@@ -642,9 +652,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     ///
     /// This is very similar to `fn suggest_static_lifetime_for_gat_from_hrtb` which handles this
     /// note for failed type tests instead of outlives errors.
-    fn add_placeholder_from_predicate_note<G>(
+    fn add_placeholder_from_predicate_note(
         &self,
-        diag: &mut Diag<'_, G>,
+        diag: &mut Diag<'_>,
         path: &[OutlivesConstraint<'tcx>],
     ) {
         let tcx = self.infcx.tcx;
@@ -704,9 +714,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
     /// Add a label to region errors and borrow explanations when outlives constraints arise from
     /// proving a type implements `Sized` or `Copy`.
-    fn add_sized_or_copy_bound_info<G>(
+    fn add_sized_or_copy_bound_info(
         &self,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
         blamed_category: ConstraintCategory<'tcx>,
         path: &[OutlivesConstraint<'tcx>],
     ) {

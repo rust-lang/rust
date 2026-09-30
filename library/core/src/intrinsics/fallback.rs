@@ -112,8 +112,13 @@ const impl CarryingMulAdd for i128 {
 
 #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
 pub const trait DisjointBitOr: Copy + 'static {
-    /// See [`super::disjoint_bitor`]; we just need the trait indirection to handle
-    /// different types since calling intrinsics with generics doesn't work.
+    /// We just need the trait indirection to handle different types
+    /// since calling intrinsics with generics doesn't work.
+    ///
+    /// # Safety
+    ///
+    /// See [`super::disjoint_bitor`], with `self` corresponding to `a` and
+    /// `other` corresponding to `b`.
     unsafe fn disjoint_bitor(self, other: Self) -> Self;
 }
 macro_rules! zero {
@@ -149,12 +154,22 @@ impl_disjoint_bitor! {
 
 #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
 pub const trait FunnelShift: Copy + 'static {
-    /// See [`super::unchecked_funnel_shl`]; we just need the trait indirection to handle
-    /// different types since calling intrinsics with generics doesn't work.
+    /// We just need the trait indirection to handle different types
+    /// since calling intrinsics with generics doesn't work.
+    ///
+    /// # Safety
+    ///
+    /// See [`super::unchecked_funnel_shl`], with `self` corresponding to `a` and
+    /// `right` corresponding to `b`.
     unsafe fn unchecked_funnel_shl(self, right: Self, shift: u32) -> Self;
 
-    /// See [`super::unchecked_funnel_shr`]; we just need the trait indirection to handle
-    /// different types since calling intrinsics with generics doesn't work.
+    /// We just need the trait indirection to handle different types
+    /// since calling intrinsics with generics doesn't work.
+    ///
+    /// # Safety
+    ///
+    /// See [`super::unchecked_funnel_shr`], with `self` corresponding to `a` and
+    /// `right` corresponding to `b`.
     unsafe fn unchecked_funnel_shr(self, right: Self, shift: u32) -> Self;
 }
 

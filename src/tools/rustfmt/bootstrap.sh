@@ -4,7 +4,7 @@
 # power comes great responsibility.
 # We deliberately avoid reformatting files with rustfmt comment directives.
 
-cargo build --release
+cargo build --release --locked
 
 target/release/rustfmt src/lib.rs
 target/release/rustfmt src/bin/main.rs

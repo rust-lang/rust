@@ -30,6 +30,7 @@ use rustc_errors::ErrorGuaranteed;
 pub use rustc_infer::traits::*;
 use rustc_macros::TypeVisitable;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, BottomUpFolder, Clause, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable,

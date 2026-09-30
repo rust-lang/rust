@@ -1,6 +1,4 @@
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(never_type))]
-#![cfg_attr(bootstrap, feature(trim_prefix_suffix))]
 #![feature(deref_patterns)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
@@ -607,7 +605,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => err.with_span_label(span, format!("not a {expected}")),
         }
-        .emit()
+        .emit_err()
     }
 }
 
@@ -714,7 +712,7 @@ fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
             diag.note("some of the compiler flags provided by cargo are hidden");
         }
     }
-    diag.emit()
+    diag.emit_bug()
 }
 
 /// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]

@@ -142,12 +142,6 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Clause<'tcx> {
     }
 }
 
-impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Const<'tcx> {
-    fn encode(&self, e: &mut E) {
-        self.0.0.encode(e);
-    }
-}
-
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Pattern<'tcx> {
     fn encode(&self, e: &mut E) {
         self.0.0.encode(e);
@@ -289,13 +283,6 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::ParamEnv<'tcx> {
     fn decode(d: &mut D) -> Self {
         let caller_bounds = Decodable::decode(d);
         ty::ParamEnv { caller_bounds }
-    }
-}
-
-impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Const<'tcx> {
-    fn decode(decoder: &mut D) -> Self {
-        let kind: ty::ConstKind<'tcx> = Decodable::decode(decoder);
-        decoder.interner().mk_ct_from_kind(kind)
     }
 }
 

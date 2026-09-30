@@ -53,8 +53,7 @@ After running a Docker build,
 you'll find the Fuchsia checkout inside the `obj/test-x86_64-fuchsia/fuchsia` directory of your Rust
 checkout.
 If you modify the `KEEP_CHECKOUT` line in the [build-fuchsia.sh] script to `KEEP_CHECKOUT=1`,
-you can change the checkout as needed and rerun
-the build command above.
+you can change the checkout as needed and rerun the build command above.
 This will reuse all the build results from before.
 
 You can find more options to customize the Fuchsia checkout in the [build-fuchsia.sh] script.

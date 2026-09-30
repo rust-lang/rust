@@ -14,7 +14,7 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt, SizedTraitKind, StalledOnCoroutines,
 };
 use rustc_type_ir::{
-    self as ty, AliasTy, Interner, MayBeErased, Region, TypeFlags, TypeFoldable, TypeFolder,
+    self as ty, AliasTy, Const, Interner, MayBeErased, Region, TypeFlags, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     TypingMode, Unnormalized, Upcast, elaborate,
 };
@@ -1091,8 +1091,12 @@ where
                 // we still use modulo regions here. This is fine as specialization currently
                 // assumes that specializing impls have to be always applicable, meaning that
                 // the only allowed region constraints may be constraints also present on the default impl.
+                //
+                // If both impls have the same response, dropping victim doesn't change the
+                // result. We need to do so here as we don't merge distinct impl candidates.
                 if matches!(allow_inference_constraints, AllowInferenceConstraints::Yes)
                     || has_only_region_constraints(c.result)
+                    || c.result == candidates[i].result
                 {
                     if self.cx().impl_specializes(other_def_id, victim_def_id) {
                         candidates.remove(i);
@@ -1466,7 +1470,7 @@ where
         }
     }
 
-    fn visit_const(&mut self, ct: I::Const) -> Self::Result {
+    fn visit_const(&mut self, ct: Const<I>) -> Self::Result {
         let ct = self.ecx.replace_bound_vars(ct, &mut self.universes);
         let Ok(ct) = self.ecx.structurally_normalize_const(self.param_env, ct) else {
             return ControlFlow::Break(Err(NoSolution));

@@ -55,10 +55,10 @@ impl<'tcx> BorrowExplanation<'tcx> {
     pub(crate) fn is_explained(&self) -> bool {
         !matches!(self, BorrowExplanation::Unexplained)
     }
-    pub(crate) fn add_explanation_to_diagnostic<G>(
+    pub(crate) fn add_explanation_to_diagnostic(
         &self,
         cx: &MirBorrowckCtxt<'_, '_, 'tcx>,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
         borrow_desc: &str,
         borrow_span: Option<Span>,
         multiple_borrow_span: Option<(Span, Span)>,
@@ -415,12 +415,12 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 let mut preds = path
                     .iter()
                     .filter_map(|constraint| match constraint.category {
-                        ConstraintCategory::Predicate(pred) if !pred.is_dummy() => Some(pred),
+                        ConstraintCategory::Predicate(pred, _) if !pred.is_dummy() => Some(pred),
                         _ => None,
                     })
                     .collect::<Vec<Span>>();
-                preds.sort();
-                preds.dedup();
+                preds.sort_by_key(|span| span.lo_hi());
+                preds.dedup_by_key(|span| span.lo_hi());
                 if !preds.is_empty() {
                     let s = if preds.len() == 1 { "" } else { "s" };
                     err.span_note(
@@ -437,10 +437,10 @@ impl<'tcx> BorrowExplanation<'tcx> {
         }
     }
 
-    fn add_object_lifetime_default_note<G>(
+    fn add_object_lifetime_default_note(
         &self,
         tcx: TyCtxt<'tcx>,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
         unsize_ty: Ty<'tcx>,
     ) {
         if let ty::Adt(def, args) = unsize_ty.kind() {
@@ -494,9 +494,9 @@ impl<'tcx> BorrowExplanation<'tcx> {
         }
     }
 
-    fn add_lifetime_bound_suggestion_to_diagnostic<G>(
+    fn add_lifetime_bound_suggestion_to_diagnostic(
         &self,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
         category: &ConstraintCategory<'tcx>,
         span: Span,
         region_name: &RegionName,
@@ -523,14 +523,14 @@ impl<'tcx> BorrowExplanation<'tcx> {
     }
 }
 
-fn suggest_rewrite_if_let<G>(
+fn suggest_rewrite_if_let(
     tcx: TyCtxt<'_>,
     expr: &hir::Expr<'_>,
     pat: &str,
     init: &hir::Expr<'_>,
     conseq: &hir::Expr<'_>,
     alt: Option<&hir::Expr<'_>>,
-    err: &mut Diag<'_, G>,
+    err: &mut Diag<'_>,
 ) {
     let source_map = tcx.sess.source_map();
     err.span_note(

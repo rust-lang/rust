@@ -897,6 +897,13 @@ pub(crate) struct InlineForceInlineConflict {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[inline]` is ignored on externally exported functions")]
+#[help(
+    "externally exported functions are functions with `#[no_mangle]`, `#[export_name]`, or `#[linkage]`"
+)]
+pub(crate) struct InlineIgnoredForExported;
+
+#[derive(Diagnostic)]
 #[diag("`#[ffi_const]` function cannot be `#[ffi_pure]`", code = E0757)]
 pub(crate) struct BothFfiConstAndPure {
     #[primary_span]
@@ -1228,7 +1235,7 @@ pub(crate) struct UnknownVersionLiteral {
 #[diag("multiple `{$name}` attributes")]
 pub(crate) struct UnusedMultiple {
     #[primary_span]
-    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
+    #[suggestion("remove this attribute", code = "", applicability = "unspecified")]
     pub this: Span,
     #[note("attribute also specified here")]
     pub other: Span,
@@ -1476,9 +1483,9 @@ pub(crate) enum AttributeParseErrorSuggestions {
 }
 
 impl<'a> AttributeParseError<'a> {
-    fn render_expected_specific_argument<G>(
+    fn render_expected_specific_argument(
         &self,
-        diag: &mut Diag<'_, G>,
+        diag: &mut Diag<'_>,
         possibilities: &[Symbol],
         strings: bool,
     ) {
@@ -1509,9 +1516,9 @@ impl<'a> AttributeParseError<'a> {
         }
     }
 
-    fn render_expected_specific_argument_list<G>(
+    fn render_expected_specific_argument_list(
         &self,
-        diag: &mut Diag<'_, G>,
+        diag: &mut Diag<'_>,
         possibilities: &[Symbol],
         strings: bool,
     ) {
@@ -1543,7 +1550,7 @@ impl<'a> AttributeParseError<'a> {
         }
     }
 
-    fn render_suggestions<G>(&self, diag: &mut Diag<'_, G>) {
+    fn render_suggestions(&self, diag: &mut Diag<'_>) {
         let description = self.description();
 
         match &self.suggestions {
@@ -1592,8 +1599,8 @@ impl AttributeParseErrorSuggestions {
     }
 }
 
-impl<'a, G> Diagnostic<'a, G> for AttributeParseError<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+impl<'a> Diagnostic<'a> for AttributeParseError<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let name = self.path.to_string();
 
         let description = self.description();
@@ -1604,7 +1611,7 @@ impl<'a, G> Diagnostic<'a, G> for AttributeParseError<'_> {
         match &self.reason {
             AttributeParseErrorReason::ExpectedStringLiteral { byte_string } => {
                 if let Some(start_point_span) = byte_string {
-                    diag.span_suggestion(
+                    diag.span_suggestion_short(
                         *start_point_span,
                         "consider removing the prefix",
                         "",
@@ -1824,6 +1831,13 @@ pub(crate) struct EmptyLinkName {
     #[label("empty link name")]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("attribute should be applied to an `extern` block with non-Rust ABI")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+pub(crate) struct Link;
 
 #[derive(Diagnostic)]
 #[diag("link kind `framework` is only supported on Apple targets", code = E0455)]
@@ -2047,7 +2061,7 @@ pub(crate) struct AdditionalCommaSuggestion {
 #[derive(Diagnostic)]
 #[diag("unused attribute")]
 pub(crate) struct UnusedDuplicate {
-    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
+    #[suggestion("remove this attribute", code = "", applicability = "unspecified")]
     pub this: Span,
     #[note("attribute also specified here")]
     pub other: Span,
@@ -2055,4 +2069,11 @@ pub(crate) struct UnusedDuplicate {
         "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
     )]
     pub warning: bool,
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum MacroExport {
+    #[diag("`#[macro_export]` has no effect on declarative macro definitions")]
+    #[note("declarative macros follow the same exporting rules as regular items")]
+    OnDeclMacro,
 }
