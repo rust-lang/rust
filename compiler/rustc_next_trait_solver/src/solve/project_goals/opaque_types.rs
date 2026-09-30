@@ -99,8 +99,7 @@ where
                                     _ => re,
                                 })
                             });
-                            let actual =
-                                self.normalize(GoalSource::Misc, goal.param_env, actual)?;
+                            let actual = self.normalize(goal.param_env, actual)?;
                             self.eq(goal.param_env, expected, actual)?;
                         }
                         TypingMode::Coherence
@@ -145,7 +144,7 @@ where
                         _ => re,
                     })
                 });
-                let actual = self.normalize(GoalSource::Misc, goal.param_env, actual)?;
+                let actual = self.normalize(goal.param_env, actual)?;
                 self.eq(goal.param_env, expected, actual)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     .map_err(Into::into)
@@ -154,7 +153,7 @@ where
             TypingMode::Reflection | TypingMode::PostAnalysis | TypingMode::Codegen => {
                 // FIXME: Add an assertion that opaque type storage is empty.
                 let actual = cx.type_of(def_id.into()).instantiate(cx, opaque_ty.args);
-                let actual = self.normalize(GoalSource::Misc, goal.param_env, actual)?;
+                let actual = self.normalize(goal.param_env, actual)?;
                 self.eq(goal.param_env, expected, actual)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     .map_err(Into::into)
