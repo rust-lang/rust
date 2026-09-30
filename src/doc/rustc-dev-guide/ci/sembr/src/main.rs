@@ -240,6 +240,8 @@ o? whatever
 r? @reviewer
  r? @reviewer
 ~? diagnostic
+
+the queries that we do, as well as the **query DAG**. The
 ";
     let expected = "
 # some. heading
@@ -273,6 +275,9 @@ whatever
 r? @reviewer
  r? @reviewer
 ~? diagnostic
+
+the queries that we do, as well as the **query DAG**.
+The
 ";
     assert_eq!(expected, comply(original));
 }
@@ -309,6 +314,18 @@ html comment closing
  handle the
  indented well
 
+split on comma (filler), of
+current line
+
+  split on comma (filler), of
+  current line
+
+split on
+comma (filler), of next line
+
+  split on
+  comma (filler), of next line
+
 [a target]: https://example.com
 [another target]: https://example.com
 ";
@@ -340,10 +357,22 @@ html comment closing
 
  handle the indented well
 
+split on comma (filler),
+of current line
+
+  split on comma (filler),
+  of current line
+
+split on comma (filler),
+of next line
+
+  split on comma (filler),
+  of next line
+
 [a target]: https://example.com
 [another target]: https://example.com
 ";
-    assert_eq!(expected, reformat_lines(original, 50));
+    assert_eq!(expected, reformat_lines(original, 30));
 }
 
 #[test]
@@ -351,49 +380,4 @@ html comment closing
 fn should_pass() {
     let original = "if you see `input isn't interesting! verify interesting-ness test`.";
     assert_eq!(original, comply(original));
-}
-
-#[test]
-fn split_on_comma_of_current_line() {
-    let original = "
-Each derived value has a dependency, on other values, which could themselves be either base or
-derived.
-
-  Each derived value has a dependency, on other values, which could themselves be either base or
-  derived.
-";
-    let expected = "
-Each derived value has a dependency, on other values,
-which could themselves be either base or derived.
-
-  Each derived value has a dependency, on other values,
-  which could themselves be either base or derived.
-";
-    assert_eq!(expected, reformat_lines(original, 100))
-}
-
-#[test]
-fn split_on_comma_of_next_line() {
-    let original = "
-Because of canonicalization of regions and
-inference variables, encountering a cycle doesn't mean that we would get an infinite proof tree.
-
-  Because of canonicalization of regions and
-  inference variables, encountering a cycle doesn't mean that we would get an infinite proof tree.
-";
-    let expected = "
-Because of canonicalization of regions and inference variables,
-encountering a cycle doesn't mean that we would get an infinite proof tree.
-
-  Because of canonicalization of regions and inference variables,
-  encountering a cycle doesn't mean that we would get an infinite proof tree.
-";
-    assert_eq!(expected, reformat_lines(original, 100))
-}
-
-#[test]
-fn should_split() {
-    let original = "the queries that we do, as well as the **query DAG**. The";
-    let expected = "the queries that we do, as well as the **query DAG**.\nThe\n";
-    assert_eq!(expected, comply(original));
 }
