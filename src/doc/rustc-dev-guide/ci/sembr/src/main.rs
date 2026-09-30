@@ -50,12 +50,12 @@ fn main() -> Result<()> {
         let old = fs::read_to_string(&path)?;
         let mut new = comply(&old);
         if cli.reflow_harder {
-            new = lengthen_lines(&new, cli.line_length_limit)
+            new = reformat_lines(&new, cli.line_length_limit)
         }
         if new == old {
             compliant.push(path.clone());
         } else if cli.overwrite {
-            fs::write(&path, lengthen_lines(&new, cli.line_length_limit))?;
+            fs::write(&path, reformat_lines(&new, cli.line_length_limit))?;
             made_compliant.push(path.clone());
         } else {
             not_compliant.push(path.clone());
@@ -133,7 +133,8 @@ fn comply(content: &str) -> String {
     new_content.join("\n") + "\n"
 }
 
-fn lengthen_lines(content: &str, limit: usize) -> String {
+// This reformats lines, so that changes of "fn comply" look more pretty
+fn reformat_lines(content: &str, limit: usize) -> String {
     let content: Vec<_> = content.lines().map(std::borrow::ToOwned::to_owned).collect();
     let mut new_content = content.clone();
     let mut new_n = 0;
@@ -277,7 +278,7 @@ r? @reviewer
 }
 
 #[test]
-fn test_lengthen_lines() {
+fn test_reformat_lines() {
     let original = "\
 do not split
 short sentences
@@ -342,7 +343,7 @@ html comment closing
 [a target]: https://example.com
 [another target]: https://example.com
 ";
-    assert_eq!(expected, lengthen_lines(original, 50));
+    assert_eq!(expected, reformat_lines(original, 50));
 }
 
 #[test]
@@ -368,7 +369,7 @@ which could themselves be either base or derived.
   Each derived value has a dependency, on other values,
   which could themselves be either base or derived.
 ";
-    assert_eq!(expected, lengthen_lines(original, 100))
+    assert_eq!(expected, reformat_lines(original, 100))
 }
 
 #[test]
@@ -387,7 +388,7 @@ encountering a cycle doesn't mean that we would get an infinite proof tree.
   Because of canonicalization of regions and inference variables,
   encountering a cycle doesn't mean that we would get an infinite proof tree.
 ";
-    assert_eq!(expected, lengthen_lines(original, 100))
+    assert_eq!(expected, reformat_lines(original, 100))
 }
 
 #[test]
