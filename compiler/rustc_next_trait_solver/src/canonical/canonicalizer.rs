@@ -2,6 +2,7 @@ use std::collections::hash_map::Entry;
 use std::mem;
 
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::solve::inspect::State;
 use rustc_type_ir::solve::{Certainty, ExternalConstraintsData, Goal, QueryInput, Response};
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalParamEnvCacheEntry, CanonicalVarKind, CanonicalVarValues,
@@ -78,18 +79,14 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         Canonicalizer { delegate, canonicalize_mode, state: delegate.obtain_canonicalizer_state() }
     }
 
-    pub(super) fn canonicalize_response<T: TypeFoldable<I>>(
+    pub(super) fn canonicalize_inspect_state<T: TypeFoldable<I>>(
         delegate: &'a D,
         max_input_universe: ty::UniverseIndex,
-        value: T,
-    ) -> ty::Canonical<I, T> {
+        value: State<I, T>,
+    ) -> ty::Canonical<I, State<I, T>> {
         let mut canonicalizer =
             Canonicalizer::new(delegate, CanonicalizeMode::Response { max_input_universe });
-        let value = if value.has_type_flags(NEEDS_CANONICAL) {
-            value.fold_with(&mut canonicalizer)
-        } else {
-            value
-        };
+        let value = canonicalizer.canonicalize_value(value);
         debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
         debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
         let (max_universe, _variables, var_kinds) = canonicalizer.finalize();
@@ -107,11 +104,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         let mut canonicalizer =
             Canonicalizer::new(delegate, CanonicalizeMode::Response { max_input_universe });
 
-        let var_values = if var_values.has_type_flags(NEEDS_CANONICAL) {
-            var_values.fold_with(&mut canonicalizer)
-        } else {
-            var_values
-        };
+        let var_values = canonicalizer.canonicalize_value(var_values);
 
         let RawExternalConstraintsData {
             region_constraints,
@@ -119,22 +112,11 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             pseudo_rigid_due_to_opaques,
             normalization_nested_goals,
         } = external_constraints;
-        let region_constraints = if region_constraints.has_type_flags(NEEDS_CANONICAL) {
-            region_constraints.fold_with(&mut canonicalizer)
-        } else {
-            region_constraints
-        };
-        let opaque_types = if opaque_types.has_type_flags(NEEDS_CANONICAL) {
-            opaque_types.fold_with(&mut canonicalizer)
-        } else {
-            opaque_types
-        };
+        let region_constraints = canonicalizer.canonicalize_value(region_constraints);
+        let opaque_types = canonicalizer.canonicalize_value(opaque_types);
         let normalization_nested_goals =
-            if normalization_nested_goals.has_type_flags(NEEDS_CANONICAL) {
-                normalization_nested_goals.fold_with(&mut canonicalizer)
-            } else {
-                normalization_nested_goals
-            };
+            canonicalizer.canonicalize_value(normalization_nested_goals);
+
         let pseudo_rigid_due_to_opaques = canonicalizer
             .filter_and_canonicalize_pseudo_rigids_due_to_opaques(pseudo_rigid_due_to_opaques);
 
@@ -273,11 +255,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         let goal = Goal { param_env, predicate };
 
         let predefined_opaques_in_body =
-            if predefined_opaques_in_body.has_type_flags(NEEDS_CANONICAL) {
-                predefined_opaques_in_body.fold_with(&mut rest_canonicalizer)
-            } else {
-                predefined_opaques_in_body
-            };
+            rest_canonicalizer.canonicalize_value(predefined_opaques_in_body);
         let predefined_opaques_in_body =
             delegate.cx().mk_predefined_opaques_in_body(&predefined_opaques_in_body);
 
@@ -290,6 +268,10 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
         let (max_universe, variables, var_kinds) = rest_canonicalizer.finalize();
         (variables, Canonical { max_universe, var_kinds, value })
+    }
+
+    fn canonicalize_value<T: TypeFoldable<I>>(&mut self, value: T) -> T {
+        if value.has_type_flags(NEEDS_CANONICAL) { value.fold_with(self) } else { value }
     }
 
     fn get_or_insert_bound_var(

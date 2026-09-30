@@ -581,7 +581,7 @@ where
     let var_values = CanonicalVarValues { var_values: delegate.cx().mk_args(var_values) };
     let state = inspect::State { var_values, data };
     let state = delegate.deeply_resolve_via_unification_table(state);
-    Canonicalizer::canonicalize_response(delegate, max_input_universe, state)
+    Canonicalizer::canonicalize_inspect_state(delegate, max_input_universe, state)
 }
 
 // FIXME: needs to be pub to be accessed by downstream
