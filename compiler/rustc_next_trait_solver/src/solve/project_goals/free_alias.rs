@@ -34,14 +34,14 @@ where
         let actual = match free_alias.kind {
             ty::AliasTermKind::FreeTy { def_id } => {
                 let free = cx.type_of(def_id.into()).instantiate(cx, free_alias.args);
-                let free = self.normalize(GoalSource::Misc, goal.param_env, free)?;
+                let free = self.normalize(goal.param_env, free)?;
                 free.into()
             }
             ty::AliasTermKind::FreeConst { def_id }
                 if let Some(free) = cx.const_of_item(ty::AliasConstKind::Free { def_id }) =>
             {
                 let free = free.instantiate(cx, free_alias.args);
-                let free = self.normalize(GoalSource::Misc, goal.param_env, free)?;
+                let free = self.normalize(goal.param_env, free)?;
 
                 free.into()
             }
