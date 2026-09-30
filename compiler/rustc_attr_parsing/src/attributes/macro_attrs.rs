@@ -5,7 +5,6 @@ use rustc_lint_defs::builtin::{INVALID_MACRO_EXPORT_ARGUMENTS, UNUSED_ATTRIBUTES
 use rustc_structures::CollapseMacroDebuginfo;
 
 use super::prelude::*;
-use crate::context::ShouldEmit;
 use crate::diagnostics::{MacroExport, MacroOnlyAttribute};
 
 pub(crate) struct MacroEscapeParser;
@@ -182,7 +181,7 @@ impl SingleAttributeParser for MacroExportParser {
     }
 
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
-        if cx.target != Target::MacroDef || matches!(cx.should_emit, ShouldEmit::Nothing) {
+        if cx.target != Target::MacroDef {
             return;
         }
 
