@@ -582,7 +582,7 @@ use crate::clone::TrivialClone;
 use crate::iter::{self, FusedIterator, TrustedLen};
 use crate::marker::Destruct;
 use crate::num::NonZero;
-use crate::ops::{self, ControlFlow, Deref, DerefMut, Residual, Try};
+use crate::ops::{self, ControlFlow, Deref, DerefMut, Residual, Try, qmark};
 use crate::panicking::{panic, panic_display};
 use crate::pin::Pin;
 use crate::{cmp, hint, mem, slice};
@@ -1868,7 +1868,7 @@ impl<T> Option<T> {
         R: Try<Output = T, Residual: Residual<&'a mut T>>,
     {
         if let None = self {
-            *self = Some(f()?);
+            *self = Some(qmark!(f()));
         }
         // SAFETY: a `None` variant for `self` would have been replaced by a `Some`
         // variant in the code above.
