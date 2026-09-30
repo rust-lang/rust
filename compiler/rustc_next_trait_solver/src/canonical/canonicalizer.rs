@@ -144,9 +144,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             external_constraints: delegate.cx().mk_external_constraints(ExternalConstraintsData {
                 region_constraints,
                 opaque_types: delegate.cx().mk_predefined_opaques_in_body(&opaque_types),
-                pseudo_rigid_due_to_opaques: delegate
-                    .cx()
-                    .mk_pseudo_rigid_due_to_opaques(&pseudo_rigid_due_to_opaques),
+                pseudo_rigid_due_to_opaques,
                 normalization_nested_goals,
             }),
         };
@@ -286,9 +284,6 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             .filter_and_canonicalize_pseudo_rigids_due_to_opaques(
                 input.pseudo_rigid_due_to_opaques.to_vec(),
             );
-
-        let pseudo_rigid_due_to_opaques =
-            delegate.cx().mk_pseudo_rigid_due_to_opaques(&pseudo_rigid_due_to_opaques);
 
         let value = QueryInput { goal, predefined_opaques_in_body, pseudo_rigid_due_to_opaques };
 
@@ -486,7 +481,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
     fn filter_and_canonicalize_pseudo_rigids_due_to_opaques(
         &mut self,
         mut pseudo_rigid_due_to_opaques: Vec<(I::Ty, ty::PseudoRigidDueToOpaquesBound<I>)>,
-    ) -> Vec<(I::Ty, ty::PseudoRigidDueToOpaquesBound<I>)> {
+    ) -> I::PseudoRigidDueToOpaques {
         let mut res = vec![];
 
         // This should be done in fixed-point iteration, because we may have some pseudo-rigid
@@ -498,14 +493,14 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         // after we check and canonicalize the second one.
         while !pseudo_rigid_due_to_opaques.is_empty() {
             let prev_len = res.len();
-            pseudo_rigid_due_to_opaques.retain(|entry @ (pseudo_rigid, _)| {
-                if let ty::Infer(ty::TyVar(vid)) = pseudo_rigid.kind()
+            pseudo_rigid_due_to_opaques.retain(|&(ty, bound)| {
+                if let ty::Infer(ty::TyVar(vid)) = ty.kind()
                     && self
                         .state
                         .sub_root_lookup_table
                         .contains_key(&self.delegate.sub_unification_table_root_var(vid))
                 {
-                    res.push((*entry).fold_with(self));
+                    res.push(((ty, bound)).fold_with(self));
                     false
                 } else {
                     true
@@ -516,7 +511,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             }
         }
 
-        res
+        self.delegate.cx().mk_pseudo_rigid_due_to_opaques(&res)
     }
 }
 
