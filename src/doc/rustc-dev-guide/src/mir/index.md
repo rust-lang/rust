@@ -131,7 +131,7 @@ bb0: {
 ```
 
 A basic block is defined by a series of **statements** and a final **terminator**.
- In this case, there is one statement:
+In this case, there is one statement:
 
 ```mir
 StorageLive(_1);
@@ -252,7 +252,7 @@ When code has reached the MIR stage, constants can generally come in two forms:
 MIR constants are used as operands: in `x + CONST`, `CONST` is a MIR constant;
 similarly, in `x + 2`, `2` is a MIR constant.
 Type system constants are used in the type system,
-in particular for array lengths but also for const generics.
+in particular for array lengths, but also for const generics.
 
 Generally, both kinds of constants can be "unevaluated" or "already evaluated".
 An unevaluated constant simply stores the `DefId` of what needs to be evaluated
