@@ -567,12 +567,12 @@ fn layout_of_uncached<'tcx>(
             let info = tcx.coroutine_layout(def_id, args)?;
 
             let local_layouts = info
-                .field_tys
-                .iter()
-                .map(|local| {
-                    let uninit_ty =
-                        Ty::new_maybe_uninit(tcx, local.ty.instantiate(tcx, args).skip_norm_wip());
-                    cx.spanned_layout_of(uninit_ty, local.source_info.span)
+                .field_tys()
+                .iter_enumerated()
+                .map(|(local, saved_ty)| {
+                    let ty = info.get_ty(tcx, local).skip_norm_wip();
+                    let uninit_ty = Ty::new_maybe_uninit(tcx, ty);
+                    cx.spanned_layout_of(uninit_ty, saved_ty.source_info.span)
                 })
                 .try_collect::<IndexVec<_, _>>()?;
 
@@ -588,8 +588,8 @@ fn layout_of_uncached<'tcx>(
                 .layout_of_coroutine(
                     &local_layouts,
                     prefix_layouts,
-                    &info.variant_fields,
-                    &info.storage_conflicts,
+                    info.variant_fields(),
+                    info.storage_conflicts(),
                     |tag| TyAndLayout {
                         ty: tag.primitive().to_ty(tcx),
                         layout: tcx.mk_layout(LayoutData::scalar(cx, tag)),
@@ -1024,7 +1024,7 @@ fn variant_info_for_coroutine<'tcx>(
         .collect();
 
     let mut variant_infos: Vec<_> = coroutine
-        .variant_fields
+        .variant_fields()
         .iter_enumerated()
         .map(|(variant_idx, variant_def)| {
             let variant_layout = layout.for_variant(cx, variant_idx);
@@ -1033,7 +1033,7 @@ fn variant_info_for_coroutine<'tcx>(
                 .iter()
                 .enumerate()
                 .map(|(field_idx, local)| {
-                    let field_name = coroutine.field_tys[*local].debuginfo_name;
+                    let field_name = coroutine.field_tys()[*local].debuginfo_name;
                     let field_layout = variant_layout.field(cx, field_idx);
                     let offset = variant_layout.fields.offset(field_idx);
                     // The struct is as large as the last field's end
