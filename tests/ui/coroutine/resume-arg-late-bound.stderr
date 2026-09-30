@@ -1,15 +1,16 @@
 error: implementation of `Coroutine` is not general enough
   --> $DIR/resume-arg-late-bound.rs:15:5
    |
-LL | fn test(a: impl for<'a> Coroutine<&'a mut bool>) {}
-   |    ----         ------------------------------- unsatisfied where-clause on `test`
-   |    |
-   |    due to a where-clause on `test`...
-...
 LL |     test(gen);
    |     ^^^^^^^^^
    |
-   = note: ...`{coroutine@...}` must implement `Coroutine<&'1 mut bool>`, for any lifetime `'1`...
+note: `{coroutine@...}` must implement `Coroutine<&'1 mut bool>`, for any lifetime `'1`...
+  --> $DIR/resume-arg-late-bound.rs:8:17
+   |
+LL | fn test(a: impl for<'a> Coroutine<&'a mut bool>) {}
+   |    ----         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `test`
+   |    |
+   |    due to a where-clause on `test`
    = note: ...but it actually implements `Coroutine<&'2 mut bool>`, for some specific lifetime `'2`
 
 error: aborting due to 1 previous error

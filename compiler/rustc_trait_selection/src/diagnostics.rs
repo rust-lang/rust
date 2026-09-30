@@ -912,133 +912,123 @@ impl IntoDiagArg for TyOrSig<'_> {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum ActualImplExplNotes<'tcx> {
-    #[note("{$leading_ellipsis ->
-        [true] ...
-        *[false] {\"\"}
-    }closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for any two lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`...")]
+    #[note(
+        "closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for any two \
+         lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`..."
+    )]
     ExpectedSignatureTwo {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
         lifetime_2: usize,
     },
-    #[note("{$leading_ellipsis ->
-        [true] ...
-        *[false] {\"\"}
-    }closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for any lifetime `'{$lifetime_1}`...")]
+    #[note(
+        "closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for any lifetime \
+         `'{$lifetime_1}`..."
+    )]
     ExpectedSignatureAny {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
-    #[note("{$leading_ellipsis ->
-        [true] ...
-        *[false] {\"\"}
-    }closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for some specific lifetime `'{$lifetime_1}`...")]
+    #[note(
+        "closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for some specific \
+         lifetime `'{$lifetime_1}`..."
+    )]
     ExpectedSignatureSome {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
-    #[note(
-        "{$leading_ellipsis ->
-            [true] ...
-            *[false] {\"\"}
-        }closure with signature `{$ty_or_sig}` must implement `{$trait_path}`"
-    )]
+    #[note("closure with signature `{$ty_or_sig}` must implement `{$trait_path}`")]
     ExpectedSignatureNothing {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
     },
-    #[note("{$leading_ellipsis ->
-        [true] ...
-        *[false] {\"\"}
-    }`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for any two lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`...")]
+    #[note(
+        "`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for any two \
+         lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`..."
+    )]
     ExpectedPassiveTwo {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
         lifetime_2: usize,
     },
-    #[note("{$leading_ellipsis ->
-        [true] ...
-        *[false] {\"\"}
-    }`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for any lifetime `'{$lifetime_1}`...")]
+    #[note(
+        "`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for any \
+         lifetime `'{$lifetime_1}`..."
+    )]
     ExpectedPassiveAny {
-        leading_ellipsis: bool,
-        ty_or_sig: TyOrSig<'tcx>,
-        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
-        lifetime_1: usize,
-    },
-    #[note("{$leading_ellipsis ->
-        [true] ...
-        *[false] {\"\"}
-    }`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for some specific lifetime `'{$lifetime_1}`...")]
-    ExpectedPassiveSome {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
     #[note(
-        "{$leading_ellipsis ->
-            [true] ...
-            *[false] {\"\"}
-        }`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`"
+        "`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for some \
+         specific lifetime `'{$lifetime_1}`..."
     )]
+    ExpectedPassiveSome {
+        #[primary_span]
+        span: MultiSpan,
+        ty_or_sig: TyOrSig<'tcx>,
+        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
+        lifetime_1: usize,
+    },
+    #[note("`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`")]
     ExpectedPassiveNothing {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
     },
-    #[note("{$leading_ellipsis ->
-        [true] ...
-        *[false] {\"\"}
-    }`{$ty_or_sig}` must implement `{$trait_path}`, for any two lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`...")]
+    #[note(
+        "`{$ty_or_sig}` must implement `{$trait_path}`, for any two lifetimes `'{$lifetime_1}` and \
+         `'{$lifetime_2}`..."
+    )]
     ExpectedOtherTwo {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
         lifetime_2: usize,
     },
-    #[note(
-        "{$leading_ellipsis ->
-            [true] ...
-            *[false] {\"\"}
-        }`{$ty_or_sig}` must implement `{$trait_path}`, for any lifetime `'{$lifetime_1}`..."
-    )]
+    #[note("`{$ty_or_sig}` must implement `{$trait_path}`, for any lifetime `'{$lifetime_1}`...")]
     ExpectedOtherAny {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
     #[note(
-        "{$leading_ellipsis ->
-            [true] ...
-            *[false] {\"\"}
-        }`{$ty_or_sig}` must implement `{$trait_path}`, for some specific lifetime `'{$lifetime_1}`..."
+        "`{$ty_or_sig}` must implement `{$trait_path}`, for some specific lifetime \
+         `'{$lifetime_1}`..."
     )]
     ExpectedOtherSome {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
-    #[note(
-        "{$leading_ellipsis ->
-            [true] ...
-            *[false] {\"\"}
-        }`{$ty_or_sig}` must implement `{$trait_path}`"
-    )]
+    #[note("`{$ty_or_sig}` must implement `{$trait_path}`")]
     ExpectedOtherNothing {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
     },
@@ -1098,66 +1088,71 @@ impl<'tcx> ActualImplExplNotes<'tcx> {
     pub(crate) fn new_expected(
         kind: ActualImplExpectedKind,
         lt_kind: ActualImplExpectedLifetimeKind,
-        leading_ellipsis: bool,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
         lifetime_2: usize,
+        satisfy_span: Option<Span>,
+        item_span: Option<Span>,
+        item_name: String,
     ) -> Self {
+        let label = format!("unsatisfied where-clause on `{item_name}`");
+        let item_label = format!("due to a where-clause on `{item_name}`");
+        let span = match (satisfy_span, item_span) {
+            (Some(satisfy_span), Some(item_span)) => {
+                let mut span = MultiSpan::from(satisfy_span);
+                span.push_span_label(satisfy_span, label);
+                span.push_span_label(item_span, item_label);
+                span
+            }
+            (None, Some(item_span)) => {
+                let mut span = MultiSpan::from(item_span);
+                span.push_span_label(item_span, item_label);
+                span
+            }
+            (Some(satisfy_span), None) => {
+                let mut span = MultiSpan::from(satisfy_span);
+                span.push_span_label(satisfy_span, label);
+                span
+            }
+            _ => MultiSpan::from(vec![]),
+        };
         match (kind, lt_kind) {
             (ActualImplExpectedKind::Signature, ActualImplExpectedLifetimeKind::Two) => {
-                Self::ExpectedSignatureTwo {
-                    leading_ellipsis,
-                    ty_or_sig,
-                    trait_path,
-                    lifetime_1,
-                    lifetime_2,
-                }
+                Self::ExpectedSignatureTwo { span, ty_or_sig, trait_path, lifetime_1, lifetime_2 }
             }
             (ActualImplExpectedKind::Signature, ActualImplExpectedLifetimeKind::Any) => {
-                Self::ExpectedSignatureAny { leading_ellipsis, ty_or_sig, trait_path, lifetime_1 }
+                Self::ExpectedSignatureAny { span, ty_or_sig, trait_path, lifetime_1 }
             }
             (ActualImplExpectedKind::Signature, ActualImplExpectedLifetimeKind::Some) => {
-                Self::ExpectedSignatureSome { leading_ellipsis, ty_or_sig, trait_path, lifetime_1 }
+                Self::ExpectedSignatureSome { span, ty_or_sig, trait_path, lifetime_1 }
             }
             (ActualImplExpectedKind::Signature, ActualImplExpectedLifetimeKind::Nothing) => {
-                Self::ExpectedSignatureNothing { leading_ellipsis, ty_or_sig, trait_path }
+                Self::ExpectedSignatureNothing { span, ty_or_sig, trait_path }
             }
             (ActualImplExpectedKind::Passive, ActualImplExpectedLifetimeKind::Two) => {
-                Self::ExpectedPassiveTwo {
-                    leading_ellipsis,
-                    ty_or_sig,
-                    trait_path,
-                    lifetime_1,
-                    lifetime_2,
-                }
+                Self::ExpectedPassiveTwo { span, ty_or_sig, trait_path, lifetime_1, lifetime_2 }
             }
             (ActualImplExpectedKind::Passive, ActualImplExpectedLifetimeKind::Any) => {
-                Self::ExpectedPassiveAny { leading_ellipsis, ty_or_sig, trait_path, lifetime_1 }
+                Self::ExpectedPassiveAny { span, ty_or_sig, trait_path, lifetime_1 }
             }
             (ActualImplExpectedKind::Passive, ActualImplExpectedLifetimeKind::Some) => {
-                Self::ExpectedPassiveSome { leading_ellipsis, ty_or_sig, trait_path, lifetime_1 }
+                Self::ExpectedPassiveSome { span, ty_or_sig, trait_path, lifetime_1 }
             }
             (ActualImplExpectedKind::Passive, ActualImplExpectedLifetimeKind::Nothing) => {
-                Self::ExpectedPassiveNothing { leading_ellipsis, ty_or_sig, trait_path }
+                Self::ExpectedPassiveNothing { span, ty_or_sig, trait_path }
             }
             (ActualImplExpectedKind::Other, ActualImplExpectedLifetimeKind::Two) => {
-                Self::ExpectedOtherTwo {
-                    leading_ellipsis,
-                    ty_or_sig,
-                    trait_path,
-                    lifetime_1,
-                    lifetime_2,
-                }
+                Self::ExpectedOtherTwo { span, ty_or_sig, trait_path, lifetime_1, lifetime_2 }
             }
             (ActualImplExpectedKind::Other, ActualImplExpectedLifetimeKind::Any) => {
-                Self::ExpectedOtherAny { leading_ellipsis, ty_or_sig, trait_path, lifetime_1 }
+                Self::ExpectedOtherAny { span, ty_or_sig, trait_path, lifetime_1 }
             }
             (ActualImplExpectedKind::Other, ActualImplExpectedLifetimeKind::Some) => {
-                Self::ExpectedOtherSome { leading_ellipsis, ty_or_sig, trait_path, lifetime_1 }
+                Self::ExpectedOtherSome { span, ty_or_sig, trait_path, lifetime_1 }
             }
             (ActualImplExpectedKind::Other, ActualImplExpectedLifetimeKind::Nothing) => {
-                Self::ExpectedOtherNothing { leading_ellipsis, ty_or_sig, trait_path }
+                Self::ExpectedOtherNothing { span, ty_or_sig, trait_path }
             }
         }
     }
@@ -1168,13 +1163,8 @@ impl<'tcx> ActualImplExplNotes<'tcx> {
 pub(crate) struct TraitPlaceholderMismatch<'tcx> {
     #[primary_span]
     pub span: Span,
-    #[label("unsatisfied where-clause on `{$def_id}`")]
-    pub satisfy_span: Option<Span>,
-    #[label("due to a where-clause on `{$def_id}`...")]
-    pub where_span: Option<Span>,
     #[label("implementation of `{$trait_def_id}` is not general enough")]
     pub dup_span: Option<Span>,
-    pub def_id: String,
     pub trait_def_id: String,
 
     #[subdiagnostic]

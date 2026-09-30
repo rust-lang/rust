@@ -1,15 +1,16 @@
 error: implementation of `Foo` is not general enough
   --> $DIR/hrtb-just-for-static.rs:24:5
    |
-LL | fn want_hrtb<T>()
-   |    --------- due to a where-clause on `want_hrtb`...
-LL |     where T : for<'a> Foo<&'a isize>
-   |               ---------------------- unsatisfied where-clause on `want_hrtb`
-...
 LL |     want_hrtb::<StaticInt>()
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: ...`StaticInt` must implement `Foo<&'0 isize>`, for any lifetime `'0`...
+note: `StaticInt` must implement `Foo<&'0 isize>`, for any lifetime `'0`...
+  --> $DIR/hrtb-just-for-static.rs:9:15
+   |
+LL | fn want_hrtb<T>()
+   |    --------- due to a where-clause on `want_hrtb`
+LL |     where T : for<'a> Foo<&'a isize>
+   |               ^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `want_hrtb`
 note: ...but it actually implements `Foo<&'static isize>`
   --> $DIR/hrtb-just-for-static.rs:22:1
    |

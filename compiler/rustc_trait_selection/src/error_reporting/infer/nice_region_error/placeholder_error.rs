@@ -8,7 +8,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHighlightMode};
 use rustc_middle::ty::{self, GenericArgsRef, IsSuggestable, RePlaceholder, Region, TyCtxt};
-use rustc_span::bug;
+use rustc_span::{Span, bug};
 use rustc_structures::Limit;
 use tracing::{debug, instrument};
 
@@ -279,13 +279,12 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 _ => break,
             }
         }
-        let (leading_ellipsis, satisfy_span, where_span, dup_span, def_id) =
+        let (mut satisfy_span, mut item_span, dup_span, item_name) =
             if let ObligationCauseCode::WhereClause(def_id, span)
             | ObligationCauseCode::WhereClauseInExpr(def_id, span, ..) = *code
                 && def_id != CRATE_DEF_ID.to_def_id()
             {
                 (
-                    true,
                     Some(span),
                     Some(
                         self.tcx()
@@ -296,8 +295,14 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                     self.tcx().def_path_str(def_id),
                 )
             } else {
-                (false, None, None, Some(span), String::new())
+                (None, None, Some(span), String::new())
             };
+        if let Some(span) = satisfy_span && span.is_dummy() {
+            satisfy_span = None;
+        }
+        if let Some(span) = item_span && span.is_dummy() {
+            item_span = None;
+        }
 
         let expected_trait_ref = self.cx.deeply_resolve_ignoring_regions(
             ty::TraitRef::new_from_args(self.cx.tcx, trait_def_id, expected_args),
@@ -369,15 +374,14 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             expected_has_vid,
             actual_has_vid,
             any_self_ty_has_vid,
-            leading_ellipsis,
+            satisfy_span,
+            item_span,
+            item_name,
         );
 
         let mut err = self.tcx().dcx().create_err(TraitPlaceholderMismatch {
             span,
-            satisfy_span,
-            where_span,
             dup_span,
-            def_id,
             trait_def_id: self.tcx().def_path_str(trait_def_id),
             actual_impl_expl_notes,
         });
@@ -494,7 +498,9 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         expected_has_vid: Option<usize>,
         actual_has_vid: Option<usize>,
         any_self_ty_has_vid: bool,
-        leading_ellipsis: bool,
+        satisfy_span: Option<Span>,
+        item_span: Option<Span>,
+        item_name: String,
     ) -> Vec<ActualImplExplNotes<'tcx>> {
         // The weird thing here with the `maybe_highlighting_region` calls and the
         // the match inside is meant to be like this:
@@ -592,11 +598,13 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         let note_1 = ActualImplExplNotes::new_expected(
             kind,
             lt_kind,
-            leading_ellipsis,
             ty_or_sig,
             trait_path,
             lifetime_1,
             lifetime_2,
+            satisfy_span,
+            item_span,
+            item_name,
         );
 
         let mut actual_trait_ref = highlight_trait_ref(actual_trait_ref);

@@ -43,16 +43,17 @@ LL |     T: for<'x> TheTrait<&'x isize, A = &'x usize>,
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:96:5
    |
-LL | fn tuple_one<T>()
-   |    --------- due to a where-clause on `tuple_one`...
-LL | where
-LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>,
-   |        ----------------------------------------------------------- unsatisfied where-clause on `tuple_one`
-...
 LL |     tuple_one::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: ...`Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+  --> $DIR/associated-types-eq-hr.rs:59:8
+   |
+LL | fn tuple_one<T>()
+   |    --------- due to a where-clause on `tuple_one`
+LL | where
+LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `tuple_one`
 note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
   --> $DIR/associated-types-eq-hr.rs:35:1
    |
@@ -62,16 +63,17 @@ LL | impl<'a> TheTrait<(&'a isize, &'a isize)> for Tuple {
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:96:5
    |
-LL | fn tuple_one<T>()
-   |    --------- due to a where-clause on `tuple_one`...
-LL | where
-LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>,
-   |        ----------------------------------------------------------- unsatisfied where-clause on `tuple_one`
-...
 LL |     tuple_one::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: ...`Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+  --> $DIR/associated-types-eq-hr.rs:59:8
+   |
+LL | fn tuple_one<T>()
+   |    --------- due to a where-clause on `tuple_one`
+LL | where
+LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `tuple_one`
 note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
   --> $DIR/associated-types-eq-hr.rs:35:1
    |
@@ -82,16 +84,17 @@ LL | impl<'a> TheTrait<(&'a isize, &'a isize)> for Tuple {
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:96:5
    |
-LL | fn tuple_one<T>()
-   |    --------- due to a where-clause on `tuple_one`...
-LL | where
-LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>,
-   |                                                     ------------- unsatisfied where-clause on `tuple_one`
-...
 LL |     tuple_one::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: ...`Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+  --> $DIR/associated-types-eq-hr.rs:59:53
+   |
+LL | fn tuple_one<T>()
+   |    --------- due to a where-clause on `tuple_one`
+LL | where
+LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>,
+   |                                                     ^^^^^^^^^^^^^ unsatisfied where-clause on `tuple_one`
 note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
   --> $DIR/associated-types-eq-hr.rs:35:1
    |
@@ -101,16 +104,17 @@ LL | impl<'a> TheTrait<(&'a isize, &'a isize)> for Tuple {
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:96:5
    |
-LL | fn tuple_one<T>()
-   |    --------- due to a where-clause on `tuple_one`...
-LL | where
-LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>,
-   |                                                     ------------- unsatisfied where-clause on `tuple_one`
-...
 LL |     tuple_one::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: ...`Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+  --> $DIR/associated-types-eq-hr.rs:59:53
+   |
+LL | fn tuple_one<T>()
+   |    --------- due to a where-clause on `tuple_one`
+LL | where
+LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>,
+   |                                                     ^^^^^^^^^^^^^ unsatisfied where-clause on `tuple_one`
 note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
   --> $DIR/associated-types-eq-hr.rs:35:1
    |
@@ -121,16 +125,17 @@ LL | impl<'a> TheTrait<(&'a isize, &'a isize)> for Tuple {
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:104:5
    |
-LL | fn tuple_two<T>()
-   |    --------- due to a where-clause on `tuple_two`...
-LL | where
-LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>,
-   |        ----------------------------------------------------------- unsatisfied where-clause on `tuple_two`
-...
 LL |     tuple_two::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: ...`Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+  --> $DIR/associated-types-eq-hr.rs:66:8
+   |
+LL | fn tuple_two<T>()
+   |    --------- due to a where-clause on `tuple_two`
+LL | where
+LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `tuple_two`
 note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
   --> $DIR/associated-types-eq-hr.rs:35:1
    |
@@ -140,16 +145,17 @@ LL | impl<'a> TheTrait<(&'a isize, &'a isize)> for Tuple {
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:104:5
    |
-LL | fn tuple_two<T>()
-   |    --------- due to a where-clause on `tuple_two`...
-LL | where
-LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>,
-   |        ----------------------------------------------------------- unsatisfied where-clause on `tuple_two`
-...
 LL |     tuple_two::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: ...`Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+  --> $DIR/associated-types-eq-hr.rs:66:8
+   |
+LL | fn tuple_two<T>()
+   |    --------- due to a where-clause on `tuple_two`
+LL | where
+LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `tuple_two`
 note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
   --> $DIR/associated-types-eq-hr.rs:35:1
    |
@@ -189,16 +195,17 @@ LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>,
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:116:5
    |
-LL | fn tuple_four<T>()
-   |    ---------- due to a where-clause on `tuple_four`...
-LL | where
-LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize)>,
-   |        -------------------------------------------- unsatisfied where-clause on `tuple_four`
-...
 LL |     tuple_four::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: ...`Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+  --> $DIR/associated-types-eq-hr.rs:80:8
+   |
+LL | fn tuple_four<T>()
+   |    ---------- due to a where-clause on `tuple_four`
+LL | where
+LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize)>,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `tuple_four`
 note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
   --> $DIR/associated-types-eq-hr.rs:35:1
    |
@@ -208,16 +215,17 @@ LL | impl<'a> TheTrait<(&'a isize, &'a isize)> for Tuple {
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:116:5
    |
-LL | fn tuple_four<T>()
-   |    ---------- due to a where-clause on `tuple_four`...
-LL | where
-LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize)>,
-   |        -------------------------------------------- unsatisfied where-clause on `tuple_four`
-...
 LL |     tuple_four::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: ...`Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+  --> $DIR/associated-types-eq-hr.rs:80:8
+   |
+LL | fn tuple_four<T>()
+   |    ---------- due to a where-clause on `tuple_four`
+LL | where
+LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize)>,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied where-clause on `tuple_four`
 note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
   --> $DIR/associated-types-eq-hr.rs:35:1
    |
