@@ -88,8 +88,6 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
     location_map: Rc<DenseLocationMap>,
     universal_region_relations: &Frozen<UniversalRegionRelations<'tcx>>,
     constraints: &MirTypeckRegionConstraints<'tcx>,
-    move_data: &MoveData<'tcx>,
-    borrow_set: &BorrowSet<'tcx>,
 ) -> Option<ClosureRegionRequirements<'tcx>> {
     // FIXME(#146079): we shouldn't have to clone all this stuff here.
     // Computing the region graph should take at least some of it by reference/`Rc`.
@@ -105,9 +103,7 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
         location_map,
         body,
         None,
-        move_data,
-        borrow_set,
-        None,
+        |_| {},
     );
 
     closure_region_requirements
@@ -176,12 +172,34 @@ pub(crate) fn compute_regions<'tcx>(
         infcx,
         lowered_constraints,
         universal_region_relations,
-        location_map,
+        Rc::clone(&location_map),
         body,
         polonius_output.clone(),
-        move_data,
-        borrow_set,
-        polonius_context.as_mut(),
+        |region_cx| {
+            // If requested for `-Zpolonius=next`, compute loan liveness information.
+            // This is done at the end of `solve`; it's okay because liveness above
+            // is *pessimistic*: any region outliving a universal region is also
+            // considered live for the entire function. Any deferred regions *are*
+            // regions that fit this category.
+            if let Some(polonius_context) = polonius_context.as_mut() {
+                polonius_context.compute_loan_liveness(
+                    infcx,
+                    &mut region_cx.inner.liveness_constraints,
+                    region_cx
+                        .inner
+                        .constraints
+                        .outlives()
+                        .iter()
+                        .copied()
+                        .chain(region_cx.type_test_constraints.iter().copied()),
+                    &region_cx.inner.universal_region_relations.universal_regions,
+                    body,
+                    move_data,
+                    &location_map,
+                    borrow_set,
+                );
+            }
+        },
     );
 
     NllOutput {

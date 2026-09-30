@@ -241,8 +241,6 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
             Rc::clone(&input.location_map),
             &input.universal_region_relations,
             &input.constraints,
-            &input.move_data,
-            &input.borrow_set,
         )
     }
 
