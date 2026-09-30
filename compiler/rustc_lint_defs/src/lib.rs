@@ -440,11 +440,6 @@ pub enum FutureIncompatibilityReason {
     /// equivalent to
     /// [`FutureIncompatibilityReason::FutureReleaseError`].
     Custom(&'static str, ReleaseFcw),
-
-    /// Using the declare_lint macro a reason always needs to be specified.
-    /// So, this case can't actually be reached but a variant needs to exist for it.
-    /// Any code panics on seeing this variant. Do not use.
-    Unreachable,
 }
 
 /// Constructs [`FutureIncompatibilityReason::FutureReleaseError`]; see it's documentation for more
@@ -517,14 +512,6 @@ impl FutureIncompatibleInfo {
     pub const fn report_in_deps(self, b: bool) -> Self {
         Self { report_in_deps: b, ..self }
     }
-
-    pub const fn default_fields_for_macro() -> Self {
-        FutureIncompatibleInfo {
-            reason: FutureIncompatibilityReason::Unreachable,
-            explain_reason: true,
-            report_in_deps: false,
-        }
-    }
 }
 
 impl FutureIncompatibilityReason {
@@ -538,7 +525,6 @@ impl FutureIncompatibilityReason {
             FutureIncompatibilityReason::FutureReleaseError(_)
             | FutureIncompatibilityReason::FutureReleaseSemanticsChange(_)
             | FutureIncompatibilityReason::Custom(_, _) => None,
-            Self::Unreachable => unreachable!(),
         }
     }
 
@@ -551,7 +537,6 @@ impl FutureIncompatibilityReason {
             | Self::EditionSemanticsChange(edition_fcw)
             | Self::EditionAndFutureReleaseError(edition_fcw)
             | Self::EditionAndFutureReleaseSemanticsChange(edition_fcw) => edition_fcw.to_string(),
-            Self::Unreachable => unreachable!(),
         }
     }
 }
