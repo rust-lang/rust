@@ -1985,10 +1985,55 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
         unsafe { drop(Rc::from_raw_in(ptr, alloc)) };
     }
 
-    /// Returns `true` if there are no other `Rc` or [`Weak`] pointers to
-    /// this allocation.
+    /// Determine whether this is the unique reference to the underlying data.
+    ///
+    /// Returns `true` if there are no other `Rc` or [`Weak`] pointers to the same allocation;
+    /// returns `false` otherwise.
+    ///
+    /// If this function returns `true`, it is safe to call [`get_mut_unchecked`]
+    /// immediately afterward.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(arc_is_unique)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let x = Rc::new(3);
+    /// assert!(Rc::is_unique(&x));
+    ///
+    /// let y = Rc::clone(&x);
+    /// assert!(!Rc::is_unique(&x));
+    /// drop(y);
+    ///
+    /// // Weak references also count, because they could be upgraded at any time.
+    /// let z = Rc::downgrade(&x);
+    /// assert!(!Rc::is_unique(&x));
+    /// ```
+    ///
+    /// # Pointer invalidation
+    ///
+    /// This function will always return the same value as `Rc::get_mut(rc).is_some()`. However,
+    /// unlike that operation it does not produce any mutable references to the underlying data,
+    /// meaning no pointers to the data inside the `Rc` are invalidated by the call. Thus, the
+    /// following code is valid, even though it would be UB if it used `Rc::get_mut`:
+    ///
+    /// ```
+    /// #![feature(arc_is_unique)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let rc = Rc::new(5);
+    /// let pointer: *const i32 = &*rc;
+    /// assert!(Rc::is_unique(&rc));
+    /// assert_eq!(unsafe { *pointer }, 5);
+    /// ```
+    ///
+    /// [`get_mut_unchecked`]: Self::get_mut_unchecked
     #[inline]
-    fn is_unique(this: &Self) -> bool {
+    #[unstable(feature = "arc_is_unique", issue = "138938")]
+    pub fn is_unique(this: &Self) -> bool {
         Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
     }
 
