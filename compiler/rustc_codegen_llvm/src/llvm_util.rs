@@ -52,9 +52,9 @@ unsafe fn configure_llvm(sess: &EarlySession) {
     let mut llvm_c_strs = Vec::with_capacity(n_args + 1);
     let mut llvm_args = Vec::with_capacity(n_args + 1);
 
+    let (llvm_major, llvm_minor, llvm_patch) = get_version();
     // Check to ensure we're running against the correct LLVM version.
     unsafe {
-        let (llvm_major, llvm_minor, llvm_patch) = get_version();
         let expected_version = llvm::LLVMRustVersionMajor();
         if llvm_major != expected_version {
             sess.dcx().emit_fatal(diagnostics::LlvmVersionMismatch {
@@ -128,8 +128,12 @@ unsafe fn configure_llvm(sess: &EarlySession) {
             }
         }
 
-        if get_version() < (24, 0, 0) && wants_wasm_eh(&sess.target) {
+        if llvm_major < 24 && wants_wasm_eh(&sess.target) {
             add("-wasm-enable-eh", false);
+        }
+
+        for arg in sess.target.llvm_args_for_llvm_version(llvm_major) {
+            add(arg.as_ref(), false);
         }
 
         // HACK(eddyb) LLVM inserts `llvm.assume` calls to preserve align attributes
