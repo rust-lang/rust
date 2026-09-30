@@ -59,6 +59,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::Mutability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet};
+use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::DUMMY_SP;
@@ -1467,16 +1468,73 @@ fn render_all_impls(
     Ok(())
 }
 
+// Also used in `write_shared.rs` when generating the JS `impl` file for aliased types.
+//
+// FIXME(checked_type_alias): Once the feature is complete or stable, rewrite this
+// to use type unification.
+// Be aware of `tests/rustdoc-html/type-alias/deeply-nested-112515.rs` which might
+// regress.
+pub(crate) fn impl_may_apply_to_type_alias(
+    tcx: TyCtxt<'_>,
+    alias_def_id: DefId,
+    impl_def_id: DefId,
+) -> bool {
+    let alias_ty = tcx.type_of(alias_def_id).skip_binder();
+    let for_ty = tcx.type_of(impl_def_id).skip_binder();
+    DeepRejectCtxt::relate_infer_infer(tcx).types_may_unify(alias_ty, for_ty)
+}
+
+fn aliased_type_deref_impl<'a>(
+    cx: &'a Context<'_>,
+    alias_def_id: DefId,
+    aliased_def_id: DefId,
+) -> Option<(&'a Impl, bool)> {
+    let tcx = cx.tcx();
+    let applies =
+        |impl_: &Impl| {
+            impl_.impl_item.item_id.as_def_id().is_some_and(|impl_def_id| {
+                impl_may_apply_to_type_alias(tcx, alias_def_id, impl_def_id)
+            })
+        };
+    let impls = cx.cache().impls.get(&aliased_def_id)?;
+    let mut deref_impl = None;
+    let mut has_deref_mut = false;
+
+    for impl_ in impls {
+        if impl_.trait_did() == tcx.lang_items().deref_trait() {
+            if !impl_.is_negative_trait_impl() && applies(impl_) {
+                deref_impl = Some(impl_);
+            }
+        } else if impl_.trait_did() == tcx.lang_items().deref_mut_trait() && applies(impl_) {
+            has_deref_mut = true;
+        }
+    }
+    Some((deref_impl?, has_deref_mut))
+}
+
 fn render_assoc_items(
     cx: &Context<'_>,
     containing_item: &clean::Item,
     it: DefId,
     what: AssocItemRender<'_>,
 ) -> impl fmt::Display {
+    render_assoc_items_with_aliased_type(cx, containing_item, it, what, None)
+}
+
+fn render_assoc_items_with_aliased_type(
+    cx: &Context<'_>,
+    containing_item: &clean::Item,
+    it: DefId,
+    what: AssocItemRender<'_>,
+    aliased_type: Option<DefId>,
+) -> impl fmt::Display {
     fmt::from_fn(move |f| {
         let mut derefs = DefIdSet::default();
         derefs.insert(it);
-        render_assoc_items_inner(f, cx, containing_item, it, what, &mut derefs)
+        if let Some(aliased_type) = aliased_type {
+            derefs.insert(aliased_type);
+        }
+        render_assoc_items_inner(f, cx, containing_item, it, what, &mut derefs, aliased_type)
     })
 }
 
@@ -1487,10 +1545,15 @@ fn render_assoc_items_inner(
     it: DefId,
     what: AssocItemRender<'_>,
     derefs: &mut DefIdSet,
+    aliased_type: Option<DefId>,
 ) -> fmt::Result {
     info!("Documenting associated items of {:?}", containing_item.name);
     let cache = &cx.shared.cache;
-    let Some(impls) = cache.impls.get(&it) else { return Ok(()) };
+    let impls = match cache.impls.get(&it) {
+        Some(impls) => impls.as_slice(),
+        None if aliased_type.is_some() => &[],
+        None => return Ok(()),
+    };
     let (mut inherent_impls, trait_impls): (Vec<_>, _) =
         impls.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !inherent_impls.is_empty() {
@@ -1578,17 +1641,21 @@ fn render_assoc_items_inner(
         }
     }
 
-    if !trait_impls.is_empty() {
-        let deref_impl = trait_impls.iter().find(|t| {
-            t.trait_did() == cx.tcx().lang_items().deref_trait() && !t.is_negative_trait_impl()
-        });
-        if let Some(impl_) = deref_impl {
-            let has_deref_mut = trait_impls
-                .iter()
-                .any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
-            render_deref_methods(&mut w, cx, impl_, containing_item, has_deref_mut, derefs)?;
-        }
+    let deref_impl = trait_impls.iter().find(|t| {
+        t.trait_did() == cx.tcx().lang_items().deref_trait() && !t.is_negative_trait_impl()
+    });
+    let deref = if let Some(impl_) = deref_impl {
+        let has_deref_mut =
+            trait_impls.iter().any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
+        Some((*impl_, has_deref_mut))
+    } else {
+        aliased_type.and_then(|aliased_did| aliased_type_deref_impl(cx, it, aliased_did))
+    };
+    if let Some((impl_, has_deref_mut)) = deref {
+        render_deref_methods(&mut w, cx, impl_, containing_item, has_deref_mut, derefs)?;
+    }
 
+    if !trait_impls.is_empty() {
         // If we were already one level into rendering deref methods, we don't want to render
         // anything after recursing into any further deref methods above.
         if let AssocItemRender::DerefFor { .. } = what {
@@ -1646,11 +1713,11 @@ fn render_deref_methods(
                 return Ok(());
             }
         }
-        render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs)?;
+        render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs, None)?;
     } else if let Some(prim) = target.primitive_type()
         && let Some(&did) = cache.primitive_locations.get(&prim)
     {
-        render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs)?;
+        render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs, None)?;
     }
     Ok(())
 }
