@@ -24,11 +24,11 @@ The HIR in rustc can be thought of as the high-level intermediate representation
 It is more or less the AST (see [this chapter](hir.md)) as it represents the
 syntax that the user wrote, and is obtained after parsing and some *desugaring*.
 It has a representation of types,
-but in reality it reflects more of what the user wrote, that is, what they
-wrote so as to represent that type.
+but in reality, it reflects more of what the user wrote,
+so as to represent that type.
 
-In contrast, `ty::Ty` represents the semantics of a type, that is,
-the *meaning* of what the user wrote.
+In contrast, `ty::Ty` represents the semantics of a type;
+that is, the *meaning* of what the user wrote.
 For example, `rustc_hir::Ty` would record the fact that a user used the name `u32` twice
 in their program, but the `ty::Ty` would record the fact that both usages refer to the same type.
 
@@ -169,9 +169,9 @@ You can also find various common types in the `tcx` itself by accessing its fiel
 <!-- N.B: This section is linked from the type comparison internal lint. -->
 ## Comparing types
 
-Because types are interned, it is possible to compare them for equality efficiently using `==`
-– however,
-this is almost never what you want to do unless you happen to be hashing and looking for duplicates.
+Because types are interned, it is possible to compare them for equality efficiently using `==`.
+However, this is almost never what you want to do,
+unless you happen to be hashing and looking for duplicates.
 This is because often in Rust there are multiple ways to represent the same type,
 particularly once inference is involved.
 
@@ -182,8 +182,8 @@ diagnostics code).
 `==` on them will return `false` though, since they are different types.
 
 The simplest way to compare two types correctly requires an inference context (`infcx`).
-If you have one, you can use `infcx.can_eq(param_env, ty1,
-ty2)` to check whether the types can be made equal.
+If you have one,
+you can use `infcx.can_eq(param_env, ty1, ty2)` to check whether the types can be made equal.
 This is typically what you want to check during diagnostics, which is concerned with questions such
 as whether two types can be assigned to each other,
 not whether they're represented identically in the compiler's type-checking layer.
@@ -265,7 +265,7 @@ Here is a sampling:
 - [**RawPtr**][kindrawptr] Corresponds to `*mut T` or `*const T`.
 - [**Ref**][kindref] `Ref` stands for safe references, `&'a mut T` or `&'a T`.
   `Ref` has some associated parts,
-  like `Ty<'tcx>` which is the type that the reference references.
+  like `Ty<'tcx>`, which is the type that the reference references.
   `Region<'tcx>` is the lifetime or region of the reference and `Mutability` if the reference
   is mutable or not.
 - [**Param**][kindparam] Represents a type parameter (e.g. the `T` in `Vec<T>`).
