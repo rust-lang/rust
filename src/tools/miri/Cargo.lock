@@ -1023,6 +1023,7 @@ dependencies = [
  "socket2",
  "tempfile",
  "ui_test",
+ "windows-sys",
 ]
 
 [[package]]

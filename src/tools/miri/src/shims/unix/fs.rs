@@ -394,6 +394,7 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 interp_ok(fs::Permissions::from_mode(mode))
             }
             _ => {
+                let _ = mode;
                 throw_unsup_format!("setting file permissions is only supported on Unix hosts")
             }
         }
@@ -522,23 +523,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let o_nofollow = this.eval_libc_i32("O_NOFOLLOW");
+        let mut nofollow = false;
         if flag & o_nofollow == o_nofollow {
             flag &= !o_nofollow;
+            nofollow = true;
             cfg_select! {
                 unix => {
                     use std::os::unix::fs::OpenOptionsExt;
                     options.custom_flags(libc::O_NOFOLLOW);
                 }
-                _ => {
-                    // Strictly speaking, this emulation is not equivalent to the O_NOFOLLOW flag behavior:
-                    // the path could change between us checking it here and the later call to `open`.
-                    // But it's good enough for Miri purposes.
-
-                    // O_NOFOLLOW only fails when the trailing component is a symlink;
-                    // the entire rest of the path can still contain symlinks.
-                    if path.is_symlink() {
-                        return this.set_errno_and_return_neg1_i32(LibcError("ELOOP"));
-                    }
+                windows => {
+                    use std::os::windows::fs::OpenOptionsExt;
+                    options.custom_flags(
+                        windows_sys::Win32::Storage::FileSystem::FILE_FLAG_OPEN_REPARSE_POINT,
+                    );
                 }
             }
         }
@@ -554,11 +552,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        let fd = options
-            .open(path)
-            .map(|file| this.machine.fds.insert_new(FileHandle { file, writable, readable }));
-
-        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(fd)?))
+        let file = match options.open(path) {
+            Ok(file) => file,
+            Err(err) => return this.set_errno_and_return_neg1_i32(err),
+        };
+        if nofollow && !cfg!(unix) {
+            // On Windows, FILE_FLAG_OPEN_REPARSE_POINT makes opening still succeed, it just
+            // opens the symlink rather than the target. Turn that into an error.
+            if file.metadata().unwrap().is_symlink() {
+                return this.set_errno_and_return_neg1_i32(LibcError("ELOOP"));
+            }
+        }
+        let fd = this.machine.fds.insert_new(FileHandle { file, writable, readable });
+        interp_ok(Scalar::from_i32(fd))
     }
 
     fn lseek(

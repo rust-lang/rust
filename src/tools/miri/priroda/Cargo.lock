@@ -689,6 +689,7 @@ dependencies = [
  "serde",
  "smallvec",
  "socket2",
+ "windows-sys",
 ]
 
 [[package]]
