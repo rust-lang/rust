@@ -237,7 +237,7 @@ impl CodegenBackend for GccCodegenBackend {
                 lto_supported: gccjit::is_lto_supported(),
             });
 
-            gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
+            gccjit::set_global_personality_function_name(c"rust_eh_personality");
         }
 
         #[cfg(not(feature = "master"))]
