@@ -4,7 +4,7 @@ use crate::iter::{
     TrustedFused, TrustedLen,
 };
 use crate::num::NonZero;
-use crate::ops::{ControlFlow, Try};
+use crate::ops::{ControlFlow, Try, qmark};
 use crate::{array, fmt, option, result};
 
 /// An iterator that maps each element to an iterator, and yields the elements
@@ -424,15 +424,15 @@ where
         }
 
         if let Some(iter) = &mut self.frontiter {
-            acc = fold(acc, iter)?;
+            acc = qmark!(fold(acc, iter));
         }
         self.frontiter = None;
 
-        acc = self.iter.try_fold(acc, flatten(&mut self.frontiter, &mut fold))?;
+        acc = qmark!(self.iter.try_fold(acc, flatten(&mut self.frontiter, &mut fold)));
         self.frontiter = None;
 
         if let Some(iter) = &mut self.backiter {
-            acc = fold(acc, iter)?;
+            acc = qmark!(fold(acc, iter));
         }
         self.backiter = None;
 
@@ -493,15 +493,15 @@ where
         }
 
         if let Some(iter) = &mut self.backiter {
-            acc = fold(acc, iter)?;
+            acc = qmark!(fold(acc, iter));
         }
         self.backiter = None;
 
-        acc = self.iter.try_rfold(acc, flatten(&mut self.backiter, &mut fold))?;
+        acc = qmark!(self.iter.try_rfold(acc, flatten(&mut self.backiter, &mut fold)));
         self.backiter = None;
 
         if let Some(iter) = &mut self.frontiter {
-            acc = fold(acc, iter)?;
+            acc = qmark!(fold(acc, iter));
         }
         self.frontiter = None;
 
