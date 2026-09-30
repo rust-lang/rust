@@ -613,12 +613,14 @@ fn set_get_unix_permissions() {
     assert_eq!(mask & metadata1.permissions().mode(), 0o0777);
 }
 
+/// Test set_permissions_nofollow on a regular file.
 #[cfg(not(target_os = "android"))]
 #[test]
 fn set_get_permissions_nofollows() {
     let tmpdir = tmpdir();
     let filename = tmpdir.join("set_get_unix_permissions_file");
     check!(File::create(&filename));
+
     let file_metadata = check!(fs::metadata(&filename));
     assert!(!file_metadata.permissions().readonly());
     let mut permission_bits = file_metadata.permissions();
@@ -648,12 +650,8 @@ fn set_get_permissions_nofollows() {
     }
 }
 
-// Only Windows and Unix support `fs::set_permissions_nofollow`
+#[cfg(not(target_os = "android"))]
 #[test]
-#[cfg(all(
-    any(windows, unix),
-    not(any(target_os = "espidf", target_os = "horizon", target_os = "wasi"))
-))]
 fn set_get_permissions_nofollows_symlink() {
     #[cfg(not(windows))]
     use crate::os::unix::fs::symlink as symlink_file;
@@ -667,14 +665,20 @@ fn set_get_permissions_nofollows_symlink() {
     check!(symlink_file(&filename, &symlink_name));
 
     let init_symlink_metadata = check!(fs::symlink_metadata(&symlink_name));
-    let mut init_symlink_permissions = init_symlink_metadata.permissions();
-
+    assert!(!init_symlink_metadata.permissions().readonly());
     let init_target_metadata = check!(fs::metadata(&symlink_name));
-    let init_target_permissions = init_target_metadata.permissions();
+    assert!(!init_target_metadata.permissions().readonly());
 
     // Set symlink permissions to readonly
-    init_symlink_permissions.set_readonly(true);
-    let result = fs::set_permissions_nofollow(&symlink_name, init_symlink_permissions);
+    let result = fs::set_permissions_nofollow(&symlink_name, {
+        let mut permissions = init_symlink_metadata.permissions();
+        permissions.set_readonly(true);
+        permissions
+    });
+
+    // This should not change the permissions of the target!
+    let after_target_metadata = check!(fs::metadata(&symlink_name));
+    assert_eq!(after_target_metadata.permissions(), init_target_metadata.permissions());
 
     cfg_select! {
         any(
@@ -687,16 +691,11 @@ fn set_get_permissions_nofollows_symlink() {
             target_os = "nto",
             target_os = "qnx"
         ) => {
-            assert_eq!(result.unwrap(), ());
-
-            let after_target_metadata = check!(fs::metadata(&symlink_name));
-            // We should expect the target file to not have its permission bits
-            // changed
-            assert_eq!(after_target_metadata.permissions(), init_target_permissions);
-
-            let after_symlink_metadata = check!(fs::symlink_metadata(&symlink_name));
             // On these systems, it's confirmed the symlink itself is marked readonly
             // https://superuser.com/questions/1099634/change-permissions-symbolic-link-mac-os
+            assert_eq!(result.unwrap(), ());
+
+            let after_symlink_metadata = check!(fs::symlink_metadata(&symlink_name));
             assert!(after_symlink_metadata.permissions().readonly());
 
             // Reset the read-only bit under Windows 7: avoids the
@@ -710,11 +709,7 @@ fn set_get_permissions_nofollows_symlink() {
             }
         }
         _ => {
-            let after_target_metadata = check!(fs::metadata(&symlink_name));
-            // We should expect the target file to not have its permission bits
-            // changed
-            assert_eq!(after_target_metadata.permissions(), init_target_permissions);
-
+            // Everywhere else, this just fails.
             let error_kind = result.unwrap_err().kind();
             assert_eq!(error_kind, crate::io::ErrorKind::Unsupported);
         }
