@@ -304,7 +304,7 @@ enum ResolutionError<'ra> {
     ///
     /// This error is only emitted when using `min_const_generics`.
     ParamInNonTrivialAnonConst {
-        is_gca: bool,
+        is_gca_const_items: bool,
         name: Symbol,
         param_kind: ParamKindInNonTrivialAnonConst,
     },

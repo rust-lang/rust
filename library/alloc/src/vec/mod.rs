@@ -2421,12 +2421,11 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_try_remove)]
     /// let mut v = vec![1, 2, 3];
     /// assert_eq!(v.try_remove(0), Some(1));
     /// assert_eq!(v.try_remove(2), None);
     /// ```
-    #[unstable(feature = "vec_try_remove", issue = "146954")]
+    #[stable(feature = "vec_try_remove", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_confusables("delete", "take", "remove")]
     pub fn try_remove(&mut self, index: usize) -> Option<T> {
         let len = self.len();
