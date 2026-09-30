@@ -613,7 +613,21 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         let lifetime = actual_has_vid.unwrap_or_default();
 
         let note_2 = if same_self_type {
-            ActualImplExplNotes::ButActuallyImplementsTrait { trait_path, has_lifetime, lifetime }
+            let impl_candidates = self.cx.find_similar_impl_candidates(
+                actual_trait_ref.value.def_id,
+                actual_trait_ref.value.self_ty(),
+            );
+            let span = if let [candidate] = impl_candidates {
+                Some(self.tcx().def_span(candidate.impl_def_id))
+            } else {
+                None
+            };
+            ActualImplExplNotes::ButActuallyImplementsTrait {
+                trait_path,
+                has_lifetime,
+                lifetime,
+                span,
+            }
         } else if passive_voice {
             ActualImplExplNotes::ButActuallyImplementedForTy {
                 trait_path,

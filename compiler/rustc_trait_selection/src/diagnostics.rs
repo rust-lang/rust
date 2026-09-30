@@ -1052,6 +1052,8 @@ pub(crate) enum ActualImplExplNotes<'tcx> {
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         has_lifetime: bool,
         lifetime: usize,
+        #[primary_span]
+        span: Option<Span>,
     },
     #[note(
         "...but `{$trait_path}` is actually implemented for the type `{$ty}`{$has_lifetime ->

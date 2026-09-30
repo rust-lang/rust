@@ -10,7 +10,11 @@ LL | fn b() { want_foo2::<SomeStruct>(); }
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: ...`SomeStruct` must implement `Foo<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
-   = note: ...but it actually implements `Foo<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+note: ...but it actually implements `Foo<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+  --> $DIR/hrtb-conflate-regions.rs:22:1
+   |
+LL | impl<'a> Foo<(&'a isize, &'a isize)> for SomeStruct
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of `Foo` is not general enough
   --> $DIR/hrtb-conflate-regions.rs:27:10
@@ -24,7 +28,11 @@ LL | fn b() { want_foo2::<SomeStruct>(); }
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: ...`SomeStruct` must implement `Foo<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
-   = note: ...but it actually implements `Foo<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+note: ...but it actually implements `Foo<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+  --> $DIR/hrtb-conflate-regions.rs:22:1
+   |
+LL | impl<'a> Foo<(&'a isize, &'a isize)> for SomeStruct
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
