@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::undo_log::UndoLogs;
-use rustc_middle::ty::{self as ty, OpaqueTypeKey, ProvisionalHiddenType, Ty};
+use rustc_middle::ty::{self as ty, OpaqueTypeKey, ProvisionalHiddenType, Ty, TyVid};
 use rustc_span::bug;
 use tracing::instrument;
 
@@ -25,7 +25,7 @@ pub struct OpaqueTypeStorage<'tcx> {
     /// - When we normalize an associated type whose self-ty is pseudo-rigid, and there does
     ///   not exist a `Projection` clause for that associated type, we register the normalized-to
     ///   term as a new pseudo-rigid. This fixes trait-system-refactor-initiative#248.
-    pseudo_rigid_due_to_opaques: Vec<(Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)>,
+    pseudo_rigid_due_to_opaques: Vec<(TyVid, ty::PseudoRigidDueToOpaquesBound<'tcx>)>,
 }
 
 /// The number of entries in the opaque type storage at a given point.
@@ -93,7 +93,7 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         &mut self,
     ) -> (
         impl Iterator<Item = (OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)>,
-        Vec<(Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)>,
+        Vec<(TyVid, ty::PseudoRigidDueToOpaquesBound<'tcx>)>,
     ) {
         let OpaqueTypeStorage { opaque_types, duplicate_entries, pseudo_rigid_due_to_opaques } =
             self;
@@ -129,7 +129,7 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
     pub fn pseudo_rigid_due_to_opaques_added_since(
         &self,
         prev_entries: OpaqueTypeStorageEntries,
-    ) -> impl Iterator<Item = (Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)> {
+    ) -> impl Iterator<Item = (TyVid, ty::PseudoRigidDueToOpaquesBound<'tcx>)> {
         self.pseudo_rigid_due_to_opaques
             .iter()
             .skip(prev_entries.pseudo_rigid_due_to_opaques)
@@ -168,7 +168,7 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
 
     pub fn iter_pseudo_rigid_due_to_opaques(
         &self,
-    ) -> impl Iterator<Item = (Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)> {
+    ) -> impl Iterator<Item = (TyVid, ty::PseudoRigidDueToOpaquesBound<'tcx>)> {
         let OpaqueTypeStorage {
             opaque_types: _,
             duplicate_entries: _,
@@ -226,7 +226,7 @@ impl<'a, 'tcx> OpaqueTypeTable<'a, 'tcx> {
 
     pub fn add_pseudo_rigid_due_to_opaques(
         &mut self,
-        pseudo_rigid: Ty<'tcx>,
+        pseudo_rigid: TyVid,
         bounds: impl IntoIterator<Item = ty::PseudoRigidDueToOpaquesBound<'tcx>>,
     ) {
         let OpaqueTypeStorage {

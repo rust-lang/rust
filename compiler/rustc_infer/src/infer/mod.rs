@@ -1122,7 +1122,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
     ) -> (
         Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)>,
-        Vec<(Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)>,
+        Vec<(TyVid, ty::PseudoRigidDueToOpaquesBound<'tcx>)>,
     ) {
         let mut inner = self.inner.borrow_mut();
         let (opaques, pseudo_rigids) = inner.opaque_type_storage.take_opaque_types();
@@ -1159,15 +1159,9 @@ impl<'tcx> InferCtxt<'tcx> {
         let ty_sub_vid = self.sub_unification_table_root_var(ty_vid);
         let inner = &mut *self.inner.borrow_mut();
         let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
-        inner.opaque_type_storage.iter_pseudo_rigid_due_to_opaques().any(|(hidden_ty, _)| {
-            if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.kind() {
-                let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
-                if opaque_sub_vid == ty_sub_vid {
-                    return true;
-                }
-            }
-
-            false
+        inner.opaque_type_storage.iter_pseudo_rigid_due_to_opaques().any(|(hidden_vid, _)| {
+            let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
+            opaque_sub_vid == ty_sub_vid
         })
     }
 
@@ -1225,15 +1219,9 @@ impl<'tcx> InferCtxt<'tcx> {
         inner
             .opaque_type_storage
             .iter_pseudo_rigid_due_to_opaques()
-            .filter_map(|(pseudo_rigid, bound)| {
-                if let ty::Infer(ty::TyVar(hidden_vid)) = *pseudo_rigid.kind() {
-                    let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
-                    if opaque_sub_vid == ty_sub_vid {
-                        return Some(bound);
-                    }
-                }
-
-                None
+            .filter_map(|(hidden_vid, bound)| {
+                let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
+                if opaque_sub_vid == ty_sub_vid { Some(bound) } else { None }
             })
             .collect()
     }

@@ -569,7 +569,7 @@ pub trait InferCtxtLike: Sized {
     ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
     fn clone_pseudo_rigid_due_to_opaques(
         &self,
-    ) -> Vec<(<Self::Interner as Interner>::Ty, ty::PseudoRigidDueToOpaquesBound<Self::Interner>)>;
+    ) -> Vec<(TyVid, ty::PseudoRigidDueToOpaquesBound<Self::Interner>)>;
     fn clone_opaque_types_added_since(
         &self,
         prev_entries: Self::OpaqueTypeStorageEntries,
@@ -577,7 +577,7 @@ pub trait InferCtxtLike: Sized {
     fn clone_pseudo_rigid_due_to_opaques_added_since(
         &self,
         prev_entries: Self::OpaqueTypeStorageEntries,
-    ) -> Vec<(<Self::Interner as Interner>::Ty, ty::PseudoRigidDueToOpaquesBound<Self::Interner>)>;
+    ) -> Vec<(TyVid, ty::PseudoRigidDueToOpaquesBound<Self::Interner>)>;
     fn pseudo_rigid_due_to_opaques(
         &self,
         ty_vid: TyVid,

@@ -420,7 +420,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let pseudo_rigid_due_to_opaques = if self.next_trait_solver() {
             self.tcx.mk_pseudo_rigid_due_to_opaques_from_iter(
-                self.inner.borrow_mut().opaque_types().iter_pseudo_rigid_due_to_opaques(),
+                self.inner
+                    .borrow_mut()
+                    .opaque_types()
+                    .iter_pseudo_rigid_due_to_opaques()
+                    .map(|(ty, bound)| (Ty::new_var(self.tcx, ty), bound)),
             )
         } else {
             ty::List::empty()

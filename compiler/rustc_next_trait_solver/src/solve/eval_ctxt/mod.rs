@@ -772,14 +772,21 @@ where
         // so we only canonicalize the lookup table and ignore
         // duplicate entries.
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
-        let pseudo_rigid_due_to_opaques = self.delegate.clone_pseudo_rigid_due_to_opaques();
-
-        let (goal, opaque_types, pseudo_rigid_due_to_opaques) =
-            self.delegate.deeply_resolve_via_unification_table((
-                goal,
-                opaque_types,
-                pseudo_rigid_due_to_opaques,
-            ));
+        let pseudo_rigid_due_to_opaques: Vec<_> = self
+            .delegate
+            .clone_pseudo_rigid_due_to_opaques()
+            .into_iter()
+            .filter_map(|(vid, bound)| {
+                let ty = self.delegate.shallow_resolve_ty_var(vid);
+                if ty.is_ty_var() {
+                    Some((ty, self.delegate.deeply_resolve_via_unification_table(bound)))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let (goal, opaque_types) =
+            self.delegate.deeply_resolve_via_unification_table((goal, opaque_types));
         let typing_mode = self.typing_mode();
         let step_kind = self.step_kind_for_source(source);
 
@@ -1832,8 +1839,19 @@ where
         // to the `var_values`.
         let initial_entries = self.initial_opaque_types_storage_num_entries;
         let opaque_types = self.delegate.clone_opaque_types_added_since(initial_entries);
-        let pseudo_rigid_due_to_opaques =
-            self.delegate.clone_pseudo_rigid_due_to_opaques_added_since(initial_entries);
+        let pseudo_rigid_due_to_opaques: Vec<_> = self
+            .delegate
+            .clone_pseudo_rigid_due_to_opaques_added_since(initial_entries)
+            .into_iter()
+            .filter_map(|(vid, bound)| {
+                let ty = self.delegate.shallow_resolve_ty_var(vid);
+                if ty.is_ty_var() {
+                    Some((ty, self.delegate.deeply_resolve_via_unification_table(bound)))
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         if self.typing_mode().is_erased_not_coherence() {
             assert!(opaque_types.is_empty() && pseudo_rigid_due_to_opaques.is_empty());
@@ -2097,9 +2115,19 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     root_depth: usize,
 ) -> (Result<NestedNormalizationGoals<I>, NoSolution>, inspect::GoalEvaluation<I>) {
     let opaque_types = delegate.clone_opaque_types_lookup_table();
-    let pseudo_rigid_due_to_opaques = delegate.clone_pseudo_rigid_due_to_opaques();
-    let (goal, opaque_types, pseudo_rigid_due_to_opaques) = delegate
-        .deeply_resolve_via_unification_table((goal, opaque_types, pseudo_rigid_due_to_opaques));
+    let pseudo_rigid_due_to_opaques: Vec<_> = delegate
+        .clone_pseudo_rigid_due_to_opaques()
+        .into_iter()
+        .filter_map(|(vid, bound)| {
+            let ty = delegate.shallow_resolve_ty_var(vid);
+            if ty.is_ty_var() {
+                Some((ty, delegate.deeply_resolve_via_unification_table(bound)))
+            } else {
+                None
+            }
+        })
+        .collect();
+    let (goal, opaque_types) = delegate.deeply_resolve_via_unification_table((goal, opaque_types));
     let typing_mode = delegate.typing_mode_raw().assert_not_erased();
 
     let (orig_values, canonical_goal) = canonicalize_goal(

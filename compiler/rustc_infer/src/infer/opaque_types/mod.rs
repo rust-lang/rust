@@ -8,7 +8,6 @@ use rustc_middle::ty::{
     TypeVisitableExt, Unnormalized,
 };
 use rustc_span::{Span, bug};
-use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use super::{DefineOpaqueTypes, RegionVariableOrigin};
@@ -214,7 +213,6 @@ impl<'tcx> InferCtxt<'tcx> {
         bounds: impl IntoIterator<Item = ty::PseudoRigidDueToOpaquesBound<'tcx>>,
     ) {
         assert!(self.next_trait_solver());
-
         let ty::Infer(ty::TyVar(vid)) = *pseudo_rigid.kind() else {
             return;
         };
@@ -222,36 +220,13 @@ impl<'tcx> InferCtxt<'tcx> {
             return;
         }
 
-        let bounds: SmallVec<[_; 8]> =
-            bounds.into_iter().map(|bound| self.deeply_resolve_ignoring_regions(bound)).collect();
+        let bounds: Vec<_> = bounds
+            .into_iter()
+            .map(|bound| self.deeply_resolve_via_unification_table(bound))
+            .collect();
 
         let ty_sub_vid = self.sub_unification_table_root_var(vid);
-        let inner = &mut *self.inner.borrow_mut();
-        // This is iffy, can't call `type_variables()` as we're already
-        // borrowing the `opaque_type_storage` here.
-        let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
-
-        // Since we lookup `pseudo_rigids_due_to_opaques` modulo sub-roots,
-        // it's okay to save them with the preexisting key that
-        // sub-unified with the given `pseudo_rigid`.
-        //
-        // And doing so helps avoiding possibly duplicates (modulo sub roots)
-        // which is not so good for caching and goal evaluation progress
-        // heuristics.
-        let pseudo_rigid = inner
-            .opaque_type_storage
-            .iter_pseudo_rigid_due_to_opaques()
-            .map(|(pr, _)| pr)
-            .find(|pr| {
-                if let ty::Infer(ty::TyVar(ty_vid)) = *pr.kind() {
-                    type_variables.sub_unification_table_root_var(ty_vid) == ty_sub_vid
-                } else {
-                    false
-                }
-            })
-            .unwrap_or(pseudo_rigid);
-
-        inner.opaque_types().add_pseudo_rigid_due_to_opaques(pseudo_rigid, bounds);
+        self.inner.borrow_mut().opaque_types().add_pseudo_rigid_due_to_opaques(ty_sub_vid, bounds);
     }
 
     pub fn register_pseudo_rigid_due_to_opaques_in_storage_with_flattened(
