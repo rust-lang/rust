@@ -8,25 +8,24 @@
 use std::cell::Cell;
 use std::slice;
 
-use rustc_abi::ExternAbi;
 use rustc_ast::MetaItemKind;
+use rustc_attr_ir::diagnostic::Directive;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
+use rustc_attr_ir::{
+    Attribute, AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution,
+    InlineAttr, OptimizeAttr, ReprAttr, find_attr,
+};
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, msg};
 use rustc_feature::BUILTIN_ATTRIBUTE_SET;
-use rustc_hir::attrs::diagnostic::Directive;
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::attrs::{
-    AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
-    OptimizeAttr, ReprAttr,
-};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, AssocCtxt, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam,
-    GenericParamKind, HirId, Item, ItemKind, MethodKind, Mod, Node, ParamName, Target, TraitItem,
-    find_attr,
+    self as hir, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam, GenericParamKind,
+    HirId, Item, ItemKind, Mod, Node, ParamName, TraitItem,
 };
 use rustc_lint_defs::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
@@ -199,16 +198,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::ProcMacroDerive { .. } => {
                 self.check_proc_macro(hir_id, target, ProcMacroKind::Derive)
             }
-            AttributeKind::Inline(InlineAttr::Force { .. }, ..) => {} // handled separately below
-            AttributeKind::Inline(kind, attr_span) => {
-                self.check_inline(hir_id, *attr_span, kind, target)
-            }
             AttributeKind::RustcAllowConstFnUnstable(_, first_span) => {
                 self.check_rustc_allow_const_fn_unstable(hir_id, *first_span, span, target)
             }
             AttributeKind::Naked(..) => self.check_naked(hir_id, target),
             AttributeKind::MayDangle(attr_span) => self.check_may_dangle(hir_id, *attr_span),
-            AttributeKind::Link(_, attr_span) => self.check_link(hir_id, *attr_span, target),
             AttributeKind::MacroExport { span, .. } => {
                 self.check_macro_export(hir_id, *span, target)
             }
@@ -268,9 +262,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::FfiPure(..) => (),
             AttributeKind::Fundamental => (),
             AttributeKind::Ignore { .. } => (),
+            AttributeKind::Inline(..) => (),
             AttributeKind::InstructionSet(..) => (),
             AttributeKind::InstrumentFn(..) => (),
             AttributeKind::Lang(..) => (),
+            AttributeKind::Link(..) => (),
             AttributeKind::LinkName { .. } => (),
             AttributeKind::LinkOrdinal { .. } => (),
             AttributeKind::LinkSection { .. } => (),
@@ -740,35 +736,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if an `#[inline]` is applied to a function or a closure.
-    fn check_inline(&self, hir_id: HirId, attr_span: Span, kind: &InlineAttr, target: Target) {
-        match target {
-            Target::Fn
-            | Target::Closure
-            | Target::Method(
-                MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
-            ) => {
-                // `#[inline]` is ignored if the symbol must be codegened upstream because it's exported.
-                if let Some(did) = hir_id.as_owner()
-                    && self.tcx.def_kind(did).has_codegen_attrs()
-                    && kind != &InlineAttr::Never
-                {
-                    let attrs = self.tcx.codegen_fn_attrs(did);
-                    // Not checking naked as `#[inline]` is forbidden for naked functions anyways.
-                    if attrs.contains_extern_indicator() {
-                        self.tcx.emit_node_span_lint(
-                            UNUSED_ATTRIBUTES,
-                            hir_id,
-                            attr_span,
-                            diagnostics::InlineIgnoredForExported,
-                        );
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-
     /// Checks if `#[naked]` is applied to a function definition.
     fn check_naked(&self, hir_id: HirId, target: Target) {
         match target {
@@ -1100,22 +1067,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.dcx().emit_err(diagnostics::InvalidMayDangle { attr_span });
     }
 
-    /// Checks if `#[link]` is applied to an item other than a foreign module.
-    fn check_link(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        if target != Target::ForeignMod {
-            return; // Checked by attribute parser
-        }
-
-        if let hir::Node::Item(item) = self.tcx.hir_node(hir_id)
-            && let Item { kind: ItemKind::ForeignMod { abi, .. }, .. } = item
-            && !matches!(abi, ExternAbi::Rust)
-        {
-            return;
-        }
-
-        self.tcx.emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr_span, diagnostics::Link);
-    }
-
     /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid argument.
     fn check_rustc_legacy_const_generics(
         &self,
@@ -1210,7 +1161,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if !reprs.is_empty() {
             let sorted_reprs = {
                 let mut to_sort = reprs.to_owned();
-                to_sort.sort_unstable();
+                to_sort.sort_unstable_by_key(|(attr, span)| (*attr, span.lo_hi()));
                 to_sort
             };
 
@@ -1346,7 +1297,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 sym::expect,
             ]) && let Some(meta) = attr.meta_item_list()
                 && meta.iter().any(|meta| {
-                    meta.meta_item().map_or(false, |item| {
+                    meta.meta_item().is_some_and(|item| {
                         item.path == sym::linker_messages || item.path == sym::linker_info
                     })
                 })

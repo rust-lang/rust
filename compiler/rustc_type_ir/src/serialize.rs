@@ -2,7 +2,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use crate::inherent::*;
 use crate::visit::TypeVisitable;
-use crate::{self as ty, Interner, Region, RegionKind, UnsafeBinderInner};
+use crate::{self as ty, Const, ConstKind, Interner, Region, RegionKind, UnsafeBinderInner};
 
 /// A decoder that can reconstruct interned type IR values by supplying the
 /// interner that owns the decoded data.
@@ -115,5 +115,23 @@ where
 {
     fn decode(decoder: &mut D) -> Self {
         decoder.interner().intern_region(Decodable::decode(decoder))
+    }
+}
+
+impl<I: Interner, E: Encoder> Encodable<E> for Const<I>
+where
+    ConstKind<I>: Encodable<E>,
+{
+    fn encode(&self, e: &mut E) {
+        self.kind().encode(e);
+    }
+}
+
+impl<I: Interner, D: InternerDecoder<Interner = I>> Decodable<D> for Const<I>
+where
+    ConstKind<I>: Decodable<D>,
+{
+    fn decode(decoder: &mut D) -> Self {
+        Const::new(decoder.interner(), Decodable::decode(decoder))
     }
 }

@@ -297,3 +297,5 @@ pub extern "C" fn f_double_u_arg(a: DoubleU) {}
 pub extern "C" fn f_ret_double_u() -> DoubleU {
     unsafe { DoubleU { a: 1. } }
 }
+
+// CHECK: !{{[0-9]+}} = !{i32 1, !"target-abi", !"lp64d"}

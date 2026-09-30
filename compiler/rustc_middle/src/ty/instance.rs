@@ -1,9 +1,9 @@
 use std::{assert_matches, fmt};
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable};
@@ -231,7 +231,7 @@ impl<'tcx> Instance<'tcx> {
         if !tcx.sess.opts.share_generics()
             // However, if the def_id is marked inline(never), then it's fine to just reuse the
             // upstream monomorphization.
-            && tcx.codegen_fn_attrs(self.def_id()).inline != rustc_hir::attrs::InlineAttr::Never
+            && tcx.codegen_fn_attrs(self.def_id()).inline != rustc_attr_ir::InlineAttr::Never
         {
             return None;
         }

@@ -339,6 +339,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> Box<ast::Item> {
 
     let mut decls_static = cx.item_static(
         span,
+        ast::AttrVec::new(),
         Ident::new(sym::_DECLS, span),
         cx.ty_ref(
             span,

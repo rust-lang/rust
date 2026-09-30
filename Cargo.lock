@@ -287,12 +287,6 @@ dependencies = [
 
 [[package]]
 name = "base64"
-version = "0.21.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
-
-[[package]]
-name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
@@ -2135,7 +2129,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8bdc5a74b0feeb5e6a1dc2dd08c34280a61e37668d10a6a3b27ad69d0fb9ce2e"
 dependencies = [
  "aho-corasick",
- "base64 0.22.1",
+ "base64",
  "bstr",
  "jaq-core",
  "jiff",
@@ -3446,7 +3440,6 @@ name = "replace-version-placeholder"
 version = "0.1.0"
 dependencies = [
  "tidy",
- "walkdir",
 ]
 
 [[package]]
@@ -3633,6 +3626,7 @@ dependencies = [
 name = "rustc_ast_lowering"
 version = "0.0.0"
 dependencies = [
+ "bitflags",
  "rustc_abi",
  "rustc_ast",
  "rustc_attr_ir",
@@ -3741,6 +3735,7 @@ dependencies = [
  "itertools",
  "polonius-engine",
  "rustc_abi",
+ "rustc_attr_ir",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_graphviz",
@@ -3878,6 +3873,7 @@ dependencies = [
  "rustc_abi",
  "rustc_apfloat",
  "rustc_ast",
+ "rustc_attr_ir",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
@@ -4135,6 +4131,7 @@ dependencies = [
  "rustc_abi",
  "rustc_arena",
  "rustc_ast",
+ "rustc_attr_ir",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -4174,6 +4171,7 @@ dependencies = [
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
+ "rustc_attr_ir",
  "rustc_hir",
  "rustc_span",
 ]
@@ -4185,6 +4183,7 @@ dependencies = [
  "itertools",
  "rustc_abi",
  "rustc_ast",
+ "rustc_attr_ir",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
@@ -4209,6 +4208,7 @@ name = "rustc_incremental"
 version = "0.0.0"
 dependencies = [
  "rand 0.9.3",
+ "rustc_attr_ir",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fs_util",
@@ -4269,6 +4269,7 @@ dependencies = [
  "rustc_ast_lowering",
  "rustc_ast_passes",
  "rustc_ast_pretty",
+ "rustc_attr_ir",
  "rustc_attr_parsing",
  "rustc_borrowck",
  "rustc_builtin_macros",
@@ -4330,6 +4331,7 @@ dependencies = [
  "rustc_apfloat",
  "rustc_ast",
  "rustc_ast_pretty",
+ "rustc_attr_ir",
  "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
@@ -4408,6 +4410,7 @@ dependencies = [
  "odht",
  "rustc_abi",
  "rustc_ast",
+ "rustc_attr_ir",
  "rustc_attr_parsing",
  "rustc_crate_store",
  "rustc_data_structures",
@@ -4415,6 +4418,7 @@ dependencies = [
  "rustc_expand",
  "rustc_feature",
  "rustc_fs_util",
+ "rustc_hashes",
  "rustc_hir",
  "rustc_hir_pretty",
  "rustc_index",
@@ -4429,6 +4433,7 @@ dependencies = [
  "rustc_target",
  "tempfile",
  "tracing",
+ "twox-hash 2.1.2",
 ]
 
 [[package]]
@@ -4477,6 +4482,7 @@ dependencies = [
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
+ "rustc_attr_ir",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
@@ -4498,10 +4504,10 @@ dependencies = [
  "polonius-engine",
  "regex",
  "rustc_abi",
+ "rustc_attr_ir",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_graphviz",
- "rustc_hir",
  "rustc_index",
  "rustc_macros",
  "rustc_middle",
@@ -4519,6 +4525,7 @@ dependencies = [
  "rustc_abi",
  "rustc_arena",
  "rustc_ast",
+ "rustc_attr_ir",
  "rustc_const_eval",
  "rustc_data_structures",
  "rustc_errors",
@@ -4544,6 +4551,7 @@ version = "0.0.0"
 dependencies = [
  "rustc_abi",
  "rustc_ast",
+ "rustc_attr_ir",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
@@ -4661,6 +4669,7 @@ name = "rustc_privacy"
 version = "0.0.0"
 dependencies = [
  "rustc_ast",
+ "rustc_attr_ir",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
@@ -4701,6 +4710,7 @@ name = "rustc_public_bridge"
 version = "0.0.0"
 dependencies = [
  "rustc_abi",
+ "rustc_attr_ir",
  "rustc_crate_store",
  "rustc_data_structures",
  "rustc_hir",
@@ -4738,6 +4748,7 @@ dependencies = [
  "rustc_arena",
  "rustc_ast",
  "rustc_ast_pretty",
+ "rustc_attr_ir",
  "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
@@ -4764,6 +4775,7 @@ dependencies = [
  "bitflags",
  "libc",
  "rustc_abi",
+ "rustc_attr_ir",
  "rustc_data_structures",
  "rustc_hir",
  "rustc_middle",
@@ -4816,7 +4828,6 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "blake3",
- "derive-where",
  "indexmap",
  "itoa",
  "md-5",
@@ -4854,6 +4865,7 @@ dependencies = [
  "punycode",
  "rustc-demangle",
  "rustc_abi",
+ "rustc_attr_ir",
  "rustc_data_structures",
  "rustc_hashes",
  "rustc_hir",
@@ -4916,6 +4928,7 @@ dependencies = [
  "itertools",
  "rustc_abi",
  "rustc_ast",
+ "rustc_attr_ir",
  "rustc_crate_store",
  "rustc_data_structures",
  "rustc_errors",
@@ -4953,8 +4966,8 @@ version = "0.0.0"
 dependencies = [
  "itertools",
  "rustc_abi",
+ "rustc_attr_ir",
  "rustc_data_structures",
- "rustc_hir",
  "rustc_middle",
  "rustc_span",
  "smallvec",
@@ -4967,6 +4980,7 @@ version = "0.0.0"
 dependencies = [
  "itertools",
  "rustc_abi",
+ "rustc_attr_ir",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hashes",
@@ -5051,7 +5065,6 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "askama",
- "base64 0.21.7",
  "expect-test",
  "indexmap",
  "itertools",
@@ -5131,7 +5144,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.10.0"
+version = "1.11.0"
 dependencies = [
  "annotate-snippets 0.12.16",
  "anyhow",

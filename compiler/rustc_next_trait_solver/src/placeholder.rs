@@ -3,8 +3,9 @@ use core::panic;
 use rustc_type_ir::data_structures::IndexMap;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::{
-    self as ty, InferCtxtLike, Interner, PlaceholderConst, PlaceholderRegion, PlaceholderType,
-    PredicateProxy, Region, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self as ty, Const, InferCtxtLike, Interner, PlaceholderConst, PlaceholderRegion,
+    PlaceholderType, PredicateProxy, Region, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt,
 };
 use tracing::debug;
 
@@ -74,7 +75,7 @@ where
                     // context to compute placeholder assumptions for the binders it enters.
                     infcx.insert_placeholder_assumptions(
                         *new,
-                        Some(rustc_type_ir::region_constraint::Assumptions::empty()),
+                        rustc_type_ir::region_constraint::Assumptions::empty(),
                     );
                 }
             }
@@ -160,7 +161,7 @@ where
         }
     }
 
-    fn fold_const(&mut self, ct: I::Const) -> I::Const {
+    fn fold_const(&mut self, ct: Const<I>) -> Const<I> {
         match ct.kind() {
             ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), _)
                 if debruijn.as_usize() + 1
@@ -310,7 +311,7 @@ where
         }
     }
 
-    fn fold_const(&mut self, ct: I::Const) -> I::Const {
+    fn fold_const(&mut self, ct: Const<I>) -> Const<I> {
         let ct = self.infcx.shallow_resolve_const(ct);
         if let ty::ConstKind::Placeholder(p) = ct.kind() {
             let replace_var = self.mapped_consts.get(&p);

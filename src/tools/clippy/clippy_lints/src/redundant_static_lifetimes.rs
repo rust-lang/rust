@@ -59,15 +59,15 @@ impl RedundantStaticLifetimes {
                 }
             },
             // This is what we are looking for !
-            TyKind::Ref(ref optional_lifetime, ref borrow_type) => {
+            TyKind::Ref(ref optional_lifetime, ref borrow_type, mutbl) => {
                 // Match the 'static lifetime
                 if let Some(lifetime) = *optional_lifetime {
-                    match borrow_type.ty.kind {
+                    match borrow_type.kind {
                         TyKind::Path(..) | TyKind::Slice(..) | TyKind::Array(..) | TyKind::Tup(..)
                             if lifetime.ident.name == kw::StaticLifetime =>
                         {
-                            let snip = snippet(cx, borrow_type.ty.span, "<type>");
-                            let sugg = format!("&{}{snip}", borrow_type.mutbl.prefix_str());
+                            let snip = snippet(cx, borrow_type.span, "<type>");
+                            let sugg = format!("&{}{snip}", mutbl.prefix_str());
                             span_lint_and_then(cx, REDUNDANT_STATIC_LIFETIMES, lifetime.ident.span, reason, |diag| {
                                 diag.span_suggestion(
                                     ty.span,
@@ -80,7 +80,7 @@ impl RedundantStaticLifetimes {
                         _ => {},
                     }
                 }
-                Self::visit_type(&borrow_type.ty, cx, reason);
+                Self::visit_type(borrow_type, cx, reason);
             },
             _ => {},
         }

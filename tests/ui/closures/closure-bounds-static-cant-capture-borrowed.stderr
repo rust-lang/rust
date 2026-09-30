@@ -14,6 +14,12 @@ LL | |     })
    | |      |
    | |______`x` escapes the function body here
    |        argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `bar` introduced here
+  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:2:39
+   |
+LL | fn bar<F>(blk: F) where F: FnOnce() + 'static {
+   |                                       ^^^^^^^ lifetime requirement introduced here
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
   --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:6:9

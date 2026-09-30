@@ -1107,7 +1107,7 @@ fn report_invalid_references(
         // for `println!("{7:7$}", 1);`
         indexes.sort();
         indexes.dedup();
-        let span: MultiSpan = if !parser.is_source_literal || parser.arg_places.is_empty() {
+        let span = if !parser.is_source_literal || parser.arg_places.is_empty() {
             MultiSpan::from_span(fmt_span)
         } else {
             MultiSpan::from_spans(invalid_refs.iter().filter_map(|&(_, span, _, _)| span).collect())

@@ -1,4 +1,4 @@
-#![feature(min_generic_const_args, generic_const_exprs, generic_const_items)]
+#![feature(gca_min_const_items, generic_const_exprs, generic_const_items)]
 #![expect(incomplete_features)]
 
 // Previously we would create a `DefId` to represent the const argument to `A`

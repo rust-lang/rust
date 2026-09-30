@@ -1,10 +1,10 @@
 //! Unsafety checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir::Safety;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::ty::ImplPolarity::*;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{ImplTraitHeader, TraitDef, TyCtxt};

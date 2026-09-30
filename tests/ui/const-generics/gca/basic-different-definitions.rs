@@ -2,14 +2,16 @@
 //@ compile-flags: -Znext-solver
 
 #![feature(generic_const_items)]
-#![feature(min_generic_const_args)]
-#![feature(generic_const_args)]
+#![feature(gca_min_const_items)]
+#![feature(gca_const_items)]
 #![expect(incomplete_features)]
+
+use std::gca;
 
 const ADD1<const N: usize>: usize = N + 1;
 
 const INC<const N: usize>: usize = N + 1;
 
-const ARR: [(); core::direct_const_arg!(ADD1::<0>)] = [(); core::direct_const_arg!(INC::<0>)];
+const ARR: [(); gca!(ADD1::<0>)] = [(); gca!(INC::<0>)];
 
 fn main() {}

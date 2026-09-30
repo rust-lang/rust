@@ -10,6 +10,7 @@ use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginf
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{
     HasTypingEnv, LayoutOf, TyAndLayout, WIDE_PTR_ADDR, WIDE_PTR_EXTRA,
 };

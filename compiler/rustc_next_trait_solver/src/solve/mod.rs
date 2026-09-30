@@ -23,7 +23,7 @@ mod trait_goals;
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, Interner, Region, TypeVisitableExt};
+use rustc_type_ir::{self as ty, Const, Interner, Region, TypeVisitableExt};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{
@@ -92,15 +92,6 @@ where
         let ty::OutlivesClause(ty, lt) = goal.predicate;
         let ty = self.normalize(GoalSource::Misc, goal.param_env, ty::Unnormalized::new_wip(ty))?;
 
-        if self.cx().assumptions_on_binders() {
-            use rustc_type_ir::region_constraint::RegionConstraint;
-
-            let constraint = self.destructure_type_outlives(ty, lt);
-            self.register_solver_region_constraint(RegionConstraint::new_from_or(constraint));
-        } else {
-            self.register_ty_outlives(ty, lt);
-        }
-
         // The normalized type can still contain non-rigid higher ranked aliases if their
         // normalization ends up with ambiguity. Or we have non-rigid aliases inside rigid ones.
         // Infer vars may be resolved to types/consts containing non-rigid aliases later.
@@ -109,6 +100,18 @@ where
         if ty.has_non_region_infer() || ty.has_non_rigid_aliases() {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
         } else {
+            // We drop region constraints in ambiguous response so there's no need to add them in
+            // the ambiguous branch. Also this guarantees we don't have ty vars when destructuring
+            // type outlives.
+            if self.cx().assumptions_on_binders() {
+                use rustc_type_ir::region_constraint::RegionConstraint;
+
+                let constraint = self.destructure_type_outlives(ty, lt);
+                self.register_solver_region_constraint(RegionConstraint::new_from_or(constraint));
+            } else {
+                self.register_ty_outlives(ty, lt);
+            }
+
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         }
     }
@@ -205,7 +208,7 @@ where
     #[instrument(level = "trace", skip(self))]
     fn compute_const_evaluatable_goal(
         &mut self,
-        Goal { param_env, predicate: ct }: Goal<I, I::Const>,
+        Goal { param_env, predicate: ct }: Goal<I, Const<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         match ct.kind() {
             ty::ConstKind::Alias(ty::IsRigid::Yes, _)
@@ -248,7 +251,7 @@ where
     #[instrument(level = "trace", skip(self), ret)]
     fn compute_const_arg_has_type_goal(
         &mut self,
-        goal: Goal<I, (I::Const, I::Ty)>,
+        goal: Goal<I, (Const<I>, I::Ty)>,
     ) -> QueryResultOrRerunNonErased<I> {
         let (ct, ty) = goal.predicate;
         let ct = self.structurally_normalize_const(goal.param_env, ct)?;
@@ -375,8 +378,8 @@ where
     fn structurally_normalize_const(
         &mut self,
         param_env: I::ParamEnv,
-        ct: I::Const,
-    ) -> Result<I::Const, NoSolutionOrRerunNonErased> {
+        ct: Const<I>,
+    ) -> Result<Const<I>, NoSolutionOrRerunNonErased> {
         self.structurally_normalize_term(param_env, ct.into()).map(|term| term.expect_const())
     }
 

@@ -1,9 +1,11 @@
 //@ check-pass
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
 
-const N: usize = core::direct_const_arg!(2);
+use std::gca;
+
+const N: usize = gca!(2);
 
 trait CollectArray<A> {
     fn inner_array(&mut self) -> [A; N];

@@ -257,8 +257,8 @@ unsafe fn boxed_slice_as_array_unchecked<T, A: Allocator, const N: usize>(
 }
 
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
-impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
-    type Error = Box<[T]>;
+impl<T, const N: usize, A: Allocator> TryFrom<Box<[T], A>> for Box<[T; N], A> {
+    type Error = Box<[T], A>;
 
     /// Attempts to convert a `Box<[T]>` into a `Box<[T; N]>`.
     ///
@@ -269,7 +269,7 @@ impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
     ///
     /// Returns the old `Box<[T]>` in the `Err` variant if
     /// `boxed_slice.len()` does not equal `N`.
-    fn try_from(boxed_slice: Box<[T]>) -> Result<Self, Self::Error> {
+    fn try_from(boxed_slice: Box<[T], A>) -> Result<Self, Self::Error> {
         if boxed_slice.len() == N {
             // SAFETY: Checked length.
             Ok(unsafe { boxed_slice_as_array_unchecked(boxed_slice) })
@@ -281,8 +281,8 @@ impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "boxed_array_try_from_vec", since = "1.66.0")]
-impl<T, const N: usize> TryFrom<Vec<T>> for Box<[T; N]> {
-    type Error = Vec<T>;
+impl<T, const N: usize, A: Allocator> TryFrom<Vec<T, A>> for Box<[T; N], A> {
+    type Error = Vec<T, A>;
 
     /// Attempts to convert a `Vec<T>` into a `Box<[T; N]>`.
     ///
@@ -302,7 +302,7 @@ impl<T, const N: usize> TryFrom<Vec<T>> for Box<[T; N]> {
     /// let state: Box<[f32; 100]> = vec![1.0; 100].try_into().unwrap();
     /// assert_eq!(state.len(), 100);
     /// ```
-    fn try_from(vec: Vec<T>) -> Result<Self, Self::Error> {
+    fn try_from(vec: Vec<T, A>) -> Result<Self, Self::Error> {
         if vec.len() == N {
             let boxed_slice = vec.into_boxed_slice();
             // SAFETY: Checked length.

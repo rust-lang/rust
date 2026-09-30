@@ -10,10 +10,10 @@
 #![no_core]
 #![crate_type = "lib"]
 
-// Test tail calls with `PassMode::Indirect { on_stack: false, .. }` arguments.
+// Test tail calls with `PassMode::Indirect { mode: IndirectMode::Pointer, .. }` arguments.
 //
-// Normally an indirect argument with `on_stack: false` would be passed as a pointer to the
-// caller's stack frame. For tail calls, that would be unsound, because the caller's stack
+// Normally an indirect argument with `mode: IndirectMode::Pointer` would be passed as a pointer to
+// the caller's stack frame. For tail calls, that would be unsound, because the caller's stack
 // frame is overwritten by the callee's stack frame.
 //
 // The solution is to write the argument into the caller's argument place (stored somewhere further

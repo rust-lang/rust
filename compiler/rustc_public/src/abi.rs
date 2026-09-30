@@ -41,6 +41,19 @@ pub struct ArgAbi {
     pub mode: PassMode,
 }
 
+/// Different modes in which indirect arguments can be passed.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize)]
+pub enum IndirectMode {
+    /// Passed as a normal pointer, nothing special.
+    Pointer,
+    /// The value is placed at a fixed stack offset rather than passed as a regular pointer
+    /// argument.
+    OnStack,
+    /// Similar to `OnStack` except that the pointer does not necessarily point to the stack, no
+    /// extra copy is made, and the passed argument should not be modified.
+    AmdgpuKernelArg,
+}
+
 /// How a function argument should be passed in to the target function.
 ///
 /// The pass mode is determined by the platform's calling convention and the
@@ -74,14 +87,13 @@ pub enum PassMode {
     /// Pass the argument indirectly via a pointer.
     ///
     /// The caller places the value in memory and passes a pointer to it.
-    /// When `on_stack` is true, the value is placed at a fixed stack offset
-    /// rather than passed as a regular pointer argument.
     Indirect {
         attrs: ArgAttributes,
         /// Attributes for the metadata pointer (vtable or length) of unsized arguments.
         /// Only present for unsized types (e.g., `dyn Trait`, `[T]`).
         meta_attrs: Option<ArgAttributes>,
-        on_stack: bool,
+        address_space: Option<AddressSpace>,
+        mode: IndirectMode,
     },
 }
 

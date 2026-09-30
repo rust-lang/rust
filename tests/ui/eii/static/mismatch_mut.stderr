@@ -1,11 +1,11 @@
 error: `#[eii]` cannot be used on mutable statics
-  --> $DIR/mismatch_mut.rs:7:1
+  --> $DIR/mismatch_mut.rs:6:1
    |
 LL | #[eii(hello)]
    | ^^^^^^^^^^^^^
 
 error: mutability does not match with the definition of`#[hello]`
-  --> $DIR/mismatch_mut.rs:11:1
+  --> $DIR/mismatch_mut.rs:10:1
    |
 LL | #[hello]
    | ^^^^^^^^

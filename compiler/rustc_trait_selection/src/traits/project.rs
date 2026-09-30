@@ -2,9 +2,9 @@
 
 use std::ops::ControlFlow;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};

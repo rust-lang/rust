@@ -3,7 +3,7 @@ use rustc_ast::{self as ast, AttrVec, GenericBound, NodeId, PatKind, attr, token
 use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::msg;
-use rustc_feature::Features;
+use rustc_feature::{DependentFeature, Features};
 use rustc_session::Session;
 use rustc_session::diagnostics::{feature_err, feature_warn};
 use rustc_span::{Span, Spanned, sym};
@@ -441,13 +441,14 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(explicit_tail_calls, "`become` expression is experimental");
     gate_all!(final_associated_functions, "`final` on trait functions is experimental");
     gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
+    gate_all!(forced_keywords, "forced keywords are experimental");
     gate_all!(frontmatter, "frontmatters are experimental");
+    gate_all!(gca_min_const_items, "unbraced const blocks as const args are experimental");
     gate_all!(gen_blocks, "gen blocks are experimental");
     gate_all!(generic_const_items, "generic const items are experimental");
     gate_all!(global_registration, "global registration is experimental");
     gate_all!(guard_patterns, "guard patterns are experimental", "consider using match arm guards");
     gate_all!(impl_restriction, "`impl` restrictions are experimental");
-    gate_all!(min_generic_const_args, "unbraced const blocks as const args are experimental");
     gate_all!(more_qualified_paths, "usage of qualified paths in this context is experimental");
     gate_all!(move_expr, "`move(expr)` syntax is experimental");
     gate_all!(mut_ref, "mutable by-reference bindings are experimental");
@@ -490,9 +491,9 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         "named parameters in parenthesized generic argument lists are experimental"
     );
 
-    // `associated_const_equality` will be stabilized as part of `min_generic_const_args`.
+    // `associated_const_equality` will be stabilized as part of `gca_min_const_items`.
     for &span in spans.get(&sym::associated_const_equality).into_flat_iter() {
-        gate!(visitor, min_generic_const_args, span, "associated const equality is incomplete");
+        gate!(visitor, gca_min_const_items, span, "associated const equality is incomplete");
     }
 
     // Negative bounds are *super* internal. We require `-Zinternal-testing-features` *and*
@@ -651,26 +652,47 @@ fn check_incompatible_features(sess: &Session, features: &Features) {
 }
 
 fn check_dependent_features(sess: &Session, features: &Features) {
-    for &(parent, children) in
-        rustc_feature::DEPENDENT_FEATURES.iter().filter(|(parent, _)| features.enabled(*parent))
+    for &(parent, ref children) in
+        rustc_feature::DEPENDENT_FEATURES.iter().filter(|(parent, children)| {
+            features.enabled(*parent) && !check_enabled(features, children)
+        })
     {
-        if children.iter().any(|f| !features.enabled(*f)) {
-            let parent_span = features
-                .enabled_features_iter_stable_order()
-                .find_map(|(name, span)| (name == parent).then_some(span))
-                .unwrap();
-            // FIXME: should probably format this in fluent instead of here
-            let missing = children
+        let parent_span = features
+            .enabled_features_iter_stable_order()
+            .find_map(|(name, span)| (name == parent).then_some(span))
+            .unwrap();
+        // FIXME: should probably format this in fluent instead of here
+        let missing = format(features, &children);
+        sess.dcx().emit_err(diagnostics::MissingDependentFeatures { parent_span, parent, missing });
+    }
+
+    fn check_enabled(features: &Features, feature: &DependentFeature) -> bool {
+        match feature {
+            DependentFeature::And(children) => {
+                children.iter().all(|child| check_enabled(features, child))
+            }
+            DependentFeature::Or(children) => {
+                children.iter().any(|child| check_enabled(features, child))
+            }
+            DependentFeature::Leaf(symbol) => features.enabled(*symbol),
+        }
+    }
+
+    fn format(features: &Features, feature: &DependentFeature) -> String {
+        // FIXME: parentheses/precedence
+        match feature {
+            DependentFeature::And(children) => children
                 .iter()
-                .filter(|f| !features.enabled(**f))
-                .map(|s| format!("`{}`", s.as_str()))
-                .intersperse(String::from(", "))
-                .collect();
-            sess.dcx().emit_err(diagnostics::MissingDependentFeatures {
-                parent_span,
-                parent,
-                missing,
-            });
+                .filter(|child| !check_enabled(features, child))
+                .map(|child| format(features, child))
+                .intersperse(String::from(" and "))
+                .collect(),
+            DependentFeature::Or(children) => children
+                .iter()
+                .map(|child| format(features, child))
+                .intersperse(String::from(" or "))
+                .collect(),
+            DependentFeature::Leaf(symbol) => format!("`{}`", symbol.as_str()),
         }
     }
 }
@@ -703,13 +725,13 @@ fn check_features_requiring_new_solver(sess: &Session, features: &Features) {
     if let Some(gca_span) = features
         .enabled_lang_features()
         .iter()
-        .find(|feat| feat.gate_name == sym::generic_const_args)
+        .find(|feat| feat.gate_name == sym::gca_const_items)
         .map(|feat| feat.attr_sp)
     {
         #[allow(rustc::symbol_intern_string_literal)]
         sess.dcx().emit_err(diagnostics::MissingDependentFeatures {
             parent_span: gca_span,
-            parent: sym::generic_const_args,
+            parent: sym::gca_const_items,
             missing: String::from("-Znext-solver=globally"),
         });
     }

@@ -1,0 +1,2 @@
+# Ensure that we generate the same file contents on both Linux and Windows.
+newline_style = "Unix"

@@ -12,6 +12,7 @@ use std::debug_assert_matches;
 use std::mem::{replace, swap, take};
 use std::ops::{ControlFlow, Range};
 
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::visit::{
     AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, try_visit, visit_opt, walk_list,
 };
@@ -22,7 +23,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, Diagnostic, ErrorGuaranteed, IntoDiagArg, MultiSpan,
-    StashKey, Suggestions, elided_lifetime_in_path_suggestion, pluralize,
+    Suggestions, elided_lifetime_in_path_suggestion, pluralize,
 };
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{CtorKind, DefKind, NonMacroAttrKind, PerNS};
@@ -846,6 +847,9 @@ struct LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
     /// `use` injections are delayed for better placement and deduplication.
     use_injections: Vec<UseError<'tcx>>,
+
+    /// All `use` and `extern crate` items, in the order in which they are visited.
+    use_items: Vec<&'ast Item>,
 }
 
 impl<'ra, 'tcx> AsRef<Resolver<'ra, 'tcx>> for LateResolutionVisitor<'_, '_, 'ra, 'tcx> {
@@ -920,7 +924,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
         let prev = self.diag_metadata.current_trait_object;
         let prev_ty = self.diag_metadata.current_type_path;
         match &ty.kind {
-            TyKind::Ref(None, _) | TyKind::PinnedRef(None, _) => {
+            TyKind::Ref(None, ..) | TyKind::PinnedRef(None, ..) => {
                 // Elided lifetime in reference: we resolve as if there was some lifetime `'_` with
                 // NodeId `ty.id`.
                 // This span will be used in case of elision failure.
@@ -1034,7 +1038,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                 self.visit_ty(element_ty);
                 self.resolve_anon_const(length, AnonConstKind::ArrayLength);
             }
-            TyKind::DirectConstArg(expr) => self.resolve_anon_const_manual(
+            TyKind::GcaMacro(expr) => self.resolve_anon_const_manual(
                 true,
                 AnonConstKind::ConstArg(IsRepeatExpr::No),
                 |this| this.resolve_expr(expr, None),
@@ -1571,6 +1575,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             in_func_body: false,
             lifetime_uses: Default::default(),
             use_injections: Vec::new(),
+            use_items: Vec::new(),
         }
     }
 
@@ -2112,8 +2117,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 type Result = ControlFlow<Span>;
 
                 fn visit_ty(&mut self, ty: &'ast ast::Ty) -> Self::Result {
-                    if let ast::TyKind::Ref(None, mut_ty) = &ty.kind {
-                        return ControlFlow::Break(mut_ty.ty.span.shrink_to_lo());
+                    if let ast::TyKind::Ref(None, inner_ty, _) = &ty.kind {
+                        return ControlFlow::Break(inner_ty.span.shrink_to_lo());
                     }
                     visit::walk_ty(self, ty)
                 }
@@ -2652,7 +2657,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         impl<'ra> Visitor<'ra> for FindReferenceVisitor<'_, '_, '_> {
             fn visit_ty(&mut self, ty: &'ra Ty) {
                 trace!("FindReferenceVisitor considering ty={:?}", ty);
-                if let TyKind::Ref(lt, _) | TyKind::PinnedRef(lt, _) = ty.kind {
+                if let TyKind::Ref(lt, ..) | TyKind::PinnedRef(lt, ..) = ty.kind {
                     // See if anything inside the &thing contains Self
                     let mut visitor =
                         SelfVisitor { r: self.r, impl_self: self.impl_self, self_found: false };
@@ -2856,10 +2861,22 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     fn resolve_item(&mut self, item: &'ast Item) {
-        let mod_inner_docs =
-            matches!(item.kind, ItemKind::Mod(..)) && rustdoc::inner_docs(&item.attrs);
-        if !mod_inner_docs && !matches!(item.kind, ItemKind::Impl(..) | ItemKind::Use(..)) {
-            self.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
+        match item.kind {
+            ItemKind::Mod(..) => {
+                // We only handle outer doc comments for modules here.
+                let attrs = if let Some(pos) = item.attrs.iter().position(|a| {
+                    a.doc_resolution_scope().is_some_and(|style| style == AttrStyle::Inner)
+                }) {
+                    &item.attrs[..pos]
+                } else {
+                    &item.attrs
+                };
+                self.resolve_doc_links(attrs, MaybeExported::Ok(item.id));
+            }
+            ItemKind::Impl(..) | ItemKind::Use(..) => {}
+            _ => {
+                self.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
+            }
         }
 
         debug!("(resolving item) resolving {:?} ({:?})", item.kind.ident(), item.kind);
@@ -2953,9 +2970,16 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 let orig_module = replace(&mut self.parent_scope.module, module);
                 self.with_rib(ValueNS, RibKind::Module(module.expect_local()), |this| {
                     this.with_rib(TypeNS, RibKind::Module(module.expect_local()), |this| {
-                        if mod_inner_docs {
-                            this.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
-                        }
+                        // Outer doc comments were already handled above, now we handle
+                        // inner doc comments.
+                        let attrs = if let Some(pos) = item.attrs.iter().position(|a| {
+                            a.doc_resolution_scope().is_some_and(|style| style == AttrStyle::Inner)
+                        }) {
+                            &item.attrs[pos..]
+                        } else {
+                            &[]
+                        };
+                        this.resolve_doc_links(attrs, MaybeExported::Ok(item.id));
                         let old_macro_rules = this.parent_scope.macro_rules;
                         visit::walk_item(this, item);
                         // Maintain macro_rules scopes in the same way as during early resolution
@@ -3047,6 +3071,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 ),
 
             ItemKind::Use(use_tree) => {
+                self.use_items.push(item);
                 let maybe_exported = match use_tree.kind {
                     UseTreeKind::Simple(_) | UseTreeKind::Glob(_) => MaybeExported::Ok(item.id),
                     UseTreeKind::Nested { .. } => MaybeExported::NestedUse(&item.vis),
@@ -3092,7 +3117,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 );
             }
 
-            ItemKind::ExternCrate(..) => {}
+            ItemKind::ExternCrate(..) => self.use_items.push(item),
 
             ItemKind::MacCall(_) | ItemKind::DelegationMac(..) => {
                 panic!("unexpanded macro in resolve!")
@@ -3877,12 +3902,16 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
         match seen_trait_items.entry(id_in_trait) {
             Entry::Occupied(entry) => {
+                let trait_span = decl.parent_module.unwrap().span.shrink_to_lo();
+                let impl_span = self.current_trait_ref.as_ref().unwrap().1.path.span;
                 self.report_error(
                     span,
                     ResolutionError::TraitImplDuplicate {
                         name: ident,
                         old_span: *entry.get(),
                         trait_item_span: decl.span,
+                        trait_span,
+                        impl_span,
                     },
                 );
                 return;
@@ -3915,6 +3944,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
         };
         let trait_path = path_names_to_string(path);
+        let trait_span = decl.parent_module.unwrap().span.shrink_to_lo();
+        let impl_span = self.current_trait_ref.as_ref().unwrap().1.path.span;
         self.report_error(
             span,
             ResolutionError::TraitImplMismatch {
@@ -3923,6 +3954,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 code,
                 trait_path,
                 trait_item_span: decl.span,
+                trait_span,
+                impl_span,
             },
         );
     }
@@ -4751,7 +4784,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 } else {
                     err.children.append(&mut parent_err.children);
                 }
-                err.sort_span = parent_err.sort_span;
                 err.is_lint = parent_err.is_lint.clone();
 
                 // merge the parent_err's suggestions with the typo (err's) suggestions
@@ -4824,7 +4856,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             source,
         ) {
             Ok(Some(partial_res)) if let Some(res) = partial_res.full_res() => {
-                // if we also have an associated type that matches the ident, stash a suggestion
+                // If we also have an associated type that matches the ident, record that.
                 if let Some(items) = self.diag_metadata.current_trait_assoc_items
                     && let [Segment { ident, .. }] = path
                     && items.iter().any(|item| {
@@ -4837,14 +4869,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         }
                     })
                 {
-                    let mut diag = self.r.tcx.dcx().struct_allow("");
-                    diag.span_suggestion_verbose(
-                        path_span.shrink_to_lo(),
-                        "there is an associated type with the same name",
-                        "Self::",
-                        Applicability::MaybeIncorrect,
-                    );
-                    diag.stash(path_span, StashKey::AssociatedTypeSuggestion);
+                    self.r.paths_matching_assoc_types.insert(path_span.with_parent(None));
                 }
 
                 if source.is_expected(res) || res == Res::Err {
@@ -5235,7 +5260,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             AnonConstKind::InlineConst => ConstantHasGenerics::Yes,
             AnonConstKind::ConstArg(_) | AnonConstKind::ArrayLength => {
                 if self.r.features.generic_const_exprs()
-                    || self.r.features.min_generic_const_args()
+                    || self.r.features.gca()
                     || is_trivial_const_arg
                 {
                     ConstantHasGenerics::Yes
@@ -5675,13 +5700,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 /// Walks the whole crate in DFS order, visiting each item, counting the declared number of
 /// lifetime generic parameters and function parameters. Also collects all `use` and
 /// `extern crate` items so that `check_unused` doesn't need to walk the crate again.
-struct ItemInfoCollector<'a, 'ast, 'ra, 'tcx> {
+struct ItemInfoCollector<'a, 'ra, 'tcx> {
     r: &'a mut Resolver<'ra, 'tcx>,
-    /// All `use` and `extern crate` items, in the order in which they are visited.
-    use_items: Vec<&'ast Item>,
 }
 
-impl ItemInfoCollector<'_, '_, '_, '_> {
+impl ItemInfoCollector<'_, '_, '_> {
     fn collect_fn_info(&mut self, decl: &FnDecl, id: NodeId) {
         self.r
             .delegation_fn_sigs
@@ -5715,8 +5738,8 @@ fn required_generic_args_suggestion(generics: &ast::Generics) -> Option<String> 
     if required.is_empty() { None } else { Some(format!("<{}>", required.join(", "))) }
 }
 
-impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, 'ast, '_, '_> {
-    fn visit_item(&mut self, item: &'ast Item) {
+impl Visitor<'_> for ItemInfoCollector<'_, '_, '_> {
+    fn visit_item(&mut self, item: &Item) {
         if let Some(generics) = item.opt_generics() {
             let def_id = self.r.owner_def_id(item.id);
             let count = generics
@@ -5740,16 +5763,14 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, 'ast, '_, '_> {
                 }
             }
 
-            ItemKind::Use(..) | ItemKind::ExternCrate(..) => {
-                self.use_items.push(item);
-            }
-
             ItemKind::Mod(..)
             | ItemKind::Static(..)
             | ItemKind::ConstBlock(..)
             | ItemKind::MacroDef(..)
             | ItemKind::GlobalAsm(..)
             | ItemKind::MacCall(..)
+            | ItemKind::Use(..)
+            | ItemKind::ExternCrate(..)
             | ItemKind::DelegationMac(..)
             | ItemKind::TyAlias(..)
             | ItemKind::Const(..)
@@ -5770,7 +5791,7 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, 'ast, '_, '_> {
         visit::walk_item(self, item)
     }
 
-    fn visit_assoc_item(&mut self, item: &'ast AssocItem, ctxt: AssocCtxt) {
+    fn visit_assoc_item(&mut self, item: &AssocItem, ctxt: AssocCtxt) {
         if let AssocItemKind::Fn(Fn { sig, .. }) = &item.kind {
             self.collect_fn_info(&sig.decl, item.id);
         }
@@ -5792,14 +5813,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         krate: &'ast Crate,
     ) -> (Vec<&'ast Item>, Vec<UseError<'tcx>>) {
         with_owner(self, CRATE_NODE_ID, |this| {
-            let mut info_collector = ItemInfoCollector { r: this, use_items: Vec::new() };
+            let mut info_collector = ItemInfoCollector { r: this };
             visit::walk_crate(&mut info_collector, krate);
-            let use_items = info_collector.use_items;
             let mut late_resolution_visitor = LateResolutionVisitor::new(this);
             late_resolution_visitor
                 .resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
             visit::walk_crate(&mut late_resolution_visitor, krate);
-            let LateResolutionVisitor { use_injections, diag_metadata, .. } =
+            let LateResolutionVisitor { use_injections, diag_metadata, use_items, .. } =
                 late_resolution_visitor;
             for (id, span) in diag_metadata.unused_labels.iter() {
                 this.lint_buffer.buffer_lint(

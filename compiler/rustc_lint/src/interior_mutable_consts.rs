@@ -1,5 +1,6 @@
+use rustc_attr_ir::find_attr;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Expr, ExprKind, ItemKind, Node, find_attr};
+use rustc_hir::{Expr, ExprKind, ItemKind, Node};
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty::adjustment::Adjust;
 
