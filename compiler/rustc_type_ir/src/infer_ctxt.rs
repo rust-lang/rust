@@ -578,6 +578,7 @@ pub trait InferCtxtLike: Sized {
         &self,
         prev_entries: Self::OpaqueTypeStorageEntries,
     ) -> Vec<(TyVid, ty::PseudoRigidDueToOpaquesBound<Self::Interner>)>;
+    fn is_pseudo_rigid_due_to_opaques(&self, ty_vid: TyVid) -> bool;
     fn pseudo_rigid_due_to_opaques(
         &self,
         ty_vid: TyVid,

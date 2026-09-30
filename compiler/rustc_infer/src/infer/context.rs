@@ -375,6 +375,9 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
             .pseudo_rigid_due_to_opaques_added_since(prev_entries)
             .collect()
     }
+    fn is_pseudo_rigid_due_to_opaques(&self, ty_vid: TyVid) -> bool {
+        self.is_pseudo_rigid_due_to_opaques(ty_vid)
+    }
     fn pseudo_rigid_due_to_opaques(
         &self,
         ty_vid: TyVid,

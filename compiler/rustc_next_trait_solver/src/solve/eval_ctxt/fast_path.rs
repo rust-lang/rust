@@ -99,6 +99,12 @@ where
                         accessed_opaques,
                         delegate.typing_mode_raw(),
                         &delegate.clone_opaque_types_lookup_table(),
+                        || {
+                            delegate.num_pseudo_rigid_due_to_opaques() != 0
+                                && sub_roots
+                                    .iter()
+                                    .any(|&vid| delegate.is_pseudo_rigid_due_to_opaques(vid))
+                        },
                     ) {
                         RerunDecision::Yes => {}
                         RerunDecision::EagerlyPropagateToParent => {

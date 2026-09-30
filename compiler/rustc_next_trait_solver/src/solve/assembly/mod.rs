@@ -1141,8 +1141,7 @@ where
             | TypingMode::Reflection
             | TypingMode::Codegen => vec![],
             TypingMode::ErasedNotCoherence(MayBeErased) => {
-                self.opaque_accesses
-                    .rerun_if_any_opaque_has_infer_as_hidden_type(RerunReason::SelfTyInfer)?;
+                self.opaque_accesses.rerun_if_any_pseudo_rigid(RerunReason::SelfTyInfer)?;
                 Vec::new()
             }
         };

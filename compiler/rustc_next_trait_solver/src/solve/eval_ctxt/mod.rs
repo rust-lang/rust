@@ -856,6 +856,7 @@ where
                     accessed_opaques,
                     self.typing_mode(),
                     &opaque_types,
+                    || !pseudo_rigid_due_to_opaques.is_empty(),
                 );
                 match should_rerun {
                     RerunDecision::Yes => debug!("rerunning in original typing mode"),
@@ -1994,11 +1995,12 @@ enum RerunDecision {
     EagerlyPropagateToParent,
 }
 
-#[tracing::instrument(ret)]
+#[tracing::instrument(level = "debug", skip(parent_has_pseudo_rigid_in_storage), ret)]
 fn should_rerun_after_erased_canonicalization<I: Interner>(
     AccessedOpaques { reason: _, rerun }: AccessedOpaques<I>,
     original_typing_mode: TypingMode<I>,
     parent_opaque_types: &[(OpaqueTypeKey<I>, I::Ty)],
+    parent_has_pseudo_rigid_in_storage: impl FnOnce() -> bool,
 ) -> RerunDecision {
     let parent_opaque_def_ids = parent_opaque_types.iter().map(|(key, _)| key.def_id.into());
     let opaque_in_storage = |opaques: I::LocalDefIds, def_ids: SmallCopySet<_>| {
@@ -2009,13 +2011,6 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
             .chain(parent_opaque_def_ids)
             .any(|opaque| def_ids.as_ref().contains(&opaque))
         {
-            RerunDecision::Yes
-        } else {
-            RerunDecision::No
-        }
-    };
-    let any_opaque_has_infer_as_hidden = || {
-        if parent_opaque_types.iter().any(|(_, ty)| ty.is_ty_var()) {
             RerunDecision::Yes
         } else {
             RerunDecision::No
@@ -2045,11 +2040,15 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
             | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
         ) => opaque_in_storage(opaques, defids),
         // =============================
-        (RerunCondition::AnyOpaqueHasInferAsHidden, TypingMode::Typeck { .. }) => {
-            any_opaque_has_infer_as_hidden()
+        (RerunCondition::PseudoRigidInStorage, TypingMode::Typeck { .. }) => {
+            if parent_has_pseudo_rigid_in_storage() {
+                RerunDecision::Yes
+            } else {
+                RerunDecision::No
+            }
         }
         (
-            RerunCondition::AnyOpaqueHasInferAsHidden,
+            RerunCondition::PseudoRigidInStorage,
             TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Codegen
@@ -2058,14 +2057,14 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
         ) => RerunDecision::No,
         // =============================
         (
-            RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(_),
+            RerunCondition::OpaqueInStorageOrPseudoRigidInStorage(_),
             TypingMode::PostAnalysis | TypingMode::Codegen | TypingMode::Reflection,
         ) => RerunDecision::Yes,
         (
-            RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
+            RerunCondition::OpaqueInStorageOrPseudoRigidInStorage(defids),
             TypingMode::Typeck { defining_opaque_types_and_generators: opaques },
         ) => {
-            if let RerunDecision::Yes = any_opaque_has_infer_as_hidden() {
+            if parent_has_pseudo_rigid_in_storage() {
                 RerunDecision::Yes
             } else if let RerunDecision::Yes = opaque_in_storage(opaques, defids) {
                 RerunDecision::Yes
@@ -2074,7 +2073,7 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
             }
         }
         (
-            RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
+            RerunCondition::OpaqueInStorageOrPseudoRigidInStorage(defids),
             TypingMode::PostBorrowck { defined_opaque_types: opaques }
             | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
         ) => opaque_in_storage(opaques, defids),
