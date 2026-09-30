@@ -3094,6 +3094,10 @@ fn test_dir_rename_file() {
     assert_eq!(b"bar", &buf);
 }
 
+// FIXME: re-enable once QNX fixes TOCTOU bug for fs::remove_dir
+// Note that it may get fixed in QNX 8 in a future libc release
+// ... https://github.com/rust-lang/rust/issues/153781
+#[cfg_attr(any(target_os = "nto", target_os = "qnx"), ignore)]
 #[test]
 fn test_dir_remove_dir() {
     let tmpdir = tmpdir();
