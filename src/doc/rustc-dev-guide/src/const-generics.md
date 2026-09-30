@@ -27,7 +27,8 @@ struct Foo<const N: usize>;
 type Alias = [u8; 1 + 1];
 ```
 
-In this example we have a const argument of `1 + 1` (the array length) which is represented as an *anon const*. The desugaring would look something like:
+In this example we have a const argument of `1 + 1` (the array length) which is represented as an *anon const*.
+The desugaring would look something like:
 ```rust
 struct Foo<const N: usize>;
 
