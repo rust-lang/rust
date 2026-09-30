@@ -1,8 +1,11 @@
+use std::collections::BTreeMap;
+
 use rustc_abi::Endian;
 
-use crate::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, TargetOptions};
+use crate::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, StaticCow, TargetOptions, cvs};
 
 pub(crate) fn opts(endian: Endian) -> TargetOptions {
+    let allows_libcalls: StaticCow<[StaticCow<str>]> = cvs!["-bpf-allows-libcalls"];
     TargetOptions {
         allow_asm: true,
         endian,
@@ -24,6 +27,7 @@ pub(crate) fn opts(endian: Endian) -> TargetOptions {
         // and would require a bit of a refactor.
         min_atomic_width: Some(64),
         max_atomic_width: Some(64),
+        llvm_args_by_version: BTreeMap::from([(23, allows_libcalls)]),
         ..Default::default()
     }
 }
