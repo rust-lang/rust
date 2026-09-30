@@ -21,3 +21,15 @@ fn main() {
         //~^ swap_ptr_to_ref
     }
 }
+
+fn pr17777() {
+    // after const is fixable -> in that test
+    #[clippy::msrv = "1.84.0"]
+    #[expect(clippy::incompatible_msrv)]
+    const fn before_const_msrv(y: *mut u32, z: *mut u32) {
+        unsafe {
+            core::mem::swap(&mut *y, &mut *z);
+            //~^ swap_ptr_to_ref
+        }
+    }
+}

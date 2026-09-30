@@ -714,6 +714,7 @@ define_Conf! {
         repeat_vec_with_capacity,
         same_item_push,
         seek_from_current,
+        swap_ptr_to_ref,
         to_digit_is_some,
         transmute_ptr_to_ref,
         tuple_array_conversions,
