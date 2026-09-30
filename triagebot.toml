@@ -707,6 +707,16 @@ message_on_remove = "Issue #{number}'s nomination has been removed. Thanks all f
 message_on_close = "Issue #{number} has been closed. Thanks for participating!"
 message_on_reopen = "Issue #{number} has been reopened. Pinging @*T-types*."
 
+[notify-zulip."I-libs-nominated"]
+zulip_stream = 639962 # #t-libs/nominated
+topic = "#{number}: {title}"
+message_on_add = """\
+[#{number} "{title}"](https://github.com/rust-lang/rust/pull/{number}) has been nominated for discussion.
+"""
+message_on_remove = """\
+#{number} is no longer nominated.
+"""
+
 
 # ------------------------------------------------------------------------------
 # Zulip notifications
