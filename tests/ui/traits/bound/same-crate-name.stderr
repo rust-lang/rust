@@ -1,23 +1,13 @@
-error[E0277]: the trait bound `Foo: main::a::Bar` is not satisfied
+error[E0277]: the trait bound `Foo: crate_a1::Bar` is not satisfied
   --> $DIR/same-crate-name.rs:33:20
    |
 LL |         a::try_foo(foo);
-   |         ---------- ^^^ the trait `main::a::Bar` is not implemented for `Foo`
+   |         ---------- ^^^ the trait `crate_a1::Bar` is not implemented for `Foo`
    |         |
    |         required by a bound introduced by this call
    |
-note: there are multiple different versions of crate `crate_a1` in the dependency graph
-  --> $DIR/auxiliary/crate_a1.rs:1:1
-   |
-LL | pub trait Bar {}
-   | ^^^^^^^^^^^^^ this is the expected trait
-   |
-  ::: $DIR/auxiliary/crate_a2.rs:3:1
-   |
-LL | pub trait Bar {}
-   | ------------- this is the found trait
-   = help: you can use `cargo tree` to explore your dependency tree
-help: the trait `main::a::Bar` is implemented for `ImplementsTraitForUsize<usize>`
+   = note: `Foo` implements similarly named trait `crate_a2::Bar`, but not `crate_a1::Bar`
+help: the trait `crate_a1::Bar` is implemented for `ImplementsTraitForUsize<usize>`
   --> $DIR/auxiliary/crate_a1.rs:9:1
    |
 LL | impl Bar for ImplementsTraitForUsize<usize> {}
@@ -28,26 +18,15 @@ note: required by a bound in `try_foo`
 LL | pub fn try_foo(x: impl Bar) {}
    |                        ^^^ required by this bound in `try_foo`
 
-error[E0277]: the trait bound `DoesNotImplementTrait: main::a::Bar` is not satisfied
-  --> $DIR/same-crate-name.rs:40:20
+error[E0277]: the trait bound `DoesNotImplementTrait: crate_a1::Bar` is not satisfied
+  --> $DIR/same-crate-name.rs:38:20
    |
 LL |         a::try_foo(implements_no_traits);
-   |         ---------- ^^^^^^^^^^^^^^^^^^^^ the trait `main::a::Bar` is not implemented for `DoesNotImplementTrait`
+   |         ---------- ^^^^^^^^^^^^^^^^^^^^ the trait `crate_a1::Bar` is not implemented for `DoesNotImplementTrait`
    |         |
    |         required by a bound introduced by this call
    |
-note: there are multiple different versions of crate `crate_a1` in the dependency graph
-  --> $DIR/auxiliary/crate_a1.rs:1:1
-   |
-LL | pub trait Bar {}
-   | ^^^^^^^^^^^^^ this is the expected trait
-   |
-  ::: $DIR/auxiliary/crate_a2.rs:3:1
-   |
-LL | pub trait Bar {}
-   | ------------- this is the trait that was imported
-   = help: you can use `cargo tree` to explore your dependency tree
-help: the trait `main::a::Bar` is implemented for `ImplementsTraitForUsize<usize>`
+help: the trait `crate_a1::Bar` is implemented for `ImplementsTraitForUsize<usize>`
   --> $DIR/auxiliary/crate_a1.rs:9:1
    |
 LL | impl Bar for ImplementsTraitForUsize<usize> {}
@@ -58,26 +37,16 @@ note: required by a bound in `try_foo`
 LL | pub fn try_foo(x: impl Bar) {}
    |                        ^^^ required by this bound in `try_foo`
 
-error[E0277]: the trait bound `ImplementsWrongTraitConditionally<isize>: main::a::Bar` is not satisfied
-  --> $DIR/same-crate-name.rs:49:20
+error[E0277]: the trait bound `ImplementsWrongTraitConditionally<isize>: crate_a1::Bar` is not satisfied
+  --> $DIR/same-crate-name.rs:45:20
    |
 LL |         a::try_foo(other_variant_implements_mismatched_trait);
-   |         ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `main::a::Bar` is not implemented for `ImplementsWrongTraitConditionally<isize>`
+   |         ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `crate_a1::Bar` is not implemented for `ImplementsWrongTraitConditionally<isize>`
    |         |
    |         required by a bound introduced by this call
    |
-note: there are multiple different versions of crate `crate_a1` in the dependency graph
-  --> $DIR/auxiliary/crate_a1.rs:1:1
-   |
-LL | pub trait Bar {}
-   | ^^^^^^^^^^^^^ this is the expected trait
-   |
-  ::: $DIR/auxiliary/crate_a2.rs:3:1
-   |
-LL | pub trait Bar {}
-   | ------------- this is the found trait
-   = help: you can use `cargo tree` to explore your dependency tree
-help: the trait `main::a::Bar` is implemented for `ImplementsTraitForUsize<usize>`
+   = note: `ImplementsWrongTraitConditionally<isize>` implements similarly named trait `crate_a2::Bar`, but not `crate_a1::Bar`
+help: the trait `crate_a1::Bar` is implemented for `ImplementsTraitForUsize<usize>`
   --> $DIR/auxiliary/crate_a1.rs:9:1
    |
 LL | impl Bar for ImplementsTraitForUsize<usize> {}
@@ -88,26 +57,15 @@ note: required by a bound in `try_foo`
 LL | pub fn try_foo(x: impl Bar) {}
    |                        ^^^ required by this bound in `try_foo`
 
-error[E0277]: the trait bound `ImplementsTraitForUsize<isize>: main::a::Bar` is not satisfied
-  --> $DIR/same-crate-name.rs:57:20
+error[E0277]: the trait bound `ImplementsTraitForUsize<isize>: crate_a1::Bar` is not satisfied
+  --> $DIR/same-crate-name.rs:51:20
    |
 LL |         a::try_foo(other_variant_implements_correct_trait);
-   |         ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `main::a::Bar` is not implemented for `ImplementsTraitForUsize<isize>`
+   |         ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `crate_a1::Bar` is not implemented for `ImplementsTraitForUsize<isize>`
    |         |
    |         required by a bound introduced by this call
    |
-note: there are multiple different versions of crate `crate_a1` in the dependency graph
-  --> $DIR/auxiliary/crate_a1.rs:1:1
-   |
-LL | pub trait Bar {}
-   | ^^^^^^^^^^^^^ this is the expected trait
-   |
-  ::: $DIR/auxiliary/crate_a2.rs:3:1
-   |
-LL | pub trait Bar {}
-   | ------------- this is the trait that was imported
-   = help: you can use `cargo tree` to explore your dependency tree
-help: the trait `main::a::Bar` is implemented for `ImplementsTraitForUsize<usize>`
+help: the trait `crate_a1::Bar` is implemented for `ImplementsTraitForUsize<usize>`
   --> $DIR/auxiliary/crate_a1.rs:9:1
    |
 LL | impl Bar for ImplementsTraitForUsize<usize> {}
