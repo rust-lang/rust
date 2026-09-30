@@ -1043,7 +1043,7 @@ pub struct NextSolverConfig {
     pub coherence: bool = true,
     /// Whether the new trait solver should be enabled everywhere.
     /// This is only `true` if `coherence` is also enabled.
-    pub globally: bool = false,
+    pub globally: bool = true,
 }
 
 // FIXME(#160895): Using -Znext-solver as default on nightly
@@ -1053,7 +1053,7 @@ impl Default for NextSolverConfig {
         if option_env!("CFG_DEFAULT_NEXT_SOLVER_GLOBALLY").is_some() {
             Self { coherence: true, globally: true }
         } else {
-            Self { coherence: true, globally: false }
+            Self { coherence: true, globally: true }
         }
     }
 }

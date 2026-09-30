@@ -1793,16 +1793,7 @@ pub mod parse {
     }
 
     pub(crate) fn parse_next_solver_config(slot: &mut NextSolverConfig, v: Option<&str>) -> bool {
-        if let Some(config) = v {
-            *slot = match config {
-                "no" => NextSolverConfig { coherence: false, globally: false },
-                "coherence" => NextSolverConfig { coherence: true, globally: false },
-                "globally" => NextSolverConfig { coherence: true, globally: true },
-                _ => return false,
-            };
-        } else {
-            *slot = NextSolverConfig { coherence: true, globally: true };
-        }
+        *slot = NextSolverConfig { coherence: true, globally: true };
 
         true
     }
