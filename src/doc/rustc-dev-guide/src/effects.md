@@ -3,20 +3,20 @@
 ## The `HostEffect` predicate
 
 [`HostEffectPredicate`]s are a kind of predicate from `[const] Tr` or `const Tr` bounds.
-It has a trait reference, and a `constness` which could be `Maybe` or
-`Const` depending on the bound.
+It has a trait reference,
+and a `constness` which could be `Maybe` or `Const` depending on the bound.
 Because `[const] Tr`, or rather `Maybe` bounds
-apply differently based on whichever contexts they are in, they have different
-behavior than normal bounds.
+apply differently based on whichever contexts they are in,
+they have different behavior than normal bounds.
 Where normal trait bounds on a function such as
 `T: Tr` are collected within the [`clauses_of`] query to be proven when a
-function is called and to be assumed within the function, bounds such as
-`T: [const] Tr` will behave as a normal trait bound and add `T: Tr` to the result
+function is called and to be assumed within the function,
+bounds such as `T: [const] Tr` will behave as a normal trait bound and add `T: Tr` to the result
 from `clauses_of`, but also adds a `HostEffectPredicate` to the [`const_conditions`] query.
 
 On the other hand, `T: const Tr` bounds do not change meaning across contexts,
-therefore they will result in `HostEffect(T: Tr, const)` being added to
-`clauses_of`, and not `const_conditions`.
+therefore they will result in `HostEffect(T: Tr, const)` being added to `clauses_of`,
+and not `const_conditions`.
 
 [`HostEffectPredicate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/predicate/struct.HostEffectPredicate.html
 [`clauses_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.clauses_of
@@ -34,14 +34,15 @@ fn foo<T>() where T: Default {}
 We must be able to prove that `T` implements `Default`.
 In a similar vein,
 `const_conditions` represents a set of predicates that need to be proven to use
-an item *in const contexts*. If we adjust the example above to use `const` trait bounds:
+an item *in const contexts*.
+If we adjust the example above to use `const` trait bounds:
 
 ```rust
 const fn foo<T>() where T: [const] Default {}
 ```
 
-Then `foo` would get a `HostEffect(T: Default, maybe)` in the `const_conditions`
-query, suggesting that in order to call `foo` from const contexts, one must
+Then `foo` would get a `HostEffect(T: Default, maybe)` in the `const_conditions` query,
+suggesting that in order to call `foo` from const contexts, one must
 prove that `T` has a const implementation of `Default`.
 
 ## Enforcement of `const_conditions`
@@ -51,8 +52,8 @@ prove that `T` has a const implementation of `Default`.
 Every call in HIR from a const context (which includes `const fn` and `const`
 items) will check that `const_conditions` of the function we are calling hold.
 This is done in [`FnCtxt::enforce_context_effects`].
-Note that we don't check
-if the function is only referred to but not called, as the following code needs to compile:
+Note that we don't check if the function is only referred to but not called,
+as the following code needs to compile:
 
 ```rust
 const fn hi<T: [const] Default>() -> T {
@@ -61,8 +62,8 @@ const fn hi<T: [const] Default>() -> T {
 const X: fn() -> u32 = hi::<u32>;
 ```
 
-For a trait `impl` to be well-formed, we must be able to prove the
-`const_conditions` of the trait from the `impl`'s environment.
+For a trait `impl` to be well-formed,
+we must be able to prove the `const_conditions` of the trait from the `impl`'s environment.
 This is checked in [`wfcheck::check_impl`].
 
 Here's an example:
@@ -79,8 +80,8 @@ impl const Foo for () {}
 
 Methods of trait impls must not have stricter bounds than the method of the
 trait that they are implementing.
-To check that the methods are compatible, a
-hybrid environment is constructed with the predicates of the `impl` plus the
+To check that the methods are compatible,
+a hybrid environment is constructed with the predicates of the `impl` plus the
 predicates of the trait method, and we attempt to prove the predicates of the impl method.
 We do the same for `const_conditions`:
 
@@ -113,8 +114,8 @@ are revalidated again in [`Checker::revalidate_conditional_constness`].
 
 ## `explicit_implied_const_bounds` on associated types and traits
 
-Bounds on associated types, opaque types, and supertraits such as the following
-have their bounds represented differently:
+Bounds on associated types, opaque types,
+and supertraits such as the following have their bounds represented differently:
 
 ```rust
 trait Foo: [const] PartialEq {
@@ -132,8 +133,8 @@ bounds on functions), these bounds need to be proved at definition (at the impl,
 or when returning the opaque) but can be assumed for callers.
 The non-const equivalent of these bounds are called [`explicit_item_bounds`].
 
-These bounds are checked in [`compare_impl_item::check_type_bounds`] for HIR
-typeck, [`evaluate_host_effect_from_item_bounds`] in the old solver and
+These bounds are checked in [`compare_impl_item::check_type_bounds`] for HIR typeck,
+[`evaluate_host_effect_from_item_bounds`] in the old solver and
 [`consider_additional_alias_assumptions`] in the new solver.
 
 [`explicit_item_bounds`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.explicit_item_bounds
@@ -147,11 +148,11 @@ typeck, [`evaluate_host_effect_from_item_bounds`] in the old solver and
 In general, we can prove a `HostEffect` predicate when either of these conditions are met:
 
 * The predicate can be assumed from caller bounds;
-* The type has a `const` `impl` for the trait, *and* that const conditions on
-  the impl holds, *and* that the `explicit_implied_const_bounds` on the trait holds; or
+* The type has a `const` `impl` for the trait, *and* that const conditions on the impl holds,
+  *and* that the `explicit_implied_const_bounds` on the trait holds; or
 * The type has a built-in implementation for the trait in const contexts.
-  For example, `Fn` may be implemented by function items if their const conditions
-  are satisfied, or `Destruct` is implemented in const contexts if the type can
+  For example, `Fn` may be implemented by function items if their const conditions are satisfied,
+  or `Destruct` is implemented in const contexts if the type can
   be dropped at compile time.
 
 [old solver]: https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_trait_selection/traits/effects.rs.html
@@ -164,8 +165,8 @@ To be expanded later.
 ### The `#[rustc_non_const_trait_method]` attribute
 
 This is intended for internal (standard library) usage only.
-With this attribute applied to a trait method, the compiler will not check the default body of this
-method for ability to run in compile time.
+With this attribute applied to a trait method,
+the compiler will not check the default body of this method for ability to run in compile time.
 Users of the trait will also not be allowed to use this trait method in const contexts.
 This attribute is primarily
 used for constifying large traits such as `Iterator` without having to make all
