@@ -1527,36 +1527,36 @@ pub fn has_non_owning_mutable_access<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'
     /// - A `PhantomData` type containing any of the previous.
     fn has_non_owning_mutable_access_inner<'tcx>(
         cx: &LateContext<'tcx>,
-        phantoms: &mut FxHashSet<Ty<'tcx>>,
+        visited: &mut FxHashSet<Ty<'tcx>>,
         ty: Ty<'tcx>,
     ) -> bool {
+        // Avoid cycles and repeated work by skipping types that have already been visited during this traversal.
+        if !visited.insert(ty) {
+            return false;
+        }
         match ty.kind() {
-            ty::Adt(adt_def, args) if adt_def.is_phantom_data() => {
-                phantoms.insert(ty)
-                    && args
-                        .types()
-                        .any(|arg_ty| has_non_owning_mutable_access_inner(cx, phantoms, arg_ty))
-            },
+            ty::Adt(adt_def, args) if adt_def.is_phantom_data() => args
+                .types()
+                .any(|arg_ty| has_non_owning_mutable_access_inner(cx, visited, arg_ty)),
             ty::Adt(adt_def, args) => adt_def.all_fields().any(|field| {
-                has_non_owning_mutable_access_inner(cx, phantoms, normalize_ty(cx, field.ty(cx.tcx, args)))
+                has_non_owning_mutable_access_inner(cx, visited, normalize_ty(cx, field.ty(cx.tcx, args)))
             }),
-            ty::Array(elem_ty, _) | ty::Slice(elem_ty) => has_non_owning_mutable_access_inner(cx, phantoms, *elem_ty),
+            ty::Array(elem_ty, _) | ty::Slice(elem_ty) => has_non_owning_mutable_access_inner(cx, visited, *elem_ty),
             ty::RawPtr(pointee_ty, mutability) | ty::Ref(_, pointee_ty, mutability) => {
                 mutability.is_mut() || !pointee_ty.is_freeze(cx.tcx, cx.typing_env())
             },
             ty::Closure(_, closure_args) => {
                 matches!(closure_args.types().next_back(),
-                         Some(captures) if has_non_owning_mutable_access_inner(cx, phantoms, captures))
+                         Some(captures) if has_non_owning_mutable_access_inner(cx, visited, captures))
             },
             ty::Tuple(tuple_args) => tuple_args
                 .iter()
-                .any(|arg_ty| has_non_owning_mutable_access_inner(cx, phantoms, arg_ty)),
+                .any(|arg_ty| has_non_owning_mutable_access_inner(cx, visited, arg_ty)),
             _ => false,
         }
     }
 
-    let mut phantoms = FxHashSet::default();
-    has_non_owning_mutable_access_inner(cx, &mut phantoms, iter_ty)
+    has_non_owning_mutable_access_inner(cx, &mut FxHashSet::default(), iter_ty)
 }
 
 /// Check if `ty` is slice-like, i.e., `&[T]`, `[T; N]`, or `Vec<T>`.
