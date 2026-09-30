@@ -614,7 +614,6 @@ fn set_get_unix_permissions() {
 }
 
 /// Test set_permissions_nofollow on a regular file.
-#[cfg(not(target_os = "android"))]
 #[test]
 fn set_get_permissions_nofollows() {
     let tmpdir = tmpdir();
@@ -650,7 +649,7 @@ fn set_get_permissions_nofollows() {
     }
 }
 
-#[cfg(not(target_os = "android"))]
+/// Test set_permissions_nofollow on a symlink.
 #[test]
 fn set_get_permissions_nofollows_symlink() {
     #[cfg(not(windows))]
