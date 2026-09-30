@@ -320,6 +320,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // types (as well as any others in future).
     sym::rustc_lint_opt_deny_field_access,
     sym::rustc_diagnostic_opaque,
+    sym::rustc_assert_variance,
 
     // ==========================================================================
     // Internal attributes, Const related:

@@ -14,9 +14,10 @@ use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
 use rustc_attr_ir::{
     Attribute, AttributeKind, DocAttribute, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
-    OptimizeAttr, ReprAttr, find_attr,
+    OptimizeAttr, ReprAttr, RustcAssertVarianceKind, find_attr,
 };
 use rustc_attr_parsing::AttributeParser;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg};
 use rustc_feature::BUILTIN_ATTRIBUTE_SET;
@@ -222,6 +223,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
             AttributeKind::Linkage(_linkage, span) => {
                 self.check_linkage(*span, hir_id, target, item)
+            }
+            AttributeKind::RustcAssertVariance(attr) => {
+                self.check_rustc_assert_variance(target, item, &attr.variances);
             }
 
             // All of the following attributes have no specific checks.
@@ -1415,6 +1419,35 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.tcx.dcx().emit_err(diagnostics::ConstFnLinkage { span });
             }
             _ => {}
+        }
+    }
+
+    fn check_rustc_assert_variance(
+        &self,
+        target: Target,
+        item: Option<&'tcx Item<'tcx>>,
+        map: &FxIndexMap<Ident, RustcAssertVarianceKind>,
+    ) {
+        // If the target is invalid the parser has already emitted an error
+        if !matches!(target, Target::Struct | Target::Enum | Target::Union) {
+            return;
+        }
+
+        let (item_ident, generics) = match item {
+            Some(Item { kind: ItemKind::Struct(ident, generics, _), .. }) => (*ident, *generics),
+            Some(Item { kind: ItemKind::Enum(ident, generics, _), .. }) => (*ident, *generics),
+            Some(Item { kind: ItemKind::Union(ident, generics, _), .. }) => (*ident, *generics),
+            _ => return,
+        };
+
+        for ident in map.keys() {
+            if generics.get_named(ident.name).is_none() {
+                self.tcx.dcx().emit_err(diagnostics::RustcAssertVarianceInvalid {
+                    span: ident.span,
+                    invalid_ident: *ident,
+                    item_ident,
+                });
+            }
         }
     }
 }
