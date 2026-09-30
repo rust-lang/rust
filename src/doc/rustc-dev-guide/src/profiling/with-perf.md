@@ -283,7 +283,7 @@ It also ensures that percentages between different queries are easily compared a
 That said, sometimes it's useful to get relative percentages,
 so `perf focus` offers a `--relative` option.
 In this case, the percentages are listed only for samples that match (vs all samples).
-So for example we could get our percentages relative to the borrowck itself like so:
+So, for example, we could get our percentages relative to the borrowck itself like so:
 
 ```bash
 $ perf focus '{do_mir_borrowck}' --tree-callees --relative --tree-max-depth 1 --tree-min-percent 5
