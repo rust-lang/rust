@@ -29,7 +29,8 @@ The following external projects are managed using some form of a `subtree`:
 
 In contrast to `submodule` dependencies (see below for those),
 the `subtree` dependencies are just regular files and directories which can
-be updated in-tree. However, if possible, enhancements, bug fixes, etc. specific
+be updated in-tree.
+However, if possible, enhancements, bug fixes, etc. specific
 to these tools should be filed against the tools directly in their respective upstream repositories.
 The exception is that when rustc changes are required to implement a new tool feature or test,
 that should happen in one collective rustc PR.
@@ -103,12 +104,12 @@ Periodically the changes made to subtree based dependencies need to be synchroni
 repository and the upstream tool repositories.
 
 Subtree synchronizations are typically handled by the respective tool maintainers.
-Other users are welcome to submit synchronization PRs,
-however, in order to do so you will need to modify
+Other users are welcome to submit synchronization PRs.
+However, in order to do so, you will need to modify
 your local git installation and follow a very precise set of instructions.
 These instructions are documented, along with several useful tips and tricks,
 in the [syncing subtree changes][clippy-sync-docs] section in Clippy's Contributing guide.
-The instructions are applicable for use with any subtree based tool,
+The instructions are applicable for use with any subtree-based tool;
 just be sure to use the correct corresponding subtree directory and remote repository.
 
 The synchronization process goes in two directions: `subtree push` and `subtree pull`.
@@ -152,7 +153,7 @@ git subtree add -P src/tools/clippy https://github.com/rust-lang/rust-clippy.git
 This will create a new commit, which you may not rebase under any circumstances!
 Delete the commit and redo the operation if you need to rebase.
 
-Now you're done,
+Now you're done;
 the `src/tools/clippy` directory behaves as if Clippy were part of the rustc monorepo,
 so no one but you (or others that synchronize subtrees) actually needs to use `git subtree`.
 
