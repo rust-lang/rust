@@ -4530,20 +4530,19 @@ impl CommandLineStep for CodegenGCC {
 
         let gcc = builder.ensure(Gcc { target_pair: GccTargetPair::for_native_build(target) });
 
+        // We need to run the cg_gcc tests with the compiler against it links to, not with
+        // the build compiler.
+        let target_compiler = compilers.target_compiler();
+
         builder.ensure(
-            compile::Std::new(compilers.build_compiler(), target)
+            compile::Std::new(target_compiler, target)
                 .extra_rust_args(&["-Csymbol-mangling-version=v0", "-Cpanic=abort"]),
         );
 
-        let _guard = builder.msg_test(
-            "rustc_codegen_gcc",
-            compilers.target(),
-            compilers.target_compiler().stage,
-        );
-
+        let _guard = builder.msg_test("rustc_codegen_gcc", target, target_compiler.stage);
         let mut cargo = builder::Cargo::new(
             builder,
-            compilers.build_compiler(),
+            target_compiler,
             Mode::Codegen, // Must be codegen to ensure dlopen on compiled dylibs works
             SourceType::InTree,
             target,
