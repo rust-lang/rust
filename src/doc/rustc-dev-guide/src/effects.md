@@ -4,7 +4,7 @@
 
 [`HostEffectPredicate`]s are a kind of predicate from `[const] Tr` or `const Tr` bounds.
 It has a trait reference,
-and a `constness` which could be `Maybe` or `Const` depending on the bound.
+and a `constness` which could be `Maybe` or `Const`, depending on the bound.
 Because `[const] Tr`, or rather `Maybe` bounds
 apply differently based on whichever contexts they are in,
 they have different behavior than normal bounds.
