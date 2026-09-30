@@ -1,5 +1,7 @@
 //@only-target: windows # this directly tests windows-only functions
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
+
 #![allow(nonstandard_style)]
 
 use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
@@ -19,14 +21,18 @@ use windows_sys::Win32::Foundation::{
 };
 use windows_sys::Win32::Storage::FileSystem::{
     BY_HANDLE_FILE_INFORMATION, CREATE_ALWAYS, CREATE_NEW, CreateFileW, DeleteFileW,
-    FILE_ALLOCATION_INFO, FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL, FILE_BEGIN,
-    FILE_CURRENT, FILE_END_OF_FILE_INFO, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT,
-    FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, FileAllocationInfo, FileEndOfFileInfo,
-    FlushFileBuffers, GetFileInformationByHandle, MoveFileExW, OPEN_ALWAYS, OPEN_EXISTING,
-    SetFileInformationByHandle, SetFilePointerEx,
+    FILE_ALLOCATION_INFO, FILE_ATTRIBUTE_ARCHIVE, FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL,
+    FILE_BEGIN, FILE_CURRENT, FILE_END_OF_FILE_INFO, FILE_FLAG_BACKUP_SEMANTICS,
+    FILE_FLAG_OPEN_REPARSE_POINT, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
+    FileAllocationInfo, FileEndOfFileInfo, FlushFileBuffers, GetFileInformationByHandle,
+    MoveFileExW, OPEN_ALWAYS, OPEN_EXISTING, SetFileInformationByHandle, SetFilePointerEx,
 };
 use windows_sys::Win32::System::IO::IO_STATUS_BLOCK;
 use windows_sys::Win32::System::Threading::GetCurrentProcess;
+
+// Windows seems to usually but not always set FILE_ATTRIBUTE_ARCHIVE for new files.
+// So we accept either "ARCHIVE" or "NORMAL".
+const REGULAR_FILE: u32 = FILE_ATTRIBUTE_ARCHIVE | FILE_ATTRIBUTE_NORMAL;
 
 fn main() {
     unsafe {
@@ -87,9 +93,8 @@ unsafe fn test_create_normal_file() {
     if GetFileInformationByHandle(handle, &mut info) == 0 {
         panic!("Failed to get file information: {}", GetLastError())
     };
-    // FIXME: this test is wrong, somehow. It doesn't pass when run natively.
-    // <https://github.com/rust-lang/miri/issues/5335>
-    assert!(info.dwFileAttributes & FILE_ATTRIBUTE_NORMAL != 0);
+    assert!(info.dwFileAttributes & REGULAR_FILE != 0);
+    assert!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY == 0);
     if CloseHandle(handle) == 0 {
         panic!("Failed to close file")
     };
@@ -121,7 +126,7 @@ unsafe fn test_create_normal_file() {
     if GetFileInformationByHandle(handle, &mut info) == 0 {
         panic!("Failed to get file information: {}", GetLastError())
     };
-    assert!(info.dwFileAttributes & FILE_ATTRIBUTE_NORMAL != 0);
+    assert!(info.dwFileAttributes & REGULAR_FILE != 0);
     if CloseHandle(handle) == 0 {
         panic!("Failed to close file")
     };
