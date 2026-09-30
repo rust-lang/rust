@@ -157,7 +157,7 @@ pub const trait Try: [const] FromResidual {
     /// type: that type will have a "hole" in the correct place, and will maintain the
     /// "foo-ness" of the residual so other types need to opt-in to interconversion.
     #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-    type Residual: Residual<Self::Output>;
+    type Residual: Residual<Self::Output, TryType = Self>;
 
     /// Constructs the type from its `Output` type.
     ///
@@ -365,7 +365,7 @@ pub const trait Residual<O>: Sized {
     /// The "return" type of this meta-function.
     #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
     // FIXME: ought to be implied
-    type TryType: [const] Try<Output = O, Residual = Self>;
+    type TryType: [const] Try<Output = O, Residual = Self> + FromResidual<Self>;
 }
 
 /// Used in `try {}` blocks so the type produced in the `?` desugaring
