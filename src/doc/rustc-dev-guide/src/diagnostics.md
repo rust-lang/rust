@@ -41,15 +41,15 @@ LL | more code
   - Primary and secondary spans underlying the users' code.
     These spans can optionally contain one or more labels.
     - Primary spans should have enough text to describe the problem in such a
-      way that if it were the only thing being displayed (for example, in an
-      IDE) it would still make sense.
-      Because it is "spatially aware" (it
-      points at the code), it can generally be more succinct than the error message.
-    - If cluttered output can be foreseen in cases when multiple span labels
-      overlap, it is a good idea to tweak the output appropriately.
+      way that if it were the only thing being displayed (for example,
+      in an IDE) it would still make sense.
+      Because it is "spatially aware" (it points at the code),
+      it can generally be more succinct than the error message.
+    - If cluttered output can be foreseen in cases when multiple span labels overlap,
+      it is a good idea to tweak the output appropriately.
       For example, the `if/else arms have incompatible types` error uses different
-      spans depending on whether the arms are all in the same line, if one of
-      the arms is empty and if none of those cases applies.
+      spans depending on whether the arms are all in the same line,
+      if one of the arms is empty and if none of those cases applies.
 - Sub-diagnostics.
   Any error can have multiple sub-diagnostics that look similar to the main part of the error.
   These are used for cases where the
@@ -57,15 +57,15 @@ LL | more code
   If the order of the explanation can be "order free", leveraging secondary labels
   in the main diagnostic is preferred, as it is typically less verbose.
 
-The text should be matter of fact and avoid capitalization and periods, unless
-multiple sentences are _needed_:
+The text should be matter of fact and avoid capitalization and periods,
+unless multiple sentences are _needed_:
 
 ```txt
 error: the fobrulator needs to be krontrificated
 ```
 
-When code or an identifier must appear in a message or label, it should be
-surrounded with backticks:
+When code or an identifier must appear in a message or label,
+it should be surrounded with backticks:
 
 ```txt
 error: the identifier `foo.bar` is invalid
@@ -84,12 +84,12 @@ explanation would give more information than the error itself.
 A lot of the time it's better to put all the information in the emitted error itself.
 However,
 sometimes that would make the error verbose or there are too many possible
-triggers to include useful information for all cases in the error, in which case
-it's a good idea to add an explanation.[^estebank]
+triggers to include useful information for all cases in the error,
+in which case it's a good idea to add an explanation.[^estebank]
 As always, if you are not sure, just ask your reviewer!
 
-If you decide to add a new error with an associated error code, please read
-[this section][error-codes] for a guide and important details about the process.
+If you decide to add a new error with an associated error code,
+please read [this section][error-codes] for a guide and important details about the process.
 
 [^estebank]: This rule of thumb was suggested by **@estebank** [here][estebank-comment].
 
@@ -102,23 +102,23 @@ If you decide to add a new error with an associated error code, please read
 Some messages are emitted via [lints](#lints), where the user can control the level.
 Most diagnostics are hard-coded such that the user cannot control the level.
 
-Usually it is obvious whether a diagnostic should be "fixed" or a lint, but
-there are some grey areas.
+Usually it is obvious whether a diagnostic should be "fixed" or a lint,
+but there are some grey areas.
 
 Here are a few examples:
 
 - Borrow checker errors: these are fixed errors.
   The user cannot adjust the level of these diagnostics to silence the borrow checker.
 - Dead code: this is a lint.
-  While the user probably doesn't want dead code in
-  their crate, making this a hard error would make refactoring and development very painful.
+  While the user probably doesn't want dead code in their crate,
+  making this a hard error would make refactoring and development very painful.
 - [future-incompatible lints]: these are silenceable lints.
   It was decided that making them fixed errors would cause too much breakage,
   so warnings are instead emitted,
   and will eventually be turned into fixed (hard) errors.
 
-Hard-coded warnings (those using methods like `span_warn`) should be avoided
-for normal code, preferring to use lints instead.
+Hard-coded warnings (those using methods like `span_warn`) should be avoided for normal code,
+preferring to use lints instead.
 Some cases, such as warnings with CLI flags, will require the use of hard-coded warnings.
 
 See the `deny` [lint level](#diagnostic-levels) below for guidelines when to
@@ -133,11 +133,11 @@ use an error-level lint instead of a fixed error.
   small – screen (which hasn't been cleaned for a while), cannot be understood
   by a normal programmer, who just came out of bed after a night partying,
   it's too complex.
-- `Error`, `Warning`, `Note`, and `Help` messages start with a lowercase
-  letter and do not end with punctuation.
+- `Error`, `Warning`, `Note`,
+  and `Help` messages start with a lowercase letter and do not end with punctuation.
 - Error messages should be succinct.
-  Users will see these error messages many
-  times, and more verbose descriptions can be viewed with the `--explain` flag.
+  Users will see these error messages many times,
+  and more verbose descriptions can be viewed with the `--explain` flag.
   That said, don't make it so terse that it's hard to understand.
 - The word "illegal" is illegal.
   Prefer "invalid" or a more specific word instead.
@@ -145,8 +145,8 @@ use an error-level lint instead of a fixed error.
   [`rustc_errors::DiagCtxt`][DiagCtxt]'s
   `span_*` methods or a diagnostic struct's `#[primary_span]` to easily do this).
   Also `note` other spans that have contributed to the error if the span isn't too large.
-- When emitting a message with span, try to reduce the span to the smallest
-  amount possible that still signifies the issue
+- When emitting a message with span,
+  try to reduce the span to the smallest amount possible that still signifies the issue
 - Try not to emit multiple error messages for the same error.
   This may require detecting duplicates.
 - When the compiler has too little information for a specific error message,
@@ -154,8 +154,8 @@ use an error-level lint instead of a fixed error.
   allow adding more information.
   For example, see [`#[rustc_on_unimplemented]`](#rustc_on_unimplemented).
   Use these annotations when available!
-- Keep in mind that Rust's learning curve is rather steep, and that the
-  compiler messages are an important learning tool.
+- Keep in mind that Rust's learning curve is rather steep,
+  and that the compiler messages are an important learning tool.
 - When talking about the compiler, call it `the compiler`, not `Rust` or `rustc`.
 - Use the [Oxford comma](https://en.wikipedia.org/wiki/Serial_comma) when writing lists of items.
 - When mentioning attributes, use this form whenever possible: "the `inline` attribute".
@@ -168,8 +168,8 @@ From [RFC 0344], lint names should be consistent, with the following guidelines:
 
 The basic rule is: the lint name should make sense when read as "allow
 *lint-name*" or "allow *lint-name* items".
-For example, "allow `deprecated` items" and "allow `dead_code`" makes sense, while "allow
-`unsafe_block`" is ungrammatical (should be plural).
+For example, "allow `deprecated` items" and "allow `dead_code`" makes sense,
+while "allow `unsafe_block`" is ungrammatical (should be plural).
 
 - Lint names should state the bad thing being checked for, e.g. `deprecated`,
   so that `#[allow(deprecated)]` (items) reads correctly.
@@ -180,8 +180,8 @@ For example, "allow `deprecated` items" and "allow `dead_code`" makes sense, whi
   This keeps lint names short.
   (Again, think "allow *lint-name* items".)
 
-- If a lint applies to a specific grammatical class, mention that class and
-  use the plural form: use `unused_variables` rather than `unused_variable`.
+- If a lint applies to a specific grammatical class,
+  mention that class and use the plural form: use `unused_variables` rather than `unused_variable`.
   This makes `#[allow(unused_variables)]` read correctly.
 
 - Lints that catch unnecessary, unused, or useless aspects of code should use
@@ -200,12 +200,12 @@ Guidelines for different diagnostic levels:
   has decided to make a specific `warning` into an error.
 
 - `warning`: emitted when the compiler detects something odd about a program.
-  Care should be taken when adding warnings to avoid warning fatigue, and
-  avoid false-positives where there really isn't a problem with the code.
+  Care should be taken when adding warnings to avoid warning fatigue,
+  and avoid false-positives where there really isn't a problem with the code.
   Some examples of when it is appropriate to issue a warning:
 
-  - A situation where the user *should* take action, such as swap out a
-    deprecated item, or use a `Result`, but otherwise doesn't prevent compilation.
+  - A situation where the user *should* take action, such as swap out a deprecated item,
+    or use a `Result`, but otherwise doesn't prevent compilation.
   - Unnecessary syntax that can be removed without affecting the semantics of the code.
     For example, unused code, or unnecessary `unsafe`.
   - Code that is very likely to be incorrect, dangerous, or confusing, but the
@@ -214,13 +214,13 @@ Guidelines for different diagnostic levels:
     `bindings_with_variant_name` (the user likely did not intend to create a
     binding in a pattern).
   - [Future-incompatible lints](#future-incompatible), where something was
-    accidentally or erroneously accepted in the past, but rejecting would
-    cause excessive breakage in the ecosystem.
+    accidentally or erroneously accepted in the past,
+    but rejecting would cause excessive breakage in the ecosystem.
   - Stylistic choices.
     For example, camel or snake case, or the `dyn` trait warning in the 2018 edition.
     These have a high bar to be added, and should only be used in exceptional circumstances.
-    Other stylistic choices should
-    either be allow-by-default lints, or part of other tools like Clippy or rustfmt.
+    Other stylistic choices should either be allow-by-default lints,
+    or part of other tools like Clippy or rustfmt.
 
 - `help`: emitted following an `error` or `warning` to give additional
   information to the user about how to solve their problem.
@@ -247,8 +247,8 @@ Not to be confused with *lint levels*, whose guidelines are:
   Some examples:
 
   - A future-incompatible or edition-based lint that has graduated from the warning level.
-  - Something that has an extremely high confidence that is incorrect, but
-    still want an escape hatch to allow it to pass.
+  - Something that has an extremely high confidence that is incorrect,
+    but still want an escape hatch to allow it to pass.
 
 - `warn`: Equivalent to the `warning` diagnostic level.
   See `warning` above for guidelines.
@@ -279,8 +279,8 @@ There are three main ways to find where a given error is emitted:
   constructed behind a relatively deep call-stack.
   Even then, it is a good way to get your bearings.
 - Invoking `rustc` with the nightly-only flag `-Z treat-err-as-bug=1`
-  will treat the first error being emitted as an Internal Compiler Error, which
-  allows you to get a stack trace at the point the error has been emitted.
+  will treat the first error being emitted as an Internal Compiler Error,
+  which allows you to get a stack trace at the point the error has been emitted.
   Change the `1` to something else if you wish to trigger on a later error.
 
   There are limitations with this approach:
@@ -299,8 +299,8 @@ order things are happening.
 
 [`Span`][span] is the primary data structure in `rustc` used to represent a
 location in the code being compiled.
-`Span`s are attached to most constructs in
-HIR and MIR, allowing for more informative error reporting.
+`Span`s are attached to most constructs in HIR and MIR,
+allowing for more informative error reporting.
 
 [span]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
 
@@ -320,8 +320,8 @@ The [`rustc_errors`][errors] crate defines most of the utilities used for report
 Diagnostics can be implemented as types which implement the `Diagnostic` trait.
 This is preferred for new diagnostics as it enforces a separation
 between diagnostic emitting logic and the main code paths.
-For less-complex diagnostics, the `Diagnostic` trait can be derived -- see [Diagnostic
-structs][diagnostic-structs].
+For less-complex diagnostics,
+the `Diagnostic` trait can be derived -- see [Diagnostic structs][diagnostic-structs].
 Within the trait implementation, the APIs described below can be used as normal.
 
 [diagnostic-structs]: ./diagnostics/diagnostic-structs.md
@@ -337,12 +337,11 @@ warnings, errors, fatal errors, suggestions, etc.
 In general, there are two classes of such methods: ones that emit an error
 directly and ones that allow finer control over what to emit.
 For example,
-[`span_err`][spanerr] emits the given error message at the given `Span`, but
-[`struct_span_err`][strspanerr] instead returns a [`Diag`][diag].
+[`span_err`][spanerr] emits the given error message at the given `Span`,
+but [`struct_span_err`][strspanerr] instead returns a [`Diag`][diag].
 
 Most of these methods will accept strings, but it is recommended that typed
-identifiers for translatable diagnostics be used for new diagnostics (see
-[Translation]).
+identifiers for translatable diagnostics be used for new diagnostics (see [Translation]).
 
 [translation]: ./diagnostics/translation.md
 
@@ -385,8 +384,8 @@ example-example-error = oh no! this is an error!
 
 ## Suggestions
 
-In addition to telling the user exactly _why_ their code is wrong, it's
-oftentimes furthermore possible to tell them how to fix it.
+In addition to telling the user exactly _why_ their code is wrong,
+it's oftentimes furthermore possible to tell them how to fix it.
 To this end,
 [`Diag`][diag] offers a structured suggestions API, which formats code
 suggestions pleasingly in the terminal, or (when the `--error-format json` flag
@@ -398,8 +397,7 @@ Not all suggestions should be applied mechanically;
 they have a degree of confidence in the suggested code,
 from high (`Applicability::MachineApplicable`) to low (`Applicability::MaybeIncorrect`).
 Be conservative when choosing the level.
-Use the [`span_suggestion`][span_suggestion] method of `Diag` to
-make a suggestion.
+Use the [`span_suggestion`][span_suggestion] method of `Diag` to make a suggestion.
 The last argument provides a hint to tools whether the suggestion is mechanically applicable or not.
 
 Suggestions point to one or more spans with corresponding code that will
@@ -515,8 +513,8 @@ Some of the passes are:
   - Example: [`keyword_idents`] checks for identifiers that will become
     keywords in future editions, but is sensitive to identifiers used in macros.
 
-- Early lint pass: Works on [AST nodes] after [macro expansion] and name
-  resolution, just before [AST lowering].
+- Early lint pass: Works on [AST nodes] after [macro expansion] and name resolution,
+  just before [AST lowering].
   These lints are for purely syntactical lints.
   - Example: The [`unused_parens`] lint checks for parenthesized-expressions
     in situations where they are not needed, like an `if` condition.
@@ -534,11 +532,11 @@ Some of the passes are:
   - Example: The [`arithmetic_overflow`] lint is emitted when it detects a
     constant value that may overflow.
 
-Most lints work well via the pass systems, and they have a fairly
-straightforward interface and easy way to integrate (mostly just implementing
+Most lints work well via the pass systems,
+and they have a fairly straightforward interface and easy way to integrate (mostly just implementing
 a specific `check` function).
-However, some lints are easier to write when
-they live on a specific code path anywhere in the compiler.
+However,
+some lints are easier to write when they live on a specific code path anywhere in the compiler.
 For example, the [`unused_mut`] lint is implemented in the borrow checker as it requires some
 information and state in the borrow checker.
 
@@ -589,8 +587,8 @@ One benefit is that it is close to the dependency root, so it can be much faster
 [`rustc_lint_defs`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/index.html
 
 Every lint is implemented via a `struct` that implements the `LintPass` `trait`
-(you can also implement one of the more specific lint pass traits, either
-`EarlyLintPass` or `LateLintPass` depending on when is best for your lint to run).
+(you can also implement one of the more specific lint pass traits,
+either `EarlyLintPass` or `LateLintPass` depending on when is best for your lint to run).
 The trait implementation allows you to check certain syntactic constructs
 as the linter walks the AST.
 You can then choose to emit lints in a very similar way to compile errors.
@@ -711,10 +709,11 @@ In general, future-incompatible code exists for two reasons:
 * The user has written unsound code that the compiler mistakenly accepted.
   While it is within Rust's backwards compatibility guarantees to fix the soundness hole
 (breaking the user's code), the lint is there to warn the user that this will happen
-in some upcoming version of rustc *regardless of which edition the code uses*. This is the
-meaning that rustc exclusively exposes to users as "future incompatible".
+in some upcoming version of rustc *regardless of which edition the code uses*.
+This is the meaning that rustc exclusively exposes to users as "future incompatible".
 * The user has written code that will either no longer compiler *or* will change
-meaning in an upcoming *edition*. These are often called "edition lints" and can be
+meaning in an upcoming *edition*.
+These are often called "edition lints" and can be
 typically seen in the various "edition compatibility" lint groups (e.g., `rust_2021_compatibility`)
 that are used to lint against code that will break if the user updates the crate's edition.
 See [migration lints](guides/editions.md#migration-lints) for more details.
@@ -735,8 +734,8 @@ declare_lint! {
 Notice the `reason` field which describes why the future incompatible change is happening.
 This will change the diagnostic message the user receives as well as determine which
 lint groups the lint is added to.
-In the example above, the lint is an "edition lint"
-(since its "reason" is `EditionError`), signifying to the user that the use of anonymous
+In the example above, the lint is an "edition lint" (since its "reason" is `EditionError`),
+signifying to the user that the use of anonymous
 parameters will no longer compile in Rust 2018 and beyond.
 
 Inside [LintStore::register_lints][fi-lint-groupings], lints with `future_incompatible`
@@ -745,16 +744,16 @@ an edition) or into the `future_incompatibility` lint group.
 
 [fi-lint-groupings]: https://github.com/rust-lang/rust/blob/51fd129ac12d5bfeca7d216c47b0e337bf13e0c2/compiler/rustc_lint/src/context.rs#L212-L237
 
-If you need a combination of options that's not supported by the
-`declare_lint!` macro, you can always change the `declare_lint!` macro to support this.
+If you need a combination of options that's not supported by the `declare_lint!` macro,
+you can always change the `declare_lint!` macro to support this.
 
 ### Renaming or removing a lint
 
 If it is determined that a lint is either improperly named or no longer needed,
-the lint must be registered for renaming or removal, which will trigger a warning if a user tries
-to use the old lint name.
-To declare a rename/remove, add a line with
-[`store.register_renamed`] or [`store.register_removed`] to the code of the
+the lint must be registered for renaming or removal,
+which will trigger a warning if a user tries to use the old lint name.
+To declare a rename/remove,
+add a line with [`store.register_renamed`] or [`store.register_removed`] to the code of the
 [`rustc_lint::register_builtins`] function.
 
 ```rust,ignore
@@ -785,15 +784,15 @@ add_lint_group!(sess,
 ```
 
 This defines the `nonstandard_style` group which turns on the listed lints.
-A user can turn on these lints with a `#![warn(nonstandard_style)]` attribute in
-the source code, or by passing `-W nonstandard-style` on the command line.
+A user can turn on these lints with a `#![warn(nonstandard_style)]` attribute in the source code,
+or by passing `-W nonstandard-style` on the command line.
 
 Some lint groups are created automatically in `LintStore::register_lints`.
 For instance,
 any lint declared with `FutureIncompatibleInfo` where the reason is
 `FutureIncompatibilityReason::FutureReleaseError` (the default when
-`@future_incompatible` is used in `declare_lint!`), will be added to
-the `future_incompatible` lint group.
+`@future_incompatible` is used in `declare_lint!`),
+will be added to the `future_incompatible` lint group.
 Editions also have their own lint groups
 (e.g., `rust_2021_compatibility`) automatically generated for any lints signaling
 future-incompatible code that will break in the specified edition.
@@ -813,15 +812,15 @@ The linting system automatically takes care of handling buffered lints later.
 [sessbl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/struct.Session.html#method.buffer_lint
 [parsebl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/parse/struct.ParseSess.html#method.buffer_lint
 
-Thus, to define a lint that runs early in the compilation, one defines a lint
-like normal but invokes the lint with `buffer_lint`.
+Thus, to define a lint that runs early in the compilation,
+one defines a lint like normal but invokes the lint with `buffer_lint`.
 
 #### Linting even earlier in the compiler
 
 The parser (`rustc_ast`) is interesting in that it cannot have dependencies on
 any of the other `rustc*` crates.
-In particular, it cannot depend on
-`rustc_middle::lint` or `rustc_lint`, where all of the compiler linting infrastructure is defined.
+In particular, it cannot depend on `rustc_middle::lint` or `rustc_lint`,
+where all of the compiler linting infrastructure is defined.
 That's troublesome!
 
 To solve this, `rustc_ast` defines its own buffered lint type, which `ParseSess::buffer_lint` uses.
@@ -841,20 +840,20 @@ $ rustc json_error_demo.rs --error-format json
 {"message":"For more information about this error, try `rustc --explain E0277`.","code":null,"level":"","spans":[],"children":[],"rendered":"For more information about this error, try `rustc --explain E0277`.\n"}
 ```
 
-Note that the output is a series of lines, each of which is a JSON
-object, but the series of lines taken together is, unfortunately, not
+Note that the output is a series of lines, each of which is a JSON object,
+but the series of lines taken together is, unfortunately, not
 valid JSON, thwarting tools and tricks (such as [piping to `python3 -m
 json.tool`](https://docs.python.org/3/library/json.html#module-json.tool)) that require such.
-(One speculates that this was intentional for LSP
-performance purposes, so that each line/object can be sent as it is flushed?)
+(One speculates that this was intentional for LSP performance purposes,
+so that each line/object can be sent as it is flushed?)
 
 Also note the "rendered" field, which contains the "human" output as a
 string; this was introduced so that UI tests could both make use of
-the structured JSON and see the "human" output (well, _sans_ colors)
-without having to compile everything twice.
+the structured JSON and see the "human" output (well,
+_sans_ colors) without having to compile everything twice.
 
-The "human" readable and the json format emitter can be found under
-`rustc_errors`, both were moved from the `rustc_ast` crate to the
+The "human" readable and the json format emitter can be found under `rustc_errors`,
+both were moved from the `rustc_ast` crate to the
 [rustc_errors crate](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/index.html).
 
 The JSON emitter defines [its own `Diagnostic`
@@ -937,16 +936,16 @@ If you can, you should use that instead.
 
 ### Filtering
 
-To allow more targeted error messages, it is possible to filter the
-application of these fields with `on`.
+To allow more targeted error messages,
+it is possible to filter the application of these fields with `on`.
 
 You can filter on the following boolean flags:
  - `crate_local`: whether the code causing the trait bound to not be
    fulfilled is part of the user's crate.
    This is used to avoid suggesting code changes that would require modifying a dependency.
  - `direct`: whether this is a user-specified rather than derived obligation.
- - `from_desugaring`: whether we are in some kind of desugaring, like `?`
-   or a `try` block for example.
+ - `from_desugaring`: whether we are in some kind of desugaring,
+   like `?` or a `try` block for example.
    This flag can also be matched on, see below.
 
 You can match on the following names and values, using `name = "value"`:
@@ -955,8 +954,8 @@ You can match on the following names and values, using `name = "value"`:
  - `from_desugaring`: Match against a particular variant of the `DesugaringKind` enum.
    The desugaring is identified by its variant name, for example
    `"QuestionMark"` for `?` desugaring, or `"TryBlock"` for `try` blocks.
- - `Self` and any generic arguments of the trait, like `Self = "alloc::string::String"`
-   or `Rhs="i32"`.
+ - `Self` and any generic arguments of the trait,
+   like `Self = "alloc::string::String"` or `Rhs="i32"`.
 
 The compiler can provide several values to match on, for example:
   - the self_ty, pretty printed with and without type arguments resolved.
