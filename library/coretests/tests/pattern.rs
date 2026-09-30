@@ -1,6 +1,6 @@
 #![feature(pattern)]
 
-use std::str::pattern::*;
+use std::pattern::*;
 
 // This macro makes it easier to write
 // tests that do a series of iterations
