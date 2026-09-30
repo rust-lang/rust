@@ -133,7 +133,6 @@ mod eta_reduction;
 mod excessive_bools;
 mod excessive_nesting;
 mod exhaustive_items;
-mod exit;
 mod explicit_write;
 mod extra_unused_type_parameters;
 mod fallible_impl_from;
@@ -690,7 +689,6 @@ rustc_lint::late_lint_methods!(
         Default: default::Default = <default::Default>::default(),
         UnusedSelf: unused_self::UnusedSelf = unused_self::UnusedSelf::new(conf),
         DebugAssertWithMutCall: mutable_debug_assertion::DebugAssertWithMutCall = mutable_debug_assertion::DebugAssertWithMutCall,
-        Exit: exit::Exit = exit::Exit,
         ToDigitIsSome: to_digit_is_some::ToDigitIsSome = to_digit_is_some::ToDigitIsSome::new(conf),
         LargeStackArrays: large_stack_arrays::LargeStackArrays = large_stack_arrays::LargeStackArrays::new(conf),
         LargeConstArrays: large_const_arrays::LargeConstArrays = large_const_arrays::LargeConstArrays::new(conf),
