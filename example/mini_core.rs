@@ -10,7 +10,8 @@
     auto_traits,
     freeze_impls,
     pattern_types,
-    thread_local
+    thread_local,
+    rustc_private
 )]
 #![no_core]
 #![allow(dead_code, internal_features, ambiguous_wide_pointer_comparisons)]
