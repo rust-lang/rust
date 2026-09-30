@@ -371,13 +371,8 @@ fn orphan_check<'tcx>(
                 for (arg, id_arg) in
                     std::iter::zip(args, ty::GenericArgs::identity_for_item(tcx, impl_def_id))
                 {
-                    let _ = infcx.eq(
-                        &cause,
-                        ty::ParamEnv::empty(),
-                        DefineOpaqueTypes::No,
-                        arg,
-                        id_arg,
-                    );
+                    let _ =
+                        infcx.eq(&cause, ty::ParamEnv::empty(), DefineOpaqueTypes::No, arg, id_arg);
                 }
                 infcx.deeply_resolve_ignoring_regions(tys)
             });

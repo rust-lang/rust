@@ -78,7 +78,7 @@ impl<'tcx> InferCtxt<'tcx> {
             Ok(self.deeply_resolve_ignoring_regions(new_infer))
         } else {
             Ok(self
-                .normalize(term, param_env, cause)
+                .normalize(cause, param_env, term)
                 .into_value_registering_obligations(&self, fulfill_cx))
         }
     }

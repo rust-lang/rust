@@ -226,7 +226,7 @@ fn fresh_impl_header_normalized<'tcx>(
     let header = fresh_impl_header(infcx, impl_def_id, is_of_trait);
 
     let InferOk { value: mut header, obligations } =
-        infcx.normalize(Unnormalized::new_wip(header), param_env, &ObligationCause::dummy());
+        infcx.normalize(&ObligationCause::dummy(), param_env, Unnormalized::new_wip(header));
 
     header.predicates.extend(obligations.into_iter().map(|o| o.predicate));
     header

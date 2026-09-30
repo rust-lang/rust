@@ -19,9 +19,9 @@ use crate::traits::{BoundVarReplacer, ScrubbedTraitError};
 /// see `normalize_with_universes`.
 pub fn normalize<'tcx, T>(
     infcx: &InferCtxt<'tcx>,
-    value: Unnormalized<'tcx, T>,
-    param_env: ty::ParamEnv<'tcx>,
     cause: &ObligationCause<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    value: Unnormalized<'tcx, T>,
 ) -> Normalized<'tcx, T>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
