@@ -282,7 +282,7 @@ const _: () = ();
 ///     todo!() as std::iter::Empty<_>
 /// }
 /// ```
-#[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "never_type", since = "1.100.0")]
 const _: () = ();
 
 // Required to make auto trait impls render.
