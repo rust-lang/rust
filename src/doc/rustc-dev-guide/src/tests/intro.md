@@ -15,8 +15,9 @@ Almost all of them are driven by `./x test`, with some exceptions noted below.
 The main test harness for testing the compiler itself is a tool called [compiletest].
 
 [compiletest] supports running different styles of tests,
-organized into *test suites*. A *test mode* may provide common presets/behavior for a set of *test
-suites*. [compiletest]-supported tests are located in the [`tests`] directory.
+organized into *test suites*.
+A *test mode* may provide common presets/behavior for a set of *test suites*.
+[compiletest]-supported tests are located in the [`tests`] directory.
 
 The [Compiletest chapter][compiletest] goes into detail on how to use this tool.
 
@@ -137,7 +138,7 @@ If you want to run only a specified set of tests, append `--test-args FILTER_NAM
 > Example: `./x test src/tools/miri --test-args padding`
 
 In CI, some tools are allowed to fail.
-Failures send notifications to the corresponding teams, and is tracked on the [toolstate website].
+Failures send notifications to the corresponding teams, and are tracked on the [toolstate website].
 More information can be found in the [toolstate documentation].
 
 [`src/tools`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/

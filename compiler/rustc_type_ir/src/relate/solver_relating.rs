@@ -5,7 +5,7 @@ use crate::data_structures::DelayedSet;
 use crate::relate::combine::combine_ty_args;
 pub use crate::relate::*;
 use crate::solve::{Goal, VisibleForLeakCheck};
-use crate::{self as ty, InferCtxtLike, Interner, Region};
+use crate::{self as ty, Const, InferCtxtLike, Interner, Region};
 
 pub trait RelateExt: InferCtxtLike {
     fn relate<T: Relate<Self::Interner>>(
@@ -84,6 +84,7 @@ where
         param_env: I::ParamEnv,
         span: I::Span,
     ) -> Self {
+        debug_assert!(infcx.next_trait_solver());
         SolverRelating {
             infcx,
             span,
@@ -253,7 +254,7 @@ where
     }
 
     #[instrument(skip(self), level = "trace")]
-    fn consts(&mut self, a: I::Const, b: I::Const) -> RelateResult<I, I::Const> {
+    fn consts(&mut self, a: Const<I>, b: Const<I>) -> RelateResult<I, Const<I>> {
         super_combine_consts(self.infcx, self, a, b)
     }
 

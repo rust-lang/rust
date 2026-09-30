@@ -1,0 +1,11 @@
+error[E0080]: runtime values cannot be referenced in patterns
+  --> $DIR/runtime-range-endpoints-issue-131327.rs:29:9
+   |
+LL |         start..=end => (),
+   |         ^^^^^   ^^^ references a runtime value
+   |         |
+   |         references a runtime value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

@@ -11,6 +11,7 @@ use crate::os::windows::io::{AsHandle, BorrowedHandle};
 use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
+pub use crate::sys::fs::common::{ExtraHomeDirs, ExtraMediaDirs};
 use crate::sys::handle::Handle;
 use crate::sys::pal::api::{self, WinError, set_file_information_by_handle};
 use crate::sys::pal::{IoResult, fill_utf16_buf, to_u16s, truncate_utf16_at_nul};
@@ -263,54 +264,34 @@ impl OpenOptions {
     }
 
     fn get_access_mode(&self) -> io::Result<u32> {
-        match (self.read, self.write, self.append, self.access_mode) {
-            (.., Some(mode)) => Ok(mode),
-            (true, false, false, None) => Ok(c::GENERIC_READ),
-            (false, true, false, None) => Ok(c::GENERIC_WRITE),
-            (true, true, false, None) => Ok(c::GENERIC_READ | c::GENERIC_WRITE),
-            (false, _, true, None) => Ok(c::FILE_GENERIC_WRITE & !c::FILE_WRITE_DATA),
-            (true, _, true, None) => {
-                Ok(c::GENERIC_READ | (c::FILE_GENERIC_WRITE & !c::FILE_WRITE_DATA))
+        if let Some(access) = self.access_mode {
+            return Ok(access);
+        }
+
+        match (self.read, self.write, self.append) {
+            (_, false, false) if self.truncate || self.create || self.create_new => {
+                Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "creating or truncating a file requires write or append access",
+                ))
             }
-            (false, false, false, None) => {
-                // If no access mode is set, check if any creation flags are set
-                // to provide a more descriptive error message
-                if self.create || self.create_new || self.truncate {
-                    Err(io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        "creating or truncating a file requires write or append access",
-                    ))
-                } else {
-                    Err(io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        "must specify at least one of read, write, or append access",
-                    ))
-                }
-            }
+            (_, _, true) if self.truncate && !self.create_new => Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "append and truncate cannot both be enabled",
+            )),
+            (true, false, false) => Ok(c::GENERIC_READ),
+            (false, true, false) => Ok(c::GENERIC_WRITE),
+            (true, true, false) => Ok(c::GENERIC_READ | c::GENERIC_WRITE),
+            (false, _, true) => Ok(c::FILE_GENERIC_WRITE & !c::FILE_WRITE_DATA),
+            (true, _, true) => Ok(c::GENERIC_READ | (c::FILE_GENERIC_WRITE & !c::FILE_WRITE_DATA)),
+            (false, false, false) => Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "must specify at least one of read, write, or append access",
+            )),
         }
     }
 
     fn get_cmode_disposition(&self) -> io::Result<(u32, u32)> {
-        match (self.write, self.append) {
-            (true, false) => {}
-            (false, false) => {
-                if self.truncate || self.create || self.create_new {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        "creating or truncating a file requires write or append access",
-                    ));
-                }
-            }
-            (_, true) => {
-                if self.truncate && !self.create_new {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        "append and truncate cannot both be enabled",
-                    ));
-                }
-            }
-        }
-
         Ok(match (self.create, self.truncate, self.create_new) {
             (false, false, false) => (c::OPEN_EXISTING, c::FILE_OPEN),
             (true, false, false) => (c::OPEN_ALWAYS, c::FILE_OPEN_IF),
@@ -1474,7 +1455,9 @@ pub fn link(_original: &WCStr, _link: &WCStr) -> io::Result<()> {
 pub fn stat(path: &WCStr) -> io::Result<FileAttr> {
     match metadata(path, ReparsePoint::Follow) {
         Err(err) if err.raw_os_error() == Some(c::ERROR_CANT_ACCESS_FILE as i32) => {
-            if let Ok(attrs) = lstat(path) {
+            // Fallback to opening reparse points when following fails. Needed for UNIX domain
+            // sockets. See <https://github.com/rust-lang/rust/issues/109106>.
+            if let Ok(attrs) = metadata(path, ReparsePoint::Open) {
                 if !attrs.file_type().is_symlink() {
                     return Ok(attrs);
                 }

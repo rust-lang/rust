@@ -1,4 +1,4 @@
-#![feature(core_intrinsics, funnel_shifts)]
+#![feature(core_intrinsics)]
 
 fn main() {
     unsafe {

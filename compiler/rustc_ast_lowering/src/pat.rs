@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use rustc_ast::*;
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::target::Target;
+use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{self as hir, Target};
 use rustc_span::{DesugaringKind, Ident, Span, Spanned, respan, span_bug};
 
 use crate::diagnostics::{

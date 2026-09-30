@@ -11,6 +11,7 @@ use rustc_span::bug;
 
 use super::ScalarInt;
 use crate::mir::interpret::{ErrorHandled, Scalar};
+use crate::ty::consts::ConstExt;
 use crate::ty::print::{FmtPrinter, PrettyPrinter};
 use crate::ty::{self, Ty, TyCtxt, ValTreeKind};
 

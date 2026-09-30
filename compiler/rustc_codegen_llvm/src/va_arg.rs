@@ -95,7 +95,7 @@ fn get_param_type_alignment<'ll, 'tcx>(
                 Integer::I128 => return Align::EIGHT,
             },
             Primitive::Float(float) => match float {
-                Float::F16 | Float::F32 => unreachable!(),
+                Float::F16 | Float::F16B | Float::F32 => unreachable!(),
                 Float::F64 => { /* fall through */ }
                 Float::F128 => return Align::from_bytes(16).unwrap(),
             },
@@ -468,7 +468,11 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
                 Primitive::Float(Float::F16 | Float::F32 | Float::F64) => true,
                 Primitive::Float(Float::F128) => false,
                 Primitive::Int(_, _) | Primitive::Pointer(_) => false,
+                Primitive::Float(Float::F16B) => {
+                    bug!("`f16b` use in varadics unsupported on s390x")
+                }
             },
+
             _ => false,
         }
     };
@@ -1057,15 +1061,28 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
     let stability = target.supports_c_variadic_definitions();
 
     match target.arch {
-        Arch::X86 => emit_ptr_va_arg(
-            bx,
-            addr,
-            layout,
-            PassMode::Direct,
-            SlotSize::Bytes4,
-            if target.is_like_windows { AllowHigherAlign::No } else { AllowHigherAlign::Yes },
-            ForceRightAdjust::No,
-        ),
+        Arch::X86 => {
+            // A small deviation from clang to get the right behavior for f128.
+            //
+            // Note that i64 and f64 have an alignment of only 4 on this architecture.
+            // We need to be careful when adding future types with an alignment bigger
+            // than 4 (e.g. i128), clang has a bunch of custom logic for them.
+            let allow_higher_align = if layout.ty == bx.tcx().types.f128 {
+                AllowHigherAlign::Yes
+            } else {
+                AllowHigherAlign::No
+            };
+
+            emit_ptr_va_arg(
+                bx,
+                addr,
+                layout,
+                PassMode::Direct,
+                SlotSize::Bytes4,
+                allow_higher_align,
+                ForceRightAdjust::No,
+            )
+        }
         Arch::Arm64EC => emit_ptr_va_arg(
             bx,
             addr,

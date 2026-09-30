@@ -35,6 +35,7 @@ numer = "numer" # short for numerator, not a typo for "number"
 old-skool = "old-skool" # variant spelling of "old-school"
 optin = "optin" # short for opt-in
 publically = "publically"
+raison = "raison" # part of the French phrase "raison d'être"
 rplace = "rplace" # short for R-place
 splitted = "splitted"
 sythetic = "sythetic" # typo in vendored LLVM sources

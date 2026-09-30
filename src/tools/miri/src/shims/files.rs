@@ -183,7 +183,7 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
 
     /// Returns the metadata for this FD, if available.
     /// This is either host metadata, or a non-file-backed-FD type.
-    /// The latter is for new represented as a string storing a `libc` name so we only
+    /// The latter is for now represented as a string storing the `libc` name of the mode so we only
     /// support that kind of metadata on Unix targets.
     fn metadata<'tcx>(&self) -> InterpResult<'tcx, Either<io::Result<fs::Metadata>, &'static str>> {
         throw_unsup_format!("obtaining metadata is only supported on file-backed file descriptors");
@@ -513,7 +513,24 @@ impl FileDescription for FileHandle {
 
 #[derive(Debug)]
 pub struct DirHandle {
-    pub(crate) dir: Dir,
+    pub(super) dir: Dir,
+    #[cfg(bootstrap)]
+    pub(super) fallback: std::path::PathBuf,
+    #[cfg(not(bootstrap))]
+    #[expect(unused)]
+    fallback: (),
+}
+
+impl DirHandle {
+    pub fn open(path: &std::path::Path) -> io::Result<Self> {
+        #[cfg(bootstrap)]
+        let fallback = path.canonicalize()?;
+        #[cfg(not(bootstrap))]
+        let fallback = ();
+
+        let dir = Dir::open(path)?;
+        Ok(DirHandle { dir, fallback })
+    }
 }
 
 impl FileDescription for DirHandle {
@@ -524,7 +541,10 @@ impl FileDescription for DirHandle {
     fn metadata<'tcx>(
         &self,
     ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
-        interp_ok(Either::Left(self.dir.metadata()))
+        #[cfg(bootstrap)]
+        return interp_ok(Either::Left(self.dir.metadata()));
+        #[cfg(not(bootstrap))]
+        return interp_ok(Either::Left(self.dir.self_metadata()));
     }
 }
 

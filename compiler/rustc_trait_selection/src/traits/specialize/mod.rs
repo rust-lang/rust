@@ -513,7 +513,7 @@ fn report_negative_positive_conflict<'tcx>(
         cause.add_intercrate_ambiguity_hint(&mut diag);
     }
 
-    diag.emit()
+    diag.emit_err()
 }
 
 fn report_conflicting_impls<'tcx>(
@@ -527,11 +527,11 @@ fn report_conflicting_impls<'tcx>(
     // Work to be done after we've built the Diag. We have to define it now
     // because the lint emit methods don't return back the Diag that's passed
     // in.
-    fn decorate<'tcx, G>(
+    fn decorate<'tcx>(
         tcx: TyCtxt<'tcx>,
         overlap: &OverlapError<'tcx>,
         impl_span: Span,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
     ) {
         match tcx.span_of_impl(overlap.with_impl) {
             Ok(span) => {
@@ -594,7 +594,7 @@ fn report_conflicting_impls<'tcx>(
                 let mut err = tcx.dcx().struct_span_err(impl_span, msg());
                 err.code(E0119);
                 decorate(tcx, &overlap, impl_span, &mut err);
-                err.emit()
+                err.emit_err()
             } else {
                 tcx.dcx().span_delayed_bug(impl_span, "impl should have failed the orphan check")
             };

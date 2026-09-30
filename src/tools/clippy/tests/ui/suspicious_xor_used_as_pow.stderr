@@ -75,13 +75,14 @@ LL +     let _ = 2i32.pow(32i32);
 error: `^` is not the exponentiation operator
   --> tests/ui/suspicious_xor_used_as_pow.rs:12:9
    |
+LL | macro_rules! macro_test_inside {
+LL |     () => {
 LL |         1 ^ 2 // should warn even if inside macro
    |         ^^^^^
 ...
 LL |     macro_test_inside!();
    |     -------------------- in this macro invocation
    |
-   = note: this error originates in the macro `macro_test_inside` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: did you mean to write
    |
 LL -         1 ^ 2 // should warn even if inside macro

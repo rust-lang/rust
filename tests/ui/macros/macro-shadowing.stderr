@@ -1,6 +1,8 @@
 error: `macro_two` is already in scope
   --> $DIR/macro-shadowing.rs:14:5
    |
+LL | macro_rules! m1 { () => {
+...
 LL |     #[macro_use]
    |     ^^^^^^^^^^^^
 ...
@@ -8,11 +10,12 @@ LL | m1!();
    | ----- in this macro invocation
    |
    = note: macro-expanded `#[macro_use]`s may not shadow existing macros (see RFC 1560)
-   = note: this error originates in the macro `m1` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `foo` is ambiguous
   --> $DIR/macro-shadowing.rs:19:1
    |
+LL | macro_rules! m1 { () => {
+...
 LL | foo!();
    | ^^^ ambiguous name
    |
@@ -30,7 +33,6 @@ note: `foo` could also refer to the macro defined here
    |
 LL | macro_rules! foo { () => {} }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `m1` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

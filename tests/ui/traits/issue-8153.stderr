@@ -1,9 +1,11 @@
 error[E0201]: duplicate definitions with name `bar`:
   --> $DIR/issue-8153.rs:11:5
    |
+LL | trait Bar {
 LL |     fn bar(&self) -> isize;
    |     ----------------------- item in trait
 ...
+LL | impl Bar for Foo {
 LL |     fn bar(&self) -> isize {1}
    |     -------------------------- previous definition here
 LL |     fn bar(&self) -> isize {2}

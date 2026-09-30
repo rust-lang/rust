@@ -1,22 +1,27 @@
 //@ revisions: nogate gate
 //@ [gate] check-pass
-#![expect(incomplete_features)]
-#![feature(adt_const_params, unsized_const_params, min_generic_const_args, generic_const_items)]
+#![feature(
+    adt_const_params,
+    gca_adts,
+    gca_min_const_items,
+    generic_const_items,
+    unsized_const_params
+)]
 #![cfg_attr(gate, feature(generic_const_parameter_types))]
 
+use std::gca;
 use std::marker::ConstParamTy;
 
 #[derive(ConstParamTy, PartialEq, Eq, Debug)]
 struct StructWithConstParam<const N: usize>;
 
-const FOO<T: core::marker::ConstParamTy_>: [T; 0] = core::direct_const_arg!([]);
+const FOO<T: core::marker::ConstParamTy_>: [T; 0] = gca!([]);
 //[nogate]~^ ERROR the type of const parameters must not depend on other generic parameters
 
-const BAR<const N: usize>: StructWithConstParam<N> =
-    //[nogate]~^ ERROR the type of const parameters must not depend on other generic parameters
-    core::direct_const_arg!(StructWithConstParam::<N>);
+const BAR<const N: usize>: StructWithConstParam<N> = gca!(StructWithConstParam::<N>);
+//[nogate]~^ ERROR the type of const parameters must not depend on other generic parameters
 
-const BAZ<'a>: [&'a (); 0] = core::direct_const_arg!([]);
+const BAZ<'a>: [&'a (); 0] = gca!([]);
 //[nogate]~^ ERROR the type of const parameters must not depend on other generic parameters
 
 trait Tr {
@@ -34,14 +39,13 @@ trait Tr {
 }
 
 impl Tr for () {
-    const ASSOC<T: core::marker::ConstParamTy_>: [T; 0] = core::direct_const_arg!([]);
+    const ASSOC<T: core::marker::ConstParamTy_>: [T; 0] = gca!([]);
     //[nogate]~^ ERROR the type of const parameters must not depend on other generic parameters
 
-    const ASSOC_CONST<const N: usize>: StructWithConstParam<N> =
-        //[nogate]~^ ERROR the type of const parameters must not depend on other generic parameters
-        core::direct_const_arg!(StructWithConstParam::<N>);
+    const ASSOC_CONST<const N: usize>: StructWithConstParam<N> = gca!(StructWithConstParam::<N>);
+    //[nogate]~^ ERROR the type of const parameters must not depend on other generic parameters
 
-    const ASSOC_LT<'a>: [&'a (); 0] = core::direct_const_arg!([]);
+    const ASSOC_LT<'a>: [&'a (); 0] = gca!([]);
     //[nogate]~^ ERROR the type of const parameters must not depend on other generic parameters
 }
 

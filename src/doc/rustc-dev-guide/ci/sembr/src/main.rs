@@ -14,6 +14,9 @@ struct Cli {
     /// Modify files that do not comply
     #[arg(long)]
     overwrite: bool,
+    /// This reflows file even when it complies (with one sentence per line)
+    #[arg(long)]
+    reflow_harder: bool,
     /// Applies to lines that are to be split
     #[arg(long, default_value_t = 100)]
     line_length_limit: usize,
@@ -24,7 +27,7 @@ static REGEX_IGNORE_END: LazyLock<Regex> =
 static REGEX_IGNORE_LINK_TARGETS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\[.+\]: ").unwrap());
 static REGEX_SPLIT: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"([^\.\d\-\*]\.|[^r\~]\?|!)\s").unwrap());
+    LazyLock::new(|| Regex::new(r"([^\.\d\-]\.|[^r\~]\?|!)\s").unwrap());
 // list elements, numbered (1.) or not  (- and *)
 static REGEX_LIST_ENTRY: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\s*(\d\.|\-|\*|\d\))\s+").unwrap());
@@ -45,11 +48,14 @@ fn main() -> Result<()> {
             continue;
         }
         let old = fs::read_to_string(&path)?;
-        let new = comply(&old);
+        let mut new = comply(&old);
+        if cli.reflow_harder {
+            new = reformat(&new, cli.line_length_limit)
+        }
         if new == old {
             compliant.push(path.clone());
         } else if cli.overwrite {
-            fs::write(&path, lengthen_lines(&new, cli.line_length_limit))?;
+            fs::write(&path, reformat(&new, cli.line_length_limit))?;
             made_compliant.push(path.clone());
         } else {
             not_compliant.push(path.clone());
@@ -127,7 +133,8 @@ fn comply(content: &str) -> String {
     new_content.join("\n") + "\n"
 }
 
-fn lengthen_lines(content: &str, limit: usize) -> String {
+// This reformats lines, so that changes of "fn comply" look more pretty
+fn reformat(content: &str, limit: usize) -> String {
     let content: Vec<_> = content.lines().map(std::borrow::ToOwned::to_owned).collect();
     let mut new_content = content.clone();
     let mut new_n = 0;
@@ -233,6 +240,8 @@ o? whatever
 r? @reviewer
  r? @reviewer
 ~? diagnostic
+
+the queries that we do, as well as the **query DAG**. The
 ";
     let expected = "
 # some. heading
@@ -266,12 +275,15 @@ whatever
 r? @reviewer
  r? @reviewer
 ~? diagnostic
+
+the queries that we do, as well as the **query DAG**.
+The
 ";
     assert_eq!(expected, comply(original));
 }
 
 #[test]
-fn test_lengthen_lines() {
+fn test_reformat_lines() {
     let original = "\
 do not split
 short sentences
@@ -301,6 +313,18 @@ html comment closing
 
  handle the
  indented well
+
+split on comma (filler), of
+current line
+
+  split on comma (filler), of
+  current line
+
+split on
+comma (filler), of next line
+
+  split on
+  comma (filler), of next line
 
 [a target]: https://example.com
 [another target]: https://example.com
@@ -333,10 +357,22 @@ html comment closing
 
  handle the indented well
 
+split on comma (filler),
+of current line
+
+  split on comma (filler),
+  of current line
+
+split on comma (filler),
+of next line
+
+  split on comma (filler),
+  of next line
+
 [a target]: https://example.com
 [another target]: https://example.com
 ";
-    assert_eq!(expected, lengthen_lines(original, 50));
+    assert_eq!(expected, reformat(original, 30));
 }
 
 #[test]
@@ -344,50 +380,4 @@ html comment closing
 fn should_pass() {
     let original = "if you see `input isn't interesting! verify interesting-ness test`.";
     assert_eq!(original, comply(original));
-}
-
-#[test]
-fn split_on_comma_of_current_line() {
-    let original = "
-Each derived value has a dependency, on other values, which could themselves be either base or
-derived.
-
-  Each derived value has a dependency, on other values, which could themselves be either base or
-  derived.
-";
-    let expected = "
-Each derived value has a dependency, on other values,
-which could themselves be either base or derived.
-
-  Each derived value has a dependency, on other values,
-  which could themselves be either base or derived.
-";
-    assert_eq!(expected, lengthen_lines(original, 100))
-}
-
-#[test]
-fn split_on_comma_of_next_line() {
-    let original = "
-Because of canonicalization of regions and
-inference variables, encountering a cycle doesn't mean that we would get an infinite proof tree.
-
-  Because of canonicalization of regions and
-  inference variables, encountering a cycle doesn't mean that we would get an infinite proof tree.
-";
-    let expected = "
-Because of canonicalization of regions and inference variables,
-encountering a cycle doesn't mean that we would get an infinite proof tree.
-
-  Because of canonicalization of regions and inference variables,
-  encountering a cycle doesn't mean that we would get an infinite proof tree.
-";
-    assert_eq!(expected, lengthen_lines(original, 100))
-}
-
-#[test]
-#[ignore]
-fn should_split() {
-    let original = "the queries that we do, as well as the **query DAG**. The";
-    let expected = "the queries that we do, as well as the **query DAG**.\nThe\n";
-    assert_eq!(expected, comply(original));
 }

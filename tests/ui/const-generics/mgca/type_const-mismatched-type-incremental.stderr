@@ -1,25 +1,25 @@
 error: the constant `1` is not of type `usize`
-  --> $DIR/type_const-mismatched-type-incremental.rs:5:1
+  --> $DIR/type_const-mismatched-type-incremental.rs:8:1
    |
-LL | const R: usize = core::direct_const_arg!(1_i32);
+LL | const R: usize = gca!(1_i32);
    | ^^^^^^^^^^^^^^ expected `usize`, found `i32`
 
 error: the constant `-1` is not of type `usize`
-  --> $DIR/type_const-mismatched-type-incremental.rs:6:1
+  --> $DIR/type_const-mismatched-type-incremental.rs:9:1
    |
-LL | const U: usize = core::direct_const_arg!(-1_i32);
+LL | const U: usize = gca!(-1_i32);
    | ^^^^^^^^^^^^^^ expected `usize`, found `i32`
 
 error: the constant `1` is not of type `bool`
-  --> $DIR/type_const-mismatched-type-incremental.rs:7:1
+  --> $DIR/type_const-mismatched-type-incremental.rs:10:1
    |
-LL | const S: bool = core::direct_const_arg!(1i32);
+LL | const S: bool = gca!(1i32);
    | ^^^^^^^^^^^^^ expected `bool`, found `i32`
 
 error: the constant `-1` is not of type `bool`
-  --> $DIR/type_const-mismatched-type-incremental.rs:8:1
+  --> $DIR/type_const-mismatched-type-incremental.rs:11:1
    |
-LL | const T: bool = core::direct_const_arg!(-1i32);
+LL | const T: bool = gca!(-1i32);
    | ^^^^^^^^^^^^^ expected `bool`, found `i32`
 
 error: aborting due to 4 previous errors

@@ -5,11 +5,11 @@ extern "Rust" {
 }
 
 pub struct ListS<T> {
-    //~^ NOTE: required because it appears within the type
     len: usize,
     data: [T; 0],
     opaque: OpaqueListContents,
-    //~^ NOTE required by this field
+    //~^ NOTE: required because it appears within the type
+    //~| NOTE: required by this field
 }
 
 pub struct Interned<'a, T>(&'a T);

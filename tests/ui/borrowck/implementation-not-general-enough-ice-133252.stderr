@@ -2,9 +2,14 @@ error: implementation of `LoadQuery` is not general enough
   --> $DIR/implementation-not-general-enough-ice-133252.rs:9:9
    |
 LL |         force_send(async_load(&not_static));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `LoadQuery` is not general enough
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn force_send<T: Send>(_: T) {}
+   |    ----------    ---- unsatisfied where-clause on `force_send`
+   |    |
+   |    due to a where-clause on `force_send`...
    |
-   = note: `LoadQuery<'0>` would have to be implemented for the type `&u8`, for any lifetime `'0`...
+   = note: ...`LoadQuery<'0>` would have to be implemented for the type `&u8`, for any lifetime `'0`...
    = note: ...but `LoadQuery<'1>` is actually implemented for the type `&'1 u8`, for some specific lifetime `'1`
 
 error[E0597]: `not_static` does not live long enough

@@ -131,8 +131,8 @@ impl AllocFnFactory<'_, '_> {
                 // disambiguated somehow. Currently the generated code would
                 // fail to compile with "identifier is bound more than once in
                 // this parameter list".
-                let size = Ident::from_str_and_span("size", self.span);
-                let align = Ident::from_str_and_span("align", self.span);
+                let size = Ident::new(sym::size, self.span);
+                let align = Ident::new(sym::align, self.span);
 
                 let usize = self.cx.path_ident(self.span, Ident::new(sym::usize, self.span));
                 let ty_usize = self.cx.ty_path(usize);

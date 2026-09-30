@@ -1,9 +1,9 @@
 use std::convert::Infallible;
 use std::marker::PhantomData;
 
+use rustc_type_ir::Interner;
 use rustc_type_ir::search_graph::{self, PathKind};
 use rustc_type_ir::solve::{AccessedOpaques, Certainty, NoSolution, QueryResult, RerunResultExt};
-use rustc_type_ir::{Interner, MayBeErased, TypingMode};
 
 use crate::canonical::response_no_constraints_raw;
 use crate::delegate::SolverDelegate;
@@ -52,29 +52,21 @@ where
             PathKind::Unknown | PathKind::ForcedAmbiguity => {
                 response_no_constraints(cx, input, Certainty::overflow(false))
             }
-            // Even though we know these cycles to be unproductive, we still return
-            // overflow during coherence. This is both as we are not 100% confident in
-            // the implementation yet and any incorrect errors would be unsound there.
+            // Even though we know some cycles to be unproductive, we still treat them
+            // as unknown for now. This is both as we are not 100% confident in the
+            // implementation yet and any incorrect errors would be unsound there.
+            //
             // The affected cases are also fairly artificial and not necessarily desirable
             // so keeping this as ambiguity is fine for now.
             //
-            // See `tests/ui/traits/next-solver/cycles/unproductive-in-coherence.rs` for an
-            // example where this would matter. We likely should change these cycles to `NoSolution`
-            // even in coherence once this is a bit more settled.
-            PathKind::Inductive => match input.typing_mode.0 {
-                TypingMode::Coherence => {
-                    response_no_constraints(cx, input, Certainty::overflow(false))
-                }
-                TypingMode::Typeck { .. }
-                | TypingMode::PostTypeckUntilBorrowck { .. }
-                | TypingMode::Reflection
-                | TypingMode::PostBorrowck { .. }
-                | TypingMode::PostAnalysis
-                | TypingMode::Codegen
-                | TypingMode::ErasedNotCoherence(MayBeErased) => {
-                    (Err(NoSolution), AccessedOpaques::default())
-                }
-            },
+            // See `tests/ui/traits/next-solver/cycles/unproductive-in-coherence.rs` and
+            // `tests/ui/traits/next-solver/overflow/recursive-self-normalization-simple.rs`
+            // for examples where this would matter.
+            //
+            // FIXME(-Znext-solver=coinductive): Long term, we probably do want to
+            // return `NoSolution` here. This should happen separately from the
+            // stabilization of the new solver.
+            PathKind::Inductive => unreachable!(),
         }
     }
 

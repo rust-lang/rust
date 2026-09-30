@@ -4,12 +4,14 @@
 //@ build-pass
 //@ no-prefer-dynamic
 
-#![feature(min_generic_const_args, macroless_generic_const_args, associated_type_defaults)]
+#![feature(gca_min_const_items, gca_macroless_args, associated_type_defaults)]
 #![expect(incomplete_features)]
+
+use std::gca;
 
 trait Trait {
     #[rustc_always_gca]
-    const N: usize = core::direct_const_arg!(0);
+    const N: usize = gca!(0);
     fn process(&self, _: [u8; Self::N]) {}
 }
 

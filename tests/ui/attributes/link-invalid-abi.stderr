@@ -1,0 +1,24 @@
+error[E0703]: invalid ABI: found `invalid`
+  --> $DIR/link-invalid-abi.rs:12:8
+   |
+LL | extern "invalid" {}
+   |        ^^^^^^^^^ invalid ABI
+   |
+   = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
+
+warning: attribute should be applied to an `extern` block with non-Rust ABI
+  --> $DIR/link-invalid-abi.rs:8:1
+   |
+LL | #[link(name = "first")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+note: the lint level is defined here
+  --> $DIR/link-invalid-abi.rs:6:9
+   |
+LL | #![warn(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0703`.

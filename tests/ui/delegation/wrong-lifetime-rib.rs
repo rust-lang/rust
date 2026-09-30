@@ -8,7 +8,7 @@ mod ice_156342 {
 
     impl Trait {
         //~^ ERROR: cannot define inherent `impl` for a type outside of the crate where the type is defined
-        reuse None::<&()>;
+        reuse None::<&()>; //~ ERROR failed to resolve delegation callee
         //~^ ERROR: expected function, found unit variant `None`
     }
 

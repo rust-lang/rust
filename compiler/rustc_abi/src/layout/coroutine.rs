@@ -136,20 +136,20 @@ fn coroutine_saved_local_eligibility<VariantIdx: Idx, FieldIdx: Idx, LocalIdx: I
 }
 
 /// Compute the full coroutine layout.
-pub(super) fn layout<
-    'a,
-    F: core::ops::Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + core::fmt::Debug + Copy,
-    VariantIdx: Idx,
-    FieldIdx: Idx,
-    LocalIdx: Idx,
->(
+pub(super) fn layout<'a, F, VariantIdx, FieldIdx, LocalIdx>(
     calc: &super::LayoutCalculator<impl HasDataLayout>,
     local_layouts: &IndexSlice<LocalIdx, F>,
     mut prefix_layouts: IndexVec<FieldIdx, F>,
     variant_fields: &IndexSlice<VariantIdx, IndexVec<FieldIdx, LocalIdx>>,
     storage_conflicts: &BitMatrix<LocalIdx, LocalIdx>,
     tag_to_layout: impl Fn(Scalar) -> F,
-) -> super::LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
+) -> super::LayoutCalculatorResult<FieldIdx, VariantIdx, F>
+where
+    F: core::ops::Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + core::fmt::Debug + Copy,
+    VariantIdx: Idx,
+    FieldIdx: Idx,
+    LocalIdx: Idx,
+{
     use SavedLocalEligibility::*;
 
     let (ineligible_locals, assignments) =
@@ -171,8 +171,11 @@ pub(super) fn layout<
     let promoted_layouts = ineligible_locals.iter().map(|local| local_layouts[local]);
     prefix_layouts.push(tag_to_layout(tag));
     prefix_layouts.extend(promoted_layouts);
-    let prefix =
-        calc.univariant(&prefix_layouts, &ReprOptions::default(), StructKind::AlwaysSized)?;
+    let prefix = calc.layout_of_univariant(
+        &prefix_layouts,
+        &ReprOptions::default(),
+        StructKind::AlwaysSized,
+    )?;
 
     let (prefix_size, prefix_align) = (prefix.size, prefix.align);
 
@@ -225,7 +228,7 @@ pub(super) fn layout<
                 })
                 .map(|local| local_layouts[*local]);
 
-            let mut variant = calc.univariant(
+            let mut variant = calc.layout_of_univariant(
                 &variant_only_tys.collect::<IndexVec<_, _>>(),
                 &ReprOptions::default(),
                 StructKind::Prefixed(prefix_size, prefix_align.abi),

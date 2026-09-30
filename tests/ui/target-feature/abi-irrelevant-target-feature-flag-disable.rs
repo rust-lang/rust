@@ -12,5 +12,3 @@
 
 extern crate minicore;
 use minicore::*;
-
-//~? WARN unstable feature specified for `-Ctarget-feature`: `x87`

@@ -49,6 +49,7 @@ def check_output(actual, path, name):
     if expected == actual:
         return True
     print(f"{name} output did not match reference in {path}!")
+    print("Run `./run-test.py --bless` to update reference files.")
     print(f"--- BEGIN diff {name} ---")
     for text in difflib.unified_diff(expected.split("\n"), actual.split("\n")):
         print(text)

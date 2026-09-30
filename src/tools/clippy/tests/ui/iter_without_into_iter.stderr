@@ -150,6 +150,8 @@ LL + }
 error: `iter` method without an `IntoIterator` impl for `&Issue12037`
   --> tests/ui/iter_without_into_iter.rs:131:13
    |
+LL |   macro_rules! generate_impl {
+...
 LL | /             fn iter(&self) -> std::slice::Iter<'_, u8> {
 LL | |
 LL | |                 todo!()
@@ -159,7 +161,6 @@ LL | |             }
 LL |   generate_impl!();
    |   ---------------- in this macro invocation
    |
-   = note: this error originates in the macro `generate_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider implementing `IntoIterator` for `&Issue12037`
    |
 LL ~         

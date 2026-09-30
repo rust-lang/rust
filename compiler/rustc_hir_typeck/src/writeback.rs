@@ -11,12 +11,13 @@
 use std::mem;
 use std::ops::ControlFlow;
 
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::{E0720, ErrorGuaranteed};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, InferKind, Visitor};
-use rustc_hir::{self as hir, AmbigArg, HirId, find_attr};
+use rustc_hir::{self as hir, AmbigArg, HirId};
 use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
@@ -499,7 +500,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             }
 
             if !errors_buffer.is_empty() {
-                errors_buffer.sort_by_key(|diag| diag.span.primary_span());
+                errors_buffer.sort_by_key(|diag| diag.span.primary_span().map(Span::lo_hi));
                 for err in errors_buffer {
                     err.emit();
                 }
@@ -619,7 +620,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         guar
                     } else {
                         let (Ok(guar) | Err(guar)) =
-                            prev.build_mismatch_error(&hidden_type, tcx).map(|d| d.emit());
+                            prev.build_mismatch_error(&hidden_type, tcx).map(|d| d.emit_err());
                         guar
                     };
                     *entry = DefinitionSiteHiddenType::new_error(tcx, guar);
@@ -656,7 +657,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 .dcx()
                 .struct_span_err(span, "cannot resolve opaque type")
                 .with_code(E0720)
-                .emit();
+                .emit_err();
             self.typeck_results
                 .hidden_types
                 .insert(def_id, DefinitionSiteHiddenType::new_error(tcx, guar));
@@ -947,7 +948,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     TypeAnnotationNeeded::E0282,
                     false,
                 )
-                .emit()
+                .emit_err()
         }
     }
 

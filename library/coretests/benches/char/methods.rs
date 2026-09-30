@@ -49,41 +49,87 @@ fn bench_to_ascii_lowercase(b: &mut Bencher) {
 #[bench]
 fn bench_ascii_mix_to_uppercase(b: &mut Bencher) {
     b.iter(|| {
-        (0..=255).cycle().take(10_000).map(|b| black_box(char::from(b)).to_uppercase()).count()
+        (0..=255)
+            .cycle()
+            .take(10_000)
+            .map(|b| black_box(black_box(char::from(b)).to_uppercase()))
+            .count()
     })
 }
 
 #[bench]
 fn bench_ascii_mix_to_lowercase(b: &mut Bencher) {
     b.iter(|| {
-        (0..=255).cycle().take(10_000).map(|b| black_box(char::from(b)).to_lowercase()).count()
+        (0..=255)
+            .cycle()
+            .take(10_000)
+            .map(|b| black_box(black_box(char::from(b)).to_lowercase()))
+            .count()
     })
 }
 
 #[bench]
 fn bench_ascii_char_to_uppercase(b: &mut Bencher) {
     b.iter(|| {
-        (0..=127).cycle().take(10_000).map(|b| black_box(char::from(b)).to_uppercase()).count()
+        (0..=127)
+            .cycle()
+            .take(10_000)
+            .map(|b| black_box(black_box(char::from(b)).to_uppercase()))
+            .count()
     })
 }
 
 #[bench]
 fn bench_ascii_char_to_lowercase(b: &mut Bencher) {
     b.iter(|| {
-        (0..=127).cycle().take(10_000).map(|b| black_box(char::from(b)).to_lowercase()).count()
+        (0..=127)
+            .cycle()
+            .take(10_000)
+            .map(|b| black_box(black_box(char::from(b)).to_lowercase()))
+            .count()
     })
 }
 
 #[bench]
 fn bench_non_ascii_char_to_uppercase(b: &mut Bencher) {
     b.iter(|| {
-        (128..=255).cycle().take(10_000).map(|b| black_box(char::from(b)).to_uppercase()).count()
+        (128..=255)
+            .cycle()
+            .take(10_000)
+            .map(|b| black_box(black_box(char::from(b)).to_uppercase()))
+            .count()
     })
 }
 
 #[bench]
 fn bench_non_ascii_char_to_lowercase(b: &mut Bencher) {
     b.iter(|| {
-        (128..=255).cycle().take(10_000).map(|b| black_box(char::from(b)).to_lowercase()).count()
+        (128..=255)
+            .cycle()
+            .take(10_000)
+            .map(|b| black_box(black_box(char::from(b)).to_lowercase()))
+            .count()
+    })
+}
+
+#[bench]
+fn bench_non_latin1_char_to_uppercase(b: &mut Bencher) {
+    b.iter(|| {
+        ('\u{100}'..='\u{4ff}')
+            .cycle()
+            .take(10_000)
+            .map(|c| black_box(black_box(c).to_uppercase()))
+            .count()
+    })
+}
+
+#[bench]
+fn bench_non_latin1_char_to_lowercase(b: &mut Bencher) {
+    b.iter(|| {
+        ('\u{100}'..='\u{4ff}')
+            .cycle()
+            .take(10_000)
+            .map(|c| black_box(black_box(c).to_lowercase()))
+            .count()
     })
 }

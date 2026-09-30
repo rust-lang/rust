@@ -41,7 +41,7 @@ fn main() {
         args.push(find_sysroot());
     }
     // FIXME: handle the same `-Z` flags that Miri accepts.
-    rustc_driver::run_compiler(&args, &mut PrirodaCompilerCalls::new(frontend));
+    rustc_driver::compiler_entrypoint(&args, &mut PrirodaCompilerCalls::new(frontend));
 }
 
 /// Frontend selected by Priroda-specific CLI flags.

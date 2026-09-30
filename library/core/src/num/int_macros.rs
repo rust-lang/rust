@@ -2485,7 +2485,6 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[allow(unused_attributes)]
         #[inline]
         pub const fn wrapping_abs(self) -> Self {
              if self.is_negative() {
@@ -2978,7 +2977,6 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[allow(unused_attributes)]
         pub const fn overflowing_neg(self) -> (Self, bool) {
             if intrinsics::unlikely(self == Self::MIN) {
                 (Self::MIN, true)
@@ -3630,7 +3628,6 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-        #[allow(unused_attributes)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3964,14 +3961,15 @@ macro_rules! int_impl {
         /// ```
         /// #![feature(clamp_magnitude)]
         #[doc = concat!("assert_eq!(120", stringify!($SelfT), ".clamp_magnitude(100), 100);")]
-        #[doc = concat!("assert_eq!(-120", stringify!($SelfT), ".clamp_magnitude(100), -100);")]
+        #[doc = concat!("assert_eq!((-120", stringify!($SelfT), ").clamp_magnitude(100), -100);")]
         #[doc = concat!("assert_eq!(80", stringify!($SelfT), ".clamp_magnitude(100), 80);")]
-        #[doc = concat!("assert_eq!(-80", stringify!($SelfT), ".clamp_magnitude(100), -80);")]
+        #[doc = concat!("assert_eq!((-80", stringify!($SelfT), ").clamp_magnitude(100), -80);")]
         /// ```
-        #[must_use = "this returns the clamped value and does not modify the original"]
-        #[unstable(feature = "clamp_magnitude", issue = "148519")]
         #[inline]
-        pub fn clamp_magnitude(self, limit: $UnsignedT) -> Self {
+        #[must_use = "method returns a new number and does not mutate the original value"]
+        #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+        #[unstable(feature = "clamp_magnitude", issue = "148519")]
+        pub const fn clamp_magnitude(self, limit: $UnsignedT) -> Self {
             if let Ok(limit) = core::convert::TryInto::<$SelfT>::try_into(limit) {
                 self.clamp(-limit, limit)
             } else {

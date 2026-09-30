@@ -1,10 +1,11 @@
+use rustc_ast::ItemKind;
 use rustc_attr_ir::{MacroUseArgs, find_attr};
 use rustc_feature::AttributeStability;
-use rustc_lint_defs::builtin::INVALID_MACRO_EXPORT_ARGUMENTS;
+use rustc_lint_defs::builtin::{INVALID_MACRO_EXPORT_ARGUMENTS, UNUSED_ATTRIBUTES};
 use rustc_structures::CollapseMacroDebuginfo;
 
 use super::prelude::*;
-use crate::diagnostics::MacroOnlyAttribute;
+use crate::diagnostics::{MacroExport, MacroOnlyAttribute};
 
 pub(crate) struct MacroEscapeParser;
 impl NoArgsAttributeParser for MacroEscapeParser {
@@ -136,7 +137,7 @@ impl NoArgsAttributeParser for AllowInternalUnsafeParser {
     const STABILITY: AttributeStability = unstable!(allow_internal_unsafe);
     const CREATE: fn(Span) -> AttributeKind = |span| AttributeKind::AllowInternalUnsafe(span);
 
-    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         check_macro_only(cx, attr_span);
     }
 }
@@ -175,7 +176,21 @@ impl SingleAttributeParser for MacroExportParser {
                 return None;
             }
         };
+
         Some(AttributeKind::MacroExport { span: cx.attr_span, local_inner_macros })
+    }
+
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        if cx.target != Target::MacroDef {
+            return;
+        }
+
+        let item = cx.target_item.unwrap();
+        if let ItemKind::MacroDef(_, macro_def) = &item.kind
+            && !macro_def.macro_rules
+        {
+            cx.emit_lint(UNUSED_ATTRIBUTES, MacroExport::OnDeclMacro, attr_span);
+        }
     }
 }
 

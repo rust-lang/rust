@@ -727,15 +727,10 @@ float_test! {
         assert_biteq!(flt(9.0).min(black_box(Float::NAN)), 9.0);
         assert_biteq!(black_box(flt(-9.0)).min(Float::NAN), -9.0);
         assert!(Float::NAN.min(Float::NAN).is_nan());
-        // FIXME(llvm21): LLVM miscompiles the fallback impl on aarch64 and likely other targets
-        // (https://github.com/llvm/llvm-project/issues/176624). When we require LLVM 22,
-        // remove the ui test `tests/ui/float/minmax.rs` and unconditionally enable the test here.
-        if cfg!(miri) {
-            assert_biteq!(Float::SNAN.min(black_box(9.0)), 9.0);
-            assert_biteq!(black_box(Float::SNAN).min(-9.0), -9.0);
-            assert_biteq!(flt(9.0).min(black_box(Float::SNAN)), 9.0);
-            assert_biteq!(black_box(flt(-9.0)).min(Float::SNAN), -9.0);
-        }
+        assert_biteq!(Float::SNAN.min(black_box(9.0)), 9.0);
+        assert_biteq!(black_box(Float::SNAN).min(-9.0), -9.0);
+        assert_biteq!(flt(9.0).min(black_box(Float::SNAN)), 9.0);
+        assert_biteq!(black_box(flt(-9.0)).min(Float::SNAN), -9.0);
         assert!(Float::SNAN.min(Float::SNAN).is_nan());
     }
 }
@@ -770,15 +765,10 @@ float_test! {
         assert_biteq!(flt(9.0).max(black_box(Float::NAN)), 9.0);
         assert_biteq!(black_box(flt(-9.0)).max(Float::NAN), -9.0);
         assert!(Float::NAN.max(Float::NAN).is_nan());
-        // FIXME(llvm21): LLVM miscompiles the fallback impl on aarch64 and likely other targets
-        // (https://github.com/llvm/llvm-project/issues/176624). When we require LLVM 22,
-        // remove the ui test `tests/ui/float/minmax.rs` and unconditionally enable the test here.
-        if cfg!(miri) {
-            assert_biteq!(Float::SNAN.max(black_box(9.0)), 9.0);
-            assert_biteq!(black_box(Float::SNAN).max(-9.0), -9.0);
-            assert_biteq!(flt(9.0).max(black_box(Float::SNAN)), 9.0);
-            assert_biteq!(black_box(flt(-9.0)).max(Float::SNAN), -9.0);
-        }
+        assert_biteq!(Float::SNAN.max(black_box(9.0)), 9.0);
+        assert_biteq!(black_box(Float::SNAN).max(-9.0), -9.0);
+        assert_biteq!(flt(9.0).max(black_box(Float::SNAN)), 9.0);
+        assert_biteq!(black_box(flt(-9.0)).max(Float::SNAN), -9.0);
         assert!(Float::SNAN.max(Float::SNAN).is_nan());
     }
 }
@@ -2182,24 +2172,26 @@ float_test! {
     }
 }
 
-// FIXME(f128): Uncomment and adapt these tests once the From<{u64,i64}> impls are added.
-// float_test! {
-//     name: from_u64_i64,
-//     attrs: {
-//         f16: #[cfg(false)],
-//         f32: #[cfg(false)],
-//         f64: #[cfg(false)],
-//         f128: #[cfg(target_has_reliable_f128)],
-//     },
-//     test {
-//         assert_biteq!(Float::from(u64::MIN), Float::ZERO);
-//         assert_biteq!(Float::from(42_u64), 42.0);
-//         assert_biteq!(Float::from(u64::MAX), 18446744073709551615.0);
-//         assert_biteq!(Float::from(i64::MIN), -9223372036854775808.0);
-//         assert_biteq!(Float::from(42_i64), 42.0);
-//         assert_biteq!(Float::from(i64::MAX), 9223372036854775807.0);
-//     }
-// }
+float_test! {
+    name: from_u64_i64,
+    attrs: {
+        f16: #[cfg(false)],
+        const f16: #[cfg(false)],
+        f32: #[cfg(false)],
+        const f32: #[cfg(false)],
+        f64: #[cfg(false)],
+        const f64: #[cfg(false)],
+        f128: #[cfg(target_has_reliable_f128)],
+    },
+    test {
+        assert_biteq!(Float::from(u64::MIN), Float::ZERO);
+        assert_biteq!(Float::from(42_u64), 42.0f128);
+        assert_biteq!(Float::from(u64::MAX), 18446744073709551615.0);
+        assert_biteq!(Float::from(i64::MIN), -9223372036854775808.0);
+        assert_biteq!(Float::from(42_i64), 42.0);
+        assert_biteq!(Float::from(i64::MAX), 9223372036854775807.0);
+    }
+}
 
 float_test! {
     name: real_consts,

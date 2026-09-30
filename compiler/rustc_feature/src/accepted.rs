@@ -47,7 +47,7 @@ declare_features! (
     /// Allows `#[target_feature(...)]` on aarch64 platforms
     (accepted, aarch64_target_feature, "1.61.0", Some(44839)),
     /// Allows `extern "custom" fn()`.
-    (accepted, abi_custom, "CURRENT_RUSTC_VERSION", Some(140829)),
+    (accepted, abi_custom, "1.100.0", Some(140829)),
     /// Allows using the `efiapi` ABI.
     (accepted, abi_efiapi, "1.68.0", Some(65815)),
     /// Allows the sysV64 ABI to be specified on all platforms
@@ -336,7 +336,7 @@ declare_features! (
     /// Allows specifying the whole-archive link modifier
     (accepted, native_link_modifiers_whole_archive, "1.61.0", Some(81490)),
     /// Allows the `!` type.
-    (accepted, never_type, "CURRENT_RUSTC_VERSION", Some(35121)),
+    (accepted, never_type, "1.100.0", Some(35121)),
     /// Allows using non lexical lifetimes (RFC 2094).
     (accepted, nll, "1.63.0", Some(43234)),
     /// Allows using `#![no_std]`.

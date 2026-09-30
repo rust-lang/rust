@@ -4,16 +4,16 @@ use std::ops::{ControlFlow, Deref};
 use hir::intravisit::{self, Visitor};
 use rustc_abi::{ExternAbi, ScalableElt};
 use rustc_ast as ast;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{EiiDecl, EiiImpl, EiiImplResolution, find_attr};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, msg, pluralize, struct_span_code_err};
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::attrs::{EiiDecl, EiiImpl, EiiImplResolution};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{AmbigArg, ItemKind, find_attr};
+use rustc_hir::{AmbigArg, ItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{BoundRegionConversionTime, SolverRegionConstraint, TyCtxtInferExt};
 use rustc_infer::traits::{PredicateObligations, TraitErrors};
@@ -292,7 +292,7 @@ pub(super) fn check_item<'tcx>(
                         .struct_span_err(sp, "impls of auto traits cannot be default")
                         .with_span_labels(of_trait.defaultness_span, "default because of this")
                         .with_span_label(sp, "auto trait")
-                        .emit());
+                        .emit_err());
                 }
                 match header.polarity {
                     ty::ImplPolarity::Positive => {
@@ -312,7 +312,7 @@ pub(super) fn check_item<'tcx>(
                                 E0750,
                                 "negative impls cannot be default impls"
                             )
-                            .emit());
+                            .emit_err());
                         }
                     }
                 }
@@ -905,7 +905,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), Er
                     tcx.disabled_nightly_features(&mut diag, features);
                 }
 
-                Err(diag.emit())
+                Err(diag.emit_err())
             }
         }
     }
@@ -1289,7 +1289,7 @@ pub(super) fn check_const_item<'tcx>(
                 tcx.require_lang_item(LangItem::ConstParamTy, span),
             );
         }
-        // FIXME(min_generic_const_args): We *might* want to move this check to `type_of`, so we can
+        // FIXME(gca_min_const_items): We *might* want to move this check to `type_of`, so we can
         // return `ty::Error` if it references invalid params. However, doing so is hard, because
         // `type_of` doesn't know if it's a direct const - `const_of_item` determines that, and
         // `const_of_item` calls `type_of`.
@@ -1780,7 +1780,7 @@ fn check_method_receiver<'tcx>(
                     ),
                 )
                 .with_help(msg!("consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`"))
-                .emit()
+                .emit_err()
             }
             None | Some(ArbitrarySelfTypesLevel::Basic)
                 if receiver_is_valid(
@@ -1804,7 +1804,7 @@ fn check_method_receiver<'tcx>(
                     ),
                 )
                 .with_help(msg!("consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`"))
-                .emit()
+                .emit_err()
             }
             _ =>
             // Report error; would not have worked with `arbitrary_self_types[_pointers]`.
@@ -2213,7 +2213,7 @@ fn report_bivariance<'tcx>(
         // Silence potentially redundant error, as the item had a parse error.
         diag.delay_as_bug()
     } else {
-        diag.emit()
+        diag.emit_err()
     }
 }
 
@@ -2403,7 +2403,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                                 );
                                 err.note(format!("it is a {ty}"));
                                 err.note(format!("and here it is `Debug`ged :3 {ty:?}"));
-                                r = Err(err.emit());
+                                r = Err(err.emit_err());
                             }
                         }
                     }
@@ -2433,7 +2433,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                 body.type_outlives,
                 builder.freeze(),
             );
-            self.infcx.insert_placeholder_assumptions(u, Some(assumptions));
+            self.infcx.insert_placeholder_assumptions(u, assumptions);
             self.check_test_binder_body(body.value);
             let solver_region_constraint = self.infcx.get_solver_region_constraint();
             let constraint = ty::region_constraint::eagerly_handle_placeholders_in_universe(

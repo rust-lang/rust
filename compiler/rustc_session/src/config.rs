@@ -51,6 +51,9 @@ mod native_libs;
 mod print_request;
 pub mod sigpipe;
 
+/// A recommended stack size for worker threads spawned within a session.
+pub const DEFAULT_STACK_SIZE: usize = 17 * 1024 * 1024;
+
 /// Special CPU name requesting the CPU of the current host.
 pub const NATIVE_CPU: &str = "native";
 
@@ -1516,6 +1519,7 @@ impl Default for Options {
             target_modifiers: BTreeMap::default(),
             mitigation_coverage_map: Default::default(),
             jobs: Jobs { frontend: None, backend: None, linker: LinkerJobs::Default },
+            recommended_stack_size: DEFAULT_STACK_SIZE,
         }
     }
 }
@@ -1866,7 +1870,7 @@ pub fn build_target_config(
             {
                 err.help(format!("did you mean `{suggestion}`?"));
             }
-            err.emit()
+            err.emit_fatal()
         }
     }
 }
@@ -2571,7 +2575,7 @@ pub fn parse_externs(
     let mut externs: BTreeMap<String, ExternEntry> = BTreeMap::new();
     for arg in matches.opt_strs("extern") {
         let ExternOpt { crate_name: name, path, options } =
-            split_extern_opt(early_dcx, unstable_opts, &arg).unwrap_or_else(|e| e.emit());
+            split_extern_opt(early_dcx, unstable_opts, &arg).unwrap_or_else(|e| e.emit_fatal());
 
         let entry = externs.entry(name.to_owned());
 
@@ -3074,6 +3078,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         target_modifiers: collected_options.target_modifiers,
         mitigation_coverage_map: collected_options.mitigations,
         jobs,
+        recommended_stack_size: DEFAULT_STACK_SIZE,
     }
 }
 

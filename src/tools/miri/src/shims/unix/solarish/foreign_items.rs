@@ -69,7 +69,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )? {
                     ThreadNameResult::Ok => Scalar::from_u32(0),
                     ThreadNameResult::NameTooLong => this.eval_libc("ERANGE"),
-                    ThreadNameResult::ThreadNotFound => this.eval_libc("ESRCH"),
                 };
                 this.write_scalar(res, dest)?;
             }
@@ -85,7 +84,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )? {
                     ThreadNameResult::Ok => Scalar::from_u32(0),
                     ThreadNameResult::NameTooLong => this.eval_libc("ERANGE"),
-                    ThreadNameResult::ThreadNotFound => this.eval_libc("ESRCH"),
                 };
                 this.write_scalar(res, dest)?;
             }

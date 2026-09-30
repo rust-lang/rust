@@ -37,11 +37,11 @@
 
 use std::ops::{ControlFlow, Deref};
 
+use rustc_attr_ir::InlineAttr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
 use rustc_hir as hir;
-use rustc_hir::attrs::InlineAttr;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
@@ -1913,9 +1913,9 @@ impl<'tcx> CoerceMany<'tcx> {
                     );
                 }
 
-                let reported = err.emit_unless_delay(unsized_return);
+                let guar = err.emit_err_unless_delay(unsized_return);
 
-                self.final_ty = Some(Ty::new_error(fcx.tcx, reported));
+                self.final_ty = Some(Ty::new_error(fcx.tcx, guar));
             }
         }
     }

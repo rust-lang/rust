@@ -1,6 +1,6 @@
 //@ edition:2018
 
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 struct Struct;
 impl Struct {
     async fn box_ref_Struct(self: Box<Self, impl FnMut(&mut Self)>) -> &u32 {

@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/wrong_type_const_arr_diag.rs:9:32
+  --> $DIR/wrong_type_const_arr_diag.rs:8:32
    |
 LL |     let _: TakesArr<{ [N] }> = TakesArr::<{ [1] }>;
    |            -----------------   ^^^^^^^^^^^^^^^^^^^ expected `[N]`, found `*b"\x01"`

@@ -221,6 +221,7 @@ impl CodegenBackend for MiriCodegenBackend {
             internal_target_features: native_target_config.internal_target_features,
 
             // The basic types and ABI always work.
+            has_reliable_f16b: true,
             has_reliable_f16: true,
             has_reliable_f128: true,
             // We always provide the f16 intrinsics, but some are provided via the host,
@@ -365,7 +366,7 @@ fn run_compiler_and_exit(
 
     // Invoke compiler, catch any unwinding panics and handle return code.
     let exit_code =
-        rustc_driver::catch_with_exit_code(move || rustc_driver::run_compiler(args, callbacks));
+        rustc_driver::catch_with_exit_code(move || rustc_driver::compiler_entrypoint(args, callbacks));
     exit(if exit_code == ExitCode::SUCCESS {
         rustc_driver::EXIT_SUCCESS
     } else {

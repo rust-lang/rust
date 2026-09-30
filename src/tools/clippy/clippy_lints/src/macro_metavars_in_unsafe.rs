@@ -7,7 +7,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
 use rustc_hir::{BlockCheckMode, Expr, ExprKind, HirId, Stmt, UnsafeSource};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
-use rustc_span::{Span, SyntaxContext};
+use rustc_span::{OrdSpan, Span, SyntaxContext};
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 
@@ -106,7 +106,7 @@ pub struct ExprMetavarsInUnsafe {
     ///     }
     /// }
     /// ```
-    metavar_expns: BTreeMap<Span, MetavarState>,
+    metavar_expns: BTreeMap<OrdSpan, MetavarState>,
 }
 
 impl ExprMetavarsInUnsafe {
@@ -180,7 +180,7 @@ impl<'tcx> Visitor<'tcx> for BodyVisitor<'_, 'tcx> {
         } else if ctxt.is_root() && self.expn_depth > 0 {
             let unsafe_block = self.macro_unsafe_blocks.last().copied();
 
-            match (self.lint.metavar_expns.entry(e.span), unsafe_block) {
+            match (self.lint.metavar_expns.entry(OrdSpan(e.span)), unsafe_block) {
                 (Entry::Vacant(e), None) => {
                     e.insert(MetavarState::ReferencedInSafe);
                 },

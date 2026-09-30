@@ -1,5 +1,5 @@
 use rustc_abi::Size;
-use rustc_hir::find_attr;
+use rustc_attr_ir::find_attr;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{self, Ty};

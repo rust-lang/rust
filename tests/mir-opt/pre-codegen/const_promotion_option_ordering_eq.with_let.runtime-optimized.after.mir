@@ -9,11 +9,7 @@ fn with_let(_1: Option<std::cmp::Ordering>) -> bool {
             let mut _2: isize;
             scope 3 {
                 scope 4 (inlined <std::cmp::Ordering as PartialEq>::eq) {
-                    let _3: i8;
-                    scope 5 {
-                        scope 6 {
-                        }
-                    }
+                    let mut _3: i8;
                 }
             }
         }
@@ -33,7 +29,7 @@ fn with_let(_1: Option<std::cmp::Ordering>) -> bool {
     bb2: {
         StorageLive(_3);
         _3 = discriminant(((_1 as Some).0: std::cmp::Ordering));
-        _0 = Eq(copy _3, const 0_i8);
+        _0 = Eq(move _3, const 0_i8);
         StorageDead(_3);
         goto -> bb3;
     }

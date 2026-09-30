@@ -8,7 +8,6 @@ note: required by a bound in `S`
   --> $DIR/const-ctor-overflow-eval.rs:12:5
    |
 LL | struct S<const N: U>()
-   |        - required by a bound in this struct
 LL | where
 LL |     S<{ U }>:;
    |     ^^^^^^^^ required by this bound in `S`
@@ -23,7 +22,6 @@ note: required by a bound in `S`
   --> $DIR/const-ctor-overflow-eval.rs:12:5
    |
 LL | struct S<const N: U>()
-   |        - required by a bound in this struct
 LL | where
 LL |     S<{ U }>:;
    |     ^^^^^^^^ required by this bound in `S`
@@ -39,7 +37,6 @@ note: required by a bound in `S`
   --> $DIR/const-ctor-overflow-eval.rs:12:5
    |
 LL | struct S<const N: U>()
-   |        - required by a bound in this struct
 LL | where
 LL |     S<{ U }>:;
    |     ^^^^^^^^ required by this bound in `S`
@@ -55,7 +52,6 @@ note: required by a bound in `S`
   --> $DIR/const-ctor-overflow-eval.rs:12:5
    |
 LL | struct S<const N: U>()
-   |        - required by a bound in this struct
 LL | where
 LL |     S<{ U }>:;
    |     ^^^^^^^^ required by this bound in `S`
@@ -70,7 +66,6 @@ note: required by a bound in `S`
   --> $DIR/const-ctor-overflow-eval.rs:12:5
    |
 LL | struct S<const N: U>()
-   |        - required by a bound in this struct
 LL | where
 LL |     S<{ U }>:;
    |     ^^^^^^^^ required by this bound in `S`

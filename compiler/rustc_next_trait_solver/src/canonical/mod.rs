@@ -18,8 +18,8 @@ use rustc_type_ir::relate::{
     self, Relate, RelateResult, TypeRelation, VarianceDiagInfo, relate_args_invariantly,
 };
 use rustc_type_ir::{
-    self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, InferCtxtLike, Interner, Region,
-    TypeFoldable, TypingMode, TypingModeEqWrapper,
+    self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, Const, InferCtxtLike, Interner,
+    Region, TypeFoldable, TypingMode, TypingModeEqWrapper,
 };
 use thin_vec::ThinVec;
 use tracing::instrument;
@@ -173,7 +173,7 @@ where
             // recreated universes here.
             delegate.insert_placeholder_assumptions(
                 new_universe,
-                Some(rustc_type_ir::region_constraint::Assumptions::empty()),
+                rustc_type_ir::region_constraint::Assumptions::empty(),
             );
         }
     }
@@ -421,7 +421,7 @@ where
     }
 
     #[instrument(skip(self), level = "trace")]
-    fn consts(&mut self, a: I::Const, b: I::Const) -> RelateResult<I, I::Const> {
+    fn consts(&mut self, a: Const<I>, b: Const<I>) -> RelateResult<I, Const<I>> {
         if a == b {
             return Ok(a);
         }

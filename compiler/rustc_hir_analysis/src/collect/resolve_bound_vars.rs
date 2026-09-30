@@ -808,13 +808,13 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     LifetimeKind::Error(..) => {}
                 }
             }
-            hir::TyKind::Ref(lifetime_ref, ref mt) => {
+            hir::TyKind::Ref(lifetime_ref, ref inner_ty, _) => {
                 self.visit_lifetime(lifetime_ref);
                 let scope = Scope::ObjectLifetimeDefault {
                     lifetime: self.rbv.defs.get(&lifetime_ref.hir_id.local_id).copied(),
                     s: self.scope,
                 };
-                self.with(scope, |this| this.visit_ty_unambig(mt.ty));
+                self.with(scope, |this| this.visit_ty_unambig(inner_ty));
             }
             hir::TyKind::TraitAscription(bounds) => {
                 let scope = Scope::TraitRefBoundary { s: self.scope };
@@ -2827,7 +2827,7 @@ fn deny_non_region_late_bound(
             format!("late-bound {what} parameter not allowed on {where_}"),
         );
 
-        let guar = diag.emit_unless_delay(!tcx.features().non_lifetime_binders() || !first);
+        let guar = diag.emit_err_unless_delay(!tcx.features().non_lifetime_binders() || !first);
 
         first = false;
         *arg = ResolvedArg::Error(guar);

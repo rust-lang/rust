@@ -1,5 +1,5 @@
 #![expect(incomplete_features)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 pub fn accept(_: impl Trait<K = 0>) {}
 

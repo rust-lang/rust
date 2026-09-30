@@ -135,7 +135,7 @@ pub(crate) fn parse_check_cfg(sess: &Session, specs: Vec<String>) -> CheckCfg {
                     sess.dcx().struct_fatal(format!("invalid `--check-cfg` argument: `{s}`"));
                 diag.note($reason);
                 diag.note(VISIT);
-                diag.emit()
+                diag.emit_fatal()
             }};
             (in $arg:expr, $reason:expr) => {{
                 let mut diag =
@@ -154,7 +154,7 @@ pub(crate) fn parse_check_cfg(sess: &Session, specs: Vec<String>) -> CheckCfg {
 
                 diag.note($reason);
                 diag.note(VISIT);
-                diag.emit()
+                diag.emit_fatal()
             }};
         }
 
@@ -449,6 +449,9 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 util::rustc_version_str().unwrap_or("unknown"),
                 config.using_internal_features,
             );
+
+            // STACK_SIZE is setup in run_in_thread_pool_with_globals, before arriving here.
+            sess.opts.recommended_stack_size = *util::STACK_SIZE.get().unwrap();
 
             let target_config = codegen_backend.target_config(&sess);
 

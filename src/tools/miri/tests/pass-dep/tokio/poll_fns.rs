@@ -4,6 +4,7 @@
 //! or remove the test.
 
 //@only-target: linux # We only support tokio on Linux
+//@run-native
 
 use std::fs::File;
 use std::io::{ErrorKind, Read, Write};

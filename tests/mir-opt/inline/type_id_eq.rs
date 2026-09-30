@@ -3,7 +3,7 @@
 //@ compile-flags: --crate-type=lib -C panic=abort
 
 use std::any::{Any, TypeId};
-use std::intrinsics::type_id_eq;
+use std::intrinsics::reflection::type_id_eq;
 
 struct A<T: ?Sized + 'static> {
     a: i32,

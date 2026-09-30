@@ -1,5 +1,5 @@
 //@compile-flags: -Znext-solver=globally
-#![feature(generic_const_args, min_generic_const_args)]
+#![feature(gca_const_items, gca_min_const_items)]
 
 struct S<const N: usize>;
 fn foo<const N: usize>(_: S<{ const { const { N } } }>) {}

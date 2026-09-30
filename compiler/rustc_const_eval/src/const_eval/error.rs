@@ -30,6 +30,7 @@ pub enum ConstEvalErrKind {
         col: u32,
         file: Symbol,
     },
+    Abort,
     WriteThroughImmutablePointer,
     /// Called `const_make_global` twice.
     ConstMakeGlobalPtrAlreadyMadeGlobal(AllocId),
@@ -51,6 +52,7 @@ impl fmt::Display for ConstEvalErrKind {
                 write!(f, "modifying a static's initial value from another static's initializer")
             }
             Panic { msg, .. } => write!(f, "evaluation panicked: {msg}"),
+            Abort => write!(f, "the program aborted execution"),
             RecursiveStatic => {
                 write!(f, "encountered static that tried to access itself during initialization")
             }
@@ -223,11 +225,11 @@ pub(super) fn report<'tcx>(
             );
 
             mk(&mut err, span, frames);
-            let g = err.emit();
+            let guar = err.emit_err();
             let reported = if allowed_in_infallible {
-                ReportedErrorInfo::allowed_in_infallible(g)
+                ReportedErrorInfo::allowed_in_infallible(guar)
             } else {
-                ReportedErrorInfo::const_eval_error(g)
+                ReportedErrorInfo::const_eval_error(guar)
             };
             ErrorHandled::Reported(reported, span)
         }
@@ -243,7 +245,7 @@ pub(super) fn lint<'tcx, L>(
     lint: &'static rustc_lint_defs::Lint,
     decorator: impl FnOnce(Vec<diagnostics::FrameNote>) -> L,
 ) where
-    L: for<'a> rustc_errors::Diagnostic<'a, ()>,
+    L: for<'a> rustc_errors::Diagnostic<'a>,
 {
     let (span, frames) = get_span_and_frames(tcx, &machine.stack);
 

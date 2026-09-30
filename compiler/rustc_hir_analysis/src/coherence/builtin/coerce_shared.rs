@@ -1,11 +1,10 @@
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::ItemKind;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, TraitErrors};
-use rustc_middle::ty::relate::solver_relating::RelateExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized};
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -131,14 +130,14 @@ fn first_explicit_lifetime_span_in_ambig_ty(ty: &hir::Ty<'_, hir::AmbigArg>) -> 
 
 fn first_explicit_lifetime_span_in_ty(ty: &hir::Ty<'_>) -> Option<Span> {
     match ty.kind {
-        hir::TyKind::Ref(lifetime, mut_ty) => first_explicit_lifetime_span(lifetime)
-            .or_else(|| first_explicit_lifetime_span_in_ty(mut_ty.ty)),
+        hir::TyKind::Ref(lifetime, ty, _) => first_explicit_lifetime_span(lifetime)
+            .or_else(|| first_explicit_lifetime_span_in_ty(ty)),
         hir::TyKind::Slice(ty)
         | hir::TyKind::Array(ty, _)
         | hir::TyKind::Pat(ty, _)
         | hir::TyKind::FieldOf(ty, _)
         | hir::TyKind::View(ty, _) => first_explicit_lifetime_span_in_ty(ty),
-        hir::TyKind::Ptr(mut_ty) => first_explicit_lifetime_span_in_ty(mut_ty.ty),
+        hir::TyKind::Ptr(ty, _) => first_explicit_lifetime_span_in_ty(ty),
         hir::TyKind::Tup(tys) => tys.iter().find_map(first_explicit_lifetime_span_in_ty),
         hir::TyKind::Path(qpath) => first_explicit_lifetime_span_in_qpath(qpath),
         hir::TyKind::TraitObject(bounds, lifetime) => bounds
@@ -400,29 +399,20 @@ fn validate_reborrow_field_access(
 ) -> Result<(), ErrorGuaranteed> {
     let module = tcx.parent_module_from_def_id(impl_did);
     let variant = def.non_enum_variant();
-    if variant.field_list_has_applicable_non_exhaustive() {
-        return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedInaccessibleField {
+
+    if variant.field_list_has_applicable_non_exhaustive()
+        || variant.fields.iter().any(|f| !f.vis.is_accessible_from(module, tcx))
+    {
+        Err(tcx.dcx().emit_err(diagnostics::CoerceSharedInaccessibleField {
             span: diagnostic_context.impl_span,
             type_span: role.type_span(diagnostic_context),
             trait_name,
             role: role.as_str(),
             type_name: tcx.item_name(def.did()),
-        }));
+        }))
+    } else {
+        Ok(())
     }
-
-    for field in &variant.fields {
-        if !field.vis.is_accessible_from(module, tcx) {
-            return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedInaccessibleField {
-                span: diagnostic_context.impl_span,
-                type_span: role.type_span(diagnostic_context),
-                trait_name,
-                role: role.as_str(),
-                type_name: tcx.item_name(def.did()),
-            }));
-        }
-    }
-
-    Ok(())
 }
 
 fn validate_coerce_shared_fields<'tcx>(
@@ -760,6 +750,9 @@ enum FieldRelation {
 // instantiating a field can expose projections. Each candidate relation uses a
 // fresh inference context, so failed checks cannot affect the next one; this
 // intentionally normalizes the fields for each check.
+//
+// FIXME(field_projections): This function should take `Unnormalized<Ty<'tcx>>` for
+// `source_ty` and `target_ty`.
 fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_did: LocalDefId,
@@ -785,7 +778,10 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
 
     match relation {
         FieldRelation::Equal => {
-            if infcx.relate(param_env, source_ty, ty::Variance::Invariant, target_ty, span).is_err()
+            if infcx
+                .at(&cause, param_env)
+                .relate(DefineOpaqueTypes::Yes, source_ty, ty::Variance::Invariant, target_ty)
+                .is_err()
             {
                 return false;
             }

@@ -364,20 +364,16 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
 
         // IDENT + `!`: `println!()`, but `if !x { ... }` needs a space after the `if`
         (
-            Tok(tk::Token { kind: tk::Ident(sym, is_raw), span }, _),
+            Tok(tk::Token { kind: tk::Ident(sym, kind), span }, _),
             Tok(tk::Token { kind: tk::Bang, .. }, _),
-        ) if !Ident::new(*sym, *span).is_reserved() || matches!(is_raw, tk::IdentIsRaw::Yes) => {
-            false
-        }
+        ) if !Ident::new(*sym, *span).is_reserved() || matches!(kind, tk::IdentKind::Raw) => false,
 
         // IDENT|`fn`|`Self`|`pub` + `(`: `f(3)`, `fn(x: u8)`, `Self()`, `pub(crate)`,
         //      but `let (a, b) = (1, 2)` needs a space after the `let`
-        (Tok(tk::Token { kind: tk::Ident(sym, is_raw), span }, _), Del(_, _, Parenthesis, _))
-            if !Ident::new(*sym, *span).is_reserved()
-                || *sym == kw::Fn
-                || *sym == kw::SelfUpper
-                || *sym == kw::Pub
-                || matches!(is_raw, tk::IdentIsRaw::Yes) =>
+        (&Tok(tk::Token { kind: tk::Ident(sym, kind), span }, _), Del(_, _, Parenthesis, _))
+            if kind == tk::IdentKind::Raw
+                || matches!(sym, kw::Fn | kw::SelfUpper | kw::Pub)
+                || !Ident::new(sym, span).is_reserved() =>
         {
             false
         }
@@ -623,7 +619,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             // Isolated, starts with #! and doesn't continue with `[`
             // See [rustc_lexer::strip_shebang] and [gather_comments] from pprust/state.rs for details
             if cmnt.style == CommentStyle::Isolated
-                && cmnt.lines.first().map_or(false, |l| l.starts_with("#!"))
+                && cmnt.lines.first().is_some_and(|l| l.starts_with("#!"))
             {
                 let cmnt = self.next_comment().unwrap();
                 self.print_comment(cmnt);
@@ -1076,17 +1072,17 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             tk::Literal(lit) => literal_to_string(lit).into(),
 
             /* Name components */
-            tk::Ident(name, is_raw) => {
-                IdentPrinter::new(name, is_raw.to_print_mode_ident(), convert_dollar_crate)
+            tk::Ident(name, kind) => {
+                IdentPrinter::new(name, kind.to_print_mode_ident(), convert_dollar_crate)
                     .to_string()
                     .into()
             }
-            tk::NtIdent(ident, is_raw) => {
-                IdentPrinter::for_ast_ident(ident, is_raw.to_print_mode_ident()).to_string().into()
+            tk::NtIdent(ident, kind) => {
+                IdentPrinter::for_ast_ident(ident, kind.to_print_mode_ident()).to_string().into()
             }
 
-            tk::Lifetime(name, is_raw) | tk::NtLifetime(Ident { name, .. }, is_raw) => {
-                IdentPrinter::new(name, is_raw.to_print_mode_lifetime(), None).to_string().into()
+            tk::Lifetime(name, kind) | tk::NtLifetime(Ident { name, .. }, kind) => {
+                IdentPrinter::new(name, kind.to_print_mode_lifetime(), None).to_string().into()
             }
 
             /* Other */
@@ -1350,20 +1346,23 @@ impl<'a> State<'a> {
                 self.print_type(ty);
                 self.word("]");
             }
-            ast::TyKind::Ptr(mt) => {
+            ast::TyKind::Ptr(ty, mutbl) => {
                 self.word("*");
-                self.print_mt(mt, true);
+                self.print_mutability(*mutbl, true);
+                self.print_type(ty);
             }
-            ast::TyKind::Ref(lifetime, mt) => {
+            ast::TyKind::Ref(lifetime, ty, mutbl) => {
                 self.word("&");
                 self.print_opt_lifetime(lifetime);
-                self.print_mt(mt, false);
+                self.print_mutability(*mutbl, false);
+                self.print_type(ty);
             }
-            ast::TyKind::PinnedRef(lifetime, mt) => {
+            ast::TyKind::PinnedRef(lifetime, ty, mutbl) => {
                 self.word("&");
                 self.print_opt_lifetime(lifetime);
                 self.word("pin ");
-                self.print_mt(mt, true);
+                self.print_mutability(*mutbl, true);
+                self.print_type(ty);
             }
             ast::TyKind::Never => {
                 self.word("!");
@@ -1462,8 +1461,8 @@ impl<'a> State<'a> {
                 self.print_type(ty);
                 self.print_view(fields);
             }
-            ast::TyKind::DirectConstArg(expr) => {
-                self.word_nbsp("core::direct_const_arg!");
+            ast::TyKind::GcaMacro(expr) => {
+                self.word_nbsp("core::gca!");
                 self.popen();
                 self.print_expr(expr, FixupContext::default());
                 self.pclose();
@@ -2231,11 +2230,6 @@ impl<'a> State<'a> {
                 }
             }
         }
-    }
-
-    fn print_mt(&mut self, mt: &ast::MutTy, print_const: bool) {
-        self.print_mutability(mt.mutbl, print_const);
-        self.print_type(&mt.ty)
     }
 
     fn print_param(&mut self, input: &ast::Param, is_closure: bool) {

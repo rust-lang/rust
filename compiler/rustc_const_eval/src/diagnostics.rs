@@ -317,7 +317,7 @@ pub(crate) struct FrameNote {
 }
 
 impl Subdiagnostic for FrameNote {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let mut span: MultiSpan = self.span.into();
         if self.has_label && !self.span.is_dummy() {
             span.push_span_label(self.span, msg!("the failure occurred here"));

@@ -40,13 +40,13 @@ LL |         bar(std::mem::transmute::<[u16; 2], _>([1u16, 2u16]));
 error: transmute used without annotations
   --> tests/ui/missing_transmute_annotations.rs:11:19
    |
+LL | macro_rules! local_bad_transmute {
+LL |     ($e:expr) => {
 LL |         std::mem::transmute($e)
    |                   ^^^^^^^^^ help: consider adding missing annotations: `transmute::<[u16; 2], i32>`
 ...
 LL |         i = local_bad_transmute!([1u16, 2u16]);
    |             ---------------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `local_bad_transmute` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: transmute used without annotations
   --> tests/ui/missing_transmute_annotations.rs:57:23

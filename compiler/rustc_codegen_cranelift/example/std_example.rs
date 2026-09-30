@@ -294,6 +294,19 @@ unsafe fn test_simd() {
         if is_x86_feature_detected!("avx512f") {
             test_zmm_roundtrip();
         }
+
+        #[cfg(not(jit))]
+        {
+            if is_x86_feature_detected!("pclmulqdq") {
+                test_mm_clmulepi64_si128();
+            }
+            if is_x86_feature_detected!("vpclmulqdq") {
+                test_mm256_clmulepi64_epi128();
+            }
+            if is_x86_feature_detected!("vpclmulqdq") && is_x86_feature_detected!("avx512f") {
+                test_mm512_clmulepi64_epi128();
+            }
+        }
     }
 }
 
@@ -392,6 +405,14 @@ pub fn assert_eq_m128d(a: __m128d, b: __m128d) {
 pub fn assert_eq_m256i(a: __m256i, b: __m256i) {
     unsafe {
         assert_eq!(std::mem::transmute::<_, [u64; 4]>(a), std::mem::transmute::<_, [u64; 4]>(b))
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx512f")]
+pub fn assert_eq_m512i(a: __m512i, b: __m512i) {
+    unsafe {
+        assert_eq!(std::mem::transmute::<_, [u64; 8]>(a), std::mem::transmute::<_, [u64; 8]>(b))
     }
 }
 
@@ -535,6 +556,62 @@ unsafe fn test_mm256_permutevar8x32_epi32() {
     let r = _mm256_setr_epi32(800, 700, 600, 500, 400, 300, 200, 100);
     let e = _mm256_permutevar8x32_epi32(a, idx);
     assert_eq_m256i(r, e);
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "pclmulqdq")]
+#[cfg(not(jit))]
+unsafe fn test_mm_clmulepi64_si128() {
+    // Constants taken from https://software.intel.com/sites/default/files/managed/72/cc/clmul-wp-rev-2.02-2014-04-20.pdf
+    let a = _mm_set_epi64x(0x7b5b546573745665, 0x63746f725d53475d);
+    let b = _mm_set_epi64x(0x4869285368617929, 0x5b477565726f6e5d);
+    let r00 = _mm_set_epi64x(0x1d4d84c85c3440c0, 0x929633d5d36f0451u64.cast_signed());
+    let r01 = _mm_set_epi64x(0x1bd17c8d556ab5a1, 0x7fa540ac2a281315);
+    let r10 = _mm_set_epi64x(0x1a2bf6db3a30862f, 0xbabf262df4b7d5c9u64.cast_signed());
+    let r11 = _mm_set_epi64x(0x1d1e1f2c592e7c45, 0xd66ee03e410fd4edu64.cast_signed());
+
+    assert_eq_m128i(_mm_clmulepi64_si128::<0x00>(a, b), r00);
+    assert_eq_m128i(_mm_clmulepi64_si128::<0x10>(a, b), r01);
+    assert_eq_m128i(_mm_clmulepi64_si128::<0x01>(a, b), r10);
+    assert_eq_m128i(_mm_clmulepi64_si128::<0x11>(a, b), r11);
+
+    let a0 = _mm_set_epi64x(0x0000000000000000, 0x8000000000000000u64.cast_signed());
+    let r = _mm_set_epi64x(0x4000000000000000, 0x0000000000000000);
+    assert_eq_m128i(_mm_clmulepi64_si128::<0x00>(a0, a0), r);
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "vpclmulqdq")]
+#[cfg(not(jit))]
+unsafe fn test_mm256_clmulepi64_epi128() {
+    let a = _mm256_setr_epi64x(1, 2, 3, 4);
+    let b = _mm256_setr_epi64x(5, 6, 7, 8);
+
+    assert_eq_m256i(_mm256_clmulepi64_epi128::<0x00>(a, b), _mm256_setr_epi64x(5, 0, 9, 0));
+    assert_eq_m256i(_mm256_clmulepi64_epi128::<0x01>(a, b), _mm256_setr_epi64x(10, 0, 28, 0));
+    assert_eq_m256i(_mm256_clmulepi64_epi128::<0x10>(a, b), _mm256_setr_epi64x(6, 0, 24, 0));
+    assert_eq_m256i(_mm256_clmulepi64_epi128::<0x11>(a, b), _mm256_setr_epi64x(12, 0, 32, 0));
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "vpclmulqdq,avx512f")]
+#[cfg(not(jit))]
+unsafe fn test_mm512_clmulepi64_epi128() {
+    let a = _mm512_setr_epi64(1, 2, 3, 4, 5, 6, 7, 8);
+    let b = _mm512_setr_epi64(9, 10, 11, 12, 13, 14, 15, 16);
+
+    assert_eq_m512i(
+        _mm512_clmulepi64_epi128::<0x00>(a, b),
+        _mm512_setr_epi64(9, 0, 29, 0, 57, 0, 45, 0),
+    );
+    assert_eq_m512i(
+        _mm512_clmulepi64_epi128::<0x10>(a, b),
+        _mm512_setr_epi64(10, 0, 20, 0, 54, 0, 112, 0),
+    );
+    assert_eq_m512i(
+        _mm512_clmulepi64_epi128::<0x11>(a, b),
+        _mm512_setr_epi64(20, 0, 48, 0, 36, 0, 128, 0),
+    );
 }
 
 #[cfg(target_arch = "x86_64")]

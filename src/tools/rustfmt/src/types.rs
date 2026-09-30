@@ -416,7 +416,10 @@ fn format_function_type(
             shape.block().indent.to_string_with_newline(context.config),
         )
     };
-    if output.is_empty() || last_line_width(&args) + first_line_width(&output) <= shape.width {
+    if output.is_empty()
+        || last_line_width(&args, context.config.tab_spaces()) + first_line_width(&output)
+            <= shape.width
+    {
         Ok(format!("{args}{output}"))
     } else {
         Ok(format!(
@@ -484,7 +487,9 @@ impl Rewrite for ast::WherePredicate {
         let mut result = String::with_capacity(attrs_str.len() + pred_str.len() + 1);
         result.push_str(&attrs_str);
         let pred_start = self.span.lo();
-        let line_len = last_line_width(&attrs_str) + 1 + first_line_width(&pred_str);
+        let line_len = last_line_width(&attrs_str, context.config.tab_spaces())
+            + 1
+            + first_line_width(&pred_str);
         if let Some(last_attr) = self.attrs.last().filter(|last_attr| {
             contains_comment(context.snippet(mk_sp(last_attr.span.hi(), pred_start)))
         }) {
@@ -578,7 +583,7 @@ fn rewrite_bounded_lifetime(
         Ok(result)
     } else {
         let colon = type_bound_colon(context);
-        let overhead = last_line_width(&result) + colon.len();
+        let overhead = last_line_width(&result, context.config.tab_spaces()) + colon.len();
         let shape = shape.sub_width(overhead, span)?;
         let result = format!(
             "{}{}{}",
@@ -816,17 +821,17 @@ impl Rewrite for ast::Ty {
                 }
                 Ok(format!("{prefix}{res}"))
             }
-            ast::TyKind::Ptr(ref mt) => {
-                let prefix = match mt.mutbl {
+            ast::TyKind::Ptr(ref ty, mutbl) => {
+                let prefix = match mutbl {
                     Mutability::Mut => "*mut ",
                     Mutability::Not => "*const ",
                 };
 
-                rewrite_unary_prefix(context, prefix, &*mt.ty, shape)
+                rewrite_unary_prefix(context, prefix, &*ty, shape)
             }
-            ast::TyKind::Ref(ref lifetime, ref mt)
-            | ast::TyKind::PinnedRef(ref lifetime, ref mt) => {
-                let mut_str = format_mutability(mt.mutbl);
+            ast::TyKind::Ref(ref lifetime, ref ty, mutbl)
+            | ast::TyKind::PinnedRef(ref lifetime, ref ty, mutbl) => {
+                let mut_str = format_mutability(mutbl);
                 let mut_len = mut_str.len();
                 let mut result = String::with_capacity(128);
                 result.push('&');
@@ -861,12 +866,12 @@ impl Rewrite for ast::Ty {
 
                 if let ast::TyKind::PinnedRef(..) = self.kind {
                     result.push_str("pin ");
-                    if ast::Mutability::Not == mt.mutbl {
+                    if ast::Mutability::Not == mutbl {
                         result.push_str("const ");
                     }
                 }
 
-                if ast::Mutability::Mut == mt.mutbl {
+                if ast::Mutability::Mut == mutbl {
                     let mut_hi = context.snippet_provider.span_after(self.span(), "mut");
                     let before_mut_span = mk_sp(cmnt_lo, mut_hi - BytePos::from_usize(3));
                     if contains_comment(context.snippet(before_mut_span)) {
@@ -884,23 +889,23 @@ impl Rewrite for ast::Ty {
                     cmnt_lo = mut_hi;
                 }
 
-                let before_ty_span = mk_sp(cmnt_lo, mt.ty.span.lo());
+                let before_ty_span = mk_sp(cmnt_lo, ty.span.lo());
                 if contains_comment(context.snippet(before_ty_span)) {
                     result = combine_strs_with_missing_comments(
                         context,
                         result.trim_end(),
-                        &mt.ty.rewrite_result(context, shape)?,
+                        &ty.rewrite_result(context, shape)?,
                         before_ty_span,
                         shape,
                         true,
                     )?;
                 } else {
-                    let used_width = last_line_width(&result);
+                    let used_width = last_line_width(&result, context.config.tab_spaces());
                     let budget = shape
                         .width
                         .checked_sub(used_width)
                         .max_width_error(shape.width, self.span())?;
-                    let ty_str = mt.ty.rewrite_result(
+                    let ty_str = ty.rewrite_result(
                         context,
                         Shape::legacy(budget, shape.indent + used_width),
                     )?;
@@ -1038,7 +1043,7 @@ impl Rewrite for ast::Ty {
                 result.push_str(&rewrite);
                 Ok(result)
             }
-            ast::TyKind::Pat(..) | ast::TyKind::View(..) | ast::TyKind::DirectConstArg(..) => {
+            ast::TyKind::Pat(..) | ast::TyKind::View(..) | ast::TyKind::GcaMacro(..) => {
                 // These don't normally occur in the AST because macros aren't expanded. However,
                 // rustfmt tries to parse macro arguments when formatting macros, so it's not
                 // totally impossible for rustfmt to come across these nodes when formatting a file.
@@ -1328,9 +1333,9 @@ pub(crate) fn can_be_overflowed_type(
 ) -> bool {
     match ty.kind {
         ast::TyKind::Tup(..) => context.use_block_indent() && len == 1,
-        ast::TyKind::Ref(_, ref mutty)
-        | ast::TyKind::PinnedRef(_, ref mutty)
-        | ast::TyKind::Ptr(ref mutty) => can_be_overflowed_type(context, &*mutty.ty, len),
+        ast::TyKind::Ref(_, ref ty, _)
+        | ast::TyKind::PinnedRef(_, ref ty, _)
+        | ast::TyKind::Ptr(ref ty, _) => can_be_overflowed_type(context, &*ty, len),
         _ => false,
     }
 }

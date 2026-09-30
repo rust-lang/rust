@@ -21,6 +21,7 @@ use rustc_metadata::{DylibError, EncodedMetadata, load_symbol_from_dylib};
 use rustc_middle::dep_graph::WorkProductMap;
 use rustc_middle::ty::{CurrentGcx, TyCtxt};
 use rustc_query_impl::{CollectActiveJobsKind, collect_active_query_jobs};
+pub use rustc_session::config::DEFAULT_STACK_SIZE;
 use rustc_session::config::{
     Cfg, Jobs, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
 };
@@ -73,6 +74,9 @@ pub(crate) fn add_configuration(
     }
     if target_config.has_reliable_f16_math {
         cfg.insert((sym::target_has_reliable_f16_math, None));
+    }
+    if target_config.has_reliable_f16b {
+        cfg.insert((sym::target_has_reliable_f16b, None));
     }
     if target_config.has_reliable_f128 {
         cfg.insert((sym::target_has_reliable_f128, None));
@@ -139,7 +143,6 @@ pub(crate) fn check_abi_required_features(sess: &Session) {
 }
 
 pub static STACK_SIZE: OnceLock<usize> = OnceLock::new();
-pub const DEFAULT_STACK_SIZE: usize = 17 * 1024 * 1024;
 
 fn init_stack_size(early_dcx: &EarlyDiagCtxt) -> usize {
     // Obey the environment setting or default
@@ -161,7 +164,7 @@ fn init_stack_size(early_dcx: &EarlyDiagCtxt) -> usize {
                         r#"`RUST_MIN_STACK` should be a number of bytes, but was "{s}""#,
                     ));
                     err.note("you can also unset `RUST_MIN_STACK` to use the default stack size");
-                    err.emit()
+                    err.emit_fatal()
                 })
             })
             // otherwise pick a consistent default
@@ -338,7 +341,7 @@ internal compiler error: query cycle handler thread panicked, aborting process";
                     diag.help(
                         "try lowering `-Z threads` or checking the operating system's resource limits",
                     );
-                    diag.emit()
+                    diag.emit_fatal()
                 })
         })
     })
@@ -419,6 +422,7 @@ impl CodegenBackend for DummyCodegenBackend {
             internal_target_features,
             has_reliable_f16: true,
             has_reliable_f16_math: true,
+            has_reliable_f16b: true,
             has_reliable_f128: true,
             has_reliable_f128_math: true,
         }

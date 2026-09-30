@@ -36,9 +36,8 @@ To help remedy this:
 # The `repr` directive
 
 > [!IMPORTANT]
-> As of July 2026, this command is only supported by LLDB. GDB support is planned, but
-> has not been implemented. It is unclear whether this directive will ever be suited for use with
-> CDB.
+> As of <!-- date check --> September 2026, this command is only supported for LLDB and GDB.
+> It is unclear whether this directive will ever be suited for use with CDB.
 
 In short, `$DEBUGGER-repr` commands are desugared to:
 
@@ -53,7 +52,7 @@ and runs special logic on them, testing against data stored in
 
 "Target groups" cover the set of targets where we cannot guarantee identical output.
 Those targets are defined by the
- [`Target` enum in `common.py`](https://github.com/rust-lang/rust/blob/bf9944f0b8006b152ef4d5f408ae75a0dde3d044/src/etc/lldb_batchmode/common.py#L54).
+ [`Target` enum in `common.py`](https://github.com/rust-lang/rust/blob/c26ce708de5d14682647895d2f3caf38f70b5aa6/src/etc/debugger_tester/common.py#L54).
 As of <!-- date-check --> Jul 2026, this list includes `non_windows`, `windows_gnu`, and `windows_msvc`.
 It is intentionally kept as short as possible,
 since each target is a new set of test data that must be updated when changes are made.
@@ -66,7 +65,7 @@ invocation (e.g. `./x test tests/debuginfo/basic-types/main.rs --bless`).
 and if no errors occur, saves the data back to the target file (or creates a new file if necessary).
 
 The schema of the input data is defined by the classes in
-[`common.py`](https://github.com/rust-lang/rust/blob/be3d26db984c6f96335faca1f254dc04873cb1c1/src/etc/lldb_batchmode/common.py).
+[`common.py`](https://github.com/rust-lang/rust/blob/c26ce708de5d14682647895d2f3caf38f70b5aa6/src/etc/debugger_tester/common.py).
 The top-level container is `TargetData`.
 This schema is identical for all debuggers.
 
@@ -98,6 +97,13 @@ as well (e.g. if you are on a Windows machine, bless once for `x86_64-pc-windows
 
 ## Implementation
 
+Many of the details of the implementation are shared between LLDB and GDB,
+and live in `src/etc/debugger_tester/common.py`.
+Notably, LLDB's batch execution features execute commands without waiting for breakpoints to be reached,
+making it generally unsuited for our purposes.
+As such, `debugger_tester/lldb/lldb_batchmode.py` simulates GDB's batchmode behavior by manually
+invoking the test script's commands via `lldb.SBDebugger` and `lldb.SBCommandInterpreter` objects.
+
 ### Ser/De
 
 `TargetData` is converted to a dictionary with `dataclasses.asdict`, and is serialized with Python's
@@ -108,7 +114,7 @@ The current deserialization logic should be resilient to changes in the schema,
 but requires that all fields contain ONLY types that can be
 directly serialized/deserialized by `json.dumps`.
 The acceptable types are those that make up
-[`common.JsonType`](https://github.com/rust-lang/rust/blob/bf9944f0b8006b152ef4d5f408ae75a0dde3d044/src/etc/lldb_batchmode/common.py#L17)
+[`common.JsonType`](https://github.com/rust-lang/rust/blob/c26ce708de5d14682647895d2f3caf38f70b5aa6/src/etc/debugger_tester/common.py#L17)
 
 Since the serialization/deserialization is decoupled from the debugger logic, we can easily switch
 to an alternative format if we find a better alternative to json.
@@ -117,11 +123,11 @@ The conversion logic from the debugger's internal representation to our schema c
 `from_$DEBUGGER.py`.
 
 Once imported, `common` automatically deserializes any existing input data and [stores it in the
-global variable `INPUT_DATA`](https://github.com/rust-lang/rust/blob/bf9944f0b8006b152ef4d5f408ae75a0dde3d044/src/etc/lldb_batchmode/common.py#L523).
+global variable `INPUT_DATA`](https://github.com/rust-lang/rust/blob/c26ce708de5d14682647895d2f3caf38f70b5aa6/src/etc/debugger_tester/common.py#L601).
 This data is what we test against.
 
 > [!NOTE]
-> Special care was taken to prevent `lldb_batchmode` from importing `common` unless a `repr` command
+> Special care was taken to prevent `debugger_tester` from importing `common` unless a `repr` command
 > was actually processed. This saves us from reading/writing input data for tests that don't need
 > it.
 
@@ -140,18 +146,27 @@ to help in diagnosing issues that may occur due to Python or the debugger changi
 
 ### Entry point and `--bless`
 
-Upon encountering a `repr` pseudo-command, `lldb_batchmode.main` dispatches to
-`check_$DEBUGGER.check()`.
+* GDB: Upon import, the `repr` command is registered via the Python API in
+[`debugger_tester/gdb/gdb_commands.py](https://github.com/rust-lang/rust/blob/c26ce708de5d14682647895d2f3caf38f70b5aa6/src/etc/debugger_tester/gdb/gdb_commands.py).
+`ReprCommand.invoke` initiates the check logic with the given variable, and handles top-level error reporting.
+
+* LLDB: Upon encountering a `repr` pseudo-command, `lldb_batchmode.main` dispatches to `check_lldb.check()`.
+
+> [!Note]
+> LLDB also supports registering
+> [custom CLI commands via the Python API](https://lldb.llvm.org/use/tutorials/writing-custom-commands.html).
+> In the future, LLDB's `repr` logic may be refactored to behave more similarly to GDB's.
+
 If the `--bless` option was specified, the variable is converted from
 the in-memory representation to our equivalent schema class.
 This includes the variable's type,
 visualizers, children, the children's types, etc.
 Once inserted into `TargetData`,
-the variable is tested against the data that was just saved to `TargetData`.
+the debugger's variable object is sanity-tested against the data that was just added to `TargetData`.
 
 If no exception or errors occurred and the `--bless` option was specified, `INPUT_DATA` is written
-to the appropriate file just before `lldb_batchmode` exits.
-If errors occur, `INPUT_DATA` is simply discarded.
+to the appropriate file just before `debugger_tester` exits.
+If errors occur, the blessed data is simply discarded.
 
 Currently, the `repr` pseudo-command is checked for directly.
 GDB and LLDB both support creating custom CLI commands via Python code.
@@ -170,7 +185,7 @@ to provide more useful error messages.
 For example, LLDB can be a bit coy when it comes to reporting errors that occur within
 synthetic/summary provider calls.
 This is especially true when running the command within another
-command, as the tests do by calling `script import lldb_batchmode; lldb_batchmode.main()` and
+command, as the tests do by calling `script import debugger_tester; debugger_tester.main()` and
 executing commands in that context.
 
 When we encounter an error, we can import the appropriate summary provider, pass the variable object
@@ -186,7 +201,7 @@ We absolutely do not want people accidentally blessing bad data
 purely because the first error happened to be an expected change.
 
 Errors are printed directly to `stdout` to appear as visible output from the `repr` pseudo command.
-There are [several error helper functions](https://github.com/rust-lang/rust/blob/e7b595554e664e6bd281c8cf881093d6c71bc0e1/src/etc/lldb_batchmode/common.py#L35-L51)
+There are [several error helper functions](https://github.com/rust-lang/rust/blob/c26ce708de5d14682647895d2f3caf38f70b5aa6/src/etc/debugger_tester/common.py#L35-L51)
 to keep formatting consistent.
 
 > [!NOTE]
@@ -198,7 +213,7 @@ to keep formatting consistent.
 If no errors occurred for a given variable, `$VAR_NAME ok` is printed to `stdout` for `compiletest`
 to match against.
 
-Before `lldb_batchmode` exits, one last check is done to ensure that all the types and variables
+Before `debugger_tester` exits, one last check is done to ensure that all the types and variables
 that were present in `INPUT_DATA` have been checked against.
 If this check fails, the script reports the untested types/variables and exits with an error code.
 

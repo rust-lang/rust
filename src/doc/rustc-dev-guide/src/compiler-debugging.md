@@ -75,7 +75,7 @@ stack backtrace:
   34: <std::thread::local::LocalKey<T>>::with
   35: rustc::ty::context::TyCtxt::create_and_enter
   36: rustc_driver::driver::compile_input
-  37: rustc_driver::run_compiler
+  37: rustc_driver::compiler_entrypoint
 ```
 
 If you set `debug = true`, you will get line numbers for the stack trace.
@@ -93,7 +93,7 @@ stack backtrace:
   33: rustc_driver::driver::compile_input
              at /home/user/rust/compiler/rustc_driver/src/driver.rs:1010
              at /home/user/rust/compiler/rustc_driver/src/driver.rs:212
-  34: rustc_driver::run_compiler
+  34: rustc_driver::compiler_entrypoint
              at /home/user/rust/compiler/rustc_driver/src/lib.rs:253
 ```
 
@@ -181,7 +181,7 @@ stack backtrace:
    9: rustc_typeck::check::FnCtxt::select_obligations_where_possible
              at /home/user/rust/compiler/rustc_typeck/src/check/mod.rs:2192
   (~~~ IRRELEVANT PART OF BACKTRACE REMOVED BY ME ~~~)
-  36: rustc_driver::run_compiler
+  36: rustc_driver::compiler_entrypoint
              at /home/user/rust/compiler/rustc_driver/src/lib.rs:253
 ```
 

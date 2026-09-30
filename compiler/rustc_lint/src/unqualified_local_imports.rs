@@ -45,7 +45,7 @@ declare_lint_pass!(UnqualifiedLocalImports => [UNQUALIFIED_LOCAL_IMPORTS]);
 
 impl<'tcx> LateLintPass<'tcx> for UnqualifiedLocalImports {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
-        let hir::ItemKind::Use(path, _kind) = item.kind else { return };
+        let hir::ItemKind::Use(hir::UseTree { prefix: path, .. }) = item.kind else { return };
         // Check the type and value namespace resolutions for a local crate.
         let is_local_import = matches!(
             path.res.type_ns,

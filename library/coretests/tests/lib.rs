@@ -15,6 +15,7 @@
 #![feature(cfg_overflow_checks)]
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(char_internals)]
+#![feature(clamp_magnitude)]
 #![feature(clamp_to)]
 #![feature(clone_to_uninit)]
 #![feature(cmp_minmax)]
@@ -65,7 +66,6 @@
 #![feature(fmt_internals)]
 #![feature(formatting_options)]
 #![feature(freeze)]
-#![feature(funnel_shifts)]
 #![feature(future_join)]
 #![feature(generic_assert_internals)]
 #![feature(hasher_prefixfree_extras)]
@@ -130,7 +130,6 @@
 #![feature(uint_gather_scatter_bits)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
-#![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 #![allow(internal_features)]
 #![deny(implicit_provenance_casts)]

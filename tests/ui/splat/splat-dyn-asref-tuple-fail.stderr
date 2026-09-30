@@ -17,7 +17,6 @@ note: required by a bound in `dyn_asref_splat`
   --> $DIR/splat-dyn-asref-tuple-fail.rs:18:8
    |
 LL | fn dyn_asref_splat<T>(#[rustc_splat] _t: &dyn AsRef<T>)
-   |    --------------- required by a bound in this function
 ...
 LL |     T: std::marker::Tuple,
    |        ^^^^^^^^^^^^^^^^^^ required by this bound in `dyn_asref_splat`

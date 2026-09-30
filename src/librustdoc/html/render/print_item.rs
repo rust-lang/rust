@@ -1296,79 +1296,71 @@ fn item_trait_alias(
 
 fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> impl fmt::Display {
     fmt::from_fn(|w| {
+        let def_id = it.def_id().unwrap();
+
         wrap_item(w, |w| {
             render_attributes_in_code(w, it, "", cx)?;
             write!(
                 w,
-                "{vis}type {name}{generics}{where_clause} = {type_};",
+                "{vis}type {name}{generics}",
                 vis = visibility_print_with_space(it, cx),
                 name = it.name.unwrap(),
                 generics = print_generics(&t.generics, cx),
-                where_clause =
-                    print_where_clause(&t.generics, cx, 0, Ending::Newline).maybe_display(),
-                type_ = print_type(&t.type_, cx),
-            )
+            )?;
+
+            let type_ = print_type(&t.type_, cx);
+            let where_clause =
+                print_where_clause(&t.generics, cx, 0, Ending::NoNewline).maybe_display();
+
+            if cx.tcx().type_alias_is_checked(def_id) {
+                write!(w, " = {type_}{where_clause}")
+            } else {
+                write!(w, "{where_clause} = {type_}")
+            }?;
+
+            w.write_str(";")
         })?;
 
         write!(w, "{}", document(cx, it, None, HeadingOffset::H2))?;
 
         if let Some(inner_type) = &t.inner_type {
-            write!(w, "{}", write_section_heading("Aliased Type", "aliased-type", None, ""),)?;
+            write!(w, "{}", write_section_heading("Aliased Type", "aliased-type", None, ""))?;
+
+            let ty = cx.tcx().type_of(def_id).instantiate_identity().skip_norm_wip();
+            let adt_def_id = ty.ty_adt_def().unwrap().did();
 
             match inner_type {
                 clean::TypeAliasInnerType::Enum { variants, is_non_exhaustive } => {
-                    let ty = cx
-                        .tcx()
-                        .type_of(it.def_id().unwrap())
-                        .instantiate_identity()
-                        .skip_norm_wip();
-                    let enum_def_id = ty.ty_adt_def().unwrap().did();
-
                     DisplayEnum {
                         variants,
                         generics: &t.generics,
                         is_non_exhaustive: *is_non_exhaustive,
-                        def_id: enum_def_id,
+                        def_id: adt_def_id,
                     }
                     .render_into(cx, it, true, w)?;
                 }
                 clean::TypeAliasInnerType::Union { fields } => {
-                    let ty = cx
-                        .tcx()
-                        .type_of(it.def_id().unwrap())
-                        .instantiate_identity()
-                        .skip_norm_wip();
-                    let union_def_id = ty.ty_adt_def().unwrap().did();
-
                     ItemUnion {
                         cx,
                         it,
                         fields,
                         generics: &t.generics,
                         is_type_alias: true,
-                        def_id: union_def_id,
+                        def_id: adt_def_id,
                     }
                     .render_into(w)?;
                 }
                 clean::TypeAliasInnerType::Struct { ctor_kind, fields } => {
-                    let ty = cx
-                        .tcx()
-                        .type_of(it.def_id().unwrap())
-                        .instantiate_identity()
-                        .skip_norm_wip();
-                    let struct_def_id = ty.ty_adt_def().unwrap().did();
-
                     DisplayStruct {
                         ctor_kind: *ctor_kind,
                         generics: &t.generics,
                         fields,
-                        def_id: struct_def_id,
+                        def_id: adt_def_id,
                     }
                     .render_into(cx, it, true, w)?;
                 }
             }
         } else {
-            let def_id = it.item_id.expect_def_id();
             // Render any items associated directly to this alias, as otherwise they
             // won't be visible anywhere in the docs. It would be nice to also show
             // associated items from the aliased type (see discussion in #32077), but
@@ -2017,13 +2009,11 @@ fn item_constant(
 
             write!(
                 w,
-                "{vis}const {name}{generics}: {typ}{where_clause}",
+                "{vis}const {name}{generics}: {typ}",
                 vis = visibility_print_with_space(it, cx),
                 name = it.name.unwrap(),
                 generics = print_generics(generics, cx),
                 typ = print_type(ty, cx),
-                where_clause =
-                    print_where_clause(generics, cx, 0, Ending::NoNewline).maybe_display(),
             )?;
 
             // FIXME: The code below now prints
@@ -2039,9 +2029,7 @@ fn item_constant(
             let is_literal = c.is_literal(tcx);
             let expr = c.expr(tcx);
             if value.is_some() || is_literal {
-                write!(w, " = {expr};", expr = Escape(&expr))?;
-            } else {
-                w.write_str(";")?;
+                write!(w, " = {expr}", expr = Escape(&expr))?;
             }
 
             if !is_literal && let Some(value) = &value {
@@ -2051,9 +2039,14 @@ fn item_constant(
                 if value_lowercase != expr_lowercase
                     && value_lowercase.trim_end_matches("i32") != expr_lowercase
                 {
-                    write!(w, " // {value}", value = Escape(value))?;
+                    write!(w, " /* {value} */", value = Escape(value))?;
                 }
             }
+
+            print_where_clause(generics, cx, 0, Ending::NoNewline).maybe_display().fmt(w)?;
+
+            w.write_str(";")?;
+
             Ok::<(), fmt::Error>(())
         })?;
 

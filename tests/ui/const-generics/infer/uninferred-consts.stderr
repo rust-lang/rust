@@ -7,6 +7,7 @@ LL |     Foo.foo();
 note: required by a const generic parameter in `Foo::foo`
   --> $DIR/uninferred-consts.rs:6:12
    |
+LL | impl Foo {
 LL |     fn foo<const A: usize, const B: usize>(self) {}
    |            ^^^^^^^^^^^^^^ required by this const generic parameter in `Foo::foo`
 help: consider specifying the generic arguments
@@ -23,6 +24,7 @@ LL |     Foo.foo();
 note: required by a const generic parameter in `Foo::foo`
   --> $DIR/uninferred-consts.rs:6:28
    |
+LL | impl Foo {
 LL |     fn foo<const A: usize, const B: usize>(self) {}
    |                            ^^^^^^^^^^^^^^ required by this const generic parameter in `Foo::foo`
 help: consider specifying the generic arguments

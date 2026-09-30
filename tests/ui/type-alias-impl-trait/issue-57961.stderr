@@ -12,6 +12,7 @@ LL |     type Bar = std::vec::IntoIter<u32>;
 note: required by a bound in `Foo::Bar`
   --> $DIR/issue-57961.rs:6:24
    |
+LL | trait Foo {
 LL |     type Bar: Iterator<Item = X>;
    |                        ^^^^^^^^ required by this bound in `Foo::Bar`
 

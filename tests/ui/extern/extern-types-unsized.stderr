@@ -23,13 +23,12 @@ LL |     assert_sized::<Foo>();
    |
    = help: within `Foo`, the trait `Sized` is not implemented for `A`
 note: required because it appears within the type `Foo`
-  --> $DIR/extern-types-unsized.rs:9:8
+  --> $DIR/extern-types-unsized.rs:11:5
    |
 LL | struct Foo {
-   |        ^^^
 LL |     x: u8,
 LL |     tail: A,
-   |     ------- required by this field
+   |     ^^^^^^^ required by this field
 note: required by an implicit `Sized` bound in `assert_sized`
   --> $DIR/extern-types-unsized.rs:19:17
    |
@@ -48,13 +47,12 @@ LL |     assert_sized::<Bar<A>>();
    |
    = help: within `Bar<A>`, the trait `Sized` is not implemented for `A`
 note: required because it appears within the type `Bar<A>`
-  --> $DIR/extern-types-unsized.rs:14:8
+  --> $DIR/extern-types-unsized.rs:16:5
    |
 LL | struct Bar<T: ?Sized> {
-   |        ^^^
 LL |     x: u8,
 LL |     tail: T,
-   |     ------- required by this field
+   |     ^^^^^^^ required by this field
 note: required by an implicit `Sized` bound in `assert_sized`
   --> $DIR/extern-types-unsized.rs:19:17
    |
@@ -86,13 +84,12 @@ LL |     assert_sized::<Bar<Bar<A>>>();
    |
    = help: within `Bar<Bar<A>>`, the trait `Sized` is not implemented for `A`
 note: required because it appears within the type `Bar<A>`
-  --> $DIR/extern-types-unsized.rs:14:8
+  --> $DIR/extern-types-unsized.rs:16:5
    |
 LL | struct Bar<T: ?Sized> {
-   |        ^^^
 LL |     x: u8,
 LL |     tail: T,
-   |     ------- required by this field
+   |     ^^^^^^^ required by this field
 note: required by an implicit `Sized` bound in `assert_sized`
   --> $DIR/extern-types-unsized.rs:19:17
    |

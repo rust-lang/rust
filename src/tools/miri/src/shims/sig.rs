@@ -150,9 +150,8 @@ macro_rules! shim_sig_arg {
         $this.tcx.types.bool
     };
     ($this:ident, *_) => {
-        // Pointee types usually don't matter so we allow it to be omitted.
         // Mutability does not matter for ABI.
-        $this.machine.layouts.mut_raw_ptr.ty
+        $this.machine.layouts.void_ptr_mut.ty
     };
     ($this:ident, *$($ty:tt)*) => {
         // Pointee types matter for varargs so we support explicitly giving them.
@@ -164,8 +163,8 @@ macro_rules! shim_sig_arg {
         )
     };
     ($this:ident, fn(..) -> _) => {
-        // We currently treat fn ptrs as ABI-compatible with data ptrs so we can just use a raw ptr.
-        $this.machine.layouts.const_raw_ptr.ty
+        // All function pointer types are the same on the ABI level so we don't care about arg/ret.
+        $this.machine.layouts.fn_ptr.ty
     };
     ($this:ident, &[$($ty:tt)*]) => {
         rustc_middle::ty::Ty::new_ref(

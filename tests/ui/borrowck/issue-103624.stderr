@@ -16,6 +16,12 @@ LL | |         })
    | |          |
    | |__________`self` escapes the method body here
    |            argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `spawn_blocking` introduced here
+  --> $DIR/issue-103624.rs:7:64
+   |
+LL | async fn spawn_blocking<T>(f: impl (Fn() -> T) + Send + Sync + 'static) -> T {
+   |                                                                ^^^^^^^ lifetime requirement introduced here
 
 error[E0507]: cannot move out of `self.b`, as `self` is a captured variable in an `Fn` closure
   --> $DIR/issue-103624.rs:16:13

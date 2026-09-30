@@ -93,7 +93,7 @@ impl<'tcx> MirPatch<'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::UnwindResume,
-                attributes: ThinVec::new(),
+                loop_hint_attrs: ThinVec::new(),
             }),
             true,
         ));
@@ -110,7 +110,7 @@ impl<'tcx> MirPatch<'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::Unreachable,
-                attributes: ThinVec::new(),
+                loop_hint_attrs: ThinVec::new(),
             }),
             true,
         ));
@@ -127,7 +127,7 @@ impl<'tcx> MirPatch<'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::Unreachable,
-                attributes: ThinVec::new(),
+                loop_hint_attrs: ThinVec::new(),
             }),
             false,
         ));
@@ -146,7 +146,7 @@ impl<'tcx> MirPatch<'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::UnwindTerminate(reason),
-                attributes: ThinVec::new(),
+                loop_hint_attrs: ThinVec::new(),
             }),
             true,
         ));

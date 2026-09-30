@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use rustc_ast::AttrStyle;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, DUMMY_SP, FileName, Span};
@@ -25,6 +26,7 @@ fn single_backtick() {
             doc: sym::empty, // unused placeholder
             indent: 0,
             from_expansion: false,
+            style: AttrStyle::Outer,
         }],
     )
     .unwrap();
@@ -48,6 +50,7 @@ fn utf8() {
             doc: sym::empty, // unused placeholder
             indent: 0,
             from_expansion: false,
+            style: AttrStyle::Outer,
         }],
     )
     .unwrap();

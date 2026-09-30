@@ -6,9 +6,9 @@
 
 use std::ops::ControlFlow;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::FatalError;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
@@ -16,7 +16,7 @@ use rustc_middle::ty::{
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
     Upcast, elaborate,
 };
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, kw, sym};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -368,10 +368,10 @@ pub fn dyn_compatibility_violations_for_assoc_item(
 
             let mut errors = Vec::new();
 
-            if tcx.features().min_generic_const_args() {
+            if tcx.features().gca_min_const_items() {
                 if !tcx.generics_of(item.def_id).is_own_empty() {
                     errors.push(AssocConstViolation::Generic);
-                } else if !tcx.is_always_gca(item.def_id) && !tcx.features().generic_const_args() {
+                } else if !tcx.is_always_gca(item.def_id) && !tcx.features().gca_const_items() {
                     errors.push(AssocConstViolation::NonType);
                 }
 
@@ -403,7 +403,7 @@ pub fn dyn_compatibility_violations_for_assoc_item(
                     // Get an accurate span depending on the violation.
                     let span = match (&v, node) {
                         (MethodViolation::ReferencesSelfInput(Some(span)), _) => *span,
-                        (MethodViolation::UndispatchableReceiver(Some(span)), _) => *span,
+                        (MethodViolation::UndispatchableReceiver(Some((span, _))), _) => *span,
                         (MethodViolation::ReferencesImplTraitInTrait(span), _) => *span,
                         (MethodViolation::ReferencesSelfOutput, Some(node)) => {
                             node.fn_decl().map_or(item.ident(tcx).span, |decl| decl.output.span())
@@ -519,16 +519,40 @@ fn virtual_call_violations_for_method<'tcx>(
     // `Receiver: Unsize<Receiver[Self => dyn Trait]>`.
     if receiver_ty != tcx.types.self_param {
         if !receiver_is_dispatchable(tcx, method, receiver_ty) {
-            let span = if let Some(hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Fn(sig, _),
+            let span_n_lt = if let Some(hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Fn(sig, trait_fn),
                 ..
             })) = tcx.hir_get_if_local(method.def_id).as_ref()
             {
-                Some(sig.decl.inputs[0].span)
+                // If we have `self: &'a Ty`, get `'a`, so that we can suggest `&'a self`.
+                let lt = match sig.decl.inputs[0].kind {
+                    hir::TyKind::Ref(lt, ..) if lt.ident.name == kw::UnderscoreLifetime => {
+                        sym::empty
+                    }
+                    hir::TyKind::Ref(lt, ..) => lt.ident.name,
+                    _ => sym::empty,
+                };
+                // Get the `Span` for all of `self: Ty`, not just `Ty`.
+                match trait_fn {
+                    hir::TraitFn::Required([Some(name), ..])
+                        if name.span.eq_ctxt(sig.decl.inputs[0].span) =>
+                    {
+                        Some(name.span.to(sig.decl.inputs[0].span))
+                    }
+                    hir::TraitFn::Provided(body_id)
+                        if let body = tcx.hir_body(*body_id)
+                            && let Some(p) = body.params.get(0)
+                            && p.span.eq_ctxt(p.ty_span) =>
+                    {
+                        Some(p.span.to(p.ty_span))
+                    }
+                    _ => None,
+                }
+                .map(|sp| (sp, lt))
             } else {
                 None
             };
-            errors.push(MethodViolation::UndispatchableReceiver(span));
+            errors.push(MethodViolation::UndispatchableReceiver(span_n_lt));
         } else {
             // We confirm that the `receiver_is_dispatchable` is accurate later,
             // see `check_receiver_correct`. It should be kept in sync with this code.
@@ -725,6 +749,15 @@ fn receiver_is_dispatchable<'tcx>(
         let trait_predicate = ty::TraitRef::new_from_args(tcx, trait_def_id, args);
         clauses.push(trait_predicate.upcast(tcx));
 
+        // U satisfies `Trait`'s where-bounds.
+        clauses.extend(
+            tcx.clauses_of(trait_def_id)
+                .instantiate(tcx, args)
+                .clauses
+                .into_iter()
+                .map(Unnormalized::skip_norm_wip),
+        );
+
         let meta_sized_predicate = {
             let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, DUMMY_SP);
             ty::TraitRef::new(tcx, meta_sized_did, [unsized_self_ty])
@@ -766,7 +799,7 @@ enum AllowSelfProjections {
 /// associated type of the current trait, since we retain the value of those associated
 /// types in the trait object type itself.
 ///
-/// The same thing holds for associated consts under feature `min_generic_const_args`.
+/// The same thing holds for associated consts under feature `gca_min_const_items`.
 ///
 /// ```rust,ignore (example)
 /// trait SuperTrait {
@@ -890,7 +923,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
             ty::ConstKind::Alias(
                 _,
                 ty::AliasConst { kind: ty::AliasConstKind::Projection { def_id }, args, .. },
-            ) if self.tcx.features().min_generic_const_args() => {
+            ) if self.tcx.features().gca_min_const_items() => {
                 match self.allow_self_projections {
                     AllowSelfProjections::Yes => {
                         let trait_def_id = self.tcx.parent(def_id);

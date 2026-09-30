@@ -867,12 +867,12 @@ fn eq_ty(l: &Ty, r: &Ty) -> bool {
         },
         (Slice(l), Slice(r)) => eq_ty(l, r),
         (Array(le, ls), Array(re, rs)) => eq_ty(le, re) && eq_expr(&ls.value, &rs.value),
-        (Ptr(l), Ptr(r)) => l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty),
-        (Ref(ll, l), Ref(rl, r)) => {
-            both(ll.as_ref(), rl.as_ref(), |l, r| eq_id(l.ident, r.ident)) && l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty)
+        (Ptr(l_ty, l_mutbl), Ptr(r_ty, r_mutbl)) => l_mutbl == r_mutbl && eq_ty(l_ty, r_ty),
+        (Ref(ll, l_ty, l_mutbl), Ref(rl, r_ty, r_mutbl)) => {
+            both(ll.as_ref(), rl.as_ref(), |l, r| eq_id(l.ident, r.ident)) && l_mutbl == r_mutbl && eq_ty(l_ty, r_ty)
         },
-        (PinnedRef(ll, l), PinnedRef(rl, r)) => {
-            both(ll.as_ref(), rl.as_ref(), |l, r| eq_id(l.ident, r.ident)) && l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty)
+        (PinnedRef(ll, l_ty, l_mutbl), PinnedRef(rl, r_ty, r_mutbl)) => {
+            both(ll.as_ref(), rl.as_ref(), |l, r| eq_id(l.ident, r.ident)) && l_mutbl == r_mutbl && eq_ty(l_ty, r_ty)
         },
         (FnPtr(l), FnPtr(r)) => {
             l.safety == r.safety

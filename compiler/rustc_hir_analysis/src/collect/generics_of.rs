@@ -21,8 +21,8 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         msg: &'static str,
     }
 
-    impl<'a> Diagnostic<'a, ()> for GenericParametersForbiddenHere {
-        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+    impl<'a> Diagnostic<'a> for GenericParametersForbiddenHere {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
             let Self { msg } = self;
             Diag::new(dcx, level, msg)
         }
@@ -224,7 +224,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             // Node::AnonConst, or whether it will be represented directly, so it must generate a
             // DefId. If it ends up being direct, this DefId is then attached to the top-level
             // ConstArg, which is what we are seeing here.
-            debug_assert!(tcx.features().min_generic_const_args());
+            debug_assert!(tcx.features().gca());
             // Forward to the real parent.
             Some(tcx.local_parent(def_id))
         }

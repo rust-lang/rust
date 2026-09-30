@@ -1,7 +1,8 @@
 //@ check-pass
 
-#![feature(min_generic_const_args)]
-#![feature(adt_const_params, unsized_const_params)]
+#![feature(adt_const_params, gca_adts, gca_min_const_items, unsized_const_params)]
+
+use std::gca;
 
 #[derive(PartialEq, Eq, std::marker::ConstParamTy)]
 enum Enum<T> {
@@ -10,7 +11,7 @@ enum Enum<T> {
     Store(T),
 }
 
-const _: Enum<()> = core::direct_const_arg!(Enum::<()>::Unit);
-const _: Enum<()> = core::direct_const_arg!(Enum::<()>::Tuple());
+const _: Enum<()> = gca!(Enum::<()>::Unit);
+const _: Enum<()> = gca!(Enum::<()>::Tuple());
 
 fn main() {}

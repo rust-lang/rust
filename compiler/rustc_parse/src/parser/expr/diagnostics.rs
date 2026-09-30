@@ -10,7 +10,7 @@ impl<'a> Parser<'a> {
     /// Recover from alphabetic logic operators `and` and `or` as found in e.g., Python and PHP.
     pub(super) fn recover_from_alpha_logic_op(&self) -> Option<Spanned<AssocOp>> {
         if self.may_recover()
-            && let Some((ident, token::IdentIsRaw::No)) = self.token.ident()
+            && let Some(ident) = self.token.non_raw_ident()
         {
             let (op, sub): (_, fn(_) -> _) = match ident.name {
                 sym::and => (BinOpKind::And, diagnostics::InvalidLogicalOperatorSub::Conjunction),

@@ -1,9 +1,11 @@
 error: `impl` item signature doesn't match `trait` item signature
   --> $DIR/lifetime-mismatch-between-trait-and-impl.rs:6:5
    |
+LL | trait Foo {
 LL |     fn foo<'a>(x: &i32, y: &'a i32) -> &'a i32;
    |     ------------------------------------------- expected `fn(&'1 i32, &'a i32) -> &'a i32`
 ...
+LL | impl Foo for () {
 LL |     fn foo<'a>(x: &'a i32, y: &'a i32) -> &'a i32 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&'1 i32, &'1 i32) -> &'1 i32`
    |

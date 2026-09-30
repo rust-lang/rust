@@ -63,10 +63,6 @@ fn check_sve2_includes_neon() {
     assert!(cfg!(target_feature = "sve2"));
 }
 
-//[hexagon-v60]~? WARN unstable feature specified for `-Ctarget-feature`: `v60`
-//[hexagon-v68]~? WARN unstable feature specified for `-Ctarget-feature`: `v68`
-//[hexagon-hvxv66]~? WARN unstable feature specified for `-Ctarget-feature`: `hvxv66`
-
 #[cfg(hexagon_v60)]
 fn check_v60_not_v68() {
     // Enabling v60 should not jump up the scalar feature hierarchy.

@@ -79,6 +79,8 @@ LL +     let _ = foo::bar;
 error[E0423]: cannot find value `Cell` in module `::std::cell`
   --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:37:22
    |
+LL | macro_rules! Type {
+LL |     () => {
 LL |         ::std::cell::Cell
    |                      ^^^^
 ...
@@ -86,7 +88,6 @@ LL |     Type!().get();
    |     ------- in this macro invocation
    |
    = note: a struct named `::std::cell::Cell` exists in another namespace
-   = note: this error originates in the macro `Type` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
 LL -     Type!().get();
@@ -96,6 +97,8 @@ LL +     <Type!()>::get();
 error[E0423]: cannot find value `Cell` in module `::std::cell`
   --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:37:22
    |
+LL | macro_rules! Type {
+LL |     () => {
 LL |         ::std::cell::Cell
    |                      ^^^^
 ...
@@ -103,7 +106,6 @@ LL |     Type! {}.get;
    |     -------- in this macro invocation
    |
    = note: a struct named `::std::cell::Cell` exists in another namespace
-   = note: this error originates in the macro `Type` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
 LL -     Type! {}.get;
@@ -113,6 +115,8 @@ LL +     <Type! {}>::get;
 error[E0423]: cannot find value `Alias` in this scope
   --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:43:9
    |
+LL | macro_rules! Type {
+...
 LL |         Alias
    |         ^^^^^
 ...
@@ -120,7 +124,6 @@ LL |     Type!(alias).get();
    |     ------------ in this macro invocation
    |
    = note: a type alias named `Alias` exists in another namespace
-   = note: this error originates in the macro `Type` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
 LL -     Type!(alias).get();
@@ -130,6 +133,8 @@ LL +     <Type!(alias)>::get();
 error[E0423]: cannot find value `Alias` in this scope
   --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:43:9
    |
+LL | macro_rules! Type {
+...
 LL |         Alias
    |         ^^^^^
 ...
@@ -137,7 +142,6 @@ LL |     Type! {alias}.get;
    |     ------------- in this macro invocation
    |
    = note: a type alias named `Alias` exists in another namespace
-   = note: this error originates in the macro `Type` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
 LL -     Type! {alias}.get;
@@ -147,6 +151,8 @@ LL +     <Type! {alias}>::get;
 error[E0423]: cannot find value `Vec` in this scope
   --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:52:9
    |
+LL | macro_rules! create {
+LL |     (type method) => {
 LL |         Vec.new()
    |         ^^^
 ...
@@ -154,7 +160,6 @@ LL |     let _ = create!(type method);
    |             -------------------- in this macro invocation
    |
    = note: a struct named `Vec` exists in another namespace
-   = note: this error originates in the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
 LL -         Vec.new()
@@ -164,6 +169,8 @@ LL +         Vec::new()
 error[E0423]: cannot find value `Vec` in this scope
   --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:57:9
    |
+LL | macro_rules! create {
+...
 LL |         Vec.new
    |         ^^^
 ...
@@ -171,7 +178,6 @@ LL |     let _ = create!(type field);
    |             ------------------- in this macro invocation
    |
    = note: a struct named `Vec` exists in another namespace
-   = note: this error originates in the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
 LL -         Vec.new
@@ -181,14 +187,19 @@ LL +         Vec::new
 error[E0423]: cannot find value `Cell` in module `::std::cell`
   --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:37:22
    |
-LL |         ::std::cell::Cell
-   |                      ^^^^
+LL | / macro_rules! Type {
+LL | |     () => {
+LL | |         ::std::cell::Cell
+   | |                      ^^^^
+...  |
+LL | |     };
+LL | | }
+   | |_- this error originates in the macro `Type` which comes from the expansion of the macro `create`
 ...
-LL |     let _ = create!(macro method);
-   |             --------------------- in this macro invocation
+LL |       let _ = create!(macro method);
+   |               --------------------- in this macro invocation
    |
    = note: a struct named `::std::cell::Cell` exists in another namespace
-   = note: this error originates in the macro `Type` which comes from the expansion of the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
 LL -         Type!().new(0)
@@ -198,14 +209,21 @@ LL +         <Type!()>::new(0)
 error[E0423]: cannot find value `Alias` in this scope
   --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:43:9
    |
-LL |         Alias
-   |         ^^^^^
+LL | / macro_rules! Type {
+LL | |     () => {
+LL | |         ::std::cell::Cell
+...  |
+LL | |         Alias
+   | |         ^^^^^
+...  |
+LL | |     };
+LL | | }
+   | |_- this error originates in the macro `Type` which comes from the expansion of the macro `create`
 ...
-LL |     let _ = create!(macro method alias);
-   |             --------------------------- in this macro invocation
+LL |       let _ = create!(macro method alias);
+   |               --------------------------- in this macro invocation
    |
    = note: a type alias named `Alias` exists in another namespace
-   = note: this error originates in the macro `Type` which comes from the expansion of the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
 LL -         Type!(alias).new(0)
@@ -231,6 +249,8 @@ LL +         $Ty::foo
 error[E0423]: cannot find value `Alias` in this scope
   --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:79:9
    |
+LL | macro_rules! check_ident {
+LL |     ($Ident:ident) => {
 LL |         Alias.$Ident
    |         ^^^^^
 ...
@@ -238,7 +258,6 @@ LL |     let _ = check_ident!(foo);
    |             ----------------- in this macro invocation
    |
    = note: a type alias named `Alias` exists in another namespace
-   = note: this error originates in the macro `check_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
 LL -         Alias.$Ident

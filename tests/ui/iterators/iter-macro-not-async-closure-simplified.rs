@@ -7,9 +7,13 @@
 // explanation is moved to the `help` instead of the span label.
 //
 //@ edition: 2024
-//@ revisions: narrow wide
+//@ revisions: narrow wide next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[narrow] compile-flags: --diagnostic-width=20
 //@[wide] compile-flags: --diagnostic-width=300
+//@[next] compile-flags: -Znext-solver
+//@[next] known-bug: trait-system-refactor-initiative#302
+//@[next] check-pass
 
 #![feature(yield_expr, iter_macro)]
 
@@ -25,5 +29,5 @@ fn main() {
     }};
 
     call_async_once(f);
-    //~^ ERROR AsyncFnOnce()` is not satisfied
+    //[narrow,wide]~^ ERROR AsyncFnOnce()` is not satisfied
 }

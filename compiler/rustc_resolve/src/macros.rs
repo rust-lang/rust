@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use rustc_ast::{self as ast, Crate, DelegationSuffixes, NodeId};
 use rustc_ast_pretty::pprust;
+use rustc_attr_ir::{Attribute, AttributeKind, CfgEntry, StabilityLevel, StrippedCfgItem};
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::sync::RwLock;
 use rustc_errors::{Applicability, StashKey};
@@ -17,10 +18,8 @@ use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{
     AstFragment, AstFragmentKind, Invocation, InvocationKind, SupportsMacroExpansion,
 };
-use rustc_hir::attrs::{AttributeKind, CfgEntry, StrippedCfgItem};
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
-use rustc_hir::{Attribute, StabilityLevel};
 use rustc_lint_defs::builtin::{
     LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNUSED_MACRO_RULES, UNUSED_MACROS,
 };
@@ -1098,7 +1097,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     feature,
                     reason.to_opt_reason(),
                     issue,
-                    None,
                     span,
                     stability::UnstableKind::Regular,
                 );
@@ -1213,7 +1211,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &self,
         macro_def: &ast::MacroDef,
         ident: Ident,
-        attrs: &[rustc_hir::Attribute],
+        attrs: &[rustc_attr_ir::Attribute],
         span: Span,
         node_id: NodeId,
         edition: Edition,

@@ -256,10 +256,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             GenericParamKind::Const { ty, .. } => {
                 let lowered_ty = icx.lower_ty(ty);
                 if !tcx.features().generic_const_parameter_types() && lowered_ty.has_param() {
-                    let guar = tcx
-                        .dcx()
-                        .create_err(ParamInTyOfConstParam { span: ty.span, ty: lowered_ty })
-                        .emit();
+                    let guar =
+                        tcx.dcx().emit_err(ParamInTyOfConstParam { span: ty.span, ty: lowered_ty });
                     Ty::new_error(tcx, guar)
                 } else {
                     lowered_ty
@@ -543,7 +541,7 @@ fn infer_placeholder_type<'tcx>(
                 }
             }
 
-            diag.emit()
+            diag.emit_err()
         });
     Ty::new_error(tcx, guar)
 }

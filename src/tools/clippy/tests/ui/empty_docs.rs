@@ -4,6 +4,9 @@
 #![expect(clippy::mixed_attributes_style)]
 #![feature(extern_types)]
 
+extern crate proc_macros;
+use proc_macros::external;
+
 mod outer {
     //!
     //~^ empty_docs
@@ -91,4 +94,12 @@ mod issue_12377 {
     struct Foo {
         a: u8,
     }
+}
+
+external! {
+    #[doc = $("")]
+    //~^ empty_docs
+    $(
+        fn issue_16382() {}
+    )
 }

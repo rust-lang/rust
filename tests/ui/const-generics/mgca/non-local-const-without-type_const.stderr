@@ -4,7 +4,7 @@ error: use of `const` in the type system not marked as direct
 LL |     let x = [(); non_local_const::N];
    |                  ^^^^^^^^^^^^^^^^^^
    |
-   = note: only consts with a `direct_const_arg!` right-hand side may be used in types
+   = note: only consts with a `gca!` right-hand side may be used in types
 
 error: aborting due to 1 previous error
 

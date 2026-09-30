@@ -2825,8 +2825,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    #[cfg_attr(bootstrap, doc = "```rust,ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
+    /// ```rust,compile_fail
     /// #![feature(staged_api)]
     /// #![stable(feature = "test", since = "1.0.0")]
     ///
@@ -2837,9 +2836,9 @@ declare_lint! {
     /// pub use self::S as T;
     ///
     /// fn main() {}
-    #[doc = "```"]
+    /// ```
     ///
-    #[cfg_attr(not(bootstrap), doc = "{{produces}}")]
+    /// {{produces}}
     ///
     /// ### Explanation
     ///

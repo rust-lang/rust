@@ -18,7 +18,7 @@ See <https://doc.rust-lang.org/std/alloc/fn.handle_alloc_error.html>.
 
 ## `tests/ui/allocator`
 
-These tests exercise `#![feature(allocator_api)]` and the `#[global_allocator]` attribute.
+These tests exercise `#![feature(allocator_ext)]` and the `#[global_allocator]` attribute.
 
 See [Allocator traits and `std::heap` #32838](https://github.com/rust-lang/rust/issues/32838).
 

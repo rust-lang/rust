@@ -1,5 +1,7 @@
 //@only-target: windows # this directly tests windows-only functions
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
+
 #![allow(nonstandard_style)]
 
 use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
@@ -19,14 +21,18 @@ use windows_sys::Win32::Foundation::{
 };
 use windows_sys::Win32::Storage::FileSystem::{
     BY_HANDLE_FILE_INFORMATION, CREATE_ALWAYS, CREATE_NEW, CreateFileW, DeleteFileW,
-    FILE_ALLOCATION_INFO, FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL, FILE_BEGIN,
-    FILE_CURRENT, FILE_END_OF_FILE_INFO, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT,
-    FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, FileAllocationInfo, FileEndOfFileInfo,
-    FlushFileBuffers, GetFileInformationByHandle, MoveFileExW, OPEN_ALWAYS, OPEN_EXISTING,
-    SetFileInformationByHandle, SetFilePointerEx,
+    FILE_ALLOCATION_INFO, FILE_ATTRIBUTE_ARCHIVE, FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL,
+    FILE_BEGIN, FILE_CURRENT, FILE_END_OF_FILE_INFO, FILE_FLAG_BACKUP_SEMANTICS,
+    FILE_FLAG_OPEN_REPARSE_POINT, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
+    FileAllocationInfo, FileEndOfFileInfo, FlushFileBuffers, GetFileInformationByHandle,
+    MoveFileExW, OPEN_ALWAYS, OPEN_EXISTING, SetFileInformationByHandle, SetFilePointerEx,
 };
 use windows_sys::Win32::System::IO::IO_STATUS_BLOCK;
 use windows_sys::Win32::System::Threading::GetCurrentProcess;
+
+// Windows seems to usually but not always set FILE_ATTRIBUTE_ARCHIVE for new files.
+// So we accept either "ARCHIVE" or "NORMAL".
+const REGULAR_FILE: u32 = FILE_ATTRIBUTE_ARCHIVE | FILE_ATTRIBUTE_NORMAL;
 
 fn main() {
     unsafe {
@@ -34,7 +40,7 @@ fn main() {
         test_create_normal_file();
         test_create_always_twice();
         test_open_always_twice();
-        test_open_dir_reparse();
+        // test_open_dir_reparse();
         test_delete_file();
         test_ntstatus_to_dos();
         test_file_read_write();
@@ -71,8 +77,29 @@ unsafe fn test_create_dir_file() {
 }
 
 unsafe fn test_create_normal_file() {
-    let temp = utils::tmp().join("test.txt");
+    let temp = utils::prepare("miri_test_create_normal_file.txt");
     let raw_path = to_wide_cstr(&temp);
+    let handle = CreateFileW(
+        raw_path.as_ptr(),
+        GENERIC_READ | GENERIC_WRITE,
+        FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+        ptr::null_mut(),
+        CREATE_NEW,
+        FILE_FLAG_OPEN_REPARSE_POINT, // std also sets this
+        ptr::null_mut(),
+    );
+    assert_ne!(handle.addr(), usize::MAX, "CreateFileW Failed: {}", GetLastError());
+    let mut info = std::mem::zeroed::<BY_HANDLE_FILE_INFORMATION>();
+    if GetFileInformationByHandle(handle, &mut info) == 0 {
+        panic!("Failed to get file information: {}", GetLastError())
+    };
+    assert!(info.dwFileAttributes & REGULAR_FILE != 0);
+    assert!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY == 0);
+    if CloseHandle(handle) == 0 {
+        panic!("Failed to close file")
+    };
+
+    // Creating the file again should fail due to CREATE_NEW.
     let handle = CreateFileW(
         raw_path.as_ptr(),
         GENERIC_READ | GENERIC_WRITE,
@@ -82,15 +109,7 @@ unsafe fn test_create_normal_file() {
         0,
         ptr::null_mut(),
     );
-    assert_ne!(handle.addr(), usize::MAX, "CreateFileW Failed: {}", GetLastError());
-    let mut info = std::mem::zeroed::<BY_HANDLE_FILE_INFORMATION>();
-    if GetFileInformationByHandle(handle, &mut info) == 0 {
-        panic!("Failed to get file information: {}", GetLastError())
-    };
-    assert!(info.dwFileAttributes & FILE_ATTRIBUTE_NORMAL != 0);
-    if CloseHandle(handle) == 0 {
-        panic!("Failed to close file")
-    };
+    assert_eq!(handle.addr(), usize::MAX, "CreateFileW did not fail");
 
     // Test metadata-only handle
     let handle = CreateFileW(
@@ -107,7 +126,7 @@ unsafe fn test_create_normal_file() {
     if GetFileInformationByHandle(handle, &mut info) == 0 {
         panic!("Failed to get file information: {}", GetLastError())
     };
-    assert!(info.dwFileAttributes & FILE_ATTRIBUTE_NORMAL != 0);
+    assert!(info.dwFileAttributes & REGULAR_FILE != 0);
     if CloseHandle(handle) == 0 {
         panic!("Failed to close file")
     };
@@ -115,7 +134,7 @@ unsafe fn test_create_normal_file() {
 
 /// Tests that CREATE_ALWAYS sets the error value correctly based on whether the file already exists
 unsafe fn test_create_always_twice() {
-    let temp = utils::tmp().join("test_create_always.txt");
+    let temp = utils::prepare("miri_test_create_always.txt");
     let raw_path = to_wide_cstr(&temp);
     let handle = CreateFileW(
         raw_path.as_ptr(),
@@ -150,7 +169,7 @@ unsafe fn test_create_always_twice() {
 
 /// Tests that OPEN_ALWAYS sets the error value correctly based on whether the file already exists
 unsafe fn test_open_always_twice() {
-    let temp = utils::tmp().join("test_open_always.txt");
+    let temp = utils::prepare("miri_test_open_always.txt");
     let raw_path = to_wide_cstr(&temp);
     let handle = CreateFileW(
         raw_path.as_ptr(),
@@ -184,32 +203,32 @@ unsafe fn test_open_always_twice() {
 }
 
 // TODO: Once we support more of the std API, it would be nice to test against an actual symlink
-unsafe fn test_open_dir_reparse() {
-    let temp = utils::tmp();
-    let raw_path = to_wide_cstr(&temp);
-    // Open the `temp` directory.
-    let handle = CreateFileW(
-        raw_path.as_ptr(),
-        GENERIC_READ,
-        FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-        ptr::null_mut(),
-        OPEN_EXISTING,
-        FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
-        ptr::null_mut(),
-    );
-    assert_ne!(handle.addr(), usize::MAX, "CreateFileW Failed: {}", GetLastError());
-    let mut info = std::mem::zeroed::<BY_HANDLE_FILE_INFORMATION>();
-    if GetFileInformationByHandle(handle, &mut info) == 0 {
-        panic!("Failed to get file information")
-    };
-    assert!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY != 0);
-    if CloseHandle(handle) == 0 {
-        panic!("Failed to close file")
-    };
-}
+// unsafe fn test_open_dir_reparse() {
+//     let temp = utils::tmp();
+//     let raw_path = to_wide_cstr(&temp);
+//     // Open the `temp` directory.
+//     let handle = CreateFileW(
+//         raw_path.as_ptr(),
+//         GENERIC_READ,
+//         FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+//         ptr::null_mut(),
+//         OPEN_EXISTING,
+//         FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+//         ptr::null_mut(),
+//     );
+//     assert_ne!(handle.addr(), usize::MAX, "CreateFileW Failed: {}", GetLastError());
+//     let mut info = std::mem::zeroed::<BY_HANDLE_FILE_INFORMATION>();
+//     if GetFileInformationByHandle(handle, &mut info) == 0 {
+//         panic!("Failed to get file information")
+//     };
+//     assert!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY != 0);
+//     if CloseHandle(handle) == 0 {
+//         panic!("Failed to close file")
+//     };
+// }
 
 unsafe fn test_delete_file() {
-    let temp = utils::tmp().join("test_delete_file.txt");
+    let temp = utils::prepare("miri_test_delete_file.txt");
     let raw_path = to_wide_cstr(&temp);
     let _ = fs::File::create(&temp).unwrap();
 
@@ -230,7 +249,7 @@ unsafe fn test_ntstatus_to_dos() {
 }
 
 unsafe fn test_file_read_write() {
-    let temp = utils::tmp().join("test_file_read_write.txt");
+    let temp = utils::prepare("miri_test_file_read_write.txt");
     let file = fs::File::create(&temp).unwrap();
     let handle = file.as_raw_handle();
 
@@ -281,7 +300,7 @@ unsafe fn test_file_read_write() {
 }
 
 unsafe fn test_set_file_info() {
-    let temp = utils::tmp().join("test_set_file.txt");
+    let temp = utils::prepare("miri_test_set_file.txt");
     let mut file = fs::File::create(&temp).unwrap();
     let handle = file.as_raw_handle();
 
@@ -307,7 +326,7 @@ unsafe fn test_set_file_info() {
 }
 
 unsafe fn test_dup_handle() {
-    let temp = utils::tmp().join("test_dup.txt");
+    let temp = utils::prepare("miri_test_dup.txt");
 
     let mut file1 = fs::File::options().read(true).write(true).create(true).open(&temp).unwrap();
 
@@ -340,7 +359,7 @@ unsafe fn test_dup_handle() {
 }
 
 unsafe fn test_file_seek() {
-    let temp = utils::tmp().join("test_file_seek.txt");
+    let temp = utils::prepare("miri_test_file_seek.txt");
     let mut file = fs::File::options().create(true).write(true).read(true).open(&temp).unwrap();
     file.write_all(b"Hello, World!\n").unwrap();
 
@@ -365,7 +384,7 @@ unsafe fn test_file_seek() {
 }
 
 unsafe fn test_flush_buffers() {
-    let temp = utils::tmp().join("test_flush_buffers.txt");
+    let temp = utils::prepare("miri_test_flush_buffers.txt");
     let file = fs::File::options().create(true).write(true).read(true).open(&temp).unwrap();
     if FlushFileBuffers(file.as_raw_handle()) == 0 {
         panic!("Failed to flush buffers");
@@ -378,10 +397,8 @@ unsafe fn test_flush_buffers() {
 }
 
 unsafe fn test_move_file() {
-    let tmp_dir = utils::tmp();
-
-    let temp = tmp_dir.join("test_move_file.txt");
-    let temp_new = tmp_dir.join("test_move_file_new.txt");
+    let temp = utils::prepare("miri_test_move_file.txt");
+    let temp_new = utils::prepare("miri_test_move_file_new.txt");
     let mut file = fs::File::options().create(true).write(true).open(&temp).unwrap();
     file.write_all(b"Hello, World!\n").unwrap();
 

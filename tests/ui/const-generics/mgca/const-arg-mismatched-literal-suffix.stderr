@@ -1,7 +1,7 @@
 error: the constant `1` is not of type `usize`
-  --> $DIR/const-arg-mismatched-literal-suffix.rs:4:1
+  --> $DIR/const-arg-mismatched-literal-suffix.rs:6:1
    |
-LL | const CONST: usize = core::direct_const_arg!(1_i32);
+LL | const CONST: usize = gca!(1_i32);
    | ^^^^^^^^^^^^^^^^^^ expected `usize`, found `i32`
 
 error: aborting due to 1 previous error

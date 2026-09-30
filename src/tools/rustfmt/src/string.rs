@@ -150,7 +150,12 @@ pub(crate) fn rewrite_string<'a>(
     }
 
     result.push_str(fmt.closer);
-    wrap_str(result, fmt.config.max_width(), fmt.shape)
+    wrap_str(
+        result,
+        fmt.config.max_width(),
+        fmt.config.tab_spaces(),
+        fmt.shape,
+    )
 }
 
 /// Returns the index to the end of the URL if the split at index of the given string includes a

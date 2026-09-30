@@ -1,4 +1,9 @@
-//@ known-bug: #89515
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] check-pass
+
+//@[current] known-bug: #89515
 //
 // The trait solver cannot deal with ambiguous marker trait impls
 // if there are lifetimes involved. As we must not special-case any

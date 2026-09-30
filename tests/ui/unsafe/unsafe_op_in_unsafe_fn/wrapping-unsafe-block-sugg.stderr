@@ -88,7 +88,6 @@ note: an unsafe function restricts its caller, but its body is safe by default
 LL | pub unsafe fn unsafe_in_macro() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
-   = note: this error originates in the macro `unsafe_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0133]: call to unsafe function `unsf` is unsafe and requires unsafe block
   --> $DIR/wrapping-unsafe-block-sugg.rs:48:36
@@ -101,7 +100,6 @@ LL |     unsafe_macro!();
    |
    = note: consult the function's documentation for information on how to avoid undefined behavior
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
-   = note: this error originates in the macro `unsafe_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 8 previous errors
 

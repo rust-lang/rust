@@ -7,6 +7,8 @@ LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + Fro
 note: required by a bound in `UncheckedCopy::Output`
   --> $DIR/defaults-unsound-62211-1.rs:24:86
    |
+LL | trait UncheckedCopy: Sized {
+...
 LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
    |                                                                                      ^^^^^^^ required by this bound in `UncheckedCopy::Output`
 help: consider further restricting `Self`
@@ -23,6 +25,8 @@ LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + Fro
 note: required by a bound in `UncheckedCopy::Output`
   --> $DIR/defaults-unsound-62211-1.rs:24:47
    |
+LL | trait UncheckedCopy: Sized {
+...
 LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `UncheckedCopy::Output`
 help: consider further restricting `Self`
@@ -39,6 +43,8 @@ LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + Fro
 note: required by a bound in `UncheckedCopy::Output`
   --> $DIR/defaults-unsound-62211-1.rs:24:31
    |
+LL | trait UncheckedCopy: Sized {
+...
 LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
    |                               ^^^^^^^^^^^^ required by this bound in `UncheckedCopy::Output`
 help: consider further restricting `Self`
@@ -55,6 +61,8 @@ LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + Fro
 note: required by a bound in `UncheckedCopy::Output`
   --> $DIR/defaults-unsound-62211-1.rs:24:18
    |
+LL | trait UncheckedCopy: Sized {
+...
 LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
    |                  ^^^^ required by this bound in `UncheckedCopy::Output`
 help: consider further restricting `Self`
