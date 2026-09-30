@@ -56,7 +56,7 @@ you should include fixes for those in the rustc PR as well.
 
 The [josh] tool is an alternative to git subtrees, which manages git history in a different way and scales better to larger repositories.
 Specific tooling is required to work with josh.
-We provide a helper [`rustc-josh-sync`][josh-sync] tool to help with the synchronization, described [below](#synchronizing-a-josh-subtree).
+We provide a helper tool, [`rustc-josh-sync`][josh-sync], to help with the synchronization, described [below](#synchronizing-a-josh-subtree).
 
 ### Synchronizing a Josh subtree
 
