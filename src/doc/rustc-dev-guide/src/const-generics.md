@@ -83,7 +83,7 @@ When we go through HIR ty lowering for the array type in `Alias`, we will lower 
 This will effectively set the type of the `ANON` const item during some later part of the compiler rather than when constructing the HIR.
 
 After all of this desugaring has taken place the final representation in the type system (ie as a `ty::Const`) is a `ConstKind::Alias` with the `DefId` of the `AnonConst`.
-This is equivalent to how we would representa a usage of an actual const item if we were to represent them without going through an anon const (e.g. when `gca_generic_const_args` is enabled).
+This is equivalent to how we would represent a usage of an actual const item if we were to represent them without going through an anon const (e.g. when `gca_generic_const_args` is enabled).
 
 This allows the representation for const "aliases" to be the same as the representation of `TyKind::Alias`.
 Having a proper HIR body also allows for a *lot* of code re-use, e.g. we can reuse HIR typechecking and all of the lowering steps to MIR where we can then reuse const eval.
