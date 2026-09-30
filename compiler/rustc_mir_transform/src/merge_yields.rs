@@ -334,7 +334,7 @@ impl TranslationMap {
                     Some(Terminator {
                         source_info: SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE },
                         kind: TerminatorKind::Goto { target: *to },
-                        attributes: Default::default(),
+                        loop_hint_attrs: Default::default(),
                     }),
                     false,
                 ));
