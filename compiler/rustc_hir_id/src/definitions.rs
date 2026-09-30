@@ -6,6 +6,7 @@
 
 use std::fmt::{self, Write};
 use std::hash::Hash;
+use std::sync::OnceLock;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
@@ -95,6 +96,7 @@ pub struct Definitions {
     def_id_to_key: IndexVec<LocalDefId, DefKey>,
     // We do only store the local hash, as all the definitions are from the current crate.
     def_path_hashes: IndexVec<LocalDefId, Hash64>,
+    last_deterministic_index: OnceLock<DefIndex>,
     def_path_hash_to_index: DefPathToIndexMap,
 }
 
@@ -292,13 +294,21 @@ pub enum DefPathData {
 }
 
 impl Definitions {
-    /// This function indicates that the order of def id allocations
-    /// may be non-deterministic after it was called.
     pub fn commit_end_of_determinism(&mut self) {
         assert!(
             self.def_path_hash_to_index.after_parallel_alloc.replace(Default::default()).is_none(),
             "this function should be called only once"
-        )
+        );
+
+        self.last_deterministic_index
+            .set(
+                if self.def_id_to_key.is_empty() { 0 } else { self.def_id_to_key.len() - 1 }.into(),
+            )
+            .expect("must be called once");
+    }
+
+    pub fn last_deterministic_index(&self) -> DefIndex {
+        self.last_deterministic_index.get().copied().expect("must contain index")
     }
 
     #[inline(always)]
@@ -352,6 +362,7 @@ impl Definitions {
             def_path_hashes: Default::default(),
             def_id_to_key: Default::default(),
             def_path_hash_to_index: Default::default(),
+            last_deterministic_index: Default::default(),
         };
 
         // Create the root definition.
