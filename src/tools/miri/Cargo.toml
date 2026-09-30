@@ -48,6 +48,11 @@ capstone = { version = "0.14", features = ["arch_x86", "full"], default-features
 [target.'cfg(all(target_os = "linux", target_pointer_width = "64", target_endian = "little"))'.dependencies]
 genmc-sys = { path = "./genmc-sys/", version = "0.1.0", optional = true }
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Storage_FileSystem",
+] }
+
 [dev-dependencies]
 ui_test = "0.30.2"
 colored = "3"

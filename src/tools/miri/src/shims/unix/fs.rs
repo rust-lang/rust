@@ -387,15 +387,17 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         })
     }
 
-    #[cfg(unix)]
     fn host_permissions_from_mode(&self, mode: u32) -> InterpResult<'tcx, fs::Permissions> {
-        use std::os::unix::fs::PermissionsExt;
-        interp_ok(fs::Permissions::from_mode(mode))
-    }
-
-    #[cfg(not(unix))]
-    fn host_permissions_from_mode(&self, _mode: u32) -> InterpResult<'tcx, fs::Permissions> {
-        throw_unsup_format!("setting file permissions is only supported on Unix hosts")
+        cfg_select! {
+            unix => {
+                use std::os::unix::fs::PermissionsExt;
+                interp_ok(fs::Permissions::from_mode(mode))
+            }
+            _ => {
+                let _ = mode;
+                throw_unsup_format!("setting file permissions is only supported on Unix hosts")
+            }
+        }
     }
 }
 
@@ -481,20 +483,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             )?;
             let mode = this.read_scalar(mode)?.to_u32()?;
 
-            #[cfg(unix)]
-            {
-                // Support all modes on UNIX host
-                use std::os::unix::fs::OpenOptionsExt;
-                options.mode(mode);
-            }
-            #[cfg(not(unix))]
-            {
-                // Only support default mode for non-UNIX (i.e. Windows) host
-                if mode != 0o666 {
-                    throw_unsup_format!(
-                        "non-default mode 0o{:o} is not supported on non-Unix hosts",
-                        mode
-                    );
+            cfg_select! {
+                unix => {
+                    // Support all modes on UNIX host
+                    use std::os::unix::fs::OpenOptionsExt;
+                    options.mode(mode);
+                }
+                _ => {
+                    // Only support default mode for non-UNIX (i.e. Windows) host
+                    if mode != 0o666 {
+                        throw_unsup_format!(
+                            "non-default mode 0o{:o} is not supported on non-Unix hosts",
+                            mode
+                        );
+                    }
                 }
             }
 
@@ -521,22 +523,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let o_nofollow = this.eval_libc_i32("O_NOFOLLOW");
+        let mut nofollow = false;
         if flag & o_nofollow == o_nofollow {
             flag &= !o_nofollow;
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::OpenOptionsExt;
-                options.custom_flags(libc::O_NOFOLLOW);
-            }
-            // Strictly speaking, this emulation is not equivalent to the O_NOFOLLOW flag behavior:
-            // the path could change between us checking it here and the later call to `open`.
-            // But it's good enough for Miri purposes.
-            #[cfg(not(unix))]
-            {
-                // O_NOFOLLOW only fails when the trailing component is a symlink;
-                // the entire rest of the path can still contain symlinks.
-                if path.is_symlink() {
-                    return this.set_errno_and_return_neg1_i32(LibcError("ELOOP"));
+            nofollow = true;
+            cfg_select! {
+                unix => {
+                    use std::os::unix::fs::OpenOptionsExt;
+                    options.custom_flags(libc::O_NOFOLLOW);
+                }
+                windows => {
+                    use std::os::windows::fs::OpenOptionsExt;
+                    options.custom_flags(
+                        windows_sys::Win32::Storage::FileSystem::FILE_FLAG_OPEN_REPARSE_POINT,
+                    );
                 }
             }
         }
@@ -552,11 +552,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        let fd = options
-            .open(path)
-            .map(|file| this.machine.fds.insert_new(FileHandle { file, writable, readable }));
-
-        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(fd)?))
+        let file = match options.open(path) {
+            Ok(file) => file,
+            Err(err) => return this.set_errno_and_return_neg1_i32(err),
+        };
+        let metadata = file.metadata().expect("a just-opened file should have metadata");
+        if metadata.is_dir() {
+            throw_unsup_format!("open: opening directories is not supported");
+        }
+        if nofollow && !cfg!(unix) {
+            // On Windows, FILE_FLAG_OPEN_REPARSE_POINT makes opening still succeed, it just
+            // opens the symlink rather than the target. Turn that into an error.
+            if metadata.is_symlink() {
+                return this.set_errno_and_return_neg1_i32(LibcError("ELOOP"));
+            }
+        }
+        let fd = this.machine.fds.insert_new(FileHandle { file, writable, readable });
+        interp_ok(Scalar::from_i32(fd))
     }
 
     fn lseek(
@@ -618,15 +630,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         target_op: &OpTy<'tcx>,
         linkpath_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        #[cfg(unix)]
         fn create_link(src: &Path, dst: &Path) -> std::io::Result<()> {
-            std::os::unix::fs::symlink(src, dst)
-        }
-
-        #[cfg(windows)]
-        fn create_link(src: &Path, dst: &Path) -> std::io::Result<()> {
-            use std::os::windows::fs;
-            if src.is_dir() { fs::symlink_dir(src, dst) } else { fs::symlink_file(src, dst) }
+            cfg_select! {
+                unix => std::os::unix::fs::symlink(src, dst),
+                windows => {
+                    use std::os::windows::fs;
+                    // This is racy, but not much we can do about that.
+                    if src.is_dir() {
+                        fs::symlink_dir(src, dst)
+                    } else {
+                        fs::symlink_file(src, dst)
+                    }
+                }
+            }
         }
 
         let this = self.eval_context_mut();
@@ -1859,9 +1875,6 @@ fn extract_sec_and_nsec<'tcx>(
 }
 
 fn file_type_to_mode_name(file_type: std::fs::FileType) -> &'static str {
-    #[cfg(unix)]
-    use std::os::unix::fs::FileTypeExt;
-
     if file_type.is_file() {
         "S_IFREG"
     } else if file_type.is_dir() {
@@ -1872,6 +1885,7 @@ fn file_type_to_mode_name(file_type: std::fs::FileType) -> &'static str {
         // Certain file types are only available when the host is a Unix system.
         #[cfg(unix)]
         {
+            use std::os::unix::fs::FileTypeExt;
             if file_type.is_socket() {
                 return "S_IFSOCK";
             } else if file_type.is_fifo() {
