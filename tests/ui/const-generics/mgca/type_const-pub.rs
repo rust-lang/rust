@@ -3,9 +3,11 @@
 // This is because reachability also tried to evaluate the #[type_const] which
 // requires the item have a body. #[type_const] do not have bodies.
 #![expect(incomplete_features)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
-pub const TYPE_CONST: usize = core::direct_const_arg!(1);
+use std::gca;
+
+pub const TYPE_CONST: usize = gca!(1);
 fn main() {
     print!("{}", TYPE_CONST)
 }

@@ -4,6 +4,7 @@
 // See https://github.com/rust-lang/rust/pull/30452
 
 //@ ignore-cross-compile
+//@ ignore-backends: gcc
 
 use run_make_support::{run, rustc};
 

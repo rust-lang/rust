@@ -47,8 +47,6 @@ use core::task::{Context, Poll};
 /// functionality:
 ///
 /// ```ignore-wasm
-/// #![feature(exclusive_wrapper)]
-///
 /// use std::sync::SyncView;
 /// use std::sync::mpsc::{self, Receiver};
 /// use std::thread;
@@ -91,7 +89,7 @@ use core::task::{Context, Poll};
 /// for any value. This is a parallel with the fact that
 /// `&` and `&mut` references together can be thought of as a _compile-time_
 /// version of a read-write lock.
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 #[doc(alias = "SyncWrapper")]
 #[doc(alias = "SyncCell")]
 #[doc(alias = "Unique")]
@@ -105,10 +103,10 @@ pub struct SyncView<T: ?Sized> {
 }
 
 // See `SyncView`'s docs for justification.
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl<T: ?Sized> Sync for SyncView<T> {}
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
 const impl<T> Default for SyncView<T>
 where
@@ -120,7 +118,7 @@ where
     }
 }
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 impl<T: ?Sized> fmt::Debug for SyncView<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         f.debug_struct("SyncView").finish_non_exhaustive()
@@ -129,8 +127,8 @@ impl<T: ?Sized> fmt::Debug for SyncView<T> {
 
 impl<T: Sized> SyncView<T> {
     /// Wrap a value in an `SyncView`
-    #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-    #[rustc_const_unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn new(t: T) -> Self {
@@ -138,8 +136,9 @@ impl<T: Sized> SyncView<T> {
     }
 
     /// Unwrap the value contained in the `SyncView`
-    #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-    #[rustc_const_unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     #[must_use]
     #[inline]
     pub const fn into_inner(self) -> T {
@@ -154,8 +153,8 @@ impl<T: ?Sized> SyncView<T> {
     /// value, which means _unpinned_ `SyncView`s can produce _unpinned_
     /// access to the underlying value, but _pinned_ `SyncView`s only
     /// produce _pinned_ access to the underlying value.
-    #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-    #[rustc_const_unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn as_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
@@ -167,8 +166,8 @@ impl<T: ?Sized> SyncView<T> {
     /// Build a _mutable_ reference to an `SyncView<T>` from
     /// a _mutable_ reference to a `T`. This allows you to skip
     /// building an `SyncView` with [`SyncView::new`].
-    #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-    #[rustc_const_unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_mut(r: &'_ mut T) -> &'_ mut SyncView<T> {
@@ -179,8 +178,8 @@ impl<T: ?Sized> SyncView<T> {
     /// Build a _pinned mutable_ reference to an `SyncView<T>` from
     /// a _pinned mutable_ reference to a `T`. This allows you to skip
     /// building an `SyncView` with [`SyncView::new`].
-    #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-    #[rustc_const_unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_pin_mut(r: Pin<&'_ mut T>) -> Pin<&'_ mut SyncView<T>> {
@@ -197,8 +196,8 @@ impl<T: ?Sized + Sync> SyncView<T> {
     /// value, which means _unpinned_ `SyncView`s can produce _unpinned_
     /// access to the underlying value, but _pinned_ `SyncView`s only
     /// produce _pinned_ access to the underlying value.
-    #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-    #[rustc_const_unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn as_pin_ref(self: Pin<&Self>) -> Pin<&T> {
@@ -208,7 +207,7 @@ impl<T: ?Sized + Sync> SyncView<T> {
     }
 }
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 const impl<T> From<T> for SyncView<T> {
     #[inline]
@@ -217,7 +216,7 @@ const impl<T> From<T> for SyncView<T> {
     }
 }
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
 const impl<F, Args> FnOnce<Args> for SyncView<F>
 where
@@ -231,7 +230,7 @@ where
     }
 }
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
 const impl<F, Args> FnMut<Args> for SyncView<F>
 where
@@ -243,7 +242,7 @@ where
     }
 }
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
 const impl<F, Args> Fn<Args> for SyncView<F>
 where
@@ -255,7 +254,7 @@ where
     }
 }
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 impl<F, Args> AsyncFnOnce<Args> for SyncView<F>
 where
     F: AsyncFnOnce<Args>,
@@ -270,7 +269,7 @@ where
     }
 }
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 impl<F, Args> AsyncFnMut<Args> for SyncView<F>
 where
     F: AsyncFnMut<Args>,
@@ -286,7 +285,7 @@ where
     }
 }
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 impl<F, Args> AsyncFn<Args> for SyncView<F>
 where
     F: Sync + AsyncFn<Args>,
@@ -297,7 +296,7 @@ where
     }
 }
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 impl<T> Future for SyncView<T>
 where
     T: Future + ?Sized,
@@ -324,7 +323,7 @@ where
     }
 }
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 const impl<T> AsRef<T> for SyncView<T>
 where
@@ -337,7 +336,7 @@ where
     }
 }
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 const impl<T> AsMut<T> for SyncView<T>
 where
@@ -350,7 +349,7 @@ where
     }
 }
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
 const impl<T> Clone for SyncView<T>
 where
@@ -367,10 +366,10 @@ where
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
 const unsafe impl<T> TrivialClone for SyncView<T> where T: Sync + [const] TrivialClone {}
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 impl<T> Copy for SyncView<T> where T: Sync + Copy {}
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl<T, U> PartialEq<SyncView<U>> for SyncView<T>
 where
@@ -383,14 +382,14 @@ where
     }
 }
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 impl<T> StructuralPartialEq for SyncView<T> where T: Sync + StructuralPartialEq + ?Sized {}
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl<T> Eq for SyncView<T> where T: Sync + [const] Eq + ?Sized {}
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 impl<T> Hash for SyncView<T>
 where
     T: Sync + Hash + ?Sized,
@@ -401,7 +400,7 @@ where
     }
 }
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl<T, U> PartialOrd<SyncView<U>> for SyncView<T>
 where
@@ -414,7 +413,7 @@ where
     }
 }
 
-#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl<T> Ord for SyncView<T>
 where

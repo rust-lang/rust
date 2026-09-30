@@ -8,12 +8,11 @@ LL |     let a = A {v: Box::new(B{v: None}) as Box<dyn Foo + Send>};
 note: required because it appears within the type `Option<Rc<RefCell<A>>>`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 note: required because it appears within the type `B`
-  --> $DIR/issue-7013.rs:8:8
+  --> $DIR/issue-7013.rs:9:5
    |
 LL | struct B {
-   |        ^
 LL |     v: Option<Rc<RefCell<A>>>
-   |     ------------------------- required by this field
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this field
    = note: required for the cast from `Box<B>` to `Box<dyn Foo + Send>`
 
 error: aborting due to 1 previous error

@@ -2,18 +2,13 @@
 //!
 //! Issue: <https://github.com/rust-lang/rust/issues/138698>
 
-// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
 //@ ignore-backends: gcc
 
-use run_make_support::{diff, rustc, similar};
+use run_make_support::{diff, rustc, similar, stable_bare_rustc};
 
 fn main() {
-    let stable_invalid_print_request_help = rustc()
-        .env("RUSTC_BOOTSTRAP", "-1")
-        .cfg("force_stable")
-        .print("xxx")
-        .run_fail()
-        .stderr_utf8();
+    let stable_invalid_print_request_help =
+        stable_bare_rustc().print("xxx").run_fail().stderr_utf8();
     assert!(!stable_invalid_print_request_help.contains("all-target-specs-json"));
     diff()
         .expected_file("stable-invalid-print-request-help.err")

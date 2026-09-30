@@ -5,7 +5,7 @@ use std::ops::ControlFlow;
 use rustc_macros::StableHash;
 use rustc_type_ir::data_structures::HashSet;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::region_constraint::{self, RegionConstraint};
+use rustc_type_ir::region_constraint::RegionConstraint;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::{
@@ -17,7 +17,7 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt, SmallCopySet, TyOrConstInferVar,
 };
 use rustc_type_ir::{
-    self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
+    self as ty, CanonicalVarValues, ClauseKind, Const, InferCtxtLike, Interner, MayBeErased,
     OpaqueTypeKey, PredicateKind, PredicateProxy, Region, RegionVid, TypeFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, max_universe,
 };
@@ -460,7 +460,10 @@ where
             // Relating types is always unproductive. If we were to map proof trees to
             // corecursive functions as explained in #136824, relating types never
             // introduces a constructor which could cause the recursion to be guarded.
-            GoalSource::TypeRelating => PathKind::Inductive,
+            //
+            // FIXME(-Znext-solver=coinductive): For now we treat all inductive cycles as
+            // `Unknown`. See the comment in `fn initial_provisional_result`.
+            GoalSource::TypeRelating => PathKind::Unknown,
             // These goal sources are likely unproductive and can be changed to
             // `PathKind::Inductive`. Keeping them as unknown until we're confident
             // about this and have an example where it is necessary.
@@ -635,10 +638,117 @@ where
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
     ) -> Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased> {
-        let (normalization_nested_goals, goal_evaluation) =
-            self.evaluate_goal_raw(source, goal, LowerAvailableDepth::Yes)?;
+        let (normalization_nested_goals, goal_evaluation) = self.evaluate_goal_raw(source, goal)?;
         assert!(normalization_nested_goals.is_empty());
         Ok(goal_evaluation)
+    }
+
+    fn evaluate_in_search_graph(
+        &mut self,
+        canonical_goal: I::CanonicalInput,
+        step_kind: PathKind,
+    ) -> (Result<CanonicalResponse<I>, NoSolution>, AccessedOpaques<I>) {
+        let increase_depth_for_nested =
+            match canonical_goal.canonical.value.goal.predicate.kind().skip_binder() {
+                // We don't lower the available depth for the `NormalizesTo` goal, as evaluating
+                // it is an extra step only exists in the new solver that behaves like a function
+                // call rather than an independent nested goal evaluation. So, decreasing the
+                // available depth may end up regressions which hit the recursion limits for crates
+                // compiled well with the old solver.
+                ty::PredicateKind::NormalizesTo(_) => LowerAvailableDepth::No,
+                // We also don't lower depth for witness and rigid opaque when proving auto traits.
+                // This is to mitigate the overflow FCW warnings in deeply nested async calls.
+                // See #159228.
+                //
+                // We're eventually going to remove the witness type so it's okay to ignore the
+                // depth.
+                // For rigid opaques, revealing hidden types can be viewed as normalization so it's
+                // consistent with the `NormalizesTo` reasoning above.
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
+                    if self.cx().trait_is_auto(pred.trait_ref.def_id) {
+                        match pred.self_ty().kind() {
+                            ty::CoroutineWitness(..) => LowerAvailableDepth::No,
+                            ty::Alias(
+                                ty::IsRigid::Yes,
+                                ty::AliasTy { kind: ty::Opaque { def_id, .. }, .. },
+                            ) => {
+                                // We only want to skip lowering depth when the proving is done via
+                                // auto trait leakage. If the goal can be proved via item bounds,
+                                // we should lower depth faithfully.
+                                //
+                                // FIXME: We can have param env candidates via TAIT or RTN.
+                                // Ideally we'd instead lower the depth for the nested goal instead.
+                                // Implementing this is a bit harder.
+                                if self
+                                    .cx()
+                                    .item_self_bounds(def_id.into())
+                                    .skip_binder()
+                                    .into_iter()
+                                    .any(|bound| {
+                                        bound
+                                            .as_trait_clause()
+                                            .is_some_and(|b| b.def_id() == pred.def_id())
+                                    })
+                                {
+                                    LowerAvailableDepth::Yes
+                                } else {
+                                    LowerAvailableDepth::No
+                                }
+                            }
+                            ty::Bool
+                            | ty::Char
+                            | ty::Int(..)
+                            | ty::Uint(..)
+                            | ty::Float(..)
+                            | ty::Str
+                            | ty::Pat(..)
+                            | ty::FnPtr(..)
+                            | ty::Array(..)
+                            | ty::Slice(..)
+                            | ty::RawPtr(..)
+                            | ty::Never
+                            | ty::Tuple(..)
+                            | ty::UnsafeBinder(_)
+                            | ty::Param(..)
+                            | ty::Placeholder(..)
+                            | ty::Bound(..)
+                            | ty::Infer(..)
+                            | ty::Alias(_, _)
+                            | ty::Ref(_, _, _)
+                            | ty::Adt(_, _)
+                            | ty::Foreign(_)
+                            | ty::Dynamic(..)
+                            | ty::Error(_)
+                            | ty::FnDef(..)
+                            | ty::Closure(..)
+                            | ty::CoroutineClosure(..)
+                            | ty::Coroutine(..) => LowerAvailableDepth::Yes,
+                        }
+                    } else {
+                        LowerAvailableDepth::Yes
+                    }
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(_))
+                | ty::PredicateKind::Clause(ty::ClauseKind::Projection(_))
+                | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(_))
+                | ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(_))
+                | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(_, _))
+                | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_))
+                | ty::PredicateKind::Subtype(_)
+                | ty::PredicateKind::Coerce(_)
+                | ty::PredicateKind::DynCompatible(_)
+                | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_))
+                | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(_))
+                | ty::PredicateKind::ConstEquate(_, _)
+                | ty::PredicateKind::Ambiguous => LowerAvailableDepth::Yes,
+            };
+        self.search_graph.evaluate_goal(
+            self.cx(),
+            canonical_goal,
+            step_kind,
+            increase_depth_for_nested,
+            &mut inspect::ProofTreeBuilder::new_noop(),
+        )
     }
 
     /// Recursively evaluates `goal`, returning the nested goals in case
@@ -652,7 +762,6 @@ where
         &mut self,
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
-        increase_depth_for_nested: LowerAvailableDepth,
     ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolutionOrRerunNonErased> {
         // We only care about one entry per `OpaqueTypeKey` here,
         // so we only canonicalize the lookup table and ignore
@@ -720,13 +829,8 @@ where
                     TypingMode::ErasedNotCoherence(MayBeErased),
                 );
 
-                let (canonical_result, accessed_opaques) = self.search_graph.evaluate_goal(
-                    self.cx(),
-                    canonical_goal,
-                    step_kind,
-                    increase_depth_for_nested,
-                    &mut inspect::ProofTreeBuilder::new_noop(),
-                );
+                let (canonical_result, accessed_opaques) =
+                    self.evaluate_in_search_graph(canonical_goal, step_kind);
 
                 let should_rerun = should_rerun_after_erased_canonicalization(
                     accessed_opaques,
@@ -760,13 +864,8 @@ where
             let (orig_values, canonical_goal) =
                 canonicalize_goal(self.delegate, goal, &opaque_types, typing_mode);
 
-            let (canonical_result, accessed_opaques) = self.search_graph.evaluate_goal(
-                self.cx(),
-                canonical_goal,
-                step_kind,
-                increase_depth_for_nested,
-                &mut inspect::ProofTreeBuilder::new_noop(),
-            );
+            let (canonical_result, accessed_opaques) =
+                self.evaluate_in_search_graph(canonical_goal, step_kind);
             assert!(
                 !accessed_opaques.might_rerun(),
                 "we run without TypingMode::ErasedNotCoherence, so opaques are available, and we don't retry if the outer typing mode is ErasedNotCoherence: {accessed_opaques:?} after {goal:?}"
@@ -1057,7 +1156,7 @@ where
         ty
     }
 
-    pub(super) fn next_const_infer(&mut self) -> I::Const {
+    pub(super) fn next_const_infer(&mut self) -> Const<I> {
         let ct = self.delegate.next_const_infer();
         self.inspect.add_var_value(ct);
         ct
@@ -1154,7 +1253,7 @@ where
                 ControlFlow::Continue(())
             }
 
-            fn visit_const(&mut self, c: I::Const) -> Self::Result {
+            fn visit_const(&mut self, c: Const<I>) -> Self::Result {
                 match c.kind() {
                     ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
                         if let ty::TermKind::Const(term) = self.term.kind()
@@ -1289,13 +1388,19 @@ where
         f: impl FnOnce(&mut Self, T) -> U,
     ) -> U {
         self.delegate.enter_forall_without_assumptions(value, |value| {
+            // Invariant: we shouldn't insert empty assumptions if assumptions computation fails.
+            // When handling placeholder constraints, we rely on vacancies to force ambiguity.
             let u = self.delegate.universe();
-            let assumptions = if self.cx().assumptions_on_binders() {
-                self.region_assumptions_for_placeholders_in_universe(value.clone(), u, param_env)
-            } else {
-                None
-            };
-            self.delegate.insert_placeholder_assumptions(u, assumptions);
+            if self.cx().assumptions_on_binders()
+                && let Some(assumptions) = self.region_assumptions_for_placeholders_in_universe(
+                    value.clone(),
+                    u,
+                    param_env,
+                )
+            {
+                self.delegate.insert_placeholder_assumptions(u, assumptions);
+            }
+
             f(self, value)
         })
     }
@@ -1409,7 +1514,7 @@ where
         &mut self,
         param_env: I::ParamEnv,
         alias_const: ty::AliasConst<I>,
-    ) -> Result<Option<I::Const>, NoSolutionOrRerunNonErased> {
+    ) -> Result<Option<Const<I>>, NoSolutionOrRerunNonErased> {
         if self.typing_mode().is_erased_not_coherence() {
             match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
         }
@@ -1431,7 +1536,7 @@ where
                 self.eq(param_env, expected_term, evaluated.into())?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
-            None if self.cx().features().generic_const_args() => {
+            None if self.cx().features().gca_const_items() => {
                 // HACK(khyperia): calling `deeply_resolve_ignoring_regions` here shouldn't be necessary,
                 // `try_evaluate_const` calls `deeply_resolve_ignoring_regions` already. However, we want
                 // to check `has_non_region_infer` against the type with vars resolved (i.e. check
@@ -1470,7 +1575,7 @@ where
         &mut self,
         src: I::Ty,
         dst: I::Ty,
-        assume: I::Const,
+        assume: Const<I>,
     ) -> Result<Certainty, NoSolution> {
         self.delegate.is_transmutable(dst, src, assume)
     }
@@ -1669,10 +1774,6 @@ where
         let region_constraints = if self.cx().assumptions_on_binders() {
             ExternalRegionConstraints::NextGen(if let Certainty::Yes = certainty {
                 let constraint = self.delegate.get_solver_region_constraint();
-                debug_assert_eq!(
-                    constraint,
-                    region_constraint::propagate_ambiguity(constraint.clone())
-                );
                 constraint
             } else {
                 RegionConstraint::new_true()
@@ -1760,7 +1861,7 @@ fn filter_irrelevant_region_constraints<D, I>(
             }
             t.super_visit_with(self);
         }
-        fn visit_const(&mut self, c: I::Const) {
+        fn visit_const(&mut self, c: Const<I>) {
             // The same goes for consts.
             if !c.has_infer_regions() {
                 return;

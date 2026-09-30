@@ -9,8 +9,9 @@
 //!
 //! * Compiler internal types like `Ty` and `TyCtxt`
 
-use rustc_hir::attrs::diagnostic_items::DiagnosticItems;
-use rustc_hir::{CRATE_OWNER_ID, OwnerId, find_attr};
+use rustc_attr_ir::diagnostic_items::DiagnosticItems;
+use rustc_attr_ir::find_attr;
+use rustc_hir::{CRATE_OWNER_ID, OwnerId};
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};

@@ -344,6 +344,9 @@ pub fn crate_description(crates: &[impl AsRef<str>]) -> String {
     if crates.is_empty() {
         return "".into();
     }
+    if crates.len() == 1 {
+        return crates[0].as_ref().into();
+    }
 
     let mut descr = String::from("{");
     descr.push_str(crates[0].as_ref());
@@ -883,6 +886,7 @@ impl<'a> Builder<'a> {
                 test::MirOpt,
                 test::CodegenLlvm,
                 test::CodegenUnits,
+                test::AssemblyGcc,
                 test::AssemblyLlvm,
                 test::Incremental,
                 test::Debuginfo,

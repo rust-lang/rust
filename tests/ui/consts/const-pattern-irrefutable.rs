@@ -13,6 +13,12 @@ use foo::d;
 const a: u8 = 2;
 //~^ NOTE missing patterns are not covered because `a` is interpreted as a constant pattern, not a new variable
 
+const g: u8 = 2;
+//~^ NOTE missing patterns are not covered because `g` is interpreted as a constant pattern, not a new variable
+
+const r#fn: u8 = 2;
+//~^ NOTE missing patterns are not covered because `r#fn` is interpreted as a constant pattern, not a new variable
+
 #[derive(PartialEq)]
 struct S {
     foo: u8,
@@ -41,5 +47,13 @@ fn main() {
     //~| HELP introduce a variable instead
         foo: 1,
     };
+    let r#g = 4;
+    //~^ ERROR refutable pattern in local binding
+    //~| NOTE patterns `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
+    //~| HELP introduce a variable instead
+    let r#fn = 4;
+    //~^ ERROR refutable pattern in local binding
+    //~| NOTE patterns `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
+    //~| HELP introduce a variable instead
     fn f() {} // Check that the `NOTE`s still work with an item here (cf. issue #35115).
 }

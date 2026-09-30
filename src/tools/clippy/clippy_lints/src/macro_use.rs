@@ -4,9 +4,9 @@ use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{self as hir, AmbigArg};
+use rustc_hir::{self as hir, AmbigArg, UseTree};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
-use rustc_span::Span;
+use rustc_span::{OrdSpan, Span};
 use rustc_span::edition::Edition;
 use std::collections::BTreeMap;
 
@@ -96,11 +96,11 @@ impl MacroUseImports {
 impl LateLintPass<'_> for MacroUseImports {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
         if cx.sess().opts.edition >= Edition::Edition2018
-            && let hir::ItemKind::Use(path, _kind) = &item.kind
+            && let hir::ItemKind::Use(UseTree { prefix, .. }) = &item.kind
             && let hir_id = item.hir_id()
             && let attrs = cx.tcx.hir_attrs(hir_id)
             && let Some(mac_attr_span) = find_attr!(attrs, MacroUse {span, ..} => *span)
-            && let Some(Res::Def(DefKind::Mod, id)) = path.res.type_ns
+            && let Some(Res::Def(DefKind::Mod, id)) = prefix.res.type_ns
             && !id.is_local()
         {
             for kid in cx.tcx.module_children(id) {
@@ -151,7 +151,7 @@ impl LateLintPass<'_> for MacroUseImports {
                         if !check_dup.contains(&(*item).to_string()) {
                             used.entry((
                                 (*root).to_string(),
-                                span,
+                                OrdSpan(*span),
                                 hir_id.local_id,
                                 cx.tcx.def_path_hash(hir_id.owner.def_id.into()),
                             ))
@@ -175,7 +175,7 @@ impl LateLintPass<'_> for MacroUseImports {
                                 .collect::<Vec<_>>();
                             used.entry((
                                 (*root).to_string(),
-                                span,
+                                OrdSpan(*span),
                                 hir_id.local_id,
                                 cx.tcx.def_path_hash(hir_id.owner.def_id.into()),
                             ))
@@ -187,7 +187,7 @@ impl LateLintPass<'_> for MacroUseImports {
                             let rest = rest.to_vec();
                             used.entry((
                                 (*root).to_string(),
-                                span,
+                                OrdSpan(*span),
                                 hir_id.local_id,
                                 cx.tcx.def_path_hash(hir_id.owner.def_id.into()),
                             ))
@@ -215,11 +215,11 @@ impl LateLintPass<'_> for MacroUseImports {
                     cx,
                     MACRO_USE_IMPORTS,
                     *hir_id,
-                    *span,
+                    span.0,
                     "`macro_use` attributes are no longer needed in the Rust 2018 edition",
                     |diag| {
                         diag.span_suggestion(
-                            *span,
+                            span.0,
                             "remove the attribute and import the macro directly, try",
                             format!("use {import};"),
                             Applicability::MaybeIncorrect,

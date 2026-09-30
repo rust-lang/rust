@@ -1202,9 +1202,9 @@ impl<T> Option<T> {
     /// Returns the provided default result (if none),
     /// or applies a function to the contained value (if any).
     ///
-    /// Arguments passed to `map_or` are eagerly evaluated; if you are passing
+    /// The `default` argument passed to `map_or` is eagerly evaluated; if you are passing
     /// the result of a function call, it is recommended to use [`map_or_else`],
-    /// which is lazily evaluated.
+    /// which lazily evaluates `default`.
     ///
     /// [`map_or_else`]: Option::map_or_else
     ///

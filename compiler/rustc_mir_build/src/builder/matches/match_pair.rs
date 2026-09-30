@@ -3,6 +3,7 @@ use std::sync::Arc;
 use rustc_abi::FieldIdx;
 use rustc_middle::mir::{Pinnedness, Place, PlaceElem, ProjectionElem};
 use rustc_middle::thir::{Ascription, DerefPatBorrowMode, FieldPat, Pat, PatKind};
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_span::{Span, span_bug};
 

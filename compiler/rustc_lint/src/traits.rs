@@ -1,4 +1,4 @@
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_span::sym;

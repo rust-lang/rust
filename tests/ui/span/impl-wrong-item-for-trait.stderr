@@ -1,17 +1,24 @@
 error[E0323]: item `bar` is an associated const, which doesn't match its trait `Foo`
   --> $DIR/impl-wrong-item-for-trait.rs:12:5
    |
+LL | trait Foo {
 LL |     fn bar(&self);
    |     -------------- item in trait
 ...
+LL | impl Foo for FooConstForMethod {
+LL |
 LL |     const bar: u64 = 1;
    |     ^^^^^^^^^^^^^^^^^^^ does not match trait
 
 error[E0324]: item `MY_CONST` is an associated method, which doesn't match its trait `Foo`
   --> $DIR/impl-wrong-item-for-trait.rs:22:5
    |
+LL | trait Foo {
+LL |     fn bar(&self);
 LL |     const MY_CONST: u32;
    |     -------------------- item in trait
+...
+LL | impl Foo for FooMethodForConst {
 ...
 LL |     fn MY_CONST() {}
    |     ^^^^^^^^^^^^^^^^ does not match trait
@@ -19,9 +26,12 @@ LL |     fn MY_CONST() {}
 error[E0325]: item `bar` is an associated type, which doesn't match its trait `Foo`
   --> $DIR/impl-wrong-item-for-trait.rs:30:5
    |
+LL | trait Foo {
 LL |     fn bar(&self);
    |     -------------- item in trait
 ...
+LL | impl Foo for FooTypeForMethod {
+LL |
 LL |     type bar = u64;
    |     ^^^^^^^^^^^^^^^ does not match trait
 

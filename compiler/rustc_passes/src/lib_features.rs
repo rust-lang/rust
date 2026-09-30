@@ -4,9 +4,8 @@
 //! but are not declared in one single location (unlike lang features), which means we need to
 //! collect them instead.
 
-use rustc_hir::attrs::AttributeKind;
+use rustc_attr_ir::{Attribute, AttributeKind, StabilityLevel, StableSince};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{Attribute, StabilityLevel, StableSince};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::query::{LocalCrate, Providers};

@@ -19,7 +19,7 @@ pub use self::closure::*;
 use crate::inherent::*;
 use crate::ty::AliasTy;
 use crate::{
-    self as ty, BoundVarIndexKind, FloatTy, FreeAliasTy, InherentAliasTy, IntTy, Interner,
+    self as ty, BoundVarIndexKind, Const, FloatTy, FreeAliasTy, InherentAliasTy, IntTy, Interner,
     OpaqueAliasTy, ProjectionAliasTy, Region, UintTy, Unnormalized,
 };
 
@@ -187,7 +187,7 @@ pub enum TyKind<I: Interner> {
     Str,
 
     /// An array with the given length. Written as `[T; N]`.
-    Array(I::Ty, I::Const),
+    Array(I::Ty, Const<I>),
 
     /// A pattern newtype.
     ///
@@ -259,7 +259,9 @@ pub enum TyKind<I: Interner> {
     /// `ClosureArgs` for more details.
     Closure(I::ClosureId, I::GenericArgs),
 
-    /// The anonymous type of a closure. Used to represent the type of `async |a| a`.
+    /// The anonymous type of an async closure. Used to represent the type of `async |a| a`.
+    ///
+    /// This type itself is not a coroutine, it just represents a closure that returns one.
     ///
     /// Coroutine-closure args contain both the - potentially instantiated - generic
     /// parameters of its parent and some synthetic parameters. See the documentation

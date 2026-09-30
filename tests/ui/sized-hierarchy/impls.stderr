@@ -289,10 +289,10 @@ LL |     needs_sized::<StructAllFieldsMetaSized>();
    |
    = help: within `StructAllFieldsMetaSized`, the trait `Sized` is not implemented for `[u8]`
 note: required because it appears within the type `StructAllFieldsMetaSized`
-  --> $DIR/impls.rs:235:12
+  --> $DIR/impls.rs:235:39
    |
 LL |     struct StructAllFieldsMetaSized { x: [u8], y: [u8] }
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^   -------  ------- required by this field
+   |                                       ^^^^^^^  ^^^^^^^ required by this field
    |                                       |
    |                                       required by this field
 note: required by a bound in `needs_sized`
@@ -309,10 +309,10 @@ LL |     needs_sized::<StructAllFieldsUnsized>();
    |
    = help: within `StructAllFieldsUnsized`, the trait `Sized` is not implemented for `main::Foo`
 note: required because it appears within the type `StructAllFieldsUnsized`
-  --> $DIR/impls.rs:243:12
+  --> $DIR/impls.rs:243:37
    |
 LL |     struct StructAllFieldsUnsized { x: Foo, y: Foo }
-   |            ^^^^^^^^^^^^^^^^^^^^^^   ------  ------ required by this field
+   |                                     ^^^^^^  ^^^^^^ required by this field
    |                                     |
    |                                     required by this field
 note: required by a bound in `needs_sized`
@@ -329,10 +329,10 @@ LL |     needs_metasized::<StructAllFieldsUnsized>();
    |
    = help: within `StructAllFieldsUnsized`, the nightly-only, unstable trait `MetaSized` is not implemented for `main::Foo`
 note: required because it appears within the type `StructAllFieldsUnsized`
-  --> $DIR/impls.rs:243:12
+  --> $DIR/impls.rs:243:37
    |
 LL |     struct StructAllFieldsUnsized { x: Foo, y: Foo }
-   |            ^^^^^^^^^^^^^^^^^^^^^^   ------  ------ required by this field
+   |                                     ^^^^^^  ^^^^^^ required by this field
    |                                     |
    |                                     required by this field
 note: required by a bound in `needs_metasized`
@@ -349,10 +349,10 @@ LL |     needs_sized::<StructLastFieldMetaSized>();
    |
    = help: within `StructLastFieldMetaSized`, the trait `Sized` is not implemented for `[u8]`
 note: required because it appears within the type `StructLastFieldMetaSized`
-  --> $DIR/impls.rs:252:12
+  --> $DIR/impls.rs:252:47
    |
 LL |     struct StructLastFieldMetaSized { x: u32, y: [u8] }
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^           ------- required by this field
+   |                                               ^^^^^^^ required by this field
 note: required by a bound in `needs_sized`
   --> $DIR/impls.rs:13:19
    |
@@ -367,10 +367,10 @@ LL |     needs_sized::<StructLastFieldUnsized>();
    |
    = help: within `StructLastFieldUnsized`, the trait `Sized` is not implemented for `main::Foo`
 note: required because it appears within the type `StructLastFieldUnsized`
-  --> $DIR/impls.rs:259:12
+  --> $DIR/impls.rs:259:45
    |
 LL |     struct StructLastFieldUnsized { x: u32, y: Foo }
-   |            ^^^^^^^^^^^^^^^^^^^^^^           ------ required by this field
+   |                                             ^^^^^^ required by this field
 note: required by a bound in `needs_sized`
   --> $DIR/impls.rs:13:19
    |
@@ -385,10 +385,10 @@ LL |     needs_metasized::<StructLastFieldUnsized>();
    |
    = help: within `StructLastFieldUnsized`, the nightly-only, unstable trait `MetaSized` is not implemented for `main::Foo`
 note: required because it appears within the type `StructLastFieldUnsized`
-  --> $DIR/impls.rs:259:12
+  --> $DIR/impls.rs:259:45
    |
 LL |     struct StructLastFieldUnsized { x: u32, y: Foo }
-   |            ^^^^^^^^^^^^^^^^^^^^^^           ------ required by this field
+   |                                             ^^^^^^ required by this field
 note: required by a bound in `needs_metasized`
   --> $DIR/impls.rs:16:23
    |

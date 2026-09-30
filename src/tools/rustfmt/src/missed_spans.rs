@@ -266,7 +266,10 @@ impl<'a> FmtVisitor<'a> {
             self.block_indent
         } else {
             self.push_str(" ");
-            Indent::from_width(self.config, last_line_width(&self.buffer))
+            Indent::from_width(
+                self.config,
+                last_line_width(&self.buffer, self.config.tab_spaces()),
+            )
         };
 
         let comment_shape = Shape::indented(comment_indent, self.config).comment(self.config);

@@ -5,12 +5,13 @@
 use std::iter;
 
 use rustc_abi::{Endian, Layout, ReprOptions};
+use rustc_attr_ir::Attribute;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_crate_store::ForeignModule;
-use rustc_hir::Attribute;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::interpret::{AllocId, ConstAllocation, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::{BinOp, Body, Const as MirConst, ConstValue, UnOp};
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::print::{
     with_forced_trimmed_paths, with_no_trimmed_paths, with_resolve_crate_name,

@@ -3,7 +3,7 @@ mod adt;
 use std::borrow::Cow;
 
 use rustc_abi::{ExternAbi, FieldIdx};
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, FnHeader, FnSigKind, FnSigTys, ScalarInt, Ty, TyCtxt};
 use rustc_span::{Symbol, span_bug, sym};

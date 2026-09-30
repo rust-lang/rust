@@ -4,7 +4,7 @@
 // Ensure that `Box` in particular isn't fundamental over
 // the allocator parameter (but is over T).
 
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 
 extern crate coherence_lib as lib;
 

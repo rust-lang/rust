@@ -2,12 +2,13 @@ use std::{fmt, iter, mem};
 
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{CoroutineDesugaring, CoroutineKind};
 use rustc_index::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
 use rustc_mir_dataflow::DropFlagState;
@@ -1640,7 +1641,11 @@ where
     #[instrument(level = "trace", skip(self), ret)]
     fn new_block(&mut self, unwind: Unwind, k: TerminatorKind<'tcx>) -> BasicBlock {
         self.elaborator.patch().new_block(BasicBlockData::new(
-            Some(Terminator { source_info: self.source_info, kind: k, attributes: ThinVec::new() }),
+            Some(Terminator {
+                source_info: self.source_info,
+                kind: k,
+                loop_hint_attrs: ThinVec::new(),
+            }),
             unwind.is_cleanup(),
         ))
     }
@@ -1654,7 +1659,11 @@ where
     ) -> BasicBlock {
         self.elaborator.patch().new_block(BasicBlockData::new_stmts(
             statements,
-            Some(Terminator { source_info: self.source_info, kind: k, attributes: ThinVec::new() }),
+            Some(Terminator {
+                source_info: self.source_info,
+                kind: k,
+                loop_hint_attrs: ThinVec::new(),
+            }),
             unwind.is_cleanup(),
         ))
     }

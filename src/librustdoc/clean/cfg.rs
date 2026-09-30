@@ -8,13 +8,11 @@ use std::sync::Arc;
 use std::{fmt, mem, ops};
 
 use itertools::Either;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
-use rustc_hir as hir;
-use rustc_hir::Attribute;
-use rustc_hir::attrs::{
+use rustc_attr_ir::{
     AttributeKind, CfgEntry, CfgHideShow, DocCfgHideShow, DocCfgHideShowValue, HideOrShow,
 };
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{Symbol, sym};
 use rustc_span::{DUMMY_SP, Span};
@@ -835,7 +833,10 @@ fn handle_auto_cfg_hide_show(cfg_info: &mut CfgInfo, attr: &CfgHideShow) {
     }
 }
 
-pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> + Clone>(
+pub(crate) fn extract_cfg_from_attrs<
+    'a,
+    I: Iterator<Item = &'a rustc_attr_ir::Attribute> + Clone,
+>(
     attrs: I,
     tcx: TyCtxt<'_>,
     cfg_info: &mut CfgInfo,
@@ -868,7 +869,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
     let mut doc_cfg = attrs
         .clone()
         .filter_map(|attr| match attr {
-            Attribute::Parsed(AttributeKind::Doc(d)) if !d.cfg.is_empty() => Some(d),
+            rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d)) if !d.cfg.is_empty() => Some(d),
             _ => None,
         })
         .peekable();
@@ -892,7 +893,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
 
     // We get all `doc(auto_cfg)`, `cfg` and `target_feature` attributes.
     for attr in attrs {
-        if let Attribute::Parsed(AttributeKind::Doc(d)) = attr {
+        if let rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d)) = attr {
             for (new_value, span) in &d.auto_cfg_change {
                 if check_changed_auto_active_status(
                     &mut changed_auto_active_status,
@@ -918,7 +919,11 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
                     handle_auto_cfg_hide_show(cfg_info, value);
                 }
             }
-        } else if let hir::Attribute::Parsed(AttributeKind::TargetFeature { features, .. }) = attr {
+        } else if let rustc_attr_ir::Attribute::Parsed(AttributeKind::TargetFeature {
+            features,
+            ..
+        }) = attr
+        {
             // Treat `#[target_feature(enable = "feat")]` attributes as if they were
             // `#[doc(cfg(target_feature = "feat"))]` attributes as well.
             for (feature, _) in features {
@@ -930,7 +935,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
             }
             continue;
         } else if !cfg_info.parent_is_doc_cfg
-            && let hir::Attribute::Parsed(AttributeKind::CfgTrace(cfgs)) = attr
+            && let rustc_attr_ir::Attribute::Parsed(AttributeKind::CfgTrace(cfgs)) = attr
         {
             for (new_cfg, _) in cfgs {
                 cfg_info.current_cfg &= Cfg(new_cfg.clone());

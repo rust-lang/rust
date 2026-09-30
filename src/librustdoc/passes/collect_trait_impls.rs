@@ -3,11 +3,10 @@
 //! For example, if a crate defines a struct that implements a trait,
 //! this pass will note that the struct implements that trait.
 
+use rustc_attr_ir::{Attribute, AttributeKind, DocAttribute, find_attr};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::FatalError;
-use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::{Attribute, find_attr};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::kw;
 use tracing::debug;

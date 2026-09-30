@@ -2040,6 +2040,12 @@ test!(BuildStd {
     default: false
 });
 
+test!(AssemblyGcc {
+    path: "tests/assembly-gcc",
+    mode: CompiletestMode::Assembly,
+    suite: "assembly-gcc",
+    default: true
+});
 test!(AssemblyLlvm {
     path: "tests/assembly-llvm",
     mode: CompiletestMode::Assembly,
@@ -3634,7 +3640,13 @@ impl CommandLineStep for Crate {
         if crates.iter().any(|crate_| crate_ == "alloc") {
             crates.push("alloctests".to_owned());
         };
-        let description = crate_description(&self.crates);
+        let mut description = crate_description(&self.crates);
+        if builder.kind == Kind::Miri {
+            if !description.is_empty() {
+                description.push(' ');
+            }
+            description.push_str("in Miri");
+        }
         run_cargo_test(cargo, &[], &crates, &*description, target, builder, record_failed_tests);
     }
 }

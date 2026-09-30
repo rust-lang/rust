@@ -122,7 +122,7 @@ impl<'tcx> UnsafeExprCollector<'tcx> {
             .into_iter()
             .map(|(span, msg)| (msg, span))
             .collect::<Vec<_>>();
-        unsafe_ops.sort_unstable();
+        unsafe_ops.sort_unstable_by_key(|(s, span)| (*s, span.lo_hi()));
         unsafe_ops
     }
 

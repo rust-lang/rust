@@ -54,7 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for RawBorrowsViaReferences {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         if let ExprKind::Cast(exp, ty) = expr.kind
             && let ExprKind::AddrOf(BorrowKind::Ref, mutbl, addr_of_exp) = exp.kind
-            && let TyKind::Ptr(_) = ty.kind
+            && let TyKind::Ptr(..) = ty.kind
             && addr_of_exp.is_syntactic_place_expr()
         {
             let suggestion = if let Some(borrow_span) =

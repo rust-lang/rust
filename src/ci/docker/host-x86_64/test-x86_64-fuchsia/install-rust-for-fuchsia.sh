@@ -5,7 +5,7 @@ set -ex
 # Build the components of Rust that are needed by the Fuchsia build system.
 python3 ../x.py install \
     --target=$TARGETS \
-    compiler/rustc library/std clippy rustfmt src
+    compiler/rustc library/std clippy rustfmt rust-src
 
 # The Fuchsia build system requires that shared libraries that are used inside Fuchsia are stripped,
 # so use `llvm-objcopy` to remove the debug symbols and strip the libraries, but keeping the

@@ -47,6 +47,9 @@ cfg_select! {
         mod vexos;
         use vexos as imp;
     }
+    target_vendor = "apple" => {
+        mod darwin;
+    }
     _ => {
         mod unsupported;
         use unsupported as imp;
@@ -61,8 +64,8 @@ pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&Path) -> io::Result<T>) -> i
 }
 
 pub use imp::{
-    Dir, DirBuilder, DirEntry, File, FileAttr, FilePermissions, FileTimes, FileType, OpenOptions,
-    ReadDir,
+    Dir, DirBuilder, DirEntry, ExtraHomeDirs, ExtraMediaDirs, File, FileAttr, FilePermissions,
+    FileTimes, FileType, OpenOptions, ReadDir,
 };
 
 pub fn read_dir(path: &Path) -> io::Result<ReadDir> {

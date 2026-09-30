@@ -218,6 +218,7 @@ symbols! {
         Eq,
         Equal,
         Err,
+        ExitCode,
         Expected,
         ExternC,
         ExternRust,
@@ -325,6 +326,7 @@ symbols! {
         SelfTy,
         Send,
         SeqCst,
+        ShouldPanic,
         Sized,
         Slice,
         SliceIndex,
@@ -341,6 +343,7 @@ symbols! {
         Sync,
         SyncUnsafeCell,
         Target,
+        TestType,
         This,
         TokenStream,
         Transmute,
@@ -367,6 +370,8 @@ symbols! {
         __H,
         __S,
         __awaitee,
+        __ensures_checker,
+        __ret,
         __try_var,
         _t,
         _task_context,
@@ -413,7 +418,6 @@ symbols! {
         alloc_layout,
         alloc_zeroed,
         allocator,
-        allocator_api,
         allocator_internals,
         allow,
         allow_fail,
@@ -680,6 +684,7 @@ symbols! {
         complex,
         concat,
         concat_bytes,
+        concat_str,
         conservative_impl_trait,
         console,
         const_allocate,
@@ -847,7 +852,6 @@ symbols! {
         diagnostic_opaque,
         dialect,
         direct,
-        direct_const_arg,
         discriminant_kind,
         discriminant_type,
         discriminant_value,
@@ -1029,6 +1033,7 @@ symbols! {
         forall,
         forbid,
         force_target_feature,
+        forced_keywords,
         forget,
         format_args,
         format_args_capture,
@@ -1067,6 +1072,12 @@ symbols! {
         future_output,
         future_trait,
         fxsr,
+        gca,
+        gca_adts,
+        gca_const_items,
+        gca_macroless_args,
+        gca_macroless_items,
+        gca_min_const_items,
         gdb_script_file,
         ge,
         gen_blocks,
@@ -1121,6 +1132,7 @@ symbols! {
         i128,
         i128_type,
         ident,
+        ident_from_str_and_span,
         if_let,
         if_let_guard,
         if_let_rescope,
@@ -2500,6 +2512,7 @@ impl Ident {
     }
 
     /// Maps a string and a span to an identifier.
+    #[rustc_diagnostic_item = "ident_from_str_and_span"]
     pub fn from_str_and_span(string: &str, span: Span) -> Ident {
         Ident::new(Symbol::intern(string), span)
     }
@@ -2579,6 +2592,7 @@ impl fmt::Display for Ident {
 pub enum IdentPrintMode {
     Normal,
     RawIdent,
+    ForcedKeywordIdent,
     RawLifetime,
 }
 
@@ -2637,6 +2651,10 @@ impl fmt::Display for IdentPrinter {
             IdentPrintMode::Normal => self.symbol,
             IdentPrintMode::RawIdent => {
                 f.write_str("r#")?;
+                self.symbol
+            }
+            IdentPrintMode::ForcedKeywordIdent => {
+                f.write_str("k#")?;
                 self.symbol
             }
             IdentPrintMode::RawLifetime => {

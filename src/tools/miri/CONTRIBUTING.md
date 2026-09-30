@@ -111,12 +111,35 @@ install that exact version of rustc as a toolchain:
 This will set up a rustup toolchain called `miri` and set it as an override for
 the current directory.
 
-You can also create a `.auto-everything` file (contents don't matter, can be empty), which
-will cause any `./miri` command to automatically call `./miri toolchain`, `clippy` and `rustfmt`
-for you. If you don't want all of these to happen, you can add individual `.auto-toolchain`,
-`.auto-clippy` and `.auto-fmt` files respectively.
-
 [`rustup-toolchain-install-master`]: https://github.com/kennytm/rustup-toolchain-install-master
+
+### Configuring `./miri`
+
+The `./miri` script supports optional configuration via a `miri.toml` file.
+The following configuration keys are currently supported, with the given default values:
+
+```toml
+[toolchain]
+# Overwrite the default toolchain name used by `./miri toolchain`.
+# Note that all other commands will just use the currently active rustup toolchain!
+# (Though note that if you have `auto.toolchain` enabled, most commands will run `./miri toolchain`
+# first, which will activate the toolchain given here.)
+name = "miri"
+# Additional components to install with the toolchain. Note that if you remove `clippy` or `rustfmt`
+# from this list then obviously `./miri clippy`/`./miri fmt` will not work.
+# Only takes effect when a new toolchain is installed. Run `rustup toolchain remove <name>` followed
+# by `./miri toolchain` to force this to have effect.
+components = ["clippy", "rustfmt"]
+
+[auto]
+# Automatically run `./miri toolchain` before most commands.
+# Uses the toolchain name configured above, if any.
+toolchain = false
+# Automatically run `./miri clippy` before most commands.
+clippy = false
+# Automatically run `./miri fmt` before most commands.
+fmt = false
+```
 
 ## Building and testing Miri
 

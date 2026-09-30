@@ -1,7 +1,9 @@
 //@ needs-rustc-debug-assertions
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
+
+use std::gca;
 
 trait Tr {
     #[rustc_always_gca]
@@ -13,7 +15,7 @@ struct T;
 impl Tr for T {
     const SIZE: usize;
     //~^ ERROR associated constant in `impl` without body
-    //~| ERROR implementation of a `#[rustc_always_gca]` must have a `direct_const_arg!` RHS
+    //~| ERROR implementation of a `#[rustc_always_gca]` must have a `gca!` RHS
 }
 
 fn main() {}

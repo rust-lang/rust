@@ -1,11 +1,10 @@
 use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, Mutability, Safety};
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{Span, sym};
+use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::thin_vec;
 
-use crate::deriving::generic::ty::*;
-use crate::deriving::generic::{self, *};
-use crate::deriving::path_std;
+use crate::deriving::generic::*;
+use crate::deriving::{call_discriminant_value, path_std};
 
 /// Expands a `#[derive(PartialEq)]` attribute into an implementation for the
 /// target item.
@@ -18,18 +17,17 @@ pub(crate) fn expand_deriving_partial_eq(
 ) {
     let structural_trait_def = TraitDef {
         span,
-        path: path_std!(marker::StructuralPartialEq),
+        path: path_std!(cx, span, marker::StructuralPartialEq),
         skip_path_as_bound: true, // crucial!
         needs_copy_as_bound_if_packed: false,
         // The `StructuralPartialEq` impl must have the *same* bounds as the `PartialEq` impl,
         // or it will apply in situations where it should not, such as in the bug
         // <https://github.com/rust-lang/rust/issues/147714>.
-        additional_bounds: smallvec![ty::Ty::Path(path_std!(cmp::PartialEq))],
+        additional_bounds: smallvec![path_std!(cx, span, cmp::PartialEq)],
         // We really don't support unions, but that's already checked by the impl generated below;
         // a second check here would lead to redundant error messages.
         supports_unions: true,
         methods: SmallVec::new(),
-        associated_types: SmallVec::new(),
         is_const: false,
         safety: Safety::Default,
         document: true,
@@ -42,8 +40,9 @@ pub(crate) fn expand_deriving_partial_eq(
         name: sym::eq,
         generics: cx.empty_generics(span),
         explicit_self: true,
-        nonself_args: smallvec![(self_ref(), sym::other)],
-        ret_ty: Path(generic::ty::Path::new_local(sym::bool)),
+        nonself_args: smallvec![(cx.ty_self_ref(span), sym::other)],
+        has_other_selflike_arg: true,
+        ret_ty: cx.ty_path(cx.path_ident(span, Ident::new(sym::bool, span))),
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
         combine_substructure: combine_substructure(get_substructure_equality_expr),
@@ -51,13 +50,12 @@ pub(crate) fn expand_deriving_partial_eq(
 
     let trait_def = TraitDef {
         span,
-        path: path_std!(cmp::PartialEq),
+        path: path_std!(cx, span, cmp::PartialEq),
         skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: SmallVec::new(),
         supports_unions: false,
         methods,
-        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,
@@ -121,12 +119,20 @@ fn get_substructure_equality_expr(
     span: Span,
     substructure: Substructure<'_>,
 ) -> BlockOrExpr {
-    use SubstructureFields::*;
-
-    BlockOrExpr::new_expr(match substructure.fields {
+    BlockOrExpr::new_expr(match substructure {
         EnumMatching(.., fields) | Struct(.., fields) => {
-            let combine = move |acc, field| {
-                let rhs = get_field_equality_expr(cx, field);
+            let combine = move |acc, field: &FieldInfo| {
+                let rhs = field
+                    .other_selflike_expr
+                    .as_ref()
+                    .expect("not exactly 2 arguments in `derive(PartialEq)`");
+
+                let rhs = cx.expr_binary(
+                    field.span,
+                    BinOpKind::Eq,
+                    wrap_block_expr(cx, peel_refs(&field.self_expr)),
+                    wrap_block_expr(cx, peel_refs(rhs)),
+                );
                 match acc {
                     // Combine the previous comparison with the current field
                     // using logical AND.
@@ -146,42 +152,19 @@ fn get_substructure_equality_expr(
                 // If there are no fields, treat as always equal.
                 .unwrap_or_else(|| cx.expr_bool(span, true))
         }
-        EnumDiscr(disc, match_expr) => {
-            let lhs = get_field_equality_expr(cx, &disc);
+        EnumDiscr(match_expr) => {
+            let self_expr = call_discriminant_value(cx, span, kw::SelfLower);
+            let other_selflike_expr = call_discriminant_value(cx, span, sym::other);
+            let lhs = cx.expr_binary(span, BinOpKind::Eq, self_expr, other_selflike_expr);
             let Some(match_expr) = match_expr else {
                 return BlockOrExpr::new_expr(lhs);
             };
             // Compare the discriminant first (cheaper), then the rest of the
             // fields.
-            cx.expr_binary(disc.span, BinOpKind::And, lhs, match_expr.clone())
+            cx.expr_binary(span, BinOpKind::And, lhs, match_expr)
         }
         _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(PartialEq)`"),
     })
-}
-
-/// Generates an equality comparison expression for a single struct or enum
-/// field.
-///
-/// This function produces an AST expression that compares the `self` and
-/// `other` values for a field using `==`. It removes any leading references
-/// from both sides for readability. If the field is a block expression, it is
-/// wrapped in parentheses to ensure valid syntax.
-///
-/// # Panics
-///
-/// Panics if there are not exactly two arguments to compare (should be `self`
-/// and `other`).
-fn get_field_equality_expr(cx: &ExtCtxt<'_>, field: &FieldInfo) -> Box<Expr> {
-    let [rhs] = &field.other_selflike_exprs[..] else {
-        cx.dcx().span_bug(field.span, "not exactly 2 arguments in `derive(PartialEq)`");
-    };
-
-    cx.expr_binary(
-        field.span,
-        BinOpKind::Eq,
-        wrap_block_expr(cx, peel_refs(&field.self_expr)),
-        wrap_block_expr(cx, peel_refs(rhs)),
-    )
 }
 
 /// Removes all leading immutable references from an expression.

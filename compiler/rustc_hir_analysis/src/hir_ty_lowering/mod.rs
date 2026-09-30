@@ -25,6 +25,7 @@ use std::{assert_matches, slice};
 
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast::LitKind;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::thin_vec::ThinVec;
@@ -33,7 +34,6 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, StashKey,
     struct_span_code_err,
 };
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, AnonConst, GenericArg, GenericArgs, HirId};
@@ -42,6 +42,7 @@ use rustc_infer::traits::DynCompatibilityViolation;
 use rustc_lint_defs::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{
     self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput,
     Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
@@ -418,7 +419,7 @@ impl<'tcx> ForbidParamUsesFolder<'tcx> {
                 "generic `Self` types are currently not permitted in anonymous constants"
             }
             ForbidParamContext::ConstArgument => {
-                if self.tcx.features().generic_const_args() {
+                if self.tcx.features().gca_const_items() {
                     "generic parameters in const blocks are not allowed; use a named `const` item instead"
                 } else {
                     "generic parameters may not be used in const operations"
@@ -441,15 +442,15 @@ impl<'tcx> ForbidParamUsesFolder<'tcx> {
             }
         }
         if matches!(self.context, ForbidParamContext::ConstArgument) {
-            if self.tcx.features().generic_const_args() {
+            if self.tcx.features().gca_const_items() {
                 diag.help("consider factoring the expression into a `type const` item and use it as the const argument instead");
-            } else if self.tcx.features().min_generic_const_args() {
-                diag.help("add `#![feature(generic_const_args)]` and extract the expression into a `type const` item");
+            } else if self.tcx.features().gca_min_const_items() {
+                diag.help("add `#![feature(gca_const_items)]` and extract the expression into a `type const` item");
             } else if self.tcx.sess.is_nightly_build() {
                 diag.help(
                     "add `#![feature(generic_const_exprs)]` to allow generic const expressions",
                 );
-                diag.help("alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item");
+                diag.help("alternatively, you can use `#![feature(gca_const_items)]` and extract the expression into a `type const` item");
             }
         }
         diag.emit_err()
@@ -3119,14 +3120,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         })
     }
 
-    /// `def_id` is a const item used in the type system. Checks if that's OK.
+    /// `alias_const` is a const item used in the type system. Checks if that's OK.
     fn check_const_item_in_type_system(
         &self,
         alias_const: ty::AliasConstKind<'tcx>,
         span: Span,
     ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx();
-        if tcx.features().generic_const_args() || alias_const.is_direct_const(tcx) {
+        if tcx.features().gca_const_items() || alias_const.is_direct_const(tcx) {
             Ok(())
         } else {
             let mut err = self
@@ -3146,9 +3147,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     let body_span = tcx.hir_body(body_id).value.span;
 
                     err.multipart_suggestion(
-                        "add direct_const_arg!() to the right-hand side of the constant",
+                        "add gca!() to the right-hand side of the constant",
                         vec![
-                            (body_span.shrink_to_lo(), String::from("core::direct_const_arg!(")),
+                            (body_span.shrink_to_lo(), String::from("core::gca!(")),
                             (body_span.shrink_to_hi(), String::from(")")),
                         ],
                         Applicability::MaybeIncorrect,
@@ -3164,9 +3165,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     );
                 }
             } else {
-                err.note(
-                    "only consts with a `direct_const_arg!` right-hand side may be used in types",
-                );
+                err.note("only consts with a `gca!` right-hand side may be used in types");
             }
             Err(err.emit_err())
         }
@@ -3196,12 +3195,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let result_ty = match &hir_ty.kind {
             hir::TyKind::InferDelegation(infer) => self.lower_delegation_ty(*infer),
             hir::TyKind::Slice(ty) => Ty::new_slice(tcx, self.lower_ty(ty)),
-            hir::TyKind::Ptr(mt) => Ty::new_ptr(tcx, self.lower_ty(mt.ty), mt.mutbl),
-            hir::TyKind::Ref(region, mt) => {
+            hir::TyKind::Ptr(ty, mutbl) => Ty::new_ptr(tcx, self.lower_ty(ty), *mutbl),
+            hir::TyKind::Ref(region, ty, mutbl) => {
                 let r = self.lower_lifetime(region, RegionInferReason::Reference);
                 debug!(?r);
-                let t = self.lower_ty(mt.ty);
-                Ty::new_ref(tcx, r, t, mt.mutbl)
+                let t = self.lower_ty(ty);
+                Ty::new_ref(tcx, r, t, *mutbl)
             }
             hir::TyKind::Never => tcx.types.never,
             hir::TyKind::Tup(fields) => {
