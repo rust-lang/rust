@@ -14,7 +14,7 @@ use rustc_crate_store::Untracked;
 use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
-    AppendOnlyIndexVec, DynSend, DynSync, FreezeLock, WorkerLocal, par_fns, par_for_each_in,
+    AppendOnlyIndexVec, DynSend, DynSync, FreezeLock, WorkerLocal, par_fns, par_range,
 };
 use rustc_data_structures::thousands;
 use rustc_errors::timings::TimingSection;
@@ -29,7 +29,7 @@ use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_sto
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
-use rustc_middle::middle::resolve::{AstOwner, ResolverAstLowering, ResolverGlobalCtxt};
+use rustc_middle::middle::resolve::{ResolverAstLowering, ResolverGlobalCtxt};
 use rustc_middle::ty::{self, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_parse::lexer::StripTokens;
@@ -1094,14 +1094,12 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     tcx.ensure_done().resolve_type_relative_delegations(());
 
     let index = tcx.index_ast(());
-    let index = (0..index.len())
-        .into_iter()
-        .map(|i| LocalDefId { local_def_index: DefIndex::from_usize(i) })
-        .filter(|&id| index.get(id).is_some_and(|x| !matches!(x.borrow().1, AstOwner::NonOwner)))
-        .collect::<Vec<_>>();
 
-    par_for_each_in(index, |&def_id| {
-        tcx.ensure_done().lower_to_hir(def_id);
+    par_range(0..index.len(), |idx| {
+        let id = LocalDefId { local_def_index: DefIndex::from_usize(idx) };
+        if index[id].is_some() {
+            tcx.ensure_done().lower_to_hir(id);
+        }
     });
 
     if tcx.sess.opts.unstable_opts.input_stats {
