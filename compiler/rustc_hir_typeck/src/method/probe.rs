@@ -418,16 +418,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             ty::List::empty()
         };
-        let pseudo_rigid_due_to_opaques_bounds = if self.next_trait_solver() {
-            self.tcx.mk_pseudo_rigid_due_to_opaques_bounds_from_iter(
-                self.inner.borrow_mut().opaque_types().iter_pseudo_rigid_due_to_opaques_bounds(),
+        let pseudo_rigid_due_to_opaques = if self.next_trait_solver() {
+            self.tcx.mk_pseudo_rigid_due_to_opaques_from_iter(
+                self.inner.borrow_mut().opaque_types().iter_pseudo_rigid_due_to_opaques(),
             )
         } else {
             ty::List::empty()
         };
         let value = query::MethodAutoderefSteps {
             predefined_opaques_in_body,
-            pseudo_rigid_due_to_opaques_bounds,
+            pseudo_rigid_due_to_opaques,
             self_ty,
         };
         let query_input = self
@@ -446,7 +446,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     infcx.instantiate_canonical(span, &query_input.canonical);
                 let query::MethodAutoderefSteps {
                     predefined_opaques_in_body: _,
-                    pseudo_rigid_due_to_opaques_bounds: _,
+                    pseudo_rigid_due_to_opaques: _,
                     self_ty,
                 } = value;
                 debug!(?self_ty, ?query_input, "probe_op: Mode::Path");
@@ -659,7 +659,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
         value:
             query::MethodAutoderefSteps {
                 predefined_opaques_in_body,
-                pseudo_rigid_due_to_opaques_bounds,
+                pseudo_rigid_due_to_opaques,
                 self_ty,
             },
     } = goal;
@@ -682,7 +682,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
         }
     }
     infcx.register_pseudo_rigid_due_to_opaques_in_storage_with_flattened(
-        pseudo_rigid_due_to_opaques_bounds,
+        pseudo_rigid_due_to_opaques,
     );
     let prev_opaque_entries = infcx.inner.borrow_mut().opaque_types().num_entries();
 

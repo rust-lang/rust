@@ -1180,8 +1180,8 @@ where
 
         let self_ty = goal.predicate.self_ty();
         // We only use this hack during HIR typeck.
-        let pseudo_rigids = match self.typing_mode() {
-            TypingMode::Typeck { .. } => self.pseudo_rigids_due_to_opaques(self_ty),
+        let pseudo_rigid = match self.typing_mode() {
+            TypingMode::Typeck { .. } => self.pseudo_rigid_due_to_opaques(self_ty),
             TypingMode::Coherence
             | TypingMode::PostTypeckUntilBorrowck { .. }
             | TypingMode::PostBorrowck { .. }
@@ -1195,14 +1195,13 @@ where
             }
         };
 
-        if pseudo_rigids.is_empty() {
+        if pseudo_rigid.is_empty() {
             candidates.extend(self.forced_ambiguity(MaybeInfo::AMBIGUOUS));
             return Ok(());
         }
 
-        for (pseudo_rigid, bounds) in &pseudo_rigids {
+        for bound in &pseudo_rigid {
             debug!("self ty is sub unified with {pseudo_rigid:?}");
-
             // We look at all item-bounds of the type being pseudo rigid due to opaques,
             // instantiating the self type of the bound with the current self
             // type before considering them as a candidate. Imagine we've got
@@ -1210,23 +1209,20 @@ where
             // type of `impl Trait<u32>`, We take the item bound `opaque: Trait<u32>`
             // and replace all occurrences of `opaque` with `?x`. This results
             // in a `?x: Trait<u32>` alias-bound candidate.
-            for bound in bounds {
-                candidates.extend(consider_pseudo_rigid_due_to_opaques_bound(self, goal, *bound));
-            }
+            candidates.extend(consider_pseudo_rigid_due_to_opaques_bound(self, goal, *bound));
         }
 
         // This is rather hacky and unprincipled, but we need this anyway :(
         // See the comments on
         // `[ty::PseudoRigidDueToOpaquesBound::opt_unmentioned_projection_bound]`
         // for details.
-        if self.typing_mode().should_register_pseudo_rigids_due_to_opaques()
-            && candidates.is_empty()
+        if candidates.is_empty()
             && let Some(ty::NormalizesTo { alias, term }) = G::as_normalizes_to(goal.predicate)
             && term.as_type().is_some()
             && let Some(unmentioned) =
                 ty::PseudoRigidDueToOpaquesBound::opt_unmentioned_projection_bound(
                     self.cx(),
-                    pseudo_rigids.into_iter().flat_map(|(_, bounds)| bounds),
+                    pseudo_rigid,
                     ty::ProjectionClause { projection_term: alias, term },
                 )
         {

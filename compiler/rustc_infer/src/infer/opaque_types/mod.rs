@@ -240,7 +240,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // heuristics.
         let pseudo_rigid = inner
             .opaque_type_storage
-            .iter_pseudo_rigids_due_to_opaques()
+            .iter_pseudo_rigid_due_to_opaques()
             .map(|(pr, _)| pr)
             .find(|pr| {
                 if let ty::Infer(ty::TyVar(ty_vid)) = *pr.kind() {

@@ -13,7 +13,9 @@ use std::iter;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::infer::canonical::{CanonicalVarKind, QueryRegionConstraint};
-use rustc_middle::ty::{self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{
+    self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypingMode,
+};
 use rustc_span::bug;
 use tracing::{debug, instrument};
 
@@ -156,12 +158,28 @@ impl<'tcx> InferCtxt<'tcx> {
         debug!(?region_constraints);
 
         let mut inner = self.inner.borrow_mut();
-        let (opaque_types, mut pseudo_rigids) = inner.opaque_type_storage.take_opaque_types();
+        let (opaque_types, pseudo_rigid) = inner.opaque_type_storage.take_opaque_types();
         let opaque_types = opaque_types.map(|(k, v)| (k, v.ty)).collect();
 
-        // We register pseudo-rigid types only during HIR typeck, with the next-solver,
-        // and we shouldn't call the old solver style canonical queries there.
-        debug_assert!(pseudo_rigids.next().is_none());
+        // We don't handle `pseudo_rigid` correctly here, so make sure we never use old style
+        // canonical responses with the new solver in any place which may add any.
+        debug_assert!(pseudo_rigid.is_empty());
+        if cfg!(debug_assertions) && self.next_trait_solver() {
+            match self.typing_mode_raw().assert_not_erased() {
+                TypingMode::Typeck { defining_opaque_types_and_generators } => {
+                    assert!(
+                        defining_opaque_types_and_generators.is_empty(),
+                        "old style query response in new solver typeck",
+                    );
+                }
+                TypingMode::Coherence
+                | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::PostBorrowck { .. }
+                | TypingMode::PostAnalysis
+                | TypingMode::Reflection
+                | TypingMode::Codegen => {}
+            }
+        }
 
         Ok(QueryResponse {
             var_values: inference_vars,

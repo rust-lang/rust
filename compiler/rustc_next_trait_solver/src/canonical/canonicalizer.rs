@@ -116,7 +116,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         let RawExternalConstraintsData {
             region_constraints,
             opaque_types,
-            pseudo_rigid_due_to_opaques_bounds,
+            pseudo_rigid_due_to_opaques,
             normalization_nested_goals,
         } = external_constraints;
         let region_constraints = if region_constraints.has_type_flags(NEEDS_CANONICAL) {
@@ -135,10 +135,8 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             } else {
                 normalization_nested_goals
             };
-        let pseudo_rigid_due_to_opaques_bounds = canonicalizer
-            .filter_and_canonicalize_pseudo_rigids_due_to_opaques_bounds(
-                pseudo_rigid_due_to_opaques_bounds,
-            );
+        let pseudo_rigid_due_to_opaques = canonicalizer
+            .filter_and_canonicalize_pseudo_rigids_due_to_opaques(pseudo_rigid_due_to_opaques);
 
         let value = Response {
             certainty,
@@ -146,9 +144,9 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             external_constraints: delegate.cx().mk_external_constraints(ExternalConstraintsData {
                 region_constraints,
                 opaque_types: delegate.cx().mk_predefined_opaques_in_body(&opaque_types),
-                pseudo_rigid_due_to_opaques_bounds: delegate
+                pseudo_rigid_due_to_opaques: delegate
                     .cx()
-                    .mk_pseudo_rigid_due_to_opaques_bounds(&pseudo_rigid_due_to_opaques_bounds),
+                    .mk_pseudo_rigid_due_to_opaques(&pseudo_rigid_due_to_opaques),
                 normalization_nested_goals,
             }),
         };
@@ -284,17 +282,15 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                 predefined_opaques_in_body
             };
 
-        let pseudo_rigid_due_to_opaques_bounds = rest_canonicalizer
-            .filter_and_canonicalize_pseudo_rigids_due_to_opaques_bounds(
-                input.pseudo_rigid_due_to_opaques_bounds.to_vec(),
+        let pseudo_rigid_due_to_opaques = rest_canonicalizer
+            .filter_and_canonicalize_pseudo_rigids_due_to_opaques(
+                input.pseudo_rigid_due_to_opaques.to_vec(),
             );
 
-        let pseudo_rigid_due_to_opaques_bounds = delegate
-            .cx()
-            .mk_pseudo_rigid_due_to_opaques_bounds(&pseudo_rigid_due_to_opaques_bounds);
+        let pseudo_rigid_due_to_opaques =
+            delegate.cx().mk_pseudo_rigid_due_to_opaques(&pseudo_rigid_due_to_opaques);
 
-        let value =
-            QueryInput { goal, predefined_opaques_in_body, pseudo_rigid_due_to_opaques_bounds };
+        let value = QueryInput { goal, predefined_opaques_in_body, pseudo_rigid_due_to_opaques };
 
         debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
         debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
@@ -487,9 +483,9 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
     /// After canonicalizing all the other relevant values, filter out pseudo-rigids that
     /// sub-unified with no other existing vars and canonicalize the remaining ones.
-    fn filter_and_canonicalize_pseudo_rigids_due_to_opaques_bounds(
+    fn filter_and_canonicalize_pseudo_rigids_due_to_opaques(
         &mut self,
-        mut pseudo_rigid_due_to_opaques_bounds: Vec<(I::Ty, ty::PseudoRigidDueToOpaquesBound<I>)>,
+        mut pseudo_rigid_due_to_opaques: Vec<(I::Ty, ty::PseudoRigidDueToOpaquesBound<I>)>,
     ) -> Vec<(I::Ty, ty::PseudoRigidDueToOpaquesBound<I>)> {
         let mut res = vec![];
 
@@ -500,9 +496,9 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         // once in order, we accidentally filter out the first `(?y, ^self: foo)` as `?y`
         // appears nowhere in preexisting `var_values` when we check it, but it becomes relevant
         // after we check and canonicalize the second one.
-        while !pseudo_rigid_due_to_opaques_bounds.is_empty() {
+        while !pseudo_rigid_due_to_opaques.is_empty() {
             let prev_len = res.len();
-            pseudo_rigid_due_to_opaques_bounds.retain(|entry @ (pseudo_rigid, _)| {
+            pseudo_rigid_due_to_opaques.retain(|entry @ (pseudo_rigid, _)| {
                 if let ty::Infer(ty::TyVar(vid)) = pseudo_rigid.kind()
                     && self
                         .state

@@ -12,7 +12,7 @@ use region_constraints::{
     GenericKind, RegionConstraintCollector, RegionConstraintStorage, VarInfos, VerifyBound,
 };
 pub use relate::combine::PredicateEmittingRelation;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::unify::{self as ut, UnifyKey, UnifyValue};
@@ -1122,11 +1122,11 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
     ) -> (
         Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)>,
-        Vec<(Ty<'tcx>, FxIndexSet<ty::PseudoRigidDueToOpaquesBound<'tcx>>)>,
+        Vec<(Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)>,
     ) {
         let mut inner = self.inner.borrow_mut();
         let (opaques, pseudo_rigids) = inner.opaque_type_storage.take_opaque_types();
-        (opaques.collect(), pseudo_rigids.collect())
+        (opaques.collect(), pseudo_rigids)
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -1135,9 +1135,9 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)> {
         assert!(!self.next_trait_solver());
         let mut inner = self.inner.borrow_mut();
-        let (opaques, mut pseudo_rigids) = inner.opaque_type_storage.take_opaque_types();
+        let (opaques, pseudo_rigids) = inner.opaque_type_storage.take_opaque_types();
         debug_assert!(
-            pseudo_rigids.next().is_none(),
+            pseudo_rigids.is_empty(),
             "We don't track any pseudo-rigids with the old solver"
         );
         opaques.collect()
@@ -1159,7 +1159,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let ty_sub_vid = self.sub_unification_table_root_var(ty_vid);
         let inner = &mut *self.inner.borrow_mut();
         let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
-        inner.opaque_type_storage.iter_pseudo_rigids_due_to_opaques().any(|(hidden_ty, _)| {
+        inner.opaque_type_storage.iter_pseudo_rigid_due_to_opaques().any(|(hidden_ty, _)| {
             if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.kind() {
                 let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
                 if opaque_sub_vid == ty_sub_vid {
@@ -1208,10 +1208,10 @@ impl<'tcx> InferCtxt<'tcx> {
             .collect()
     }
 
-    pub fn pseudo_rigids_due_to_opaques(
+    pub fn pseudo_rigid_due_to_opaques(
         &self,
         ty_vid: TyVid,
-    ) -> Vec<(Ty<'tcx>, Vec<ty::PseudoRigidDueToOpaquesBound<'tcx>>)> {
+    ) -> Vec<ty::PseudoRigidDueToOpaquesBound<'tcx>> {
         // Avoid accidentally allowing more code to compile with the old solver.
         if !self.next_trait_solver() {
             return vec![];
@@ -1224,12 +1224,12 @@ impl<'tcx> InferCtxt<'tcx> {
         let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
         inner
             .opaque_type_storage
-            .iter_pseudo_rigids_due_to_opaques()
-            .filter_map(|(pseudo_rigid, bounds)| {
+            .iter_pseudo_rigid_due_to_opaques()
+            .filter_map(|(pseudo_rigid, bound)| {
                 if let ty::Infer(ty::TyVar(hidden_vid)) = *pseudo_rigid.kind() {
                     let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
                     if opaque_sub_vid == ty_sub_vid {
-                        return Some((pseudo_rigid, bounds.iter().copied().collect()));
+                        return Some(bound);
                     }
                 }
 

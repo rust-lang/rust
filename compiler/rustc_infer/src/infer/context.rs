@@ -343,16 +343,16 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     fn opaque_types_storage_num_entries(&self) -> OpaqueTypeStorageEntries {
         self.inner.borrow_mut().opaque_types().num_entries()
     }
-    fn num_pseudo_rigid_due_to_opaques_bounds(&self) -> usize {
-        self.inner.borrow_mut().opaque_types().num_pseudo_rigid_due_to_opaques_bounds()
+    fn num_pseudo_rigid_due_to_opaques(&self) -> usize {
+        self.inner.borrow_mut().opaque_types().num_pseudo_rigid_due_to_opaques()
     }
     fn clone_opaque_types_lookup_table(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
         self.inner.borrow_mut().opaque_types().iter_lookup_table().map(|(k, h)| (k, h.ty)).collect()
     }
-    fn clone_pseudo_rigid_due_to_opaques_bounds(
+    fn clone_pseudo_rigid_due_to_opaques(
         &self,
     ) -> Vec<(Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)> {
-        self.inner.borrow_mut().opaque_types().iter_pseudo_rigid_due_to_opaques_bounds().collect()
+        self.inner.borrow_mut().opaque_types().iter_pseudo_rigid_due_to_opaques().collect()
     }
     fn clone_opaque_types_added_since(
         &self,
@@ -365,21 +365,21 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
             .map(|(k, h)| (k, h.ty))
             .collect()
     }
-    fn clone_pseudo_rigid_due_to_opaques_bounds_added_since(
+    fn clone_pseudo_rigid_due_to_opaques_added_since(
         &self,
         prev_entries: OpaqueTypeStorageEntries,
     ) -> Vec<(Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)> {
         self.inner
             .borrow_mut()
             .opaque_types()
-            .pseudo_rigid_due_to_opaques_bounds_added_since(prev_entries)
+            .pseudo_rigid_due_to_opaques_added_since(prev_entries)
             .collect()
     }
-    fn pseudo_rigids_due_to_opaques(
+    fn pseudo_rigid_due_to_opaques(
         &self,
         ty_vid: ty::TyVid,
-    ) -> Vec<(Ty<'tcx>, Vec<ty::PseudoRigidDueToOpaquesBound<'tcx>>)> {
-        self.pseudo_rigids_due_to_opaques(ty_vid)
+    ) -> Vec<ty::PseudoRigidDueToOpaquesBound<'tcx>> {
+        self.pseudo_rigid_due_to_opaques(ty_vid)
     }
 
     fn register_hidden_type_in_storage(

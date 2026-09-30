@@ -70,7 +70,7 @@ pub struct MethodAutoderefSteps<'tcx> {
     ///
     /// Only used by the new solver for now.
     pub predefined_opaques_in_body: solve::PredefinedOpaques<'tcx>,
-    pub pseudo_rigid_due_to_opaques_bounds: solve::PseudoRigidDueToOpaquesBounds<'tcx>,
+    pub pseudo_rigid_due_to_opaques: solve::PseudoRigidDueToOpaques<'tcx>,
     pub self_ty: Ty<'tcx>,
 }
 
