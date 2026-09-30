@@ -577,7 +577,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         }
                     };
 
-                    match infcx.eq_at(
+                    match infcx.eq(
                         // Only really exercised by generic_const_exprs
                         &obligation.cause,
                         obligation.param_env,
@@ -731,7 +731,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 if let Ok(new_obligations) = infcx
                                     // Can define opaque types as this is only reachable with
                                     // `generic_const_exprs`
-                                    .eq_at(
+                                    .eq(
                                         &obligation.cause,
                                         obligation.param_env,
                                         DefineOpaqueTypes::Yes,
@@ -750,7 +750,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 if let Ok(new_obligations) = infcx
                                     // Can define opaque types as this is only reachable with
                                     // `generic_const_exprs`
-                                    .eq_at(
+                                    .eq(
                                         &obligation.cause,
                                         obligation.param_env,
                                         DefineOpaqueTypes::Yes,
@@ -796,7 +796,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
                     match (evaluate(c1), evaluate(c2)) {
                         (Ok(c1), Ok(c2)) => {
-                            match self.selcx.infcx.eq_at(
+                            match self.selcx.infcx.eq(
                                 // Can define opaque types as this is only reachable with
                                 // `generic_const_exprs`
                                 &obligation.cause,

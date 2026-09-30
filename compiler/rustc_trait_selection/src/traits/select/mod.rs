@@ -883,7 +883,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 .infcx
                                 // Can define opaque types as this is only reachable with
                                 // `generic_const_exprs`
-                                .eq_at(
+                                .eq(
                                     &obligation.cause,
                                     obligation.param_env,
                                     DefineOpaqueTypes::Yes,
@@ -901,7 +901,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 .infcx
                                 // Can define opaque types as this is only reachable with
                                 // `generic_const_exprs`
-                                .eq_at(
+                                .eq(
                                     &obligation.cause,
                                     obligation.param_env,
                                     DefineOpaqueTypes::Yes,
@@ -931,7 +931,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 match (evaluate(c1), evaluate(c2)) {
                     (Ok(c1), Ok(c2)) => {
-                        match self.infcx.eq_at(
+                        match self.infcx.eq(
                             // Can define opaque types as this is only reachable with
                             // `generic_const_exprs`
                             &obligation.cause,
@@ -988,7 +988,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 };
 
-                match self.infcx.eq_at(
+                match self.infcx.eq(
                     // Only really exercised by generic_const_exprs
                     &obligation.cause,
                     obligation.param_env,
@@ -1701,7 +1701,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Unnormalized::new_wip(trait_bound),
         );
         self.infcx
-            .eq_at(
+            .eq(
                 &obligation.cause,
                 obligation.param_env,
                 DefineOpaqueTypes::No,
@@ -1768,7 +1768,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let is_match = self
             .infcx
-            .eq_at(
+            .eq(
                 &obligation.cause,
                 obligation.param_env,
                 DefineOpaqueTypes::No,
@@ -2533,7 +2533,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
         let InferOk { obligations, .. } = self
             .infcx
-            .eq_at(
+            .eq(
                 &cause,
                 obligation.param_env,
                 DefineOpaqueTypes::No,
@@ -2622,7 +2622,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                                         HigherRankedType,
                                         hr_source_principal,
                                     );
-                                self.infcx.eq_trace_at(
+                                self.infcx.eq_trace(
                                     &obligation.cause,
                                     obligation.param_env,
                                     DefineOpaqueTypes::Yes,
@@ -2661,7 +2661,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                                                     HigherRankedType,
                                                     hr_source_projection,
                                                 );
-                                            self.infcx.eq_trace_at(
+                                            self.infcx.eq_trace(
                                                 &obligation.cause,
                                                 obligation.param_env,
                                                 DefineOpaqueTypes::Yes,
@@ -2693,7 +2693,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                                         HigherRankedType,
                                         hr_source_projection,
                                     );
-                                self.infcx.eq_trace_at(
+                                self.infcx.eq_trace(
                                     &obligation.cause,
                                     obligation.param_env,
                                     DefineOpaqueTypes::Yes,
@@ -2756,7 +2756,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             poly_trait_ref,
         );
         self.infcx
-            .eq_at(
+            .eq(
                 &obligation.cause,
                 obligation.param_env,
                 DefineOpaqueTypes::No,

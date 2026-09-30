@@ -396,7 +396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // 3. Check if the formal type is actually equal to the checked one
             //    and register any such obligations for future type checks.
-            let formal_ty_error = self.eq_at(
+            let formal_ty_error = self.eq(
                 &self.misc(provided_arg.span),
                 self.param_env,
                 DefineOpaqueTypes::Yes,
@@ -3225,7 +3225,7 @@ impl<'a, 'tcx> ArgMatchingCtxt<'a, 'tcx> {
 
         // Using probe here, since we don't want this subtyping to affect inference.
         let subtyping_error = self.probe(|_| {
-            self.sup_at(
+            self.sup(
                 &self.misc(arg_span),
                 self.param_env,
                 DefineOpaqueTypes::Yes,

@@ -113,7 +113,7 @@ fn match_candidate<'tcx>(
     nested.extend(
         selcx
             .infcx
-            .eq_at(
+            .eq(
                 &obligation.cause,
                 obligation.param_env,
                 DefineOpaqueTypes::Yes,

@@ -245,7 +245,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     .register(opaque_type_key, ProvisionalHiddenType { ty: hidden_ty, span });
                 if let Some(prev) = prev {
                     goals.extend(
-                        self.eq_at(
+                        self.eq(
                             &ObligationCause::dummy_with_span(span),
                             param_env,
                             DefineOpaqueTypes::Yes,
@@ -280,7 +280,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 });
 
                 goals.extend(
-                    self.eq_at(
+                    self.eq(
                         &ObligationCause::dummy_with_span(span),
                         param_env,
                         DefineOpaqueTypes::Yes,

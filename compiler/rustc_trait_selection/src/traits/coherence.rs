@@ -355,14 +355,14 @@ fn equate_impl_headers<'tcx>(
     impl2: &ImplHeader<'tcx>,
 ) -> Option<PredicateObligations<'tcx>> {
     let result = match (impl1.trait_ref, impl2.trait_ref) {
-        (Some(impl1_ref), Some(impl2_ref)) => infcx.eq_at(
+        (Some(impl1_ref), Some(impl2_ref)) => infcx.eq(
             &ObligationCause::dummy(),
             param_env,
             DefineOpaqueTypes::Yes,
             impl1_ref,
             impl2_ref,
         ),
-        (None, None) => infcx.eq_at(
+        (None, None) => infcx.eq(
             &ObligationCause::dummy(),
             param_env,
             DefineOpaqueTypes::Yes,
@@ -587,7 +587,7 @@ fn plug_infer_with_placeholders<'tcx>(
         fn visit_ty(&mut self, ty: Ty<'tcx>) {
             let ty = self.infcx.shallow_resolve(ty);
             if ty.is_ty_var() {
-                let Ok(InferOk { value: (), obligations }) = self.infcx.eq_at(
+                let Ok(InferOk { value: (), obligations }) = self.infcx.eq(
                     // Comparing against a type variable never registers hidden types anyway
                     &ObligationCause::dummy(),
                     ty::ParamEnv::empty(),
@@ -612,7 +612,7 @@ fn plug_infer_with_placeholders<'tcx>(
         fn visit_const(&mut self, ct: ty::Const<'tcx>) {
             let ct = self.infcx.shallow_resolve_const(ct);
             if ct.is_ct_infer() {
-                let Ok(InferOk { value: (), obligations }) = self.infcx.eq_at(
+                let Ok(InferOk { value: (), obligations }) = self.infcx.eq(
                     // The types of the constants are the same, so there is no hidden type
                     // registration happening anyway.
                     &ObligationCause::dummy(),
@@ -644,7 +644,7 @@ fn plug_infer_with_placeholders<'tcx>(
                     .unwrap_region_constraints()
                     .shallow_resolve_region_var(self.infcx.tcx, vid);
                 if r.is_var() {
-                    let Ok(InferOk { value: (), obligations }) = self.infcx.eq_at(
+                    let Ok(InferOk { value: (), obligations }) = self.infcx.eq(
                         // Lifetimes don't contain opaque types (or any types for that matter).
                         &ObligationCause::dummy(),
                         ty::ParamEnv::empty(),

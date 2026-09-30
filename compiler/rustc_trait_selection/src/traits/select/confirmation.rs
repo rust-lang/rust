@@ -189,7 +189,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         obligations.extend(
             self.infcx
-                .eq_at(
+                .eq(
                     &obligation.cause,
                     obligation.param_env,
                     DefineOpaqueTypes::No,
@@ -530,7 +530,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         nested.extend(
             self.infcx
-                .eq_at(
+                .eq(
                     &obligation.cause,
                     obligation.param_env,
                     DefineOpaqueTypes::No,
@@ -987,7 +987,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // needed to define opaque types for tests/ui/type-alias-impl-trait/assoc-projection-ice.rs
         self.infcx
-            .eq_at(
+            .eq(
                 &obligation.cause,
                 obligation.param_env,
                 DefineOpaqueTypes::Yes,
@@ -1099,7 +1099,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // only the **lifetime bound** is changed.
                 let InferOk { mut obligations, .. } = self
                     .infcx
-                    .sup_at(
+                    .sup(
                         &obligation.cause,
                         obligation.param_env,
                         DefineOpaqueTypes::Yes,
@@ -1171,7 +1171,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             (&ty::Array(a, _), &ty::Slice(b)) => {
                 let InferOk { obligations, .. } = self
                     .infcx
-                    .eq_at(&obligation.cause, obligation.param_env, DefineOpaqueTypes::Yes, b, a)
+                    .eq(&obligation.cause, obligation.param_env, DefineOpaqueTypes::Yes, b, a)
                     .map_err(|_| SelectionError::Unimplemented)?;
 
                 ImplSource::Builtin(BuiltinImplSource::Misc, obligations)
@@ -1218,7 +1218,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let new_struct = Ty::new_adt(tcx, def, args);
                 let InferOk { obligations, .. } = self
                     .infcx
-                    .eq_at(
+                    .eq(
                         &obligation.cause,
                         obligation.param_env,
                         DefineOpaqueTypes::Yes,

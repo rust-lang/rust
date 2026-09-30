@@ -277,7 +277,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                 let expected_trait_ref = alias.trait_ref(tcx);
 
-                if let Err(_) = self.infcx.eq_at(
+                if let Err(_) = self.infcx.eq(
                     &ObligationCause::dummy(),
                     param_env,
                     DefineOpaqueTypes::No,

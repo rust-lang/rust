@@ -872,7 +872,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
                     match (evaluate(c1), evaluate(c2)) {
                         (Ok(c1), Ok(c2)) => {
-                            match selcx.infcx.eq_at(
+                            match selcx.infcx.eq(
                                 &obligation.cause,
                                 obligation.param_env,
                                 DefineOpaqueTypes::Yes,

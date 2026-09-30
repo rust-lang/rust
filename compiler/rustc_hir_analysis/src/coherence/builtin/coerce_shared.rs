@@ -779,7 +779,7 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
     match relation {
         FieldRelation::Equal => {
             if infcx
-                .relate_at(
+                .relate(
                     &cause,
                     param_env,
                     DefineOpaqueTypes::Yes,

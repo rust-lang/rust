@@ -1449,7 +1449,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // This also occurs for an enum variant on a type alias.
             let impl_ty = self.normalize(span, tcx.type_of(impl_def_id).instantiate(tcx, args));
             let self_ty = self.normalize(span, Unnormalized::new_wip(self_ty));
-            match self.eq_at(
+            match self.eq(
                 &self.misc(span),
                 self.param_env,
                 DefineOpaqueTypes::Yes,
