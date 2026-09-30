@@ -187,7 +187,9 @@ impl SingleAttributeParser for MacroExportParser {
         }
 
         let item = cx.target_item.unwrap();
-        if let ItemKind::MacroDef(_, macro_def) = &item.kind && !macro_def.macro_rules {
+        if let ItemKind::MacroDef(_, macro_def) = &item.kind
+            && !macro_def.macro_rules
+        {
             cx.emit_lint(UNUSED_ATTRIBUTES, MacroExport::OnDeclMacro, attr_span);
         }
     }
