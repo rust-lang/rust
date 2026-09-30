@@ -189,7 +189,7 @@ const _: () = ();
 ///
 /// For more information, see the Reference on [the `cfg` attribute].
 ///
-/// [`cfg_attr`]: ../reference/conditional-compilation.html#the-cfg_attr-attribute
+/// [`cfg_attr`]: ./attribute.cfg_attr.html
 /// [the `cfg` attribute]: ../reference/conditional-compilation.html#the-cfg-attribute
 /// [`if`]: ./keyword.if.html
 const _: () = ();
@@ -706,4 +706,49 @@ const _: () = ();
 /// [derive macro]: ./attr.derive.html
 /// [Clippy]: https://github.com/rust-lang/rust-clippy
 /// [the `automatically_derived` attribute]: ../reference/attributes/derive.html#the-automatically_derived-attribute
+const _: () = ();
+
+#[doc(attribute = "cfg_attr")]
+//
+/// The `cfg_attr` attribute is used to conditionally apply one or more attributes to an item.
+///
+/// Example:
+///
+/// ```rust
+/// // The struct derives `Debug` when the `debug_impls` feature is enabled.
+/// #[cfg_attr(feature = "debug_impls", derive(Debug))]
+/// struct X;
+/// ```
+///
+/// You can apply multiple attributes by separating them with commas:
+///
+/// ```rust
+/// #[cfg_attr(feature = "nightly", allow(dead_code), deny(unused_variables))]
+/// // This function only gets the `allow(dead_code)` and `deny(unused_variables)` attributes when
+/// // `feature = "nightly"` is active.
+/// fn nightly_only_function() {
+///     let x = 42;
+/// }
+/// ```
+///
+/// For complex conditions, you can combine `all(...)`, `any(...)`, and `not(...)`.
+///
+/// * `all`: True if all given predicates are true.
+/// * `any`: True if at least one of the given predicates is true.
+/// * `not`: True if the predicate is false.
+///
+/// ```rust
+/// #[cfg_attr(
+///     all(feature = "system", feature = "disk"),
+///     doc = "These docs only show up if both `system`, and `disk` are enabled.",
+/// )]
+/// mod my_module {
+///     // ...
+/// }
+/// ```
+///
+/// For more information, see the Reference on [the `cfg_attr` attribute].
+///
+/// [`cfg`]: ./attribute.cfg.html
+/// [the `cfg_attr` attribute]: ../reference/conditional-compilation.html#the-cfg_attr-attribute
 const _: () = ();
