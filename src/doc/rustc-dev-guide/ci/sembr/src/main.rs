@@ -50,12 +50,12 @@ fn main() -> Result<()> {
         let old = fs::read_to_string(&path)?;
         let mut new = comply(&old);
         if cli.reflow_harder {
-            new = reformat_lines(&new, cli.line_length_limit)
+            new = reformat(&new, cli.line_length_limit)
         }
         if new == old {
             compliant.push(path.clone());
         } else if cli.overwrite {
-            fs::write(&path, reformat_lines(&new, cli.line_length_limit))?;
+            fs::write(&path, reformat(&new, cli.line_length_limit))?;
             made_compliant.push(path.clone());
         } else {
             not_compliant.push(path.clone());
@@ -134,7 +134,7 @@ fn comply(content: &str) -> String {
 }
 
 // This reformats lines, so that changes of "fn comply" look more pretty
-fn reformat_lines(content: &str, limit: usize) -> String {
+fn reformat(content: &str, limit: usize) -> String {
     let content: Vec<_> = content.lines().map(std::borrow::ToOwned::to_owned).collect();
     let mut new_content = content.clone();
     let mut new_n = 0;
@@ -372,7 +372,7 @@ of next line
 [a target]: https://example.com
 [another target]: https://example.com
 ";
-    assert_eq!(expected, reformat_lines(original, 30));
+    assert_eq!(expected, reformat(original, 30));
 }
 
 #[test]
