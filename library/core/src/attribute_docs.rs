@@ -742,7 +742,7 @@ const _: () = ();
 /// ```rust
 /// #[cfg_attr(
 ///     all(feature = "system", feature = "disk"),
-///     doc = "For module documentation, both `system`, and `disk` need to be enabled.".
+///     doc = "For module documentation, both `system`, and `disk` need to be enabled.",
 /// )]
 /// mod my_module {
 ///     // ...
