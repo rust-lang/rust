@@ -190,7 +190,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
     ) -> Result<(), Diag<'a>> {
-        self.sup_at(cause, self.param_env, DefineOpaqueTypes::Yes, expected, actual)
+        self.sup(cause, self.param_env, DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
             .map_err(|e| {
                 self.err_ctxt().report_mismatched_types(cause, self.param_env, expected, actual, e)
@@ -218,7 +218,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
     ) -> Result<(), Diag<'a>> {
-        self.eq_at(cause, self.param_env, DefineOpaqueTypes::Yes, expected, actual)
+        self.eq(cause, self.param_env, DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
             .map_err(|e| {
                 self.err_ctxt().report_mismatched_types(cause, self.param_env, expected, actual, e)
@@ -414,7 +414,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     };
                     let _ = self
-                        .eq_at(
+                        .eq(
                             &ObligationCause::dummy(),
                             self.param_env,
                             DefineOpaqueTypes::Yes,
@@ -501,7 +501,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .ok()
                     .and_then(|method| {
                         let _ = self
-                            .eq_at(
+                            .eq(
                                 &ObligationCause::dummy(),
                                 self.param_env,
                                 DefineOpaqueTypes::Yes,

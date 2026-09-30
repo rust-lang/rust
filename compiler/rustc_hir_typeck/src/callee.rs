@@ -730,7 +730,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // adjustments search for mapped arguments.
                 let cause = self.cause(call_expr.span, ObligationCauseCode::Misc);
                 if self
-                    .sup_at(
+                    .sup(
                         &cause,
                         self.param_env,
                         DefineOpaqueTypes::Yes,

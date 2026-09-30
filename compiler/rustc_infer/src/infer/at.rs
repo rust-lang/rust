@@ -107,7 +107,7 @@ impl<'tcx> InferCtxt<'tcx> {
         forked
     }
 
-    pub fn sup_at<T>(
+    pub fn sup<T>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -142,7 +142,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     /// Makes `expected <: actual`.
-    pub fn sub_at<T>(
+    pub fn sub<T>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -169,7 +169,7 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
-    pub fn eq_at<T>(
+    pub fn eq<T>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -180,7 +180,7 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.eq_trace_at(
+        self.eq_trace(
             cause,
             param_env,
             define_opaque_types,
@@ -190,7 +190,7 @@ impl<'tcx> InferCtxt<'tcx> {
         )
     }
 
-    pub fn eq_trace_at<T>(
+    pub fn eq_trace<T>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -213,7 +213,7 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
-    pub fn relate_at<T>(
+    pub fn relate<T>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -226,10 +226,10 @@ impl<'tcx> InferCtxt<'tcx> {
         T: ToTrace<'tcx>,
     {
         match variance {
-            ty::Covariant => self.sub_at(cause, param_env, define_opaque_types, expected, actual),
-            ty::Invariant => self.eq_at(cause, param_env, define_opaque_types, expected, actual),
+            ty::Covariant => self.sub(cause, param_env, define_opaque_types, expected, actual),
+            ty::Invariant => self.eq(cause, param_env, define_opaque_types, expected, actual),
             ty::Contravariant => {
-                self.sup_at(cause, param_env, define_opaque_types, expected, actual)
+                self.sup(cause, param_env, define_opaque_types, expected, actual)
             }
 
             // We could make this make sense but it's not readily
@@ -246,7 +246,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// this can result in an error (e.g., if asked to compute LUB of
     /// u32 and i32), it is meaningful to call one of them the
     /// "expected type".
-    pub fn lub_at<T>(
+    pub fn lub<T>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,

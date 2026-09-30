@@ -166,9 +166,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             let outer_universe = self.infcx.universe();
 
             let res = if self.use_lub {
-                self.lub_at(&self.cause, self.fcx.param_env, b, a)
+                self.lub(&self.cause, self.fcx.param_env, b, a)
             } else {
-                self.sup_at(&self.cause, self.fcx.param_env, DefineOpaqueTypes::Yes, b, a)
+                self.sup(&self.cause, self.fcx.param_env, DefineOpaqueTypes::Yes, b, a)
                     .map(|InferOk { value: (), obligations }| InferOk { value: b, obligations })
             };
 
@@ -1373,7 +1373,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Err(TypeError::Mismatch)
                         }
                     } else {
-                        self.lub_at(cause, self.param_env, prev_ty, new_ty)
+                        self.lub(cause, self.param_env, prev_ty, new_ty)
                     };
 
                     self.leak_check(outer_universe, Some(snapshot))?;
@@ -1412,7 +1412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The signature must match.
             let (a_sig, b_sig) = self.normalize(new.span, Unnormalized::new_wip((a_sig, b_sig)));
             let sig = self
-                .lub_at(cause, self.param_env, a_sig, b_sig)
+                .lub(cause, self.param_env, a_sig, b_sig)
                 .map(|ok| self.register_infer_ok_obligations(ok))?;
 
             // Reify both sides and return the reified fn pointer type.
@@ -1726,7 +1726,7 @@ impl<'tcx> CoerceMany<'tcx> {
             //
             // Another example is `break` with no argument expression.
             assert!(expression_ty.is_unit(), "if let hack without unit type");
-            fcx.eq_at(
+            fcx.eq(
                 // needed for tests/ui/type-alias-impl-trait/issue-65679-inst-opaque-ty-from-val-twice.rs
                 cause,
                 fcx.param_env,

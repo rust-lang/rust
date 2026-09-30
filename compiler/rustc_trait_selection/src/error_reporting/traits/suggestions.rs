@@ -5408,7 +5408,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 match self
                                     // Doesn't actually matter if we define opaque types here, this is just used for
                                     // diagnostics, and the result is never kept around.
-                                    .eq_at(
+                                    .eq(
                                         &ObligationCause::misc(expr.span, body_def_id),
                                         param_env,
                                         DefineOpaqueTypes::Yes,
