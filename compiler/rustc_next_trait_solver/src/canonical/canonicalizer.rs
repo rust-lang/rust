@@ -261,34 +261,33 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
     /// variable in the future by changing the way we detect global where-bounds.
     pub(super) fn canonicalize_input<P: TypeFoldable<I>>(
         delegate: &'a D,
-        input: QueryInput<I, P>,
+        Goal { param_env, predicate }: Goal<I, P>,
+        predefined_opaques_in_body: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
+        pseudo_rigid_due_to_opaques: Vec<(I::Ty, ty::PseudoRigidDueToOpaquesBound<I>)>,
     ) -> (ThinVec<I::GenericArg>, ty::Canonical<I, QueryInput<I, P>>) {
         // First canonicalize the `param_env` while keeping `'static`. This produces a
         // canonicalizer that can canonicalize the rest of the input without keeping `'static`.
-        let (param_env, mut rest_canonicalizer) =
-            Self::canonicalize_param_env(delegate, input.goal.param_env);
+        let (param_env, mut rest_canonicalizer) = Self::canonicalize_param_env(delegate, param_env);
 
-        let predicate = input.goal.predicate;
         let predicate = predicate.fold_with(&mut rest_canonicalizer);
         let goal = Goal { param_env, predicate };
 
-        let predefined_opaques_in_body = input.predefined_opaques_in_body;
         let predefined_opaques_in_body =
             if predefined_opaques_in_body.has_type_flags(NEEDS_CANONICAL) {
                 predefined_opaques_in_body.fold_with(&mut rest_canonicalizer)
             } else {
                 predefined_opaques_in_body
             };
+        let predefined_opaques_in_body =
+            delegate.cx().mk_predefined_opaques_in_body(&predefined_opaques_in_body);
 
         let pseudo_rigid_due_to_opaques = rest_canonicalizer
-            .filter_and_canonicalize_pseudo_rigids_due_to_opaques(
-                input.pseudo_rigid_due_to_opaques.to_vec(),
-            );
+            .filter_and_canonicalize_pseudo_rigids_due_to_opaques(pseudo_rigid_due_to_opaques);
 
         let value = QueryInput { goal, predefined_opaques_in_body, pseudo_rigid_due_to_opaques };
-
         debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
         debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
+
         let (max_universe, variables, var_kinds) = rest_canonicalizer.finalize();
         (variables, Canonical { max_universe, var_kinds, value })
     }

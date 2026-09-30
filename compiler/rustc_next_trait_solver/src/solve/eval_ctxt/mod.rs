@@ -844,8 +844,8 @@ where
                 let (orig_values, canonical_goal) = canonicalize_goal(
                     self.delegate,
                     goal,
-                    &[],
-                    &[],
+                    Vec::new(),
+                    Vec::new(),
                     TypingMode::ErasedNotCoherence(MayBeErased),
                 );
 
@@ -885,8 +885,8 @@ where
             let (orig_values, canonical_goal) = canonicalize_goal(
                 self.delegate,
                 goal,
-                &opaque_types,
-                &pseudo_rigid_due_to_opaques,
+                opaque_types,
+                pseudo_rigid_due_to_opaques,
                 typing_mode,
             );
 
@@ -2132,8 +2132,8 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     let (orig_values, canonical_goal) = canonicalize_goal(
         delegate,
         goal,
-        &opaque_types,
-        &pseudo_rigid_due_to_opaques,
+        opaque_types,
+        pseudo_rigid_due_to_opaques,
         typing_mode.into(),
     );
 

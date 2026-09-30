@@ -27,8 +27,7 @@ use tracing::instrument;
 use crate::delegate::SolverDelegate;
 use crate::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, ExternalRegionConstraints, Goal,
-    NestedNormalizationGoals, QueryInput, RawExternalConstraintsData, Response,
-    VisibleForLeakCheck, inspect,
+    NestedNormalizationGoals, RawExternalConstraintsData, Response, VisibleForLeakCheck, inspect,
 };
 
 pub mod canonicalizer;
@@ -56,8 +55,8 @@ impl<I: Interner, T> ResponseT<I> for inspect::State<I, T> {
 pub(super) fn canonicalize_goal<D, I>(
     delegate: &D,
     goal: Goal<I, I::Predicate>,
-    opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
-    pseudo_rigid_due_to_opaques: &[(I::Ty, ty::PseudoRigidDueToOpaquesBound<I>)],
+    opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
+    pseudo_rigid_due_to_opaques: Vec<(I::Ty, ty::PseudoRigidDueToOpaquesBound<I>)>,
     typing_mode: TypingMode<I>,
 ) -> (ThinVec<I::GenericArg>, I::CanonicalInput)
 where
@@ -66,13 +65,9 @@ where
 {
     let (orig_values, canonical) = Canonicalizer::canonicalize_input(
         delegate,
-        QueryInput {
-            goal,
-            predefined_opaques_in_body: delegate.cx().mk_predefined_opaques_in_body(opaque_types),
-            pseudo_rigid_due_to_opaques: delegate
-                .cx()
-                .mk_pseudo_rigid_due_to_opaques(pseudo_rigid_due_to_opaques),
-        },
+        goal,
+        opaque_types,
+        pseudo_rigid_due_to_opaques,
     );
 
     let query_input = delegate.cx().mk_canonical_input(ty::CanonicalQueryInput {
