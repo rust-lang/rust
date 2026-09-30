@@ -23,9 +23,9 @@ use super::{
     AssocItemLink, AssocItemRender, Context, ImplRenderingParameters, RenderMode,
     collect_paths_for_type, document, ensure_trailing_slash, get_filtered_impls_for_reference,
     item_ty_to_section, notable_traits_button, notable_traits_json, render_all_impls,
-    render_assoc_item, render_assoc_items, render_attributes_in_code, render_impl,
-    render_repr_attribute_in_code, render_rightside, render_stability_since_raw,
-    render_stability_since_raw_with_extra, write_section_heading,
+    render_assoc_item, render_assoc_items, render_assoc_items_with_aliased_type,
+    render_attributes_in_code, render_impl, render_repr_attribute_in_code, render_rightside,
+    render_stability_since_raw, render_stability_since_raw_with_extra, write_section_heading,
 };
 use crate::clean;
 use crate::config::ModuleSorting;
@@ -1501,7 +1501,13 @@ impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
 
     fn render_assoc_items(&self) -> impl fmt::Display {
         let def_id = self.it.item_id.expect_def_id();
-        render_assoc_items(self.cx, self.it, def_id, AssocItemRender::All)
+        render_assoc_items_with_aliased_type(
+            self.cx,
+            self.it,
+            def_id,
+            AssocItemRender::All,
+            if self.is_type_alias { Some(self.def_id) } else { None },
+        )
     }
 
     fn render_union(&self) -> impl Display {
@@ -1644,7 +1650,13 @@ impl<'clean> DisplayEnum<'clean> {
         write!(
             w,
             "{}{}",
-            render_assoc_items(cx, it, def_id, AssocItemRender::All),
+            render_assoc_items_with_aliased_type(
+                cx,
+                it,
+                def_id,
+                AssocItemRender::All,
+                if is_type_alias { Some(self.def_id) } else { None },
+            ),
             document_type_layout(cx, layout_def_id)
         )
     }
@@ -2099,7 +2111,13 @@ impl<'a> DisplayStruct<'a> {
             w,
             "{}{}{}",
             item_fields(cx, it, self.fields, self.ctor_kind),
-            render_assoc_items(cx, it, def_id, AssocItemRender::All),
+            render_assoc_items_with_aliased_type(
+                cx,
+                it,
+                def_id,
+                AssocItemRender::All,
+                if is_type_alias { Some(self.def_id) } else { None },
+            ),
             document_type_layout(cx, def_id),
         )
     }
