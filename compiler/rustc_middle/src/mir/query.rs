@@ -10,7 +10,7 @@ use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisit
 use rustc_span::{Span, Symbol};
 
 use super::{ConstValue, SourceInfo};
-use crate::ty::{self, CoroutineArgsExt, EarlyBinder, Ty};
+use crate::ty::{self, CoroutineArgsExt, EarlyBinder, GenericArgsRef, Ty, TyCtxt, Unnormalized};
 
 rustc_index::newtype_index! {
     #[stable_hash]
@@ -80,6 +80,60 @@ impl Debug for CoroutineLayout<'_> {
             })
             .field("storage_conflicts", &self.storage_conflicts)
             .finish()
+    }
+}
+
+/// The result of the `coroutine_layout` function.
+///
+/// Wraps a regular `CoroutineLayout` with its arguments, providing accessors
+/// that instantiate the stored `Ty` if necessary.
+#[derive(Debug, Copy, Clone)]
+pub struct QueriedCoroutineLayout<'tcx> {
+    layout: &'tcx CoroutineLayout<'tcx>,
+    args: Option<GenericArgsRef<'tcx>>,
+}
+
+impl<'tcx> QueriedCoroutineLayout<'tcx> {
+    pub fn new(layout: &'tcx CoroutineLayout<'tcx>, args: Option<GenericArgsRef<'tcx>>) -> Self {
+        Self { layout, args }
+    }
+
+    pub fn get_ty(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        field: CoroutineSavedLocal,
+    ) -> Unnormalized<'tcx, Ty<'tcx>> {
+        if let Some(args) = self.args {
+            self.layout.field_tys[field].ty.instantiate(tcx, args)
+        } else {
+            self.layout.field_tys[field].ty.instantiate_identity()
+        }
+    }
+
+    pub fn get_identity_ty(&self, field: CoroutineSavedLocal) -> Unnormalized<'tcx, Ty<'tcx>> {
+        self.layout.field_tys[field].ty.instantiate_identity()
+    }
+
+    pub fn field_tys(&self) -> &'tcx IndexVec<CoroutineSavedLocal, CoroutineSavedTy<'tcx>> {
+        &self.layout.field_tys
+    }
+
+    pub fn variant_fields(
+        &self,
+    ) -> &'tcx IndexVec<VariantIdx, IndexVec<FieldIdx, CoroutineSavedLocal>> {
+        &self.layout.variant_fields
+    }
+
+    pub fn variant_source_info(&self) -> &'tcx IndexVec<VariantIdx, SourceInfo> {
+        &self.layout.variant_source_info
+    }
+
+    pub fn storage_conflicts(&self) -> &'tcx BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal> {
+        &self.layout.storage_conflicts
+    }
+
+    pub fn raw_layout(self) -> &'tcx CoroutineLayout<'tcx> {
+        self.layout
     }
 }
 
