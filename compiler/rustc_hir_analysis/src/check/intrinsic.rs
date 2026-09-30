@@ -67,7 +67,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         // safe extern fns are otherwise unprecedented.
 
         // tidy-alphabetical-start
-        | sym::abort
+        | sym::abort_immediate
         | sym::add_with_overflow
         | sym::aggregate_raw_ptr
         | sym::align_of
@@ -289,7 +289,7 @@ pub(crate) fn check_intrinsic_type(
     let n_lts = 0;
     let (n_tps, n_cts, inputs, output) = match intrinsic_name {
         sym::autodiff => (4, 0, vec![param(0), param(1), param(2)], param(3)),
-        sym::abort => (0, 0, vec![], tcx.types.never),
+        sym::abort_immediate => (0, 0, vec![], tcx.types.never),
         sym::amdgpu_dispatch_ptr => (0, 0, vec![], Ty::new_imm_ptr(tcx, tcx.types.unit)),
         sym::unreachable => (0, 0, vec![], tcx.types.never),
         sym::breakpoint => (0, 0, vec![], tcx.types.unit),

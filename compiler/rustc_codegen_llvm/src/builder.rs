@@ -2129,7 +2129,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                     self.unreachable();
                 }
             } else {
-                self.abort();
+                self.abort_immediate();
                 self.unreachable();
             }
 

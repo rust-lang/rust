@@ -14,10 +14,10 @@ pub trait MetaSized: PointeeSized {}
 #[lang = "sized"]
 pub trait Sized: MetaSized {}
 
-//@ has 'foo/fn.abort.html'
-//@ has - '//pre[@class="rust item-decl"]' 'pub fn abort() -> !'
+//@ has 'foo/fn.abort_immediate.html'
+//@ has - '//pre[@class="rust item-decl"]' 'pub fn abort_immediate() -> !'
 #[rustc_intrinsic]
-pub fn abort() -> !;
+pub fn abort_immediate() -> !;
 //@ has 'foo/fn.unreachable.html'
 //@ has - '//pre[@class="rust item-decl"]' 'pub unsafe fn unreachable() -> !'
 #[rustc_intrinsic]

@@ -425,26 +425,23 @@ pub fn breakpoint();
 #[rustc_intrinsic]
 pub fn rustc_peek<T>(_: T) -> T;
 
-/// Aborts the execution of the process.
+/// Ungracefully aborts the execution of the process.
 ///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
+/// This is the intrinsic for directly implementing [`core::process::abort_immediate`] which, on
+/// most platforms, will invoke an invalid instruction. On Unix, the process will probably
+/// terminate with a signal like `SIGABRT`, `SIGILL`, `SIGTRAP`, `SIGSEGV` or `SIGBUS`. The
+/// precise behavior is not guaranteed and not stable.
 ///
 /// [`std::process::abort`](../../std/process/fn.abort.html) is to be preferred if possible,
 /// as its behavior is more user-friendly and more stable.
 ///
-/// The current implementation of `intrinsics::abort` is to invoke an invalid instruction,
-/// on most platforms.
-/// On Unix, the
-/// process will probably terminate with a signal like `SIGABRT`, `SIGILL`, `SIGTRAP`, `SIGSEGV` or
-/// `SIGBUS`.  The precise behavior is not guaranteed and not stable.
+/// Note that, unlike most intrinsics, this is safe to call; it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold any safety invariants.
 ///
-/// The stabilization-track version of this intrinsic is [`core::process::abort_immediate`].
+/// The stabilized version of this intrinsic is [`core::process::abort_immediate`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn abort() -> !;
+pub const fn abort_immediate() -> !;
 
 /// Informs the optimizer that this point in the code is not reachable,
 /// enabling further optimizations.

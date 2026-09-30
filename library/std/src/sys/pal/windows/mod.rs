@@ -275,7 +275,7 @@ pub fn abort_internal() -> ! {
                 core::arch::asm!("brk 0xF003", in("x0") c::FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
             }
             _ => {
-                core::intrinsics::abort();
+                core::intrinsics::abort_immediate();
             }
         }
     }
@@ -284,7 +284,7 @@ pub fn abort_internal() -> ! {
 #[cfg(miri)]
 #[track_caller] // even without panics, this helps for Miri backtraces
 pub fn abort_internal() -> ! {
-    crate::intrinsics::abort();
+    crate::intrinsics::abort_immediate();
 }
 
 /// Align the inner value to 8 bytes.

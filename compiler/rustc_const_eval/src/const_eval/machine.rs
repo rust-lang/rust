@@ -484,8 +484,8 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
         // CTFE-specific intrinsics.
         match intrinsic_name {
-            sym::abort => {
-                // Note that `abort` is also hooked separately in Miri.
+            sym::abort_immediate => {
+                // Note that `abort_immediate` is also hooked separately in Miri.
                 throw_machine_stop!(ConstEvalErrKind::Abort);
             }
             sym::ptr_guaranteed_cmp => {
