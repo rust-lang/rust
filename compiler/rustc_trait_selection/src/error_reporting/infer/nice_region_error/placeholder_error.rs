@@ -393,15 +393,21 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         let mut current_code = cause.code();
         let mut coroutine_def_id = None;
         if cause.body_def_id != CRATE_DEF_ID {
-            self.cx.note_obligation_cause_code(
-                cause.body_def_id,
-                &mut err,
-                actual_trait_ref,
-                self.tcx().param_env(cause.body_def_id),
-                cause.code(),
-                &mut vec![],
-                &mut Default::default(),
-            );
+            if let ObligationCauseCode::WhereClause(..)
+            | ObligationCauseCode::WhereClauseInExpr(..) = *code
+            {
+                // Do not point at the same bound twice.
+            } else {
+                self.cx.note_obligation_cause_code(
+                    cause.body_def_id,
+                    &mut err,
+                    actual_trait_ref,
+                    self.tcx().param_env(cause.body_def_id),
+                    cause.code(),
+                    &mut vec![],
+                    &mut Default::default(),
+                );
+            }
         }
 
         loop {
