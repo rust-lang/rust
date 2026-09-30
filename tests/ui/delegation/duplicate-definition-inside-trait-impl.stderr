@@ -1,9 +1,11 @@
 error[E0201]: duplicate definitions with name `foo`:
   --> $DIR/duplicate-definition-inside-trait-impl.rs:18:5
    |
+LL | trait Trait {
 LL |     fn foo(&self) -> u32 { 0 }
    |     -------------------------- item in trait
 ...
+LL | impl Trait for S {
 LL |     reuse to_reuse::foo { self }
    |     ---------------------------- previous definition here
 LL |     reuse Trait::foo;
