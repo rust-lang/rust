@@ -3,7 +3,7 @@ use std::fmt;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, Diag, IntoDiagArg};
 use rustc_hir as hir;
-use rustc_hir::def::Namespace;
+use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHighlightMode};
@@ -279,11 +279,12 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 _ => break,
             }
         }
-        let (mut satisfy_span, mut item_span, dup_span, item_name) =
+        let (mut satisfy_span, mut item_span, outer_span, dup_span, item_name) =
             if let ObligationCauseCode::WhereClause(def_id, span)
             | ObligationCauseCode::WhereClauseInExpr(def_id, span, ..) = *code
                 && def_id != CRATE_DEF_ID.to_def_id()
             {
+                let parent = self.tcx().parent(def_id);
                 (
                     Some(span),
                     Some(
@@ -291,11 +292,16 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                             .opt_item_ident(def_id)
                             .map_or_else(|| self.tcx().def_span(def_id), |n| n.span),
                     ),
+                    if let DefKind::Trait | DefKind::Impl { .. } = self.tcx().def_kind(parent) {
+                        Some(self.tcx().def_span(parent).shrink_to_lo())
+                    } else {
+                        None
+                    },
                     None,
                     self.tcx().def_path_str(def_id),
                 )
             } else {
-                (None, None, Some(span), String::new())
+                (None, None, None, Some(span), String::new())
             };
         if let Some(span) = satisfy_span
             && span.is_dummy()
@@ -380,6 +386,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             any_self_ty_has_vid,
             satisfy_span,
             item_span,
+            outer_span,
             item_name,
         );
 
@@ -510,6 +517,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         any_self_ty_has_vid: bool,
         satisfy_span: Option<Span>,
         item_span: Option<Span>,
+        outer_span: Option<Span>,
         item_name: String,
     ) -> Vec<ActualImplExplNotes<'tcx>> {
         // The weird thing here with the `maybe_highlighting_region` calls and the
@@ -614,6 +622,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             lifetime_2,
             satisfy_span,
             item_span,
+            outer_span,
             item_name,
         );
 

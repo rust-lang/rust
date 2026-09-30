@@ -1094,10 +1094,11 @@ impl<'tcx> ActualImplExplNotes<'tcx> {
         lifetime_2: usize,
         satisfy_span: Option<Span>,
         item_span: Option<Span>,
+        outer_span: Option<Span>,
         item_name: String,
     ) -> Self {
         let label = format!("required by this bound in `{item_name}`");
-        let span = match (satisfy_span, item_span) {
+        let mut span = match (satisfy_span, item_span) {
             (Some(satisfy_span), Some(item_span)) => {
                 let mut span = MultiSpan::from(satisfy_span);
                 span.push_span_label(satisfy_span, label);
@@ -1117,6 +1118,9 @@ impl<'tcx> ActualImplExplNotes<'tcx> {
             }
             _ => MultiSpan::from(vec![]),
         };
+        if let Some(outer) = outer_span {
+            span.push_span_context(outer);
+        }
         match (kind, lt_kind) {
             (ActualImplExpectedKind::Signature, ActualImplExpectedLifetimeKind::Two) => {
                 Self::ExpectedSignatureTwo { span, ty_or_sig, trait_path, lifetime_1, lifetime_2 }

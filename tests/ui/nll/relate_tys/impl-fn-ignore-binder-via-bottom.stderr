@@ -7,6 +7,8 @@ LL |     let _x = <fn(&())>::make_f();
 note: `Y` would have to be implemented for the type `for<'a> fn(&'a ())`
   --> $DIR/impl-fn-ignore-binder-via-bottom.rs:18:8
    |
+LL | trait Y {
+LL |     type F;
 LL |     fn make_f() -> Self::F;
    |        ^^^^^^ required due to a bound in `Y::make_f`
    = note: ...but `Y` is actually implemented for the type `fn(&'0 ())`, for some specific lifetime `'0`
