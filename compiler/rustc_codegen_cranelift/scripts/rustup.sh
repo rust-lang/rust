@@ -2,7 +2,7 @@
 
 set -e
 
-export GIT_CONFIG_GLOBAL=../rust/josh.gitconfig
+export GIT_CONFIG_GLOBAL=$(pwd)/../rust/josh.gitconfig
 export RUSTC_GIT=../rust
 
 case $1 in
