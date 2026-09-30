@@ -1,4 +1,5 @@
 use rustc_apfloat::ieee::Double;
+use rustc_middle::mir;
 use rustc_span::Symbol;
 
 use super::{
@@ -271,6 +272,41 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 pmaddwd(this, left, right, dest)?;
+            }
+            // Used to implement the _mm_mulhi_epi16 and _mm_mulhi_epu16 functions.
+            "pmulh.w" | "pmulhu.w" => {
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                let (left, left_len) = this.project_to_simd(left)?;
+                let (right, right_len) = this.project_to_simd(right)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
+
+                assert_eq!(dest_len, left_len);
+                assert_eq!(dest_len, right_len);
+
+                for i in 0..dest_len {
+                    let left = this.read_immediate(&this.project_index(&left, i)?)?;
+                    let right = this.read_immediate(&this.project_index(&right, i)?)?;
+                    let dest = this.project_index(&dest, i)?;
+
+                    // Widen the operands to avoid overflow
+                    let twice_wide = this.layout_of(this.get_twice_wide_int_ty(left.layout.ty))?;
+                    let left = this.int_to_int_or_float(&left, twice_wide)?;
+                    let right = this.int_to_int_or_float(&right, twice_wide)?;
+
+                    // Multiply
+                    let multiplied = this.binary_op(mir::BinOp::Mul, &left, &right)?;
+                    // Keep the high half
+                    let high = this.binary_op(
+                        mir::BinOp::Shr,
+                        &multiplied,
+                        &ImmTy::from_uint(dest.layout.size.bits(), twice_wide),
+                    )?;
+
+                    // Narrow back to the original type
+                    let res = this.int_to_int_or_float(&high, dest.layout)?;
+                    this.write_immediate(*res, &dest)?;
+                }
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }
