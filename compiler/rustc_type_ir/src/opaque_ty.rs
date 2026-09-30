@@ -7,7 +7,7 @@ use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisit
 use crate::inherent::*;
 use crate::{
     self as ty, Binder, Interner, Region, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt, Upcast,
+    TypeVisitableExt,
 };
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
@@ -98,67 +98,8 @@ impl<I: Interner> PseudoRigidDueToOpaquesBound<I> {
         })
     }
 
-    /// If the given `projection` is not mentioned among the given `existing_bounds`,
-    /// create one for it.
-    ///
-    /// This is needed to support the non-defining usages like in the following case:
-    ///
-    /// ```no_run
-    /// fn argument_types() -> impl IntoIterator<Item = i32> {
-    ///     argument_types().into_iter().collect::<Vec<_>>()
-    /// //                 ^           ^
-    /// //                 |           |
-    /// //              `{opaque}`     |
-    /// //                           `<{opaque} as IntoIterator>::IntoIter`
-    /// }
-    /// ```
-    ///
-    /// We need to solve a projection goal `<{opaque} as IntoIterator>::IntoIter = ?x` to
-    /// infer the self type for a method call `collect()`. But as the given bounds in the
-    /// scope don't mention the assoc type `IntoIterator::IntoIter` at all, we just get an
-    /// ambiguous response with unconstrained infer var, from no candidate. This is rejected
-    /// for being a self type for a method call because we allow self type being an infer
-    /// var if and only if it's considered as a pseudo-rigid due to opaques, i.e. we have
-    /// a bound for it in opaque ty storage.
-    /// So we conjure up one via its method and register it to the sol
-    pub fn opt_unmentioned_projection_bound(
-        cx: I,
-        existing_bounds: impl IntoIterator<Item = Self>,
-        proj: ty::ProjectionClause<I>,
-    ) -> Option<Self> {
-        let trait_def_id = proj.trait_def_id(cx);
-        let mut mentions_trait = false;
-        for bound in existing_bounds.into_iter() {
-            if bound
-                .bound
-                .skip_binder()
-                .as_projection_clause()
-                .is_some_and(|b| b.item_def_id() == proj.def_id())
-            {
-                // Mentioned already
-                return None;
-            }
-
-            if bound
-                .bound
-                .skip_binder()
-                .as_trait_clause()
-                .is_some_and(|b| b.def_id() == trait_def_id)
-            {
-                mentions_trait = true;
-            }
-        }
-
-        if !mentions_trait {
-            return None;
-        }
-
-        let bound: I::Clause = proj.upcast(cx);
-        let bound = Binder::bind_with_vars(
-            bound.fold_with(&mut ReplaceSelfTyWithAnonBound::new(cx, proj.self_ty())),
-            I::BoundVarKinds::from_vars(cx, [ty::BoundVariableKind::Ty(ty::BoundTyKind::Anon)]),
-        );
-        Some(PseudoRigidDueToOpaquesBound { bound })
+    pub fn is_trait_clause_with_def_id(&self, def_id: I::TraitId) -> bool {
+        self.bound.skip_binder().as_trait_clause().is_some_and(|b| b.def_id() == def_id)
     }
 
     pub fn instantiate(self, cx: I, self_ty: I::Ty) -> I::Clause {
