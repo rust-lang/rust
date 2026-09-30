@@ -1,4 +1,4 @@
-//@ignore-target: windows # no libc
+//@ignore-target: windows # libc bits exist, but we don't support them
 //@compile-flags: -Zmiri-disable-isolation
 //@run-native
 
@@ -173,35 +173,38 @@ fn test_statx() {
     }
 
     // Symlink following.
-    let symlinkpath = utils::prepare("miri_test_libc_statx.link");
-    let c_symlinkpath = utils::into_c_string(&symlinkpath);
-    std::os::unix::fs::symlink(&path, &symlinkpath).unwrap();
-    unsafe {
-        let mut stx = MaybeUninit::<libc::statx>::zeroed();
-        errno_check(libc::statx(
-            999, // dirfd
-            c_symlinkpath.as_ptr(),
-            libc::AT_EMPTY_PATH,
-            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
-            stx.as_mut_ptr(),
-        ));
-        let stx = stx.assume_init();
-        assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
-    }
-    unsafe {
-        let mut stx = MaybeUninit::<libc::statx>::zeroed();
-        errno_check(libc::statx(
-            999, // dirfd
-            c_symlinkpath.as_ptr(),
-            libc::AT_SYMLINK_NOFOLLOW,
-            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
-            stx.as_mut_ptr(),
-        ));
-        let stx = stx.assume_init();
-        assert!(stx.stx_mask & libc::STATX_TYPE != 0);
-        assert_eq!((stx.stx_mode as libc::mode_t) & libc::S_IFMT, libc::S_IFLNK);
-        assert!(stx.stx_mask & libc::STATX_MODE != 0);
-        assert_ne!((stx.stx_mode as libc::mode_t) & !libc::S_IFMT, 0);
+    if utils::have_symlink_permission() {
+        let symlinkpath = utils::prepare("miri_test_libc_statx.link");
+        let c_symlinkpath = utils::into_c_string(&symlinkpath);
+        std::os::unix::fs::symlink(&path, &symlinkpath).unwrap();
+        unsafe {
+            let mut stx = MaybeUninit::<libc::statx>::zeroed();
+            errno_check(libc::statx(
+                999, // dirfd
+                c_symlinkpath.as_ptr(),
+                libc::AT_EMPTY_PATH,
+                libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+                stx.as_mut_ptr(),
+            ));
+            let stx = stx.assume_init();
+            assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
+        }
+        unsafe {
+            let mut stx = MaybeUninit::<libc::statx>::zeroed();
+            errno_check(libc::statx(
+                999, // dirfd
+                c_symlinkpath.as_ptr(),
+                libc::AT_SYMLINK_NOFOLLOW,
+                libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+                stx.as_mut_ptr(),
+            ));
+            let stx = stx.assume_init();
+            assert!(stx.stx_mask & libc::STATX_TYPE != 0);
+            assert_eq!((stx.stx_mode as libc::mode_t) & libc::S_IFMT, libc::S_IFLNK);
+            assert!(stx.stx_mask & libc::STATX_MODE != 0);
+            assert_ne!((stx.stx_mode as libc::mode_t) & !libc::S_IFMT, 0);
+        }
+        remove_file(&symlinkpath).unwrap();
     }
 
     // Relative to a dirfd.
@@ -225,7 +228,6 @@ fn test_statx() {
     errno_check(unsafe { libc::closedir(dirstream) });
 
     remove_file(&path).unwrap();
-    remove_file(&symlinkpath).unwrap();
 }
 
 #[cfg(target_os = "linux")]
@@ -328,26 +330,29 @@ fn test_file_open_extra_third_arg() {
 }
 
 fn test_file_open_nofollow() {
+    // Regular files work like normal.
     let bytes = b"Hello, World!\n";
     let path = utils::prepare_with_content("miri_test_nofollow_not_symlink.txt", bytes);
     let cpath = utils::into_c_string(path);
     let fd =
         errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC) })
             .unwrap();
+    let data = libc_utils::read_exact_array::<5>(fd).unwrap();
+    assert!(bytes.starts_with(&data));
     errno_check(unsafe { libc::close(fd) });
 
-    let path = utils::prepare_with_content("miri_test_open_nofollow_symlink_target.txt", bytes);
-
-    let symlink_path = utils::prepare("miri_test_open_nofollow_symlink.txt");
-    std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
-
-    let symlink_cpath = utils::into_c_string(symlink_path);
-
-    let err = errno_result(unsafe {
-        libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC)
-    })
-    .unwrap_err();
-    assert_eq!(err.raw_os_error(), Some(libc::ELOOP));
+    // But trying to open a symlink errors.
+    if utils::have_symlink_permission() {
+        let path = utils::prepare_with_content("miri_test_open_nofollow_symlink_target.txt", bytes);
+        let symlink_path = utils::prepare("miri_test_open_nofollow_symlink.txt");
+        std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
+        let symlink_cpath = utils::into_c_string(symlink_path);
+        let err = errno_result(unsafe {
+            libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC)
+        })
+        .unwrap_err();
+        assert_eq!(err.raw_os_error(), Some(libc::ELOOP));
+    }
 }
 
 fn test_dup_stdout_stderr() {
@@ -901,32 +906,39 @@ fn test_fstatat() {
     errno_check(unsafe { libc::fstatat(dirfd, cfilename.as_ptr(), stat.as_mut_ptr(), 0) });
     checkstat(unsafe { stat.assume_init_ref() });
 
-    // Symlink following.
-    let linkname = testdir.join("link");
-    std::os::unix::fs::symlink(&absfilename, &linkname).unwrap();
-    let mut stat = MaybeUninit::<libc::stat>::uninit();
-    errno_check(unsafe { libc::fstatat(dirfd, c"link".as_ptr(), stat.as_mut_ptr(), 0) });
-    checkstat(unsafe { stat.assume_init_ref() });
-    let mut stat = MaybeUninit::<libc::stat>::uninit();
-    errno_check(unsafe {
-        libc::fstatat(dirfd, c"link".as_ptr(), stat.as_mut_ptr(), libc::AT_SYMLINK_NOFOLLOW)
-    });
-    let stat = unsafe { stat.assume_init_ref() };
-    assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFLNK); // not S_IFREG!
-    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
-    check_stat_fields(stat);
+    if utils::have_symlink_permission() {
+        // Symlink following.
+        let linkname = testdir.join("link");
+        std::os::unix::fs::symlink(&absfilename, &linkname).unwrap();
+        let mut stat = MaybeUninit::<libc::stat>::uninit();
+        errno_check(unsafe { libc::fstatat(dirfd, c"link".as_ptr(), stat.as_mut_ptr(), 0) });
+        checkstat(unsafe { stat.assume_init_ref() });
+        let mut stat = MaybeUninit::<libc::stat>::uninit();
+        errno_check(unsafe {
+            libc::fstatat(dirfd, c"link".as_ptr(), stat.as_mut_ptr(), libc::AT_SYMLINK_NOFOLLOW)
+        });
+        let stat = unsafe { stat.assume_init_ref() };
+        assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFLNK); // not S_IFREG!
+        assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+        check_stat_fields(stat);
+    }
 
     errno_check(unsafe { libc::closedir(dirstream) });
 }
 
 fn test_stat() {
-    // Also make sure we *do* follow symlinks.
-
     let path = utils::prepare_with_content("miri_test_libc_stat.txt", b"hello");
-    let symlink_path = utils::prepare("miri_test_libc_lstat_symlink.txt");
-    std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
+    let path = if utils::have_symlink_permission() {
+        // Also make sure we *do* follow symlinks.
+        let symlink_path = utils::prepare("miri_test_libc_lstat_symlink.txt");
+        std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
+        symlink_path
+    } else {
+        // Backup plan: just open the file directly.
+        path
+    };
 
-    let cpath = utils::into_c_string(symlink_path);
+    let cpath = utils::into_c_string(&path);
 
     let mut stat = MaybeUninit::<libc::stat>::uninit();
     errno_check(unsafe { libc::stat(cpath.as_ptr(), stat.as_mut_ptr()) });
@@ -943,6 +955,10 @@ fn test_stat() {
 }
 
 fn test_lstat() {
+    if !utils::have_symlink_permission() {
+        return;
+    }
+
     let path = utils::prepare_with_content("miri_test_libc_lstat.txt", b"hello");
     let symlink_path = utils::prepare("miri_test_libc_lstat_symlink.txt");
     std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
@@ -1495,6 +1511,10 @@ fn test_pwrite() {
 }
 
 fn test_readlink() {
+    if !utils::have_symlink_permission() {
+        return;
+    }
+
     let bytes = b"Hello, World!\n";
     let path = utils::prepare_with_content("miri_test_fs_link_target.txt", bytes);
     let expected_path = path.as_os_str().as_bytes();

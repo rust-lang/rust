@@ -20,6 +20,8 @@ if ! rustc -vV | grep -q "^host: $HOST_TARGET\$"; then
   exit 1
 fi
 
+export CI=true # just to be sure that it is truly set
+
 endgroup
 
 begingroup "Building Miri"

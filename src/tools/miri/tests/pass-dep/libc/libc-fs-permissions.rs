@@ -1,4 +1,4 @@
-//@ignore-target: windows # no libc
+//@ignore-target: windows # libc bits exist, but we don't support them
 //@ignore-host: windows # needs unix PermissionExt
 //@compile-flags: -Zmiri-disable-isolation
 //@run-native
