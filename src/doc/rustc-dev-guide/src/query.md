@@ -19,8 +19,8 @@ Query execution is *memoized*.
 The first time you invoke a query,
 it will go do the computation, but the next time, the result is returned from a hashtable.
 Moreover, query execution fits nicely into *incremental computation*; the idea is roughly that,
-when you invoke a
-query, the result *may* be returned to you by loading stored data from disk.[^incr-comp-detail]
+when you invoke a query,
+the result *may* be returned to you by loading stored data from disk.[^incr-comp-detail]
 
 When we execute a query,
 we also discover (at runtime!) what other queries it depends on.
@@ -67,8 +67,8 @@ let ty = tcx.type_of(some_def_id);
 So you may be wondering what happens when you invoke a query method.
 The answer is that, for each query, the compiler maintains a
 cache – if your query has already been executed, then,
-the answer is simple: we clone the return value out of the cache and return it
-(therefore, you should try to ensure that the return types of queries
+the answer is simple: we clone the return value out of the cache and return it (therefore,
+you should try to ensure that the return types of queries
 are cheaply cloneable; insert an `Rc` if necessary).
 
 ### Providers
@@ -117,8 +117,7 @@ providers**.
 Almost all **extern providers** wind up going through the [`rustc_metadata` crate][rustc_metadata],
 which loads the information from the crate metadata.
 But in some cases there are crates that provide queries for *both* local and external crates,
-in which case
-they define both a `provide` and a `provide_extern` function, through
+in which case they define both a `provide` and a `provide_extern` function, through
 [`wasm_import_module_map`][wasm_import_module_map], that `rustc_driver` can invoke.
 
 [rustc_metadata]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/index.html
