@@ -1177,10 +1177,7 @@ where
             );
         }
 
-        // This is rather hacky and unprincipled, but we need this anyway :(
-        // See the comments on
-        // `[ty::PseudoRigidDueToOpaquesBound::opt_unmentioned_projection_bound]`
-        // for details.
+        // We need to support associated types of not-yet-defined opaque types.
         if candidates.is_empty()
             && let Some(ty::NormalizesTo { alias, term }) = G::as_normalizes_to(goal.predicate)
             && let Some(unconstrained_ty) = term.as_type()
