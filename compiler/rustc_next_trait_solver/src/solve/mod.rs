@@ -460,6 +460,8 @@ pub struct GoalEvaluation<I: Interner> {
     pub stalled_on: Option<GoalStalledOn<I>>,
 }
 
+/// A variant of [ExternalConstraintsData](rustc_type_ir::solve::ExternalConstraintsData)
+/// whose fields are not interned. This is purely used as a performance optimization.
 #[derive_where(Clone, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 pub struct RawExternalConstraintsData<I: Interner> {

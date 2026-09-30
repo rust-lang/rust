@@ -225,6 +225,9 @@ impl<I: Interner> RerunCondition<I> {
                 a.union(b).map(Self::OpaqueInStorage).unwrap_or(Self::Always)
             }
             (Self::PseudoRigidInStorage, Self::PseudoRigidInStorage) => Self::PseudoRigidInStorage,
+            // The pseudo-rigid storage is always empty if the opaque type storage is empty,
+            // so "pseudo-rigid in storage x opaque type in storage" just results in
+            // "opaque type in storage".
             (Self::PseudoRigidInStorage, Self::OpaqueInStorageOrPseudoRigidInStorage(a))
             | (Self::OpaqueInStorageOrPseudoRigidInStorage(a), Self::PseudoRigidInStorage) => {
                 Self::OpaqueInStorage(a)
