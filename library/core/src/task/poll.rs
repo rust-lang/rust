@@ -229,53 +229,143 @@ const impl<T> From<T> for Poll<T> {
     }
 }
 
+/// With try_trait_v2, `Poll` directly supports `?` instead of the `ready!()`
+/// macro. Wrapped cases of `Poll<Result<T,E>>` and `Poll<Option<Result<T,E>>>`
+/// can be handled with multiple `?`s. This will also short-circuit on `None`
+///
+/// new:
+/// ```
+/// #![feature(try_trait_v2)]
+/// # use core::task::Poll;
+/// # fn foo() -> Poll<usize> {
+///
+/// let x = Poll::Ready(5)?;
+/// assert_eq!(x, 5);
+///
+/// # Poll::Ready(5)
+/// # }
+/// # let _ = foo();
+/// ```
+///
+/// old:
+/// ```
+/// # use core::task::Poll;
+/// # use std::task::ready;
+/// # fn foo() -> Poll<usize> {
+///
+/// let x = ready!(Poll::Ready(5));
+/// assert_eq!(x, 5);
+///
+/// # Poll::Ready(5)
+/// # }
+/// # let _ = foo();
+/// ```
+///
+/// new:
+/// ```
+/// #![feature(try_trait_v2)]
+/// # use core::task::Poll;
+/// # fn foo() -> Poll<Result<usize,()>> {
+///
+/// let y = Poll::Ready(Ok(6))??;
+/// assert_eq!(y, 6);
+///
+/// # Poll::Ready(Ok(6))
+/// # }
+/// # let _ = foo();
+/// ```
+///
+/// old:
+/// ```
+/// # use core::task::Poll;
+/// # use std::task::ready;
+/// # fn foo() -> Poll<Result<usize,()>> {
+///
+/// let y = ready!(Poll::Ready(Ok(6)))?;
+/// assert_eq!(y, 6);
+///
+/// # Poll::Ready(Ok(6))
+/// # }
+/// # let _ = foo();
+/// ```
+///
+/// new:
+/// ```
+/// #![feature(try_trait_v2)]
+/// # use core::task::Poll;
+/// # fn foo() -> Poll<Option<Result<usize,()>>> {
+/// let z = Poll::Ready(Some(Ok(7)))???;
+/// assert_eq!(z, 7);
+/// # Poll::Ready(Some(Ok(7)))
+/// # }
+/// # let _ = foo();
+/// ```
+///
+/// old:
+/// ```
+/// # use core::task::Poll;
+/// # use std::task::ready;
+/// # fn foo() -> Poll<Option<Result<usize,()>>> {
+///
+/// let z = match ready!(Poll::Ready(Some(Ok(7)))) {
+///     Some(res) => res?,
+///     None => return Poll::Ready(None),
+/// };
+/// assert_eq!(z, 7);
+///
+/// # Poll::Ready(Some(Ok(7)))
+/// # }
+/// # let _ = foo();
+/// ```
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-impl<T, E> ops::Try for Poll<Result<T, E>> {
-    type Output = Poll<T>;
-    type Residual = Result<!, E>;
+impl<T> ops::Try for Poll<T> {
+    type Output = T;
+    type Residual = Poll<!>;
 
     #[inline]
-    fn from_output(c: Self::Output) -> Self {
-        c.map(Ok)
+    fn from_output(output: Self::Output) -> Self {
+        Poll::Ready(output)
     }
 
     #[inline]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
-            Poll::Ready(Ok(x)) => ControlFlow::Continue(Poll::Ready(x)),
-            Poll::Ready(Err(e)) => ControlFlow::Break(Err(e)),
-            Poll::Pending => ControlFlow::Continue(Poll::Pending),
+            Poll::Ready(t) => ControlFlow::Continue(t),
+            Poll::Pending => ControlFlow::Break(Poll::Pending),
         }
     }
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+impl<T> ops::FromResidual for Poll<T> {
+    fn from_residual(residual: <Self as ops::Try>::Residual) -> Self {
+        match residual {
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+impl<T> ops::Residual<T> for Poll<!> {
+    type TryType = Poll<T>;
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 impl<T, E, F: From<E>> ops::FromResidual<Result<!, E>> for Poll<Result<T, F>> {
     #[inline]
-    fn from_residual(x: Result<!, E>) -> Self {
-        match x {
+    fn from_residual(err: Result<!, E>) -> Self {
+        match err {
             Err(e) => Poll::Ready(Err(From::from(e))),
         }
     }
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-impl<T, E> ops::Try for Poll<Option<Result<T, E>>> {
-    type Output = Poll<Option<T>>;
-    type Residual = Result<!, E>;
-
+impl<T> ops::FromResidual<Option<!>> for Poll<Option<T>> {
     #[inline]
-    fn from_output(c: Self::Output) -> Self {
-        c.map(|x| x.map(Ok))
-    }
-
-    #[inline]
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
-        match self {
-            Poll::Ready(Some(Ok(x))) => ControlFlow::Continue(Poll::Ready(Some(x))),
-            Poll::Ready(Some(Err(e))) => ControlFlow::Break(Err(e)),
-            Poll::Ready(None) => ControlFlow::Continue(Poll::Ready(None)),
-            Poll::Pending => ControlFlow::Continue(Poll::Pending),
+    fn from_residual(none: Option<!>) -> Self {
+        match none {
+            None => Poll::Ready(None),
         }
     }
 }
@@ -283,8 +373,8 @@ impl<T, E> ops::Try for Poll<Option<Result<T, E>>> {
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 impl<T, E, F: From<E>> ops::FromResidual<Result<!, E>> for Poll<Option<Result<T, F>>> {
     #[inline]
-    fn from_residual(x: Result<!, E>) -> Self {
-        match x {
+    fn from_residual(err: Result<!, E>) -> Self {
+        match err {
             Err(e) => Poll::Ready(Some(Err(From::from(e)))),
         }
     }
