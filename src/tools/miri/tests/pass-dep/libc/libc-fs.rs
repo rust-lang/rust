@@ -31,6 +31,7 @@ fn main() {
     test_file_open_unix_needs_three_args();
     test_file_open_unix_extra_third_arg();
     test_file_open_dir();
+    test_file_open_nofollow();
     #[cfg(target_os = "linux")]
     test_o_tmpfile_flag();
     test_posix_mkstemp();
@@ -55,7 +56,6 @@ fn main() {
     test_futimens();
     test_isatty();
     test_read_and_uninit();
-    test_nofollow_not_symlink();
     #[cfg(target_os = "macos")]
     test_ioctl();
     test_opendir_closedir();
@@ -77,6 +77,7 @@ fn main() {
     #[cfg(not(target_os = "solaris"))]
     test_pwritev();
     test_pwrite();
+    test_readlink();
     test_linkat();
 }
 
@@ -295,6 +296,29 @@ fn test_file_open_dir() {
     //     errno_result(unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) }).unwrap_err();
     // assert_eq!(err.raw_os_error().unwrap(), libc::EISDIR, "unexpected errno: {err}");
     // errno_check(unsafe { libc::close(fd) });
+}
+
+fn test_file_open_nofollow() {
+    let bytes = b"Hello, World!\n";
+    let path = utils::prepare_with_content("test_nofollow_not_symlink.txt", bytes);
+    let cpath = CString::new(path.as_os_str().as_bytes()).unwrap();
+    let fd =
+        errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC) })
+            .unwrap();
+    errno_check(unsafe { libc::close(fd) });
+
+    let path = utils::prepare_with_content("miri_test_open_nofollow_symlink_target.txt", bytes);
+
+    let symlink_path = utils::prepare("miri_test_open_nofollow_symlink.txt");
+    std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
+
+    let symlink_cpath = CString::new(symlink_path.as_os_str().as_bytes()).unwrap();
+
+    let err = errno_result(unsafe {
+        libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC)
+    })
+    .unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::ELOOP));
 }
 
 fn test_dup_stdout_stderr() {
@@ -959,14 +983,6 @@ fn test_read_and_uninit() {
     }
 }
 
-fn test_nofollow_not_symlink() {
-    let bytes = b"Hello, World!\n";
-    let path = utils::prepare_with_content("test_nofollow_not_symlink.txt", bytes);
-    let cpath = CString::new(path.as_os_str().as_bytes()).unwrap();
-    let ret = unsafe { libc::open(cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC) };
-    assert!(ret >= 0);
-}
-
 #[cfg(target_os = "macos")]
 fn test_ioctl() {
     let path = utils::prepare_with_content("miri_test_libc_ioctl.txt", &[]);
@@ -1379,6 +1395,53 @@ fn test_pwrite() {
 
     // The write should start at the provided byte offset.
     assert_eq!(&write_buffer[0..bytes_written], &read_buffer[OFFSET..(bytes_written + OFFSET)]);
+}
+
+fn test_readlink() {
+    let bytes = b"Hello, World!\n";
+    let path = utils::prepare_with_content("miri_test_fs_link_target.txt", bytes);
+    let expected_path = path.as_os_str().as_bytes();
+
+    let symlink_path = utils::prepare("miri_test_fs_symlink.txt");
+    std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
+
+    // Test that the expected string gets written to a buffer of proper
+    // length, and that a trailing null byte is not written.
+    let symlink_c_str = CString::new(symlink_path.as_os_str().as_bytes()).unwrap();
+    let symlink_c_ptr = symlink_c_str.as_ptr();
+
+    // Make the buf one byte larger than it needs to be,
+    // and check that the last byte is not overwritten.
+    let mut large_buf = vec![0xFF; expected_path.len() + 1];
+    let res = errno_result(unsafe {
+        libc::readlink(symlink_c_ptr, large_buf.as_mut_ptr().cast(), large_buf.len())
+    })
+    .unwrap();
+    // Check that the resolved path was properly written into the buf.
+    assert_eq!(&large_buf[..(large_buf.len() - 1)], expected_path);
+    assert_eq!(large_buf.last(), Some(&0xFF));
+    assert_eq!(res, (large_buf.len() - 1) as isize);
+
+    // Test that the resolved path is truncated if the provided buffer
+    // is too small.
+    let mut small_buf = [0u8; 2];
+    let res = errno_result(unsafe {
+        libc::readlink(symlink_c_ptr, small_buf.as_mut_ptr().cast(), small_buf.len())
+    })
+    .unwrap();
+    assert_eq!(small_buf, &expected_path[..small_buf.len()]);
+    assert_eq!(res, small_buf.len() as isize);
+
+    // Test that we report a proper error for a missing path.
+    let err = errno_result(unsafe {
+        libc::readlink(
+            c"MIRI_MISSING_FILE_NAME".as_ptr(),
+            small_buf.as_mut_ptr().cast(),
+            small_buf.len(),
+        )
+    })
+    .unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::NotFound);
 }
 
 fn test_linkat() {
