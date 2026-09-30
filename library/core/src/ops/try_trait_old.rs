@@ -334,3 +334,18 @@ impl<T, E, F: From<E>> FromResidual<Result<!, E>> for Poll<Option<Result<T, F>>>
         }
     }
 }
+
+/// For `Iterator::try_fold`, which cannot use legacy `?` desugaring with a stable signature
+/// which names `ops::Try`
+#[stable(feature = "internal", since = "0.0.0")]
+macro_rules! qmark_ {
+    ($e:expr) => {
+        match ::core::ops::Try::branch($e) {
+            ::core::ops::ControlFlow::Continue(output) => output,
+            ::core::ops::ControlFlow::Break(residual) => {
+                return ::core::ops::FromResidual::from_residual(residual)
+            }
+        }
+    };
+}
+pub(crate) use qmark_ as qmark;
