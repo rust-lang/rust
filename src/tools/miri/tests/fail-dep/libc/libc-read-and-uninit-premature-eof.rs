@@ -4,7 +4,6 @@
 // Short FD ops can affect the exact error message here
 //@compile-flags: -Zmiri-disable-isolation -Zmiri-no-short-fd-operations
 
-use std::ffi::CString;
 use std::fs::remove_file;
 use std::mem::MaybeUninit;
 
@@ -16,8 +15,8 @@ mod libc_utils;
 
 fn main() {
     let path =
-        utils::prepare_with_content("fail-libc-read-and-uninit-premature-eof.txt", &[1u8, 2, 3]);
-    let cpath = CString::new(path.clone().into_os_string().into_encoded_bytes()).unwrap();
+        utils::prepare_with_content("miri-libc-read-and-uninit-premature-eof.txt", &[1u8, 2, 3]);
+    let cpath = utils::into_c_string(&path);
     unsafe {
         let fd = libc::open(cpath.as_ptr(), libc::O_RDONLY);
         assert_ne!(fd, -1);
