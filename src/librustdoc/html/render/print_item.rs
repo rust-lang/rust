@@ -1315,54 +1315,36 @@ fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> 
         if let Some(inner_type) = &t.inner_type {
             write!(w, "{}", write_section_heading("Aliased Type", "aliased-type", None, ""),)?;
 
+            let aliased_ty =
+                cx.tcx().type_of(it.def_id().unwrap()).instantiate_identity().skip_norm_wip();
+            let aliased_def_id = aliased_ty.ty_adt_def().unwrap().did();
             match inner_type {
                 clean::TypeAliasInnerType::Enum { variants, is_non_exhaustive } => {
-                    let ty = cx
-                        .tcx()
-                        .type_of(it.def_id().unwrap())
-                        .instantiate_identity()
-                        .skip_norm_wip();
-                    let enum_def_id = ty.ty_adt_def().unwrap().did();
-
                     DisplayEnum {
                         variants,
                         generics: &t.generics,
                         is_non_exhaustive: *is_non_exhaustive,
-                        def_id: enum_def_id,
+                        def_id: aliased_def_id,
                     }
                     .render_into(cx, it, true, w)?;
                 }
                 clean::TypeAliasInnerType::Union { fields } => {
-                    let ty = cx
-                        .tcx()
-                        .type_of(it.def_id().unwrap())
-                        .instantiate_identity()
-                        .skip_norm_wip();
-                    let union_def_id = ty.ty_adt_def().unwrap().did();
-
                     ItemUnion {
                         cx,
                         it,
                         fields,
                         generics: &t.generics,
                         is_type_alias: true,
-                        def_id: union_def_id,
+                        def_id: aliased_def_id,
                     }
                     .render_into(w)?;
                 }
                 clean::TypeAliasInnerType::Struct { ctor_kind, fields } => {
-                    let ty = cx
-                        .tcx()
-                        .type_of(it.def_id().unwrap())
-                        .instantiate_identity()
-                        .skip_norm_wip();
-                    let struct_def_id = ty.ty_adt_def().unwrap().did();
-
                     DisplayStruct {
                         ctor_kind: *ctor_kind,
                         generics: &t.generics,
                         fields,
-                        def_id: struct_def_id,
+                        def_id: aliased_def_id,
                     }
                     .render_into(cx, it, true, w)?;
                 }
