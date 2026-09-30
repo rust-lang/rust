@@ -24,6 +24,7 @@
 - 
 -     bb1: {
 +         StorageAlloc(_4);
++         _4 = foo;
           _3 = &_4;
           StorageLive(_5);
           _5 = ();
@@ -33,6 +34,7 @@
 -     bb2: {
 +         StorageAlloc(_2);
 +         StorageAlloc(_2);
++         _2 = const ();
           StorageDead(_5);
           StorageDead(_3);
           StorageDead(_4);

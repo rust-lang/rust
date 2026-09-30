@@ -68,8 +68,6 @@ fn drop_bytes(_1: *mut Box<[u8; 1024]>) -> () {
     }
 
     bb0: {
-        StorageAlloc(_0);
-        StorageAlloc(_0);
         StorageLive(_3);
         StorageLive(_2);
         _2 = copy (((*_1).0: std::ptr::Unique<[u8; 1024]>).0: std::ptr::NonNull<[u8; 1024]>);
@@ -80,6 +78,7 @@ fn drop_bytes(_1: *mut Box<[u8; 1024]>) -> () {
     bb1: {
         StorageDead(_2);
         StorageDead(_3);
+        _0 = const ();
         return;
     }
 }

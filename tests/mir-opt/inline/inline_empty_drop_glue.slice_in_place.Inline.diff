@@ -22,6 +22,7 @@
 +         StorageLive(_3);
 +         _3 = &mut (*_2);
 +         StorageAlloc(_0);
++         _0 = const ();
 +         StorageDead(_3);
           StorageDead(_2);
           return;
