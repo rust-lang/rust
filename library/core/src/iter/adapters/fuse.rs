@@ -5,7 +5,7 @@ use crate::iter::{
     FusedIterator, TrustedFused, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
 use crate::num::NonZero;
-use crate::ops::Try;
+use crate::ops::{Try, qmark};
 
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
@@ -336,7 +336,7 @@ where
         R: Try<Output = Acc>,
     {
         if let Some(ref mut iter) = self.iter {
-            acc = iter.try_fold(acc, fold)?;
+            acc = qmark!(iter.try_fold(acc, fold));
             self.iter = None;
         }
         try { acc }
@@ -375,7 +375,7 @@ where
         I: DoubleEndedIterator,
     {
         if let Some(ref mut iter) = self.iter {
-            acc = iter.try_rfold(acc, fold)?;
+            acc = qmark!(iter.try_rfold(acc, fold));
             self.iter = None;
         }
         try { acc }
@@ -427,7 +427,7 @@ where
         R: Try<Output = Acc>,
     {
         if let Some(ref mut iter) = self.iter {
-            acc = iter.try_fold(acc, fold)?;
+            acc = qmark!(iter.try_fold(acc, fold));
         }
         try { acc }
     }
@@ -465,7 +465,7 @@ where
         I: DoubleEndedIterator,
     {
         if let Some(ref mut iter) = self.iter {
-            acc = iter.try_rfold(acc, fold)?;
+            acc = qmark!(iter.try_rfold(acc, fold));
         }
         try { acc }
     }

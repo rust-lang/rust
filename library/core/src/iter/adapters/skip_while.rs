@@ -2,7 +2,7 @@ use crate::fmt;
 use crate::iter::adapters::SourceIter;
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedFused};
 use crate::num::NonZero;
-use crate::ops::Try;
+use crate::ops::{Try, qmark};
 
 /// An iterator that rejects elements while `predicate` returns `true`.
 ///
@@ -76,7 +76,7 @@ where
     {
         if !self.flag {
             match self.next() {
-                Some(v) => init = fold(init, v)?,
+                Some(v) => init = qmark!(fold(init, v)),
                 None => return try { init },
             }
         }

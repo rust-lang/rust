@@ -1,6 +1,6 @@
 use crate::iter::FusedIterator;
 use crate::num::NonZero;
-use crate::ops::Try;
+use crate::ops::{Try, qmark};
 
 /// An iterator that repeats endlessly.
 ///
@@ -60,17 +60,17 @@ where
     {
         // fully iterate the current iterator. this is necessary because
         // `self.iter` may be empty even when `self.orig` isn't
-        acc = self.iter.try_fold(acc, &mut f)?;
+        acc = qmark!(self.iter.try_fold(acc, &mut f));
         self.iter = self.orig.clone();
 
         // complete a full cycle, keeping track of whether the cycled
         // iterator is empty or not. we need to return early in case
         // of an empty iterator to prevent an infinite loop
         let mut is_empty = true;
-        acc = self.iter.try_fold(acc, |acc, x| {
+        acc = qmark!(self.iter.try_fold(acc, |acc, x| {
             is_empty = false;
             f(acc, x)
-        })?;
+        }));
 
         if is_empty {
             return try { acc };
@@ -78,7 +78,7 @@ where
 
         loop {
             self.iter = self.orig.clone();
-            acc = self.iter.try_fold(acc, &mut f)?;
+            acc = qmark!(self.iter.try_fold(acc, &mut f));
         }
     }
 

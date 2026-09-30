@@ -1,7 +1,7 @@
 use crate::intrinsics;
 use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, from_fn};
 use crate::num::NonZero;
-use crate::ops::{Range, Try};
+use crate::ops::{Range, Try, qmark};
 use crate::range::RangeIter;
 
 /// An iterator for stepping iterators by a custom amount.
@@ -317,7 +317,7 @@ unsafe impl<I: Iterator> StepByImpl<I> for StepBy<I> {
             self.first_take = false;
             match self.iter.next() {
                 None => return try { acc },
-                Some(x) => acc = f(acc, x)?,
+                Some(x) => acc = qmark!(f(acc, x)),
             }
         }
         from_fn(nth(&mut self.iter, self.step_minus_one)).try_fold(acc, f)
@@ -380,7 +380,7 @@ unsafe impl<I: DoubleEndedIterator + ExactSizeIterator> StepByBackImpl<I> for St
         match self.next_back() {
             None => try { init },
             Some(x) => {
-                let acc = f(init, x)?;
+                let acc = qmark!(f(init, x));
                 from_fn(nth_back(&mut self.iter, self.step_minus_one)).try_fold(acc, f)
             }
         }
@@ -519,7 +519,7 @@ macro_rules! spec_int_ranges {
             {
                 let mut accum = init;
                 while let Some(x) = self.next() {
-                    accum = f(accum, x)?;
+                    accum = qmark!(f(accum, x));
                 }
                 try { accum }
             }
@@ -587,7 +587,7 @@ macro_rules! spec_int_ranges_r {
             {
                 let mut accum = init;
                 while let Some(x) = self.next_back() {
-                    accum = f(accum, x)?;
+                    accum = qmark!(f(accum, x));
                 }
                 try { accum }
             }
