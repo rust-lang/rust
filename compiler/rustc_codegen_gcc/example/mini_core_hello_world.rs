@@ -1,8 +1,8 @@
 // Adapted from https://github.com/sunfishcode/mir2cranelift/blob/master/rust-examples/nocore-hello-world.rs
 
 #![feature(
-    no_core, unboxed_closures, lang_items, never_type, linkage,
-    extern_types, thread_local
+    no_core, unboxed_closures, lang_items, linkage,
+    extern_types, thread_local, rustc_private
 )]
 #![no_core]
 #![allow(dead_code, internal_features, non_camel_case_types)]
