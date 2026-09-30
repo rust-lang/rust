@@ -152,8 +152,8 @@ Terminators are different from statements because they can have more
 than one successor – that is, control may flow to different places.
 Function calls like the call to `Vec::new` are always
 terminators because of the possibility of unwinding,
-although in the case of `Vec::new` we are able to see that indeed unwinding is not
-possible, and hence we list only one successor block, `bb2`.
+although in the case of `Vec::new` we are able to see that indeed unwinding is not possible,
+and hence we list only one successor block, `bb2`.
 
 If we look ahead to `bb2`, we will see it looks like this:
 
@@ -281,8 +281,8 @@ However, storing everything in-memory would be awfully inefficient.
 Hence there are some other variants in `mir::ConstValue` that can represent certain simple
 and common values more efficiently.
 In particular, everything that can be directly written as a literal in Rust (integers,
-floats, chars, bools, but also
-`"string literals"` and `b"byte string literals"`) has an optimized variant that
+floats, chars, bools,
+but also `"string literals"` and `b"byte string literals"`) has an optimized variant that
 avoids the full overhead of the in-memory representation.
 
 ### ValTrees
