@@ -49,7 +49,7 @@ LL | more code
       it is a good idea to tweak the output appropriately.
       For example, the `if/else arms have incompatible types` error uses different
       spans depending on whether the arms are all in the same line,
-      if one of the arms is empty and if none of those cases applies.
+      if one of the arms is empty, and if none of those cases applies.
 - Sub-diagnostics.
   Any error can have multiple sub-diagnostics that look similar to the main part of the error.
   These are used for cases where the
@@ -588,7 +588,7 @@ One benefit is that it is close to the dependency root, so it can be much faster
 
 Every lint is implemented via a `struct` that implements the `LintPass` `trait`
 (you can also implement one of the more specific lint pass traits,
-either `EarlyLintPass` or `LateLintPass` depending on when is best for your lint to run).
+either `EarlyLintPass` or `LateLintPass`, depending on when is best for your lint to run).
 The trait implementation allows you to check certain syntactic constructs
 as the linter walks the AST.
 You can then choose to emit lints in a very similar way to compile errors.
@@ -698,25 +698,25 @@ declare_lint! {
 }
 ```
 
-### Future-incompatible lints
+### future-incompatible lints
 
 The use of the term `future-incompatible` within the compiler has a slightly
 broader meaning than what rustc exposes to users of the compiler.
 
-Inside rustc, future-incompatible lints are for signalling to the user that code they have
-written may not compile in the future.
+Inside rustc,
+future-incompatible lints are for signalling to the user their code may not compile in the future.
 In general, future-incompatible code exists for two reasons:
-* The user has written unsound code that the compiler mistakenly accepted.
+* The code is unsound, and the compiler mistakenly accepted it.
   While it is within Rust's backwards compatibility guarantees to fix the soundness hole
-(breaking the user's code), the lint is there to warn the user that this will happen
-in some upcoming version of rustc *regardless of which edition the code uses*.
-This is the meaning that rustc exclusively exposes to users as "future incompatible".
-* The user has written code that will either no longer compiler *or* will change
-meaning in an upcoming *edition*.
-These are often called "edition lints" and can be
-typically seen in the various "edition compatibility" lint groups (e.g., `rust_2021_compatibility`)
-that are used to lint against code that will break if the user updates the crate's edition.
-See [migration lints](guides/editions.md#migration-lints) for more details.
+  (breaking the user's code), the lint is there to warn the user that this will happen
+  in some upcoming version of rustc *regardless of which edition the code uses*.
+  This is the meaning that rustc exclusively exposes to users as "future incompatible".
+* The code will either no longer compile *or* will change
+  meaning in an upcoming *edition*.
+  These are often called "edition lints" and can be
+  typically seen in the various "edition compatibility" lint groups (e.g., `rust_2021_compatibility`)
+  that are used to lint against code that will break if the user updates the crate's edition.
+  See [migration lints](guides/editions.md#migration-lints) for more details.
 
 A future-incompatible lint should be declared with the `@future_incompatible` additional "field":
 
