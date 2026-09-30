@@ -1,16 +1,53 @@
+//! The Pattern API.
+//!
+//! The Pattern API provides a generic mechanism for using different pattern
+//! types when searching through different objects.
+//!
+//! For more details, see the traits [`Pattern`], [`Haystack`], [`Searcher`],
+//! [`ReverseSearcher`] and [`DoubleEndedSearcher`].  Although this API is
+//! unstable, it is exposed via stable methods on corresponding haystack types.
+//!
+//! # Examples
+//!
+//! [`Pattern<str>`] is [implemented][pattern-impls] in the stable API for
+//! [`&str`][`str`], [`char`], slices of [`char`], and functions and closures
+//! implementing `FnMut(char) -> bool`.
+//!
+//! ```
+//! let s = "Can you find a needle in a haystack?";
+//!
+//! // &str pattern
+//! assert_eq!(s.find("you"), Some(4));
+//! // char pattern
+//! assert_eq!(s.find('n'), Some(2));
+//! // array of chars pattern
+//! assert_eq!(s.find(&['a', 'e', 'i', 'o', 'u']), Some(1));
+//! // slice of chars pattern
+//! assert_eq!(s.find(&['a', 'e', 'i', 'o', 'u'][..]), Some(1));
+//! // closure pattern
+//! assert_eq!(s.find(|c: char| c.is_ascii_punctuation()), Some(35));
+//! ```
+//!
+//! [pattern-impls]: Pattern#implementors
+
+#![unstable(
+    feature = "pattern",
+    reason = "API not fully fleshed out and ready to be stabilized",
+    issue = "27721"
+)]
+
+use crate::ops::Range;
 // Pattern
 
 /// A pattern which can be matched against a [`Haystack`].
 ///
-/// A `Pattern<H>` expresses that the implementing type can be used as a pattern
-/// for searching in an `H`.
+/// A `Pattern<H>` expresses that the implementing type can be used as
+/// a pattern for searching in an `H`. For example, both the character `'a'`
+/// and the string `"aa"` are patterns that would match at index `1` in
+/// the string `"baaaab"`.
 ///
-/// For example, both character `'a'` and string `"aa"` are patterns that would match
-/// at index `1` in the string `"baaaab"`.
-///
-/// The trait itself acts as a builder for an associated
-/// [`Searcher`] type, which does the actual work of finding
-/// occurrences of the pattern in a haystack.
+/// The trait itself acts as a builder for an associated [`Searcher`] type,
+/// which does the actual work of finding occurrences of the pattern in a haystack.
 ///
 /// Depending on the type of the pattern, the behavior of methods like
 /// [`str::find`] and [`str::contains`] can change. The table below describes
@@ -167,7 +204,7 @@ pub trait Haystack {
     ///
     /// # Safety
     ///
-    /// The range's start and end must be valid haystack split positions,
+    /// The range's start and end must be valid split positions inside the haystack,
     /// and start must not point to a position after end.
     ///
     /// Valid split positions are:
@@ -175,7 +212,7 @@ pub trait Haystack {
     ///   [`cursor_at_front()`][Self::cursor_at_front]),
     /// - the back of the haystack (as returned by
     ///   [`cursor_at_back()`][Self::cursor_at_back]), or
-    /// - any cursor returned by a [`Searcher`] or [`ReverseSearcher`].
+    /// - any cursor returned by the [`Searcher`] or [`ReverseSearcher`] unsafe traits.
     unsafe fn get_unchecked(&self, range: Range<usize>) -> &Self;
 }
 
