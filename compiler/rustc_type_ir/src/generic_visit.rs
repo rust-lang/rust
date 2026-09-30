@@ -116,6 +116,12 @@ unsafe impl<V, T: GenericTypeVisitable<V>> GenericTypeVisitable<V> for [T] {
     }
 }
 
+unsafe impl<V, T: GenericTypeVisitable<V>, const N: usize> GenericTypeVisitable<V> for [T; N] {
+    fn generic_visit_with(&self, visitor: &mut V) {
+        self.iter().for_each(|it| it.generic_visit_with(visitor));
+    }
+}
+
 unsafe impl<V, T: GenericTypeVisitable<V>, Ix: Idx> GenericTypeVisitable<V> for IndexVec<Ix, T> {
     fn generic_visit_with(&self, visitor: &mut V) {
         self.iter().for_each(|it| it.generic_visit_with(visitor));
