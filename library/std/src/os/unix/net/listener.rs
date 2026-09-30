@@ -200,7 +200,7 @@ impl UnixListener {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let listener = UnixListener::bind("/path/to/the/socket")?;
-    ///     let listener_copy = listener.try_clone().expect("try_clone failed");
+    ///     let listener_copy = listener.try_clone().expect("`UnixListener::try_clone` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -219,7 +219,7 @@ impl UnixListener {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let listener = UnixListener::bind("/path/to/the/socket")?;
-    ///     let addr = listener.local_addr().expect("Couldn't get local address");
+    ///     let addr = listener.local_addr().expect("`UnixListener::local_addr` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -244,7 +244,7 @@ impl UnixListener {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let listener = UnixListener::bind("/path/to/the/socket")?;
-    ///     listener.set_nonblocking(true).expect("Couldn't set non blocking");
+    ///     listener.set_nonblocking(true).expect("`UnixListener::set_nonblocking` should not fail");
     ///     Ok(())
     /// }
     /// ```
