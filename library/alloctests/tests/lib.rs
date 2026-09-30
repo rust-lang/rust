@@ -60,7 +60,6 @@
 #![feature(unique_rc_arc)]
 #![feature(vec_deque_retain_range)]
 #![feature(vec_peek_mut)]
-#![feature(vec_try_remove)]
 #![feature(write_all_vectored)]
 // tidy-alphabetical-end
 

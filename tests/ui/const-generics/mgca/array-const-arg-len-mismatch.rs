@@ -2,9 +2,14 @@
 //!
 //! Ensure that providing an array const arg with the wrong number of elements
 //! doesn't ICE or silently cause UB.
-#![expect(incomplete_features)]
-#![feature(adt_const_params, gca_min_const_items, gca_macroless_args)]
-#![feature(unsized_const_params, generic_const_parameter_types)]
+#![feature(
+    adt_const_params,
+    gca_adts,
+    gca_macroless_args,
+    gca_min_const_items,
+    generic_const_parameter_types,
+    unsized_const_params
+)]
 
 use std::gca;
 use std::marker::ConstParamTy_;

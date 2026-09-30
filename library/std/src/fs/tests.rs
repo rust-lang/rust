@@ -13,7 +13,7 @@ use crate::os::unix::fs::symlink as symlink_file;
 use crate::os::unix::fs::symlink as junction_point;
 #[cfg(windows)]
 use crate::os::windows::fs::{OpenOptionsExt, junction_point, symlink_dir, symlink_file};
-use crate::path::Path;
+use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::test_helpers::{TempDir, tmpdir};
 use crate::time::{Duration, Instant, SystemTime};
@@ -655,11 +655,6 @@ fn set_get_permissions_nofollows() {
     not(any(target_os = "espidf", target_os = "horizon", target_os = "wasi"))
 ))]
 fn set_get_permissions_nofollows_symlink() {
-    #[cfg(not(windows))]
-    use crate::os::unix::fs::symlink as symlink_file;
-    #[cfg(windows)]
-    use crate::os::windows::fs::symlink_file;
-
     let tmpdir = tmpdir();
     let filename = tmpdir.join("set_get_unix_permissions_file");
     let symlink_name = tmpdir.join("set_get_unix_permissions");
@@ -1071,6 +1066,43 @@ fn test_seek_read_buf() {
         // Seek read past eof
         check!(file.seek_read_buf(buf.clear().unfilled(), 10));
         assert_eq!(buf.filled(), b"");
+    }
+    check!(fs::remove_file(&filename));
+}
+
+#[test]
+#[cfg(windows)]
+fn test_seek_read_buf_exact() {
+    use crate::os::windows::fs::FileExt;
+
+    let tmpdir = tmpdir();
+    let filename = tmpdir.join("file_rt_io_file_test_seek_read_buf_exact.txt");
+    {
+        let oo = OpenOptions::new().create_new(true).write(true).read(true).clone();
+        let mut file = check!(oo.open(&filename));
+        check!(file.write_all(b"0123456789"));
+    }
+    {
+        let mut file = check!(File::open(&filename));
+        let mut buf: [MaybeUninit<u8>; 5] = [MaybeUninit::uninit(); 5];
+        let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+
+        // Exact read
+        check!(file.seek_read_buf_exact(buf.unfilled(), 2));
+        assert_eq!(buf.filled(), b"23456");
+        assert_eq!(check!(file.stream_position()), 7);
+
+        // Already full
+        check!(file.seek_read_buf_exact(buf.unfilled(), 3));
+        assert_eq!(check!(file.stream_position()), 7);
+        check!(file.seek_read_buf_exact(buf.unfilled(), 10)); // No call to seek_read()
+        assert_eq!(buf.filled(), b"23456");
+        assert_eq!(check!(file.stream_position()), 7);
+
+        // Non-empty exact read past eof fails
+        let err = file.seek_read_buf_exact(buf.clear().unfilled(), 6).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::UnexpectedEof);
+        assert_eq!(check!(file.stream_position()), 10);
     }
     check!(fs::remove_file(&filename));
 }
@@ -3015,10 +3047,10 @@ fn test_dir_clone() {
 }
 
 #[test]
-fn test_dir_metadata() {
+fn test_dir_self_metadata() {
     let tmpdir = tmpdir();
     let dir = check!(Dir::open(tmpdir.path()));
-    let metadata = check!(dir.metadata());
+    let metadata = check!(dir.self_metadata());
     assert!(metadata.is_dir());
 }
 
@@ -3105,4 +3137,28 @@ fn test_dir_open_dir() {
     let mut buf = [0u8; 3];
     check!(f.read_exact(&mut buf));
     assert_eq!(b"baz", &buf);
+}
+
+#[test]
+fn test_dir_metadata() {
+    let tmpdir = tmpdir();
+    let dir = check!(Dir::open(tmpdir.path()));
+    check!(dir.create_dir("subdir"));
+    // FIXME: `/` does not work as path separator on Windows.
+    let barpath = PathBuf::from("subdir").join("bar.txt");
+    drop(check!(dir.open_file_with(&barpath, &OpenOptions::new().create(true).write(true))));
+    check!(symlink_file(&tmpdir.join("subdir/bar.txt"), &tmpdir.join("link")));
+
+    let metadata = check!(dir.metadata(&barpath));
+    assert!(metadata.is_file());
+    let metadata = check!(dir.metadata("subdir"));
+    assert!(metadata.is_dir());
+    dir.metadata("does-not-exist").unwrap_err();
+
+    let metadata = check!(dir.metadata("link"));
+    assert!(metadata.is_file());
+    assert!(!metadata.is_symlink());
+    let metadata = check!(dir.symlink_metadata("link"));
+    assert!(!metadata.is_file());
+    assert!(metadata.is_symlink());
 }

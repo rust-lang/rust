@@ -524,8 +524,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span,
                     MethodCallOnDivergingInferenceVariable,
                 );
-                let root_ty = Ty::new_var(self.tcx, ty_id);
-                self.demand_eqtype(span, root_ty, self.tcx.types.never);
+                self.demand_eqtype(span, ty, self.tcx.types.never);
             } else {
                 let guar = match *ty.kind() {
                     _ if let Some(guar) = self.tainted_by_errors() => guar,

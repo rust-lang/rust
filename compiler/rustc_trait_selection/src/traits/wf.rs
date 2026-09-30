@@ -1169,7 +1169,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             }
             ty::ConstKind::Value(val) => {
                 // FIXME(mgca): no need to feature-gate once valtree lifetimes are not erased
-                if tcx.features().gca_min_const_items() {
+                if tcx.features().gca() {
                     match val.ty.kind() {
                         ty::Adt(adt_def, args) => {
                             let adt_val = val.destructure_adt_const();

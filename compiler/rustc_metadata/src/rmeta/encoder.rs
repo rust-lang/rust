@@ -133,7 +133,7 @@ impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyArray<T> {
     }
 }
 
-impl<'a, 'tcx, I, T> Encodable<EncodeContext<'a, 'tcx>> for LazyTable<I, T> {
+impl<'a, 'tcx, Ie, Id, T> Encodable<EncodeContext<'a, 'tcx>> for LazyTable<Ie, Id, T> {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
         e.emit_usize(self.width);
         e.emit_usize(self.len);
@@ -547,7 +547,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy(DefPathHashMapRef::BorrowedFromTcx(self.tcx.def_path_hash_to_def_index_map()))
     }
 
-    fn encode_source_map(&mut self) -> LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>> {
+    fn encode_source_map(
+        &mut self,
+    ) -> LazyTable<u32, u32, Option<LazyValue<rustc_span::SourceFile>>> {
         let source_map = self.tcx.sess.source_map();
         let all_source_files = source_map.files();
 
@@ -2004,9 +2006,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_hygiene(&mut self) -> (SyntaxContextTable, ExpnDataTable, ExpnHashTable) {
-        let mut syntax_contexts: TableBuilder<_, _> = Default::default();
-        let mut expn_data_table: TableBuilder<_, _> = Default::default();
-        let mut expn_hash_table: TableBuilder<_, _> = Default::default();
+        let mut syntax_contexts: TableBuilder<_, _, _> = Default::default();
+        let mut expn_data_table: TableBuilder<_, _, _> = Default::default();
+        let mut expn_hash_table: TableBuilder<_, _, _> = Default::default();
 
         HygieneEncodeContext::encode(
             &Rc::clone(&self.hygiene_ctxt),

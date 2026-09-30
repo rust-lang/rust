@@ -1,15 +1,18 @@
-#![feature(gca_min_const_items)]
-#![feature(adt_const_params, unsized_const_params)]
+#![feature(adt_const_params, gca_adts, gca_min_const_items, unsized_const_params)]
+
 use std::gca;
+
 #[derive(PartialEq, Eq, std::marker::ConstParamTy)]
 pub enum Enum<T> {
     Unit,
     Tuple(),
     Store(T),
 }
+
 pub mod module {
     pub use super::Enum::Store;
 }
+
 fn main() {
     const _: Enum<()> = gca!(Enum::<()>::Unit::<()>);
     //~^ ERROR: type arguments are not allowed on unit variant `Unit` [E0109]
