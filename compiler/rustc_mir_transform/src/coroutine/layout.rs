@@ -34,7 +34,6 @@ use rustc_index::{Idx, IndexVec};
 use rustc_infer::traits::TraitErrors;
 use rustc_lint_defs::builtin::MUST_NOT_SUSPEND;
 use rustc_middle::mir::*;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{
     self, CoroutineArgs, CoroutineArgsExt, EarlyBinder, Ty, TyCtxt, TypingMode,
 };
