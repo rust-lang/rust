@@ -323,9 +323,17 @@ enum ResolutionError<'ra> {
         trait_path: String,
         trait_item_span: Span,
         code: ErrCode,
+        trait_span: Span,
+        impl_span: Span,
     },
     /// Error E0201: multiple impl items for the same trait item.
-    TraitImplDuplicate { name: Ident, trait_item_span: Span, old_span: Span },
+    TraitImplDuplicate {
+        name: Ident,
+        trait_item_span: Span,
+        old_span: Span,
+        trait_span: Span,
+        impl_span: Span,
+    },
     /// Inline asm `sym` operand must refer to a `fn` or `static`.
     InvalidAsmSym,
     /// `self` used instead of `Self` in a generic parameter
