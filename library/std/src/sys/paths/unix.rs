@@ -56,46 +56,40 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
     if result == 0 { Ok(()) } else { Err(io::Error::last_os_error()) }
 }
 
-// This can't just be `impl Iterator` because that requires `'a` to be live on
-// drop (see #146045).
-pub type SplitPaths<'a> = iter::Map<
-    slice::Split<'a, u8, impl FnMut(&u8) -> bool + 'static>,
-    impl FnMut(&[u8]) -> PathBuf + 'static,
->;
-
-#[define_opaque(SplitPaths)]
-pub fn split_paths(unparsed: &OsStr) -> SplitPaths<'_> {
-    fn is_separator(&b: &u8) -> bool {
-        b == PATH_SEPARATOR
+pub struct SplitPaths<'a>(SplitPathsRef<'a>);
+impl Iterator for SplitPaths<'_> {
+    type Item = PathBuf;
+    #[inline]
+    fn next(&mut self) -> Option<PathBuf> {
+        self.0.next().map(Path::to_path_buf)
     }
-
-    fn into_pathbuf(part: &[u8]) -> PathBuf {
-        PathBuf::from(OsStr::from_bytes(part))
-    }
-
-    unparsed.as_bytes().split(is_separator).map(into_pathbuf)
 }
 
-pub type SplitPathsRef<'a> = iter::Map<
-    slice::Split<'a, u8, impl FnMut(&u8) -> bool + 'static>,
-    impl FnMut(&[u8]) -> &'_ Path + 'static,
->;
+pub fn split_paths(unparsed: &OsStr) -> SplitPaths<'_> {
+    SplitPaths(SplitPathsRef { unparsed: Some(unparsed.as_bytes()) })
+}
+
+pub struct SplitPathsRef<'a> {
+    unparsed: Option<&'a [u8]>,
+}
+
+impl<'a> Iterator for SplitPathsRef<'a> {
+    type Item = &'a Path;
+    #[inline]
+    fn next(&mut self) -> Option<&'a Path> {
+        let unparsed = self.unparsed?;
+        if let Some(split) = unparsed.split_once(|&b| b == PATH_SEPARATOR) {
+            self.unparsed = Some(split.1);
+            return Some(Path::new(OsStr::from_bytes(split.0)));
+        } else {
+            self.unparsed = None;
+            return Some(Path::new(OsStr::from_bytes(unparsed)));
+        }
+    }
+}
 
 pub fn split_paths_ref(unparsed: &OsStr) -> Option<SplitPathsRef<'_>> {
-    #[define_opaque(SplitPathsRef)]
-    fn split_paths_ref(unparsed: &OsStr) -> SplitPathsRef<'_> {
-        fn is_separator(&b: &u8) -> bool {
-            b == PATH_SEPARATOR
-        }
-
-        fn into_path(part: &[u8]) -> &Path {
-            Path::new(OsStr::from_bytes(part))
-        }
-
-        unparsed.as_bytes().split(is_separator).map(into_path)
-    }
-
-    Some(split_paths_ref(unparsed))
+    Some(SplitPathsRef { unparsed: Some(unparsed.as_bytes()) })
 }
 
 #[derive(Debug)]
