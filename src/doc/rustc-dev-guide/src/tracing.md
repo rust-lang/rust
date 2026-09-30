@@ -3,8 +3,7 @@
 The compiler has a lot of [`debug!`] (or `trace!`) calls,
 which print out logging information at many points.
 These are very useful to at least narrow down the location of a bug if not to find it entirely,
-or just to orient yourself as to why the
-compiler is doing a particular thing.
+or just to orient yourself as to why the compiler is doing a particular thing.
 
 [`debug!`]: https://docs.rs/tracing/0.1/tracing/macro.debug.html
 
@@ -120,8 +119,7 @@ you can run the compiler with `RUSTC_LOG=path::to::module=debug rustc my-file.rs
 All `debug!` output will then appear in standard error.
 
 Note that you can use a partial path and the filter will still work.
-For example, if you want to see `info!` output from only
-`rustdoc::passes::collect_intra_doc_links`,
+For example, if you want to see `info!` output from only `rustdoc::passes::collect_intra_doc_links`,
 you could use `RUSTDOC_LOG=rustdoc::passes::collect_intra_doc_links=info` *or* you could use
 `RUSTDOC_LOG=rustdoc::passes::collect_intra=info`.
 
@@ -137,8 +135,7 @@ rustc, rustdoc,
 and other tools set custom environment variables.)
 
 **Note that unless you use a very strict filter, the logger will emit a lot of output,
-so use the most specific module(s) you can (comma-separated if
-multiple)**.
+so use the most specific module(s) you can (comma-separated if multiple)**.
 It's typically a good idea to pipe standard error to a file and
 look at the log output with a text editor.
 
@@ -187,8 +184,7 @@ If they are outputting to a terminal,
 they will use colors, and if they are outputting to a file or being piped somewhere else,
 they will not.
 However, it's hard to read log output in your terminal unless you have a very strict filter,
-so you may want to pipe the
-output to a pager like `less`.
+so you may want to pipe the output to a pager like `less`.
 But then there won't be any colors, which makes it hard to pick out what you're looking for!
 
 You can override whether to have colors in log output with the `RUSTC_LOG_COLOR`
@@ -211,8 +207,8 @@ Use `RUSTC_LOG_COLOR` to color logs from rustc.
 While calls to `error!`, `warn!` and `info!` are included in every build of the compiler,
 calls to `debug!` and `trace!` are only included in the program if you have
 `rust.debug-logging = true` in bootstrap.toml (it is turned off by default),
-so if you don't see `DEBUG` logs, especially
-if you run the compiler with `RUSTC_LOG=rustc rustc some.rs` and only see `INFO` logs,
+so if you don't see `DEBUG` logs,
+especially if you run the compiler with `RUSTC_LOG=rustc rustc some.rs` and only see `INFO` logs,
 make sure that `rust.debug-logging` is turned on in your bootstrap.toml.
 
 ## Logging etiquette and conventions
