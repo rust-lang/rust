@@ -429,9 +429,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let InferOk { value: fn_sig, obligations: o } = NormalizeExt::normalize(
             &self.infcx,
-            Unnormalized::new_wip(fn_sig),
-            self.param_env,
             &obligation.cause,
+            self.param_env,
+            Unnormalized::new_wip(fn_sig),
         );
         obligations.extend(o);
 
@@ -451,7 +451,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             move |_, _| predicates_cause.clone(),
             |clause| {
                 let InferOk { value: pred, obligations: o } =
-                    NormalizeExt::normalize(&self.infcx, clause, self.param_env, &obligation.cause);
+                    NormalizeExt::normalize(&self.infcx, &obligation.cause, self.param_env, clause);
                 normalization_obligations.extend(o);
                 assert!(!pred.has_escaping_bound_vars());
                 pred

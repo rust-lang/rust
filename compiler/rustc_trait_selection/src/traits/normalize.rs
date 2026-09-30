@@ -28,13 +28,13 @@ impl<'tcx> InferCtxt<'tcx> {
     /// projection may be fallible.
     fn normalize<T: TypeFoldable<TyCtxt<'tcx>>>(
         &self,
-        value: Unnormalized<'tcx, T>,
-        param_env: ty::ParamEnv<'tcx>,
         cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        value: Unnormalized<'tcx, T>,
     ) -> InferOk<'tcx, T> {
         if self.next_trait_solver() {
             let Normalized { value, obligations } =
-                crate::solve::normalize(self, value, param_env, cause);
+                crate::solve::normalize(self, cause, param_env, value);
             InferOk { value, obligations }
         } else {
             let mut selcx = SelectionContext::new(self);
@@ -79,7 +79,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 );
             }
             let value = self
-                .normalize(value, param_env, cause)
+                .normalize(cause, param_env, value)
                 .into_value_registering_obligations(&self, &mut *fulfill_cx);
             let errors = fulfill_cx.evaluate_obligations_error_on_ambiguity(&self);
             let value = self.deeply_resolve_ignoring_regions(value);

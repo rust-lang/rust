@@ -228,9 +228,7 @@ impl<'tcx> InferCtxt<'tcx> {
         match variance {
             ty::Covariant => self.sub(cause, param_env, define_opaque_types, expected, actual),
             ty::Invariant => self.eq(cause, param_env, define_opaque_types, expected, actual),
-            ty::Contravariant => {
-                self.sup(cause, param_env, define_opaque_types, expected, actual)
-            }
+            ty::Contravariant => self.sup(cause, param_env, define_opaque_types, expected, actual),
 
             // We could make this make sense but it's not readily
             // exposed and I don't feel like dealing with it. Note

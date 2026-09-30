@@ -215,7 +215,7 @@ where
         param_env: ty::ParamEnv<'tcx>,
         value: Unnormalized<'tcx, T>,
     ) -> T {
-        let infer_ok = self.infcx.normalize(value, param_env, cause);
+        let infer_ok = self.infcx.normalize(cause, param_env, value);
         self.register_infer_ok_obligations(infer_ok)
     }
 

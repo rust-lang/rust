@@ -3053,9 +3053,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 pred.fold_with(&mut ParamToVarFolder { infcx: self, var_map: Default::default() });
 
             let InferOk { value: cleaned_pred, .. } = self.infcx.normalize(
-                Unnormalized::new_wip(cleaned_pred),
-                param_env,
                 &ObligationCause::dummy(),
+                param_env,
+                Unnormalized::new_wip(cleaned_pred),
             );
 
             let obligation =
