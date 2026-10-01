@@ -586,6 +586,12 @@ impl FmtDebug {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Hash, Debug)]
+pub enum TargetStage {
+    End,
+    Analysis,
+}
+
 #[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum SwitchWithOptPath {
     Enabled(Option<PathBuf>),
