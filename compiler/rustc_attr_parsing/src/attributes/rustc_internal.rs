@@ -1170,12 +1170,12 @@ pub(crate) struct RustcAssertVarianceParser;
 impl CombineAttributeParser for RustcAssertVarianceParser {
     const PATH: &[Symbol] = &[sym::rustc_assert_variance];
 
-    type Item = (Ident, RustcAssertVarianceKind);
+    type Item = (Ident, Span, RustcAssertVarianceKind);
 
     const CONVERT: ConvertFn<Self::Item> = |items, _| {
         let mut map = FxIndexMap::default();
         for item in items {
-            map.insert(item.0, item.1);
+            map.insert(item.0, (item.1, item.2));
         }
         AttributeKind::RustcAssertVariance(RustcAssertVariance { variances: map })
     };
@@ -1221,7 +1221,7 @@ impl CombineAttributeParser for RustcAssertVarianceParser {
                 }
             };
 
-            result.push((ident, kind));
+            result.push((ident, cx.attr_span, kind));
         }
 
         result

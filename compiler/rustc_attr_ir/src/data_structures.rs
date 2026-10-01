@@ -720,7 +720,7 @@ impl fmt::Display for AutoDiffItem {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[derive(StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct RustcAssertVariance {
-    pub variances: FxIndexMap<Ident, RustcAssertVarianceKind>,
+    pub variances: FxIndexMap<Ident, (Span, RustcAssertVarianceKind)>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
