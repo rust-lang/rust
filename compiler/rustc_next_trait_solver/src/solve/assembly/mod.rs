@@ -1335,7 +1335,7 @@ where
                     candidates.retain(|c| matches!(c.source, CandidateSource::ParamEnv(_)));
                 }
 
-                if let Some((response, _)) = self.try_merge_candidates(&candidates) {
+                if let Some(response) = self.try_merge_candidates(&candidates) {
                     Ok(response)
                 } else {
                     self.flounder(&candidates).map_err(Into::into)
@@ -1357,7 +1357,7 @@ where
                 // means we can just ignore inference constraints and don't have to special-case
                 // constraining the normalized-to `term`.
                 self.filter_specialized_impls(AllowInferenceConstraints::Yes, &mut candidates);
-                if let Some((response, _)) = self.try_merge_candidates(&candidates) {
+                if let Some(response) = self.try_merge_candidates(&candidates) {
                     Ok(response)
                 } else {
                     self.flounder(&candidates).map_err(Into::into)
