@@ -165,6 +165,13 @@ pub struct CoroutineInfo<'tcx> {
     /// If this is a coroutine then record the type of source expression that caused this coroutine
     /// to be created.
     pub coroutine_kind: CoroutineKind,
+
+    /// If this is a desugared coroutine that was desugared from a coroutine fn
+    /// that's annotated with `#[track_caller]`, then we record the field in the coroutine
+    /// that we can read the caller's `Location`.
+    ///
+    /// FIXME(closure_track_caller): Also use this for coroutine closures
+    pub captured_caller_location: Option<FieldIdx>,
 }
 
 impl<'tcx> CoroutineInfo<'tcx> {
@@ -182,6 +189,7 @@ impl<'tcx> CoroutineInfo<'tcx> {
             coroutine_drop_async: None,
             coroutine_drop_proxy_async: None,
             coroutine_layout: None,
+            captured_caller_location: None,
         }
     }
 }
@@ -682,8 +690,16 @@ impl<'tcx> Body<'tcx> {
 
     /// For a `Location` in this scope, determine what the "caller location" at that point is. This
     /// is interesting because of inlining: the `#[track_caller]` attribute of inlined functions
-    /// must be honored. Falls back to the `tracked_caller` value for `#[track_caller]` functions,
-    /// or the function's scope.
+    /// must be honored.
+    ///
+    /// Callers may pass `Some` in the `caller_location` argument to provide a different
+    /// return value to be used instead of `from_span(span_of_topmost_source)`. This is useful
+    /// if this `Body` is itself `#[track_caller]`
+    ///
+    /// This function does not handle the behavior of coroutines desugared from
+    /// `#[track_caller] async fn`, treating it as a non-`#[track_caller]` function.
+    /// Callers are responsible for handling this case, although we currently do not
+    /// inline such coroutines into anything.
     pub fn caller_location_span<T>(
         &self,
         mut source_info: SourceInfo,
