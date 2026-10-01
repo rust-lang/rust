@@ -303,6 +303,7 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
 
         let linker = create_and_enter_global_ctxt(compiler, krate, |tcx| {
             // Make sure name resolution and macro expansion is run.
+            // This is earliest point at which name resolution is done.
             let _ = tcx.resolver_for_lowering();
 
             if callbacks.after_expansion(compiler, tcx) == Compilation::Stop {
@@ -313,9 +314,9 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
 
             passes::write_interface(tcx);
 
-            if sess.opts.output_types.contains_key(&OutputType::DepInfo)
-                && sess.opts.output_types.len() == 1
-            {
+            if sess.opts.output_types.all(|out| out <= &OutputType::DepInfo) {
+                let _metadata = rustc_metadata::fs::encode_and_write_metadata(tcx, true);
+                debug_assert!(_metadata.is_ok());
                 return None;
             }
 
@@ -329,10 +330,19 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
                 return None;
             }
 
+            if sess.opts.output_types.contains_key(&OutputType::FullAnalysis) {
+                let _metadata = rustc_metadata::fs::encode_and_write_metadata(tcx, true);
+                debug_assert!(_metadata.is_ok());
+            }
+
             if sess.opts.output_types.contains_key(&OutputType::Mir) {
                 if let Err(error) = pretty::emit_mir(tcx) {
                     tcx.dcx().emit_fatal(CantEmitMIR { error });
                 }
+            }
+
+            if sess.opts.output_types.stop_before_codegen() {
+                return None;
             }
 
             let linker = Linker::codegen_and_build_linker(tcx, codegen_backend);
