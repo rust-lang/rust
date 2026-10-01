@@ -30,8 +30,22 @@ const unsafe extern "C" fn variadic<T: VaArgSafe>(mut ap: ...) -> (T, T) {
     // Intersperse a small type to test alignment logic. A `u32` (i.e. `c_uint`) is the smallest
     // type that implements `VaArgSafe` (except on some 16-bit targets): smaller types would
     // automatically be promoted.
-    assert!(ap.next_arg::<u32>() == 0xAAAA_AAAA);
+    assert!(ap.next_arg::<u32>() == 0xAAAA_AAAAu32);
     let y = ap.next_arg::<T>();
+
+    (x, y)
+}
+
+// note: this is only to get better error messages for `assert_eq!`
+#[allow(improper_ctypes_definitions)]
+unsafe extern "C" fn non_const_variadic<T: VaArgSafe + std::fmt::Debug>(mut ap: ...) -> (T, T) {
+    let x = ap.next_arg::<T>();
+    // Intersperse a small type to test alignment logic. A `u32` (i.e. `c_uint`) is the smallest
+    // type that implements `VaArgSafe` (except on some 16-bit targets): smaller types would
+    // automatically be promoted.
+    let a = ap.next_arg::<u32>();
+    let y = ap.next_arg::<T>();
+    assert_eq!(a, 0xAAAA_AAAAu32, "{:?} {:?} {:?}", x, a, y);
 
     (x, y)
 }
@@ -48,7 +62,7 @@ macro_rules! roundtrip {
 
         let a: $ty = $a;
         let b: $ty = $b;
-        assert_eq!(variadic::<$ty>(a, 0xAAAA_AAAAu32, b), (a, b))
+        assert_eq!(non_const_variadic::<$ty>(a, 0xAAAA_AAAAu32, b), (a, b))
     };
 }
 
