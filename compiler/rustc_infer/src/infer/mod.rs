@@ -224,7 +224,12 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
-    pub fn opaque_types(&mut self) -> opaque_types::OpaqueTypeTable<'_, 'tcx> {
+    pub fn opaque_types(&self) -> &OpaqueTypeStorage<'tcx> {
+        &self.opaque_type_storage
+    }
+
+    #[inline]
+    fn opaque_types_mut(&mut self) -> opaque_types::OpaqueTypeTable<'_, 'tcx> {
         self.opaque_type_storage.with_log(&mut self.undo_log)
     }
 
@@ -235,7 +240,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
         hidden_type: ProvisionalHiddenType<'tcx>,
     ) -> Option<Ty<'tcx>> {
         self.bump_stalled_goal_generation();
-        self.opaque_types().register(key, hidden_type)
+        self.opaque_types_mut().register(key, hidden_type)
     }
 
     #[inline]
@@ -245,7 +250,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
         hidden_type: ProvisionalHiddenType<'tcx>,
     ) {
         self.bump_stalled_goal_generation();
-        self.opaque_types().add_duplicate(key, hidden_type);
+        self.opaque_types_mut().add_duplicate(key, hidden_type);
     }
 
     #[inline]
