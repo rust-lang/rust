@@ -293,10 +293,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
 
             sym::caller_location => {
-                let span = self.find_closest_untracked_caller_location();
-                let val = self.tcx.span_as_caller_location(span);
-                let val =
-                    self.const_val_to_op(val, self.tcx.caller_location_ty(), Some(dest.layout))?;
+                let val = match self.caller_location()? {
+                    either::Either::Left(span) => self.const_val_to_op(
+                        self.tcx.span_as_caller_location(span),
+                        self.tcx.caller_location_ty(),
+                        Some(dest.layout),
+                    )?,
+                    either::Either::Right(place) => self
+                        .mplace_to_imm_ptr(
+                            &place,
+                            Some(
+                                self.tcx.erase_and_anonymize_regions(self.tcx.caller_location_ty()),
+                            ),
+                        )?
+                        .into(),
+                };
                 self.copy_op(&val, dest)?;
             }
 

@@ -261,31 +261,32 @@ fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
     x
 }
 
-// FIXME(async_fn_track_caller): Currently, #[track_caller] on an async function
-// uses the location where the future is awaited or polled.
-// The correct behavior as per T-lang is to use the location where the function is called.
 fn main() {
     assert_eq!(panicked_at(|| block_on(foo())), 60);
     assert_eq!(LINE.load(Relaxed), 59);
 
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 72);
+    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 76);
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(LINE.load(Relaxed), 71);
+    assert_eq!(LINE.load(Relaxed), 76);
     #[cfg(any(cls, nofeat))]
     assert_eq!(panicked_at(|| block_on(foo_track_caller())), 72);
     #[cfg(any(cls, nofeat))]
     assert_eq!(LINE.load(Relaxed), 71);
 
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 87);
+    assert_eq!(panicked_at(|| block_on(foo_assoc())), 92);
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(LINE.load(Relaxed), 86);
+    assert_eq!(LINE.load(Relaxed), 92);
     #[cfg(any(cls, nofeat))]
     assert_eq!(panicked_at(|| block_on(foo_assoc())), 87);
     #[cfg(any(cls, nofeat))]
     assert_eq!(LINE.load(Relaxed), 86);
 
+    // FIXME(closure_track_caller): Currently, #[track_caller] on an async closure
+    // uses the location where the future is awaited or polled.
+    // It should be changed to use the location where the closure is called,
+    // so the behavior matches that of `async fn`.
     #[cfg(afn_cls)]
     assert_eq!(panicked_at(|| block_on(foo_closure())), 106);
     #[cfg(afn_cls)]
@@ -305,9 +306,9 @@ fn main() {
     assert_eq!(LINE.load(Relaxed), 118);
 
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| foo_manual_poll()), 125);
+    assert_eq!(panicked_at(|| foo_manual_poll()), 129);
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(LINE.load(Relaxed), 124);
+    assert_eq!(LINE.load(Relaxed), 129);
     #[cfg(any(cls, nofeat))]
     assert_eq!(panicked_at(|| foo_manual_poll()), 125);
     #[cfg(any(cls, nofeat))]
@@ -316,42 +317,50 @@ fn main() {
     assert_eq!(panicked_at(|| block_on(foo_trait_attr_nowhere())), 152);
     assert_eq!(LINE.load(Relaxed), 151);
 
-    // FIXME(async_fn_track_caller): This case just currently doesn't work.
+    #[cfg(any(afn, afn_cls))]
+    assert_eq!(panicked_at(|| block_on(foo_trait_attr_in_trait())), 188);
+    #[cfg(any(afn, afn_cls))]
+    assert_eq!(LINE.load(Relaxed), 188);
+    #[cfg(any(cls, nofeat))]
     assert_eq!(panicked_at(|| block_on(foo_trait_attr_in_trait())), 156);
+    #[cfg(any(cls, nofeat))]
     assert_eq!(LINE.load(Relaxed), 155);
 
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| block_on(foo_trait_attr_in_impl())), 162);
+    assert_eq!(panicked_at(|| block_on(foo_trait_attr_in_impl())), 192);
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(LINE.load(Relaxed), 161);
+    assert_eq!(LINE.load(Relaxed), 192);
     #[cfg(any(cls, nofeat))]
     assert_eq!(panicked_at(|| block_on(foo_trait_attr_in_impl())), 162);
     #[cfg(any(cls, nofeat))]
     assert_eq!(LINE.load(Relaxed), 161);
 
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| block_on(foo_trait_attr_in_both())), 168);
+    assert_eq!(panicked_at(|| block_on(foo_trait_attr_in_both())), 196);
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(LINE.load(Relaxed), 167);
+    assert_eq!(LINE.load(Relaxed), 196);
     #[cfg(any(cls, nofeat))]
     assert_eq!(panicked_at(|| block_on(foo_trait_attr_in_both())), 168);
     #[cfg(any(cls, nofeat))]
     assert_eq!(LINE.load(Relaxed), 167);
 
-    // FIXME(async_fn_track_caller): This case just currently doesn't work.
+    #[cfg(any(afn, afn_cls))]
+    assert_eq!(panicked_at(|| block_on(foo_rpit_in_trait())), 201);
+    #[cfg(any(afn, afn_cls))]
+    assert_eq!(LINE.load(Relaxed), 201);
+    #[cfg(any(cls, nofeat))]
     assert_eq!(panicked_at(|| block_on(foo_rpit_in_trait())), 173);
+    #[cfg(any(cls, nofeat))]
     assert_eq!(LINE.load(Relaxed), 172);
 
     assert_eq!(panicked_at(|| block_on(foo_rpit_in_impl())), 178);
     assert_eq!(LINE.load(Relaxed), 177);
 
-    assert_eq!(panicked_at(|| block_on(foo_rpit_in_impl())), 178);
-    assert_eq!(LINE.load(Relaxed), 177);
-
+    // FIXME(gen_blocks): Decide if this behavior is correct.
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| foo_gen_fn()), 212);
+    assert_eq!(panicked_at(|| foo_gen_fn()), 216);
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(LINE.load(Relaxed), 211);
+    assert_eq!(LINE.load(Relaxed), 216);
     #[cfg(any(cls, nofeat))]
     assert_eq!(panicked_at(|| foo_gen_fn()), 212);
     #[cfg(any(cls, nofeat))]
@@ -362,6 +371,7 @@ fn main() {
     #[cfg(any(cls, afn_cls))]
     assert_eq!(LINE.load(Relaxed), 230);
 
+    // FIXME(coroutines): This behavior is inconsistent with async blocks.
     #[cfg(any(cls, afn_cls))]
     assert_eq!(panicked_at(|| foo_coroutine()), 245);
     #[cfg(any(cls, afn_cls))]

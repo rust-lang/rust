@@ -1,8 +1,9 @@
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 
-use either::{Left, Right};
-use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
+use either::{Either, Left, Right};
+use rustc_abi::{Align, FieldIdx, HasDataLayout, Size, TargetDataLayout};
+use rustc_ast::ast::Movability;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir;
@@ -26,6 +27,21 @@ use super::{
     throw_inval, throw_ub, throw_ub_format,
 };
 use crate::{enter_trace_span, util};
+
+/// Information necessary to figure out the caller_location
+pub(super) enum CallerLocation<'a, 'tcx, M: Machine<'tcx>> {
+    /// Simple case: we already know the span just from inspecting the stack.
+    Direct(Span),
+    /// The relevant caller_location is captured in the coroutine of a `#[track_caller] async fn`.
+    Captured {
+        frame: &'a Frame<'tcx, M::Provenance, M::FrameExtra>,
+        field_idx: FieldIdx,
+        /// Whether the coroutine is pinned
+        is_pinned: bool,
+        /// The span used in errors if we can't read the captured location.
+        fallback_span: Span,
+    },
+}
 
 pub struct InterpCx<'tcx, M: Machine<'tcx>> {
     /// Stores the `Machine` instance.
@@ -377,9 +393,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a
-    /// frame which is not `#[track_caller]`. This matches the `caller_location` intrinsic,
-    /// and is primarily intended for the panic machinery.
-    pub(crate) fn find_closest_untracked_caller_location(&self) -> Span {
+    /// frame which is not `#[track_caller]`. This is primarily intended for the panic machinery.
+    ///
+    /// Note that this function does not handle the special behavior of coroutines desugared
+    /// from `#[track_caller] async fn`. For all other cases, this function matches the behavior
+    /// of the `caller_location` intrinsic.
+    pub(super) fn find_closest_untracked_caller_location<'a>(
+        &'a self,
+    ) -> CallerLocation<'a, 'tcx, M> {
         for frame in self.stack().iter().rev() {
             debug!("find_closest_untracked_caller_location: checking frame {:?}", frame.instance);
 
@@ -404,21 +425,80 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             }
 
-            let caller_location = if frame.instance.def.requires_caller_location(*self.tcx) {
-                // We use `Err(())` as indication that we should continue up the call stack since
-                // this is a `#[track_caller]` function.
-                Some(Err(()))
+            enum State {
+                /// calloer_location refers to the span of this frame's body,
+                /// or a span of something inlined into that body.
+                Internal(Span),
+                /// The caller location is captured inside this frame, which is a coroutine
+                /// desugared from `#[track_caller] async fn`.
+                Captured { field_idx: FieldIdx, is_pinned: bool },
+                /// The chain of `#[track_caller]`s propagates to the next frame in the stack.
+                Propagate,
+            }
+
+            let caller_location = if let Some(coroutine) = &frame.body.coroutine
+                && let Some(field_idx) = coroutine.captured_caller_location
+            {
+                assert!(
+                    !frame.instance.def.requires_caller_location(*self.tcx),
+                    "should have only one source of truth for caller_location"
+                );
+                Some(State::Captured {
+                    field_idx,
+                    is_pinned: coroutine.coroutine_kind.movability() == Movability::Static,
+                })
+            } else if frame.instance.def.requires_caller_location(*self.tcx) {
+                Some(State::Propagate)
             } else {
                 None
             };
-            if let Ok(span) =
-                frame.body.caller_location_span(source_info, caller_location, *self.tcx, Ok)
-            {
-                return span;
+            match frame.body.caller_location_span(
+                source_info,
+                caller_location,
+                *self.tcx,
+                State::Internal,
+            ) {
+                State::Internal(span) => return CallerLocation::Direct(span),
+                State::Captured { field_idx, is_pinned } => {
+                    return CallerLocation::Captured {
+                        frame,
+                        field_idx,
+                        is_pinned,
+                        fallback_span: source_info.span,
+                    };
+                }
+                State::Propagate => {}
             }
         }
 
         span_bug!(self.cur_span(), "no non-`#[track_caller]` frame found")
+    }
+
+    pub(crate) fn caller_location(
+        &self,
+    ) -> InterpResult<'tcx, Either<Span, MPlaceTy<'tcx, M::Provenance>>> {
+        interp_ok(match self.find_closest_untracked_caller_location() {
+            CallerLocation::Direct(span) => Left(span),
+            CallerLocation::Captured { frame, field_idx, is_pinned, fallback_span: _ } => {
+                // FIXME: Somehow point to fallback_span for errors
+
+                // `Pin<&mut Self>` or `&mut Self`
+                let base_op = self.local_in_frame_to_op(frame, mir::Local::arg(0), None)?;
+                // `&mut Self`
+                let coro_ref_op = if is_pinned {
+                    self.project_field(&base_op, FieldIdx::from_usize(0))?
+                } else {
+                    base_op
+                };
+                // `Self`
+                let coro_place = self.deref_pointer(&coro_ref_op)?;
+                // `&Location`
+                let location_ref_place = self.project_field(&coro_place, field_idx)?;
+                // `Location`
+                let location_place = self.deref_pointer(&location_ref_place)?;
+                Right(location_place)
+            }
+        })
     }
 
     /// Returns the actual dynamic size and alignment of the place at the given type.
