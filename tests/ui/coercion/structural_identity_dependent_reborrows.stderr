@@ -20,6 +20,18 @@ help: to force the closure to take ownership of `b` (and any other referenced va
 LL |     move || {
    |     ++++
 
-error: aborting due to 1 previous error
+error: lifetime may not live long enough
+  --> $DIR/structural_identity_dependent_reborrows.rs:32:9
+   |
+LL | fn bar_mut<'a>(b: &'a mut ()) -> impl FnMut() {
+   |            -- lifetime `'a` defined here
+LL |     || {
+   |     -- lifetime `'1` represents this closure's body
+LL |         expected::<&'a mut ()>(b);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'a`
+   |
+   = note: closure implements `FnMut`, so references to captured variables can't escape the closure
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0373`.

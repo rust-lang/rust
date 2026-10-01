@@ -296,6 +296,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
                 kind
             }
+            Adjust::FakeMutReborrow => return expr,
         };
 
         Expr { temp_scope_id, ty: adjustment.target, span, kind }

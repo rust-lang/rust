@@ -755,6 +755,14 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 adjustment::Adjust::GenericReborrow(_) => {
                     span_bug!(expr.span, "generic reborrow adjustment must be terminal");
                 }
+
+                adjustment::Adjust::FakeMutReborrow => {
+                    self.delegate.borrow_mut().borrow(
+                        &place_with_id,
+                        place_with_id.hir_id,
+                        ty::BorrowKind::Mutable,
+                    );
+                }
             }
             place_with_id = self.cat_expr_adjusted(expr, place_with_id, adjustment)?;
         }
@@ -1285,7 +1293,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             adjustment::Adjust::NeverToAny
             | adjustment::Adjust::Pointer(_)
             | adjustment::Adjust::Borrow(_)
-            | adjustment::Adjust::GenericReborrow(..) => {
+            | adjustment::Adjust::GenericReborrow(..)
+            | adjustment::Adjust::FakeMutReborrow => {
                 // Result is an rvalue.
                 Ok(self.cat_rvalue(expr.hir_id, target))
             }

@@ -12,14 +12,14 @@ fn gimme_static_mut_let_nested() -> &'static mut u32 {
 }
 
 fn gimme_static_mut_match() -> &'static mut u32 {
-    match 1234543 { //~ ERROR
-        ref mut x => x
+    match 1234543 {
+        ref mut x => x //~ ERROR
     }
 }
 
 fn gimme_static_mut_match_nested() -> &'static mut u32 {
-    match (123443,) { //~ ERROR
-        (ref mut x,) => x,
+    match (123443,) {
+        (ref mut x,) => x, //~ ERROR
     }
 }
 

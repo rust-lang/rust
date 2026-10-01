@@ -111,6 +111,11 @@ pub enum Adjust {
     ///
     /// [`ExprKind::Reborrow`]: crate::thir::ExprKind::Reborrow
     GenericReborrow(hir::Mutability),
+
+    /// `&mut T` -> `&mut T` reborrow.
+    /// We actually insert these in MIR building,
+    /// but keep these pretend ones in HIR to keep closure capture inference stable.
+    FakeMutReborrow,
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
