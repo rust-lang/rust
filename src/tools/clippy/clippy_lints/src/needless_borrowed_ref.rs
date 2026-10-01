@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::usage::local_used_after_expr;
 use rustc_errors::Applicability;
-use rustc_hir::{BindingMode, Mutability, Node, Pat, PatKind, Pinnedness};
+use rustc_hir::{self as hir, BindingMode, ExprKind, Mutability, Node, Pat, PatKind, Pinnedness, QPath};
 use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 
 declare_clippy_lint! {
@@ -104,7 +105,77 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowedRef {
                 _ => {},
             }
         }
+
+        // Check for `&mut ref mut x` patterns where the `&mut` can be removed
+        if let PatKind::Ref(pat, Pinnedness::Not, Mutability::Mut) = ref_pat.kind
+            && !ref_pat.span.from_expansion()
+            && let PatKind::Binding(BindingMode::REF_MUT, _, ident, None) = pat.kind
+            && cx
+                .tcx
+                .hir_parent_iter(ref_pat.hir_id)
+                .map_while(|(_, parent)| if let Node::Pat(pat) = parent { Some(pat) } else { None })
+                // Do not lint if behind another ref pattern (can't move out of a reference)
+                // or part of an OR `|` pattern
+                .all(|pat| !matches!(pat.kind, PatKind::Or(_) | PatKind::Ref(..)))
+            && can_move_ref(cx, ref_pat)
+        {
+            span_lint_and_then(
+                cx,
+                NEEDLESS_BORROWED_REFERENCE,
+                ref_pat.span,
+                "this pattern takes a mutable reference on something that is being dereferenced",
+                |diag| {
+                    let span = ref_pat.span.until(ident.span);
+                    diag.span_suggestion_verbose(
+                        span,
+                        "try removing the `&mut ref mut` part",
+                        String::new(),
+                        Applicability::MachineApplicable,
+                    );
+                },
+            );
+        }
     }
+}
+
+/// Checks whether the `&mut` reference matched by `ref_pat` can be moved (rather than reborrowed).
+/// This is only valid when the scrutinee is a simple local variable that is not used after the
+/// enclosing match/if let expression.
+fn can_move_ref(cx: &LateContext<'_>, ref_pat: &Pat<'_>) -> bool {
+    // Walk up past patterns and arms to find the enclosing match/if let expression
+    let mut scrutinee_and_expr = None;
+    for (_, parent) in cx.tcx.hir_parent_iter(ref_pat.hir_id) {
+        if matches!(parent, Node::Pat(_) | Node::PatField(_) | Node::Arm(_)) {
+            // skip intermediate pattern/arm nodes
+        } else if let Node::Expr(expr) = parent {
+            match expr.kind {
+                ExprKind::Match(scrutinee, _, _) => {
+                    scrutinee_and_expr = Some((scrutinee, expr));
+                    break;
+                },
+                // the pattern's direct parent is the `Let` expression;
+                // keep going one level up to the `If` for the right "used after" scope.
+                ExprKind::Let(let_expr) => {
+                    scrutinee_and_expr = Some((let_expr.init, expr));
+                },
+                ExprKind::If(..) if scrutinee_and_expr.is_some() => {
+                    scrutinee_and_expr = scrutinee_and_expr.map(|(s, _)| (s, expr));
+                    break;
+                },
+                _ => break,
+            }
+        } else {
+            break;
+        }
+    }
+
+    if let Some((scrutinee, scope_expr)) = scrutinee_and_expr
+        && let ExprKind::Path(QPath::Resolved(None, path)) = scrutinee.kind
+        && let hir::def::Res::Local(local_id) = path.res
+    {
+        return !local_used_after_expr(cx, local_id, scope_expr);
+    }
+    false
 }
 
 fn check_subpatterns<'tcx>(
