@@ -78,7 +78,7 @@ unsafe extern "Rust" {
 /// This may change in the future. You must not rely on it for correctness!
 ///
 /// [*equivalent*]: Allocator#equivalent-allocators
-#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "allocator_api", since = "1.100.0")]
 #[derive(Copy, Debug)]
 #[derive_const(Clone, Default)]
 // the compiler needs to know when a Box uses the global allocator vs a custom one
@@ -566,7 +566,7 @@ impl Global {
     }
 }
 
-#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "allocator_api", since = "1.100.0")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 const unsafe impl Allocator for Global {
     #[inline]
