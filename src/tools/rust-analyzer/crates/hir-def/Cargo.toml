@@ -9,6 +9,9 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
+[package.metadata.cargo-machete]
+ignored = ["unicode-ident"]
+
 [lib]
 doctest = false
 
@@ -43,6 +46,10 @@ tt.workspace = true
 span.workspace = true
 thin-vec.workspace = true
 syntax-bridge.workspace = true
+
+# This is a transitive dep, but we need to specify this
+# for the workspace-wide pinning
+unicode-ident.workspace = true
 
 [dev-dependencies]
 expect-test.workspace = true
