@@ -30,7 +30,7 @@ declare_clippy_lint! {
     /// let one = Box::new(1);
     /// let ptr = Box::into_non_null(one);
     /// ```
-    #[clippy::version = "1.98.0"]
+    #[clippy::version = "1.99.0"]
     pub NONNULL_UNCHECKED_ON_BOX_PTR,
     complexity,
     "checks for uses of `NonNull::new_unchecked` with `Box::into_raw`"

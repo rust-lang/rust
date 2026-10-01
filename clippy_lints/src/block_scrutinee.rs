@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// if let Some(x) = { my_function() } { .. }
     /// ```
-    #[clippy::version = "1.98.0"]
+    #[clippy::version = "1.99.0"]
     pub BLOCK_SCRUTINEE,
     suspicious,
     "warns when the scrutinee is wrapped in a block in older editions"
