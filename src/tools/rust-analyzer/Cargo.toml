@@ -165,6 +165,10 @@ hashbrown = { version = "0.17.0", features = [
 # We need to freeze the version of the crate, as the raw-api feature is considered unstable
 dashmap = { version = "=6.2.1", features = ["raw-api", "inline"] }
 
+# We need to freeze this as `1.0.26` breaks the compilation of `rustc_lexer` during our in-tree
+# libraries publish
+unicode-ident = "=1.0.24"
+
 [workspace.lints.rust]
 # remember to update RUSTFLAGS in ci.yml if you add something here
 
