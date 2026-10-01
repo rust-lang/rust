@@ -499,6 +499,9 @@ code, pre, .code-header, .type-signature {
 	border-radius: 3px;
 	padding: 0 0.125em;
 }
+.docblock code {
+	padding: 2px 0.125em;
+}
 .docblock pre code, .item-table dd pre code {
 	padding: 0;
 }
@@ -1149,8 +1152,12 @@ pre, .rustdoc.src .example-wrap, .example-wrap .src-line-numbers {
 	background: var(--table-alt-row-background-color);
 }
 
-.docblock .stab, .item-table dd .stab, .docblock p code {
+.docblock .stab, .item-table dd .stab {
 	display: inline-block;
+}
+
+.docblock p code {
+	display: inline;
 }
 
 .docblock li {
