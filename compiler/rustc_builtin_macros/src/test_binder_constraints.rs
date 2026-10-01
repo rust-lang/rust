@@ -1,5 +1,5 @@
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{AttrVec, VisibilityKind, ast, token};
+use rustc_ast::{AttrVec, ast, token};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_span::Span;
 use smallvec::SmallVec;
@@ -26,15 +26,8 @@ pub(crate) fn expand<'cx>(
     if p.token != token::Eof {
         cx.dcx().emit_err(diagnostics::OnlyOneArgument { span: p.token.span, name });
     }
-    let item = Box::new(ast::Item {
-        attrs: AttrVec::default(),
-        id: ast::DUMMY_NODE_ID,
-        span,
-        vis: ast::Visibility { kind: VisibilityKind::Inherited, span: span.shrink_to_lo() },
-        kind: ast::ItemKind::TestBinderConstraints(item),
-        tokens: None,
-    });
-    rustc_expand::base::ExpandResult::Ready(Box::new(MacEager {
+    let item = cx.item(span, AttrVec::default(), ast::ItemKind::TestBinderConstraints(item));
+    ExpandResult::Ready(Box::new(MacEager {
         expr: None,
         items: Some(SmallVec::from_buf([item])),
         ty: None,

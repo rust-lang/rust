@@ -3,7 +3,7 @@
 
 //@ compile-flags: -Znext-solver=globally
 
-#![feature(generic_const_args, min_generic_const_args)]
+#![feature(gca_const_items, gca_min_const_items)]
 #![expect(incomplete_features)]
 
 // * dyn incompatible due to GAT

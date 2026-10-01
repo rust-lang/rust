@@ -15,17 +15,16 @@ LL | |     });
    |
    = help: within `{closure@$DIR/rc-is-not-send.rs:25:19: 25:26}`, the trait `Send` is not implemented for `Rc<()>`
 note: required because it appears within the type `Port<()>`
-  --> $DIR/rc-is-not-send.rs:7:8
+  --> $DIR/rc-is-not-send.rs:7:16
    |
 LL | struct Port<T>(Rc<T>);
-   |        ^^^^    ----- required by this field
+   |                ^^^^^ required by this field
 note: required because it appears within the type `Foo`
-  --> $DIR/rc-is-not-send.rs:10:8
+  --> $DIR/rc-is-not-send.rs:11:5
    |
 LL | struct Foo {
-   |        ^^^
 LL |     _x: Port<()>,
-   |     ------------ required by this field
+   |     ^^^^^^^^^^^^ required by this field
 note: required because `x` is used within this closure
   --> $DIR/rc-is-not-send.rs:27:17
    |

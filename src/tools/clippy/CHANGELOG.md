@@ -318,7 +318,7 @@ Current stable, released 2026-05-28
   [#16685](https://github.com/rust-lang/rust-clippy/pull/16685)
 * [`nonminimal_bool`] fix ICE in `swap_binop()` by using the proper `TypeckResults`
   [#16659](https://github.com/rust-lang/rust-clippy/pull/16659)
-* Fix ICE when using the `min_generic_const_args` incomplete feature
+* Fix ICE when using the `gca_min_const_items` incomplete feature
   [#16692](https://github.com/rust-lang/rust-clippy/pull/16692)
 
 ### Documentation Improvements

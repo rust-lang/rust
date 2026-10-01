@@ -1,3 +1,5 @@
+use std::cmp::max_by_key;
+
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use rustc_errors::{Applicability, SuggestionStyle};
@@ -96,7 +98,9 @@ fn emit_lint(
                 // `<>` needs to be added if there aren't yet any generic arguments or constraints
                 let needs_angle_brackets = bound.args.is_empty() && bound.constraints.is_empty();
                 let insert_span = match (bound.args, bound.constraints) {
-                    ([.., arg], [.., constraint]) => arg.span().max(constraint.span).shrink_to_hi(),
+                    ([.., arg], [.., constraint]) => {
+                        max_by_key(arg.span(), constraint.span, |span| span.lo_hi()).shrink_to_hi()
+                    }
                     ([.., arg], []) => arg.span().shrink_to_hi(),
                     ([], [.., constraint]) => constraint.span.shrink_to_hi(),
                     ([], []) => bound.span.shrink_to_hi(),

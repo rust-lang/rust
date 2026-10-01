@@ -4,18 +4,12 @@
 //!
 //@ only-nightly
 //@ needs-target-std
-// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
 //@ ignore-backends: gcc
 
-use run_make_support::{diff, rustc, similar};
+use run_make_support::{diff, rustc, similar, stable_bare_rustc};
 
 fn main() {
-    let stable_like = rustc()
-        .env("RUSTC_BOOTSTRAP", "-1")
-        .edition("2024")
-        .input("foo.rs")
-        .run_fail()
-        .stderr_utf8();
+    let stable_like = stable_bare_rustc().edition("2024").input("foo.rs").run_fail().stderr_utf8();
 
     assert!(!stable_like.contains("CoroutineState::Complete"));
     diff().expected_file("stable.err").actual_text("stable_like", &stable_like).run();

@@ -20,11 +20,11 @@ mod foo {
     impl Foo<crate::llvm::Foo> {
         #[rustc_dump_symbol_name]
         //[legacy]~^ ERROR symbol-name(_ZN11issue_609253foo37Foo$LT$issue_60925..llv$u6d$..Foo$GT$3foo
-        //[legacy]~| ERROR demangling(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo
-        //[legacy]~| ERROR demangling-alt(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo)
+        //[legacy]~| NOTE demangling(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo
+        //[legacy]~| NOTE demangling-alt(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo)
          //[v0]~^^^^ ERROR symbol-name
-            //[v0]~| ERROR demangling
-            //[v0]~| ERROR demangling-alt(<issue_60925::foo::Foo<issue_60925::llvm::Foo>>::foo)
+            //[v0]~| NOTE demangling
+            //[v0]~| NOTE demangling-alt(<issue_60925::foo::Foo<issue_60925::llvm::Foo>>::foo)
         pub(crate) fn foo() {
             for _ in 0..0 {
                 for _ in &[crate::dummy()] {

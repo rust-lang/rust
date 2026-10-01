@@ -1778,6 +1778,10 @@ pub struct AddressSpace(pub u32);
 impl AddressSpace {
     /// LLVM's `0` address space.
     pub const ZERO: Self = AddressSpace(0);
+    /// The address space for constant memory on nvptx and amdgpu.
+    /// This address space is used e.g. for kernel arguments that are constant throughout the
+    /// execution.
+    pub const GPU_CONSTANT: Self = AddressSpace(4);
     /// The address space for workgroup memory on nvptx and amdgpu.
     /// See e.g. the `gpu_launch_sized_workgroup_mem` intrinsic for details.
     pub const GPU_WORKGROUP: Self = AddressSpace(3);
@@ -2023,10 +2027,10 @@ pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
     /// 2. the never type
     Empty,
 
-    /// The type has a single valid variant.
+    /// The type has a single valid variant. Such types are called "univariant".
     ///
     /// This is the case for:
-    /// 1. enums with a single inhabited variant
+    /// 1. enums with a single inhabited variant, aka. "univariant enums"
     /// 2. structs, unions, and non-ADTs (except coroutines; see below),
     ///    as those can't have multiple variants
     Single {
@@ -2189,6 +2193,18 @@ impl Niche {
             }
         }
     }
+}
+
+/// Whether niche optimizations should be performed during layout calculation.
+///
+/// [`UnsafeCell`] and [`UnsafePinned`] both disable niche optimizations.
+///
+/// [`UnsafeCell`]: std::cell::UnsafeCell
+/// [`UnsafePinned`]: std::pin::UnsafePinned
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub enum NicheOptimizations {
+    Enabled,
+    Disabled,
 }
 
 // NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
@@ -2446,12 +2462,22 @@ pub enum AbiFromStrErr {
     NoExplicitUnwind,
 }
 
+/// The layout information for a variant.
+///
+/// For items with multiple variants ([`Variants::Multiple`]), the layout information of each
+/// variant largely matches that of the overall item. So, instead of giving each one a new [`LayoutData`],
+/// we use this struct, which stores only the information that differs between the variants.
+///
+/// See <https://github.com/rust-lang/rust/issues/113988> for more context.
 // NOTE: This struct is generic over the FieldIdx for rust-analyzer usage.
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct VariantLayout<FieldIdx: Idx> {
+    // FIXME: ideally we'd remove these as variants should not have their own
+    // size or backend_repr.
     pub size: Size,
     pub backend_repr: BackendRepr,
+
     pub field_offsets: IndexVec<FieldIdx, Size>,
     fields_in_memory_order: IndexVec<u32, FieldIdx>,
     largest_niche: Option<Niche>,

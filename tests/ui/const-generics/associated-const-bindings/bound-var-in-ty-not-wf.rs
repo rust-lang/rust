@@ -1,7 +1,7 @@
 // Check that we eventually catch types of assoc const bounds
 // (containing late-bound vars) that are ill-formed.
 #![feature(
-    min_generic_const_args,
+    gca_min_const_items,
     adt_const_params,
     const_param_ty_trait,
     generic_const_parameter_types

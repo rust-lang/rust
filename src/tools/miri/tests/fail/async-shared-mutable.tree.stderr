@@ -10,8 +10,12 @@ LL |             *x = 1;
 help: the accessed tag <TAG> was created here, in the initial state Reserved
   --> tests/fail/async-shared-mutable.rs:LL:CC
    |
-LL |         let x = &mut 0u8;
-   |                 ^^^^^^^^
+LL | /         core::future::poll_fn(move |_| {
+LL | |             *x = 1;
+LL | |             Poll::<()>::Pending
+LL | |         })
+LL | |         .await
+   | |______________^
 help: the accessed tag <TAG> later transitioned to Unique due to a child write access at offsets [RANGE]
   --> tests/fail/async-shared-mutable.rs:LL:CC
    |

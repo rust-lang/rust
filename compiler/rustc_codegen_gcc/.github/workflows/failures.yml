@@ -98,7 +98,14 @@ jobs:
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       id: tests
       run: |
-        ${{ matrix.libgccjit_version.env_extra }} ./y.sh test --release --clean --build-sysroot --test-failing-rustc ${{ matrix.libgccjit_version.extra }} 2>&1 | tee output_log
+        # Without this, `tee` masks the exit status of `y.sh test`.
+        set -o pipefail
+        status=0
+        ${{ matrix.libgccjit_version.env_extra }} ./y.sh test --release --clean --build-sysroot --test-failing-rustc ${{ matrix.libgccjit_version.extra }} 2>&1 | tee output_log || status=$?
+        # This suite runs the tests known to fail, so only a build system error must fail the job.
+        if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
+          exit "$status"
+        fi
         rg --text "test result" output_log >> $GITHUB_STEP_SUMMARY
 
     - name: Run failing ui pattern tests for ICE
@@ -106,7 +113,14 @@ jobs:
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       id: ui-tests
       run: |
-        ${{ matrix.libgccjit_version.env_extra }} ./y.sh test --release --test-failing-ui-pattern-tests ${{ matrix.libgccjit_version.extra }} 2>&1 | tee output_log_ui
+        # Without this, `tee` masks the exit status of `y.sh test`.
+        set -o pipefail
+        status=0
+        ${{ matrix.libgccjit_version.env_extra }} ./y.sh test --release --test-failing-ui-pattern-tests ${{ matrix.libgccjit_version.extra }} 2>&1 | tee output_log_ui || status=$?
+        # This suite runs tests that fail, so only a build system error must fail the job here.
+        if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
+          exit "$status"
+        fi
         if grep -q "the compiler unexpectedly panicked" output_log_ui; then
           echo "Error: 'the compiler unexpectedly panicked' found in output logs. CI Error!!"
           exit 1

@@ -1,7 +1,7 @@
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::ItemKind;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, TraitErrors};
@@ -130,14 +130,14 @@ fn first_explicit_lifetime_span_in_ambig_ty(ty: &hir::Ty<'_, hir::AmbigArg>) -> 
 
 fn first_explicit_lifetime_span_in_ty(ty: &hir::Ty<'_>) -> Option<Span> {
     match ty.kind {
-        hir::TyKind::Ref(lifetime, mut_ty) => first_explicit_lifetime_span(lifetime)
-            .or_else(|| first_explicit_lifetime_span_in_ty(mut_ty.ty)),
+        hir::TyKind::Ref(lifetime, ty, _) => first_explicit_lifetime_span(lifetime)
+            .or_else(|| first_explicit_lifetime_span_in_ty(ty)),
         hir::TyKind::Slice(ty)
         | hir::TyKind::Array(ty, _)
         | hir::TyKind::Pat(ty, _)
         | hir::TyKind::FieldOf(ty, _)
         | hir::TyKind::View(ty, _) => first_explicit_lifetime_span_in_ty(ty),
-        hir::TyKind::Ptr(mut_ty) => first_explicit_lifetime_span_in_ty(mut_ty.ty),
+        hir::TyKind::Ptr(ty, _) => first_explicit_lifetime_span_in_ty(ty),
         hir::TyKind::Tup(tys) => tys.iter().find_map(first_explicit_lifetime_span_in_ty),
         hir::TyKind::Path(qpath) => first_explicit_lifetime_span_in_qpath(qpath),
         hir::TyKind::TraitObject(bounds, lifetime) => bounds
@@ -399,29 +399,20 @@ fn validate_reborrow_field_access(
 ) -> Result<(), ErrorGuaranteed> {
     let module = tcx.parent_module_from_def_id(impl_did);
     let variant = def.non_enum_variant();
-    if variant.field_list_has_applicable_non_exhaustive() {
-        return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedInaccessibleField {
+
+    if variant.field_list_has_applicable_non_exhaustive()
+        || variant.fields.iter().any(|f| !f.vis.is_accessible_from(module, tcx))
+    {
+        Err(tcx.dcx().emit_err(diagnostics::CoerceSharedInaccessibleField {
             span: diagnostic_context.impl_span,
             type_span: role.type_span(diagnostic_context),
             trait_name,
             role: role.as_str(),
             type_name: tcx.item_name(def.did()),
-        }));
+        }))
+    } else {
+        Ok(())
     }
-
-    for field in &variant.fields {
-        if !field.vis.is_accessible_from(module, tcx) {
-            return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedInaccessibleField {
-                span: diagnostic_context.impl_span,
-                type_span: role.type_span(diagnostic_context),
-                trait_name,
-                role: role.as_str(),
-                type_name: tcx.item_name(def.did()),
-            }));
-        }
-    }
-
-    Ok(())
 }
 
 fn validate_coerce_shared_fields<'tcx>(

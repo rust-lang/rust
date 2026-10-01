@@ -5,7 +5,7 @@
 //@ only-x86_64-unknown-linux-gnu
 //@ ignore-backends: gcc
 
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 
 fn main() {
     let _ = Box::new_in(&[0, 1], &std::alloc::Global);

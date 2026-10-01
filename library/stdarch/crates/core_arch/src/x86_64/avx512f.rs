@@ -9583,7 +9583,7 @@ mod tests {
         let a = _mm_set_epi64x(-1, -2);
         let b = _mm_set_epi64x(64, 65);
         let r = _mm_srav_epi64(a, b);
-        let e = _mm_set_epi64x((-1i64).unbounded_shl(64), (-2i64).unbounded_shl(65));
+        let e = _mm_set_epi64x((-1i64).unbounded_shr(64), (-2i64).unbounded_shr(65));
         assert_eq_m128i(r, e);
         let e = _mm_set_epi64x(-1, -1);
         assert_eq_m128i(r, e);

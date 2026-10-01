@@ -102,10 +102,6 @@ pub(crate) struct OffloadNonexistingPath;
 pub(crate) struct OffloadBundleImagesFailed;
 
 #[derive(Diagnostic)]
-#[diag("call to EmbedBufferInModule failed, `host.o` was not created")]
-pub(crate) struct OffloadEmbedFailed;
-
-#[derive(Diagnostic)]
 #[diag("call to WrapImages failed, device image was not wrapped into the host module")]
 pub(crate) struct OffloadWrapImagesFailed;
 

@@ -65,6 +65,12 @@ case ${TARGET} in
         ARCH=x86
         RUNTIME_RUSTFLAGS=
         ;;
+
+    loongarch64*)
+        export CFLAGS="-I/usr/loongarch64-linux-gnu/include/"
+        ARCH=loongarch64
+        RUNTIME_RUSTFLAGS=-Ctarget-feature=+lsx,+lasx,+frecipe
+        ;;
     *)
         ;;
 
@@ -75,6 +81,14 @@ case "${TARGET}" in
         env -u CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER \
             cargo run "${INTRINSIC_TEST}" --release \
             --bin intrinsic-test -- intrinsics_data/x86-intel.xml \
+            --skip "crates/intrinsic-test/missing_${ARCH}_common.txt" \
+            --skip "crates/intrinsic-test/missing_${ARCH}_${CC_KIND}.txt" \
+            --target "${TARGET}" \
+            --cc-arg-style "${CC_ARG_STYLE}"
+        ;;
+    loongarch64*)
+        cargo run "${INTRINSIC_TEST}" --release \
+            --bin intrinsic-test -- crates/stdarch-gen-loongarch \
             --skip "crates/intrinsic-test/missing_${ARCH}_common.txt" \
             --skip "crates/intrinsic-test/missing_${ARCH}_${CC_KIND}.txt" \
             --target "${TARGET}" \

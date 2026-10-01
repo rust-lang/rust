@@ -2040,6 +2040,12 @@ test!(BuildStd {
     default: false
 });
 
+test!(AssemblyGcc {
+    path: "tests/assembly-gcc",
+    mode: CompiletestMode::Assembly,
+    suite: "assembly-gcc",
+    default: true
+});
 test!(AssemblyLlvm {
     path: "tests/assembly-llvm",
     mode: CompiletestMode::Assembly,

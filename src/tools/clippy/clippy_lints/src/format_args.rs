@@ -610,8 +610,8 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
             .any(|(span, _)| self.cx.sess().source_map().is_multiline(*span));
 
         // Suggest removing each argument only once, for example in `format!("{0} {0}", arg)`.
-        fixes.sort_unstable_by_key(|(span, _)| *span);
-        fixes.dedup_by_key(|(span, _)| *span);
+        fixes.sort_unstable_by_key(|(span, _)| span.lo_hi());
+        fixes.dedup_by_key(|(span, _)| span.lo_hi());
 
         span_lint_and_then(
             self.cx,

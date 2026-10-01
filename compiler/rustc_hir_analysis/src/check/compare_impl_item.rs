@@ -2162,8 +2162,8 @@ pub(super) fn compare_const_directness<'tcx>(
     if trait_is_gca == impl_is_gca {
         return Ok(());
     }
-    // feature(generic_const_args) is allowed to impl non-GCA traits with a GCA const
-    if tcx.features().generic_const_args() && !trait_is_gca && impl_is_gca {
+    // feature(gca_const_items) is allowed to impl non-GCA traits with a GCA const
+    if tcx.features().gca_const_items() && !trait_is_gca && impl_is_gca {
         return Ok(());
     }
 
@@ -2171,7 +2171,7 @@ pub(super) fn compare_const_directness<'tcx>(
         tcx.dcx()
             .struct_span_err(
                 tcx.def_span(impl_const_item.def_id),
-                "implementation of a `#[rustc_always_gca]` must have a `direct_const_arg!` RHS",
+                "implementation of a `#[rustc_always_gca]` must have a `gca!` RHS",
             )
             .with_span_note(
                 tcx.def_span(trait_const_item.def_id),
@@ -2182,7 +2182,7 @@ pub(super) fn compare_const_directness<'tcx>(
         tcx.dcx()
             .struct_span_err(
                 tcx.def_span(impl_const_item.def_id),
-                "implementation of a regular const cannot have a `direct_const_arg!` RHS",
+                "implementation of a regular const cannot have a `gca!` RHS",
             )
             .with_span_note(
                 tcx.def_span(trait_const_item.def_id),

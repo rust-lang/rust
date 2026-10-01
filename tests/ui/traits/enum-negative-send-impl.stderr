@@ -12,12 +12,11 @@ help: within `Container`, the trait `Send` is not implemented for `NoSend`
 LL | struct NoSend;
    | ^^^^^^^^^^^^^
 note: required because it appears within the type `Container`
-  --> $DIR/enum-negative-send-impl.rs:12:6
+  --> $DIR/enum-negative-send-impl.rs:13:16
    |
 LL | enum Container {
-   |      ^^^^^^^^^
 LL |     WithNoSend(NoSend),
-   |                ------ required by this field
+   |                ^^^^^^ required by this field
 note: required by a bound in `requires_send`
   --> $DIR/enum-negative-send-impl.rs:16:21
    |

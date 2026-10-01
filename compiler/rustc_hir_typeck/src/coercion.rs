@@ -37,11 +37,11 @@
 
 use std::ops::{ControlFlow, Deref};
 
+use rustc_attr_ir::InlineAttr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
 use rustc_hir as hir;
-use rustc_hir::attrs::InlineAttr;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
@@ -2065,11 +2065,17 @@ impl<'tcx> CoerceMany<'tcx> {
             fcx.suggest_missing_return_type(&mut err, fn_decl, expected, found, fn_id);
         }
 
+        let is_return_position = fcx
+            .tcx
+            .hir_get_fn_id_for_return_block(block_or_return_id)
+            .is_some_and(|fn_id| fn_id == fcx.tcx.local_def_id_to_hir_id(fcx.body_def_id));
+
         // If this is due to a block, then maybe we forgot a `return`/`break`.
         if due_to_block
             && let Some(expr) = expression
             && let Some(parent_fn_decl) =
                 fcx.tcx.hir_fn_decl_by_hir_id(fcx.tcx.local_def_id_to_hir_id(fcx.body_def_id))
+            && !is_return_position
         {
             fcx.suggest_missing_break_or_return_expr(
                 &mut err,
@@ -2081,11 +2087,6 @@ impl<'tcx> CoerceMany<'tcx> {
                 fcx.body_def_id,
             );
         }
-
-        let is_return_position = fcx
-            .tcx
-            .hir_get_fn_id_for_return_block(block_or_return_id)
-            .is_some_and(|fn_id| fn_id == fcx.tcx.local_def_id_to_hir_id(fcx.body_def_id));
 
         if is_return_position
             && let Some(sp) = fcx.ret_coercion_span.get()

@@ -6,12 +6,12 @@ use std::{debug_assert_matches, iter};
 
 use itertools::{EitherOrBoth, Itertools};
 use rustc_abi::ExternAbi;
+use rustc_attr_ir::lang_items::{self, LangItem};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, MultiSpan, Style, SuggestionStyle, pluralize, struct_span_code_err,
 };
-use rustc_hir::attrs::lang_items::{self, LangItem};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
@@ -24,6 +24,7 @@ use rustc_infer::traits::ImplSource;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::{
     PrintPolyTraitClauseExt as _, PrintPolyTraitRefExt, PrintTraitClauseExt as _,
@@ -2271,9 +2272,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // Skipping binder here, remapping below
         let mut suggested_ty = trait_pred.self_ty().skip_binder();
         if let Some(mut hir_ty) = expr_finder.ty_result {
-            while let hir::TyKind::Ref(_, mut_ty) = &hir_ty.kind {
+            while let hir::TyKind::Ref(_, ref_ty, _) = &hir_ty.kind {
                 count += 1;
-                let span = hir_ty.span.until(mut_ty.ty.span);
+                let span = hir_ty.span.until(ref_ty.span);
                 suggestions.push((span, String::new()));
 
                 let ty::Ref(_, inner_ty, _) = suggested_ty.kind() else {
@@ -2281,7 +2282,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 };
                 suggested_ty = *inner_ty;
 
-                hir_ty = mut_ty.ty;
+                hir_ty = ref_ty;
 
                 if maybe_suggest(suggested_ty, count, suggestions.clone()) {
                     return true;
@@ -2310,9 +2311,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn suggest_remove_ref_from_param(&self, param: &hir::Param<'_>, err: &mut Diag<'_>) -> bool {
         if let Some(decl) = self.tcx.parent_hir_node(param.hir_id).fn_decl()
             && let Some(input_ty) = decl.inputs.iter().find(|t| param.ty_span.contains(t.span))
-            && let hir::TyKind::Ref(_, mut_ty) = input_ty.kind
+            && let hir::TyKind::Ref(_, ty, _) = input_ty.kind
         {
-            let ref_span = input_ty.span.until(mut_ty.ty.span);
+            let ref_span = input_ty.span.until(ty.span);
             match self.tcx.sess.source_map().span_to_snippet(ref_span) {
                 Ok(snippet) if snippet.starts_with("&") => {
                     err.span_suggestion_verbose(
@@ -3794,9 +3795,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if typeck_results.hir_owner.to_def_id() != typeck_root {
             return false;
         }
+
+        // Error reporting can run before closure capture analysis has inferred the
+        // tuple of upvar types. avoid accessing upvar types until they are available.
+        let upvar_tys = match upvar_args.tupled_upvars_ty().kind() {
+            ty::Tuple(args) => args,
+            ty::Error(_) => ty::List::empty(),
+            ty::Infer(_) => return false,
+            ty => unreachable!("unexpected upvar types tuple: {ty:?}"),
+        };
+
         let captures: Vec<_> =
             typeck_results.closure_min_captures_flattened(closure_def_id).collect();
-        let upvar_tys = upvar_args.upvar_tys();
         if captures.len() != upvar_tys.len() {
             return false;
         }
@@ -4446,7 +4456,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             let msg = msg();
                             match tcx.opt_item_ident(def.did()) {
                                 Some(ident) => {
-                                    let mut spans = MultiSpan::from(ident.span);
+                                    let mut spans = MultiSpan::new();
                                     if def.did().is_local()
                                         && let Some(pred) = predicate.as_trait_clause()
                                     {
@@ -4455,12 +4465,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                         );
                                         for field in def.all_fields() {
                                             if field.ty(tcx, args).skip_norm_wip() == field_ty {
-                                                spans.push_span_label(
-                                                    tcx.def_span(field.did),
-                                                    "required by this field",
-                                                );
+                                                let sp = tcx.def_span(field.did);
+                                                spans.push_primary_span(sp);
+                                                spans.push_span_label(sp, "required by this field");
                                             }
                                         }
+                                    }
+                                    if spans.has_primary_spans() {
+                                        spans.push_span_context(ident.span);
+                                    } else {
+                                        spans.push_primary_span(ident.span);
+                                        spans.push_span_label(ident.span, "");
                                     }
                                     err.span_note(spans, msg);
                                 }
@@ -6815,11 +6830,11 @@ fn hint_missing_borrow<'tcx>(
                 let mut span = arg.span.shrink_to_lo();
                 let mut left = found_refs.len() - expected_refs.len();
                 let mut ty = arg;
-                while let hir::TyKind::Ref(_, mut_ty) = &ty.kind
+                while let hir::TyKind::Ref(_, inner_ty, _) = &ty.kind
                     && left > 0
                 {
-                    span = span.with_hi(mut_ty.ty.span.lo());
-                    ty = mut_ty.ty;
+                    span = span.with_hi(inner_ty.span.lo());
+                    ty = inner_ty;
                     left -= 1;
                 }
                 if left == 0 {
@@ -7289,7 +7304,7 @@ impl<'v> Visitor<'v> for FindTypeParam {
         // and suggest `T: ?Sized` regardless of their obligations. This is fine because the errors
         // in that case should make what happened clear enough.
         match ty.kind {
-            hir::TyKind::Ptr(_) | hir::TyKind::Ref(..) | hir::TyKind::TraitObject(..) => {}
+            hir::TyKind::Ptr(..) | hir::TyKind::Ref(..) | hir::TyKind::TraitObject(..) => {}
             hir::TyKind::Path(hir::QPath::Resolved(None, path))
                 if let [segment] = path.segments
                     && segment.ident.name == self.param =>

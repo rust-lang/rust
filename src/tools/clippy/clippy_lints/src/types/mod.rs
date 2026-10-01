@@ -14,8 +14,8 @@ use clippy_config::Conf;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    Body, FnDecl, FnRetTy, GenericArg, ImplItem, ImplItemKind, Item, ItemKind, LetStmt, MutTy, QPath, TraitFn,
-    TraitItem, TraitItemKind, TyKind,
+    Body, FnDecl, FnRetTy, GenericArg, ImplItem, ImplItemKind, Item, ItemKind, LetStmt, QPath, TraitFn, TraitItem,
+    TraitItemKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::Span;
@@ -664,13 +664,13 @@ impl Types {
                     owned_cow::check(cx, qpath, def_id);
                 }
             },
-            TyKind::Ref(lt, ref mut_ty) => {
+            TyKind::Ref(lt, ref inner_ty, mutbl) => {
                 context.is_nested_call = true;
-                if !borrowed_box::check(cx, hir_ty, lt, mut_ty) {
-                    self.check_ty(cx, mut_ty.ty, context);
+                if !borrowed_box::check(cx, hir_ty, lt, inner_ty, mutbl) {
+                    self.check_ty(cx, inner_ty, context);
                 }
             },
-            TyKind::Slice(ty) | TyKind::Array(ty, _) | TyKind::Ptr(MutTy { ty, .. }) => {
+            TyKind::Slice(ty) | TyKind::Array(ty, _) | TyKind::Ptr(ty, ..) => {
                 context.is_nested_call = true;
                 self.check_ty(cx, ty, context);
             },

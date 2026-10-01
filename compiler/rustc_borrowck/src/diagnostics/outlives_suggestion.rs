@@ -220,9 +220,8 @@ impl OutlivesSuggestionBuilder {
 
         // We want this message to appear after other messages on the mir def.
         let mir_span = mbcx.body.span;
-        diag.sort_span = mir_span.shrink_to_hi();
 
         // Buffer the diagnostic
-        mbcx.buffer_error(diag);
+        mbcx.buffer_error_with_sort_span(diag, mir_span.shrink_to_hi());
     }
 }

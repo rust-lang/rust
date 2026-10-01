@@ -1,5 +1,4 @@
 #![cfg(test)]
-#![allow(unused_attributes)]
 #![unstable(feature = "alloctests", issue = "none")]
 #![no_std]
 // Lints:
@@ -14,7 +13,7 @@
 //
 // Library features:
 // tidy-alphabetical-start
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 #![feature(array_into_iter_constructors)]
 #![feature(char_internals)]
 #![feature(const_alloc_error)]
@@ -51,7 +50,6 @@
 #![feature(trusted_random_access)]
 #![feature(try_reserve_kind)]
 #![feature(try_trait_v2)]
-#![feature(unwrap_infallible)]
 #![feature(wtf8_internals)]
 // tidy-alphabetical-end
 //

@@ -897,6 +897,13 @@ pub(crate) struct InlineForceInlineConflict {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[inline]` is ignored on externally exported functions")]
+#[help(
+    "externally exported functions are functions with `#[no_mangle]`, `#[export_name]`, or `#[linkage]`"
+)]
+pub(crate) struct InlineIgnoredForExported;
+
+#[derive(Diagnostic)]
 #[diag("`#[ffi_const]` function cannot be `#[ffi_pure]`", code = E0757)]
 pub(crate) struct BothFfiConstAndPure {
     #[primary_span]
@@ -1824,6 +1831,13 @@ pub(crate) struct EmptyLinkName {
     #[label("empty link name")]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("attribute should be applied to an `extern` block with non-Rust ABI")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+pub(crate) struct Link;
 
 #[derive(Diagnostic)]
 #[diag("link kind `framework` is only supported on Apple targets", code = E0455)]

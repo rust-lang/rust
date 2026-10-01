@@ -1,7 +1,6 @@
-use rustc_hir::attrs::RustcAbiAttrKind;
+use rustc_attr_ir::{RustcAbiAttrKind, find_attr};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::find_attr;
 use rustc_middle::ty::layout::{FnAbiError, LayoutError};
 use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TyCtxt};
 use rustc_span::{Span, span_bug};

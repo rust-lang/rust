@@ -1,7 +1,7 @@
-//@revisions: min_generic_const_args generic_const_args regular
+//@revisions: gca_min_const_items gca_const_items regular
 #![crate_type = "lib"]
-#![cfg_attr(min_generic_const_args, feature(min_generic_const_args))]
-#![cfg_attr(generic_const_args, feature(min_generic_const_args))]
+#![cfg_attr(gca_min_const_items, feature(gca_min_const_items))]
+#![cfg_attr(gca_const_items, feature(gca_min_const_items))]
 
 fn example<const N: usize>() {}
 

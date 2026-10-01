@@ -12,10 +12,10 @@ The tracking issue for this feature is: [#76560]
 
 Warning: This feature is incomplete; its design and syntax may change.
 
-See also: [min_generic_const_args], [generic_const_args]
+See also: [gca_min_const_items], [gca_const_items]
 
-[min_generic_const_args]: min-generic-const-args.md
-[generic_const_args]: generic-const-args.md
+[gca_min_const_items]: gca-min-const-items.md
+[gca_const_items]: gca-const-items.md
 
 ## Examples
 

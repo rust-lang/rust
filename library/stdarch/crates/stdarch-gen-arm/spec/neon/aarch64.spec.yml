@@ -4321,10 +4321,7 @@ intrinsics:
       - ['*mut f64', float64x1_t]
     compose:
       - FnCall: [static_assert!, ['LANE == 0']]
-      - Assign:
-          - "*a"
-          - FnCall: [simd_extract!, [b, 'LANE as u32']]
-      - Identifier: [';', Symbol]
+      - FnCall: [core::ptr::write_unaligned, [a, {FnCall: [simd_extract!, [b, 'LANE as u32']]}]]
 
   - name: "vst1{neon_type[1].lane_nox}"
     doc: "Store multiple single-element structures from one, two, three, or four registers"
@@ -4340,10 +4337,7 @@ intrinsics:
       - ['*mut f64', float64x2_t]
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '1']]
-      - Assign:
-          - "*a"
-          - FnCall: [simd_extract!, [b, 'LANE as u32']]
-      - Identifier: [';', Symbol]
+      - FnCall: [core::ptr::write_unaligned, [a, {FnCall: [simd_extract!, [b, 'LANE as u32']]}]]
 
   - name: "vst2{neon_type[1].nox}"
     doc: "Store multiple 2-element structures from two registers"

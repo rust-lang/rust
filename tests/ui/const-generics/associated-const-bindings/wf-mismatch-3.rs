@@ -1,8 +1,10 @@
 //! Check that we correctly handle associated const bindings
 //! where the RHS is a normalizable const projection (#151642).
 
-#![feature(min_generic_const_args, macroless_generic_const_args)]
+#![feature(gca_min_const_items, gca_macroless_args)]
 #![expect(incomplete_features)]
+
+use std::gca;
 
 trait Trait {
     #[rustc_always_gca]
@@ -14,7 +16,7 @@ trait Bound {
     const N: u32;
 }
 impl Bound for () {
-    const N: u32 = core::direct_const_arg!(0);
+    const N: u32 = gca!(0);
 }
 
 fn f() {

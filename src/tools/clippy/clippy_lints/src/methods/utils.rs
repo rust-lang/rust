@@ -5,6 +5,7 @@ use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, Mutability, Pat, QPath, Stmt,
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::consts::ConstExt;
 use rustc_span::Span;
 use rustc_span::symbol::sym;
 

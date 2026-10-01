@@ -7,9 +7,8 @@ use std::sync::LazyLock;
 use std::{io, ops, str};
 
 use regex::Regex;
+use rustc_attr_ir::{BorrowckGraphvizFormatKind, RustcMirKind, find_attr};
 use rustc_graphviz as dot;
-use rustc_hir::attrs::{BorrowckGraphvizFormatKind, RustcMirKind};
-use rustc_hir::find_attr;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{
     self, BasicBlock, Body, Location, MirDumper, TerminatorEdges, graphviz_safe_def_name, traversal,

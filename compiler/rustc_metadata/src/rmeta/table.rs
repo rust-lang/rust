@@ -427,34 +427,38 @@ impl<T> FixedSizeEncoding for Option<LazyArray<T>> {
 }
 
 /// Helper for constructing a table's serialization (also see `Table`).
-pub(super) struct TableBuilder<I: Idx, T: FixedSizeEncoding> {
+pub(super) struct TableBuilder<IdxEncode: Idx, IdxDecode: Idx, T: FixedSizeEncoding> {
     width: usize,
-    blocks: IndexVec<I, T::ByteArray>,
-    _marker: PhantomData<T>,
+    blocks: IndexVec<IdxEncode, T::ByteArray>,
+    _marker: PhantomData<(IdxDecode, T)>,
 }
 
-impl<I: Idx, T: FixedSizeEncoding> Default for TableBuilder<I, T> {
+pub(super) type TableBuilderSingleIdx<TIdx, TValue> = TableBuilder<TIdx, TIdx, TValue>;
+
+impl<Ie: Idx, Id: Idx, T: FixedSizeEncoding> Default for TableBuilder<Ie, Id, T> {
     fn default() -> Self {
         TableBuilder { width: 0, blocks: Default::default(), _marker: PhantomData }
     }
 }
 
-impl<I: Idx, const N: usize, T> TableBuilder<I, Option<T>>
+impl<Ie: Idx, Id: Idx, const N: usize, T> TableBuilder<Ie, Id, Option<T>>
 where
     Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
-    pub(crate) fn set_some(&mut self, i: I, value: T) {
+    pub(crate) fn set_some(&mut self, i: Ie, value: T) {
         self.set(i, Some(value))
     }
 }
 
-impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBuilder<I, T> {
+impl<Ie: Idx, Id: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>>
+    TableBuilder<Ie, Id, T>
+{
     /// Sets the table value if it is not default.
     /// ATTENTION: For optimization default values are simply ignored by this function, because
     /// right now metadata tables never need to reset non-default values to default. If such need
     /// arises in the future then a new method (e.g. `clear` or `reset`) will need to be introduced
     /// for doing that explicitly.
-    pub(crate) fn set(&mut self, i: I, value: T) {
+    pub(crate) fn set(&mut self, i: Ie, value: T) {
         #[cfg(debug_assertions)]
         {
             debug_assert!(
@@ -477,7 +481,7 @@ impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBui
         }
     }
 
-    pub(crate) fn encode(&self, buf: &mut FileEncoder<'_>) -> LazyTable<I, T> {
+    pub(crate) fn encode(&self, buf: &mut FileEncoder<'_>) -> LazyTable<Ie, Id, T> {
         let pos = buf.position();
 
         let width = self.width;
@@ -500,13 +504,17 @@ fn trailing_zeros(x: &[u8]) -> usize {
     x.iter().rev().take_while(|b| **b == 0).count()
 }
 
-impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]> + ParameterizedOverTcx>
-    LazyTable<I, T>
+impl<
+    Ie: Idx,
+    Id: Idx,
+    const N: usize,
+    T: FixedSizeEncoding<ByteArray = [u8; N]> + ParameterizedOverTcx,
+> LazyTable<Ie, Id, T>
 where
     for<'tcx> T::Value<'tcx>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
     /// Given the metadata, extract out the value at a particular index (if any).
-    pub(super) fn get<'a, 'tcx, M: MetaBlob<'a>>(&self, metadata: M, i: I) -> T::Value<'tcx> {
+    pub(super) fn get<'a, 'tcx, M: MetaBlob<'a>>(&self, metadata: M, i: Id) -> T::Value<'tcx> {
         // Access past the end of the table returns a Default
         if i.index() >= self.len {
             return Default::default();

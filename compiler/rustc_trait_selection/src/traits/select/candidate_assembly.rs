@@ -9,8 +9,8 @@
 use std::ops::ControlFlow;
 
 use hir::def_id::DefId;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
 use rustc_infer::traits::{Obligation, PolyTraitObligation, PredicateObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
@@ -1494,6 +1494,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
+        // FIXME(field_projections): We should not use `evaluate_obligation` in
+        // the trait solver. Doing so means we don't track overflow and cycles properly
+        // encountering query cycles instead.
         if let ty::Adt(def, args) = obligation.predicate.self_ty().skip_binder().kind()
             && let Some(FieldInfo { base, ty, .. }) =
                 def.field_representing_type_info(self.tcx(), args)

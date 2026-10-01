@@ -1,4 +1,4 @@
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![allow(incomplete_features)]
 pub struct S<const N: usize>;
 // this is a directly represented anon const... it's a bit weird.

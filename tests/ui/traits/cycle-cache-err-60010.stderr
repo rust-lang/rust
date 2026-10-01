@@ -16,12 +16,11 @@ note: required because it appears within the type `Runtime<RootDatabase>`
 LL | struct Runtime<DB: Database> {
    |        ^^^^^^^
 note: required because it appears within the type `RootDatabase`
-  --> $DIR/cycle-cache-err-60010.rs:20:8
+  --> $DIR/cycle-cache-err-60010.rs:21:5
    |
 LL | struct RootDatabase {
-   |        ^^^^^^^^^^^^
 LL |     _runtime: Runtime<RootDatabase>,
-   |     ------------------------------- required by this field
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this field
 note: required for `RootDatabase` to implement `SourceDatabase`
   --> $DIR/cycle-cache-err-60010.rs:43:9
    |
@@ -57,12 +56,11 @@ note: required because it appears within the type `Runtime<RootDatabase>`
 LL | struct Runtime<DB: Database> {
    |        ^^^^^^^
 note: required because it appears within the type `RootDatabase`
-  --> $DIR/cycle-cache-err-60010.rs:20:8
+  --> $DIR/cycle-cache-err-60010.rs:21:5
    |
 LL | struct RootDatabase {
-   |        ^^^^^^^^^^^^
 LL |     _runtime: Runtime<RootDatabase>,
-   |     ------------------------------- required by this field
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this field
 note: required for `RootDatabase` to implement `SourceDatabase`
   --> $DIR/cycle-cache-err-60010.rs:43:9
    |

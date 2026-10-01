@@ -944,8 +944,7 @@ pub(crate) enum RedefiningRuntimeSymbolsDiag<'tcx> {
         "invalid definition of the runtime `{$symbol_name}` symbol used by the standard library"
     )]
     #[note(
-        "expected `{$expected_fn_sig}` (for the current target)
-    found    `{$found_fn_sig}`"
+        "expected `{$expected_fn_sig}` (for the current target)\n{\"   \"}found `{$found_fn_sig}`"
     )]
     #[help(
         "either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = \"{$symbol_name}\")]`, or `#[link_name = \"{$symbol_name}\"]`"
@@ -955,8 +954,7 @@ pub(crate) enum RedefiningRuntimeSymbolsDiag<'tcx> {
         "suspicious definition of the runtime `{$symbol_name}` symbol used by the standard library"
     )]
     #[note(
-        "expected `{$expected_fn_sig}` (for the current target)
-    found    `{$found_fn_sig}`"
+        "expected `{$expected_fn_sig}` (for the current target)\n{\"   \"}found `{$found_fn_sig}`"
     )]
     #[help(
         "either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = \"{$symbol_name}\")]`, or `#[link_name = \"{$symbol_name}\"]`"
@@ -1040,9 +1038,10 @@ pub(crate) struct ForgetCopyDiag<'a> {
 
 #[derive(Diagnostic)]
 #[diag(
-    "calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of the inner value does nothing"
+    "calls to `{$krate}::mem::drop` with `{$krate}::mem::ManuallyDrop` instead of the inner value does nothing"
 )]
 pub(crate) struct UndroppedManuallyDropsDiag<'a> {
+    pub krate: &'static str,
     pub arg_ty: Ty<'a>,
     #[label("argument has type `{$arg_ty}`")]
     pub label: Span,
@@ -1052,11 +1051,12 @@ pub(crate) struct UndroppedManuallyDropsDiag<'a> {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    "use `std::mem::ManuallyDrop::into_inner` to get the inner value",
+    "use `{$krate}::mem::ManuallyDrop::into_inner` to get the inner value",
     applicability = "machine-applicable"
 )]
 pub(crate) struct UndroppedManuallyDropsSuggestion {
-    #[suggestion_part(code = "std::mem::ManuallyDrop::into_inner(")]
+    pub krate: &'static str,
+    #[suggestion_part(code = "{krate}::mem::ManuallyDrop::into_inner(")]
     pub start_span: Span,
     #[suggestion_part(code = ")")]
     pub end_span: Span,
@@ -1064,9 +1064,10 @@ pub(crate) struct UndroppedManuallyDropsSuggestion {
 
 #[derive(Diagnostic)]
 #[diag(
-    "calls to `drop_in_place` with a pointer to a `std::mem::ManuallyDrop` instead of the inner value does nothing"
+    "calls to `drop_in_place` with a pointer to a `{$krate}::mem::ManuallyDrop` instead of the inner value does nothing"
 )]
 pub(crate) struct UndroppedManuallyDropsInPlaceDiag<'a> {
+    pub krate: &'static str,
     pub arg_ty: Ty<'a>,
     #[label("argument has type `{$arg_ty}`")]
     pub label: Span,
@@ -1076,11 +1077,12 @@ pub(crate) struct UndroppedManuallyDropsInPlaceDiag<'a> {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    "use `std::mem::ManuallyDrop::drop` to drop the inner value",
+    "use `{$krate}::mem::ManuallyDrop::drop` to drop the inner value",
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct UndroppedManuallyDropsInPlaceSuggestion {
-    #[suggestion_part(code = "std::mem::ManuallyDrop::drop(&mut *")]
+    pub krate: &'static str,
+    #[suggestion_part(code = "{krate}::mem::ManuallyDrop::drop(&mut *")]
     pub start_span: Span,
     #[suggestion_part(code = ")")]
     pub end_span: Span,
@@ -1234,9 +1236,11 @@ pub(crate) struct QueryUntracked {
 pub(crate) struct SpanUseEqCtxtDiag;
 
 #[derive(Diagnostic)]
-#[diag("using `Symbol::intern` on a string literal")]
+#[diag("using `{$fn_name}` on a string literal")]
 #[help("consider adding the symbol to `compiler/rustc_span/src/symbol.rs`")]
-pub(crate) struct SymbolInternStringLiteralDiag;
+pub(crate) struct SymbolInternStringLiteralDiag {
+    pub fn_name: &'static str,
+}
 
 #[derive(Diagnostic)]
 #[diag("usage of `ty::TyKind::<kind>`")]
@@ -2075,9 +2079,6 @@ impl<'a> Diagnostic<'a> for DropGlue<'_> {
     "exposed provenance semantics can be used to create a pointer based on some previously exposed provenance"
 )]
 #[help(
-    "if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`"
-)]
-#[help(
     "for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>"
 )]
 #[help(
@@ -2085,33 +2086,45 @@ impl<'a> Diagnostic<'a> for DropGlue<'_> {
 )]
 pub(crate) struct IntegerToPtrTransmutes<'tcx> {
     #[subdiagnostic]
+    pub without_prov: Option<IntegerToPtrWithoutProvHelp>,
+    #[subdiagnostic]
     pub suggestion: Option<IntegerToPtrTransmutesSuggestion<'tcx>>,
+}
+
+#[derive(Subdiagnostic)]
+#[help(
+    "if you truly mean to create a pointer without provenance, use `{$krate}::ptr::without_provenance_mut`"
+)]
+pub(crate) struct IntegerToPtrWithoutProvHelp {
+    pub krate: &'static str,
 }
 
 #[derive(Subdiagnostic)]
 pub(crate) enum IntegerToPtrTransmutesSuggestion<'tcx> {
     #[multipart_suggestion(
-        "use `std::ptr::with_exposed_provenance{$suffix}` instead to use a previously exposed provenance",
+        "use `{$krate}::ptr::with_exposed_provenance{$suffix}` instead to use a previously exposed provenance",
         applicability = "machine-applicable",
         style = "verbose"
     )]
     ToPtr {
+        krate: &'static str,
         dst: Ty<'tcx>,
         suffix: &'static str,
-        #[suggestion_part(code = "std::ptr::with_exposed_provenance{suffix}::<{dst}>(")]
+        #[suggestion_part(code = "{krate}::ptr::with_exposed_provenance{suffix}::<{dst}>(")]
         start_call: Span,
     },
     #[multipart_suggestion(
-        "use `std::ptr::with_exposed_provenance{$suffix}` instead to use a previously exposed provenance",
+        "use `{$krate}::ptr::with_exposed_provenance{$suffix}` instead to use a previously exposed provenance",
         applicability = "machine-applicable",
         style = "verbose"
     )]
     ToRef {
+        krate: &'static str,
         dst: Ty<'tcx>,
         suffix: &'static str,
         ref_mutbl: &'static str,
         #[suggestion_part(
-            code = "&{ref_mutbl}*std::ptr::with_exposed_provenance{suffix}::<{dst}>("
+            code = "&{ref_mutbl}*{krate}::ptr::with_exposed_provenance{suffix}::<{dst}>("
         )]
         start_call: Span,
     },
@@ -2348,25 +2361,30 @@ pub(crate) enum AmbiguousWidePointerComparisons<'a> {
     #[diag(
         "ambiguous wide pointer comparison, the comparison includes metadata which may not be expected"
     )]
-    #[help("use explicit `std::ptr::eq` method to compare metadata and addresses")]
-    #[help("use `std::ptr::addr_eq` or untyped pointers to only compare their addresses")]
-    Spanless,
+    #[help("use explicit `{$krate}::ptr::eq` method to compare metadata and addresses")]
+    #[help("use `{$krate}::ptr::addr_eq` or untyped pointers to only compare their addresses")]
+    Spanless { krate: &'static str },
+    #[diag(
+        "ambiguous wide pointer comparison, the comparison includes metadata which may not be expected"
+    )]
+    Warn,
 }
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    "use explicit `std::ptr::eq` method to compare metadata and addresses",
+    "use explicit `{$krate}::ptr::eq` method to compare metadata and addresses",
     style = "verbose",
     // FIXME(#53934): make machine-applicable again
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct AmbiguousWidePointerComparisonsAddrMetadataSuggestion<'a> {
+    pub krate: &'static str,
     pub ne: &'a str,
     pub deref_left: &'a str,
     pub deref_right: &'a str,
     pub l_modifiers: &'a str,
     pub r_modifiers: &'a str,
-    #[suggestion_part(code = "{ne}std::ptr::eq({deref_left}")]
+    #[suggestion_part(code = "{ne}{krate}::ptr::eq({deref_left}")]
     pub left: Span,
     #[suggestion_part(code = "{l_modifiers}, {deref_right}")]
     pub middle: Span,
@@ -2376,18 +2394,19 @@ pub(crate) struct AmbiguousWidePointerComparisonsAddrMetadataSuggestion<'a> {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    "use `std::ptr::addr_eq` or untyped pointers to only compare their addresses",
+    "use `{$krate}::ptr::addr_eq` or untyped pointers to only compare their addresses",
     style = "verbose",
     // FIXME(#53934): make machine-applicable again
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
+    pub(crate) krate: &'static str,
     pub(crate) ne: &'a str,
     pub(crate) deref_left: &'a str,
     pub(crate) deref_right: &'a str,
     pub(crate) l_modifiers: &'a str,
     pub(crate) r_modifiers: &'a str,
-    #[suggestion_part(code = "{ne}std::ptr::addr_eq({deref_left}")]
+    #[suggestion_part(code = "{ne}{krate}::ptr::addr_eq({deref_left}")]
     pub(crate) left: Span,
     #[suggestion_part(code = "{l_modifiers}, {deref_right}")]
     pub(crate) middle: Span,
@@ -2470,15 +2489,16 @@ pub(crate) enum UnpredictableFunctionPointerComparisons<'a, 'tcx> {
 #[derive(Subdiagnostic)]
 pub(crate) enum UnpredictableFunctionPointerComparisonsSuggestion<'a, 'tcx> {
     #[multipart_suggestion(
-        "refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint",
+        "refactor your code, or use `{$krate}::ptr::fn_addr_eq` to suppress the lint",
         style = "verbose",
         applicability = "maybe-incorrect"
     )]
     FnAddrEq {
+        krate: &'static str,
         ne: &'a str,
         deref_left: &'a str,
         deref_right: &'a str,
-        #[suggestion_part(code = "{ne}std::ptr::fn_addr_eq({deref_left}")]
+        #[suggestion_part(code = "{ne}{krate}::ptr::fn_addr_eq({deref_left}")]
         left: Span,
         #[suggestion_part(code = ", {deref_right}")]
         middle: Span,
@@ -2486,16 +2506,17 @@ pub(crate) enum UnpredictableFunctionPointerComparisonsSuggestion<'a, 'tcx> {
         right: Span,
     },
     #[multipart_suggestion(
-        "refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint",
+        "refactor your code, or use `{$krate}::ptr::fn_addr_eq` to suppress the lint",
         style = "verbose",
         applicability = "maybe-incorrect"
     )]
     FnAddrEqWithCast {
+        krate: &'static str,
         ne: &'a str,
         deref_left: &'a str,
         deref_right: &'a str,
         fn_sig: rustc_middle::ty::PolyFnSig<'tcx>,
-        #[suggestion_part(code = "{ne}std::ptr::fn_addr_eq({deref_left}")]
+        #[suggestion_part(code = "{ne}{krate}::ptr::fn_addr_eq({deref_left}")]
         left: Span,
         #[suggestion_part(code = ", {deref_right}")]
         middle: Span,
@@ -2684,6 +2705,27 @@ pub(crate) enum UnusedDefSuggestion {
     )]
     BlockTailExpr {
         #[suggestion_part(code = "let _ = ")]
+        before_span: Span,
+        #[suggestion_part(code = ";")]
+        after_span: Span,
+    },
+    #[suggestion(
+        "use `let _unused = ...` to ignore the resulting value without dropping it immediately",
+        style = "verbose",
+        code = "let _unused = ",
+        applicability = "maybe-incorrect"
+    )]
+    BindingExpr {
+        #[primary_span]
+        span: Span,
+    },
+    #[multipart_suggestion(
+        "use `let _unused = ...` to ignore the resulting value without dropping it immediately",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    BindingBlockTailExpr {
+        #[suggestion_part(code = "let _unused = ")]
         before_span: Span,
         #[suggestion_part(code = ";")]
         after_span: Span,

@@ -373,7 +373,7 @@ fn check_option_fold<'tcx>(
 
         // `.iter().fold(` -> `.as_ref().map_or(`, drop the accumulator
         // parameter, and substitute `init` for each use of the accumulator.
-        acc_uses.sort();
+        acc_uses.sort_by_key(|span| span.lo_hi());
         let mut parts = vec![
             (
                 recv.span.with_lo(option_expr.span.hi()).with_hi(init.span.lo()),

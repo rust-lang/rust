@@ -1,5 +1,29 @@
+error: failed to resolve delegation callee
+  --> $DIR/inherent-impls-non-local-crate.rs:7:25
+   |
+LL | reuse inherent_impl::S::not_existing;
+   |                         ^^^^^^^^^^^^
+
+error: failed to resolve delegation callee
+  --> $DIR/inherent-impls-non-local-crate.rs:10:25
+   |
+LL | reuse inherent_impl::S::TYPE;
+   |                         ^^^^
+
+error: failed to resolve delegation callee
+  --> $DIR/inherent-impls-non-local-crate.rs:13:25
+   |
+LL | reuse inherent_impl::S::CONST;
+   |                         ^^^^^
+
+error: failed to resolve delegation callee
+  --> $DIR/inherent-impls-non-local-crate.rs:17:25
+   |
+LL | reuse inherent_impl::S::bar;
+   |                         ^^^
+
 error: ambiguous delegation to inherent impl function
-  --> $DIR/inherent-impls-non-local-crate.rs:19:25
+  --> $DIR/inherent-impls-non-local-crate.rs:23:25
    |
 LL | reuse inherent_impl::X::foo as x_foo;
    |                         ^^^
@@ -11,19 +35,19 @@ LL | reuse inherent_impl::S::not_existing;
    |                         ^^^^^^^^^^^^ associated function or constant not found in `S`
 
 error[E0599]: no associated function or constant named `TYPE` found for struct `S` in the current scope
-  --> $DIR/inherent-impls-non-local-crate.rs:9:25
+  --> $DIR/inherent-impls-non-local-crate.rs:10:25
    |
 LL | reuse inherent_impl::S::TYPE;
    |                         ^^^^ associated function or constant not found in `S`
 
 error[E0618]: expected function, found `usize`
-  --> $DIR/inherent-impls-non-local-crate.rs:11:25
+  --> $DIR/inherent-impls-non-local-crate.rs:13:25
    |
 LL | reuse inherent_impl::S::CONST;
    |                         ^^^^^ call expression requires function
 
 error[E0599]: no associated function or constant named `bar` found for struct `S` in the current scope
-  --> $DIR/inherent-impls-non-local-crate.rs:14:25
+  --> $DIR/inherent-impls-non-local-crate.rs:17:25
    |
 LL | reuse inherent_impl::S::bar;
    |                         ^^^ associated function or constant not found in `S`
@@ -35,7 +59,7 @@ LL + use inherent_impl::Trait;
    |
 
 error[E0034]: multiple applicable items in scope
-  --> $DIR/inherent-impls-non-local-crate.rs:19:25
+  --> $DIR/inherent-impls-non-local-crate.rs:23:25
    |
 LL | reuse inherent_impl::X::foo as x_foo;
    |                         ^^^ multiple `foo` found
@@ -43,7 +67,7 @@ LL | reuse inherent_impl::X::foo as x_foo;
    = note: candidate #1 is defined in an impl for the type `X<String>`
    = note: candidate #2 is defined in an impl for the type `X<usize>`
 
-error: aborting due to 6 previous errors
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0034, E0599, E0618.
 For more information about an error, try `rustc --explain E0034`.

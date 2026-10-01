@@ -6,12 +6,12 @@
 use std::borrow::Cow;
 use std::iter;
 
+use rustc_attr_ir::{EiiImplResolution, find_attr};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, E0806, struct_span_code_err};
-use rustc_hir::attrs::EiiImplResolution;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, FnSig, HirId, ItemKind, find_attr};
+use rustc_hir::{self as hir, FnSig, HirId, ItemKind};
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode, TraitErrors};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};

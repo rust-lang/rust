@@ -3,22 +3,25 @@
 //@[next] compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicit revisions)
 #![feature(
-    min_generic_const_args,
+    const_param_ty_trait,
+    gca_adts,
+    gca_min_const_items,
     generic_const_parameter_types,
     inherent_associated_types,
-    min_adt_const_params,
-    const_param_ty_trait
+    min_adt_const_params
 )]
+
+use std::gca;
 
 struct ThreeTypes<T1, T2, T3>(T1, T2, T3);
 
 impl<T1, T2, T3: std::marker::ConstParamTy_> ThreeTypes<T1, T2, T3> {
-    const INHERENT: [T3; 0] = core::direct_const_arg!([]);
+    const INHERENT: [T3; 0] = gca!([]);
 }
 
 struct Struct<const O: [u32; 0]>;
 
-fn f() -> Struct<{ core::direct_const_arg!(ThreeTypes::<u8, u16, u32>::INHERENT) }> {
+fn f() -> Struct<{ gca!(ThreeTypes::<u8, u16, u32>::INHERENT) }> {
     Struct
 }
 

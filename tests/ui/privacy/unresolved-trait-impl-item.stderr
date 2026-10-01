@@ -10,8 +10,12 @@ LL |     async fn unresolved(&self) {}
 error[E0324]: item `RESOLVED_WRONG` is an associated method, which doesn't match its trait `MyTrait`
   --> $DIR/unresolved-trait-impl-item.rs:12:5
    |
+LL | trait MyTrait {
+LL |     async fn resolved(&self);
 LL |     const RESOLVED_WRONG: u8 = 0;
    |     ----------------------------- item in trait
+...
+LL | impl MyTrait for i32 {
 ...
 LL |     async fn RESOLVED_WRONG() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ does not match trait

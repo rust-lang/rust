@@ -3,6 +3,7 @@
 use cranelift_codegen::ir::immediates::Offset32;
 use rustc_abi::Endian;
 use rustc_middle::ty::SimdAlign;
+use rustc_middle::ty::consts::ConstExt;
 
 use super::*;
 use crate::prelude::*;

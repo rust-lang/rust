@@ -1,13 +1,15 @@
 // Regression test for #140571. The compiler used to ICE
 
-#![feature(min_generic_const_args, specialization)]
+#![feature(gca_min_const_items, specialization)]
+
+use std::gca;
 
 pub trait IsVoid {
     #[rustc_always_gca]
     const IS_VOID: bool;
 }
 impl<T> IsVoid for T {
-    default const IS_VOID: bool = core::direct_const_arg!(false);
+    default const IS_VOID: bool = gca!(false);
 }
 
 pub trait NotVoid {}

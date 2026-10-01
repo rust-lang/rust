@@ -8,7 +8,10 @@ use rustc_macros::Diagnostic;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::sym;
 
-use crate::diagnostics::{IntegerToPtrTransmutes, IntegerToPtrTransmutesSuggestion};
+use crate::diagnostics::{
+    IntegerToPtrTransmutes, IntegerToPtrTransmutesSuggestion, IntegerToPtrWithoutProvHelp,
+};
+use crate::utils::std_or_core;
 use crate::{LateContext, LateLintPass};
 
 declare_lint! {
@@ -166,30 +169,30 @@ fn check_int_to_ptr_transmute<'tcx>(
     }
 
     let suffix = if mutbl.is_mut() { "_mut" } else { "" };
+    let krate = std_or_core(cx);
     cx.tcx.emit_node_span_lint(
         INTEGER_TO_PTR_TRANSMUTES,
         expr.hir_id,
         expr.span,
         IntegerToPtrTransmutes {
-            suggestion: if layout_inner_ty.is_sized() {
-                Some(if dst.is_ref() {
-                    IntegerToPtrTransmutesSuggestion::ToRef {
+            without_prov: krate.map(|krate| IntegerToPtrWithoutProvHelp { krate }),
+            suggestion: match (krate, layout_inner_ty.is_sized()) {
+                (Some(krate), true) if dst.is_ref() => {
+                    Some(IntegerToPtrTransmutesSuggestion::ToRef {
+                        krate,
                         dst: *inner_ty,
                         suffix,
                         ref_mutbl: mutbl.prefix_str(),
                         start_call: expr.span.shrink_to_lo().until(arg.span),
-                    }
-                } else {
-                    IntegerToPtrTransmutesSuggestion::ToPtr {
-                        dst: *inner_ty,
-                        suffix,
-                        start_call: expr.span.shrink_to_lo().until(arg.span),
-                    }
-                })
-            } else {
-                // We can't suggest using `with_exposed_provenance` for unsized type
-                // so don't suggest anything.
-                None
+                    })
+                }
+                (Some(krate), true) => Some(IntegerToPtrTransmutesSuggestion::ToPtr {
+                    krate,
+                    dst: *inner_ty,
+                    suffix,
+                    start_call: expr.span.shrink_to_lo().until(arg.span),
+                }),
+                _ => None,
             },
         },
     );

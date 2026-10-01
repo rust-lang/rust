@@ -1,16 +1,16 @@
 error[E0277]: the trait bound `(): Bound` is not satisfied
-  --> $DIR/dyn-compat-self-bound-on-assoc-const-allowed-and-enforced.rs:22:32
+  --> $DIR/dyn-compat-self-bound-on-assoc-const-allowed-and-enforced.rs:24:32
    |
 LL |     let _: &dyn Trait<N = 0> = &();
    |                                ^^^ the trait `Bound` is not implemented for `()`
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/dyn-compat-self-bound-on-assoc-const-allowed-and-enforced.rs:17:1
+  --> $DIR/dyn-compat-self-bound-on-assoc-const-allowed-and-enforced.rs:19:1
    |
 LL | trait Bound {}
    | ^^^^^^^^^^^
 note: required by a bound in `Trait::N`
-  --> $DIR/dyn-compat-self-bound-on-assoc-const-allowed-and-enforced.rs:10:30
+  --> $DIR/dyn-compat-self-bound-on-assoc-const-allowed-and-enforced.rs:12:30
    |
 LL | trait Trait {
 LL |     #[rustc_always_gca]

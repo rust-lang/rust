@@ -1,6 +1,5 @@
 use rustc_ast::token::Delimiter;
-use rustc_ast::tokenstream::{DelimSpan, TokenStream};
-use rustc_ast::*;
+use rustc_ast::tokenstream::TokenStream;
 use rustc_expand::base::*;
 use rustc_span::edition::Edition;
 use rustc_span::{Span, sym};
@@ -44,26 +43,15 @@ fn expand<'cx>(
 ) -> MacroExpanderResult<'cx> {
     let sp = cx.with_call_site_ctxt(sp);
 
-    ExpandResult::Ready(MacEager::expr(
-        cx.expr(
+    ExpandResult::Ready(MacEager::expr(cx.expr_macro_call(
+        sp,
+        cx.macro_call(
             sp,
-            ExprKind::MacCall(Box::new(MacCall {
-                path: Path {
-                    span: sp,
-                    segments: cx
-                        .std_path(&[sym::panic, mac])
-                        .into_iter()
-                        .map(PathSegment::from_ident)
-                        .collect(),
-                },
-                args: Box::new(DelimArgs {
-                    dspan: DelimSpan::from_single(sp),
-                    delim: Delimiter::Parenthesis,
-                    tokens: tts,
-                }),
-            })),
+            cx.path(sp, cx.std_path(&[sym::panic, mac])),
+            Delimiter::Parenthesis,
+            tts,
         ),
-    ))
+    )))
 }
 
 pub(crate) fn use_panic_2021(mut span: Span) -> bool {

@@ -40,6 +40,10 @@ pub(crate) struct AssocKindMismatch {
     #[primary_span]
     #[label("unexpected {$got}")]
     pub span: Span,
+    #[context]
+    pub item_span: Span,
+    #[context]
+    pub enclosing_span: Option<Span>,
     pub expected: &'static str,
     pub got: &'static str,
     #[label("expected a {$expected} because of this associated {$expected}")]

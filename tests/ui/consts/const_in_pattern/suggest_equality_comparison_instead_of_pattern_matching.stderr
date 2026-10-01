@@ -123,6 +123,7 @@ LL |             V => {}
    |             ^ constant of non-structural type
    |
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
    = note: `Vec<()>` is not usable in patterns
    |
@@ -143,6 +144,7 @@ LL |         if let V = vec![] {}
    |                ^ constant of non-structural type
    |
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
    = note: `Vec<()>` is not usable in patterns
    |
@@ -158,6 +160,7 @@ LL |         let V = vec![] else { return; };
    |             ^ constant of non-structural type
    |
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
    = note: `Vec<()>` is not usable in patterns
    |
@@ -173,6 +176,7 @@ LL |         let V = Vec::new() else { return; };
    |             ^ constant of non-structural type
    |
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
    = note: `Vec<()>` is not usable in patterns
    |

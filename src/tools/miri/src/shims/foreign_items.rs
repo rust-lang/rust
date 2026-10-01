@@ -5,7 +5,7 @@ use std::path::Path;
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_ast::expand::allocator::NO_ALLOC_SHIM_IS_UNSTABLE;
 use rustc_data_structures::either::Either;
-use rustc_hir::attrs::Linkage;
+use rustc_attr_ir::Linkage;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -171,15 +171,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                                     // Make sure we are consistent wrt what is 'first' and 'second'.
                                     let original_span =
-                                        tcx.def_span(original.instance.def_id()).data();
-                                    let span = tcx.def_span(def_id).data();
-                                    if original_span < span {
+                                        tcx.def_span(original.instance.def_id());
+                                    let span = tcx.def_span(def_id);
+                                    if original_span.lo_hi() < span.lo_hi() {
                                         throw_machine_stop!(
                                             TerminationInfo::MultipleSymbolDefinitions {
                                                 link_name,
-                                                first: original_span,
+                                                first: original_span.data(),
                                                 first_crate: tcx.crate_name(original.cnum),
-                                                second: span,
+                                                second: span.data(),
                                                 second_crate: tcx.crate_name(cnum),
                                             }
                                         );
@@ -187,9 +187,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                         throw_machine_stop!(
                                             TerminationInfo::MultipleSymbolDefinitions {
                                                 link_name,
-                                                first: span,
+                                                first: span.data(),
                                                 first_crate: tcx.crate_name(cnum),
-                                                second: original_span,
+                                                second: original_span.data(),
                                                 second_crate: tcx.crate_name(original.cnum),
                                             }
                                         );

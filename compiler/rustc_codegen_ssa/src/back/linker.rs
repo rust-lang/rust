@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::{env, iter, mem, str};
 
 use find_msvc_tools;
-use rustc_hir::attrs::WindowsSubsystemKind;
+use rustc_attr_ir::WindowsSubsystemKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{

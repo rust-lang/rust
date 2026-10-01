@@ -2,7 +2,7 @@
 
 use rustc_proc_macro::bridge as pm_bridge;
 
-pub use pm_bridge::{DelimSpan, Diagnostic, ExpnGlobals, LitKind};
+pub use pm_bridge::{DelimSpan, Diagnostic, ExpnGlobals, IdentKind, LitKind};
 
 pub type TokenTree<S> =
     pm_bridge::TokenTree<crate::token_stream::TokenStream<S>, S, intern::Symbol>;

@@ -11,6 +11,7 @@ use crate::os::windows::io::{AsHandle, BorrowedHandle};
 use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
+pub use crate::sys::fs::common::{ExtraHomeDirs, ExtraMediaDirs};
 use crate::sys::handle::Handle;
 use crate::sys::pal::api::{self, WinError, set_file_information_by_handle};
 use crate::sys::pal::{IoResult, fill_utf16_buf, to_u16s, truncate_utf16_at_nul};
@@ -1454,7 +1455,9 @@ pub fn link(_original: &WCStr, _link: &WCStr) -> io::Result<()> {
 pub fn stat(path: &WCStr) -> io::Result<FileAttr> {
     match metadata(path, ReparsePoint::Follow) {
         Err(err) if err.raw_os_error() == Some(c::ERROR_CANT_ACCESS_FILE as i32) => {
-            if let Ok(attrs) = lstat(path) {
+            // Fallback to opening reparse points when following fails. Needed for UNIX domain
+            // sockets. See <https://github.com/rust-lang/rust/issues/109106>.
+            if let Ok(attrs) = metadata(path, ReparsePoint::Open) {
                 if !attrs.file_type().is_symlink() {
                     return Ok(attrs);
                 }

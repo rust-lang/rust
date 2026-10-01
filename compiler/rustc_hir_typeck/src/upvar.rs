@@ -30,16 +30,17 @@
 //! then mean that all later passes would have to check for these figments
 //! and report an error, and it just seems like more mess in the end.)
 
-use std::iter;
+use std::{cmp, iter};
 
 use rustc_abi::FIRST_VARIANT;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, HirId, find_attr};
+use rustc_hir::{self as hir, HirId};
 use rustc_lint_defs::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, ProjectionKind};
 use rustc_middle::mir::FakeReadCause;
@@ -2608,56 +2609,18 @@ fn determine_capture_info(
     capture_info_a: ty::CaptureInfo,
     capture_info_b: ty::CaptureInfo,
 ) -> ty::CaptureInfo {
-    // If the capture kind is equivalent then, we don't need to escalate and can compare the
-    // expressions.
-    let eq_capture_kind = match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
-        (ty::UpvarCapture::ByValue, ty::UpvarCapture::ByValue) => true,
-        (ty::UpvarCapture::ByUse, ty::UpvarCapture::ByUse) => true,
-        (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) => ref_a == ref_b,
-        (ty::UpvarCapture::ByValue, _)
-        | (ty::UpvarCapture::ByUse, _)
-        | (ty::UpvarCapture::ByRef(_), _) => false,
-    };
-
-    if eq_capture_kind {
-        match (capture_info_a.capture_kind_expr_id, capture_info_b.capture_kind_expr_id) {
-            (Some(_), _) | (None, None) => capture_info_a,
-            (None, Some(_)) => capture_info_b,
-        }
-    } else {
-        // We select the CaptureKind which ranks higher based the following priority order:
-        // (ByUse | ByValue) > MutBorrow > UniqueImmBorrow > ImmBorrow
-        match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
-            (ty::UpvarCapture::ByUse, ty::UpvarCapture::ByValue)
-            | (ty::UpvarCapture::ByValue, ty::UpvarCapture::ByUse) => {
-                bug!("Same capture can't be ByUse and ByValue at the same time")
-            }
-            (ty::UpvarCapture::ByValue, ty::UpvarCapture::ByValue)
-            | (ty::UpvarCapture::ByUse, ty::UpvarCapture::ByUse)
-            | (ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse, ty::UpvarCapture::ByRef(_)) => {
-                capture_info_a
-            }
-            (ty::UpvarCapture::ByRef(_), ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse) => {
-                capture_info_b
-            }
-            (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) => {
-                match (ref_a, ref_b) {
-                    // Take LHS:
-                    (BorrowKind::UniqueImmutable | BorrowKind::Mutable, BorrowKind::Immutable)
-                    | (BorrowKind::Mutable, BorrowKind::UniqueImmutable) => capture_info_a,
-
-                    // Take RHS:
-                    (BorrowKind::Immutable, BorrowKind::UniqueImmutable | BorrowKind::Mutable)
-                    | (BorrowKind::UniqueImmutable, BorrowKind::Mutable) => capture_info_b,
-
-                    (BorrowKind::Immutable, BorrowKind::Immutable)
-                    | (BorrowKind::UniqueImmutable, BorrowKind::UniqueImmutable)
-                    | (BorrowKind::Mutable, BorrowKind::Mutable) => {
-                        bug!("Expected unequal capture kinds");
-                    }
-                }
+    // We select the CaptureKind which ranks higher based the following priority order:
+    // (ByUse | ByValue) > MutBorrow > UniqueImmBorrow > ImmBorrow
+    match capture_info_a.capture_kind.partial_cmp(&capture_info_b.capture_kind) {
+        Some(cmp::Ordering::Equal) => {
+            match (capture_info_a.capture_kind_expr_id, capture_info_b.capture_kind_expr_id) {
+                (Some(_), _) | (None, None) => capture_info_a,
+                (None, Some(_)) => capture_info_b,
             }
         }
+        Some(cmp::Ordering::Greater) => capture_info_a,
+        Some(cmp::Ordering::Less) => capture_info_b,
+        None => bug!("Same capture can't be ByUse and ByValue at the same time"),
     }
 }
 

@@ -1,5 +1,5 @@
 error[E0428]: the name `bar` is defined multiple times
-  --> $DIR/wrong-fn-kind-ice-159127.rs:9:9
+  --> $DIR/wrong-fn-kind-ice-159127.rs:11:9
    |
 LL |         reuse foo::<>as bar;
    |         -------------------- previous definition of the value `bar` here
@@ -8,10 +8,10 @@ LL |         reuse bar;
    |
    = note: `bar` must be defined only once in the value namespace of this block
 
-error: expected type, found `direct_const_arg!()` constant
-  --> $DIR/wrong-fn-kind-ice-159127.rs:5:5
+error: expected type, found `gca!()` constant
+  --> $DIR/wrong-fn-kind-ice-159127.rs:7:5
    |
-LL | /     core::direct_const_arg!({
+LL | /     gca!({
 LL | |
 LL | |         fn foo() {}
 LL | |         reuse foo::<>as bar;

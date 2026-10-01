@@ -1,7 +1,6 @@
 //@ aux-build: dylib_default.rs
 //@ needs-crate-type: dylib
 //@ compile-flags: --emit link
-//@ ignore-backends: gcc
 // FIXME(#125418): linking on Windows GNU targets is not yet supported.
 //@ ignore-windows-gnu
 // Regression test for https://github.com/rust-lang/rust/issues/156320.

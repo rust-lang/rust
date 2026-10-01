@@ -2,8 +2,8 @@ use ast::HasAttrs;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::visit::{BoundKind, Visitor};
 use rustc_ast::{
-    self as ast, GenericArg, GenericBound, GenericParamKind, Generics, ItemKind,
-    TraitBoundModifiers, VariantData, WherePredicate,
+    self as ast, GenericArg, GenericBound, GenericParamKind, ItemKind, TraitBoundModifiers,
+    VariantData, WherePredicate,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::E0802;
@@ -12,11 +12,9 @@ use rustc_macros::Diagnostic;
 use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
+use crate::deriving::generic::*;
+use crate::deriving::{new_path, path_std};
 use crate::diagnostics;
-
-macro_rules! path {
-    ($span:expr, $($part:ident)::*) => { vec![$(Ident::new(sym::$part, $span),)*] }
-}
 
 pub(crate) fn expand_deriving_coerce_pointee(
     cx: &ExtCtxt<'_>,
@@ -43,15 +41,8 @@ pub(crate) fn expand_deriving_coerce_pointee(
     };
 
     // Convert generic parameters (from the struct) into generic args.
-    let self_params: Vec<_> = generics
-        .params
-        .iter()
-        .map(|p| match p.kind {
-            GenericParamKind::Lifetime => GenericArg::Lifetime(cx.lifetime(p.span(), p.ident)),
-            GenericParamKind::Type { .. } => GenericArg::Type(cx.ty_ident(p.span(), p.ident)),
-            GenericParamKind::Const { .. } => GenericArg::Const(cx.const_ident(p.span(), p.ident)),
-        })
-        .collect();
+    let self_params: Vec<_> =
+        generics.params.iter().map(|p| generic_param_to_arg(cx, p, p.span())).collect();
     let type_params: Vec<_> = generics
         .params
         .iter()
@@ -98,71 +89,30 @@ pub(crate) fn expand_deriving_coerce_pointee(
     let attrs = thin_vec![cx.attr_word(sym::automatically_derived, span),];
     // # Validity assertion which will be checked later in `rustc_hir_analysis::coherence::builtins`.
     {
-        let trait_path =
-            cx.path_all(span, true, path!(span, core::marker::CoercePointeeValidated), vec![]);
-        let trait_ref = cx.trait_ref(trait_path);
-        push(
-            cx.item(
-                span,
-                attrs.clone(),
-                ast::ItemKind::Impl(ast::Impl {
-                    generics: Generics {
-                        params: generics
-                            .params
-                            .iter()
-                            .map(|p| match &p.kind {
-                                GenericParamKind::Lifetime => {
-                                    cx.lifetime_param(p.span(), p.ident, p.bounds.clone())
-                                }
-                                GenericParamKind::Type { default: _ } => {
-                                    cx.typaram(p.span(), p.ident, p.bounds.clone(), None)
-                                }
-                                GenericParamKind::Const { ty, span: _, default: _ } => cx
-                                    .const_param(
-                                        p.span(),
-                                        p.ident,
-                                        p.bounds.clone(),
-                                        ty.clone(),
-                                        None,
-                                    ),
-                            })
-                            .collect(),
-                        where_clause: generics.where_clause.clone(),
-                        span: generics.span,
-                    },
-                    of_trait: Some(Box::new(ast::TraitImplHeader {
-                        safety: ast::Safety::Default,
-                        polarity: ast::ImplPolarity::Positive,
-                        defaultness: ast::Defaultness::Implicit,
-                        trait_ref,
-                    })),
-                    constness: ast::Const::No,
-                    self_ty: self_type.clone(),
-                    items: ThinVec::new(),
-                }),
-            ),
-        );
-    }
-    let mut add_impl_block = |generics, trait_symbol, trait_args| {
-        let mut parts = path!(span, core::ops);
-        parts.push(Ident::new(trait_symbol, span));
-        let trait_path = cx.path_all(span, true, parts, trait_args);
-        let trait_ref = cx.trait_ref(trait_path);
-        let item = cx.item(
+        let trait_path = path_std!(cx, span, marker::CoercePointeeValidated);
+        push(cx.item_trait_impl(
             span,
             attrs.clone(),
-            ast::ItemKind::Impl(ast::Impl {
-                generics,
-                of_trait: Some(Box::new(ast::TraitImplHeader {
-                    safety: ast::Safety::Default,
-                    polarity: ast::ImplPolarity::Positive,
-                    defaultness: ast::Defaultness::Implicit,
-                    trait_ref,
-                })),
-                constness: ast::Const::No,
-                self_ty: self_type.clone(),
-                items: ThinVec::new(),
-            }),
+            generics_without_defaults(generics),
+            ast::Safety::Default,
+            false,
+            cx.trait_ref(trait_path),
+            self_type.clone(),
+            ThinVec::new(),
+        ));
+    }
+    let mut add_impl_block = |generics, trait_symbol, trait_args| {
+        let trait_path = new_path(cx, span, &[sym::ops, trait_symbol], trait_args);
+        let trait_ref = cx.trait_ref(trait_path);
+        let item = cx.item_trait_impl(
+            span,
+            attrs.clone(),
+            generics,
+            ast::Safety::Default,
+            false,
+            trait_ref,
+            self_type.clone(),
+            ThinVec::new(),
         );
         push(item);
     };
@@ -196,7 +146,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
             return;
         }
         let arg = GenericArg::Type(s_ty.clone());
-        let unsize = cx.path_all(span, true, path!(span, core::marker::Unsize), vec![arg]);
+        let unsize = cx.path_all(span, true, cx.std_path(&[sym::marker, sym::Unsize]), vec![arg]);
         pointee.bounds.push(cx.trait_bound(unsize, false));
         // Drop `#[pointee]` attribute since it should not be recognized outside `derive(CoercePointee)`
         pointee.attrs.retain(|attr| !attr.has_name(sym::pointee));
@@ -313,11 +263,11 @@ pub(crate) fn expand_deriving_coerce_pointee(
         }
     }
 
-    let extra_param = cx.typaram(span, Ident::new(sym::__S, span), self_bounds, None);
+    let extra_param = cx.typaram(Ident::new(sym::__S, span), self_bounds, None);
     impl_generics.params.insert(pointee_param_idx + 1, extra_param);
 
     // Add the impl blocks for `DispatchFromDyn` and `CoerceUnsized`.
-    let gen_args = vec![GenericArg::Type(alt_self_type)];
+    let gen_args = vec![alt_self_type];
     add_impl_block(impl_generics.clone(), sym::DispatchFromDyn, gen_args.clone());
     add_impl_block(impl_generics, sym::CoerceUnsized, gen_args);
 }

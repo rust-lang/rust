@@ -412,7 +412,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             {
                 let mut redundant_subpats = redundant_subpats.clone();
                 // Emit lints in the order in which they occur in the file.
-                redundant_subpats.sort_unstable_by_key(|(pat, _)| pat.data().span);
+                redundant_subpats.sort_unstable_by_key(|(pat, _)| pat.data().span.lo_hi());
                 for (pat, explanation) in redundant_subpats {
                     report_unreachable_pattern(cx, arm.arm_data, pat, &explanation, None)
                 }
@@ -678,10 +678,13 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
 
         if let Some(def_id) = is_const_pat_that_looks_like_binding(self.tcx, pat) {
             let span = self.tcx.def_span(def_id);
-            let variable = self.tcx.item_name(def_id).to_string();
+            let name = self.tcx.item_name(def_id);
             // When we encounter a constant as the binding name, point at the `const` definition.
-            interpreted_as_const = Some(InterpretedAsConst { span, variable: variable.clone() });
-            interpreted_as_const_sugg = Some(InterpretedAsConstSugg { span: pat.span, variable });
+            interpreted_as_const =
+                Some(InterpretedAsConst { span, variable: name.to_ident_string() });
+            // The suggested name is suffixed, so it is never a keyword and never needs `r#`.
+            interpreted_as_const_sugg =
+                Some(InterpretedAsConstSugg { span: pat.span, variable: name.to_string() });
         } else if let PatKind::Constant { .. } = pat.kind
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
         {
@@ -1062,7 +1065,7 @@ fn find_fallback_pattern_typo<'tcx>(
             if let DefKind::Use = cx.tcx.def_kind(item.owner_id) {
                 // Look for consts being re-exported.
                 let item = cx.tcx.hir_expect_item(item.owner_id.def_id);
-                let hir::ItemKind::Use(path, _) = item.kind else {
+                let hir::ItemKind::Use(hir::UseTree { prefix: path, .. }) = item.kind else {
                     continue;
                 };
                 if let Some(value_ns) = path.res.value_ns
@@ -1231,7 +1234,11 @@ fn is_const_pat_that_looks_like_binding<'tcx>(tcx: TyCtxt<'tcx>, pat: &Pat<'tcx>
     // `::` namespace separators or other non-identifier characters.
     if let ty::AliasConstKind::Free { def_id } = pat.extra.as_deref()?.expanded_const?
         && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(pat.span)
-        && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
+        && snippet
+            .strip_prefix("r#")
+            .unwrap_or(&snippet)
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '_')
     {
         Some(def_id)
     } else {

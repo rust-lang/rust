@@ -20,7 +20,6 @@ pub(crate) fn expand_deriving_copy(
         additional_bounds: SmallVec::new(),
         supports_unions: true,
         methods: SmallVec::new(),
-        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,

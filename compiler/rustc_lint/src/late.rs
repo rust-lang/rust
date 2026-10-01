@@ -99,7 +99,15 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         // The body and typeck results are also set in `visit_fn`.
         // Only fetch the results if this is for a new body.
         if old_enclosing_body != Some(body_id) && !self.actually_rustdoc {
-            self.context.typeck_results = Some(self.context.tcx.typeck_body(body_id));
+            let typeck_results = self.context.tcx.typeck_body(body_id);
+
+            // To avoid ICE, skip visiting the body if the typeck_results is tainted.
+            if typeck_results.tainted_by_errors.is_some() {
+                self.context.enclosing_body = old_enclosing_body;
+                self.context.typeck_results = old_typeck_results;
+                return;
+            }
+            self.context.typeck_results = Some(typeck_results);
         }
 
         let body = self.context.tcx.hir_body(body_id);
@@ -189,7 +197,16 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         let old_enclosing_body = self.context.enclosing_body.replace(body_id);
         let old_typeck_results = self.context.typeck_results;
         if !self.actually_rustdoc {
-            self.context.typeck_results = Some(self.context.tcx.typeck_body(body_id));
+            let typeck_results = self.context.tcx.typeck_body(body_id);
+
+            // To avoid ICE, skip visiting the body if the typeck_results is tainted.
+            if typeck_results.tainted_by_errors.is_some() {
+                self.context.enclosing_body = old_enclosing_body;
+                self.context.typeck_results = old_typeck_results;
+                return;
+            }
+
+            self.context.typeck_results = Some(typeck_results);
         }
         let body = self.context.tcx.hir_body(body_id);
         lint_callback!(self, check_fn, fk, decl, body, span, id);

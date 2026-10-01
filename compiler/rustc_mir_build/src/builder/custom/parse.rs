@@ -319,7 +319,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         data.terminator = Some(Terminator {
             source_info: SourceInfo { span, scope: self.source_scope },
             kind: terminator,
-            attributes: ThinVec::new(),
+            loop_hint_attrs: ThinVec::new(),
         });
 
         Ok(data)

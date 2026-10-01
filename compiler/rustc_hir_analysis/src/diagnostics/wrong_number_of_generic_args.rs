@@ -3,7 +3,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, Diagnostic, MultiSpan, pluralize};
 use rustc_hir as hir;
 use rustc_middle::ty::{self as ty, AssocItem, AssocItems, TyCtxt};
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{DefId, LocalDefId};
 use tracing::debug;
 
 /// Handles the `wrong number of type / lifetime / ... arguments` family of error messages.
@@ -30,6 +30,9 @@ pub(crate) struct WrongNumberOfGenericArgs<'a, 'tcx> {
 
     /// DefId of the generic type
     pub(crate) def_id: DefId,
+
+    /// DefId of the type that contains the generic
+    pub(crate) cx_def_id: LocalDefId,
 }
 
 // Provides information about the kind of arguments that were provided for
@@ -94,6 +97,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         params_offset: usize,
         gen_args: &'a hir::GenericArgs<'a>,
         def_id: DefId,
+        cx_def_id: LocalDefId,
     ) -> Self {
         let angle_brackets = if gen_args.span_ext().is_none() {
             if gen_args.is_empty() { AngleBrackets::Missing } else { AngleBrackets::Implied }
@@ -110,6 +114,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             params_offset,
             gen_args,
             def_id,
+            cx_def_id,
         }
     }
 
@@ -1163,10 +1168,20 @@ impl<'a> Diagnostic<'a> for WrongNumberOfGenericArgs<'_, '_> {
         err.code(E0107);
         err.span(self.path_segment.ident.span);
 
-        self.notify(&mut err);
-        self.suggest(&mut err);
-        self.show_definition(&mut err);
-        self.note_synth_provided(&mut err);
+        let cx_span = self.tcx.def_span(self.cx_def_id);
+        if cx_span.in_derive_expansion() {
+            // Very likely this is a botched `derive` which passes the iten name straight
+            // through, but doesn't support type parameters.
+            err.span_label(
+                cx_span.ctxt().outer_expn_data().call_site,
+                "this derive macro might not support items with generic parameters",
+            );
+        } else {
+            self.notify(&mut err);
+            self.suggest(&mut err);
+            self.show_definition(&mut err);
+            self.note_synth_provided(&mut err);
+        }
 
         err
     }

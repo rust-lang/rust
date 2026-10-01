@@ -310,7 +310,7 @@ struct CollectRegionConstraintsResult<'tcx> {
     deferred_closure_requirements: DeferredClosureRequirements<'tcx>,
     deferred_opaque_type_errors: Vec<DeferredOpaqueTypeError<'tcx>>,
     polonius_facts: Option<AllFacts<RustcFacts>>,
-    polonius_context: Option<PoloniusContext>,
+    polonius_context: Option<PoloniusContext<'tcx>>,
 }
 
 /// Start borrow checking by collecting the region constraints for
@@ -347,7 +347,7 @@ fn borrowck_collect_region_constraints<'tcx>(
 
     let location_map = Rc::new(DenseLocationMap::new(body));
 
-    let polonius_input = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_input())
+    let polonius_input = root_cx.consumer.as_ref().is_some_and(|c| c.polonius_input())
         || infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
     let mut polonius_facts =
         (polonius_input || PoloniusFacts::enabled(infcx.tcx)).then_some(PoloniusFacts::default());
@@ -797,7 +797,7 @@ pub(crate) struct MirBorrowckCtxt<'a, 'diag, 'tcx> {
     /// Results of Polonius analysis.
     polonius_output: Option<&'a PoloniusOutput>,
     /// When using `-Zpolonius=next`: the data used to compute errors and diagnostics.
-    polonius_context: Option<&'a PoloniusContext>,
+    polonius_context: Option<&'a PoloniusContext<'tcx>>,
 }
 
 // Check that:

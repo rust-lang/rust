@@ -102,7 +102,7 @@ pub(crate) type FinalizeFn = fn(&mut FinalizeContext<'_, '_>) -> FinalizeOutput;
 /// finalized, so it can inspect the fully parsed attributes via
 /// [`FinalizeCheckContext::parsed_attrs`]. The [`Span`] is the span of the attribute the
 /// check is associated with, used for diagnostics.
-pub(crate) type FinalizeCheckFn = fn(&FinalizeCheckContext<'_, '_>, Span);
+pub(crate) type FinalizeCheckFn = fn(&mut FinalizeCheckContext<'_, '_>, Span);
 
 /// The result of finalizing a single attribute parser.
 pub(crate) struct FinalizeOutput {

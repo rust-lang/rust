@@ -51,10 +51,10 @@ LL |     let [S(ref x)];
    |
    = help: within `S<str>`, the trait `Sized` is not implemented for `str`
 note: required because it appears within the type `S<str>`
-  --> $DIR/let-pat-inferred-non-wf.rs:8:8
+  --> $DIR/let-pat-inferred-non-wf.rs:8:21
    |
 LL | struct S<T: ?Sized>(T);
-   |        ^            - required by this field
+   |                     ^ required by this field
    = note: slice and array elements must have `Sized` type
 
 error: aborting due to 6 previous errors

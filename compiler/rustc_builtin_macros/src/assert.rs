@@ -1,8 +1,8 @@
 mod context;
 
 use rustc_ast::token::Delimiter;
-use rustc_ast::tokenstream::{DelimSpan, TokenStream};
-use rustc_ast::{DelimArgs, Expr, ExprKind, MacCall, Path, PathSegment, UnOp, token};
+use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::{Expr, ExprKind, Path, UnOp, token};
 use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
@@ -34,14 +34,7 @@ pub(crate) fn expand_assert<'cx>(
     let panic_path = || {
         if use_panic_2021(span) {
             // On edition 2021, we always call `$crate::panic::panic_2021!()`.
-            Path {
-                span: call_site_span,
-                segments: cx
-                    .std_path(&[sym::panic, sym::panic_2021])
-                    .into_iter()
-                    .map(PathSegment::from_ident)
-                    .collect(),
-            }
+            cx.path(call_site_span, cx.std_path(&[sym::panic, sym::panic_2021]))
         } else {
             // Before edition 2021, we call `panic!()` unqualified,
             // such that it calls either `std::panic!()` or `core::panic!()`.
@@ -51,16 +44,9 @@ pub(crate) fn expand_assert<'cx>(
 
     // Simply uses the user provided message instead of generating custom outputs
     let expr = if let Some(tokens) = custom_message {
-        let then = cx.expr(
+        let then = cx.expr_macro_call(
             call_site_span,
-            ExprKind::MacCall(Box::new(MacCall {
-                path: panic_path(),
-                args: Box::new(DelimArgs {
-                    dspan: DelimSpan::from_single(call_site_span),
-                    delim: Delimiter::Parenthesis,
-                    tokens,
-                }),
-            })),
+            cx.macro_call(call_site_span, panic_path(), Delimiter::Parenthesis, tokens),
         );
         expr_if_not(cx, call_site_span, cond_expr, then, None)
     }

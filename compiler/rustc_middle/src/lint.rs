@@ -2,7 +2,7 @@ use std::cmp::min;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_errors::{Diag, DiagLocation, Diagnostic, MultiSpan};
+use rustc_errors::{Diag, DiagLocation, Diagnostic, EmissionOverride, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_lint_defs::{
     EditionFcw, FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId,
@@ -416,7 +416,7 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a> + 'a>(
         let err_level = match level {
             Level::Allow => {
                 if has_future_breakage {
-                    rustc_errors::Level::Allow
+                    rustc_errors::Level::Warning(Some(EmissionOverride::Allowed))
                 } else {
                     return;
                 }
@@ -426,13 +426,17 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a> + 'a>(
                 // we can't return early like in the case for `Level::Allow` because we still
                 // need the lint diagnostic to be emitted to `rustc_error::DiagCtxtInner`.
                 //
-                // We can also not mark the lint expectation as fulfilled here right away, as it
-                // can still be cancelled in the decorate function. All of this means that we simply
-                // create a `Diag` and continue as we would for warnings.
-                rustc_errors::Level::Expect
+                // We also cannot mark the lint expectation as fulfilled here right away, because
+                // it can still be cancelled in the decorate function. So we create a `Diag` and
+                // continue as we would for `Level::Warn`.
+                rustc_errors::Level::Warning(Some(EmissionOverride::Expected {
+                    lint_id: lint_id.unwrap(),
+                }))
             }
-            Level::ForceWarn => rustc_errors::Level::ForceWarning,
-            Level::Warn => rustc_errors::Level::Warning,
+            Level::ForceWarn => {
+                rustc_errors::Level::Warning(Some(EmissionOverride::Forced { lint_id }))
+            }
+            Level::Warn => rustc_errors::Level::Warning(None),
             Level::Deny | Level::Forbid => rustc_errors::Level::Error,
         };
 
@@ -477,12 +481,13 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a> + 'a>(
         // emitted or we'll get a `must_produce_diag` ICE.
         //
         // When is a diagnostic *eventually* emitted? Well, that is determined by 2 factors:
-        // 1. If the corresponding `rustc_errors::Level` is beyond warning, i.e. `ForceWarning(_)`
-        //    or `Error`, then the diagnostic will be emitted regardless of CLI options.
+        // 1. If the corresponding `rustc_errors::Level` is beyond warning, i.e. `Error`, then the
+        //    diagnostic will be emitted regardless of CLI options.
         // 2. If the corresponding `rustc_errors::Level` is warning, then that can be affected by
         //    `-A warnings` or `--cap-lints=xxx` on the command line. In which case, the diagnostic
         //    will be emitted if `can_emit_warnings` is true.
-        let skip = err_level == rustc_errors::Level::Warning && !sess.dcx().can_emit_warnings();
+        let skip =
+            err_level == rustc_errors::Level::Warning(None) && !sess.dcx().can_emit_warnings();
 
         let mut err: Diag<'_> = if !skip {
             decorate(sess.dcx(), err_level)
@@ -495,16 +500,14 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a> + 'a>(
         if let Some(span) = span
             && err.span.primary_span().is_none()
         {
-            // We can't use `err.span()` because it overwrites the labels, so we need to do it manually.
+            // We can't use `err.span()` because it overwrites the labels, so we need to do it
+            // manually.
             for primary in span.primary_spans() {
                 err.span.push_primary_span(*primary);
             }
             for (label_span, label) in span.span_labels_raw() {
                 err.span.push_span_diag(*label_span, label.clone());
             }
-        }
-        if let Some(lint_id) = lint_id {
-            err.lint_id(lint_id);
         }
 
         if disable_suggestions {

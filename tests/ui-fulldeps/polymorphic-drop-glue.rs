@@ -6,6 +6,7 @@
 //@ ignore-backends: gcc
 #![feature(rustc_private)]
 
+extern crate rustc_attr_ir;
 extern crate rustc_driver;
 extern crate rustc_hir;
 extern crate rustc_interface;
@@ -16,7 +17,7 @@ extern crate rustc_span;
 use std::process::ExitCode;
 
 use rustc_driver::Compilation;
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_interface::interface::Compiler;
 use rustc_middle::ty::{self, TyCtxt};

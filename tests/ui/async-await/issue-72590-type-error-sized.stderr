@@ -18,13 +18,12 @@ LL |     async fn frob(self) {}
    |
    = help: within `Foo`, the trait `Sized` is not implemented for `str`
 note: required because it appears within the type `Foo`
-  --> $DIR/issue-72590-type-error-sized.rs:5:8
+  --> $DIR/issue-72590-type-error-sized.rs:7:5
    |
 LL | struct Foo {
-   |        ^^^
 LL |     foo: Nonexistent,
 LL |     other: str
-   |     ---------- required by this field
+   |     ^^^^^^^^^^ required by this field
    = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |

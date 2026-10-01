@@ -503,7 +503,10 @@ fn coff_collect_impl<'data, Coff: CoffHeader>(
         if strip_underscore {
             name = name.strip_prefix('_').unwrap_or(&name).to_string();
         }
-        if !exported.contains(&name) {
+        let is_exported = exported.contains(&name)
+            || (header.machine() == pe::IMAGE_FILE_MACHINE_ARM64EC
+                && name.strip_prefix('#').is_some_and(|name| exported.contains(name)));
+        if !is_exported {
             out.insert(name);
         }
     }

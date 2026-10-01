@@ -1206,8 +1206,8 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 suggestions.push((binding_span.shrink_to_lo(), msg, "ref ".to_string()));
             }
         }
-        suggestions.sort_unstable_by_key(|&(span, _, _)| span);
-        suggestions.dedup_by_key(|&mut (span, _, _)| span);
+        suggestions.sort_unstable_by_key(|&(span, _, _)| span.lo_hi());
+        suggestions.dedup_by_key(|&mut (span, _, _)| span.lo_hi());
         for (span, msg, suggestion) in suggestions {
             err.span_suggestion_verbose(span, msg, suggestion, Applicability::MachineApplicable);
         }
