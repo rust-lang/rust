@@ -259,6 +259,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::LinkSection { .. } => (),
             AttributeKind::LintAsPtr => (),
             AttributeKind::LintNeverReturnsNullPtr => (),
+            AttributeKind::LintShouldNotBeCalledOnConstItems => (),
             AttributeKind::LoopMatch(..) => (),
             AttributeKind::MacroEscape => (),
             AttributeKind::MacroExport { .. } => (),

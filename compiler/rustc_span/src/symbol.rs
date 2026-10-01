@@ -1954,6 +1954,7 @@ symbols! {
         shl,
         shl_assign,
         shorter_tail_lifetimes,
+        should_not_be_called_on_const_items,
         should_panic,
         show,
         shr,

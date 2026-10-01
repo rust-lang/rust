@@ -69,15 +69,15 @@ impl NoArgsAttributeParser for RustcPassByValueParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPassByValue;
 }
 
-pub(crate) struct RustcShouldNotBeCalledOnConstItemsParser;
-impl NoArgsAttributeParser for RustcShouldNotBeCalledOnConstItemsParser {
-    const PATH: &[Symbol] = &[sym::rustc_should_not_be_called_on_const_items];
+pub(crate) struct LintShouldNotBeCalledOnConstItemsParser;
+impl NoArgsAttributeParser for LintShouldNotBeCalledOnConstItemsParser {
+    const PATH: &[Symbol] = &[sym::lint, sym::should_not_be_called_on_const_items];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcShouldNotBeCalledOnConstItems;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::LintShouldNotBeCalledOnConstItems;
 }
 
 pub(crate) struct AutomaticallyDerivedParser;
