@@ -18,10 +18,6 @@ note: the lint level is defined here
 LL | #![deny(impl_trait_overcaptures)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the attribute macro `overcapture_attr_pm::rpc` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: use the precise capturing `use<...>` syntax to make the captures explicit
-   |
-LL | #[overcapture_attr_pm::rpc] + use<>
-   |                             +++++++
 
 error: `impl Sized` will capture more lifetimes than possibly intended in edition 2024
   --> $DIR/overcapture-suggestion-in-macro-issue-139567.rs:12:25
@@ -88,10 +84,6 @@ LL | mk_body!();
    = note: all lifetimes in scope will be captured by `impl Trait`s in edition 2024
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
-help: use the precise capturing `use<...>` syntax to make the captures explicit
-   |
-LL |         pub fn from_macro_body(x: &u8) -> impl Sized + use<> { *x }
-   |                                                      +++++++
 
 error: aborting due to 4 previous errors
 
