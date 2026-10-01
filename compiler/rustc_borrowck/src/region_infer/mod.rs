@@ -275,11 +275,11 @@ impl<'tcx> BestBlame<'tcx> {
             .path
             .iter()
             .find_map(|constraint| {
-                if let ConstraintCategory::Predicate(predicate_span) = constraint.category {
+                if let ConstraintCategory::Predicate(predicate_span, def_id) = constraint.category {
                     // We currently do not store the `DefId` in the `ConstraintCategory`
                     // for performances reasons. The error reporting code used by NLL only
                     // uses the span, so this doesn't cause any problems at the moment.
-                    Some(ObligationCauseCode::WhereClause(CRATE_DEF_ID.to_def_id(), predicate_span))
+                    Some(ObligationCauseCode::WhereClause(def_id, predicate_span))
                 } else {
                     None
                 }

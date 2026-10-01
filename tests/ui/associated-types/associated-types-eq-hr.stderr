@@ -43,58 +43,93 @@ LL |     T: for<'x> TheTrait<&'x isize, A = &'x usize>,
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:96:5
    |
+LL | fn tuple_one<T>()
+   |    --------- due to a where-clause on `tuple_one`...
+LL | where
+LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>,
+   |        ----------------------------------------------------------- unsatisfied where-clause on `tuple_one`
+...
 LL |     tuple_one::<Tuple>();
-   |     ^^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...`Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
    = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:96:5
    |
+LL | fn tuple_one<T>()
+   |    --------- due to a where-clause on `tuple_one`...
+LL | where
+LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>,
+   |        ----------------------------------------------------------- unsatisfied where-clause on `tuple_one`
+...
 LL |     tuple_one::<Tuple>();
-   |     ^^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...`Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
    = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:96:5
    |
+LL | fn tuple_one<T>()
+   |    --------- due to a where-clause on `tuple_one`...
+LL | where
+LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>,
+   |                                                     ------------- unsatisfied where-clause on `tuple_one`
+...
 LL |     tuple_one::<Tuple>();
-   |     ^^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...`Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
    = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:96:5
    |
+LL | fn tuple_one<T>()
+   |    --------- due to a where-clause on `tuple_one`...
+LL | where
+LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>,
+   |                                                     ------------- unsatisfied where-clause on `tuple_one`
+...
 LL |     tuple_one::<Tuple>();
-   |     ^^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...`Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
    = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:104:5
    |
+LL | fn tuple_two<T>()
+   |    --------- due to a where-clause on `tuple_two`...
+LL | where
+LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>,
+   |        ----------------------------------------------------------- unsatisfied where-clause on `tuple_two`
+...
 LL |     tuple_two::<Tuple>();
-   |     ^^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...`Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
    = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:104:5
    |
+LL | fn tuple_two<T>()
+   |    --------- due to a where-clause on `tuple_two`...
+LL | where
+LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>,
+   |        ----------------------------------------------------------- unsatisfied where-clause on `tuple_two`
+...
 LL |     tuple_two::<Tuple>();
-   |     ^^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...`Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
    = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
@@ -130,19 +165,31 @@ LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>,
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:116:5
    |
+LL | fn tuple_four<T>()
+   |    ---------- due to a where-clause on `tuple_four`...
+LL | where
+LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize)>,
+   |        -------------------------------------------- unsatisfied where-clause on `tuple_four`
+...
 LL |     tuple_four::<Tuple>();
-   |     ^^^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...`Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
    = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:116:5
    |
+LL | fn tuple_four<T>()
+   |    ---------- due to a where-clause on `tuple_four`...
+LL | where
+LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize)>,
+   |        -------------------------------------------- unsatisfied where-clause on `tuple_four`
+...
 LL |     tuple_four::<Tuple>();
-   |     ^^^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...`Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
    = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

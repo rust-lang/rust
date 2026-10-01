@@ -232,7 +232,7 @@ pub struct ClosureOutlivesRequirement<'tcx> {
 
 // Make sure this enum doesn't unintentionally grow
 #[cfg(target_pointer_width = "64")]
-rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 16);
+rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 24);
 
 /// The subject of a `ClosureOutlivesRequirement` -- that is, the thing
 /// that must outlive some region.

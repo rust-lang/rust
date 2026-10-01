@@ -1,28 +1,43 @@
 error: implementation of `HR` is not general enough
   --> $DIR/hr-fn-ptr-trait-impl-mismatch-29061.rs:25:5
    |
+LL | fn hr<T: HR>(_: T) {}
+   |    --    -- unsatisfied where-clause on `hr`
+   |    |
+   |    due to a where-clause on `hr`...
+...
 LL |     hr(not_hr_func);
-   |     ^^^^^^^^^^^^^^^ implementation of `HR` is not general enough
+   |     ^^^^^^^^^^^^^^^
    |
-   = note: `HR` would have to be implemented for the type `fn(&'0 ())`, for some specific lifetime `'0`...
+   = note: ...`HR` would have to be implemented for the type `fn(&'0 ())`, for some specific lifetime `'0`...
    = note: ...but `HR` is actually implemented for the type `for<'a> fn(&'a ())`
 
 error: implementation of `NotHR` is not general enough
   --> $DIR/hr-fn-ptr-trait-impl-mismatch-29061.rs:27:5
    |
+LL | fn not_hr<T: NotHR>(_: T) {}
+   |    ------    ----- unsatisfied where-clause on `not_hr`
+   |    |
+   |    due to a where-clause on `not_hr`...
+...
 LL |     not_hr(hr_func);
-   |     ^^^^^^^^^^^^^^^ implementation of `NotHR` is not general enough
+   |     ^^^^^^^^^^^^^^^
    |
-   = note: `NotHR` would have to be implemented for the type `for<'a> fn(&'a ())`
+   = note: ...`NotHR` would have to be implemented for the type `for<'a> fn(&'a ())`
    = note: ...but `NotHR` is actually implemented for the type `fn(&'0 ())`, for some specific lifetime `'0`
 
 error: implementation of `NotHR` is not general enough
   --> $DIR/hr-fn-ptr-trait-impl-mismatch-29061.rs:29:5
    |
+LL | fn not_hr<T: NotHR>(_: T) {}
+   |    ------    ----- unsatisfied where-clause on `not_hr`
+   |    |
+   |    due to a where-clause on `not_hr`...
+...
 LL |     not_hr(hr_func2);
-   |     ^^^^^^^^^^^^^^^^ implementation of `NotHR` is not general enough
+   |     ^^^^^^^^^^^^^^^^
    |
-   = note: `NotHR` would have to be implemented for the type `for<'b> fn(&'b ())`
+   = note: ...`NotHR` would have to be implemented for the type `for<'b> fn(&'b ())`
    = note: ...but `NotHR` is actually implemented for the type `fn(&'0 ())`, for some specific lifetime `'0`
 
 error: aborting due to 3 previous errors
