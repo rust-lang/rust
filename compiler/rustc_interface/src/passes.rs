@@ -1214,6 +1214,10 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 fn analysis(tcx: TyCtxt<'_>, (): ()) {
     run_required_analyses(tcx);
 
+    if !tcx.sess.opts.output_types.requires_full_analysis() {
+        return;
+    }
+
     let sess = tcx.sess;
 
     // Avoid overwhelming user with errors if borrow checking failed.
@@ -1325,7 +1329,7 @@ pub(crate) fn start_codegen<'tcx>(
 
     info!("Pre-codegen\n{:?}", tcx.debug_stats());
 
-    let metadata = match rustc_metadata::fs::encode_and_write_metadata(tcx) {
+    let metadata = match rustc_metadata::fs::encode_and_write_metadata(tcx, false) {
         Ok(metadata) => metadata,
         Err(guar) => guar.raise_fatal(),
     };
