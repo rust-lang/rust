@@ -266,9 +266,11 @@ use core::ptr::{self, NonNull, drop_in_place};
 use core::slice::from_raw_parts_mut;
 use core::{borrow, fmt, hint};
 
-use crate::alloc::{AllocError, Allocator, AllocatorClone, Global, Layout, StaticAllocator};
 #[cfg(not(no_global_oom_handling))]
-use crate::alloc::{AllocatorNightly, handle_alloc_error};
+use crate::alloc::handle_alloc_error;
+use crate::alloc::{
+    AllocError, Allocator, AllocatorClone, AllocatorNightly, Global, Layout, StaticAllocator,
+};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 #[cfg(not(no_global_oom_handling))]
@@ -4837,6 +4839,9 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Rc<T, A> {
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+#[unstable_feature_bound(allocator_ext)]
+impl<T: ?Sized + Allocator, A: Allocator> AllocatorNightly for Rc<T, A> {}
 
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 unsafe impl<T: Allocator + ?Sized, A: AllocatorClone> AllocatorClone for Rc<T, A> {}

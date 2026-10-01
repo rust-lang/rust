@@ -206,7 +206,7 @@ use core::task::{Context, Poll};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
-use crate::alloc::{AllocError, Allocator, Global, Layout, StaticAllocator};
+use crate::alloc::{AllocError, Allocator, AllocatorNightly, Global, Layout, StaticAllocator};
 use crate::raw_vec::RawVec;
 #[cfg(not(no_global_oom_handling))]
 use crate::str::from_boxed_utf8_unchecked_in;
@@ -2541,6 +2541,9 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Box<T, A> {
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+#[unstable_feature_bound(allocator_ext)]
+impl<T: ?Sized + Allocator, A: Allocator> AllocatorNightly for Box<T, A> {}
 
 #[unstable(feature = "random", issue = "130703")]
 impl<R: core::random::Rng + ?Sized, A: Allocator> core::random::Rng for Box<R, A> {

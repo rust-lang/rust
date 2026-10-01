@@ -744,6 +744,13 @@ where
 }
 
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+#[unstable_feature_bound(allocator_ext)]
+impl<P> AllocatorNightly for core::pin::Pin<P> where
+    P: core::ops::Deref<Target: Allocator> + core::pin::PinSafePointer
+{
+}
+
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 unsafe impl<A: Allocator + ?Sized> AllocatorClone for &A {}
 
 // If an allocator is `StaticAllocator` all equivalent allocators must also uphold
@@ -753,3 +760,22 @@ unsafe impl<A: StaticAllocator + ?Sized> StaticAllocator for &A {}
 
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 unsafe impl<A: StaticAllocator + ?Sized> StaticAllocator for &mut A {}
+
+/// Allocator marker trait that is only implemented stably for `Global`.
+///
+/// This trait is used as a bound whenever a function constructing
+/// a type with an `#[unstable] A: Allocator = Global` parameter
+/// may be callable for `A != Global`.
+///
+/// This is to prevent stable code from e.g. constructing `Arc<T, NotGlobal>`
+/// using the `From<Box<T, A>> for Arc<T, A>` impl.
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+pub trait AllocatorNightly: Allocator {}
+
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+#[unstable_feature_bound(allocator_ext)]
+impl<A: Allocator + ?Sized> AllocatorNightly for &A {}
+
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+#[unstable_feature_bound(allocator_ext)]
+impl<A: Allocator + ?Sized> AllocatorNightly for &mut A {}
