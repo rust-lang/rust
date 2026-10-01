@@ -866,7 +866,13 @@ fn test_fstat() {
         let stat = stat.assume_init_ref();
 
         assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFIFO);
-        assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+        if cfg!(target_os = "freebsd") {
+            // FIXME: Seems like FreeBSD does not set permissions for non-file-backed FDs.
+            // Miri currently gets this wrong.
+            // assert_eq!(stat.st_mode & !libc::S_IFMT, 0, "no permission should be set");
+        } else {
+            assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+        }
         assert_eq!(stat.st_size, 0);
 
         errno_check(libc::close(fds[0]));
