@@ -1935,6 +1935,17 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
     fn_def_id: LocalDefId,
     captured_args: FxIndexSet<DefId>,
 ) -> Option<AddPreciseCapturingForOvercapture> {
+    let rpit_span = tcx.def_span(opaque_def_id);
+
+    // Every suggestion below is anchored on the opaque's span, so bail if that span is not one
+    // the user can edit. AST lowering marks it with the `impl Trait` desugaring, hence the
+    // question is about the span it desugared from: for an opaque created inside a macro
+    // expansion that span is the expansion site, which for an attribute macro is the attribute
+    // itself, where `+ use<..>` does not even parse.
+    if rpit_span.parent_callsite().is_some_and(|span| !span.can_be_used_for_suggestions()) {
+        return None;
+    }
+
     let generics = tcx.generics_of(fn_def_id);
 
     let mut captured_lifetimes = FxIndexSet::default();
@@ -2036,7 +2047,6 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
         _ => ("", ""),
     };
 
-    let rpit_span = tcx.def_span(opaque_def_id);
     if !lparen.is_empty() {
         suggs.push((rpit_span.shrink_to_lo(), lparen.to_string()));
     }
