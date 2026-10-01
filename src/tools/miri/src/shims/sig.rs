@@ -284,7 +284,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             throw_machine_stop!(TerminationInfo::SymbolShimClashing {
                 link_name,
-                span: this.tcx.def_span(instance.def_id()).data(),
+                span: this.tcx.def_span(instance.def_id()),
             })
         }
         interp_ok(())
