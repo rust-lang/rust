@@ -38,7 +38,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, TyCtxt, TypingMode, Unnormalized};
+use rustc_middle::ty::{self, TyCtxt, TypingMode, Unnormalized, Variance};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, span_bug, sym};
@@ -228,7 +228,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.check_linkage(*span, hir_id, target, item)
             }
             AttributeKind::RustcAssertVariance(attr) => {
-                self.check_rustc_assert_variance(target, item, &attr.variances);
+                self.check_rustc_assert_variance(span, hir_id, target, item, &attr.variances);
             }
 
             // All of the following attributes have no specific checks.
@@ -1523,9 +1523,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     fn check_rustc_assert_variance(
         &self,
+        span: Span,
+        hir_id: HirId,
         target: Target,
         item: Option<&'tcx Item<'tcx>>,
-        map: &FxIndexMap<Ident, RustcAssertVarianceKind>,
+        map: &FxIndexMap<Ident, (Span, RustcAssertVarianceKind)>,
     ) {
         // If the target is invalid the parser has already emitted an error
         if !matches!(target, Target::Struct | Target::Enum | Target::Union) {
@@ -1539,13 +1541,59 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             _ => return,
         };
 
+        let mut asserted_params = ThinVec::default();
         for ident in map.keys() {
-            if generics.get_named(ident.name).is_none() {
+            let Some(param) = generics.get_named(ident.name) else {
                 self.tcx.dcx().emit_err(diagnostics::RustcAssertVarianceInvalid {
                     span: ident.span,
                     invalid_ident: *ident,
                     item_ident,
                 });
+                continue;
+            };
+            asserted_params.push(param);
+        }
+
+        let variances = self.tcx.variances_of(hir_id.expect_owner().to_def_id());
+        let asserts = generics.params.iter().zip(variances.iter()).filter(|(param, _)| {
+            asserted_params.iter().any(|assert_param| assert_param.def_id == param.def_id)
+        });
+
+        for (param, variance) in asserts {
+            let ident = param.name.ident();
+
+            match (map.get(&ident), variance) {
+                (Some((_, RustcAssertVarianceKind::Covariant)), Variance::Covariant) => {}
+                (Some((_, RustcAssertVarianceKind::Invariant)), Variance::Invariant) => {}
+                (Some((_, RustcAssertVarianceKind::Contravariant)), Variance::Contravariant) => {}
+                (asserted, actual) => {
+                    let (attr_span, asserted) = asserted.expect(
+                        "ident should be in rustc_assert_variance map due to previous filter",
+                    );
+
+                    let expected_variance = match asserted {
+                        RustcAssertVarianceKind::Covariant => sym::covariant,
+                        RustcAssertVarianceKind::Invariant => sym::invariant,
+                        RustcAssertVarianceKind::Contravariant => sym::contravariant,
+                    };
+
+                    let actual_variance = match actual {
+                        Variance::Covariant => sym::covariant,
+                        Variance::Invariant => sym::invariant,
+                        Variance::Contravariant => sym::contravariant,
+                        Variance::Bivariant => sym::bivariant,
+                    };
+
+                    let span_note = diagnostics::RustcAssertVarianceFailedNote { span: *attr_span };
+                    self.tcx.dcx().emit_err(diagnostics::RustcAssertVarianceFailed {
+                        span,
+                        span_note,
+                        param_ident: ident,
+                        item_ident,
+                        expected_variance,
+                        actual_variance,
+                    });
+                }
             }
         }
     }

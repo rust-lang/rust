@@ -560,6 +560,7 @@ symbols! {
         bits,
         bitxor,
         bitxor_assign,
+        bivariant,
         black_box,
         block,
         blocking,

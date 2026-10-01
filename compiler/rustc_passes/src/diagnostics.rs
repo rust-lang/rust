@@ -1148,3 +1148,25 @@ pub(crate) struct RustcAssertVarianceInvalid {
     pub invalid_ident: Ident,
     pub item_ident: Ident,
 }
+
+#[derive(Diagnostic)]
+#[diag(
+    "{$item_ident} is {$actual_variance} in {$param_ident}; expected variance: {$expected_variance}"
+)]
+pub(crate) struct RustcAssertVarianceFailed {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub span_note: RustcAssertVarianceFailedNote,
+    pub param_ident: Ident,
+    pub item_ident: Ident,
+    pub expected_variance: Symbol,
+    pub actual_variance: Symbol,
+}
+
+#[derive(Subdiagnostic)]
+#[note("required by this annotation")]
+pub(crate) struct RustcAssertVarianceFailedNote {
+    #[primary_span]
+    pub span: Span,
+}
