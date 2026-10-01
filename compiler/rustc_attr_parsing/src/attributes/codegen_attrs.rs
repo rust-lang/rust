@@ -330,6 +330,9 @@ impl AttributeParser for NakedParser {
     }
 
     fn deferred_finalize_check(&self) -> Option<(FinalizeCheckFn, Span)> {
+        // FIXME(rtjkro): Currently, we're enum matching on `cx.target` instead of `cx.ast_target`
+        // because `AstTarget::Method` doesn't contain `MethodKind` yet. In the future, when this field is available to `AstTarget::Method`,
+        // update this check to use `cx.ast_target` instead of `cx.target`.
         Some((
             |cx, _| match cx.target {
                 Target::Fn
