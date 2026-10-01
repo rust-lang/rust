@@ -190,6 +190,7 @@ decl_derive!(
         // field attributes
         primary_span,
         label,
+        context,
         subdiagnostic,
         suggestion)] =>
         #[doc = "See <https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html#derivediagnostic>"]

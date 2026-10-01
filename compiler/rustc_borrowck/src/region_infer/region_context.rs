@@ -742,7 +742,7 @@ impl<'tcx> RegionInferenceContextInner<'tcx> {
                 // Generic arguments are unlikely to be what relates regions together
                 ConstraintCategory::TypeAnnotation(AnnotationSource::GenericArg) => 3,
                 // We handle predicates and opaque types specially; don't prioritize them here.
-                ConstraintCategory::Predicate(_) | ConstraintCategory::OpaqueType => 4,
+                ConstraintCategory::Predicate(_, _) | ConstraintCategory::OpaqueType => 4,
                 // `Boring` constraints can correspond to user-written code and have useful spans,
                 // but don't provide any other useful information for diagnostics.
                 ConstraintCategory::Boring => 5,

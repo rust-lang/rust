@@ -71,6 +71,7 @@ windows_link::link!("kernel32.dll" "system" fn InitOnceBeginInitialize(lpinitonc
 windows_link::link!("kernel32.dll" "system" fn InitOnceComplete(lpinitonce : LPINIT_ONCE, dwflags : u32, lpcontext : *const core::ffi::c_void) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn InitializeProcThreadAttributeList(lpattributelist : *mut _PROC_THREAD_ATTRIBUTE_LIST, dwattributecount : u32, dwflags : u32, lpsize : *mut usize) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn IsThreadAFiber() -> BOOL);
+windows_link::link!("kernel32.dll" "system" fn LoadLibraryExA(lplibfilename : PCSTR, hfile : HANDLE, dwflags : u32) -> HMODULE);
 windows_link::link!("kernel32.dll" "system" fn LocalFree(hmem : HLOCAL) -> HLOCAL);
 windows_link::link!("kernel32.dll" "system" fn LockFileEx(hfile : HANDLE, dwflags : u32, dwreserved : u32, nnumberofbytestolocklow : u32, nnumberofbytestolockhigh : u32, lpoverlapped : *mut OVERLAPPED) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn MoveFileExW(lpexistingfilename : PCWSTR, lpnewfilename : PCWSTR, dwflags : u32) -> BOOL);
@@ -2433,6 +2434,8 @@ impl Default for EXCEPTION_RECORD {
 }
 pub const EXCEPTION_STACK_OVERFLOW: i32 = -1073741571;
 pub const EXTENDED_STARTUPINFO_PRESENT: i32 = 524288;
+pub const E_FAIL: HRESULT = 0x80004005_u32 as _;
+pub const E_INVALIDARG: HRESULT = 0x80070057_u32 as _;
 pub const E_NOTIMPL: HRESULT = 0x80004001_u32 as _;
 pub const ExceptionCollidedUnwind: EXCEPTION_DISPOSITION = 3;
 pub const ExceptionContinueExecution: EXCEPTION_DISPOSITION = 0;
@@ -2925,7 +2928,11 @@ impl Default for IP_MREQ {
 pub const IP_MULTICAST_LOOP: i32 = 11;
 pub const IP_MULTICAST_TTL: i32 = 10;
 pub const IP_TTL: i32 = 4;
+pub const KF_FLAG_DONT_VERIFY: KNOWN_FOLDER_FLAG = 16384;
+pub type KNOWNFOLDERID = GUID;
+pub type KNOWN_FOLDER_FLAG = u32;
 pub type LINGER = linger;
+pub const LOAD_LIBRARY_SEARCH_SYSTEM32: i32 = 2048;
 pub const LOCKFILE_EXCLUSIVE_LOCK: i32 = 2;
 pub const LOCKFILE_FAIL_IMMEDIATELY: i32 = 1;
 pub type LPBYTE = *mut u8;
@@ -3295,6 +3302,7 @@ pub struct SYSTEM_INFO_0_0 {
     pub wProcessorArchitecture: u16,
     pub wReserved: u16,
 }
+pub const S_OK: HRESULT = 0x0_u32 as _;
 pub const TCP_NODELAY: i32 = 1;
 pub const TIMER_ALL_ACCESS: i32 = 2031619;
 pub const TIMER_MODIFY_STATE: i32 = 2;
