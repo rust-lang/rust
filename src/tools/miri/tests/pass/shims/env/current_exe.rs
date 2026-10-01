@@ -1,5 +1,4 @@
-//@only-on-host: the Linux std implementation opens /proc/self/exe, which doesn't work cross-target
-//@ignore-target: freebsd # On FreeBSD the standard library uses `sysctl` for this, which is not shimmed
+//@ignore-target: freebsd illumos solaris # we don't have the shims this needs here
 //@compile-flags: -Zmiri-disable-isolation
 use std::env;
 

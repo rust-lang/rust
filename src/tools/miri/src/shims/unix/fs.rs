@@ -15,7 +15,7 @@ use rustc_target::spec::Os;
 use self::shims::time::system_time_to_duration;
 use crate::shims::FdId;
 use crate::shims::files::{DirHandle, FdNum, FileHandle};
-use crate::shims::os_str::bytes_to_os_str;
+use crate::shims::os_str::{PathConversion, bytes_to_os_str};
 use crate::shims::sig::Varargs;
 use crate::shims::unix::fd::{EvalContextExt as _, FlockOp, UnixFileDescription};
 use crate::*;
@@ -1711,7 +1711,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, i64> {
         let this = self.eval_context_mut();
 
-        let pathname = this.read_path_from_c_str(this.read_pointer(pathname_op)?)?;
+        let pathname = this.read_os_str_from_c_str(this.read_pointer(pathname_op)?)?;
         let buf = this.read_pointer(buf_op)?;
         let bufsize = this.read_target_usize(bufsize_op)?;
 
@@ -1722,16 +1722,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(-1);
         }
 
-        let result = std::fs::read_link(pathname);
+        // On Linux, special case `/proc/self/exe` so that `std::env::current_exe` works
+        // in cross-execution.
+        let result = if matches!(this.tcx.sess.target.os, Os::Linux)
+            && pathname.to_str() == Some("/proc/self/exe")
+        {
+            std::env::current_exe()
+        } else {
+            // We read `pathname` as `OsStr` above so we could do the /proc/self/exe check.
+            // But now we need a (host) path.
+            let pathname = this.convert_path(Cow::Borrowed(pathname), PathConversion::TargetToHost);
+            std::fs::read_link(pathname)
+        };
+
         match result {
             Ok(resolved) => {
                 // 'readlink' truncates the resolved path if the provided buffer is not large
                 // enough, and does *not* add a null terminator. That means we cannot use the usual
                 // `write_path_to_c_str` and have to re-implement parts of it ourselves.
-                let resolved = this.convert_path(
-                    Cow::Borrowed(resolved.as_ref()),
-                    crate::shims::os_str::PathConversion::HostToTarget,
-                );
+                let resolved = this
+                    .convert_path(Cow::Borrowed(resolved.as_ref()), PathConversion::HostToTarget);
                 let mut path_bytes = resolved.as_encoded_bytes();
                 let bufsize: usize = bufsize.try_into().unwrap();
                 if path_bytes.len() > bufsize {
