@@ -3,9 +3,8 @@
 //@compile-flags: -Zmiri-disable-isolation
 //@run-native
 
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 use std::mem::MaybeUninit;
-use std::os::unix::ffi::OsStrExt;
 
 #[path = "../../utils/mod.rs"]
 mod utils;
@@ -28,7 +27,7 @@ fn getmod(path: &CStr) -> u32 {
 
 fn test_chmod() {
     let path = utils::prepare_with_content("miri_test_libc_chmod.txt", b"abcdef");
-    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_path = utils::into_c_string(path);
 
     unsafe { errno_check(libc::chmod(c_path.as_ptr(), 0o777)) };
     assert_eq!(getmod(&c_path), 0o777);
@@ -38,7 +37,7 @@ fn test_chmod() {
 
 fn test_fchmod() {
     let path = utils::prepare_with_content("miri_test_libc_chmod.txt", b"abcdef");
-    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_path = utils::into_c_string(path);
 
     let fd = unsafe { errno_result(libc::open(c_path.as_ptr(), libc::O_RDONLY)).unwrap() };
     unsafe { errno_check(libc::fchmod(fd, 0o777)) };
