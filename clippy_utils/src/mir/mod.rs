@@ -26,6 +26,12 @@ pub struct LocalUsage {
     pub local_consume_or_mutate_locs: Vec<Location>,
 }
 
+/// Collects usage locations (reads, consumes or mutations) for the set of the locals across blocks where their storage
+/// remains live relative to the `location` specified.
+///
+/// Returns:
+/// - `Some([LocalUsage; N])` containing usage metadata for each local in `locals`.
+/// - `None` if the analysis fails or `location` is unreachable.
 pub fn visit_local_usage<const N: usize>(
     locals: [Local; N],
     mir: &Body<'_>,

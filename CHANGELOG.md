@@ -7341,6 +7341,7 @@ Released 2018-09-13
 [`multiple_unsafe_ops_per_block`]: https://rust-lang.github.io/rust-clippy/main/index.html#multiple_unsafe_ops_per_block
 [`must_use_candidate`]: https://rust-lang.github.io/rust-clippy/main/index.html#must_use_candidate
 [`must_use_unit`]: https://rust-lang.github.io/rust-clippy/main/index.html#must_use_unit
+[`must_use_without_reason`]: https://rust-lang.github.io/rust-clippy/main/index.html#must_use_without_reason
 [`mut_from_ref`]: https://rust-lang.github.io/rust-clippy/main/index.html#mut_from_ref
 [`mut_mut`]: https://rust-lang.github.io/rust-clippy/main/index.html#mut_mut
 [`mut_mutex_lock`]: https://rust-lang.github.io/rust-clippy/main/index.html#mut_mutex_lock
@@ -7647,6 +7648,7 @@ Released 2018-09-13
 [`trivial_regex`]: https://rust-lang.github.io/rust-clippy/main/index.html#trivial_regex
 [`trivially_copy_pass_by_ref`]: https://rust-lang.github.io/rust-clippy/main/index.html#trivially_copy_pass_by_ref
 [`try_err`]: https://rust-lang.github.io/rust-clippy/main/index.html#try_err
+[`try_from_instead_of_from_str`]: https://rust-lang.github.io/rust-clippy/main/index.html#try_from_instead_of_from_str
 [`tuple_array_conversions`]: https://rust-lang.github.io/rust-clippy/main/index.html#tuple_array_conversions
 [`type_complexity`]: https://rust-lang.github.io/rust-clippy/main/index.html#type_complexity
 [`type_id_on_box`]: https://rust-lang.github.io/rust-clippy/main/index.html#type_id_on_box
@@ -7668,6 +7670,7 @@ Released 2018-09-13
 [`unit_hash`]: https://rust-lang.github.io/rust-clippy/main/index.html#unit_hash
 [`unit_return_expecting_ord`]: https://rust-lang.github.io/rust-clippy/main/index.html#unit_return_expecting_ord
 [`unknown_clippy_lints`]: https://rust-lang.github.io/rust-clippy/main/index.html#unknown_clippy_lints
+[`unnecessary_as_slice`]: https://rust-lang.github.io/rust-clippy/main/index.html#unnecessary_as_slice
 [`unnecessary_box_returns`]: https://rust-lang.github.io/rust-clippy/main/index.html#unnecessary_box_returns
 [`unnecessary_cast`]: https://rust-lang.github.io/rust-clippy/main/index.html#unnecessary_cast
 [`unnecessary_clippy_cfg`]: https://rust-lang.github.io/rust-clippy/main/index.html#unnecessary_clippy_cfg

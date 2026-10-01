@@ -4,7 +4,8 @@ This chapter describes how to use Clippy to get the most out of it. Clippy can
 be used as a `cargo` subcommand or, like `rustc`, directly with the
 `clippy-driver` binary.
 
-> _Note:_ This chapter assumes that you have Clippy installed already. If you're
+> [!NOTE]
+> This chapter assumes that you have Clippy installed already. If you're
 > not sure, take a look at the [Installation] chapter.
 
 ## Cargo subcommand
@@ -23,7 +24,8 @@ lint group `clippy::all`. You might want to use even more lints, or you may not
 agree with every Clippy lint, and for that there are ways to configure lint
 levels.
 
-> _Note:_ Clippy is meant to be used with a generous sprinkling of
+> [!NOTE]
+> Clippy is meant to be used with a generous sprinkling of
 > `#[allow(..)]`s through your code. So if you disagree with a lint, don't feel
 > bad disabling them for parts of your code or the whole project.
 
@@ -57,7 +59,8 @@ CARGO_BUILD_WARNINGS=deny cargo clippy
 warnings = "deny"
 ```
 
-> _Note:_ Using `CARGO_BUILD_WARNINGS=deny` (or `-D warnings`) will cause your build to fail if **any** warnings
+> [!NOTE]
+> Using `CARGO_BUILD_WARNINGS=deny` (or `-D warnings`) will cause your build to fail if **any** warnings
 > are found in your code. That includes warnings found by rustc (e.g.
 > `dead_code`, etc.)
 
@@ -103,7 +106,8 @@ The second group is the `restriction` group. This group contains lints that
 this group won't allow you to use `.unwrap()` in your code. You may want to look
 through the lints in this group and enable the ones that fit your need.
 
-> _Note:_ You shouldn't enable the whole lint group, but cherry-pick lints from
+> [!NOTE]
+> You shouldn't enable the whole lint group, but cherry-pick lints from
 > this group. Some lints in this group will even contradict other Clippy lints!
 
 #### Too many lints
@@ -113,7 +117,8 @@ group. Some people prefer to disable this group completely and then cherry-pick
 some lints they like from this group. The same is of course possible with every
 other of Clippy's lint groups.
 
-> _Note:_ We try to keep the warn-by-default groups free from false positives
+> [!NOTE]
+> We try to keep the warn-by-default groups free from false positives
 > (FP). If you find that a lint wrongly triggers, please report it in an issue
 > (if there isn't an issue for that FP already)
 
@@ -167,7 +172,8 @@ Clippy can also be used in projects that do not use cargo. To do so, run
 clippy-driver --edition 2018 -Cpanic=abort foo.rs
 ```
 
-> _Note:_ `clippy-driver` is designed for running Clippy and should not be used
+> [!NOTE]
+> `clippy-driver` is designed for running Clippy and should not be used
 > as a general replacement for `rustc`. `clippy-driver` may produce artifacts
 > that are not optimized as expected, for example.
 
