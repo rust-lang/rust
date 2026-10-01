@@ -12,7 +12,8 @@ The lint context [`LateContext`][LateContext] and [`TypeckResults`][TypeckResult
 in `LateLintPass`. They allow us to jump to type definitions and other compilation
 stages such as HIR.
 
-> Note: `LateContext.typeck_results`'s return value is [`TypeckResults`][TypeckResults]
+> [!NOTE]
+> `LateContext.typeck_results`'s return value is [`TypeckResults`][TypeckResults]
 > and is created in the type checking step, it includes useful information such as types of
 > expressions, ways to resolve methods and so on.
 

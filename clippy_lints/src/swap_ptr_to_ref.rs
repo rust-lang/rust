@@ -1,9 +1,12 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::snippet_with_context;
+use clippy_utils::{is_in_const_context, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, UnOp};
-use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::{Span, SyntaxContext, sym};
 
 declare_clippy_lint! {
@@ -36,7 +39,17 @@ declare_clippy_lint! {
     "call to `mem::swap` using pointer derived references"
 }
 
-declare_lint_pass!(SwapPtrToRef => [SWAP_PTR_TO_REF]);
+impl_lint_pass!(SwapPtrToRef => [SWAP_PTR_TO_REF]);
+
+pub struct SwapPtrToRef {
+    msrv: Msrv,
+}
+
+impl SwapPtrToRef {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self { msrv: conf.msrv.into() }
+    }
+}
 
 impl LateLintPass<'_> for SwapPtrToRef {
     fn check_expr(&mut self, cx: &LateContext<'_>, e: &Expr<'_>) {
@@ -53,20 +66,31 @@ impl LateLintPass<'_> for SwapPtrToRef {
                 e.span,
                 "call to `core::mem::swap` with a parameter derived from a raw pointer",
                 |diag| {
-                    if !((from_ptr1 && arg1_span.is_none()) || (from_ptr2 && arg2_span.is_none())) {
+                    if !((from_ptr1 && arg1_span.is_none()) || (from_ptr2 && arg2_span.is_none()))
+                        && let Some(sugg_method) = ptr_swap_is_possible(cx, self.msrv)
+                    {
                         let mut app = Applicability::MachineApplicable;
                         let snip1 = snippet_with_context(cx, arg1_span.unwrap_or(arg1.span), ctxt, "..", &mut app).0;
                         let snip2 = snippet_with_context(cx, arg2_span.unwrap_or(arg2.span), ctxt, "..", &mut app).0;
-                        diag.span_suggestion(
-                            e.span,
-                            "use ptr::swap",
-                            format!("core::ptr::swap({snip1}, {snip2})"),
-                            app,
-                        );
+                        diag.span_suggestion(e.span, "use ptr::swap", format!("{sugg_method}({snip1}, {snip2})"), app);
                     }
+                    diag.note("at least one parameter is derived from a pointer and may overlap with the other, causing undefined behavior");
                 },
             );
         }
+    }
+}
+
+/// Returns the path to `ptr::swap` if it can be used
+fn ptr_swap_is_possible(cx: &LateContext<'_>, msrv: Msrv) -> Option<&'static str> {
+    // stability in regular / const context:
+    // - core::ptr::swap 1.6 / 1.85
+    // - std::ptr::swap 1.0 / 1.85
+    match (std_or_core(cx), is_in_const_context(cx)) {
+        (Some("core" | "std"), true) if msrv.meets(cx, msrvs::CONST_PTR_SWAP) => Some("core::ptr::swap"),
+        (Some("core" | "std"), false) if msrv.meets(cx, msrvs::CORE_PTR_SWAP) => Some("core::ptr::swap"),
+        (Some("std"), false) => Some("std::ptr::swap"),
+        (_, _) => None,
     }
 }
 

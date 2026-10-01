@@ -32,8 +32,8 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Lints for suspicious operations in impls of OpAssign, e.g.
-    /// subtracting elements in an AddAssign impl.
+    /// Lints for suspicious operations in impls of `OpAssign`, e.g.
+    /// subtracting elements in an `AddAssign` impl.
     ///
     /// ### Why is this bad?
     /// This is probably a typo or copy-and-paste error and not intended.
