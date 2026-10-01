@@ -59,7 +59,7 @@ fn main() {
 }
 ```
 
-Here is how that gets represented in THIR (as of <!-- date-check --> Jul 2026):
+Here is how that gets represented in THIR (as of <!-- date-check --> October 2026):
 
 ```rust,no_run
 DefId(0:3 ~ main[26fd]::main):
@@ -67,7 +67,7 @@ Thir {
     body_type: Fn(
         fn(),
     ),
-    attributes: {},
+    loop_hint_attrs: {},
     // no match arms
     arms: [],
     blocks: [
