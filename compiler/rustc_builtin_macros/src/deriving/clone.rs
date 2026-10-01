@@ -62,7 +62,6 @@ pub(crate) fn expand_deriving_clone(
         let trivial_def = TraitDef {
             span,
             path: path_std!(cx, span, clone::TrivialClone),
-            skip_path_as_bound: false,
             needs_copy_as_bound_if_packed: true,
             additional_bounds: bounds.clone(),
             supports_unions: true,
@@ -72,6 +71,7 @@ pub(crate) fn expand_deriving_clone(
             // `TrivialClone` is not part of an API guarantee, so it shouldn't
             // appear in rustdoc output.
             document: false,
+            ..
         };
 
         trivial_def.expand(cx, item, push);
@@ -80,7 +80,6 @@ pub(crate) fn expand_deriving_clone(
     let trait_def = TraitDef {
         span,
         path: path_std!(cx, span, clone::Clone),
-        skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: bounds,
         supports_unions: true,
@@ -96,8 +95,7 @@ pub(crate) fn expand_deriving_clone(
             combine_substructure: substructure,
         }],
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
 
     trait_def.expand_ext(cx, item, push, is_simple)

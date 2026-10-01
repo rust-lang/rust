@@ -1,4 +1,4 @@
-use rustc_ast::{Expr, ItemKind, Safety, ast};
+use rustc_ast::{Expr, ItemKind, ast};
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{Span, kw, sym};
 use thin_vec::thin_vec;
@@ -64,14 +64,12 @@ pub(crate) fn expand_deriving_partial_ord(
     let trait_def = TraitDef {
         span,
         path: path_std!(cx, span, cmp::PartialOrd),
-        skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: smallvec![],
         supports_unions: false,
         methods: smallvec![partial_cmp_def],
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
     trait_def.expand_ext(cx, item, push, is_simple)
 }
