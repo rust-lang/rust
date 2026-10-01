@@ -27,7 +27,7 @@ use crate::ops::{Deref, DerefMut};
 ///     // "Chashu likes tuna!!!"
 /// }
 /// ```
-#[stable(feature = "drop_guard", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "drop_guard", since = "1.100.0")]
 #[doc(alias = "ScopeGuard")]
 #[doc(alias = "defer")]
 pub struct DropGuard<T, F>
@@ -54,7 +54,7 @@ where
     /// let value = String::from("Chashu likes tuna");
     /// let guard = DropGuard::new(value, |s| println!("{s}"));
     /// ```
-    #[stable(feature = "drop_guard", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "drop_guard", since = "1.100.0")]
     #[rustc_const_unstable(feature = "const_drop_guard", issue = "none")]
     #[must_use]
     pub const fn new(inner: T, f: F) -> Self {
@@ -79,7 +79,7 @@ where
     /// let guard = DropGuard::new(value, |s| println!("{s}"));
     /// assert_eq!(DropGuard::dismiss(guard), "Nori likes chicken");
     /// ```
-    #[stable(feature = "drop_guard", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "drop_guard", since = "1.100.0")]
     #[rustc_const_unstable(feature = "const_drop_guard", issue = "none")]
     #[inline]
     pub const fn dismiss(guard: Self) -> T
@@ -105,7 +105,7 @@ where
     }
 }
 
-#[stable(feature = "drop_guard", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "drop_guard", since = "1.100.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 const impl<T, F> Deref for DropGuard<T, F>
 where
@@ -118,7 +118,7 @@ where
     }
 }
 
-#[stable(feature = "drop_guard", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "drop_guard", since = "1.100.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 const impl<T, F> DerefMut for DropGuard<T, F>
 where
@@ -129,7 +129,7 @@ where
     }
 }
 
-#[stable(feature = "drop_guard", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "drop_guard", since = "1.100.0")]
 #[rustc_const_unstable(feature = "const_drop_guard", issue = "none")]
 const impl<T, F> Drop for DropGuard<T, F>
 where
@@ -146,7 +146,7 @@ where
     }
 }
 
-#[stable(feature = "drop_guard", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "drop_guard", since = "1.100.0")]
 impl<T, F> Debug for DropGuard<T, F>
 where
     T: Debug,

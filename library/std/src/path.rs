@@ -2770,7 +2770,7 @@ impl Path {
     /// assert_eq!(path.trim_prefix("/haha"), path);
     /// ```
     #[must_use = "this returns the remaining path as a new path, without modifying the original"]
-    #[stable(feature = "trim_prefix_suffix", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "trim_prefix_suffix", since = "1.100.0")]
     pub fn trim_prefix<P>(&self, base: P) -> &Path
     where
         P: AsRef<Path>,

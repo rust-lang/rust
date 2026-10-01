@@ -235,7 +235,7 @@ declare_features! (
     /// Allows checking whether or not the backend correctly supports unstable float types.
     (internal, cfg_target_has_reliable_f16_f128, "1.88.0", None),
     /// Allows checking whether or not the backend correctly supports the unstable `f16b` type.
-    (internal, cfg_target_has_reliable_f16b, "CURRENT_RUSTC_VERSION", None),
+    (internal, cfg_target_has_reliable_f16b, "1.100.0", None),
     /// Allows checking whether or not the target might have thread support.
     (internal, cfg_target_has_threads, "1.99.0", None),
     /// Allows identifying the `compiler_builtins` crate.
@@ -257,7 +257,7 @@ declare_features! (
     /// Allows `#[link(..., cfg(..))]`; perma-unstable per #37406
     (internal, link_cfg, "1.14.0", None),
     /// Allows using `#[link_name="__enzyme_*"]`.
-    (internal, link_enzyme_intrinsics, "CURRENT_RUSTC_VERSION", None),
+    (internal, link_enzyme_intrinsics, "1.100.0", None),
     /// Allows using `?Trait` trait bounds in more contexts.
     (internal, more_maybe_bounds, "1.82.0", None),
     /// Allow negative trait bounds. This is an internal-only feature for testing the trait solver!
@@ -273,7 +273,7 @@ declare_features! (
     /// Allows using the `#[stable]` and `#[unstable]` attributes.
     (internal, staged_api, "1.0.0", None),
     /// Perma-unstable, only used in the test suite for binders (`for<'a>`).
-    (internal, test_binder_constraints, "CURRENT_RUSTC_VERSION", None),
+    (internal, test_binder_constraints, "1.100.0", None),
     /// Perma-unstable, only used to test the `incomplete_features` lint.
     (incomplete, test_incomplete_feature, "1.96.0", None),
     /// Added for testing unstable lints; perma-unstable.
@@ -530,7 +530,7 @@ declare_features! (
     /// Allow using 16-bit (half precision) floating point numbers.
     (unstable, f16, "1.78.0", Some(116909)),
     /// Allow using bfloat16 floating point numbers.
-    (unstable, f16b, "CURRENT_RUSTC_VERSION", Some(160630)),
+    (unstable, f16b, "1.100.0", Some(160630)),
     /// Allows the use of `#[ffi_const]` on foreign functions.
     (unstable, ffi_const, "1.45.0", Some(58328)),
     /// Allows the use of `#[ffi_pure]` on foreign functions.
@@ -548,7 +548,7 @@ declare_features! (
     /// Support delegating implementation of functions to other already implemented functions.
     (incomplete, fn_delegation, "1.76.0", Some(118212)),
     /// Traits for function pointers and items
-    (unstable, fn_static, "CURRENT_RUSTC_VERSION", Some(148768)),
+    (unstable, fn_static, "1.100.0", Some(148768)),
     /// Allows using forced keywords `k#fn`.
     (unstable, forced_keywords, "CURRENT_RUSTC_VERSION", Some(153839)),
     /// Allows impls for the Freeze trait.
@@ -563,7 +563,7 @@ declare_features! (
     (incomplete, gca_macroless_args, "1.99.0", Some(159006)),
     /// Allows directly represented gca_const_items as the rhs of const items without the
     /// `gca!` macro.
-    (incomplete, gca_macroless_items, "CURRENT_RUSTC_VERSION", Some(162540)),
+    (incomplete, gca_macroless_items, "1.100.0", Some(162540)),
     /// Enables the generic const args MVP (paths to type const items and constructors
     /// for ADTs and primitives).
     (incomplete, gca_min_const_items, "1.84.0", Some(132980)),

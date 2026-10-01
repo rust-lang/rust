@@ -1,6 +1,4 @@
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(trim_prefix_suffix))]
-#![cfg_attr(not(bootstrap), feature(exitcode_exit_method))]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/",
     html_playground_url = "https://play.rust-lang.org/"
@@ -8,6 +6,7 @@
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
 #![feature(deref_patterns)]
+#![feature(exitcode_exit_method)]
 #![feature(file_buffered)]
 #![feature(formatting_options)]
 #![feature(iter_intersperse)]

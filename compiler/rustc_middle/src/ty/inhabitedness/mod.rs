@@ -5,7 +5,6 @@
 //!
 //! # Example
 //! ```rust
-#![cfg_attr(bootstrap, doc = "#![feature(never_type)]")]
 //! mod a {
 //!     pub mod b {
 //!         pub struct SecretlyUninhabited {
@@ -175,7 +174,6 @@ impl<'tcx> Ty<'tcx> {
     ///
     /// # Example
     /// ```
-    #[cfg_attr(bootstrap, doc = "#![feature(never_type)]")]
     /// # fn main() {}
     /// enum Void {}
     /// mod a {
