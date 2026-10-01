@@ -88,22 +88,6 @@ impl SingleAttributeParser for RustcMustImplementOneOfParser {
     }
 }
 
-pub(crate) struct RustcNeverReturnsNullPtrParser;
-
-impl NoArgsAttributeParser for RustcNeverReturnsNullPtrParser {
-    const PATH: &[Symbol] = &[sym::rustc_never_returns_null_ptr];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::Fn),
-        Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
-        Allow(Target::Method(MethodKind::Trait { body: true })),
-        Allow(Target::Method(MethodKind::TraitImpl)),
-    ]);
-    const STABILITY: AttributeStability = unstable!(rustc_attrs);
-
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNeverReturnsNullPtr;
-}
-
 pub(crate) struct RustcPanicsWhenZeroParser;
 
 impl NoArgsAttributeParser for RustcPanicsWhenZeroParser {

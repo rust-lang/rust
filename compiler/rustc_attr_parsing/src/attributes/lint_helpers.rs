@@ -18,6 +18,22 @@ impl NoArgsAttributeParser for LintAsPtrParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::LintAsPtr;
 }
 
+pub(crate) struct LintNeverReturnsNullPtrParser;
+
+impl NoArgsAttributeParser for LintNeverReturnsNullPtrParser {
+    const PATH: &[Symbol] = &[sym::lint, sym::never_returns_null_ptr];
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::LintNeverReturnsNullPtr;
+}
+
 pub(crate) struct RustcPubTransparentParser;
 impl NoArgsAttributeParser for RustcPubTransparentParser {
     const PATH: &[Symbol] = &[sym::rustc_pub_transparent];

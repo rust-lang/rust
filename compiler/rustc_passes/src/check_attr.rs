@@ -268,6 +268,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::LinkOrdinal { .. } => (),
             AttributeKind::LinkSection { .. } => (),
             AttributeKind::LintAsPtr => (),
+            AttributeKind::LintNeverReturnsNullPtr => (),
             AttributeKind::LoopMatch(..) => (),
             AttributeKind::MacroEscape => (),
             AttributeKind::MacroExport { .. } => (),
@@ -363,7 +364,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcMain => (),
             AttributeKind::RustcMir(_) => (),
             AttributeKind::RustcMustMatchExhaustively(..) => (),
-            AttributeKind::RustcNeverReturnsNullPtr => (),
             AttributeKind::RustcNoImplicitAutorefs => (),
             AttributeKind::RustcNoImplicitBounds => (),
             AttributeKind::RustcNoMirInline => (),
@@ -387,7 +387,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcShouldNotBeCalledOnConstItems => (),
             AttributeKind::RustcSimdMonomorphizeLaneLimit(..) => (),
             AttributeKind::RustcSkipDuringMethodDispatch { .. } => (),
-
             AttributeKind::RustcSpecializationTrait => (),
             AttributeKind::RustcStdInternalSymbol => (),
             AttributeKind::RustcStrictCoherence(..) => (),
