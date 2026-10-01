@@ -952,8 +952,8 @@ impl<'a> Iterator for DirBuffIter<'a> {
             // While this is guaranteed to be aligned in documentation for
             // https://docs.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_id_both_dir_info
             // it does not seem that reality is so kind, and assuming this
-            // caused crashes in some cases (https://github.com/rust-lang/rust/issues/104530)
-            // presumably, this can be blamed on buggy filesystem drivers, but who knows.
+            // caused crashes in some cases (https://github.com/rust-lang/rust/issues/104530).
+            // Presumably, this can be blamed on buggy filesystem drivers, but who knows.
             let next_entry = (&raw const (*info).NextEntryOffset).read_unaligned() as usize;
             let length = (&raw const (*info).FileNameLength).read_unaligned() as usize;
             let attrs = (&raw const (*info).FileAttributes).read_unaligned();

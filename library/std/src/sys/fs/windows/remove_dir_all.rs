@@ -181,6 +181,10 @@ pub fn remove_dir_all_iterative(dir: File) -> Result<(), WinError> {
             let name = unicode_str!(&name);
             if is_directory {
                 let Some(subdir) = open_dir(&dir, name)? else { continue };
+                // Continue with new subdirectory. `restart` does not matter since it's a new
+                // directory handle anyway. We skip the remaining elements in `buffer`. When the
+                // subdirectory is done, we will restart iterating `dir`, so we will see those
+                // elements again.
                 dirlist.push(dir);
                 dirlist.push(subdir);
                 continue 'outer;
@@ -192,6 +196,7 @@ pub fn remove_dir_all_iterative(dir: File) -> Result<(), WinError> {
             }
         }
         if more_data {
+            // Continue outer loop with this directory.
             dirlist.push(dir);
             restart = false;
         } else {
@@ -199,6 +204,7 @@ pub fn remove_dir_all_iterative(dir: File) -> Result<(), WinError> {
             // need to wait some time for files to be removed from the filesystem.
             let name = unicode_str!("");
             retry(|| delete(&dir, name), WinError::DIR_NOT_EMPTY)?;
+            // We are done with a subdirectory. Continue by restarting in the parent directory.
             restart = true;
         }
     }
