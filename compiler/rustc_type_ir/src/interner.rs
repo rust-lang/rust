@@ -22,7 +22,8 @@ use crate::solve::{
 use crate::visit::{Flags, TypeVisitable};
 use crate::{
     self as ty, AliasTermKind, BoundRegion, BoundVar, CanonicalParamEnvCache, Const, ConstKind,
-    DebruijnIndex, Region, RegionKind, RegionVid, TraitRef, WithCachedTypeInfo, search_graph,
+    DebruijnIndex, Region, RegionKind, RegionVid, TraitRef, ValTreeKind, WithCachedTypeInfo,
+    search_graph,
 };
 
 /// The central trait in the shared abstraction layer, specifying all implementation-specific
@@ -117,6 +118,7 @@ pub trait Interner:
     type Term: Term<Self>;
 
     type BoundVarKinds: BoundVarKinds<Self>;
+    type TypingEnv: TypingEnv<Self>;
 
     type PredefinedOpaques: Copy
         + Debug
@@ -207,7 +209,8 @@ pub trait Interner:
     type ValueConst: ValueConst<Self> + TypeFoldable<Self> + Display;
     type ExprConst: ExprConst<Self>;
     type ValTree: Copy + Debug + Hash + Eq + IntoKind<Kind = ty::ValTreeKind<Self>>;
-    type ScalarInt: Copy + Debug + Hash + Eq;
+    type ScalarInt: ScalarInt<Self>;
+    type Scalar: Copy + Debug + Hash + Eq;
 
     // Kinds of regions
     /// (2026/08/13)
@@ -557,8 +560,14 @@ pub trait Interner:
 
     fn intern_canonical_bound(self, var: BoundVar) -> Region<Self>;
 
+    fn intern_valtree(self, valtree_kind: ValTreeKind<Self>) -> Self::ValTree;
+
     type CanonicalInput: Copy + Debug + Hash + Eq + Deref<Target = CanonicalInputData<Self>>;
     fn mk_canonical_input(self, data: CanonicalInputData<Self>) -> Self::CanonicalInput;
+
+    fn const_zst(self) -> Self::ValTree;
+
+    fn const_from_bits(self, bits: u128, typing_env: Self::TypingEnv, ty: Self::Ty) -> Const<Self>;
 }
 
 macro_rules! declare_lift_into {

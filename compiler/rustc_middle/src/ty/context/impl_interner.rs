@@ -18,6 +18,7 @@ use rustc_type_ir::{
 
 use crate::dep_graph::{DepKind, DepNodeIndex};
 use crate::infer::canonical::CanonicalVarKinds;
+use crate::mir::interpret::Scalar;
 use crate::traits::cache::WithDepNode;
 use crate::traits::solve::{
     self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, QueryResult, inspect,
@@ -66,6 +67,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type GenericArg = ty::GenericArg<'tcx>;
     type Term = ty::Term<'tcx>;
     type BoundVarKinds = &'tcx List<ty::BoundVariableKind<'tcx>>;
+    type TypingEnv = ty::TypingEnv<'tcx>;
 
     type PredefinedOpaques = solve::PredefinedOpaques<'tcx>;
 
@@ -116,6 +118,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type ExprConst = ty::Expr<'tcx>;
     type ValTree = ty::ValTree<'tcx>;
     type ScalarInt = ty::ScalarInt;
+    type Scalar = Scalar;
     type InternedRegionKind = Interned<'tcx, ty::RegionKind<'tcx>>;
     type InternedConstKind = Interned<'tcx, WithCachedTypeInfo<ty::ConstKind<'tcx>>>;
     type EarlyParamRegion = ty::EarlyParamRegion;
@@ -738,6 +741,29 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                 BoundRegion { var, kind: ty::BoundRegionKind::Anon },
             ))
         }
+    }
+
+    fn intern_valtree(self, valtree_kind: ty::ValTreeKind<TyCtxt<'tcx>>) -> ty::ValTree<'tcx> {
+        self.intern_valtree(valtree_kind)
+    }
+
+    fn const_zst(self) -> ty::ValTree<'tcx> {
+        self.consts.valtree_zst
+    }
+
+    fn const_from_bits(
+        self,
+        bits: u128,
+        typing_env: ty::TypingEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> ty::Const<'tcx> {
+        let size = self
+            .layout_of(typing_env.as_query_input(ty))
+            .unwrap_or_else(|e| panic!("could not compute layout for {ty:?}: {e:?}"))
+            .size;
+        let scalar_int = ty::ScalarInt::try_from_uint(bits, size).unwrap();
+        let valtree = self.intern_valtree(ty::ValTreeKind::Leaf(scalar_int));
+        ty::Const::new_value(self, valtree, ty)
     }
 }
 
