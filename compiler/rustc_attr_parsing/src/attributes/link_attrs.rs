@@ -263,8 +263,9 @@ impl CombineAttributeParser for LinkParser {
 
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         match cx.ast_target {
-            rustc_attr_ir::target::AstTarget::Item(ast_item)
-                if let ItemKind::ForeignMod(fm) = &ast_item =>
+            rustc_attr_ir::target::AstTarget::ForeignMod(ast_item)
+                if let ItemKind::ForeignMod(fm) =
+                    &ast_item.expect("missing AST target item for astTarget::ForeignMod") =>
             {
                 let abi = fm.abi.map_or(ExternAbi::FALLBACK, |abi| {
                 abi.symbol_unescaped.as_str().parse().unwrap_or_else(|_| {

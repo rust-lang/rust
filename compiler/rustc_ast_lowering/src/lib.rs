@@ -760,7 +760,7 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
                 &c.attrs,
                 c.spans.inner_span,
                 Target::Crate,
-                AstTarget::Crate(c),
+                AstTarget::Crate(Some(c)),
             );
             hir::OwnerNode::Crate(module)
         }),
@@ -2294,7 +2294,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             param_attrs,
             param_span,
             Target::from(&param_hir),
-            AstTarget::GenericParam(param),
+            AstTarget::GenericParam(Some(param)),
         );
         param_hir
     }
@@ -2906,7 +2906,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         &f.attrs,
                         f.span,
                         Target::ExprField,
-                        AstTarget::Expr(expr),
+                        AstTarget::Expression(Some(expr)),
                     );
                     let expr = self.lower_expr_to_const_arg_direct(&f.expr, None);
 
