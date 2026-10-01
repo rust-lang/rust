@@ -504,3 +504,7 @@ pub mod __default_lib_allocator {
         }
     }
 }
+
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+#[unstable_feature_bound(allocator_ext)]
+impl AllocatorNightly for System {}
