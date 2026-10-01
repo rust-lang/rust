@@ -183,7 +183,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
                 return;
             }
 
-            let explain_lint = |diag: &mut Diag<'_, ()>, ctxt: SyntaxContext| {
+            let explain_lint = |diag: &mut Diag<'_>, ctxt: SyntaxContext| {
                 // Point out the largest individual contribution to this size, because
                 // it is the most likely to be unintentionally large.
                 if let Some((local, size)) = sizes_of_locals.iter().max_by_key(|&(_, size)| size)

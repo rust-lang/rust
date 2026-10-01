@@ -89,7 +89,7 @@ error: usage of wildcard import
   --> tests/ui/wildcard_imports_2021.rs:197:9
    |
 LL |     use crate:: in_fn_test::  * ;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `crate:: in_fn_test::exported`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `crate:: in_fn_test::exported`
 
 error: usage of wildcard import
   --> tests/ui/wildcard_imports_2021.rs:199:9

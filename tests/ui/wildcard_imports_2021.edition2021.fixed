@@ -194,7 +194,7 @@ fn test_reexported() {
 
 #[rustfmt::skip]
 fn test_weird_formatting() {
-    use crate:: in_fn_test::exported;
+    use crate:: in_fn_test::exported ;
     //~^ wildcard_imports
     use crate:: fn_mod::foo;
 

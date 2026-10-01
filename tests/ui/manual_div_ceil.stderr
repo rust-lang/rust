@@ -34,24 +34,24 @@ LL |     let _ = (7_i32 as u32 + (4 - 1)) / 4;
 error: manually reimplementing `div_ceil`
   --> tests/ui/manual_div_ceil.rs:6:17
    |
+LL | macro_rules! y {
+...
 LL |         let _ = (x + 7) / 8;
    |                 ^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(8)`
 ...
 LL |     y!();
    |     ---- in this macro invocation
-   |
-   = note: this error originates in the macro `y` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: manually reimplementing `div_ceil`
   --> tests/ui/manual_div_ceil.rs:8:17
    |
+LL | macro_rules! y {
+...
 LL |         let _ = (7 + x) / 8;
    |                 ^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(8)`
 ...
 LL |     y!();
    |     ---- in this macro invocation
-   |
-   = note: this error originates in the macro `y` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: manually reimplementing `div_ceil`
   --> tests/ui/manual_div_ceil.rs:62:13

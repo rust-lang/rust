@@ -21,6 +21,7 @@ use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
+use rustc_middle::ty::consts::ConstExt as _;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf as _, TyAndLayout};
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, BoundVarIndexKind, FnSig, GenericArg,

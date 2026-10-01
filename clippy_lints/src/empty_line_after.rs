@@ -431,7 +431,7 @@ impl EmptyLineAfter {
 
     /// If the node the attributes/docs apply to is the first in the module/crate suggest converting
     /// them to inner attributes/docs
-    fn suggest_inner(&self, diag: &mut Diag<'_, ()>, kind: StopKind, gaps: &[Gap<'_>], id: NodeId) {
+    fn suggest_inner(&self, diag: &mut Diag<'_>, kind: StopKind, gaps: &[Gap<'_>], id: NodeId) {
         if let Some(parent) = self.items.iter().rev().nth(1)
             && matches!(parent.kind, ItemKindDescr::Module | ItemKindDescr::Crate)
             && parent.mod_items == Some(id)

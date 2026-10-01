@@ -11,6 +11,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::walk_block;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, Pat, PatKind, StmtKind};
 use rustc_lint::LateContext;
+use rustc_middle::ty::consts::ConstExt as _;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::sym;
 use std::fmt::Display;

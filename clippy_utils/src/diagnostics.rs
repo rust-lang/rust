@@ -16,7 +16,7 @@ use rustc_lint::{LateContext, Lint, LintContext};
 use rustc_span::Span;
 use std::env;
 
-fn docs_link(diag: &mut Diag<'_, ()>, lint: &'static Lint) {
+fn docs_link(diag: &mut Diag<'_>, lint: &'static Lint) {
     if env::var("CLIPPY_DISABLE_DOCS_LINKS").is_err()
         && let Some(lint) = lint.name_lower().strip_prefix("clippy::")
     {
@@ -43,7 +43,7 @@ fn docs_link(diag: &mut Diag<'_, ()>, lint: &'static Lint) {
 ///
 /// This function makes sure we also validate them in debug clippy builds.
 #[cfg(debug_assertions)]
-fn validate_diag<G>(diag: &Diag<'_, G>) {
+fn validate_diag(diag: &Diag<'_>) {
     let suggestions = match &diag.suggestions {
         Suggestions::Enabled(suggs) => &**suggs,
         Suggestions::Sealed(suggs) => &**suggs,
@@ -238,12 +238,12 @@ where
     C: LintContext,
     S: Into<MultiSpan>,
     M: Into<DiagMessage>,
-    F: FnOnce(&mut Diag<'_, ()>),
+    F: FnOnce(&mut Diag<'_>),
 {
-    struct ClippyDiag<F: FnOnce(&mut Diag<'_, ()>)>(F);
+    struct ClippyDiag<F: FnOnce(&mut Diag<'_>)>(F);
 
-    impl<'a, F: FnOnce(&mut Diag<'_, ()>)> Diagnostic<'a, ()> for ClippyDiag<F> {
-        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+    impl<'a, F: FnOnce(&mut Diag<'_>)> Diagnostic<'a> for ClippyDiag<F> {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
             let mut lint = Diag::new(dcx, level, "");
             (self.0)(&mut lint);
             lint
@@ -255,7 +255,7 @@ where
     cx.emit_span_lint(
         lint,
         sp.clone(),
-        ClippyDiag(|diag: &mut Diag<'_, ()>| {
+        ClippyDiag(|diag: &mut Diag<'_>| {
             diag.primary_message(msg);
             diag.span(sp);
             f(diag);
@@ -327,7 +327,7 @@ pub fn span_lint_hir_and_then(
     hir_id: HirId,
     sp: impl Into<MultiSpan>,
     msg: impl Into<DiagMessage>,
-    f: impl FnOnce(&mut Diag<'_, ()>),
+    f: impl FnOnce(&mut Diag<'_>),
 ) {
     #[expect(clippy::disallowed_methods)]
     cx.tcx.emit_node_span_lint(

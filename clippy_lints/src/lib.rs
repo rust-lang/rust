@@ -8,9 +8,9 @@
 #![feature(macro_metavar_expr)]
 #![feature(macro_metavar_expr_concat)]
 #![cfg_attr(bootstrap, feature(never_type))]
+#![cfg_attr(bootstrap, feature(unwrap_infallible))]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
-#![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
 #![expect(clippy::literal_string_with_formatting_args, clippy::must_use_candidate)]
 #![warn(
