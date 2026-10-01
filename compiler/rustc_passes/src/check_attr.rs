@@ -1542,8 +1542,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         };
 
         let mut asserted_params = ThinVec::default();
+
         for ident in map.keys() {
-            let Some(param) = generics.get_named(ident.name) else {
+            let Some((param_ident, param)) = generics
+                .params
+                .iter()
+                .map(|param| (param.name.ident().without_first_quote(), param))
+                .find(|(param_ident, _)| ident == param_ident)
+            else {
                 self.tcx.dcx().emit_err(diagnostics::RustcAssertVarianceInvalid {
                     span: ident.span,
                     invalid_ident: *ident,
@@ -1551,18 +1557,23 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 });
                 continue;
             };
-            asserted_params.push(param);
+            asserted_params.push((param_ident, param));
         }
 
         let variances = self.tcx.variances_of(hir_id.expect_owner().to_def_id());
-        let asserts = generics.params.iter().zip(variances.iter()).filter(|(param, _)| {
-            asserted_params.iter().any(|assert_param| assert_param.def_id == param.def_id)
-        });
 
-        for (param, variance) in asserts {
-            let ident = param.name.ident();
+        // A lot of the finicky stuff here is just keeping the ident without first quote we got
+        // earlier around to avoid the cost of re-obtaining it
+        let asserts =
+            generics.params.iter().zip(variances.iter()).filter_map(|(param, variance)| {
+                asserted_params
+                    .iter()
+                    .find(|(_, assert_param)| assert_param.def_id == param.def_id)
+                    .map(|(assert_ident, _)| (param, assert_ident, variance))
+            });
 
-            match (map.get(&ident), variance) {
+        for (param, ident, variance) in asserts {
+            match (map.get(ident), variance) {
                 (Some((_, RustcAssertVarianceKind::Covariant)), Variance::Covariant) => {}
                 (Some((_, RustcAssertVarianceKind::Invariant)), Variance::Invariant) => {}
                 (Some((_, RustcAssertVarianceKind::Contravariant)), Variance::Contravariant) => {}
@@ -1588,7 +1599,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.tcx.dcx().emit_err(diagnostics::RustcAssertVarianceFailed {
                         span,
                         span_note,
-                        param_ident: ident,
+                        param_ident: param.name.ident(),
                         item_ident,
                         expected_variance,
                         actual_variance,
