@@ -346,7 +346,6 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // Internal attributes, Misc:
     // ==========================================================================
     sym::lang,
-    sym::rustc_as_ptr,
     sym::rustc_should_not_be_called_on_const_items,
     sym::rustc_pass_by_value,
     sym::rustc_never_returns_null_ptr,

@@ -951,6 +951,9 @@ pub enum AttributeKind {
     /// Represents `#[linkage]`.
     Linkage(Linkage, Span),
 
+    /// Represents `#[lint::as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
+    LintAsPtr,
+
     /// Represents `#[allow]`, `#[warn]`, `#[deny]`, `#[forbid]`, and `#[expect]`.
     LintCheck(ThinVec<LintCheck>),
 
@@ -1163,9 +1166,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_allow_lifetime_dependent_specialization]`.
     RustcAllowLifetimeDependentSpecialization,
-
-    /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
-    RustcAsPtr,
 
     /// Represents `#[rustc_assert_variance]`.
     RustcAssertVariance {
