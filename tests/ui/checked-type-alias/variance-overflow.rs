@@ -19,4 +19,15 @@ struct First<T>(Second);
 type Second = Second; // diverging free alias type
 //~^ ERROR overflow normalizing the type alias `Second`
 
+// The same applies when a diverging alias mentions a type parameter. The argument grows with
+// every step, so there is no repeated `(DefId, args)` pair to detect the divergence with.
+// Variance inference must stop at the recursion limit, and reporting the unused parameter
+// must not restart the expansion.
+type Diverging<T> = Diverging<(T,)>;
+//~^ ERROR overflow normalizing the type alias `Diverging<
+
+struct Wrap<T>(Diverging<T>);
+//~^ ERROR type parameter `T` is never used
+//~| ERROR overflow normalizing the type alias `Diverging<
+
 fn main() {}
