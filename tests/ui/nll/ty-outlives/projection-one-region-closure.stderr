@@ -24,6 +24,34 @@ LL | |     T: Anything<'b>,
    |
    = note: defining type: no_relationships_late::<'?1, T>
 
+note: external requirements
+  --> $DIR/projection-one-region-closure.rs:45:29
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^
+   |
+   = note: defining type: no_relationships_late::<'?1, T>::{closure#0} with closure args [
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'?2 ()>, T)),
+               (),
+           ]
+   = note: late-bound region is '?3
+   = note: number of external vids: 4
+   = note: where T: '?2
+   = note: where '?1: '?2
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: no external requirements
+  --> $DIR/projection-one-region-closure.rs:41:1
+   |
+LL | / fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
+LL | | where
+LL | |     T: Anything<'b>,
+   | |____________________^
+   |
+   = note: defining type: no_relationships_late::<'?1, T>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error: lifetime may not live long enough
   --> $DIR/projection-one-region-closure.rs:45:5
    |
@@ -79,6 +107,34 @@ LL | |     'a: 'a,
    | |___________^
    |
    = note: defining type: no_relationships_early::<'?1, '?2, T>
+
+note: external requirements
+  --> $DIR/projection-one-region-closure.rs:56:29
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^
+   |
+   = note: defining type: no_relationships_early::<'?1, '?2, T>::{closure#0} with closure args [
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'?3 ()>, T)),
+               (),
+           ]
+   = note: number of external vids: 4
+   = note: where T: '?3
+   = note: where '?2: '?3
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: no external requirements
+  --> $DIR/projection-one-region-closure.rs:51:1
+   |
+LL | / fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
+LL | | where
+LL | |     T: Anything<'b>,
+LL | |     'a: 'a,
+   | |___________^
+   |
+   = note: defining type: no_relationships_early::<'?1, '?2, T>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: lifetime may not live long enough
   --> $DIR/projection-one-region-closure.rs:56:5

@@ -29,6 +29,7 @@ struct FlexZeroSlice {
     data: [u8],
     //~^ ERROR cannot move
     //~| ERROR cannot move
+    //~| ERROR cannot move
 }
 
 #[derive(Debug)]
@@ -37,6 +38,7 @@ struct WithStr {
     width: u8,
     data: str,
     //~^ ERROR cannot move
+    //~| ERROR cannot move
     //~| ERROR cannot move
 }
 
