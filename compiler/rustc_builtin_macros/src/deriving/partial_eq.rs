@@ -1,4 +1,4 @@
-use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, Mutability, Safety};
+use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, Mutability};
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{Span, kw, sym};
 use thin_vec::thin_vec;
@@ -29,8 +29,7 @@ pub(crate) fn expand_deriving_partial_eq(
         supports_unions: true,
         methods: SmallVec::new(),
         is_const: false,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
     structural_trait_def.expand(cx, item, push);
 
@@ -51,14 +50,12 @@ pub(crate) fn expand_deriving_partial_eq(
     let trait_def = TraitDef {
         span,
         path: path_std!(cx, span, cmp::PartialEq),
-        skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: SmallVec::new(),
         supports_unions: false,
         methods,
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
     trait_def.expand(cx, item, push)
 }

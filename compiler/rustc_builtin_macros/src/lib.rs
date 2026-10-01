@@ -4,6 +4,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![feature(decl_macro)]
+#![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]
 #![feature(proc_macro_internals)]

@@ -1,5 +1,5 @@
 use rustc_ast as ast;
-use rustc_ast::{ItemKind, Safety, VariantData};
+use rustc_ast::{ItemKind, VariantData};
 use rustc_errors::MultiSpan;
 use rustc_expand::base::{DummyResult, ExtCtxt};
 use rustc_span::{Ident, Span, kw, sym};
@@ -116,8 +116,7 @@ pub(crate) fn expand_deriving_from(
             }),
         }],
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
 
     from_trait_def.expand(cx, item, push);

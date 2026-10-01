@@ -1,4 +1,3 @@
-use rustc_ast::Safety;
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{Span, sym};
 use thin_vec::thin_vec;
@@ -19,7 +18,6 @@ pub(crate) fn expand_deriving_ord(
     let trait_def = TraitDef {
         span,
         path: path_std!(cx, span, cmp::Ord),
-        skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: SmallVec::new(),
         supports_unions: false,
@@ -40,8 +38,7 @@ pub(crate) fn expand_deriving_ord(
             )),
         }],
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
 
     trait_def.expand(cx, item, push)

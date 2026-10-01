@@ -1,4 +1,4 @@
-use rustc_ast::{Mutability, Safety};
+use rustc_ast::Mutability;
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -31,7 +31,6 @@ pub(crate) fn expand_deriving_hash(
     let hash_trait_def = TraitDef {
         span,
         path,
-        skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: SmallVec::new(),
         supports_unions: false,
@@ -47,8 +46,7 @@ pub(crate) fn expand_deriving_hash(
             combine_substructure: combine_substructure(hash_substructure),
         }],
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
 
     hash_trait_def.expand(cx, item, push);

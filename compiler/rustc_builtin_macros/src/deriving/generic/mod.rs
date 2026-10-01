@@ -202,7 +202,7 @@ pub(crate) struct TraitDef<'a> {
     pub path: ast::Path,
 
     /// Whether to skip adding the current trait as a bound to the type parameters of the type.
-    pub skip_path_as_bound: bool,
+    pub skip_path_as_bound: bool = false,
 
     /// Whether `Copy` is needed as an additional bound on type parameters in a packed struct.
     pub needs_copy_as_bound_if_packed: bool,
@@ -219,10 +219,10 @@ pub(crate) struct TraitDef<'a> {
     pub is_const: bool,
 
     /// The safety of the `impl`.
-    pub safety: Safety,
+    pub safety: Safety = Safety::Default,
 
     /// Whether the added `impl` should appear in rustdoc output.
-    pub document: bool,
+    pub document: bool = true,
 }
 
 pub(crate) struct MethodDef<'a> {
