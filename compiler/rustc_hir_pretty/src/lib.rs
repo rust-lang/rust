@@ -1680,6 +1680,7 @@ impl<'a> State<'a> {
                 kind: _,
                 def_id: _,
                 explicit_captures: _,
+                captured_caller_location: _,
             }) => {
                 self.print_closure_binder(binder, bound_generic_params);
                 self.print_constness(constness);
