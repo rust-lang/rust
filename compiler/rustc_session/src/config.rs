@@ -590,6 +590,7 @@ impl FmtDebug {
 pub enum TargetStage {
     End,
     Analysis,
+    NameResolution,
 }
 
 #[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]

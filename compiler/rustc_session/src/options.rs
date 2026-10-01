@@ -1151,8 +1151,9 @@ pub mod parse {
 
     pub(crate) fn parse_target_stage(opt: &mut TargetStage, v: Option<&str>) -> bool {
         *opt = match v {
-            Some("analysis") => TargetStage::Analysis,
             Some("end") => TargetStage::End,
+            Some("analysis") => TargetStage::Analysis,
+            Some("nameres") => TargetStage::NameResolution,
             _ => return false,
         };
 
