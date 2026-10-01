@@ -388,6 +388,11 @@ fn params<'db>(
         cov_mark::hit!(no_call_parens_if_fn_ptr_needed);
         return None;
     }
+    // FIXME: Currently difficult to carefully check signatures in fn-bounds
+    if ctx.expected_func.is_some() && !func.ret_type(ctx.db).impls_fnonce(ctx.db) {
+        cov_mark::hit!(no_call_parens_if_ty_with_fn_bounds);
+        return None;
+    }
 
     let self_param = if has_dot_receiver || matches!(func_kind, FuncKind::Method(_, Some(_))) {
         None

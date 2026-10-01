@@ -25,9 +25,9 @@ use crate::{
     completions::postfix::{is_in_condition, is_in_value},
     context::{
         AttrCtx, BreakableKind, COMPLETION_MARKER, CompletionAnalysis, DotAccess, DotAccessExprCtx,
-        DotAccessKind, ItemListKind, LifetimeContext, LifetimeKind, NameContext, NameKind,
-        NameRefContext, NameRefKind, ParamContext, ParamKind, PathCompletionCtx, PathExprCtx,
-        PathKind, PatternContext, PatternRefutability, Qualified, QualifierCtx,
+        DotAccessKind, ExpectedFunction, ItemListKind, LifetimeContext, LifetimeKind, NameContext,
+        NameKind, NameRefContext, NameRefKind, ParamContext, ParamKind, PathCompletionCtx,
+        PathExprCtx, PathKind, PatternContext, PatternRefutability, Qualified, QualifierCtx,
         TypeAscriptionTarget, TypeLocation,
     },
 };
@@ -44,9 +44,11 @@ struct ExpansionResult {
     derive_ctx: Option<(SyntaxNode, SyntaxNode, TextSize, ast::Attr)>,
 }
 
+type ExpectedInfo<'db> = (Option<Type<'db>>, Option<NameOrNameRef>, Option<ExpectedFunction>);
+
 pub(super) struct AnalysisResult<'db> {
     pub(super) analysis: CompletionAnalysis<'db>,
-    pub(super) expected: (Option<Type<'db>>, Option<ast::NameOrNameRef>),
+    pub(super) expected: ExpectedInfo<'db>,
     pub(super) qualifier_ctx: QualifierCtx,
     /// the original token of the expanded file
     pub(super) token: SyntaxToken,
@@ -444,8 +446,7 @@ fn analyze<'db>(
     expansion_result: ExpansionResult,
     original_token: &SyntaxToken,
     self_token: &SyntaxToken,
-) -> Option<(CompletionAnalysis<'db>, (Option<Type<'db>>, Option<ast::NameOrNameRef>), QualifierCtx)>
-{
+) -> Option<(CompletionAnalysis<'db>, ExpectedInfo<'db>, QualifierCtx)> {
     let _p = tracing::info_span!("CompletionContext::analyze").entered();
     let ExpansionResult {
         original_file,
@@ -487,7 +488,7 @@ fn analyze<'db>(
             }
             return Some((
                 CompletionAnalysis::NameRef(nameref_ctx),
-                (None, None),
+                (None, None, None),
                 QualifierCtx::default(),
             ));
         }
@@ -543,7 +544,7 @@ fn analyze<'db>(
                 return None;
             }
         };
-        return Some((analysis, (None, None), QualifierCtx::default()));
+        return Some((analysis, (None, None, None), QualifierCtx::default()));
     };
 
     let expected = expected_type_and_name(sema, self_token, &name_like);
@@ -592,11 +593,11 @@ fn expected_type_and_name<'db>(
     sema: &Semantics<'db, RootDatabase>,
     self_token: &SyntaxToken,
     name_like: &ast::NameLike,
-) -> (Option<Type<'db>>, Option<NameOrNameRef>) {
+) -> ExpectedInfo<'db> {
     let token = prev_special_biased_token_at_trivia(self_token.clone());
     let mut node = match token.parent() {
         Some(it) => it,
-        None => return (None, None),
+        None => return (None, None, None),
     };
 
     let strip_refs = |mut ty: Type<'db>| match name_like {
@@ -651,6 +652,7 @@ fn expected_type_and_name<'db>(
     };
 
     let mut generic_def = None;
+    let mut original_ty = None;
     let mut rebase_ty = {
         let node = node.clone();
         move |ty: hir::Type<'db>| {
@@ -711,6 +713,7 @@ fn expected_type_and_name<'db>(
                         token.clone(),
                     ).map(|ap| {
                         let name = ap.ident().map(NameOrNameRef::Name);
+                        original_ty.get_or_insert(ap.original.map(|it| it.ty().clone()));
                         (Some(ap.ty), name)
                     })
                     .unwrap_or((None, None))
@@ -878,7 +881,21 @@ fn expected_type_and_name<'db>(
             }
         };
     };
-    (ty.map(strip_refs), name)
+    // FIXME: Heuristic hack for PathExpr in ArgList
+    let expected_func = original_ty.flatten().and_then(|ty| {
+        let is_direct_arg = token
+            .parent()
+            .filter(|it| ast::NameLike::can_cast(it.kind()))
+            .into_iter()
+            .flat_map(|it| it.ancestors().skip(1))
+            .find(|it| {
+                !Either::<Either<ast::PathSegment, ast::Path>, ast::PathExpr>::can_cast(it.kind())
+            })
+            == Some(node);
+        // FIXME: Store expected fn-sig in ExpectedFunction
+        (is_direct_arg && ty.impls_fnonce(sema.db)).then_some(ExpectedFunction)
+    });
+    (ty.map(strip_refs), name, expected_func)
 }
 
 fn classify_lifetime(

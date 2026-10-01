@@ -5858,7 +5858,7 @@ impl<'db> Callable<'db> {
         }
     }
 
-    fn as_function(&self) -> Option<Function> {
+    pub fn as_function(&self) -> Option<Function> {
         match self.callee {
             Callee::Def(CallableDefId::FunctionId(it)) => Some(it.into()),
             Callee::BuiltinDeriveImplMethod { method, impl_ } => {
