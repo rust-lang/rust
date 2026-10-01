@@ -1,4 +1,5 @@
 //@ edition:2015..2021
+#![feature(core_intrinsics)]
 #![allow(non_fmt_panics)]
 #![crate_type = "lib"]
 
@@ -39,3 +40,7 @@ const W_CORE: () = core::panic!(MSG);
 
 const W2_CORE: () = core::panic!("{}", MSG);
 //~^ ERROR evaluation panicked
+
+// FIXME(abort_immediate): replace with the non-intrinsic version once available
+const ABORT: () = core::intrinsics::abort();
+//~^ ERROR the program aborted execution
