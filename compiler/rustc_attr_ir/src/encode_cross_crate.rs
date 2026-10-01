@@ -58,6 +58,7 @@ impl AttributeKind {
             LinkOrdinal { .. } => No,
             LinkSection { .. } => Yes, // Needed for rustdoc
             Linkage(..) => No,
+            LintAsPtr => Yes,
             LintCheck(..) => No,
             LoopMatch(..) => No,
             MacroEscape => No,
@@ -109,7 +110,6 @@ impl AttributeKind {
             RustcAllowConstFnUnstable(..) => No,
             RustcAllowIncoherentImpl(..) => No,
             RustcAllowLifetimeDependentSpecialization => No,
-            RustcAsPtr => Yes,
             RustcAssertVariance { .. } => No,
             RustcAutodiff(..) => Yes,
             RustcBodyStability { .. } => No,
@@ -276,6 +276,7 @@ impl AttributeKind {
                 | crate::Linkage::WeakAny
                 | crate::Linkage::WeakODR => true,
             },
+            LintAsPtr => false,
             LintCheck(_) => false,
             LoopMatch(..) => false,
             MacroEscape => false,
@@ -327,7 +328,6 @@ impl AttributeKind {
             RustcAllowConstFnUnstable(..) => false,
             RustcAllowIncoherentImpl(..) => false,
             RustcAllowLifetimeDependentSpecialization => false,
-            RustcAsPtr => false,
             RustcAssertVariance { .. } => false,
             RustcAutodiff(..) => false,
             RustcBodyStability { .. } => false,
