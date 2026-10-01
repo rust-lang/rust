@@ -7,59 +7,51 @@ fn drop_generic(_1: *mut Box<T>) -> () {
         scope 2 (inlined std::ptr::drop_glue::<Box<T>> - shim(Some(Box<T>))) {
             scope 3 (inlined <Box<T> as Drop>::drop) {
                 let _2: std::ptr::NonNull<T>;
+                let mut _4: std::ptr::NonNull<u8>;
                 let _5: ();
                 scope 4 {
                     scope 5 {
-                        scope 18 (inlined Layout::size) {
+                        scope 17 (inlined Layout::size) {
                         }
-                        scope 19 (inlined std::ptr::Unique::<T>::cast::<u8>) {
-                            let mut _4: std::ptr::NonNull<u8>;
-                            scope 20 (inlined NonNull::<T>::cast::<u8>) {
-                                scope 21 (inlined NonNull::<T>::as_ptr) {
-                                }
+                        scope 18 (inlined NonNull::<T>::cast::<u8>) {
+                            scope 19 (inlined NonNull::<T>::as_ptr) {
                             }
                         }
-                        scope 22 (inlined <NonNull<u8> as From<std::ptr::Unique<u8>>>::from) {
-                            scope 23 (inlined std::ptr::Unique::<u8>::as_non_null_ptr) {
-                            }
-                        }
-                        scope 24 (inlined <std::alloc::Global as Allocator>::deallocate) {
-                            scope 25 (inlined std::alloc::Global::deallocate_impl) {
-                                scope 26 (inlined std::alloc::Global::deallocate_impl_runtime) {
-                                    scope 27 (inlined Layout::size) {
+                        scope 20 (inlined <std::alloc::Global as Allocator>::deallocate) {
+                            scope 21 (inlined std::alloc::Global::deallocate_impl) {
+                                scope 22 (inlined std::alloc::Global::deallocate_impl_runtime) {
+                                    scope 23 (inlined Layout::size) {
                                     }
-                                    scope 28 (inlined alloc::alloc::dealloc_nonnull) {
-                                        scope 29 (inlined Layout::size) {
+                                    scope 24 (inlined alloc::alloc::dealloc_nonnull) {
+                                        scope 25 (inlined Layout::size) {
                                         }
-                                        scope 30 (inlined Layout::alignment) {
+                                        scope 26 (inlined Layout::alignment) {
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                    scope 6 (inlined std::ptr::Unique::<T>::as_ptr) {
-                        scope 7 (inlined NonNull::<T>::as_ptr) {
-                        }
+                    scope 6 (inlined NonNull::<T>::as_ptr) {
                     }
-                    scope 8 (inlined Layout::for_value_raw::<T>) {
+                    scope 7 (inlined Layout::for_value_raw::<T>) {
                         let mut _3: std::mem::Alignment;
-                        scope 9 {
-                            scope 17 (inlined #[track_caller] Layout::from_size_alignment_unchecked) {
+                        scope 8 {
+                            scope 16 (inlined #[track_caller] Layout::from_size_alignment_unchecked) {
                             }
                         }
-                        scope 10 (inlined size_of_val_raw::<T>) {
+                        scope 9 (inlined size_of_val_raw::<T>) {
                         }
-                        scope 11 (inlined std::mem::Alignment::of_val_raw::<T>) {
-                            scope 12 {
-                                scope 14 (inlined #[track_caller] std::mem::Alignment::new_unchecked) {
-                                    scope 15 (inlined core::ub_checks::check_language_ub) {
-                                        scope 16 (inlined core::ub_checks::check_language_ub::runtime) {
+                        scope 10 (inlined std::mem::Alignment::of_val_raw::<T>) {
+                            scope 11 {
+                                scope 13 (inlined #[track_caller] std::mem::Alignment::new_unchecked) {
+                                    scope 14 (inlined core::ub_checks::check_language_ub) {
+                                        scope 15 (inlined core::ub_checks::check_language_ub::runtime) {
                                         }
                                     }
                                 }
                             }
-                            scope 13 (inlined align_of_val_raw::<T>) {
+                            scope 12 (inlined align_of_val_raw::<T>) {
                             }
                         }
                     }
@@ -69,14 +61,14 @@ fn drop_generic(_1: *mut Box<T>) -> () {
     }
 
     bb0: {
-        StorageLive(_4);
         StorageLive(_2);
-        _2 = copy (((*_1).0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>);
+        _2 = copy (((*_1).0: std::boxed::BoxRaw<T>).0: std::ptr::NonNull<T>);
         _3 = const <T as std::mem::SizedTypeProperties>::ALIGN as std::mem::Alignment (Transmute);
-        switchInt(const <T as std::mem::SizedTypeProperties>::SIZE) -> [0: bb3, otherwise: bb1];
+        switchInt(const <T as std::mem::SizedTypeProperties>::SIZE) -> [0: bb4, otherwise: bb1];
     }
 
     bb1: {
+        StorageLive(_4);
         _4 = copy _2 as std::ptr::NonNull<u8> (Transmute);
         switchInt(const <T as std::mem::SizedTypeProperties>::SIZE) -> [0: bb3, otherwise: bb2];
     }
@@ -86,8 +78,12 @@ fn drop_generic(_1: *mut Box<T>) -> () {
     }
 
     bb3: {
-        StorageDead(_2);
         StorageDead(_4);
+        goto -> bb4;
+    }
+
+    bb4: {
+        StorageDead(_2);
         return;
     }
 }
