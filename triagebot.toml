@@ -1554,6 +1554,21 @@ cc = ["@mejrs"]
 message = "Some changes occurred to diagnostic attributes."
 cc = ["@mejrs"]
 
+[mentions."compiler/rustc_codegen_llvm/src/debuginfo"]
+cc = ["@Walnut356"]
+[mentions."src/etc/debugger_tester"]
+cc = ["@Walnut356"]
+[mentions."src/etc/natvis"]
+cc = ["@Walnut356"]
+[mentions."src/etc/gdb_lookup.py"]
+cc = ["@Walnut356"]
+[mentions."src/etc/gdb_providers.py"]
+cc = ["@Walnut356"]
+[mentions."src/etc/lldb_lookup.py"]
+cc = ["@Walnut356"]
+[mentions."src/etc/lldb_providers.py"]
+cc = ["@Walnut356"]
+
 [mentions."RELEASES.md"]
 message = """
 `RELEASES.md` was changed. Upon merging, each section will be automatically synced with its \
