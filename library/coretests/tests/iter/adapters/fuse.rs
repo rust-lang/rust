@@ -1,6 +1,6 @@
-use crate::iter::Cell;
 use core::iter::*;
 use std::num::NonZero;
+use crate::iter::Cell;
 
 #[test]
 fn test_fuse_nth() {
