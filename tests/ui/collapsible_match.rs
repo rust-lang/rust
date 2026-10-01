@@ -489,3 +489,19 @@ fn issue16916() {
         _ => {},
     }
 }
+
+// Don't lint and suggest if condition moves a variable used in other arms
+fn issue_multi_arm_move() {
+    let x: Vec<u8> = vec![1];
+    let tag = 1u8;
+    match tag {
+        1 => if consume(x) {},
+        2 => {
+            if consume(x) {} // x already moved if first arm fires. We can't collapse it
+        },
+        _ => {},
+    }
+}
+fn consume(_: Vec<u8>) -> bool {
+    true
+}

@@ -1,7 +1,9 @@
 use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
-use clippy_utils::{is_entrypoint_fn, is_trait_impl_item};
+use clippy_utils::macros::root_macro_call;
+use clippy_utils::{is_entrypoint_fn, is_trait_impl_item, sym};
+use rustc_ast::token::DocFragmentKind;
 use rustc_attr_ir::Attribute;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -263,7 +265,7 @@ declare_clippy_lint! {
     /// /// Consume the array and return the inner
     /// /// [`SmallVec<[T; INLINE_CAPACITY]>`][SmallVec].
     /// /// [SmallVec]: SmallVec
-    /// fn main() {}
+    /// fn foo() {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub DOC_MARKDOWN,
@@ -878,11 +880,15 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
 
     let (fragments, _) = attrs_to_doc_fragments(
         attrs.iter().filter_map(|attr| {
-            if attr.doc_str_and_fragment_kind().is_none() || attr.span().in_external_macro(cx.sess().source_map()) {
-                None
-            } else {
-                Some((attr, None))
-            }
+            let (_, kind) = attr.doc_str_and_fragment_kind()?;
+            let (is_raw, doc_str_span) = match kind {
+                DocFragmentKind::Sugared(_) => (false, attr.span()),
+                DocFragmentKind::Raw(span) => (true, span),
+            };
+            let from_include_str_macro = is_raw
+                && !attr.span().in_external_macro(cx.sess().source_map())
+                && originated_from_include_str_macro(cx, doc_str_span);
+            (from_include_str_macro || !doc_str_span.in_external_macro(cx.sess().source_map())).then_some((attr, None))
         }),
         true,
     );
@@ -961,6 +967,10 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         },
         attrs,
     ))
+}
+
+fn originated_from_include_str_macro(cx: &LateContext<'_>, span: Span) -> bool {
+    root_macro_call(span).is_some_and(|macro_call| cx.tcx.is_diagnostic_item(sym::include_str_macro, macro_call.def_id))
 }
 
 enum Container {

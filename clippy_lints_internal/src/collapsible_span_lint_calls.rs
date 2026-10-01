@@ -18,7 +18,7 @@ declare_tool_lint! {
     /// span), `help` or `note`.
     ///
     /// These usages of `span_lint_and_then` should be replaced with one of the
-    /// wrapper functions `span_lint_and_sugg`, span_lint_and_help`, or
+    /// wrapper functions `span_lint_and_sugg`, `span_lint_and_help`, or
     /// `span_lint_and_note`.
     ///
     /// ### Why is this bad?

@@ -1671,12 +1671,11 @@ pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: UintTy) -> u128 {
     (u << amt) >> amt
 }
 
-/// Checks if an attribute is present. 
+/// Checks if an attribute is present.
 ///
 /// NOTE: this does not work for most attributes:
 /// - parsed attributes: use `find_attr!` for these
-/// - tool attributes: these have multi-segmented names
-/// (and diagnostic attrs are parsed anyway)
+/// - tool attributes: these have multi-segmented names (and diagnostic attrs are parsed anyway)
 ///
 /// At this time, these only work for lint attributes (allow, warn, etc)
 /// and derive helpers.
