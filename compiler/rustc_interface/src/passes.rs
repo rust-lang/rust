@@ -1313,7 +1313,7 @@ pub(crate) fn start_codegen<'tcx>(
 
     info!("Pre-codegen\n{:?}", tcx.debug_stats());
 
-    let metadata = match rustc_metadata::fs::encode_and_write_metadata(tcx) {
+    let metadata = match rustc_metadata::fs::encode_and_write_metadata(tcx, false) {
         Ok(metadata) => metadata,
         Err(guar) => guar.raise_fatal(),
     };

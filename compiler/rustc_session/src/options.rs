@@ -2565,7 +2565,7 @@ options! {
     future_incompat_test: bool = (false, parse_bool, [UNTRACKED],
         "forces all lints to be future incompatible, used for internal testing (default: no)"),
     go_to_stage: TargetStage = (TargetStage::End, parse_target_stage, [UNTRACKED],
-        "Indicates the compiler to go to (default=end)"
+        "Indicates the compiler to go to, forces metadata generation (default=end)"
     ),
     graphviz_dark_mode: bool = (false, parse_bool, [UNTRACKED],
         "use dark-themed colors in graphviz output (default: no)"),
