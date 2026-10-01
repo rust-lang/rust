@@ -1698,7 +1698,12 @@ ast_lowering = [
     "@spastorino",
 ]
 debuginfo = [
-    "@davidtwco"
+    "@davidtwco",
+    "@Walnut356",
+]
+debugger_visualizer = [
+    "@Mark-Simulacrum",
+    "@Walnut356",
 ]
 fallback = [
     "@Mark-Simulacrum",
@@ -1778,6 +1783,13 @@ dep-bumps = [
 "/src/doc/style-guide" =                                 ["style-team"]
 "/src/doc/unstable-book" =                               ["compiler"]
 "/src/etc" =                                             ["@Mark-Simulacrum"]
+"/src/etc/gdb_load_rust_pretty_printers.py" =            ["debugger_visualizer"]
+"/src/etc/gdb_lookup.py" =                               ["debugger_visualizer"]
+"/src/etc/gdb_providers.py" =                            ["debugger_visualizer"]
+"/src/etc/lldb_lookup.py" =                              ["debugger_visualizer"]
+"/src/etc/lldb_providers.py" =                           ["debugger_visualizer"]
+"/src/etc/natvis" =                                      ["debugger_visualizer"]
+"/src/etc/rust_types.py" =                               ["debugger_visualizer"]
 "/src/librustdoc" =                                      ["rustdoc"]
 "/src/llvm-project" =                                    ["@cuviper"]
 "/src/rustdoc-json-types" =                              ["rustdoc"]
