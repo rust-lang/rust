@@ -116,6 +116,7 @@ Compatibility Notes
   - [`semicolon_in_expressions_from_macros`: Lint on non-local macros too](https://github.com/rust-lang/rust/pull/159222)
   - [Split non-local `semicolon_in_expressions_from_macros` into a separate lint](https://github.com/rust-lang/rust/pull/159700)
 - In Cargo, incremental compilation is now disabled by default when running in CI. CI is detected via the `CI` environment variable. [#17220](https://github.com/rust-lang/cargo/pull/17220)
+- [The Rust Reference no longer recommends using a single pattern to match a union alongside another value, such as in a manually-written tagged union](https://github.com/rust-lang/reference/pull/2303). This was because it was found that such code would, in some circumstances, result in the compiler reading the contents of the union before checking if the rest of the scrutinee matches the rest of the pattern. This can cause undefined behavior in code similar to what the reference previously recommended.
 
 <a id="1.99.0-Internal-Changes"></a>
 
