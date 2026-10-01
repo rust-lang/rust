@@ -1,4 +1,5 @@
 use std::ffi::OsStr;
+use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -108,7 +109,6 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
     }),
     TestCase::build_bin_and_run("aot.issue-72793", "example/issue-72793.rs", &[]),
     TestCase::build_bin("aot.issue-59326", "example/issue-59326.rs"),
-    TestCase::build_bin_and_run("aot.neon", "example/neon.rs", &[]),
     TestCase::build_bin_and_run("aot.gen_block_iterate", "example/gen_block_iterate.rs", &[]),
     TestCase::build_bin_and_run("aot.raw-dylib", "example/raw-dylib.rs", &[]),
     TestCase::custom("test.sysroot", &|runner| {
@@ -181,6 +181,12 @@ static PORTABLE_SIMD: CargoProject = CargoProject::new(PORTABLE_SIMD_SRC, "porta
 static SYSROOT_TESTS_SRC: RelPath = RelPath::build("sysroot_tests");
 
 static SYSROOT_TESTS: CargoProject = CargoProject::new(SYSROOT_TESTS_SRC, "sysroot_tests_target");
+
+static STDARCH_SRC: RelPath = RelPath::build("stdarch");
+
+static STDARCH: CargoProject = CargoProject::new(STDARCH_SRC, "stdarch_target");
+static STDARCH_RUST_PROGRAMS: CargoProject =
+    CargoProject::new(RelPath::build("stdarch/rust_programs"), "stdarch_rust_programs_target");
 
 const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::custom("test.rust-random/rand", &|runner| {
@@ -282,6 +288,116 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
             test_cmd.arg("-q").arg("--tests").arg("--").arg("--skip").arg("swizzle_dyn");
             spawn_and_wait(test_cmd);
         }
+    }),
+    TestCase::custom("test.stdarch-core", &|runner| {
+        let target = runner.target_compiler.target.as_str();
+        let (arch, _) = target.split_once('-').unwrap();
+
+        // FIXME: Add support for remaining architectures.
+        if !["aarch64"].contains(&arch) {
+            eprintln!("Skipping `stdarch-core` tests: unsupported target");
+            return;
+        }
+
+        apply_patches(
+            &runner.dirs,
+            "stdarch",
+            &runner.stdlib_source.join("library/stdarch"),
+            &STDARCH_SRC.to_path(&runner.dirs),
+        );
+
+        STDARCH.clean(&runner.dirs);
+
+        let skip = format!("build_system/stdarch_skip/{arch}_core.txt");
+        let skip = fs::read_to_string(runner.dirs.source_dir.join(skip)).unwrap_or_default();
+
+        let skip_functions = skip
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty() && !line.starts_with('#'))
+            .collect::<Vec<_>>()
+            .join(",");
+
+        if runner.is_native {
+            let mut test_cmd = STDARCH.test(&runner.target_compiler, &runner.dirs);
+
+            test_cmd.env("TARGET", target);
+            test_cmd.env("STDARCH_TEST_SKIP_FUNCTION", &skip_functions);
+
+            test_cmd.args(["-p", "core_arch", "--tests", "--", "-q"]);
+            spawn_and_wait(test_cmd);
+        } else {
+            eprintln!("Cross-Compiling: Not running tests");
+            let mut build_cmd = STDARCH.build(&runner.target_compiler, &runner.dirs);
+
+            build_cmd.env("TARGET", target);
+
+            build_cmd.args(["-p", "core_arch", "--tests"]);
+            spawn_and_wait(build_cmd);
+        }
+    }),
+    TestCase::custom("test.stdarch-intrinsics", &|runner| {
+        let target = runner.target_compiler.target.as_str();
+        let (arch, _) = target.split_once('-').unwrap();
+
+        // FIXME: Add support for remaining architectures.
+        let input = match arch {
+            "aarch64" => "intrinsics_data/arm_intrinsics.json",
+            _ => {
+                eprintln!("Skipping `stdarch-intrinsics` tests: unsupported target");
+                return;
+            }
+        };
+
+        apply_patches(
+            &runner.dirs,
+            "stdarch",
+            &runner.stdlib_source.join("library/stdarch"),
+            &STDARCH_SRC.to_path(&runner.dirs),
+        );
+
+        STDARCH_RUST_PROGRAMS.clean(&runner.dirs);
+
+        if !runner.is_native {
+            eprintln!("Cross-Compiling: Not running tests");
+            return;
+        }
+
+        let cc = if target.contains("apple") { "clang" } else { "gcc" };
+
+        let mut generate_cmd = STDARCH.run(&runner.target_compiler, &runner.dirs);
+        generate_cmd.current_dir(STDARCH.source_dir(&runner.dirs));
+        generate_cmd.args([
+            "-p",
+            "intrinsic-test",
+            "--",
+            input,
+            "--target",
+            target,
+            "--cc-arg-style",
+            cc,
+            "--skip",
+            &format!("crates/intrinsic-test/missing_{arch}_common.txt"),
+            "--skip",
+            &format!("crates/intrinsic-test/missing_{arch}_{cc}.txt"),
+        ]);
+
+        for skip in [
+            format!("build_system/stdarch_skip/{arch}_intrinsics_common.txt"),
+            format!("build_system/stdarch_skip/{arch}_intrinsics_{cc}.txt"),
+        ] {
+            let skip = runner.dirs.source_dir.join(skip);
+
+            if skip.exists() {
+                generate_cmd.arg("--skip").arg(skip);
+            }
+        }
+
+        spawn_and_wait(generate_cmd);
+
+        let mut test_cmd = STDARCH_RUST_PROGRAMS.test(&runner.target_compiler, &runner.dirs);
+        test_cmd.args(["--workspace", "--tests", "--no-fail-fast", "--", "-q"]);
+        spawn_and_wait(test_cmd);
     }),
 ];
 
