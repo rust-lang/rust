@@ -718,18 +718,13 @@ impl fmt::Display for AutoDiffItem {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
-pub struct RustcAssertVariance {
-    pub variances: FxIndexMap<Ident, (Span, RustcAssertVarianceKind)>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[derive(StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum RustcAssertVarianceKind {
     Covariant,
     Invariant,
     Contravariant,
+    Bivariant,
 }
 
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
@@ -1160,7 +1155,10 @@ pub enum AttributeKind {
     RustcAsPtr,
 
     /// Represents `#[rustc_assert_variance]`.
-    RustcAssertVariance(Box<RustcAssertVariance>),
+    RustcAssertVariance {
+        span: Span,
+        kind: RustcAssertVarianceKind,
+    },
 
     /// Represents `#[rustc_autodiff]`.
     RustcAutodiff(Option<Box<RustcAutodiff>>),
