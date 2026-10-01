@@ -469,6 +469,10 @@ language_item_table! {
 
     // Experimental lang item for `Reflection and comptime`(https://goals.rust-lang.org/2025h2/reflection-and-comptime.html)
     FnPtr,                   sym::FnPtr,               fn_ptr,                     Target::Struct,         GenericRequirement::None;
+
+    // Used in the desugaring of #[track_caller] on coroutine functions
+    // FIXME(closure_track_caller): Also use this in coroutine closures.
+    CallerLocation,          sym::caller_location,     caller_location,            Target::Fn,             GenericRequirement::Exact(0);
 }
 
 /// The requirement imposed on the generics of a lang item
