@@ -9,7 +9,7 @@ use crate::array;
 use crate::cmp::{self, KeyAndValue, Ordering};
 use crate::marker::Destruct;
 use crate::num::NonZero;
-use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
+use crate::ops::{ControlFlow, FromResidual, Try, TryAs};
 
 fn _assert_is_dyn_compatible(_: &dyn Iterator<Item = ()>) {}
 
@@ -2172,10 +2172,10 @@ pub const trait Iterator {
     #[inline]
     #[unstable(feature = "iterator_try_collect", issue = "94047")]
     #[rustc_non_const_trait_method]
-    fn try_collect<B>(&mut self) -> ChangeOutputType<Self::Item, B>
+    fn try_collect<B>(&mut self) -> <Self::Item as TryAs<B>>::Try
     where
         Self: Sized,
-        Self::Item: Try<Residual: Residual<B>>,
+        Self::Item: TryAs<B>,
         B: FromIterator<<Self::Item as Try>::Output>,
     {
         try_process(ByRefSized(self), |i| i.collect())
@@ -2782,10 +2782,10 @@ pub const trait Iterator {
     fn try_reduce<R>(
         &mut self,
         f: impl [const] FnMut(Self::Item, Self::Item) -> R + [const] Destruct,
-    ) -> ChangeOutputType<R, Option<R::Output>>
+    ) -> <R as TryAs<Option<R::Output>>>::Try
     where
         Self: Sized,
-        R: [const] Try<Output = Self::Item, Residual: [const] Residual<Option<Self::Item>>>,
+        R: [const] Try<Output = Self::Item> + [const] TryAs<Option<Self::Item>>,
     {
         let first = match self.next() {
             Some(i) => i,
@@ -3062,18 +3062,17 @@ pub const trait Iterator {
     fn try_find<R>(
         &mut self,
         f: impl FnMut(&Self::Item) -> R,
-    ) -> ChangeOutputType<R, Option<Self::Item>>
+    ) -> <R as TryAs<Option<Self::Item>>>::Try
     where
         Self: Sized,
-        R: Try<Output = bool, Residual: Residual<Option<Self::Item>>>,
+        R: Try<Output = bool> + TryAs<Option<Self::Item>>,
     {
         #[inline]
-        fn check<I, V, R>(
+        fn check<I, V>(
             mut f: impl FnMut(&I) -> V,
-        ) -> impl FnMut((), I) -> ControlFlow<R::TryType>
+        ) -> impl FnMut((), I) -> ControlFlow<<V as TryAs<Option<I>>>::Try>
         where
-            V: Try<Output = bool, Residual = R>,
-            R: Residual<Option<I>>,
+            V: Try<Output = bool> + TryAs<Option<I>>,
         {
             move |(), x| match f(&x).branch() {
                 ControlFlow::Continue(false) => ControlFlow::Continue(()),

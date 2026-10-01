@@ -133,10 +133,10 @@ const impl<B, C> ops::FromResidual<ControlFlow<B, !>> for ControlFlow<B, C> {
     }
 }
 
-#[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-#[rustc_const_unstable(feature = "const_try_residual", issue = "91285")]
-const impl<B, C> ops::Residual<C> for ControlFlow<B, !> {
-    type TryType = ControlFlow<B, C>;
+#[unstable(feature = "try_trait_v3", issue = "none")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl<B, C, U> ops::TryAs<U> for ControlFlow<B, C> {
+    type Try = ControlFlow<B, U>;
 }
 
 impl<B, C> ControlFlow<B, C> {

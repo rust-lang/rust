@@ -157,7 +157,7 @@ pub const trait Try: [const] FromResidual {
     /// type: that type will have a "hole" in the correct place, and will maintain the
     /// "foo-ness" of the residual so other types need to opt-in to interconversion.
     #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-    type Residual: Residual<Self::Output>;
+    type Residual;
 
     /// Constructs the type from its `Output` type.
     ///
@@ -214,7 +214,6 @@ pub const trait Try: [const] FromResidual {
     ///     ControlFlow::Break(ControlFlow::Break(3)),
     /// );
     /// ```
-    #[lang = "branch"]
     #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
 }
@@ -328,9 +327,17 @@ pub const trait FromResidual<R = <Self as Try>::Residual> {
     ///     ControlFlow::Break(5),
     /// );
     /// ```
-    #[lang = "from_residual"]
     #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
     fn from_residual(residual: R) -> Self;
+}
+
+/// The `TryAs` trait is used to derive a type that is equivalent but with
+/// `Try::Output` changed to `T`.
+#[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+pub const trait TryAs<T>: Try {
+    /// The Try type that is similar to Self, but with `Output` changed to `T`
+    type Try: [const] Try<Output = T, Residual = Self::Residual>;
 }
 
 #[unstable(
@@ -349,45 +356,52 @@ where
     FromResidual::from_residual(Yeet(yeeted))
 }
 
-/// Allows retrieving the canonical type implementing [`Try`] that has this type
-/// as its residual and allows it to hold an `O` as its output.
-///
-/// If you think of the `Try` trait as splitting a type into its [`Try::Output`]
-/// and [`Try::Residual`] components, this allows putting them back together.
-///
-/// For example,
-/// `Result<T, E>: Try<Output = T, Residual = Result<!, E>>`,
-/// and in the other direction,
-/// `<Result<!, E> as Residual<T>>::TryType = Result<T, E>`.
-#[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-#[rustc_const_unstable(feature = "const_try_residual", issue = "91285")]
-pub const trait Residual<O>: Sized {
-    /// The "return" type of this meta-function.
-    #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-    // FIXME: ought to be implied
-    type TryType: [const] Try<Output = O, Residual = Self>;
-}
-
-/// Used in `try {}` blocks so the type produced in the `?` desugaring
-/// depends on the residual type `R` and the output type of the block `O`,
-/// but importantly not on the contextual type the way it would be if
-/// we called `<_ as FromResidual>::from_residual(r)` directly.
-#[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-#[rustc_const_unstable(feature = "const_try_residual", issue = "91285")]
-// needs to be `pub` to avoid `private type` errors
-#[expect(unreachable_pub)]
+/// Used by `?` desugaring to call `Try::branch` and wrap the `Residual` with `TryResidual`.
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[expect(unreachable_pub)] // only reachable via lang items
 #[inline] // FIXME: force would be nice, but fails -- see #148915
-#[lang = "into_try_type"]
-pub const fn residual_into_try_type<R: [const] Residual<O>, O>(
-    r: R,
-) -> <R as Residual<O>>::TryType {
-    FromResidual::from_residual(r)
+#[lang = "try_operator_branch"]
+pub const fn try_operator_branch<T: [const] Try>(v: T) -> ControlFlow<TryResidual<T>, T::Output> {
+    v.branch().map_break(TryResidual)
 }
 
-#[unstable(feature = "pub_crate_should_not_need_unstable_attr", issue = "none")]
-#[allow(type_alias_bounds)]
-pub(crate) type ChangeOutputType<T: Try<Residual: Residual<V>>, V> =
-    <T::Residual as Residual<V>>::TryType;
+/// Used by `?` desugaring to wrap the `Residual` value and reference the target
+/// `Try` type in a type parameter, purely for type checking.
+#[unstable(feature = "try_internals", issue = "none")]
+#[rustc_diagnostic_item = "TryResidual"]
+#[expect(unreachable_pub)] // only reachable via lang items
+#[repr(transparent)]
+pub struct TryResidual<T: Try>(T::Residual)
+// hack
+where
+    T::Residual: Sized;
+
+impl<T: Try> TryResidual<T> {
+    #[unstable(feature = "try_internals", issue = "none")]
+    #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+    #[expect(unreachable_pub)] // only reachable via lang items
+    #[lang = "into_try_heterogeneous"]
+    #[inline]
+    pub const fn into_try_heterogeneous<U>(self) -> U
+    where
+        U: [const] FromResidual<T::Residual>,
+    {
+        FromResidual::from_residual(self.0)
+    }
+
+    #[unstable(feature = "try_internals", issue = "none")]
+    #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+    #[expect(unreachable_pub)] // only reachable via lang items
+    #[lang = "into_try_homogeneous"]
+    #[inline]
+    pub const fn into_try_homogeneous<U>(self) -> <T as TryAs<U>>::Try
+    where
+        T: [const] TryAs<U>,
+    {
+        FromResidual::from_residual(self.0)
+    }
+}
 
 /// An adapter for implementing non-try methods via the `Try` implementation.
 ///
@@ -427,6 +441,11 @@ impl<T> NeverShortCircuit<T> {
     }
 }
 
+#[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
+const impl<T, U> TryAs<U> for NeverShortCircuit<T> {
+    type Try = NeverShortCircuit<U>;
+}
+
 pub(crate) enum NeverShortCircuitResidual {}
 
 #[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
@@ -450,10 +469,6 @@ const impl<T> FromResidual for NeverShortCircuit<T> {
     fn from_residual(never: NeverShortCircuitResidual) -> Self {
         match never {}
     }
-}
-#[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
-const impl<T: [const] Destruct> Residual<T> for NeverShortCircuitResidual {
-    type TryType = NeverShortCircuit<T>;
 }
 
 /// Implement `FromResidual<Yeet<T>>` on your type to enable

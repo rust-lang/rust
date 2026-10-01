@@ -191,13 +191,11 @@ pub use self::range::{Bound, RangeBounds, RangeInclusive, RangeToInclusive};
 pub use self::range::{OneSidedRange, OneSidedRangeBound};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
-#[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-pub use self::try_trait::Residual;
+pub(crate) use self::try_trait::NeverShortCircuit;
 #[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
 pub use self::try_trait::Yeet;
-pub(crate) use self::try_trait::{ChangeOutputType, NeverShortCircuit};
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-pub use self::try_trait::{FromResidual, Try};
+pub use self::try_trait::{FromResidual, Try, TryAs};
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 pub use self::unsize::CoerceUnsized;
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]

@@ -1,6 +1,6 @@
 use crate::iter::InPlaceIterable;
 use crate::num::NonZero;
-use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
+use crate::ops::{ControlFlow, FromResidual, Try, TryAs};
 
 mod array_chunks;
 mod by_ref_sized;
@@ -149,11 +149,10 @@ pub(crate) struct GenericShunt<'a, I, R> {
 /// Process the given iterator as if it yielded the item's `Try::Output`
 /// type instead. Any `Try::Residual`s encountered will stop the inner iterator
 /// and be propagated back to the overall result.
-pub(crate) fn try_process<I, T, R, F, U>(iter: I, mut f: F) -> ChangeOutputType<I::Item, U>
+pub(crate) fn try_process<I, T, R, F, U>(iter: I, mut f: F) -> <I::Item as TryAs<U>>::Try
 where
-    I: Iterator<Item: Try<Output = T, Residual = R>>,
+    I: Iterator<Item: Try<Output = T, Residual = R> + TryAs<U>>,
     for<'a> F: FnMut(GenericShunt<'a, I, R>) -> U,
-    R: Residual<U>,
 {
     // FIXME(#11084): we might be able to get rid of GenericShunt in favor of
     // Iterator::scan, as performance should be comparable

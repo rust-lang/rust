@@ -2176,6 +2176,12 @@ const impl<T, E> ops::Try for Result<T, E> {
     }
 }
 
+#[unstable(feature = "try_trait_v3", issue = "none")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+const impl<T, E, U> ops::TryAs<U> for Result<T, E> {
+    type Try = Result<U, E>;
+}
+
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 const impl<T, E, F: [const] From<E>> ops::FromResidual<Result<!, E>> for Result<T, F> {
@@ -2195,10 +2201,4 @@ const impl<T, E, F: [const] From<E>> ops::FromResidual<ops::Yeet<E>> for Result<
     fn from_residual(ops::Yeet(e): ops::Yeet<E>) -> Self {
         Err(From::from(e))
     }
-}
-
-#[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
-const impl<T, E> ops::Residual<T> for Result<!, E> {
-    type TryType = Result<T, E>;
 }

@@ -582,7 +582,7 @@ use crate::clone::TrivialClone;
 use crate::iter::{self, FusedIterator, TrustedLen};
 use crate::marker::Destruct;
 use crate::num::NonZero;
-use crate::ops::{self, ControlFlow, Deref, DerefMut, Residual, Try};
+use crate::ops::{self, ControlFlow, Deref, DerefMut, Try, TryAs};
 use crate::panicking::{panic, panic_display};
 use crate::pin::Pin;
 use crate::{cmp, hint, mem, slice};
@@ -1859,13 +1859,10 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[unstable(feature = "option_get_or_try_insert_with", issue = "143648")]
-    pub fn get_or_try_insert_with<'a, R, F>(
-        &'a mut self,
-        f: F,
-    ) -> <R::Residual as Residual<&'a mut T>>::TryType
+    pub fn get_or_try_insert_with<'a, R, F>(&'a mut self, f: F) -> <R as TryAs<&'a mut T>>::Try
     where
         F: FnOnce() -> R,
-        R: Try<Output = T, Residual: Residual<&'a mut T>>,
+        R: Try<Output = T> + TryAs<&'a mut T>,
     {
         if let None = self {
             *self = Some(f()?);
@@ -2903,10 +2900,10 @@ const impl<T> ops::FromResidual<ops::Yeet<()>> for Option<T> {
     }
 }
 
-#[unstable(feature = "try_trait_v2_residual", issue = "91285")]
+#[unstable(feature = "try_trait_v3", issue = "none")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-const impl<T> ops::Residual<T> for Option<!> {
-    type TryType = Option<T>;
+const impl<T, U> ops::TryAs<U> for Option<T> {
+    type Try = Option<U>;
 }
 
 impl<T> Option<Option<T>> {

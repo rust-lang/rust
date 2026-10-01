@@ -160,10 +160,10 @@ pub fn call_kind<'tcx>(
     {
         Some((CallDesugaringKind::ForLoopNext, method_args.type_at(0)))
     } else if fn_call_span.desugaring_kind() == Some(DesugaringKind::QuestionMark) {
-        if tcx.is_lang_item(method_did, LangItem::TryTraitBranch) {
+        if tcx.is_lang_item(method_did, LangItem::TryOperatorBranch) {
             Some((CallDesugaringKind::QuestionBranch, method_args.type_at(0)))
-        } else if tcx.is_lang_item(method_did, LangItem::TryTraitFromResidual) {
-            Some((CallDesugaringKind::QuestionFromResidual, method_args.type_at(0)))
+        } else if tcx.is_lang_item(method_did, LangItem::IntoTryHeterogeneous) {
+            Some((CallDesugaringKind::QuestionFromResidual, method_args.type_at(1)))
         } else {
             None
         }

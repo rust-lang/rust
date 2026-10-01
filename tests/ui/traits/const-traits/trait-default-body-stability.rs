@@ -7,10 +7,9 @@
 #![feature(const_try)]
 #![feature(const_try_residual)]
 #![feature(try_trait_v2)]
-#![feature(try_trait_v2_residual)]
 #![stable(feature = "foo", since = "1.0")]
 
-use std::ops::{ControlFlow, FromResidual, Residual, Try};
+use std::ops::{ControlFlow, FromResidual, Try, TryAs};
 
 #[stable(feature = "foo", since = "1.0")]
 pub struct T;
@@ -32,7 +31,7 @@ const impl Try for T {
 
 #[stable(feature = "foo", since = "1.0")]
 #[rustc_const_unstable(feature = "const_t_try", issue = "none")]
-const impl Residual<T> for T {
+const impl TryAs<T> for T {
     type TryType = T;
 }
 

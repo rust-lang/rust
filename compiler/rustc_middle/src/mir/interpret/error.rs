@@ -962,8 +962,14 @@ impl<'tcx, T> ops::Try for InterpResult<'tcx, T> {
     }
 }
 
+#[cfg(bootstrap)]
 impl<'tcx, T> ops::Residual<T> for InterpResult<'tcx, convert::Infallible> {
     type TryType = InterpResult<'tcx, T>;
+}
+
+#[cfg(not(bootstrap))]
+impl<'tcx, T, U> ops::TryAs<U> for InterpResult<'tcx, T> {
+    type Try = InterpResult<'tcx, U>;
 }
 
 impl<'tcx, T> ops::FromResidual for InterpResult<'tcx, T> {

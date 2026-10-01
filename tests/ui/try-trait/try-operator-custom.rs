@@ -1,9 +1,8 @@
 //@ run-pass
 
 #![feature(try_trait_v2)]
-#![feature(try_trait_v2_residual)]
 
-use std::ops::{ControlFlow, FromResidual, Residual, Try};
+use std::ops::{ControlFlow, FromResidual, Try, TryAs};
 
 enum MyResult<T, U> {
     Awesome(T),
@@ -39,8 +38,8 @@ where
     }
 }
 
-impl<U, V> Residual<U> for MyResult<Never, V> {
-    type TryType = MyResult<U, V>;
+impl<T, U, V> TryAs<U> for MyResult<T, V> {
+    type Try = MyResult<U, V>;
 }
 
 type ResultResidual<E> = Result<!, E>;
