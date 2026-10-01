@@ -12,7 +12,7 @@ macro_rules! include_example {
     };
 }
 
-#[cfg_attr(not(bootstrap), doc(attribute = "rustc_dump_clauses"))]
+#[doc(attribute = "rustc_dump_clauses")]
 /// Dumps the list of [`ty::Clause`]s as computed by the [`clauses_of`] query.
 ///
 /// See [`AttributeKind::RustcDumpClauses`] for the internal representation of this attribute.
