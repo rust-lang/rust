@@ -1,0 +1,89 @@
+error: `impl Sized` will capture more lifetimes than possibly intended in edition 2024
+  --> $DIR/overcapture-suggestion-in-macro-issue-139567.rs:7:1
+   |
+LL | #[overcapture_attr_pm::rpc]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: specifically, this lifetime is in scope but not mentioned in the type's bounds
+  --> $DIR/overcapture-suggestion-in-macro-issue-139567.rs:7:1
+   |
+LL | #[overcapture_attr_pm::rpc]
+   | ^
+   = note: all lifetimes in scope will be captured by `impl Trait`s in edition 2024
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
+note: the lint level is defined here
+  --> $DIR/overcapture-suggestion-in-macro-issue-139567.rs:5:9
+   |
+LL | #![deny(impl_trait_overcaptures)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the attribute macro `overcapture_attr_pm::rpc` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `impl Sized` will capture more lifetimes than possibly intended in edition 2024
+  --> $DIR/overcapture-suggestion-in-macro-issue-139567.rs:12:25
+   |
+LL | pub fn plain(x: &u8) -> impl Sized { *x }
+   |                         ^^^^^^^^^^
+   |
+note: specifically, this lifetime is in scope but not mentioned in the type's bounds
+  --> $DIR/overcapture-suggestion-in-macro-issue-139567.rs:12:17
+   |
+LL | pub fn plain(x: &u8) -> impl Sized { *x }
+   |                 ^
+   = note: all lifetimes in scope will be captured by `impl Trait`s in edition 2024
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | pub fn plain(x: &u8) -> impl Sized + use<> { *x }
+   |                                    +++++++
+
+error: `impl Sized` will capture more lifetimes than possibly intended in edition 2024
+  --> $DIR/overcapture-suggestion-in-macro-issue-139567.rs:22:5
+   |
+LL | macro_rules! mk {
+...
+LL | mk!(impl Sized);
+   |     ^^^^^^^^^^
+   |
+note: specifically, this lifetime is in scope but not mentioned in the type's bounds
+  --> $DIR/overcapture-suggestion-in-macro-issue-139567.rs:18:36
+   |
+LL |         pub fn from_macro_rules(x: &u8) -> $ret { *x }
+   |                                    ^
+...
+LL | mk!(impl Sized);
+   | --------------- in this macro invocation
+   = note: all lifetimes in scope will be captured by `impl Trait`s in edition 2024
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | mk!(impl Sized + use<>);
+   |                +++++++
+
+error: `impl Sized` will capture more lifetimes than possibly intended in edition 2024
+  --> $DIR/overcapture-suggestion-in-macro-issue-139567.rs:28:43
+   |
+LL | macro_rules! mk_body {
+LL |     () => {
+LL |         pub fn from_macro_body(x: &u8) -> impl Sized { *x }
+   |                                           ^^^^^^^^^^
+...
+LL | mk_body!();
+   | ---------- in this macro invocation
+   |
+note: specifically, this lifetime is in scope but not mentioned in the type's bounds
+  --> $DIR/overcapture-suggestion-in-macro-issue-139567.rs:28:35
+   |
+LL |         pub fn from_macro_body(x: &u8) -> impl Sized { *x }
+   |                                   ^
+...
+LL | mk_body!();
+   | ---------- in this macro invocation
+   = note: all lifetimes in scope will be captured by `impl Trait`s in edition 2024
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
+
+error: aborting due to 4 previous errors
+
