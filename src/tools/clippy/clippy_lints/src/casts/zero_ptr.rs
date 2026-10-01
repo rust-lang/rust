@@ -9,7 +9,7 @@ use rustc_lint::LateContext;
 use super::ZERO_PTR;
 
 pub fn check(cx: &LateContext<'_>, expr: &Expr<'_>, from: &Expr<'_>, to: &Ty<'_>, msrv: Msrv) {
-    if let TyKind::Ptr(ref ty, mutbl) = to.kind
+    if let TyKind::Ptr(ty, mutbl) = to.kind
         && is_integer_literal(from, 0)
         && (!is_in_const_context(cx) || msrv.meets(cx, msrvs::PTR_NULL))
         && let Some(std_or_core) = std_or_core(cx)

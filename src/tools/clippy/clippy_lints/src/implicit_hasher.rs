@@ -337,7 +337,8 @@ impl<'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'_, '_, 'tcx> {
 
             match method.ident.name {
                 sym::new => {
-                    self.suggestions.insert(OrdSpan(e.span), format!("{container_name}::default()"));
+                    self.suggestions
+                        .insert(OrdSpan(e.span), format!("{container_name}::default()"));
                 },
                 sym::with_capacity => {
                     let (arg_snippet, _) = snippet_with_context(

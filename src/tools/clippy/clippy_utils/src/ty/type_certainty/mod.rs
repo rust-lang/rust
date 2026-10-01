@@ -1,16 +1,3 @@
-//! A heuristic to tell whether an expression's type can be determined purely from its
-//! subexpressions, and the arguments and locals they use. Put another way, `expr_type_is_certain`
-//! tries to tell whether an expression's type can be determined without appeal to the surrounding
-//! context.
-//!
-//! This is, in some sense, a counterpart to `let_unit_value`'s `expr_needs_inferred_result`.
-//! Intuitively, that function determines whether an expression's type is needed for type inference,
-//! whereas `expr_type_is_certain` determines whether type inference is needed for an expression's
-//! type.
-//!
-//! As a heuristic, `expr_type_is_certain` may produce false negatives, but a false positive should
-//! be considered a bug.
-
 use crate::paths::{PathNS, lookup_path};
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_hir::def::{DefKind, Res};
@@ -24,6 +11,18 @@ use rustc_span::Span;
 mod certainty;
 use certainty::{Certainty, Meet as _, join, meet};
 
+/// A heuristic to tell whether an expression's type can be determined purely from its
+/// subexpressions, and the arguments and locals they use. Put another way, this function
+/// tries to tell whether an expression's type can be determined without appeal to the surrounding
+/// context.
+///
+/// This is, in some sense, a counterpart to `let_unit_value`'s `expr_needs_inferred_result`.
+/// Intuitively, that function determines whether an expression's type is needed for type inference,
+/// whereas this function determines whether type inference is needed for an expression's
+/// type.
+///
+/// As a heuristic, this may produce false negatives, but a false positive should
+/// be considered a bug.
 pub fn expr_type_is_certain(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     expr_type_certainty(cx, expr, false).is_certain()
 }

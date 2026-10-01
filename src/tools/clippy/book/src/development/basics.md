@@ -72,7 +72,8 @@ cargo bless
 For example, this is necessary if you fix a typo in an error message of a lint,
 or if you modify a test file to add a test case.
 
-> _Note:_ This command may update more files than you intended. In that case
+> [!NOTE]
+> This command may update more files than you intended. In that case
 > only commit the files you wanted to update.
 
 [UI test]: https://rustc-dev-guide.rust-lang.org/tests/adding.html#ui-test-walkthrough

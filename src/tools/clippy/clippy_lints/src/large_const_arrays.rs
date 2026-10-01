@@ -3,9 +3,9 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
+use rustc_middle::ty::consts::ConstExt as _;
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, Ty, Unnormalized};
-use rustc_middle::ty::consts::ConstExt;
 use rustc_span::{BytePos, Pos as _, Span};
 
 declare_clippy_lint! {
