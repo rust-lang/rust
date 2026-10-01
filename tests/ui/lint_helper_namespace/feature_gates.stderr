@@ -1,21 +1,30 @@
 error[E0658]: use of an internal attribute
-  --> $DIR/feature_gates.rs:5:3
+  --> $DIR/feature_gates.rs:8:7
    |
-LL | #[lint::as_ptr]
-   |   ^^^^^^^^^^^^
+LL |     #[lint::as_ptr]
+   |       ^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: the `lint::as_ptr` attribute is an internal implementation detail that will never be stable
 
 error[E0658]: use of an internal attribute
-  --> $DIR/feature_gates.rs:6:3
+  --> $DIR/feature_gates.rs:9:7
    |
-LL | #[lint::never_returns_null_ptr]
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[lint::never_returns_null_ptr]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: the `lint::never_returns_null_ptr` attribute is an internal implementation detail that will never be stable
 
-error: aborting due to 2 previous errors
+error[E0658]: use of an internal attribute
+  --> $DIR/feature_gates.rs:10:7
+   |
+LL |     #[lint::should_not_be_called_on_const_items]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `lint::should_not_be_called_on_const_items` attribute is an internal implementation detail that will never be stable
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

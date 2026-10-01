@@ -60,6 +60,7 @@ impl AttributeKind {
             Linkage(..) => No,
             LintAsPtr => Yes,
             LintNeverReturnsNullPtr => Yes,
+            LintShouldNotBeCalledOnConstItems => Yes,
             LoopMatch(..) => No,
             MacroEscape => No,
             MacroExport { .. } => Yes,
@@ -186,7 +187,6 @@ impl AttributeKind {
             RustcReallocator => No,
             RustcRegions => No,
             RustcScalableVector { .. } => Yes,
-            RustcShouldNotBeCalledOnConstItems => Yes,
             RustcSimdMonomorphizeLaneLimit(..) => Yes, // Affects layout computation, which needs to work cross-crate
             RustcSkipDuringMethodDispatch { .. } => No,
             RustcSpecializationTrait => No,
@@ -274,6 +274,7 @@ impl AttributeKind {
             },
             LintAsPtr => false,
             LintNeverReturnsNullPtr => false,
+            LintShouldNotBeCalledOnConstItems => false,
             LoopMatch(..) => false,
             MacroEscape => false,
             MacroExport { .. } => false,
@@ -400,7 +401,7 @@ impl AttributeKind {
             RustcReallocator => false,
             RustcRegions => false,
             RustcScalableVector { .. } => false,
-            RustcShouldNotBeCalledOnConstItems => false,
+
             RustcSimdMonomorphizeLaneLimit(..) => false,
             RustcSkipDuringMethodDispatch { .. } => false,
             RustcSpecializationTrait => false,

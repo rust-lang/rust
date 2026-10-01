@@ -938,6 +938,10 @@ pub enum AttributeKind {
     /// Represents `#[lint::never_returns_null_ptr]` (used by the `useless_ptr_null_checks` lint).
     LintNeverReturnsNullPtr,
 
+    /// Represents `#[lint::should_not_be_called_on_const_items]` (used by the
+    /// `const_item_interior_mutations` lint).
+    LintShouldNotBeCalledOnConstItems,
+
     /// Represents `#[loop_match]`.
     LoopMatch(Span),
 
@@ -1403,9 +1407,6 @@ pub enum AttributeKind {
         /// is not provided for representing tuple types.
         element_count: Option<u16>,
     },
-
-    /// Represents `#[rustc_should_not_be_called_on_const_items]`
-    RustcShouldNotBeCalledOnConstItems,
 
     /// Represents `#[rustc_simd_monomorphize_lane_limit = "N"]`.
     RustcSimdMonomorphizeLaneLimit(Limit),
