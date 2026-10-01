@@ -4,9 +4,9 @@ use rustc_feature::AttributeStability;
 use super::prelude::*;
 use crate::diagnostics::RustcPubTransparent;
 
-pub(crate) struct RustcAsPtrParser;
-impl NoArgsAttributeParser for RustcAsPtrParser {
-    const PATH: &[Symbol] = &[sym::rustc_as_ptr];
+pub(crate) struct LintAsPtrParser;
+impl NoArgsAttributeParser for LintAsPtrParser {
+    const PATH: &[Symbol] = &[sym::lint, sym::as_ptr];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -15,7 +15,7 @@ impl NoArgsAttributeParser for RustcAsPtrParser {
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcAsPtr;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::LintAsPtr;
 }
 
 pub(crate) struct RustcPubTransparentParser;
