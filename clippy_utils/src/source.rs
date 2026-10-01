@@ -63,8 +63,8 @@ pub trait SpanRange: Sized {
 }
 impl SpanRange for Span {
     fn into_range(self) -> Range<BytePos> {
-        let data = self.data();
-        data.lo..data.hi
+        let (lo, hi) = self.lo_hi();
+        lo..hi
     }
 }
 impl SpanRange for SpanData {
