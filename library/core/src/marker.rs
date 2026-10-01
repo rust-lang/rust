@@ -1060,6 +1060,7 @@ marker_impls! {
 #[diagnostic::on_unimplemented(message = "can't drop `{Self}`")]
 #[rustc_deny_explicit_impl]
 #[rustc_dyn_incompatible_trait]
+#[rustc_coinductive]
 pub const trait Destruct: PointeeSized {}
 
 /// A marker for tuple types.

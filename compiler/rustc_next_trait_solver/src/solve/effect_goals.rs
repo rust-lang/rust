@@ -424,7 +424,7 @@ where
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             ecx.add_goals(
-                GoalSource::AliasBoundConstCondition,
+                GoalSource::ImplWhereBound,
                 const_conditions.into_iter().map(|trait_ref| {
                     goal.with(
                         cx,
