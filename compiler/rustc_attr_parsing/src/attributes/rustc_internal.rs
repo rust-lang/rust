@@ -1177,7 +1177,7 @@ impl CombineAttributeParser for RustcAssertVarianceParser {
         for item in items {
             map.insert(item.0, (item.1, item.2));
         }
-        AttributeKind::RustcAssertVariance(RustcAssertVariance { variances: map })
+        AttributeKind::RustcAssertVariance(Box::new(RustcAssertVariance { variances: map }))
     };
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
 

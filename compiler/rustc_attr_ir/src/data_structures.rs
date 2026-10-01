@@ -1159,7 +1159,7 @@ pub enum AttributeKind {
     RustcAsPtr,
 
     /// Represents `#[rustc_assert_variance]`.
-    RustcAssertVariance(RustcAssertVariance),
+    RustcAssertVariance(Box<RustcAssertVariance>),
 
     /// Represents `#[rustc_autodiff]`.
     RustcAutodiff(Option<Box<RustcAutodiff>>),
