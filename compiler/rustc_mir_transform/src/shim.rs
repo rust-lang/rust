@@ -1336,12 +1336,9 @@ fn build_tail_call_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Body<'tcx> {
     let span = tcx.def_span(def_id);
     let source_info = SourceInfo::outermost(span);
 
-    let mut body = tcx
-        .optimized_mir(def_id)
-        .tail_call_shim_source
-        .as_deref()
-        .cloned()
-        .expect("cannot generate TailCall shim without the original body");
+    let Some(mut body) = tcx.tail_call_shim_source(def_id).cloned() else {
+        span_bug!(span, "missing original body, cannot generate TailCall shim")
+    };
 
     // Store the argument and return types, before we renumber its locals below.
     let inputs: Vec<Ty<'tcx>> = body.args_iter().map(|local| body.local_decls[local].ty).collect();

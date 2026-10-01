@@ -229,6 +229,7 @@ pub fn provide(providers: &mut Providers) {
         mir_promoted,
         mir_drops_elaborated_and_const_checked,
         mir_for_ctfe,
+        tail_call_shim_source,
         mir_coroutine_witnesses: coroutine::mir_coroutine_witnesses,
         optimized_mir,
         check_liveness: liveness::check_liveness,
@@ -608,6 +609,14 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     tcx.alloc_steal_mir(body)
 }
 
+fn tail_call_shim_source(tcx: TyCtxt<'_>, def: LocalDefId) -> Option<Body<'_>> {
+    if !tcx.sess.use_tail_call_fallback() || !tcx.contains_tail_call(def.to_def_id()) {
+        return None;
+    }
+    let body = tcx.mir_drops_elaborated_and_const_checked(def).borrow().clone();
+    Some(remap_mir_for_const_eval_select(tcx, body, hir::Constness::NotConst))
+}
+
 // Made public so that `mir_drops_elaborated_and_const_checked` can be overridden
 // by custom rustc drivers, running all the steps by themselves. See #114628.
 pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -815,17 +824,14 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
         None => {}
         Some(other) => panic!("do not use `optimized_mir` for constants: {other:?}"),
     }
+
+    // Run the `tail_call_shim_source` query, which depends on
+    // `mir_drops_elaborated_and_const_checked` which is stolen right below.
+    tcx.ensure_done().tail_call_shim_source(did);
+
     debug!("about to call mir_drops_elaborated...");
     let body = tcx.mir_drops_elaborated_and_const_checked(did).steal();
     let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::NotConst);
-
-    // Store a copy of this body when it contains explicit tail calls and we use the portable
-    // fallback mechanism. The LowerTailCall pass will change the original body before the
-    // ShimKind::TailCall shim is constructed, so the shim construction needs this copy.
-    if tcx.sess.use_tail_call_fallback() && tcx.contains_tail_call(did.to_def_id()) {
-        let source = body.clone();
-        body.tail_call_shim_source = Some(Box::new(source));
-    }
 
     if body.tainted_by_errors.is_some() {
         return body;

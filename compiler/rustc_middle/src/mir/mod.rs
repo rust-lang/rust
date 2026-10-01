@@ -328,14 +328,6 @@ pub struct Body<'tcx> {
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
     pub coverage_mir_info: Option<Box<coverage::CoverageMirInfo>>,
-
-    /// The original body, before it was converted into a loop that calls the shim.
-    ///
-    /// This original body is used to construct the Shimkind::TailCall that the converted body
-    /// calls.
-    #[type_foldable(identity)] // keep the body polymorphic
-    #[type_visitable(ignore)] // should not influence the updated body
-    pub tail_call_shim_source: Option<Box<Body<'tcx>>>,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -379,7 +371,6 @@ impl<'tcx> Body<'tcx> {
             tainted_by_errors,
             coverage_early_info: None,
             coverage_mir_info: None,
-            tail_call_shim_source: None,
         };
         body.is_polymorphic = body.has_non_region_param();
         body
@@ -411,7 +402,6 @@ impl<'tcx> Body<'tcx> {
             tainted_by_errors: None,
             coverage_early_info: None,
             coverage_mir_info: None,
-            tail_call_shim_source: None,
         };
         body.is_polymorphic = body.has_non_region_param();
         body

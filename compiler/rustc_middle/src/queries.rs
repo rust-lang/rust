@@ -1183,6 +1183,23 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// The body of a function using `become`, after drop elaboration but before `LowerTailCall`
+    /// rewrites it.
+    ///
+    /// When applying `LowerTailCall`:
+    ///
+    /// - the defining crate modifies the original body
+    /// - downstream crates need to create shim based on the original body
+    ///
+    /// This query caches the original body, so that downstream crates can generate
+    /// the shim from it.
+    query tail_call_shim_source(key: DefId) -> Option<&'tcx mir::Body<'tcx>> {
+        arena_cache
+        desc { "caching the tail-call shim source of `{}`", tcx.def_path_str(key) }
+        cache_on_disk
+        separate_provide_extern
+    }
+
     /// Returns the types assumed to be well formed while "inside" of the given item.
     ///
     /// Note that we've liberated the late bound regions of function signatures, so
