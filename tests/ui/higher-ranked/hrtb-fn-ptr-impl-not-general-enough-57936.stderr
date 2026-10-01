@@ -14,10 +14,15 @@ LL | trait X {
 error: implementation of `X` is not general enough
   --> $DIR/hrtb-fn-ptr-impl-not-general-enough-57936.rs:26:5
    |
+LL | fn indirect<T: X>() {
+   |    --------    - unsatisfied where-clause on `indirect`
+   |    |
+   |    due to a where-clause on `indirect`...
+...
 LL |     indirect::<fn(&())>();
-   |     ^^^^^^^^^^^^^^^^^^^^^ implementation of `X` is not general enough
+   |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `X` would have to be implemented for the type `for<'a> fn(&'a ())`
+   = note: ...`X` would have to be implemented for the type `for<'a> fn(&'a ())`
    = note: ...but `X` is actually implemented for the type `fn(&'0 ())`, for some specific lifetime `'0`
 
 error: aborting due to 2 previous errors

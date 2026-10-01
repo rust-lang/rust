@@ -96,7 +96,7 @@ pub(crate) struct EncounteredErrorWhileInstantiatingGlobalAsm {
 #[derive(Diagnostic)]
 #[diag("using `fn main` requires the standard library")]
 #[help(
-    "use `#![no_main]` to bypass the Rust generated entrypoint and declare a platform specific entrypoint yourself, usually with `#[no_mangle]`"
+    "use `#![no_main]` to bypass the Rust generated entrypoint and declare a platform specific entrypoint yourself, usually with `#[unsafe(no_mangle)]`"
 )]
 pub(crate) struct StartNotFound;
 
