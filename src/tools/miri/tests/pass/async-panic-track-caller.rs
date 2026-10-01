@@ -269,18 +269,18 @@ fn main() {
     assert_eq!(LINE.load(Relaxed), 59);
 
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 77);
+    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 72);
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(LINE.load(Relaxed), 77);
+    assert_eq!(LINE.load(Relaxed), 71);
     #[cfg(any(cls, nofeat))]
     assert_eq!(panicked_at(|| block_on(foo_track_caller())), 72);
     #[cfg(any(cls, nofeat))]
     assert_eq!(LINE.load(Relaxed), 71);
 
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 93);
+    assert_eq!(panicked_at(|| block_on(foo_assoc())), 87);
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(LINE.load(Relaxed), 93);
+    assert_eq!(LINE.load(Relaxed), 86);
     #[cfg(any(cls, nofeat))]
     assert_eq!(panicked_at(|| block_on(foo_assoc())), 87);
     #[cfg(any(cls, nofeat))]
@@ -305,9 +305,9 @@ fn main() {
     assert_eq!(LINE.load(Relaxed), 118);
 
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| foo_manual_poll()), 132);
+    assert_eq!(panicked_at(|| foo_manual_poll()), 125);
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(LINE.load(Relaxed), 132);
+    assert_eq!(LINE.load(Relaxed), 124);
     #[cfg(any(cls, nofeat))]
     assert_eq!(panicked_at(|| foo_manual_poll()), 125);
     #[cfg(any(cls, nofeat))]
@@ -321,18 +321,18 @@ fn main() {
     assert_eq!(LINE.load(Relaxed), 155);
 
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| block_on(foo_trait_attr_in_impl())), 193);
+    assert_eq!(panicked_at(|| block_on(foo_trait_attr_in_impl())), 162);
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(LINE.load(Relaxed), 193);
+    assert_eq!(LINE.load(Relaxed), 161);
     #[cfg(any(cls, nofeat))]
     assert_eq!(panicked_at(|| block_on(foo_trait_attr_in_impl())), 162);
     #[cfg(any(cls, nofeat))]
     assert_eq!(LINE.load(Relaxed), 161);
 
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| block_on(foo_trait_attr_in_both())), 197);
+    assert_eq!(panicked_at(|| block_on(foo_trait_attr_in_both())), 168);
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(LINE.load(Relaxed), 197);
+    assert_eq!(LINE.load(Relaxed), 167);
     #[cfg(any(cls, nofeat))]
     assert_eq!(panicked_at(|| block_on(foo_trait_attr_in_both())), 168);
     #[cfg(any(cls, nofeat))]
@@ -349,9 +349,9 @@ fn main() {
     assert_eq!(LINE.load(Relaxed), 177);
 
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| foo_gen_fn()), 217);
+    assert_eq!(panicked_at(|| foo_gen_fn()), 212);
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(LINE.load(Relaxed), 217);
+    assert_eq!(LINE.load(Relaxed), 211);
     #[cfg(any(cls, nofeat))]
     assert_eq!(panicked_at(|| foo_gen_fn()), 212);
     #[cfg(any(cls, nofeat))]
