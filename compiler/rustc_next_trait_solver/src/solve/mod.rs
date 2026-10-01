@@ -86,23 +86,18 @@ fn equal_response_modulo_region_constraints<I: Interner>(
     b: &CanonicalResponse<I>,
 ) -> bool {
     let CanonicalResponse {
-        max_universe: a_max_universe,
-        var_kinds: a_var_kinds,
-        value:
-            Response {
-                var_values: a_var_values,
-                certainty: a_certainty,
-                external_constraints: a_external_constraints,
-            },
+        max_universe,
+        var_kinds,
+        value: Response { var_values, certainty, external_constraints },
     } = a;
 
     let ExternalConstraintsData { region_constraints: _, opaque_types, normalization_nested_goals } =
-        &**a_external_constraints;
+        &**external_constraints;
 
-    a_max_universe == &b.max_universe
-        && a_var_kinds == &b.var_kinds
-        && a_var_values == &b.value.var_values
-        && a_certainty == &b.value.certainty
+    max_universe == &b.max_universe
+        && var_kinds == &b.var_kinds
+        && var_values == &b.value.var_values
+        && certainty == &b.value.certainty
         && opaque_types == &b.value.external_constraints.opaque_types
         && normalization_nested_goals == &b.value.external_constraints.normalization_nested_goals
 }
@@ -319,12 +314,6 @@ where
     }
 }
 
-#[derive(Debug)]
-enum MergeCandidateInfo {
-    AlwaysApplicable(usize),
-    EqualResponse,
-}
-
 impl<D, I> EvalCtxt<'_, D>
 where
     D: SolverDelegate<Interner = I>,
@@ -337,48 +326,33 @@ where
     fn try_merge_candidates(
         &mut self,
         candidates: &[Candidate<I>],
-    ) -> Option<(CanonicalResponse<I>, MergeCandidateInfo)> {
-        if candidates.is_empty() {
+    ) -> Option<CanonicalResponse<I>> {
+        let Some((first, rest)) = candidates.split_first() else {
+            return None;
+        };
+
+        if rest.iter().any(|candidate| {
+            !equal_response_modulo_region_constraints(&first.result, &candidate.result)
+        }) {
             return None;
         }
 
-        let always_applicable = candidates.iter().enumerate().find(|(_, candidate)| {
-            candidate.result.value.certainty == Certainty::Yes
-                && has_no_inference_or_external_constraints(candidate.result)
-        });
-
-        if let Some((i, candidate)) = always_applicable {
-            return Some((candidate.result, MergeCandidateInfo::AlwaysApplicable(i)));
+        let region_constraints = &first.result.value.external_constraints.region_constraints;
+        if candidates[1..].iter().all(|candidate| {
+            &candidate.result.value.external_constraints.region_constraints == region_constraints
+        }) {
+            return Some(first.result);
         }
 
-        let one: CanonicalResponse<I> = candidates[0].result;
-
-        if candidates[1..]
+        // If candidates differ only in region constraints, their merged region
+        // constraints are an OR of their respective constraints. We don't support
+        // OR constraints yet, so the only way we can merge differing candidates
+        // if one of them has no region constraints as then the OR constraint
+        // is trivially true.
+        candidates
             .iter()
-            .all(|candidate| equal_response_modulo_region_constraints(&one, &candidate.result))
-        {
-            let region_constraints = &one.value.external_constraints.region_constraints;
-            if candidates[1..].iter().all(|candidate| {
-                &candidate.result.value.external_constraints.region_constraints
-                    == region_constraints
-            }) {
-                return Some((one, MergeCandidateInfo::EqualResponse));
-            }
-
-            // If candidates differ only in region constraints, their merged region
-            // constraints are an `Or` of their respective constraints. If one of them
-            // has no region constraints, the `Or` constraint evaluates to `true`.
-            //
-            // This is a special case of `-Zassumptions-on-binders` and should be
-            // replaced eventually.
-            if let Some(candidate) = candidates.iter().find(|candidate| {
-                candidate.result.value.external_constraints.region_constraints.is_empty()
-            }) {
-                return Some((candidate.result, MergeCandidateInfo::EqualResponse));
-            }
-        }
-
-        None
+            .find(|c| c.result.value.external_constraints.region_constraints.is_empty())
+            .map(|c| c.result)
     }
 
     fn bail_with_ambiguity(&mut self, candidates: &[Candidate<I>]) -> CanonicalResponse<I> {

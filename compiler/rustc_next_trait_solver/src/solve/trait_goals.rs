@@ -24,8 +24,7 @@ use crate::solve::assembly::{
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
-    MergeCandidateInfo, NoSolution, ParamEnvSource, StalledOnCoroutines,
-    has_only_region_constraints,
+    NoSolution, ParamEnvSource, StalledOnCoroutines, has_only_region_constraints,
 };
 
 impl<D, I> assembly::GoalKind<D> for TraitClause<I>
@@ -1575,7 +1574,7 @@ where
             .all(|candidate| matches!(candidate.source, CandidateSource::BuiltinImpl(_)));
 
         if is_marker || all_builtin {
-            self.try_merge_candidates(candidates).map(|(response, _)| response)
+            self.try_merge_candidates(candidates)
         } else if candidates.len() > 1 {
             None
         } else {
@@ -1588,7 +1587,7 @@ where
         candidates: &[Candidate<I>],
         proven_via: TraitGoalProvenVia,
     ) -> (CanonicalResponse<I>, Option<TraitGoalProvenVia>) {
-        if let Some((response, _)) = self.try_merge_candidates(candidates) {
+        if let Some(response) = self.try_merge_candidates(candidates) {
             (response, Some(proven_via))
         } else {
             (self.bail_with_ambiguity(candidates), None)
@@ -1653,6 +1652,7 @@ where
             let alias_bounds: Vec<_> = candidates
                 .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound(..)))
                 .collect();
+            candidates.into_iter().for_each(|c| self.ignore_candidate_head_usages(c.head_usages));
             return Ok(self.merge_candidates_or_bail_with_ambiguity(
                 &alias_bounds,
                 TraitGoalProvenVia::AliasBound,
@@ -1668,38 +1668,10 @@ where
             let where_bounds: Vec<_> = candidates
                 .extract_if(.., |c| matches!(c.source, CandidateSource::ParamEnv(_)))
                 .collect();
-            let Some((response, info)) = self.try_merge_candidates(&where_bounds) else {
+            candidates.into_iter().for_each(|c| self.ignore_candidate_head_usages(c.head_usages));
+            let Some(response) = self.try_merge_candidates(&where_bounds) else {
                 return Ok((self.bail_with_ambiguity(&where_bounds), None));
             };
-            match info {
-                // If there's an always applicable candidate, the result of all
-                // other candidates does not matter. This means we can ignore
-                // them when checking whether we've reached a fixpoint.
-                //
-                // We always prefer the first always applicable candidate, even if a
-                // later candidate is also always applicable and would result in fewer
-                // reruns. We could slightly improve this by e.g. searching for another
-                // always applicable candidate which doesn't depend on any cycle heads.
-                //
-                // NOTE: This is optimization is observable in case there is an always
-                // applicable global candidate and another non-global candidate which only
-                // applies because of a provisional result. I can't even think of a test
-                // case where this would occur and even then, this would not be unsound.
-                // Supporting this makes the code more involved, so I am just going to
-                // ignore this for now.
-                MergeCandidateInfo::AlwaysApplicable(i) => {
-                    for (j, c) in where_bounds.into_iter().enumerate() {
-                        if i != j {
-                            self.ignore_candidate_head_usages(c.head_usages)
-                        }
-                    }
-                    // If a where-bound does not apply, we don't actually get a
-                    // candidate for it. We manually track the head usages
-                    // of all failed `ParamEnv` candidates instead.
-                    self.ignore_candidate_head_usages(failed_candidate_info.param_env_head_usages);
-                }
-                MergeCandidateInfo::EqualResponse => {}
-            }
             return Ok((response, Some(TraitGoalProvenVia::ParamEnv)));
         }
 
@@ -1708,6 +1680,7 @@ where
             let alias_bounds: Vec<_> = candidates
                 .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound(_)))
                 .collect();
+            candidates.into_iter().for_each(|c| self.ignore_candidate_head_usages(c.head_usages));
             return Ok(self.merge_candidates_or_bail_with_ambiguity(
                 &alias_bounds,
                 TraitGoalProvenVia::AliasBound,
