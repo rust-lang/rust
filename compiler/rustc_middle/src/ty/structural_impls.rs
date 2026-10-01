@@ -452,7 +452,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        Ok(folder.try_fold_predicate(self)?)
+        folder.try_fold_predicate(self)
     }
 }
 
