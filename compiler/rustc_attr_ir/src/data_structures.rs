@@ -957,6 +957,9 @@ pub enum AttributeKind {
     /// Represents `#[allow]`, `#[warn]`, `#[deny]`, `#[forbid]`, and `#[expect]`.
     LintCheck(ThinVec<LintCheck>),
 
+    /// Represents `#[lint::never_returns_null_ptr]` (used by the `useless_ptr_null_checks` lint).
+    LintNeverReturnsNullPtr,
+
     /// Represents `#[loop_match]`.
     LoopMatch(Span),
 
@@ -1360,9 +1363,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_must_match_exhaustively]`
     RustcMustMatchExhaustively(Span),
-
-    /// Represents `#[rustc_never_returns_null_ptr]`
-    RustcNeverReturnsNullPtr,
 
     /// Represents `#[rustc_no_implicit_autorefs]`
     RustcNoImplicitAutorefs,
