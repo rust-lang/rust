@@ -84,7 +84,7 @@ impl<T: ?Sized> CovariantUnsafeCell<T> {
     /// ```
     #[inline(always)]
     #[lint::as_ptr]
-    #[rustc_should_not_be_called_on_const_items]
+    #[lint::should_not_be_called_on_const_items]
     #[unstable(feature = "covariant_unsafe_cell", issue = "159735")]
     #[rustc_const_unstable(feature = "covariant_unsafe_cell", issue = "159735")]
     pub const fn get(&self) -> NonNull<T> {

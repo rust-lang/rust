@@ -949,14 +949,18 @@ pub enum AttributeKind {
     /// Represents `#[linkage]`.
     Linkage(Linkage, Span),
 
-    /// Represents `#[allow]`, `#[warn]`, `#[deny]`, `#[forbid]`, and `#[expect]`.
-    LintCheck(ThinVec<LintCheck>),
-
     /// Represents `#[lint::as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
     LintAsPtr,
 
+    /// Represents `#[allow]`, `#[warn]`, `#[deny]`, `#[forbid]`, and `#[expect]`.
+    LintCheck(ThinVec<LintCheck>),
+
     /// Represents `#[lint::never_returns_null_ptr]` (used by the `useless_ptr_null_checks` lint).
     LintNeverReturnsNullPtr,
+
+    /// Represents `#[lint::should_not_be_called_on_const_items]` (used by the
+    /// `const_item_interior_mutations` lint).
+    LintShouldNotBeCalledOnConstItems,
 
     /// Represents `#[loop_match]`.
     LoopMatch(Span),

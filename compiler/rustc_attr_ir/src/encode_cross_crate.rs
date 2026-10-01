@@ -58,9 +58,10 @@ impl AttributeKind {
             LinkOrdinal { .. } => No,
             LinkSection { .. } => Yes, // Needed for rustdoc
             Linkage(..) => No,
-            LintCheck(..) => No,
             LintAsPtr => Yes,
+            LintCheck(..) => No,
             LintNeverReturnsNullPtr => Yes,
+            LintShouldNotBeCalledOnConstItems => Yes,
             LoopMatch(..) => No,
             MacroEscape => No,
             MacroExport { .. } => Yes,
@@ -275,9 +276,10 @@ impl AttributeKind {
                 | crate::Linkage::WeakAny
                 | crate::Linkage::WeakODR => true,
             },
-            LintCheck(_) => false,
             LintAsPtr => false,
+            LintCheck(_) => false,
             LintNeverReturnsNullPtr => false,
+            LintShouldNotBeCalledOnConstItems => false,
             LoopMatch(..) => false,
             MacroEscape => false,
             MacroExport { .. } => false,
