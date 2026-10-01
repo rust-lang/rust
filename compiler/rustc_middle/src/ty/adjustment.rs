@@ -104,17 +104,18 @@ pub enum Adjust {
 
     Pointer(PointerCoercion),
 
-    /// Take a user-type T implementing the Reborrow trait (for Mut) or the CoerceShared trait (for
-    /// Not) and reborrow as `T` or `CoreceShared<U>`.
+    /// Take a user-type T implementing the CoerceShared trait
+    /// and reborrow as `CoreceShared<U>`.
     ///
-    /// This produces an [`ExprKind::Reborrow`].
+    /// This produces an [`ExprKind::CoerceShared`].
     ///
-    /// [`ExprKind::Reborrow`]: crate::thir::ExprKind::Reborrow
-    GenericReborrow(hir::Mutability),
+    /// [`ExprKind::CoerceShared`]: crate::thir::ExprKind::CoerceShared
+    CoerceShared,
 
     /// `&mut T` -> `&mut T` reborrow.
     /// We actually insert these in MIR building,
     /// but keep these pretend ones in HIR to keep closure capture inference stable.
+    /// Also used for coercions using the `Reborrow` trait.
     FakeMutReborrow,
 }
 

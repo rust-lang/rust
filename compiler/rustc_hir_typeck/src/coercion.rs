@@ -980,13 +980,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         };
         if a_def.did() == b_def.did() {
             // Reborrow is applicable here
-            self.unify_and(
-                a,
-                b,
-                [],
-                Adjust::GenericReborrow(ty::Mutability::Mut),
-                ForceLeakCheck::No,
-            )
+            self.unify_and(a, b, [], Adjust::FakeMutReborrow, ForceLeakCheck::No)
         } else {
             // FIXME: CoerceShared check goes here, error for now
             Err(TypeError::Mismatch)
@@ -1022,13 +1016,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let errs = ocx.evaluate_obligations_error_on_ambiguity();
         if errs.no_errors() {
             Ok(InferOk {
-                value: (
-                    vec![Adjustment {
-                        kind: Adjust::GenericReborrow(ty::Mutability::Not),
-                        target: b,
-                    }],
-                    b,
-                ),
+                value: (vec![Adjustment { kind: Adjust::CoerceShared, target: b }], b),
                 obligations: ocx.into_pending_obligations(),
             })
         } else {

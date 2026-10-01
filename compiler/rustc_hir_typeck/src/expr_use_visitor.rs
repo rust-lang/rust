@@ -747,13 +747,16 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     self.walk_autoref(expr, &place_with_id, autoref);
                 }
 
-                adjustment::Adjust::GenericReborrow(mutability) if is_last_adjustment => {
-                    let bk = ty::BorrowKind::from_mutbl(mutability);
-                    self.delegate.borrow_mut().borrow(&place_with_id, place_with_id.hir_id, bk);
-                }
-
-                adjustment::Adjust::GenericReborrow(_) => {
-                    span_bug!(expr.span, "generic reborrow adjustment must be terminal");
+                adjustment::Adjust::CoerceShared => {
+                    if is_last_adjustment {
+                        self.delegate.borrow_mut().borrow(
+                            &place_with_id,
+                            place_with_id.hir_id,
+                            ty::BorrowKind::Immutable,
+                        );
+                    } else {
+                        span_bug!(expr.span, "generic reborrow adjustment must be terminal");
+                    }
                 }
 
                 adjustment::Adjust::FakeMutReborrow => {
@@ -1293,7 +1296,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             adjustment::Adjust::NeverToAny
             | adjustment::Adjust::Pointer(_)
             | adjustment::Adjust::Borrow(_)
-            | adjustment::Adjust::GenericReborrow(..)
+            | adjustment::Adjust::CoerceShared
             | adjustment::Adjust::FakeMutReborrow => {
                 // Result is an rvalue.
                 Ok(self.cat_rvalue(expr.hir_id, target))
