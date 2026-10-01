@@ -2,13 +2,15 @@
 
 The THIR ("Typed High-Level Intermediate Representation"), previously called HAIR for
 "High-Level Abstract IR", is another IR used by rustc that is generated after
-[type checking]. It is (as of <!-- date-check --> January 2024) used for
-[MIR construction], [exhaustiveness checking], and [unsafety checking].
+[type checking]. It is (as of <!-- date-check --> October 2026) used for
+[MIR construction], [exhaustiveness checking], [unsafety checking], and
+[explicit tail call checking].
 
 [type checking]: ./hir-typeck/summary.md
 [MIR construction]: ./mir/construction.md
 [exhaustiveness checking]: ./pat-exhaustive-checking.md
 [unsafety checking]: ./unsafety-checking.md
+[explicit tail call checking]: https://github.com/rust-lang/rust/issues/112788
 
 As the name might suggest, the THIR is a lowered version of the [HIR] where all
 the types have been filled in, which is possible after type checking has completed.
