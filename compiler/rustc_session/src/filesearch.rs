@@ -72,7 +72,8 @@ impl FileSearch {
         // We keep a list of all found paths that look like libraries in `FileSearch`, to optimize
         // lookup in `get_library_candidates`.
         // These prefixes should be kept in sync with `CrateLocator::find_library_crate`.
-        let prefixes = ["lib", &target.staticlib_prefix, &target.dll_prefix];
+        let prefixes =
+            ["lib", "validation", "analysis", &target.staticlib_prefix, &target.dll_prefix];
 
         // Load all files from all search paths, filter them by supported prefixes, and sort them,
         // so that we can efficiently look them up in `get_file_candidates` via binary search.
