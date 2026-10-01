@@ -304,6 +304,7 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
 
         let linker = create_and_enter_global_ctxt(compiler, krate, |tcx| {
             // Make sure name resolution and macro expansion is run.
+            // This is earliest point at which name resolution is done.
             let _ = tcx.resolver_for_lowering();
 
             if callbacks.after_expansion(compiler, tcx) == Compilation::Stop {
@@ -314,13 +315,16 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
 
             passes::write_interface(tcx);
 
+            if sess.target_stage == TargetStage::NameResolution {
+                debug_assert!(rustc_metadata::fs::encode_and_write_metadata(tcx, true).is_ok());
+            }
+
             if sess.opts.output_types.contains_key(&OutputType::DepInfo)
                 && sess.opts.output_types.len() == 1
             {
                 if sess.target_stage == TargetStage::Analysis {
                     debug_assert!(rustc_metadata::fs::encode_and_write_metadata(tcx, true).is_ok());
                 }
-
                 return None;
             }
 

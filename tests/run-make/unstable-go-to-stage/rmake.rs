@@ -26,16 +26,16 @@ fn main() {
         .arg("-Zbinary-dep-depinfo")
         .arg("-Zgo-to-stage=end")
         .run();
+
     invalid_utf8_contains("lib.d", "libaux.rmeta");
     invalid_utf8_not_contains("lib.d", "libaux.rlib");
 
     path_exists(["lib.d"]);
 
     rfs::remove_file("lib.d");
+    rfs::remove_file("libaux.rmeta");
 
-    path_not_exists(["lib.d"]);
-
-    rustc().input("aux.rs").crate_type("rlib").emit("link").arg("-Zgo-to-stage=analysis").run();
+    rustc().input("aux.rs").crate_type("rlib").emit("dep-info").arg("-Zgo-to-stage=analysis").run();
     rustc()
         .input("lib.rs")
         .crate_type("rlib")
@@ -45,5 +45,4 @@ fn main() {
         .run();
 
     path_exists(["liblib.rmeta"]);
-    // path_exists(["lib.rmeta, libaux.rmeta"]);
 }
