@@ -10,7 +10,6 @@ use std::slice;
 
 use rustc_ast::MetaItemKind;
 use rustc_attr_ir::diagnostic::Directive;
-use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
 use rustc_attr_ir::{
     Attribute, AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution,
@@ -24,8 +23,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam, GenericParamKind,
-    HirId, Item, ItemKind, Mod, Node, ParamName, TraitItem,
+    self as hir, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParamKind, HirId, Item,
+    ItemKind, Mod, Node, ParamName, TraitItem,
 };
 use rustc_lint_defs::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
@@ -38,7 +37,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt, TypingMode, Unnormalized};
-use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, span_bug, sym};
 use rustc_structures::CrateType;
@@ -201,8 +199,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcAllowConstFnUnstable(_, first_span) => {
                 self.check_rustc_allow_const_fn_unstable(hir_id, *first_span, span, target)
             }
-            AttributeKind::Naked(..) => self.check_naked(hir_id, target),
-            AttributeKind::MayDangle(attr_span) => self.check_may_dangle(hir_id, *attr_span),
             AttributeKind::MacroExport { span, .. } => {
                 self.check_macro_export(hir_id, *span, target)
             }
@@ -274,9 +270,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::MacroEscape => (),
             AttributeKind::MacroUse { .. } => (),
             AttributeKind::Marker => (),
+            AttributeKind::MayDangle(_) => (),
             AttributeKind::MoveSizeLimit { .. } => (),
             AttributeKind::MustNotSupend { .. } => (),
             AttributeKind::MustUse { .. } => (),
+            AttributeKind::Naked(..) => (),
             AttributeKind::NeedsAllocator => (),
             AttributeKind::NeedsPanicRuntime => (),
             AttributeKind::NoBuiltins => (),
@@ -736,32 +734,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if `#[naked]` is applied to a function definition.
-    fn check_naked(&self, hir_id: HirId, target: Target) {
-        match target {
-            Target::Fn
-            | Target::Method(
-                MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
-            ) => {
-                let fn_sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
-                let abi = fn_sig.header.abi;
-                if abi.is_rustic_abi() && !self.tcx.features().naked_functions_rustic_abi() {
-                    feature_err(
-                        &self.tcx.sess,
-                        sym::naked_functions_rustic_abi,
-                        fn_sig.span,
-                        format!(
-                            "`#[naked]` is currently unstable on `extern \"{}\"` functions",
-                            abi.as_str()
-                        ),
-                    )
-                    .emit();
-                }
-            }
-            _ => {}
-        }
-    }
-
     fn check_doc_alias_value(&self, span: Span, hir_id: HirId, target: Target, alias: Symbol) {
         if let Some(location) = match target {
             Target::AssocTy(_) => {
@@ -1038,33 +1010,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if let Some(span) = masked {
             self.check_doc_masked(*span, hir_id, target);
         }
-    }
-
-    /// Checks if `#[may_dangle]` is applied to a lifetime or type generic parameter in `Drop` impl.
-    fn check_may_dangle(&self, hir_id: HirId, attr_span: Span) {
-        let hir::Node::GenericParam(
-            param @ GenericParam {
-                kind: hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. },
-                ..
-            },
-        ) = self.tcx.hir_node(hir_id)
-        else {
-            self.dcx().delayed_bug("Checked in attr parser");
-            return;
-        };
-
-        if matches!(param.source, hir::GenericParamSource::Generics)
-            && let parent_hir_id = self.tcx.parent_hir_id(hir_id)
-            && let hir::Node::Item(item) = self.tcx.hir_node(parent_hir_id)
-            && let hir::ItemKind::Impl(impl_) = item.kind
-            && let Some(of_trait) = impl_.of_trait
-            && let Some(def_id) = of_trait.trait_ref.trait_def_id()
-            && self.tcx.is_lang_item(def_id, LangItem::Drop)
-        {
-            return;
-        }
-
-        self.dcx().emit_err(diagnostics::InvalidMayDangle { attr_span });
     }
 
     /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid argument.
