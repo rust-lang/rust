@@ -30,7 +30,7 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{self, AtomicOrdering, Instance, Ty, TyCtxt};
 use rustc_session::config::InliningThreshold;
 use rustc_span::def_id::{CrateNum, DefId};
-use rustc_span::{Span, SpanData, Symbol};
+use rustc_span::{Span, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{Arch, Os};
@@ -950,19 +950,15 @@ impl<'tcx> MiriMachine<'tcx> {
         Align::from_bytes(self.page_size).unwrap()
     }
 
-    pub(crate) fn allocated_span(&self, alloc_id: AllocId) -> Option<SpanData> {
-        self.allocation_spans
-            .borrow()
-            .get(&alloc_id)
-            .map(|(allocated, _deallocated)| allocated.data())
+    pub(crate) fn allocated_span(&self, alloc_id: AllocId) -> Option<Span> {
+        self.allocation_spans.borrow().get(&alloc_id).map(|(allocated, _deallocated)| *allocated)
     }
 
-    pub(crate) fn deallocated_span(&self, alloc_id: AllocId) -> Option<SpanData> {
+    pub(crate) fn deallocated_span(&self, alloc_id: AllocId) -> Option<Span> {
         self.allocation_spans
             .borrow()
             .get(&alloc_id)
             .and_then(|(_allocated, deallocated)| *deallocated)
-            .map(Span::data)
     }
 
     fn init_allocation(
