@@ -25,9 +25,9 @@ use crate::{
     completions::postfix::{is_in_condition, is_in_value},
     context::{
         AttrCtx, BreakableKind, COMPLETION_MARKER, CompletionAnalysis, DotAccess, DotAccessExprCtx,
-        DotAccessKind, ExpectedFunction, ItemListKind, LifetimeContext, LifetimeKind, NameContext,
-        NameKind, NameRefContext, NameRefKind, ParamContext, ParamKind, PathCompletionCtx,
-        PathExprCtx, PathKind, PatternContext, PatternRefutability, Qualified, QualifierCtx,
+        DotAccessKind, ItemListKind, LifetimeContext, LifetimeKind, NameContext, NameKind,
+        NameRefContext, NameRefKind, ParamContext, ParamKind, PathCompletionCtx, PathExprCtx,
+        PathKind, PatternContext, PatternRefutability, Qualified, QualifierCtx,
         TypeAscriptionTarget, TypeLocation,
     },
 };
@@ -44,7 +44,7 @@ struct ExpansionResult {
     derive_ctx: Option<(SyntaxNode, SyntaxNode, TextSize, ast::Attr)>,
 }
 
-type ExpectedInfo<'db> = (Option<Type<'db>>, Option<NameOrNameRef>, Option<ExpectedFunction>);
+type ExpectedInfo<'db> = (Option<Type<'db>>, Option<NameOrNameRef>, Option<hir::Callable<'db>>);
 
 pub(super) struct AnalysisResult<'db> {
     pub(super) analysis: CompletionAnalysis<'db>,
@@ -892,8 +892,7 @@ fn expected_type_and_name<'db>(
                 !Either::<Either<ast::PathSegment, ast::Path>, ast::PathExpr>::can_cast(it.kind())
             })
             == Some(node);
-        // FIXME: Store expected fn-sig in ExpectedFunction
-        (is_direct_arg && ty.impls_fnonce(sema.db)).then_some(ExpectedFunction)
+        is_direct_arg.then_some(()).and_then(|()| ty.as_callable(sema.db))
     });
     (ty.map(strip_refs), name, expected_func)
 }

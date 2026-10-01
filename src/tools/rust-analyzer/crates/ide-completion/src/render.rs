@@ -2577,6 +2577,20 @@ fn foo(a: u8, b: u8) {
 }
 "#,
         );
+        check_edit(
+            "neg",
+            r#"
+//- minicore: iterator, iterators, unary_ops, builtin_impls
+fn foo(iter: impl Iterator<Item = u32>) {
+    iter.map(core::ops::Neg::n$0)
+}
+"#,
+            r#"
+fn foo(iter: impl Iterator<Item = u32>) {
+    iter.map(core::ops::Neg::neg)
+}
+"#,
+        );
     }
 
     #[test]
@@ -2637,18 +2651,54 @@ fn foo(a: u8, b: u8) {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn call_parens_in_bad_case() {
         check_edit(
             "foo",
             r#"
 //- minicore: fn
 fn needs_fn(f: impl FnOnce(u8, u8)) {}
-fn foo(a: u8, b: u8) -> impl FnOnce(u8, u8) {
+fn foo(a: u8) {
     needs_fn(f$0);
 }
 "#,
             r#"
 fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8) {
+    needs_fn(foo(${1:a})$0);
+}
+"#,
+        );
+        check_edit(
+            "foo",
+            r#"
+//- minicore: fn
+fn needs_fn<T>(f: impl FnOnce(u8, u8) -> T) {}
 fn foo(a: u8, b: u8) -> impl FnOnce(u8, u8) {
+    needs_fn(f$0);
+}
+"#,
+            r#"
+fn needs_fn<T>(f: impl FnOnce(u8, u8) -> T) {}
+fn foo(a: u8, b: u8) -> impl FnOnce(u8, u8) {
+    needs_fn(foo(${1:a}, ${2:b})$0);
+}
+"#,
+        );
+        check_edit(
+            "foo",
+            r#"
+//- minicore: fn
+fn needs_fn(f: impl FnOnce(u8, u8) -> u8) {}
+fn foo(a: u8, b: u8) -> u16 {
+    needs_fn(f$0);
+}
+"#,
+            r#"
+fn needs_fn(f: impl FnOnce(u8, u8) -> u8) {}
+fn foo(a: u8, b: u8) -> u16 {
     needs_fn(foo(${1:a}, ${2:b})$0);
 }
 "#,

@@ -459,9 +459,6 @@ pub(crate) enum ParamKind {
     Closure(ast::ClosureExpr),
 }
 
-#[derive(Debug)]
-pub(crate) struct ExpectedFunction;
-
 /// `CompletionContext` is created early during completion to figure out, where
 /// exactly is the cursor, syntax-wise.
 #[derive(Debug)]
@@ -495,7 +492,7 @@ pub(crate) struct CompletionContext<'a, 'db> {
     pub(crate) expected_name: Option<NameOrNameRef>,
     /// The expected type of what we are completing.
     pub(crate) expected_type: Option<Type<'db>>,
-    pub(crate) expected_func: Option<ExpectedFunction>,
+    pub(crate) expected_func: Option<hir::Callable<'db>>,
 
     pub(crate) qualifier_ctx: QualifierCtx,
 
