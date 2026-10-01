@@ -9,6 +9,9 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
+[package.metadata.cargo-machete]
+ignored = ["unicode-ident"]
+
 [lib]
 doctest = false
 
