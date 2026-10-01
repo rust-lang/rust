@@ -775,7 +775,11 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     SmallVector<StringRef> Plugins;
     PluginsStr.split(Plugins, ',', -1, false);
     for (auto PluginPath : Plugins) {
+#if LLVM_VERSION_GE(24, 0)
+      auto Plugin = PassPlugin::load(PluginPath);
+#else
       auto Plugin = PassPlugin::Load(PluginPath.str());
+#endif
       if (!Plugin) {
         auto Err = Plugin.takeError();
         auto ErrMsg = llvm::toString(std::move(Err));

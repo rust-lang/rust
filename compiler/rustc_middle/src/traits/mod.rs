@@ -137,8 +137,8 @@ impl<'tcx> ObligationCause<'tcx> {
     pub fn to_constraint_category(&self) -> ConstraintCategory<'tcx> {
         match self.code() {
             ObligationCauseCode::MatchImpl(cause, _) => cause.to_constraint_category(),
-            ObligationCauseCode::AscribeUserTypeProvePredicate(predicate_span) => {
-                ConstraintCategory::Predicate(*predicate_span)
+            ObligationCauseCode::AscribeUserTypeProvePredicate(predicate_span, def_id) => {
+                ConstraintCategory::Predicate(*predicate_span, *def_id)
             }
             _ => ConstraintCategory::BoringNoLocation,
         }
@@ -402,7 +402,7 @@ pub enum ObligationCauseCode<'tcx> {
         output_ty: Option<Ty<'tcx>>,
     },
 
-    AscribeUserTypeProvePredicate(Span),
+    AscribeUserTypeProvePredicate(Span, DefId),
 
     RustCall,
 

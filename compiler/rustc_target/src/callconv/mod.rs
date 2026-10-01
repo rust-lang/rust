@@ -733,17 +733,17 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         let spec = cx.target_spec();
         match &spec.arch {
             Arch::X86 => {
-                let (flavor, regparm) = match abi {
+                let flavor = match abi {
                     ExternAbi::Fastcall { .. } | ExternAbi::Vectorcall { .. } => {
-                        (x86::Flavor::FastcallOrVectorcall, None)
+                        x86::Flavor::FastcallOrVectorcall
                     }
                     ExternAbi::C { .. } | ExternAbi::Cdecl { .. } | ExternAbi::Stdcall { .. } => {
-                        (x86::Flavor::General, cx.x86_abi_opt().regparm)
+                        x86::Flavor::General { regparam: cx.x86_abi_opt().regparm }
                     }
-                    _ => (x86::Flavor::General, None),
+                    _ => x86::Flavor::General { regparam: None },
                 };
                 let reg_struct_return = cx.x86_abi_opt().reg_struct_return;
-                let opts = x86::X86Options { flavor, regparm, reg_struct_return };
+                let opts = x86::X86Options { flavor, reg_struct_return };
                 if spec.is_like_msvc {
                     x86_win32::compute_abi_info(cx, self, opts);
                 } else {

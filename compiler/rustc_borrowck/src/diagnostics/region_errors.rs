@@ -58,7 +58,7 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
             ConstraintCategory::ClosureUpvar(_) => "closure capture ",
             ConstraintCategory::Usage => "this usage ",
             ConstraintCategory::SolverRegionConstraint(_)
-            | ConstraintCategory::Predicate(_)
+            | ConstraintCategory::Predicate(_, _)
             | ConstraintCategory::Boring
             | ConstraintCategory::BoringNoLocation
             | ConstraintCategory::Internal
