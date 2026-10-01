@@ -46,10 +46,11 @@ where
     T: fmt::Debug + TypeFoldable<TyCtxt<'tcx>>,
 {
     let ParamEnvAnd { param_env, value: Normalize { value } } = key;
-    let Normalized { value, obligations } = ocx
-        .infcx
-        .at(&ObligationCause::dummy(), param_env)
-        .query_normalize(value.skip_normalization())?;
+    let Normalized { value, obligations } = ocx.infcx.query_normalize(
+        value.skip_normalization(),
+        param_env,
+        ObligationCause::dummy(),
+    )?;
     ocx.register_obligations(obligations);
     Ok(value)
 }

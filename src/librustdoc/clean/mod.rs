@@ -2026,8 +2026,7 @@ fn normalize<'tcx>(
     // Try to normalize `<X as Y>::T` to a type
     let infcx = cx.tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let normalized = infcx
-        .at(&ObligationCause::dummy(), cx.param_env)
-        .query_normalize(ty)
+        .query_normalize(ty, cx.param_env, ObligationCause::dummy())
         .map(|resolved| infcx.deeply_resolve_ignoring_regions(resolved.value));
     match normalized {
         Ok(normalized_value) => {
@@ -2604,8 +2603,7 @@ pub(crate) fn clean_variant_def_with_args<'tcx>(
                     // note: we do not use try_normalize_erasing_regions since we
                     // do care about showing the regions
                     let ty = infcx
-                        .at(&ObligationCause::dummy(), cx.param_env)
-                        .query_normalize(ty)
+                        .query_normalize(ty, cx.param_env, ObligationCause::dummy())
                         .map(|normalized| normalized.value)
                         .unwrap_or(ty);
 
@@ -2629,8 +2627,7 @@ pub(crate) fn clean_variant_def_with_args<'tcx>(
                     // note: we do not use try_normalize_erasing_regions since we
                     // do care about showing the regions
                     let ty = infcx
-                        .at(&ObligationCause::dummy(), cx.param_env)
-                        .query_normalize(ty)
+                        .query_normalize(ty, cx.param_env, ObligationCause::dummy())
                         .map(|normalized| normalized.value)
                         .unwrap_or(ty);
 

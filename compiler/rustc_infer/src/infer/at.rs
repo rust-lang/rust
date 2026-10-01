@@ -46,23 +46,7 @@ pub enum DefineOpaqueTypes {
     No,
 }
 
-#[derive(Clone, Copy)]
-pub struct At<'a, 'tcx> {
-    pub infcx: &'a InferCtxt<'tcx>,
-    pub cause: &'a ObligationCause<'tcx>,
-    pub param_env: ty::ParamEnv<'tcx>,
-}
-
 impl<'tcx> InferCtxt<'tcx> {
-    #[inline]
-    pub fn at<'a>(
-        &'a self,
-        cause: &'a ObligationCause<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> At<'a, 'tcx> {
-        At { infcx: self, cause, param_env }
-    }
-
     /// Forks the inference context, creating a new inference context with the same inference
     /// variables in the same state. This can be used to "branch off" many tests from the same
     /// common state.
@@ -122,19 +106,11 @@ impl<'tcx> InferCtxt<'tcx> {
         forked.inner.borrow_mut().projection_cache().clear();
         forked
     }
-}
 
-pub trait ToTrace<'tcx>: Relate<TyCtxt<'tcx>> + Copy {
-    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx>;
-}
-
-impl<'a, 'tcx> At<'a, 'tcx> {
-    /// Makes `actual <: expected`. For example, if type-checking a
-    /// call like `foo(x)`, where `foo: fn(i32)`, you might have
-    /// `sup(i32, x)`, since the "expected" type is the type that
-    /// appears in the signature.
     pub fn sup<T>(
-        self,
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         define_opaque_types: DefineOpaqueTypes,
         expected: T,
         actual: T,
@@ -142,21 +118,21 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        if self.infcx.next_trait_solver {
+        if self.next_trait_solver {
             NextSolverRelate::relate(
-                self.infcx,
-                self.param_env,
+                self,
+                param_env,
                 expected,
                 ty::Contravariant,
                 actual,
-                self.cause.span,
+                cause.span,
             )
-            .map(|goals| self.goals_to_obligations(goals))
+            .map(|goals| self.goals_to_obligations_at(cause, goals))
         } else {
             let mut op = TypeRelating::new(
-                self.infcx,
-                ToTrace::to_trace(self.cause, expected, actual),
-                self.param_env,
+                &self,
+                ToTrace::to_trace(cause, expected, actual),
+                param_env,
                 define_opaque_types,
                 ty::Contravariant,
             );
@@ -167,7 +143,9 @@ impl<'a, 'tcx> At<'a, 'tcx> {
 
     /// Makes `expected <: actual`.
     pub fn sub<T>(
-        self,
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         define_opaque_types: DefineOpaqueTypes,
         expected: T,
         actual: T,
@@ -175,21 +153,14 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        if self.infcx.next_trait_solver {
-            NextSolverRelate::relate(
-                self.infcx,
-                self.param_env,
-                expected,
-                ty::Covariant,
-                actual,
-                self.cause.span,
-            )
-            .map(|goals| self.goals_to_obligations(goals))
+        if self.next_trait_solver {
+            NextSolverRelate::relate(self, param_env, expected, ty::Covariant, actual, cause.span)
+                .map(|goals| self.goals_to_obligations_at(cause, goals))
         } else {
             let mut op = TypeRelating::new(
-                self.infcx,
-                ToTrace::to_trace(self.cause, expected, actual),
-                self.param_env,
+                &self,
+                ToTrace::to_trace(cause, expected, actual),
+                param_env,
                 define_opaque_types,
                 ty::Covariant,
             );
@@ -198,9 +169,10 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         }
     }
 
-    /// Makes `expected == actual`.
     pub fn eq<T>(
-        self,
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         define_opaque_types: DefineOpaqueTypes,
         expected: T,
         actual: T,
@@ -209,16 +181,19 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         T: ToTrace<'tcx>,
     {
         self.eq_trace(
+            cause,
+            param_env,
             define_opaque_types,
-            ToTrace::to_trace(self.cause, expected, actual),
+            ToTrace::to_trace(cause, expected, actual),
             expected,
             actual,
         )
     }
 
-    /// Makes `expected == actual`.
     pub fn eq_trace<T>(
-        self,
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         define_opaque_types: DefineOpaqueTypes,
         trace: TypeTrace<'tcx>,
         expected: T,
@@ -227,31 +202,21 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: Relate<TyCtxt<'tcx>>,
     {
-        if self.infcx.next_trait_solver {
-            NextSolverRelate::relate(
-                self.infcx,
-                self.param_env,
-                expected,
-                ty::Invariant,
-                actual,
-                self.cause.span,
-            )
-            .map(|goals| self.goals_to_obligations(goals))
+        if self.next_trait_solver {
+            NextSolverRelate::relate(self, param_env, expected, ty::Invariant, actual, cause.span)
+                .map(|goals| self.goals_to_obligations_at(cause, goals))
         } else {
-            let mut op = TypeRelating::new(
-                self.infcx,
-                trace,
-                self.param_env,
-                define_opaque_types,
-                ty::Invariant,
-            );
+            let mut op =
+                TypeRelating::new(&self, trace, param_env, define_opaque_types, ty::Invariant);
             op.relate(expected, actual)?;
             Ok(InferOk { value: (), obligations: op.into_obligations() })
         }
     }
 
     pub fn relate<T>(
-        self,
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         define_opaque_types: DefineOpaqueTypes,
         expected: T,
         variance: ty::Variance,
@@ -261,15 +226,15 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         T: ToTrace<'tcx>,
     {
         match variance {
-            ty::Covariant => self.sub(define_opaque_types, expected, actual),
-            ty::Invariant => self.eq(define_opaque_types, expected, actual),
-            ty::Contravariant => self.sup(define_opaque_types, expected, actual),
+            ty::Covariant => self.sub(cause, param_env, define_opaque_types, expected, actual),
+            ty::Invariant => self.eq(cause, param_env, define_opaque_types, expected, actual),
+            ty::Contravariant => self.sup(cause, param_env, define_opaque_types, expected, actual),
 
             // We could make this make sense but it's not readily
             // exposed and I don't feel like dealing with it. Note
             // that bivariance in general does a bit more than just
             // *nothing*, it checks that the types are the same
-            // "modulo variance" basically.
+            // "modulo variance" basically. - Niko
             ty::Bivariant => panic!("Bivariant given to `relate()`"),
         }
     }
@@ -279,22 +244,29 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// this can result in an error (e.g., if asked to compute LUB of
     /// u32 and i32), it is meaningful to call one of them the
     /// "expected type".
-    pub fn lub<T>(self, expected: T, actual: T) -> InferResult<'tcx, T>
+    pub fn lub<T>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, T>
     where
         T: ToTrace<'tcx>,
     {
         let mut op = LatticeOp::new(
-            self.infcx,
-            ToTrace::to_trace(self.cause, expected, actual),
-            self.param_env,
+            &self,
+            ToTrace::to_trace(cause, expected, actual),
+            param_env,
             LatticeOpKind::Lub,
         );
         let value = op.relate(expected, actual)?;
         Ok(InferOk { value, obligations: op.into_obligations() })
     }
 
-    fn goals_to_obligations(
+    fn goals_to_obligations_at(
         &self,
+        cause: &ObligationCause<'tcx>,
         goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
     ) -> InferOk<'tcx, ()> {
         InferOk {
@@ -302,16 +274,15 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             obligations: goals
                 .into_iter()
                 .map(|goal| {
-                    Obligation::new(
-                        self.infcx.tcx,
-                        self.cause.clone(),
-                        goal.param_env,
-                        goal.predicate,
-                    )
+                    Obligation::new(self.tcx, cause.clone(), goal.param_env, goal.predicate)
                 })
                 .collect(),
         }
     }
+}
+
+pub trait ToTrace<'tcx>: Relate<TyCtxt<'tcx>> + Copy {
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx>;
 }
 
 impl<'tcx> ToTrace<'tcx> for Ty<'tcx> {

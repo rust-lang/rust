@@ -1971,7 +1971,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     self.xform_self_ty(candidate.item, trait_ref.self_ty(), trait_ref.args);
                 // Guide the trait selection to show impls that have methods whose type matches
                 // up with the `self` parameter of the method.
-                let _ = self.at(&ObligationCause::dummy(), self.param_env).sup(
+                let _ = self.sup(
+                    &ObligationCause::dummy(),
+                    self.param_env,
                     DefineOpaqueTypes::Yes,
                     xform_self_ty,
                     self_ty,

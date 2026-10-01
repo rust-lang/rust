@@ -16,17 +16,13 @@ use tracing::{debug, info, instrument};
 use super::NoSolution;
 use crate::error_reporting::InferCtxtErrorExt;
 use crate::error_reporting::traits::OverflowCause;
-use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::normalize::needs_normalization;
-use crate::traits::{
-    BoundVarReplacer, FulfillmentError, FulfillmentErrorCode, Normalized, ObligationCause,
-    PlaceholderReplacer,
-};
+use crate::traits::{BoundVarReplacer, Normalized, ObligationCause, PlaceholderReplacer};
 
 #[extension(pub trait QueryNormalizeExt<'tcx>)]
-impl<'a, 'tcx> At<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// Normalize `value` in the context of the inference context,
     /// yielding a resulting type, or an error if `value` cannot be
     /// normalized. If you don't care about regions, you should prefer
@@ -45,16 +41,20 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// N.B. Once the new solver is stabilized this method of normalization will
     /// likely be removed as trait solver operations are already cached by the query
     /// system making this redundant.
-    fn query_normalize<T>(self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
+    fn query_normalize<T>(
+        &self,
+        value: T,
+        param_env: ty::ParamEnv<'tcx>,
+        cause: ObligationCause<'tcx>,
+    ) -> Result<Normalized<'tcx, T>, NoSolution>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         debug!(
-            "normalize::<{}>(value={:?}, param_env={:?}, cause={:?})",
+            "normalize::<{}>(value={:?}, param_env={:?})",
             std::any::type_name::<T>(),
             value,
-            self.param_env,
-            self.cause,
+            param_env,
         );
 
         // This is actually a consequence by the way `normalize_erasing_regions` works currently.
@@ -76,45 +76,29 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             vec![]
         };
 
-        if self.infcx.next_trait_solver() {
-            match crate::solve::deeply_normalize_with_skipped_universes::<_, FulfillmentError<'tcx>>(
-                self,
-                Unnormalized::new_wip(value),
-                universes,
-            ) {
+        if self.next_trait_solver() {
+            match crate::solve::deeply_normalize_with_skipped_universes::<
+                _,
+                rustc_infer::traits::ScrubbedTraitError<'tcx>,
+            >(&self, Unnormalized::new_wip(value), universes, param_env, &cause)
+            {
                 Ok(value) => {
                     return Ok(Normalized { value, obligations: PredicateObligations::new() });
                 }
-                Err(errors) => {
-                    // We're imitating the old solver's behavior of eagerly reporting overflow
-                    // errors here. Otherwise we might silently ignore such errors. See #161542.
-                    if let Some((overflowed_obligation, suggest_higher_limit)) =
-                        errors.into_iter().find_map(|e| match e.code {
-                            FulfillmentErrorCode::Ambiguity {
-                                overflow: Some(suggest_higher_limit),
-                            } => Some((e.root_obligation, suggest_higher_limit)),
-                            _ => None,
-                        })
-                    {
-                        self.infcx.err_ctxt().report_overflow_obligation(
-                            &overflowed_obligation,
-                            suggest_higher_limit,
-                        );
-                    } else {
-                        return Err(NoSolution);
-                    }
+                Err(_errors) => {
+                    return Err(NoSolution);
                 }
             }
         }
 
-        if !needs_normalization(self.infcx, &value) {
+        if !needs_normalization(&self, &value) {
             return Ok(Normalized { value, obligations: PredicateObligations::new() });
         }
 
         let mut normalizer = QueryNormalizer {
-            infcx: self.infcx,
-            cause: self.cause,
-            param_env: self.param_env,
+            infcx: &self,
+            cause: &cause,
+            param_env,
             obligations: PredicateObligations::new(),
             cache: SsoHashMap::new(),
             anon_depth: 0,

@@ -968,12 +968,13 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         let mut value = if self.should_normalize && self.fcx.next_trait_solver() {
             let body_def_id = tcx.hir_body_owner_def_id(self.body.id());
             let cause = ObligationCause::misc(self.span.to_span(tcx), body_def_id);
-            let at = self.fcx.at(&cause, self.fcx.param_env);
             let universes = vec![None; outer_exclusive_binder(&value).as_usize()];
             match solve::deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals(
-                at,
+                &self.fcx.infcx,
                 Unnormalized::new_wip(value),
                 universes,
+                self.fcx.param_env,
+                &cause,
             ) {
                 Ok((value, goals)) => {
                     self.nested_goals.extend(goals);

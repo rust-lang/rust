@@ -779,8 +779,14 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
     match relation {
         FieldRelation::Equal => {
             if infcx
-                .at(&cause, param_env)
-                .relate(DefineOpaqueTypes::Yes, source_ty, ty::Variance::Invariant, target_ty)
+                .relate(
+                    &cause,
+                    param_env,
+                    DefineOpaqueTypes::Yes,
+                    source_ty,
+                    ty::Variance::Invariant,
+                    target_ty,
+                )
                 .is_err()
             {
                 return false;

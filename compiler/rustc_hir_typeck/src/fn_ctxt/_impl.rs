@@ -465,9 +465,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.register_infer_ok_obligations(
-            self.at(&self.misc(span), self.param_env).normalize(value),
-        )
+        self.register_infer_ok_obligations(self.infcx.normalize(
+            &self.misc(span),
+            self.param_env,
+            value,
+        ))
     }
 
     pub(crate) fn require_type_meets(
@@ -1447,7 +1449,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // This also occurs for an enum variant on a type alias.
             let impl_ty = self.normalize(span, tcx.type_of(impl_def_id).instantiate(tcx, args));
             let self_ty = self.normalize(span, Unnormalized::new_wip(self_ty));
-            match self.at(&self.misc(span), self.param_env).eq(
+            match self.eq(
+                &self.misc(span),
+                self.param_env,
                 DefineOpaqueTypes::Yes,
                 impl_ty,
                 self_ty,
@@ -1520,9 +1524,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We need to use a separate variable here as otherwise the temporary for
             // `self.fulfillment_cx.borrow_mut()` is alive in the `Err` branch, resulting
             // in a reentrant borrow, causing an ICE.
-            let result = self.at(&self.misc(sp), self.param_env).structurally_normalize_const(
+            let result = self.structurally_normalize_const(
                 Unnormalized::new_wip(ct),
                 &mut *self.fulfillment_cx.borrow_mut(),
+                self.param_env,
+                &self.misc(sp),
             );
             match result {
                 Ok(normalized_ct) => normalized_ct,

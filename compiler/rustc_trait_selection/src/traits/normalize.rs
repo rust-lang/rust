@@ -1,7 +1,6 @@
 //! Deeply normalize types using the old trait solver.
 
 use rustc_errors::msg;
-use rustc_infer::infer::at::At;
 use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_infer::traits::{
     FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine, TraitErrors,
@@ -22,22 +21,25 @@ use crate::error_reporting::traits::OverflowCause;
 use crate::solve::NextSolverError;
 
 #[extension(pub trait NormalizeExt<'tcx>)]
-impl<'tcx> At<'_, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// Normalize a value using the `AssocTypeNormalizer`.
     ///
     /// This normalization should be used when the type contains inference variables or the
     /// projection may be fallible.
     fn normalize<T: TypeFoldable<TyCtxt<'tcx>>>(
         &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         value: Unnormalized<'tcx, T>,
     ) -> InferOk<'tcx, T> {
-        if self.infcx.next_trait_solver() {
-            let Normalized { value, obligations } = crate::solve::normalize(*self, value);
+        if self.next_trait_solver() {
+            let Normalized { value, obligations } =
+                crate::solve::normalize(self, cause, param_env, value);
             InferOk { value, obligations }
         } else {
-            let mut selcx = SelectionContext::new(self.infcx);
+            let mut selcx = SelectionContext::new(self);
             let Normalized { value, obligations } =
-                normalize_with_depth(&mut selcx, self.param_env, self.cause.clone(), 0, value);
+                normalize_with_depth(&mut selcx, param_env, cause.clone(), 0, value);
             InferOk { value, obligations }
         }
     }
@@ -55,16 +57,18 @@ impl<'tcx> At<'_, 'tcx> {
     /// fulfillment context in the old solver. Once we have removed the old solver, we
     /// can remove the `fulfill_cx` parameter on this function.
     fn deeply_normalize<T, E>(
-        self,
+        &self,
         value: Unnormalized<'tcx, T>,
         fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
+        param_env: ty::ParamEnv<'tcx>,
+        cause: &ObligationCause<'tcx>,
     ) -> Result<T, ThinVec<E>>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
         E: FromSolverError<'tcx, NextSolverError<'tcx>>,
     {
-        if self.infcx.next_trait_solver() {
-            crate::solve::deeply_normalize(self, value)
+        if self.next_trait_solver() {
+            crate::solve::deeply_normalize(&self, value, param_env, cause)
         } else {
             if fulfill_cx.has_pending_obligations() {
                 let pending_obligations = fulfill_cx.pending_obligations();
@@ -75,17 +79,17 @@ impl<'tcx> At<'_, 'tcx> {
                 );
             }
             let value = self
-                .normalize(value)
-                .into_value_registering_obligations(self.infcx, &mut *fulfill_cx);
-            let errors = fulfill_cx.evaluate_obligations_error_on_ambiguity(self.infcx);
-            let value = self.infcx.deeply_resolve_ignoring_regions(value);
+                .normalize(cause, param_env, value)
+                .into_value_registering_obligations(&self, &mut *fulfill_cx);
+            let errors = fulfill_cx.evaluate_obligations_error_on_ambiguity(&self);
+            let value = self.deeply_resolve_ignoring_regions(value);
             match errors {
                 TraitErrors::NoErrors => Ok(value),
                 TraitErrors::HasErrors(errors) => {
                     // Drop pending obligations, since deep normalization may happen
                     // in a loop and we don't want to trigger the assertion on the next
                     // iteration due to pending ambiguous obligations we've left over.
-                    let _ = fulfill_cx.collect_remaining_errors(self.infcx);
+                    let _ = fulfill_cx.collect_remaining_errors(&self);
                     Err(errors)
                 }
             }

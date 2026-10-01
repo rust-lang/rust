@@ -3048,10 +3048,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let cleaned_pred =
                 pred.fold_with(&mut ParamToVarFolder { infcx: self, var_map: Default::default() });
 
-            let InferOk { value: cleaned_pred, .. } = self
-                .infcx
-                .at(&ObligationCause::dummy(), param_env)
-                .normalize(Unnormalized::new_wip(cleaned_pred));
+            let InferOk { value: cleaned_pred, .. } = self.infcx.normalize(
+                &ObligationCause::dummy(),
+                param_env,
+                Unnormalized::new_wip(cleaned_pred),
+            );
 
             let obligation =
                 Obligation::new(self.tcx, ObligationCause::dummy(), param_env, cleaned_pred);

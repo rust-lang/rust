@@ -1,19 +1,21 @@
-use rustc_infer::infer::at::At;
-use rustc_infer::traits::{TraitEngine, TraitErrors};
+use rustc_infer::infer::InferCtxt;
+use rustc_infer::traits::{ObligationCause, TraitEngine, TraitErrors};
 use rustc_macros::extension;
-use rustc_middle::ty::{self, Ty, Unnormalized};
+use rustc_middle::ty::{self, ParamEnv, Ty, Unnormalized};
 use thin_vec::ThinVec;
 
 use crate::traits::{NormalizeExt, Obligation};
 
 #[extension(pub trait StructurallyNormalizeExt<'tcx>)]
-impl<'tcx> At<'_, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     fn structurally_normalize_ty<E: 'tcx>(
         &self,
         ty: Unnormalized<'tcx, Ty<'tcx>>,
         fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
+        param_env: ParamEnv<'tcx>,
+        cause: &ObligationCause<'tcx>,
     ) -> Result<Ty<'tcx>, ThinVec<E>> {
-        self.structurally_normalize_term(ty.map(Into::into), fulfill_cx)
+        self.structurally_normalize_term(ty.map(Into::into), fulfill_cx, param_env, cause)
             .map(|term| term.expect_type())
     }
 
@@ -21,12 +23,14 @@ impl<'tcx> At<'_, 'tcx> {
         &self,
         ct: Unnormalized<'tcx, ty::Const<'tcx>>,
         fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
+        param_env: ParamEnv<'tcx>,
+        cause: &ObligationCause<'tcx>,
     ) -> Result<ty::Const<'tcx>, ThinVec<E>> {
-        if self.infcx.tcx.features().generic_const_exprs() {
-            return Ok(super::evaluate_const(&self.infcx, ct.skip_normalization(), self.param_env));
+        if self.tcx.features().generic_const_exprs() {
+            return Ok(super::evaluate_const(&self, ct.skip_normalization(), param_env));
         }
 
-        self.structurally_normalize_term(ct.map(Into::into), fulfill_cx)
+        self.structurally_normalize_term(ct.map(Into::into), fulfill_cx, param_env, cause)
             .map(|term| term.expect_const())
     }
 
@@ -34,16 +38,18 @@ impl<'tcx> At<'_, 'tcx> {
         &self,
         term: Unnormalized<'tcx, ty::Term<'tcx>>,
         fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
+        param_env: ParamEnv<'tcx>,
+        cause: &ObligationCause<'tcx>,
     ) -> Result<ty::Term<'tcx>, ThinVec<E>> {
         assert!(
             !term.as_ref().skip_normalization().is_infer(),
             "should have resolved vars before calling"
         );
 
-        if self.infcx.next_trait_solver() {
+        if self.next_trait_solver() {
             let term = term.skip_normalization();
 
-            if !self.infcx.tcx.renormalize_rigid_aliases() && !term.is_non_rigid_alias() {
+            if !self.tcx.renormalize_rigid_aliases() && !term.is_non_rigid_alias() {
                 return Ok(term);
             };
 
@@ -51,27 +57,29 @@ impl<'tcx> At<'_, 'tcx> {
                 return Ok(term);
             };
 
-            let new_infer = self.infcx.next_term_var_of_alias_kind(alias, self.cause.span);
+            let new_infer = self.next_term_var_of_alias_kind(alias, cause.span);
 
             // We simply emit an `Projection` goal here, since that will take care of
             // normalizing the LHS of the projection until it is a rigid projection
             // (or a not-yet-defined opaque in scope).
             let obligation = Obligation::new(
-                self.infcx.tcx,
-                self.cause.clone(),
-                self.param_env,
+                self.tcx,
+                cause.clone(),
+                param_env,
                 ty::ProjectionClause { projection_term: alias, term: new_infer },
             );
 
-            fulfill_cx.register_predicate_obligation(self.infcx, obligation);
-            let errors = fulfill_cx.try_evaluate_obligations(self.infcx);
+            fulfill_cx.register_predicate_obligation(&self, obligation);
+            let errors = fulfill_cx.try_evaluate_obligations(&self);
             if let TraitErrors::HasErrors(errors) = errors {
                 return Err(errors);
             }
 
-            Ok(self.infcx.deeply_resolve_ignoring_regions(new_infer))
+            Ok(self.deeply_resolve_ignoring_regions(new_infer))
         } else {
-            Ok(self.normalize(term).into_value_registering_obligations(self.infcx, fulfill_cx))
+            Ok(self
+                .normalize(cause, param_env, term)
+                .into_value_registering_obligations(&self, fulfill_cx))
         }
     }
 }

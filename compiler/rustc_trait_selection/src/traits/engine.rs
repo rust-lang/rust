@@ -215,7 +215,7 @@ where
         param_env: ty::ParamEnv<'tcx>,
         value: Unnormalized<'tcx, T>,
     ) -> T {
-        let infer_ok = self.infcx.at(cause, param_env).normalize(value);
+        let infer_ok = self.infcx.normalize(cause, param_env, value);
         self.register_infer_ok_obligations(infer_ok)
     }
 
@@ -227,8 +227,7 @@ where
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
-            .at(cause, param_env)
-            .eq(DefineOpaqueTypes::Yes, expected, actual)
+            .eq(cause, param_env, DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -241,8 +240,7 @@ where
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
-            .at(cause, param_env)
-            .eq_trace(DefineOpaqueTypes::Yes, trace, expected, actual)
+            .eq_trace(cause, param_env, DefineOpaqueTypes::Yes, trace, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -255,8 +253,7 @@ where
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
-            .at(cause, param_env)
-            .sub(DefineOpaqueTypes::Yes, expected, actual)
+            .sub(cause, param_env, DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -269,8 +266,7 @@ where
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
-            .at(cause, param_env)
-            .relate(DefineOpaqueTypes::Yes, expected, variance, actual)
+            .relate(cause, param_env, DefineOpaqueTypes::Yes, expected, variance, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -283,8 +279,7 @@ where
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
-            .at(cause, param_env)
-            .sup(DefineOpaqueTypes::Yes, expected, actual)
+            .sup(cause, param_env, DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -297,8 +292,7 @@ where
         actual: T,
     ) -> Result<T, TypeError<'tcx>> {
         self.infcx
-            .at(cause, param_env)
-            .lub(expected, actual)
+            .lub(cause, param_env, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -428,11 +422,13 @@ where
 
             // implied_bounds.insert(ty);
             let cause = ObligationCause::misc(span, def_id);
-            match self
-                .infcx
-                .at(&cause, param_env)
-                .deeply_normalize(Unnormalized::new_wip(ty), &mut *self.engine.borrow_mut())
-            {
+            let infcx = self.infcx;
+            match infcx.deeply_normalize(
+                Unnormalized::new_wip(ty),
+                &mut *self.engine.borrow_mut(),
+                param_env,
+                &cause,
+            ) {
                 // Insert well-formed types, ignoring duplicates.
                 Ok(normalized) => drop(implied_bounds.insert(normalized)),
                 Err(normalization_errors) => errors.extend(normalization_errors),
@@ -448,7 +444,7 @@ where
         param_env: ty::ParamEnv<'tcx>,
         value: Unnormalized<'tcx, T>,
     ) -> Result<T, ThinVec<E>> {
-        self.infcx.at(cause, param_env).deeply_normalize(value, &mut *self.engine.borrow_mut())
+        self.infcx.deeply_normalize(value, &mut *self.engine.borrow_mut(), param_env, cause)
     }
 
     pub fn structurally_normalize_ty(
@@ -457,9 +453,12 @@ where
         param_env: ty::ParamEnv<'tcx>,
         value: Unnormalized<'tcx, Ty<'tcx>>,
     ) -> Result<Ty<'tcx>, ThinVec<E>> {
-        self.infcx
-            .at(cause, param_env)
-            .structurally_normalize_ty(value, &mut *self.engine.borrow_mut())
+        self.infcx.structurally_normalize_ty(
+            value,
+            &mut *self.engine.borrow_mut(),
+            param_env,
+            cause,
+        )
     }
 
     pub fn structurally_normalize_const(
@@ -468,9 +467,12 @@ where
         param_env: ty::ParamEnv<'tcx>,
         value: Unnormalized<'tcx, ty::Const<'tcx>>,
     ) -> Result<ty::Const<'tcx>, ThinVec<E>> {
-        self.infcx
-            .at(cause, param_env)
-            .structurally_normalize_const(value, &mut *self.engine.borrow_mut())
+        self.infcx.structurally_normalize_const(
+            value,
+            &mut *self.engine.borrow_mut(),
+            param_env,
+            cause,
+        )
     }
 
     pub fn structurally_normalize_term(
@@ -479,8 +481,11 @@ where
         param_env: ty::ParamEnv<'tcx>,
         value: Unnormalized<'tcx, ty::Term<'tcx>>,
     ) -> Result<ty::Term<'tcx>, ThinVec<E>> {
-        self.infcx
-            .at(cause, param_env)
-            .structurally_normalize_term(value, &mut *self.engine.borrow_mut())
+        self.infcx.structurally_normalize_term(
+            value,
+            &mut *self.engine.borrow_mut(),
+            param_env,
+            cause,
+        )
     }
 }

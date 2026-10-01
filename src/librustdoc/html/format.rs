@@ -18,10 +18,13 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, MacroKinds};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::ObligationCause;
 use rustc_metadata::creader::CStore;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypingMode};
 use rustc_span::symbol::kw;
 use rustc_span::{Ident, Symbol};
+use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use tracing::{debug, trace};
 
 use super::url_parts_builder::UrlPartsBuilder;
@@ -420,8 +423,11 @@ fn impl_self_ty(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Ty<'_> {
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ty = tcx.type_of(impl_def_id);
     infcx
-        .at(&ObligationCause::dummy(), tcx.param_env(impl_def_id))
-        .query_normalize(ty::Binder::dummy(ty.instantiate_identity().skip_norm_wip()))
+        .query_normalize(
+            ty::Binder::dummy(ty.instantiate_identity().skip_norm_wip()),
+            tcx.param_env(impl_def_id),
+            ObligationCause::dummy(),
+        )
         .map(|resolved| infcx.deeply_resolve_ignoring_regions(resolved.value).skip_binder())
         .unwrap_or(ty.skip_binder())
 }
@@ -517,20 +523,17 @@ fn generate_item_def_id_path(
     if def_id != original_def_id
         && let DefKind::Impl { of_trait } = tcx.def_kind(def_id)
     {
-        let ty = impl_self_ty(tcx, def_id);
-        // If this is a dyn trait, we want to get the actual trait from which the method comes from.
-        // Since a `dyn trait` (as of 2026) can only be composed of a trait plus auto traits, we
-        // look for the trait and ignore auto traits.
-        if let ty::Dynamic(traits, _) = ty.kind()
-            && let Some(trait_def_id) =
-                traits.iter().find_map(|trait_| match trait_.skip_binder() {
-                    ty::ExistentialPredicate::Trait(t) => Some(t.def_id),
-                    ty::ExistentialPredicate::Projection(p) => Some(p.trait_ref(tcx).def_id),
-                    ty::ExistentialPredicate::AutoTrait(_) => None,
-                })
-        {
-            def_id = trait_def_id;
-        } else if let Some(new_def_id) = ty.ty_adt_def().map(|adt| adt.did()) {
+        let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+        let ty = tcx.type_of(def_id);
+        let ty = infcx
+            .query_normalize(
+                ty::Binder::dummy(ty.instantiate_identity().skip_norm_wip()),
+                tcx.param_env(def_id),
+                ObligationCause::dummy(),
+            )
+            .map(|resolved| infcx.deeply_resolve_ignoring_regions(resolved.value).skip_binder())
+            .unwrap_or(ty.skip_binder());
+        if let Some(new_def_id) = ty.ty_adt_def().map(|adt| adt.did()) {
             def_id = new_def_id;
             maybe_have_impl_not_in_def_crate = !of_trait
                 && !original_def_id.is_local()
