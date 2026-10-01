@@ -17,7 +17,6 @@ use rustc_attr_ir::{
     OptimizeAttr, ReprAttr, RustcAssertVarianceKind, find_attr,
 };
 use rustc_attr_parsing::AttributeParser;
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg};
 use rustc_feature::BUILTIN_ATTRIBUTE_SET;
@@ -224,8 +223,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Linkage(_linkage, span) => {
                 self.check_linkage(*span, hir_id, target, item)
             }
-            AttributeKind::RustcAssertVariance(attr) => {
-                self.check_rustc_assert_variance(span, hir_id, target, item, &attr.variances);
+            AttributeKind::RustcAssertVariance { span: attr_span, kind } => {
+                self.check_rustc_assert_variance(span, *attr_span, hir_id, target, *kind);
             }
 
             // All of the following attributes have no specific checks.
@@ -1425,87 +1424,61 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_rustc_assert_variance(
         &self,
         span: Span,
+        attr_span: Span,
         hir_id: HirId,
         target: Target,
-        item: Option<&'tcx Item<'tcx>>,
-        map: &FxIndexMap<Ident, (Span, RustcAssertVarianceKind)>,
+        kind: RustcAssertVarianceKind,
     ) {
         // If the target is invalid the parser has already emitted an error
-        if !matches!(target, Target::Struct | Target::Enum | Target::Union) {
+        if !matches!(target, Target::TypeParam | Target::LifetimeParam | Target::ConstParam) {
             return;
         }
 
-        let (item_ident, generics) = match item {
-            Some(Item { kind: ItemKind::Struct(ident, generics, _), .. }) => (*ident, *generics),
-            Some(Item { kind: ItemKind::Enum(ident, generics, _), .. }) => (*ident, *generics),
-            Some(Item { kind: ItemKind::Union(ident, generics, _), .. }) => (*ident, *generics),
-            _ => return,
-        };
+        let Node::GenericParam(param) = self.tcx.hir_node(hir_id) else { return };
+        let owner = hir_id.owner.to_def_id();
+        let variances = self.tcx.variances_of(owner);
+        let generics = self.tcx.generics_of(owner);
 
-        let mut asserted_params = ThinVec::default();
+        let variance = generics
+            .own_params
+            .iter()
+            .zip(variances.iter())
+            .filter(|(other_param, _)| other_param.def_id == param.def_id.to_def_id())
+            .map(|(_, variance)| variance)
+            .nth(0)
+            .expect("generic parameter should have variance");
 
-        for ident in map.keys() {
-            let Some((param_ident, param)) = generics
-                .params
-                .iter()
-                .map(|param| (param.name.ident().without_first_quote(), param))
-                .find(|(param_ident, _)| ident == param_ident)
-            else {
-                self.tcx.dcx().emit_err(diagnostics::RustcAssertVarianceInvalid {
-                    span: ident.span,
-                    invalid_ident: *ident,
+        match (kind, variance) {
+            (RustcAssertVarianceKind::Covariant, Variance::Covariant) => {}
+            (RustcAssertVarianceKind::Invariant, Variance::Invariant) => {}
+            (RustcAssertVarianceKind::Contravariant, Variance::Contravariant) => {}
+            (RustcAssertVarianceKind::Bivariant, Variance::Bivariant) => {}
+            (asserted, actual) => {
+                let expected_variance = match asserted {
+                    RustcAssertVarianceKind::Covariant => sym::covariant,
+                    RustcAssertVarianceKind::Invariant => sym::invariant,
+                    RustcAssertVarianceKind::Contravariant => sym::contravariant,
+                    RustcAssertVarianceKind::Bivariant => sym::bivariant,
+                };
+
+                let actual_variance = match actual {
+                    Variance::Covariant => sym::covariant,
+                    Variance::Invariant => sym::invariant,
+                    Variance::Contravariant => sym::contravariant,
+                    Variance::Bivariant => sym::bivariant,
+                };
+
+                let item_ident = self.tcx.item_ident(owner);
+
+                let span_note = diagnostics::RustcAssertVarianceFailedNote { span: attr_span };
+                self.tcx.dcx().emit_err(diagnostics::RustcAssertVarianceFailed {
+                    span,
+                    span_note,
+                    param_ident: param.name.ident(),
                     item_ident,
+                    expected_variance,
+                    actual_variance,
                 });
-                continue;
-            };
-            asserted_params.push((param_ident, param));
-        }
-
-        let variances = self.tcx.variances_of(hir_id.expect_owner().to_def_id());
-
-        // A lot of the finicky stuff here is just keeping the ident without first quote we got
-        // earlier around to avoid the cost of re-obtaining it
-        let asserts =
-            generics.params.iter().zip(variances.iter()).filter_map(|(param, variance)| {
-                asserted_params
-                    .iter()
-                    .find(|(_, assert_param)| assert_param.def_id == param.def_id)
-                    .map(|(assert_ident, _)| (param, assert_ident, variance))
-            });
-
-        for (param, ident, variance) in asserts {
-            match (map.get(ident), variance) {
-                (Some((_, RustcAssertVarianceKind::Covariant)), Variance::Covariant) => {}
-                (Some((_, RustcAssertVarianceKind::Invariant)), Variance::Invariant) => {}
-                (Some((_, RustcAssertVarianceKind::Contravariant)), Variance::Contravariant) => {}
-                (asserted, actual) => {
-                    let (attr_span, asserted) = asserted.expect(
-                        "ident should be in rustc_assert_variance map due to previous filter",
-                    );
-
-                    let expected_variance = match asserted {
-                        RustcAssertVarianceKind::Covariant => sym::covariant,
-                        RustcAssertVarianceKind::Invariant => sym::invariant,
-                        RustcAssertVarianceKind::Contravariant => sym::contravariant,
-                    };
-
-                    let actual_variance = match actual {
-                        Variance::Covariant => sym::covariant,
-                        Variance::Invariant => sym::invariant,
-                        Variance::Contravariant => sym::contravariant,
-                        Variance::Bivariant => sym::bivariant,
-                    };
-
-                    let span_note = diagnostics::RustcAssertVarianceFailedNote { span: *attr_span };
-                    self.tcx.dcx().emit_err(diagnostics::RustcAssertVarianceFailed {
-                        span,
-                        span_note,
-                        param_ident: param.name.ident(),
-                        item_ident,
-                        expected_variance,
-                        actual_variance,
-                    });
-                }
             }
         }
     }
