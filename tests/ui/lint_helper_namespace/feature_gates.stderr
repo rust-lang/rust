@@ -7,6 +7,15 @@ LL | #[lint::as_ptr]
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: the `lint::as_ptr` attribute is an internal implementation detail that will never be stable
 
-error: aborting due to 1 previous error
+error[E0658]: use of an internal attribute
+  --> $DIR/feature_gates.rs:6:3
+   |
+LL | #[lint::never_returns_null_ptr]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `lint::never_returns_null_ptr` attribute is an internal implementation detail that will never be stable
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
