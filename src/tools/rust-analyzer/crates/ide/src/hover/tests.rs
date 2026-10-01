@@ -857,7 +857,7 @@ struct Foo$0(pub u32) where u32: Copy;
             ```rust
             struct Foo(pub u32)
             where
-                u32: Copy,
+                u32: Copy,;
             ```
 
             ---
@@ -1032,7 +1032,7 @@ pub struct Foo(pub i32, i32, pub(crate) i32);
             ```
 
             ```rust
-            pub struct Foo(pub i32, /* … */)
+            pub struct Foo(pub i32, /* … */);
             ```
         "#]],
     );
@@ -1547,7 +1547,7 @@ struct Foo$0 where u32: Copy;
             ```rust
             struct Foo
             where
-                u32: Copy,
+                u32: Copy,;
             ```
 
             ---
@@ -2205,7 +2205,7 @@ where
             ```
 
             ```rust
-            pub struct Foo
+            pub struct Foo;
             ```
 
             ---
@@ -2923,7 +2923,7 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            struct Bar
+            struct Bar;
             ```
 
             ---
@@ -2959,7 +2959,7 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            struct Bar
+            struct Bar;
             ```
 
             ---
@@ -2988,7 +2988,7 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            struct Bar
+            struct Bar;
             ```
 
             ---
@@ -3016,7 +3016,7 @@ pub struct B$0ar
             ```
 
             ```rust
-            pub struct Bar
+            pub struct Bar;
             ```
 
             ---
@@ -3047,7 +3047,7 @@ pub struct B$0ar
             ```
 
             ```rust
-            pub struct Bar
+            pub struct Bar;
             ```
 
             ---
@@ -3190,7 +3190,7 @@ struct S$0<T>(core::marker::PhantomData<T>);
             ```
 
             ```rust
-            struct S<T>(PhantomData<T>)
+            struct S<T>(PhantomData<T>);
             ```
 
             ---
@@ -3352,7 +3352,7 @@ fn test_hover_layout_padding_info() {
             ```
 
             ```rust
-            struct Foo(i16, u128, u64)
+            struct Foo(i16, u128, u64);
             ```
 
             ---
@@ -4719,7 +4719,7 @@ struct S$0T<const C: usize = 1, T = Foo>(T);
             ```
 
             ```rust
-            struct ST<const C: usize = {const}, T = Foo>(T)
+            struct ST<const C: usize = {const}, T = Foo>(T);
             ```
 
             ---
@@ -4744,7 +4744,7 @@ struct S$0T<const C: usize = {40 + 2}, T = Foo>(T);
             ```
 
             ```rust
-            struct ST<const C: usize = {const}, T = Foo>(T)
+            struct ST<const C: usize = {const}, T = Foo>(T);
             ```
 
             ---
@@ -4770,7 +4770,7 @@ struct S$0T<const C: usize = VAL, T = Foo>(T);
             ```
 
             ```rust
-            struct ST<const C: usize = {const}, T = Foo>(T)
+            struct ST<const C: usize = {const}, T = Foo>(T);
             ```
 
             ---
@@ -6835,7 +6835,7 @@ pub fn gimme() -> theitem::TheItem {
             ```
 
             ```rust
-            pub struct TheItem
+            pub struct TheItem;
             ```
 
             ---
@@ -6983,7 +6983,7 @@ mod string {
             ```
 
             ```rust
-            struct String
+            struct String;
             ```
 
             ---
@@ -7651,7 +7651,7 @@ foo_macro!(
             ```
 
             ```rust
-            pub struct Foo
+            pub struct Foo;
             ```
 
             ---
@@ -7676,7 +7676,7 @@ pub struct Foo(i32);
             ```
 
             ```rust
-            pub struct Foo(i32)
+            pub struct Foo(i32);
             ```
 
             ---
@@ -7823,7 +7823,7 @@ pub struct Foo<T>(T);
             ```
 
             ```rust
-            pub struct Foo<T>(T)
+            pub struct Foo<T>(T);
             ```
 
             ---
@@ -9483,7 +9483,7 @@ impl Iterator for S {
             ```
 
             ```rust
-            struct S
+            struct S;
             ```
         "#]],
     );
@@ -11147,7 +11147,7 @@ struct NoDrop$0;
             ```
 
             ```rust
-            struct NoDrop
+            struct NoDrop;
             ```
 
             ---
@@ -11171,7 +11171,7 @@ impl Drop for NeedsDrop {
             ```
 
             ```rust
-            struct NeedsDrop
+            struct NeedsDrop;
             ```
 
             ---
@@ -11296,7 +11296,7 @@ struct Foo$0<T>(T);
             ```
 
             ```rust
-            struct Foo<T>(T)
+            struct Foo<T>(T);
             ```
 
             ---
@@ -11319,7 +11319,7 @@ struct Foo$0<T: Copy>(T);
             ```rust
             struct Foo<T>(T)
             where
-                T: Copy,
+                T: Copy,;
             ```
 
             ---
@@ -11345,7 +11345,7 @@ struct Foo$0<T: Trait>(T::Assoc);
             ```rust
             struct Foo<T>(<T as Trait>::Assoc)
             where
-                T: Trait,
+                T: Trait,;
             ```
 
             ---
@@ -11915,7 +11915,7 @@ doc_comment! {
             ```
 
             ```rust
-            struct Bar
+            struct Bar;
             ```
 
             ---
@@ -11947,7 +11947,7 @@ struct Ba$0r;
             ```
 
             ```rust
-            struct Bar
+            struct Bar;
             ```
 
             ---
@@ -11984,7 +11984,7 @@ Multiple lines of docs.
             ```
 
             ```rust
-            struct Bar
+            struct Bar;
             ```
 
             ---
@@ -12018,7 +12018,7 @@ struct Ba$0r;
             ```
 
             ```rust
-            struct Bar
+            struct Bar;
             ```
 
             ---
@@ -12051,7 +12051,7 @@ struct Ba$0r;
             ```
 
             ```rust
-            struct Bar
+            struct Bar;
             ```
 
             ---

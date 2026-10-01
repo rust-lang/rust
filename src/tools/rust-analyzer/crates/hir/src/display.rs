@@ -385,6 +385,9 @@ impl<'db> HirDisplay<'db> for Struct {
 
                 f.write_char(')')?;
                 write_where_clause(def_id, f)?;
+                if f.entity_limit.is_some() {
+                    f.write_char(';')?;
+                }
             }
             StructKind::Record => {
                 let has_where_clause = write_where_clause(def_id, f)?;
@@ -393,7 +396,12 @@ impl<'db> HirDisplay<'db> for Struct {
                     write_fields(&fields, hidden_fields, has_where_clause, limit, false, f)?;
                 }
             }
-            StructKind::Unit => _ = write_where_clause(def_id, f)?,
+            StructKind::Unit => {
+                write_where_clause(def_id, f)?;
+                if f.entity_limit.is_some() {
+                    f.write_char(';')?;
+                }
+            }
         }
 
         Ok(())
