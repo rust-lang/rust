@@ -1,0 +1,135 @@
+error[E0539]: malformed `rustc_assert_variance` attribute input
+  --> $DIR/rustc_assert_variance.rs:4:3
+   |
+LL | #[rustc_assert_variance]
+   |   ^^^^^^^^^^^^^^^^^^^^^ expected this to be a list
+   |
+help: must be of the form
+   |
+LL | #[rustc_assert_variance(Type1 = "variance", Type2 = "variance", ...)]
+   |                        +++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0539]: malformed `rustc_assert_variance` attribute input
+  --> $DIR/rustc_assert_variance.rs:12:3
+   |
+LL | #[rustc_assert_variance(T)]
+   |   ^^^^^^^^^^^^^^^^^^^^^^-^
+   |                         |
+   |                         expected this to be of the form `... = "..."`
+   |
+help: must be of the form
+   |
+LL | #[rustc_assert_variance(Type1 = "variance", Type2 = "variance", ...)]
+   |                          ++++++++++++++++++++++++++++++++++++++++++
+
+error[E0539]: malformed `rustc_assert_variance` attribute input
+  --> $DIR/rustc_assert_variance.rs:20:3
+   |
+LL | #[rustc_assert_variance(T = "nonsense")]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^----------^
+   |                             |
+   |                             valid arguments are "covariant", "invariant" or "contravariant"
+   |
+help: must be of the form
+   |
+LL - #[rustc_assert_variance(T = "nonsense")]
+LL + #[rustc_assert_variance(Type1 = "variance", Type2 = "variance", ...)]
+   |
+
+error[E0539]: malformed `rustc_assert_variance` attribute input
+  --> $DIR/rustc_assert_variance.rs:28:3
+   |
+LL | #[rustc_assert_variance(T = "bivariant")]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^
+   |                             |
+   |                             valid arguments are "covariant", "invariant" or "contravariant"
+   |
+help: must be of the form
+   |
+LL - #[rustc_assert_variance(T = "bivariant")]
+LL + #[rustc_assert_variance(Type1 = "variance", Type2 = "variance", ...)]
+   |
+
+error: U is not a generic type parameter of Foo5
+  --> $DIR/rustc_assert_variance.rs:36:25
+   |
+LL | #[rustc_assert_variance(U = "covariant")]
+   |                         ^
+   |
+   = help: rustc_assert_variance arguments should be of the form `T = "variance"`, where
+           `T` is a generic type parameter of the attached item and `"variance"` is one of
+           `"covariant"`, `"invariant"`, or `"contravariant"`
+
+error: Foo6 is covariant in T; expected variance: invariant
+  --> $DIR/rustc_assert_variance.rs:45:1
+   |
+LL | / struct Foo6<T> {
+LL | |     val: T,
+LL | | }
+   | |_^
+   |
+note: required by this annotation
+  --> $DIR/rustc_assert_variance.rs:43:1
+   |
+LL | #[rustc_assert_variance(T = "invariant")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Foo7 is covariant in 'a; expected variance: invariant
+  --> $DIR/rustc_assert_variance.rs:54:1
+   |
+LL | / struct Foo7<'a, T> {
+LL | |     val: &'a mut T,
+LL | | }
+   | |_^
+   |
+note: required by this annotation
+  --> $DIR/rustc_assert_variance.rs:50:1
+   |
+LL | #[rustc_assert_variance(a = "invariant")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Foo7 is invariant in T; expected variance: covariant
+  --> $DIR/rustc_assert_variance.rs:54:1
+   |
+LL | / struct Foo7<'a, T> {
+LL | |     val: &'a mut T,
+LL | | }
+   | |_^
+   |
+note: required by this annotation
+  --> $DIR/rustc_assert_variance.rs:52:1
+   |
+LL | #[rustc_assert_variance(T = "covariant")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Foo8 is covariant in 'a; expected variance: contravariant
+  --> $DIR/rustc_assert_variance.rs:63:1
+   |
+LL | / struct Foo8<'a, T> {
+LL | |     val: &'a mut T,
+LL | | }
+   | |_^
+   |
+note: required by this annotation
+  --> $DIR/rustc_assert_variance.rs:60:1
+   |
+LL | #[rustc_assert_variance(a = "contravariant", T = "contravariant")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Foo8 is invariant in T; expected variance: contravariant
+  --> $DIR/rustc_assert_variance.rs:63:1
+   |
+LL | / struct Foo8<'a, T> {
+LL | |     val: &'a mut T,
+LL | | }
+   | |_^
+   |
+note: required by this annotation
+  --> $DIR/rustc_assert_variance.rs:60:1
+   |
+LL | #[rustc_assert_variance(a = "contravariant", T = "contravariant")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0539`.
