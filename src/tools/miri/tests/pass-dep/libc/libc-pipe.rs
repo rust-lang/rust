@@ -115,6 +115,14 @@ fn test_pipe2() {
 
 /// Basic test for pipe fcntl's F_SETFL and F_GETFL flag.
 fn test_pipe_setfl_getfl() {
+    if cfg!(all(not(miri), target_os = "freebsd")) {
+        // FIXME: Pipes are bidirectional on FreeBSD but Miri's shim implements them as
+        // unidirectional channel. Until we implement FreeBSD's pipe extension in Miri
+        // we skip this test.
+        // See <https://github.com/rust-lang/miri/issues/5352>
+        return;
+    }
+
     // Initialise pipe fds.
     let mut fds = [-1, -1];
     errno_check(unsafe { libc::pipe(fds.as_mut_ptr()) });
@@ -184,10 +192,16 @@ fn test_pipe_fcntl_threaded() {
         errno_check(unsafe { libc::fcntl(fds[0], libc::F_SETFL, libc::O_NONBLOCK) });
 
         // Check the new flag value while the main thread is still blocked on fds[0].
-        assert_eq!(
-            errno_result(unsafe { libc::fcntl(fds[0], libc::F_GETFL) }).unwrap(),
-            libc::O_NONBLOCK
-        );
+        let flags = errno_result(unsafe { libc::fcntl(fds[0], libc::F_GETFL) }).unwrap();
+
+        if cfg!(target_os = "freebsd") {
+            // FreeBSD also reports readable/writable flags in F_GETFL.
+            // FIXME: check the exact flags, once Miri emulates them correctly.
+            // See <https://github.com/rust-lang/miri/issues/5359>.
+            assert!(flags & libc::O_NONBLOCK != 0);
+        } else {
+            assert_eq!(flags, libc::O_NONBLOCK)
+        }
 
         // The write below will unblock the `read` in main thread: even though
         // the socket is now "non-blocking", the shim needs to deal correctly

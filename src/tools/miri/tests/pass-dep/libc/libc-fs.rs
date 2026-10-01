@@ -351,7 +351,10 @@ fn test_file_open_nofollow() {
             libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC)
         })
         .unwrap_err();
-        assert_eq!(err.raw_os_error(), Some(libc::ELOOP));
+        // FreeBSD returns EMLINK when encountering a symlink on the final path segment with O_NOFOLLOW
+        // while POSIX specifies returning ELOOP. Since this test is run on both native FreeBSD and native
+        // Linux hosts, we just assert that its either of those error codes.
+        assert!([libc::ELOOP, libc::EMLINK].contains(&err.raw_os_error().unwrap()));
     }
 }
 
@@ -542,9 +545,9 @@ fn test_posix_mkstemp() {
     drop(file);
     remove_file(path).unwrap();
 
-    // Test invalid inputs. We skip this on native macOS since macOS apparently does
-    // not bother to validate inputs.
-    if !cfg!(all(not(miri), target_vendor = "apple")) {
+    // Test invalid inputs. We skip this on native macOS and FreeBSD since those apparently
+    // don't bother to validate inputs.
+    if cfg!(miri) || !cfg!(any(target_vendor = "apple", target_os = "freebsd")) {
         let invalid_templates = vec!["foo", "barXX", "XXXXXXbaz", "whatXXXXXXever", "X"];
         for t in invalid_templates {
             let ptr = CString::new(t).unwrap().into_raw();
@@ -687,6 +690,17 @@ fn test_posix_fallocate<T: From<i32>>(
 
         // Allocate to a bigger size from offset 0
         let mut res = unsafe { posix_fallocate(fd, T::from(0), T::from(10)) };
+
+        if cfg!(all(not(miri), target_os = "freebsd")) {
+            // On native FreeBSD with a ZFS file system `posix_fallocate` isn't implemented
+            // and thus always returns EOPNOTSUPP.
+            if res == libc::EOPNOTSUPP {
+                // We don't have to execute the remaining tests since we'll always get EOPNOTSUPP.
+                // Thus, we exit early here.
+                return;
+            }
+        }
+
         assert_eq!(res, 0);
         assert_eq!(file.metadata().unwrap().len(), 10);
 
@@ -852,7 +866,13 @@ fn test_fstat() {
         let stat = stat.assume_init_ref();
 
         assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFIFO);
-        assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+        if cfg!(target_os = "freebsd") {
+            // FIXME: Seems like FreeBSD does not set permissions for non-file-backed FDs.
+            // Miri currently gets this wrong.
+            // assert_eq!(stat.st_mode & !libc::S_IFMT, 0, "no permission should be set");
+        } else {
+            assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+        }
         assert_eq!(stat.st_size, 0);
 
         errno_check(libc::close(fds[0]));
