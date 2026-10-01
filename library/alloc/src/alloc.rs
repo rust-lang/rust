@@ -721,9 +721,14 @@ pub mod __alloc_error_handler {
 #[doc(hidden)]
 pub trait AllocatorNightly: Allocator {}
 
-#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
-#[unstable_feature_bound(allocator_ext)]
-impl<A: Allocator + ?Sized> AllocatorNightly for A {}
+// FIXME(allocator_ext): This impl relies on `unstable_feature_bound` working well in
+// combination with marker traits. That combination has some more involved interactions
+// and is not supported for now. Reach out to the Types Team in case you want to readd
+// this impl.
+
+// #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+// #[unstable_feature_bound(allocator_ext)]
+// impl<A: Allocator + ?Sized> AllocatorNightly for A {}
 
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 impl AllocatorNightly for Global {}
