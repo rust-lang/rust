@@ -1081,22 +1081,8 @@ pub(crate) struct RustcAtumSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag("{$invalid_ident} is not a generic type parameter of {$item_ident}")]
-#[help(
-    r#"rustc_assert_variance arguments should be of the form `T = "variance"`, where
-    `T` is a generic type parameter of the attached item and `"variance"` is one of
-    `"covariant"`, `"invariant"`, or `"contravariant"`"#
-)]
-pub(crate) struct RustcAssertVarianceInvalid {
-    #[primary_span]
-    pub span: Span,
-    pub invalid_ident: Ident,
-    pub item_ident: Ident,
-}
-
-#[derive(Diagnostic)]
 #[diag(
-    "{$item_ident} is {$actual_variance} in {$param_ident}; expected variance: {$expected_variance}"
+    "`{$item_ident}` is {$actual_variance} in `{$param_ident}`; expected variance: {$expected_variance}"
 )]
 pub(crate) struct RustcAssertVarianceFailed {
     #[primary_span]
