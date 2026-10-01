@@ -1,0 +1,12 @@
+error[E0658]: use of an internal attribute
+  --> $DIR/feature_gates.rs:5:3
+   |
+LL | #[lint::as_ptr]
+   |   ^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `lint::as_ptr` attribute is an internal implementation detail that will never be stable
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

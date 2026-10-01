@@ -47,8 +47,9 @@
 //~| ERROR attribute cannot be used on
 #[repr]
 //~^ ERROR malformed
-#[rustc_as_ptr = 5]
+#[lint::as_ptr = 5]
 //~^ ERROR malformed
+//~| ERROR cannot find module or crate `lint` in this scope
 #[inline = 5]
 //~^ ERROR valid forms for the attribute are
 //~| WARN this was previously accepted by the compiler

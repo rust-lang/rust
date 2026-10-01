@@ -932,6 +932,9 @@ pub enum AttributeKind {
     /// Represents `#[linkage]`.
     Linkage(Linkage, Span),
 
+    /// Represents `#[lint::as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
+    LintAsPtr,
+
     /// Represents `#[loop_match]`.
     LoopMatch(Span),
 
@@ -1141,9 +1144,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_allow_lifetime_dependent_specialization]`.
     RustcAllowLifetimeDependentSpecialization,
-
-    /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
-    RustcAsPtr,
 
     /// Represents `#[rustc_autodiff]`.
     RustcAutodiff(Option<Box<RustcAutodiff>>),
