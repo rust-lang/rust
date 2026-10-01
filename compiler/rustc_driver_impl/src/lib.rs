@@ -64,6 +64,8 @@ use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTuple};
 use tracing::trace;
 
+use crate::config::TargetStage;
+
 #[allow(unused_macros)]
 macro do_not_use_print($($t:tt)*) {
     std::compile_error!(
@@ -305,6 +307,10 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
             if sess.opts.output_types.contains_key(&OutputType::DepInfo)
                 && sess.opts.output_types.len() == 1
             {
+                if sess.target_stage == TargetStage::Analysis {
+                    debug_assert!(rustc_metadata::fs::encode_and_write_metadata(tcx, true).is_ok());
+                }
+
                 return None;
             }
 
@@ -315,6 +321,11 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
             tcx.ensure_ok().analysis(());
 
             if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
+                return None;
+            }
+
+            if sess.target_stage == TargetStage::Analysis {
+                rustc_metadata::fs::encode_and_write_metadata(tcx, true); // Writing metadata
                 return None;
             }
 
