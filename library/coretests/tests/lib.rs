@@ -48,7 +48,6 @@
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
 #![feature(cstr_display)]
-#![feature(debug_closure_helpers)]
 #![feature(dec2flt)]
 #![feature(duration_constants)]
 #![feature(duration_constructors)]
