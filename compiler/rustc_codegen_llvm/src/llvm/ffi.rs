@@ -1129,6 +1129,12 @@ unsafe extern "C" {
         Name: *const c_char,
         FunctionTy: &'a Type,
     ) -> &'a Value;
+    pub(crate) fn LLVMGetOrInsertFunction<'ll>(
+        M: &'ll Module,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        FunctionTy: &'ll Type,
+    ) -> &'ll Value;
     pub(crate) fn LLVMDeleteFunction(Fn: &Value);
 
     // Operations about llvm intrinsics
@@ -2032,13 +2038,6 @@ unsafe extern "C" {
     ) -> &Attribute;
 
     // Operations on functions
-    /// FIXME: After dropping LLVM 21, migrate to LLVM-C's `LLVMGetOrInsertFunction`.
-    pub(crate) fn LLVMRustGetOrInsertFunction<'a>(
-        M: &'a Module,
-        Name: *const c_char,
-        NameLen: size_t,
-        FunctionTy: &'a Type,
-    ) -> &'a Value;
     pub(crate) fn LLVMRustAddFunctionAttributes<'a>(
         Fn: &'a Value,
         index: c_uint,
