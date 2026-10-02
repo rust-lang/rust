@@ -168,7 +168,7 @@ macro_rules! optional {
 #[doc(hidden)]
 macro_rules! run_driver {
     ($args:expr, $callback:expr $(, $with_tcx:ident)?) => {{
-        use rustc_driver::{Callbacks, Compilation, run_compiler};
+        use rustc_driver::{Callbacks, Compilation, compiler_entrypoint};
         use rustc_middle::ty::TyCtxt;
         use rustc_interface::interface;
         use rustc_public::rustc_internal;
