@@ -59,7 +59,6 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::Mutability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet};
-use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::DUMMY_SP;
@@ -1468,34 +1467,17 @@ fn render_all_impls(
     Ok(())
 }
 
-// Also used in `write_shared.rs` when generating the JS `impl` file for aliased types.
-//
-// FIXME(checked_type_alias): Once the feature is complete or stable, rewrite this
-// to use type unification.
-// Be aware of `tests/rustdoc-html/type-alias/deeply-nested-112515.rs` which might
-// regress.
-pub(crate) fn impl_may_apply_to_type_alias(
-    tcx: TyCtxt<'_>,
-    alias_def_id: DefId,
-    impl_def_id: DefId,
-) -> bool {
-    let alias_ty = tcx.type_of(alias_def_id).skip_binder();
-    let for_ty = tcx.type_of(impl_def_id).skip_binder();
-    DeepRejectCtxt::relate_infer_infer(tcx).types_may_unify(alias_ty, for_ty)
-}
-
 fn aliased_type_deref_impl<'a>(
     cx: &'a Context<'_>,
     alias_def_id: DefId,
     aliased_def_id: DefId,
 ) -> Option<(&'a Impl, bool)> {
     let tcx = cx.tcx();
-    let applies =
-        |impl_: &Impl| {
-            impl_.impl_item.item_id.as_def_id().is_some_and(|impl_def_id| {
-                impl_may_apply_to_type_alias(tcx, alias_def_id, impl_def_id)
-            })
-        };
+    let applies = |impl_: &Impl| {
+        impl_.impl_item.item_id.as_def_id().is_some_and(|impl_def_id| {
+            clean::types::impl_may_apply_to_type_alias(tcx, alias_def_id, impl_def_id)
+        })
+    };
     let impls = cx.cache().impls.get(&aliased_def_id)?;
     let mut deref_impl = None;
     let mut has_deref_mut = false;
@@ -1579,9 +1561,8 @@ fn render_assoc_items_inner(
                 // we should not show methods from `[MaybeUninit<u8>]`.
                 // this `retain` filters out any instances where
                 // the types do not line up perfectly.
-                inherent_impls.retain(|impl_| {
-                    type_.is_doc_subtype_of(&impl_.inner_impl().for_, &cx.shared.cache)
-                });
+                inherent_impls
+                    .retain(|impl_| type_.is_doc_subtype_of(&impl_.inner_impl().for_, &cx));
                 let derived_id = cx.derive_id(&id);
                 if let Some(def_id) = type_.def_id(cx.cache()) {
                     cx.deref_id_map.borrow_mut().insert(def_id, id.clone());
@@ -1778,7 +1759,7 @@ fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Option<impl fmt:
             impl_.polarity == ty::ImplPolarity::Positive
                 // Two different types might have the same did,
                 // without actually being the same.
-                && ty.is_doc_subtype_of(&impl_.for_, cx.cache())
+                && ty.is_doc_subtype_of(&impl_.for_, cx)
         })
         .filter_map(|impl_| impl_.trait_.as_ref())
         .filter_map(|trait_| cx.cache().traits.get(&trait_.def_id()))
@@ -1808,7 +1789,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
             .filter(|impl_| impl_.polarity == ty::ImplPolarity::Positive)
             .filter(|impl_| {
                 // Two different types might have the same did, without actually being the same.
-                ty.is_doc_subtype_of(&impl_.for_, cx.cache())
+                ty.is_doc_subtype_of(&impl_.for_, cx)
             })
             .filter_map(|impl_| {
                 if let Some(trait_) = &impl_.trait_

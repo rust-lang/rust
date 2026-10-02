@@ -36,6 +36,7 @@ use serde::ser::SerializeSeq;
 use serde::{Deserialize, Serialize, Serializer};
 
 use super::{Context, RenderMode, collect_paths_for_type, ensure_trailing_slash};
+use crate::clean::types::impl_may_apply_to_type_alias;
 use crate::clean::{Crate, Item, ItemId, ItemKind};
 use crate::config::{EmitType, PathToParts, RenderOptions, ShouldMerge};
 use crate::docfs::PathError;
@@ -1023,7 +1024,7 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
             // Only include this impl if it actually unifies with this alias.
             // Synthetic impls are not included; those are also included in the HTML.
             let Some(impl_did) = impl_item_id.as_def_id() else { continue };
-            if !super::impl_may_apply_to_type_alias(self.cx.tcx(), self_did, impl_did) {
+            if !impl_may_apply_to_type_alias(self.cx.tcx(), self_did, impl_did) {
                 continue;
             }
             // Avoid duplicates
