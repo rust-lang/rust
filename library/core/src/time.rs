@@ -1434,8 +1434,9 @@ macro_rules! sum_durations {
         let mut total_nanos: u64 = 0;
 
         for entry in $iter {
-            total_secs =
-                total_secs.checked_add(entry.secs).expect("sum over duration iterator should not overflow u64::MAX");
+            total_secs = total_secs
+                .checked_add(entry.secs)
+                .expect("sum over duration iterator should not overflow u64::MAX");
             total_nanos = match total_nanos.checked_add(entry.nanos.as_inner() as u64) {
                 Some(n) => n,
                 None => {
