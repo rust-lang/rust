@@ -2169,6 +2169,10 @@ impl Path {
             }
         })
     }
+
+    pub(crate) fn is_deref_trait(&self, tcx: TyCtxt<'_>) -> bool {
+        tcx.lang_items().deref_trait() == Some(self.def_id())
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
