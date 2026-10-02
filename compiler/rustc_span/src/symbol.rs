@@ -237,6 +237,7 @@ symbols! {
         From,
         FromIterator,
         FromResidual,
+        FromResidualOld,
         GlobalAlloc,
         Hash,
         HashMap,

@@ -6,6 +6,11 @@ LL | fn test_result() -> Result<(),()> {
 LL |     let a:Option<()> = Some(());
 LL |     a?;
    |      ^ use `.ok_or(...)?` to provide an error compatible with `Result<(), ()>`
+   |
+help: the trait `FromResidual<Option<!>>` is not implemented for `Result<(), ()>`
+      but trait `FromResidual<Result<!, ()>>` is implemented for it
+  --> $SRC_DIR/core/src/ops/try_trait_old.rs:LL:COL
+   = help: for that trait implementation, expected `Result<!, ()>`, found `Option<!>`
 
 error[E0277]: the `?` operator can only be used on `Option`s, not `Result`s, in a function that returns `Option`
   --> $DIR/option-to-result.rs:11:6
@@ -15,6 +20,11 @@ LL | fn test_option() -> Option<i32>{
 LL |     let a:Result<i32, i32> = Ok(5);
 LL |     a?;
    |      ^ use `.ok()?` if you want to discard the `Result<!, i32>` error information
+   |
+help: the trait `FromResidual<Result<!, i32>>` is not implemented for `Option<i32>`
+      but trait `FromResidual<Option<!>>` is implemented for it
+  --> $SRC_DIR/core/src/ops/try_trait_old.rs:LL:COL
+   = help: for that trait implementation, expected `Option<!>`, found `Result<!, i32>`
 
 error: aborting due to 2 previous errors
 

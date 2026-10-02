@@ -5,13 +5,20 @@ use crate::option::Option;
 use crate::result::Result;
 use crate::task::Poll;
 
-//TODO: fix messages
-#[rustc_on_unimplemented(on(
-    all(from_desugaring = "TryBlock"),
-    message = "a `try` block must return `Result` or `Option` \
+//FIXME: fix messages - revert changes tests/ui/try-trait (currently updated to pass with bad messages)
+#[rustc_on_unimplemented(
+    on(
+        all(from_desugaring = "TryBlock"),
+        message = "a `try` block must return `Result` or `Option` \
                     (or another type that implements `{This}`)",
-    label = "could not wrap the final value of the block as `{Self}` doesn't implement `Try`",
-))]
+        label = "could not wrap the final value of the block as `{Self}` doesn't implement `Try`",
+    ),
+    on(
+        all(from_desugaring = "QuestionMark"),
+        message = "the `?` operator can only be applied to values that implement `{This}`",
+        label = "the `?` operator cannot be applied to type `{Self}`"
+    )
+)]
 #[lang = "Try_Old"]
 #[stable(feature = "stability_marker_for_builtins", since = "0.0.0")]
 #[expect(unreachable_pub, reason = "lang_items")]
@@ -123,7 +130,16 @@ pub const trait Try: [const] FromResidual {
         label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
         parent_label = "this function returns a `ControlFlow`",
     ),
+    on(
+        all(from_desugaring = "QuestionMark"),
+        message = "the `?` operator can only be used in {ItemContext} \
+                    that returns `Result` or `Option` \
+                    (or another type that implements `{This}`)",
+        label = "cannot use the `?` operator in {ItemContext} that returns `{Self}`",
+        parent_label = "this function should return `Result` or `Option` to accept `?`"
+    ),
 )]
+#[rustc_diagnostic_item = "FromResidualOld"]
 #[expect(unreachable_pub, reason = "lang_items")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 pub const trait FromResidual<R = <Self as Try>::Residual> {
