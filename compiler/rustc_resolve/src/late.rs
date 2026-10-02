@@ -2861,12 +2861,14 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     fn resolve_item(&mut self, item: &'ast Item) {
+        let mut mod_inner_attrs_start = None;
         match item.kind {
             ItemKind::Mod(..) => {
                 // We only handle outer doc comments for modules here.
                 let attrs = if let Some(pos) = item.attrs.iter().position(|a| {
                     a.doc_resolution_scope().is_some_and(|style| style == AttrStyle::Inner)
                 }) {
+                    mod_inner_attrs_start = Some(pos);
                     &item.attrs[..pos]
                 } else {
                     &item.attrs
@@ -2972,9 +2974,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     this.with_rib(TypeNS, RibKind::Module(module.expect_local()), |this| {
                         // Outer doc comments were already handled above, now we handle
                         // inner doc comments.
-                        let attrs = if let Some(pos) = item.attrs.iter().position(|a| {
-                            a.doc_resolution_scope().is_some_and(|style| style == AttrStyle::Inner)
-                        }) {
+                        let attrs = if let Some(pos) = mod_inner_attrs_start {
                             &item.attrs[pos..]
                         } else {
                             &[]
