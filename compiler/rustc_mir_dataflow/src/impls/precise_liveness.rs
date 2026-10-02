@@ -567,10 +567,10 @@ pub fn dump_liveness_matrix<'tcx>(
                 let point = points.point_from_location(loc);
                 let split_point = SplitPointIndex::new(point, SplitPointEffect::Early);
                 let live = locals_live_at(split_point);
-                writeln!(w, "        // {loc:?}-early => {live:?}")?;
+                writeln!(w, "        // early: {live:?}")?;
                 let split_point = SplitPointIndex::new(point, SplitPointEffect::Late);
                 let live = locals_live_at(split_point);
-                writeln!(w, "        // {loc:?}-late => {live:?}")?;
+                writeln!(w, "        // late: {live:?}")?;
             }
             Ok(())
         };

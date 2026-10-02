@@ -593,6 +593,7 @@ pub enum RustcDumpLayoutKind {
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute, PartialEq, Eq)]
 pub enum RustcMirKind {
     PrettyLiveLocals,
+    PrettyPreciseLiveness,
     PrettyTransitiveLiveLocals,
     PeekMaybeInit,
     PeekMaybeUninit,
