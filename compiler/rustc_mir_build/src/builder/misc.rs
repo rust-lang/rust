@@ -84,6 +84,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ),
             );
             Operand::Move(reborrow)
+        } else if tcx.features().reborrow()
+            && self.infcx.type_is_reborrow_modulo_regions(self.param_env, ty)
+            // generic `T: Reborrow` not currently supported
+            && ty.is_adt()
+        {
+            // Reborrow the value.
+            let reborrow = self.temp(ty, span);
+            self.cfg.push_assign(
+                block,
+                self.source_info(span),
+                reborrow,
+                Rvalue::Reborrow(ty, Mutability::Mut, place),
+            );
+            Operand::Move(reborrow)
         } else {
             Operand::Move(place)
         }
