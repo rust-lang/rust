@@ -511,6 +511,26 @@ mod tests {
     };
 
     #[test]
+    fn add_reference_when_tail_expr_of_block() {
+        check_fix(
+            r#"
+fn main() {
+    let a = 0;
+    let b = 1;
+    if false { &a } else { b$0 };
+}
+            "#,
+            r#"
+fn main() {
+    let a = 0;
+    let b = 1;
+    if false { &a } else { &b };
+}
+            "#,
+        );
+    }
+
+    #[test]
     fn str_ref_to_owned_in_block() {
         check_has_fix(
             r#"
