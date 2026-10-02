@@ -3,6 +3,7 @@
 use std::env;
 
 fn main() {
-    // The actual value we get is a bit odd: we get the Miri binary that interprets us.
-    env::current_exe().unwrap();
+    let exe = env::current_exe().unwrap();
+    assert!(exe.is_absolute());
+    println!("{}", exe.file_name().unwrap().display());
 }

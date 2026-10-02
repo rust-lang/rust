@@ -1724,10 +1724,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // On Linux, special case `/proc/self/exe` so that `std::env::current_exe` works
         // in cross-execution.
-        let result = if matches!(this.tcx.sess.target.os, Os::Linux)
+        let result = if matches!(this.tcx.sess.target.os, Os::Linux | Os::Android)
             && pathname.to_str() == Some("/proc/self/exe")
         {
-            std::env::current_exe()
+            this.machine.current_exe.clone().ok_or(ErrorKind::NotFound.into())
         } else {
             // We read `pathname` as `OsStr` above so we could do the /proc/self/exe check.
             // But now we need a (host) path.

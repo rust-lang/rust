@@ -1106,9 +1106,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     throw_unsup_format!("`GetModuleFileNameW` only supports the NULL handle");
                 }
 
-                // Using the host current_exe is a bit off, but consistent with Linux
-                // (where stdlib reads /proc/self/exe).
-                let path = std::env::current_exe().unwrap();
+                let Some(path) = this.machine.current_exe.clone() else {
+                    throw_unsup_format!("GetModuleFileNameW only works when Miri is run on a file")
+                };
                 let (all_written, size_needed) =
                     this.write_path_to_wide_str_truncated(&path, filename, size.into())?;
 

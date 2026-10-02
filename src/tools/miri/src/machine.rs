@@ -4,7 +4,7 @@
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::{fmt, process};
 
@@ -537,6 +537,8 @@ pub struct MiriMachine<'tcx> {
     pub(crate) argc: Option<Pointer>,
     pub(crate) argv: Option<Pointer>,
     pub(crate) cmd_line: Option<Pointer>,
+    /// The binary we pretend to be.
+    pub(crate) current_exe: Option<PathBuf>,
 
     /// TLS state.
     pub(crate) tls: TlsData<'tcx>,
@@ -784,6 +786,7 @@ impl<'tcx> MiriMachine<'tcx> {
             argc: None,
             argv: None,
             cmd_line: None,
+            current_exe: config.current_exe.clone(),
             tls: TlsData::default(),
             isolated_op: config.isolated_op,
             validation: config.validation,
@@ -1035,6 +1038,7 @@ impl VisitProvenance for MiriMachine<'_> {
             argc,
             argv,
             cmd_line,
+            current_exe: _,
             extern_statics,
             extern_statics_imports,
             extern_static_weak_import_default,
