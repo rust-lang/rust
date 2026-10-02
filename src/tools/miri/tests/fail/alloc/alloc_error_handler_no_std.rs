@@ -19,7 +19,7 @@ mod utils;
 fn panic_handler(panic_info: &core::panic::PanicInfo) -> ! {
     let _ = writeln!(utils::MiriStderr, "custom panic handler called!");
     let _ = writeln!(utils::MiriStderr, "{panic_info}");
-    core::intrinsics::abort(); //~ERROR: aborted
+    core::intrinsics::abort_immediate(); //~ERROR: aborted
 }
 
 // rustc requires us to provide some more things that aren't actually used by this test

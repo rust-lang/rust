@@ -248,7 +248,6 @@ use core::clone::TrivialClone;
 use core::clone::{CloneToUninit, Share, UseCloned};
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
-use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
 use core::marker::{PhantomData, Unsize};
@@ -264,7 +263,7 @@ use core::pin::PinSafePointer;
 use core::ptr::{self, NonNull, drop_in_place};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
-use core::{borrow, fmt, hint};
+use core::{borrow, fmt, hint, intrinsics};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
@@ -3939,8 +3938,8 @@ trait RcInnerPtr {
         // We want to abort on overflow instead of dropping the value.
         // Checking for overflow after the store instead of before
         // allows for slightly better code generation.
-        if core::intrinsics::unlikely(strong == 0) {
-            abort();
+        if intrinsics::unlikely(strong == 0) {
+            intrinsics::abort_immediate();
         }
     }
 
@@ -3972,8 +3971,8 @@ trait RcInnerPtr {
         // We want to abort on overflow instead of dropping the value.
         // Checking for overflow after the store instead of before
         // allows for slightly better code generation.
-        if core::intrinsics::unlikely(weak == 0) {
-            abort();
+        if intrinsics::unlikely(weak == 0) {
+            intrinsics::abort_immediate();
         }
     }
 

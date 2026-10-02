@@ -107,16 +107,16 @@ extern crate minicore;
 pub unsafe fn unchecked_div<T>(x: T, y: T) -> T;
 
 #[rustc_intrinsic]
-pub fn abort() -> !;
+pub fn abort_immediate() -> !;
 
 // NOTRAP-NOT: teq
 // TRAP: teq
 #[no_mangle]
 pub fn div_i32(a: i32, b: i32) -> i32 {
     match a {
-        0 => abort(),
+        0 => abort_immediate(),
         -1 => match b {
-            -2147483648 => abort(),
+            -2147483648 => abort_immediate(),
             _ => unsafe { unchecked_div(a, b) },
         },
         _ => unsafe { unchecked_div(a, b) },
