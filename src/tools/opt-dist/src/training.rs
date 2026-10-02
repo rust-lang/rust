@@ -108,7 +108,7 @@ fn log_profile_stats(
 }
 
 pub fn llvm_benchmarks(env: &Environment) -> CmdBuilder {
-    init_compiler_benchmarks(env, &["Debug", "Opt"], &["Full"], LLVM_PGO_CRATES)
+    init_compiler_benchmarks(env, &["Debug", "Opt"], &["Full", "IncrPatched"], LLVM_PGO_CRATES)
 }
 
 // Here we're profiling the `rustc` frontend, so we also include `Check`.
