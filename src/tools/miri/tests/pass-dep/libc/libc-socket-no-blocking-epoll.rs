@@ -148,7 +148,7 @@ fn test_connect_nonblock_err() {
     let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
     // Since the address is not bound, the `connect` can never succeed
     // immediately and thus it always "fails" with EINPROGRESS.
-    assert!(err.kind() == ErrorKind::InProgress);
+    assert_eq!(err.kind(), ErrorKind::InProgress);
 
     // Add interest for client socket.
     epoll_ctl_add(epfd, client_sockfd, EPOLLOUT | EPOLLET | libc::EPOLLERR).unwrap();
