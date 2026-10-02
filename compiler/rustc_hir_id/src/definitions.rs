@@ -298,7 +298,7 @@ impl Definitions {
         assert!(
             self.def_path_hash_to_index.after_parallel_alloc.replace(Default::default()).is_none(),
             "this function should be called only once"
-        )
+        );
     }
 
     #[inline(always)]

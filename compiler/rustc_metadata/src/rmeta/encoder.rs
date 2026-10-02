@@ -38,8 +38,8 @@ use rustc_session::config::{OptLevel, OutputType, TargetModifier};
 use rustc_span::def_id::CRATE_MOD_ID;
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
-    ByteSymbol, ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId,
-    Symbol, SyntaxContext, bug, span_bug, sym,
+    ByteSymbol, ExternalSource, FileName, LocalExpnId, SourceFile, SpanData, SpanEncoder,
+    StableSourceFileId, Symbol, SyntaxContext, bug, span_bug, sym,
 };
 use rustc_structures::CrateType;
 use tracing::{debug, instrument, trace};
@@ -78,6 +78,10 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     hygiene_ctxt: Rc<RefCell<HygieneEncodeContext>>,
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
+    syntax_contexts_remapping: FxHashMap<u32, u32>,
+    last_s_ctxt_det_index: u32,
+    local_expn_remapping: FxHashMap<u32, u32>,
+    last_expn_det_index: u32,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -166,7 +170,7 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
 
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
         let idx = self.hygiene_ctxt.borrow_mut().get_syntax_ctxt_encoding_index(syntax_context);
-        idx.encode(self);
+        self.map_syntax_context(idx).encode(self);
     }
 
     fn encode_expn_id(&mut self, expn_id: ExpnId) {
@@ -177,8 +181,14 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
             // metadata from proc-macro crates.
             self.hygiene_ctxt.borrow_mut().schedule_expn_data_for_encoding(expn_id);
         }
+
         expn_id.krate.encode(self);
-        expn_id.local_id.encode(self);
+
+        if let Some(l_expn) = expn_id.as_local() {
+            self.map_local_expn(l_expn.as_u32()).encode(self);
+        } else {
+            expn_id.local_id.encode(self);
+        }
     }
 
     fn encode_span(&mut self, span: Span) {
@@ -444,6 +454,24 @@ macro_rules! record_defaulted_array {
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
+    #[inline]
+    fn map_syntax_context(&self, idx: u32) -> u32 {
+        if idx < self.last_s_ctxt_det_index {
+            idx
+        } else {
+            self.syntax_contexts_remapping.get(&idx).copied().unwrap_or(idx)
+        }
+    }
+
+    #[inline]
+    fn map_local_expn(&self, idx: u32) -> u32 {
+        if idx < self.last_expn_det_index {
+            idx
+        } else {
+            self.local_expn_remapping.get(&idx).copied().unwrap_or(idx)
+        }
+    }
+
     fn emit_lazy_distance(&mut self, position: NonZero<usize>) {
         let pos = position.get();
         let distance = match self.lazy_state {
@@ -624,7 +652,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         adapted.encode(&mut self.opaque)
     }
 
-    fn encode_crate_root(&mut self) -> (LazyValue<CrateRoot>, LazyValue<CrateRootUnhashed>) {
+    fn encode_crate_root(
+        &mut self,
+        s_ctxts_remapping: FxHashMap<u32, u32>,
+        expn_remapping: FxHashMap<u32, u32>,
+    ) -> (LazyValue<CrateRoot>, LazyValue<CrateRootUnhashed>) {
+        self.syntax_contexts_remapping = s_ctxts_remapping;
+        self.local_expn_remapping = expn_remapping;
+
         let tcx = self.tcx;
         let mut stats: Vec<(&'static str, usize)> = Vec::with_capacity(32);
 
@@ -2021,14 +2056,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             &Rc::clone(&self.hygiene_ctxt),
             &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table, &mut expn_hash_table),
             |(this, syntax_contexts, _, _), index, ctxt_data| {
+                let index = this.map_syntax_context(index);
                 syntax_contexts.set_some(index, this.lazy(ctxt_data));
             },
             |(this, _, expn_data_table, expn_hash_table), index, expn_data, hash| {
-                if let Some(index) = index.as_local() {
-                    expn_data_table
-                        .set_some(index.as_raw(), this.lazy(expn_data.expect("local expn")));
+                if let Some(idx) = index.as_local() {
+                    let idx = this.map_local_expn(idx.as_u32());
 
-                    expn_hash_table.set_some(index.as_raw(), this.lazy(hash));
+                    expn_data_table.set_some(idx.into(), this.lazy(expn_data.expect("local expn")));
+                    expn_hash_table.set_some(idx.into(), this.lazy(hash));
                 }
             },
         );
@@ -2601,7 +2637,10 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
             with_encode_metadata_header(tcx, path, |ecx| {
                 // Encode all the entries and extra information in the crate,
                 // culminating in the `CrateRoot` which points to all of it.
-                let (root, unhashed) = ecx.encode_crate_root();
+                let (root, unhashed) = ecx.encode_crate_root(
+                    SyntaxContext::create_remapping(),
+                    LocalExpnId::create_remapping(),
+                );
 
                 // Flush buffer to ensure backing file has the correct size.
                 ecx.opaque.flush();
@@ -2707,6 +2746,10 @@ fn with_encode_metadata_header(
         is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: Default::default(),
         symbol_index_table: Default::default(),
+        syntax_contexts_remapping: Default::default(),
+        local_expn_remapping: Default::default(),
+        last_expn_det_index: LocalExpnId::last_expn_det_index(),
+        last_s_ctxt_det_index: SyntaxContext::last_s_ctxt_det_index(),
     };
 
     // Encode the rustc version string in a predictable location.
