@@ -18,7 +18,7 @@ use self::derive_errors::*;
 use super::Certainty;
 use super::delegate::SolverDelegate;
 use crate::error_reporting::InferCtxtErrorExt;
-use crate::traits::{FulfillmentError, FulfillmentErrorCode, ScrubbedTraitError};
+use crate::traits::{FulfillmentError, ScrubbedTraitError};
 
 mod derive_errors;
 
@@ -157,8 +157,7 @@ where
             // the other case.
             TraitErrors::NoErrors
         } else {
-            let errors = collect_remaining_errors_impl(self, infcx);
-            TraitErrors::from_iter(errors.into_iter())
+            TraitErrors::HasErrors(collect_remaining_errors_impl(self, infcx))
         }
     }
 
@@ -367,26 +366,14 @@ where
     cx.obligations
         .pending
         .drain(..)
-        .filter_map(|(obligation, _)| {
-            try_ambiguity_error_for_stalled(infcx, obligation).map(NextSolverError::Ambiguity)
-        })
+        .map(|(obligation, _)| NextSolverError::Ambiguity(obligation))
         .map(|e| E::from_solver_error(infcx, e))
         .collect()
 }
 
-// We evaluate stalled obligations while collecting remaining errors because a
-// previously ambiguous goal may have become successful. In that case we emit a
-// delayed bug instead of producing a fulfillment error. Store the diagnostic
-// information here so error conversion does not reevaluate the goal.
-pub struct NextSolverAmbiguityError<'tcx> {
-    root_obligation: PredicateObligation<'tcx>,
-    code: FulfillmentErrorCode<'tcx>,
-    refine_obligation: bool,
-}
-
 pub enum NextSolverError<'tcx> {
     TrueError(PredicateObligation<'tcx>),
-    Ambiguity(NextSolverAmbiguityError<'tcx>),
+    Ambiguity(PredicateObligation<'tcx>),
 }
 
 impl<'tcx> FromSolverError<'tcx, NextSolverError<'tcx>> for FulfillmentError<'tcx> {
@@ -395,8 +382,8 @@ impl<'tcx> FromSolverError<'tcx, NextSolverError<'tcx>> for FulfillmentError<'tc
             NextSolverError::TrueError(obligation) => {
                 fulfillment_error_for_no_solution(infcx, obligation)
             }
-            NextSolverError::Ambiguity(ambiguity) => {
-                fulfillment_error_for_stalled(infcx, ambiguity)
+            NextSolverError::Ambiguity(obligation) => {
+                fulfillment_error_for_stalled(infcx, obligation)
             }
         }
     }
