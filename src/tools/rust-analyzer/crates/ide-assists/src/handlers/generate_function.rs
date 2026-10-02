@@ -126,6 +126,11 @@ fn fn_target_info(
             }
             Some(hir::PathResolution::SelfType(impl_)) => {
                 let adt = impl_.self_ty(ctx.db()).as_adt()?;
+                if let hir::Adt::Enum(_) = adt
+                    && fn_name.starts_with(char::is_uppercase)
+                {
+                    return None;
+                }
                 assoc_fn_target_info(ctx, call, adt, fn_name)
             }
             _ => None,
@@ -3461,5 +3466,45 @@ impl Foo for Bar {
 }
 ",
         )
+    }
+    #[test]
+    fn not_applicable_for_self_enum_variant() {
+        check_assist_not_applicable(
+            generate_function,
+            r"
+enum Foo {}
+impl Foo {
+  fn foo() {
+    Self::Bar$0(true)
+  }
+}
+",
+        );
+    }
+    #[test]
+    fn applicable_for_self_enum_method() {
+        check_assist(
+            generate_function,
+            r"
+enum Foo {}
+impl Foo {
+  fn foo() {
+    Self::bar$0()
+  }
+}
+",
+            r"
+enum Foo {}
+impl Foo {
+  fn foo() {
+    Self::bar()
+  }
+
+    fn bar() {
+        ${0:todo!()}
+    }
+}
+",
+        );
     }
 }
