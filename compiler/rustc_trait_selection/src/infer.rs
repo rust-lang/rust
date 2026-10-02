@@ -36,6 +36,12 @@ impl<'tcx> InferCtxt<'tcx> {
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id)
     }
 
+    fn type_is_reborrow_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
+        let ty = self.deeply_resolve_ignoring_regions(ty);
+        let reborrow_def_id = self.tcx.require_lang_item(LangItem::Reborrow, DUMMY_SP);
+        traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, reborrow_def_id)
+    }
+
     fn type_is_clone_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
         let ty = self.deeply_resolve_ignoring_regions(ty);
         let clone_def_id = self.tcx.require_lang_item(LangItem::Clone, DUMMY_SP);
