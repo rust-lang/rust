@@ -11,7 +11,7 @@ macro pathvec($($rest:ident)::+) {{
 }}
 
 macro path_std($cx: expr, $span: expr, $($x:tt)*) {
-    new_path($cx, $span, pathvec!( $($x)* ), vec![] )
+    $cx.std_path($span, pathvec!( $($x)* ) )
 }
 
 pub(crate) mod clone;
@@ -102,9 +102,4 @@ fn assert_ty_bounds(
     let span = cx.with_def_site_ctxt(span);
     let assert_path = cx.std_path_all(span, assert_path, vec![GenericArg::Type(ty)]);
     stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
-}
-
-fn new_path(cx: &ExtCtxt<'_>, span: Span, path: &[Symbol], params: Vec<Box<ast::Ty>>) -> ast::Path {
-    let params = params.into_iter().map(GenericArg::Type).collect();
-    cx.std_path_all(span, path, params)
 }

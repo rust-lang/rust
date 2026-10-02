@@ -6,7 +6,7 @@ use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::thin_vec;
 
 use crate::deriving::generic::*;
-use crate::deriving::{new_path, pathvec};
+use crate::deriving::pathvec;
 use crate::diagnostics;
 
 /// Generate an implementation of the `From` trait, provided that `item`
@@ -51,7 +51,11 @@ pub(crate) fn expand_deriving_from(
         Err(guar) => cx.ty(span, ast::TyKind::Err(guar)),
     };
 
-    let path = new_path(cx, span, pathvec!(convert::From), vec![from_type.clone()]);
+    let path = cx.std_path_all(
+        span,
+        pathvec!(convert::From),
+        vec![ast::GenericArg::Type(from_type.clone())],
+    );
 
     // Generate code like this:
     //
