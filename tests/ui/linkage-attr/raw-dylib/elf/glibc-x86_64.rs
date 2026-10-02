@@ -6,7 +6,8 @@
 //@ ignore-backends: gcc
 
 #![allow(incomplete_features)]
-#![feature(raw_dylib_elf, lang_items)]
+#![feature(lang_items)]
+#![feature(raw_dylib_elf)]
 #![no_std]
 #![no_main]
 

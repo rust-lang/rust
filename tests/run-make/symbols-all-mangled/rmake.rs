@@ -4,9 +4,7 @@
 //@ ignore-cross-compile (host-only)
 
 use run_make_support::object::read::{Object, ObjectSymbol};
-use run_make_support::{
-    bin_name, dynamic_lib_name, llvm_version, object, rfs, rustc, static_lib_name,
-};
+use run_make_support::{bin_name, dynamic_lib_name, object, rfs, rustc, static_lib_name};
 
 fn main() {
     let staticlib_name = static_lib_name("a_lib");
@@ -34,10 +32,6 @@ fn is_symbol_ok(sym: &str) -> bool {
         // Starting in LLVM 21 we get various implementation-detail functions which
         // contain .llvm. that are not a problem.
         return true;
-    }
-
-    if llvm_version() < (22, 0, 0) && sym.contains("rust_eh_personality") {
-        return true; // LLVM before 22 doesn't allow us to mangle this symbol
     }
 
     false

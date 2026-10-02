@@ -494,6 +494,4 @@ fun:_ZN4core*=uninstrumented
 fun:_R*4core*=uninstrumented
 fun:_ZN3std*=uninstrumented
 fun:_R*3std*=uninstrumented
-# FIXME remove rust_eh_personality exclusion once LLVM 21 support is dropped
-fun:rust_eh_personality=uninstrumented
 fun:_R*__rustc*=uninstrumented
