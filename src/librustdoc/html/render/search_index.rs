@@ -22,7 +22,7 @@ use rustc_span::symbol::{Symbol, kw};
 use stringdex::internals as stringdex_internals;
 use tracing::instrument;
 
-use crate::clean::types::{Function, Generics, ItemId, Type, WherePredicate};
+use crate::clean::types::{Function, Generics, ItemId, ItemKind, Type, WherePredicate};
 use crate::clean::{self, ExternalLocation, utils};
 use crate::config::ShouldMerge;
 use crate::error::Error;
@@ -2009,15 +2009,15 @@ pub(crate) fn get_function_type_for_search(
         }
     });
     let (mut inputs, mut output, param_names, where_clause) = match item.kind {
-        clean::ForeignFunctionItem(ref f, _)
-        | clean::FunctionItem(ref f)
-        | clean::MethodItem(ref f, _)
-        | clean::RequiredMethodItem(ref f, _) => {
+        ItemKind::ForeignFunctionItem(ref f, _)
+        | ItemKind::FunctionItem(ref f)
+        | ItemKind::MethodItem(ref f, _)
+        | ItemKind::RequiredMethodItem(ref f, _) => {
             get_fn_inputs_and_outputs(f, tcx, impl_or_trait_generics, cache)
         }
-        clean::ConstantItem(ref c) => make_nullary_fn(&c.type_),
-        clean::StaticItem(ref s) => make_nullary_fn(&s.type_),
-        clean::StructFieldItem(ref t) if let Some(parent) = parent => {
+        ItemKind::ConstantItem(ref c) => make_nullary_fn(&c.type_),
+        ItemKind::StaticItem(ref s) => make_nullary_fn(&s.type_),
+        ItemKind::StructFieldItem(ref t) if let Some(parent) = parent => {
             let mut rgen: FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)> =
                 Default::default();
             let output = get_index_type(t, vec![], &mut rgen);

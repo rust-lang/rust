@@ -1,7 +1,7 @@
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_middle::ty::TyCtxt;
 
-use crate::clean;
+use crate::clean::{self, ItemKind};
 use crate::config::{EmitType, RenderOptions};
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -75,8 +75,8 @@ fn run_format_inner<'tcx, T: FormatRenderer<'tcx>>(
             prof.generic_activity_with_arg("render_mod_item", item.name.unwrap().to_string());
 
         cx.mod_item_in(item)?;
-        let (clean::StrippedItem(clean::ModuleItem(ref module)) | clean::ModuleItem(ref module)) =
-            item.inner.kind
+        let (ItemKind::StrippedItem(ItemKind::ModuleItem(ref module))
+        | ItemKind::ModuleItem(ref module)) = item.inner.kind
         else {
             unreachable!()
         };

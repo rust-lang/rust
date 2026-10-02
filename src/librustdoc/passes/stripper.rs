@@ -7,7 +7,7 @@ use rustc_middle::ty::{TyCtxt, Visibility};
 use tracing::debug;
 
 use crate::clean::utils::inherits_doc_hidden;
-use crate::clean::{self, Item, ItemId, ItemIdSet};
+use crate::clean::{self, Item, ItemId, ItemIdSet, ItemKind};
 use crate::fold::{DocFolder, strip_item};
 use crate::formats::cache::Cache;
 use crate::visit_lib::RustdocEffectiveVisibilities;
@@ -40,7 +40,7 @@ fn is_item_reachable(
 impl DocFolder for Stripper<'_, '_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.kind {
-            clean::StrippedItem(..) => {
+            ItemKind::StrippedItem(..) => {
                 // We need to recurse into stripped modules to strip things
                 // like impl methods but when doing so we must not add any
                 // items to the `retained` set.
@@ -51,20 +51,20 @@ impl DocFolder for Stripper<'_, '_> {
                 return Some(ret);
             }
             // These items can all get re-exported
-            clean::TypeAliasItem(..)
-            | clean::StaticItem(..)
-            | clean::StructItem(..)
-            | clean::EnumItem(..)
-            | clean::TraitItem(..)
-            | clean::FunctionItem(..)
-            | clean::VariantItem(..)
-            | clean::ForeignFunctionItem(..)
-            | clean::ForeignStaticItem(..)
-            | clean::ConstantItem(..)
-            | clean::UnionItem(..)
-            | clean::TraitAliasItem(..)
-            | clean::MacroItem(..)
-            | clean::ForeignTypeItem => {
+            ItemKind::TypeAliasItem(..)
+            | ItemKind::StaticItem(..)
+            | ItemKind::StructItem(..)
+            | ItemKind::EnumItem(..)
+            | ItemKind::TraitItem(..)
+            | ItemKind::FunctionItem(..)
+            | ItemKind::VariantItem(..)
+            | ItemKind::ForeignFunctionItem(..)
+            | ItemKind::ForeignStaticItem(..)
+            | ItemKind::ConstantItem(..)
+            | ItemKind::UnionItem(..)
+            | ItemKind::TraitAliasItem(..)
+            | ItemKind::MacroItem(..)
+            | ItemKind::ForeignTypeItem => {
                 let item_id = i.item_id;
                 if item_id.is_local()
                     && !is_item_reachable(
@@ -79,10 +79,10 @@ impl DocFolder for Stripper<'_, '_> {
                 }
             }
 
-            clean::MethodItem(..)
-            | clean::ProvidedAssocConstItem(..)
-            | clean::ImplAssocConstItem(..)
-            | clean::AssocTypeItem(..) => {
+            ItemKind::MethodItem(..)
+            | ItemKind::ProvidedAssocConstItem(..)
+            | ItemKind::ImplAssocConstItem(..)
+            | ItemKind::AssocTypeItem(..) => {
                 let item_id = i.item_id;
                 if item_id.is_local()
                     && !self.effective_visibilities.is_reachable(self.tcx, item_id.expect_def_id())
@@ -92,13 +92,13 @@ impl DocFolder for Stripper<'_, '_> {
                 }
             }
 
-            clean::StructFieldItem(..) => {
+            ItemKind::StructFieldItem(..) => {
                 if i.visibility(self.tcx) != Some(Visibility::Public) {
                     return Some(strip_item(i));
                 }
             }
 
-            clean::ModuleItem(..) => {
+            ItemKind::ModuleItem(..) => {
                 if i.item_id.is_local()
                     && !is_item_reachable(
                         self.tcx,
@@ -116,40 +116,40 @@ impl DocFolder for Stripper<'_, '_> {
             }
 
             // handled in the `strip-priv-imports` pass
-            clean::ExternCrateItem { .. } | clean::ImportItem(_) => {}
+            ItemKind::ExternCrateItem { .. } | ItemKind::ImportItem(_) => {}
 
-            clean::ImplItem(..) => {}
+            ItemKind::ImplItem(..) => {}
 
             // Since the `doc_cfg` propagation was handled before the current pass, we can (and
             // should) remove all placeholder impl items.
-            clean::PlaceholderImplItem => return None,
+            ItemKind::PlaceholderImplItem => return None,
 
             // tymethods etc. have no control over privacy
-            clean::RequiredMethodItem(..)
-            | clean::RequiredAssocConstItem(..)
-            | clean::RequiredAssocTypeItem(..) => {}
+            ItemKind::RequiredMethodItem(..)
+            | ItemKind::RequiredAssocConstItem(..)
+            | ItemKind::RequiredAssocTypeItem(..) => {}
 
             // Proc-macros are always public
-            clean::ProcMacroItem(..) => {}
+            ItemKind::ProcMacroItem(..) => {}
 
             // Primitives are never stripped
-            clean::PrimitiveItem(..) => {}
+            ItemKind::PrimitiveItem(..) => {}
 
             // Keywords are never stripped
-            clean::KeywordItem => {}
+            ItemKind::KeywordItem => {}
             // Attributes are never stripped
-            clean::AttributeItem => {}
+            ItemKind::AttributeItem => {}
         }
 
         let fastreturn = match i.kind {
             // nothing left to do for traits (don't want to filter their
             // methods out, visibility controlled by the trait)
-            clean::TraitItem(..) => true,
+            ItemKind::TraitItem(..) => true,
 
             // implementations of traits are always public.
-            clean::ImplItem(ref imp) if imp.trait_.is_some() => true,
+            ItemKind::ImplItem(ref imp) if imp.trait_.is_some() => true,
             // Variant fields have inherited visibility
-            clean::VariantItem(clean::Variant {
+            ItemKind::VariantItem(clean::Variant {
                 kind: clean::VariantKind::Struct(..) | clean::VariantKind::Tuple(..),
                 ..
             }) => true,
@@ -206,7 +206,7 @@ impl ImplStripper<'_, '_> {
 
 impl DocFolder for ImplStripper<'_, '_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
-        if let clean::ImplItem(ref imp) = i.kind {
+        if let ItemKind::ImplItem(ref imp) = i.kind {
             // Impl blocks can be skipped if they are: empty; not a trait impl; and have no
             // documentation.
             //
@@ -284,14 +284,14 @@ impl ImportStripper<'_> {
 impl DocFolder for ImportStripper<'_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match &i.kind {
-            clean::ImportItem(imp)
+            ItemKind::ImportItem(imp)
                 if !self.document_hidden && self.import_should_be_hidden(&i, imp) =>
             {
                 debug!("ImportStripper: stripping {:?}", i.name);
                 None
             }
-            // clean::ImportItem(_) if !self.document_hidden && i.is_doc_hidden() => None,
-            clean::ExternCrateItem { .. } | clean::ImportItem(..)
+            // ItemKind::ImportItem(_) if !self.document_hidden && i.is_doc_hidden() => None,
+            ItemKind::ExternCrateItem { .. } | ItemKind::ImportItem(..)
                 if i.visibility(self.tcx) != Some(Visibility::Public) =>
             {
                 debug!("ImportStripper: stripping {:?}", i.name);
