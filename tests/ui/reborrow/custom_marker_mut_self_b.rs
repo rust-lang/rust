@@ -16,5 +16,5 @@ fn main() {
     let _ = method(a);
     let b = method(a);
     let _ = (a, b);
-    //~^ ERROR: cannot move out of `a` because it is borrowed
+    //~^ ERROR: cannot borrow `a` as mutable more than once at a time [E0499]
 }
