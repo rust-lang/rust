@@ -1867,7 +1867,7 @@ impl IncrCompSession {
 
 impl Drop for IncrCompSession {
     fn drop(&mut self) {
-        // Check that there are no workers threads remaining that use the incr
+        // Check that there are no worker threads remaining that use the incr
         // comp session before we unlock the old and new session dir. If there
         // does exist a worker thread, there is not much we can do, but at
         // least we will unconditionally complain rather than the worker thread
