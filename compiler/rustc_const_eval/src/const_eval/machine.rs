@@ -608,7 +608,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 }
             }
 
-            sym::type_of => {
+            sym::type_id_type_of => {
                 let ty = ecx.read_type_id(&args[0])?;
                 ecx.write_type_info(ty, dest)?;
             }
@@ -627,7 +627,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_bool(is_mutable), dest)?;
             }
 
-            sym::size_of_type_id => {
+            sym::type_id_size_of => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let layout = ecx.layout_of(ty)?;
                 let variant_index = if layout.is_sized() {
@@ -764,7 +764,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_target_usize(variants_num as u64, ecx), dest)?;
             }
 
-            sym::variant_name => {
+            sym::type_id_variant_name => {
                 let base = ecx.read_type_id(&args[0])?;
 
                 let field_name = if let ty::Adt(def, _) = base.kind() {
@@ -790,7 +790,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 )?;
             }
 
-            sym::variant_non_exhaustive => {
+            sym::type_id_variant_non_exhaustive => {
                 let base = ecx.read_type_id(&args[0])?;
 
                 let non_exhaustive = if let ty::Adt(def, _) = base.kind() {
@@ -890,7 +890,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_type_id_generics(dest, ty)?;
             }
 
-            sym::non_exhaustive => {
+            sym::type_id_non_exhaustive => {
                 let ty = ecx.read_type_id(&args[0])?;
 
                 // FIXME(reflection): need a way to obtain non-exhaustiveness of a variant's fields.
