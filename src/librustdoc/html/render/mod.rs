@@ -1474,11 +1474,11 @@ fn aliased_type_deref_impl<'a>(
     let mut has_deref_mut = false;
 
     for impl_ in impls {
-        if impl_.trait_did() == tcx.lang_items().deref_trait() {
+        if impl_.is_deref_trait(tcx) {
             if !impl_.is_negative_trait_impl() && applies(impl_) {
                 deref_impl = Some(impl_);
             }
-        } else if impl_.trait_did() == tcx.lang_items().deref_mut_trait() && applies(impl_) {
+        } else if impl_.is_deref_mut_trait(tcx) && applies(impl_) {
             has_deref_mut = true;
         }
     }
@@ -1613,12 +1613,11 @@ fn render_assoc_items_inner(
         }
     }
 
-    let deref_impl = trait_impls.iter().find(|t| {
-        t.trait_did() == cx.tcx().lang_items().deref_trait() && !t.is_negative_trait_impl()
-    });
+    let tcx = cx.tcx();
+    let deref_impl =
+        trait_impls.iter().find(|t| t.is_deref_trait(tcx) && !t.is_negative_trait_impl());
     let deref = if let Some(impl_) = deref_impl {
-        let has_deref_mut =
-            trait_impls.iter().any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
+        let has_deref_mut = trait_impls.iter().any(|t| t.is_deref_mut_trait(tcx));
         Some((*impl_, has_deref_mut))
     } else {
         aliased_type.and_then(|aliased_did| aliased_type_deref_impl(cx, it, aliased_did))

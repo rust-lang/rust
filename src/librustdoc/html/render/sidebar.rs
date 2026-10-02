@@ -467,6 +467,7 @@ fn sidebar_assoc_items_with_aliased_type<'a>(
     let mut methods = Vec::new();
     let mut used_links = UsedLinks::default();
     let mut id_map = IdMap::new();
+    let tcx = cx.tcx();
 
     {
         let used_links_bor = &mut used_links;
@@ -477,7 +478,7 @@ fn sidebar_assoc_items_with_aliased_type<'a>(
                 impl_,
                 GetMethodsMode::AlsoCollectAssocFns { assoc_fns: &mut assoc_fns },
                 used_links_bor,
-                cx.tcx(),
+                tcx,
             ));
         }
         // We want links' order to be reproducible so we don't use unstable sort.
@@ -501,10 +502,10 @@ fn sidebar_assoc_items_with_aliased_type<'a>(
         LinkBlock::new(Link::new("implementations", "Methods"), "method", methods),
     ];
 
-    let deref = if let Some(impl_) = v.iter().find(|i| {
-        i.trait_did() == cx.tcx().lang_items().deref_trait() && !i.is_negative_trait_impl()
-    }) {
-        let deref_mut = v.iter().any(|i| i.trait_did() == cx.tcx().lang_items().deref_mut_trait());
+    let deref = if let Some(impl_) =
+        v.iter().find(|i| i.is_deref_trait(tcx) && !i.is_negative_trait_impl())
+    {
+        let deref_mut = v.iter().any(|i| i.is_deref_mut_trait(tcx));
         Some((impl_, deref_mut))
     } else {
         aliased_type
@@ -559,6 +560,8 @@ fn sidebar_deref_methods<'a>(
         })
     {
         debug!("found target, real_target: {target:?} {real_target:?}");
+        let tcx = cx.tcx();
+
         if let Some(did) = target.def_id(c) &&
             let Some(type_did) = impl_.inner_impl().for_.def_id(c) &&
             // `impl Deref<Target = S> for S`
@@ -586,7 +589,7 @@ fn sidebar_deref_methods<'a>(
                         i.inner_impl(),
                         GetMethodsMode::Deref { deref_mut },
                         used_links,
-                        cx.tcx(),
+                        tcx,
                     )
                     .collect::<Vec<_>>()
                 })
@@ -617,11 +620,7 @@ fn sidebar_deref_methods<'a>(
         if let Some(target_did) = target.def_id(c)
             && let Some(target_impls) = c.impls.get(&target_did)
             && let Some(target_deref_impl) = target_impls.iter().find(|i| {
-                i.inner_impl()
-                    .trait_
-                    .as_ref()
-                    .map(|t| Some(t.def_id()) == cx.tcx().lang_items().deref_trait())
-                    .unwrap_or(false)
+                i.inner_impl().trait_.as_ref().map(|t| t.is_deref_trait(tcx)).unwrap_or(false)
                     && !i.is_negative_trait_impl()
             })
         {
