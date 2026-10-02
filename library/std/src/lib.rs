@@ -317,6 +317,7 @@
 //
 // Library features (core):
 // tidy-alphabetical-start
+#![feature(abort_immediate)]
 #![feature(borrowed_buf_init)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
@@ -328,6 +329,7 @@
 #![feature(const_clone)]
 #![feature(const_convert)]
 #![feature(const_default)]
+#![feature(core_abort)]
 #![feature(core_float_math)]
 #![feature(core_intrinsics)]
 #![feature(core_io)]
