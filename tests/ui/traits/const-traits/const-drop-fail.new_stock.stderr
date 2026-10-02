@@ -1,17 +1,17 @@
 error[E0367]: `NonTrivialDrop` does not implement `[const] Destruct`
-  --> $DIR/const-drop-fail.rs:19:30
+  --> $DIR/const-drop-fail.rs:20:30
    |
 LL | struct ConstImplWithDropGlue(NonTrivialDrop);
    |                              ^^^^^^^^^^^^^^
    |
 note: required for this `Drop` impl
-  --> $DIR/const-drop-fail.rs:22:1
+  --> $DIR/const-drop-fail.rs:23:1
    |
 LL | const impl Drop for ConstImplWithDropGlue {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `NonTrivialDrop: const Destruct` is not satisfied
-  --> $DIR/const-drop-fail.rs:35:5
+  --> $DIR/const-drop-fail.rs:36:5
    |
 LL |         const _: () = check($exp);
    |                       ----- required by a bound introduced by this call
@@ -20,13 +20,13 @@ LL |     NonTrivialDrop,
    |     ^^^^^^^^^^^^^^
    |
 note: required by a bound in `check`
-  --> $DIR/const-drop-fail.rs:26:19
+  --> $DIR/const-drop-fail.rs:27:19
    |
 LL | const fn check<T: [const] Destruct>(_: T) {}
    |                   ^^^^^^^^^^^^^^^^ required by this bound in `check`
 
 error[E0277]: the trait bound `NonTrivialDrop: const Destruct` is not satisfied
-  --> $DIR/const-drop-fail.rs:37:5
+  --> $DIR/const-drop-fail.rs:38:5
    |
 LL |         const _: () = check($exp);
    |                       ----- required by a bound introduced by this call
@@ -35,7 +35,7 @@ LL |     ConstImplWithDropGlue(NonTrivialDrop),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: required by a bound in `check`
-  --> $DIR/const-drop-fail.rs:26:19
+  --> $DIR/const-drop-fail.rs:27:19
    |
 LL | const fn check<T: [const] Destruct>(_: T) {}
    |                   ^^^^^^^^^^^^^^^^ required by this bound in `check`

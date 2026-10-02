@@ -1,23 +1,23 @@
 error[E0120]: the `Drop` trait may only be implemented for local structs, enums, and unions
-  --> $DIR/weird-impls.rs:10:15
+  --> $DIR/weird-impls.rs:11:15
    |
 LL | impl Drop for field_of!(MyStruct, 0) {
    |               ^^^^^^^^^^^^^^^^^^^^^^ must be a struct, enum, or union in the current crate
 
 error[E0321]: cross-crate traits with a default impl, like `Send`, can only be implemented for a struct/enum type defined in the current crate
-  --> $DIR/weird-impls.rs:15:1
+  --> $DIR/weird-impls.rs:16:1
    |
 LL | unsafe impl Send for field_of!(MyStruct, 0) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait for type in another crate
 
 error[E0322]: explicit impls for the `Field` trait are not permitted
-  --> $DIR/weird-impls.rs:21:1
+  --> $DIR/weird-impls.rs:22:1
    |
 LL | unsafe impl Field for field_of!(MyStruct2, 0) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `Field` not allowed
 
 error[E0322]: explicit impls for the `Field` trait are not permitted
-  --> $DIR/weird-impls.rs:30:1
+  --> $DIR/weird-impls.rs:31:1
    |
 LL | unsafe impl Field for MyField {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `Field` not allowed
