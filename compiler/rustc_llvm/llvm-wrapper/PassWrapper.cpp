@@ -29,6 +29,9 @@
 #else
 #include "llvm/Passes/PassPlugin.h"
 #endif
+#if LLVM_VERSION_GE(24, 0)
+#include "llvm/Passes/RunCodeGen.h"
+#endif
 #include "llvm/Passes/StandardInstrumentations.h"
 #include "llvm/Support/CBindingWrapping.h"
 #include "llvm/Support/FileSystem.h"
@@ -480,30 +483,6 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
                         const char *Path, const char *DwoPath,
                         LLVMRustFileType RustFileType, bool VerifyIR,
                         bool DisableSimplifyLibCalls) {
-  std::unique_ptr<llvm::legacy::PassManager> PM =
-      std::make_unique<llvm::legacy::PassManager>();
-
-  PM->add(createTargetTransformInfoWrapperPass(
-      unwrap(Target)->getTargetIRAnalysis()));
-
-  auto TargetTriple = Triple(unwrap(M)->getTargetTriple());
-  TargetOptions *Options = &unwrap(Target)->Options;
-  auto TLII = TargetLibraryInfoImpl(TargetTriple);
-  if (DisableSimplifyLibCalls)
-    TLII.disableAllFunctions();
-  PM->add(new TargetLibraryInfoWrapperPass(TLII));
-#if LLVM_VERSION_GE(24, 0)
-  // LLVM 24 removed TargetOptions::EABIVersion and ExceptionModel; the EABI
-  // version and exception model are now derived from the target triple and
-  // module flags respectively instead.
-  PM->add(new RuntimeLibraryInfoWrapper(Options->MCOptions.ABIName,
-                                        Options->VecLib));
-#elif LLVM_VERSION_GE(22, 0)
-  PM->add(new RuntimeLibraryInfoWrapper(
-      TargetTriple, Options->ExceptionModel, Options->FloatABIType,
-      Options->EABIVersion, Options->MCOptions.ABIName, Options->VecLib));
-#endif
-
   auto FileType = fromRust(RustFileType);
 
   std::string ErrorInfo;
@@ -516,28 +495,51 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
     return LLVMRustResult::Failure;
   }
 
-  // TargetMachine::addPassesToEmitFile stores pointers to the output streams
-  // in a couple of places inside of the object. Explicitly delete the PM after
-  // we call run() to avoid dangling references.
+  std::unique_ptr<llvm::ToolOutputFile> DOS;
   auto BOS = buffer_ostream(OS);
   if (DwoPath) {
-    auto DOS = raw_fd_ostream(DwoPath, EC, sys::fs::OF_None);
-    EC.clear();
-    if (EC)
+    DOS = std::make_unique<llvm::ToolOutputFile>(DwoPath, EC,
+                                                 llvm::sys::fs::OF_None);
+    if (EC) {
       ErrorInfo = EC.message();
+      DOS.reset();
+    }
     if (ErrorInfo != "") {
       LLVMRustSetLastError(ErrorInfo.c_str());
       return LLVMRustResult::Failure;
     }
-    auto DBOS = buffer_ostream(DOS);
-    unwrap(Target)->addPassesToEmitFile(*PM, BOS, &DBOS, FileType, !VerifyIR);
-    PM->run(*unwrap(M));
-    PM.reset();
-  } else {
-    unwrap(Target)->addPassesToEmitFile(*PM, BOS, nullptr, FileType, !VerifyIR);
-    PM->run(*unwrap(M));
-    PM.reset();
+    DOS->keep();
   }
+
+#if LLVM_VERSION_GE(24, 0)
+  Error CodeGenError =
+      runCodeGenPipeline(*unwrap(Target), *unwrap(M), BOS, DOS, FileType, false,
+                         !VerifyIR, DisableSimplifyLibCalls);
+#else
+  std::unique_ptr<llvm::legacy::PassManager> PM =
+      std::make_unique<llvm::legacy::PassManager>();
+
+  PM->add(createTargetTransformInfoWrapperPass(
+      unwrap(Target)->getTargetIRAnalysis()));
+
+  auto TargetTriple = Triple(unwrap(M)->getTargetTriple());
+  TargetOptions *Options = &unwrap(Target)->Options;
+  auto TLII = TargetLibraryInfoImpl(TargetTriple);
+  if (DisableSimplifyLibCalls)
+    TLII.disableAllFunctions();
+  PM->add(new TargetLibraryInfoWrapperPass(TLII));
+  PM->add(new RuntimeLibraryInfoWrapper(
+      TargetTriple, Options->ExceptionModel, Options->FloatABIType,
+      Options->EABIVersion, Options->MCOptions.ABIName, Options->VecLib));
+
+  // TargetMachine::addPassesToEmitFile stores pointers to the output streams
+  // in a couple of places inside of the object. Explicitly delete the PM after
+  // we call run() to avoid dangling references.
+  unwrap(Target)->addPassesToEmitFile(*PM, BOS, DOS ? &DOS->os() : nullptr,
+                                      FileType, !VerifyIR);
+  PM->run(*unwrap(M));
+  PM.reset();
+#endif
 
   return LLVMRustResult::Success;
 }
