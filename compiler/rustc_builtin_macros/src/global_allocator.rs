@@ -92,8 +92,8 @@ impl AllocFnFactory<'_, '_> {
     }
 
     fn call_allocator(&self, method: Symbol, mut args: ThinVec<Box<Expr>>) -> Box<Expr> {
-        let method = self.cx.std_path(&[sym::alloc, sym::GlobalAlloc, method]);
-        let method = self.cx.expr_path(self.cx.path(self.ty_span, method));
+        let method = self.cx.std_path(self.ty_span, &[sym::alloc, sym::GlobalAlloc, method]);
+        let method = self.cx.expr_path(method);
         let allocator = self.cx.path_ident(self.ty_span, self.global);
         let allocator = self.cx.expr_path(allocator);
         let allocator = self.cx.expr_addr_of(self.ty_span, allocator);
@@ -130,12 +130,11 @@ impl AllocFnFactory<'_, '_> {
                 let ty_align = self.ptr_alignment();
                 args.push(self.cx.param(self.span, sym::align, ty_align));
 
-                let layout_new = self.cx.std_path(&[
-                    sym::alloc,
-                    sym::Layout,
-                    sym::from_size_alignment_unchecked,
-                ]);
-                let layout_new = self.cx.expr_path(self.cx.path(self.span, layout_new));
+                let layout_new = self.cx.std_path(
+                    self.span,
+                    &[sym::alloc, sym::Layout, sym::from_size_alignment_unchecked],
+                );
+                let layout_new = self.cx.expr_path(layout_new);
                 let size = self.cx.expr_ident_sym(self.span, sym::size);
                 let align = self.cx.expr_ident_sym(self.span, sym::align);
                 let layout = self.cx.expr_call(self.span, layout_new, thin_vec![size, align]);
@@ -177,8 +176,7 @@ impl AllocFnFactory<'_, '_> {
     }
 
     fn ptr_alignment(&self) -> Box<Ty> {
-        let path = self.cx.std_path(&[sym::mem, sym::Alignment]);
-        let path = self.cx.path(self.span, path);
+        let path = self.cx.std_path(self.span, &[sym::mem, sym::Alignment]);
         self.cx.ty_path(path)
     }
 

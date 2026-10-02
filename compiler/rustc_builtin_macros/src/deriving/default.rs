@@ -58,7 +58,7 @@ pub(crate) fn expand_deriving_default(
 
 fn default_call(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
     // Note that `kw::Default` is "default" and `sym::Default` is "Default"!
-    let default_ident = cx.std_path(&[kw::Default, sym::Default, kw::Default]);
+    let default_ident = cx.std_path(span, &[kw::Default, sym::Default, kw::Default]);
     cx.expr_call_global(span, default_ident, ThinVec::new())
 }
 
@@ -117,7 +117,7 @@ fn default_enum_substructure(
             match &default_variant.data {
                 VariantData::Unit(_) => cx.expr_path(cx.path(
                     default_variant.span,
-                    vec![Ident::new(kw::SelfUpper, default_variant.span), default_variant.ident],
+                    &[Ident::new(kw::SelfUpper, default_variant.span), default_variant.ident],
                 )),
                 VariantData::Struct { fields, .. } => {
                     // This only happens if `#![feature(default_field_values)]`. We have validated
@@ -142,10 +142,7 @@ fn default_enum_substructure(
                         .collect();
                     let path = cx.path(
                         default_variant.span,
-                        vec![
-                            Ident::new(kw::SelfUpper, default_variant.span),
-                            default_variant.ident,
-                        ],
+                        &[Ident::new(kw::SelfUpper, default_variant.span), default_variant.ident],
                     );
                     cx.expr_struct(default_variant.span, path, default_fields)
                 }

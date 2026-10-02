@@ -58,8 +58,8 @@ pub(crate) fn expand(
 fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span) -> Stmt {
     let ty_usize = cx.ty_sym(span, sym::usize);
 
-    let layout_new = cx.std_path(&[sym::alloc, sym::Layout, sym::from_size_align_unchecked]);
-    let layout_new = cx.expr_path(cx.path(span, layout_new));
+    let layout_new = cx.std_path(span, &[sym::alloc, sym::Layout, sym::from_size_align_unchecked]);
+    let layout_new = cx.expr_path(layout_new);
     let layout = cx.expr_call(
         span,
         layout_new,

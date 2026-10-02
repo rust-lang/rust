@@ -331,7 +331,7 @@ fn generate_default_impl(
             foreign_item_name.span,
             // prefix self to explicitly escape the const block generated below
             // NOTE: this is why EIIs can't be used on statements
-            vec![Ident::new(kw::SelfLower, foreign_item_name.span), foreign_item_name],
+            &[Ident::new(kw::SelfLower, foreign_item_name.span), foreign_item_name],
         )),
     });
 

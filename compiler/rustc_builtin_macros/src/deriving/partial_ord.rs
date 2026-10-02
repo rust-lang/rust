@@ -101,7 +101,7 @@ pub(crate) fn discr_data_order(item: &ast::Item) -> bool {
 // Some(::core::cmp::Ord::cmp(self, other))
 // ```
 fn cs_partial_cmp_simple(cx: &ExtCtxt<'_>, span: Span, other_expr: Box<ast::Expr>) -> BlockOrExpr {
-    let ord_cmp_path = cx.std_path(&[sym::cmp, sym::Ord, sym::cmp]);
+    let ord_cmp_path = cx.std_path(span, &[sym::cmp, sym::Ord, sym::cmp]);
     let cmp_expr =
         cx.expr_call_global(span, ord_cmp_path, thin_vec![cx.expr_self(span), other_expr]);
     BlockOrExpr::new_expr(cx.expr_some(span, cmp_expr))
@@ -139,11 +139,11 @@ pub(crate) fn cmp_body(
 ) -> Box<Expr> {
     let is_partial_ord = derive == OrdlikeDerive::PartialOrd;
     let method_path = if is_partial_ord {
-        cx.std_path(&[sym::cmp, sym::PartialOrd, sym::partial_cmp])
+        [sym::cmp, sym::PartialOrd, sym::partial_cmp]
     } else {
-        cx.std_path(&[sym::cmp, sym::Ord, sym::cmp])
+        [sym::cmp, sym::Ord, sym::cmp]
     };
-    let equal_path = cx.path(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
+    let equal_path = cx.std_path(span, &[sym::cmp, sym::Ordering, sym::Equal]);
 
     // The combination of two field expressions. E.g. for `Ord::cmp` this
     // is something like `<field1 comparison> && <field2 comparison>`.
@@ -207,7 +207,8 @@ pub(crate) fn cmp_body(
                 let other_expr =
                     field.other_selflike_expr.expect("not exactly 2 arguments in `derive`");
                 let args = thin_vec![field.self_expr, other_expr];
-                let new = cx.expr_call_global(field.span, method_path.clone(), args);
+                let new =
+                    cx.expr_call_global(field.span, cx.std_path(field.span, &method_path), args);
                 match old {
                     Some(old) => Some(combine(field.span, old, new)),
                     None => Some(new),
@@ -227,7 +228,7 @@ pub(crate) fn cmp_body(
             let self_expr = cx.expr_addr_of(span, call_discriminant_value(cx, span, kw::SelfLower));
             let other_expr = cx.expr_addr_of(span, call_discriminant_value(cx, span, sym::other));
             let args = thin_vec![self_expr, other_expr];
-            let discr_check_expr = cx.expr_call_global(span, method_path, args);
+            let discr_check_expr = cx.expr_call_global(span, cx.std_path(span, &method_path), args);
             if let Some(match_expr) = match_expr {
                 combine(span, match_expr, discr_check_expr)
             } else {

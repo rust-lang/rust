@@ -113,7 +113,7 @@ fn push_marker_impl(
 
     let self_params: Vec<_> =
         generics.params.iter().map(|p| generic_param_to_arg(cx, p, p.span())).collect();
-    let self_ty = cx.ty_path(cx.path_all(span, vec![ident], self_params));
+    let self_ty = cx.ty_path(cx.path_all(span, &[ident], self_params));
 
     push(cx.item_trait_impl(
         span,

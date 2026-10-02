@@ -589,8 +589,7 @@ mod llvm_enzyme {
             })
             .collect::<Vec<_>>();
 
-        let idents =
-            if is_impl { vec![Ident::new(kw::SelfUpper, span), ident] } else { vec![ident] };
+        let idents = if is_impl { &[Ident::new(kw::SelfUpper, span), ident][..] } else { &[ident] };
         let path = ecx.path_all(span, idents, generic_args);
 
         ecx.expr_path(path)
