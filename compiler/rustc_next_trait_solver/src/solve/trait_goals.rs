@@ -915,8 +915,9 @@ where
 
         match base.kind() {
             ty::Adt(def, _) if def.is_struct() && !def.is_packed() => {}
+            ty::Adt(..) => return Err(NoSolution.into()),
             ty::Tuple(..) => {}
-            _ => return Err(NoSolution.into()),
+            _ => unreachable!(),
         }
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
