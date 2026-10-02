@@ -142,7 +142,6 @@ generate! {
     as_mut_ptr,
     as_mut_slice,
     as_path,
-    as_ptr,
     as_slice,
     as_str,
     assert_failed,
