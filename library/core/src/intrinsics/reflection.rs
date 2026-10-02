@@ -149,6 +149,15 @@ pub fn type_id_variant_non_exhaustive(base: crate::any::TypeId, variant: usize) 
 #[rustc_comptime]
 pub fn type_id_fields(_id: crate::any::TypeId, _variant_index: usize) -> usize;
 
+/// Returns a non empty string when given a `TypeId` which represents a named
+/// item such as struct, enum or trait. Otherwise returns an empty string.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::name`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_name(_type_id: crate::any::TypeId) -> &'static str;
+
 /// Checks whether this type is non-exhaustive.
 #[rustc_intrinsic]
 #[rustc_comptime]
@@ -219,3 +228,4 @@ pub fn type_id_reflected_attrs(_type_id: crate::any::TypeId) -> &'static [&'stat
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
 pub fn type_id_docs(_type_id: crate::any::TypeId) -> &'static [&'static str];
+

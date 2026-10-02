@@ -46,6 +46,8 @@ pub enum TypeKind {
     Never,
     /// FIXME(#146922): add all the common types
     /// non exhaustive list
+    /// - Never
+    /// - Type (type alias)
     Other,
 }
 
@@ -585,6 +587,31 @@ impl TypeId {
         }
     }
 
+    /// Returns a non empty string when given a `TypeId` which represents a named item such
+    /// as struct, enum or trait. Otherwise returns an empty string.
+    /// ```
+    /// #![feature(type_info)]
+    /// # use std::any::TypeId;
+    ///
+    /// struct Kitty;
+    /// enum Color {}
+    /// trait Cute {}
+    ///
+    /// assert_eq!(const { TypeId::of::<Kitty>().name() },"Kitty");
+    /// assert_eq!(const { TypeId::of::<Vec<Kitty>>().name() },"Vec");
+    /// assert_eq!(const { TypeId::of::<Color>().name() }, "Color");
+    /// assert_eq!(const { TypeId::of::<dyn Cute>().name() }, "Cute");
+    ///
+    /// assert_eq!(const { TypeId::of::<()>().name() }, "");
+    /// assert_eq!(const { TypeId::of::<fn(u8)>().name() }, "");
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn name(self) -> &'static str {
+        intrinsics::reflection::type_id_name(self)
+    }
+
     /// Returns whether a type is marked with `#[non_exhaustive]`.
     /// Returns `false` for everything but adts.
     #[unstable(feature = "type_info", issue = "146922")]
@@ -881,7 +908,7 @@ impl FieldId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn name(self) -> &'static str {
-        intrinsics::field_representing_type_name(self.frt_type_id)
+        intrinsics::reflection::type_id_name(self.frt_type_id)
     }
 
     /// Returns the raw documentation attributes when given a `FieldId`.
