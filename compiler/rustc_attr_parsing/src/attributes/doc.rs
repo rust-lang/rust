@@ -47,7 +47,7 @@ fn check_attribute(cx: &mut AcceptContext<'_, '_>, attribute: Symbol, span: Span
     }
 
     if let Some((tool, name)) = attribute.as_str().split_once("::") {
-        let tools = cx.attr_tools else {
+        let Some(tools) = cx.attr_tools else {
             return false;
         };
         if tools.contains(&Ident::from_str(tool))
