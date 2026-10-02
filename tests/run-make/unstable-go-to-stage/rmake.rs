@@ -45,4 +45,36 @@ fn main() {
         .run();
 
     path_exists(["liblib.rmeta"]);
+
+    rfs::remove_file("liblib.rmeta");
+
+    // With nameres it doesn't lint, with analysis it does
+    let output = rustc()
+        .input("nameres.rs")
+        .crate_type("rlib")
+        .emit("dep-info,link")
+        .arg("-Zgo-to-stage=nameres")
+        .arg("-Dwarnings")
+        .run()
+        .stderr_utf8();
+
+    // Make sure that we don't run superfluous analysis:
+    assert!(output.contains("dead_code").not());
+    assert!(output.contains("named_asm_labels").not());
+
+    // But the path still exists
+    path_exists(["libnameres.rmeta"]);
+
+    let output = rustc()
+        .input("nameres.rs")
+        .crate_type("rlib")
+        .emit("dep-info,link")
+        .arg("-Zgo-to-stage=analysis")
+        .arg("-Dwarnings")
+        .run_fail()
+        .stderr_utf8();
+
+    // Make sure that we don't run superfluous analysis:
+    assert!(output.contains("dead_code"));
+    assert!(output.contains("named_asm_labels"));
 }

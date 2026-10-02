@@ -307,6 +307,7 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
 
             if sess.target_stage == TargetStage::NameResolution {
                 debug_assert!(rustc_metadata::fs::encode_and_write_metadata(tcx, true).is_ok());
+                return None;
             }
 
             if sess.opts.output_types.contains_key(&OutputType::DepInfo)
