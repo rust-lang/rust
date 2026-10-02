@@ -804,11 +804,11 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     let version = get_llvm_version(builder, llvm_config);
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next())
-        && major >= 21
+        && major >= 22
     {
         return;
     }
-    panic!("\n\nbad LLVM version: {version}, need >=21\n\n")
+    panic!("\n\nbad LLVM version: {version}, need >=22\n\n")
 }
 
 /// C/C++ debug info remap flags for LLVM build.
