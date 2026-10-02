@@ -1,0 +1,39 @@
+error[E0597]: `a` does not live long enough
+  --> $DIR/suggest-closure-annotation.rs:7:11
+   |
+LL |     for a in 0..1 {
+   |         - binding `a` declared here
+LL |         f(&a);
+   |         - ^^ borrowed value does not live long enough
+   |         |
+   |         borrow later used here
+LL |     }
+   |     - `a` dropped here while still borrowed
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/suggest-closure-annotation.rs:15:11
+   |
+LL |     for a in 0..1 {
+   |         - binding `a` declared here
+LL |         f(&a, 2);
+   |         - ^^ borrowed value does not live long enough
+   |         |
+   |         borrow later used here
+LL |     }
+   |     - `a` dropped here while still borrowed
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/suggest-closure-annotation.rs:23:11
+   |
+LL |     for a in 0..1 {
+   |         - binding `a` declared here
+LL |         f(&a);
+   |         - ^^ borrowed value does not live long enough
+   |         |
+   |         borrow later used here
+LL |     }
+   |     - `a` dropped here while still borrowed
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.
