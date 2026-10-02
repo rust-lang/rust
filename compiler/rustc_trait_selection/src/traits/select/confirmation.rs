@@ -270,7 +270,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
         let types = self.infcx.enter_forall_and_leak_universe(types);
 
-        let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
+        let cause = obligation
+            .cause
+            .clone()
+            .derived_cause(obligation.predicate, ObligationCauseCode::BuiltinDerived);
         self.collect_predicates_for_types(
             obligation.param_env,
             cause,
@@ -393,7 +396,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let constituents = self.constituent_types_for_auto_trait(self_ty)?;
         let constituents = self.infcx.enter_forall_and_leak_universe(constituents);
 
-        let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
+        let cause = obligation
+            .cause
+            .clone()
+            .derived_cause(obligation.predicate, ObligationCauseCode::BuiltinDerived);
         let mut obligations = self.collect_predicates_for_types(
             obligation.param_env,
             cause.clone(),
@@ -613,7 +619,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let mut nested =
             self.equate_trait_refs(obligation.with(tcx, placeholder_predicate), trait_ref)?;
-        let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
+        let cause = obligation
+            .cause
+            .clone()
+            .derived_cause(obligation.predicate, ObligationCauseCode::BuiltinDerived);
 
         // Confirm the `type Output: Sized;` bound that is present on `FnOnce`
         let output_ty = normalize_with_depth_to(
@@ -915,7 +924,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         } else {
             nested.push(Obligation::new(
                 self.tcx(),
-                obligation.derived_cause(ObligationCauseCode::BuiltinDerived),
+                obligation
+                    .cause
+                    .clone()
+                    .derived_cause(obligation.predicate, ObligationCauseCode::BuiltinDerived),
                 obligation.param_env,
                 ty::TraitRef::new(
                     self.tcx(),
@@ -1038,7 +1050,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // `assemble_candidates_for_unsizing` should ensure there are no late-bound
         // regions here. See the comment there for more details.
-        let source = self.infcx.shallow_resolve(obligation.self_ty().no_bound_vars().unwrap());
+        let source = self.infcx.shallow_resolve(
+            obligation.predicate.map_bound(|p| p.self_ty()).no_bound_vars().unwrap(),
+        );
         let target = obligation.predicate.skip_binder().trait_ref.args.type_at(1);
         let target = self.infcx.shallow_resolve(target);
         debug!(?source, ?target, "confirm_builtin_unsize_candidate");
