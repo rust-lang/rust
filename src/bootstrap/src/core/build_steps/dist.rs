@@ -1400,8 +1400,10 @@ fn prepare_source_tarball<'a>(
         builder.require_and_update_all_submodules();
 
         // Vendor packages that are required by opt-dist to collect PGO profiles.
-        let pkgs_for_pgo_training =
-            build_helper::LLVM_PGO_CRATES.iter().chain(build_helper::RUSTC_PGO_CRATES).map(|pkg| {
+        let pkgs_for_pgo_training = build_helper::BACKEND_PGO_CRATES
+            .iter()
+            .chain(build_helper::RUSTC_PGO_CRATES)
+            .map(|pkg| {
                 let mut manifest_path =
                     builder.src.join("./src/tools/rustc-perf/collector/compile-benchmarks");
                 manifest_path.push(pkg);
