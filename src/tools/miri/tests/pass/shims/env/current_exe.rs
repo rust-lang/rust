@@ -1,8 +1,10 @@
 //@ignore-target: freebsd illumos solaris # we don't have the shims this needs here
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
 use std::env;
 
 fn main() {
-    // The actual value we get is a bit odd: we get the Miri binary that interprets us.
-    env::current_exe().unwrap();
+    let exe = env::current_exe().unwrap();
+    assert!(exe.is_absolute());
+    println!("{}", exe.file_name().unwrap().display());
 }
