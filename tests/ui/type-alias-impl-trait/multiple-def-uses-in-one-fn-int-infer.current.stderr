@@ -1,5 +1,5 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/multiple-def-uses-in-one-fn-infer.rs:10:17
+  --> $DIR/multiple-def-uses-in-one-fn-int-infer.rs:17:17
    |
 LL | fn g<A, B>() -> (Y<A, B>, Y<B, A>) {
    |                 ^^^^^^^^^^^^^^^^^^

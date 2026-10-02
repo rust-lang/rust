@@ -1,3 +1,9 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] known-bug: trait-system-refactor-initiative#302
+//@[next] check-pass
+
 // This test exercises lending behavior for iterator closures which is not yet supported.
 
 #![feature(iter_macro, yield_expr)]
@@ -18,7 +24,7 @@ fn main() {
     assert_eq!(i.next(), Some('o'));
     assert_eq!(i.next(), Some('o'));
     assert_eq!(i.next(), None);
-    let mut i = f(); //~ ERROR use of moved value: `f`
+    let mut i = f(); //[current]~ ERROR use of moved value: `f`
     assert_eq!(i.next(), Some('f'));
     assert_eq!(i.next(), Some('o'));
     assert_eq!(i.next(), Some('o'));
