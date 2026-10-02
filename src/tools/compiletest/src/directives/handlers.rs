@@ -64,6 +64,12 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
     // these handlers, e.g. by getting rid of now-redundant name checks.
 
     let handlers: Vec<NamedHandler> = vec![
+        handler(ACT_AS_STABLE, |_config, ln, props| {
+            if ln.name == ACT_AS_STABLE {
+                // Simulate the stable toolchain, but allow unstable -Z flags passed by compiletest
+                props.rustc_env.push(("RUSTC_BOOTSTRAP".to_string(), "-2".to_string()));
+            }
+        }),
         handler(ERROR_PATTERN, |config, ln, props| {
             config.push_name_value_directive(ln, ERROR_PATTERN, &mut props.error_patterns, |r| r);
         }),
