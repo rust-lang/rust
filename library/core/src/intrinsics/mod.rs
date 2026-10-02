@@ -444,7 +444,7 @@ pub fn rustc_peek<T>(_: T) -> T;
 /// The stabilization-track version of this intrinsic is [`core::process::abort_immediate`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub fn abort() -> !;
+pub const fn abort() -> !;
 
 /// Informs the optimizer that this point in the code is not reachable,
 /// enabling further optimizations.

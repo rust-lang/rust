@@ -1810,9 +1810,14 @@ const _: () = ();
 /// `fn name(...) -> ...` implicitly uses the `"Rust"` ABI string and `extern fn name(...) -> ...`
 /// implicitly uses the `"C"` ABI string.
 ///
-/// The ABI strings are guaranteed to be compatible if they are the same, or if the caller ABI
-/// string is `$X-unwind` and the callee ABI string is `$X`, where `$X` is one of the following:
-/// "C", "aapcs", "fastcall", "stdcall", "system", "sysv64", "thiscall", "vectorcall", "win64".
+/// The ABI strings are guaranteed to be compatible if they are the same, or if one of them is
+/// `$X-unwind` and the other one is `$X`, where `$X` is one of the following: "C", "aapcs",
+/// "fastcall", "stdcall", "system", "sysv64", "thiscall", "vectorcall", "win64". (Note that [it is
+/// undefined behavior][unwind-ub] for a function to unwind unless *both* caller and callee use a
+/// signature that permits unwinding, such as "C-unwind". Rust ensures that a function defined with
+/// a non-unwinding ABI such as "C" never unwinds due to a panic, so undefined behavior can only
+/// arise if the callee ABI is `$X-unwind` and the caller ABI is `$X`, or if a non-Rust unwind
+/// occurs.)
 ///
 /// The following types are guaranteed to be ABI-compatible:
 ///
@@ -1878,7 +1883,8 @@ const _: () = ();
 /// Behavior since transmuting `None::<NonZero<i32>>` to `NonZero<i32>` violates the non-zero
 /// requirement.
 ///
-/// [cfi-docs]: https://doc.rust-lang.org/beta/unstable-book/compiler-flags/sanitizer.html#controlflowintegrity
+/// [unwind-ub]: ../reference/behavior-considered-undefined.html#r-undefined.call
+/// [cfi-docs]: ../unstable-book/compiler-flags/sanitizer.html#controlflowintegrity
 ///
 /// ### Trait implementations
 ///

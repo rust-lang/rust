@@ -447,30 +447,6 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   return wrap(TM);
 }
 
-// Unfortunately, the LLVM C API doesn't provide a way to create the
-// TargetLibraryInfo pass, so we use this method to do so.
-extern "C" void LLVMRustAddLibraryInfo(LLVMTargetMachineRef T,
-                                       LLVMPassManagerRef PMR, LLVMModuleRef M,
-                                       bool DisableSimplifyLibCalls) {
-  auto TargetTriple = Triple(unwrap(M)->getTargetTriple());
-  TargetOptions *Options = &unwrap(T)->Options;
-  auto TLII = TargetLibraryInfoImpl(TargetTriple);
-  if (DisableSimplifyLibCalls)
-    TLII.disableAllFunctions();
-  unwrap(PMR)->add(new TargetLibraryInfoWrapperPass(TLII));
-#if LLVM_VERSION_GE(24, 0)
-  // LLVM 24 removed TargetOptions::EABIVersion and ExceptionModel; the EABI
-  // version and exception model are now derived from the target triple and
-  // module flags respectively instead.
-  unwrap(PMR)->add(new RuntimeLibraryInfoWrapper(Options->MCOptions.ABIName,
-                                                 Options->VecLib));
-#elif LLVM_VERSION_GE(22, 0)
-  unwrap(PMR)->add(new RuntimeLibraryInfoWrapper(
-      TargetTriple, Options->ExceptionModel, Options->FloatABIType,
-      Options->EABIVersion, Options->MCOptions.ABIName, Options->VecLib));
-#endif
-}
-
 extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
   // Initializing the command-line options more than once is not allowed. So,
   // check if they've already been initialized. (This could happen if we're
@@ -500,10 +476,34 @@ static CodeGenFileType fromRust(LLVMRustFileType Type) {
 }
 
 extern "C" LLVMRustResult
-LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
-                        LLVMModuleRef M, const char *Path, const char *DwoPath,
-                        LLVMRustFileType RustFileType, bool VerifyIR) {
-  llvm::legacy::PassManager *PM = unwrap<llvm::legacy::PassManager>(PMR);
+LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
+                        const char *Path, const char *DwoPath,
+                        LLVMRustFileType RustFileType, bool VerifyIR,
+                        bool DisableSimplifyLibCalls) {
+  std::unique_ptr<llvm::legacy::PassManager> PM =
+      std::make_unique<llvm::legacy::PassManager>();
+
+  PM->add(createTargetTransformInfoWrapperPass(
+      unwrap(Target)->getTargetIRAnalysis()));
+
+  auto TargetTriple = Triple(unwrap(M)->getTargetTriple());
+  TargetOptions *Options = &unwrap(Target)->Options;
+  auto TLII = TargetLibraryInfoImpl(TargetTriple);
+  if (DisableSimplifyLibCalls)
+    TLII.disableAllFunctions();
+  PM->add(new TargetLibraryInfoWrapperPass(TLII));
+#if LLVM_VERSION_GE(24, 0)
+  // LLVM 24 removed TargetOptions::EABIVersion and ExceptionModel; the EABI
+  // version and exception model are now derived from the target triple and
+  // module flags respectively instead.
+  PM->add(new RuntimeLibraryInfoWrapper(Options->MCOptions.ABIName,
+                                        Options->VecLib));
+#elif LLVM_VERSION_GE(22, 0)
+  PM->add(new RuntimeLibraryInfoWrapper(
+      TargetTriple, Options->ExceptionModel, Options->FloatABIType,
+      Options->EABIVersion, Options->MCOptions.ABIName, Options->VecLib));
+#endif
+
   auto FileType = fromRust(RustFileType);
 
   std::string ErrorInfo;
@@ -516,6 +516,9 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
     return LLVMRustResult::Failure;
   }
 
+  // TargetMachine::addPassesToEmitFile stores pointers to the output streams
+  // in a couple of places inside of the object. Explicitly delete the PM after
+  // we call run() to avoid dangling references.
   auto BOS = buffer_ostream(OS);
   if (DwoPath) {
     auto DOS = raw_fd_ostream(DwoPath, EC, sys::fs::OF_None);
@@ -529,15 +532,13 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
     auto DBOS = buffer_ostream(DOS);
     unwrap(Target)->addPassesToEmitFile(*PM, BOS, &DBOS, FileType, !VerifyIR);
     PM->run(*unwrap(M));
+    PM.reset();
   } else {
     unwrap(Target)->addPassesToEmitFile(*PM, BOS, nullptr, FileType, !VerifyIR);
     PM->run(*unwrap(M));
+    PM.reset();
   }
 
-  // Apparently `addPassesToEmitFile` adds a pointer to our on-the-stack output
-  // stream (OS), so the only real safe place to delete this is here? Don't we
-  // wish this was written in Rust?
-  LLVMDisposePassManager(PMR);
   return LLVMRustResult::Success;
 }
 

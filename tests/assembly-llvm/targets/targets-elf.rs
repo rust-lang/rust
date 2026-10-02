@@ -43,6 +43,9 @@
 //@ revisions: aarch64_unknown_hermit
 //@ [aarch64_unknown_hermit] compile-flags: --target aarch64-unknown-hermit
 //@ [aarch64_unknown_hermit] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_hyperlight
+//@ [aarch64_unknown_hyperlight] compile-flags: --target aarch64-unknown-hyperlight
+//@ [aarch64_unknown_hyperlight] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_illumos
 //@ [aarch64_unknown_illumos] compile-flags: --target aarch64-unknown-illumos
 //@ [aarch64_unknown_illumos] needs-llvm-components: aarch64
@@ -724,6 +727,9 @@
 //@ revisions: x86_64_unknown_hermit
 //@ [x86_64_unknown_hermit] compile-flags: --target x86_64-unknown-hermit
 //@ [x86_64_unknown_hermit] needs-llvm-components: x86
+//@ revisions: x86_64_unknown_hyperlight
+//@ [x86_64_unknown_hyperlight] compile-flags: --target x86_64-unknown-hyperlight
+//@ [x86_64_unknown_hyperlight] needs-llvm-components: x86
 //@ revisions: x86_64_unknown_illumos
 //@ [x86_64_unknown_illumos] compile-flags: --target x86_64-unknown-illumos
 //@ [x86_64_unknown_illumos] needs-llvm-components: x86
