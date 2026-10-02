@@ -952,11 +952,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Runs various checks on `#[doc]` attributes.
-    ///
-    /// `specified_inline` should be initialized to `None` and kept for the scope
-    /// of one item. Read the documentation of [`check_doc_inline`] for more information.
-    ///
-    /// [`check_doc_inline`]: Self::check_doc_inline
     fn check_doc_attrs(&self, attr: &DocAttribute, hir_id: HirId, target: Target) {
         let DocAttribute {
             first_span: _,
