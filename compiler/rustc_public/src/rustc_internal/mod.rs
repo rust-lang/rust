@@ -199,7 +199,7 @@ macro_rules! run_driver {
             /// Runs the compiler against given target and tests it with `test_function`
             pub fn run(&mut self, args: &[String]) -> Result<C, CompilerError<B>> {
                 let compiler_result = rustc_driver::catch_fatal_errors(|| -> interface::Result::<()> {
-                    run_compiler(&args, self);
+                    compiler_entrypoint(&args, self);
                     Ok(())
                 });
                 match (compiler_result, self.result.take()) {
