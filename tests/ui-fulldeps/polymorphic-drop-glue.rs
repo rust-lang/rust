@@ -44,7 +44,7 @@ fn main() -> ExitCode {
         args.push("--crate-type=lib".to_owned());
         args.push("drop_glue_polymorphic_const_generic_input.rs".to_owned());
 
-        rustc_driver::run_compiler(&args, &mut CompilerCalls);
+        rustc_driver::compiler_entrypoint(&args, &mut CompilerCalls);
     })
 }
 

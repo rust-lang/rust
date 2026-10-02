@@ -86,7 +86,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::intrinsics::{self, type_id, type_id_vtable};
+use crate::intrinsics::reflection::{type_id, type_id_vtable};
+use crate::intrinsics::{self};
 use crate::mem::transmute;
 use crate::mem::type_info::{TraitImpl, TypeKind};
 use crate::{fmt, hash, ptr};
@@ -742,7 +743,7 @@ unsafe impl Sync for TypeId {}
 const impl PartialEq for TypeId {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        crate::intrinsics::type_id_eq(*self, *other)
+        crate::intrinsics::reflection::type_id_eq(*self, *other)
     }
 }
 
@@ -765,7 +766,7 @@ impl TypeId {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_type_id", since = "1.91.0")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
-        const { intrinsics::type_id::<T>() }
+        const { intrinsics::reflection::type_id::<T>() }
     }
 
     /// Checks if the [TypeId] implements the trait. If it does it returns [TraitImpl] which can be used to build a fat pointer.
@@ -903,7 +904,7 @@ impl fmt::Debug for TypeId {
 #[stable(feature = "type_name", since = "1.38.0")]
 #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
 pub const fn type_name<T: ?Sized>() -> &'static str {
-    const { intrinsics::type_name::<T>() }
+    const { intrinsics::reflection::type_name::<T>() }
 }
 
 /// Returns the type name of the pointed-to value as a string slice.
