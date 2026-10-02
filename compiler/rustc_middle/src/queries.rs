@@ -2227,8 +2227,8 @@ rustc_queries! {
     }
 
     /// Do not call this query directly: invoke `Ty::is_opsem_inhabited` instead.
-    query is_opsem_inhabited_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
-        desc { "computing whether `{}` is inhabited on the opsem level", env.value }
+    query is_opsem_inhabited_adt_cached(env: ty::PseudoCanonicalInput<'tcx, (ty::AdtDef<'tcx>, ty::GenericArgsRef<'tcx>)>) -> bool {
+        desc { "computing whether `{:?}` is inhabited on the opsem level", env.value }
     }
 
     query crate_dep_kind(_: CrateNum) -> CrateDepKind {
