@@ -1,0 +1,266 @@
+error[E0382]: use of moved value: `a`
+  --> $DIR/custom_mut_generic.rs:17:20
+   |
+LL | fn generic_reborrow(a: impl Reborrow) {
+   |                     - move occurs because `a` has type `impl Reborrow`, which does not implement the `Copy` trait
+LL |     let _ = method(a);
+   |                    - value moved here
+LL |     let _ = method(a);
+   |                    ^ value used here after move
+   |
+note: consider changing this parameter type in function `method` to borrow instead if owning the value isn't necessary
+  --> $DIR/custom_mut_generic.rs:11:14
+   |
+LL | fn method(_: impl Reborrow) {}
+   |    ------    ^^^^^^^^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+help: if `impl Reborrow` implemented `Clone`, you could clone the value
+  --> $DIR/custom_mut_generic.rs:15:24
+   |
+LL | fn generic_reborrow(a: impl Reborrow) {
+   |                        ^^^^^^^^^^^^^ consider constraining this type parameter with `Clone`
+LL |     let _ = method(a);
+   |                    - you could clone this value
+help: consider restricting opaque type `impl Reborrow` with trait `Copy`
+   |
+LL | fn generic_reborrow(a: impl Reborrow + Copy) {
+   |                                      ++++++
+
+error[E0382]: use of moved value: `a`
+  --> $DIR/custom_mut_generic.rs:19:13
+   |
+LL | fn generic_reborrow(a: impl Reborrow) {
+   |                     - move occurs because `a` has type `impl Reborrow`, which does not implement the `Copy` trait
+LL |     let _ = method(a);
+LL |     let _ = method(a);
+   |                    - value moved here
+LL |
+LL |     generic(a);
+   |             ^ value used here after move
+   |
+note: consider changing this parameter type in function `method` to borrow instead if owning the value isn't necessary
+  --> $DIR/custom_mut_generic.rs:11:14
+   |
+LL | fn method(_: impl Reborrow) {}
+   |    ------    ^^^^^^^^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+help: if `impl Reborrow` implemented `Clone`, you could clone the value
+  --> $DIR/custom_mut_generic.rs:15:24
+   |
+LL | fn generic_reborrow(a: impl Reborrow) {
+   |                        ^^^^^^^^^^^^^ consider constraining this type parameter with `Clone`
+LL |     let _ = method(a);
+LL |     let _ = method(a);
+   |                    - you could clone this value
+help: consider restricting opaque type `impl Reborrow` with trait `Copy`
+   |
+LL | fn generic_reborrow(a: impl Reborrow + Copy) {
+   |                                      ++++++
+
+error[E0382]: use of moved value: `a`
+  --> $DIR/custom_mut_generic.rs:20:13
+   |
+LL | fn generic_reborrow(a: impl Reborrow) {
+   |                     - move occurs because `a` has type `impl Reborrow`, which does not implement the `Copy` trait
+...
+LL |     generic(a);
+   |             - value moved here
+LL |     generic(a);
+   |             ^ value used here after move
+   |
+note: consider changing this parameter type in function `generic` to borrow instead if owning the value isn't necessary
+  --> $DIR/custom_mut_generic.rs:13:15
+   |
+LL | fn generic(_: impl Sized) {}
+   |    -------    ^^^^^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+help: if `impl Reborrow` implemented `Clone`, you could clone the value
+  --> $DIR/custom_mut_generic.rs:15:24
+   |
+LL | fn generic_reborrow(a: impl Reborrow) {
+   |                        ^^^^^^^^^^^^^ consider constraining this type parameter with `Clone`
+...
+LL |     generic(a);
+   |             - you could clone this value
+help: consider restricting opaque type `impl Reborrow` with trait `Copy`
+   |
+LL | fn generic_reborrow(a: impl Reborrow + Copy) {
+   |                                      ++++++
+
+error[E0382]: use of moved value: `a`
+  --> $DIR/custom_mut_generic.rs:22:9
+   |
+LL | fn generic_reborrow(a: impl Reborrow) {
+   |                     - move occurs because `a` has type `impl Reborrow`, which does not implement the `Copy` trait
+...
+LL |     generic(a);
+   |             - value moved here
+LL |     {
+LL |         a
+   |         ^ value used here after move
+   |
+note: consider changing this parameter type in function `generic` to borrow instead if owning the value isn't necessary
+  --> $DIR/custom_mut_generic.rs:13:15
+   |
+LL | fn generic(_: impl Sized) {}
+   |    -------    ^^^^^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+help: if `impl Reborrow` implemented `Clone`, you could clone the value
+  --> $DIR/custom_mut_generic.rs:15:24
+   |
+LL | fn generic_reborrow(a: impl Reborrow) {
+   |                        ^^^^^^^^^^^^^ consider constraining this type parameter with `Clone`
+...
+LL |     generic(a);
+   |             - you could clone this value
+help: consider restricting opaque type `impl Reborrow` with trait `Copy`
+   |
+LL | fn generic_reborrow(a: impl Reborrow + Copy) {
+   |                                      ++++++
+
+error[E0382]: use of moved value: `a`
+  --> $DIR/custom_mut_generic.rs:24:13
+   |
+LL | fn generic_reborrow(a: impl Reborrow) {
+   |                     - move occurs because `a` has type `impl Reborrow`, which does not implement the `Copy` trait
+...
+LL |         a
+   |         - value moved here
+LL |     };
+LL |     generic(a);
+   |             ^ value used here after move
+   |
+help: if `impl Reborrow` implemented `Clone`, you could clone the value
+  --> $DIR/custom_mut_generic.rs:15:24
+   |
+LL | fn generic_reborrow(a: impl Reborrow) {
+   |                        ^^^^^^^^^^^^^ consider constraining this type parameter with `Clone`
+...
+LL |         a
+   |         - you could clone this value
+help: consider restricting opaque type `impl Reborrow` with trait `Copy`
+   |
+LL | fn generic_reborrow(a: impl Reborrow + Copy) {
+   |                                      ++++++
+
+error[E0382]: use of moved value: `a`
+  --> $DIR/custom_mut_generic.rs:25:18
+   |
+LL | fn generic_reborrow(a: impl Reborrow) {
+   |                     - move occurs because `a` has type `impl Reborrow`, which does not implement the `Copy` trait
+...
+LL |     generic(a);
+   |             - value moved here
+LL |     let _local = a;
+   |                  ^ value used here after move
+   |
+note: consider changing this parameter type in function `generic` to borrow instead if owning the value isn't necessary
+  --> $DIR/custom_mut_generic.rs:13:15
+   |
+LL | fn generic(_: impl Sized) {}
+   |    -------    ^^^^^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+help: if `impl Reborrow` implemented `Clone`, you could clone the value
+  --> $DIR/custom_mut_generic.rs:15:24
+   |
+LL | fn generic_reborrow(a: impl Reborrow) {
+   |                        ^^^^^^^^^^^^^ consider constraining this type parameter with `Clone`
+...
+LL |     generic(a);
+   |             - you could clone this value
+help: consider restricting opaque type `impl Reborrow` with trait `Copy`
+   |
+LL | fn generic_reborrow(a: impl Reborrow + Copy) {
+   |                                      ++++++
+
+error[E0382]: use of moved value: `a`
+  --> $DIR/custom_mut_generic.rs:26:13
+   |
+LL | fn generic_reborrow(a: impl Reborrow) {
+   |                     - move occurs because `a` has type `impl Reborrow`, which does not implement the `Copy` trait
+...
+LL |     let _local = a;
+   |                  - value moved here
+LL |     generic(a);
+   |             ^ value used here after move
+   |
+help: if `impl Reborrow` implemented `Clone`, you could clone the value
+  --> $DIR/custom_mut_generic.rs:15:24
+   |
+LL | fn generic_reborrow(a: impl Reborrow) {
+   |                        ^^^^^^^^^^^^^ consider constraining this type parameter with `Clone`
+...
+LL |     let _local = a;
+   |                  - you could clone this value
+help: consider restricting opaque type `impl Reborrow` with trait `Copy`
+   |
+LL | fn generic_reborrow(a: impl Reborrow + Copy) {
+   |                                      ++++++
+
+error[E0382]: use of moved value: `a`
+  --> $DIR/custom_mut_generic.rs:27:13
+   |
+LL | fn generic_reborrow(a: impl Reborrow) {
+   |                     - move occurs because `a` has type `impl Reborrow`, which does not implement the `Copy` trait
+...
+LL |     generic(a);
+   |             - value moved here
+LL |     let _ = || a;
+   |             ^^ - use occurs due to use in closure
+   |             |
+   |             value used here after move
+   |
+note: consider changing this parameter type in function `generic` to borrow instead if owning the value isn't necessary
+  --> $DIR/custom_mut_generic.rs:13:15
+   |
+LL | fn generic(_: impl Sized) {}
+   |    -------    ^^^^^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+help: if `impl Reborrow` implemented `Clone`, you could clone the value
+  --> $DIR/custom_mut_generic.rs:15:24
+   |
+LL | fn generic_reborrow(a: impl Reborrow) {
+   |                        ^^^^^^^^^^^^^ consider constraining this type parameter with `Clone`
+...
+LL |     generic(a);
+   |             - you could clone this value
+help: consider restricting opaque type `impl Reborrow` with trait `Copy`
+   |
+LL | fn generic_reborrow(a: impl Reborrow + Copy) {
+   |                                      ++++++
+
+error[E0382]: use of moved value: `a`
+  --> $DIR/custom_mut_generic.rs:28:13
+   |
+LL | fn generic_reborrow(a: impl Reborrow) {
+   |                     - move occurs because `a` has type `impl Reborrow`, which does not implement the `Copy` trait
+...
+LL |     let _ = || a;
+   |             -- - variable moved due to use in closure
+   |             |
+   |             value moved into closure here
+LL |     generic(a);
+   |             ^ value used here after move
+   |
+help: if `impl Reborrow` implemented `Clone`, you could clone the value
+  --> $DIR/custom_mut_generic.rs:15:24
+   |
+LL | fn generic_reborrow(a: impl Reborrow) {
+   |                        ^^^^^^^^^^^^^ consider constraining this type parameter with `Clone`
+...
+LL |     let _ = || a;
+   |                - you could clone this value
+help: consider restricting opaque type `impl Reborrow` with trait `Copy`
+   |
+LL | fn generic_reborrow(a: impl Reborrow + Copy) {
+   |                                      ++++++
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0382`.
