@@ -2395,7 +2395,7 @@ pub fn parse_crate_edition(
         }
     };
 
-    if !edition.is_stable() && !nightly_options::is_unstable_enabled(matches) {
+    if !edition.is_stable() && !nightly_options::unstable_options_enabled(matches) {
         let msg = if !is_nightly {
             format!(
                 "the crate requires edition {edition}, but the latest edition supported by this \
@@ -2413,10 +2413,10 @@ pub fn parse_crate_edition(
 fn check_error_format_stability(
     early_dcx: &EarlyDiagCtxt,
     unstable_opts: &UnstableOptions,
-    is_nightly_build: bool,
+    unstable_flags_enabled: bool,
     format: ErrorOutputType,
 ) {
-    if unstable_opts.unstable_options || is_nightly_build {
+    if unstable_opts.unstable_options || unstable_flags_enabled {
         return;
     }
     let format = match format {
@@ -2771,7 +2771,7 @@ pub fn build_session_options(
     check_error_format_stability(
         early_dcx,
         &unstable_opts,
-        unstable_features.is_nightly_build(),
+        unstable_features.allow_unstable_compiler_flags(),
         error_format,
     );
 
@@ -2867,7 +2867,7 @@ pub fn build_session_options(
         }
     }
 
-    let unstable_options_enabled = nightly_options::is_unstable_enabled(matches);
+    let unstable_options_enabled = nightly_options::unstable_options_enabled(matches);
     if !unstable_options_enabled && cg.force_frame_pointers == FramePointer::NonLeaf {
         early_dcx.early_fatal(
             "`-Cforce-frame-pointers=non-leaf` or `always` also requires `-Zunstable-options` \
@@ -2875,7 +2875,7 @@ pub fn build_session_options(
         )
     }
 
-    if !nightly_options::is_unstable_enabled(matches) && !unstable_opts.offload.is_empty() {
+    if !unstable_options_enabled && !unstable_opts.offload.is_empty() {
         early_dcx.early_fatal(
             "`-Zoffload=Enable` also requires `-Zunstable-options` and a nightly compiler",
         )
@@ -3178,17 +3178,21 @@ pub mod nightly_options {
     use super::{OptionStability, RustcOptGroup};
     use crate::EarlyDiagCtxt;
 
-    pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
-        match_is_nightly_build(matches)
+    /// Are we allowed to use -Z compiler flags *and* -Zunstable-options was passed?
+    pub fn unstable_options_enabled(matches: &getopts::Matches) -> bool {
+        unstable_compiler_flags_allowed(matches)
             && matches.opt_strs("Z").iter().any(|x| *x == "unstable-options")
     }
 
-    pub fn match_is_nightly_build(matches: &getopts::Matches) -> bool {
-        is_nightly_build(matches.opt_str("crate-name").as_deref())
+    /// Are we allowed to use -Z compiler flags?
+    pub fn unstable_compiler_flags_allowed(matches: &getopts::Matches) -> bool {
+        UnstableFeatures::from_environment(matches.opt_str("crate-name").as_deref())
+            .allow_unstable_compiler_flags()
     }
 
-    fn is_nightly_build(krate: Option<&str>) -> bool {
-        UnstableFeatures::from_environment(krate).is_nightly_build()
+    pub fn match_is_nightly_build(matches: &getopts::Matches) -> bool {
+        let krate = matches.opt_str("crate-name");
+        UnstableFeatures::from_environment(krate.as_deref()).is_nightly_build()
     }
 
     pub fn check_nightly_options(
@@ -3197,7 +3201,7 @@ pub mod nightly_options {
         flags: &[RustcOptGroup],
     ) {
         let has_z_unstable_option = matches.opt_strs("Z").iter().any(|x| *x == "unstable-options");
-        let really_allows_unstable_options = match_is_nightly_build(matches);
+        let really_allows_unstable_options = unstable_compiler_flags_allowed(matches);
         let mut nightly_options_on_stable = 0;
 
         for opt in flags.iter() {

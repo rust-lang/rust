@@ -11,23 +11,18 @@ This is a bootstrap/compiler implementation detail, but it can also be useful fo
   compiler, even if it's actually a nightly `rustc`.
   This is useful because some behaviors of the compiler (e.g. diagnostics)
   can differ depending on whether the compiler is nightly or not.
+- `RUSTC_BOOTSTRAP=-2` will force a given `rustc` to pretend it is a stable
+  compiler, even if it's actually a nightly `rustc`.
+  However, the compiler will still accept unstable compiler flags.
+  This is useful for internal testing of the compiler, where we need to pass
+  unstable flags required by compiletest, but we also want to test the compiler's
+  behavior on the stable channel.
 
-Note that setting `RUSTC_BOOTSTRAP` in ui tests (e.g. via `//@ rustc-env`) is pointless since ui
+Note that setting `RUSTC_BOOTSTRAP=-1` in ui tests (e.g. via `//@ rustc-env`) is pointless since ui
 tests inherit the bootstrap env var from bootstrap (so it's set to `1` by default), and since
-compiletest itself passes `-Z` flags (so `-1` breaks the test). To test stable-only behavior, you
-need to write a `run-make` test instead.
+compiletest itself passes `-Z` flags (so `-1` breaks the test). To test stable-only behavior, use
+`RUSTC_BOOTSTRAP=-2` instead.
 
 For `run-make`/`run-make-cargo` tests, `//@ rustc-env` is not supported.
-You can do something like the following for individual `rustc` invocations.
-
-```rust,ignore
-use run_make_support::rustc;
-
-fn main() {
-    rustc()
-        // Pretend that I am very stable
-        .env("RUSTC_BOOTSTRAP", "-1")
-        //...
-        .run();
-}
-```
+You can do use the `run_make_support::stable_bare_rustc` function to create an instance of the compiler
+that acts as the stable channel (this internally uses `RUSTC_BOOTSTRAP=-1`).
