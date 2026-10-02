@@ -50,8 +50,7 @@ fn check_attribute(cx: &mut AcceptContext<'_, '_>, attribute: Symbol, span: Span
         let Some(tools) = cx.attr_tools else {
             return false;
         };
-        if tools.contains(&Ident::from_str(tool))
-            && rustc_lexer::is_ident(name) {
+        if tools.contains(&Ident::from_str(tool)) && rustc_lexer::is_ident(name) {
         return true;
         }
     }
