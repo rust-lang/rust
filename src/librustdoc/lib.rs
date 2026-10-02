@@ -1023,8 +1023,6 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
 
             cache.crate_version = crate_version;
 
-            rustc_interface::passes::emit_delayed_lints(tcx);
-
             if render_opts.dep_info().is_some() {
                 rustc_interface::passes::write_dep_info(tcx);
             }
