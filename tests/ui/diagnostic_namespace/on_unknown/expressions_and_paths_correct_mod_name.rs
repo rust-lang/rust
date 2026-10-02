@@ -1,5 +1,3 @@
-#![feature(diagnostic_on_unknown)]
-
 mod a {
     #[diagnostic::on_unknown(
         message = "this={this}, unresolved={unresolved}",
