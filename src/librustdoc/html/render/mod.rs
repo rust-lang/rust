@@ -39,7 +39,7 @@ mod sorted_template;
 mod type_layout;
 mod write_shared;
 
-use std::borrow::Cow;
+use std::borrow::{Borrow, Cow};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt::{self, Display as _, Write};
@@ -1485,6 +1485,27 @@ fn aliased_type_deref_impl<'a>(
     Some((deref_impl?, has_deref_mut))
 }
 
+/// Try to get the `Deref` trait `Impl` for `item`. If it cannot be found, it will try to do the
+/// same with `aliased_type`. Returns a tuple containing the `Deref` `Impl`, and a bool set to
+/// `true` if `DerefMut` is also implemented.
+fn get_deref_impls<'a, I: Borrow<Impl>>(
+    cx: &'a Context<'_>,
+    trait_impls: &'a [I],
+    item: DefId,
+    aliased_type: Option<DefId>,
+) -> Option<(&'a Impl, bool)> {
+    let tcx = cx.tcx();
+    let mut impls = trait_impls.iter().map(|t| t.borrow());
+    if let Some(impl_) =
+        impls.clone().find(|t| t.is_deref_trait(tcx) && !t.is_negative_trait_impl())
+    {
+        let has_deref_mut = impls.any(|t| t.is_deref_mut_trait(tcx));
+        Some((impl_, has_deref_mut))
+    } else {
+        aliased_type.and_then(|aliased_did| aliased_type_deref_impl(cx, item, aliased_did))
+    }
+}
+
 fn render_assoc_items(
     cx: &Context<'_>,
     containing_item: &clean::Item,
@@ -1613,16 +1634,7 @@ fn render_assoc_items_inner(
         }
     }
 
-    let tcx = cx.tcx();
-    let deref_impl =
-        trait_impls.iter().find(|t| t.is_deref_trait(tcx) && !t.is_negative_trait_impl());
-    let deref = if let Some(impl_) = deref_impl {
-        let has_deref_mut = trait_impls.iter().any(|t| t.is_deref_mut_trait(tcx));
-        Some((*impl_, has_deref_mut))
-    } else {
-        aliased_type.and_then(|aliased_did| aliased_type_deref_impl(cx, it, aliased_did))
-    };
-    if let Some((impl_, has_deref_mut)) = deref {
+    if let Some((impl_, has_deref_mut)) = get_deref_impls(cx, &trait_impls, it, aliased_type) {
         render_deref_methods(&mut w, cx, impl_, containing_item, has_deref_mut, derefs)?;
     }
 

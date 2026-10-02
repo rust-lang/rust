@@ -502,16 +502,7 @@ fn sidebar_assoc_items_with_aliased_type<'a>(
         LinkBlock::new(Link::new("implementations", "Methods"), "method", methods),
     ];
 
-    let deref = if let Some(impl_) =
-        v.iter().find(|i| i.is_deref_trait(tcx) && !i.is_negative_trait_impl())
-    {
-        let deref_mut = v.iter().any(|i| i.is_deref_mut_trait(tcx));
-        Some((impl_, deref_mut))
-    } else {
-        aliased_type
-            .and_then(|aliased_did| super::aliased_type_deref_impl(cx, item_def_id, aliased_did))
-    };
-    if let Some((impl_, deref_mut)) = deref {
+    if let Some((impl_, deref_mut)) = super::get_deref_impls(cx, v, item_def_id, aliased_type) {
         let mut derefs = DefIdSet::default();
         derefs.insert(item_def_id);
         derefs.extend(aliased_type);
