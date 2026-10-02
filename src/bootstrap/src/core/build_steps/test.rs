@@ -4530,7 +4530,13 @@ impl CommandLineStep for CodegenGCC {
 
         let gcc = builder.ensure(Gcc { target_pair: GccTargetPair::for_native_build(target) });
 
-        // We need to run the cg_gcc tests with the compiler against it links to, not with
+        if builder.config.rustc_debug_assertions {
+            eprintln!(
+                "WARNING: cg_gcc tests will likely fail when debug assertions are enabled for rustc"
+            );
+        }
+
+        // We need to run the cg_gcc tests with the compiler which it links against, not with
         // the build compiler.
         let target_compiler = compilers.target_compiler();
 
