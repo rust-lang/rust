@@ -1,5 +1,5 @@
 error[E0432]: Foo
-  --> $DIR/malformed_attribute.rs:16:5
+  --> $DIR/malformed_attribute.rs:15:5
    |
 LL | use std::str::NotExisting;
    |     ^^^^^^^^^^-----------
@@ -9,7 +9,7 @@ LL | use std::str::NotExisting;
    = note: unresolved import `std::str::NotExisting`
 
 warning: missing options for `diagnostic::on_unknown` attribute
-  --> $DIR/malformed_attribute.rs:2:1
+  --> $DIR/malformed_attribute.rs:1:1
    |
 LL | #[diagnostic::on_unknown]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -18,7 +18,7 @@ LL | #[diagnostic::on_unknown]
    = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
 warning: malformed `diagnostic::on_unknown` attribute
-  --> $DIR/malformed_attribute.rs:6:26
+  --> $DIR/malformed_attribute.rs:5:26
    |
 LL | #[diagnostic::on_unknown(foo = "bar", message = "foo")]
    |                          ^^^^^^^^^^^ invalid option found here
@@ -26,7 +26,7 @@ LL | #[diagnostic::on_unknown(foo = "bar", message = "foo")]
    = help: only `message`, `note` and `label` are allowed as options
 
 warning: `label` is ignored due to previous definition of `label`
-  --> $DIR/malformed_attribute.rs:10:41
+  --> $DIR/malformed_attribute.rs:9:41
    |
 LL | #[diagnostic::on_unknown(label = "foo", label = "bar")]
    |                          -------------  ^^^^^^^^^^^^^ `label` is later redundantly declared here
@@ -34,7 +34,7 @@ LL | #[diagnostic::on_unknown(label = "foo", label = "bar")]
    |                          `label` is first declared here
 
 warning: `message` is ignored due to previous definition of `message`
-  --> $DIR/malformed_attribute.rs:14:43
+  --> $DIR/malformed_attribute.rs:13:43
    |
 LL | #[diagnostic::on_unknown(message = "Foo", message = "Bar")]
    |                          ---------------  ^^^^^^^^^^^^^^^ `message` is later redundantly declared here

@@ -1,5 +1,3 @@
-#![feature(diagnostic_on_unknown)]
-
 mod test1 {
     #[diagnostic::on_unknown(
         message = "custom message",
