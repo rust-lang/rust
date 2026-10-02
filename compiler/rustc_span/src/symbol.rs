@@ -1897,6 +1897,8 @@ symbols! {
         rustc_peek_maybe_uninit,
         rustc_preserve_ub_checks,
         rustc_private,
+        rustc_pretty_live_locals,
+        rustc_pretty_transitive_live_locals,
         rustc_proc_macro_decls,
         rustc_promotable,
         rustc_pub_transparent,
