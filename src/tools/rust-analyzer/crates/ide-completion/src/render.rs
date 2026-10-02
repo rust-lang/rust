@@ -716,7 +716,11 @@ fn compute_has_local_inherent_impl(
 }
 
 fn compute_exact_name_match(ctx: &CompletionContext<'_, '_>, completion_name: &str) -> bool {
-    ctx.expected_name.as_ref().is_some_and(|name| name.text() == completion_name)
+    ctx.expected_name.as_ref().is_some_and(|name| {
+        let name = name.text().strip_prefix("r#").unwrap_or(name.text());
+        let completion_name = completion_name.strip_prefix("r#").unwrap_or(completion_name);
+        name.trim_matches('_') == completion_name.trim_matches('_')
+    })
 }
 
 fn compute_ref_match(
@@ -3050,6 +3054,52 @@ fn f() {
 "#,
             expect![[r#"
                 me aaa() fn(&self) -> u64 [name]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn name_match_special_case() {
+        check_relevance(
+            r#"
+fn foo(_db: &()) {}
+fn bar(db: &()) {
+    foo($0)
+}
+"#,
+            expect![[r#"
+                lc db &() [type+name+local]
+                ex db  [type]
+                fn bar(…) fn(&()) []
+                fn foo(…) fn(&()) []
+            "#]],
+        );
+        check_relevance(
+            r#"
+fn foo(impl_: &()) {}
+fn bar(r#impl: &()) {
+    foo($0)
+}
+"#,
+            expect![[r#"
+                lc impl &() [type+name+local]
+                ex r#impl  [type]
+                fn bar(…) fn(&()) []
+                fn foo(…) fn(&()) []
+            "#]],
+        );
+        check_relevance(
+            r#"
+fn foo(r#impl: &()) {}
+fn bar(impl_: &()) {
+    foo($0)
+}
+"#,
+            expect![[r#"
+                lc impl_ &() [type+name+local]
+                ex impl_  [type]
+                fn bar(…) fn(&()) []
+                fn foo(…) fn(&()) []
             "#]],
         );
     }
