@@ -3,6 +3,7 @@
 //@run-native
 
 #![feature(tcp_linger)]
+#![feature(tcp_keepalive)]
 
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
@@ -26,6 +27,7 @@ fn main() {
     test_sockopt_read_timeout();
     test_sockopt_write_timeout();
     test_sockopt_linger();
+    test_sockopt_keepalive();
 }
 
 fn test_create_ipv4_listener() {
@@ -282,4 +284,18 @@ fn test_sockopt_linger() {
 
     stream.set_linger(None).unwrap();
     assert_eq!(None, stream.linger().unwrap());
+}
+
+/// Test setting and reading the SO_KEEPALIVE socket option.
+fn test_sockopt_keepalive() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+
+    let stream = TcpStream::connect(address).unwrap();
+    let _other_end = listener.accept().unwrap();
+
+    stream.set_keepalive(true).unwrap();
+    assert_eq!(stream.keepalive().unwrap(), true);
+    stream.set_keepalive(false).unwrap();
+    assert_eq!(stream.keepalive().unwrap(), false);
 }
