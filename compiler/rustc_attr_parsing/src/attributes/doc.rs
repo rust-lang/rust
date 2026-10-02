@@ -50,8 +50,14 @@ fn check_attribute(cx: &mut AcceptContext<'_, '_>, attribute: Symbol, span: Span
         let Some(tools) = cx.attr_tools else {
             return false;
         };
-        if tools.contains(&Ident::from_str(tool)) && rustc_lexer::is_ident(name) {
+        if rustc_lexer::is_ident(tool)
+            && rustc_lexer::is_ident(name)
+            && tools.contains(&Ident::from_str(tool))
+        {
             return true;
+        } else {
+            cx.emit_err(DocAttributeNotAttribute { span, attribute });
+            return false;
         }
     }
     cx.emit_err(DocAttributeNotAttribute { span, attribute });

@@ -13,3 +13,7 @@ const _: () = ();
 #[doc(attribute = "unknown_tool_attr::foo")] //~ ERROR
 /// bla
 const _: () = ();
+
+#[doc(attribute = "::blah")] //~ ERROR
+/// bla
+const _: () = ();

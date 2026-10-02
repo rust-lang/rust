@@ -22,5 +22,13 @@ LL | #[doc(attribute = "unknown_tool_attr::foo")]
    |
    = help: only existing builtin attributes are allowed in core/std
 
-error: aborting due to 3 previous errors
+error: nonexistent builtin attribute `::blah` used in `#[doc(attribute = "...")]`
+  --> $DIR/doc-attribute-unsupported.rs:17:19
+   |
+LL | #[doc(attribute = "::blah")]
+   |                   ^^^^^^^^
+   |
+   = help: only existing builtin attributes are allowed in core/std
+
+error: aborting due to 4 previous errors
 
