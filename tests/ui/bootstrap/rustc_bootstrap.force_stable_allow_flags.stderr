@@ -1,0 +1,9 @@
+error[E0554]: `#![feature]` may not be used on the nightly release channel
+  --> $DIR/rustc_bootstrap.rs:51:1
+   |
+LL | #![feature(rustc_attrs)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0554`.
