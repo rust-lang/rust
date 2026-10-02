@@ -81,7 +81,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
     };
 
     // Create the type of `self`.
-    let path = cx.path_all(span, vec![name_ident], self_params.clone());
+    let path = cx.path_all(span, &[name_ident], self_params.clone());
     let self_type = cx.ty_path(path);
 
     // Declare helper function that adds implementation blocks.
@@ -122,7 +122,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
     let s_ty = cx.ty_sym(span, sym::__S);
     let mut alt_self_params = self_params;
     alt_self_params[pointee_param_idx] = GenericArg::Type(s_ty.clone());
-    let alt_self_type = cx.ty_path(cx.path_all(span, vec![name_ident], alt_self_params));
+    let alt_self_type = cx.ty_path(cx.path_all(span, &[name_ident], alt_self_params));
 
     // # Add `Unsize<__S>` bound to `#[pointee]` at the generic parameter location
     //
@@ -146,7 +146,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
             return;
         }
         let arg = GenericArg::Type(s_ty.clone());
-        let unsize = cx.path_all(span, cx.std_path(&[sym::marker, sym::Unsize]), vec![arg]);
+        let unsize = cx.std_path_all(span, &[sym::marker, sym::Unsize], vec![arg]);
         pointee.bounds.push(cx.trait_bound(unsize, false));
         // Drop `#[pointee]` attribute since it should not be recognized outside `derive(CoercePointee)`
         pointee.attrs.retain(|attr| !attr.has_name(sym::pointee));

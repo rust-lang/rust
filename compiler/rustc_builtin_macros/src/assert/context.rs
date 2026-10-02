@@ -110,7 +110,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 self.span,
                 thin_vec![self.cx.attr_nested_word(sym::allow, sym::unused_imports, self.span)],
                 ItemKind::Use(UseTree {
-                    prefix: self.cx.path(self.span, self.cx.std_path(&[sym::asserting])),
+                    prefix: self.cx.std_path(self.span, &[sym::asserting]),
                     kind: UseTreeKind::Nested {
                         items: thin_vec![
                             nested_tree(self, sym::TryCaptureGeneric),
@@ -341,12 +341,8 @@ impl<'cx, 'a> Context<'cx, 'a> {
         let curr_capture_idx = self.capture_decls.len();
         let capture_string = format!("__capture{curr_capture_idx}");
         let ident = Ident::new(Symbol::intern(&capture_string), self.span);
-        let init_std_path = self.cx.std_path(&[sym::asserting, sym::Capture, sym::new]);
-        let init = self.cx.expr_call(
-            self.span,
-            self.cx.expr_path(self.cx.path(self.span, init_std_path)),
-            ThinVec::new(),
-        );
+        let init_std_path = self.cx.std_path(self.span, &[sym::asserting, sym::Capture, sym::new]);
+        let init = self.cx.expr_call(self.span, self.cx.expr_path(init_std_path), ThinVec::new());
         let capture = Capture { decl: self.cx.stmt_let(self.span, true, ident.name, init), ident };
         self.capture_decls.push(capture);
         self.manage_try_capture(ident, curr_capture_idx, expr);
@@ -374,9 +370,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         ));
         let wrapper = self.cx.expr_call(
             self.span,
-            self.cx.expr_path(
-                self.cx.path(self.span, self.cx.std_path(&[sym::asserting, sym::Wrapper])),
-            ),
+            self.cx.expr_path(self.cx.std_path(self.span, &[sym::asserting, sym::Wrapper])),
             thin_vec![self.cx.expr_path(self.cx.path_sym(self.span, local_bind))],
         );
         let try_capture_call = self

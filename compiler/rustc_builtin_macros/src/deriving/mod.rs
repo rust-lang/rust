@@ -1,11 +1,9 @@
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
-use std::iter::once;
-
 use rustc_ast as ast;
 use rustc_ast::{GenericArg, MetaItem};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
-use rustc_span::{Ident, Span, Symbol, kw, sym};
+use rustc_span::{Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 macro pathvec($($rest:ident)::+) {{
@@ -102,14 +100,11 @@ fn assert_ty_bounds(
 ) {
     // Generate statement `let _: assert_path<ty>;`.
     let span = cx.with_def_site_ctxt(span);
-    let assert_path = cx.path_all(span, cx.std_path(assert_path), vec![GenericArg::Type(ty)]);
+    let assert_path = cx.std_path_all(span, assert_path, vec![GenericArg::Type(ty)]);
     stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
 }
 
 fn new_path(cx: &ExtCtxt<'_>, span: Span, path: &[Symbol], params: Vec<Box<ast::Ty>>) -> ast::Path {
-    let idents = path.iter().map(|s| Ident::new(*s, span));
     let params = params.into_iter().map(GenericArg::Type).collect();
-
-    let idents = once(Ident::new(kw::DollarCrate, span)).chain(idents).collect();
-    cx.path_all(span, idents, params)
+    cx.std_path_all(span, path, params)
 }

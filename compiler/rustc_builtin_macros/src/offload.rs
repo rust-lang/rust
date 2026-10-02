@@ -111,7 +111,7 @@ pub(crate) fn expand_kernel(
         span,
         ecx.macro_call(
             span,
-            ecx.path(span, [sym::core, sym::unimplemented].map(|s| Ident::new(s, span)).to_vec()),
+            ecx.path(span, &[Ident::new(sym::core, span), Ident::new(sym::unimplemented, span)]),
             Delimiter::Parenthesis,
             TokenStream::default(),
         ),
