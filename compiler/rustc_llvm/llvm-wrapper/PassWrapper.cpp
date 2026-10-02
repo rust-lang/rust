@@ -529,9 +529,11 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
   if (DisableSimplifyLibCalls)
     TLII.disableAllFunctions();
   PM->add(new TargetLibraryInfoWrapperPass(TLII));
+#if LLVM_VERSION_GE(22, 0)
   PM->add(new RuntimeLibraryInfoWrapper(
       TargetTriple, Options->ExceptionModel, Options->FloatABIType,
       Options->EABIVersion, Options->MCOptions.ABIName, Options->VecLib));
+#endif
 
   // TargetMachine::addPassesToEmitFile stores pointers to the output streams
   // in a couple of places inside of the object. Explicitly delete the PM after
