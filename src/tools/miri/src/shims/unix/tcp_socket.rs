@@ -751,6 +751,14 @@ impl UnixSocketFileDescription for TcpSocket {
             let opt_so_rcvtimeo = ecx.eval_libc_i32("SO_RCVTIMEO");
             let opt_so_sndtimeo = ecx.eval_libc_i32("SO_SNDTIMEO");
             let opt_so_reuseaddr = ecx.eval_libc_i32("SO_REUSEADDR");
+            let opt_so_linger = if matches!(ecx.tcx.sess.target.os, Os::MacOs) {
+                // On macOS the SO_LINGER socket option sets the linger duration in kernel ticks
+                // while the SO_LINGER_SEC socket option sets the linger duration in seconds.
+                ecx.eval_libc_i32("SO_LINGER_SEC")
+            } else {
+                // For all other targets SO_LINGER sets the linger duration in seconds.
+                ecx.eval_libc_i32("SO_LINGER")
+            };
 
             if matches!(ecx.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::NetBsd) {
                 // SO_NOSIGPIPE only exists on MacOS, FreeBSD, and NetBSD.
@@ -798,6 +806,24 @@ impl UnixSocketFileDescription for TcpSocket {
                 // We entirely ignore this: std always sets REUSEADDR for us, and in the end it's more of a
                 // hint to bypass some arbitrary timeout anyway.
                 return interp_ok(Ok(()));
+            } else if option == opt_so_linger {
+                let linger_layout = ecx.libc_ty_layout("linger");
+                if value_len != linger_layout.size.bytes() {
+                    // Size should be equal to the size of a linger struct.
+                    return interp_ok(Err(LibcError("EINVAL")));
+                }
+                let option_value = ecx.ptr_to_mplace(value_ptr, linger_layout);
+
+                let onoff_field = ecx.project_field_named(&option_value, "l_onoff")?;
+                let onoff = ecx.read_scalar(&onoff_field)?.to_i32()? != 0;
+
+                let linger_field = ecx.project_field_named(&option_value, "l_linger")?;
+                let linger = ecx.read_scalar(&linger_field)?.to_i32()?;
+
+                let linger = onoff.then_some(Duration::from_secs(u64::try_from(linger).unwrap()));
+                return interp_ok(
+                    self.with_socket_ref(|s| s.set_linger(linger)).map_err(IoError::HostError),
+                );
             } else {
                 throw_unsup_format!(
                     "setsockopt: option {option:#x} is unsupported for level SOL_SOCKET",
@@ -861,6 +887,14 @@ impl UnixSocketFileDescription for TcpSocket {
             let opt_so_error = ecx.eval_libc_i32("SO_ERROR");
             let opt_so_rcvtimeo = ecx.eval_libc_i32("SO_RCVTIMEO");
             let opt_so_sndtimeo = ecx.eval_libc_i32("SO_SNDTIMEO");
+            let opt_so_linger = if matches!(ecx.tcx.sess.target.os, Os::MacOs) {
+                // On macOS the SO_LINGER socket option sets the linger duration in kernel ticks
+                // while the SO_LINGER_SEC socket option sets the linger duration in seconds.
+                ecx.eval_libc_i32("SO_LINGER_SEC")
+            } else {
+                // For all other targets SO_LINGER sets the linger duration in seconds.
+                ecx.eval_libc_i32("SO_LINGER")
+            };
 
             if option == opt_so_error {
                 // Reading SO_ERROR should always return the latest async error. Because our stored
@@ -907,6 +941,25 @@ impl UnixSocketFileDescription for TcpSocket {
                 ecx.write_int(usecs, &usec_field)?;
 
                 interp_ok(Ok(timeval_buffer))
+            } else if option == opt_so_linger {
+                let linger = match self.with_socket_ref(|s| s.linger()) {
+                    Ok(linger) => linger,
+                    Err(e) => return interp_ok(Err(IoError::HostError(e))),
+                };
+
+                let linger_layout = ecx.libc_ty_layout("linger");
+                // Allocate new buffer on the stack with the `linger` layout.
+                let linger_buffer = ecx.allocate(linger_layout, MemoryKind::Stack)?;
+
+                let onoff_field = ecx.project_field_named(&linger_buffer, "l_onoff")?;
+                let onoff = i32::from(linger.is_some());
+                ecx.write_int(onoff, &onoff_field)?;
+
+                let linger_field = ecx.project_field_named(&linger_buffer, "l_linger")?;
+                let secs = i32::try_from(linger.unwrap_or_default().as_secs()).unwrap();
+                ecx.write_int(secs, &linger_field)?;
+
+                interp_ok(Ok(linger_buffer))
             } else {
                 throw_unsup_format!(
                     "getsockopt: option {option:#x} is unsupported for level SOL_SOCKET",
