@@ -21,7 +21,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{BodyId, Mutability};
 use rustc_index::IndexVec;
 use rustc_metadata::rendered_const;
-use rustc_middle::ty::fast_reject::SimplifiedType;
+use rustc_middle::ty::fast_reject::{DeepRejectCtxt, SimplifiedType};
 use rustc_middle::ty::{self, Ty, TyCtxt, Visibility};
 use rustc_resolve::rustdoc::{
     DocFragment, add_doc_fragment, attrs_to_doc_fragments, inner_docs, span_of_fragments,
@@ -1378,6 +1378,22 @@ pub(crate) struct PolyTrait {
     pub(crate) generic_params: Vec<GenericParamDef>,
 }
 
+// Also used in `write_shared.rs` when generating the JS `impl` file for aliased types.
+//
+// FIXME(checked_type_alias): Once the feature is complete or stable, rewrite this
+// to use type unification.
+// Be aware of `tests/rustdoc-html/type-alias/deeply-nested-112515.rs` which might
+// regress.
+pub(crate) fn impl_may_apply_to_type_alias(
+    tcx: TyCtxt<'_>,
+    alias_def_id: DefId,
+    impl_def_id: DefId,
+) -> bool {
+    let alias_ty = tcx.type_of(alias_def_id).skip_binder();
+    let for_ty = tcx.type_of(impl_def_id).skip_binder();
+    DeepRejectCtxt::relate_infer_infer(tcx).types_may_unify(alias_ty, for_ty)
+}
+
 /// Rustdoc's representation of types, mostly based on the [`hir::Ty`].
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum Type {
@@ -1467,7 +1483,7 @@ impl Type {
     ///
     /// An owned type is also the same as its borrowed variants (this is commutative),
     /// but `&T` is not the same as `&mut T`.
-    pub(crate) fn is_doc_subtype_of(&self, other: &Self, cache: &Cache) -> bool {
+    pub(crate) fn is_doc_subtype_of(&self, other: &Self, cx: &Context<'_>) -> bool {
         // Strip the references so that it can compare the actual types, unless both are references.
         // If both are references, leave them alone and compare the mutabilities later.
         let (self_cleared, other_cleared) = if !self.is_borrowed_ref() || !other.is_borrowed_ref() {
@@ -1476,29 +1492,33 @@ impl Type {
             (self, other)
         };
 
-        // FIXME: `Cache` does not have the data required to unwrap type aliases,
-        // so we just assume they are equal.
-        // This is only remotely acceptable because we were previously
-        // assuming all types were equal when used
-        // as a generic parameter of a type in `Deref::Target`.
+        // FIXME(checked_type_alias): Once the feature is complete or stable, rewrite this
+        // to use type unification.
+        // Be aware of `tests/rustdoc-html/type-alias/deeply-nested-112515.rs` which might
+        // regress.
         if self_cleared.is_type_alias() || other_cleared.is_type_alias() {
-            return true;
+            let cache = cx.cache();
+            if let Some(self_def_id) = self_cleared.def_id(&cache)
+                && let Some(other_def_id) = other_cleared.def_id(&cache)
+            {
+                return impl_may_apply_to_type_alias(cx.tcx(), self_def_id, other_def_id);
+            }
         }
 
         match (self_cleared, other_cleared) {
             // Recursive cases.
             (Type::Tuple(a), Type::Tuple(b)) => {
-                a.iter().eq_by(b, |a, b| a.is_doc_subtype_of(b, cache))
+                a.iter().eq_by(b, |a, b| a.is_doc_subtype_of(b, cx))
             }
-            (Type::Slice(a), Type::Slice(b)) => a.is_doc_subtype_of(b, cache),
-            (Type::Array(a, al), Type::Array(b, bl)) => al == bl && a.is_doc_subtype_of(b, cache),
+            (Type::Slice(a), Type::Slice(b)) => a.is_doc_subtype_of(b, cx),
+            (Type::Array(a, al), Type::Array(b, bl)) => al == bl && a.is_doc_subtype_of(b, cx),
             (Type::RawPointer(mutability, type_), Type::RawPointer(b_mutability, b_type_)) => {
-                mutability == b_mutability && type_.is_doc_subtype_of(b_type_, cache)
+                mutability == b_mutability && type_.is_doc_subtype_of(b_type_, cx)
             }
             (
                 Type::BorrowedRef { mutability, type_, .. },
                 Type::BorrowedRef { mutability: b_mutability, type_: b_type_, .. },
-            ) => mutability == b_mutability && type_.is_doc_subtype_of(b_type_, cache),
+            ) => mutability == b_mutability && type_.is_doc_subtype_of(b_type_, cx),
             // Placeholders are equal to all other types.
             (Type::Infer, _) | (_, Type::Infer) => true,
             // Generics match everything on the right, but not on the left.
@@ -1512,13 +1532,13 @@ impl Type {
                 a.def_id() == b.def_id()
                     && a.generics()
                         .zip(b.generics())
-                        .map(|(ag, bg)| ag.zip(bg).all(|(at, bt)| at.is_doc_subtype_of(bt, cache)))
+                        .map(|(ag, bg)| ag.zip(bg).all(|(at, bt)| at.is_doc_subtype_of(bt, cx)))
                         .unwrap_or(true)
             }
             // Other cases, such as primitives, just use recursion.
             (a, b) => a
-                .def_id(cache)
-                .and_then(|a| Some((a, b.def_id(cache)?)))
+                .def_id(cx.cache())
+                .and_then(|a| Some((a, b.def_id(cx.cache())?)))
                 .map(|(a, b)| a == b)
                 .unwrap_or(false),
         }
