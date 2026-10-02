@@ -6,8 +6,8 @@ use rustc_hir::definitions::DefPathToIndexMap;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::def_id::{DefIndex, DefPathHash};
 
-use crate::rmeta::EncodeContext;
 use crate::rmeta::decoder::BlobDecodeContext;
+use crate::rmeta::{EncodeContext, LocalDefId};
 
 pub(crate) enum DefPathHashMapRef<'tcx> {
     OwnedFromMetadata(odht::HashTable<HashMapConfig, OwnedSlice>, SortedMap<Hash64, DefIndex>),
@@ -40,11 +40,16 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefPathHashMapRef<'tcx> {
                 e.emit_usize(bytes.len());
                 e.emit_raw_bytes(bytes);
 
-                map.after_parallel_alloc
+                let map = map
+                    .after_parallel_alloc
                     .as_ref()
-                    .expect("must be set before metadata encoding")
-                    .range(..)
-                    .encode(e);
+                    .expect("must be set before metadata encoding");
+
+                map.len().encode(e);
+                for (h, i) in map.iter().map(|(h, i)| (h, LocalDefId { local_def_index: *i })) {
+                    h.encode(e);
+                    i.encode(e);
+                }
             }
             DefPathHashMapRef::OwnedFromMetadata(..) => {
                 panic!("DefPathHashMap::OwnedFromMetadata variant only exists for deserialization")

@@ -2,6 +2,7 @@
 //! on all of `rustc_hir` (which is large and depends on other large things like `rustc_target`).
 #![allow(internal_features)]
 #![feature(negative_impls)]
+#![feature(min_specialization)]
 #![feature(rustc_attrs)]
 
 pub mod def_path_hash_map;

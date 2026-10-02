@@ -22,6 +22,7 @@
 #![feature(decl_macro)]
 #![feature(diagnostic_on_unknown)]
 #![feature(map_try_insert)]
+#![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(read_buf)]
 #![feature(rustc_attrs)]
