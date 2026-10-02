@@ -249,13 +249,16 @@ fn check_and_apply_linkage<'ll, 'tcx>(
 
         // Sign the function pointer that is used to initialize the global
         let initializer = if should_sign {
-            let key: u32 = 0;
-            let discriminator: u64 = 0;
+            let schema = cx
+                .tcx
+                .sess
+                .pointer_authentication_functions()
+                .expect("pointer authentication functions must be available when signing");
 
             const_ptr_auth(
                 cx.const_bitcast(g1, llty),
-                key,
-                discriminator,
+                schema.key as u32,
+                schema.constant_discriminator as u64,
                 None, /* address_diversity */
             )
         } else {
