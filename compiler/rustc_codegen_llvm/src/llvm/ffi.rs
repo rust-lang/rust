@@ -993,6 +993,11 @@ unsafe extern "C" {
         KindID: MetadataKindId,
         Metadata: &'a Metadata,
     );
+    pub(crate) fn LLVMGlobalAddMetadata<'ll>(
+        Global: &'ll Value,
+        Kind: MetadataKindId,
+        MD: &'ll Metadata,
+    );
     pub(crate) safe fn LLVMValueAsMetadata(Node: &Value) -> &Metadata;
 
     // Operations on constants of any type
@@ -1962,12 +1967,6 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustDisableSystemDialogsOnCrash();
 
     // Operations on all values
-    /// FIXME: After dropping LLVM 21, migrate to LLVM-C's `LLVMGlobalAddMetadata`.
-    pub(crate) fn LLVMRustGlobalAddMetadata<'a>(
-        Val: &'a Value,
-        KindID: MetadataKindId,
-        Metadata: &'a Metadata,
-    );
     pub(crate) fn LLVMRustIsNonGVFunctionPointerTy(Val: &Value) -> bool;
     pub(crate) fn LLVMRustStripPointerCasts<'a>(Val: &'a Value) -> &'a Value;
 
