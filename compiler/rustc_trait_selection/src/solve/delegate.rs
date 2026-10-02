@@ -229,6 +229,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 }
 
                 let ty = self.deeply_resolve_ignoring_regions(outlives.0);
+                if ty.has_non_rigid_aliases() {
+                    return Outcome::NoFastPath;
+                }
+
                 let mut infer_collector = CollectNonRegionInfer {
                     infers: Default::default(),
                     visited: Default::default(),
@@ -245,10 +249,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                             })
                             .collect(),
                     );
-                }
-
-                if ty.has_non_rigid_aliases() {
-                    return Outcome::NoFastPath;
                 }
 
                 self.0.register_type_outlives_constraint(
