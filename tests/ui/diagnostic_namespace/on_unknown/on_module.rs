@@ -1,5 +1,4 @@
 #![crate_type = "lib"]
-#![feature(diagnostic_on_unknown)]
 
 #[diagnostic::on_unknown(message = "oh no, `{Unresolved}` is not in module `{This}`")]
 pub mod x {

@@ -1,5 +1,5 @@
 error[E0432]: oh no, that is not in aux module `x`
-  --> $DIR/on_module_no_body.rs:8:9
+  --> $DIR/on_module_no_body.rs:7:9
    |
 LL | pub use x::Bar;
    |         ^^^---
