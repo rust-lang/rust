@@ -475,7 +475,6 @@ fn sidebar_assoc_items_with_aliased_type<'a>(
     let mut methods = Vec::new();
     let mut used_links = UsedLinks::default();
     let mut id_map = IdMap::new();
-    let tcx = cx.tcx();
 
     {
         let used_links_bor = &mut used_links;
