@@ -183,6 +183,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::type_id_points_to
         | sym::type_id_size_of
         | sym::type_id_type_of
+        | sym::type_id_variant_getter
+        | sym::type_id_variant_lookup_table
         | sym::type_id_variant_name
         | sym::type_id_variant_non_exhaustive
         | sym::type_id_variants
@@ -313,6 +315,27 @@ pub(crate) fn check_intrinsic_type(
         sym::type_id_points_mutably => (0, 0, vec![type_id_ty()], tcx.types.bool),
         sym::type_id_points_to => (0, 0, vec![type_id_ty()], Ty::new_option(tcx, type_id_ty())),
         sym::type_id_variants => (0, 0, vec![type_id_ty()], tcx.types.usize),
+        sym::type_id_variant_getter => {
+            let variant_id =
+                tcx.type_of(tcx.lang_items().variant_id().unwrap()).no_bound_vars().unwrap();
+            let unit_ptr = Ty::new_ptr(tcx, tcx.types.unit, ty::Mutability::Not);
+            let fn_ty = ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi([unit_ptr], variant_id));
+            (0, 0, vec![type_id_ty()], Ty::new_fn_ptr(tcx, fn_ty))
+        }
+        sym::type_id_variant_lookup_table => {
+            let assoc_items = tcx
+                .associated_item_def_ids(tcx.require_lang_item(LangItem::DiscriminantKind, span));
+            let discriminant_def_id = assoc_items[0];
+            let discriminant_ty = Ty::new_projection_from_args(
+                tcx,
+                ty::IsRigid::No,
+                discriminant_def_id,
+                tcx.mk_args(&[param(0).into()]),
+            );
+            let slice = Ty::new_slice(tcx, discriminant_ty);
+            let slice = Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, slice);
+            (1, 0, vec![], slice)
+        }
         sym::type_id_variant_name => {
             (0, 0, vec![type_id_ty(), tcx.types.usize], Ty::new_static_str(tcx))
         }

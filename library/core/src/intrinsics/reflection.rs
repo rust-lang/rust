@@ -3,6 +3,8 @@
 //! This are all methods operating on [`TypeId`](core::any::TypeId) which is the
 //! entry point to all compile time reflection.
 
+use crate::marker::DiscriminantKind;
+use crate::mem::type_info::VariantId;
 use crate::ptr;
 
 /// Gets an identifier which is globally unique to the specified type. This
@@ -223,3 +225,25 @@ pub fn type_id_function_ptr(_type_id: crate::any::TypeId) -> Option<crate::mem::
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
 pub fn type_id_name(_type_id: crate::any::TypeId) -> &'static str;
+
+/// Returns a function pointer used to get the `VariantId` of an enum at runtime.
+///
+/// # Safety
+/// See [`core::any::TypeId::variant_getter`].
+///
+/// # Note
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::variant_getter`]
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_variant_getter(_type_id: crate::any::TypeId) -> fn(*const ()) -> VariantId;
+
+/// Returns a lookup table for converting between VariantId and Discriminant. This
+/// is use internally by variant getter. **Please do not use this.**
+///
+/// The user-friendly way to get the `VariantId` of an enum at runtime is using
+/// the function pointer returned by [`core::any::TypeId::variant_getter`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_variant_lookup_table<T>() -> &'static [<T as DiscriminantKind>::Discriminant];

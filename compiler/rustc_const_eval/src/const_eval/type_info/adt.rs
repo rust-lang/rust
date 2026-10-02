@@ -1,6 +1,6 @@
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_middle::ty::{
-    AdtDef, AdtKind, Const, ConstKind, GenericArgKind, GenericArgs, Region, Ty,
+    self, AdtDef, AdtKind, Const, ConstKind, GenericArgKind, GenericArgs, Region, ScalarInt, Ty,
 };
 use rustc_span::{bug, span_bug, sym};
 
@@ -10,6 +10,33 @@ use crate::interpret::{
 };
 
 impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
+    pub(crate) fn write_slice_of_discriminant(
+        &mut self,
+        place: &impl Writeable<'tcx, CtfeProvenance>,
+        ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx, ()> {
+        // a discriminant is an int of some size (up to 128bits or 127... ?) // TODO(yara) figure out
+        let cast_to = ty.discriminant_ty(*self.tcx);
+        let discriminant_size = cast_to.primitive_size(*self.tcx);
+
+        let ty::Adt(def, _) = ty.kind() else {
+            span_bug!(self.cur_span(), "expected enum type, got {ty}");
+        };
+        self.allocate_fill_and_write_slice_ptr(
+            place,
+            def.variants().len() as u64,
+            |this, i, place| {
+                let discriminant = ty
+                    .discriminant_for_variant(*this.tcx, VariantIdx::from_usize(i as usize))
+                    .expect("i is in range")
+                    .val;
+                let discriminant = ScalarInt::try_from_uint(discriminant, discriminant_size)
+                    .expect("127 bits should be enough discriminant"); // TODO(yara): test this
+                this.write_scalar(discriminant, &place)
+            },
+        )
+    }
+
     // FIXME(type_info): No semver considerations for now
     pub(crate) fn write_adt_type_info(
         &mut self,

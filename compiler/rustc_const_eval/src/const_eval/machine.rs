@@ -14,7 +14,7 @@ use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout, ValidityRequirement};
-use rustc_middle::ty::{self, FieldInfo, ScalarInt, Ty, TyCtxt};
+use rustc_middle::ty::{self, FieldInfo, Instance, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{mir, throw_machine_stop};
 use rustc_span::{Span, Symbol, bug, span_bug, sym};
 use rustc_target::callconv::FnAbi;
@@ -24,7 +24,7 @@ use super::error::*;
 use crate::diagnostics::{LongRunning, LongRunningWarn};
 use crate::interpret::Immediate::ScalarPair;
 use crate::interpret::{
-    self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
+    self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, FnVal, Frame,
     GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet,
     RetagMode, Scalar, compile_time_machine, ensure_monomorphic_enough, err_inval, interp_ok,
     throw_exhaust, throw_inval, throw_ub, throw_ub_format, throw_unsup, throw_unsup_format,
@@ -769,6 +769,32 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let ty = ecx.read_type_id(&args[0])?;
                 let variants_num = ty.ty_adt_def().map(|def| def.variants().len()).unwrap_or(1);
                 ecx.write_scalar(Scalar::from_target_usize(variants_num as u64, ecx), dest)?;
+            }
+
+            sym::type_id_variant_getter => {
+                let ty = ecx.read_type_id(&args[0])?;
+                let getter_def_id =
+                    ecx.tcx().require_lang_item(LangItem::VariantGetter, rustc_span::DUMMY_SP);
+                let generic_arg = ecx.tcx().mk_args(&[ty.into()]);
+                let instance = Instance::expect_resolve(
+                    ecx.tcx(),
+                    ecx.typing_env(),
+                    getter_def_id,
+                    generic_arg,
+                    rustc_span::DUMMY_SP,
+                );
+                let fn_ptr = ecx.fn_ptr(FnVal::Instance(instance));
+                ecx.write_pointer(fn_ptr, dest)?;
+            }
+
+            sym::type_id_variant_lookup_table => {
+                let ty = instance
+                    .args
+                    .first()
+                    .expect("has one generic")
+                    .as_type()
+                    .expect("the generic arg is a Ty");
+                ecx.write_slice_of_discriminant(dest, ty)?;
             }
 
             sym::type_id_variant_name => {

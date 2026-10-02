@@ -470,6 +470,8 @@ language_item_table! {
 
     // Experimental lang item for `Reflection and comptime`(https://goals.rust-lang.org/2025h2/reflection-and-comptime.html)
     FnPtr,                   sym::FnPtr,               fn_ptr,                     Target::Struct,         GenericRequirement::None;
+    VariantId,               sym::VariantId,           variant_id,                 Target::Struct,         GenericRequirement::None;
+    VariantGetter,           sym::variant_getter,      variant_getter,             Target::Fn,             GenericRequirement::Exact(1);
 }
 
 /// The requirement imposed on the generics of a lang item
