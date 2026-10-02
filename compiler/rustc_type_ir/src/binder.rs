@@ -241,10 +241,10 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
     }
 
     fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
-        if t.outer_exclusive_binder() < self.binder_index
+        if t.outer_exclusive_binder() <= self.binder_index
             || !self.visited.insert((self.binder_index, t))
         {
-            return ControlFlow::Break(());
+            return ControlFlow::Continue(());
         }
         match t.kind() {
             ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ty)
@@ -263,8 +263,8 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
     }
 
     fn visit_const(&mut self, c: Const<I>) -> Self::Result {
-        if c.outer_exclusive_binder() < self.binder_index {
-            return ControlFlow::Break(());
+        if c.outer_exclusive_binder() <= self.binder_index {
+            return ControlFlow::Continue(());
         }
         match c.kind() {
             ty::ConstKind::Bound(debruijn, bound_const)
