@@ -48,8 +48,8 @@ pub fn error2(lines: &[&str]) -> Result<Vec<Version>> {
     let mut tags: Vec<Version> = lines.iter().map(|e| parse(e)).collect()?;
     //~^ ERROR: type annotations needed
     //~| NOTE: cannot infer type of the type parameter `B`
-    //~| NOTE: the type must implement `FromIterator<std::result::Result<Version, Error>>`
-    //~| NOTE: required by a bound in `collect`
+    //~| NOTE: required by a bound introduced by this call
+    //~| NOTE: the type must implement `ops::try_trait_old::Try`
     //~| HELP: consider specifying the generic argument
     tags.sort();
 
@@ -58,11 +58,14 @@ pub fn error2(lines: &[&str]) -> Result<Vec<Version>> {
 
 pub fn error3(lines: &[&str]) -> Result<Vec<Version>> {
     let mut tags = lines.iter().map(|e| parse(e)).collect::<Vec<_>>()?;
-    //~^ ERROR: the `?` operator can only be applied to values that implement `Try`
+    //~^ ERROR: the trait bound `Vec<std::result::Result<Version, Error>>: ops::try_trait_old::Try` is not satisfied [E0277]
+    //~| ERROR: the `?` operator can only be applied to values that implement `ops::try_trait_old::Try` [E0277]
+    //~| HELP: the trait `ops::try_trait_old::Try` is not implemented for `Vec<std::result::Result<Version, Error>>`
+    //~| NOTE: in this expansion of desugaring of operator `?`
+    //~| NOTE: in this expansion of desugaring of operator `?`
+    //~| NOTE: the trait `ops::try_trait_old::Try` is not implemented for `Vec<std::result::Result<Version, Error>>`
+    //~| NOTE: required by a bound introduced by this call
     //~| NOTE: the `?` operator cannot be applied to type `Vec<std::result::Result<Version, Error>>`
-    //~| HELP: the nightly-only, unstable trait `Try` is not implemented
-    //~| NOTE: in this expansion of desugaring of operator `?`
-    //~| NOTE: in this expansion of desugaring of operator `?`
     tags.sort();
     //~^ WARN method call on a diverging inference variable
     //~| WARN previously accepted

@@ -1,90 +1,55 @@
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
-  --> $DIR/return-from-residual-sugg-issue-125997.rs:10:44
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `ops::try_trait_old::FromResidual`)
+  --> $DIR/return-from-residual-sugg-issue-125997.rs:8:44
    |
 LL | fn test1() {
    | ---------- this function should return `Result` or `Option` to accept `?`
 LL |     let mut _file = File::create("foo.txt")?;
    |                                            ^ cannot use the `?` operator in a function that returns `()`
    |
-help: consider adding return type
-   |
-LL ~ fn test1() -> Result<(), Box<dyn std::error::Error>> {
-LL |     let mut _file = File::create("foo.txt")?;
-LL |
-LL +     Ok(())
-   |
+   = help: the trait `ops::try_trait_old::FromResidual<Result<!, std::io::Error>>` is not implemented for `()`
 
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
-  --> $DIR/return-from-residual-sugg-issue-125997.rs:15:44
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `ops::try_trait_old::FromResidual`)
+  --> $DIR/return-from-residual-sugg-issue-125997.rs:13:44
    |
 LL | fn test2() {
    | ---------- this function should return `Result` or `Option` to accept `?`
 LL |     let mut _file = File::create("foo.txt")?;
    |                                            ^ cannot use the `?` operator in a function that returns `()`
    |
-help: consider adding return type
-   |
-LL ~ fn test2() -> Result<(), Box<dyn std::error::Error>> {
-LL |     let mut _file = File::create("foo.txt")?;
-LL |
-LL |     println!();
-LL +     Ok(())
-   |
+   = help: the trait `ops::try_trait_old::FromResidual<Result<!, std::io::Error>>` is not implemented for `()`
 
-error[E0277]: the `?` operator can only be used in a method that returns `Result` or `Option` (or another type that implements `FromResidual`)
-  --> $DIR/return-from-residual-sugg-issue-125997.rs:34:48
+error[E0277]: the `?` operator can only be used in a method that returns `Result` or `Option` (or another type that implements `ops::try_trait_old::FromResidual`)
+  --> $DIR/return-from-residual-sugg-issue-125997.rs:32:48
    |
 LL |     fn test4(&self) {
    |     --------------- this function should return `Result` or `Option` to accept `?`
 LL |         let mut _file = File::create("foo.txt")?;
    |                                                ^ cannot use the `?` operator in a method that returns `()`
    |
-help: consider adding return type
-   |
-LL ~     fn test4(&self) -> Result<(), Box<dyn std::error::Error>> {
-LL |         let mut _file = File::create("foo.txt")?;
-LL |
-LL ~         Ok(())
-LL ~     }
-   |
+   = help: the trait `ops::try_trait_old::FromResidual<Result<!, std::io::Error>>` is not implemented for `()`
 
-error[E0277]: the `?` operator can only be used in a method that returns `Result` or `Option` (or another type that implements `FromResidual`)
-  --> $DIR/return-from-residual-sugg-issue-125997.rs:39:48
+error[E0277]: the `?` operator can only be used in a method that returns `Result` or `Option` (or another type that implements `ops::try_trait_old::FromResidual`)
+  --> $DIR/return-from-residual-sugg-issue-125997.rs:37:48
    |
 LL |     fn test5(&self) {
    |     --------------- this function should return `Result` or `Option` to accept `?`
 LL |         let mut _file = File::create("foo.txt")?;
    |                                                ^ cannot use the `?` operator in a method that returns `()`
    |
-help: consider adding return type
-   |
-LL ~     fn test5(&self) -> Result<(), Box<dyn std::error::Error>> {
-LL |         let mut _file = File::create("foo.txt")?;
-LL |
-LL |         println!();
-LL ~         Ok(())
-LL ~     }
-   |
+   = help: the trait `ops::try_trait_old::FromResidual<Result<!, std::io::Error>>` is not implemented for `()`
 
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
-  --> $DIR/return-from-residual-sugg-issue-125997.rs:46:44
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `ops::try_trait_old::FromResidual`)
+  --> $DIR/return-from-residual-sugg-issue-125997.rs:44:44
    |
 LL | fn main() {
    | --------- this function should return `Result` or `Option` to accept `?`
 LL |     let mut _file = File::create("foo.txt")?;
    |                                            ^ cannot use the `?` operator in a function that returns `()`
    |
-help: consider adding return type
-   |
-LL ~ fn main() -> Result<(), Box<dyn std::error::Error>> {
-LL |     let mut _file = File::create("foo.txt")?;
-LL |
-LL |     mac!();
-LL +     Ok(())
-   |
+   = help: the trait `ops::try_trait_old::FromResidual<Result<!, std::io::Error>>` is not implemented for `()`
 
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
-  --> $DIR/return-from-residual-sugg-issue-125997.rs:23:52
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `ops::try_trait_old::FromResidual`)
+  --> $DIR/return-from-residual-sugg-issue-125997.rs:21:52
    |
 LL | macro_rules! mac {
 LL |     () => {
@@ -96,15 +61,7 @@ LL |             let mut _file = File::create("foo.txt")?;
 LL |     mac!();
    |     ------ in this macro invocation
    |
-help: consider adding return type
-   |
-LL ~         fn test3() -> Result<(), Box<dyn std::error::Error>> {
-LL |             let mut _file = File::create("foo.txt")?;
-LL |
-LL |             println!();
-LL ~             Ok(())
-LL ~         }
-   |
+   = help: the trait `ops::try_trait_old::FromResidual<Result<!, std::io::Error>>` is not implemented for `()`
 
 error: aborting due to 6 previous errors
 

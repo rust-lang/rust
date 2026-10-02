@@ -10,7 +10,7 @@ fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
     scope 1 {
         debug residual => const Option::<!>::None;
         scope 2 {
-            scope 7 (inlined <Option<i32> as FromResidual<Option<!>>>::from_residual) {
+            scope 7 (inlined <Option<i32> as ops::try_trait_old::FromResidual<Option<!>>>::from_residual) {
                 let mut _3: isize;
                 let mut _5: bool;
             }
@@ -21,7 +21,7 @@ fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
         scope 4 {
         }
     }
-    scope 5 (inlined <Option<i32> as Try>::branch) {
+    scope 5 (inlined <Option<i32> as ops::try_trait_old::Try>::branch) {
         let mut _2: isize;
         let _6: i32;
         scope 6 {
