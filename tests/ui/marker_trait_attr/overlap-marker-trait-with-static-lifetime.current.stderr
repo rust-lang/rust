@@ -1,11 +1,11 @@
 error[E0283]: type annotations needed: cannot satisfy `&'static (): Marker`
-  --> $DIR/overlap-marker-trait-with-static-lifetime.rs:11:17
+  --> $DIR/overlap-marker-trait-with-static-lifetime.rs:16:17
    |
 LL | impl Marker for &'static () {}
    |                 ^^^^^^^^^^^
    |
 note: multiple `impl`s satisfying `&'static (): Marker` found
-  --> $DIR/overlap-marker-trait-with-static-lifetime.rs:11:1
+  --> $DIR/overlap-marker-trait-with-static-lifetime.rs:16:1
    |
 LL | impl Marker for &'static () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,13 +13,13 @@ LL | impl Marker for &'static () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed: cannot satisfy `&'static (): Marker`
-  --> $DIR/overlap-marker-trait-with-static-lifetime.rs:12:17
+  --> $DIR/overlap-marker-trait-with-static-lifetime.rs:17:17
    |
 LL | impl Marker for &'static () {}
    |                 ^^^^^^^^^^^
    |
 note: multiple `impl`s satisfying `&'static (): Marker` found
-  --> $DIR/overlap-marker-trait-with-static-lifetime.rs:11:1
+  --> $DIR/overlap-marker-trait-with-static-lifetime.rs:16:1
    |
 LL | impl Marker for &'static () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^

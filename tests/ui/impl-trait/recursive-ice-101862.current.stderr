@@ -1,5 +1,5 @@
 error[E0792]: expected generic type parameter, found `&str`
-  --> $DIR/recursive-ice-101862.rs:6:19
+  --> $DIR/recursive-ice-101862.rs:10:19
    |
 LL | pub fn ice(x: impl AsRef<str>) -> impl IntoIterator<Item = ()> {
    |               --------------- this generic parameter must be used with a generic type parameter
@@ -8,7 +8,7 @@ LL |     vec![].append(&mut ice(x.as_ref()));
    |                   ^^^^^^^^^^^^^^^^^^^^
 
 warning: function cannot return without recursing
-  --> $DIR/recursive-ice-101862.rs:4:1
+  --> $DIR/recursive-ice-101862.rs:8:1
    |
 LL | pub fn ice(x: impl AsRef<str>) -> impl IntoIterator<Item = ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing

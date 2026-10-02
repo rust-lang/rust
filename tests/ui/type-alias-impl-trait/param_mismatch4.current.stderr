@@ -1,11 +1,11 @@
 error[E0792]: expected generic lifetime parameter, found `'_`
-  --> $DIR/taint.rs:14:17
+  --> $DIR/param_mismatch4.rs:17:12
    |
-LL | type Two<'a, 'b> = impl std::fmt::Debug;
+LL | type Opq<'a> = impl Sized;
    |          -- this generic parameter must be used with a generic lifetime parameter
 ...
-LL |     let c1 = || set(x);
-   |                 ^^^^^^
+LL |     let _: Opq<'_> = ();
+   |            ^^^^^^^
 
 error: aborting due to 1 previous error
 

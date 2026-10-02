@@ -1,5 +1,5 @@
 warning: function cannot return without recursing
-  --> $DIR/opaque-types-patterns-subtyping-ice-104779.rs:12:1
+  --> $DIR/opaque-types-patterns-subtyping-ice-104779.rs:17:1
    |
 LL | fn foo() -> impl Sized {
    | ^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
@@ -11,13 +11,13 @@ LL |         match foo() {
    = note: `#[warn(unconditional_recursion)]` on by default
 
 error: higher-ranked subtype error
-  --> $DIR/opaque-types-patterns-subtyping-ice-104779.rs:15:15
+  --> $DIR/opaque-types-patterns-subtyping-ice-104779.rs:20:15
    |
 LL |         match foo() {
    |               ^^^^^
 
 error: higher-ranked subtype error
-  --> $DIR/opaque-types-patterns-subtyping-ice-104779.rs:15:15
+  --> $DIR/opaque-types-patterns-subtyping-ice-104779.rs:20:15
    |
 LL |         match foo() {
    |               ^^^^^
@@ -25,13 +25,13 @@ LL |         match foo() {
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: higher-ranked subtype error
-  --> $DIR/opaque-types-patterns-subtyping-ice-104779.rs:18:13
+  --> $DIR/opaque-types-patterns-subtyping-ice-104779.rs:23:13
    |
 LL |             Subtype::Bar => (),
    |             ^^^^^^^^^^^^
 
 error: higher-ranked subtype error
-  --> $DIR/opaque-types-patterns-subtyping-ice-104779.rs:18:13
+  --> $DIR/opaque-types-patterns-subtyping-ice-104779.rs:23:13
    |
 LL |             Subtype::Bar => (),
    |             ^^^^^^^^^^^^
