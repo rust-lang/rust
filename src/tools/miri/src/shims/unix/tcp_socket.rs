@@ -803,10 +803,12 @@ impl UnixSocketFileDescription for TcpSocket {
                     return interp_ok(Err(LibcError("EINVAL")));
                 }
                 let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.i32);
-                let _val = ecx.read_scalar(&option_value)?.to_i32()?;
-                // We entirely ignore this: std always sets REUSEADDR for us, and in the end it's more of a
-                // hint to bypass some arbitrary timeout anyway.
-                return interp_ok(Ok(()));
+                let reuse = ecx.read_scalar(&option_value)?.to_i32()? != 0;
+
+                return interp_ok(
+                    self.with_socket_ref(|s| s.set_reuse_address(reuse))
+                        .map_err(IoError::HostError),
+                );
             } else if option == opt_so_linger {
                 let linger_layout = ecx.libc_ty_layout("linger");
                 if value_len != linger_layout.size.bytes() {
@@ -900,6 +902,7 @@ impl UnixSocketFileDescription for TcpSocket {
             let opt_so_error = ecx.eval_libc_i32("SO_ERROR");
             let opt_so_rcvtimeo = ecx.eval_libc_i32("SO_RCVTIMEO");
             let opt_so_sndtimeo = ecx.eval_libc_i32("SO_SNDTIMEO");
+            let opt_so_reuseaddr = ecx.eval_libc_i32("SO_REUSEADDR");
             let opt_so_linger = if matches!(ecx.tcx.sess.target.os, Os::MacOs) {
                 // On macOS the SO_LINGER socket option sets the linger duration in kernel ticks
                 // while the SO_LINGER_SEC socket option sets the linger duration in seconds.
@@ -955,6 +958,17 @@ impl UnixSocketFileDescription for TcpSocket {
                 ecx.write_int(usecs, &usec_field)?;
 
                 interp_ok(Ok(timeval_buffer))
+            } else if option == opt_so_reuseaddr {
+                let reuse = match self.with_socket_ref(|s| s.reuse_address()) {
+                    Ok(reuse) => reuse,
+                    Err(e) => return interp_ok(Err(IoError::HostError(e))),
+                };
+
+                // Allocate new buffer on the stack with the `i32` layout.
+                let value_buffer = ecx.allocate(ecx.machine.layouts.i32, MemoryKind::Stack)?;
+                ecx.write_int(i32::from(reuse), &value_buffer)?;
+
+                interp_ok(Ok(value_buffer))
             } else if option == opt_so_linger {
                 let linger = match self.with_socket_ref(|s| s.linger()) {
                     Ok(linger) => linger,

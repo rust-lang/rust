@@ -67,6 +67,7 @@ fn main() {
 
     test_sockopt_sndtimeo();
     test_sockopt_rcvtimeo();
+    test_sockopt_reuseaddr();
 
     test_unblock_after_socket_close();
 }
@@ -1078,6 +1079,30 @@ fn test_sockopt_rcvtimeo() {
     assert_eq!(err.kind(), ErrorKind::WouldBlock);
     // Ensure that we blocked for at least 40 milliseconds.
     assert!(before.elapsed() >= Duration::from_millis(40))
+}
+
+/// Test setting and reading the SO_REUSEADDR socket option.
+fn test_sockopt_reuseaddr() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    let (_peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+    net::setsockopt(client_sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR, true as libc::c_int)
+        .unwrap();
+    let reuseaddr =
+        net::getsockopt::<libc::c_int>(client_sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR)
+            .unwrap();
+    assert_ne!(reuseaddr, 0);
+
+    net::setsockopt(client_sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR, false as libc::c_int)
+        .unwrap();
+    let reuseaddr =
+        net::getsockopt::<libc::c_int>(client_sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR)
+            .unwrap();
+    assert_eq!(reuseaddr, 0);
 }
 
 /// Test that a thread which is blocked on a socket gets unblocked once
