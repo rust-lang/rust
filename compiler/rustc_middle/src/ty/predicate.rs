@@ -173,7 +173,8 @@ impl<'tcx> Clause<'tcx> {
     pub fn kind(self) -> ty::Binder<'tcx, ClauseKind<'tcx>> {
         self.0.internee.map_bound(|kind| match kind {
             PredicateKind::Clause(clause) => clause,
-            _ => unreachable!(),
+            // SAFETY: This function is incredibly hot. Let's make it optimize better.
+            _ => unsafe { std::hint::unreachable_unchecked() },
         })
     }
 
