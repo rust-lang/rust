@@ -20,7 +20,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use rustc_ast_pretty::pprust::item_to_string;
-use rustc_driver::{Compilation, run_compiler};
+use rustc_driver::{Compilation, compiler_entrypoint};
 use rustc_interface::interface::{Compiler, Config};
 use rustc_middle::ty::TyCtxt;
 
@@ -87,7 +87,7 @@ impl rustc_driver::Callbacks for MyCallbacks {
 }
 
 fn main() {
-    run_compiler(
+    compile_entrypoint(
         &[
             // The first argument, which in practice contains the name of the binary being executed
             // (i.e. "rustc") is ignored by rustc.
