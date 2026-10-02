@@ -15,14 +15,15 @@ use rustc_span::{FileName, RemapPathScopeComponents};
 use serde::Serialize;
 use tracing::debug;
 
+use crate::clean::{self, ItemKind};
 use crate::config::{OutputFormat, RenderOptions};
 use crate::core::DocContext;
 use crate::docfs::PathError;
 use crate::error::Error;
 use crate::html::markdown::{ErrorCodes, find_testable_code};
 use crate::passes::check_doc_test_visibility::{Tests, should_have_doc_example};
+use crate::try_err;
 use crate::visit::DocVisitor;
-use crate::{clean, try_err};
 
 pub(crate) fn run(
     krate: &clean::Crate,
@@ -219,21 +220,17 @@ impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
         }
 
         match i.kind {
-            clean::StrippedItem(..) => {
-                // don't count items in stripped modules
-                return;
-            }
-            clean::PlaceholderImplItem => {
-                // The "real" impl items are handled below.
-                return;
-            }
+            // Don't count items in stripped modules.
+            ItemKind::StrippedItem(..) => return,
+            // The "real" impl items are handled below.
+            ItemKind::PlaceholderImplItem => return,
             // docs on `use` and `extern crate` statements are not displayed, so they're not
             // worth counting
-            clean::ImportItem(..) | clean::ExternCrateItem { .. } => {}
+            ItemKind::ImportItem(..) | ItemKind::ExternCrateItem { .. } => {}
             // Don't count trait impls, the missing-docs lint doesn't so we shouldn't either.
             // Inherent impls *can* be documented, and those docs show up, but in most cases it
             // doesn't make sense, as all methods on a type are in one single impl block
-            clean::ImplItem(_) => {}
+            ItemKind::ImplItem(_) => {}
             _ => {
                 let has_docs = !i.attrs.doc_strings.is_empty();
                 let mut tests = Tests { found_tests: 0 };
