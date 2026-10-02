@@ -36,15 +36,34 @@ pub struct Feature {
 
 #[derive(Clone, Copy, Debug, Hash)]
 pub enum UnstableFeatures {
-    /// Disallow use of unstable features, as on beta/stable channels.
+    /// Disallow use of unstable features and unstable compiler flags.
+    ///
+    /// Used by default by beta/stable channels.
     Disallow,
-    /// Allow use of unstable features, as on nightly.
+    /// Allow use of unstable features and unstable compiler flags.
+    ///
+    /// Used by default by the nightly channel.
     Allow,
+    /// Allow use of unstable features and unstable compiler flags, even if it is not the default
+    /// behavior.
+    ///
+    /// Can be used to make a beta/stable channel act like a nightly channel.
+    ///
     /// Errors are bypassed for bootstrapping. This is required any time
     /// during the build that feature-related lints are set to warn or above
     /// because the build turns on warnings-as-errors and uses lots of unstable
     /// features. As a result, this is always required for building Rust itself.
     Cheat,
+    /// Allow the use of *unstable compiler flags*, but disallow the use of
+    /// *unstable language features*.
+    /// And in general, try to treat everything except for compiler flags as if we were on stable.
+    ///
+    /// **This mode is designed only for internal testing of rustc.**
+    ///
+    /// Specifically, we need it when we want to test how rustc behaves on the stable channel,
+    /// but at the same time we need to be able to pass it some unstable `-Z` compiler flags
+    /// required for the testing infrastructure itself to work.
+    ActAsStableForTesting,
 }
 
 impl UnstableFeatures {
@@ -76,6 +95,8 @@ impl UnstableFeatures {
                 // Hypnotize ourselves so that we think we are a stable compiler and thus don't
                 // allow any unstable features.
                 "-1" => return UnstableFeatures::Disallow,
+                // Act as stable, but still accept unstable compiler flags required by compiletest
+                "-2" => return UnstableFeatures::ActAsStableForTesting,
                 _ => {}
             }
         }
@@ -83,10 +104,19 @@ impl UnstableFeatures {
         if disable_unstable_features { UnstableFeatures::Disallow } else { UnstableFeatures::Allow }
     }
 
+    pub fn allow_unstable_compiler_flags(&self) -> bool {
+        match *self {
+            UnstableFeatures::Allow
+            | UnstableFeatures::Cheat
+            | UnstableFeatures::ActAsStableForTesting => true,
+            UnstableFeatures::Disallow => false,
+        }
+    }
+
     pub fn is_nightly_build(&self) -> bool {
         match *self {
             UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
-            UnstableFeatures::Disallow => false,
+            UnstableFeatures::Disallow | UnstableFeatures::ActAsStableForTesting => false,
         }
     }
 }

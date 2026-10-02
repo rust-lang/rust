@@ -9,6 +9,7 @@ pub(crate) static KNOWN_DIRECTIVE_NAMES_SET: LazyLock<HashSet<&str>> =
 /// a best-effort approximation for diagnostics. Add new directives to this list when needed.
 pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     // tidy-alphabetical-start
+    "act-as-stable",
     "add-minicore",
     "assembly-output",
     "aux-bin",

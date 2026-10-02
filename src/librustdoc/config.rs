@@ -450,7 +450,7 @@ impl Options {
         match (
             output_format_s.as_ref().map(|_| output_format),
             show_coverage,
-            nightly_options::is_unstable_enabled(matches),
+            nightly_options::unstable_options_enabled(matches),
         ) {
             (None | Some(OutputFormat::CoverageJson), true, _) => {}
             (_, true, _) => {

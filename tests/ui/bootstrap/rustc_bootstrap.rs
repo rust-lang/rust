@@ -6,10 +6,11 @@
 //! - `1`: cheat, allow usage of unstable features even if rustc thinks it is a stable compiler.
 //! - `x,y,z`: comma-delimited list of crates.
 //! - `-1`: force rustc to think it is a stable compiler.
+//! - `-2`: force rustc to think it is a stable compiler, while still allowing -Z flags.
 
 // ignore-tidy-linelength
 
-//@ revisions: default_nightly cheat cheat_single_crate cheat_multi_crate force_stable invalid_zero invalid_junk
+//@ revisions: default_nightly cheat cheat_single_crate cheat_multi_crate force_stable force_stable_allow_flags invalid_zero invalid_junk
 //@ only-nightly
 
 //@[default_nightly] unset-rustc-env:RUSTC_BOOTSTRAP
@@ -39,10 +40,14 @@
 //@[force_stable] rustc-env:RUSTC_BOOTSTRAP=-1
 //@[force_stable] compile-flags: -Z unstable-options
 
-#![crate_type = "lib"]
+// Here rustc shouldn't complain about compiletest's -Z flags being passed.
+//@[force_stable_allow_flags] rustc-env:RUSTC_BOOTSTRAP=-2
+//@[force_stable_allow_flags] compile-flags: -Z unstable-options
 
+#![crate_type = "lib"]
 // Note: `rustc_attrs` is a perma-unstable internal feature that is unlikely to change, which is
 // used as a proxy to check `RUSTC_BOOTSTRAP` versus stability checking logic.
 #![feature(rustc_attrs)]
+//[force_stable_allow_flags]~^ ERROR: `#![feature]` may not be used on the dev release channel [E0554]
 
 //[force_stable]~? RAW the option `Z` is only accepted on the nightly compiler
