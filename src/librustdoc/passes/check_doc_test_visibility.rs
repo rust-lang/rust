@@ -53,28 +53,28 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
         || item.is_exported_macro())
         || matches!(
             item.kind,
-            clean::StructFieldItem(_)
-                | clean::VariantItem(_)
-                | clean::TypeAliasItem(_)
-                | clean::StaticItem(_)
-                | clean::ConstantItem(..)
-                | clean::ExternCrateItem { .. }
-                | clean::ImportItem(_)
-                | clean::PrimitiveItem(_)
-                | clean::KeywordItem
-                | clean::AttributeItem
-                | clean::ModuleItem(_)
-                | clean::TraitAliasItem(_)
-                | clean::ForeignFunctionItem(..)
-                | clean::ForeignStaticItem(..)
-                | clean::ForeignTypeItem
-                | clean::AssocTypeItem(..)
-                | clean::RequiredAssocConstItem(..)
-                | clean::ProvidedAssocConstItem(..)
-                | clean::ImplAssocConstItem(..)
-                | clean::RequiredAssocTypeItem(..)
-                | clean::ImplItem(_)
-                | clean::PlaceholderImplItem
+            ItemKind::StructFieldItem(_)
+                | ItemKind::VariantItem(_)
+                | ItemKind::TypeAliasItem(_)
+                | ItemKind::StaticItem(_)
+                | ItemKind::ConstantItem(..)
+                | ItemKind::ExternCrateItem { .. }
+                | ItemKind::ImportItem(_)
+                | ItemKind::PrimitiveItem(_)
+                | ItemKind::KeywordItem
+                | ItemKind::AttributeItem
+                | ItemKind::ModuleItem(_)
+                | ItemKind::TraitAliasItem(_)
+                | ItemKind::ForeignFunctionItem(..)
+                | ItemKind::ForeignStaticItem(..)
+                | ItemKind::ForeignTypeItem
+                | ItemKind::AssocTypeItem(..)
+                | ItemKind::RequiredAssocConstItem(..)
+                | ItemKind::ProvidedAssocConstItem(..)
+                | ItemKind::ImplAssocConstItem(..)
+                | ItemKind::RequiredAssocTypeItem(..)
+                | ItemKind::ImplItem(_)
+                | ItemKind::PlaceholderImplItem
         )
     {
         return false;

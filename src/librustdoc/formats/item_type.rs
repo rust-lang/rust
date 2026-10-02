@@ -8,7 +8,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::MacroKind;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
-use crate::clean;
+use crate::clean::{self, ItemKind};
 
 macro_rules! item_type {
     ($($variant:ident = $number:literal,)+) => {
@@ -112,45 +112,47 @@ item_type! {
 impl<'a> From<&'a clean::Item> for ItemType {
     fn from(item: &'a clean::Item) -> ItemType {
         let kind = match &item.kind {
-            clean::StrippedItem(item) => item,
+            ItemKind::StrippedItem(item) => item,
             kind => kind,
         };
 
         match kind {
-            clean::ModuleItem(..) => ItemType::Module,
-            clean::ExternCrateItem { .. } => ItemType::ExternCrate,
-            clean::ImportItem(..) => ItemType::Import,
-            clean::StructItem(..) => ItemType::Struct,
-            clean::UnionItem(..) => ItemType::Union,
-            clean::EnumItem(..) => ItemType::Enum,
-            clean::FunctionItem(..) => ItemType::Function,
-            clean::TypeAliasItem(..) => ItemType::TypeAlias,
-            clean::StaticItem(..) => ItemType::Static,
-            clean::ConstantItem(..) => ItemType::Constant,
-            clean::TraitItem(..) => ItemType::Trait,
-            clean::ImplItem(..) | clean::PlaceholderImplItem => ItemType::Impl,
-            clean::RequiredMethodItem(..) => ItemType::TyMethod,
-            clean::MethodItem(..) => ItemType::Method,
-            clean::StructFieldItem(..) => ItemType::StructField,
-            clean::VariantItem(..) => ItemType::Variant,
-            clean::ForeignFunctionItem(..) => ItemType::Function, // no ForeignFunction
-            clean::ForeignStaticItem(..) => ItemType::Static,     // no ForeignStatic
-            clean::MacroItem(..) => ItemType::Macro,
-            clean::PrimitiveItem(..) => ItemType::Primitive,
-            clean::RequiredAssocConstItem(..)
-            | clean::ProvidedAssocConstItem(..)
-            | clean::ImplAssocConstItem(..) => ItemType::AssocConst,
-            clean::RequiredAssocTypeItem(..) | clean::AssocTypeItem(..) => ItemType::AssocType,
-            clean::ForeignTypeItem => ItemType::ForeignType,
-            clean::KeywordItem => ItemType::Keyword,
-            clean::AttributeItem => ItemType::Attribute,
-            clean::TraitAliasItem(..) => ItemType::TraitAlias,
-            clean::ProcMacroItem(mac) => match mac.kind {
+            ItemKind::ModuleItem(..) => ItemType::Module,
+            ItemKind::ExternCrateItem { .. } => ItemType::ExternCrate,
+            ItemKind::ImportItem(..) => ItemType::Import,
+            ItemKind::StructItem(..) => ItemType::Struct,
+            ItemKind::UnionItem(..) => ItemType::Union,
+            ItemKind::EnumItem(..) => ItemType::Enum,
+            ItemKind::FunctionItem(..) => ItemType::Function,
+            ItemKind::TypeAliasItem(..) => ItemType::TypeAlias,
+            ItemKind::StaticItem(..) => ItemType::Static,
+            ItemKind::ConstantItem(..) => ItemType::Constant,
+            ItemKind::TraitItem(..) => ItemType::Trait,
+            ItemKind::ImplItem(..) | ItemKind::PlaceholderImplItem => ItemType::Impl,
+            ItemKind::RequiredMethodItem(..) => ItemType::TyMethod,
+            ItemKind::MethodItem(..) => ItemType::Method,
+            ItemKind::StructFieldItem(..) => ItemType::StructField,
+            ItemKind::VariantItem(..) => ItemType::Variant,
+            ItemKind::ForeignFunctionItem(..) => ItemType::Function, // no ForeignFunction
+            ItemKind::ForeignStaticItem(..) => ItemType::Static,     // no ForeignStatic
+            ItemKind::MacroItem(..) => ItemType::Macro,
+            ItemKind::PrimitiveItem(..) => ItemType::Primitive,
+            ItemKind::RequiredAssocConstItem(..)
+            | ItemKind::ProvidedAssocConstItem(..)
+            | ItemKind::ImplAssocConstItem(..) => ItemType::AssocConst,
+            ItemKind::RequiredAssocTypeItem(..) | ItemKind::AssocTypeItem(..) => {
+                ItemType::AssocType
+            }
+            ItemKind::ForeignTypeItem => ItemType::ForeignType,
+            ItemKind::KeywordItem => ItemType::Keyword,
+            ItemKind::AttributeItem => ItemType::Attribute,
+            ItemKind::TraitAliasItem(..) => ItemType::TraitAlias,
+            ItemKind::ProcMacroItem(mac) => match mac.kind {
                 MacroKind::Bang => ItemType::Macro,
                 MacroKind::Attr => ItemType::ProcAttribute,
                 MacroKind::Derive => ItemType::ProcDerive,
             },
-            clean::StrippedItem(..) => unreachable!(),
+            ItemKind::StrippedItem(..) => unreachable!(),
         }
     }
 }
