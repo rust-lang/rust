@@ -13,7 +13,7 @@ use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::deriving::generic::*;
-use crate::deriving::{new_path, path_std};
+use crate::deriving::path_std;
 use crate::diagnostics;
 
 pub(crate) fn expand_deriving_coerce_pointee(
@@ -102,7 +102,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
         ));
     }
     let mut add_impl_block = |generics, trait_symbol, trait_args| {
-        let trait_path = new_path(cx, span, &[sym::ops, trait_symbol], trait_args);
+        let trait_path = cx.std_path_all(span, &[sym::ops, trait_symbol], trait_args);
         let trait_ref = cx.trait_ref(trait_path);
         let item = cx.item_trait_impl(
             span,
@@ -267,7 +267,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
     impl_generics.params.insert(pointee_param_idx + 1, extra_param);
 
     // Add the impl blocks for `DispatchFromDyn` and `CoerceUnsized`.
-    let gen_args = vec![alt_self_type];
+    let gen_args = vec![ast::GenericArg::Type(alt_self_type)];
     add_impl_block(impl_generics.clone(), sym::DispatchFromDyn, gen_args.clone());
     add_impl_block(impl_generics, sym::CoerceUnsized, gen_args);
 }

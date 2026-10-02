@@ -4,7 +4,7 @@ use rustc_span::{Span, kw, sym};
 use thin_vec::thin_vec;
 
 use crate::deriving::generic::*;
-use crate::deriving::{call_discriminant_value, new_path, path_std, pathvec};
+use crate::deriving::{call_discriminant_value, path_std, pathvec};
 
 pub(crate) fn expand_deriving_partial_ord(
     cx: &ExtCtxt<'_>,
@@ -14,7 +14,11 @@ pub(crate) fn expand_deriving_partial_ord(
     is_const: bool,
 ) {
     let ordering_ty = cx.ty_path(path_std!(cx, span, cmp::Ordering));
-    let ret_ty = cx.ty_path(new_path(cx, span, pathvec!(option::Option), vec![ordering_ty]));
+    let ret_ty = cx.ty_path(cx.std_path_all(
+        span,
+        pathvec!(option::Option),
+        vec![ast::GenericArg::Type(ordering_ty)],
+    ));
 
     // Order in which to perform matching
     let discr_then_data = discr_data_order(item);
