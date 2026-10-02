@@ -112,7 +112,7 @@ const TRAIT_METHODS: [ShouldImplTraitCase; 30] = [
     ShouldImplTraitCase::new("std::clone::Clone",       sym::clone,      1,  SelfKind::Ref,    OutType::Any,  true,  Edition2015),
     ShouldImplTraitCase::new("std::cmp::Ord",           sym::cmp,        2,  SelfKind::Ref,    OutType::Any,  true,  Edition2015),
     ShouldImplTraitCase::new("std::default::Default",   kw::Default,     0,  SelfKind::No,     OutType::Any,  true,  Edition2015),
-    ShouldImplTraitCase::new("std::ops::Deref",         sym::deref,      1,  SelfKind::Ref,    OutType::Ref,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::ops::Deref",         kw::Deref,       1,  SelfKind::Ref,    OutType::Ref,  true,  Edition2015),
     ShouldImplTraitCase::new("std::ops::DerefMut",      sym::deref_mut,  1,  SelfKind::RefMut, OutType::Ref,  true,  Edition2015),
     ShouldImplTraitCase::new("std::ops::Div",           sym::div,        2,  SelfKind::Value,  OutType::Any,  true,  Edition2015),
     ShouldImplTraitCase::new("std::ops::Drop",          sym::drop,       1,  SelfKind::RefMut, OutType::Unit, true,  Edition2015),

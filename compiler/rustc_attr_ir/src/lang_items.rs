@@ -163,7 +163,7 @@ language_item_table! {
     Unsize,                  sym::unsize,              unsize_trait,               Target::Trait,          GenericRequirement::Minimum(1);
     AlignOf,                 sym::mem_align_const,     align_const,                Target::AssocConst(AssocCtxt::Trait),     GenericRequirement::Exact(0);
     SizeOf,                  sym::mem_size_const,      size_const,                 Target::AssocConst(AssocCtxt::Trait),     GenericRequirement::Exact(0);
-    OffsetOf,                sym::offset_of,           offset_of,                  Target::Fn,             GenericRequirement::Exact(1);
+    OffsetOf,                kw::OffsetOf,             offset_of,                  Target::Fn,             GenericRequirement::Exact(1);
     /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
     StructuralPeq,           sym::structural_peq,      structural_peq_trait,       Target::Trait,          GenericRequirement::None;
     Copy,                    sym::copy,                copy_trait,                 Target::Trait,          GenericRequirement::Exact(0);
@@ -238,7 +238,7 @@ language_item_table! {
 
     Complex,                 sym::complex,             complex,                    Target::Struct,         GenericRequirement::Exact(1);
 
-    Deref,                   sym::deref,               deref_trait,                Target::Trait,          GenericRequirement::Exact(0);
+    Deref,                   kw::Deref,                deref_trait,                Target::Trait,          GenericRequirement::Exact(0);
     DerefMut,                sym::deref_mut,           deref_mut_trait,            Target::Trait,          GenericRequirement::Exact(0);
     DerefPure,               sym::deref_pure,          deref_pure_trait,           Target::Trait,          GenericRequirement::Exact(0);
     DerefTarget,             sym::deref_target,        deref_target,               Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::None;

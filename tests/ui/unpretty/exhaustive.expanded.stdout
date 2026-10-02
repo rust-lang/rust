@@ -10,12 +10,13 @@
 // errors that only occur once we get past the AST.
 
 #![feature(auto_traits)]
-#![feature(builtin_syntax)]
+#![feature(internal_syntax)]
 #![feature(const_trait_impl)]
 #![feature(coroutines)]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
 #![feature(explicit_tail_calls)]
+#![feature(forced_keywords)]
 #![feature(gen_blocks)]
 #![feature(more_qualified_paths)]
 #![feature(never_patterns)]
@@ -131,7 +132,7 @@ mod expressions {
     fn expr_cast() { let expr; expr as T; expr as T<u8>; }
 
     /// ExprKind::Type
-    fn expr_type() { let expr; builtin # type_ascribe(expr, T); }
+    fn expr_type() { let expr; k#type_ascribe(expr, T); }
 
     /// ExprKind::Let
     fn expr_let() {
@@ -315,7 +316,7 @@ mod expressions {
 
 
 
-        const { builtin # offset_of(T, field) };
+        const { k#offset_of(T, field) };
     }
     /// ExprKind::MacCall
     fn expr_mac_call() { "..."; "..."; "..."; }
@@ -513,7 +514,7 @@ mod patterns {
     /// PatKind::Tuple
     fn pat_tuple() { let (); let (true,); let (true, false); }
     /// PatKind::Deref
-    fn pat_deref() { let deref!(pat); }
+    fn pat_deref() { let k#deref(pat); }
     /// PatKind::Ref
     fn pat_ref() { let &pat; let &mut pat; }
     /// PatKind::Expr
