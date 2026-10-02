@@ -18,11 +18,17 @@ This is a bootstrap/compiler implementation detail, but it can also be useful fo
   unstable flags required by compiletest, but we also want to test the compiler's
   behavior on the stable channel.
 
+### UI tests
+
 Note that setting `RUSTC_BOOTSTRAP=-1` in ui tests (e.g. via `//@ rustc-env`) is pointless since ui
 tests inherit the bootstrap env var from bootstrap (so it's set to `1` by default), and since
-compiletest itself passes `-Z` flags (so `-1` breaks the test). To test stable-only behavior, use
-`RUSTC_BOOTSTRAP=-2` instead.
+compiletest itself passes `-Z` flags (so `-1` breaks the test).
 
-For `run-make`/`run-make-cargo` tests, `//@ rustc-env` is not supported.
-You can do use the `run_make_support::stable_bare_rustc` function to create an instance of the compiler
+To test stable-only behavior, use the `act-as-stable` directive, which will set `RUSTC_BOOTSTRAP=-2`
+for you.
+
+### Run-make tests
+
+For `run-make`/`run-make-cargo` tests, `//@ act-as-stable` is not supported.
+You can use the `run_make_support::stable_bare_rustc` function to create an instance of the compiler
 that acts as the stable channel (this internally uses `RUSTC_BOOTSTRAP=-1`).
