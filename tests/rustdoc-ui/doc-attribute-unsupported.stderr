@@ -1,10 +1,26 @@
-error: nonexistent builtin attribute `diagnostic::do_not_recommend` used in `#[doc(attribute = "...")]`
+error: nonexistent builtin attribute `diagnostic::` used in `#[doc(attribute = "...")]`
   --> $DIR/doc-attribute-unsupported.rs:5:19
    |
-LL | #[doc(attribute = "diagnostic::do_not_recommend")]
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[doc(attribute = "diagnostic::")]
+   |                   ^^^^^^^^^^^^^^
    |
    = help: only existing builtin attributes are allowed in core/std
 
-error: aborting due to 1 previous error
+error: nonexistent builtin attribute `foo::bar::foo` used in `#[doc(attribute = "...")]`
+  --> $DIR/doc-attribute-unsupported.rs:9:19
+   |
+LL | #[doc(attribute = "foo::bar::foo")]
+   |                   ^^^^^^^^^^^^^^^
+   |
+   = help: only existing builtin attributes are allowed in core/std
+
+error: nonexistent builtin attribute `unknown_tool_attr::foo` used in `#[doc(attribute = "...")]`
+  --> $DIR/doc-attribute-unsupported.rs:13:19
+   |
+LL | #[doc(attribute = "unknown_tool_attr::foo")]
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only existing builtin attributes are allowed in core/std
+
+error: aborting due to 3 previous errors
 
