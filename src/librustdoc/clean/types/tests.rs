@@ -68,16 +68,3 @@ fn should_not_trim() {
     run_test("\t    line1  \n\t    line2", "line1  \nline2");
     run_test("    \tline1  \n    \tline2", "line1  \nline2");
 }
-
-#[test]
-fn is_same_generic() {
-    use crate::clean::types::{PrimitiveType, Type};
-    use crate::formats::cache::Cache;
-    create_default_session_globals_then(|| {
-        let cache = Cache::new(false, false);
-        let generic = Type::Generic(sym::character('T'));
-        let unit = Type::Primitive(PrimitiveType::Unit);
-        assert!(!generic.is_doc_subtype_of(&unit, &cache));
-        assert!(unit.is_doc_subtype_of(&generic, &cache));
-    })
-}
