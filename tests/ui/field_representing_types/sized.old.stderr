@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `field_of!(Generic<T>, count): Field` is not satisfied
   --> $DIR/sized.rs:20:19
    |
-LL |     impls_field::<field_of!(Generic<T>, count)>();
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the nightly-only, unstable trait `Field` is not implemented for `field_of!(Generic<T>, count)`
+LL | ...::<field_of!(Generic<T>, count)>();
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the nightly-only, unstable trait `Field` is not implemented for `field_of!(Generic<T>, count)`
    |
 note: required by a bound in `impls_field`
   --> $DIR/sized.rs:38:19
@@ -13,8 +13,8 @@ LL | fn impls_field<F: Field>() {}
 error[E0277]: the trait bound `field_of!(Generic<T>, last): Field` is not satisfied
   --> $DIR/sized.rs:22:19
    |
-LL |     impls_field::<field_of!(Generic<T>, last)>();
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the nightly-only, unstable trait `Field` is not implemented for `field_of!(Generic<T>, last)`
+LL | ...d::<field_of!(Generic<T>, last)>();
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the nightly-only, unstable trait `Field` is not implemented for `field_of!(Generic<T>, last)`
    |
 note: required by a bound in `impls_field`
   --> $DIR/sized.rs:38:19
@@ -25,8 +25,8 @@ LL | fn impls_field<F: Field>() {}
 error[E0277]: the trait bound `field_of!(MyDST, count): Field` is not satisfied
   --> $DIR/sized.rs:32:19
    |
-LL |     impls_field::<field_of!(MyDST, count)>();
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^ the nightly-only, unstable trait `Field` is not implemented for `field_of!(MyDST, count)`
+LL | ...field::<field_of!(MyDST, count)>();
+   |            ^^^^^^^^^^^^^^^^^^^^^^^ the nightly-only, unstable trait `Field` is not implemented for `field_of!(MyDST, count)`
    |
 note: required by a bound in `impls_field`
   --> $DIR/sized.rs:38:19
