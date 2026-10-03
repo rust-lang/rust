@@ -221,16 +221,23 @@ class StdRcProvider(printer_base):
     def __init__(self, valobj, is_atomic=False):
         self._valobj = valobj
         self._is_atomic = is_atomic
-        self._ptr = unwrap_unique_or_non_null(valobj["ptr"])
-        self._value = self._ptr["data" if is_atomic else "value"]
-        # FIXME(shua): the debuginfo template type should be 'str' not 'u8'
-        if self._ptr.type.target().name == "alloc::rc::RcInner<str>":
-            length = self._valobj["ptr"]["pointer"]["length"]
-            u8_ptr_ty = gdb.Type.pointer(gdb.lookup_type("u8"))
-            ptr = self._value.address.reinterpret_cast(u8_ptr_ty)
-            self._value = ptr.lazy_string(encoding="utf-8", length=length)
-        self._strong = unwrap_scalar_wrappers(self._ptr["strong"])
-        self._weak = unwrap_scalar_wrappers(self._ptr["weak"]) - 1
+
+        rc_value_ptr = valobj["ptr"]
+
+        self._ptr = unwrap_unique_or_non_null(rc_value_ptr["ptr"])
+
+        if self._ptr.type.name == "*const str":
+            self._value = self._ptr["data_ptr"].lazy_string(
+                encoding="utf-8", length=self._ptr["length"]
+            )
+        else:
+            self._value = self._ptr.dereference()
+
+        header_ptr_type = rc_value_ptr.type.template_argument(0).pointer()
+        header_ptr = self._ptr.reinterpret_cast(header_ptr_type) - 1
+
+        self._strong = unwrap_scalar_wrappers(header_ptr["strong"])
+        self._weak = unwrap_scalar_wrappers(header_ptr["weak"]) - 1
 
     def to_string(self):
         if self._is_atomic:
