@@ -181,6 +181,16 @@ mod e {
 #[cfg(true)]
 const H: () = ();
 
+trait T {
+    type Assoc: Into<u64>;
+
+    fn foo(&self) -> Self::Assoc;
+}
+
+impl T for () {
+    type Assoc = u64;
+    fn foo(&self) -> u64 { 0 }
+}
 
 fn main() {
     a::bar();
@@ -193,4 +203,5 @@ fn main() {
     let () = f.foo.into(); // Ok, `e` is behind a `cfg` attr
     let () = e::G.into(); // Ok, `e` is behind a `cfg` attr
     let () = H.into(); // Ok, `H` is behind a `cfg` attr
+    let _ = ().foo(); // Ok, `T::Assoc` has an `Into<_>` bound
 }

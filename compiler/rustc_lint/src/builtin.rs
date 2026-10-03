@@ -3485,6 +3485,25 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
             // its parent `mod`. Common for things like `libc::TIOCGWINSZ`.
             return;
         }
+
+        if let hir::ExprKind::MethodCall(_segment, _rcvr, _args, _) = rcvr.kind
+            && let Some(def_id) = cx.typeck_results().type_dependent_def_id(rcvr.hir_id)
+            && let output = cx.tcx.fn_sig(def_id).skip_binder().output().skip_binder()
+            && let ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, .. }) = output.kind()
+            && let bounds = cx.tcx.item_bounds(*def_id).instantiate_identity().skip_norm_wip()
+            && bounds.iter().any(|bound| {
+                Some(true)
+                    == bound
+                        .as_trait_clause()
+                        .map(|c| Some(c.def_id()) == cx.tcx.get_diagnostic_item(sym::Into))
+            })
+        {
+            // We called `.into()` in an assoc `fn foo() -> Self::Type` where `type Type: Into<_>;`.
+            // We can assume that calling `.into()` on this value is the *intended use*.
+            // We saw this in interaction of `object`+`gimli` crates.
+            return;
+        }
+
         if let Some(expn) = expr.span.macro_backtrace().next() {
             if expn.macro_def_id.map_or(false, |did| did.is_local()) {
                 cx.emit_span_lint(
@@ -3498,10 +3517,6 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
             return;
         }
 
-        if cx.tcx.crate_name(hir::def_id::LOCAL_CRATE).as_str() == "std" {
-            // Avoid triggering for gimli dep
-            return;
-        }
         cx.emit_span_lint(
             SELF_TYPE_CONVERSION,
             expr.span,
