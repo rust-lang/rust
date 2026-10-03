@@ -369,7 +369,7 @@ fn run_compiler_and_exit(
 
     // Invoke compiler, catch any unwinding panics and handle return code.
     let exit_code =
-        rustc_driver::catch_with_exit_code(move || rustc_driver::run_compiler(args, callbacks));
+        rustc_driver::catch_with_exit_code(move || rustc_driver::compiler_entrypoint(args, callbacks));
     exit(if exit_code == ExitCode::SUCCESS {
         rustc_driver::EXIT_SUCCESS
     } else {

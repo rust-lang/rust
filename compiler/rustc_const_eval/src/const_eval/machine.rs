@@ -10,13 +10,13 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_lint_defs::builtin::LONG_RUNNING_CONST_EVAL;
-use rustc_middle::mir;
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{self, FieldInfo, ScalarInt, Ty, TyCtxt};
+use rustc_middle::{mir, throw_machine_stop};
 use rustc_span::{Span, Symbol, bug, span_bug, sym};
 use rustc_target::callconv::FnAbi;
 use tracing::debug;
@@ -484,6 +484,10 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
         // CTFE-specific intrinsics.
         match intrinsic_name {
+            sym::abort => {
+                // Note that `abort` is also hooked separately in Miri.
+                throw_machine_stop!(ConstEvalErrKind::Abort);
+            }
             sym::ptr_guaranteed_cmp => {
                 let a = ecx.read_scalar(&args[0])?;
                 let b = ecx.read_scalar(&args[1])?;
@@ -604,7 +608,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 }
             }
 
-            sym::type_of => {
+            sym::type_id_type_of => {
                 let ty = ecx.read_type_id(&args[0])?;
                 ecx.write_type_info(ty, dest)?;
             }
@@ -623,7 +627,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_bool(is_mutable), dest)?;
             }
 
-            sym::size_of_type_id => {
+            sym::type_id_size_of => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let layout = ecx.layout_of(ty)?;
                 let variant_index = if layout.is_sized() {
@@ -760,7 +764,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_target_usize(variants_num as u64, ecx), dest)?;
             }
 
-            sym::variant_name => {
+            sym::type_id_variant_name => {
                 let base = ecx.read_type_id(&args[0])?;
 
                 let field_name = if let ty::Adt(def, _) = base.kind() {
@@ -786,7 +790,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 )?;
             }
 
-            sym::variant_non_exhaustive => {
+            sym::type_id_variant_non_exhaustive => {
                 let base = ecx.read_type_id(&args[0])?;
 
                 let non_exhaustive = if let ty::Adt(def, _) = base.kind() {
@@ -886,7 +890,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_type_id_generics(dest, ty)?;
             }
 
-            sym::non_exhaustive => {
+            sym::type_id_non_exhaustive => {
                 let ty = ecx.read_type_id(&args[0])?;
 
                 // FIXME(reflection): need a way to obtain non-exhaustiveness of a variant's fields.

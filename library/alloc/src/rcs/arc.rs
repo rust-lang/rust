@@ -23,9 +23,11 @@ use core::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use core::sync::atomic::{self, Atomic};
 use core::{borrow, fmt, hint};
 
-use crate::alloc::{AllocError, Allocator, AllocatorClone, Global, Layout, StaticAllocator};
 #[cfg(not(no_global_oom_handling))]
-use crate::alloc::{AllocatorNightly, handle_alloc_error};
+use crate::alloc::handle_alloc_error;
+use crate::alloc::{
+    AllocError, Allocator, AllocatorClone, AllocatorNightly, Global, Layout, StaticAllocator,
+};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::rc::is_dangling;
@@ -1210,7 +1212,7 @@ impl<T, A: Allocator> Arc<T, A> {
     /// assert_eq!(*new, 14);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "smart_pointer_map", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "smart_pointer_map", since = "1.100.0")]
     pub fn map<U>(this: Self, f: impl FnOnce(&T) -> U) -> Arc<U, A> {
         if size_of::<T>() == size_of::<U>()
             && align_of::<T>() == align_of::<U>()
@@ -5148,7 +5150,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for UniqueArc<T, A> {
     }
 }
 
-#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "allocator_api", since = "1.100.0")]
 unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Arc<T, A> {
     #[inline]
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
@@ -5199,6 +5201,9 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Arc<T, A> {
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+#[unstable_feature_bound(allocator_ext)]
+impl<T: ?Sized + Allocator, A: Allocator> AllocatorNightly for Arc<T, A> {}
 
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 unsafe impl<T: Allocator + ?Sized, A: AllocatorClone> AllocatorClone for Arc<T, A> {}

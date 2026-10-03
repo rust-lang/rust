@@ -1,5 +1,5 @@
 warning: function cannot return without recursing
-  --> $DIR/recursive-drop-elaboration.rs:13:1
+  --> $DIR/recursive-drop-elaboration.rs:18:1
    |
 LL | fn with_positive(fun: impl Fn(Alias<'_>)) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
@@ -11,7 +11,7 @@ LL |     with_positive(|&n| ());
    = note: `#[warn(unconditional_recursion)]` on by default
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/recursive-drop-elaboration.rs:15:20
+  --> $DIR/recursive-drop-elaboration.rs:20:20
    |
 LL |     with_positive(|&n| ());
    |                    ^-
@@ -25,7 +25,7 @@ LL +     with_positive(|n| ());
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/recursive-drop-elaboration.rs:22:20
+  --> $DIR/recursive-drop-elaboration.rs:27:20
    |
 LL |     with_positive(|&a| ());
    |                    ^-
@@ -39,7 +39,7 @@ LL +     with_positive(|a| ());
    |
 
 error[E0580]: `main` function has wrong type
-  --> $DIR/recursive-drop-elaboration.rs:20:1
+  --> $DIR/recursive-drop-elaboration.rs:25:1
    |
 LL | type Alias<'a> = impl T;
    |                  ------ the found opaque type

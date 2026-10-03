@@ -1,0 +1,127 @@
+#![warn(clippy::try_from_instead_of_from_str)]
+#![allow(dead_code, clippy::elidable_lifetime_names)]
+
+struct MyType;
+
+impl TryFrom<&str> for MyType {
+    //~^ try_from_instead_of_from_str
+
+    type Error = ();
+    fn try_from(_value: &str) -> Result<Self, Self::Error> {
+        Ok(MyType)
+    }
+}
+
+struct Bar;
+
+impl TryFrom<&str> for Bar {
+    //~^ try_from_instead_of_from_str
+
+    type Error = &'static str;
+    fn try_from(_value: &str) -> Result<Self, Self::Error> {
+        Ok(Bar)
+    }
+}
+
+struct Tarte<'a>(&'a ());
+
+// We ensure that we generate the `impl<'a>` generics correctly and that
+// lifetimes on the `Self` type are allowed.
+impl<'a> TryFrom<&str> for Tarte<'a> {
+    //~^ try_from_instead_of_from_str
+
+    type Error = &'static str;
+    fn try_from(_value: &str) -> Result<Self, Self::Error> {
+        Ok(Tarte(&()))
+    }
+}
+
+struct Foo;
+
+// Should not generate a warning because the `Error` associated type
+// has a lifetime, which cannot be constrained in `FromStr`.
+impl<'a> TryFrom<&'a str> for Foo {
+    type Error = &'a str;
+    fn try_from(_value: &str) -> Result<Self, Self::Error> {
+        Ok(Foo)
+    }
+}
+
+struct Foo2;
+
+// Same here. The `Error` associated type has a lifetime so no suggestion.
+impl<'a> TryFrom<&'a str> for Foo2 {
+    type Error = Tarte<'a>;
+
+    fn try_from(_value: &str) -> Result<Self, Self::Error> {
+        Ok(Foo2)
+    }
+}
+
+struct Lifetime1;
+
+struct LifetimeErr1<'a>(&'a ());
+
+// This should not lint because the error type uses an unconstrained lifetime (`'a`).
+impl<'a> TryFrom<&'a str> for Lifetime1 {
+    type Error = LifetimeErr1<'a>;
+
+    fn try_from(_value: &str) -> Result<Self, Self::Error> {
+        Ok(Lifetime1)
+    }
+}
+
+struct Lifetime2;
+struct LifetimeErr2<T>(T);
+
+// This should not lint because the error type uses an unconstrained lifetime (`'a` in `&'a i8`).
+impl<'a> TryFrom<&'a str> for Lifetime2 {
+    type Error = LifetimeErr2<for<'b> fn(&'b u32, &'a i8)>;
+
+    fn try_from(_value: &str) -> Result<Self, Self::Error> {
+        Ok(Lifetime2)
+    }
+}
+
+struct Lifetime3;
+
+// This	one should lint because there is no unconstrained lifetimes (`dyn` and `for`).
+impl TryFrom<&str> for Lifetime3 {
+    //~^ try_from_instead_of_from_str
+    type Error = LifetimeErr2<for<'b> fn(&'b u32)>;
+
+    fn try_from(_value: &str) -> Result<Self, Self::Error> {
+        Ok(Lifetime3)
+    }
+}
+
+struct Lifetime4<T>(T);
+
+// This	one should lint because there is no unconstrained lifetimes (constrained by `Self`).
+impl<'a> TryFrom<&str> for Lifetime4<&'a ()> {
+    //~^ try_from_instead_of_from_str
+    type Error = LifetimeErr2<&'a ()>;
+
+    fn try_from(_value: &str) -> Result<Self, Self::Error> {
+        Ok(Lifetime4(&()))
+    }
+}
+
+// Should not lint because it already implements `FromStr`.
+struct Already;
+
+impl TryFrom<&str> for Already {
+    type Error = ();
+    fn try_from(_value: &str) -> Result<Self, Self::Error> {
+        Ok(Already)
+    }
+}
+
+impl std::str::FromStr for Already {
+    type Err = ();
+    fn from_str(_s: &str) -> Result<Self, Self::Err> {
+        Ok(Already)
+    }
+}
+
+fn main() {}

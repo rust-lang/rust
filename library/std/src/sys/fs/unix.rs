@@ -1,7 +1,5 @@
 #![allow(nonstandard_style)]
 #![allow(unsafe_op_in_unsafe_fn)]
-// miri has some special hacks here that make things unused.
-#![cfg_attr(miri, allow(unused))]
 
 #[cfg(test)]
 mod tests;
@@ -988,7 +986,6 @@ impl Drop for DirStream {
     fn drop(&mut self) {
         // dirfd isn't supported everywhere
         #[cfg(not(any(
-            miri,
             target_os = "redox",
             target_os = "nto",
             target_os = "qnx",
@@ -1030,16 +1027,13 @@ impl DirEntry {
     pub fn metadata(&self) -> io::Result<FileAttr> {
         cfg_select! {
             // Use directory handle where possible
-            all(
-                any(
-                    all(target_os = "linux", not(target_env = "musl")),
-                    target_os = "android",
-                    target_os = "fuchsia",
-                    target_os = "hurd",
-                    target_os = "illumos",
-                    target_vendor = "apple",
-                ),
-                not(miri) // no dirfd on Miri
+            any(
+                all(target_os = "linux", not(target_env = "musl")),
+                target_os = "android",
+                target_os = "fuchsia",
+                target_os = "hurd",
+                target_os = "illumos",
+                target_vendor = "apple",
             ) => {
                 let fd = cvt(unsafe { dirfd(self.dir.dirp.0) })?;
 

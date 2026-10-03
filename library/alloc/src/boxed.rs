@@ -206,7 +206,7 @@ use core::task::{Context, Poll};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
-use crate::alloc::{AllocError, Allocator, Global, Layout, StaticAllocator};
+use crate::alloc::{AllocError, Allocator, AllocatorNightly, Global, Layout, StaticAllocator};
 use crate::raw_vec::RawVec;
 #[cfg(not(no_global_oom_handling))]
 use crate::str::from_boxed_utf8_unchecked_in;
@@ -235,7 +235,7 @@ pub use thin::ThinBox;
 // compiler or ICEs will happen.
 pub struct Box<
     T: ?Sized,
-    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")] A: Allocator = Global,
+    #[stable(feature = "allocator_api", since = "1.100.0")] A: Allocator = Global,
 >(Unique<T>, A);
 
 /// Monomorphic function for allocating an uninit `Box`.
@@ -443,7 +443,7 @@ impl<T, A: Allocator> Box<T, A> {
     /// let five = Box::new_in(5, System);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "allocator_api", since = "1.100.0")]
     #[must_use]
     #[inline]
     pub fn new_in(x: T, alloc: A) -> Self {
@@ -676,7 +676,7 @@ impl<T, A: Allocator> Box<T, A> {
     /// let c = Box::write(uninit, 6);
     /// assert_eq!(*c, 6);
     /// ```
-    #[stable(feature = "box_take", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "box_take", since = "1.100.0")]
     pub fn take(boxed: Self) -> (T, Box<mem::MaybeUninit<T>, A>) {
         // SAFETY: Reading out an initialised value & leaving behind a
         // box with uninit contents.
@@ -704,7 +704,7 @@ impl<T, A: Allocator> Box<T, A> {
     /// assert_eq!(*new, 14);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "smart_pointer_map", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "smart_pointer_map", since = "1.100.0")]
     pub fn map<U>(this: Self, f: impl FnOnce(T) -> U) -> Box<U, A> {
         let (value, allocation) = Box::take(this);
         let (raw, alloc) = Box::into_non_null_with_allocator(allocation);
@@ -1562,7 +1562,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// [memory layout]: self#memory-layout
     /// [considerations for unsafe code]: self#considerations-for-unsafe-code
-    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "allocator_api", since = "1.100.0")]
     #[inline]
     pub unsafe fn from_raw_in(raw: *mut T, alloc: A) -> Self {
         // SAFETY: Upheld by caller.
@@ -1615,7 +1615,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// [memory layout]: self#memory-layout
     /// [considerations for unsafe code]: self#considerations-for-unsafe-code
-    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "allocator_api", since = "1.100.0")]
     #[inline]
     pub unsafe fn from_non_null_in(raw: NonNull<T>, alloc: A) -> Self {
         // SAFETY: guaranteed by the caller.
@@ -1665,7 +1665,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// [memory layout]: self#memory-layout
     #[must_use = "losing the pointer will leak memory"]
-    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "allocator_api", since = "1.100.0")]
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     #[inline]
     pub const fn into_raw_with_allocator(b: Self) -> (*mut T, A) {
@@ -1723,7 +1723,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// [memory layout]: self#memory-layout
     #[must_use = "losing the pointer will leak memory"]
-    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "allocator_api", since = "1.100.0")]
     #[inline]
     pub fn into_non_null_with_allocator(b: Self) -> (NonNull<T>, A) {
         let (ptr, alloc) = Box::into_raw_with_allocator(b);
@@ -1869,7 +1869,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// Note: this is an associated function, which means that you have
     /// to call it as `Box::allocator(&b)` instead of `b.allocator()`. This
     /// is so that there is no conflict with a method on the inner type.
-    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "allocator_api", since = "1.100.0")]
     #[inline]
     pub fn allocator(b: &Self) -> &A {
         &b.1
@@ -2490,7 +2490,7 @@ impl<E: Error, A: Allocator> Error for Box<E, A> {
     }
 }
 
-#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "allocator_api", since = "1.100.0")]
 unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Box<T, A> {
     #[inline]
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
@@ -2541,6 +2541,9 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Box<T, A> {
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+#[unstable_feature_bound(allocator_ext)]
+impl<T: ?Sized + Allocator, A: Allocator> AllocatorNightly for Box<T, A> {}
 
 #[unstable(feature = "random", issue = "130703")]
 impl<R: core::random::Rng + ?Sized, A: Allocator> core::random::Rng for Box<R, A> {

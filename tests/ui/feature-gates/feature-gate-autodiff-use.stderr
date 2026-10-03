@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature `autodiff`
-  --> $DIR/feature-gate-autodiff-use.rs:16:3
+  --> $DIR/feature-gate-autodiff-use.rs:11:3
    |
 LL | #[autodiff_reverse(dfoo)]
    |   ^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL | #[autodiff_reverse(dfoo)]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `autodiff`
-  --> $DIR/feature-gate-autodiff-use.rs:9:5
+  --> $DIR/feature-gate-autodiff-use.rs:5:5
    |
 LL | use std::autodiff::autodiff_reverse;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

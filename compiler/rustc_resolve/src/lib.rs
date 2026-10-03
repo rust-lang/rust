@@ -8,7 +8,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(trim_prefix_suffix))]
 #![feature(arbitrary_self_types)]
 #![feature(const_default)]
 #![feature(const_trait_impl)]

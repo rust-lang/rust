@@ -23,7 +23,7 @@ use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::compile::{
     get_codegen_backend_file, libgccjit_path_relative_to_cg_dir, normalize_codegen_backend_name,
 };
-use crate::core::build_steps::doc::DocumentationFormat;
+use crate::core::build_steps::doc::{CompilerWithTools, DocumentationFormat};
 use crate::core::build_steps::gcc::GccTargetPair;
 use crate::core::build_steps::llvm::{
     LLVM_CI_LINK_TYPE_PATH, LlvmBuildStatus, LlvmKind, get_llvm_build_status,
@@ -185,7 +185,7 @@ impl CommandLineStep for JsonDocs {
     }
 }
 
-/// Builds the `rustc-docs` installer component.
+/// Builds the `rustc-docs` component.
 /// Apart from the documentation of the `rustc_*` crates, it also includes the documentation of
 /// various in-tree helper tools (bootstrap, build_helper, tidy),
 /// and also rustc_private tools like rustdoc, clippy, miri or rustfmt.
@@ -214,11 +214,12 @@ impl CommandLineStep for RustcDocs {
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let target = self.target;
-        builder.run_default_doc_steps();
+        let combined_docs =
+            builder.ensure(CompilerWithTools::for_stage(builder, builder.top_stage, self.target));
 
         let mut tarball = Tarball::new(builder, "rustc-docs", &target.triple);
         tarball.set_product_name("Rustc Documentation");
-        tarball.add_bulk_dir(builder.compiler_doc_out(target), "share/doc/rust/html/rustc-docs");
+        tarball.add_bulk_dir(combined_docs, "share/doc/rust/html/rustc-docs");
         tarball.generate()
     }
 }

@@ -89,5 +89,11 @@ LL |         pub unsafe fn whee() {
 LL | very_unsafe!();
    | -------------- in this macro invocation
 
-error: aborting due to 12 previous errors
+error: unsafe function's docs are missing a `# Safety` section
+  --> tests/ui/doc_unsafe.rs:199:13
+   |
+LL |             pub unsafe fn expanded_unsafe_fn_without_safety() {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 13 previous errors
 

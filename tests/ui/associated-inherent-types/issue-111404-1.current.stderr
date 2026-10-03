@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-111404-1.rs:10:11
+  --> $DIR/issue-111404-1.rs:14:11
    |
 LL | fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
@@ -8,7 +8,7 @@ LL | fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {}
               found struct `Foo<for<'b> fn(&'b ())>`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-111404-1.rs:10:11
+  --> $DIR/issue-111404-1.rs:14:11
    |
 LL | fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
@@ -18,13 +18,13 @@ LL | fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {}
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: higher-ranked subtype error
-  --> $DIR/issue-111404-1.rs:10:1
+  --> $DIR/issue-111404-1.rs:14:1
    |
 LL | fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: higher-ranked subtype error
-  --> $DIR/issue-111404-1.rs:10:1
+  --> $DIR/issue-111404-1.rs:14:1
    |
 LL | fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL | fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {}
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: higher-ranked subtype error
-  --> $DIR/issue-111404-1.rs:10:8
+  --> $DIR/issue-111404-1.rs:14:8
    |
 LL | fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {}
    |        ^

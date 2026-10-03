@@ -40,19 +40,22 @@ sudo chmod --reference=/usr/lib/git-core/git-subtree~ /usr/lib/git-core/git-subt
 sudo chown --reference=/usr/lib/git-core/git-subtree~ /usr/lib/git-core/git-subtree
 ```
 
-> _Note:_ The first time running `git subtree push` a cache has to be built.
+> [!NOTE]
+> The first time running `git subtree push` a cache has to be built.
 > This involves going through the complete Clippy history once. For this you
 > have to increase the stack limit though, which you can do with `ulimit -s
 > 60000`. Make sure to run the `ulimit` command from the same session you call
 > git subtree.
 
-> _Note:_ If you are a Debian user, `dash` is the shell used by default for
+> [!NOTE]
+> If you are a Debian user, `dash` is the shell used by default for
 > scripts instead of `sh`. This shell has a hardcoded recursion limit set to
 > 1,000. In order to make this process work, you need to force the script to run
 > `bash` instead. You can do this by editing the first line of the `git-subtree`
 > script and changing `sh` to `bash`.
 
-> Note: The following sections assume that you have set up remotes following the
+> [!NOTE]
+> The following sections assume that you have set up remotes following the
 > instructions in [defining remotes].
 
 [gitgitgadget-pr]: https://github.com/gitgitgadget/git/pull/493
@@ -67,22 +70,25 @@ to be run inside the `rust` directory):
 2. Checkout the commit from the latest available nightly. You can get it using
    `rustup check`.
 3. Sync the changes to the rust-copy of Clippy to your Clippy fork:
-    ```bash
-    # Be sure to either use a net-new branch, e.g. `rustup`, or delete the branch beforehand
-    # because changes cannot be fast forwarded and you have to run this command again.
-    git subtree push -P src/tools/clippy clippy-local rustup
-    ```
+   ```bash
+   # Be sure to either use a net-new branch, e.g. `rustup`, or delete the branch beforehand
+   # because changes cannot be fast forwarded and you have to run this command again.
+   git subtree push -P src/tools/clippy clippy-local rustup
+   ```
 
-    > _Note:_ Most of the time you have to create a merge commit in the
-    > `rust-clippy` repo (this has to be done in the Clippy repo, not in the
-    > rust-copy of Clippy):
-    ```bash
-    git fetch upstream  # assuming upstream is the rust-lang/rust remote
-    git switch rustup
-    git merge upstream/main --no-ff
-    ```
-    > Note: This is one of the few instances where a merge commit is allowed in
-    > a PR.
+> [!NOTE]
+> Most of the time you have to create a merge commit in the
+> `rust-clippy` repo (this has to be done in the Clippy repo, not in the
+> rust-copy of Clippy):
+> ```bash
+> git fetch upstream  # assuming upstream is the rust-lang/rust remote
+> git switch rustup
+> git merge upstream/main --no-ff
+> ```
+> 
+> This is one of the few instances where a merge commit is allowed in
+> a PR.
+
 4. Bump the nightly version in the Clippy repository by running these commands:
    ```bash
    cargo dev sync update_nightly
