@@ -263,7 +263,7 @@ macro_rules! acquire {
     note = "consider using `Arc::clone`"
 )]
 pub struct Arc<
-    T: ?Sized,
+    #[rustc_assert_variance(covariant)] T: ?Sized,
     // FIXME: When stabilizing this parameter, the `AllocatorNightly`
     // bound on the `From<Box>` impl *must* be weaked to `Allocator`,
     // as `Box` is fundamental!

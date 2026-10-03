@@ -21,6 +21,7 @@ LL |     x.lock().unwrap() += 1;
    |
 note: `std::sync::MutexGuard<'_, usize>` does not implement `AddAssign<{integer}>`
   --> $SRC_DIR/std/src/sync/poison/mutex.rs:LL:COL
+  ::: $SRC_DIR/std/src/sync/poison/mutex.rs:LL:COL
    |
    = note: `std::sync::MutexGuard<'_, usize>` is defined in another crate
 help: `+=` can be used on `usize` if you dereference the left-hand side
@@ -53,6 +54,7 @@ LL |     y += 1;
    |
 note: `std::sync::MutexGuard<'_, usize>` does not implement `AddAssign<{integer}>`
   --> $SRC_DIR/std/src/sync/poison/mutex.rs:LL:COL
+  ::: $SRC_DIR/std/src/sync/poison/mutex.rs:LL:COL
    |
    = note: `std::sync::MutexGuard<'_, usize>` is defined in another crate
 help: `+=` can be used on `usize` if you dereference the left-hand side
