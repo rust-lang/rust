@@ -1262,14 +1262,6 @@ impl CommandLineStep for StdarchGenCheck {
             return;
         };
 
-        let mut path_dirs: Vec<PathBuf> = Vec::new();
-        if let Some(rustfmt_dir) = rustfmt_path.parent() {
-            path_dirs.push(rustfmt_dir.to_path_buf());
-        }
-        let old_path = env::var_os("PATH").unwrap_or_default();
-        let new_path = env::join_paths(path_dirs.into_iter().chain(env::split_paths(&old_path)))
-            .expect("could not build PATH for stdarch-gen-check");
-
         // Keep cargo's build artifacts out of the (possibly read-only) source tree.
         let cargo_target_dir = builder.out.join("stdarch-gen-check").join("target");
 
@@ -1289,11 +1281,12 @@ impl CommandLineStep for StdarchGenCheck {
                 .arg(pkg)
                 .arg("--release")
                 .arg("--")
-                .args(args);
+                .args(args)
+                .arg("--rustfmt-path")
+                .arg(&rustfmt_path);
             // RUSTC_BOOTSTRAP=1 allow nightly features when building tools against stage0.
             cmd.env("RUSTC_BOOTSTRAP", "1");
             cmd.env("RUSTC", &builder.initial_rustc);
-            cmd.env("PATH", &new_path);
             cmd.env("CARGO_TARGET_DIR", &cargo_target_dir);
             cmd.env("STDARCH_GEN_MODE", mode);
             cmd.run(builder);
