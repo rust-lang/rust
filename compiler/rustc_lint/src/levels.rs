@@ -706,13 +706,12 @@ where
                 // const _: () = ();
                 //
                 // FIXME: just allow everything?
-                let can_parse_pre_expansion = attr.meta_item_list().is_some();
                 (attr.path_matches(&[sym::allow])
                     || attr.path_matches(&[sym::warn])
                     || attr.path_matches(&[sym::deny])
                     || attr.path_matches(&[sym::forbid])
                     || attr.path_matches(&[sym::expect]))
-                    && can_parse_pre_expansion
+                    && attr.meta_item_list().is_some()
             }),
             Target::Crate,
             DUMMY_SP,
