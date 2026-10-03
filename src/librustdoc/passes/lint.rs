@@ -27,8 +27,15 @@ impl DocVisitor<'_> for Linter<'_, '_> {
             // If non-local, no need to check anything.
             return;
         };
-        let dox = item.doc_value();
-        if !dox.is_empty() {
+        for (def_id, dox) in item.doc_values().iter() {
+            if dox.is_empty() {
+                continue;
+            }
+            if let Some(def_id) = def_id
+                && !def_id.is_local()
+            {
+                continue;
+            }
             let may_have_link = dox.contains(&[':', '['][..]);
             let may_have_block_comment_or_html = dox.contains(['<', '>']);
             let may_have_table = dox.contains(&['|'][..]);
