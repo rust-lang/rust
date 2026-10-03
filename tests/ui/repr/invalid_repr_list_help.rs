@@ -18,5 +18,5 @@ pub enum OwO4 {
 }
 
 #[repr(uwu)] //~ERROR: malformed `repr` attribute input
-#[doc(owo)]  //~ERROR: unknown `doc` attribute
+#[doc(owo)]  //~ERROR: reserved `doc` attribute
 pub struct Owo5;
