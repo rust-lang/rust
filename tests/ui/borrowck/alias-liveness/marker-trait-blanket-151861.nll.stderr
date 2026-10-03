@@ -1,0 +1,23 @@
+error[E0597]: `s` does not live long enough
+  --> $DIR/marker-trait-blanket-151861.rs:35:23
+   |
+LL |         let s = String::from("hi");
+   |             - binding `s` declared here
+LL |         let r: &str = &s;
+   |                       ^^ borrowed value does not live long enough
+LL |         o = foo(r);
+LL |     }
+   |     - `s` dropped here while still borrowed
+LL |     let out: &str = o.get();
+LL |     requires_static(out);
+   |     -------------------- argument requires that `s` is borrowed for `'static`
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/marker-trait-blanket-151861.rs:29:23
+   |
+LL | fn requires_static<T: 'static>(val: T) {}
+   |                       ^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.
