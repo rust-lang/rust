@@ -127,6 +127,56 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
         // the resulting `ch` is a valid Unicode Scalar Value.
         unsafe { next_code_point_reverse(&mut self.iter).map(|ch| char::from_u32_unchecked(ch)) }
     }
+
+    #[inline]
+    fn advance_back_by(&mut self, mut remainder: usize) -> Result<(), NonZero<usize>> {
+        const CHUNK_SIZE: usize = 32;
+
+        if remainder >= CHUNK_SIZE {
+            let mut chunks = self.iter.as_slice().as_rchunks::<CHUNK_SIZE>().1.iter().rev();
+            let mut bytes_skipped: usize = 0;
+
+            while remainder > CHUNK_SIZE
+                && let Some(chunk) = chunks.next()
+            {
+                bytes_skipped += CHUNK_SIZE;
+
+                let mut start_bytes = [false; CHUNK_SIZE];
+
+                for i in 0..CHUNK_SIZE {
+                    start_bytes[i] = !super::validations::utf8_is_cont_byte(chunk[i]);
+                }
+
+                remainder -= start_bytes.into_iter().map(|i| i as u8).sum::<u8>() as usize;
+            }
+
+            // The skipped bytes may begin in the middle of a char whose leading
+            // byte was not counted. Keep its continuation bytes in the iterator.
+            while bytes_skipped > 0 {
+                let b = self.iter.as_slice()[self.iter.len() - bytes_skipped];
+                if !super::validations::utf8_is_cont_byte(b) {
+                    break;
+                }
+                bytes_skipped -= 1;
+            }
+
+            // SAFETY: The amount of bytes exists since we just iterated over them,
+            // so advance_back_by will succeed.
+            unsafe { self.iter.advance_back_by(bytes_skipped).unwrap_unchecked() };
+        }
+
+        while (remainder > 0) && (self.iter.len() > 0) {
+            remainder -= 1;
+            // Skip the continuation bytes (if any), then the leading byte.
+            while let Some(&b) = self.iter.next_back() {
+                if !super::validations::utf8_is_cont_byte(b) {
+                    break;
+                }
+            }
+        }
+
+        NonZero::new(remainder).map_or(Ok(()), Err)
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
