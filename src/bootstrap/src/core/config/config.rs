@@ -46,6 +46,7 @@ use crate::core::config::toml::rust::{
 use crate::core::config::toml::target::{
     DefaultLinuxLinkerOverride, Target, TomlTarget, default_linux_linker_overrides,
 };
+use crate::core::config::toml::tpde::Tpde;
 use crate::core::config::{
     Allocator, CompilerBuiltins, CompressDebuginfo, DebuggerPath, DebuginfoLevel, DryRun,
     GccCiMode, LlvmCiMode, LlvmLibunwind, Merge, ReplaceOpt, RustcLto, SplitDebuginfo,
@@ -302,6 +303,7 @@ pub(crate) struct Config {
     pub enzyme_info: channel::GitInfo,
     pub in_tree_llvm_info: channel::GitInfo,
     pub in_tree_gcc_info: channel::GitInfo,
+    pub in_tree_tpde_info: channel::GitInfo,
 
     /// rustc/cargo/rustdoc/clippy paths specified in the config file
     /// Access the `initial_` fields from `Session` to use either the externally configured
@@ -345,6 +347,13 @@ pub(crate) struct Config {
     pub exec_ctx: ExecutionContext,
 
     pub wasm_proc_macros: bool,
+
+    // Whether or not to include TPDE in the built sysroot
+    pub rust_tpde: bool,
+    // TPDE codegen options
+    pub tpde_optimize: bool,
+    pub tpde_release_debuginfo: bool,
+    pub tpde_assertions: bool,
 }
 
 impl Config {
@@ -478,6 +487,7 @@ impl Config {
             target: toml_target,
             dist: toml_dist,
             pgo: toml_pgo,
+            tpde: toml_tpde,
             profile: _,
             include: _,
         } = toml;
@@ -621,6 +631,7 @@ impl Config {
             rustflags: rust_rustflags,
             stdlib_semver_baseline: rust_stdlib_semver_baseline,
             wasm_proc_macros,
+            tpde: rust_tpde,
         } = toml_rust.unwrap_or_default();
 
         let Llvm {
@@ -669,6 +680,12 @@ impl Config {
             download_ci_gcc: gcc_download_ci_gcc,
             libgccjit_libs_dir: gcc_libgccjit_libs_dir,
         } = toml_gcc.unwrap_or_default();
+
+        let Tpde {
+            optimize: tpde_optimize,
+            release_debuginfo: tpde_release_debuginfo,
+            assertions: tpde_assertions,
+        } = toml_tpde.unwrap_or_default();
 
         let Pgo {
             rustc: pgo_rustc,
@@ -1361,6 +1378,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
         let clippy_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/clippy"));
         let in_tree_gcc_info = git_info(&exec_ctx, false, &src.join("src/gcc"));
         let in_tree_llvm_info = git_info(&exec_ctx, false, &src.join("src/llvm-project"));
+        let in_tree_tpde_info = git_info(&exec_ctx, false, &src.join("src/tpde"));
         let enzyme_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/enzyme"));
         let miri_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/miri"));
         let rust_analyzer_info =
@@ -1463,6 +1481,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             hosts,
             in_tree_gcc_info,
             in_tree_llvm_info,
+            in_tree_tpde_info,
             include_default_paths: flags_include_default_paths,
             incremental: flags_incremental || rust_incremental == Some(true),
             jobs: Some(threads_from_config(flags_jobs.or(build_jobs).unwrap_or(0))),
@@ -1572,6 +1591,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 .unwrap_or(BTreeSet::from([String::from("panic-unwind")])),
             rust_strip: rust_strip.unwrap_or(false),
             rust_thin_lto_import_instr_limit,
+            rust_tpde: rust_tpde.unwrap_or(false),
             rust_validate_mir_opts,
             rust_verify_llvm_ir: rust_verify_llvm_ir.unwrap_or(false),
             rustc_debug_assertions: rust_rustc_debug_assertions.unwrap_or(rust_debug == Some(true)),
@@ -1604,6 +1624,9 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             tools_debug_assertions: rust_tools_debug_assertions
                 .or(rust_rustc_debug_assertions)
                 .unwrap_or(rust_debug == Some(true)),
+            tpde_assertions: tpde_assertions.unwrap_or(false),
+            tpde_optimize: tpde_optimize.unwrap_or(true),
+            tpde_release_debuginfo: tpde_release_debuginfo.unwrap_or(true),
             vendor,
             verbose_tests,
             wasm_proc_macros: wasm_proc_macros.unwrap_or(false),
