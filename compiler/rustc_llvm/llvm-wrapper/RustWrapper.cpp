@@ -195,16 +195,6 @@ LLVMRustVerifyFunction(LLVMValueRef Fn, LLVMRustVerifierFailureAction Action) {
   return LLVMVerifyFunction(Fn, fromRust(Action));
 }
 
-extern "C" LLVMValueRef LLVMRustGetOrInsertFunction(LLVMModuleRef M,
-                                                    const char *Name,
-                                                    size_t NameLen,
-                                                    LLVMTypeRef FunctionTy) {
-  return wrap(unwrap(M)
-                  ->getOrInsertFunction(StringRef(Name, NameLen),
-                                        unwrap<FunctionType>(FunctionTy))
-                  .getCallee());
-}
-
 // Get the global variable with the given name if it exists or create a new
 // external global.
 extern "C" LLVMValueRef
@@ -1010,11 +1000,6 @@ extern "C" void LLVMRustRemoveFnAttribute(LLVMValueRef Fn, const char *Name,
   if (auto *F = dyn_cast<Function>(unwrap<Value>(Fn))) {
     F->removeFnAttr(StringRef(Name, NameLen));
   }
-}
-
-extern "C" void LLVMRustGlobalAddMetadata(LLVMValueRef Global, unsigned Kind,
-                                          LLVMMetadataRef MD) {
-  unwrap<GlobalObject>(Global)->addMetadata(Kind, *unwrap<MDNode>(MD));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateCompileUnit(

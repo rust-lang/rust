@@ -993,6 +993,11 @@ unsafe extern "C" {
         KindID: MetadataKindId,
         Metadata: &'a Metadata,
     );
+    pub(crate) fn LLVMGlobalAddMetadata<'ll>(
+        Global: &'ll Value,
+        Kind: MetadataKindId,
+        MD: &'ll Metadata,
+    );
     pub(crate) safe fn LLVMValueAsMetadata(Node: &Value) -> &Metadata;
 
     // Operations on constants of any type
@@ -1124,6 +1129,12 @@ unsafe extern "C" {
         Name: *const c_char,
         FunctionTy: &'a Type,
     ) -> &'a Value;
+    pub(crate) fn LLVMGetOrInsertFunction<'ll>(
+        M: &'ll Module,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        FunctionTy: &'ll Type,
+    ) -> &'ll Value;
     pub(crate) fn LLVMDeleteFunction(Fn: &Value);
 
     // Operations about llvm intrinsics
@@ -1962,12 +1973,6 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustDisableSystemDialogsOnCrash();
 
     // Operations on all values
-    /// FIXME: After dropping LLVM 21, migrate to LLVM-C's `LLVMGlobalAddMetadata`.
-    pub(crate) fn LLVMRustGlobalAddMetadata<'a>(
-        Val: &'a Value,
-        KindID: MetadataKindId,
-        Metadata: &'a Metadata,
-    );
     pub(crate) fn LLVMRustIsNonGVFunctionPointerTy(Val: &Value) -> bool;
     pub(crate) fn LLVMRustStripPointerCasts<'a>(Val: &'a Value) -> &'a Value;
 
@@ -2033,13 +2038,6 @@ unsafe extern "C" {
     ) -> &Attribute;
 
     // Operations on functions
-    /// FIXME: After dropping LLVM 21, migrate to LLVM-C's `LLVMGetOrInsertFunction`.
-    pub(crate) fn LLVMRustGetOrInsertFunction<'a>(
-        M: &'a Module,
-        Name: *const c_char,
-        NameLen: size_t,
-        FunctionTy: &'a Type,
-    ) -> &'a Value;
     pub(crate) fn LLVMRustAddFunctionAttributes<'a>(
         Fn: &'a Value,
         index: c_uint,
