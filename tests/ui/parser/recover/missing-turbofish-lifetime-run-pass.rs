@@ -1,0 +1,9 @@
+//@ run-rustfix
+struct Struct<'a>(&'a str);
+
+fn main() {
+    let s = Struct<'_>("hi");
+    //~^ ERROR labels cannot use keyword names
+    //~| HELP use `::<...>` instead of `<...>` to specify lifetime arguments for `Struct`
+    println!("{}", s.0);
+}

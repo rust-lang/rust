@@ -203,6 +203,82 @@ impl<'a> Parser<'a> {
 
             lhs = match op.node {
                 AssocOp::Binary(ast_op) => {
+                    if ast_op == ast::BinOpKind::Lt
+                        && let Some((ident, kind)) = self.token.lifetime()
+                        && self.look_ahead(1, |t| *t == token::Gt)
+                        && let ExprKind::Path(..) = &lhs.kind
+                    {
+                        let ExprKind::Path(qself, mut path) = lhs.kind.clone() else {
+                            unreachable!("matched above")
+                        };
+
+                        // Intercept missing turbofish (e.g. `Struct<'_>`, `Struct<'a>`).
+                        // Match normal label parsing diagnostics: reserved keywords emit
+                        // `KeywordLabel`, named lifetimes emit `UnexpectedTokenAfterLabel`.
+                        let mut err = if kind == IdentKind::Normal
+                            && ident.without_first_quote().is_reserved()
+                        {
+                            self.dcx()
+                                .create_err(crate::diagnostics::KeywordLabel { span: ident.span })
+                        } else {
+                            self.dcx().create_err(crate::diagnostics::UnexpectedTokenAfterLabel {
+                                span: self.look_ahead(1, |t| t.span), // the `>` token
+                                remove_label: None,
+                                enclose_in_block: None,
+                            })
+                        };
+
+                        let op_span = op.span;
+                        err.span_suggestion(
+                            op_span.shrink_to_lo(),
+                            format!(
+                                "use `::<...>` instead of `<...>` to specify lifetime arguments for `{}`",
+                                path.segments.last().expect("a Path always has at least one segment").ident
+                            ),
+                            "::",
+                            Applicability::MachineApplicable,
+                        );
+                        err.emit();
+
+                        self.bump(); // consume lifetime
+                        let gt_span = self.token.span;
+                        self.bump(); // consume `>`
+
+                        // Graft the lifetime onto the `lhs` path.
+                        if let Some(last_segment) = path.segments.last_mut() {
+                            let arg = ast::GenericArg::Lifetime(ast::Lifetime {
+                                id: ast::DUMMY_NODE_ID,
+                                ident,
+                            });
+                            let args = ast::AngleBracketedArgs {
+                                span: op_span.to(gt_span),
+                                args: thin_vec::thin_vec![ast::AngleBracketedArg::Arg(arg)],
+                            };
+                            last_segment.args =
+                                Some(Box::new(ast::GenericArgs::AngleBracketed(args)));
+                        }
+
+                        // Resume parsing as a struct literal.
+                        if self.token == token::OpenBrace {
+                            if let Some(expr) = self.maybe_parse_struct_expr(&qself, &path) {
+                                lhs = expr?;
+                                continue;
+                            }
+                        }
+
+                        // Otherwise, resume parsing as a postfix expression (e.g. function call).
+                        let mut lhs_expr = *lhs;
+                        lhs_expr.kind = ExprKind::Path(qself, path);
+                        let lhs_span = lhs_expr.span;
+                        let recovered_lhs = Box::new(lhs_expr);
+                        lhs = self.parse_expr_dot_or_call_with(
+                            ast::AttrVec::new(),
+                            recovered_lhs,
+                            lhs_span,
+                        )?;
+                        continue;
+                    }
+
                     let (rhs, span) = finish_parsing_bin_op(self)?;
                     self.mk_expr(span, self.mk_binary(respan(op.span, ast_op), lhs, rhs))
                 }
