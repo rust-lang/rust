@@ -256,6 +256,17 @@ impl UnixSocketFileDescription for UdpSocket {
         interp_ok(self.socket.local_addr().map_err(IoError::HostError))
     }
 
+    fn getpeername<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<SocketAddr, IoError>>,
+    ) -> InterpResult<'tcx> {
+        assert!(communicate_allowed, "cannot have `UdpSocket` with isolation enabled!");
+
+        finish.call(ecx, self.socket.peer_addr().map_err(IoError::HostError))
+    }
+
     fn set_read_timeout<'tcx>(
         self: FileDescriptionRef<Self>,
         timeout: Option<Duration>,
