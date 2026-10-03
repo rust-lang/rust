@@ -1081,14 +1081,14 @@ pub(crate) struct RustcAtumSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "`{$item_ident}` is {$actual_variance} in `{$param_ident}`; expected variance: {$expected_variance}"
-)]
+#[diag("`{$item_ident}` is expected to be {$expected_variance} in `{$param_ident}` but is not")]
 pub(crate) struct RustcAssertVarianceFailed {
     #[primary_span]
-    pub span: Span,
+    pub item_span: Span,
     #[subdiagnostic]
-    pub span_note: RustcAssertVarianceFailedNote,
+    pub note: RustcAssertVarianceFailedNote,
+    #[label("`{$item_ident}` is {$actual_variance} in `{$param_ident}`")]
+    pub param_span: Span,
     pub param_ident: Ident,
     pub item_ident: Ident,
     pub expected_variance: Symbol,
@@ -1096,7 +1096,7 @@ pub(crate) struct RustcAssertVarianceFailed {
 }
 
 #[derive(Subdiagnostic)]
-#[note("required by this annotation")]
+#[note("required by this attribute")]
 pub(crate) struct RustcAssertVarianceFailedNote {
     #[primary_span]
     pub span: Span,
