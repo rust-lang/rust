@@ -59,6 +59,8 @@ ast-stats - AngleBracketed            40 (NN.N%)             1
 ast-stats Crate                     40 (NN.N%)             1            40
 ast-stats ----------------------------------------------------------------
 ast-stats Total                  6_624                   109
+ast-stats ----------------------------------------------------------------
+ast-stats - Path Ident: 17  General segs 0: 0  1: 1  2: 2  3: 3  4+: 1  Span reconstructible: 7
 ast-stats ================================================================
 hir-stats ================================================================
 hir-stats HIR STATS: input_stats
@@ -121,4 +123,6 @@ hir-stats ImplItemId                 8 (NN.N%)             2             4
 hir-stats ForeignItemId              4 (NN.N%)             1             4
 hir-stats ----------------------------------------------------------------
 hir-stats Total                  8_592                   172
+hir-stats ----------------------------------------------------------------
+hir-stats - Path segments 0: 0  1: 20  2: 2  3: 3  4+: 1
 hir-stats ================================================================

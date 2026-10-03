@@ -54,15 +54,23 @@ impl Node {
 /// There are some types in the AST and HIR tree that the visitors do not have
 /// a `visit_*` method for, and so we cannot measure these, which is
 /// unfortunate.
+#[derive(Default)]
 struct StatCollector<'k> {
     tcx: Option<TyCtxt<'k>>,
     nodes: FxHashMap<&'static str, Node>,
     seen: FxHashSet<HirId>,
+    paths: PathStats,
+}
+
+#[derive(Default)]
+struct PathStats {
+    idents: usize,
+    generals: [usize; 5],
+    span_reconstructible: usize,
 }
 
 pub fn print_hir_stats(tcx: TyCtxt<'_>) {
-    let mut collector =
-        StatCollector { tcx: Some(tcx), nodes: FxHashMap::default(), seen: FxHashSet::default() };
+    let mut collector = StatCollector { tcx: Some(tcx), ..StatCollector::default() };
     tcx.hir_walk_toplevel_module(&mut collector);
     tcx.hir_walk_attributes(&mut collector);
     collector.print(tcx, "HIR STATS", "hir-stats");
@@ -71,8 +79,7 @@ pub fn print_hir_stats(tcx: TyCtxt<'_>) {
 pub fn print_ast_stats(tcx: TyCtxt<'_>, krate: &ast::Crate) {
     use rustc_ast::visit::Visitor;
 
-    let mut collector =
-        StatCollector { tcx: None, nodes: FxHashMap::default(), seen: FxHashSet::default() };
+    let mut collector = StatCollector::default();
     collector.visit_crate(krate);
     collector.print(tcx, "POST EXPANSION AST STATS", "ast-stats");
 }
@@ -194,6 +201,30 @@ impl<'k> StatCollector<'k> {
             "",
             usize_with_underscores(total_count),
         );
+        _ = writeln!(s, "{prefix} {}", "-".repeat(banner_w));
+        if self.tcx.is_none() {
+            _ = writeln!(
+                s,
+                "{prefix} - Path Ident: {}  General segs 0: {}  1: {}  2: {}  3: {}  4+: {}  Span reconstructible: {}",
+                self.paths.idents,
+                self.paths.generals[0],
+                self.paths.generals[1],
+                self.paths.generals[2],
+                self.paths.generals[3],
+                self.paths.generals[4],
+                self.paths.span_reconstructible,
+            );
+        } else {
+            _ = writeln!(
+                s,
+                "{prefix} - Path segments 0: {}  1: {}  2: {}  3: {}  4+: {}",
+                self.paths.generals[0],
+                self.paths.generals[1],
+                self.paths.generals[2],
+                self.paths.generals[3],
+                self.paths.generals[4],
+            );
+        }
         _ = writeln!(s, "{prefix} {}", "=".repeat(banner_w));
         eprint!("{s}");
     }
@@ -457,6 +488,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         // HIR, which causes `p` to be double- or triple-counted. Instead just
         // walk the path internals (i.e. the segments) directly.
         let hir::Path { span: _, res: _, segments } = *tree.prefix;
+        self.paths.generals[segments.len().min(4)] += 1;
         ast_visit::walk_list!(self, visit_path_segment, segments);
         match tree.kind {
             hir::UseKind::Single(_) | hir::UseKind::Glob => {}
@@ -537,6 +569,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
 
     fn visit_path(&mut self, path: &hir::Path<'v>, _id: HirId) {
         self.record("Path", None, path);
+        self.paths.generals[path.segments.len().min(4)] += 1;
         hir_visit::walk_path(self, path)
     }
 
@@ -764,6 +797,21 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_path_segment(&mut self, path_segment: &'v ast::PathSegment) {
         self.record("PathSegment", None, path_segment);
         ast_visit::walk_path_segment(self, path_segment)
+    }
+
+    fn visit_path(&mut self, path: &'v ast::Path) {
+        match path {
+            ast::Path::Ident { .. } => self.paths.idents += 1,
+            ast::Path::General { segments, span } => {
+                let len = segments.len().min(4);
+                self.paths.generals[len] += 1;
+                let len = segments.len();
+                if len > 0 && segments[0].span().to(segments[len - 1].span()) == *span {
+                    self.paths.span_reconstructible += 1;
+                }
+            }
+        }
+        ast_visit::walk_path(self, path);
     }
 
     // `GenericArgs` has one inline use (in `ast::AssocItemConstraint::gen_args`) and one
