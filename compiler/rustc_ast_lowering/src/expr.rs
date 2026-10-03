@@ -1955,16 +1955,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Some(Arc::clone(&crate::ALLOW_TRY_TRAIT)),
         );
 
+        // FIXME: Extend this to edition check on stabilisation with 2027
+        let has_try_trait = self.tcx.features().try_trait_v2();
+
+        let (branch_fn, from_residual_fn) = match has_try_trait {
+            true => (LangItem::TryTraitBranch, LangItem::TryTraitFromResidual),
+            false => (LangItem::TryTraitBranchOld, LangItem::TryTraitFromResidualOld),
+        };
+
         // `Try::branch(<expr>)`
         let scrutinee = {
             // expand <expr>
             let sub_expr = self.lower_expr_mut(sub_expr);
 
-            self.expr_call_lang_item_fn(
-                unstable_span,
-                LangItem::TryTraitBranch,
-                arena_vec![self; sub_expr],
-            )
+            self.expr_call_lang_item_fn(unstable_span, branch_fn, arena_vec![self; sub_expr])
         };
 
         let attrs: AttrVec = thin_vec![self.unreachable_code_attr(try_span)];
@@ -1989,7 +1993,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             let (constructor_item, target_id) = match self.try_block_scope {
                 TryBlockScope::Function => {
-                    (LangItem::TryTraitFromResidual, Err(hir::LoopIdError::OutsideLoopScope))
+                    (from_residual_fn, Err(hir::LoopIdError::OutsideLoopScope))
                 }
                 TryBlockScope::Homogeneous(block_id) => {
                     (LangItem::ResidualIntoTryType, Ok(block_id))

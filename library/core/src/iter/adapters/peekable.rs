@@ -1,6 +1,6 @@
 use crate::iter::adapters::SourceIter;
 use crate::iter::{FusedIterator, TrustedLen};
-use crate::ops::{ControlFlow, Try};
+use crate::ops::{ControlFlow, Try, qmark};
 
 /// An iterator with a `peek()` that returns an optional reference to the next
 /// element.
@@ -97,7 +97,7 @@ impl<I: Iterator> Iterator for Peekable<I> {
     {
         let acc = match self.peeked.take() {
             Some(None) => return try { init },
-            Some(Some(v)) => f(init, v)?,
+            Some(Some(v)) => qmark!(f(init, v)),
             None => init,
         };
         self.iter.try_fold(acc, f)

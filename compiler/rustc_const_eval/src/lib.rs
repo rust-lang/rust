@@ -1,9 +1,14 @@
 // tidy-alphabetical-start
+#![allow(
+    unused_features,
+    reason = "FIXME: try_trait_v2 shows unused if only needed for desugaring"
+)]
 #![feature(array_try_map)]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
 #![feature(slice_ptr_get)]
 #![feature(trait_alias)]
+#![feature(try_trait_v2)]
 #![feature(unqualified_local_imports)]
 #![feature(yeet_expr)]
 #![warn(unqualified_local_imports)]

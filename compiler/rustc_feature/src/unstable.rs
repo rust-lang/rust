@@ -753,6 +753,8 @@ declare_features! (
     (unstable, try_blocks, "1.29.0", Some(154391)),
     /// Allows using `try bikeshed TargetType {...}` expressions.
     (unstable, try_blocks_heterogeneous, "1.94.0", Some(149488)),
+    /// Provides the `Try` trait in stdlib. We need to check availability when desugaring `?`
+    (unstable, try_trait_v2, "CURRENT_RUSTC_VERSION", Some(84277)),
     /// Allows `impl Trait` to be used inside type aliases (RFC 2515).
     (unstable, type_alias_impl_trait, "1.38.0", Some(63063)),
     /// Allows creation of instances of a struct by moving fields that have

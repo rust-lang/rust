@@ -1,6 +1,6 @@
 use crate::iter::{FusedIterator, TrustedLen};
 use crate::num::NonZero;
-use crate::ops::Try;
+use crate::ops::{Try, qmark};
 
 /// An iterator that links two iterators together, in a chain.
 ///
@@ -103,11 +103,11 @@ where
         R: Try<Output = Acc>,
     {
         if let Some(ref mut a) = self.a {
-            acc = a.try_fold(acc, &mut f)?;
+            acc = qmark!(a.try_fold(acc, &mut f));
             self.a = None;
         }
         if let Some(ref mut b) = self.b {
-            acc = b.try_fold(acc, f)?;
+            acc = qmark!(b.try_fold(acc, f));
             // we don't fuse the second iterator
         }
         try { acc }
@@ -263,11 +263,11 @@ where
         R: Try<Output = Acc>,
     {
         if let Some(ref mut b) = self.b {
-            acc = b.try_rfold(acc, &mut f)?;
+            acc = qmark!(b.try_rfold(acc, &mut f));
             self.b = None;
         }
         if let Some(ref mut a) = self.a {
-            acc = a.try_rfold(acc, f)?;
+            acc = qmark!(a.try_rfold(acc, f));
             // we don't fuse the second iterator
         }
         try { acc }

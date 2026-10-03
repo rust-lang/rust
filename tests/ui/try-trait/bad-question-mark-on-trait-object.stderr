@@ -1,37 +1,35 @@
-error[E0277]: `?` couldn't convert the error: `E: std::error::Error` is not satisfied
+error[E0277]: the trait bound `E: std::error::Error` is not satisfied
   --> $DIR/bad-question-mark-on-trait-object.rs:6:13
    |
-LL | fn foo() -> Result<(), Box<dyn std::error::Error>> {
-   |             -------------------------------------- required `E: std::error::Error` because of this
 LL |     Ok(bar()?)
-   |        -----^ the trait `std::error::Error` is not implemented for `E`
-   |        |
-   |        this has type `Result<_, E>`
+   |             ^ unsatisfied trait bound
    |
-note: `E` needs to implement `std::error::Error`
+help: the trait `std::error::Error` is not implemented for `E`
   --> $DIR/bad-question-mark-on-trait-object.rs:1:1
    |
 LL | struct E;
    | ^^^^^^^^
-   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+help: the trait `ops::try_trait_old::FromResidual<Result<!, E>>` is conditionally implemented for `Result<T, F>`
+  --> $SRC_DIR/core/src/ops/try_trait_old.rs:LL:COL
+   |
+   = note: unsatisfied requirement introduced here: `Box<dyn std::error::Error>: From<E>`
    = note: required for `Box<dyn std::error::Error>` to implement `From<E>`
+   = note: required for `Result<(), Box<dyn std::error::Error>>` to implement `ops::try_trait_old::FromResidual<Result<!, E>>`
 
 error[E0277]: `?` couldn't convert the error to `X`
-  --> $DIR/bad-question-mark-on-trait-object.rs:17:13
+  --> $DIR/bad-question-mark-on-trait-object.rs:18:13
    |
 LL | fn bat() -> Result<(), X> {
    |             ------------- expected `X` because of this
 LL |     Ok(bar()?)
-   |        -----^ the trait `From<E>` is not implemented for `X`
-   |        |
-   |        this can't be annotated with `?` because it has type `Result<_, E>`
+   |             ^ unsatisfied trait bound
    |
-note: `X` needs to implement `From<E>`
-  --> $DIR/bad-question-mark-on-trait-object.rs:3:1
-   |
-LL | struct X;
-   | ^^^^^^^^
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+help: the trait `FromResidual<Result<_, E>>` is not implemented for `Result<(), X>`
+      but trait `FromResidual<Result<_, X>>` is implemented for it
+  --> $SRC_DIR/core/src/ops/try_trait_old.rs:LL:COL
+   = help: for that trait implementation, expected `X`, found `E`
+   = note: required for `Result<(), X>` to implement `ops::try_trait_old::FromResidual<Result<!, E>>`
 
 error: aborting due to 2 previous errors
 
