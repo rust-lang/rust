@@ -80,4 +80,11 @@ where
     val: T,
 }
 
+struct Bar6<#[rustc_assert_variance(bivariant)] 'a, #[rustc_assert_variance(covariant)] T>
+where
+    T: Iterator<Item = &'a ()>,
+{
+    val: T,
+}
+
 fn main() {}
