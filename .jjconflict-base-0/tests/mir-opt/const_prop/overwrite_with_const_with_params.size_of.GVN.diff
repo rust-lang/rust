@@ -1,0 +1,20 @@
+- // MIR for `size_of` before GVN
++ // MIR for `size_of` after GVN
+  
+  fn size_of() -> usize {
+      let mut _0: usize;
+      let mut _1: usize;
+      scope 1 {
+          debug a => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = const 0_usize;
+          _1 = const SizeOfConst::<T>::SIZE;
+          _0 = copy _1;
+          StorageDead(_1);
+          return;
+      }
+  }
+  

@@ -1,0 +1,4 @@
+error: monomorphising SIMD type `S` with a non-primitive-scalar (integer/float/pointer) element type `*mut [u8]`
+
+error: aborting due to 1 previous error
+

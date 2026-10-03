@@ -1,0 +1,14 @@
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/array_expr_arg_complex.rs:14:30
+   |
+LL |     takes_array::<{ gca!([N, N + 1]) }>();
+   |                              ^^^^^
+
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/array_expr_arg_complex.rs:15:42
+   |
+LL |     takes_tuple_with_array::<{ gca!(([N, N + 1], N)) }>();
+   |                                          ^^^^^
+
+error: aborting due to 2 previous errors
+

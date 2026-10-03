@@ -1,0 +1,20 @@
+---
+source: src/test/mod.rs
+---
+error[internal]: left behind trailing whitespace
+ --> tests/warning/source/line_overflow_with_trailing_whitespace.rs:2:2:55
+  |
+2 | /// This doc comment overflows and has trailing space.    
+  |                                                       ^^^^
+  |
+  = note: set `error_on_unformatted = false` to suppress the warning against comments or string literals
+
+error[internal]: line formatted, but exceeded maximum width (maximum: 50 (see `max_width` option), found: 54)
+ --> tests/warning/source/line_overflow_with_trailing_whitespace.rs:2:2:51
+  |
+2 | /// This doc comment overflows and has trailing space.    
+  |                                                   ^^^^
+  |
+  = note: set `error_on_unformatted = false` to suppress the warning against comments or string literals
+
+warning: rustfmt has failed to format. See previous 2 errors.

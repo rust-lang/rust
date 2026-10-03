@@ -1,0 +1,122 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/rvalue-borrow-scope-error.rs:30:19
+   |
+LL |     let x1 = arg(&AddFlags(1));
+   |                   ^^^^^^^^^^^ - temporary value is freed at the end of this statement
+   |                   |
+   |                   creates a temporary value which is freed while still in use
+...
+LL |     (x1, x2, x3, x4, x5, x6, x7);
+   |      -- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = AddFlags(1);
+LL ~     let x1 = arg(&binding);
+   |
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/rvalue-borrow-scope-error.rs:31:14
+   |
+LL |     let x2 = AddFlags(1).get();
+   |              ^^^^^^^^^^^      - temporary value is freed at the end of this statement
+   |              |
+   |              creates a temporary value which is freed while still in use
+...
+LL |     (x1, x2, x3, x4, x5, x6, x7);
+   |          -- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = AddFlags(1);
+LL ~     let x2 = binding.get();
+   |
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/rvalue-borrow-scope-error.rs:32:21
+   |
+LL |     let x3 = &*arg(&AddFlags(1));
+   |                     ^^^^^^^^^^^ - temporary value is freed at the end of this statement
+   |                     |
+   |                     creates a temporary value which is freed while still in use
+...
+LL |     (x1, x2, x3, x4, x5, x6, x7);
+   |              -- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = AddFlags(1);
+LL ~     let x3 = &*arg(&binding);
+   |
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/rvalue-borrow-scope-error.rs:33:24
+   |
+LL |     let ref x4 = *arg(&AddFlags(1));
+   |                        ^^^^^^^^^^^ - temporary value is freed at the end of this statement
+   |                        |
+   |                        creates a temporary value which is freed while still in use
+...
+LL |     (x1, x2, x3, x4, x5, x6, x7);
+   |                  -- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = AddFlags(1);
+LL ~     let ref x4 = *arg(&binding);
+   |
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/rvalue-borrow-scope-error.rs:34:24
+   |
+LL |     let &ref x5 = arg(&AddFlags(1));
+   |                        ^^^^^^^^^^^ - temporary value is freed at the end of this statement
+   |                        |
+   |                        creates a temporary value which is freed while still in use
+...
+LL |     (x1, x2, x3, x4, x5, x6, x7);
+   |                      -- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = AddFlags(1);
+LL ~     let &ref x5 = arg(&binding);
+   |
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/rvalue-borrow-scope-error.rs:35:14
+   |
+LL |     let x6 = AddFlags(1).get();
+   |              ^^^^^^^^^^^      - temporary value is freed at the end of this statement
+   |              |
+   |              creates a temporary value which is freed while still in use
+...
+LL |     (x1, x2, x3, x4, x5, x6, x7);
+   |                          -- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = AddFlags(1);
+LL ~     let x6 = binding.get();
+   |
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/rvalue-borrow-scope-error.rs:36:44
+   |
+LL |     let StackBox { f: x7 } = StackBox { f: AddFlags(1).get() };
+   |                                            ^^^^^^^^^^^        - temporary value is freed at the end of this statement
+   |                                            |
+   |                                            creates a temporary value which is freed while still in use
+LL |
+LL |     (x1, x2, x3, x4, x5, x6, x7);
+   |                              -- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = AddFlags(1);
+LL ~     let StackBox { f: x7 } = StackBox { f: binding.get() };
+   |
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0716`.

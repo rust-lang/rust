@@ -1,0 +1,14 @@
+error: expected expression, found `k#not_a_keyword`
+  --> $DIR/non-keyword-neg.rs:8:5
+   |
+LL |     k#not_a_keyword()
+   |     ^^^^^^^^^^^^^^^ expected expression
+
+error: expected identifier, found `k#trying_to_pass_as_a_normal_ident`
+  --> $DIR/non-keyword-neg.rs:11:4
+   |
+LL | fn k#trying_to_pass_as_a_normal_ident() {}
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected identifier
+
+error: aborting due to 2 previous errors
+

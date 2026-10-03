@@ -1,0 +1,54 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/closure-move-spans.rs:7:13
+   |
+LL | fn move_after_move(x: String) {
+   |                    - move occurs because `x` has type `String`, which does not implement the `Copy` trait
+LL |     || x;
+   |     -- - variable moved due to use in closure
+   |     |
+   |     value moved into closure here
+LL |     let y = x;
+   |             ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     || x.clone();
+   |         ++++++++
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/closure-move-spans.rs:12:13
+   |
+LL | fn borrow_after_move(x: String) {
+   |                      - move occurs because `x` has type `String`, which does not implement the `Copy` trait
+LL |     || x;
+   |     -- - variable moved due to use in closure
+   |     |
+   |     value moved into closure here
+LL |     let y = &x;
+   |             ^^ value borrowed here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     || x.clone();
+   |         ++++++++
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/closure-move-spans.rs:17:13
+   |
+LL | fn borrow_mut_after_move(mut x: String) {
+   |                          ----- move occurs because `x` has type `String`, which does not implement the `Copy` trait
+LL |     || x;
+   |     -- - variable moved due to use in closure
+   |     |
+   |     value moved into closure here
+LL |     let y = &mut x;
+   |             ^^^^^^ value borrowed here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     || x.clone();
+   |         ++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

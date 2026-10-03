@@ -1,0 +1,56 @@
+error: manual implementation of `BuildHasher::hash_one`
+  --> tests/ui/manual_hash_one.rs:9:5
+   |
+LL |     hasher.finish()
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::manual-hash-one` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_hash_one)]`
+help: try
+   |
+LL ~     
+LL ~     
+LL ~     b.hash_one(&true)
+   |
+
+error: manual implementation of `BuildHasher::hash_one`
+  --> tests/ui/manual_hash_one.rs:16:13
+   |
+LL |     let _ = hasher.finish();
+   |             ^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~     
+LL ~     
+LL ~     let _ = b.hash_one(&s[4..10]);
+   |
+
+error: manual implementation of `BuildHasher::hash_one`
+  --> tests/ui/manual_hash_one.rs:23:13
+   |
+LL |     let _ = hasher.finish();
+   |             ^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~     
+LL ~     
+LL ~     let _ = b.hash_one(&v);
+   |
+
+error: manual implementation of `BuildHasher::hash_one`
+  --> tests/ui/manual_hash_one.rs:91:13
+   |
+LL |     let _ = hasher.finish();
+   |             ^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~     
+LL ~     
+LL ~     let _ = b.hash_one(&v);
+   |
+
+error: aborting due to 4 previous errors
+

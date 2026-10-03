@@ -1,0 +1,25 @@
+error[E0603]: struct import `Hi` is private
+  --> $DIR/private-import-suggestion-relative.rs:14:14
+   |
+LL | use testing::Hi;
+   |              ^^ private struct import
+   |
+note: the struct import `Hi` is defined here...
+  --> $DIR/private-import-suggestion-relative.rs:11:9
+   |
+LL |     use super::public::Hi;
+   |         ^^^^^^^^^^^^^^^^^
+note: ...and refers to the struct `Hi` which is defined here
+  --> $DIR/private-import-suggestion-relative.rs:7:5
+   |
+LL |     pub struct Hi;
+   |     ^^^^^^^^^^^^^^ you could import this directly
+help: import `Hi` directly
+   |
+LL - use testing::Hi;
+LL + use public::Hi;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.

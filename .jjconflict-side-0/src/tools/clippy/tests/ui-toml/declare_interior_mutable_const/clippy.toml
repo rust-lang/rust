@@ -1,0 +1,1 @@
+ignore-interior-mutability = ["declare_interior_mutable_const_ignore::Counted"]

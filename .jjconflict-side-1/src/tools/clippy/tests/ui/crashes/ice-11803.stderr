@@ -1,0 +1,26 @@
+error: `impl Trait` used as a function parameter
+  --> tests/ui/crashes/ice-11803.rs:5:54
+   |
+LL | pub fn g<T: IntoIterator<Item = impl Iterator<Item = impl Clone>>>() {
+   |                                                      ^^^^^^^^^^
+   |
+   = note: `-D clippy::impl-trait-in-params` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::impl_trait_in_params)]`
+help: add a type parameter
+   |
+LL | pub fn g<T: IntoIterator<Item = impl Iterator<Item = impl Clone>>, { /* Generic name */ }: Clone>() {
+   |                                                                  +++++++++++++++++++++++++++++++
+
+error: `impl Trait` used as a function parameter
+  --> tests/ui/crashes/ice-11803.rs:5:33
+   |
+LL | pub fn g<T: IntoIterator<Item = impl Iterator<Item = impl Clone>>>() {
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add a type parameter
+   |
+LL | pub fn g<T: IntoIterator<Item = impl Iterator<Item = impl Clone>>, { /* Generic name */ }: Iterator<Item = impl Clone>>() {
+   |                                                                  +++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 2 previous errors
+

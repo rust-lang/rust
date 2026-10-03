@@ -1,0 +1,73 @@
+error[E0658]: the extern "rust-call" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi.rs:11:8
+   |
+LL | extern "rust-call" fn f4(_: ()) {}
+   |        ^^^^^^^^^^^
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-call" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi.rs:15:12
+   |
+LL |     extern "rust-call" fn m4(_: ());
+   |            ^^^^^^^^^^^
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-call" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi.rs:17:12
+   |
+LL |     extern "rust-call" fn dm4(_: ()) {}
+   |            ^^^^^^^^^^^
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-call" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi.rs:24:12
+   |
+LL |     extern "rust-call" fn m4(_: ()) {}
+   |            ^^^^^^^^^^^
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-call" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi.rs:29:12
+   |
+LL |     extern "rust-call" fn im4(_: ()) {}
+   |            ^^^^^^^^^^^
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-call" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi.rs:33:18
+   |
+LL | type A4 = extern "rust-call" fn(_: ());
+   |                  ^^^^^^^^^^^
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-call" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi.rs:36:8
+   |
+LL | extern "rust-call" {}
+   |        ^^^^^^^^^^^
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

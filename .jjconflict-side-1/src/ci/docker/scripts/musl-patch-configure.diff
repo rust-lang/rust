@@ -1,0 +1,13 @@
+diff --git a/configure b/configure
+index 86801281..ed2f7998 100755
+--- a/configure
++++ b/configure
+@@ -398,7 +398,7 @@ test "$debug" = yes && CFLAGS_AUTO=-g
+ #
+ printf "checking whether we should preprocess assembly to add debugging information... "
+ if fnmatch '-g*|*\ -g*' "$CFLAGS_AUTO $CFLAGS" &&
+-   test -f "tools/add-cfi.$ARCH.awk" &&
++   test -f "$srcdir/tools/add-cfi.$ARCH.awk" &&
+    printf ".file 1 \"srcfile.s\"\n.line 1\n.cfi_startproc\n.cfi_endproc" | $CC -g -x assembler -c -o /dev/null 2>/dev/null -
+ then
+   ADD_CFI=yes

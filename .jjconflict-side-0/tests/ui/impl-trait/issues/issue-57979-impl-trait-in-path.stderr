@@ -1,0 +1,11 @@
+error[E0562]: `impl Trait` is not allowed in paths
+  --> $DIR/issue-57979-impl-trait-in-path.rs:8:48
+   |
+LL | pub fn demo(_: impl Quux<(), Assoc=<() as Quux<impl Bar>>::Assoc>) { }
+   |                                                ^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0562`.

@@ -1,0 +1,26 @@
+error: expected expression, found `.`
+  --> $DIR/recover-invalid-float-invalid.rs:7:9
+   |
+LL |     _ = .3u32;
+   |         ^ expected expression
+
+error: expected expression, found `.`
+  --> $DIR/recover-invalid-float-invalid.rs:12:9
+   |
+LL |     _ = .0b0;
+   |         ^ expected expression
+
+error: expected expression, found `.`
+  --> $DIR/recover-invalid-float-invalid.rs:17:9
+   |
+LL |     _ = .0o07;
+   |         ^ expected expression
+
+error: expected expression, found `.`
+  --> $DIR/recover-invalid-float-invalid.rs:22:9
+   |
+LL |     _ = .0x0ABC;
+   |         ^ expected expression
+
+error: aborting due to 4 previous errors
+

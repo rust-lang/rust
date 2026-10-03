@@ -1,0 +1,20 @@
+//@ revisions: with-gate without-gate
+//@ [with-gate] run-rustfix
+//@ [without-gate] check-pass
+
+#![cfg_attr(with_gate, feature(anonymous_lifetime_in_impl_trait))]
+
+#![deny(single_use_lifetimes)]
+
+// https://github.com/rust-lang/rust/issues/153836
+
+fn foo<'a>(x: impl IntoIterator<Item = &'a i32>) {
+//[with-gate]~^ ERROR: lifetime parameter `'a` only used once [single_use_lifetimes]
+  for i in x {
+    dbg!(i);
+  }
+}
+
+fn main() {
+  foo(&[1, 2, 3]);
+}

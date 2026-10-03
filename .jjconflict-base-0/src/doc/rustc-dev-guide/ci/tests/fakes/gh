@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+command=$1
+{
+  printf '%s' "$command"
+  shift
+  printf ' <%s>' "$@"
+  printf '\n'
+} >> "$GH_MOCK_LOG"
+
+case "$command" in
+  api)
+    if [[ ${GH_MOCK_API_FAIL-} == 1 ]]; then
+      exit 1
+    fi
+    echo "https://github.example/jobs/123"
+    ;;
+  issue)
+    if [[ ${1-} == list && -n ${GH_MOCK_ISSUE_NUMBER-} ]]; then
+      echo "$GH_MOCK_ISSUE_NUMBER"
+    fi
+    ;;
+esac

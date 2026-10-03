@@ -1,0 +1,25 @@
+// Checks that the search tab results work correctly with function signature syntax
+// First, try a search-by-name
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+call-function: ("perform-search", {"query": "Foo"})
+
+// Now use the keyboard commands to switch to the third result.
+press-key: "ArrowDown"
+press-key: "ArrowDown"
+press-key: "ArrowDown"
+wait-for: ".search-results.active > a:focus:nth-of-type(3)"
+
+// Now switch to the second tab, then back to the first one, then arrow back up.
+press-key: "ArrowRight"
+wait-for: ".search-results.active:nth-of-type(2) > a:focus:nth-of-type(1)"
+press-key: "ArrowLeft"
+wait-for: ".search-results.active:nth-of-type(1) > a:focus:nth-of-type(3)"
+press-key: "ArrowUp"
+wait-for: ".search-results.active > a:focus:nth-of-type(2)"
+press-key: "ArrowUp"
+wait-for: ".search-results.active > a:focus:nth-of-type(1)"
+press-key: "ArrowUp"
+wait-for: ".search-input:focus"
+press-key: "ArrowDown"
+wait-for: ".search-results.active > a:focus:nth-of-type(1)"

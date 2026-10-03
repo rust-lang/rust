@@ -1,0 +1,33 @@
+error[E0364]: `bar` is only public within the crate, and cannot be re-exported outside
+  --> $DIR/macro-private-reexport.rs:10:13
+   |
+LL |     pub use bar as _;
+   |             ^^^^^^^^
+   |
+help: consider adding a `#[macro_export]` to the macro in the imported module
+  --> $DIR/macro-private-reexport.rs:6:5
+   |
+LL | /     macro_rules! bar {
+LL | |         () => {};
+LL | |     }
+   | |_____^
+help: in case you want to use the macro within this crate only, reduce the visibility to `pub(crate)`
+   |
+LL |     pub(crate) use bar as _;
+   |        +++++++
+
+error[E0364]: `baz` is private, and cannot be re-exported
+  --> $DIR/macro-private-reexport.rs:14:13
+   |
+LL |     pub use baz as _;
+   |             ^^^^^^^^
+   |
+note: consider marking `baz` as `pub` in the imported module
+  --> $DIR/macro-private-reexport.rs:14:13
+   |
+LL |     pub use baz as _;
+   |             ^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0364`.

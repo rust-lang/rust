@@ -1,0 +1,15 @@
+error[E0432]: unresolved import `private::collection`
+  --> $DIR/nested-module-typo-inaccessible-issue-131366.rs:10:14
+   |
+LL | use private::collection::Item;
+   |              ^^^^^^^^^^ could not find `collection` in `private`
+
+error[E0432]: unresolved import `non_module::Collection`
+  --> $DIR/nested-module-typo-inaccessible-issue-131366.rs:16:17
+   |
+LL | use non_module::Collection::Item;
+   |                 ^^^^^^^^^^ could not find `Collection` in `non_module`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0432`.
