@@ -1,5 +1,5 @@
 error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
-  --> $DIR/name-anon-lifetime-suggestion-issue-132199.rs:14:9
+  --> $DIR/name-anon-lifetime-suggestion-issue-132199.rs:17:9
    |
 LL |     fn two_anon(&self, t: &T) -> impl Sized {
    |                 -----            ---------- opaque type defined here
@@ -8,13 +8,13 @@ LL |     fn two_anon(&self, t: &T) -> impl Sized {
 LL |         (self, t)
    |         ^^^^^^^^^
    |
-help: add a `use<...>` bound to explicitly capture `'_`
+help: add `use<...>` bound and name the elided lifetimes to explicitly capture them
    |
-LL |     fn two_anon(&self, t: &T) -> impl Sized + use<'_> {
-   |                                             +++++++++
+LL |     fn two_anon<'a, 'b>(&'a self, t: &'b T) -> impl Sized + use<'a, 'b> {
+   |                ++++++++  ++           ++                  +++++++++++++
 
 error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
-  --> $DIR/name-anon-lifetime-suggestion-issue-132199.rs:20:9
+  --> $DIR/name-anon-lifetime-suggestion-issue-132199.rs:23:9
    |
 LL |     fn one_anon(&self) -> impl Sized {
    |                 -----     ---------- opaque type defined here
@@ -29,7 +29,7 @@ LL |     fn one_anon(&self) -> impl Sized + use<'_> {
    |                                      +++++++++
 
 error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
-  --> $DIR/name-anon-lifetime-suggestion-issue-132199.rs:26:9
+  --> $DIR/name-anon-lifetime-suggestion-issue-132199.rs:29:9
    |
 LL |     fn named<'a>(&'a self, t: &'a T) -> impl Sized {
    |              --                         ---------- opaque type defined here
@@ -44,7 +44,7 @@ LL |     fn named<'a>(&'a self, t: &'a T) -> impl Sized + use<'a> {
    |                                                    +++++++++
 
 error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
-  --> $DIR/name-anon-lifetime-suggestion-issue-132199.rs:34:5
+  --> $DIR/name-anon-lifetime-suggestion-issue-132199.rs:37:5
    |
 LL | fn second_anon(_a: &u8, b: &T) -> impl Sized {
    |                            --     ---------- opaque type defined here
@@ -53,13 +53,13 @@ LL | fn second_anon(_a: &u8, b: &T) -> impl Sized {
 LL |     b
    |     ^
    |
-help: add a `use<...>` bound to explicitly capture `'_`
+help: add `use<...>` bound and name the elided lifetimes to explicitly capture them
    |
-LL | fn second_anon(_a: &u8, b: &T) -> impl Sized + use<'_> {
-   |                                              +++++++++
+LL | fn second_anon<'a>(_a: &u8, b: &'a T) -> impl Sized + use<'a> {
+   |               ++++              ++                  +++++++++
 
 error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
-  --> $DIR/name-anon-lifetime-suggestion-issue-132199.rs:41:5
+  --> $DIR/name-anon-lifetime-suggestion-issue-132199.rs:44:5
    |
 LL | fn path_anon(x: Foo, y: Foo) -> impl Sized {
    |                 ---             ---------- opaque type defined here
@@ -68,10 +68,10 @@ LL | fn path_anon(x: Foo, y: Foo) -> impl Sized {
 LL |     (x, y)
    |     ^^^^^^
    |
-help: add a `use<...>` bound to explicitly capture `'_`
+help: add `use<...>` bound and name the elided lifetimes to explicitly capture them
    |
-LL | fn path_anon(x: Foo, y: Foo) -> impl Sized + use<'_> {
-   |                                            +++++++++
+LL | fn path_anon<'a, 'b>(x: Foo<'a>, y: Foo<'b>) -> impl Sized + use<'a, 'b> {
+   |             ++++++++       ++++        ++++                +++++++++++++
 
 error: aborting due to 5 previous errors
 
