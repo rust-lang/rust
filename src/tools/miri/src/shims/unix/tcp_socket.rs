@@ -147,7 +147,7 @@ impl TcpSocket {
 
 impl FileDescription for TcpSocket {
     fn name(&self) -> &'static str {
-        "socket"
+        "tcp socket"
     }
 
     fn read<'tcx>(
