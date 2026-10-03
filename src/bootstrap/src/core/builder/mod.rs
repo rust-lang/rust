@@ -1013,7 +1013,8 @@ impl<'a> Builder<'a> {
                 dist::BuildManifest,
                 dist::ReproducibleArtifacts,
                 dist::GccDev,
-                dist::Gcc
+                dist::Gcc,
+                dist::Tpde,
             ),
             Kind::Install => describe!(
                 install::Docs,
