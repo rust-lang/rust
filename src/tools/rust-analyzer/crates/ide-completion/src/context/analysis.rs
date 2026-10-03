@@ -1034,7 +1034,7 @@ fn classify_name_ref<'db>(
         match parent {
             ast::PathSegment(segment) => segment,
             ast::FieldExpr(field) => {
-                return field_expr_handle(field.expr(), field.syntax());
+                return field_expr_handle(field.expr(), name_ref.syntax());
             },
             ast::ExternCrate(_) => {
                 let kind = NameRefKind::ExternCrate;
@@ -1043,14 +1043,14 @@ fn classify_name_ref<'db>(
             ast::MethodCallExpr(method) => {
                 let receiver = find_opt_node_in_file(original_file, method.receiver());
                 let has_parens = has_parens(&method);
-                if !has_parens && let Some(res) = field_expr_handle(method.receiver(), method.syntax()) {
+                if !has_parens && let Some(res) = field_expr_handle(method.receiver(), name_ref.syntax()) {
                     return Some(res)
                 }
                 let kind = NameRefKind::DotAccess(DotAccess {
                     receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
                     kind: DotAccessKind::Method,
                     receiver,
-                    ctx: DotAccessExprCtx { in_block_expr: is_in_block(method.syntax()), in_breakable: is_in_breakable(method.syntax()).unzip().0 }
+                    ctx: DotAccessExprCtx { in_block_expr: is_in_block(name_ref.syntax()), in_breakable: is_in_breakable(name_ref.syntax()).unzip().0 }
                 });
                 return Some(make_res(kind));
             },
@@ -2028,10 +2028,13 @@ fn is_in_breakable(node: &SyntaxNode) -> Option<(BreakableKind, SyntaxNode)> {
 }
 
 fn is_in_block(node: &SyntaxNode) -> bool {
-    if has_in_newline_expr_first(node) {
+    let in_rightside = ast::NameRef::can_cast(node.kind());
+    let sense_node = node.ancestors().nth(in_rightside.into()).unwrap_or_else(|| node.clone());
+    if has_in_newline_expr_first(node, &sense_node) {
         return true;
     };
-    node.parent()
+    sense_node
+        .parent()
         .map(|node| ast::ExprStmt::can_cast(node.kind()) || ast::StmtList::can_cast(node.kind()))
         .unwrap_or(false)
 }
@@ -2040,16 +2043,19 @@ fn is_in_block(node: &SyntaxNode) -> bool {
 ///
 /// Heuristic:
 ///
-/// If the `PathExpr` is left part of the `Expr` and there is a newline after the `PathExpr`,
-/// it is considered that the `PathExpr` is not part of the `Expr`.
-fn has_in_newline_expr_first(node: &SyntaxNode) -> bool {
-    if ast::PathExpr::can_cast(node.kind())
-        && let Some(NodeOrToken::Token(next)) = node.next_sibling_or_token()
+/// Check if `node` follows a newline and if the ancestors of `sense_node` can be split all the way to `StmtList`
+fn has_in_newline_expr_first(node: &SyntaxNode, sense_node: &SyntaxNode) -> bool {
+    let is_splitable = |node: &SyntaxNode| {
+        node.text_range().start() == sense_node.text_range().start()
+            || node.text_range().end() == sense_node.text_range().end()
+    };
+    if (ast::PathExpr::can_cast(node.kind()) || sense_node != node)
+        && let Some(next) = node.last_token().and_then(|it| it.next_token())
         && next.kind() == SyntaxKind::WHITESPACE
         && next.text().contains('\n')
-        && let Some(stmt_like) = node
+        && let Some(stmt_like) = sense_node
             .ancestors()
-            .take_while(|it| it.text_range().start() == node.text_range().start())
+            .take_while(is_splitable)
             .filter_map(Either::<ast::ExprStmt, ast::Expr>::cast)
             .last()
     {

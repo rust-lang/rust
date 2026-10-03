@@ -17,7 +17,7 @@ use itertools::{Either, Itertools};
 use stdx::never;
 use syntax::{
     SmolStr,
-    SyntaxKind::{CLOSURE_EXPR, EXPR_STMT, MATCH_ARM, STMT_LIST},
+    SyntaxKind::{CLOSURE_EXPR, MATCH_ARM},
     T, TextRange, TextSize, ToSmolStr,
     ast::{self, AstNode, AstToken},
     format_smolstr, match_ast,
@@ -189,7 +189,7 @@ pub(crate) fn complete_postfix(
                 postfix_snippet("let", "let", format!("let $1 = {receiver_text}"))
                     .add_to(acc, ctx.db);
             }
-            _ if matches!(parent.kind(), STMT_LIST | EXPR_STMT) => {
+            _ if expr_ctx.in_block_expr => {
                 postfix_snippet("let", "let", format!("let $0 = {receiver_text}{semi}"))
                     .add_to(acc, ctx.db);
                 postfix_snippet("letm", "let mut", format!("let mut $0 = {receiver_text}{semi}"))
@@ -771,6 +771,38 @@ fn main() {
                 sn unsafe    unsafe {}
                 sn while while expr {}
             "#]],
+        );
+
+        check_edit(
+            "let",
+            r#"
+fn foo() -> (i32, i32) {
+    "a".let$0
+    (2, 3).clone()
+}
+"#,
+            r#"
+fn foo() -> (i32, i32) {
+    let $0 = "a";
+    (2, 3).clone()
+}
+"#,
+        );
+
+        check_edit(
+            "let",
+            r#"
+fn foo() -> (i32, i32) {
+    "a".l$0
+    (2, 3).clone()
+}
+"#,
+            r#"
+fn foo() -> (i32, i32) {
+    let $0 = "a";
+    (2, 3).clone()
+}
+"#,
         );
     }
 
