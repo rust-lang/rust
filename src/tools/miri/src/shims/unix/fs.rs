@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 use std::ffi::OsString;
-use std::fs::{self, DirBuilder, File, FileTimes, FileType, OpenOptions, TryLockError};
+use std::fs::{self, Dir, DirBuilder, File, FileTimes, FileType, OpenOptions, TryLockError};
 use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{self, Path};
 use std::time::SystemTime;
@@ -577,15 +577,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // We need to know if the file is a directory to correctly open directory handles.
             // The standard library only lets us open something as a file or a directory, so
             // we check for that and then retry if we end up with the wrong thing.
-            let is_dir = path.is_dir();
+            let metadata = if nofollow { path.symlink_metadata() } else { path.metadata() };
+            let is_dir = metadata.is_ok_and(|m| m.is_dir());
 
             if is_dir {
                 // Directories cannot be opened for writing.
                 if access_mode != o_rdonly {
                     return this.set_errno_and_return_neg1_i32(LibcError("EISDIR"));
                 }
-                // All the other flags don't really do anything.
-                let dir = match DirHandle::open(&path) {
+                let dir = match Dir::open_with(&path, &options) {
                     Ok(dir) => dir,
                     Err(e) => {
                         if e.kind() == io::ErrorKind::NotADirectory {
@@ -596,30 +596,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                 };
                 #[cfg(bootstrap)]
-                let metadata = dir.dir.metadata();
+                let metadata = dir.metadata().expect("a just-opened dir should have metadata");
                 #[cfg(not(bootstrap))]
-                let metadata = dir.dir.self_metadata();
-                if !metadata.unwrap().is_dir() {
+                let metadata = dir.self_metadata().expect("a just-opened dir should have metadata");
+                if !metadata.is_dir() {
                     // This changed from a directory to a file. Retry.
-                    continue;
-                }
-
-                let fd = this.machine.fds.insert_new(dir);
-                return interp_ok(Scalar::from_i32(fd));
-            } else {
-                let file = match options.open(&path) {
-                    Ok(file) => file,
-                    Err(e) => {
-                        if e.kind() == io::ErrorKind::IsADirectory {
-                            // This changed from a directory to a file. Retry.
-                            continue;
-                        }
-                        return this.set_errno_and_return_neg1_i32(e);
-                    }
-                };
-                let metadata = file.metadata().expect("a just-opened file should have metadata");
-                if metadata.is_dir() {
-                    // This changed from a file to a directory. Retry.
                     continue;
                 }
 
@@ -630,8 +611,40 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         return this.set_errno_and_return_neg1_i32(LibcError("ELOOP"));
                     }
                 }
+
+                let fd = this.machine.fds.insert_new(DirHandle::new(dir, &path));
+                return interp_ok(Scalar::from_i32(fd));
+            } else {
+                let file = match options.open(&path) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        let kind = e.kind();
+                        if kind == io::ErrorKind::IsADirectory {
+                            // This changed from a directory to a file. Retry.
+                            continue;
+                        }
+                        if want_directory && kind == io::ErrorKind::FilesystemLoop {
+                            // This is reported as ENOTDIR.
+                            return this.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
+                        }
+                        return this.set_errno_and_return_neg1_i32(e);
+                    }
+                };
+                let metadata = file.metadata().expect("a just-opened file should have metadata");
+                if metadata.is_dir() {
+                    // This changed from a file to a directory. Retry.
+                    continue;
+                }
+
                 if want_directory {
                     return this.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
+                }
+                if nofollow && !cfg!(unix) {
+                    // On Windows, FILE_FLAG_OPEN_REPARSE_POINT makes opening still succeed, it just
+                    // opens the symlink rather than the target. Turn that into an error.
+                    if metadata.is_symlink() {
+                        return this.set_errno_and_return_neg1_i32(LibcError("ELOOP"));
+                    }
                 }
                 let fd = this.machine.fds.insert_new(FileHandle { file, writable, readable });
                 return interp_ok(Scalar::from_i32(fd));
@@ -1233,12 +1246,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // in between above and here. One day, the standard library will support converting
                 // between `Dir` and `ReadDir` (one of the two directions would suffice for our
                 // needs), then we'll use that.
-                let Ok(dir) = DirHandle::open(&name) else {
+                let Ok(dir) = fs::Dir::open(&name) else {
                     throw_unsup_format!(
                         "cannot `opendir` this directory: failed to create directory handle"
                     );
                 };
-                let dir = this.machine.fds.new_ref(dir);
+                let dir = this.machine.fds.new_ref(DirHandle::new(dir, &name));
                 let dir_fd_id = dir.id();
                 let dir_fd_num = this.machine.fds.insert(dir);
 

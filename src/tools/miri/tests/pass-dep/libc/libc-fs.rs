@@ -345,6 +345,27 @@ fn test_file_open_nofollow() {
         // while POSIX specifies returning ELOOP. Since this test is run on both native FreeBSD and native
         // Linux hosts, we just assert that its either of those error codes.
         assert!([libc::ELOOP, libc::EMLINK].contains(&err.raw_os_error().unwrap()));
+
+        // Also check symlink to directory.
+        let symlink_path = utils::prepare("miri_test_open_nofollow_symlink_to_dir");
+        // We make the symlink point to its parent directory.
+        std::os::unix::fs::symlink(&symlink_path.parent().unwrap(), &symlink_path).unwrap();
+        let symlink_cpath = utils::into_c_string(symlink_path);
+        let err = errno_result(unsafe { libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW) })
+            .unwrap_err();
+        assert!(
+            [libc::ELOOP, libc::EMLINK].contains(&err.raw_os_error().unwrap()),
+            "unexpected errno: {err}"
+        );
+        // If we set O_DIRECTORY, we get a different error on Linux, but still EMLINK on FreeBSD.
+        let err = errno_result(unsafe {
+            libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_DIRECTORY)
+        })
+        .unwrap_err();
+        assert!(
+            [libc::ENOTDIR, libc::EMLINK].contains(&err.raw_os_error().unwrap()),
+            "unexpected errno: {err}"
+        );
     }
 }
 
@@ -379,6 +400,17 @@ fn test_file_open_directory() {
     })
     .unwrap_err();
     assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
+
+    if utils::have_symlink_permission() {
+        // Also check symlink behavior.
+        let symlink_path = utils::prepare("miri_test_open_directory_symlink");
+        // We make the symlink point to its parent directory.
+        std::os::unix::fs::symlink(&symlink_path.parent().unwrap(), &symlink_path).unwrap();
+        let symlink_cpath = utils::into_c_string(symlink_path);
+        let fd =
+            errno_result(unsafe { libc::open(symlink_cpath.as_ptr(), libc::O_DIRECTORY) }).unwrap();
+        errno_check(unsafe { libc::close(fd) });
+    }
 }
 
 fn test_file_open_exclusive() {
