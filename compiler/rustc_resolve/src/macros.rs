@@ -4,6 +4,7 @@
 use std::mem;
 use std::sync::Arc;
 
+use itertools::Itertools;
 use rustc_ast::{self as ast, Crate, DelegationSuffixes, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr_ir::{Attribute, AttributeKind, CfgEntry, StabilityLevel, StrippedCfgItem};
@@ -104,16 +105,16 @@ pub(crate) fn sub_namespace_match(
 // `format!("{}", path)`, because that tries to insert
 // line-breaks and is slow.
 fn fast_print_path(path: &ast::Path) -> Symbol {
-    if let [segment] = path.segments.as_slice() {
-        segment.ident.name
+    if let Ok(ident) = path.iter_idents().exactly_one() {
+        ident.name
     } else {
         let mut path_str = String::with_capacity(64);
-        for (i, segment) in path.segments.iter().enumerate() {
+        for (i, ident) in path.iter_idents().enumerate() {
             if i != 0 {
                 path_str.push_str("::");
             }
-            if segment.ident.name != kw::PathRoot {
-                path_str.push_str(segment.ident.as_str())
+            if ident.name != kw::PathRoot {
+                path_str.push_str(ident.as_str())
             }
         }
         Symbol::intern(&path_str)
@@ -439,7 +440,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                     ) {
                         Ok((Some(ext), _)) => {
                             if !ext.helper_attrs.is_empty() {
-                                let span = resolution.path.segments.last().unwrap().ident.span;
+                                let span = resolution.path.last_ident().unwrap().span;
                                 let ctxt = Macros20NormalizedSyntaxContext::new(span.ctxt());
                                 entry.helper_attrs.extend(
                                     ext.helper_attrs
@@ -631,7 +632,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if deleg_impl.is_some() {
             if !matches!(res, Res::Err | Res::Def(DefKind::Trait, _)) {
                 self.dcx().emit_err(MacroExpectedFound {
-                    span: path.span,
+                    span: path.span(),
                     expected: "trait",
                     article: "a",
                     found: res.descr(),
@@ -646,8 +647,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Report errors for the resolved macro.
-        for (idx, segment) in path.segments.iter().enumerate() {
-            if let Some(args) = &segment.args {
+        for (idx, segment) in path.iter_segments().enumerate() {
+            if let Some(args) = segment.args {
                 self.dcx().emit_err(diagnostics::GenericArgumentsInMacroPath { span: args.span() });
             }
             if kind == MacroKind::Attr && segment.ident.as_str().starts_with("rustc") {
@@ -669,7 +670,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     self.unused_macros.swap_remove(&def_id);
                     if self.proc_macro_stubs.contains(&def_id) {
                         self.dcx().emit_err(diagnostics::ProcMacroSameCrate {
-                            span: path.span,
+                            span: path.span(),
                             is_test: self.tcx.sess.is_test_crate(),
                         });
                     }
@@ -701,7 +702,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let path_str = pprust::path_to_string(path);
 
             let mut err = MacroExpectedFound {
-                span: path.span,
+                span: path.span(),
                 expected,
                 article,
                 found: res.descr(),
@@ -711,12 +712,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
 
             // Suggest moving the macro out of the derive() if the macro isn't Derive
-            if !path.span.from_expansion()
+            if !path.span().from_expansion()
                 && kind == MacroKind::Derive
                 && !ext.macro_kinds().contains(MacroKinds::DERIVE)
                 && ext.macro_kinds().contains(MacroKinds::ATTR)
             {
-                err.remove_surrounding_derive = Some(RemoveSurroundingDerive { span: path.span });
+                err.remove_surrounding_derive = Some(RemoveSurroundingDerive { span: path.span() });
                 err.add_as_non_derive = Some(AddAsNonDerive { macro_path: &path_str });
             }
 
@@ -737,7 +738,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             } else {
                 "custom inner attributes are unstable"
             };
-            feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
+            feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span(), msg).emit();
         }
 
         Ok((ext, res))
@@ -773,7 +774,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_import: Option<Import<'ra>>,
         suggestion_span: Option<Span>,
     ) -> Result<(Option<&'ra Arc<SyntaxExtension>>, Res), Determinacy> {
-        let path_span = ast_path.span;
+        let path_span = ast_path.span();
         let mut path = Segment::from_path(ast_path);
 
         // Possibly apply the macro helper hack
@@ -1082,7 +1083,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         path: &ast::Path,
         node_id: NodeId,
     ) {
-        let span = path.span;
+        let span = path.span();
         if let Some(stability) = &ext.stability
             && let StabilityLevel::Unstable { reason, issue, implied_by, .. } = stability.level
         {
@@ -1153,7 +1154,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // If such resolution is successful and gives the same result
             // (e.g. if the macro is re-imported), then silence the lint.
             let no_macro_rules = self.arenas.alloc_macro_rules_scope(MacroRulesScope::Empty);
-            let ident = path.segments[0].ident;
+            let ident = *path.iter_idents().next().unwrap();
             let fallback_binding = self.reborrow().resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::Macro(MacroKind::Bang),
@@ -1180,10 +1181,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 };
                 self.tcx.sess.psess.buffer_lint(
                     OUT_OF_SCOPE_MACRO_CALLS,
-                    path.span,
+                    path.span(),
                     node_id,
                     diagnostics::OutOfScopeMacroCalls {
-                        span: path.span,
+                        span: path.span(),
                         path: pprust::path_to_string(path),
                         location,
                     },
@@ -1247,7 +1248,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         path: &ast::Path,
         namespaces: &[Namespace],
     ) -> Result<bool, Indeterminate> {
-        let span = path.span;
+        let span = path.span();
         let path = &Segment::from_path(path);
         let parent_scope = self.invocation_parent_scopes[&expn_id];
 

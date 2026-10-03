@@ -163,7 +163,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate!(
                         self,
                         negative_impls,
-                        span.to(of_trait.trait_ref.path.span),
+                        span.to(of_trait.trait_ref.path.span()),
                         "negative impls are experimental",
                         "use marker types for now"
                     );

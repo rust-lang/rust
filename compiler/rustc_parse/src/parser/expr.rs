@@ -5,7 +5,7 @@ use core::ops::{Bound, ControlFlow};
 
 use ast::mut_visit::{self, MutVisitor};
 use ast::token::IdentKind;
-use ast::{ForLoopKind, MatchKind, Pat, Path, PathSegment, Recovered};
+use ast::{ForLoopKind, MatchKind, Pat, Path, Recovered};
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
@@ -581,8 +581,10 @@ impl<'a> Parser<'a> {
                 match self.parse_path(PathStyle::Expr) {
                     Ok(path) => {
                         let span_after_type = parser_snapshot_after_type.token.span;
-                        let expr =
-                            mk_expr(self, self.mk_ty(path.span, TyKind::Path(None, path.clone())));
+                        let expr = mk_expr(
+                            self,
+                            self.mk_ty(path.span(), TyKind::Path(None, path.clone())),
+                        );
 
                         let args_span = self.look_ahead(1, |t| t.span).to(span_after_type);
                         match self.token.kind {
@@ -1052,18 +1054,11 @@ impl<'a> Parser<'a> {
                         }
                         break;
                     }
-                    ExprKind::Path(None, Path { ref segments, .. }) => {
-                        match &segments[..] {
-                            [PathSegment { ident, args: None, .. }] => {
-                                trailing_dot = None;
-                                fields.insert(start_idx, *ident)
-                            }
-                            _ => {
-                                self.dcx()
-                                    .emit_err(crate::diagnostics::InvalidOffsetOf(current.span));
-                                break;
-                            }
-                        }
+                    ExprKind::Path(None, ref path)
+                        if let Some(ident) = path.as_single_argless_ident() =>
+                    {
+                        trailing_dot = None;
+                        fields.insert(start_idx, ident);
                         break;
                     }
                     _ => {
@@ -1267,7 +1262,7 @@ impl<'a> Parser<'a> {
 
         let fn_span_lo = self.token.span;
         let mut seg = self.parse_path_segment(PathStyle::Expr, None)?;
-        self.check_trailing_angle_brackets(&seg, &[exp!(OpenParen)]);
+        self.check_trailing_angle_brackets(seg.as_ref(), &[exp!(OpenParen)]);
         self.check_turbofish_missing_angle_brackets(&mut seg);
 
         if self.check(exp!(OpenParen)) {
@@ -1567,20 +1562,20 @@ impl<'a> Parser<'a> {
             // MACRO INVOCATION expression
             if qself.is_some() {
                 self.dcx()
-                    .emit_err(crate::diagnostics::MacroInvocationWithQualifiedPath(path.span));
+                    .emit_err(crate::diagnostics::MacroInvocationWithQualifiedPath(path.span()));
             }
-            let lo = path.span;
+            let lo = path.span();
             let mac = Box::new(MacCall { path, args: self.parse_delim_args()? });
             (lo.to(self.prev_token.span), ExprKind::MacCall(mac))
         } else if self.check(exp!(OpenBrace))
             && let Some(expr) = self.maybe_parse_struct_expr(&qself, &path)
         {
             if qself.is_some() {
-                self.psess.gated_spans.gate(sym::more_qualified_paths, path.span);
+                self.psess.gated_spans.gate(sym::more_qualified_paths, path.span());
             }
             return expr;
         } else {
-            (path.span, ExprKind::Path(qself, path))
+            (path.span(), ExprKind::Path(qself, path))
         };
 
         let expr = self.mk_expr(span, kind);
@@ -1835,8 +1830,7 @@ impl<'a> Parser<'a> {
                 // Recover `break label aaaaa`
                 if self.may_recover()
                     && let ExprKind::Path(None, p) = &expr.kind
-                    && let [segment] = &*p.segments
-                    && let &ast::PathSegment { ident, args: None, .. } = segment
+                    && let Some(ident) = p.as_single_argless_ident()
                     && let Some(next) = self.parse_expr_opt()?
                 {
                     label = Some(self.recover_ident_into_label(ident));
@@ -3618,7 +3612,7 @@ impl<'a> Parser<'a> {
                         self.dcx().emit_err(crate::diagnostics::StructLiteralNotAllowedHere {
                             span: expr.span,
                             sub: crate::diagnostics::StructLiteralNotAllowedHereSugg {
-                                left: path.span.shrink_to_lo(),
+                                left: path.span().shrink_to_lo(),
                                 right: expr.span.shrink_to_hi(),
                             },
                         });
@@ -3743,9 +3737,9 @@ impl<'a> Parser<'a> {
                 Ok(f) => Ok(f),
                 Err(mut e) => {
                     if pth == kw::Async {
-                        async_block_err(&mut e, pth.span);
+                        async_block_err(&mut e, pth.span());
                     } else {
-                        e.span_label(pth.span, "while parsing this struct");
+                        e.span_label(pth.span(), "while parsing this struct");
                     }
 
                     if let Some((ident, _)) = self.token.ident()
@@ -3790,9 +3784,11 @@ impl<'a> Parser<'a> {
                         // make sure the block is at the end by eating a `;`,
                         // we shouldn't report such diagnostic for `let a = foo{return 43;}+bar;`
                         // also skip the suggestion if the span cross macro boundaries
-                        if might_be_stmt && snapshot.eat(exp!(Semi)) && pth.span.eq_ctxt(open_span)
+                        if might_be_stmt
+                            && snapshot.eat(exp!(Semi))
+                            && pth.span().eq_ctxt(open_span)
                         {
-                            let span = pth.span.between(open_span);
+                            let span = pth.span().between(open_span);
                             e.subdiagnostic(crate::diagnostics::MissingElseInLet { span });
                             self.restore_snapshot(snapshot);
                             return Err(e);
@@ -3841,9 +3837,9 @@ impl<'a> Parser<'a> {
                 }
                 Err(mut e) => {
                     if pth == kw::Async {
-                        async_block_err(&mut e, pth.span);
+                        async_block_err(&mut e, pth.span());
                     } else {
-                        e.span_label(pth.span, "while parsing this struct");
+                        e.span_label(pth.span(), "while parsing this struct");
                         if peek.is_some() {
                             e.span_suggestion(
                                 self.prev_token.span.shrink_to_hi(),
@@ -3881,7 +3877,7 @@ impl<'a> Parser<'a> {
         pth: ast::Path,
         recover: bool,
     ) -> PResult<'a, Box<Expr>> {
-        let lo = pth.span;
+        let lo = pth.span();
         let (fields, base, recovered_async) =
             self.parse_struct_fields(pth.clone(), recover, exp!(CloseBrace))?;
         let span = lo.to(self.token.span);
@@ -4261,7 +4257,7 @@ impl MutVisitor for CondChecker<'_> {
                             }
                         }
 
-                        let expr_span = lhs.span.to(path.span);
+                        let expr_span = lhs.span.to(path.span());
 
                         if let Some(later_rhs) = find_let_some(rhs)
                             && depth > 0

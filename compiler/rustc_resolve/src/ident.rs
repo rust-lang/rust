@@ -581,7 +581,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             if ext.helper_attrs.contains(&ident.name) {
                                 let decl = self.arenas.new_pub_def_decl(
                                     Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat),
-                                    derive.span,
+                                    derive.span(),
                                     LocalExpnId::ROOT,
                                 );
                                 result = Ok(decl);

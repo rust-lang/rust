@@ -211,8 +211,7 @@ fn make_format_args(
                                 && let [stmt] = block.stmts.as_slice()
                                 && let StmtKind::Expr(expr) = &stmt.kind
                                 && let ExprKind::Path(None, path) = &expr.kind
-                                && path.segments.len() == 1
-                                && path.segments[0].args.is_none()
+                                && path.is_single_argless_ident()
                             {
                                 err.multipart_suggestion(
                                     "quote your inlined format argument to use as string literal",

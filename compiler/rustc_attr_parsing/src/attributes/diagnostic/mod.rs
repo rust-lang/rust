@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use rustc_ast::PathSegment;
+use rustc_ast::PathSegmentRef;
 use rustc_attr_ir::diagnostic::{
     Directive, Filter, FilterFormatString, Flag, FormatArg, FormatString, LitOrArg, Name,
     NameValue, Piece, Predicate,
@@ -38,7 +38,7 @@ pub(crate) mod opaque;
 impl<'sess> crate::AttributeParser<'sess> {
     pub(crate) fn unknown_diagnostic_attr(
         &self,
-        segment: &PathSegment,
+        segment: PathSegmentRef<'_>,
         mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
     ) {
         const DIAGNOSTIC_ATTRIBUTES: [(

@@ -185,7 +185,7 @@ impl<'sess> AttributeParser<'sess> {
         expected_safety: AttributeSafety,
     ) -> Option<T> {
         let attr_item = attr.get_normal_item();
-        let parts = attr_item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
+        let parts = attr_item.path.iter_idents().map(|i| i.name).collect::<Vec<_>>();
 
         let path = AttrPath::from_ast(&attr_item.path, identity);
         let args = ArgParser::from_attr_args(
@@ -364,8 +364,7 @@ impl<'sess> AttributeParser<'sess> {
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(&n.item.path));
                     let attr_path = AttrPath::from_ast(&n.item.path, lower_span);
-                    let parts =
-                        n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
+                    let parts = n.item.path.iter_idents().map(|i| i.name).collect::<Vec<_>>();
                     let inner_span = lower_span(n.item.span);
 
                     if let Some(accept) = ATTRIBUTE_PARSERS.accepters.get(parts.as_slice()) {
@@ -451,7 +450,10 @@ impl<'sess> AttributeParser<'sess> {
                             cx.shared.cx.check_args_used(attr, &args)
                         }
                     } else if let [sym::diagnostic, _unknown, ..] = &*parts {
-                        self.unknown_diagnostic_attr(&n.item.path.segments[1], &mut emit_lint);
+                        self.unknown_diagnostic_attr(
+                            n.item.path.iter_segments().nth(1).unwrap(),
+                            &mut emit_lint,
+                        );
                     } else {
                         let attr = AttrItem {
                             path: attr_path.clone(),

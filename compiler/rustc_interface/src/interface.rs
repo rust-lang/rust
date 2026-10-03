@@ -68,7 +68,7 @@ pub(crate) fn parse_cfg(sess: &Session, cfgs: Vec<String>) -> Cfg {
                             if parser.token == token::Eof
                                 && parser.dcx().has_errors().is_none() =>
                         {
-                            if meta_item.path.segments.len() != 1 {
+                            if meta_item.path.num_segments() != 1 {
                                 error!("argument key must be an identifier");
                             }
                             match &meta_item.kind {

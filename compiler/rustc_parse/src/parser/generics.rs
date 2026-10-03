@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use rustc_ast::{
     self as ast, AttrVec, DUMMY_NODE_ID, GenericBounds, GenericParam, GenericParamKind, TyKind,
     WhereClause, token,
@@ -678,12 +679,13 @@ fn suggest_replacing_equality_pred_with_assoc_item_constraint(
     lhs_ty: ast::Ty,
     rhs_ty: ast::Ty,
 ) {
-    let TyKind::Path(qself, ast::Path { segments, .. }) = lhs_ty.kind else { return };
+    let TyKind::Path(qself, path) = lhs_ty.kind else { return };
 
     let mut parts = Vec::new();
     let applicability = match qself {
         // We have something like `Ty::Item<i32> = Rhs`.
-        None if let [self_ty_seg, assoc_item_seg] = &segments[..]
+        None if let segments_iter = path.iter_segments()
+            && let Some((self_ty_seg, assoc_item_seg)) = segments_iter.collect_tuple()
             && self_ty_seg.ident.name != kw::PathRoot =>
         {
             parts.push((
@@ -692,13 +694,17 @@ fn suggest_replacing_equality_pred_with_assoc_item_constraint(
             ));
             Applicability::HasPlaceholders
         }
-        Some(qself) if let [assoc_item_seg] = &segments[qself.position..] => {
+        Some(qself)
+            if let Ok(assoc_item_seg) = path.iter_segments().skip(qself.position).exactly_one() =>
+        {
             parts.push((lhs_ty.span.until(qself.ty.span), String::new()));
 
+            let mut segments_iter = path.iter_segments().take(qself.position);
             // We have something like `<Option<usize> as self::Trait<i32>>::Item = Rhs`.
-            if let trait_segs @ [.., final_trait_seg] = &segments[..qself.position] {
-                parts.push((qself.ty.span.between(trait_segs[0].span()), ": ".into()));
-                let (span, snippet) = match &final_trait_seg.args {
+            if let Some(first_trait_seg) = segments_iter.next() {
+                let final_trait_seg = segments_iter.next_back().unwrap_or(first_trait_seg);
+                parts.push((qself.ty.span.between(first_trait_seg.span()), ": ".into()));
+                let (span, snippet) = match final_trait_seg.args {
                     Some(args) => {
                         let ast::GenericArgs::AngleBracketed(args) = args else { return };
                         let Some(args) = args.args.last() else { return };

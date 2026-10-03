@@ -3,6 +3,7 @@ use std::mem;
 use std::ops::Bound;
 
 use ast::Label;
+use itertools::Itertools;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::util::classify::{self, TrailingBrace};
@@ -630,7 +631,7 @@ impl<'a> Parser<'a> {
             (token::CloseBrace, StmtKind::Expr(expr))
                 if let ExprKind::Struct(expr) = &expr.kind
                     && let None = expr.qself
-                    && expr.path.segments.len() == 1 =>
+                    && expr.path.num_segments() == 1 =>
             {
                 // This is specific to "mistyped `if` condition followed by empty body"
                 //
@@ -1030,8 +1031,8 @@ impl<'a> Parser<'a> {
                             }
 
                             if self.token == token::Colon
-                                && let ExprKind::Path(None, ast::Path { segments, .. }) = &expr.kind
-                                && let [segment] = segments.as_slice()
+                                && let ExprKind::Path(None, path) = &expr.kind
+                                && let Some(ident) = path.iter_idents().exactly_one().ok()
                                 && self.look_ahead(1, |t| {
                                     t.is_metavar_block()
                                         || t.kind == token::OpenBrace
@@ -1043,8 +1044,8 @@ impl<'a> Parser<'a> {
                                 let snapshot = self.create_snapshot_for_diagnostic();
                                 let label = Label {
                                     ident: Ident::from_str_and_span(
-                                        &format!("'{}", segment.ident),
-                                        segment.ident.span,
+                                        &format!("'{}", ident),
+                                        ident.span,
                                     ),
                                 };
                                 match self.parse_expr_labeled(label, false) {

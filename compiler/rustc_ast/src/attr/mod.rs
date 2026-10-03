@@ -115,7 +115,7 @@ impl AttributeExt for Attribute {
         use SyntheticAttr::*;
         match &self.kind {
             AttrKind::Normal(normal) => {
-                Some(normal.item.path.segments.iter().map(|i| i.ident.name).collect())
+                Some(normal.item.path.iter_idents().map(|i| i.name).collect())
             }
             AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => None,
             AttrKind::DocComment(_, _) => None,
@@ -124,7 +124,7 @@ impl AttributeExt for Attribute {
 
     fn path_span(&self) -> Option<Span> {
         match &self.kind {
-            AttrKind::Normal(attr) => Some(attr.item.path.span),
+            AttrKind::Normal(attr) => Some(attr.item.path.span()),
             AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(_, _) => None,
         }
@@ -132,16 +132,7 @@ impl AttributeExt for Attribute {
 
     fn path_matches(&self, name: &[Symbol]) -> bool {
         match &self.kind {
-            AttrKind::Normal(normal) => {
-                normal.item.path.segments.len() == name.len()
-                    && normal
-                        .item
-                        .path
-                        .segments
-                        .iter()
-                        .zip(name)
-                        .all(|(s, n)| s.args.is_none() && s.ident.name == *n)
-            }
+            AttrKind::Normal(normal) => normal.item.path == name,
             AttrKind::Synthetic(..) | AttrKind::DocComment(..) => false,
         }
     }
@@ -339,7 +330,7 @@ impl Attribute {
 
 impl AttrItem {
     pub fn name(&self) -> Option<Symbol> {
-        if let [seg] = &*self.path.segments { Some(seg.ident.name) } else { None }
+        self.path.as_single_argless_name()
     }
 
     pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
@@ -411,11 +402,11 @@ impl AttrItem {
 impl MetaItem {
     /// For a single-segment meta item, returns its name; otherwise, returns `None`.
     pub fn ident(&self) -> Option<Ident> {
-        if let [PathSegment { ident, .. }] = self.path.segments[..] { Some(ident) } else { None }
+        self.path.as_single_argless_ident()
     }
 
     pub fn name(&self) -> Option<Symbol> {
-        self.ident().map(|ident| ident.name)
+        self.path.as_single_argless_name()
     }
 
     pub fn has_name(&self, name: Symbol) -> bool {
@@ -509,7 +500,7 @@ impl MetaItem {
                     iter.next();
                 }
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
-                Path { span, segments }
+                Path::General { span, segments }
             }
             Some(TokenTree::Delimited(
                 _span,
@@ -531,10 +522,10 @@ impl MetaItem {
         let kind = MetaItemKind::from_tokens(iter)?;
         let hi = match &kind {
             MetaItemKind::NameValue(lit) => lit.span.hi(),
-            MetaItemKind::List(..) => list_closing_paren_pos.unwrap_or(path.span.hi()),
-            _ => path.span.hi(),
+            MetaItemKind::List(..) => list_closing_paren_pos.unwrap_or(path.span().hi()),
+            _ => path.span().hi(),
         };
-        let span = path.span.with_hi(hi);
+        let span = path.span().with_hi(hi);
         // FIXME: This parses `unsafe()` not as unsafe attribute syntax in `MetaItem`,
         // but as a parenthesized list. This (and likely `MetaItem`) should be changed in
         // such a way that builtin macros don't accept extraneous `unsafe()`.

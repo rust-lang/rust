@@ -68,7 +68,7 @@ pub(crate) fn resolve_type_relative_delegations(
 
                 let res = r.partial_res_map.get(&delegation.id);
                 let res = res.and_then(|res| res.base_res().opt_def_id());
-                let ident = delegation.path.segments.last().map(|s| s.ident);
+                let ident = delegation.path.last_ident();
 
                 let span = delegation.last_segment_span();
 
@@ -240,23 +240,23 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         let create_invalid_path_error =
             || tcx.dcx().span_delayed_bug(span, "invalid delegation path");
 
-        match &delegation.path.segments[..] {
-            [] => return Err(create_invalid_path_error()),
-            [child] => {
-                let res = self.get_resolution_id(child.id)?;
-                if tcx.def_kind(res) != DefKind::Fn {
-                    return Err(create_invalid_path_error());
-                }
-            }
-            [.., parent, _] => {
-                let child_res = self.get_call_path_res(delegation, span)?;
-                let parent_res = self.get_resolution_id(parent.id)?;
+        let mut segment_iter = delegation.path.iter_segments();
+        let Some(child) = segment_iter.next_back() else {
+            return Err(create_invalid_path_error());
+        };
+        if let Some(parent) = segment_iter.next_back() {
+            let child_res = self.get_call_path_res(delegation, span)?;
+            let parent_res = self.get_resolution_id(parent.id)?;
 
-                match (tcx.def_kind(child_res), tcx.def_kind(parent_res)) {
-                    (DefKind::Fn, DefKind::Mod) => {}
-                    (DefKind::AssocFn, DefKind::Trait | DefKind::Struct | DefKind::Enum) => {}
-                    _ => return Err(create_invalid_path_error()),
-                }
+            match (tcx.def_kind(child_res), tcx.def_kind(parent_res)) {
+                (DefKind::Fn, DefKind::Mod) => {}
+                (DefKind::AssocFn, DefKind::Trait | DefKind::Struct | DefKind::Enum) => {}
+                _ => return Err(create_invalid_path_error()),
+            }
+        } else {
+            let res = self.get_resolution_id(child.id)?;
+            if tcx.def_kind(res) != DefKind::Fn {
+                return Err(create_invalid_path_error());
             }
         }
 

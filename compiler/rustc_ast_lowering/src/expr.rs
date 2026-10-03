@@ -277,7 +277,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ExprKind::MethodCall(MethodCall { seg, receiver, args, span }) => {
                 let hir_seg = self.arena.alloc(self.lower_path_segment(
                     e.span,
-                    seg,
+                    seg.as_ref(),
                     ParamMode::Optional,
                     GenericArgsMode::Err,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Path),
@@ -656,7 +656,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
 
         // Add generic args to the last element of the path.
-        let last_segment = path.segments.last_mut().unwrap();
+        let last_segment = path.force_general_mut().0.last_mut().unwrap();
         assert!(last_segment.args.is_none());
         last_segment.args = Some(Box::new(GenericArgs::AngleBracketed(AngleBracketedArgs {
             span: DUMMY_SP,

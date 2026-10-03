@@ -341,7 +341,7 @@ impl<'a> StripUnconfigured<'a> {
                 .to_attr_token_stream(),
         ));
 
-        let attr_item_path_span = attr_item.node.path.span;
+        let attr_item_path_span = attr_item.node.path.span();
         let attr_tokens = Some(LazyAttrTokenStream::new_direct(AttrTokenStream::new(trees)));
         let attr = ast::attr::mk_attr_from_item(
             &self.sess.psess.attr_id_generator,

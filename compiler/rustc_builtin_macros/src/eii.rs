@@ -259,10 +259,9 @@ fn name_for_impl_macro(
     if meta_item.is_word() {
         Ok(item_ident)
     } else if let Some([first]) = meta_item.meta_item_list()
-        && let Some(m) = first.meta_item()
-        && m.path.segments.len() == 1
+        && let Some(ident) = first.ident()
     {
-        Ok(m.path.segments[0].ident)
+        Ok(ident)
     } else {
         Err(ecx.dcx().emit_err(EiiMacroExpectedMaxOneArgument {
             span: meta_item.span,
@@ -607,9 +606,9 @@ pub(crate) fn eii_shared_macro(
         false
     } else if let Some([first]) = meta_item.meta_item_list()
         && let Some(m) = first.meta_item()
-        && m.path.segments.len() == 1
+        && let Some(name) = m.name()
     {
-        m.path.segments[0].ident.name == kw::Default
+        name == kw::Default
     } else {
         ecx.dcx().emit_err(EiiMacroExpectedMaxOneArgument {
             span: meta_item.span,
@@ -623,7 +622,7 @@ pub(crate) fn eii_shared_macro(
     }
     *eii_impl = Some(Box::new(EiiImpl {
         node_id: DUMMY_NODE_ID,
-        inner_span: meta_item.path.span,
+        inner_span: meta_item.path.span(),
         eii_macro_path: meta_item.path.clone(),
         impl_safety: meta_item.unsafety,
         span,

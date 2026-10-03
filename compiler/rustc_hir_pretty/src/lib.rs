@@ -131,7 +131,7 @@ impl<'a> State<'a> {
 
     fn print_attr_item(&mut self, item: &AttrItem, span: Span) {
         let ib = self.ibox(0);
-        let path = ast::Path {
+        let path = ast::Path::General {
             span,
             segments: item
                 .path

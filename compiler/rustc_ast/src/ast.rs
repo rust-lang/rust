@@ -18,11 +18,14 @@
 //! - [`Attribute`]: Metadata associated with item.
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
+// ignore-tidy-file-filelength
+
 use std::borrow::{Borrow, Cow};
-use std::{cmp, fmt};
+use std::{cmp, fmt, iter};
 
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
+use either::Either;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
@@ -85,29 +88,27 @@ impl fmt::Display for Lifetime {
 
 /// A "Path" is essentially Rust's notion of a name.
 ///
-/// It's represented as a sequence of identifiers,
-/// along with a bunch of supporting information.
-///
-/// E.g., `std::cmp::PartialEq`.
+/// We separate the common case a single identifier (e.g. `x`) from the general case of a sequence
+/// of identifiers that might also have generics attached (e.g. `std::cmp::PartialEq`,
+/// `Vec::<T>::new`).
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
-pub struct Path {
-    pub span: Span,
-    /// The segments in the path: the things separated by `::`.
-    /// Global paths begin with `kw::PathRoot`.
-    pub segments: ThinVec<PathSegment>,
+pub enum Path {
+    /// The common case of a single identifier (e.g. `x`)
+    Ident { ident: Ident, id: NodeId },
+    General {
+        /// The span of the whole path; might differ from the combined spans of the segments.
+        span: Span,
+        /// The segments in the path: the things separated by `::`.
+        /// Global paths begin with `kw::PathRoot`.
+        segments: ThinVec<PathSegment>,
+    },
 }
 
 // Succeeds if the path has a single segment that is arg-free and matches the given symbol.
 impl PartialEq<Symbol> for Path {
     #[inline]
     fn eq(&self, name: &Symbol) -> bool {
-        if let [segment] = self.segments.as_ref()
-            && segment == name
-        {
-            true
-        } else {
-            false
-        }
+        self.as_single_argless_name() == Some(*name)
     }
 }
 
@@ -115,16 +116,22 @@ impl PartialEq<Symbol> for Path {
 impl PartialEq<&[Symbol]> for Path {
     #[inline]
     fn eq(&self, names: &&[Symbol]) -> bool {
-        self.segments.iter().eq(*names)
+        match self {
+            Path::Ident { ident, .. } => {
+                let [name] = names else {
+                    return false;
+                };
+                ident.name == *name
+            }
+            Path::General { segments, .. } => segments.iter().eq(*names),
+        }
     }
 }
 
 impl StableHash for Path {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.segments.len().stable_hash(hcx, hasher);
-        for segment in &self.segments {
-            segment.ident.stable_hash(hcx, hasher);
-        }
+        self.num_segments().stable_hash(hcx, hasher);
+        self.iter_idents().for_each(|ident| ident.stable_hash(hcx, hasher));
     }
 }
 
@@ -132,22 +139,124 @@ impl Path {
     /// Convert a span and an identifier to the corresponding
     /// one-segment path.
     pub fn from_ident(ident: Ident) -> Path {
-        Path { segments: thin_vec![PathSegment::from_ident(ident)], span: ident.span }
+        Path::Ident { ident, id: DUMMY_NODE_ID }
+    }
+
+    #[inline]
+    pub fn span(&self) -> Span {
+        match self {
+            Path::Ident { ident, .. } => ident.span,
+            Path::General { span, .. } => *span,
+        }
+    }
+
+    pub fn path_root(span: Span) -> Self {
+        Path::from_ident(Ident::new(kw::PathRoot, span))
     }
 
     pub fn is_global(&self) -> bool {
-        self.segments.first().is_some_and(|segment| segment.ident.name == kw::PathRoot)
+        self.iter_idents().next().is_some_and(|i| i.name == kw::PathRoot)
     }
 
     /// Checks if this path is just a simple one-word `PATH` - i.e. the inverse of
     /// [`Path::from_ident`]
+    #[inline]
     pub fn is_single_argless_ident(&self) -> bool {
-        self.segments.len() == 1 && self.segments[0].args.is_none()
+        self.as_single_argless_ident().is_some()
     }
 
     /// The inverse of [`Path::from_ident`] - if this path is just a simple one-word `PATH`
+    #[inline]
     pub fn as_single_argless_ident(&self) -> Option<Ident> {
-        self.is_single_argless_ident().then(|| self.segments[0].ident)
+        // This can't *exclusively* handle the `Path::Ident` case, because a single ident can use
+        // `Path::General` if the path span differs from the ident span.
+        match self {
+            Path::Ident { ident, .. } => Some(*ident),
+            Path::General { segments, .. } => {
+                let [segment] = segments.as_ref() else {
+                    return None;
+                };
+                if segment.args.is_some() {
+                    return None;
+                }
+                Some(segment.ident)
+            }
+        }
+    }
+
+    #[inline]
+    pub fn as_single_argless_name(&self) -> Option<Symbol> {
+        self.as_single_argless_ident().map(|i| i.name)
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        let Path::General { segments, .. } = self else {
+            return false;
+        };
+        segments.is_empty()
+    }
+
+    #[inline]
+    pub fn num_segments(&self) -> usize {
+        let Path::General { segments, .. } = self else {
+            return 1;
+        };
+        segments.len()
+    }
+
+    #[inline]
+    pub fn iter_idents(&self) -> impl DoubleEndedIterator<Item = &Ident> + ExactSizeIterator {
+        match self {
+            Path::Ident { ident, .. } => Either::Left(iter::once(ident)),
+            Path::General { segments, .. } => Either::Right(segments.iter().map(|s| &s.ident)),
+        }
+    }
+
+    #[inline]
+    pub fn iter_segments(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = PathSegmentRef<'_>> + ExactSizeIterator {
+        match self {
+            &Path::Ident { ref ident, id } => {
+                Either::Left(iter::once(PathSegmentRef { ident, id, args: None }))
+            }
+            Path::General { segments, .. } => {
+                Either::Right(segments.iter().map(PathSegment::as_ref))
+            }
+        }
+    }
+
+    #[inline]
+    pub fn last_segment(&self) -> Option<PathSegmentRef<'_>> {
+        match self {
+            &Path::Ident { ref ident, id } => Some(PathSegmentRef { ident, id, args: None }),
+            Path::General { segments, .. } => segments.last().map(PathSegment::as_ref),
+        }
+    }
+
+    #[inline]
+    pub fn last_ident(&self) -> Option<Ident> {
+        match self {
+            &Path::Ident { ident, .. } => Some(ident),
+            Path::General { segments, .. } => segments.last().map(|s| s.ident),
+        }
+    }
+
+    pub fn force_general_mut(&mut self) -> (&mut ThinVec<PathSegment>, &mut Span) {
+        match self {
+            Path::General { segments, span } => (segments, span),
+            &mut Path::Ident { ident, id } => {
+                *self = Path::General {
+                    segments: thin_vec![PathSegment { ident, id, args: None }],
+                    span: ident.span,
+                };
+                match self {
+                    Path::Ident { .. } => unreachable!(),
+                    Path::General { segments, span } => (segments, span),
+                }
+            }
+        }
     }
 }
 
@@ -242,6 +351,26 @@ impl PathSegment {
 
     pub fn span(&self) -> Span {
         match &self.args {
+            Some(args) => self.ident.span.to(args.span()),
+            None => self.ident.span,
+        }
+    }
+
+    pub fn as_ref(&self) -> PathSegmentRef<'_> {
+        PathSegmentRef { ident: &self.ident, id: self.id, args: self.args.as_deref() }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct PathSegmentRef<'a> {
+    pub ident: &'a Ident,
+    pub id: NodeId,
+    pub args: Option<&'a GenericArgs>,
+}
+
+impl PathSegmentRef<'_> {
+    pub fn span(&self) -> Span {
+        match self.args {
             Some(args) => self.ident.span.to(args.span()),
             None => self.ident.span,
         }
@@ -2060,7 +2189,7 @@ pub struct MacCall {
 
 impl MacCall {
     pub fn span(&self) -> Span {
-        self.path.span.to(self.args.dspan.entire())
+        self.path.span().to(self.args.dspan.entire())
     }
 }
 
@@ -2588,14 +2717,7 @@ impl TyKind {
     }
 
     pub fn is_simple_path(&self) -> Option<Symbol> {
-        if let TyKind::Path(None, Path { segments, .. }) = &self
-            && let [segment] = &segments[..]
-            && segment.args.is_none()
-        {
-            Some(segment.ident.name)
-        } else {
-            None
-        }
+        if let TyKind::Path(None, path) = &self { path.as_single_argless_name() } else { None }
     }
 
     /// Returns `true` if this type is considered a scalar primitive (e.g.,
@@ -3340,7 +3462,7 @@ impl UseTree {
         match self.kind {
             UseTreeKind::Simple(Some(rename)) => rename,
             UseTreeKind::Simple(None) => {
-                self.prefix.segments.last().expect("empty prefix in a simple import").ident
+                self.prefix.last_ident().expect("empty prefix in a simple import")
             }
             _ => panic!("`UseTree::ident` can only be used on a simple import"),
         }
@@ -3350,7 +3472,7 @@ impl UseTree {
     /// closing `}` or nested spans, `*` of glob spans or the end of the
     /// identifier of simple spans.
     pub fn span(&self) -> Span {
-        self.prefix.span.to(self.hi_span())
+        self.prefix.span().to(self.hi_span())
     }
 
     /// Returns the trailing element's span. So for a nested
@@ -3360,7 +3482,7 @@ impl UseTree {
     /// path if no rename is specified.
     pub fn hi_span(&self) -> Span {
         match self.kind {
-            UseTreeKind::Simple(None) => self.prefix.span,
+            UseTreeKind::Simple(None) => self.prefix.span(),
             UseTreeKind::Simple(Some(name)) => name.span,
             UseTreeKind::Nested { span, .. } => span,
             UseTreeKind::Glob(span) => span,
@@ -3994,7 +4116,7 @@ pub struct Delegation {
 
 impl Delegation {
     pub fn last_segment_span(&self) -> Span {
-        self.path.segments.last().unwrap().ident.span
+        self.path.last_ident().unwrap().span
     }
 }
 
@@ -4462,8 +4584,8 @@ mod size_asserts {
     static_assert_size!(AttrKind, 16);
     static_assert_size!(Attribute, 32);
     static_assert_size!(Block, 24);
-    static_assert_size!(Expr, 64);
-    static_assert_size!(ExprKind, 32);
+    static_assert_size!(Expr, 72);
+    static_assert_size!(ExprKind, 40);
     static_assert_size!(FieldDef, 80);
     static_assert_size!(Fn, 192);
     static_assert_size!(FnDecl, 24);
@@ -4473,7 +4595,7 @@ mod size_asserts {
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);
     static_assert_size!(GenericArgs, 40);
-    static_assert_size!(GenericBound, 80);
+    static_assert_size!(GenericBound, 88);
     static_assert_size!(GenericParam, 80);
     static_assert_size!(Generics, 40);
     static_assert_size!(Impl, 80);
@@ -4482,19 +4604,19 @@ mod size_asserts {
     static_assert_size!(Lifetime, 16);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 96);
-    static_assert_size!(MetaItem, 80);
+    static_assert_size!(MetaItem, 88);
     static_assert_size!(MetaItemKind, 40);
     static_assert_size!(MetaItemLit, 40);
-    static_assert_size!(NormalAttr, 80);
+    static_assert_size!(NormalAttr, 88);
     static_assert_size!(Param, 40);
-    static_assert_size!(Pat, 64);
-    static_assert_size!(PatKind, 48);
-    static_assert_size!(Path, 16);
+    static_assert_size!(Pat, 72);
+    static_assert_size!(PatKind, 56);
+    static_assert_size!(Path, 24);
     static_assert_size!(PathSegment, 24);
     static_assert_size!(QSelf, 24);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
-    static_assert_size!(TraitImplHeader, 64);
+    static_assert_size!(TraitImplHeader, 72);
     static_assert_size!(Ty, 56);
     static_assert_size!(TyKind, 40);
     // tidy-alphabetical-end

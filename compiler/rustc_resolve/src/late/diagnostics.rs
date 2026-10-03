@@ -2,13 +2,12 @@
 
 use std::borrow::Cow;
 use std::iter;
-use std::ops::Deref;
 
 use rustc_ast::visit::{FnCtxt, FnKind, LifetimeCtxt, Visitor, walk_ty};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AssocItemKind, DUMMY_NODE_ID, Expr, ExprKind, GenericArg,
     GenericArgs, GenericParam, GenericParamKind, Item, ItemKind, MethodCall, NodeId, Path,
-    PathSegment, Ty, TyKind,
+    PathSegment, PathSegmentRef, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust::{path_to_string, where_bound_predicate_to_string};
 use rustc_attr_ir::diagnostic::{CustomDiagnostic, FormatArgs};
@@ -82,10 +81,10 @@ fn is_self_value(path: &[Segment], namespace: Namespace) -> bool {
 
 fn path_to_string_without_assoc_item_bindings(path: &Path) -> String {
     let mut path = path.clone();
-    for segment in &mut path.segments {
+    let segments = path.force_general_mut().0;
+    for segment in segments {
         let mut remove_args = false;
-        if let Some(args) = segment.args.as_deref_mut()
-            && let ast::GenericArgs::AngleBracketed(angle_bracketed) = args
+        if let Some(ast::GenericArgs::AngleBracketed(angle_bracketed)) = segment.args.as_deref_mut()
         {
             angle_bracketed.args.retain(|arg| matches!(arg, ast::AngleBracketedArg::Arg(_)));
             remove_args = angle_bracketed.args.is_empty();
@@ -102,11 +101,8 @@ fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, Str
     let variant_path = &suggestion.path;
     let variant_path_string = path_names_to_string(variant_path);
 
-    let path_len = suggestion.path.segments.len();
-    let enum_path = ast::Path {
-        span: suggestion.path.span,
-        segments: suggestion.path.segments[0..path_len - 1].iter().cloned().collect(),
-    };
+    let mut enum_path = suggestion.path.clone();
+    let _ = enum_path.force_general_mut().0.pop();
     let enum_path_string = path_names_to_string(&enum_path);
 
     (variant_path_string, enum_path_string)
@@ -246,7 +242,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             if poly_trait_ref.modifiers != ast::TraitBoundModifiers::NONE {
                 return;
             }
-            let Some(trait_seg) = poly_trait_ref.trait_ref.path.segments.last() else {
+            let Some(trait_seg) = poly_trait_ref.trait_ref.path.last_segment() else {
                 return;
             };
             let Some(partial_res) = this.r.partial_res_map.get(&trait_seg.id) else {
@@ -291,8 +287,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 let ast::TyKind::Path(None, bounded_path) = &where_bound.bounded_ty.kind else {
                     continue;
                 };
-                let [ast::PathSegment { ident, args: None, .. }] = &bounded_path.segments[..]
-                else {
+                let Some(name) = bounded_path.as_single_argless_name() else {
                     continue;
                 };
 
@@ -307,7 +302,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
                 for bound in &where_bound.bounds {
                     let ast::GenericBound::Trait(poly_trait_ref) = bound else { continue };
-                    record_bound(this, ident.name, poly_trait_ref);
+                    record_bound(this, name, poly_trait_ref);
                 }
             }
         };
@@ -900,18 +895,19 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         res: Option<Res>,
         qself: Option<&QSelf>,
     ) {
+        use itertools::Itertools;
         if let Some(Res::Def(DefKind::AssocFn, _)) = res
             && let PathSource::TraitItem(TypeNS, _) = source
             && let None = following_seg
             && let Some(qself) = qself
             && let TyKind::Path(None, ty_path) = &qself.ty.kind
-            && ty_path.segments.len() == 1
+            && let Ok(ident) = ty_path.iter_idents().exactly_one()
             && self.diag_metadata.current_where_predicate.is_some()
         {
             err.span_suggestion_verbose(
                 span,
                 "you might have meant to use the return type notation syntax",
-                format!("{}::{}(..)", ty_path.segments[0].ident, path[path.len() - 1].ident),
+                format!("{ident}::{}(..)", path[path.len() - 1].ident),
                 Applicability::MaybeIncorrect,
             );
         }
@@ -928,13 +924,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let TyKind::Path(_, path) = &ty.kind else {
             return;
         };
-        for segment in &path.segments {
-            let Some(params) = &segment.args else {
-                continue;
-            };
-            let ast::GenericArgs::AngleBracketed(params) = params.deref() else {
-                continue;
-            };
+        for segment in path.iter_segments() {
+            let Some(ast::GenericArgs::AngleBracketed(params)) = segment.args else { continue };
             for param in &params.args {
                 let ast::AngleBracketedArg::Constraint(constraint) = param else {
                     continue;
@@ -1760,6 +1751,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     }
 
     fn suggest_at_operator_in_slice_pat_with_range(&self, err: &mut Diag<'_>, path: &[Segment]) {
+        use itertools::Itertools;
         let Some(pat) = self.diag_metadata.current_pat else { return };
         let (bound, side, range) = match &pat.kind {
             ast::PatKind::Range(Some(bound), None, range) => (bound, Side::Start, range),
@@ -1767,20 +1759,20 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             _ => return,
         };
         if let ExprKind::Path(None, range_path) = &bound.kind
-            && let [segment] = &range_path.segments[..]
+            && let Ok(&ident) = range_path.iter_idents().exactly_one()
             && let [s] = path
-            && segment.ident == s.ident
-            && segment.ident.span.eq_ctxt(range.span)
+            && ident == s.ident
+            && ident.span.eq_ctxt(range.span)
         {
             // We've encountered `[first, rest..]` (#88404) or `[first, ..rest]` (#120591)
             // where the user might have meant `[first, rest @ ..]`.
             let (span, snippet) = match side {
-                Side::Start => (segment.ident.span.between(range.span), " @ ".into()),
-                Side::End => (range.span.to(segment.ident.span), format!("{} @ ..", segment.ident)),
+                Side::Start => (ident.span.between(range.span), " @ ".into()),
+                Side::End => (range.span.to(ident.span), format!("{ident} @ ..")),
             };
             err.subdiagnostic(diagnostics::UnexpectedResUseAtOpInSlicePatWithRangeSugg {
                 span,
-                ident: segment.ident,
+                ident,
                 snippet,
             });
         }
@@ -1882,16 +1874,15 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             && let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
                 self.resolve_path(&Segment::from_path(self_ty_path), Some(TypeNS), None, source)
             && module.def_kind() == Some(DefKind::Trait)
-            && trait_ref.path.span == span
+            && trait_ref.path.span() == span
             && let PathSource::Trait(_) = source
             && let Some(Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, _)) = res
             && let Ok(self_ty_str) = self.r.tcx.sess.source_map().span_to_snippet(self_ty.span)
-            && let Ok(trait_ref_str) =
-                self.r.tcx.sess.source_map().span_to_snippet(trait_ref.path.span)
+            && let Ok(trait_ref_str) = self.r.tcx.sess.source_map().span_to_snippet(span)
         {
             err.multipart_suggestion(
                     "`impl` items mention the trait being implemented first and the type it is being implemented for second",
-                    vec![(trait_ref.path.span, self_ty_str), (self_ty.span, trait_ref_str)],
+                    vec![(span, self_ty_str), (self_ty.span, trait_ref_str)],
                     Applicability::MaybeIncorrect,
                 );
         }
@@ -2053,6 +2044,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
     /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
     fn restrict_assoc_type_in_where_clause(&self, span: Span, err: &mut Diag<'_>) -> bool {
+        use itertools::Itertools;
         // Detect that we are actually in a `where` predicate.
         let Some(ast::WherePredicate {
             kind:
@@ -2088,13 +2080,14 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if !matches!(partial_res.full_res(), Some(Res::Def(DefKind::TyParam, _))) {
             return false;
         }
-        let ([ast::PathSegment { args: None, .. }], [ast::GenericBound::Trait(poly_trait_ref)]) =
-            (&type_param_path.segments[..], &bounds[..])
-        else {
+        if !type_param_path.is_single_argless_ident() {
+            return false;
+        }
+        let [ast::GenericBound::Trait(poly_trait_ref)] = &bounds[..] else {
             return false;
         };
-        let [ast::PathSegment { ident, args: None, id }] =
-            &poly_trait_ref.trait_ref.path.segments[..]
+        let Ok(ast::PathSegmentRef { ident, args: None, id }) =
+            poly_trait_ref.trait_ref.path.iter_segments().exactly_one()
         else {
             return false;
         };
@@ -2135,8 +2128,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             let mut expr_kind = &args[0].kind;
             loop {
                 match expr_kind {
-                    ExprKind::Path(_, arg_name) if arg_name.segments.len() == 1 => {
-                        if arg_name.segments[0].ident.name == kw::SelfLower {
+                    ExprKind::Path(_, arg_name) if arg_name.num_segments() == 1 => {
+                        if arg_name.iter_idents().next().unwrap().name == kw::SelfLower {
                             let call_span = parent.span;
                             let tail_args_span = if args.len() > 1 {
                                 Some(Span::new(
@@ -3172,8 +3165,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             && let ast::ExprKind::Path(None, ref path) = lhs.kind
             && self.r.tcx.sess.source_map().is_line_before_span_empty(ident_span)
         {
-            let (span, text) = match path.segments.first() {
-                Some(seg) if let Some(name) = seg.ident.as_str().strip_prefix("let") => {
+            let (span, text) = match path.iter_idents().next() {
+                Some(ident) if let Some(name) = ident.as_str().strip_prefix("let") => {
                     // a special case for #117894
                     let name = name.trim_prefix('_');
                     (ident_span, format!("let {name}"))
@@ -3231,7 +3224,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     let doc_visible = doc_visible
                         && (module_def_id.is_local() || !r.tcx.is_doc_hidden(module_def_id));
                     if module_def_id == def_id {
-                        let path = Path { span: name_binding.span, segments: path_segments };
+                        let path =
+                            Path::General { span: name_binding.span, segments: path_segments };
                         result = Some((
                             r.expect_module(module_def_id),
                             ImportSuggestion {
@@ -3264,9 +3258,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             let mut variants = Vec::new();
             enum_module.for_each_child(self.r, |_, ident, orig_ident_span, _, name_binding| {
                 if let Res::Def(DefKind::Ctor(CtorOf::Variant, kind), def_id) = name_binding.res() {
-                    let mut segms = enum_import_suggestion.path.segments.clone();
-                    segms.push(ast::PathSegment::from_ident(ident.orig(orig_ident_span)));
-                    let path = Path { span: name_binding.span, segments: segms };
+                    let mut path = enum_import_suggestion.path.clone();
+                    let (segments, span) = path.force_general_mut();
+                    segments.push(ast::PathSegment::from_ident(ident.orig(orig_ident_span)));
+                    *span = name_binding.span;
                     variants.push((path, def_id, kind));
                 }
             });
@@ -3307,8 +3302,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }) => {
                     let dot_span = receiver.span.between(*span);
                     let found_tuple_variant = variant_ctors.iter().any(|(path, _, ctor_kind)| {
-                        *ctor_kind == CtorKind::Fn
-                            && path.segments.last().is_some_and(|seg| seg.ident == *ident)
+                        *ctor_kind == CtorKind::Fn && path.last_ident() == Some(*ident)
                     });
                     (found_tuple_variant.then_some(dot_span), false)
                 }
@@ -3316,9 +3310,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 // otherwise suggest adding a variant after `Type`.
                 ExprKind::Field(base, ident) => {
                     let dot_span = base.span.between(ident.span);
-                    let found_tuple_or_unit_variant = variant_ctors.iter().any(|(path, ..)| {
-                        path.segments.last().is_some_and(|seg| seg.ident == *ident)
-                    });
+                    let found_tuple_or_unit_variant =
+                        variant_ctors.iter().any(|(path, ..)| path.last_ident() == Some(*ident));
                     (found_tuple_or_unit_variant.then_some(dot_span), false)
                 }
                 _ => (None, false),
@@ -3488,6 +3481,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         path: &[Segment],
         source: PathSource<'_, 'ast, 'ra>,
     ) -> Option<Diag<'tcx>> {
+        use itertools::Itertools;
         let Some(item) = self.diag_metadata.current_item else { return None };
         let ItemKind::Impl(impl_) = &item.kind else { return None };
         let self_ty = &impl_.self_ty;
@@ -3506,11 +3500,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             return None;
         };
 
-        let Some(args) = parent_segment.args.as_ref() else {
-            return None;
-        };
-
-        let GenericArgs::AngleBracketed(angle) = args.as_ref() else {
+        let Some(GenericArgs::AngleBracketed(angle)) = parent_segment.args else {
             return None;
         };
 
@@ -3523,7 +3513,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             .filter_map(|(pos, arg)| {
                 if let AngleBracketedArg::Arg(GenericArg::Type(ty)) = arg
                     && let TyKind::Path(_, path) = &ty.kind
-                    && let [segment] = path.segments.as_slice()
+                    && let Ok(segment) = path.iter_segments().exactly_one()
                 {
                     Some((segment.id, pos))
                 } else {
@@ -3560,12 +3550,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             && let GenericParamKind::Const { ty, .. } = &target_param.kind
             && let TyKind::Path(_, path) = &ty.kind
         {
-            let full_type = path
-                .segments
-                .iter()
-                .map(|seg| seg.ident.to_string())
-                .collect::<Vec<_>>()
-                .join("::");
+            let full_type = path.iter_idents().join("::");
 
             // Find the first impl param whose position in C<A, X, C>
             // is strictly greater than our missing param's index
@@ -3578,8 +3563,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     .find_map(|arg| {
                         if let AngleBracketedArg::Arg(GenericArg::Type(ty)) = arg
                             && let TyKind::Path(_, path) = &ty.kind
-                            && let [segment] = path.segments.as_slice()
-                            && segment.ident == impl_param.ident
+                            && let Ok(segment) = path.iter_segments().exactly_one()
+                            && *segment.ident == impl_param.ident
                         {
                             usage_to_pos.get(&segment.id).copied()
                         } else {
@@ -4061,7 +4046,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 if let ast::GenericBound::Trait(poly_trait_ref) = bound
                                     && let span = poly_trait_ref
                                         .span
-                                        .with_hi(poly_trait_ref.trait_ref.path.span.lo())
+                                        .with_hi(poly_trait_ref.trait_ref.path.span().lo())
                                     && !span.is_empty()
                                 {
                                     rm_inner_binders.insert(span);
@@ -4672,7 +4657,10 @@ fn mk_where_bound_predicate(
     ty: &Ty,
 ) -> Option<ast::WhereBoundPredicate> {
     let modified_segments = {
-        let mut segments = path.segments.clone();
+        let Path::General { segments, .. } = path else {
+            return None;
+        };
+        let mut segments = segments.clone();
         let [preceding @ .., second_last, last] = segments.as_mut_slice() else {
             return None;
         };
@@ -4717,7 +4705,7 @@ fn mk_where_bound_predicate(
             bound_generic_params: ThinVec::new(),
             modifiers: ast::TraitBoundModifiers::NONE,
             trait_ref: ast::TraitRef {
-                path: ast::Path { segments: modified_segments, span: DUMMY_SP },
+                path: ast::Path::General { segments: modified_segments, span: DUMMY_SP },
                 ref_id: DUMMY_NODE_ID,
             },
             span: DUMMY_SP,
@@ -4801,7 +4789,7 @@ pub(super) fn signal_label_shadowing(sess: &Session, orig: Span, shadower: Ident
 
 struct ParentPathVisitor<'a> {
     target: Ident,
-    parent: Option<&'a PathSegment>,
+    parent: Option<PathSegmentRef<'a>>,
     stack: Vec<&'a Ty>,
 }
 
@@ -4816,6 +4804,7 @@ impl<'a> ParentPathVisitor<'a> {
 
 impl<'a> Visitor<'a> for ParentPathVisitor<'a> {
     fn visit_ty(&mut self, ty: &'a Ty) {
+        use itertools::Itertools;
         if self.parent.is_some() {
             return;
         }
@@ -4825,13 +4814,13 @@ impl<'a> Visitor<'a> for ParentPathVisitor<'a> {
 
         if let TyKind::Path(_, path) = &ty.kind
             // is this just `N`?
-            && let [segment] = path.segments.as_slice()
-            && segment.ident == self.target
+            && let Ok(&ident) = path.iter_idents().exactly_one()
+            && ident == self.target
             // parent is previous element in stack
             && let [.., parent_ty, _ty] = self.stack.as_slice()
             && let TyKind::Path(_, parent_path) = &parent_ty.kind
         {
-            self.parent = parent_path.segments.first();
+            self.parent = parent_path.iter_segments().next();
         }
 
         walk_ty(self, ty);

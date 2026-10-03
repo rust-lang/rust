@@ -562,7 +562,7 @@ fn transcribe_pnr<'tx>(
             )
         }
         ParseNtResult::Path(path) => {
-            mk_delimited(path.node.span, MetaVarKind::Path, TokenStream::from_ast(path))
+            mk_delimited(path.node.span(), MetaVarKind::Path, TokenStream::from_ast(path))
         }
         ParseNtResult::Vis(vis) => {
             mk_delimited(vis.node.span, MetaVarKind::Vis, TokenStream::from_ast(vis))

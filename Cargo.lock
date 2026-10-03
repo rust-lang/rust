@@ -3599,6 +3599,7 @@ name = "rustc_ast"
 version = "0.0.0"
 dependencies = [
  "bitflags",
+ "either",
  "memchr",
  "rustc-literal-escaper",
  "rustc_ast_ir",
@@ -3758,6 +3759,7 @@ dependencies = [
 name = "rustc_builtin_macros"
 version = "0.0.0"
 dependencies = [
+ "itertools",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr_ir",
@@ -4589,6 +4591,7 @@ name = "rustc_parse"
 version = "0.0.0"
 dependencies = [
  "bitflags",
+ "itertools",
  "rustc-literal-escaper",
  "rustc_ast",
  "rustc_ast_pretty",

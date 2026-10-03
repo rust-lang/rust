@@ -513,10 +513,10 @@ declare_lint_pass!(LintPassImpl => [LINT_PASS_IMPL_WITHOUT_MACRO]);
 impl EarlyLintPass for LintPassImpl {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         if let ast::ItemKind::Impl(ast::Impl { of_trait: Some(of_trait), .. }) = &item.kind
-            && let Some(last) = of_trait.trait_ref.path.segments.last()
-            && last.ident.name == sym::LintPass
+            && let Some(last_ident) = of_trait.trait_ref.path.last_ident()
+            && last_ident.name == sym::LintPass
         {
-            let expn_data = of_trait.trait_ref.path.span.ctxt().outer_expn_data();
+            let expn_data = of_trait.trait_ref.path.span().ctxt().outer_expn_data();
             let call_site = expn_data.call_site;
             if expn_data.kind != ExpnKind::Macro(MacroKind::Bang, sym::impl_lint_pass)
                 && call_site.ctxt().outer_expn_data().kind
@@ -524,7 +524,7 @@ impl EarlyLintPass for LintPassImpl {
             {
                 cx.emit_span_lint(
                     LINT_PASS_IMPL_WITHOUT_MACRO,
-                    of_trait.trait_ref.path.span,
+                    of_trait.trait_ref.path.span(),
                     LintPassByHand,
                 );
             }
@@ -690,7 +690,7 @@ declare_lint_pass!(BadUseOfFindAttr => [BAD_USE_OF_FIND_ATTR]);
 impl EarlyLintPass for BadUseOfFindAttr {
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &rustc_ast::Arm) {
         fn path_contains_attribute_kind(cx: &EarlyContext<'_>, path: &Path) {
-            for segment in &path.segments {
+            for segment in path.iter_segments() {
                 if segment.ident.as_str() == "AttributeKind" {
                     cx.emit_span_lint(
                         BAD_USE_OF_FIND_ATTR,

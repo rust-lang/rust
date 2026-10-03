@@ -112,7 +112,7 @@ impl PrintAttribute for Path {
     }
 
     fn print_attribute(&self, p: &mut Printer) {
-        p.word(join_path_idents(self.segments.iter().map(|seg| seg.ident)));
+        p.word(join_path_idents(self.iter_idents()));
     }
 }
 

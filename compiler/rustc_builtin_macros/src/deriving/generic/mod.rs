@@ -178,6 +178,7 @@ use std::ops::Not;
 use std::vec;
 
 pub(crate) use Substructure::*;
+use itertools::Itertools;
 pub(crate) use rustc_ast as ast;
 use rustc_ast::token::{IdentKind, LitKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenTree};
@@ -402,8 +403,8 @@ fn find_type_parameters(
             }
 
             if let ast::TyKind::Path(_, path) = &ty.kind
-                && let Some(segment) = path.segments.first()
-                && self.ty_param_names.contains(&segment.ident.name)
+                && let Some(ident) = path.iter_idents().next()
+                && self.ty_param_names.contains(&ident.name)
             {
                 self.type_params.push(TypeParameter {
                     bound_generic_params: self.bound_generic_params_stack.clone(),
@@ -586,12 +587,16 @@ impl<'a> TraitDef<'a> {
                     let bounds: ThinVec<_> = self
                         .additional_bounds
                         .iter()
-                        .map(|p| cx.trait_bound(ast::Path { span, ..p.clone() }, self.is_const))
+                        .map(|p| {
+                            let mut p = p.clone();
+                            *p.force_general_mut().1 = span;
+                            cx.trait_bound(p, self.is_const)
+                        })
                         .chain(
                             // Add a bound for the current trait.
                             self.skip_path_as_bound.not().then(|| {
                                 let mut trait_path = self.path.clone();
-                                trait_path.span = span;
+                                *trait_path.force_general_mut().1 = span;
                                 cx.trait_bound(trait_path, self.is_const)
                             }),
                         )
@@ -657,8 +662,8 @@ impl<'a> TraitDef<'a> {
                 for field_ty_param in field_ty_params {
                     // if we have already handled this type, skip it
                     if let ast::TyKind::Path(_, p) = &field_ty_param.ty.kind
-                        && let [sole_segment] = &*p.segments
-                        && ty_param_names.contains(&sole_segment.ident.name)
+                        && let Ok(sole_ident) = p.iter_idents().exactly_one()
+                        && ty_param_names.contains(&sole_ident.name)
                     {
                         continue;
                     }

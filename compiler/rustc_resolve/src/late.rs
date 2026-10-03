@@ -534,15 +534,12 @@ impl PathSource<'_, '_, '_> {
                 // this is not precise but usually more helpful than just "value".
                 Some(ExprKind::Call(call_expr, _)) => match &call_expr.kind {
                     // the case of `::some_crate()`
-                    ExprKind::Path(_, path)
-                        if let [segment, _] = path.segments.as_slice()
-                            && segment.ident.name == kw::PathRoot =>
-                    {
+                    ExprKind::Path(_, path) if path.num_segments() == 2 && path.is_global() => {
                         "external crate"
                     }
                     ExprKind::Path(_, path)
-                        if let Some(segment) = path.segments.last()
-                            && let Some(c) = segment.ident.to_string().chars().next()
+                        if let Some(ident) = path.last_ident()
+                            && let Some(c) = ident.to_string().chars().next()
                             && c.is_uppercase() =>
                     {
                         "function, tuple struct or tuple variant"
@@ -938,9 +935,8 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                 // If we have a path that ends with `(..)`, then it must be
                 // return type notation. Resolve that path in the *value*
                 // namespace.
-                let source = if let Some(seg) = path.segments.last()
-                    && let Some(args) = &seg.args
-                    && matches!(**args, GenericArgs::ParenthesizedElided(..))
+                let source = if let Some(seg) = path.last_segment()
+                    && matches!(seg.args, Some(GenericArgs::ParenthesizedElided(..)))
                 {
                     PathSource::ReturnTypeNotation
                 } else {
@@ -958,7 +954,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                     // This path is actually a bare trait object. In case of a bare `Fn`-trait
                     // object with anonymous lifetimes, we need this rib to correctly place the
                     // synthetic lifetimes.
-                    let span = ty.span.shrink_to_lo().to(path.span.shrink_to_lo());
+                    let span = ty.span.shrink_to_lo().to(path.span().shrink_to_lo());
                     self.with_generic_param_rib(
                         &[],
                         RibKind::Normal,
@@ -1069,7 +1065,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
     }
 
     fn visit_poly_trait_ref(&mut self, tref: &'ast PolyTraitRef) {
-        let span = tref.span.shrink_to_lo().to(tref.trait_ref.path.span.shrink_to_lo());
+        let span = tref.span.shrink_to_lo().to(tref.trait_ref.path.span().shrink_to_lo());
         self.with_generic_param_rib(
             &tref.bound_generic_params,
             RibKind::Normal,
@@ -1256,9 +1252,9 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                 // it doesn't really matter which we try resolving first, but just like
                 // `Ty::Param` we just fall back to the value namespace only if it's missing
                 // from the type namespace.
-                let mut check_ns = |ns| {
-                    self.maybe_resolve_ident_in_lexical_scope(path.segments[0].ident, ns).is_some()
-                };
+                let ident = *path.iter_idents().next().unwrap();
+                let mut check_ns =
+                    |ns| self.maybe_resolve_ident_in_lexical_scope(ident, ns).is_some();
                 // Like `Ty::Param`, we try resolving this as both a const and a type.
                 if !check_ns(TypeNS) && check_ns(ValueNS) {
                     self.smart_resolve_path(
@@ -2818,14 +2814,14 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     fn future_proof_import(&mut self, use_tree: &UseTree) {
-        if let [segment, rest @ ..] = use_tree.prefix.segments.as_slice() {
-            let ident = segment.ident;
+        let mut ident_iter = use_tree.prefix.iter_idents();
+        if let Some(&ident) = ident_iter.next() {
             if ident.is_path_segment_keyword() || ident.span.is_rust_2015() {
                 return;
             }
 
             let nss = match use_tree.kind {
-                UseTreeKind::Simple(..) if rest.is_empty() => &[TypeNS, ValueNS][..],
+                UseTreeKind::Simple(..) if ident_iter.next().is_none() => &[TypeNS, ValueNS][..],
                 _ => &[TypeNS],
             };
             let report_error = |this: &Self, ns| {
@@ -3106,7 +3102,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
 
             ItemKind::Delegation(delegation) => {
-                let span = delegation.path.segments.last().unwrap().ident.span;
+                let span = delegation.last_segment_span();
                 self.with_generic_param_rib(
                     &[],
                     RibKind::Item(HasGenericParams::Yes(span), def_kind),
@@ -3464,7 +3460,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     RibKind::AssocItem,
                     item.id,
                     LifetimeBinderKind::Function,
-                    delegation.path.segments.last().unwrap().ident.span,
+                    delegation.last_segment_span(),
                     |this| this.resolve_delegation(delegation, item.id, false),
                 );
             }
@@ -3495,7 +3491,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 &None,
                 &path,
                 PathSource::Trait(AliasPossibility::No),
-                Finalize::new(trait_ref.ref_id, trait_ref.path.span),
+                Finalize::new(trait_ref.ref_id, trait_ref.path.span()),
                 RecordPartialRes::Yes,
                 None,
             );
@@ -3772,7 +3768,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     RibKind::AssocItem,
                     item.id,
                     LifetimeBinderKind::Function,
-                    delegation.path.segments.last().unwrap().ident.span,
+                    delegation.last_segment_span(),
                     |this| {
                         if !is_in_trait_impl {
                             this.fill_delegation_inherent_fn_map(
@@ -3903,7 +3899,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         match seen_trait_items.entry(id_in_trait) {
             Entry::Occupied(entry) => {
                 let trait_span = decl.parent_module.unwrap().span.shrink_to_lo();
-                let impl_span = self.current_trait_ref.as_ref().unwrap().1.path.span;
+                let impl_span = self.current_trait_ref.as_ref().unwrap().1.path.span();
                 self.report_error(
                     span,
                     ResolutionError::TraitImplDuplicate {
@@ -3945,7 +3941,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         };
         let trait_path = path_names_to_string(path);
         let trait_span = decl.parent_module.unwrap().span.shrink_to_lo();
-        let impl_span = self.current_trait_ref.as_ref().unwrap().1.path.span;
+        let impl_span = self.current_trait_ref.as_ref().unwrap().1.path.span();
         self.report_error(
             span,
             ResolutionError::TraitImplMismatch {
@@ -4041,7 +4037,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             })
             .unwrap_or_else(|| {
                 DelegationResolution::Error(self.r.tcx.dcx().span_delayed_bug(
-                    delegation.path.span,
+                    delegation.path.span(),
                     format!("bad resolution for delegation {item_id:?}"),
                 ))
             });
@@ -4647,7 +4643,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             qself,
             &Segment::from_path(path),
             source,
-            Finalize::new(id, path.span),
+            Finalize::new(id, path.span()),
             RecordPartialRes::Yes,
             None,
         );

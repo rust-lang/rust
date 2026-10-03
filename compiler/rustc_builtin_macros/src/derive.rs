@@ -139,7 +139,7 @@ fn report_unexpected_meta_item_lit(sess: &Session, lit: &ast::MetaItemLit) {
 }
 
 fn report_path_args(sess: &Session, meta: &ast::MetaItem) {
-    let span = meta.span.with_lo(meta.path.span.hi());
+    let span = meta.span.with_lo(meta.path.span().hi());
 
     match meta.kind {
         MetaItemKind::Word => {}

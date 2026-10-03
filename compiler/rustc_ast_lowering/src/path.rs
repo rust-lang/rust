@@ -55,7 +55,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     if let Some(async_def_id) = self.map_trait_to_async_trait(def_id) {
                         res = Res::Def(DefKind::Trait, async_def_id);
                     } else {
-                        self.dcx().emit_err(AsyncBoundOnlyForFnTraits { span: p.span });
+                        self.dcx().emit_err(AsyncBoundOnlyForFnTraits { span: p.span() });
                     }
                 }
                 Res::Err => {
@@ -65,7 +65,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // This error isn't actually emitted AFAICT, but it's best to keep
                     // it around in case the resolver doesn't always check the defkind
                     // of an item or something.
-                    self.dcx().emit_err(AsyncBoundNotOnTrait { span: p.span, descr: res.descr() });
+                    self.dcx()
+                        .emit_err(AsyncBoundNotOnTrait { span: p.span(), descr: res.descr() });
                 }
             }
         }
@@ -83,19 +84,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Only permit `impl Trait` in the final segment. E.g., we permit `Option<impl Trait>`,
         // `option::Option<T>::Xyz<impl Trait>` and reject `option::Option<impl Trait>::Xyz`.
         let itctx = |i| {
-            if i + 1 == p.segments.len() {
+            if i + 1 == p.num_segments() {
                 itctx
             } else {
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path)
             }
         };
 
-        let path_span_lo = p.span.shrink_to_lo();
-        let proj_start = p.segments.len() - unresolved_segments;
+        let path_span_lo = p.span().shrink_to_lo();
+        let proj_start = p.num_segments() - unresolved_segments;
         let path = self.arena.alloc(hir::Path {
             res,
-            segments: self.arena.alloc_from_iter(p.segments[..proj_start].iter().enumerate().map(
-                |(i, segment)| {
+            segments: self.arena.alloc_from_iter(
+                p.iter_segments().take(proj_start).enumerate().map(|(i, segment)| {
                     let param_mode = match (qself_position, param_mode) {
                         (Some(j), ParamMode::Optional) if i < j => {
                             // This segment is part of the trait path in a
@@ -132,18 +133,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     };
 
                     self.lower_path_segment(
-                        p.span,
+                        p.span(),
                         segment,
                         param_mode,
                         generic_args_mode,
                         itctx(i),
                         bound_modifier_allowed_features.clone(),
                     )
-                },
-            )),
+                }),
+            ),
             span: self.lower_span(
-                p.segments[..proj_start]
-                    .last()
+                p.iter_segments()
+                    .take(proj_start)
+                    .next_back()
                     .map_or(path_span_lo, |segment| path_span_lo.to(segment.span())),
             ),
         });
@@ -185,9 +187,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         //   2. `<std::vec::Vec<T>>::IntoIter`
         //   3. `<<std::vec::Vec<T>>::IntoIter>::Item`
         // * final path is `<<<std::vec::Vec<T>>::IntoIter>::Item>::clone`
-        for (i, segment) in p.segments.iter().enumerate().skip(proj_start) {
+        for (i, segment) in p.iter_segments().enumerate().skip(proj_start) {
             // If this is a type-dependent `T::method(..)`.
-            let generic_args_mode = if i + 1 == p.segments.len()
+            let generic_args_mode = if i + 1 == p.num_segments()
                 && matches!(allow_return_type_notation, AllowReturnTypeNotation::Yes)
             {
                 GenericArgsMode::ReturnTypeNotation
@@ -196,7 +198,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             };
 
             let hir_segment = self.arena.alloc(self.lower_path_segment(
-                p.span,
+                p.span(),
                 segment,
                 param_mode,
                 generic_args_mode,
@@ -206,7 +208,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let qpath = hir::QPath::TypeRelative(ty, hir_segment);
 
             // It's finished, return the extension of the right node type.
-            if i == p.segments.len() - 1 {
+            if i == p.num_segments() - 1 {
                 return qpath;
             }
 
@@ -218,11 +220,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // We should've returned in the for loop above.
 
         self.dcx().span_bug(
-            p.span,
+            p.span(),
             format!(
                 "lower_qpath: no final extension segment in {}..{}",
                 proj_start,
-                p.segments.len()
+                p.num_segments()
             ),
         );
     }
@@ -236,9 +238,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         assert!(!res.is_empty());
         self.arena.alloc(hir::UsePath {
             res,
-            segments: self.arena.alloc_from_iter(p.segments.iter().map(|segment| {
+            segments: self.arena.alloc_from_iter(p.iter_segments().map(|segment| {
                 self.lower_path_segment(
-                    p.span,
+                    p.span(),
                     segment,
                     param_mode,
                     GenericArgsMode::Err,
@@ -246,14 +248,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     None,
                 )
             })),
-            span: self.lower_span(p.span),
+            span: self.lower_span(p.span()),
         })
     }
 
     pub(crate) fn lower_path_segment(
         &mut self,
         path_span: Span,
-        segment: &PathSegment,
+        segment: PathSegmentRef<'_>,
         param_mode: ParamMode,
         generic_args_mode: GenericArgsMode,
         itctx: ImplTraitContext,
@@ -263,7 +265,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         bound_modifier_allowed_features: Option<Arc<[Symbol]>>,
     ) -> hir::PathSegment<'hir> {
         debug!("path_span: {:?}, lower_path_segment(segment: {:?})", path_span, segment);
-        let (mut generic_args, infer_args) = if let Some(generic_args) = segment.args.as_deref() {
+        let (mut generic_args, infer_args) = if let Some(generic_args) = segment.args {
             match generic_args {
                 GenericArgs::AngleBracketed(data) => {
                     self.lower_angle_bracketed_parameter_data(data, param_mode, itctx)
@@ -406,7 +408,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
 
         hir::PathSegment {
-            ident: self.lower_ident(segment.ident),
+            ident: self.lower_ident(*segment.ident),
             hir_id,
             res: self.lower_res(res),
             infer_args,

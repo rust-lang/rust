@@ -759,8 +759,9 @@ where
                         continue;
                     }
                 };
-                let tool_ident = if meta_item.path.segments.len() > 1 {
-                    Some(meta_item.path.segments.remove(0).ident)
+                let tool_ident = if meta_item.path.num_segments() > 1 {
+                    let (segments, _) = meta_item.path.force_general_mut();
+                    Some(segments.remove(0).ident)
                 } else {
                     None
                 };
@@ -771,8 +772,7 @@ where
 
                 let (ids, name) = match lint_result {
                     CheckLintNameResult::Ok(ids) => {
-                        let name =
-                            meta_item.path.segments.last().expect("empty lint name").ident.name;
+                        let name = meta_item.path.last_ident().expect("empty lint name").name;
                         (ids, name)
                     }
 

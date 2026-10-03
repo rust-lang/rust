@@ -181,8 +181,8 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
                     let prev_item = prev_attr.get_normal_item();
                     let item = attr.get_normal_item();
                     let path_str = pprust::path_to_string(&item.path);
-                    let msg = if item.path.segments[0].ident.name
-                        == prev_item.path.segments[0].ident.name
+                    let msg = if item.path.iter_idents().next().unwrap().name
+                        == prev_item.path.iter_idents().next().unwrap().name
                     {
                         format!(
                             "only one `#[{path_str}]` attribute is allowed on any given function",
@@ -232,7 +232,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         if !self.is_proc_macro_crate {
             let path = &attr.get_normal_item().path;
             self.dcx.emit_err(diagnostics::AttributeOnlyUsableWithCrateType {
-                span: path.span,
+                span: path.span(),
                 path: &pprust::path_to_string(&attr.get_normal_item().path),
             });
             return;

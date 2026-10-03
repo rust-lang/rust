@@ -374,7 +374,7 @@ struct Segment {
 
 impl Segment {
     fn from_path(path: &Path) -> Vec<Segment> {
-        path.segments.iter().map(|s| s.into()).collect()
+        path.iter_segments().map(Segment::from).collect()
     }
 
     fn from_ident(ident: Ident) -> Segment {
@@ -392,10 +392,10 @@ impl Segment {
     }
 }
 
-impl<'a> From<&'a ast::PathSegment> for Segment {
-    fn from(seg: &'a ast::PathSegment) -> Segment {
+impl<'a> From<ast::PathSegmentRef<'a>> for Segment {
+    fn from(seg: ast::PathSegmentRef<'a>) -> Segment {
         let has_generic_args = seg.args.is_some();
-        let (args_span, has_lifetime_args) = if let Some(args) = seg.args.as_deref() {
+        let (args_span, has_lifetime_args) = if let Some(args) = seg.args {
             match args {
                 GenericArgs::AngleBracketed(args) => {
                     let found_lifetimes = args
@@ -411,7 +411,7 @@ impl<'a> From<&'a ast::PathSegment> for Segment {
             (DUMMY_SP, false)
         };
         Segment {
-            ident: seg.ident,
+            ident: *seg.ident,
             id: Some(seg.id),
             has_generic_args,
             has_lifetime_args,
@@ -2647,7 +2647,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
         // Don't perform legacy const generics rewriting if the path already
         // has generic arguments.
-        if path.segments.last().unwrap().args.is_some() {
+        if path.last_segment().unwrap().args.is_some() {
             return None;
         }
 
@@ -2795,7 +2795,7 @@ fn names_to_string(names: impl Iterator<Item = Symbol>) -> String {
 }
 
 fn path_names_to_string(path: &Path) -> String {
-    names_to_string(path.segments.iter().map(|seg| seg.ident.name))
+    names_to_string(path.iter_idents().map(|i| i.name))
 }
 
 /// A somewhat inefficient routine to obtain the name of a module.

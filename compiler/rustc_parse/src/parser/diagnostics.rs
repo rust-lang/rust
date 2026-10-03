@@ -1,13 +1,13 @@
-use std::mem::take;
 use std::ops::{Deref, DerefMut};
 
 use ast::token::IdentKind;
+use itertools::Itertools;
 use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
 use rustc_ast::util::parser::{AssocOp, ExprPrecedence};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode,
     Block, BlockCheckMode, Expr, ExprKind, GenericArg, GenericArgs, Generics, Item, ItemKind,
-    Param, Pat, PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
+    Param, Pat, PatKind, Path, PathSegment, PathSegmentRef, QSelf, Recovered, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -84,7 +84,7 @@ impl RecoverQPath for Ty {
         Some(Box::new(self.clone()))
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
-        Self { span: path.span, kind: TyKind::Path(qself, path), id: ast::DUMMY_NODE_ID }
+        Self { span: path.span(), kind: TyKind::Path(qself, path), id: ast::DUMMY_NODE_ID }
     }
 }
 
@@ -94,7 +94,7 @@ impl RecoverQPath for Pat {
         self.to_ty()
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
-        Self { span: path.span, kind: PatKind::Path(qself, path), id: ast::DUMMY_NODE_ID }
+        Self { span: path.span(), kind: PatKind::Path(qself, path), id: ast::DUMMY_NODE_ID }
     }
 }
 
@@ -104,7 +104,7 @@ impl RecoverQPath for Expr {
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
         Self {
-            span: path.span,
+            span: path.span(),
             kind: ExprKind::Path(qself, path),
             attrs: AttrVec::new(),
             id: ast::DUMMY_NODE_ID,
@@ -764,7 +764,7 @@ impl<'a> Parser<'a> {
             let mut snapshot = self.create_snapshot_for_diagnostic();
             if let [attr] = &expr.attrs[..]
                 && let ast::AttrKind::Normal(attr_kind) = &attr.kind
-                && let [segment] = &attr_kind.item.path.segments[..]
+                && let Ok(segment) = attr_kind.item.path.iter_segments().exactly_one()
                 && segment.ident.name == sym::cfg
                 && let Some(args_span) = attr_kind.item.args.span()
                 && let next_attr = match snapshot.parse_attribute(InnerAttrPolicy::Forbidden(None))
@@ -777,7 +777,7 @@ impl<'a> Parser<'a> {
                 }
                 && let ast::AttrKind::Normal(next_attr_kind) = next_attr.kind
                 && let Some(next_attr_args_span) = next_attr_kind.item.args.span()
-                && let [next_segment] = &next_attr_kind.item.path.segments[..]
+                && let Ok(next_segment) = next_attr_kind.item.path.iter_segments().exactly_one()
                 && next_segment.ident.name == sym::cfg
             {
                 let next_expr = match snapshot.parse_expr() {
@@ -877,7 +877,10 @@ impl<'a> Parser<'a> {
             // }
             debug!(?maybe_struct_name, ?self.token);
             let mut snapshot = self.create_snapshot_for_diagnostic();
-            let path = Path { segments: ThinVec::new(), span: self.prev_token.span.shrink_to_lo() };
+            let path = Path::General {
+                segments: ThinVec::new(),
+                span: self.prev_token.span.shrink_to_lo(),
+            };
             let struct_expr = snapshot.parse_expr_struct(None, path, false);
             let block_tail = self.parse_block_tail(lo, s, AttemptLocalParseRecovery::No);
             return Some(match (struct_expr, block_tail) {
@@ -1000,7 +1003,7 @@ impl<'a> Parser<'a> {
     /// up until one of the tokens in 'end' was encountered, and an error was emitted.
     pub(super) fn check_trailing_angle_brackets(
         &mut self,
-        segment: &PathSegment,
+        segment: PathSegmentRef<'_>,
         end: &[ExpTokenPair],
     ) -> Option<ErrorGuaranteed> {
         if !self.may_recover() {
@@ -1031,8 +1034,7 @@ impl<'a> Parser<'a> {
         // have already been parsed):
         //
         // `x.foo::<u32>>>(3)`
-        let parsed_angle_bracket_args =
-            segment.args.as_ref().is_some_and(|args| args.is_angle_bracketed());
+        let parsed_angle_bracket_args = segment.args.is_some_and(|args| args.is_angle_bracketed());
 
         debug!(
             "check_trailing_angle_brackets: parsed_angle_bracket_args={:?}",
@@ -1609,9 +1611,9 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, T> {
         self.expect(exp!(PathSep))?;
 
-        let mut path = ast::Path { segments: ThinVec::new(), span: DUMMY_SP };
-        self.parse_path_segments(&mut path.segments, T::PATH_STYLE, None)?;
-        path.span = ty_span.to(self.prev_token.span);
+        let mut segments = ThinVec::new();
+        self.parse_path_segments(&mut segments, T::PATH_STYLE, None)?;
+        let path = ast::Path::General { segments, span: ty_span.to(self.prev_token.span) };
 
         self.dcx().emit_err(BadQPathStage2 {
             span: ty_span,
@@ -2047,8 +2049,8 @@ impl<'a> Parser<'a> {
                     // cc: https://github.com/rust-lang/rust/pull/146305
                         if let PatKind::Ref(_, _, _) = &inner_pat.kind
                             && let PatKind::Path(_, path) = &pat.peel_refs().kind
-                            && let [a, ..] = path.segments.as_slice()
-                            && a.ident.name == kw::SelfLower =>
+                            && let Some(ident) = path.iter_idents().next()
+                            && ident.name == kw::SelfLower =>
                     {
                         let mut inner = inner_pat;
                         let mut span_vec = vec![pat.span];
@@ -2547,33 +2549,39 @@ impl<'a> Parser<'a> {
                         match &mut pat.kind {
                             PatKind::Struct(qself @ None, path, ..)
                             | PatKind::TupleStruct(qself @ None, path, _)
-                            | PatKind::Path(qself @ None, path) => match &first_pat.kind {
+                            | PatKind::Path(qself @ None, path) => match &mut first_pat.kind {
                                 PatKind::Ident(_, ident, _) => {
-                                    path.segments.insert(0, PathSegment::from_ident(*ident));
-                                    path.span = new_span;
+                                    let (segments, span) = path.force_general_mut();
+                                    segments.insert(0, PathSegment::from_ident(*ident));
+                                    *span = new_span;
                                     show_sugg = true;
                                     first_pat = pat;
                                 }
                                 PatKind::Path(old_qself, old_path) => {
-                                    path.segments = old_path
-                                        .segments
-                                        .iter()
-                                        .cloned()
-                                        .chain(take(&mut path.segments))
-                                        .collect();
-                                    path.span = new_span;
-                                    *qself = old_qself.clone();
+                                    let (segments, span) = path.force_general_mut();
+                                    match old_path {
+                                        Path::Ident { ident, id } => segments.insert(
+                                            0,
+                                            PathSegment { ident: *ident, id: *id, args: None },
+                                        ),
+                                        Path::General { segments: old_segments, .. } => {
+                                            std::mem::swap(segments, old_segments);
+                                            segments.append(old_segments);
+                                        }
+                                    }
+                                    *span = new_span;
+                                    *qself = old_qself.take();
                                     first_pat = pat;
                                     show_sugg = true;
                                 }
                                 _ => {}
                             },
                             PatKind::Ident(BindingMode::NONE, ident, None) => {
-                                match &first_pat.kind {
+                                match &mut first_pat.kind {
                                     PatKind::Ident(_, old_ident, _) => {
                                         let path = PatKind::Path(
                                             None,
-                                            Path {
+                                            Path::General {
                                                 span: new_span,
                                                 segments: thin_vec![
                                                     PathSegment::from_ident(*old_ident),
@@ -2584,14 +2592,11 @@ impl<'a> Parser<'a> {
                                         first_pat = self.mk_pat(new_span, path);
                                         show_sugg = true;
                                     }
-                                    PatKind::Path(old_qself, old_path) => {
-                                        let mut segments = old_path.segments.clone();
+                                    PatKind::Path(_, old_path) => {
+                                        let (segments, span) = old_path.force_general_mut();
                                         segments.push(PathSegment::from_ident(*ident));
-                                        let path = PatKind::Path(
-                                            old_qself.clone(),
-                                            Path { span: new_span, segments },
-                                        );
-                                        first_pat = self.mk_pat(new_span, path);
+                                        *span = new_span;
+                                        first_pat.span = new_span;
                                         show_sugg = true;
                                     }
                                     _ => {}
@@ -2739,19 +2744,17 @@ impl<'a> Parser<'a> {
     pub(crate) fn maybe_recover_bounds_doubled_colon(&mut self, ty: &Ty) -> PResult<'a, ()> {
         let TyKind::Path(qself, path) = &ty.kind else { return Ok(()) };
         let qself_position = qself.as_ref().map(|qself| qself.position);
-        for (i, segments) in path.segments.windows(2).enumerate() {
+        for (i, (a, b)) in path.iter_segments().tuple_windows().enumerate() {
             if qself_position.is_some_and(|pos| i < pos) {
                 continue;
             }
-            if let [a, b] = segments {
-                let (a_span, b_span) = (a.span(), b.span());
-                let between_span = a_span.shrink_to_hi().to(b_span.shrink_to_lo());
-                if self.span_to_snippet(between_span).as_deref() == Ok(":: ") {
-                    return Err(self.dcx().create_err(DoubleColonInBound {
-                        span: path.span.shrink_to_hi(),
-                        between: between_span,
-                    }));
-                }
+            let (a_span, b_span) = (a.span(), b.span());
+            let between_span = a_span.shrink_to_hi().to(b_span.shrink_to_lo());
+            if self.span_to_snippet(between_span).as_deref() == Ok(":: ") {
+                return Err(self.dcx().create_err(DoubleColonInBound {
+                    span: path.span().shrink_to_hi(),
+                    between: between_span,
+                }));
             }
         }
         Ok(())
@@ -2939,13 +2942,13 @@ impl<'a> Parser<'a> {
             let TyKind::Path(_, path) = ty.kind else {
                 return origin_error;
             };
-            let Some(GenericArgs::AngleBracketed(AngleBracketedArgs { span: _, ref args })) =
-                path.segments[0].args
+            let Some(GenericArgs::AngleBracketed(AngleBracketedArgs { span: _, args })) =
+                path.iter_segments().next().unwrap().args
             else {
                 return origin_error;
             };
 
-            let path_span = path.span;
+            let path_span = path.span();
             let mut new_error = snapshot.dcx().create_err(FoundPathInGenerics {
                 span: path_span,
                 path: snapshot.span_to_snippet(path_span).unwrap(),

@@ -562,7 +562,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 if rustc_attr_parsing::is_builtin_attr(&normal.item) {
                     self.r
                         .builtin_attrs
-                        .push((normal.item.path.segments[0].ident, self.parent_scope));
+                        .push((*normal.item.path.iter_idents().next().unwrap(), self.parent_scope));
                 }
             }
             AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => {}

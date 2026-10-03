@@ -418,7 +418,7 @@ impl<'tcx> ResolverAstLowering<'tcx> {
 
         // Don't perform legacy const generics rewriting if the path already
         // has generic arguments.
-        if path.segments.last().unwrap().args.is_some() {
+        if path.last_segment().unwrap().args.is_some() {
             return None;
         }
 
@@ -644,7 +644,7 @@ fn index_ast<'tcx>(
                 // Lacking a better choice, we replace the contents with a macro call.
                 // Unexpanded macros should never reach lowering, so this is not confusing.
                 kind: dummy(Box::new(MacCall {
-                    path: Path { span, segments: thin_vec![] },
+                    path: Path::General { span, segments: thin_vec![] },
                     args: Box::new(DelimArgs {
                         dspan: DelimSpan::from_single(span),
                         delim: Delimiter::Parenthesis,
@@ -1866,15 +1866,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_lifetime(lt, LifetimeSource::PreciseCapturing, lt.ident.into()),
             ),
             PreciseCapturingArg::Arg(path, id) => {
-                let [segment] = path.segments.as_slice() else {
-                    panic!();
-                };
+                let ident = path.as_single_argless_ident().unwrap();
                 let res = self.get_partial_res(*id).map_or(Res::Err, |partial_res| {
                     partial_res.full_res().expect("no partial res expected for precise capture arg")
                 });
                 hir::PreciseCapturingArg::Param(hir::PreciseCapturingNonLifetimeArg {
                     hir_id: self.lower_node_id(*id),
-                    ident: self.lower_ident(segment.ident),
+                    ident: self.lower_ident(ident),
                     res: self.lower_res(res),
                 })
             }

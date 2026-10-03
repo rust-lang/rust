@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use rustc_ast::token::{self, Delimiter, IdentKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::{
@@ -249,9 +250,8 @@ impl<'cx, 'a> Context<'cx, 'a> {
             ExprKind::Move(local_expr, _) => {
                 self.manage_cond_expr(local_expr);
             }
-            ExprKind::Path(_, Path { segments, .. }) if let [path_segment] = &segments[..] => {
-                let path_ident = path_segment.ident;
-                self.manage_initial_capture(expr, path_ident);
+            ExprKind::Path(_, path) if let Some(&ident) = path.iter_idents().exactly_one().ok() => {
+                self.manage_initial_capture(expr, ident);
             }
             ExprKind::Paren(local_expr) => {
                 self.manage_cond_expr(local_expr);

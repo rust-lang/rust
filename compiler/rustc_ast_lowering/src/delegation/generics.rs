@@ -309,7 +309,8 @@ impl<'hir> DelegationResolver<'_, 'hir> {
 
         let qself_is_none = delegation.qself.is_none();
 
-        let parent_args = if let [.., parent_segment, _] = &delegation.path.segments[..] {
+        let parent_args = if let Some(parent_segment) = delegation.path.iter_segments().nth_back(1)
+        {
             let res = self.get_resolution_id(parent_segment.id)?;
             if !matches!(tcx.def_kind(res), DefKind::Mod) {
                 assert_matches!(
@@ -339,13 +340,13 @@ impl<'hir> DelegationResolver<'_, 'hir> {
             trait_impl: matches!(delegation_parent_kind, DefKind::Impl { of_trait: true }),
             sig_child_params: &tcx.generics_of(sig_id).own_params,
             child_args: self.get_user_args(
-                delegation.path.segments.last().expect("must be at least one segment"),
+                delegation.path.last_segment().expect("must be at least one segment"),
             ),
         })
     }
 
-    fn get_user_args<'a>(&self, segment: &'a PathSegment) -> Option<&'a AngleBracketedArgs> {
-        let Some(args) = &segment.args else { return None };
+    fn get_user_args<'a>(&self, segment: PathSegmentRef<'a>) -> Option<&'a AngleBracketedArgs> {
+        let Some(args) = segment.args else { return None };
         let GenericArgs::AngleBracketed(args) = args else {
             self.tcx().dcx().span_delayed_bug(
                 segment.span(),

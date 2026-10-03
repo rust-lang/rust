@@ -793,13 +793,13 @@ impl<'a> Parser<'a> {
 
                 if let Ok(t) = &ty {
                     // Check for trailing angle brackets
-                    if let TyKind::Path(_, Path { segments, .. }) = &t.kind
-                        && let Some(segment) = segments.last()
+                    if let TyKind::Path(_, path) = &t.kind
+                        && let Some(segment) = path.last_segment()
                         && let Some(guar) =
                             this.check_trailing_angle_brackets(segment, &[exp!(CloseParen)])
                     {
                         return Ok((
-                            dummy_arg(segment.ident, guar),
+                            dummy_arg(*segment.ident, guar),
                             Trailing::No,
                             UsePreAttrPos::No,
                         ));

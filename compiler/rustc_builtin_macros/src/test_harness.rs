@@ -304,7 +304,7 @@ fn add_main(cx: &mut TestCtxt<'_>, c: &mut ast::Crate) {
         ecx.path(sp, vec![test_ident, Ident::from_str_and_span(runner_name, sp)])
     });
 
-    test_runner.span = sp;
+    *test_runner.force_general_mut().1 = sp;
 
     let test_main_path_expr = ecx.expr_path(test_runner);
     let call_test_main = ecx.expr_call(sp, test_main_path_expr, thin_vec![mk_tests_slice(cx, sp)]);
