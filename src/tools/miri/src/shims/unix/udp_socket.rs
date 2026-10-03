@@ -1,6 +1,6 @@
 use std::cell::Cell;
 use std::io;
-use std::net::SocketAddr;
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::time::Duration;
 
 use rustc_target::spec::Os;
@@ -19,6 +19,8 @@ pub(super) struct UdpSocket {
     socket: mio::net::UdpSocket,
     /// Whether this fd is non-blocking or not.
     is_non_block: Cell<bool>,
+    /// Whether the socket is implicitly or explicitly bound to an address.
+    is_bound: Cell<bool>,
     /// Read timeout of the socket. [`None`] means that reads can block indefinitely.
     /// The timeout is applied to the monotonic clock (the Unix specification doesn't
     /// specify which clock to use, but the monotonic clock is more common for
@@ -61,6 +63,7 @@ impl UdpSocket {
             family,
             socket,
             is_non_block: Cell::new(is_non_block),
+            is_bound: Cell::new(false),
             read_timeout: Cell::new(None),
             write_timeout: Cell::new(None),
         })
@@ -155,6 +158,9 @@ impl UnixSocketFileDescription for UdpSocket {
             return interp_ok(Err(IoError::HostError(e)));
         }
 
+        // The socket has been explicitly bound to a local address.
+        self.is_bound.set(true);
+
         interp_ok(Ok(()))
     }
 
@@ -167,7 +173,16 @@ impl UnixSocketFileDescription for UdpSocket {
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "cannot have `UdpSocket` with isolation enabled!");
 
-        finish.call(ecx, self.socket.connect(address).map_err(IoError::HostError))
+        if let Err(e) = self.socket.connect(address) {
+            return finish.call(ecx, Err(IoError::HostError(e)));
+        }
+
+        // POSIX specifies that unbound sockets get bound to an unassigned
+        // local address after `connect` has been invoked on them.
+        // We thus treat the socket as implicitly bound.
+        self.is_bound.set(true);
+
+        finish.call(ecx, Ok(()))
     }
 
     fn setsockopt<'tcx>(
@@ -211,6 +226,34 @@ impl UnixSocketFileDescription for UdpSocket {
                 are allowed"
             )
         }
+    }
+
+    fn getsockname<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Result<SocketAddr, IoError>> {
+        assert!(communicate_allowed, "cannot have `UdpSocket` with isolation enabled!");
+
+        if !self.is_bound.get() {
+            // Since Windows returns EINVAL when invoking `getsockname` on
+            // a socket which hasn't been bound yet, we need to manually
+            // return an unspecified address here.
+
+            let address = if self.family == socket2::Domain::IPV4 {
+                SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, /* port */ 0))
+            } else {
+                SocketAddr::V6(SocketAddrV6::new(
+                    Ipv6Addr::UNSPECIFIED,
+                    /* port */ 0,
+                    /* flowinfo */ 0,
+                    /* scope_id */ 0,
+                ))
+            };
+            return interp_ok(Ok(address));
+        }
+
+        interp_ok(self.socket.local_addr().map_err(IoError::HostError))
     }
 
     fn set_read_timeout<'tcx>(

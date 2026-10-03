@@ -49,6 +49,12 @@ fn main() {
     test_bind_wrong_address_family();
 
     test_getsockopt_truncate();
+
+    test_getsockname_ipv4();
+    test_getsockname_ipv4_random_port();
+    test_getsockname_ipv4_unbound();
+    test_getsockname_ipv6();
+    test_getsockname_ipv6_unbound();
 }
 
 /// Test creating a socket and then closing it afterwards.
@@ -295,4 +301,120 @@ fn test_getsockopt_truncate() {
     let untruncated_timeout = unsafe { option_value.assume_init() };
     assert_eq!(untruncated_timeout.tv_sec, new_timeout.tv_sec);
     assert_eq!(untruncated_timeout.tv_usec, new_timeout.tv_usec);
+}
+
+/// Test the `getsockname` syscall on an IPv4 socket which is bound.
+/// The `getsockname` syscall should return the same address as to
+/// which the socket was bound to.
+fn test_getsockname_ipv4() {
+    let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET, SOCKET_TYPE, 0)).unwrap() };
+    let addr = net::sock_addr_ipv4(net::IPV4_LOCALHOST, 6789);
+    unsafe {
+        errno_check(libc::bind(
+            sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ));
+    }
+
+    let (_, sock_addr) =
+        net::sockname_ipv4(|storage, len| unsafe { libc::getsockname(sockfd, storage, len) })
+            .unwrap();
+
+    assert_eq!(addr.sin_family, sock_addr.sin_family);
+    assert_eq!(addr.sin_port, sock_addr.sin_port);
+    assert_eq!(addr.sin_addr.s_addr, sock_addr.sin_addr.s_addr);
+}
+
+/// Test the `getsockname` syscall on an IPv4 socket which is bound
+/// but the port was zero.
+/// The `getsockname` syscall should return the same address as to
+/// which the socket was bound to but the port should be non-zero.
+fn test_getsockname_ipv4_random_port() {
+    let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET, SOCKET_TYPE, 0)).unwrap() };
+    // Use zero-port to let the OS choose a free port to bind to.
+    let addr = net::sock_addr_ipv4(net::IPV4_LOCALHOST, 0);
+    unsafe {
+        errno_check(libc::bind(
+            sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ));
+    }
+
+    let (_, sock_addr) =
+        net::sockname_ipv4(|storage, len| unsafe { libc::getsockname(sockfd, storage, len) })
+            .unwrap();
+
+    assert_eq!(addr.sin_family, sock_addr.sin_family);
+    // The bound port must not be the zero port.
+    assert!(sock_addr.sin_port > 0);
+    assert_eq!(addr.sin_addr.s_addr, sock_addr.sin_addr.s_addr);
+}
+
+/// Test the `getsockname` syscall on an IPv4 socket which is not bound.
+/// The `getsockname` syscall should return 0.0.0.0:0
+fn test_getsockname_ipv4_unbound() {
+    let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET, SOCKET_TYPE, 0)).unwrap() };
+
+    let (_, sock_addr) =
+        net::sockname_ipv4(|storage, len| unsafe { libc::getsockname(sockfd, storage, len) })
+            .unwrap();
+
+    // Libc representation of an unspecified IPv4 address with zero port.
+    let addr = net::sock_addr_ipv4([0, 0, 0, 0], 0);
+
+    assert_eq!(addr.sin_family, sock_addr.sin_family);
+    assert_eq!(addr.sin_port, sock_addr.sin_port);
+    assert_eq!(addr.sin_addr.s_addr, sock_addr.sin_addr.s_addr);
+}
+
+/// Test the `getsockname` syscall on an IPv6 socket which is bound.
+/// The `getsockname` syscall should return the same address as to
+/// which the socket was bound to.
+fn test_getsockname_ipv6() {
+    let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET6, SOCKET_TYPE, 0)).unwrap() };
+    let addr = net::sock_addr_ipv6(net::IPV6_LOCALHOST, 1234);
+    unsafe {
+        errno_check(libc::bind(
+            sockfd,
+            (&addr as *const libc::sockaddr_in6).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in6>() as libc::socklen_t,
+        ));
+    }
+
+    let (_, sock_addr) =
+        net::sockname_ipv6(|storage, len| unsafe { libc::getsockname(sockfd, storage, len) })
+            .unwrap();
+
+    assert_eq!(addr.sin6_family, sock_addr.sin6_family);
+    assert_eq!(addr.sin6_port, sock_addr.sin6_port);
+    assert_eq!(addr.sin6_flowinfo, sock_addr.sin6_flowinfo);
+    assert_eq!(addr.sin6_scope_id, sock_addr.sin6_scope_id);
+    assert_eq!(addr.sin6_addr.s6_addr, sock_addr.sin6_addr.s6_addr);
+}
+
+/// Test the `getsockname` syscall on an IPv6 socket which is not bound.
+/// The `getsockname` syscall should return [::]:0 with flowinfo and scope id
+/// of zero.
+fn test_getsockname_ipv6_unbound() {
+    let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET6, SOCKET_TYPE, 0)).unwrap() };
+
+    let (_, sock_addr) =
+        net::sockname_ipv6(|storage, len| unsafe { libc::getsockname(sockfd, storage, len) })
+            .unwrap();
+
+    // Libc representation of an unspecified IPv6 address with zero port, flowinfo and scope id.
+    let addr = net::sock_addr_full_ipv6(
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        /* port */ 0,
+        /* flowinfo */ 0,
+        /* scope_id */ 0,
+    );
+
+    assert_eq!(addr.sin6_family, sock_addr.sin6_family);
+    assert_eq!(addr.sin6_port, sock_addr.sin6_port);
+    assert_eq!(addr.sin6_flowinfo, sock_addr.sin6_flowinfo);
+    assert_eq!(addr.sin6_scope_id, sock_addr.sin6_scope_id);
+    assert_eq!(addr.sin6_addr.s6_addr, sock_addr.sin6_addr.s6_addr);
 }
