@@ -1,12 +1,13 @@
 use std::cell::Cell;
 use std::io;
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use rustc_target::spec::Os;
 
 use crate::shims::files::{FileDescription, FileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
-use crate::shims::unix::socket::UnixSocketFileDescription;
+use crate::shims::unix::socket::{EvalContextExt, UnixSocketFileDescription};
 use crate::*;
 
 #[derive(Debug)]
@@ -18,6 +19,18 @@ pub(super) struct UdpSocket {
     socket: mio::net::UdpSocket,
     /// Whether this fd is non-blocking or not.
     is_non_block: Cell<bool>,
+    /// Read timeout of the socket. [`None`] means that reads can block indefinitely.
+    /// The timeout is applied to the monotonic clock (the Unix specification doesn't
+    /// specify which clock to use, but the monotonic clock is more common for
+    /// relative timeouts).
+    /// This is ignored when the socket is non-blocking.
+    read_timeout: Cell<Option<Duration>>,
+    /// Write timeout of the socket. [`None`] means that writes can block indefinitely.
+    /// The timeout is applied to the monotonic clock (the Unix specification doesn't
+    /// specify which clock to use, but the monotonic clock is more common
+    /// for relative timeouts).
+    /// This is ignored when the socket is non-blocking.
+    write_timeout: Cell<Option<Duration>>,
 }
 
 impl UdpSocket {
@@ -44,7 +57,13 @@ impl UdpSocket {
 
         // TODO: Add the underlying host socket to the blocking I/O manager.
 
-        Ok(UdpSocket { family, socket, is_non_block: Cell::new(is_non_block) })
+        Ok(UdpSocket {
+            family,
+            socket,
+            is_non_block: Cell::new(is_non_block),
+            read_timeout: Cell::new(None),
+            write_timeout: Cell::new(None),
+        })
     }
 }
 
@@ -149,6 +168,47 @@ impl UnixSocketFileDescription for UdpSocket {
         assert!(communicate_allowed, "cannot have `UdpSocket` with isolation enabled!");
 
         finish.call(ecx, self.socket.connect(address).map_err(IoError::HostError))
+    }
+
+    fn setsockopt<'tcx>(
+        self: FileDescriptionRef<Self>,
+        level: i32,
+        option: i32,
+        value_ptr: Pointer,
+        value_len: u64,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Result<(), IoError>> {
+        if level == ecx.eval_libc_i32("SOL_SOCKET") {
+            return ecx.set_generic_socket_option(option, value_ptr, value_len, self);
+        } else if level == ecx.eval_libc_i32("IPPROTO_IP") {
+            return ecx.set_ip_socket_option(
+                option,
+                value_ptr,
+                value_len,
+                socket2::SockRef::from(&self.socket),
+            );
+        }
+
+        throw_unsup_format!(
+            "setsockopt: level {level:#x} is unsupported, only SOL_SOCKET and IPPROTO_IP \
+            are allowed"
+        );
+    }
+
+    fn set_read_timeout<'tcx>(
+        self: FileDescriptionRef<Self>,
+        timeout: Option<Duration>,
+    ) -> InterpResult<'tcx> {
+        self.read_timeout.set(timeout);
+        interp_ok(())
+    }
+
+    fn set_write_timeout<'tcx>(
+        self: FileDescriptionRef<Self>,
+        timeout: Option<Duration>,
+    ) -> InterpResult<'tcx> {
+        self.write_timeout.set(timeout);
+        interp_ok(())
     }
 
     fn with_socket_ref<T>(&self, cb: impl FnOnce(socket2::SockRef<'_>) -> T) -> Result<T, ()>

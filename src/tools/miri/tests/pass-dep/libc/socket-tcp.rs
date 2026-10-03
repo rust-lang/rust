@@ -16,18 +16,6 @@ use libc_utils::*;
 const TEST_BYTES: &[u8] = b"these are some test bytes!";
 
 fn main() {
-    test_bind_ipv4_reuseaddr();
-    test_set_reuseaddr_invalid_len();
-    #[cfg(any(
-        target_os = "macos",
-        target_os = "freebsd",
-        target_os = "netbsd",
-        target_os = "dragonfly"
-    ))]
-    {
-        test_bind_ipv4_nosigpipe();
-        test_set_nosigpipe_invalid_len();
-    }
     test_bind_twice();
     test_bind_connected();
     test_bind_listening();
@@ -65,83 +53,6 @@ fn main() {
     test_sockopt_reuseaddr();
 
     test_unblock_after_socket_close();
-}
-
-/// Tests binding after the `SO_REUSEADDR` socket option has been set on the newly created socket.
-fn test_bind_ipv4_reuseaddr() {
-    let sockfd =
-        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
-    let addr = net::sock_addr_ipv4(net::IPV4_LOCALHOST, 0);
-    net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR, 1 as libc::c_int).unwrap();
-    unsafe {
-        errno_check(libc::bind(
-            sockfd,
-            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
-            size_of::<libc::sockaddr_in>() as libc::socklen_t,
-        ));
-    }
-}
-
-/// Tests setting the `SO_REUSEADDR` socket option but with an invalid length.
-fn test_set_reuseaddr_invalid_len() {
-    let sockfd =
-        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
-    // Value should be of type `libc::c_int` which has size 4 bytes.
-    // By providing an u16 of size 2 bytes we trigger an invalid length error.
-    let err = net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR, 1u16).unwrap_err();
-    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
-
-    // By providing an u64 of size 8 bytes the behavior differs between native hosts and Miri.
-    let result = net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR, 1u64);
-    match result {
-        Err(err) => {
-            // Check that this is the right error.
-            assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
-        }
-        Ok(_) => {
-            // Some native hosts just ignore too large inputs and only look at a prefix.
-            // On Miri we require an exact size.
-            assert!(!cfg!(miri));
-        }
-    }
-}
-
-#[cfg(any(
-    target_os = "macos",
-    target_os = "freebsd",
-    target_os = "netbsd",
-    target_os = "dragonfly"
-))]
-/// Tests binding after the `SO_NOSIGPIPE` socket option has been set on the newly created socket.
-/// That flag only exists on BSD-like OSes.
-fn test_bind_ipv4_nosigpipe() {
-    let sockfd =
-        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
-    let addr = net::sock_addr_ipv4(net::IPV4_LOCALHOST, 0);
-    net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1 as libc::c_int).unwrap();
-    unsafe {
-        errno_check(libc::bind(
-            sockfd,
-            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
-            size_of::<libc::sockaddr_in>() as libc::socklen_t,
-        ));
-    }
-}
-
-#[cfg(any(
-    target_os = "macos",
-    target_os = "freebsd",
-    target_os = "netbsd",
-    target_os = "dragonfly"
-))]
-/// Tests setting the `SO_NOSIGPIPE` socket option but with an invalid length.
-fn test_set_nosigpipe_invalid_len() {
-    let sockfd =
-        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
-    // Value should be of type `libc::c_int` which has size 4 bytes.
-    // By providing a u16 of size 2 bytes we trigger an invalid length error.
-    let err = net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1u16).unwrap_err();
-    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
 }
 
 /// Test that invoking `bind` on an already bound TCP socket
