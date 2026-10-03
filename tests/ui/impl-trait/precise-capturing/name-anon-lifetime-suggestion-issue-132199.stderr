@@ -1,0 +1,78 @@
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/name-anon-lifetime-suggestion-issue-132199.rs:14:9
+   |
+LL |     fn two_anon(&self, t: &T) -> impl Sized {
+   |                 -----            ---------- opaque type defined here
+   |                 |
+   |                 hidden type `(&T, &T)` captures the anonymous lifetime defined here
+LL |         (self, t)
+   |         ^^^^^^^^^
+   |
+help: add a `use<...>` bound to explicitly capture `'_`
+   |
+LL |     fn two_anon(&self, t: &T) -> impl Sized + use<'_> {
+   |                                             +++++++++
+
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/name-anon-lifetime-suggestion-issue-132199.rs:20:9
+   |
+LL |     fn one_anon(&self) -> impl Sized {
+   |                 -----     ---------- opaque type defined here
+   |                 |
+   |                 hidden type `&T` captures the anonymous lifetime defined here
+LL |         self
+   |         ^^^^
+   |
+help: add a `use<...>` bound to explicitly capture `'_`
+   |
+LL |     fn one_anon(&self) -> impl Sized + use<'_> {
+   |                                      +++++++++
+
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/name-anon-lifetime-suggestion-issue-132199.rs:26:9
+   |
+LL |     fn named<'a>(&'a self, t: &'a T) -> impl Sized {
+   |              --                         ---------- opaque type defined here
+   |              |
+   |              hidden type `(&'a T, &'a T)` captures the lifetime `'a` as defined here
+LL |         (self, t)
+   |         ^^^^^^^^^
+   |
+help: add a `use<...>` bound to explicitly capture `'a`
+   |
+LL |     fn named<'a>(&'a self, t: &'a T) -> impl Sized + use<'a> {
+   |                                                    +++++++++
+
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/name-anon-lifetime-suggestion-issue-132199.rs:34:5
+   |
+LL | fn second_anon(_a: &u8, b: &T) -> impl Sized {
+   |                            --     ---------- opaque type defined here
+   |                            |
+   |                            hidden type `&T` captures the anonymous lifetime defined here
+LL |     b
+   |     ^
+   |
+help: add a `use<...>` bound to explicitly capture `'_`
+   |
+LL | fn second_anon(_a: &u8, b: &T) -> impl Sized + use<'_> {
+   |                                              +++++++++
+
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/name-anon-lifetime-suggestion-issue-132199.rs:41:5
+   |
+LL | fn path_anon(x: Foo, y: Foo) -> impl Sized {
+   |                 ---             ---------- opaque type defined here
+   |                 |
+   |                 hidden type `(Foo<'_>, Foo<'_>)` captures the anonymous lifetime defined here
+LL |     (x, y)
+   |     ^^^^^^
+   |
+help: add a `use<...>` bound to explicitly capture `'_`
+   |
+LL | fn path_anon(x: Foo, y: Foo) -> impl Sized + use<'_> {
+   |                                            +++++++++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0700`.
