@@ -186,7 +186,7 @@ pub(crate) enum ShadowedIntoIterDiagSub {
 }
 
 #[derive(Diagnostic)]
-#[diag("useless conversion to the same type: `{$ty}`")]
+#[diag("useless conversion to the same type: `{$ty}` {$name}")]
 #[note(
     "this method call relies on the `impl<T> Into<T> for T` blanket implementation and type \
      inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be \
@@ -203,6 +203,7 @@ pub(crate) struct SelfTypeConversionDiag<'t> {
     pub removal_span: Option<Span>,
     #[subdiagnostic]
     pub fully_qualified_path: Option<FullyQualifiedPathSuggestion<'t>>,
+    pub name: Symbol,
 }
 
 #[derive(Subdiagnostic)]

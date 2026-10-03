@@ -1,4 +1,4 @@
-error: useless conversion to the same type: `u64`
+error: useless conversion to the same type: `u64` self_type_conversion
   --> $DIR/self_type_conversion.rs:30:22
    |
 LL |         let _: u64 = z.into();
@@ -21,7 +21,7 @@ LL -         let _: u64 = z.into();
 LL +         let _: u64 = <u64 as Into<_>>::into(z);
    |
 
-error: useless conversion to the same type: `u64`
+error: useless conversion to the same type: `u64` self_type_conversion
   --> $DIR/self_type_conversion.rs:40:30
    |
 LL |         let _: Option<u64> = z.map(Into::into);
@@ -34,7 +34,7 @@ LL -         let _: Option<u64> = z.map(Into::into);
 LL +         let _: Option<u64> = z;
    |
 
-error: useless conversion to the same type: `u64`
+error: useless conversion to the same type: `u64` self_type_conversion
   --> $DIR/self_type_conversion.rs:50:34
    |
 LL |         let _: Result<u64, ()> = z.map(Into::into);
@@ -47,7 +47,7 @@ LL -         let _: Result<u64, ()> = z.map(Into::into);
 LL +         let _: Result<u64, ()> = z;
    |
 
-error: useless conversion to the same type: `u64`
+error: useless conversion to the same type: `u64` self_type_conversion
   --> $DIR/self_type_conversion.rs:93:22
    |
 LL |         let _: u64 = z.into();
@@ -65,7 +65,7 @@ LL -         let _: u64 = z.into();
 LL +         let _: u64 = <u64 as Into<_>>::into(z);
    |
 
-error: useless conversion to the same type: `u64`
+error: useless conversion to the same type: `u64` self_type_conversion
   --> $DIR/self_type_conversion.rs:103:30
    |
 LL |         let _: Option<u64> = z.map(Into::into);
@@ -78,7 +78,7 @@ LL -         let _: Option<u64> = z.map(Into::into);
 LL +         let _: Option<u64> = z;
    |
 
-error: useless conversion to the same type: `u64`
+error: useless conversion to the same type: `u64` self_type_conversion
   --> $DIR/self_type_conversion.rs:113:34
    |
 LL |         let _: Result<u64, ()> = z.map(Into::into);
@@ -91,7 +91,7 @@ LL -         let _: Result<u64, ()> = z.map(Into::into);
 LL +         let _: Result<u64, ()> = z;
    |
 
-error: useless conversion to the same type: `u64`
+error: useless conversion to the same type: `u64` self_type_conversion
   --> $DIR/self_type_conversion.rs:141:22
    |
 LL |         let _: u64 = z.into();
@@ -109,7 +109,7 @@ LL -         let _: u64 = z.into();
 LL +         let _: u64 = <u64 as Into<_>>::into(z);
    |
 
-error: useless conversion to the same type: `u64`
+error: useless conversion to the same type: `u64` self_type_conversion
   --> $DIR/self_type_conversion.rs:151:30
    |
 LL |         let _: Option<u64> = z.map(Into::into);
@@ -122,7 +122,7 @@ LL -         let _: Option<u64> = z.map(Into::into);
 LL +         let _: Option<u64> = z;
    |
 
-error: useless conversion to the same type: `u64`
+error: useless conversion to the same type: `u64` self_type_conversion
   --> $DIR/self_type_conversion.rs:161:34
    |
 LL |         let _: Result<u64, ()> = z.map(Into::into);
