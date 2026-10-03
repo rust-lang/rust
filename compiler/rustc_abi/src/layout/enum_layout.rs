@@ -563,12 +563,11 @@ where
         .max_by_key(|(_i, layout)| layout.size.bytes())
         .map(|(i, _layout)| i)?;
 
-    let all_indices = variants.indices();
     let needs_disc =
         |index: VariantIdx| index != largest_variant_index && !absent(&variants[index]);
     let niche_variants = RangeInclusive {
-        start: all_indices.clone().find(|v| needs_disc(*v)).unwrap(),
-        last: all_indices.rev().find(|v| needs_disc(*v)).unwrap(),
+        start: variants.indices().find(|v| needs_disc(*v)).unwrap(),
+        last: variants.indices().rev().find(|v| needs_disc(*v)).unwrap(),
     };
 
     let count = (niche_variants.last.index() as u128 - niche_variants.start.index() as u128) + 1;
