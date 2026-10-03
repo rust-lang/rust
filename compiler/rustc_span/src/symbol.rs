@@ -2,7 +2,6 @@
 //! allows bidirectional lookup; i.e., given a value, one can easily find the
 //! type, and vice versa.
 
-use std::collections::BTreeMap;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::{fmt, str};
 
@@ -2876,9 +2875,7 @@ pub(crate) struct Interner(Lock<InternerInner>);
 struct InternerInner {
     arena: DroplessArena,
     indices: HashTable<(&'static [u8], u32)>,
-    // TODO SliceOrd compares element by element before it compares len, we could probably
-    // make this faster if we ord by len first (if we assume len almost always differs).
-    big_indices: BTreeMap<&'static [u8], u32>,
+    big_indices: Vec<(&'static [u8], u32)>,
     byte_strs: Vec<&'static [u8]>,
 }
 
@@ -2973,20 +2970,25 @@ impl Interner {
 
     fn intern_inner_big(&self, byte_str: &[u8]) -> u32 {
         self.0.with_lock(|inner| {
-            // TODO(matyas) this is a bit annoying. We can't use the entry API because its key arg
-            //  requires byte_str to be 'static, so we have to do the lookup twice when we insert.
-            if let Some(idx) = inner.big_indices.get(byte_str) {
-                return *idx;
-            }
-            let byte_str: &[u8] = inner.arena.alloc_slice(byte_str);
+            // FIXME(matyas) SliceOrd compares element by element before it compares len, we could maybe
+            // make this faster if we compare len first, if we assume that len almost always differs.
+            let search = inner.big_indices.binary_search_by(|(s, _)| (*s).cmp(byte_str));
+            match search {
+                Ok(i) => {
+                    inner.big_indices[i].1
+                }
+                Err(insert_index) => {
+                    let byte_str: &[u8] = inner.arena.alloc_slice(byte_str);
 
-            // SAFETY: we can extend the arena allocation to `'static` because we
-            // only access these while the arena is still alive.
-            let byte_str: &'static [u8] = unsafe { &*(byte_str as *const [u8]) };
-            let idx = inner.byte_strs.len() as u32;
-            inner.big_indices.insert(byte_str, idx);
-            inner.byte_strs.push(byte_str);
-            idx
+                    // SAFETY: we can extend the arena allocation to `'static` because we
+                    // only access these while the arena is still alive.
+                    let byte_str: &'static [u8] = unsafe { &*(byte_str as *const [u8]) };
+                    let idx = inner.byte_strs.len() as u32;
+                    inner.big_indices.insert(insert_index, (byte_str, idx));
+                    inner.byte_strs.push(byte_str);
+                    idx
+                }
+            }
         })
     }
 
