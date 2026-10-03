@@ -391,7 +391,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcStrictCoherence(..) => (),
             AttributeKind::RustcTestMarker(..) => (),
             AttributeKind::RustcThenThisWouldNeed(..) => (),
-            AttributeKind::RustcTrivialFieldReads => (),
+            AttributeKind::RustcTrivialFieldReads(..) => (),
             AttributeKind::Sanitize { .. } => {}
             AttributeKind::ShouldPanic { .. } => (),
             AttributeKind::Splat(..) => (),

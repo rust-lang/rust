@@ -440,10 +440,12 @@ pub(crate) struct RustcTrivialFieldReadsParser;
 
 impl NoArgsAttributeParser for RustcTrivialFieldReadsParser {
     const PATH: &[Symbol] = &[sym::rustc_trivial_field_reads];
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowList(&[Allow(Target::Method(MethodKind::TraitImpl))]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Fn),
+    ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcTrivialFieldReads;
+    const CREATE: fn(Span) -> AttributeKind = |span| AttributeKind::RustcTrivialFieldReads(span);
 }
 
 pub(crate) struct RustcNoMirInlineParser;
