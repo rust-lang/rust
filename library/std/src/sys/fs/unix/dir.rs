@@ -60,7 +60,7 @@ impl Dir {
     pub fn self_metadata(&self) -> io::Result<FileAttr> {
         // Reuse the implementation for files, which should work for all FDs.
         let fd = self.0.as_raw_fd();
-        let f = core::mem::ManuallyDrop::new(File(
+        let f = mem::ManuallyDrop::new(File(
             // SAFETY: we borrowed `self` so the FD will not be closed while this function runs.
             unsafe { FileDesc::from_raw_fd(fd) },
         ));
@@ -156,7 +156,22 @@ impl Dir {
 
     pub(super) fn metadata_c(&self, path: &CStr, symlink_nofollow: bool) -> io::Result<FileAttr> {
         let fd = self.0.as_raw_fd();
-        let flag = if symlink_nofollow { libc::AT_SYMLINK_NOFOLLOW } else { 0 };
+        let flag = if symlink_nofollow {
+            cfg_select! {
+                // libc does not have AT_SYMLINK_NOFOLLOW for nuttx.
+                // FIXME: Once <https://github.com/rust-lang/libc/issues/5599> is fixed,
+                // nuttx can use the same path as everything else.
+                target_os = "nuttx" => {
+                    return Err(io::const_error!(
+                        io::ErrorKind::Unsupported,
+                        "getting symlink metadata not supported"
+                    ));
+                }
+                _ => libc::AT_SYMLINK_NOFOLLOW,
+            }
+        } else {
+            0
+        };
 
         cfg_has_statx! {
             if let Some(ret) = unsafe { super::try_statx(
