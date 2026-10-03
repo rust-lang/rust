@@ -24,6 +24,8 @@ pub(super) use rc_alloc::{
     deallocate, try_allocate_from_cloning_in, try_allocate_uninit_in, try_allocate_zeroed_in,
 };
 pub(super) use rc_layout::{RcLayout, RcLayoutExt};
+#[cfg(not(no_sync))]
+pub(super) use rc_value_pointer::ErasedRcValuePointer;
 pub(super) use rc_value_pointer::RcValuePointer;
 
 mod rc_alloc;

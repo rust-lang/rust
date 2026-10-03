@@ -1565,72 +1565,41 @@ class StdRcSyntheticProvider:
     struct NonZero<T>(T)
     struct rc::Header { strong: Cell<usize>, weak: Cell<usize> }
 
-    struct Arc<T> { ptr: NonNull<ArcInner<T>>, ... }
-    struct ArcInner<T> { strong: atomic::Atomic<usize>, weak: atomic::Atomic<usize>, data: T }
+    struct Arc<T> { ptr: RcValuePointer<arc::Header, T>, ... }
+    struct arc::Header { strong: atomic::Atomic<usize>, weak: atomic::Atomic<usize> }
     """
 
-    def __init__(self, valobj: SBValue, _dict: LLDBOpaque, is_atomic: bool = False):
+    def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
 
-        if is_atomic:
-            self.ptr = unwrap_unique_or_non_null(
-                self.valobj.GetChildMemberWithName("ptr")
-            )
+        rc_value_ptr = self.valobj.GetChildMemberWithName("ptr")
 
-            self.value = self.ptr.GetChildMemberWithName("data")
+        ptr = rc_value_ptr.GetChildMemberWithName("ptr").GetChildMemberWithName(
+            "pointer"
+        )
 
-            # infallibly gets an unsigned integer type of at least 64 bits. We don't need to worry
-            # about whether or not `usize` is actually smaller than that since we don't ever display
-            # the underlying type to the user anyway
-            usize_type = valobj.GetTarget().GetBasicType(eBasicTypeUnsignedLongLong)
+        self.value = ptr.deref.Clone("value")
 
-            self.strong = self.ptr.GetChildMemberWithName("strong").Cast(usize_type)
-            self.weak = self.ptr.GetChildMemberWithName("weak").Cast(usize_type)
+        header_type = rc_value_ptr.GetType().GetTemplateArgumentType(0)
+        header_address = ptr.GetValueAsUnsigned() - header_type.size
 
-            # If the usize type isn't valid due to llvm/llvm-project#196812, not even the type's
-            # fields will populate. Luckily, `RcInner` is `#[repr(C)]`, so we can infallibly find
-            # the strong and weak values in memory
-            if not self.strong.IsValid() or not self.weak.IsValid():
-                raw_ptr = self.ptr.Cast(usize_type.GetPointerType())
-                addr = raw_ptr.GetValueAsAddress()
+        header_value = ptr.CreateValueFromAddress(
+            "header",
+            header_address,
+            header_type,
+        )
 
-                self.strong = self.valobj.CreateValueFromAddress(
-                    "strong", addr, usize_type
-                )
+        def peel_ref_count(value):
+            while (
+                value.IsValid()
+                and value.GetType().GetTypeFlags() & lldb.eTypeIsInteger == 0
+            ):
+                value = value.GetChildAtIndex(0)
 
-                self.weak = self.valobj.CreateValueFromAddress(
-                    "weak", addr + usize_type.GetByteSize(), usize_type
-                )
-        else:
-            rc_value_ptr = self.valobj.GetChildMemberWithName("ptr")
+            return value
 
-            ptr = rc_value_ptr.GetChildMemberWithName("ptr").GetChildMemberWithName(
-                "pointer"
-            )
-
-            self.value = ptr.deref.Clone("value")
-
-            header_type = rc_value_ptr.GetType().GetTemplateArgumentType(0)
-            header_address = ptr.GetValueAsUnsigned() - header_type.size
-
-            header_value = ptr.CreateValueFromAddress(
-                "header",
-                header_address,
-                header_type,
-            )
-
-            def peel_ref_count(value):
-                while (
-                    value.IsValid()
-                    and value.GetType().GetTypeFlags() & lldb.eTypeIsInteger == 0
-                ):
-                    value = value.GetChildAtIndex(0)
-
-                return value
-
-            self.strong = peel_ref_count(header_value.GetChildMemberWithName("strong"))
-            self.weak = peel_ref_count(header_value.GetChildMemberWithName("weak"))
-
+        self.strong = peel_ref_count(header_value.GetChildMemberWithName("strong"))
+        self.weak = peel_ref_count(header_value.GetChildMemberWithName("weak"))
         self.value_builder = ValueBuilder(valobj)
 
         self.update()
