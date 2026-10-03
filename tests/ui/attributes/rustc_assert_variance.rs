@@ -14,39 +14,45 @@ struct Foo2<#[rustc_assert_variance(nonsense)] T> {
 }
 
 struct Foo3<#[rustc_assert_variance(bivariant)] T> {
-    //~^ ERROR `Foo3` is covariant in `T`; expected variance: bivariant
-    //~| NOTE required by this annotation
+    //~^ ERROR `Foo3` is expected to be bivariant in `T` but is not
+    //~| NOTE `Foo3` is covariant in `T`
+    //~| NOTE required by this attribute
     val: T,
 }
 
 struct Foo4<#[rustc_assert_variance(invariant)] T> {
-    //~^ ERROR `Foo4` is covariant in `T`; expected variance: invariant
-    //~| NOTE required by this annotation
+    //~^ ERROR `Foo4` is expected to be invariant in `T` but is not
+    //~| NOTE `Foo4` is covariant in `T`
+    //~| NOTE required by this attribute
     val: T,
 }
 
 struct Foo5<
+    //~^ ERROR `Foo5` is expected to be invariant in `'a` but is not
+    //~| ERROR `Foo5` is expected to be covariant in `T` but is not
     #[rustc_assert_variance(invariant)]
-    //~^ NOTE required by this annotation
+    //~^ NOTE required by this attribute
     'a,
-    //~^ ERROR `Foo5` is covariant in `'a`; expected variance: invariant
+    //~^ NOTE `Foo5` is covariant in `'a`
     #[rustc_assert_variance(covariant)]
-    //~^ NOTE required by this annotation
+    //~^ NOTE required by this attribute
     T,
-    //~^ ERROR `Foo5` is invariant in `T`; expected variance: covariant
+    //~^ NOTE `Foo5` is invariant in `T`
 > {
     val: &'a mut T,
 }
 
 struct Foo6<
+    //~^ ERROR `Foo6` is expected to be contravariant in `'a` but is not
+    //~| ERROR `Foo6` is expected to be contravariant in `T` but is not
     #[rustc_assert_variance(contravariant)]
-    //~^ NOTE required by this annotation
+    //~^ NOTE required by this attribute
     'a,
-    //~^ ERROR `Foo6` is covariant in `'a`; expected variance: contravariant
+    //~^ NOTE `Foo6` is covariant in `'a`
     #[rustc_assert_variance(contravariant)]
-    //~^ NOTE required by this annotation
+    //~^ NOTE required by this attribute
     T,
-    //~^ ERROR `Foo6` is invariant in `T`; expected variance: contravariant
+    //~^ NOTE `Foo6` is invariant in `T`
 > {
     val: &'a mut T,
 }
