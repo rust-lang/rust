@@ -20,3 +20,8 @@ const _: () = ();
 #[doc(attribute = "repr")]
 /// hello
 const _: () = ();
+
+//@ has foo/attribute.diagnostic::do_not_recommend.html '//section[@id="main-content"]//div[@class="docblock"]//p' 'hello'
+#[doc(attribute = "diagnostic::do_not_recommend")]
+/// hello
+const _:() = ();

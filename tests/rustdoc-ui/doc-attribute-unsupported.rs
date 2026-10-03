@@ -1,7 +1,19 @@
-// This is currently not supported but should be!
+// Invalid namespace attribute!
 
 #![feature(rustdoc_internals)]
 
-#[doc(attribute = "diagnostic::do_not_recommend")] //~ ERROR
+#[doc(attribute = "diagnostic::")] //~ ERROR
+/// bla
+const _: () = ();
+
+#[doc(attribute = "foo::bar::foo")] //~ ERROR
+/// bla
+const _: () = ();
+
+#[doc(attribute = "unknown_tool_attr::foo")] //~ ERROR
+/// bla
+const _: () = ();
+
+#[doc(attribute = "::blah")] //~ ERROR
 /// bla
 const _: () = ();
