@@ -32,8 +32,7 @@ fn test_connect() {
 fn test_sockopt_ttl() {
     let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
     socket.set_ttl(16).unwrap();
-    // TODO: Once UDP sockets support `getsockopt`.
-    // assert_eq!(socket.ttl().unwrap(), 16);
+    assert_eq!(socket.ttl().unwrap(), 16);
 }
 
 /// Test setting and reading the SNDTIMEO socket option.
@@ -43,13 +42,11 @@ fn test_sockopt_read_timeout() {
     let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
 
     // By default, reads on blocking sockets should block indefinitely.
-    // TODO: Once UDP sockets support `getsockopt`.
-    // assert_eq!(socket.read_timeout().unwrap(), None);
+    assert_eq!(socket.read_timeout().unwrap(), None);
 
     let short_read_timeout = Some(Duration::from_millis(40));
     socket.set_read_timeout(short_read_timeout).unwrap();
-    // TODO: Once UDP sockets support `getsockopt`.
-    // assert_eq!(socket.read_timeout().unwrap(), short_read_timeout);
+    assert_eq!(socket.read_timeout().unwrap(), short_read_timeout);
 
     /*
     TODO: Once UDP sockets support reading.
@@ -68,13 +65,11 @@ fn test_sockopt_write_timeout() {
     let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
 
     // By default, writes on blocking sockets should block indefinitely.
-    // TODO: Once UDP sockets support `getsockopt`.
-    // assert_eq!(socket.write_timeout().unwrap(), None);
+    assert_eq!(socket.write_timeout().unwrap(), None);
 
     let short_write_timeout = Some(Duration::from_millis(40));
     socket.set_write_timeout(short_write_timeout).unwrap();
-    // TODO: Once UDP sockets support `getsockopt`.
-    // assert_eq!(socket.write_timeout().unwrap(), short_write_timeout);
+    assert_eq!(socket.write_timeout().unwrap(), short_write_timeout);
 
     /*
     TODO: Once UDP sockets support writing.

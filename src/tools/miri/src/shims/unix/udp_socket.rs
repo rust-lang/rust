@@ -195,6 +195,24 @@ impl UnixSocketFileDescription for UdpSocket {
         );
     }
 
+    fn getsockopt<'tcx>(
+        self: FileDescriptionRef<Self>,
+        level: i32,
+        option: i32,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Result<MPlaceTy<'tcx>, IoError>> {
+        if level == ecx.eval_libc_i32("SOL_SOCKET") {
+            ecx.get_generic_socket_option(option, self)
+        } else if level == ecx.eval_libc_i32("IPPROTO_IP") {
+            ecx.get_ip_socket_option(option, socket2::SockRef::from(&self.socket))
+        } else {
+            throw_unsup_format!(
+                "getsockopt: level {level:#x} is unsupported, only SOL_SOCKET and IPPROTO_IP \
+                are allowed"
+            )
+        }
+    }
+
     fn set_read_timeout<'tcx>(
         self: FileDescriptionRef<Self>,
         timeout: Option<Duration>,
@@ -203,12 +221,24 @@ impl UnixSocketFileDescription for UdpSocket {
         interp_ok(())
     }
 
+    fn get_read_timeout<'tcx>(
+        self: FileDescriptionRef<Self>,
+    ) -> InterpResult<'tcx, Option<Duration>> {
+        interp_ok(self.read_timeout.get())
+    }
+
     fn set_write_timeout<'tcx>(
         self: FileDescriptionRef<Self>,
         timeout: Option<Duration>,
     ) -> InterpResult<'tcx> {
         self.write_timeout.set(timeout);
         interp_ok(())
+    }
+
+    fn get_write_timeout<'tcx>(
+        self: FileDescriptionRef<Self>,
+    ) -> InterpResult<'tcx, Option<Duration>> {
+        interp_ok(self.write_timeout.get())
     }
 
     fn with_socket_ref<T>(&self, cb: impl FnOnce(socket2::SockRef<'_>) -> T) -> Result<T, ()>

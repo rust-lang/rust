@@ -8,6 +8,8 @@ mod libc_utils;
 #[path = "../../utils/mod.rs"]
 mod utils;
 
+use std::slice;
+
 use libc_utils::*;
 
 // This file contains tests which are executed with different socket types (e.g., TCP, UDP, ...).
@@ -45,6 +47,8 @@ fn main() {
     }
     test_bind_ipv6();
     test_bind_wrong_address_family();
+
+    test_getsockopt_truncate();
 }
 
 /// Test creating a socket and then closing it afterwards.
@@ -227,4 +231,68 @@ fn test_bind_wrong_address_family() {
     } else {
         assert_eq!(err.raw_os_error(), Some(libc::EAFNOSUPPORT))
     }
+}
+
+/// Test that the value gets silently truncated when a too small
+/// length is provided and that the length gets reduced when the value
+/// is smaller than the provided length.
+fn test_getsockopt_truncate() {
+    let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET, SOCKET_TYPE, 0)).unwrap() };
+
+    // Set the read timeout for the socket.
+    // We use a multiple of 4ms for the `usec` since Linux seems to do rounding.
+    let new_timeout = libc::timeval { tv_sec: 123, tv_usec: 40_000 };
+    net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_RCVTIMEO, new_timeout).unwrap();
+
+    let mut option_value = std::mem::MaybeUninit::<[u8; 5]>::zeroed();
+    // The actual `timeval` length is more than 5 bytes.
+    let mut short_option_len = 5 as libc::socklen_t;
+    assert!(short_option_len < size_of::<libc::timeval>() as libc::socklen_t);
+
+    let timeout =
+        net::getsockopt::<libc::timeval>(sockfd, libc::SOL_SOCKET, libc::SO_RCVTIMEO).unwrap();
+    // Ensure that we get the same value back as we just set.
+    assert_eq!(timeout.tv_sec, new_timeout.tv_sec);
+    assert_eq!(timeout.tv_usec, new_timeout.tv_usec);
+
+    errno_result(unsafe {
+        libc::getsockopt(
+            sockfd,
+            libc::SOL_SOCKET,
+            libc::SO_RCVTIMEO,
+            option_value.as_mut_ptr().cast(),
+            &mut short_option_len,
+        )
+    })
+    .unwrap();
+    // Ensure that the size wasn't changed.
+    assert_eq!(short_option_len, 5);
+    let truncated_timeout = unsafe { option_value.assume_init() };
+
+    unsafe {
+        let timeout_ptr = (&new_timeout) as *const libc::timeval as *const u8;
+        // Assert that the value was silently truncated.
+        assert_eq!(&truncated_timeout, slice::from_raw_parts(timeout_ptr, 5));
+    }
+
+    let mut option_value = std::mem::MaybeUninit::<libc::timeval>::zeroed();
+    // The actual length is smaller than this.
+    let mut long_option_len = (size_of::<libc::timeval>() + 2) as libc::socklen_t;
+
+    errno_result(unsafe {
+        libc::getsockopt(
+            sockfd,
+            libc::SOL_SOCKET,
+            libc::SO_RCVTIMEO,
+            option_value.as_mut_ptr().cast(),
+            &mut long_option_len,
+        )
+    })
+    .unwrap();
+    // Ensure that the size was shortened to the actual length.
+    assert_eq!(long_option_len, size_of::<libc::timeval>() as libc::socklen_t);
+    // The returned timeout should be the same value as we just set.
+    let untruncated_timeout = unsafe { option_value.assume_init() };
+    assert_eq!(untruncated_timeout.tv_sec, new_timeout.tv_sec);
+    assert_eq!(untruncated_timeout.tv_usec, new_timeout.tv_usec);
 }
