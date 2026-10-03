@@ -20,14 +20,3 @@ extern "C" fn __rust_drop_panic() -> ! {
 extern "C" fn __rust_foreign_exception() -> ! {
     loop {}
 }
-
-#[lang = "eh_personality"]
-fn eh_personality(
-    _version: i32,
-    _actions: i32,
-    _exception_class: u64,
-    _exception_object: *mut (),
-    _context: *mut (),
-) -> i32 {
-    loop {}
-}
