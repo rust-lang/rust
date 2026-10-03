@@ -1,8 +1,9 @@
-use std::cell::Cell;
+use std::cell::{Cell, RefCell, RefMut};
 use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::time::Duration;
 
+use mio::event::Source;
 use rustc_target::spec::Os;
 
 use crate::shims::files::{FileDescription, FileDescriptionRef};
@@ -16,11 +17,13 @@ pub(super) struct UdpSocket {
     /// of the same family.
     family: socket2::Domain,
     /// The underlying host socket.
-    socket: mio::net::UdpSocket,
+    socket: RefCell<mio::net::UdpSocket>,
     /// Whether this fd is non-blocking or not.
     is_non_block: Cell<bool>,
     /// Whether the socket is implicitly or explicitly bound to an address.
     is_bound: Cell<bool>,
+    /// The current blocking I/O readiness of the file description.
+    io_readiness: RefCell<Readiness>,
     /// Read timeout of the socket. [`None`] means that reads can block indefinitely.
     /// The timeout is applied to the monotonic clock (the Unix specification doesn't
     /// specify which clock to use, but the monotonic clock is more common for
@@ -33,10 +36,16 @@ pub(super) struct UdpSocket {
     /// for relative timeouts).
     /// This is ignored when the socket is non-blocking.
     write_timeout: Cell<Option<Duration>>,
+    /// State for being watched by epoll.
+    watched: ReadinessWatched,
 }
 
 impl UdpSocket {
-    pub fn new(family: socket2::Domain, is_non_block: bool) -> io::Result<Self> {
+    pub fn new<'tcx>(
+        family: socket2::Domain,
+        is_non_block: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> io::Result<FileDescriptionRef<Self>> {
         let socket =
             socket2::Socket::new(family, socket2::Type::DGRAM, Some(socket2::Protocol::UDP))?;
         // The underlying host socket needs to be non-blocking. The actual
@@ -57,16 +66,27 @@ impl UdpSocket {
             _ => unreachable!("unsupported host platform"),
         };
 
-        // TODO: Add the underlying host socket to the blocking I/O manager.
-
-        Ok(UdpSocket {
+        let udp_socket = UdpSocket {
             family,
-            socket,
+            socket: RefCell::new(socket),
             is_non_block: Cell::new(is_non_block),
             is_bound: Cell::new(false),
+            // We can set the default readiness to the empty readiness
+            // since the socket will be registered to the blocking I/O
+            // directly after its creation.
+            io_readiness: RefCell::new(Readiness::EMPTY),
             read_timeout: Cell::new(None),
             write_timeout: Cell::new(None),
-        })
+            watched: ReadinessWatched::default(),
+        };
+
+        let fd = ecx.machine.fds.new_ref(udp_socket);
+
+        // Add the UDP socket to the blocking I/O manager as it's always
+        // backed by a mio UdpSocket.
+        ecx.machine.blocking_io.register(fd.clone());
+
+        Ok(fd)
     }
 }
 
@@ -77,6 +97,14 @@ impl FileDescription for UdpSocket {
 
     fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
         self
+    }
+
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        Some(&self.watched)
+    }
+
+    fn readiness(&self) -> Readiness {
+        *self.io_readiness.borrow()
     }
 }
 
@@ -173,7 +201,7 @@ impl UnixSocketFileDescription for UdpSocket {
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "cannot have `UdpSocket` with isolation enabled!");
 
-        if let Err(e) = self.socket.connect(address) {
+        if let Err(e) = self.socket.borrow().connect(address) {
             return finish.call(ecx, Err(IoError::HostError(e)));
         }
 
@@ -196,11 +224,12 @@ impl UnixSocketFileDescription for UdpSocket {
         if level == ecx.eval_libc_i32("SOL_SOCKET") {
             return ecx.set_generic_socket_option(option, value_ptr, value_len, self);
         } else if level == ecx.eval_libc_i32("IPPROTO_IP") {
+            let socket = self.socket.borrow();
             return ecx.set_ip_socket_option(
                 option,
                 value_ptr,
                 value_len,
-                socket2::SockRef::from(&self.socket),
+                socket2::SockRef::from(&*socket),
             );
         }
 
@@ -219,7 +248,8 @@ impl UnixSocketFileDescription for UdpSocket {
         if level == ecx.eval_libc_i32("SOL_SOCKET") {
             ecx.get_generic_socket_option(option, self)
         } else if level == ecx.eval_libc_i32("IPPROTO_IP") {
-            ecx.get_ip_socket_option(option, socket2::SockRef::from(&self.socket))
+            let socket = self.socket.borrow();
+            ecx.get_ip_socket_option(option, socket2::SockRef::from(&*socket))
         } else {
             throw_unsup_format!(
                 "getsockopt: level {level:#x} is unsupported, only SOL_SOCKET and IPPROTO_IP \
@@ -253,7 +283,7 @@ impl UnixSocketFileDescription for UdpSocket {
             return interp_ok(Ok(address));
         }
 
-        interp_ok(self.socket.local_addr().map_err(IoError::HostError))
+        interp_ok(self.socket.borrow().local_addr().map_err(IoError::HostError))
     }
 
     fn getpeername<'tcx>(
@@ -264,7 +294,7 @@ impl UnixSocketFileDescription for UdpSocket {
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "cannot have `UdpSocket` with isolation enabled!");
 
-        finish.call(ecx, self.socket.peer_addr().map_err(IoError::HostError))
+        finish.call(ecx, self.socket.borrow().peer_addr().map_err(IoError::HostError))
     }
 
     fn set_read_timeout<'tcx>(
@@ -299,6 +329,18 @@ impl UnixSocketFileDescription for UdpSocket {
     where
         Self: Sized,
     {
-        Ok(cb(socket2::SockRef::from(&self.socket)))
+        let socket = self.socket.borrow();
+        Ok(cb(socket2::SockRef::from(&*socket)))
+    }
+}
+
+impl SourceFileDescription for UdpSocket {
+    fn with_source(&self, f: &mut dyn FnMut(&mut dyn Source) -> io::Result<()>) -> io::Result<()> {
+        let mut socket = self.socket.borrow_mut();
+        f(&mut *socket)
+    }
+
+    fn get_readiness_mut(&self) -> RefMut<'_, Readiness> {
+        self.io_readiness.borrow_mut()
     }
 }
