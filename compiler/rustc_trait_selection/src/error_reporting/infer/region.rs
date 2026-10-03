@@ -1,6 +1,6 @@
 use std::iter;
 
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
     Applicability, Diag, E0309, E0310, E0311, E0803, Subdiagnostic, msg, struct_span_code_err,
 };
@@ -8,6 +8,8 @@ use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, ParamName};
+use rustc_middle::hir::nested_filter;
+use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::RegionHighlightMode;
@@ -1319,7 +1321,14 @@ pub fn unexpected_hidden_region_diagnostic<'a, 'tcx>(
                 "",
             );
             if let Some(_) = tcx.is_suitable_region(generic_param_scope, hidden_region) {
-                suggest_precise_capturing(tcx, opaque_ty_key.def_id, hidden_region, &mut err);
+                suggest_precise_capturing(
+                    tcx,
+                    generic_param_scope,
+                    opaque_ty_key.def_id,
+                    hidden_ty.value,
+                    hidden_region,
+                    &mut err,
+                );
             }
         }
         ty::RePlaceholder(_) => {
@@ -1368,7 +1377,9 @@ pub fn unexpected_hidden_region_diagnostic<'a, 'tcx>(
 
 fn suggest_precise_capturing<'tcx>(
     tcx: TyCtxt<'tcx>,
+    generic_param_scope: LocalDefId,
     opaque_def_id: LocalDefId,
+    hidden_ty: Ty<'tcx>,
     captured_lifetime: ty::Region<'tcx>,
     diag: &mut Diag<'_>,
 ) {
@@ -1455,10 +1466,29 @@ fn suggest_precise_capturing<'tcx>(
             }
         }
 
-        if !captured_lifetimes.insert(new_lifetime) {
+        if captured_lifetimes.contains(&new_lifetime) {
             // Uh, strange. This lifetime appears to already be captured...
             return;
         }
+
+        // `'_` in a capture list only resolves when the signature has a single anonymous
+        // lifetime, so when there are several the suggestion has to name them first.
+        if synthetics.is_empty()
+            && let Some(suggs) = name_anon_lifetimes_suggestion(
+                tcx,
+                generic_param_scope,
+                opaque_def_id,
+                fn_def_id,
+                hidden_ty,
+                &captured_lifetimes,
+                &captured_non_lifetimes,
+            )
+        {
+            diag.subdiagnostic(diagnostics::AddPreciseCapturingAndNameLifetimes { suggs });
+            return;
+        }
+
+        captured_lifetimes.insert(new_lifetime);
 
         if synthetics.is_empty() {
             let concatenated_bounds = captured_lifetimes
@@ -1540,6 +1570,145 @@ fn suggest_precise_capturing<'tcx>(
                 new_lifetime,
                 apit_spans,
             });
+        }
+    }
+}
+
+/// Build a suggestion that names every anonymous lifetime the hidden type captures and then
+/// lists them in a `use<..>` bound.
+///
+/// This exists because a `use<..>` list cannot refer to more than one anonymous lifetime: `'_`
+/// resolves like any other elided lifetime, so with several in the signature it either picks the
+/// wrong one or fails to resolve at all. Naming them is the only way to write the bound the hidden
+/// type actually needs.
+///
+/// Returns `None` whenever the plain `'_` suggestion is still correct, so that the common
+/// single-lifetime case keeps its shorter form.
+fn name_anon_lifetimes_suggestion<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    generic_param_scope: LocalDefId,
+    opaque_def_id: LocalDefId,
+    fn_def_id: LocalDefId,
+    hidden_ty: Ty<'tcx>,
+    captured_lifetimes: &FxIndexSet<Symbol>,
+    captured_non_lifetimes: &FxIndexSet<Symbol>,
+) -> Option<Vec<(Span, String)>> {
+    let fn_sig = tcx.hir_node_by_def_id(fn_def_id).fn_sig()?;
+    let hir_generics = tcx.hir_get_generics(fn_def_id)?;
+
+    let mut collector = AnonLifetimeCollector { tcx, anon_lifetimes: Default::default() };
+    for input in fn_sig.decl.inputs {
+        collector.visit_ty_unambig(input);
+    }
+    // With a single anonymous lifetime in the signature `'_` resolves to it, so leave that case
+    // to the caller.
+    if collector.anon_lifetimes.len() < 2 {
+        return None;
+    }
+
+    let mut hidden_regions = FxIndexSet::default();
+    tcx.for_each_free_region(&hidden_ty, |region| {
+        if let Some(info) = tcx.is_suitable_region(generic_param_scope, region) {
+            hidden_regions.insert(info.region_def_id);
+        }
+    });
+
+    // A lifetime the user already named stays as it is; only the anonymous ones need inventing
+    // a name, and they are named in the order they appear in the signature.
+    let mut bounds = captured_lifetimes.clone();
+    for &def_id in &hidden_regions {
+        if !collector.anon_lifetimes.contains_key(&def_id) {
+            bounds.insert(tcx.item_name(def_id));
+        }
+    }
+    let to_name: Vec<_> = collector
+        .anon_lifetimes
+        .iter()
+        .filter(|(def_id, _)| hidden_regions.contains(*def_id))
+        .map(|(_, &lifetime)| lifetime)
+        .collect();
+    if to_name.is_empty() {
+        return None;
+    }
+
+    // Any name already written on the function, in scope around it, or already in the capture
+    // list is off limits. Late-bound lifetimes are missing from `generics_of`, so the written
+    // parameters have to come from HIR.
+    let mut taken = bounds.clone();
+    taken.extend(
+        hir_generics
+            .params
+            .iter()
+            .filter(|param| param.is_lifetime())
+            .map(|param| param.name.ident().name),
+    );
+    let mut generics = tcx.generics_of(fn_def_id);
+    loop {
+        for param in &generics.own_params {
+            if let ty::GenericParamDefKind::Lifetime = param.kind {
+                taken.insert(param.name);
+            }
+        }
+        if let Some(parent) = generics.parent {
+            generics = tcx.generics_of(parent);
+        } else {
+            break;
+        }
+    }
+    let mut fresh_names =
+        ('a'..='z').map(|c| Symbol::intern(&format!("'{c}"))).filter(|name| !taken.contains(name));
+
+    let mut suggs = vec![];
+    let mut new_params = vec![];
+    for lifetime in to_name {
+        let name = fresh_names.next()?;
+        new_params.push(name.to_string());
+        bounds.insert(name);
+        suggs.push(lifetime.suggestion(name.as_str()));
+    }
+
+    let new_params = new_params.join(", ");
+    suggs.push(if let Some(params_span) = hir_generics.span_for_lifetime_suggestion() {
+        (params_span, format!("{new_params}, "))
+    } else {
+        (hir_generics.span, format!("<{new_params}>"))
+    });
+
+    let concatenated_bounds = bounds
+        .into_iter()
+        .chain(captured_non_lifetimes.iter().copied())
+        .map(|sym| sym.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    suggs.push((
+        tcx.def_span(opaque_def_id).shrink_to_hi(),
+        format!(" + use<{concatenated_bounds}>"),
+    ));
+
+    Some(suggs)
+}
+
+/// Collects every anonymous lifetime written in a function signature, together with the
+/// lifetime parameter it resolves to.
+struct AnonLifetimeCollector<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    anon_lifetimes: FxIndexMap<DefId, &'tcx hir::Lifetime>,
+}
+
+impl<'tcx> Visitor<'tcx> for AnonLifetimeCollector<'tcx> {
+    type NestedFilter = nested_filter::OnlyBodies;
+
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
+    }
+
+    fn visit_lifetime(&mut self, lifetime: &'tcx hir::Lifetime) {
+        if lifetime.is_anonymous()
+            && let Some(
+                rbv::ResolvedArg::EarlyBound(def_id) | rbv::ResolvedArg::LateBound(_, _, def_id),
+            ) = self.tcx.named_bound_var(lifetime.hir_id)
+        {
+            self.anon_lifetimes.entry(def_id.to_def_id()).or_insert(lifetime);
         }
     }
 }

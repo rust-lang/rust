@@ -1,8 +1,11 @@
 //@ edition: 2021
+//@ run-rustfix
 
 // regression test for https://github.com/rust-lang/rust/issues/132199.
 // in edition 2024 impl Trait captures every in-scope lifetime by default,
 // so none of these shapes error there. edition 2021 is used throughout.
+
+#![allow(dead_code)]
 
 struct T;
 struct Foo<'a>(&'a u8);
