@@ -212,6 +212,26 @@ where
     }
 }
 
+fn sanity_check_ity(dl: &TargetDataLayout, repr: &ReprOptions, min_ity: Integer) {
+    let typeck_ity = Integer::from_attr(dl, repr.discr_type());
+    if typeck_ity < min_ity {
+        // It is a bug if Layout decided on a greater discriminant size than typeck for
+        // some reason at this point (based on values discriminant can take on). Mostly
+        // because this discriminant will be loaded, and then stored into variable of
+        // type calculated by typeck. Consider such case (a bug): typeck decided on
+        // byte-sized discriminant, but layout thinks we need a 16-bit to store all
+        // discriminant values. That would be a bug, because then, in codegen, in order
+        // to store this 16-bit discriminant into 8-bit sized temporary some of the
+        // space necessary to represent would have to be discarded (or layout is wrong
+        // on thinking it needs 16 bits)
+        panic!(
+            "layout decided on a larger discriminant type ({min_ity:?}) than typeck ({typeck_ity:?})"
+        );
+        // However, it is fine to make discr type however large (as an optimisation)
+        // after this point – we’ll just truncate the value we load in codegen.
+    }
+}
+
 fn constructable_variant<'a, VariantIdx, FieldIdx, F>(variant: &IndexSlice<FieldIdx, F>) -> bool
 where
     FieldIdx: Idx,
@@ -325,23 +345,7 @@ where
         return Err(LayoutCalculatorError::SizeOverflow);
     }
 
-    let typeck_ity = Integer::from_attr(dl, repr.discr_type());
-    if typeck_ity < min_ity {
-        // It is a bug if Layout decided on a greater discriminant size than typeck for
-        // some reason at this point (based on values discriminant can take on). Mostly
-        // because this discriminant will be loaded, and then stored into variable of
-        // type calculated by typeck. Consider such case (a bug): typeck decided on
-        // byte-sized discriminant, but layout thinks we need a 16-bit to store all
-        // discriminant values. That would be a bug, because then, in codegen, in order
-        // to store this 16-bit discriminant into 8-bit sized temporary some of the
-        // space necessary to represent would have to be discarded (or layout is wrong
-        // on thinking it needs 16 bits)
-        panic!(
-            "layout decided on a larger discriminant type ({min_ity:?}) than typeck ({typeck_ity:?})"
-        );
-        // However, it is fine to make discr type however large (as an optimisation)
-        // after this point – we’ll just truncate the value we load in codegen.
-    }
+    sanity_check_ity(dl, repr, min_ity);
 
     // Check to see if we should use a different type for the
     // discriminant. We can safely use a type with the same size
