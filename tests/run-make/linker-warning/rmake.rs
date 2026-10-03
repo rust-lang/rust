@@ -83,6 +83,7 @@ fn main() {
             .normalize("libpanic_abort", "libpanic_unwind")
             .normalize(r#""[^"]*\/symbols.o""#, "\"/symbols.o\"")
             .normalize(r#""[^"]*\/raw-dylibs""#, "\"/raw-dylibs\"")
+            .normalize("\"-fno-lto\" ", "")
             .run();
     }
 

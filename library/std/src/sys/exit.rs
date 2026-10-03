@@ -127,7 +127,7 @@ pub fn exit(code: i32) -> ! {
                     )
                 };
             }
-            crate::intrinsics::abort()
+            crate::intrinsics::abort_immediate()
         }
         any(target_family = "unix", target_os = "wasi") => unsafe {
             libc::exit(code as crate::ffi::c_int)
@@ -147,7 +147,7 @@ pub fn exit(code: i32) -> ! {
         target_os = "xous" => crate::os::xous::ffi::exit(code as u32),
         _ => {
             let _ = code;
-            crate::intrinsics::abort()
+            crate::intrinsics::abort_immediate()
         }
     }
 }

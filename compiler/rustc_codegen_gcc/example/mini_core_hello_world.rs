@@ -438,10 +438,10 @@ pub enum E2<X> {
 #[allow(unreachable_patterns)]
 fn check_niche_behavior () {
     if let E1::V2 { .. } = (E1::V1 { f: true }) {
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 
     if let E2::V1 { .. } = E2::V3::<Infallible> {
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 }

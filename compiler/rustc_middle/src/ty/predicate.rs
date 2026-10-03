@@ -171,7 +171,7 @@ impl<'tcx> Clause<'tcx> {
     }
 
     pub fn kind(self) -> ty::Binder<'tcx, ClauseKind<'tcx>> {
-        self.0.internee.map_bound(|kind| match kind {
+        self.0.internee.map_bound_no_validate_bound_vars(|kind| match kind {
             PredicateKind::Clause(clause) => clause,
             _ => unreachable!(),
         })
@@ -520,7 +520,8 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, TraitClause<'tcx>> for Predicate<'tcx> {
 
 impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PolyTraitClause<'tcx>> for Predicate<'tcx> {
     fn upcast_from(from: PolyTraitClause<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        from.map_bound(|p| PredicateKind::Clause(ClauseKind::Trait(p))).upcast(tcx)
+        from.map_bound_no_validate_bound_vars(|p| PredicateKind::Clause(ClauseKind::Trait(p)))
+            .upcast(tcx)
     }
 }
 

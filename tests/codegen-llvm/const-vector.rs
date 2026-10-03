@@ -1,5 +1,4 @@
 //@ revisions: OPT0 OPT0_S390X
-//@ min-llvm-version: 22
 //@ [OPT0] ignore-s390x
 //@ [OPT0_S390X] only-s390x
 //@ [OPT0] compile-flags: -C no-prepopulate-passes -Copt-level=0
