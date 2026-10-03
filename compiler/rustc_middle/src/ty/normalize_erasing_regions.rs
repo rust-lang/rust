@@ -74,10 +74,10 @@ impl<'tcx> TyCtxt<'tcx> {
     ) {
         let value = self.erase_and_anonymize_regions(value);
         if value.has_aliases() {
-            assert_eq!(
-                value.clone(),
-                value.fold_with(&mut NormalizeAfterErasingRegionsFolder { tcx: self, typing_env })
-            )
+            let normalized = ty::set_aliases_to_non_rigid(self, value.clone())
+                .skip_normalization()
+                .fold_with(&mut NormalizeAfterErasingRegionsFolder { tcx: self, typing_env });
+            assert_eq!(value, normalized);
         }
     }
 
