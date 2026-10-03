@@ -36,7 +36,10 @@ pub(crate) fn expand_deriving_debug(
             nonself_args: smallvec![(fmtr, sym::character('f'))],
             has_other_selflike_arg: false,
             ret_ty: cx.ty_path(path_std!(cx, span, fmt::Result)),
-            attributes: thin_vec![cx.attr_word(sym::inline, span)],
+            attributes: thin_vec![
+                cx.attr_word(sym::inline, span),
+                cx.attr_word(sym::rustc_trivial_field_reads, span)
+            ],
             fieldless_variants_strategy:
                 FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless,
             combine_substructure: combine_substructure(|cx, span, substr| show_substructure(
