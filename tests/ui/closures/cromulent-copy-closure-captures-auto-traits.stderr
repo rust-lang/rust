@@ -1,0 +1,71 @@
+error[E0277]: `PhantomPinned` cannot be unpinned
+  --> $DIR/cromulent-copy-closure-captures-auto-traits.rs:12:24
+   |
+LL |       assert_auto_traits(|| {
+   |       ------------------ ^-
+   |       |                  |
+   |  _____|__________________within this `{closure@$DIR/cromulent-copy-closure-captures-auto-traits.rs:12:24: 12:26}`
+   | |     |
+   | |     required by a bound introduced by this call
+LL | |
+LL | |
+LL | |         let _foo = foo;
+LL | |     });
+   | |_____^ unsatisfied trait bound
+   |
+   = help: within `{closure@$DIR/cromulent-copy-closure-captures-auto-traits.rs:12:24: 12:26}`, the trait `Unpin` is not implemented for `PhantomPinned`
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
+note: required because it appears within the type `Foo`
+  --> $DIR/cromulent-copy-closure-captures-auto-traits.rs:6:36
+   |
+LL | struct Foo(PhantomData<*const ()>, PhantomPinned);
+   |                                    ^^^^^^^^^^^^^ required by this field
+note: required because `foo` is used within this closure
+  --> $DIR/cromulent-copy-closure-captures-auto-traits.rs:15:20
+   |
+LL |         let _foo = foo;
+   |                    ^^^
+note: required by a bound in `assert_auto_traits`
+  --> $DIR/cromulent-copy-closure-captures-auto-traits.rs:19:45
+   |
+LL | fn assert_auto_traits(_: impl Fn() + Send + Unpin) {}
+   |                                             ^^^^^ required by this bound in `assert_auto_traits`
+
+error[E0277]: `*const ()` cannot be sent between threads safely
+  --> $DIR/cromulent-copy-closure-captures-auto-traits.rs:12:24
+   |
+LL |       assert_auto_traits(|| {
+   |       ------------------ ^-
+   |       |                  |
+   |  _____|__________________within this `{closure@$DIR/cromulent-copy-closure-captures-auto-traits.rs:12:24: 12:26}`
+   | |     |
+   | |     required by a bound introduced by this call
+LL | |
+LL | |
+LL | |         let _foo = foo;
+LL | |     });
+   | |_____^ `*const ()` cannot be sent between threads safely
+   |
+   = help: within `{closure@$DIR/cromulent-copy-closure-captures-auto-traits.rs:12:24: 12:26}`, the trait `Send` is not implemented for `*const ()`
+note: required because it appears within the type `PhantomData<*const ()>`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+note: required because it appears within the type `Foo`
+  --> $DIR/cromulent-copy-closure-captures-auto-traits.rs:6:12
+   |
+LL | struct Foo(PhantomData<*const ()>, PhantomPinned);
+   |            ^^^^^^^^^^^^^^^^^^^^^^ required by this field
+note: required because `foo` is used within this closure
+  --> $DIR/cromulent-copy-closure-captures-auto-traits.rs:15:20
+   |
+LL |         let _foo = foo;
+   |                    ^^^
+note: required by a bound in `assert_auto_traits`
+  --> $DIR/cromulent-copy-closure-captures-auto-traits.rs:19:38
+   |
+LL | fn assert_auto_traits(_: impl Fn() + Send + Unpin) {}
+   |                                      ^^^^ required by this bound in `assert_auto_traits`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

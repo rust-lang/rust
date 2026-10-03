@@ -505,7 +505,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         };
 
-        if coerced_a == a && mt_a.mutbl.is_not() && autoderef.step_count() == 1 {
+        if mt_a.mutbl.is_not() && mutbl_b.is_not() && autoderef.step_count() == 1 {
             // As a special case, if we would produce `&'a *x`, that's
             // a total no-op. We end up with the type `&'a T` just as
             // we started with. In that case, just skip it altogether.
@@ -521,7 +521,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // `self.x` both have `&mut `type would be a move of
             // `self.x`, but we auto-coerce it to `foo(&mut *self.x)`,
             // which is a borrow.
-            assert!(mutbl_b.is_not()); // can only coerce &T -> &U
             return success(vec![], coerced_a, obligations);
         }
 

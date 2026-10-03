@@ -4,8 +4,8 @@ error[E0373]: coroutine may outlive the current function, but it borrows `x`, wh
 LL |     static || {
    |     ^^^^^^^^^ may outlive borrowed value `x`
 ...
-LL |         x
-   |         - `x` is borrowed here
+LL |         *&x
+   |           - `x` is borrowed here
    |
 note: coroutine is returned here
   --> $DIR/static-move-suggestion.rs:10:5
@@ -13,7 +13,7 @@ note: coroutine is returned here
 LL | /     static || {
 LL | |
 LL | |         yield;
-LL | |         x
+LL | |         *&x
 LL | |     }
    | |_____^
 help: to force the coroutine to take ownership of `x` (and any other referenced variables), use the `move` keyword

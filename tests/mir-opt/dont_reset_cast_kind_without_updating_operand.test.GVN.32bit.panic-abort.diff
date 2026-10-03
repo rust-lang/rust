@@ -4,28 +4,27 @@
   fn test() -> () {
       let mut _0: ();
       let _1: &std::boxed::Box<()>;
-      let _2: &std::boxed::Box<()>;
-      let _3: std::boxed::Box<()>;
-      let mut _4: ();
-      let mut _7: *const ();
-      let mut _9: *const [()];
-      let mut _10: std::boxed::Box<()>;
-      let mut _11: *const ();
-      let mut _14: usize;
+      let _2: std::boxed::Box<()>;
+      let mut _3: ();
+      let mut _6: *const ();
+      let mut _8: *const [()];
+      let mut _9: std::boxed::Box<()>;
+      let mut _10: *const ();
+      let mut _13: usize;
       scope 1 {
           debug vp_ctx => _1;
-          let _5: *const ();
+          let _4: *const ();
           scope 2 {
-              debug slf => _5;
-              let _6: *const [()];
+              debug slf => _4;
+              let _5: *const [()];
               scope 3 {
-                  debug bytes => _6;
-                  let _8: *mut ();
+                  debug bytes => _5;
+                  let _7: *mut ();
                   scope 4 {
-                      debug _x => _8;
+                      debug _x => _7;
                   }
                   scope 9 (inlined foo) {
-                      let mut _15: *const [()];
+                      let mut _14: *const [()];
                   }
               }
               scope 7 (inlined slice_from_raw_parts::<()>) {
@@ -35,8 +34,8 @@
           }
       }
       scope 5 (inlined Box::<()>::new) {
-          let mut _12: *mut ();
-          let mut _13: *mut u8;
+          let mut _11: *mut ();
+          let mut _12: *mut u8;
           scope 6 {
           }
       }
@@ -45,60 +44,57 @@
           StorageLive(_1);
           StorageLive(_2);
           StorageLive(_3);
-          StorageLive(_4);
--         _4 = ();
-+         _4 = const ();
+-         _3 = ();
++         _3 = const ();
+          StorageLive(_11);
           StorageLive(_12);
-          StorageLive(_13);
--         _13 = boxed::box_new_uninit(const <() as std::mem::SizedTypeProperties>::LAYOUT) -> [return: bb2, unwind unreachable];
-+         _13 = boxed::box_new_uninit(const Layout {{ size: 0_usize, align: std::mem::Alignment {{ _inner_repr_trick: mem::alignment::AlignmentEnum::_Align1Shl0 }} }}) -> [return: bb2, unwind unreachable];
+-         _12 = boxed::box_new_uninit(const <() as std::mem::SizedTypeProperties>::LAYOUT) -> [return: bb2, unwind unreachable];
++         _12 = boxed::box_new_uninit(const Layout {{ size: 0_usize, align: std::mem::Alignment {{ _inner_repr_trick: mem::alignment::AlignmentEnum::_Align1Shl0 }} }}) -> [return: bb2, unwind unreachable];
       }
   
       bb1: {
-          StorageDead(_3);
+          StorageDead(_2);
           StorageDead(_1);
           return;
       }
   
       bb2: {
-          _12 = copy _13 as *mut () (PtrToPtr);
--         (*_12) = move _4;
-+         (*_12) = const ();
-          _3 = copy _13 as std::boxed::Box<()> (Transmute);
-          StorageDead(_13);
+          _11 = copy _12 as *mut () (PtrToPtr);
+-         (*_11) = move _3;
++         (*_11) = const ();
+          _2 = copy _12 as std::boxed::Box<()> (Transmute);
           StorageDead(_12);
-          StorageDead(_4);
-          _2 = &_3;
-          _1 = &(*_2);
-          StorageDead(_2);
+          StorageDead(_11);
+          StorageDead(_3);
+          _1 = &_2;
+          StorageLive(_4);
+          _9 = no_retag copy (*_1);
+          _10 = copy (_9.0: std::ptr::Unique<()>) as *const () (BoxDerefTransmute);
+          _4 = &raw const (*_10);
           StorageLive(_5);
-          _10 = no_retag copy (*_1);
-          _11 = copy (_10.0: std::ptr::Unique<()>) as *const () (BoxDerefTransmute);
-          _5 = &raw const (*_11);
           StorageLive(_6);
-          StorageLive(_7);
-          _7 = copy _5;
-          StorageLive(_14);
-          _14 = const 1_usize;
--         _6 = *const [()] from (copy _7, copy _14);
-+         _6 = *const [()] from (copy _5, const 1_usize);
-          StorageDead(_14);
-          StorageDead(_7);
-          StorageLive(_8);
-          StorageLive(_9);
-          _9 = copy _6;
-          StorageLive(_15);
--         _15 = copy _9;
--         _8 = copy _9 as *mut () (PtrToPtr);
-+         _15 = copy _6;
-+         _8 = copy _5 as *mut () (PtrToPtr);
-          StorageDead(_15);
-          StorageDead(_9);
-          _0 = const ();
-          StorageDead(_8);
+          _6 = copy _4;
+          StorageLive(_13);
+          _13 = const 1_usize;
+-         _5 = *const [()] from (copy _6, copy _13);
++         _5 = *const [()] from (copy _4, const 1_usize);
+          StorageDead(_13);
           StorageDead(_6);
+          StorageLive(_7);
+          StorageLive(_8);
+          _8 = copy _5;
+          StorageLive(_14);
+-         _14 = copy _8;
+-         _7 = copy _8 as *mut () (PtrToPtr);
++         _14 = copy _5;
++         _7 = copy _4 as *mut () (PtrToPtr);
+          StorageDead(_14);
+          StorageDead(_8);
+          _0 = const ();
+          StorageDead(_7);
           StorageDead(_5);
-          drop(_3) -> [return: bb1, unwind unreachable];
+          StorageDead(_4);
+          drop(_2) -> [return: bb1, unwind unreachable];
       }
 + }
 + 
