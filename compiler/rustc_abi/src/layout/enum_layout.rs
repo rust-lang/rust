@@ -394,7 +394,6 @@ where
     };
     let tag =
         Scalar::Initialized { value: Primitive::Int(ity, signed), valid_range: tag_valid_range };
-    let uninhabited = layout_variants.iter().all(|v| v.is_uninhabited());
     let abi = calculate_tagged_abi(calculator, &layout_variants, &variants, size, align, tag);
 
     // If we pick a "clever" (by-value) ABI, we might have to adjust the ABI of the
@@ -415,6 +414,7 @@ where
     let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag);
 
     Ok(LayoutData {
+        uninhabited: layout_variants.iter().all(|v| v.is_uninhabited()),
         variants: Variants::Multiple {
             tag,
             tag_encoding: TagEncoding::Direct,
@@ -426,7 +426,6 @@ where
             in_memory_order: [FieldIdx::new(0)].into(),
         },
         largest_niche,
-        uninhabited,
         backend_repr: abi,
         align: AbiAlign::new(align),
         size,
