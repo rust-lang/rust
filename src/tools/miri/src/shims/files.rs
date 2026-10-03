@@ -718,3 +718,55 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(result.map_err(IoError::HostError))
     }
 }
+
+/// Open something for which we don't know ahead of time whether it is a file or a directory.
+///
+/// Custom flags need to be passed separately since they cannot be read from `opts`...
+pub fn open_file_or_dir(
+    path: &std::path::Path,
+    mut opts: fs::OpenOptions,
+    #[cfg(unix)] custom_flags: i32,
+    #[cfg(windows)] custom_flags: u32,
+) -> io::Result<Either<fs::File, fs::Dir>> {
+    #[cfg(unix)]
+    use std::os::unix::fs::OpenOptionsExt;
+    #[cfg(windows)]
+    use std::os::windows::fs::OpenOptionsExt;
+
+    // On Unix, `open` works for files and directories.
+    // On Windows, that needs FILE_FLAG_BACKUP_SEMANTICS, but we don't want to set that by default.
+    // So we only set it when needed.
+    let file = match opts.custom_flags(custom_flags).open(path) {
+        Ok(file) => file,
+
+        #[cfg(windows)]
+        Err(err) if err.kind() == io::ErrorKind::PermissionDenied => {
+            // This can happen when the file is actually a directory.
+            // So retry with FILE_FLAG_BACKUP_SEMANTICS.
+            opts.custom_flags(
+                custom_flags | windows_sys::Win32::Storage::FileSystem::FILE_FLAG_BACKUP_SEMANTICS,
+            )
+            .open(path)?
+        }
+
+        Err(err) => return Err(err),
+    };
+
+    let metadata = file.metadata().expect("just-opened file should have metadata");
+    if metadata.is_dir() {
+        assert!(!metadata.is_symlink()); // Rust makes this mutually exclusive with `is_dir`
+        // Convert to dir.
+        cfg_select! {
+            unix => {
+                use std::os::fd::OwnedFd;
+                Ok(Either::Right(OwnedFd::from(file).into()))
+            }
+            windows => {
+                use std::os::windows::io::OwnedHandle;
+                Ok(Either::Right(OwnedHandle::from(file).into()))
+            }
+        }
+    } else {
+        Ok(Either::Left(file))
+    }
+}

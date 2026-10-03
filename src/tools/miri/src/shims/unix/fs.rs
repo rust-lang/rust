@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 use std::ffi::OsString;
-use std::fs::{self, Dir, DirBuilder, File, FileTimes, FileType, OpenOptions, TryLockError};
+use std::fs::{self, DirBuilder, File, FileTimes, FileType, OpenOptions, TryLockError};
 use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{self, Path};
 use std::time::SystemTime;
@@ -14,7 +14,7 @@ use rustc_target::spec::Os;
 
 use self::shims::time::system_time_to_duration;
 use crate::shims::FdId;
-use crate::shims::files::{DirHandle, FdNum, FileHandle};
+use crate::shims::files::{DirHandle, FdNum, FileHandle, open_file_or_dir};
 use crate::shims::os_str::{PathConversion, bytes_to_os_str};
 use crate::shims::sig::Varargs;
 use crate::shims::unix::fd::{EvalContextExt as _, FlockOp, UnixFileDescription};
@@ -426,6 +426,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut flag = flag;
 
         let mut options = OpenOptions::new();
+        let mut custom_flags = 0;
 
         let o_rdonly = this.eval_libc_i32("O_RDONLY");
         let o_wronly = this.eval_libc_i32("O_WRONLY");
@@ -468,6 +469,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if flag & o_directory == o_directory {
             flag &= !o_directory;
             want_directory = true;
+            // On Unix we can ask the host to only open directories. That's helpful especially in
+            // combination with O_NOFOLLOW as it affects which error we get when the final component
+            // is a symlink. Fixing the error up ourselves is non-trivial so we make the host
+            // generate the right error.
+            #[cfg(unix)]
+            {
+                custom_flags |= libc::O_DIRECTORY;
+            }
         }
         let o_append = this.eval_libc_i32("O_APPEND");
         if flag & o_append == o_append {
@@ -539,14 +548,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             nofollow = true;
             cfg_select! {
                 unix => {
-                    use std::os::unix::fs::OpenOptionsExt;
-                    options.custom_flags(libc::O_NOFOLLOW);
+                    custom_flags |= libc::O_NOFOLLOW;
                 }
                 windows => {
-                    use std::os::windows::fs::OpenOptionsExt;
-                    options.custom_flags(
-                        windows_sys::Win32::Storage::FileSystem::FILE_FLAG_OPEN_REPARSE_POINT,
-                    );
+                    custom_flags |=
+                        windows_sys::Win32::Storage::FileSystem::FILE_FLAG_OPEN_REPARSE_POINT;
                 }
             }
         }
@@ -562,92 +568,35 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        // We start a retry loop to deal with the `is_dir` race, see below.
-        // We add a retry counter to avoid infinite loops when things go wrong.
-        let mut counter = 0u32;
-        loop {
-            if counter >= 100 {
-                panic!(
-                    "open seems stuck in an infinite retry loop. \
-                    If you can reproduce this, please file a bug."
-                );
-            }
-            counter = counter.strict_add(1);
-
-            // We need to know if the file is a directory to correctly open directory handles.
-            // The standard library only lets us open something as a file or a directory, so
-            // we check for that and then retry if we end up with the wrong thing.
-            let metadata = if nofollow { path.symlink_metadata() } else { path.metadata() };
-            let is_dir = metadata.is_ok_and(|m| m.is_dir());
-
-            if is_dir {
-                // Directories cannot be opened for writing.
-                if access_mode != o_rdonly {
+        // Let's see what we get when we open this!
+        match open_file_or_dir(&path, options, custom_flags) {
+            Err(err) => this.set_errno_and_return_neg1_i32(err),
+            Ok(Either::Right(dir)) => {
+                // This means it cannot be a symlink, so `nofollow` is fine.
+                if writable {
+                    // On Windows, opening a folder writable can succeed.
+                    // But here we want it to always fail.
                     return this.set_errno_and_return_neg1_i32(LibcError("EISDIR"));
-                }
-                let dir = match Dir::open_with(&path, &options) {
-                    Ok(dir) => dir,
-                    Err(e) => {
-                        if e.kind() == io::ErrorKind::NotADirectory {
-                            // This changed from a directory to a file. Retry.
-                            continue;
-                        }
-                        return this.set_errno_and_return_neg1_i32(e);
-                    }
-                };
-                #[cfg(bootstrap)]
-                let metadata = dir.metadata().expect("a just-opened dir should have metadata");
-                #[cfg(not(bootstrap))]
-                let metadata = dir.self_metadata().expect("a just-opened dir should have metadata");
-                if !metadata.is_dir() {
-                    // This changed from a directory to a file. Retry.
-                    continue;
-                }
-
-                if nofollow && !cfg!(unix) {
-                    // On Windows, FILE_FLAG_OPEN_REPARSE_POINT makes opening still succeed, it just
-                    // opens the symlink rather than the target. Turn that into an error.
-                    if metadata.is_symlink() {
-                        return this.set_errno_and_return_neg1_i32(LibcError("ELOOP"));
-                    }
                 }
 
                 let fd = this.machine.fds.insert_new(DirHandle::new(dir, &path));
-                return interp_ok(Scalar::from_i32(fd));
-            } else {
-                let file = match options.open(&path) {
-                    Ok(file) => file,
-                    Err(e) => {
-                        let kind = e.kind();
-                        if kind == io::ErrorKind::IsADirectory {
-                            // This changed from a directory to a file. Retry.
-                            continue;
-                        }
-                        if want_directory && kind == io::ErrorKind::FilesystemLoop {
-                            // This is reported as ENOTDIR.
-                            return this.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
-                        }
-                        return this.set_errno_and_return_neg1_i32(e);
-                    }
-                };
-                let metadata = file.metadata().expect("a just-opened file should have metadata");
-                if metadata.is_dir() {
-                    // This changed from a file to a directory. Retry.
-                    continue;
-                }
-
+                interp_ok(Scalar::from_i32(fd))
+            }
+            Ok(Either::Left(file)) => {
                 if want_directory {
                     return this.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
                 }
-                if nofollow && !cfg!(unix) {
-                    // On Windows, FILE_FLAG_OPEN_REPARSE_POINT makes opening still succeed, it just
-                    // opens the symlink rather than the target. Turn that into an error.
-                    if metadata.is_symlink() {
+                if file.metadata().unwrap().is_symlink() {
+                    if nofollow {
+                        // On Windows, FILE_FLAG_OPEN_REPARSE_POINT makes opening still succeed, it
+                        // just opens the symlink rather than the target. Turn that into an error.
                         return this.set_errno_and_return_neg1_i32(LibcError("ELOOP"));
                     }
+                    panic!("we should not get a symlink here");
                 }
+
                 let fd = this.machine.fds.insert_new(FileHandle { file, writable, readable });
-                return interp_ok(Scalar::from_i32(fd));
+                interp_ok(Scalar::from_i32(fd))
             }
         }
     }
