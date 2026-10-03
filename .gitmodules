@@ -47,3 +47,7 @@
 	path = src/gcc
 	url = https://github.com/rust-lang/gcc.git
 	shallow = true
+[submodule "src/tpde"]
+	path = src/tpde
+	url = https://github.com/tpde2/tpde.git
+	shallow = true

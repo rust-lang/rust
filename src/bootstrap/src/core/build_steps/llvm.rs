@@ -102,7 +102,7 @@ impl LlvmBuildStatus {
 
 /// Allows each step to add C/Cxx flags which are only used for a specific cmake invocation.
 #[derive(Debug, Clone, Default)]
-struct CcFlags {
+pub(super) struct CcFlags {
     /// Additional values for CMAKE_CC_FLAGS, to be added before all other values.
     cflags: OsString,
     /// Additional values for CMAKE_CXX_FLAGS, to be added before all other values.
@@ -110,7 +110,7 @@ struct CcFlags {
 }
 
 impl CcFlags {
-    fn push_all(&mut self, s: impl AsRef<OsStr>) {
+    pub fn push_all(&mut self, s: impl AsRef<OsStr>) {
         let s = s.as_ref();
         self.cflags.push(" ");
         self.cflags.push(s);
@@ -121,17 +121,17 @@ impl CcFlags {
 
 /// Linker flags to pass to LLVM's CMake invocation.
 #[derive(Debug, Clone, Default)]
-struct LdFlags {
+pub(super) struct LdFlags {
     /// CMAKE_EXE_LINKER_FLAGS
-    exe: OsString,
+    pub exe: OsString,
     /// CMAKE_SHARED_LINKER_FLAGS
-    shared: OsString,
+    pub shared: OsString,
     /// CMAKE_MODULE_LINKER_FLAGS
-    module: OsString,
+    pub module: OsString,
 }
 
 impl LdFlags {
-    fn push_all(&mut self, s: impl AsRef<OsStr>) {
+    pub fn push_all(&mut self, s: impl AsRef<OsStr>) {
         let s = s.as_ref();
         self.exe.push(" ");
         self.exe.push(s);
@@ -834,14 +834,14 @@ fn debuginfo_map_cflags(builder: &Builder<'_>, target: TargetSelection) -> Vec<S
 
 /// Tries to reuse a locally built LLD as a linker.
 /// If it is not available, uses a global LLD from PATH.
-fn try_link_with_in_tree_lld(
+pub(super) fn try_link_with_in_tree_lld(
     builder: &Builder<'_>,
     target: TargetSelection,
     llvm_output: &LlvmOutput,
     cfg: &mut cmake::Config,
     ldflags: &mut LdFlags,
 ) {
-    // Apple has it's own ld64 linker, so don't use LLD on Darwin.
+    // Apple has its own ld64 linker, so don't use LLD on Darwin.
     if target.contains("apple") {
         return;
     }
@@ -866,7 +866,7 @@ fn try_link_with_in_tree_lld(
     }
 }
 
-fn configure_cmake(
+pub(super) fn configure_cmake(
     builder: &Builder<'_>,
     target: TargetSelection,
     cfg: &mut cmake::Config,

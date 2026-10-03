@@ -676,4 +676,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "You should now use `x install rust-src` instead of `x install src` to install the standard library source component. If you want to install it as part of a custom `build.tools` set, include `rust-src` in `build.tools.",
     },
+    ChangeInfo {
+        change_id: 163731,
+        severity: ChangeSeverity::Info,
+        summary: "New option `rust.tpde` controls whether the TPDE pass plugin should be included in the compiler sysroot. Additional options under the `[tpde]` table control TPDE compilation options.",
+    },
 ];

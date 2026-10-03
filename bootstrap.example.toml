@@ -103,7 +103,7 @@
 # Whether to build Enzyme as AutoDiff backend.
 #llvm.enzyme = false
 
-# Whether to build LLVM with support for it's gpu offload runtime.
+# Whether to build LLVM with support for its gpu offload runtime.
 #llvm.offload = false
 
 # Absolute path to the directory containing ClangConfig.cmake
@@ -218,6 +218,21 @@
 # If you set both, bootstrap will first try to load libgccjit.so from this directory.
 # Only if it isn't found, it will try to download it from CI or build it locally.
 #gcc.libgccjit-libs-dir = "/path/to/libgccjit-libs-dir"
+
+# =============================================================================
+# Tweaking how TPDE is compiled
+# =============================================================================
+
+# Indicates whether the TPDE build is a Release or Debug build
+#tpde.optimize = true
+
+# Indicates whether a TPDE Release build should include debug info
+#tpde.release-debuginfo = false
+
+# Indicates whether the TPDE assertions are enabled or not
+# NOTE: When assertions are disabled, bugs in the integration between rustc and LLVM/TPDE can lead to
+# unsoundness (segfaults, etc.) in the rustc process itself, not just in the generated code.
+#tpde.assertions = false
 
 # =============================================================================
 # General build configuration options
@@ -842,9 +857,13 @@
 # sysroot.
 #rust.llvm-tools = true
 
-# Indicates whether the `self-contained` llvm-bitcode-linker, will be made available
+# Indicates whether the `self-contained` llvm-bitcode-linker will be made available
 # in the sysroot. It is required for running nvptx tests.
 #rust.llvm-bitcode-linker = false
+
+# Indicates whether TPDE will be made available in the sysroot. This is an experimental
+# alternative LLVM backend.
+#rust.tpde = false
 
 # Whether to deny warnings in crates. Set to `false` to avoid
 # error: warnings are denied by `build.warnings` configuration

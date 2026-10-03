@@ -18,7 +18,8 @@ use crate::core::build_steps::compile::{Std, StdLink, looks_like_codegen_backend
 use crate::core::build_steps::llvm::{LlvmKind, get_llvm_build_status};
 use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::build_steps::{
-    check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
+    check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, tpde,
+    vendor,
 };
 use crate::core::builder::step_stack::StepRecord;
 pub use crate::core::builder::step_stack::StepStack;
@@ -813,7 +814,8 @@ impl<'a> Builder<'a> {
                 tool::LlvmBitcodeLinker,
                 tool::RustcPerf,
                 tool::WasmComponentLd,
-                tool::LldWrapper
+                tool::LldWrapper,
+                tpde::Tpde,
             ),
             Kind::Clippy => describe!(
                 clippy::Std,
@@ -1010,7 +1012,8 @@ impl<'a> Builder<'a> {
                 dist::BuildManifest,
                 dist::ReproducibleArtifacts,
                 dist::GccDev,
-                dist::Gcc
+                dist::Gcc,
+                dist::Tpde,
             ),
             Kind::Install => describe!(
                 install::Docs,
