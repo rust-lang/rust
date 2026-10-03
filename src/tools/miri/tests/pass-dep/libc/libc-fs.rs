@@ -1000,6 +1000,12 @@ fn test_fstatat() {
         .unwrap_err();
     assert_eq!(err.raw_os_error().unwrap(), libc::EBADF, "unexpected errno: {err}");
 
+    // Empty path errors. (We do not support AT_EMPTY_PATH.)
+    let err =
+        errno_result(unsafe { libc::fstatat(libc::AT_FDCWD, c"".as_ptr(), stat.as_mut_ptr(), 0) })
+            .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT, "unexpected errno: {err}");
+
     if utils::have_symlink_permission() {
         // Symlink following.
         let linkname = testdir.join("link");

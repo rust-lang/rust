@@ -899,37 +899,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let path = this.read_path_from_c_str(path)?.into_owned();
-        let metadata = if path.is_empty() {
-            throw_unsup_format!("fstatat: empty path is not supported");
-        } else if path.is_absolute() || dirfd == this.eval_libc_i32("AT_FDCWD") {
-            // Either absolute path (dirfd is ignored) or relative to working directory.
-            FileMetadata::from_host(
-                this,
-                if symlink_nofollow_flag { path.symlink_metadata() } else { path.metadata() },
-            )?
-        } else {
-            // relative to dirfd, which must be a directory handle
-            let Some(fd) = this.machine.fds.get(dirfd) else {
-                return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-            };
-            let Some(dir) = fd.downcast::<DirHandle>() else {
-                return this.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
-            };
-
-            #[cfg(not(bootstrap))]
-            let metadata = if symlink_nofollow_flag {
-                dir.dir.symlink_metadata(path)
-            } else {
-                dir.dir.metadata(path)
-            };
-            #[cfg(bootstrap)]
-            let metadata = if symlink_nofollow_flag {
-                dir.fallback.join(path).symlink_metadata()
-            } else {
-                dir.fallback.join(path).metadata()
-            };
-            FileMetadata::from_host(this, metadata)?
-        };
+        // Resolve dirfd + path to metadata.
+        let metadata = FileMetadata::at(
+            this,
+            dirfd,
+            &path,
+            symlink_nofollow_flag,
+            /* empty_path_flag */ false,
+        )?;
 
         let metadata = match metadata {
             Ok(metadata) => metadata,
@@ -985,43 +962,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
         }
 
-        // If the path is empty, and the AT_EMPTY_PATH flag is set, we query the open file
-        // represented by dirfd, whether it's a directory or otherwise.
-        let metadata = if path.is_empty() {
-            // no path: invalid by default, load metadata about dirfd with flag
-            if !empty_path_flag {
-                return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
-            }
-            FileMetadata::from_fd_num(this, dirfd)?
-        } else if path.is_absolute() || dirfd == this.eval_libc_i32("AT_FDCWD") {
-            // Either absolute path (dirfd is ignored) or relative to working directory.
-            FileMetadata::from_host(
-                this,
-                if symlink_nofollow_flag { path.symlink_metadata() } else { path.metadata() },
-            )?
-        } else {
-            // relative to dirfd, which must be a directory handle
-            let Some(fd) = this.machine.fds.get(dirfd) else {
-                return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-            };
-            let Some(dir) = fd.downcast::<DirHandle>() else {
-                return this.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
-            };
-
-            #[cfg(not(bootstrap))]
-            let metadata = if symlink_nofollow_flag {
-                dir.dir.symlink_metadata(path)
-            } else {
-                dir.dir.metadata(path)
-            };
-            #[cfg(bootstrap)]
-            let metadata = if symlink_nofollow_flag {
-                dir.fallback.join(path).symlink_metadata()
-            } else {
-                dir.fallback.join(path).metadata()
-            };
-            FileMetadata::from_host(this, metadata)?
-        };
+        // Resolve dirfd + path to metadata.
+        let metadata =
+            FileMetadata::at(this, dirfd, &path, symlink_nofollow_flag, empty_path_flag)?;
 
         let metadata = match metadata {
             Ok(metadata) => metadata,
@@ -2091,9 +2034,61 @@ struct FileMetadata {
 }
 
 impl FileMetadata {
+    /// Implements the shared "metadata at" semantics of `fstatat` and `statx`.
+    fn at<'tcx>(
+        ecx: &mut MiriInterpCx<'tcx>,
+        dirfd: FdNum,
+        path: &Path,
+        symlink_nofollow_flag: bool,
+        empty_path_flag: bool,
+    ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
+        // If the path is empty, and the AT_EMPTY_PATH flag is set, we query the open file
+        // represented by dirfd, whether it's a directory or otherwise.
+        if path.is_empty() {
+            // no path: invalid by default, load metadata about dirfd with flag
+            if !empty_path_flag {
+                return interp_ok(Err(LibcError("ENOENT")));
+            }
+            FileMetadata::from_fd_num(ecx, dirfd)
+        } else if path.is_absolute() || dirfd == ecx.eval_libc_i32("AT_FDCWD") {
+            // Either absolute path (dirfd is ignored) or relative to working directory.
+            FileMetadata::from_host(
+                ecx,
+                if symlink_nofollow_flag { path.symlink_metadata() } else { path.metadata() },
+            )
+        } else {
+            // relative to dirfd, which must be a directory handle
+            let Some(fd) = ecx.machine.fds.get(dirfd) else {
+                return interp_ok(Err(LibcError("EBADF")));
+            };
+            let Some(dir) = fd.downcast::<DirHandle>() else {
+                return interp_ok(Err(LibcError("ENOTDIR")));
+            };
+
+            // Windows does not by itself treat `.` correctly so we do that by hand.
+            #[cfg(not(bootstrap))]
+            let metadata = if cfg!(windows) && path.to_str() == Some(".") {
+                dir.dir.self_metadata()
+            } else if symlink_nofollow_flag {
+                dir.dir.symlink_metadata(path)
+            } else {
+                dir.dir.metadata(path)
+            };
+            #[cfg(bootstrap)]
+            let metadata = if cfg!(windows) && path.to_str() == Some(".") {
+                dir.dir.metadata()
+            } else if symlink_nofollow_flag {
+                dir.fallback.join(path).symlink_metadata()
+            } else {
+                dir.fallback.join(path).metadata()
+            };
+            FileMetadata::from_host(ecx, metadata)
+        }
+    }
+
     fn from_fd_num<'tcx>(
         ecx: &mut MiriInterpCx<'tcx>,
-        fd_num: i32,
+        fd_num: FdNum,
     ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
         let Some(fd) = ecx.machine.fds.get(fd_num) else {
             return interp_ok(Err(LibcError("EBADF")));
