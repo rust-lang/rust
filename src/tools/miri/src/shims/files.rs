@@ -522,14 +522,18 @@ pub struct DirHandle {
 }
 
 impl DirHandle {
-    pub fn open(path: &std::path::Path) -> io::Result<Self> {
+    pub fn new(dir: Dir, path: &std::path::Path) -> Self {
+        // Only stage 1 builds need the fallback so panicking is fine.
         #[cfg(bootstrap)]
-        let fallback = path.canonicalize()?;
+        let fallback =
+            path.canonicalize().expect("canonicalizing directory fallback should succeed");
         #[cfg(not(bootstrap))]
-        let fallback = ();
+        let fallback = {
+            let _ignore = path;
+            ()
+        };
 
-        let dir = Dir::open(path)?;
-        Ok(DirHandle { dir, fallback })
+        DirHandle { dir, fallback }
     }
 }
 

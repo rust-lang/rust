@@ -1215,19 +1215,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         match result {
             Ok(read_dir) => {
-                // Also open the same directory as a directory handle, so we have
-                // an underlying FD.
-                // FIXME(https://github.com/rust-lang/miri/issues/5326): This is racy! We can't even
-                // verify whether there was a race. We just trust that the directory did not change
-                // in between above and here. One day, the standard library will support converting
-                // between `Dir` and `ReadDir` (one of the two directions would suffice for our
-                // needs), then we'll use that.
-                let Ok(dir) = DirHandle::open(&name) else {
+                // Create an underlying FD as well, in case someone calls `dirfd` later.
+                // (We could do this lazily but that does not seem worth it.)
+                #[cfg(not(bootstrap))]
+                let dir = read_dir.dir();
+                #[cfg(bootstrap)]
+                let dir = fs::Dir::open(&name);
+                let Ok(dir) = dir else {
                     throw_unsup_format!(
                         "cannot `opendir` this directory: failed to create directory handle"
                     );
                 };
-                let dir = this.machine.fds.new_ref(dir);
+                let dir = this.machine.fds.new_ref(DirHandle::new(dir, &name));
                 let dir_fd_id = dir.id();
                 let dir_fd_num = this.machine.fds.insert(dir);
 

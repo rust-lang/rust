@@ -1172,6 +1172,8 @@ fn test_dirfd() {
     assert!(!dir.is_null());
 
     let dirfd = unsafe { libc::dirfd(dir) };
+    let dirfd2 = unsafe { libc::dirfd(dir) };
+    assert_eq!(dirfd, dirfd2); // make sure we always return the same one
 
     let mut stat = MaybeUninit::<libc::stat>::uninit();
     errno_check(unsafe { libc::fstat(dirfd, stat.as_mut_ptr()) });
