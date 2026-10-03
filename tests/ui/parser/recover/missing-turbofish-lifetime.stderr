@@ -1,57 +1,112 @@
-error: labels cannot use keyword names
-  --> $DIR/missing-turbofish-lifetime.rs:6:20
-   |
-LL |     let _ = Struct<'_> {
-   |                    ^^
-
-error: expected `while`, `for`, `loop` or `{` after a label
-  --> $DIR/missing-turbofish-lifetime.rs:6:22
-   |
-LL |     let _ = Struct<'_> {
-   |                      ^ expected `while`, `for`, `loop` or `{` after a label
-   |
-help: add `'` to close the char literal
-   |
-LL |     let _ = Struct<'_'> {
-   |                      +
-
-error: comparison operators cannot be chained
-  --> $DIR/missing-turbofish-lifetime.rs:6:19
-   |
-LL |     let _ = Struct<'_> {
-   |                   ^  ^
-
-error: expected `while`, `for`, `loop` or `{` after a label
-  --> $DIR/missing-turbofish-lifetime.rs:15:22
-   |
-LL |     let _ = Struct<'a> {
-   |                      ^ expected `while`, `for`, `loop` or `{` after a label
-   |
-help: add `'` to close the char literal
-   |
-LL |     let _ = Struct<'a'> {
-   |                      +
-
-error: comparison operators cannot be chained
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
   --> $DIR/missing-turbofish-lifetime.rs:15:19
    |
-LL |     let _ = Struct<'a> {
-   |                   ^  ^
-
-error: expected `while`, `for`, `loop` or `{` after a label
-  --> $DIR/missing-turbofish-lifetime.rs:23:24
+LL |     let _ = Struct<'_> {
+   |                   ^
    |
-LL |     let _ = Struct<'abc> {
-   |                        ^ expected `while`, `for`, `loop` or `{` after a label
+help: add `::`
+   |
+LL |     let _ = Struct::<'_> {
+   |                   ++
 
-error: comparison operators cannot be chained
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
   --> $DIR/missing-turbofish-lifetime.rs:23:19
    |
-LL |     let _ = Struct<'abc> {
-   |                   ^    ^
+LL |     let _ = Struct<'a> {
+   |                   ^
    |
-   = help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
-   = help: or use `(...)` if you meant to specify fn arguments
+help: add `::`
+   |
+LL |     let _ = Struct::<'a> {
+   |                   ++
 
-error: aborting due to 7 previous errors
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/missing-turbofish-lifetime.rs:31:19
+   |
+LL |     let _ = Struct<'abc> {
+   |                   ^
+   |
+help: add `::`
+   |
+LL |     let _ = Struct::<'abc> {
+   |                   ++
+
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/missing-turbofish-lifetime.rs:41:24
+   |
+LL |     let _ = TupleStruct<'_>("");
+   |                        ^
+   |
+help: add `::`
+   |
+LL |     let _ = TupleStruct::<'_>("");
+   |                        ++
+
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/missing-turbofish-lifetime.rs:58:20
+   |
+LL |     let _ = Wrapper<'a>::new("hi");
+   |                    ^
+   |
+help: add `::`
+   |
+LL |     let _ = Wrapper::<'a>::new("hi");
+   |                    ++
+
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/missing-turbofish-lifetime.rs:62:20
+   |
+LL |     let _ = Struct2<'a> { x: 1, _p: std::marker::PhantomData }.method();
+   |                    ^
+   |
+help: add `::`
+   |
+LL |     let _ = Struct2::<'a> { x: 1, _p: std::marker::PhantomData }.method();
+   |                    ++
+
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/missing-turbofish-lifetime.rs:66:20
+   |
+LL |     let _ = Struct2<'a> { x: 1, _p: std::marker::PhantomData }.method()?;
+   |                    ^
+   |
+help: add `::`
+   |
+LL |     let _ = Struct2::<'a> { x: 1, _p: std::marker::PhantomData }.method()?;
+   |                    ++
+
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/missing-turbofish-lifetime.rs:70:6
+   |
+LL |     f<'_>();
+   |      ^
+   |
+help: add `::`
+   |
+LL |     f::<'_>();
+   |      ++
+
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/missing-turbofish-lifetime.rs:75:20
+   |
+LL |     let _ = Struct3<'a, 'b> { a: "hi", b: "hi" };
+   |                    ^
+   |
+help: add `::`
+   |
+LL |     let _ = Struct3::<'a, 'b> { a: "hi", b: "hi" };
+   |                    ++
+
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/missing-turbofish-lifetime.rs:80:20
+   |
+LL |     let _ = StructT<'a, &str> { a: "hi", b: "hi" };
+   |                    ^
+   |
+help: add `::`
+   |
+LL |     let _ = StructT::<'a, &str> { a: "hi", b: "hi" };
+   |                    ++
+
+error: aborting due to 10 previous errors
 

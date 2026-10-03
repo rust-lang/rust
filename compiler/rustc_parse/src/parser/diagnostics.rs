@@ -1143,6 +1143,12 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub(super) fn recover_missing_turbofish_for_lifetimes(&self, lt_span: Span) {
+        self.dcx().emit_err(crate::diagnostics::MissingTurbofishForLifetime {
+            span: lt_span.shrink_to_lo(),
+        });
+    }
+
     /// When writing a turbofish with multiple type parameters missing the leading `::`, we will
     /// encounter a parse error when encountering the first `,`.
     pub(super) fn check_mistyped_turbofish_with_multiple_type_params(

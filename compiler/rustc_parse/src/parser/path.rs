@@ -303,9 +303,20 @@ impl<'a> Parser<'a> {
             is_args_start(&this.token)
         };
 
+        // A lifetime followed by `>` or `,` is never a valid less-than expression.
+        // Recovering here avoids an `ExprKind::Err` that breaks postfix operators (e.g. `?`).
+        let is_missing_turbofish_for_lifetime = |this: &mut Self| {
+            this.token == token::Lt
+                && this.may_recover()
+                && style == PathStyle::Expr
+                && this.look_ahead(1, |t| t.is_lifetime())
+                && this.look_ahead(2, |t| matches!(t.kind, token::Gt | token::Comma))
+        };
+
         Ok(
             if style == PathStyle::Type && check_args_start(self)
                 || style != PathStyle::Mod && self.check_path_sep_and_look_ahead(is_args_start)
+                || is_missing_turbofish_for_lifetime(self)
             {
                 // We use `style == PathStyle::Expr` to check if this is in a recursion or not. If
                 // it isn't, then we reset the unmatched angle bracket count as we're about to start
@@ -314,12 +325,18 @@ impl<'a> Parser<'a> {
                     self.unmatched_angle_bracket_count = 0;
                 }
 
+                let missing_turbofish =
+                    style == PathStyle::Expr && !self.check_path_sep_and_look_ahead(is_args_start);
+
                 // Generic arguments are found - `<`, `(`, `::<` or `::(`.
                 // First, eat `::` if it exists.
                 let _ = self.eat_path_sep();
 
                 let lo = self.token.span;
                 let args = if self.eat_lt() {
+                    if missing_turbofish {
+                        self.recover_missing_turbofish_for_lifetimes(lo);
+                    }
                     // `<'a, T, A = U>`
                     let args = self.parse_angle_args_with_leading_angle_bracket_recovery(
                         style,
