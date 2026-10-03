@@ -357,17 +357,15 @@ where
     // won't be so conservative.
 
     // Use the initial field alignment
-    let mut ity = if repr.c() || repr.int.is_some() {
+    let ity = if repr.c() || repr.int.is_some() {
         min_ity
     } else {
-        Integer::for_align(dl, start_align).unwrap_or(min_ity)
+        Integer::for_align(dl, start_align).unwrap_or(min_ity).max(min_ity)
     };
 
     // If the alignment is not larger than the chosen discriminant size,
     // don't use the alignment as the final size.
-    if ity <= min_ity {
-        ity = min_ity;
-    } else {
+    if ity > min_ity {
         // Patch up the variants' first few fields.
         let old_ity_size = min_ity.size();
         let new_ity_size = ity.size();
