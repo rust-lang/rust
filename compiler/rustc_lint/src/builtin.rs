@@ -3505,7 +3505,12 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
         cx.emit_span_lint(
             SELF_TYPE_CONVERSION,
             expr.span,
-            SelfTypeConversionDiag { ty, removal_span, fully_qualified_path, name: cx.tcx.crate_name(hir::def_id::LOCAL_CRATE) },
+            SelfTypeConversionDiag {
+                ty,
+                removal_span,
+                fully_qualified_path,
+                name: cx.tcx.crate_name(hir::def_id::LOCAL_CRATE),
+            },
         );
     }
 }
