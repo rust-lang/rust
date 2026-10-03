@@ -216,6 +216,12 @@ impl From<Span> for MultiSpan {
     }
 }
 
+impl From<Option<Span>> for MultiSpan {
+    fn from(span: Option<Span>) -> MultiSpan {
+        MultiSpan::from_spans(span.into_iter().collect())
+    }
+}
+
 impl From<Vec<Span>> for MultiSpan {
     fn from(spans: Vec<Span>) -> MultiSpan {
         MultiSpan::from_spans(spans)
