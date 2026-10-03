@@ -4,6 +4,7 @@ import sys
 from enum import Flag, auto
 from typing import TYPE_CHECKING, Dict, Generator, List, Optional
 
+import lldb
 from lldb import (
     SBData,
     SBError,
@@ -1557,12 +1558,12 @@ def StdRcSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
 
 class StdRcSyntheticProvider:
     """Pretty-printer for alloc::rc::Rc<T> and alloc::sync::Arc<T>
-
-    struct Rc<T> { ptr: NonNull<RcInner<T>>, ... }
+    struct RcValuePointer<H, T> { ptr: NonNull<T>, ... }
+    struct Rc<T> { ptr: RcValuePointer<rc::Header, T>, ... }
     rust 1.31.1: struct NonNull<T> { pointer: NonZero<*const T> }
     rust 1.33.0: struct NonNull<T> { pointer: *const T }
     struct NonZero<T>(T)
-    struct RcInner<T> { strong: Cell<usize>, weak: Cell<usize>, value: T }
+    struct rc::Header { strong: Cell<usize>, weak: Cell<usize> }
 
     struct Arc<T> { ptr: NonNull<ArcInner<T>>, ... }
     struct ArcInner<T> { strong: atomic::Atomic<usize>, weak: atomic::Atomic<usize>, data: T }
@@ -1571,28 +1572,64 @@ class StdRcSyntheticProvider:
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque, is_atomic: bool = False):
         self.valobj = valobj
 
-        self.ptr = unwrap_unique_or_non_null(self.valobj.GetChildMemberWithName("ptr"))
-
-        self.value = self.ptr.GetChildMemberWithName("data" if is_atomic else "value")
-
-        # infallibly gets an unsigned integer type of at least 64 bits. We don't need to worry about
-        # whether or not `usize` is actually smaller than that since we don't ever display the
-        # underlying type to the user anyway
-        usize_type = valobj.GetTarget().GetBasicType(eBasicTypeUnsignedLongLong)
-
-        self.strong = self.ptr.GetChildMemberWithName("strong").Cast(usize_type)
-        self.weak = self.ptr.GetChildMemberWithName("weak").Cast(usize_type)
-
-        # If the usize type isn't valid due to llvm/llvm-project#196812, not even the type's fields
-        # will populate. Luckily, `RcInner` is `#[repr(C)]`, so we can infallibly find the strong
-        # and weak values in memory
-        if not self.strong.IsValid() or not self.weak.IsValid():
-            raw_ptr = self.ptr.Cast(usize_type.GetPointerType())
-            addr = raw_ptr.GetValueAsAddress()
-            self.strong = self.valobj.CreateValueFromAddress("strong", addr, usize_type)
-            self.weak = self.valobj.CreateValueFromAddress(
-                "weak", addr + usize_type.GetByteSize(), usize_type
+        if is_atomic:
+            self.ptr = unwrap_unique_or_non_null(
+                self.valobj.GetChildMemberWithName("ptr")
             )
+
+            self.value = self.ptr.GetChildMemberWithName("data")
+
+            # infallibly gets an unsigned integer type of at least 64 bits. We don't need to worry
+            # about whether or not `usize` is actually smaller than that since we don't ever display
+            # the underlying type to the user anyway
+            usize_type = valobj.GetTarget().GetBasicType(eBasicTypeUnsignedLongLong)
+
+            self.strong = self.ptr.GetChildMemberWithName("strong").Cast(usize_type)
+            self.weak = self.ptr.GetChildMemberWithName("weak").Cast(usize_type)
+
+            # If the usize type isn't valid due to llvm/llvm-project#196812, not even the type's
+            # fields will populate. Luckily, `RcInner` is `#[repr(C)]`, so we can infallibly find
+            # the strong and weak values in memory
+            if not self.strong.IsValid() or not self.weak.IsValid():
+                raw_ptr = self.ptr.Cast(usize_type.GetPointerType())
+                addr = raw_ptr.GetValueAsAddress()
+
+                self.strong = self.valobj.CreateValueFromAddress(
+                    "strong", addr, usize_type
+                )
+
+                self.weak = self.valobj.CreateValueFromAddress(
+                    "weak", addr + usize_type.GetByteSize(), usize_type
+                )
+        else:
+            rc_value_ptr = self.valobj.GetChildMemberWithName("ptr")
+
+            ptr = rc_value_ptr.GetChildMemberWithName("ptr").GetChildMemberWithName(
+                "pointer"
+            )
+
+            self.value = ptr.deref.Clone("value")
+
+            header_type = rc_value_ptr.GetType().GetTemplateArgumentType(0)
+            header_address = ptr.GetValueAsUnsigned() - header_type.size
+
+            header_value = ptr.CreateValueFromAddress(
+                "header",
+                header_address,
+                header_type,
+            )
+
+            def peel_ref_count(value):
+                while (
+                    value.IsValid()
+                    and value.GetType().GetTypeFlags() & lldb.eTypeIsInteger == 0
+                ):
+                    value = value.GetChildAtIndex(0)
+
+                return value
+
+            self.strong = peel_ref_count(header_value.GetChildMemberWithName("strong"))
+            self.weak = peel_ref_count(header_value.GetChildMemberWithName("weak"))
 
         self.value_builder = ValueBuilder(valobj)
 
