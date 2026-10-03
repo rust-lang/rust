@@ -23,6 +23,7 @@ use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::gcc::{Gcc, GccOutput, GccTargetPair};
 use crate::core::build_steps::llvm::{LlvmFromCi, LlvmKind, prebuilt_llvm_output};
 use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
+use crate::core::build_steps::tpde::Tpde;
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder::{
     self, Builder, Cargo, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
@@ -2544,6 +2545,22 @@ impl CommandLineStep for Assemble {
         }
 
         maybe_install_llvm_bitcode_linker();
+
+        if builder.config.rust_tpde {
+            // The rustc TPDE integration is Linux-only for now
+            if !host.contains("linux") {
+                builder.info(&format!("host target `{host}` not supported by tpde. skipping"));
+            }
+            // Put TPDE next to librustc_driver.so
+            let tpde_output = builder.ensure(Tpde { target: host });
+            builder.copy_link(
+                tpde_output.plugin_path(),
+                &builder
+                    .rustc_libdir(target_compiler)
+                    .join(tpde_output.plugin_path().file_name().unwrap()),
+                FileType::NativeLibrary,
+            );
+        }
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
         // so that it can be found when the newly built `rustc` is run.
