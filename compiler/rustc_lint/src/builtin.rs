@@ -3216,7 +3216,7 @@ declare_lint! {
     /// exhaustive: if a containing *module* is the one that is gated with a `cfg` attribute, this
     /// lint will not detect that.
     pub SELF_TYPE_CONVERSION,
-    Warn,
+    Deny,
     "unnecessary call to `.into()`",
 }
 
@@ -3264,7 +3264,7 @@ declare_lint! {
     /// exhaustive: if a containing *module* is the one that is gated with a `cfg` attribute, this
     /// lint will not detect that.
     pub SELF_TYPE_CONVERSION_IN_MACRO,
-    Allow,
+    Deny,
     "unnecessary call to `.into()` within a macro expansion",
 }
 
@@ -3362,7 +3362,6 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
         let mut v = ConditionalTypeCollector { tcx: cx.tcx, ignored_types: Default::default() };
         cx.tcx.hir_walk_toplevel_module(&mut v);
         self.ignored_types = v.ignored_types;
-        tracing::info!(?self);
     }
 
     /// Look for method calls to `Into::into` that rely on inference and that ends up using the
@@ -3499,10 +3498,14 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
             return;
         }
 
+        if cx.tcx.crate_name(hir::def_id::LOCAL_CRATE).as_str() == "std" {
+            // Avoid triggering for gimli dep
+            return;
+        }
         cx.emit_span_lint(
             SELF_TYPE_CONVERSION,
             expr.span,
-            SelfTypeConversionDiag { ty, removal_span, fully_qualified_path },
+            SelfTypeConversionDiag { ty, removal_span, fully_qualified_path, name: cx.tcx.crate_name(hir::def_id::LOCAL_CRATE) },
         );
     }
 }
