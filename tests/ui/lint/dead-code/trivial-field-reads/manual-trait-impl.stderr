@@ -1,0 +1,22 @@
+error: field `0` is never read
+  --> $DIR/manual-trait-impl.rs:9:12
+   |
+LL | struct Foo(usize);
+   |        --- ^^^^^
+   |        |
+   |        field in this struct
+   |
+   = help: consider removing this field
+note: `0` is used here, but this is intentionally ignored during dead code analysis
+  --> $DIR/manual-trait-impl.rs:13:5
+   |
+LL |     fn bar(&self) -> usize {
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/manual-trait-impl.rs:3:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,35 @@
+error: field `0` is never read
+  --> $DIR/from-macro.rs:11:15
+   |
+LL | struct Struct(usize);
+   |        ------ ^^^^^
+   |        |
+   |        field in this struct
+   |
+   = help: consider removing this field
+note: `0` is used in this macro invocation, but this is intentionally ignored during dead code analysis
+  --> $DIR/from-macro.rs:23:1
+   |
+LL | bar!(Struct);
+   | ^^^^^^^^^^^^
+note: `0` is used here, but this is intentionally ignored during dead code analysis
+  --> $DIR/from-macro.rs:16:9
+   |
+LL |         fn foo(s: &Struct) {
+   |         ^^^^^^^^^^^^^^^^^^
+...
+LL | foo!();
+   | ------ in this macro invocation
+note: `0` is used in this derive macro, but this is intentionally ignored during dead code analysis
+  --> $DIR/from-macro.rs:10:10
+   |
+LL | #[derive(Clone)]
+   |          ^^^^^
+note: the lint level is defined here
+  --> $DIR/from-macro.rs:5:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

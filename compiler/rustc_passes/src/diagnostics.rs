@@ -2,7 +2,7 @@ use std::io::Error;
 use std::path::{Path, PathBuf};
 
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, Level, msg};
+use rustc_errors::{Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, Level, MultiSpan, msg};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::middle::resolve::MainDefinition;
 use rustc_middle::ty::Ty;
@@ -545,7 +545,7 @@ pub(crate) enum MultipleDeadCodes<'tcx> {
         #[subdiagnostic]
         parent_info: Option<ParentInfo<'tcx>>,
         #[subdiagnostic]
-        ignored_derived_impls: Option<IgnoredDerivedImpls>,
+        trivial_usage_sites: Vec<TrivialUsageSite>,
     },
     #[diag(
         "{ $multiple ->
@@ -569,7 +569,7 @@ pub(crate) enum MultipleDeadCodes<'tcx> {
         #[subdiagnostic]
         parent_info: Option<ParentInfo<'tcx>>,
         #[subdiagnostic]
-        ignored_derived_impls: Option<IgnoredDerivedImpls>,
+        trivial_usage_sites: Vec<TrivialUsageSite>,
     },
 }
 
@@ -607,18 +607,13 @@ pub(crate) struct ParentInfo<'tcx> {
 
 #[derive(Subdiagnostic)]
 #[note(
-    "`{$name}` has {$trait_list_len ->
-        [one] a derived impl
-        *[other] derived impls
-    } for the {$trait_list_len ->
-        [one] trait {$trait_list}, but this is
-        *[other] traits {$trait_list}, but these are
-    } intentionally ignored during dead code analysis"
+    "`{$name}` is used {$usage_kind}, but this is intentionally ignored during dead code analysis"
 )]
-pub(crate) struct IgnoredDerivedImpls {
+pub(crate) struct TrivialUsageSite {
+    #[primary_span]
+    pub spans: MultiSpan,
     pub name: Symbol,
-    pub trait_list: DiagSymbolList,
-    pub trait_list_len: usize,
+    pub usage_kind: &'static str,
 }
 
 #[derive(Subdiagnostic)]
