@@ -2254,7 +2254,9 @@ pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// alignment in some cases.
     pub unadjusted_abi_align: Align,
 
-    /// Whether this type is `repr(C)`, or a`repr(transparent)` wrapper around such.
+    /// Whether this type is `repr(C)`, or a`repr(transparent)` wrapper around such,
+    /// or an array of such.
+    /// This matters because we must follow the C ABI for these types.
     /// Some C ABIs pass `repr(C)` ZSTs by pointer, but `repr(Rust)` ZSTs should always
     /// be ignored.
     pub repr_c: bool,
