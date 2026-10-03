@@ -73,7 +73,7 @@ pub fn f() {
 
 pub fn nested() {
     let mut d = None;
-    let mut e = None;
+    let mut e = None; //~ WARN unused variable: `e`
     let _ = || {
         let _ = || {
             d = Some("d1"); //~ WARN value assigned to `d` is never read
@@ -81,6 +81,7 @@ pub fn nested() {
         };
         let _ = move || {
             e = Some("e1"); //~  WARN value captured by `e` is never read
+                            //~| WARN value captured by `e` is never read
                             //~| WARN value assigned to `e` is never read
             e = Some("e2"); //~  WARN value assigned to `e` is never read
         };

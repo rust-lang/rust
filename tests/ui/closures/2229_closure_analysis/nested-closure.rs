@@ -29,9 +29,9 @@ fn main() {
         //~^ ERROR: First Pass analysis includes:
         //~| ERROR: Min Capture analysis includes:
         //~| NOTE: Capturing p[(1, 0)] -> Mutable
-        //~| NOTE: Capturing incr[] -> Immutable
+        //~| NOTE: Capturing incr[] -> ByCopy
         //~| NOTE: Min Capture p[(1, 0)] -> Mutable
-        //~| NOTE: Min Capture incr[] -> Immutable
+        //~| NOTE: Min Capture incr[] -> ByCopy
         //~| NOTE: Capturing p[(1, 0)] -> Mutable
         //~| NOTE: Min Capture p[(1, 0)] -> Mutable
         c2();

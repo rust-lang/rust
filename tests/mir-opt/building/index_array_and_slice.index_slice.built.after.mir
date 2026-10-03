@@ -4,24 +4,20 @@ fn index_slice(_1: &[i32], _2: usize) -> &i32 {
     debug slice => _1;
     debug index => _2;
     let mut _0: &i32;
-    let _3: &i32;
-    let _4: usize;
-    let mut _5: usize;
-    let mut _6: bool;
+    let _3: usize;
+    let mut _4: usize;
+    let mut _5: bool;
 
     bb0: {
         StorageLive(_3);
-        StorageLive(_4);
-        _4 = copy _2;
-        _5 = PtrMetadata(copy _1);
-        _6 = Lt(copy _4, copy _5);
-        assert(move _6, "index out of bounds: the length is {} but the index is {}", move _5, copy _4) -> [success: bb1, unwind: bb2];
+        _3 = copy _2;
+        _4 = PtrMetadata(copy _1);
+        _5 = Lt(copy _3, copy _4);
+        assert(move _5, "index out of bounds: the length is {} but the index is {}", move _4, copy _3) -> [success: bb1, unwind: bb2];
     }
 
     bb1: {
-        _3 = &(*_1)[_4];
-        _0 = &(*_3);
-        StorageDead(_4);
+        _0 = &(*_1)[_3];
         StorageDead(_3);
         return;
     }

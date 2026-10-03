@@ -1,8 +1,8 @@
 error[E0502]: cannot borrow `p` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-closures-mut-and-imm.rs:17:14
+  --> $DIR/borrowck-closures-mut-and-imm.rs:15:14
    |
-LL |     let c2 = || p.y * 5;
-   |              -- --- first borrow occurs due to use of `p.y` in closure
+LL |     let c2 = || *&p.y * 5;
+   |              --   --- first borrow occurs due to use of `p.y` in closure
    |              |
    |              immutable borrow occurs here
 LL |     let c1 = || {
