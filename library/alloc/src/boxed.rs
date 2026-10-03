@@ -299,7 +299,7 @@ impl<T: ?Sized> From<BoxRaw<T>> for NonNull<T> {
 // The declaration of the `Box` struct must be kept in sync with the
 // compiler or ICEs will happen.
 pub struct Box<
-    T: ?Sized,
+    #[rustc_assert_variance(covariant)] T: ?Sized,
     #[stable(feature = "allocator_api", since = "1.100.0")] A: Allocator = Global,
 >(BoxRaw<T>, A);
 
