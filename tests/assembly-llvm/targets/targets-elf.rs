@@ -106,6 +106,9 @@
 //@ revisions: aarch64_unknown_teeos
 //@ [aarch64_unknown_teeos] compile-flags: --target aarch64-unknown-teeos
 //@ [aarch64_unknown_teeos] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_qtee
+//@ [aarch64_unknown_qtee] compile-flags: --target aarch64-unknown-qtee
+//@ [aarch64_unknown_qtee] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_nuttx
 //@ [aarch64_unknown_nuttx] compile-flags: --target aarch64-unknown-nuttx
 //@ [aarch64_unknown_nuttx] needs-llvm-components: aarch64
