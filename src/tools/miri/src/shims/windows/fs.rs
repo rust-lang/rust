@@ -213,7 +213,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Open this as a directory.
                 // FIXME: shouldn't we check `creation_disposition` here? We do know that it already
                 // exists.
-                let dir = match DirHandle::open(&file_name) {
+                let dir = match fs::Dir::open(&file_name) {
                     Ok(dir) => dir,
                     Err(e) => {
                         if e.kind() == io::ErrorKind::NotADirectory {
@@ -225,9 +225,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                 };
                 #[cfg(bootstrap)]
-                let metadata = dir.dir.metadata();
+                let metadata = dir.metadata();
                 #[cfg(not(bootstrap))]
-                let metadata = dir.dir.self_metadata();
+                let metadata = dir.self_metadata();
                 if !metadata.unwrap().is_dir() {
                     // This changed from a directory to a file. Retry.
                     continue;
@@ -238,7 +238,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.set_last_error(IoError::WindowsError("ERROR_ALREADY_EXISTS"))?;
                 }
 
-                let fd_num = this.machine.fds.insert_new(dir);
+                let fd_num = this.machine.fds.insert_new(DirHandle::new(dir, &file_name));
                 return interp_ok(Handle::File(fd_num));
             } else {
                 // Per the documentation:
