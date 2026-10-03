@@ -12,74 +12,110 @@ LL | struct Foo2<#[rustc_assert_variance(nonsense)] T> {
    |                                     |
    |                                     valid arguments are `covariant`, `invariant`, `contravariant` or `bivariant`
 
-error: `Foo3` is covariant in `T`; expected variance: bivariant
-  --> $DIR/rustc_assert_variance.rs:16:49
+error: `Foo3` is expected to be bivariant in `T` but is not
+  --> $DIR/rustc_assert_variance.rs:16:1
    |
 LL | struct Foo3<#[rustc_assert_variance(bivariant)] T> {
-   |                                                 ^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^
+   |                                                 |
+   |                                                 `Foo3` is covariant in `T`
    |
-note: required by this annotation
+note: required by this attribute
   --> $DIR/rustc_assert_variance.rs:16:13
    |
 LL | struct Foo3<#[rustc_assert_variance(bivariant)] T> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `Foo4` is covariant in `T`; expected variance: invariant
-  --> $DIR/rustc_assert_variance.rs:22:49
+error: `Foo4` is expected to be invariant in `T` but is not
+  --> $DIR/rustc_assert_variance.rs:23:1
    |
 LL | struct Foo4<#[rustc_assert_variance(invariant)] T> {
-   |                                                 ^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^
+   |                                                 |
+   |                                                 `Foo4` is covariant in `T`
    |
-note: required by this annotation
-  --> $DIR/rustc_assert_variance.rs:22:13
+note: required by this attribute
+  --> $DIR/rustc_assert_variance.rs:23:13
    |
 LL | struct Foo4<#[rustc_assert_variance(invariant)] T> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `Foo5` is covariant in `'a`; expected variance: invariant
-  --> $DIR/rustc_assert_variance.rs:31:5
+error: `Foo5` is expected to be invariant in `'a` but is not
+  --> $DIR/rustc_assert_variance.rs:30:1
    |
-LL |     'a,
-   |     ^^
+LL | / struct Foo5<
+LL | |
+LL | |
+LL | |     #[rustc_assert_variance(invariant)]
+LL | |
+LL | |     'a,
+   | |     -- `Foo5` is covariant in `'a`
+...  |
+LL | | > {
+   | |_^
    |
-note: required by this annotation
-  --> $DIR/rustc_assert_variance.rs:29:5
+note: required by this attribute
+  --> $DIR/rustc_assert_variance.rs:33:5
    |
 LL |     #[rustc_assert_variance(invariant)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `Foo5` is invariant in `T`; expected variance: covariant
-  --> $DIR/rustc_assert_variance.rs:35:5
+error: `Foo5` is expected to be covariant in `T` but is not
+  --> $DIR/rustc_assert_variance.rs:30:1
    |
-LL |     T,
-   |     ^
+LL | / struct Foo5<
+LL | |
+LL | |
+LL | |     #[rustc_assert_variance(invariant)]
+...  |
+LL | |     T,
+   | |     - `Foo5` is invariant in `T`
+LL | |
+LL | | > {
+   | |_^
    |
-note: required by this annotation
-  --> $DIR/rustc_assert_variance.rs:33:5
+note: required by this attribute
+  --> $DIR/rustc_assert_variance.rs:37:5
    |
 LL |     #[rustc_assert_variance(covariant)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `Foo6` is covariant in `'a`; expected variance: contravariant
-  --> $DIR/rustc_assert_variance.rs:44:5
+error: `Foo6` is expected to be contravariant in `'a` but is not
+  --> $DIR/rustc_assert_variance.rs:45:1
    |
-LL |     'a,
-   |     ^^
+LL | / struct Foo6<
+LL | |
+LL | |
+LL | |     #[rustc_assert_variance(contravariant)]
+LL | |
+LL | |     'a,
+   | |     -- `Foo6` is covariant in `'a`
+...  |
+LL | | > {
+   | |_^
    |
-note: required by this annotation
-  --> $DIR/rustc_assert_variance.rs:42:5
+note: required by this attribute
+  --> $DIR/rustc_assert_variance.rs:48:5
    |
 LL |     #[rustc_assert_variance(contravariant)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `Foo6` is invariant in `T`; expected variance: contravariant
-  --> $DIR/rustc_assert_variance.rs:48:5
+error: `Foo6` is expected to be contravariant in `T` but is not
+  --> $DIR/rustc_assert_variance.rs:45:1
    |
-LL |     T,
-   |     ^
+LL | / struct Foo6<
+LL | |
+LL | |
+LL | |     #[rustc_assert_variance(contravariant)]
+...  |
+LL | |     T,
+   | |     - `Foo6` is invariant in `T`
+LL | |
+LL | | > {
+   | |_^
    |
-note: required by this annotation
-  --> $DIR/rustc_assert_variance.rs:46:5
+note: required by this attribute
+  --> $DIR/rustc_assert_variance.rs:52:5
    |
 LL |     #[rustc_assert_variance(contravariant)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

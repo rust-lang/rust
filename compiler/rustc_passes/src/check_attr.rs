@@ -1470,11 +1470,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
                 let item_ident = self.tcx.item_ident(owner);
 
-                let span_note = diagnostics::RustcAssertVarianceFailedNote { span: attr_span };
+                let note = diagnostics::RustcAssertVarianceFailedNote { span: attr_span };
                 self.tcx.dcx().emit_err(diagnostics::RustcAssertVarianceFailed {
-                    span,
-                    span_note,
+                    item_span: self.tcx.def_span(owner),
+                    note,
                     param_ident: param.name.ident(),
+                    param_span: span,
                     item_ident,
                     expected_variance,
                     actual_variance,
