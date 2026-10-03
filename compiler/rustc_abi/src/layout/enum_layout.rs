@@ -232,6 +232,35 @@ fn sanity_check_ity(dl: &TargetDataLayout, repr: &ReprOptions, min_ity: Integer)
     }
 }
 
+fn calculate_tagged_min_ity(
+    repr: &ReprOptions,
+    necessary_discriminants: &[u128],
+    discr_size: Size,
+    discr_range_of_repr: impl Fn(RangeFrom<i128>, RangeToInclusive<u128>) -> (Integer, bool),
+) -> (Integer, bool) {
+    // When picking the integer to use, we respect how the discriminants were written
+    // in the original rust code, rather than looking only at the bit pattern.
+    let (min_negative, max_positive): (i128, u128) = if repr.discr_type().is_signed() {
+        necessary_discriminants.iter().copied().map(|val| discr_size.sign_extend(val)).fold(
+            (0_i128, 0_u128),
+            |(min, max), val| {
+                if let Ok(val) = u128::try_from(val) {
+                    (min, max.max(val))
+                } else {
+                    (min.min(val), max)
+                }
+            },
+        )
+    } else {
+        // We might have no inhabited variants, so pretend there's at least one.
+        (0, necessary_discriminants.iter().copied().max().unwrap_or(0))
+    };
+    trace!(?min_negative, ?max_positive);
+
+    // Integer::discr_range_of_repr(tcx, ty, &repr, min, max);
+    discr_range_of_repr(RangeFrom { start: min_negative }, RangeToInclusive { last: max_positive })
+}
+
 fn calculate_tagged_tag<FieldIdx, VariantIdx>(
     dl: &TargetDataLayout,
     repr: &ReprOptions,
@@ -322,29 +351,8 @@ where
         .map(|(_, val)| val)
         .collect();
 
-    // When picking the integer to use, we respect how the discriminants were written
-    // in the original rust code, rather than looking only at the bit pattern.
-    let (min_negative, max_positive): (i128, u128) = if repr.discr_type().is_signed() {
-        necessary_discriminants.iter().copied().map(|val| discr_size.sign_extend(val)).fold(
-            (0_i128, 0_u128),
-            |(min, max), val| {
-                if let Ok(val) = u128::try_from(val) {
-                    (min, max.max(val))
-                } else {
-                    (min.min(val), max)
-                }
-            },
-        )
-    } else {
-        // We might have no inhabited variants, so pretend there's at least one.
-        (0, necessary_discriminants.iter().copied().max().unwrap_or(0))
-    };
-    trace!(?min_negative, ?max_positive);
-
-    let (min_ity, signed) = discr_range_of_repr(
-        RangeFrom { start: min_negative },
-        RangeToInclusive { last: max_positive },
-    ); //Integer::discr_range_of_repr(tcx, ty, &repr, min, max);
+    let (min_ity, signed) =
+        calculate_tagged_min_ity(repr, &necessary_discriminants, discr_size, discr_range_of_repr);
 
     let mut align = dl.aggregate_align;
     let mut max_repr_align = repr.align;
