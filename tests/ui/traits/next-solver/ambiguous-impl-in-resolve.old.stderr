@@ -1,11 +1,11 @@
 error[E0283]: type annotations needed: cannot satisfy `Option<T>: Overlap`
-  --> $DIR/ambiguous-impl-in-resolve.rs:17:6
+  --> $DIR/ambiguous-impl-in-resolve.rs:18:6
    |
 LL |     <Option<T> as Overlap>::f();
    |      ^^^^^^^^^
    |
 note: multiple `impl`s satisfying `Option<T>: Overlap` found
-  --> $DIR/ambiguous-impl-in-resolve.rs:10:1
+  --> $DIR/ambiguous-impl-in-resolve.rs:11:1
    |
 LL | impl<T> Overlap for Option<T> where Self: Clone, { fn f() {} }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

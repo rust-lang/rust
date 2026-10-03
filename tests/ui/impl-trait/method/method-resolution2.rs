@@ -2,6 +2,7 @@
 //! `i32` is the only type that satisfies the RPIT's trait bounds.
 
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@[current] check-pass
 
