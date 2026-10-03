@@ -324,6 +324,7 @@ pub fn check_ast_node<'a>(
         lint_store,
         registered_lint_tools,
         lint_buffer.unwrap_or_default(),
+        pre_expansion,
     );
 
     let context = if pre_expansion {

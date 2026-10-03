@@ -1,17 +1,3 @@
-error[E0452]: malformed lint attribute input
-  --> $DIR/proc-unsafe-attributes.rs:27:16
-   |
-LL | #[unsafe(allow(unsafe(dead_code)))]
-   |                ^^^^^^^^^^^^^^^^^ bad attribute argument
-
-error[E0452]: malformed lint attribute input
-  --> $DIR/proc-unsafe-attributes.rs:27:16
-   |
-LL | #[unsafe(allow(unsafe(dead_code)))]
-   |                ^^^^^^^^^^^^^^^^^ bad attribute argument
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
 error: expected identifier, found keyword `unsafe`
   --> $DIR/proc-unsafe-attributes.rs:27:16
    |
@@ -52,8 +38,6 @@ error[E0452]: malformed lint attribute input
    |
 LL | #[unsafe(allow(unsafe(dead_code)))]
    |                ^^^^^^^^^^^^^^^^^ bad attribute argument
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0452]: malformed lint attribute input
   --> $DIR/proc-unsafe-attributes.rs:27:16
@@ -148,7 +132,7 @@ LL | #[unsafe(allow(unsafe(dead_code)))]
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 18 previous errors
+error: aborting due to 16 previous errors
 
 Some errors have detailed explanations: E0452, E0565.
 For more information about an error, try `rustc --explain E0452`.

@@ -722,6 +722,7 @@ pub fn print_crate_info(
                     lint_store,
                     &registered_lint_tools,
                     attrs,
+                    false,
                 );
                 for lint in lint_store.get_lints() {
                     if let Some(feature_symbol) = lint.feature_gate

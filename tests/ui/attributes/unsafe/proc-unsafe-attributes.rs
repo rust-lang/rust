@@ -31,8 +31,6 @@ pub fn e() {}
 //~| ERROR: expected identifier, found keyword `unsafe`
 //~| ERROR: malformed lint attribute input
 //~| ERROR: malformed lint attribute input
-//~| ERROR: malformed lint attribute input
-//~| ERROR: malformed lint attribute input
 pub fn f() {}
 
 fn main() {}

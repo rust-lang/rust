@@ -170,6 +170,7 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
         lint_added_lints: false,
         store,
         registered_lint_tools: tcx.registered_lint_tools(()),
+        pre_expansion: false,
     };
 
     if owner == hir::CRATE_OWNER_ID {
@@ -388,6 +389,7 @@ pub struct LintLevelsBuilder<'s, P> {
     lint_added_lints: bool,
     store: &'s LintStore,
     registered_lint_tools: &'s RegisteredTools,
+    pre_expansion: bool,
 }
 
 pub(crate) struct BuilderPush {
@@ -401,6 +403,7 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
         lint_added_lints: bool,
         store: &'s LintStore,
         registered_lint_tools: &'s RegisteredTools,
+        pre_expansion: bool,
     ) -> Self {
         let mut builder = LintLevelsBuilder {
             sess,
@@ -409,6 +412,7 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
             lint_added_lints,
             store,
             registered_lint_tools,
+            pre_expansion,
         };
         builder.process_command_line();
         assert_eq!(builder.provider.sets.list.len(), 1);
@@ -422,8 +426,16 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
         store: &'s LintStore,
         registered_lint_tools: &'s RegisteredTools,
         crate_attrs: &[ast::Attribute],
+        pre_expansion: bool,
     ) -> Self {
-        let mut builder = Self::new(sess, features, lint_added_lints, store, registered_lint_tools);
+        let mut builder = Self::new(
+            sess,
+            features,
+            lint_added_lints,
+            store,
+            registered_lint_tools,
+            pre_expansion,
+        );
         builder.add(crate_attrs, true);
         builder
     }
@@ -667,6 +679,9 @@ where
     }
 
     fn add(&mut self, attrs: &[impl AttributeExt], is_crate_node: bool) {
+        if self.pre_expansion && !is_crate_node {
+            return;
+        }
         let sess = self.sess;
         for (attr_index, attr) in attrs.iter().enumerate() {
             if attr.is_automatically_derived_attr() {

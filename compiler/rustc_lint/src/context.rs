@@ -559,6 +559,7 @@ impl<'a> EarlyContext<'a> {
         lint_store: &'a LintStore,
         registered_lint_tools: &'a RegisteredTools,
         buffered: LintBuffer,
+        pre_expansion: bool,
     ) -> EarlyContext<'a> {
         EarlyContext {
             builder: LintLevelsBuilder::new(
@@ -567,6 +568,7 @@ impl<'a> EarlyContext<'a> {
                 lint_added_lints,
                 lint_store,
                 registered_lint_tools,
+                pre_expansion,
             ),
             buffered,
         }

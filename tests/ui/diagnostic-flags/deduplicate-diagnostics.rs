@@ -9,5 +9,4 @@ struct S;
 
 #[deny("literal")] //~ ERROR malformed lint attribute input
                    //[duplicate]~| ERROR malformed lint attribute input
-                   //[duplicate]~| ERROR malformed lint attribute input
 fn main() {}

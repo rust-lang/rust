@@ -1691,6 +1691,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2018 "new-keywords"),
     };
+    crate_level_only
 }
 
 declare_lint! {
@@ -1735,6 +1736,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2024 "gen-keyword"),
     };
+    crate_level_only
 }
 
 declare_lint_pass!(
