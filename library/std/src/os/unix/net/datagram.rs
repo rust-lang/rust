@@ -112,13 +112,12 @@ impl UnixDatagram {
     ///
     #[cfg_attr(target_family = "unix", doc = "```no_run")]
     #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
-    /// use std::os::unix::net::{UnixDatagram};
+    /// use std::os::unix::net::{SocketAddr, UnixDatagram};
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let sock1 = UnixDatagram::bind("path/to/socket")?;
-    ///     let addr = sock1.local_addr()?;
+    ///     let addr = SocketAddr::from_pathname("path/to/socket")?;
     ///
-    ///     let sock2 = match UnixDatagram::bind_addr(&addr) {
+    ///     let sock = match UnixDatagram::bind_addr(&addr) {
     ///         Ok(sock) => sock,
     ///         Err(err) => {
     ///             println!("Couldn't bind: {err:?}");

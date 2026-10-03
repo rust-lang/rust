@@ -6,7 +6,7 @@ LL |           let _ = unsafe {
 LL | |
 LL | |             NonNull::new_unchecked(Box::into_raw(one))
 LL | |         };
-   | |_________^ help: try: `NonNull::from_mut(Box::leak(one))`
+   | |_________^ help: try: `Box::into_non_null(one)`
    |
    = note: `-D clippy::nonnull-unchecked-on-box-ptr` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::nonnull_unchecked_on_box_ptr)]`
@@ -19,7 +19,7 @@ LL |           let _ = unsafe {
 LL | |
 LL | |             NonNull::new_unchecked(Box::into_raw(identity(one)))
 LL | |         };
-   | |_________^ help: try: `NonNull::from_mut(Box::leak(identity(one)))`
+   | |_________^ help: try: `Box::into_non_null(identity(one))`
 
 error: use of `NonNull::new_unchecked` with `Box::into_raw`
   --> tests/ui/nonnull_unchecked_on_box_ptr.rs:49:17
@@ -29,7 +29,7 @@ LL |           let _ = unsafe {
 LL | |
 LL | |             std::ptr::NonNull::new_unchecked(std::boxed::Box::into_raw(one))
 LL | |         };
-   | |_________^ help: try: `NonNull::from_mut(Box::leak(one))`
+   | |_________^ help: try: `Box::into_non_null(one)`
 
 error: use of `NonNull::new_unchecked` with `Box::into_raw`
   --> tests/ui/nonnull_unchecked_on_box_ptr.rs:58:21
@@ -39,7 +39,7 @@ LL |               let _ = unsafe {
 LL | |
 LL | |                 NonNull2::new_unchecked(Box2::into_raw(one))
 LL | |             };
-   | |_____________^ help: try: `NonNull::from_mut(Box::leak(one))`
+   | |_____________^ help: try: `Box::into_non_null(one)`
 
 error: use of `NonNull::new_unchecked` with `Box::into_raw`
   --> tests/ui/nonnull_unchecked_on_box_ptr.rs:68:21
@@ -49,7 +49,7 @@ LL |               let _ = unsafe {
 LL | |
 LL | |                 NonNull2::new_unchecked(Box2::into_raw(one))
 LL | |             };
-   | |_____________^ help: try: `NonNull::from_mut(Box::leak(one))`
+   | |_____________^ help: try: `Box::into_non_null(one)`
 
 error: use of `NonNull::new_unchecked` with `Box::into_raw`
   --> tests/ui/nonnull_unchecked_on_box_ptr.rs:77:17
@@ -59,7 +59,7 @@ LL |           let _ = unsafe {
 LL | |
 LL | |             NonNull::new_unchecked(Box::into_raw(identity!(one)))
 LL | |         };
-   | |_________^ help: try: `NonNull::from_mut(Box::leak(one))`
+   | |_________^ help: try: `Box::into_non_null(one)`
 
 error: use of `NonNull::new_unchecked` with `Box::into_raw`
   --> tests/ui/nonnull_unchecked_on_box_ptr.rs:83:27
@@ -69,7 +69,7 @@ LL |           let _ = identity!(unsafe {
 LL | |
 LL | |             NonNull::new_unchecked(Box::into_raw(one))
 LL | |         });
-   | |_________^ help: try: `NonNull::from_mut(Box::leak(one))`
+   | |_________^ help: try: `Box::into_non_null(one)`
 
 error: use of `NonNull::new_unchecked` with `Box::into_raw`
   --> tests/ui/nonnull_unchecked_on_box_ptr.rs:89:17
@@ -79,7 +79,7 @@ LL |           let _ = unsafe {
 LL | |
 LL | |             identity!(NonNull::new_unchecked(Box::into_raw(one)))
 LL | |         };
-   | |_________^ help: try: `NonNull::from_mut(Box::leak(one))`
+   | |_________^ help: try: `Box::into_non_null(one)`
 
 error: use of `NonNull::new_unchecked` with `Box::into_raw`
   --> tests/ui/nonnull_unchecked_on_box_ptr.rs:95:17
@@ -89,7 +89,7 @@ LL |           let _ = unsafe {
 LL | |
 LL | |             NonNull::new_unchecked(identity!(Box::into_raw(one)))
 LL | |         };
-   | |_________^ help: try: `NonNull::from_mut(Box::leak(one))`
+   | |_________^ help: try: `Box::into_non_null(one)`
 
 error: use of `NonNull::new_unchecked` with `Box::into_raw`
   --> tests/ui/nonnull_unchecked_on_box_ptr.rs:101:17
@@ -99,7 +99,7 @@ LL |           let _ = unsafe {
 LL | |
 LL | |             NonNull::new_unchecked(identity!(Box::into_raw(identity!(one))))
 LL | |         };
-   | |_________^ help: try: `NonNull::from_mut(Box::leak(one))`
+   | |_________^ help: try: `Box::into_non_null(one)`
 
 error: use of `NonNull::new_unchecked` with `Box::into_raw`
   --> tests/ui/nonnull_unchecked_on_box_ptr.rs:107:17
@@ -109,37 +109,37 @@ LL |           let _ = unsafe {
 LL | |
 LL | |             NonNull::new_unchecked(Box::into_raw(weird!(one)))
 LL | |         };
-   | |_________^ help: try: `NonNull::from_mut(Box::leak(weird!(one)))`
+   | |_________^ help: try: `Box::into_non_null(weird!(one))`
 
 error: use of `NonNull::new_unchecked` with `Box::into_raw`
   --> tests/ui/nonnull_unchecked_on_box_ptr.rs:116:13
    |
 LL |             NonNull::new_unchecked(Box::into_raw(unsafe_identity(one)))
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `NonNull::from_mut(Box::leak(unsafe_identity(one)))`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::into_non_null(unsafe_identity(one))`
 
 error: use of `NonNull::new_unchecked` with `Box::into_raw`
   --> tests/ui/nonnull_unchecked_on_box_ptr.rs:122:22
    |
 LL |             identity(NonNull::new_unchecked(Box::into_raw(one)))
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `NonNull::from_mut(Box::leak(one))`
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::into_non_null(one)`
 
 error: use of `NonNull::new_unchecked` with `Box::into_raw`
   --> tests/ui/nonnull_unchecked_on_box_ptr.rs:128:29
    |
 LL |             unsafe_identity(NonNull::new_unchecked(Box::into_raw(one)))
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `NonNull::from_mut(Box::leak(one))`
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::into_non_null(one)`
 
 error: use of `NonNull::new_unchecked` with `Box::into_raw`
   --> tests/ui/nonnull_unchecked_on_box_ptr.rs:133:13
    |
 LL |             NonNull::new_unchecked(Box::into_raw(Box::new(std::num::NonZeroI32::new_unchecked(1))))
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `NonNull::from_mut(Box::leak(Box::new(std::num::NonZeroI32::new_unchecked(1))))`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::into_non_null(Box::new(std::num::NonZeroI32::new_unchecked(1)))`
 
 error: use of `NonNull::new_unchecked` with `Box::into_raw`
   --> tests/ui/nonnull_unchecked_on_box_ptr.rs:139:13
    |
 LL |             NonNull::new_unchecked(Box::into_raw(one))
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `NonNull::from_mut(Box::leak(one))`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::into_non_null(one)`
 
 error: use of `NonNull::new_unchecked` with `Box::into_raw`
   --> tests/ui/nonnull_unchecked_on_box_ptr.rs:180:13
@@ -149,17 +149,7 @@ LL |       let _ = unsafe {
 LL | |
 LL | |         NonNull::new_unchecked(Box::into_raw(one))
 LL | |     };
-   | |_____^ help: try: `NonNull::from(Box::leak(one))`
+   | |_____^ help: try: `Box::into_non_null(one)`
 
-error: use of `NonNull::new_unchecked` with `Box::into_raw`
-  --> tests/ui/nonnull_unchecked_on_box_ptr.rs:189:13
-   |
-LL |       let _ = unsafe {
-   |  _____________^
-LL | |
-LL | |         NonNull::new_unchecked(Box::into_raw(one))
-LL | |     };
-   | |_____^ help: try: `NonNull::from_mut(Box::leak(one))`
-
-error: aborting due to 18 previous errors
+error: aborting due to 17 previous errors
 

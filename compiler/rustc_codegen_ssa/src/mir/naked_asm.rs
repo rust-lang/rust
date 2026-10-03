@@ -228,7 +228,6 @@ fn prefix_and_suffix<'tcx>(
                 // LTO can fail when internal linkage is used.
                 emit_fatal("naked functions may not have internal linkage")
             }
-            Linkage::Common => emit_fatal("Functions may not have common linkage"),
             Linkage::AvailableExternally => {
                 // this would make the function equal an extern definition
                 emit_fatal("Functions may not have available_externally linkage")

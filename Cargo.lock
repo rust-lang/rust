@@ -653,7 +653,7 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
 name = "clippy"
-version = "0.1.100"
+version = "0.1.101"
 dependencies = [
  "anstream 0.6.21",
  "askama",
@@ -694,7 +694,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_config"
-version = "0.1.100"
+version = "0.1.101"
 dependencies = [
  "arrayvec",
  "clippy_utils",
@@ -705,7 +705,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.100"
+version = "0.1.101"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.23.1",
@@ -735,7 +735,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.100"
+version = "0.1.101"
 dependencies = [
  "arrayvec",
  "itertools",
@@ -1148,7 +1148,7 @@ checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.100"
+version = "0.1.101"
 
 [[package]]
 name = "derive-where"
@@ -3493,9 +3493,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-build-sysroot"
-version = "0.5.13"
+version = "0.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "569d545953ee9a1ab9d3e9112e961739ff0cfd50bce06b126937395940be69c9"
+checksum = "0d0ed7817483b026efc0492f4ccca177f00fb711537f37943cc412bbf12682b4"
 dependencies = [
  "anyhow",
  "rustc_version",

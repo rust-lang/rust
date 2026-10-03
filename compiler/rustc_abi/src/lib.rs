@@ -2354,9 +2354,12 @@ pub struct PointeeInfo {
     /// If `size` is not zero, then the pointer is either null or dereferenceable for this many bytes
     /// (independent of `safe`).
     ///
-    /// On a function argument, "dereferenceable" here means "dereferenceable for the entire duration
-    /// of this function call", i.e. it is UB for the memory that this pointer points to be freed
-    /// while this function is still running.
+    /// "Dereferenceable" means that it's sound to add a speculative (spurious) read of the pointer.
+    /// The backend is free to add such reads at will. (This is useful to hoist pointer reads out of
+    /// loops without proving that the loop executes at least once, for example.)
+    ///
+    /// This can be used in both argument and return position, in both cases it means
+    /// "dereferenceable right now" (function entry/return) (but could be freed any time later).
     pub size: Size,
     /// The pointer is guaranteed to be aligned this much (independent of `safe`).
     pub align: Align,

@@ -277,21 +277,15 @@ declare_clippy_lint! {
     ///
     /// In Rust:
     /// ```no_run
-    /// fn main() {
-    ///     let a = 0123;
-    ///     println!("{}", a);
-    /// }
+    /// let a = 0123;
+    /// println!("{}", a);
     /// ```
     ///
     /// prints `123`, while in C:
     ///
     /// ```c
-    /// #include <stdio.h>
-    ///
-    /// int main() {
-    ///     int a = 0123;
-    ///     printf("%d\n", a);
-    /// }
+    /// int a = 0123;
+    /// printf("%d\n", a);
     /// ```
     ///
     /// prints `83` (as `83 == 0o123` while `123 == 0o173`).

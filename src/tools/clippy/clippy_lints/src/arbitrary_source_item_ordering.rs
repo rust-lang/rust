@@ -58,13 +58,13 @@ declare_clippy_lint! {
     ///
     /// | Group              | Item Kinds           |
     /// |--------------------|----------------------|
-    /// | `modules`          | "mod", "foreign_mod" |
-    /// | `use`              | "use"                |
-    /// | `macros`           | "macro"              |
-    /// | `global_asm`       | "global_asm"         |
-    /// | `UPPER_SNAKE_CASE` | "static", "const"    |
-    /// | `PascalCase`       | "ty_alias", "opaque_ty", "enum", "struct", "union", "trait", "trait_alias", "impl" |
-    /// | `lower_snake_case` | "fn"                 |
+    /// | `modules`          | `mod`, `foreign_mod` |
+    /// | `use`              | `use`                |
+    /// | `macros`           | `macro`              |
+    /// | `global_asm`       | `global_asm`         |
+    /// | `UPPER_SNAKE_CASE` | `static`, `const`    |
+    /// | `PascalCase`       | `ty_alias`, `opaque_ty`, `enum`, `struct`, `union`, `trait`, `trait_alias`, `impl` |
+    /// | `lower_snake_case` | `fn`                 |
     ///
     /// The groups' names are arbitrary and can be changed to suit the
     /// conventions that should be enforced for a specific project.

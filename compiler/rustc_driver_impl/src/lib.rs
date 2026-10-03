@@ -5,7 +5,6 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(trim_prefix_suffix))]
 #![feature(decl_macro)]
 #![feature(file_buffered)]
 #![feature(panic_backtrace_config)]
@@ -170,7 +169,7 @@ impl Callbacks for TimePassesCallbacks {
 }
 
 /// This is the primary entry point for rustc.
-pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) {
+pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) {
     let mut default_early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     // Throw away the first argument, the name of the binary.
@@ -1387,7 +1386,7 @@ static ICE_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
 
 // This function should only be called from the ICE hook.
 //
-// The intended behavior is that `run_compiler` will invoke `ice_path_with_config` early in the
+// The intended behavior is that `compiler_entrypoint` will invoke `ice_path_with_config` early in the
 // initialization process to properly initialize the ICE_PATH static based on parsed CLI flags.
 //
 // Subsequent calls to either function will then return the proper ICE path as configured by
@@ -1675,7 +1674,7 @@ pub fn main() -> ExitCode {
     install_ctrlc_handler();
 
     let exit_code =
-        catch_with_exit_code(|| run_compiler(&args::raw_args(&early_dcx), &mut callbacks));
+        catch_with_exit_code(|| compiler_entrypoint(&args::raw_args(&early_dcx), &mut callbacks));
 
     if let Some(format) = callbacks.time_passes {
         let end_rss = get_resident_set_size();

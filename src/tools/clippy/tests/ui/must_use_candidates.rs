@@ -127,3 +127,20 @@ pub fn result_never_2() -> Result<T, !> {
 pub fn with_box() -> Box<T> {
     todo!()
 }
+
+pub mod with_reason_lint {
+    // With `must_use_without_reason` enabled the suggestion carries a reason placeholder,
+    // so applying it does not immediately trip that lint.
+    #![warn(clippy::must_use_without_reason)]
+
+    //~v must_use_candidate
+    pub fn pure(i: u8) -> u8 {
+        i
+    }
+
+    #[allow(clippy::must_use_without_reason)]
+    //~v must_use_candidate
+    pub fn reason_lint_allowed(i: u8) -> u8 {
+        i
+    }
+}

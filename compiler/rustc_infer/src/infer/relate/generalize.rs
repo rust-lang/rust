@@ -3,7 +3,7 @@ use std::mem;
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, InferConst, Term, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, InferConst, Term, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
 use rustc_span::{Span, bug};
 use tracing::{debug, instrument, warn};
 
@@ -356,6 +356,15 @@ struct Generalizer<'me, 'tcx> {
     cache: SsoHashMap<(Ty<'tcx>, ty::Variance, bool), Ty<'tcx>>,
 }
 
+/// Do we need to generalize this type?
+const NEEDS_GENERALIZATION: TypeFlags = TypeFlags::from_bits(
+    TypeFlags::HAS_FREE_REGIONS.bits()
+        | TypeFlags::HAS_INFER.bits()
+        | TypeFlags::HAS_PLACEHOLDER.bits()
+        | TypeFlags::HAS_NON_RIGID_ALIAS.bits(),
+)
+.unwrap();
+
 impl<'tcx> Generalizer<'_, 'tcx> {
     /// Create an error that corresponds to the term kind in `root_term`
     fn cyclic_term_error(&self) -> TypeError<'tcx> {
@@ -483,6 +492,10 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
     #[instrument(level = "debug", skip(self, t2), ret)]
     fn tys(&mut self, t: Ty<'tcx>, t2: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         assert_eq!(t, t2); // we are misusing TypeRelation here; both LHS and RHS ought to be ==
+
+        if !t.has_type_flags(NEEDS_GENERALIZATION) {
+            return Ok(t);
+        }
 
         if let Some(&result) = self.cache.get(&(t, self.ambient_variance, self.in_alias)) {
             return Ok(result);
