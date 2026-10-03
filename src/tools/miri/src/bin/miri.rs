@@ -368,8 +368,9 @@ fn run_compiler_and_exit(
     rustc_driver::install_ctrlc_handler();
 
     // Invoke compiler, catch any unwinding panics and handle return code.
-    let exit_code =
-        rustc_driver::catch_with_exit_code(move || rustc_driver::compiler_entrypoint(args, callbacks));
+    let exit_code = rustc_driver::catch_with_exit_code(move || {
+        rustc_driver::compiler_entrypoint(args, callbacks)
+    });
     exit(if exit_code == ExitCode::SUCCESS {
         rustc_driver::EXIT_SUCCESS
     } else {
