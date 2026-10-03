@@ -325,6 +325,7 @@ impl<'tcx> OpsemInhabitedCtx<'tcx> {
                 args.upvar_tys().iter().all(|ty| self.is_inhabited_ty(ty))
             }
             ty::UnsafeBinder(base) => {
+                #[cfg_attr(not(bootstrap), allow(self_type_conversion))]
                 let base = tcx.instantiate_bound_regions_with_erased((*base).into());
                 self.is_inhabited_ty(base)
             }
