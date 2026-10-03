@@ -113,24 +113,19 @@ fn coerce_shared_target(
     }
 
     let rustc_ast::TyKind::Path(_, path) = &mut target.kind else {
-        cx.dcx().emit_err(MalformedTarget { span: attr.span });
+        cx.dcx().emit_err(MalformedTargetType { span: target.span });
         return None;
     };
 
     let Some(last) = path.segments.last_mut() else {
-        // FIXME(reborrow): we might want to support CoerceShared<Foo> for Bar at some point.
-        cx.dcx().emit_err(MalformedTarget { span: attr.span });
+        // It shouldn't be possible for segments to be empty.
+        cx.dcx().emit_err(MalformedTargetType { span: path.span });
         return None;
     };
 
-    let Some(args) = last.args.as_deref_mut() else {
+    let Some(rustc_ast::GenericArgs::AngleBracketed(target_args)) = last.args.as_deref_mut() else {
         // FIXME(reborrow): same as above.
-        cx.dcx().emit_err(MalformedTarget { span: attr.span });
-        return None;
-    };
-
-    let rustc_ast::GenericArgs::AngleBracketed(target_args) = args else {
-        cx.dcx().emit_err(MalformedTarget { span: attr.span });
+        cx.dcx().emit_err(NoGenericsOnTargetType { span: last.span() });
         return None;
     };
 
@@ -273,6 +268,22 @@ struct DuplicateTarget {
 #[diag("malformed `#[coerce_shared(Target)]` attribute for `derive(CoerceShared)`", code = E0802)]
 #[note("expected a single target type, for example `#[coerce_shared(Target<'a, T>)]`")]
 struct MalformedTarget {
+    #[primary_span]
+    span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("malformed `#[coerce_shared(Target)]` attribute for `derive(CoerceShared)`", code = E0802)]
+#[note("expected target type to be a user-defined type")]
+struct MalformedTargetType {
+    #[primary_span]
+    span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("malformed `#[coerce_shared(Target)]` attribute for `derive(CoerceShared)`", code = E0802)]
+#[note("expected target type to have generics")]
+struct NoGenericsOnTargetType {
     #[primary_span]
     span: Span,
 }
