@@ -318,7 +318,7 @@ where
         .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
     // Align the maximum variant size to the largest alignment.
-    size = size.align_to(align);
+    let size = size.align_to(align);
 
     // FIXME(oli-obk): deduplicate and harden these checks
     if size.bytes() >= dl.obj_size_bound() {
