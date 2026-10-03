@@ -455,6 +455,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("unsupported access mode {:#x}", access_mode);
         }
 
+        if this.tcx.sess.target.os == Os::Linux {
+            let o_tmpfile = this.eval_libc_i32("O_TMPFILE");
+            // Note that this overaps with O_DIRECTORY!
+            if flag & o_tmpfile == o_tmpfile {
+                // if the flag contains `O_TMPFILE` then we return a graceful error
+                return this.set_errno_and_return_neg1_i32(LibcError("EOPNOTSUPP"));
+            }
+        }
+        let o_directory = this.eval_libc_i32("O_DIRECTORY");
+        let mut want_directory = false;
+        if flag & o_directory == o_directory {
+            flag &= !o_directory;
+            want_directory = true;
+        }
         let o_append = this.eval_libc_i32("O_APPEND");
         if flag & o_append == o_append {
             flag &= !o_append;
@@ -468,6 +482,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let o_creat = this.eval_libc_i32("O_CREAT");
         if flag & o_creat == o_creat {
             flag &= !o_creat;
+            if want_directory {
+                // O_CREAT + O_DIRECTORY is invalid.
+                return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+            }
             // Get the mode.
             let ([mode], _) = this.check_varargs(
                 if this.libc_ty_layout("mode_t").size.bytes() >= 4 {
@@ -514,14 +532,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // We do not need to do anything for this flag because `std` already sets it.
             // (Technically we do not support *not* setting this flag, but we ignore that.)
         }
-        if this.tcx.sess.target.os == Os::Linux {
-            let o_tmpfile = this.eval_libc_i32("O_TMPFILE");
-            if flag & o_tmpfile == o_tmpfile {
-                // if the flag contains `O_TMPFILE` then we return a graceful error
-                return this.set_errno_and_return_neg1_i32(LibcError("EOPNOTSUPP"));
-            }
-        }
-
         let o_nofollow = this.eval_libc_i32("O_NOFOLLOW");
         let mut nofollow = false;
         if flag & o_nofollow == o_nofollow {
@@ -552,23 +562,81 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        let file = match options.open(path) {
-            Ok(file) => file,
-            Err(err) => return this.set_errno_and_return_neg1_i32(err),
-        };
-        let metadata = file.metadata().expect("a just-opened file should have metadata");
-        if metadata.is_dir() {
-            throw_unsup_format!("open: opening directories is not supported");
-        }
-        if nofollow && !cfg!(unix) {
-            // On Windows, FILE_FLAG_OPEN_REPARSE_POINT makes opening still succeed, it just
-            // opens the symlink rather than the target. Turn that into an error.
-            if metadata.is_symlink() {
-                return this.set_errno_and_return_neg1_i32(LibcError("ELOOP"));
+        // We start a retry loop to deal with the `is_dir` race, see below.
+        // We add a retry counter to avoid infinite loops when things go wrong.
+        let mut counter = 0u32;
+        loop {
+            if counter >= 100 {
+                panic!(
+                    "open seems stuck in an infinite retry loop. \
+                    If you can reproduce this, please file a bug."
+                );
+            }
+            counter = counter.strict_add(1);
+
+            // We need to know if the file is a directory to correctly open directory handles.
+            // The standard library only lets us open something as a file or a directory, so
+            // we check for that and then retry if we end up with the wrong thing.
+            let is_dir = path.is_dir();
+
+            if is_dir {
+                // Directories cannot be opened for writing.
+                if access_mode != o_rdonly {
+                    return this.set_errno_and_return_neg1_i32(LibcError("EISDIR"));
+                }
+                // All the other flags don't really do anything.
+                let dir = match DirHandle::open(&path) {
+                    Ok(dir) => dir,
+                    Err(e) => {
+                        if e.kind() == io::ErrorKind::NotADirectory {
+                            // This changed from a directory to a file. Retry.
+                            continue;
+                        }
+                        return this.set_errno_and_return_neg1_i32(e);
+                    }
+                };
+                #[cfg(bootstrap)]
+                let metadata = dir.dir.metadata();
+                #[cfg(not(bootstrap))]
+                let metadata = dir.dir.self_metadata();
+                if !metadata.unwrap().is_dir() {
+                    // This changed from a directory to a file. Retry.
+                    continue;
+                }
+
+                let fd = this.machine.fds.insert_new(dir);
+                return interp_ok(Scalar::from_i32(fd));
+            } else {
+                let file = match options.open(&path) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        if e.kind() == io::ErrorKind::IsADirectory {
+                            // This changed from a directory to a file. Retry.
+                            continue;
+                        }
+                        return this.set_errno_and_return_neg1_i32(e);
+                    }
+                };
+                let metadata = file.metadata().expect("a just-opened file should have metadata");
+                if metadata.is_dir() {
+                    // This changed from a file to a directory. Retry.
+                    continue;
+                }
+
+                if nofollow && !cfg!(unix) {
+                    // On Windows, FILE_FLAG_OPEN_REPARSE_POINT makes opening still succeed, it just
+                    // opens the symlink rather than the target. Turn that into an error.
+                    if metadata.is_symlink() {
+                        return this.set_errno_and_return_neg1_i32(LibcError("ELOOP"));
+                    }
+                }
+                if want_directory {
+                    return this.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
+                }
+                let fd = this.machine.fds.insert_new(FileHandle { file, writable, readable });
+                return interp_ok(Scalar::from_i32(fd));
             }
         }
-        let fd = this.machine.fds.insert_new(FileHandle { file, writable, readable });
-        interp_ok(Scalar::from_i32(fd))
     }
 
     fn lseek(
@@ -845,7 +913,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
             };
             let Some(dir) = fd.downcast::<DirHandle>() else {
-                return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+                return this.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
             };
 
             #[cfg(not(bootstrap))]
@@ -937,7 +1005,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
             };
             let Some(dir) = fd.downcast::<DirHandle>() else {
-                return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+                return this.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
             };
 
             #[cfg(not(bootstrap))]

@@ -444,7 +444,13 @@ impl FileDescription for FileHandle {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
 
         if !self.readable {
-            return finish.call(ecx, Err(ErrorKind::PermissionDenied.into()));
+            // Unix returns EBADF, Windows something that translates to `PermissionDenied`.
+            let err = if ecx.target_os_is_unix() {
+                LibcError("EBADF")
+            } else {
+                ErrorKind::PermissionDenied.into()
+            };
+            return finish.call(ecx, Err(err));
         }
 
         let mut file = &self.file;
@@ -463,13 +469,13 @@ impl FileDescription for FileHandle {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
 
         if !self.writable {
-            // Linux hosts return EBADF here which we can't translate via the platform-independent
-            // code since it does not map to any `io::ErrorKind` -- so if we don't do anything
-            // special, we'd throw an "unsupported error code" here. Windows returns something that
-            // gets translated to `PermissionDenied`. That seems like a good value so let's just use
-            // this everywhere, even if it means behavior on Unix targets does not match the real
-            // thing.
-            return finish.call(ecx, Err(ErrorKind::PermissionDenied.into()));
+            // Unix returns EBADF, Windows something that translates to `PermissionDenied`.
+            let err = if ecx.target_os_is_unix() {
+                LibcError("EBADF")
+            } else {
+                ErrorKind::PermissionDenied.into()
+            };
+            return finish.call(ecx, Err(err));
         }
         let result = ecx.write_to_host(&self.file, len, ptr)?;
         finish.call(ecx, result)
@@ -545,6 +551,39 @@ impl FileDescription for DirHandle {
         return interp_ok(Either::Left(self.dir.metadata()));
         #[cfg(not(bootstrap))]
         return interp_ok(Either::Left(self.dir.self_metadata()));
+    }
+
+    fn read<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _communicate_allowed: bool,
+        _ptr: Pointer,
+        _len: usize,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    ) -> InterpResult<'tcx> {
+        if ecx.target_os_is_unix() {
+            finish.call(ecx, Err(LibcError("EISDIR")))
+        } else {
+            // No idea what this should do on Windows.
+            throw_unsup_format!("reading directories is not supported on this target");
+        }
+    }
+
+    fn write<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _communicate_allowed: bool,
+        _ptr: Pointer,
+        _len: usize,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    ) -> InterpResult<'tcx> {
+        if ecx.target_os_is_unix() {
+            // Directories are opened for reading, so writing returns EBADF.
+            finish.call(ecx, Err(LibcError("EBADF")))
+        } else {
+            // No idea what this should do on Windows.
+            throw_unsup_format!("writing directories is not supported on this target");
+        }
     }
 }
 
