@@ -1,0 +1,8 @@
+error: implementing `Reborrow` requires exactly one lifetime argument in the reborrowed type
+  --> $DIR/invalid-reborrow-impl-no-lifetime.rs:11:1
+   |
+LL | impl<'a> Reborrow for Thing {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
