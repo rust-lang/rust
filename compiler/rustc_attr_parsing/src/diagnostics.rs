@@ -264,6 +264,14 @@ pub(crate) struct DocUnknownAny {
 }
 
 #[derive(Diagnostic)]
+#[diag("reserved `doc` attribute `{$name}`")]
+pub(crate) struct DocReserved {
+    pub name: Symbol,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("expected boolean for `#[doc(auto_cfg = ...)]`")]
 pub(crate) struct DocAutoCfgWrongLiteral;
 
