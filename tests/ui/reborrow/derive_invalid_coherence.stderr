@@ -20,7 +20,7 @@ LL | #[derive(Reborrow, CoerceShared)]
    |                    ------------ required by this `CoerceShared` implementation
 LL | #[coerce_shared(BadTarget<'a>)]
 LL | struct BadSource<'a>(&'a mut u32);
-   |                      ----------- source field `0` has type `&'a_ mut u32`
+   |                      ----------- source field `0` has type `&'a mut u32`
 
 error: aborting due to 2 previous errors
 
