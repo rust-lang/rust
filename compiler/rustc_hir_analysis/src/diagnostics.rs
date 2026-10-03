@@ -1356,10 +1356,8 @@ pub(crate) struct CoerceMulti {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "implementing `{$trait_name}` requires that a single lifetime parameter is passed between source and target"
-)]
-pub(crate) struct CoerceSharedNotSingleLifetimeParam {
+#[diag("implementing `{$trait_name}` requires that at least one lifetime parameter")]
+pub(crate) struct ReborrowNoLifetimes {
     #[primary_span]
     pub span: Span,
     pub trait_name: &'static str,

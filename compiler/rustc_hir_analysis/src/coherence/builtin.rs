@@ -477,9 +477,7 @@ pub(crate) fn reborrow_info<'tcx>(
     let trait_ref = tcx.impl_trait_ref(impl_did).instantiate_identity().skip_norm_wip();
 
     if trait_impl_lifetime_params_count(tcx, impl_did) == 0 {
-        return Err(tcx
-            .dcx()
-            .emit_err(diagnostics::CoerceSharedNotSingleLifetimeParam { span, trait_name }));
+        return Err(tcx.dcx().emit_err(diagnostics::ReborrowNoLifetimes { span, trait_name }));
     }
 
     assert_eq!(trait_ref.def_id, reborrow_trait);
