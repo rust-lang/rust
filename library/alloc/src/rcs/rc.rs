@@ -284,7 +284,7 @@ use crate::vec::Vec;
 // repr(align(2)) (forcing alignment to at least 2) is required because usize
 // has 1-byte alignment on AVR.
 #[repr(C, align(2))]
-struct RcInner<T: ?Sized> {
+struct RcInner<#[rustc_assert_variance(covariant)] T: ?Sized> {
     strong: Cell<usize>,
     weak: Cell<usize>,
     value: T,
@@ -324,7 +324,7 @@ fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
 )]
 
 pub struct Rc<
-    T: ?Sized,
+    #[rustc_assert_variance(covariant)] T: ?Sized,
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     ptr: NonNull<RcInner<T>>,

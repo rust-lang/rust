@@ -17,7 +17,7 @@ use crate::ptr::{self, NonNull};
 // hardcode its variance to be **co**variant in `T`, even though it is wrapping `UnsafeCell` which
 // is **in**variant in `T`.
 #[lang = "covariant_unsafe_cell"]
-pub struct CovariantUnsafeCell<T: ?Sized>(UnsafeCell<T>);
+pub struct CovariantUnsafeCell<#[rustc_assert_variance(covariant)] T: ?Sized>(UnsafeCell<T>);
 
 #[unstable(feature = "covariant_unsafe_cell", issue = "159735")]
 impl<T: ?Sized> !Sync for CovariantUnsafeCell<T> {}
