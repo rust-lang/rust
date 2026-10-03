@@ -389,6 +389,9 @@ pub struct AcceptContext<'f, 'sess> {
     /// Whether it is an inner or outer attribute.
     pub(crate) attr_style: AttrStyle,
 
+    /// Used for lint attributes.
+    ///
+    /// These should not end up in query results, as they cannot be deserialized from disk.
     pub(crate) attr_id: Option<HashIgnoredAttrId>,
 
     /// A description of the thing we are parsing using this attribute parser.
