@@ -139,6 +139,18 @@ impl UnixSocketFileDescription for UdpSocket {
         interp_ok(Ok(()))
     }
 
+    fn connect<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        address: SocketAddr,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<(), IoError>>,
+    ) -> InterpResult<'tcx> {
+        assert!(communicate_allowed, "cannot have `UdpSocket` with isolation enabled!");
+
+        finish.call(ecx, self.socket.connect(address).map_err(IoError::HostError))
+    }
+
     fn with_socket_ref<T>(&self, cb: impl FnOnce(socket2::SockRef<'_>) -> T) -> Result<T, ()>
     where
         Self: Sized,
