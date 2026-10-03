@@ -56,6 +56,15 @@ where
     Ok(best_layout)
 }
 
+fn constructable_variant<'a, VariantIdx, FieldIdx, F>(variant: &IndexSlice<FieldIdx, F>) -> bool
+where
+    FieldIdx: Idx,
+    VariantIdx: Idx,
+    F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+{
+    variant.iter().all(|f| !f.is_uninhabited())
+}
+
 fn calculate_tagged_layout<'a, Cx: HasDataLayout, FieldIdx, VariantIdx, F>(
     calculator: &LayoutCalculator<Cx>,
     repr: &ReprOptions,
@@ -73,7 +82,7 @@ where
     let discr_size = Integer::from_attr(dl, discr_type).size();
 
     let necessary_discriminants: Vec<u128> = discriminants
-        .filter(|&(i, _)| repr.c() || variants[i].iter().all(|f| !f.is_uninhabited()))
+        .filter(|&(i, _)| repr.c() || constructable_variant(&variants[i]))
         .map(|(_, val)| val)
         .collect();
 
