@@ -3,8 +3,9 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::{Span, kw, sym};
 use thin_vec::thin_vec;
 
+use crate::deriving::call_discriminant_value;
 use crate::deriving::generic::*;
-use crate::deriving::{call_discriminant_value, path_std, pathvec};
+use crate::util::{path, path_std};
 
 pub(crate) fn expand_deriving_partial_ord(
     cx: &ExtCtxt<'_>,
@@ -16,7 +17,7 @@ pub(crate) fn expand_deriving_partial_ord(
     let ordering_ty = cx.ty_path(path_std!(cx, span, cmp::Ordering));
     let ret_ty = cx.ty_path(cx.std_path_all(
         span,
-        pathvec!(option::Option),
+        path!(option::Option),
         vec![ast::GenericArg::Type(ordering_ty)],
     ));
 
@@ -105,7 +106,7 @@ pub(crate) fn discr_data_order(item: &ast::Item) -> bool {
 // Some(::core::cmp::Ord::cmp(self, other))
 // ```
 fn cs_partial_cmp_simple(cx: &ExtCtxt<'_>, span: Span, other_expr: Box<ast::Expr>) -> BlockOrExpr {
-    let ord_cmp_path = cx.std_path(span, &[sym::cmp, sym::Ord, sym::cmp]);
+    let ord_cmp_path = path_std!(cx, span, cmp::Ord::cmp);
     let cmp_expr =
         cx.expr_call_global(span, ord_cmp_path, thin_vec![cx.expr_self(span), other_expr]);
     BlockOrExpr::new_expr(cx.expr_some(span, cmp_expr))
@@ -147,7 +148,7 @@ pub(crate) fn cmp_body(
     } else {
         [sym::cmp, sym::Ord, sym::cmp]
     };
-    let equal_path = cx.std_path(span, &[sym::cmp, sym::Ordering, sym::Equal]);
+    let equal_path = path_std!(cx, span, cmp::Ordering::Equal);
 
     // The combination of two field expressions. E.g. for `Ord::cmp` this
     // is something like `<field1 comparison> && <field2 comparison>`.

@@ -13,8 +13,8 @@ use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::deriving::generic::*;
-use crate::deriving::path_std;
 use crate::diagnostics;
+use crate::util::path_std;
 
 pub(crate) fn expand_deriving_coerce_pointee(
     cx: &ExtCtxt<'_>,

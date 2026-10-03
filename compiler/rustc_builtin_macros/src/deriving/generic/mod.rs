@@ -191,6 +191,7 @@ use rustc_span::{Ident, Span, Symbol, kw, sym};
 pub(crate) use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
+use crate::util::path_std;
 use crate::{deriving, diagnostics};
 
 pub(crate) struct TraitDef<'a> {
@@ -602,7 +603,7 @@ impl<'a> TraitDef<'a> {
                         .chain({
                             // Add a `Copy` bound if required.
                             if is_packed && self.needs_copy_as_bound_if_packed {
-                                let p = deriving::path_std!(cx, span, marker::Copy);
+                                let p = path_std!(cx, span, marker::Copy);
                                 Some(cx.trait_bound(p, self.is_const))
                             } else {
                                 None
@@ -679,7 +680,7 @@ impl<'a> TraitDef<'a> {
 
                     // Add a `Copy` bound if required.
                     if is_packed && self.needs_copy_as_bound_if_packed {
-                        let p = deriving::path_std!(cx, self.span, marker::Copy);
+                        let p = path_std!(cx, self.span, marker::Copy);
                         bounds.push(cx.trait_bound(p, self.is_const));
                     }
 

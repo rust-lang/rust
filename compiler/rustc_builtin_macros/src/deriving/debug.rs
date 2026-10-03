@@ -5,7 +5,7 @@ use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::deriving::generic::*;
-use crate::deriving::path_std;
+use crate::util::path_std;
 
 pub(crate) fn expand_deriving_debug(
     cx: &ExtCtxt<'_>,
@@ -80,7 +80,7 @@ fn show_substructure(
 
     // Fieldless enums have been special-cased earlier
     if fmt_detail == FmtDebug::Shallow {
-        let fn_path_write_str = cx.std_path(span, &[sym::fmt, sym::Formatter, sym::write_str]);
+        let fn_path_write_str = path_std!(cx, span, fmt::Formatter::write_str);
         let expr = cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]);
         return BlockOrExpr::new_expr(expr);
     }
@@ -113,7 +113,7 @@ fn show_substructure(
 
     if fields.is_empty() {
         // Special case for no fields.
-        let fn_path_write_str = cx.std_path(span, &[sym::fmt, sym::Formatter, sym::write_str]);
+        let fn_path_write_str = path_std!(cx, span, fmt::Formatter::write_str);
         let expr = cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]);
         BlockOrExpr::new_expr(expr)
     } else if fields.len() <= CUTOFF {
@@ -166,7 +166,7 @@ fn show_substructure(
         });
 
         // `let values: &[&dyn Debug] = &[&&self.field1, &&self.field2];`
-        let path_debug = cx.std_path(span, &[sym::fmt, sym::Debug]);
+        let path_debug = path_std!(cx, span, fmt::Debug);
         let ty_dyn_debug = cx.ty(
             span,
             ast::TyKind::TraitObject(
@@ -253,6 +253,6 @@ fn show_fieldless_enum(
         })
         .collect::<ThinVec<_>>();
     let name = cx.expr_match(span, cx.expr_self(span), arms);
-    let fn_path_write_str = cx.std_path(span, &[sym::fmt, sym::Formatter, sym::write_str]);
+    let fn_path_write_str = path_std!(cx, span, fmt::Formatter::write_str);
     BlockOrExpr::new_expr(cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]))
 }

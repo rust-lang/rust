@@ -5,7 +5,7 @@ use rustc_span::{DUMMY_SP, Span, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::deriving::generic::*;
-use crate::deriving::path_std;
+use crate::util::path_std;
 
 pub(crate) fn expand_deriving_clone(
     cx: &ExtCtxt<'_>,
@@ -163,11 +163,7 @@ fn cs_clone_simple(
 fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     let subcall = |field: FieldInfo| {
         let args = thin_vec![field.self_expr];
-        cx.expr_call_global(
-            field.span,
-            cx.std_path(field.span, &[sym::clone, sym::Clone, sym::clone]),
-            args,
-        )
+        cx.expr_call_global(field.span, path_std!(cx, field.span, clone::Clone::clone), args)
     };
 
     let ctor_path;

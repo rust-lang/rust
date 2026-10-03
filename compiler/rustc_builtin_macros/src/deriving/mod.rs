@@ -6,14 +6,6 @@ use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
 use rustc_span::{Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
-macro pathvec($($rest:ident)::+) {{
-    &[ $( sym::$rest ),+ ]
-}}
-
-macro path_std($cx: expr, $span: expr, $($x:tt)*) {
-    $cx.std_path($span, pathvec!( $($x)* ) )
-}
-
 pub(crate) mod clone;
 pub(crate) mod coerce_pointee;
 pub(crate) mod const_param_ty;

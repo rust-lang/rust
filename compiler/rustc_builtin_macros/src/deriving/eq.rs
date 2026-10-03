@@ -5,7 +5,7 @@ use rustc_span::{Span, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::deriving::generic::*;
-use crate::deriving::path_std;
+use crate::util::{path, path_std};
 
 pub(crate) fn expand_deriving_eq(
     cx: &ExtCtxt<'_>,
@@ -64,7 +64,7 @@ fn cs_total_eq_assert(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'
                     &mut stmts,
                     field.ty.clone(),
                     field.span,
-                    &[sym::cmp, sym::AssertParamIsEq],
+                    path!(cmp::AssertParamIsEq),
                 );
             }
         }

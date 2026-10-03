@@ -2,7 +2,7 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::Span;
 
 use crate::deriving::generic::*;
-use crate::deriving::path_std;
+use crate::util::path_std;
 
 pub(crate) fn expand_deriving_copy(
     cx: &ExtCtxt<'_>,

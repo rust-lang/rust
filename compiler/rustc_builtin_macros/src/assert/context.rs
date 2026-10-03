@@ -10,6 +10,8 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
+use crate::util::path_std;
+
 pub(super) struct Context<'cx, 'a> {
     // An optimization.
     //
@@ -110,7 +112,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 self.span,
                 thin_vec![self.cx.attr_nested_word(sym::allow, sym::unused_imports, self.span)],
                 ItemKind::Use(UseTree {
-                    prefix: self.cx.std_path(self.span, &[sym::asserting]),
+                    prefix: path_std!(self.cx, self.span, asserting),
                     kind: UseTreeKind::Nested {
                         items: thin_vec![
                             nested_tree(self, sym::TryCaptureGeneric),
@@ -341,7 +343,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         let curr_capture_idx = self.capture_decls.len();
         let capture_string = format!("__capture{curr_capture_idx}");
         let ident = Ident::new(Symbol::intern(&capture_string), self.span);
-        let init_std_path = self.cx.std_path(self.span, &[sym::asserting, sym::Capture, sym::new]);
+        let init_std_path = path_std!(self.cx, self.span, asserting::Capture::new);
         let init = self.cx.expr_call(self.span, self.cx.expr_path(init_std_path), ThinVec::new());
         let capture = Capture { decl: self.cx.stmt_let(self.span, true, ident.name, init), ident };
         self.capture_decls.push(capture);
@@ -370,7 +372,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         ));
         let wrapper = self.cx.expr_call(
             self.span,
-            self.cx.expr_path(self.cx.std_path(self.span, &[sym::asserting, sym::Wrapper])),
+            self.cx.expr_path(path_std!(self.cx, self.span, asserting::Wrapper)),
             thin_vec![self.cx.expr_path(self.cx.path_sym(self.span, local_bind))],
         );
         let try_capture_call = self

@@ -3,8 +3,9 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::{Span, kw, sym};
 use thin_vec::thin_vec;
 
+use crate::deriving::call_discriminant_value;
 use crate::deriving::generic::*;
-use crate::deriving::{call_discriminant_value, path_std};
+use crate::util::path_std;
 
 /// Expands a `#[derive(PartialEq)]` attribute into an implementation for the
 /// target item.

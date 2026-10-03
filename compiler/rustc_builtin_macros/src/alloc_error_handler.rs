@@ -5,7 +5,7 @@ use rustc_span::{Ident, Span, sym};
 use thin_vec::thin_vec;
 
 use crate::diagnostics;
-use crate::util::check_builtin_macro_attribute;
+use crate::util::{check_builtin_macro_attribute, path_std};
 
 pub(crate) fn expand(
     ecx: &mut ExtCtxt<'_>,
@@ -58,7 +58,7 @@ pub(crate) fn expand(
 fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span) -> Stmt {
     let ty_usize = cx.ty_sym(span, sym::usize);
 
-    let layout_new = cx.std_path(span, &[sym::alloc, sym::Layout, sym::from_size_align_unchecked]);
+    let layout_new = path_std!(cx, span, alloc::Layout::from_size_align_unchecked);
     let layout_new = cx.expr_path(layout_new);
     let layout = cx.expr_call(
         span,

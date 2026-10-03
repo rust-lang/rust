@@ -10,7 +10,7 @@ use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::diagnostics;
-use crate::util::check_builtin_macro_attribute;
+use crate::util::{check_builtin_macro_attribute, path_std};
 
 pub(crate) fn expand(
     ecx: &mut ExtCtxt<'_>,
@@ -130,10 +130,8 @@ impl AllocFnFactory<'_, '_> {
                 let ty_align = self.ptr_alignment();
                 args.push(self.cx.param(self.span, sym::align, ty_align));
 
-                let layout_new = self.cx.std_path(
-                    self.span,
-                    &[sym::alloc, sym::Layout, sym::from_size_alignment_unchecked],
-                );
+                let layout_new =
+                    path_std!(self.cx, self.span, alloc::Layout::from_size_alignment_unchecked);
                 let layout_new = self.cx.expr_path(layout_new);
                 let size = self.cx.expr_ident_sym(self.span, sym::size);
                 let align = self.cx.expr_ident_sym(self.span, sym::align);
@@ -176,7 +174,7 @@ impl AllocFnFactory<'_, '_> {
     }
 
     fn ptr_alignment(&self) -> Box<Ty> {
-        let path = self.cx.std_path(self.span, &[sym::mem, sym::Alignment]);
+        let path = path_std!(self.cx, self.span, mem::Alignment);
         self.cx.ty_path(path)
     }
 

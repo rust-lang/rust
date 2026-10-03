@@ -3,8 +3,9 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
+use crate::deriving::call_discriminant_value;
 use crate::deriving::generic::*;
-use crate::deriving::{call_discriminant_value, path_std};
+use crate::util::path_std;
 
 pub(crate) fn expand_deriving_hash(
     cx: &ExtCtxt<'_>,
@@ -54,7 +55,7 @@ pub(crate) fn expand_deriving_hash(
 
 fn hash_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     let call_hash = |span, expr| {
-        let strs = cx.std_path(span, &[sym::hash, sym::Hash, sym::hash]);
+        let strs = path_std!(cx, span, hash::Hash::hash);
         let hash_path = cx.expr_path(strs);
         let expr =
             cx.expr_call(span, hash_path, thin_vec![expr, cx.expr_ident_sym(span, sym::state)]);
