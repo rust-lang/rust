@@ -9,7 +9,7 @@ use super::{LayoutCalculator, LayoutCalculatorError, LayoutCalculatorResult, abs
 use crate::{
     AbiAlign, Align, BackendRepr, FieldsShape, HasDataLayout, IndexSlice, IndexVec, Integer,
     LayoutData, Niche, Primitive, ReprOptions, Scalar, Size, StructKind, TagEncoding,
-    VariantLayout, Variants, WrappingRange,
+    TargetDataLayout, VariantLayout, Variants, WrappingRange,
 };
 
 pub(super) fn layout_of_enum<'a, Cx: HasDataLayout, FieldIdx, VariantIdx, F>(
@@ -54,6 +54,162 @@ where
     };
 
     Ok(best_layout)
+}
+
+struct CommonPrimitive {
+    primitive: Primitive,
+    offset: Size,
+    initialized_in_all_variants: bool,
+}
+
+fn calculate_common_primitive<'a, VariantIdx, FieldIdx, F>(
+    dl: &TargetDataLayout,
+    layout_variants: &IndexSlice<VariantIdx, VariantLayout<FieldIdx>>,
+    variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
+) -> Option<CommonPrimitive>
+where
+    FieldIdx: Idx,
+    VariantIdx: Idx,
+    F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+{
+    // Try to use a ScalarPair for all tagged enums.
+    // That's possible only if we can find a common primitive type for all variants.
+    let mut common_prim = None;
+    let mut initialized_in_all_variants = true;
+    for (field_layouts, layout_variant) in iter::zip(variants, layout_variants) {
+        // We skip *all* ZST here and later check if we are good in terms of alignment.
+        // This lets us handle some cases involving aligned ZST.
+        let mut fields =
+            iter::zip(field_layouts, &layout_variant.field_offsets).filter(|p| !p.0.is_zst());
+        let (field, offset) = match (fields.next(), fields.next()) {
+            (None, None) => {
+                initialized_in_all_variants = false;
+                continue;
+            }
+            (Some(pair), None) => pair,
+            _ => {
+                return None;
+            }
+        };
+        let prim = match field.backend_repr {
+            BackendRepr::Scalar(scalar) => {
+                initialized_in_all_variants &= matches!(scalar, Scalar::Initialized { .. });
+                scalar.primitive()
+            }
+            _ => {
+                return None;
+            }
+        };
+        if let Some((old_prim, common_offset)) = common_prim {
+            // All variants must be at the same offset
+            if offset != common_offset {
+                return None;
+            }
+            // This is pretty conservative. We could go fancier
+            // by realising that (u8, u8) could just cohabit with
+            // u16 or even u32.
+            let new_prim = match (old_prim, prim) {
+                // Allow all identical primitives.
+                (x, y) if x == y => x,
+                // Allow integers of the same size with differing signedness.
+                // We arbitrarily choose the signedness of the first variant.
+                (p @ Primitive::Int(x, _), Primitive::Int(y, _)) if x == y => p,
+                // Allow integers mixed with pointers of the same layout.
+                // We must represent this using a pointer, to avoid
+                // roundtripping pointers through ptrtoint/inttoptr.
+                (p @ Primitive::Pointer(_), i @ Primitive::Int(..))
+                | (i @ Primitive::Int(..), p @ Primitive::Pointer(_))
+                    if p.size(dl) == i.size(dl) && p.default_align(dl) == i.default_align(dl) =>
+                {
+                    p
+                }
+                _ => {
+                    return None;
+                }
+            };
+            // We may be updating the primitive here, for example from int->ptr.
+            common_prim = Some((new_prim, common_offset));
+        } else {
+            common_prim = Some((prim, offset));
+        }
+    }
+    common_prim.map(|(primitive, offset)| CommonPrimitive {
+        primitive,
+        offset: *offset,
+        initialized_in_all_variants,
+    })
+}
+
+fn scalar_pair_repr<'a, Cx, VariantIdx, FieldIdx, F>(
+    calculator: &LayoutCalculator<Cx>,
+    layout_variants: &IndexSlice<VariantIdx, VariantLayout<FieldIdx>>,
+    variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
+    size: Size,
+    align: Align,
+    tag: Scalar,
+) -> Option<BackendRepr>
+where
+    Cx: HasDataLayout,
+    FieldIdx: Idx,
+    VariantIdx: Idx,
+    F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+{
+    let CommonPrimitive { primitive, offset, initialized_in_all_variants } =
+        calculate_common_primitive(calculator.cx.data_layout(), layout_variants, variants)?;
+    let prim_scalar = if initialized_in_all_variants {
+        let size = primitive.size(calculator.cx.data_layout());
+        assert!(size.bits() <= 128);
+        Scalar::Initialized { value: primitive, valid_range: WrappingRange::full(size) }
+    } else {
+        // Common prim might be uninit.
+        Scalar::Union { value: primitive }
+    };
+    let pair = LayoutData::<FieldIdx, VariantIdx>::scalar_pair(&calculator.cx, tag, prim_scalar);
+    let pair_offsets = match pair.fields {
+        FieldsShape::Arbitrary { ref offsets, ref in_memory_order } => {
+            assert_eq!(in_memory_order.raw, [FieldIdx::new(0), FieldIdx::new(1)]);
+            offsets
+        }
+        _ => panic!("encountered a non-arbitrary layout during enum layout"),
+    };
+    if pair_offsets[FieldIdx::new(0)] == Size::ZERO
+        && pair_offsets[FieldIdx::new(1)] == offset
+        && align == pair.align.abi
+        && size == pair.size
+    {
+        // We can use `ScalarPair` only when it matches our
+        // already computed layout (including `#[repr(C)]`).
+        Some(pair.backend_repr)
+    } else {
+        None
+    }
+}
+
+fn calculate_tagged_abi<'a, Cx, VariantIdx, FieldIdx, F>(
+    calculator: &LayoutCalculator<Cx>,
+    layout_variants: &IndexSlice<VariantIdx, VariantLayout<FieldIdx>>,
+    variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
+    size: Size,
+    align: Align,
+    tag: Scalar,
+) -> BackendRepr
+where
+    Cx: HasDataLayout,
+    FieldIdx: Idx,
+    VariantIdx: Idx,
+    F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+{
+    if tag.size(calculator.cx.data_layout()) == size {
+        // Make sure we only use scalar layout when the enum is entirely its
+        // own tag (i.e. it has no padding nor any non-ZST variant fields).
+        BackendRepr::Scalar(tag)
+    } else if let Some(repr) =
+        scalar_pair_repr(calculator, layout_variants, variants, size, align, tag)
+    {
+        repr
+    } else {
+        BackendRepr::Memory { sized: true }
+    }
 }
 
 fn constructable_variant<'a, VariantIdx, FieldIdx, F>(variant: &IndexSlice<FieldIdx, F>) -> bool
@@ -235,110 +391,8 @@ where
     };
     let tag =
         Scalar::Initialized { value: Primitive::Int(ity, signed), valid_range: tag_valid_range };
-    let mut abi = BackendRepr::Memory { sized: true };
-
     let uninhabited = layout_variants.iter().all(|v| v.is_uninhabited());
-    if tag.size(dl) == size {
-        // Make sure we only use scalar layout when the enum is entirely its
-        // own tag (i.e. it has no padding nor any non-ZST variant fields).
-        abi = BackendRepr::Scalar(tag);
-    } else {
-        // Try to use a ScalarPair for all tagged enums.
-        // That's possible only if we can find a common primitive type for all variants.
-        let mut common_prim = None;
-        let mut common_prim_initialized_in_all_variants = true;
-        for (field_layouts, layout_variant) in iter::zip(variants, &layout_variants) {
-            // We skip *all* ZST here and later check if we are good in terms of alignment.
-            // This lets us handle some cases involving aligned ZST.
-            let mut fields =
-                iter::zip(field_layouts, &layout_variant.field_offsets).filter(|p| !p.0.is_zst());
-            let (field, offset) = match (fields.next(), fields.next()) {
-                (None, None) => {
-                    common_prim_initialized_in_all_variants = false;
-                    continue;
-                }
-                (Some(pair), None) => pair,
-                _ => {
-                    common_prim = None;
-                    break;
-                }
-            };
-            let prim = match field.backend_repr {
-                BackendRepr::Scalar(scalar) => {
-                    common_prim_initialized_in_all_variants &=
-                        matches!(scalar, Scalar::Initialized { .. });
-                    scalar.primitive()
-                }
-                _ => {
-                    common_prim = None;
-                    break;
-                }
-            };
-            if let Some((old_prim, common_offset)) = common_prim {
-                // All variants must be at the same offset
-                if offset != common_offset {
-                    common_prim = None;
-                    break;
-                }
-                // This is pretty conservative. We could go fancier
-                // by realising that (u8, u8) could just cohabit with
-                // u16 or even u32.
-                let new_prim = match (old_prim, prim) {
-                    // Allow all identical primitives.
-                    (x, y) if x == y => x,
-                    // Allow integers of the same size with differing signedness.
-                    // We arbitrarily choose the signedness of the first variant.
-                    (p @ Primitive::Int(x, _), Primitive::Int(y, _)) if x == y => p,
-                    // Allow integers mixed with pointers of the same layout.
-                    // We must represent this using a pointer, to avoid
-                    // roundtripping pointers through ptrtoint/inttoptr.
-                    (p @ Primitive::Pointer(_), i @ Primitive::Int(..))
-                    | (i @ Primitive::Int(..), p @ Primitive::Pointer(_))
-                        if p.size(dl) == i.size(dl)
-                            && p.default_align(dl) == i.default_align(dl) =>
-                    {
-                        p
-                    }
-                    _ => {
-                        common_prim = None;
-                        break;
-                    }
-                };
-                // We may be updating the primitive here, for example from int->ptr.
-                common_prim = Some((new_prim, common_offset));
-            } else {
-                common_prim = Some((prim, offset));
-            }
-        }
-        if let Some((prim, offset)) = common_prim {
-            let prim_scalar = if common_prim_initialized_in_all_variants {
-                let size = prim.size(dl);
-                assert!(size.bits() <= 128);
-                Scalar::Initialized { value: prim, valid_range: WrappingRange::full(size) }
-            } else {
-                // Common prim might be uninit.
-                Scalar::Union { value: prim }
-            };
-            let pair =
-                LayoutData::<FieldIdx, VariantIdx>::scalar_pair(&calculator.cx, tag, prim_scalar);
-            let pair_offsets = match pair.fields {
-                FieldsShape::Arbitrary { ref offsets, ref in_memory_order } => {
-                    assert_eq!(in_memory_order.raw, [FieldIdx::new(0), FieldIdx::new(1)]);
-                    offsets
-                }
-                _ => panic!("encountered a non-arbitrary layout during enum layout"),
-            };
-            if pair_offsets[FieldIdx::new(0)] == Size::ZERO
-                && pair_offsets[FieldIdx::new(1)] == *offset
-                && align == pair.align.abi
-                && size == pair.size
-            {
-                // We can use `ScalarPair` only when it matches our
-                // already computed layout (including `#[repr(C)]`).
-                abi = pair.backend_repr;
-            }
-        }
-    }
+    let abi = calculate_tagged_abi(calculator, &layout_variants, &variants, size, align, tag);
 
     // If we pick a "clever" (by-value) ABI, we might have to adjust the ABI of the
     // variants to ensure they are consistent. This is because a downcast is
