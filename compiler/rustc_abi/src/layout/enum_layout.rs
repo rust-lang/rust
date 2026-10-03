@@ -234,8 +234,7 @@ where
     F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
 {
     let dl = calculator.cx.data_layout();
-    let discr_type = repr.discr_type();
-    let discr_size = Integer::from_attr(dl, discr_type).size();
+    let discr_size = Integer::from_attr(dl, repr.discr_type()).size();
 
     let necessary_discriminants: Vec<u128> = discriminants
         .filter(|&(i, _)| repr.c() || constructable_variant(&variants[i]))
@@ -244,7 +243,7 @@ where
 
     // When picking the integer to use, we respect how the discriminants were written
     // in the original rust code, rather than looking only at the bit pattern.
-    let (min_negative, max_positive): (i128, u128) = if discr_type.is_signed() {
+    let (min_negative, max_positive): (i128, u128) = if repr.discr_type().is_signed() {
         necessary_discriminants.iter().copied().map(|val| discr_size.sign_extend(val)).fold(
             (0_i128, 0_u128),
             |(min, max), val| {
