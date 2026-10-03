@@ -28,6 +28,11 @@ cfg_select! {
 fn main() {
     test_create_close();
     test_create_close_with_protocol();
+
+    test_bind_ipv4();
+    test_bind_ipv4_invalid_addr_len();
+    test_bind_ipv6();
+    test_bind_wrong_address_family();
 }
 
 /// Test creating a socket and then closing it afterwards.
@@ -54,4 +59,87 @@ fn test_create_close_with_protocol() {
     assert_eq!(flags & libc::O_NONBLOCK, 0);
 
     unsafe { errno_check(libc::close(sockfd)) };
+}
+
+/// Test binding a newly created socket to an IPv4 address.
+fn test_bind_ipv4() {
+    let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET, SOCKET_TYPE, 0)).unwrap() };
+    let addr = net::sock_addr_ipv4(net::IPV4_LOCALHOST, 0);
+    unsafe {
+        errno_check(libc::bind(
+            sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ));
+    }
+}
+
+/// Tests binding an IPv4 socket with an IPv4 address but the addrlen argument
+/// has the wrong size.
+fn test_bind_ipv4_invalid_addr_len() {
+    let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET, SOCKET_TYPE, 0)).unwrap() };
+    let addr = net::sock_addr_ipv4(net::IPV4_LOCALHOST, 0);
+    // A too small size is invalid.
+    let err = unsafe {
+        errno_result(libc::bind(
+            sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            (size_of::<libc::sockaddr_in>() - 1) as libc::socklen_t,
+        ))
+        .unwrap_err()
+    };
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+
+    if cfg!(miri) {
+        // A too big size is also invalid. Some native hosts (e.g. Linux)
+        // allow too big sizes, so we skip this test on native hosts:
+        // <https://github.com/rust-lang/miri/pull/5059#discussion_r3305439221>
+        let err = unsafe {
+            errno_result(libc::bind(
+                sockfd,
+                (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+                (size_of::<libc::sockaddr_in>() + 1) as libc::socklen_t,
+            ))
+            .unwrap_err()
+        };
+        assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+    }
+}
+
+/// Test binding a newly created socket to an IPv6 address.
+fn test_bind_ipv6() {
+    let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET6, SOCKET_TYPE, 0)).unwrap() };
+    let addr = net::sock_addr_ipv6(net::IPV6_LOCALHOST, 0);
+    unsafe {
+        errno_check(libc::bind(
+            sockfd,
+            (&addr as *const libc::sockaddr_in6).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in6>() as libc::socklen_t,
+        ));
+    }
+}
+
+/// Test binding a newly created IPv6 UDP socket to an IPv4 address.
+fn test_bind_wrong_address_family() {
+    let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET6, SOCKET_TYPE, 0)).unwrap() };
+    let addr = net::sock_addr_ipv4(net::IPV4_LOCALHOST, 0);
+
+    let err = unsafe {
+        errno_result(libc::bind(
+            sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ))
+        .unwrap_err()
+    };
+
+    if cfg!(any(target_os = "linux", target_os = "android")) || cfg!(all(udp, target_os = "macos"))
+    {
+        // For both UDP and TCP sockets Linux and Android targets return EINVAL
+        // instead of EAFNOSUPPORT. However, for UDP sockets macOS also returns
+        // EINVAL while for TCP sockets macOS returns EAFNOSUPPORT.
+        assert_eq!(err.raw_os_error(), Some(libc::EINVAL))
+    } else {
+        assert_eq!(err.raw_os_error(), Some(libc::EAFNOSUPPORT))
+    }
 }

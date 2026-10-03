@@ -1,5 +1,8 @@
 use std::cell::Cell;
 use std::io;
+use std::net::SocketAddr;
+
+use rustc_target::spec::Os;
 
 use crate::shims::files::{FileDescription, FileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
@@ -7,7 +10,6 @@ use crate::shims::unix::socket::UnixSocketFileDescription;
 use crate::*;
 
 #[derive(Debug)]
-#[expect(unused)]
 pub(super) struct UdpSocket {
     /// Family of the socket, used to ensure that the socket only binds/connects to addresses
     /// of the same family.
@@ -97,4 +99,50 @@ impl UnixFileDescription for UdpSocket {
     }
 }
 
-impl UnixSocketFileDescription for UdpSocket {}
+impl UnixSocketFileDescription for UdpSocket {
+    fn bind<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        address: SocketAddr,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Result<(), IoError>> {
+        assert!(communicate_allowed, "cannot have `UdpSocket` with isolation enabled!");
+
+        let address_family = match &address {
+            SocketAddr::V4(_) => socket2::Domain::IPV4,
+            SocketAddr::V6(_) => socket2::Domain::IPV6,
+        };
+
+        if self.family != address_family {
+            // Attempted to bind an address from a family that doesn't match
+            // the family of the socket.
+            let err = if matches!(ecx.tcx.sess.target.os, Os::Linux | Os::Android | Os::MacOs) {
+                // Linux man page states that `EINVAL` is used when there is an address family mismatch.
+                // See <https://man7.org/linux/man-pages/man2/bind.2.html>
+                // macOS also returns `EINVAL` but their man page does not specify this.
+                LibcError("EINVAL")
+            } else {
+                // POSIX man page states that `EAFNOSUPPORT` should be used when there is an address
+                // family mismatch.
+                // See <https://man7.org/linux/man-pages/man3/bind.3p.html>
+                LibcError("EAFNOSUPPORT")
+            };
+            return interp_ok(Err(err));
+        }
+
+        // `bind` is a non-blocking operation for UDP sockets.
+        if let Err(e) = self.with_socket_ref(|s| s.bind(&socket2::SockAddr::from(address))).unwrap()
+        {
+            return interp_ok(Err(IoError::HostError(e)));
+        }
+
+        interp_ok(Ok(()))
+    }
+
+    fn with_socket_ref<T>(&self, cb: impl FnOnce(socket2::SockRef<'_>) -> T) -> Result<T, ()>
+    where
+        Self: Sized,
+    {
+        Ok(cb(socket2::SockRef::from(&self.socket)))
+    }
+}
