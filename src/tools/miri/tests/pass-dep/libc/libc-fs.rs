@@ -31,6 +31,7 @@ fn main() {
     test_create_read_write();
     test_file_open_args();
     test_file_open_nofollow();
+    test_file_open_dangling_symlink();
     test_file_open_directory();
     test_file_open_exclusive();
     #[cfg(target_os = "linux")]
@@ -367,6 +368,29 @@ fn test_file_open_nofollow() {
             "unexpected errno: {err}"
         );
     }
+}
+
+fn test_file_open_dangling_symlink() {
+    if !utils::have_symlink_permission() {
+        return;
+    }
+
+    let symlink_path = utils::prepare("miri_test_open_dangling_symlink");
+    std::os::unix::fs::symlink("does-not-exist", &symlink_path).unwrap();
+    let symlink_cpath = utils::into_c_string(symlink_path);
+
+    let err =
+        errno_result(unsafe { libc::open(symlink_cpath.as_ptr(), libc::O_RDONLY) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT, "unexpected errno: {err}");
+    let err =
+        errno_result(unsafe { libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW) }).unwrap_err();
+    assert!(
+        [libc::ELOOP, libc::EMLINK].contains(&err.raw_os_error().unwrap()),
+        "unexpected errno: {err}"
+    );
+    let err =
+        errno_result(unsafe { libc::open(symlink_cpath.as_ptr(), libc::O_DIRECTORY) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT, "unexpected errno: {err}");
 }
 
 fn test_file_open_directory() {
