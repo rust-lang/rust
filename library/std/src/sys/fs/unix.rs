@@ -1926,22 +1926,11 @@ pub fn set_perm_nofollow(_p: &CStr, _perm: FilePermissions) -> io::Result<()> {
     Err(crate::io::ErrorKind::Unsupported.into())
 }
 
-#[cfg(target_os = "android")]
-pub fn set_perm_nofollow(_p: &CStr, _perm: FilePermissions) -> io::Result<()> {
-    // Currently Android seems to be having inconsistent behavior with fchmodat
-    // with `AT_SYMLINK_NOFOLLOW` or openat with `O_NOFOLLOW` + fchmod.
-    // See this issue here mentioning inconsistent behavior on fchmodat:
-    // https://github.com/android/ndk/issues/1258
-    // On the arm-android CI job, using fchmodat with `AT_SYMLINK_NOFOLLOW` +
-    // fallback behavior on a symlink sets the target file's permissions,
-    // which is incorrect behavior.
-    Err(crate::io::ErrorKind::Unsupported.into())
-}
-
-#[cfg(not(any(target_os = "android", target_os = "vxworks")))]
+#[cfg(not(target_os = "vxworks"))]
 pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
+    /// Helper function for fallback open with `O_NOFOLLOW` + `fchmod` behavior. This will
+    /// successfully change the permissions of non-symlinks and fail when there's a symlink.
     #[inline]
-    /// Helper function for fallback open with `O_NOFOLLOW` + `fchmod` behavior
     fn open_and_set_permissions(p: &CStr, perm: FilePermissions) -> io::Result<()> {
         use crate::fs::{OpenOptions, Permissions};
 
@@ -1956,6 +1945,7 @@ pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
             use crate::os::unix::fs::OpenOptionsExt;
             #[cfg(target_os = "wasi")]
             use crate::os::wasi::fs::OpenOptionsExt;
+
             options.custom_flags(libc::O_NOFOLLOW);
         }
 
@@ -1970,7 +1960,8 @@ pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
     #[allow(unused)]
     let mut res: Result<(), core::io::Error> = Err(crate::io::ErrorKind::Unsupported.into());
 
-    // These platforms support `fchmodat`, so utilize this syscall over `open` + `fchmod`
+    // These platforms support `fchmodat`, so utilize this syscall over `open` + `fchmod`.
+    // We can *not* use this on Android due to <https://github.com/android/ndk/issues/1258>.
     #[cfg(any(
         target_os = "linux",
         target_os = "macos",
