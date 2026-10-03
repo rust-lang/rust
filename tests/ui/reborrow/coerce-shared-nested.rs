@@ -1,4 +1,6 @@
-//@ known-bug: unknown
+//! Regression test for an ICE when coercing through a `CoerceShared` impl with a nested
+//! `CoerceShared` field next to another data field, which coherence currently rejects.
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 
@@ -45,6 +47,7 @@ impl<'a, T> Clone for OuterRef<'a, T> {
 impl<'a, T> Copy for OuterRef<'a, T> {}
 
 impl<'a, T> CoerceShared<OuterRef<'a, T>> for OuterMut<'a, T> {}
+//~^ ERROR
 
 fn get<'a>(outer: OuterRef<'a, i32>) -> (&'a i32, usize) {
     (outer.inner.value, outer.tag)
