@@ -30,6 +30,7 @@ pub(crate) enum OverlayKind {
     LlvmBitcodeLinker,
     Enzyme,
     Offload,
+    Tpde,
 }
 
 impl OverlayKind {
@@ -93,6 +94,12 @@ impl OverlayKind {
                 "src/gcc/COPYING3",
                 "src/gcc/COPYING3.LIB",
             ],
+            OverlayKind::Tpde => &[
+                "src/tpde/README.md",
+                "src/tpde/LICENSES/Apache-2.0.txt",
+                "src/tpde/LICENSES/LLVM-exception.txt",
+                "src/tpde/LICENSES/CC0-1.0.txt",
+            ],
         }
     }
 
@@ -119,6 +126,7 @@ impl OverlayKind {
             OverlayKind::Gcc => builder.rust_version(),
             OverlayKind::Enzyme => builder.rust_version(),
             OverlayKind::Offload => builder.rust_version(),
+            OverlayKind::Tpde => builder.rust_version(),
         }
     }
 }
