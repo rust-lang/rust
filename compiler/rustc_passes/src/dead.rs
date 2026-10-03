@@ -7,28 +7,31 @@ use std::mem;
 use std::ops::ControlFlow;
 use std::sync::atomic::Ordering;
 
-use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
+use hir::def_id::LocalDefIdSet;
 use rustc_abi::FieldIdx;
 use rustc_attr_ir::find_attr;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir::def::{CtorOf, DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalModId};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap, LocalModId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, ForeignItemId, ItemId, Node, PatKind, QPath};
+use rustc_hir::{self as hir, ForeignItemId, HirId, ItemId, Node, PatKind, QPath};
 use rustc_lint_defs::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
 use rustc_lint_defs::{self as lint, Lint, StableLintExpectationId};
+use rustc_macros::StableHash;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::middle::dead_code::{DeadCodeLivenessSnapshot, DeadCodeLivenessSummary};
+use rustc_middle::middle::dead_code::{
+    DeadCodeLivenessSnapshot, DeadCodeLivenessSummary, TrivialUsageSite, TrivialUsageSiteId,
+    TrivialUsageSites,
+};
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AssocTag, TyCtxt};
-use rustc_span::{Symbol, bug, kw, span_bug};
+use rustc_span::{Span, Symbol, bug, kw, span_bug};
 use rustc_structures::CrateType;
 
 use crate::diagnostics::{
-    ChangeFields, DeadCodePubInBinaryNote, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo,
-    UselessAssignment,
+    ChangeFields, DeadCodePubInBinaryNote, MultipleDeadCodes, ParentInfo, UselessAssignment,
 };
 
 /// Any local definition that may call something in its body block should be explored. For example,
@@ -69,6 +72,14 @@ fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         | DefKind::SyntheticCoroutineBody
         | DefKind::TestBinderConstraints => false,
     }
+}
+
+/// Determines whether an item was only used in a trivial usage site (and should
+/// therefore not be considered live) or whether it was used non-trivially.
+#[derive(Clone, Debug, StableHash, PartialEq, Eq, Hash)]
+pub enum LiveKind {
+    Trivial,
+    NonTrivial,
 }
 
 /// Determine if a work from the worklist is coming from a `#[allow]`
@@ -112,6 +123,7 @@ struct WorkItem {
     id: LocalDefId,
     propagated: ComesFromAllowExpect,
     own: ComesFromAllowExpect,
+    propagated_trivial_usage_site: Option<TrivialUsageSiteId>,
 }
 
 enum ImplItemCheckResult {
@@ -119,20 +131,49 @@ enum ImplItemCheckResult {
     Dead { require: LocalDefId },
 }
 
+#[derive(Eq, Hash, PartialEq, Debug)]
+struct ScannedItem {
+    id: LocalDefId,
+    propagated: ComesFromAllowExpect,
+    live_kind: LiveKind,
+}
+
+#[derive(Default)]
+struct LiveSymbols {
+    live: LocalDefIdSet,
+    sites_by_defid: LocalDefIdMap<FxHashSet<TrivialUsageSiteId>>,
+    sites: TrivialUsageSites,
+}
+
+impl LiveSymbols {
+    fn insert(&mut self, def_id: LocalDefId, site: Option<TrivialUsageSiteId>) {
+        match site {
+            Some(site) => {
+                // Only remember the trivial usage of the field
+                // if it it is dead or has only used trivially before
+                if !self.live.contains(&def_id) {
+                    self.sites_by_defid.entry(def_id).or_default().insert(site);
+                }
+            }
+            None => {
+                self.live.insert(def_id);
+                self.sites_by_defid.remove(&def_id);
+            }
+        }
+    }
+}
+
 struct MarkSymbolVisitor<'tcx> {
     worklist: Vec<WorkItem>,
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
-    scanned: FxHashSet<(LocalDefId, ComesFromAllowExpect)>,
-    live_symbols: LocalDefIdSet,
+    scanned: FxHashSet<ScannedItem>,
+    live_symbols: LiveSymbols,
     repr_unconditionally_treats_fields_as_live: bool,
     repr_has_repr_simd_or_scalable: bool,
+    inside_trivial_usage_site: Option<TrivialUsageSiteId>,
     in_pat: bool,
     ignore_variant_stack: Vec<DefId>,
-    // maps from ADTs to ignored derived traits (e.g. Debug and Clone)
-    // and the span of their respective impl (i.e., part of the derive
-    // macro)
-    ignored_derived_traits: LocalDefIdMap<FxIndexSet<DefId>>,
     propagated_comes_from_allow_expect: ComesFromAllowExpect,
     unsolved_items: Vec<LocalDefId>,
 }
@@ -170,11 +211,12 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     id: def_id,
                     propagated: self.propagated_comes_from_allow_expect,
                     own: own_comes_from_allow_expect,
+                    propagated_trivial_usage_site: self.inside_trivial_usage_site,
                 });
             }
 
             if own_comes_from_allow_expect == ComesFromAllowExpect::No {
-                self.live_symbols.insert(def_id);
+                self.mark_live_symbol(def_id);
             }
         }
     }
@@ -184,7 +226,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             debug_assert!(!should_explore(self.tcx, def_id));
 
             if self.own_comes_from_allow_expect(def_id) == ComesFromAllowExpect::No {
-                self.live_symbols.insert(def_id);
+                self.mark_live_symbol(def_id);
             }
         }
     }
@@ -386,8 +428,9 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn mark_live_symbols(&mut self) -> <MarkSymbolVisitor<'tcx> as Visitor<'tcx>>::Result {
         while let Some(work) = self.worklist.pop() {
-            let WorkItem { mut id, propagated, own } = work;
+            let WorkItem { mut id, propagated, own, propagated_trivial_usage_site } = work;
             self.propagated_comes_from_allow_expect = propagated;
+            self.inside_trivial_usage_site = propagated_trivial_usage_site;
 
             // in the case of tuple struct constructors we want to check the item,
             // not the generated tuple struct constructor function
@@ -419,65 +462,70 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             match own {
                 ComesFromAllowExpect::Yes => {}
                 ComesFromAllowExpect::No => {
-                    self.live_symbols.insert(id);
+                    self.mark_live_symbol(id);
                 }
             }
 
-            if !self.scanned.insert((id, propagated)) {
+            if !self.scanned.insert(ScannedItem {
+                id,
+                propagated,
+                live_kind: if self.inside_trivial_usage_site.is_some() {
+                    LiveKind::Trivial
+                } else {
+                    LiveKind::NonTrivial
+                },
+            }) {
                 continue;
             } else if propagated == ComesFromAllowExpect::No {
                 // If the item is not coming from an `#[allow]` or `#[expect]`,
                 // we also mark it as scanned with `ComesFromAllowExpect::Yes`
                 // to avoid re-scanning it in the future.
-                self.scanned.insert((id, ComesFromAllowExpect::Yes));
+                self.scanned.insert(ScannedItem {
+                    id,
+                    propagated: ComesFromAllowExpect::Yes,
+                    live_kind: if self.inside_trivial_usage_site.is_some() {
+                        LiveKind::Trivial
+                    } else {
+                        LiveKind::NonTrivial
+                    },
+                });
             }
 
             // Avoid accessing the HIR for the synthesized associated type generated for RPITITs.
             if self.tcx.is_impl_trait_in_trait(id.to_def_id()) {
-                self.live_symbols.insert(id);
+                self.mark_live_symbol(id);
                 continue;
             }
 
-            self.visit_node(self.tcx.hir_node_by_def_id(id))?;
+            let hir_id = self.tcx.local_def_id_to_hir_id(id);
+            self.visit_node(hir_id, propagated_trivial_usage_site)?;
         }
 
         ControlFlow::Continue(())
     }
 
-    /// Automatically generated items marked with `rustc_trivial_field_reads`
-    /// will be ignored for the purposes of dead code analysis (see PR #85200
-    /// for discussion).
-    fn should_ignore_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) -> bool {
-        if let hir::ImplItemImplKind::Trait { .. } = impl_item.impl_kind
-            && find_attr!(self.tcx, impl_item.owner_id, RustcTrivialFieldReads)
-        {
-            if let impl_of = self.tcx.local_parent(impl_item.owner_id.def_id)
-                && let trait_ref =
-                    self.tcx.impl_trait_ref(impl_of).instantiate_identity().skip_norm_wip()
-                && let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
-                && let Some(adt_def_id) = adt_def.did().as_local()
-            {
-                self.ignored_derived_traits.entry(adt_def_id).or_default().insert(trait_ref.def_id);
-            }
-            return true;
-        }
-
-        false
+    fn get_trivial_field_reads_attr(&mut self, id: HirId) -> Option<Span> {
+        find_attr!(self.tcx, id, RustcTrivialFieldReads(span) => span.clone())
     }
 
     fn visit_node(
         &mut self,
-        node: Node<'tcx>,
+        hir_id: HirId,
+        trivial: Option<TrivialUsageSiteId>,
     ) -> <MarkSymbolVisitor<'tcx> as Visitor<'tcx>>::Result {
-        if let Node::ImplItem(impl_item) = node
-            && self.should_ignore_impl_item(impl_item)
-        {
-            return ControlFlow::Continue(());
-        }
-
+        let node = self.tcx.hir_node(hir_id);
+        let inside_trivial_usage_site = self.inside_trivial_usage_site.clone();
         let unconditionally_treated_fields_as_live =
             self.repr_unconditionally_treats_fields_as_live;
         let had_repr_simd_or_scalable = self.repr_has_repr_simd_or_scalable;
+        // If we are looking at a `WorkItem` created from a trivial usage
+        // site, keep the usage site, otherwise check for the attr
+        self.inside_trivial_usage_site = trivial.or_else(|| {
+            self.get_trivial_field_reads_attr(hir_id).map(|attr_span| {
+                let site = TrivialUsageSite { attr_span, hir_id };
+                self.live_symbols.sites.add_trivial_usage_site(site)
+            })
+        });
         self.repr_unconditionally_treats_fields_as_live = false;
         self.repr_has_repr_simd_or_scalable = false;
         let walk_result = match node {
@@ -538,6 +586,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         };
         self.repr_has_repr_simd_or_scalable = had_repr_simd_or_scalable;
         self.repr_unconditionally_treats_fields_as_live = unconditionally_treated_fields_as_live;
+        self.inside_trivial_usage_site = inside_trivial_usage_site;
 
         walk_result
     }
@@ -577,13 +626,13 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         let mut trait_comes_from_allow = None;
         if let Some(trait_def_id) = trait_def_id {
             if defer_seeds_come_from_allow {
-                if !self.live_symbols.contains(&trait_def_id) {
+                if !self.live_symbols.live.contains(&trait_def_id) {
                     return ImplItemCheckResult::Dead { require: trait_def_id };
                 }
             } else {
                 trait_comes_from_allow = has_allow_dead_code_or_lang_attr(self.tcx, trait_def_id);
 
-                if !self.live_symbols.contains(&trait_def_id) {
+                if !self.live_symbols.live.contains(&trait_def_id) {
                     return match trait_comes_from_allow {
                         Some(comes_from_allow) => ImplItemCheckResult::Live(comes_from_allow),
                         None => ImplItemCheckResult::Dead { require: trait_def_id },
@@ -596,7 +645,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         if let ty::Adt(adt, _) =
             self.tcx.type_of(impl_block_id).instantiate_identity().skip_norm_wip().kind()
             && let Some(adt_def_id) = adt.did().as_local()
-            && !self.live_symbols.contains(&adt_def_id)
+            && !self.live_symbols.live.contains(&adt_def_id)
         {
             if defer_seeds_come_from_allow {
                 return ImplItemCheckResult::Dead { require: adt_def_id };
@@ -636,7 +685,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         rustc::potential_query_instability,
         reason = "The order of the unsolved items is not important, so we can just collect them into a vector."
     )]
-    fn mark_live_symbols_and_ignored_derived_traits(
+    fn mark_live_symbols_and_trivial_usage_sites(
         &mut self,
         defer_seeds_come_from_allow: bool,
     ) -> Result<(), ErrorGuaranteed> {
@@ -663,14 +712,19 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                         .unwrap_or(ComesFromAllowExpect::No)
                 };
 
-                WorkItem { id, propagated: comes_from_allow, own }
+                WorkItem {
+                    id,
+                    propagated: comes_from_allow,
+                    own,
+                    propagated_trivial_usage_site: None,
+                }
             }));
             if let ControlFlow::Break(guar) = self.mark_live_symbols() {
                 return Err(guar);
             }
 
             let unsolved_items = unsolved_map
-                .extract_if(|require, _| self.live_symbols.contains(require))
+                .extract_if(|require, _| self.live_symbols.live.contains(require))
                 .flat_map(|(_, items)| items)
                 .collect();
 
@@ -684,6 +738,29 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         self.unsolved_items = unsolved_map.into_values().flatten().collect();
 
         Ok(())
+    }
+
+    fn mark_live_symbol(&mut self, def_id: LocalDefId) {
+        self.live_symbols.insert(def_id, self.inside_trivial_usage_site);
+    }
+
+    fn get_live_symbols(&self) -> DeadCodeLivenessSnapshot {
+        let sites_by_defid = self
+            .live_symbols
+            .sites_by_defid
+            .items()
+            .map(|(def_id, site_ids)| {
+                #[allow(rustc::potential_query_instability)]
+                let mut site_ids = site_ids.iter().copied().collect::<Vec<_>>();
+                site_ids.sort();
+                (*def_id, site_ids)
+            })
+            .collect();
+        DeadCodeLivenessSnapshot {
+            live: self.live_symbols.live.clone(),
+            sites_by_defid,
+            sites: self.live_symbols.sites.clone(),
+        }
     }
 }
 
@@ -723,7 +800,9 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             }
             if effective_visibilities.is_reachable(def_id) { Some(def_id) } else { None }
         });
-        self.live_symbols.extend(live_fields);
+        for def_id in live_fields {
+            self.mark_live_symbol(def_id);
+        }
 
         intravisit::walk_struct_def(self, def)
     }
@@ -825,7 +904,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         // referenced by it should be considered as used.
         let in_pat = mem::replace(&mut self.in_pat, false);
 
-        self.live_symbols.insert(c.def_id);
+        self.mark_live_symbol(c.def_id);
         let result = intravisit::walk_anon_const(self, c);
 
         self.in_pat = in_pat;
@@ -838,7 +917,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         // referenced by it should be considered as used.
         let in_pat = mem::replace(&mut self.in_pat, false);
 
-        self.live_symbols.insert(c.def_id);
+        self.mark_live_symbol(c.def_id);
         let result = intravisit::walk_inline_const(self, c);
 
         self.in_pat = in_pat;
@@ -867,6 +946,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
                         id: local_def_id,
                         propagated: ComesFromAllowExpect::No,
                         own: ComesFromAllowExpect::No,
+                        propagated_trivial_usage_site: self.inside_trivial_usage_site,
                     });
                 }
             }
@@ -936,6 +1016,7 @@ fn maybe_record_as_seed<'tcx>(
             id: owner_id.def_id,
             propagated: comes_from_allow,
             own: comes_from_allow,
+            propagated_trivial_usage_site: None,
         });
     }
 
@@ -948,6 +1029,7 @@ fn maybe_record_as_seed<'tcx>(
                         id: variant.def_id.expect_local(),
                         propagated: comes_from_allow,
                         own: comes_from_allow,
+                        propagated_trivial_usage_site: None,
                     });
                 }
             }
@@ -978,6 +1060,7 @@ fn maybe_record_as_seed<'tcx>(
                 id: owner_id.def_id,
                 propagated: ComesFromAllowExpect::No,
                 own: ComesFromAllowExpect::No,
+                propagated_trivial_usage_site: None,
             });
         }
         DefKind::Const => {
@@ -989,6 +1072,7 @@ fn maybe_record_as_seed<'tcx>(
                     id: owner_id.def_id,
                     propagated: ComesFromAllowExpect::No,
                     own: ComesFromAllowExpect::No,
+                    propagated_trivial_usage_site: None,
                 });
             }
         }
@@ -1020,6 +1104,7 @@ fn create_and_seed_worklist(tcx: TyCtxt<'_>) -> SeedWorklists {
             id: local_def_id,
             propagated: ComesFromAllowExpect::No,
             own: ComesFromAllowExpect::No,
+            propagated_trivial_usage_site: None,
         });
     }
 
@@ -1035,6 +1120,7 @@ fn create_and_seed_worklist(tcx: TyCtxt<'_>) -> SeedWorklists {
             id: local_def_id,
             propagated: ComesFromAllowExpect::No,
             own: ComesFromAllowExpect::No,
+            propagated_trivial_usage_site: None,
         });
     }
 
@@ -1044,6 +1130,7 @@ fn create_and_seed_worklist(tcx: TyCtxt<'_>) -> SeedWorklists {
                 id: *id,
                 propagated: ComesFromAllowExpect::No,
                 own: ComesFromAllowExpect::No,
+                propagated_trivial_usage_site: None,
             });
         }
     }
@@ -1060,7 +1147,7 @@ fn create_and_seed_worklist(tcx: TyCtxt<'_>) -> SeedWorklists {
     SeedWorklists { worklist, deferred_seeds, unsolved_items }
 }
 
-fn live_symbols_and_ignored_derived_traits(
+fn live_symbols_and_trivial_usage_sites(
     tcx: TyCtxt<'_>,
     (): (),
 ) -> Result<DeadCodeLivenessSummary, ErrorGuaranteed> {
@@ -1073,34 +1160,28 @@ fn live_symbols_and_ignored_derived_traits(
         live_symbols: Default::default(),
         repr_unconditionally_treats_fields_as_live: false,
         repr_has_repr_simd_or_scalable: false,
+        inside_trivial_usage_site: None,
         in_pat: false,
         ignore_variant_stack: vec![],
-        ignored_derived_traits: Default::default(),
         propagated_comes_from_allow_expect: ComesFromAllowExpect::No,
         unsolved_items,
     };
-    symbol_visitor.mark_live_symbols_and_ignored_derived_traits(true)?;
-    let pre_deferred_seeding = DeadCodeLivenessSnapshot {
-        live_symbols: symbol_visitor.live_symbols.clone(),
-        ignored_derived_traits: symbol_visitor.ignored_derived_traits.clone(),
-    };
+    symbol_visitor.mark_live_symbols_and_trivial_usage_sites(true)?;
+    let pre_deferred_seeding = symbol_visitor.get_live_symbols();
 
     if !deferred_seeds.pub_reachables.is_empty() {
         symbol_visitor.worklist.extend(deferred_seeds.pub_reachables);
-        symbol_visitor.mark_live_symbols_and_ignored_derived_traits(true)?;
+        symbol_visitor.mark_live_symbols_and_trivial_usage_sites(true)?;
     }
 
     if !deferred_seeds.come_from_allow.is_empty() {
         symbol_visitor.worklist.extend(deferred_seeds.come_from_allow);
-        symbol_visitor.mark_live_symbols_and_ignored_derived_traits(false)?;
+        symbol_visitor.mark_live_symbols_and_trivial_usage_sites(false)?;
     }
 
     Ok(DeadCodeLivenessSummary {
         pre_deferred_seeding,
-        final_result: DeadCodeLivenessSnapshot {
-            live_symbols: symbol_visitor.live_symbols,
-            ignored_derived_traits: symbol_visitor.ignored_derived_traits,
-        },
+        final_result: symbol_visitor.get_live_symbols(),
     })
 }
 
@@ -1113,8 +1194,7 @@ struct DeadItem {
 struct DeadVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     target_lint: &'static Lint,
-    live_symbols: &'tcx LocalDefIdSet,
-    ignored_derived_traits: &'tcx LocalDefIdMap<FxIndexSet<DefId>>,
+    live_symbols: &'tcx DeadCodeLivenessSnapshot,
 }
 
 enum ShouldWarnAboutField {
@@ -1132,7 +1212,7 @@ enum ReportOn {
 
 impl<'tcx> DeadVisitor<'tcx> {
     fn should_warn_about_field(&mut self, field: &ty::FieldDef) -> ShouldWarnAboutField {
-        if self.live_symbols.contains(&field.did.expect_local()) {
+        if self.live_symbols.is_live(&field.did.expect_local()) {
             return ShouldWarnAboutField::No;
         }
         let field_type = self.tcx.type_of(field.did).instantiate_identity().skip_norm_wip();
@@ -1167,7 +1247,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         let fulfill_if_expected = |node: DefId| {
             // Only consider local, dead symbols where lint level carries an expectation
             if let Some(node) = node.as_local()
-                && !self.live_symbols.contains(&node)
+                && !self.live_symbols.is_live(&node)
                 && let (_, Some(expectation)) = self.def_lint_level_plus(node)
             {
                 // Same mechanism as LintContext::fulfill_expectation.
@@ -1263,25 +1343,7 @@ impl<'tcx> DeadVisitor<'tcx> {
             ParentInfo { num, descr, parent_descr, span }
         });
 
-        let mut encl_def_id = parent_item.unwrap_or(first_item.def_id);
-        // `ignored_derived_traits` is computed for the enum, not for the variants.
-        if let DefKind::Variant = tcx.def_kind(encl_def_id) {
-            encl_def_id = tcx.local_parent(encl_def_id);
-        }
-
-        let ignored_derived_impls =
-            self.ignored_derived_traits.get(&encl_def_id).map(|ign_traits| {
-                let trait_list = ign_traits
-                    .iter()
-                    .map(|trait_id| self.tcx.item_name(*trait_id))
-                    .collect::<Vec<_>>();
-                let trait_list_len = trait_list.len();
-                IgnoredDerivedImpls {
-                    name: self.tcx.item_name(encl_def_id.to_def_id()),
-                    trait_list: trait_list.into(),
-                    trait_list_len,
-                }
-            });
+        let trivial_usage_sites = self.trivial_usage_sites(first_item);
 
         let diag = match report_on {
             ReportOn::TupleField => {
@@ -1326,7 +1388,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                     dead_code_pub_in_binary_note: self.dead_code_pub_in_binary_note(),
                     change_fields_suggestion: fields_suggestion,
                     parent_info,
-                    ignored_derived_impls,
+                    trivial_usage_sites,
                 }
             }
             ReportOn::NamedField => {
@@ -1362,7 +1424,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                     name_list,
                     dead_code_pub_in_binary_note: self.dead_code_pub_in_binary_note(),
                     parent_info,
-                    ignored_derived_impls,
+                    trivial_usage_sites,
                     enum_variants_with_same_name,
                 }
             }
@@ -1370,6 +1432,30 @@ impl<'tcx> DeadVisitor<'tcx> {
 
         let hir_id = tcx.local_def_id_to_hir_id(first_item.def_id);
         self.tcx.emit_node_span_lint(self.target_lint, hir_id, MultiSpan::from_spans(spans), diag);
+    }
+
+    fn trivial_usage_sites(
+        &self,
+        first_item: &DeadItem,
+    ) -> Vec<crate::diagnostics::TrivialUsageSite> {
+        self.live_symbols
+            .trivial_usage_sites(&first_item.def_id)
+            .map(|usage_site| {
+                let name = self.tcx.item_name(first_item.def_id);
+                let mut spans = MultiSpan::new();
+                let kind = if usage_site.attr_span.in_derive_expansion() {
+                    spans.push_primary_span(usage_site.attr_span);
+                    "in this derive macro"
+                } else if usage_site.attr_span.in_external_macro(self.tcx.sess.source_map()) {
+                    spans.push_primary_span(usage_site.attr_span);
+                    "in this macro"
+                } else {
+                    spans.push_primary_span(self.tcx.hir_span(usage_site.hir_id));
+                    "here"
+                };
+                crate::diagnostics::TrivialUsageSite { name, spans, kind }
+            })
+            .collect()
     }
 
     fn warn_multiple(
@@ -1432,13 +1518,13 @@ impl<'tcx> DeadVisitor<'tcx> {
             return true;
         };
 
-        self.live_symbols.contains(&def_id) || name.as_str().starts_with('_')
+        self.live_symbols.is_live(&def_id) || name.as_str().starts_with('_')
     }
 }
 
 fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModId) {
     let Ok(DeadCodeLivenessSummary { pre_deferred_seeding, final_result }) =
-        tcx.live_symbols_and_ignored_derived_traits(()).as_ref()
+        tcx.live_symbols_and_trivial_usage_sites(()).as_ref()
     else {
         return;
     };
@@ -1448,15 +1534,14 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModId) {
     if tcx.crate_types().contains(&CrateType::Executable) {
         let is_unused_pub = |def_id: LocalDefId| {
             tcx.effective_visibilities(()).is_public_at_level(def_id, Level::Reachable)
-                && !pre_deferred_seeding.live_symbols.contains(&def_id)
+                && !pre_deferred_seeding.is_live(&def_id)
         };
 
         lint_dead_codes(
             tcx,
             DEAD_CODE_PUB_IN_BINARY,
             module,
-            &pre_deferred_seeding.live_symbols,
-            &pre_deferred_seeding.ignored_derived_traits,
+            &pre_deferred_seeding,
             module_items.free_items().filter(|free_item| is_unused_pub(free_item.owner_id.def_id)),
             module_items
                 .foreign_items()
@@ -1468,8 +1553,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModId) {
         tcx,
         DEAD_CODE,
         module,
-        &final_result.live_symbols,
-        &final_result.ignored_derived_traits,
+        &final_result,
         module_items.free_items(),
         module_items.foreign_items(),
     );
@@ -1479,12 +1563,11 @@ fn lint_dead_codes<'tcx>(
     tcx: TyCtxt<'tcx>,
     target_lint: &'static Lint,
     module: LocalModId,
-    live_symbols: &'tcx LocalDefIdSet,
-    ignored_derived_traits: &'tcx LocalDefIdMap<FxIndexSet<DefId>>,
+    live_symbols: &'tcx DeadCodeLivenessSnapshot,
     free_items: impl Iterator<Item = ItemId>,
     foreign_items: impl Iterator<Item = ForeignItemId>,
 ) {
-    let mut visitor = DeadVisitor { tcx, target_lint, live_symbols, ignored_derived_traits };
+    let mut visitor = DeadVisitor { tcx, target_lint, live_symbols };
     for item in free_items {
         let def_kind = tcx.def_kind(item.owner_id);
 
@@ -1495,7 +1578,7 @@ fn lint_dead_codes<'tcx>(
         // for unused assoc items in unused trait,
         // we have diagnosed the unused trait.
         if def_kind == (DefKind::Impl { of_trait: false })
-            || (def_kind == DefKind::Trait && live_symbols.contains(&item.owner_id.def_id))
+            || (def_kind == DefKind::Trait && live_symbols.is_live(&item.owner_id.def_id))
         {
             for &def_id in tcx.associated_item_def_ids(item.owner_id.def_id) {
                 if let Some(local_def_id) = def_id.as_local()
@@ -1511,9 +1594,9 @@ fn lint_dead_codes<'tcx>(
             visitor.warn_multiple(item.owner_id.def_id, "used", dead_codes, ReportOn::NamedField);
         }
 
-        if !live_symbols.contains(&item.owner_id.def_id) {
+        if !live_symbols.is_live(&item.owner_id.def_id) {
             let parent = tcx.local_parent(item.owner_id.def_id);
-            if parent != module.to_local_def_id() && !live_symbols.contains(&parent) {
+            if parent != module.to_local_def_id() && !live_symbols.is_live(&parent) {
                 // We already have diagnosed something, but check parent's field for #[expect]
                 visitor.fulfill_dead_code_expectations(item.owner_id.def_id, true);
                 continue;
@@ -1529,7 +1612,7 @@ fn lint_dead_codes<'tcx>(
 
             for variant in adt.variants() {
                 let def_id = variant.def_id.expect_local();
-                if !live_symbols.contains(&def_id) {
+                if !live_symbols.is_live(&def_id) {
                     // Record to group diagnostics.
                     let level_plus = visitor.def_lint_level_plus(def_id);
                     dead_variants.push(DeadItem { def_id, name: variant.name, level_plus });
@@ -1574,5 +1657,5 @@ fn lint_dead_codes<'tcx>(
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers =
-        Providers { live_symbols_and_ignored_derived_traits, check_mod_deathness, ..*providers };
+        Providers { live_symbols_and_trivial_usage_sites, check_mod_deathness, ..*providers };
 }
