@@ -14,8 +14,13 @@ use crate::builder::matches::{
 };
 
 /// Below this length, an array or slice pattern is compared element by element
-/// rather than as a single aggregate, since the per-element comparisons are
-/// unlikely to be more expensive than a `PartialEq::eq` call.
+/// rather than as a single aggregate.
+///
+/// For a single short constant, the aggregate comparison is no slower once
+/// optimised, but each aggregate test is a separate call that only tells
+/// whether that one constant matched. A match with many short constant arms,
+/// such as every combination of `[bool; 3]`, would turn its decision tree into
+/// a chain of such calls, which is markedly slower, especially in debug builds.
 const AGGREGATE_EQ_MIN_LEN: usize = 4;
 
 /// Whether arrays and slices with this element type may be compared as an aggregate.
@@ -23,7 +28,8 @@ const AGGREGATE_EQ_MIN_LEN: usize = 4;
 /// We rely on `PartialEq::eq` agreeing with structural equality and on it not
 /// panicking, so we restrict ourselves to the primitives that
 /// `core::cmp::BytewiseEq` is implemented for. For those, the comparison of the
-/// whole aggregate is done by the `compare_bytes` and `raw_eq` intrinsics.
+/// whole aggregate is done by the `compare_bytes` and `raw_eq` intrinsics. The
+/// impls in `core` that call them note that they must not panic.
 fn is_bytewise_comparable(element_ty: Ty<'_>) -> bool {
     matches!(element_ty.kind(), ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_))
 }
@@ -31,6 +37,7 @@ fn is_bytewise_comparable(element_ty: Ty<'_>) -> bool {
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Check if we can use aggregate `PartialEq::eq` comparisons for constant array/slice patterns.
     /// This is not possible in const contexts, because `PartialEq` is not const-stable yet.
+    // FIXME(const_cmp): remove this restriction once `const_cmp` stabilises.
     fn can_use_aggregate_eq(&self) -> bool {
         let in_const_context = self.tcx.is_const_fn(self.def_id.to_def_id())
             || !self.tcx.hir_body_owner_kind(self.def_id).is_fn_or_closure();
@@ -51,7 +58,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> Option<ty::Value<'tcx>> {
         let value = pattern.extra.as_deref()?.expanded_const_value?;
         let (ty::Array(element_ty, _) | ty::Slice(element_ty)) = *pattern.ty.kind() else {
-            return None;
+            span_bug!(pattern.span, "expanded constant value on a non-aggregate pattern");
         };
         if element_count < AGGREGATE_EQ_MIN_LEN
             || !is_bytewise_comparable(element_ty)
@@ -431,32 +438,24 @@ impl<'tcx> InterPat<'tcx> {
                 }
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-                let mut subpats = vec![];
                 // If this pattern was expanded from a constant, compare the
                 // whole slice against that constant at once via
-                // `PartialEq::eq` after the length check, rather than
-                // element by element.
+                // `PartialEq::eq`, rather than element by element. That
+                // comparison takes the length into account, so no separate
+                // length test is needed.
                 if let Some(aggregate_value) = cx.aggregate_const_value(pattern, prefix.len()) {
                     debug_assert!(slice.is_none() && suffix.is_empty());
-                    subpats.push(InterPat {
-                        kind: InterPatKind::Refutable {
-                            place: unwrap_place(),
-                            testable_case: TestableCase::Constant {
-                                value: aggregate_value,
-                                kind: PatConstKind::Aggregate,
-                            },
-                            subpats: Vec::new(),
-                        },
-                        ascriptions: Vec::new(),
-                        pattern_span: pattern.span,
-                        is_never: false,
-                    });
-                    let testable_case = TestableCase::Slice {
-                        len: u64::try_from(prefix.len()).unwrap(),
-                        op: SliceLenOp::Equal,
+                    let testable_case = TestableCase::Constant {
+                        value: aggregate_value,
+                        kind: PatConstKind::Aggregate,
                     };
-                    InterPatKind::Refutable { place: unwrap_place(), testable_case, subpats }
+                    InterPatKind::Refutable {
+                        place: unwrap_place(),
+                        testable_case,
+                        subpats: vec![],
+                    }
                 } else {
+                    let mut subpats = vec![];
                     for (subplace, subpat) in
                         prefix_slice_suffix(&place_builder, None, prefix, slice, suffix)
                     {
