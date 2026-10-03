@@ -1,5 +1,6 @@
 //@ check-pass
 //@ revisions: next old
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 #![feature(const_trait_impl)]
