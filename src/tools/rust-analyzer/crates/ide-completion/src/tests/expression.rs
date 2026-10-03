@@ -344,6 +344,8 @@ fn complete_in_match_arm() {
             kw for
             kw if
             kw if let
+            kw let
+            kw letm
             kw loop
             kw match
             kw return

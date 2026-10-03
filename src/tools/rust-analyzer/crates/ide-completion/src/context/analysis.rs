@@ -1426,12 +1426,13 @@ fn classify_name_ref<'db>(
         let impl_ = fetch_immediate_impl_or_trait(sema, original_file, expr.syntax())
             .and_then(Either::left);
 
-        let in_match_guard = match it.parent().and_then(ast::MatchArm::cast) {
-            Some(arm) => arm
-                .fat_arrow_token()
-                .is_none_or(|arrow| it.text_range().start() < arrow.text_range().start()),
-            None => false,
-        };
+        let before_match_arrow = it.parent().and_then(ast::MatchArm::cast).map(|arm| {
+            arm.fat_arrow_token()
+                .is_none_or(|arrow| it.text_range().start() < arrow.text_range().start())
+        });
+        let in_match_guard = before_match_arrow == Some(true);
+        let at_optional_block = before_match_arrow == Some(false)
+            || it.parent().and_then(ast::ClosureExpr::cast).is_some();
 
         PathKind::Expr {
             expr_ctx: PathExprCtx {
@@ -1451,6 +1452,7 @@ fn classify_name_ref<'db>(
                 after_incomplete_let,
                 impl_,
                 in_match_guard,
+                at_optional_block,
             },
         }
     };

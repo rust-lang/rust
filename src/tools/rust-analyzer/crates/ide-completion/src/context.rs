@@ -189,6 +189,7 @@ pub(crate) struct PathExprCtx<'db> {
     /// Whether this expression occurs in match arm guard position: before the
     /// fat arrow token
     pub(crate) in_match_guard: bool,
+    pub(crate) at_optional_block: bool,
 }
 
 /// Original file ast nodes
