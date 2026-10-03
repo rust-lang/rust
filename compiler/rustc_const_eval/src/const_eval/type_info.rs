@@ -91,9 +91,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                                 self.project_downcast_named(&field_dest, sym::Slice)?;
                             variant
                         }
-                        ty::Adt(adt_def, generics) => {
-                            self.write_adt_type_info(&field_dest, (ty, *adt_def), generics)?
-                        }
+                        ty::Adt(adt_def, _) => self.write_adt_type_info(&field_dest, *adt_def)?,
                         ty::Bool => {
                             let (variant, _variant_place) =
                                 self.project_downcast_named(&field_dest, sym::Bool)?;
