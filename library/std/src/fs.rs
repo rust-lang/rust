@@ -2797,6 +2797,19 @@ impl AsInner<fs_imp::FilePermissions> for Permissions {
     }
 }
 
+impl ReadDir {
+    /// Returns a handle for the directory this `ReadDir` is reading.
+    ///
+    /// Whenever possible, this will directly reuse the underlying handle. However, this may
+    /// fall back to opening a new handle based on the path, which is subject to race conditions
+    /// if the file system has changed since the `ReadDir` was created.
+    // FIXME: before stabilization, ensure that we have a race-free implementation on Windows!
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn dir(&self) -> io::Result<Dir> {
+        self.0.dir().map(|d| Dir { inner: d })
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;

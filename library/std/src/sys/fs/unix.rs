@@ -796,6 +796,39 @@ impl fmt::Debug for FilePermissions {
     }
 }
 
+impl ReadDir {
+    pub fn dir(&self) -> io::Result<Dir> {
+        let mut options = OpenOptions::new();
+        options.read(true);
+
+        cfg_select! {
+            // Some targets don't have `dirfd`. Open `Dir` based on path.
+            any(
+                target_os = "redox",
+                target_os = "espidf",
+                target_os = "horizon",
+                target_os = "vita",
+                target_os = "nto",
+                target_os = "qnx",
+                target_os = "vxworks",
+                target_os = "l4re",
+            ) => Dir::open(&self.inner.root, &options),
+            // Use `dirfd` where possible.
+            _ => {
+                let fd = unsafe { libc::dirfd(self.inner.dirp.0) };
+                // Make this FD into a directory handle. We don't actually drop it,
+                // so having an `OwnedFd` is fine.
+                let dir_handle =
+                    mem::ManuallyDrop::new(dir::Dir(unsafe { OwnedFd::from_raw_fd(fd) }));
+                // We don't want to expose `fd` or even the underlying file description
+                // as the directory stream has state attached to it. So we open a completely
+                // new file description based on this one.
+                dir_handle.open_dir(Path::new("."), &options)
+            }
+        }
+    }
+}
+
 impl fmt::Debug for ReadDir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This will only be called from std::fs::ReadDir, which will add a "ReadDir()" frame.
