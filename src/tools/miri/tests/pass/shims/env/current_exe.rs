@@ -1,4 +1,4 @@
-//@ignore-target: freebsd illumos solaris # we don't have the shims this needs here
+//@ignore-target: freebsd # we don't have the shims this needs here
 //@compile-flags: -Zmiri-disable-isolation
 //@run-native
 use std::env;
