@@ -275,7 +275,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 );
             }
 
-            TcpSocket::new(family, is_non_block).map(|s| this.machine.fds.new_ref(s).as_unix())
+            TcpSocket::new(family, is_non_block, this).map(|fd| fd.as_unix())
         } else if flags == this.eval_libc_i32("SOCK_DGRAM") {
             if ![0, this.eval_libc_i32("IPPROTO_UDP")].contains(&protocol) {
                 throw_unsup_format!(
@@ -284,7 +284,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 );
             }
 
-            UdpSocket::new(family, is_non_block).map(|s| this.machine.fds.new_ref(s).as_unix())
+            UdpSocket::new(family, is_non_block, this).map(|fd| fd.as_unix())
         } else {
             throw_unsup_format!(
                 "socket: type {:#x} is unsupported, only SOCK_STREAM, \
