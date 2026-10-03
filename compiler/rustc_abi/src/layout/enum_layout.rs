@@ -232,6 +232,67 @@ fn sanity_check_ity(dl: &TargetDataLayout, repr: &ReprOptions, min_ity: Integer)
     }
 }
 
+fn calculate_tagged_tag<FieldIdx, VariantIdx>(
+    dl: &TargetDataLayout,
+    repr: &ReprOptions,
+    min_ity: Integer,
+    start_align: Align,
+    signed: bool,
+    necessary_discriminants: Vec<u128>,
+    layout_variants: &mut IndexSlice<VariantIdx, VariantLayout<FieldIdx>>,
+) -> Scalar
+where
+    FieldIdx: Idx,
+    VariantIdx: Idx,
+{
+    sanity_check_ity(dl, repr, min_ity);
+
+    // Check to see if we should use a different type for the
+    // discriminant. We can safely use a type with the same size
+    // as the alignment of the first field of each variant.
+    // We increase the size of the discriminant to avoid LLVM copying
+    // padding when it doesn't need to. This normally causes unaligned
+    // load/stores and excessive memcpy/memset operations. By using a
+    // bigger integer size, LLVM can be sure about its contents and
+    // won't be so conservative.
+
+    // Use the initial field alignment
+    let ity = if repr.c() || repr.int.is_some() {
+        min_ity
+    } else {
+        Integer::for_align(dl, start_align).unwrap_or(min_ity).max(min_ity)
+    };
+
+    // If the alignment is not larger than the chosen discriminant size,
+    // don't use the alignment as the final size.
+    if ity > min_ity {
+        // Patch up the variants' first few fields.
+        let old_ity_size = min_ity.size();
+        let new_ity_size = ity.size();
+        for variant in layout_variants {
+            for i in &mut variant.field_offsets {
+                if *i <= old_ity_size {
+                    assert_eq!(*i, old_ity_size);
+                    *i = new_ity_size;
+                }
+            }
+            // We might be making the struct larger.
+            if variant.size <= old_ity_size {
+                variant.size = new_ity_size;
+            }
+        }
+    }
+
+    let tag_valid_range = {
+        let tag_size = ity.size();
+        let tags = necessary_discriminants.into_iter().map(|d| tag_size.truncate(d));
+        WrappingRange::smallest_range_containing(tags, tag_size)
+            // We might have no inhabited variants, so pretend there's at least one.
+            .unwrap_or(WrappingRange { start: 0, end: 0 })
+    };
+    Scalar::Initialized { value: Primitive::Int(ity, signed), valid_range: tag_valid_range }
+}
+
 fn constructable_variant<'a, VariantIdx, FieldIdx, F>(variant: &IndexSlice<FieldIdx, F>) -> bool
 where
     FieldIdx: Idx,
@@ -345,53 +406,15 @@ where
         return Err(LayoutCalculatorError::SizeOverflow);
     }
 
-    sanity_check_ity(dl, repr, min_ity);
-
-    // Check to see if we should use a different type for the
-    // discriminant. We can safely use a type with the same size
-    // as the alignment of the first field of each variant.
-    // We increase the size of the discriminant to avoid LLVM copying
-    // padding when it doesn't need to. This normally causes unaligned
-    // load/stores and excessive memcpy/memset operations. By using a
-    // bigger integer size, LLVM can be sure about its contents and
-    // won't be so conservative.
-
-    // Use the initial field alignment
-    let ity = if repr.c() || repr.int.is_some() {
-        min_ity
-    } else {
-        Integer::for_align(dl, start_align).unwrap_or(min_ity).max(min_ity)
-    };
-
-    // If the alignment is not larger than the chosen discriminant size,
-    // don't use the alignment as the final size.
-    if ity > min_ity {
-        // Patch up the variants' first few fields.
-        let old_ity_size = min_ity.size();
-        let new_ity_size = ity.size();
-        for variant in &mut layout_variants {
-            for i in &mut variant.field_offsets {
-                if *i <= old_ity_size {
-                    assert_eq!(*i, old_ity_size);
-                    *i = new_ity_size;
-                }
-            }
-            // We might be making the struct larger.
-            if variant.size <= old_ity_size {
-                variant.size = new_ity_size;
-            }
-        }
-    }
-
-    let tag_valid_range = {
-        let tag_size = ity.size();
-        let tags = necessary_discriminants.into_iter().map(|d| tag_size.truncate(d));
-        WrappingRange::smallest_range_containing(tags, tag_size)
-            // We might have no inhabited variants, so pretend there's at least one.
-            .unwrap_or(WrappingRange { start: 0, end: 0 })
-    };
-    let tag =
-        Scalar::Initialized { value: Primitive::Int(ity, signed), valid_range: tag_valid_range };
+    let tag = calculate_tagged_tag(
+        dl,
+        repr,
+        min_ity,
+        start_align,
+        signed,
+        necessary_discriminants,
+        &mut layout_variants,
+    );
     let abi = calculate_tagged_abi(calculator, &layout_variants, &variants, size, align, tag);
 
     // If we pick a "clever" (by-value) ABI, we might have to adjust the ABI of the
