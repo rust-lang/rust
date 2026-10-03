@@ -2,7 +2,7 @@ use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::UnsafeBinderCastKind;
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_attr_ir::{AttributeKind, HasAttrs, find_attr};
+use rustc_attr_ir::{Attribute, AttributeKind, HasAttrs, find_attr};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::HirId;
@@ -61,9 +61,9 @@ fn filter_loop_hint_attrs(id: HirId, tcx: TyCtxt<'_>) -> ThinVec<AttributeKind> 
     HasAttrs::get_attrs(id, &tcx)
         .into_iter()
         .filter_map(|attr| match attr {
-            rustc_attr_ir::Attribute::Parsed(attrkind @ AttributeKind::Unroll(_)) => {
-                Some(attrkind.clone())
-            }
+            Attribute::Parsed(attrkind @ AttributeKind::Unroll(_)) => Some(attrkind.clone()),
+            // contains `AttrId` which will lead to hard to debug ICEs if it ends up in thir
+            Attribute::Parsed(AttributeKind::LintCheck(_)) => None,
             _ => None,
         })
         .collect()

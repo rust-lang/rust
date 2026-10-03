@@ -792,4 +792,8 @@ impl MetaItemListParser {
         let mut iter = self.mixed();
         iter.next().filter(|_| iter.next().is_none())
     }
+
+    pub fn sub_parsers(&self) -> &[MetaItemOrLitParser] {
+        &self.sub_parsers
+    }
 }
