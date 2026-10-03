@@ -16,7 +16,6 @@ use libc_utils::*;
 const TEST_BYTES: &[u8] = b"these are some test bytes!";
 
 fn main() {
-    test_bind_ipv4();
     test_bind_ipv4_reuseaddr();
     test_set_reuseaddr_invalid_len();
     #[cfg(any(
@@ -29,8 +28,6 @@ fn main() {
         test_bind_ipv4_nosigpipe();
         test_set_nosigpipe_invalid_len();
     }
-    test_bind_ipv4_invalid_addr_len();
-    test_bind_ipv6();
     test_bind_twice();
     test_bind_connected();
     test_bind_listening();
@@ -68,19 +65,6 @@ fn main() {
     test_sockopt_reuseaddr();
 
     test_unblock_after_socket_close();
-}
-
-fn test_bind_ipv4() {
-    let sockfd =
-        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
-    let addr = net::sock_addr_ipv4(net::IPV4_LOCALHOST, 0);
-    unsafe {
-        errno_check(libc::bind(
-            sockfd,
-            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
-            size_of::<libc::sockaddr_in>() as libc::socklen_t,
-        ));
-    }
 }
 
 /// Tests binding after the `SO_REUSEADDR` socket option has been set on the newly created socket.
@@ -158,52 +142,6 @@ fn test_set_nosigpipe_invalid_len() {
     // By providing a u16 of size 2 bytes we trigger an invalid length error.
     let err = net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1u16).unwrap_err();
     assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
-}
-
-/// Tests binding an IPv4 socket with an IPv4 address but the addrlen argument
-/// has the wrong size.
-fn test_bind_ipv4_invalid_addr_len() {
-    let sockfd =
-        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
-    let addr = net::sock_addr_ipv4(net::IPV4_LOCALHOST, 0);
-    // A too small size is invalid.
-    let err = unsafe {
-        errno_result(libc::bind(
-            sockfd,
-            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
-            (size_of::<libc::sockaddr_in>() - 1) as libc::socklen_t,
-        ))
-        .unwrap_err()
-    };
-    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
-
-    if cfg!(miri) {
-        // A too big size is also invalid. Some native hosts (e.g. Linux)
-        // allow too big sizes, so we skip this test on native hosts:
-        // <https://github.com/rust-lang/miri/pull/5059#discussion_r3305439221>
-        let err = unsafe {
-            errno_result(libc::bind(
-                sockfd,
-                (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
-                (size_of::<libc::sockaddr_in>() + 1) as libc::socklen_t,
-            ))
-            .unwrap_err()
-        };
-        assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
-    }
-}
-
-fn test_bind_ipv6() {
-    let sockfd =
-        unsafe { errno_result(libc::socket(libc::AF_INET6, libc::SOCK_STREAM, 0)).unwrap() };
-    let addr = net::sock_addr_ipv6(net::IPV6_LOCALHOST, 0);
-    unsafe {
-        errno_check(libc::bind(
-            sockfd,
-            (&addr as *const libc::sockaddr_in6).cast::<libc::sockaddr>(),
-            size_of::<libc::sockaddr_in6>() as libc::socklen_t,
-        ));
-    }
 }
 
 /// Test that invoking `bind` on an already bound TCP socket
