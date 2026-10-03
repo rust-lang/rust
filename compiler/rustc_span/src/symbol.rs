@@ -2974,9 +2974,7 @@ impl Interner {
             // make this faster if we compare len first, if we assume that len almost always differs.
             let search = inner.big_indices.binary_search_by(|(s, _)| (*s).cmp(byte_str));
             match search {
-                Ok(i) => {
-                    inner.big_indices[i].1
-                }
+                Ok(i) => inner.big_indices[i].1,
                 Err(insert_index) => {
                     let byte_str: &[u8] = inner.arena.alloc_slice(byte_str);
 
