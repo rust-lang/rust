@@ -841,7 +841,7 @@ fn try_link_with_in_tree_lld(
     cfg: &mut cmake::Config,
     ldflags: &mut LdFlags,
 ) {
-    // Apple has it's own ld64 linker, so don't use LLD on Darwin.
+    // Apple has its own ld64 linker, so don't use LLD on Darwin.
     if target.contains("apple") {
         return;
     }
