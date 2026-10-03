@@ -263,7 +263,7 @@ macro_rules! acquire {
     note = "consider using `Arc::clone`"
 )]
 pub struct Arc<
-    T: ?Sized,
+    #[rustc_assert_variance(covariant)] T: ?Sized,
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     ptr: NonNull<ArcInner<T>>,

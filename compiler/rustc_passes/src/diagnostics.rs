@@ -1134,3 +1134,25 @@ pub(crate) struct RustcAtumSuggestion {
     )]
     pub unstable_mod_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("`{$item_ident}` is expected to be {$expected_variance} in `{$param_ident}` but is not")]
+pub(crate) struct RustcAssertVarianceFailed {
+    #[primary_span]
+    pub item_span: Span,
+    #[subdiagnostic]
+    pub note: RustcAssertVarianceFailedNote,
+    #[label("`{$item_ident}` is {$actual_variance} in `{$param_ident}`")]
+    pub param_span: Span,
+    pub param_ident: Ident,
+    pub item_ident: Ident,
+    pub expected_variance: Symbol,
+    pub actual_variance: Symbol,
+}
+
+#[derive(Subdiagnostic)]
+#[note("required by this attribute")]
+pub(crate) struct RustcAssertVarianceFailedNote {
+    #[primary_span]
+    pub span: Span,
+}
