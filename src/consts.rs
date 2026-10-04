@@ -104,7 +104,7 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
         let is_thread_local = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
         let global = self.get_static_inner(def_id, val_llty);
 
-        debug_assert_eq!(
+        assert_eq!(
             global.to_rvalue().get_type(),
             val_llty,
             "`predefine_static` declared this global with a type its initializer does not have"
