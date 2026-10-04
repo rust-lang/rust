@@ -48,6 +48,7 @@
           StorageLive(_3);
           StorageLive(_4);
           _4 = copy _1;
+          StorageAlloc(_3);
           StorageLive(_10);
           _10 = discriminant(_4);
           switchInt(move _10) -> [0: bb7, 1: bb6, otherwise: bb1];
@@ -73,6 +74,7 @@
           _6 = copy ((_3 as Break).0: std::result::Result<!, i32>);
           StorageLive(_8);
           _8 = copy _6;
+          StorageAlloc(_0);
           StorageLive(_14);
           StorageLive(_17);
           _14 = discriminant(_8);
@@ -81,6 +83,7 @@
           StorageLive(_15);
           _15 = move ((_8 as Err).0: i32);
           StorageLive(_16);
+          StorageAlloc(_16);
           _16 = move _15;
           _0 = Result::<i32, i32>::Err(move _16);
           StorageDead(_16);

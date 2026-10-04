@@ -32,13 +32,16 @@
       bb0: {
           StorageLive(_1);
 -         _1 = call_twice::<!, fn() -> ! {sleep}>(sleep) -> unwind unreachable;
++         StorageAlloc(_1);
 +         StorageLive(_2);
 +         _2 = sleep;
 +         StorageLive(_4);
 +         StorageLive(_3);
 +         _3 = &_2;
++         StorageAlloc(_4);
 +         StorageLive(_7);
 +         _7 = const ();
++         StorageAlloc(_4);
 +         goto -> bb1;
 +     }
 + 

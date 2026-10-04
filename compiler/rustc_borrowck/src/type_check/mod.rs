@@ -730,6 +730,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::Nop => {}
             StatementKind::Intrinsic(NonDivergingIntrinsic::CopyNonOverlapping(..))
+            | StatementKind::StorageAlloc(..)
             | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")
             }

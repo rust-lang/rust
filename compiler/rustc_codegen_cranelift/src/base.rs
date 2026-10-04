@@ -614,7 +614,9 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
     fx.set_debug_loc(stmt.source_info);
 
     match &stmt.kind {
-        StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => {} // Those are not very useful
+        StatementKind::StorageAlloc(..)
+        | StatementKind::StorageLive(..)
+        | StatementKind::StorageDead(..) => {} // Those are not very useful
         _ => {
             if fx.clif_comments.enabled() {
                 let inst = fx.bcx.func.layout.last_inst(cur_block).unwrap();
@@ -928,7 +930,8 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                 Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in codegen"),
             }
         }
-        StatementKind::StorageLive(_)
+        StatementKind::StorageAlloc(_)
+        | StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)
         | StatementKind::ConstEvalCounter
         | StatementKind::Nop

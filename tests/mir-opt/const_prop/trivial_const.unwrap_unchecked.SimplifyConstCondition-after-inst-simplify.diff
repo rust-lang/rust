@@ -26,6 +26,7 @@
           StorageLive(_2);
           StorageLive(_3);
           _3 = copy (*_1);
+          StorageAlloc(_2);
           StorageLive(_4);
           StorageLive(_5);
           _4 = discriminant(_3);

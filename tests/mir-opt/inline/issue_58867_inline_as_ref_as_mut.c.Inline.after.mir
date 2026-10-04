@@ -13,6 +13,7 @@ fn c(_1: &[T]) -> &[T] {
         StorageLive(_2);
         StorageLive(_3);
         _3 = copy _1;
+        StorageAlloc(_2);
         _2 = copy _3;
         _0 = copy _2;
         StorageDead(_3);

@@ -30,6 +30,7 @@ fn foo(_1: T, _2: &i32) -> i32 {
         StorageLive(_7);
         _7 = copy _2;
         _5 = (move _6, move _7);
+        StorageAlloc(_0);
         StorageLive(_8);
         _8 = move (_5.0: &i32);
         StorageLive(_9);
