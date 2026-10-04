@@ -406,7 +406,7 @@ impl<'tcx> InterPat<'tcx> {
                 }
             }
 
-            PatKind::Leaf { ref subpatterns } => {
+            PatKind::Leaf { ref subpatterns, .. } => {
                 let mut subpats = vec![];
                 for &FieldPat { field, pattern: ref subpat } in subpatterns {
                     let subplace = place_builder.clone_project(PlaceElem::Field(field, subpat.ty));

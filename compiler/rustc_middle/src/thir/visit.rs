@@ -253,10 +253,9 @@ pub fn walk_pat<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
     if let PatKind::Guard { subpattern, condition } = &pat.kind {
         visitor.visit_pat(subpattern);
         visitor.visit_expr(&visitor.thir()[*condition]);
-        return;
-    };
-
-    for_each_immediate_subpat(pat, |p| visitor.visit_pat(p));
+    } else {
+        for_each_immediate_subpat(pat, |p| visitor.visit_pat(p));
+    }
 }
 
 /// Invokes `callback` on each immediate subpattern of `pat`, if any.
@@ -279,7 +278,7 @@ pub(crate) fn for_each_immediate_subpat<'a, 'tcx>(
         | PatKind::Deref { subpattern, .. }
         | PatKind::DerefPattern { subpattern, .. } => callback(subpattern),
 
-        PatKind::Variant { subpatterns, .. } | PatKind::Leaf { subpatterns } => {
+        PatKind::Variant { subpatterns, .. } | PatKind::Leaf { subpatterns, .. } => {
             for field_pat in subpatterns {
                 callback(&field_pat.pattern);
             }

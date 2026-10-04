@@ -393,12 +393,14 @@ impl<'tcx> ConstToPat<'tcx> {
                     subpatterns: self.lower_field_values_to_fieldpats(
                         valtree.to_branch().iter().map(|ct| ct.to_value()),
                     ),
+                    has_rest: false,
                 }
             }
             ty::Tuple(_) => PatKind::Leaf {
                 subpatterns: self.lower_field_values_to_fieldpats(
                     valtree.to_branch().iter().map(|ct| ct.to_value()),
                 ),
+                has_rest: false,
             },
             ty::Slice(_) => PatKind::Slice {
                 prefix: valtree

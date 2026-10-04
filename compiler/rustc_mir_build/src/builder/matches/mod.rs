@@ -900,7 +900,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 visit_subpat(self, subpattern, &ProjectedUserTypesNode::None, f);
             }
 
-            PatKind::Leaf { ref subpatterns } => {
+            PatKind::Leaf { ref subpatterns, .. } => {
                 for subpattern in subpatterns {
                     let subpattern_user_tys = user_tys.leaf(subpattern.field);
                     debug!("visit_primary_bindings: subpattern_user_tys={subpattern_user_tys:?}");
