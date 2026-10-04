@@ -32,10 +32,6 @@ instance, Rust 2015, Rust 2018, and Rust 2021 all use the same style edition.
 
 ## Rust 2024 style edition
 
-This style guide describes the Rust 2024 style edition. The Rust 2024 style
-edition is currently nightly-only and may change before the release of Rust
-2024.
-
 For a full history of changes in the Rust 2024 style edition, see the git
 history of the style guide. Notable changes in the Rust 2024 style edition
 include:
