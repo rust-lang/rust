@@ -1,20 +1,30 @@
+warning: the trait bound `TFsm: Fsm` is not satisfied
+  --> $DIR/issue-80409.rs:23:26
+   |
+LL |     fn on_entry<TAction: Fn(&mut StateContext<'_, TFsm>)>(&self, _action: TAction) {}
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162200 <https://github.com/rust-lang/rust/issues/162200>
+   = note: `#[warn(unsatisfied_hrtb_arg)]` (part of `#[warn(future_incompatible)]`) on by default
+
 error[E0277]: the trait bound `usize: Fsm` is not satisfied
-  --> $DIR/issue-80409.rs:36:31
+  --> $DIR/issue-80409.rs:38:31
    |
 LL |     builder.state().on_entry(|_| {});
    |                               ^ the trait `Fsm` is not implemented for `usize`
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/issue-80409.rs:26:1
+  --> $DIR/issue-80409.rs:28:1
    |
 LL | trait Fsm {
    | ^^^^^^^^^
 note: required by a bound in `StateContext`
-  --> $DIR/issue-80409.rs:30:31
+  --> $DIR/issue-80409.rs:32:31
    |
 LL | struct StateContext<'a, TFsm: Fsm> {
    |                               ^^^ required by this bound in `StateContext`
 
-error: aborting due to 1 previous error
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.
