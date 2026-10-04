@@ -736,8 +736,7 @@ impl<'a> TraitDef<'a> {
         // Other crates don't need stability attributes, so adding them is not useful, but libcore needs them
         // on all const trait impls.
         if self.is_const && cx.ecfg.features.staged_api() {
-            let rustc_const_unstable =
-                cx.path_ident(self.span, Ident::new(sym::rustc_const_unstable, self.span));
+            let rustc_const_unstable = cx.path_sym(self.span, sym::rustc_const_unstable);
 
             // #[rustc_const_unstable(feature = "derive_const", issue = "118304")]
             attrs.push(

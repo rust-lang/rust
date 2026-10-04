@@ -99,7 +99,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
     fn build_initial_imports(&self) -> Stmt {
         let nested_tree = |this: &Self, sym| UseTreeAndId {
             inner: UseTree {
-                prefix: this.cx.path(this.span, vec![Ident::with_dummy_span(sym)]),
+                prefix: this.cx.path_sym(this.span, sym),
                 kind: UseTreeKind::Simple(None),
             },
             id: DUMMY_NODE_ID,

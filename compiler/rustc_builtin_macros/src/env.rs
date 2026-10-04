@@ -57,7 +57,7 @@ pub(crate) fn expand_option_env<'cx>(
                 cx.std_path(&[sym::option, sym::Option, sym::None]),
                 vec![GenericArg::Type(cx.ty_ref(
                     sp,
-                    cx.ty_ident(sp, Ident::new(sym::str, sp)),
+                    cx.ty_sym(sp, sym::str),
                     Some(lt),
                     Mutability::Not,
                 ))],

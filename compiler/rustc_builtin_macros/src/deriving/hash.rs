@@ -15,13 +15,11 @@ pub(crate) fn expand_deriving_hash(
 ) {
     let path = path_std!(cx, span, hash::Hash);
 
-    let typaram = Ident::new(sym::__H, span);
-
-    let arg = cx.ty_path(cx.path_ident(span, typaram));
+    let arg = cx.ty_sym(span, sym::__H);
 
     let param = {
         let path = path_std!(cx, span, hash::Hasher);
-        cx.typaram(typaram, thin_vec![cx.trait_bound(path, false)], None)
+        cx.typaram(Ident::new(sym::__H, span), thin_vec![cx.trait_bound(path, false)], None)
     };
 
     let generics = ast::Generics {

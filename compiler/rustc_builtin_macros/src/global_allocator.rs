@@ -134,8 +134,7 @@ impl AllocFnFactory<'_, '_> {
                 let size = Ident::new(sym::size, self.span);
                 let align = Ident::new(sym::align, self.span);
 
-                let usize = self.cx.path_ident(self.span, Ident::new(sym::usize, self.span));
-                let ty_usize = self.cx.ty_path(usize);
+                let ty_usize = self.usize();
                 args.push(self.cx.param(self.span, size, ty_usize));
                 let ty_align = self.ptr_alignment();
                 args.push(self.cx.param(self.span, align, ty_align));
@@ -183,8 +182,7 @@ impl AllocFnFactory<'_, '_> {
     }
 
     fn usize(&self) -> Box<Ty> {
-        let usize = self.cx.path_ident(self.span, Ident::new(sym::usize, self.span));
-        self.cx.ty_path(usize)
+        self.cx.ty_sym(self.span, sym::usize)
     }
 
     fn ptr_alignment(&self) -> Box<Ty> {
@@ -194,8 +192,7 @@ impl AllocFnFactory<'_, '_> {
     }
 
     fn ptr_u8(&self) -> Box<Ty> {
-        let u8 = self.cx.path_ident(self.span, Ident::new(sym::u8, self.span));
-        let ty_u8 = self.cx.ty_path(u8);
+        let ty_u8 = self.cx.ty_sym(self.span, sym::u8);
         self.cx.ty_ptr(self.span, ty_u8, Mutability::Mut)
     }
 }

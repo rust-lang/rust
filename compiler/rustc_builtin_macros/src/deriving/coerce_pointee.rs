@@ -119,7 +119,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
 
     // Create unsized `self`, that is, one where the `#[pointee]` type arg is replaced with `__S`. For
     // example, instead of `MyType<'a, T>`, it will be `MyType<'a, __S>`.
-    let s_ty = cx.ty_ident(span, Ident::new(sym::__S, span));
+    let s_ty = cx.ty_sym(span, sym::__S);
     let mut alt_self_params = self_params;
     alt_self_params[pointee_param_idx] = GenericArg::Type(s_ty.clone());
     let alt_self_type = cx.ty_path(cx.path_all(span, false, vec![name_ident], alt_self_params));
