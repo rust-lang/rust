@@ -45,6 +45,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let partial_res = self.get_partial_res(id).unwrap_or_else(|| PartialRes::new(Res::Err));
         let base_res = partial_res.base_res();
         let unresolved_segments = partial_res.unresolved_segments();
+        let span = p.span();
 
         let mut res = self.lower_res(base_res);
 
@@ -55,7 +56,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     if let Some(async_def_id) = self.map_trait_to_async_trait(def_id) {
                         res = Res::Def(DefKind::Trait, async_def_id);
                     } else {
-                        self.dcx().emit_err(AsyncBoundOnlyForFnTraits { span: p.span() });
+                        self.dcx().emit_err(AsyncBoundOnlyForFnTraits { span });
                     }
                 }
                 Res::Err => {
@@ -65,8 +66,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // This error isn't actually emitted AFAICT, but it's best to keep
                     // it around in case the resolver doesn't always check the defkind
                     // of an item or something.
-                    self.dcx()
-                        .emit_err(AsyncBoundNotOnTrait { span: p.span(), descr: res.descr() });
+                    self.dcx().emit_err(AsyncBoundNotOnTrait { span, descr: res.descr() });
                 }
             }
         }
@@ -91,7 +91,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         };
 
-        let path_span_lo = p.span().shrink_to_lo();
+        let path_span_lo = span.shrink_to_lo();
         let proj_start = p.num_segments() - unresolved_segments;
         let path = self.arena.alloc(hir::Path {
             res,
@@ -133,7 +133,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     };
 
                     self.lower_path_segment(
-                        p.span(),
+                        span,
                         segment,
                         param_mode,
                         generic_args_mode,
@@ -198,7 +198,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             };
 
             let hir_segment = self.arena.alloc(self.lower_path_segment(
-                p.span(),
+                span,
                 segment,
                 param_mode,
                 generic_args_mode,
@@ -220,7 +220,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // We should've returned in the for loop above.
 
         self.dcx().span_bug(
-            p.span(),
+            span,
             format!(
                 "lower_qpath: no final extension segment in {}..{}",
                 proj_start,
@@ -236,11 +236,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         param_mode: ParamMode,
     ) -> &'hir hir::UsePath<'hir> {
         assert!(!res.is_empty());
+        let path_span = p.span();
         self.arena.alloc(hir::UsePath {
             res,
             segments: self.arena.alloc_from_iter(p.iter_segments().map(|segment| {
                 self.lower_path_segment(
-                    p.span(),
+                    path_span,
                     segment,
                     param_mode,
                     GenericArgsMode::Err,
@@ -248,7 +249,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     None,
                 )
             })),
-            span: self.lower_span(p.span()),
+            span: self.lower_span(path_span),
         })
     }
 
