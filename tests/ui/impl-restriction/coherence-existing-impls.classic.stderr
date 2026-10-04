@@ -1,0 +1,19 @@
+error[E0119]: conflicting implementations of trait `KnownRestricted` for type `u8`
+  --> $DIR/coherence-existing-impls.rs:12:1
+   |
+LL | impl<T: upstream::KnownRestricted> KnownRestricted for T {}
+   | -------------------------------------------------------- first implementation here
+LL | impl KnownRestricted for u8 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `u8`
+
+error[E0119]: conflicting implementations of trait `KnownUnrestricted` for type `u8`
+  --> $DIR/coherence-existing-impls.rs:17:1
+   |
+LL | impl<T: upstream::Unrestricted> KnownUnrestricted for T {}
+   | ------------------------------------------------------- first implementation here
+LL | impl KnownUnrestricted for u8 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `u8`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0119`.
