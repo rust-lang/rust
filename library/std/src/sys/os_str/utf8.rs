@@ -20,6 +20,24 @@ pub(crate) struct Slice {
     pub inner: str,
 }
 
+pub(crate) type BytesFlavour = core::str_bytes::Utf8;
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'a> From<&'a Slice> for &'a core::str_bytes::Bytes<BytesFlavour> {
+    fn from(slice: &'a Slice) -> Self {
+        core::str_bytes::Bytes::from_str(&slice.inner)
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'a> From<&'a core::str_bytes::Bytes<BytesFlavour>> for &'a Slice {
+    fn from(bytes: &'a core::str_bytes::Bytes<BytesFlavour>) -> &'a Slice {
+        let inner = bytes.into_str();
+        // SAFETY: `Slice` is transparent wrapper around `str`.
+        unsafe { mem::transmute(inner) }
+    }
+}
+
 impl IntoInner<String> for Buf {
     fn into_inner(self) -> String {
         self.inner
@@ -322,6 +340,14 @@ impl Slice {
     #[inline]
     pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
         self.inner.eq_ignore_ascii_case(&other.inner)
+    }
+
+    #[inline]
+    pub(crate) unsafe fn get_unchecked(&self, range: core::ops::Range<usize>) -> &Self {
+        // SAFETY: Caller promises `range` is valid
+        let inner = unsafe { self.inner.get_unchecked(range) };
+        // SAFETY: Slice is a transparent wrapper around str
+        unsafe { mem::transmute(inner) }
     }
 }
 
