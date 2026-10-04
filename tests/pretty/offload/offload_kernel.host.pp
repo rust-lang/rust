@@ -21,6 +21,6 @@ use std::offload::offload_kernel;
 #[inline(never)]
 fn foo(_: &[f32], _: &[f32], _: *mut f32) {
 
-    ::core::panicking::panic("not implemented")
+    ::core::panicking::unimplemented_default_msg()
 }
 fn main() {}
