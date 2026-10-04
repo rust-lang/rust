@@ -496,6 +496,8 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("lahfsahf", Unstable(sym::lahfsahf_target_feature), &[]),
     ("lzcnt", Stable, &[]),
     ("movbe", Stable, &[]),
+    ("movdir64b", Unstable(sym::movdir64b_target_feature), &[]),
+    ("movdiri", Unstable(sym::movdiri_target_feature), &[]),
     ("movrs", Unstable(sym::movrs_target_feature), &[]),
     ("pclmulqdq", Stable, &["sse2"]),
     ("popcnt", Stable, &[]),
