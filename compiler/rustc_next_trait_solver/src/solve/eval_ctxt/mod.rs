@@ -51,6 +51,22 @@ pub mod fast_path;
 mod probe;
 mod solver_region_constraints;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub(super) enum ForallBinderKind {
+    Other,
+    CoroutineWitness,
+}
+
+impl ForallBinderKind {
+    pub(super) fn for_self_ty<I: Interner>(self_ty: I::Ty) -> Self {
+        if matches!(self_ty.kind(), ty::CoroutineWitness(..)) {
+            Self::CoroutineWitness
+        } else {
+            Self::Other
+        }
+    }
+}
+
 /// The kind of goal we're currently proving.
 ///
 /// This has effects on cycle handling handling and on how we compute
@@ -972,7 +988,7 @@ where
     ) -> QueryResultOrRerunNonErased<I> {
         let Goal { param_env, predicate } = goal;
         let kind = predicate.kind();
-        self.enter_forall_with_assumptions(kind, param_env, |ecx, kind| {
+        self.enter_forall_with_assumptions(kind, param_env, ForallBinderKind::Other, |ecx, kind| {
             Ok(match kind {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
                     ecx.compute_trait_goal(Goal { param_env, predicate }).map(|(r, _via)| r)?
@@ -1370,13 +1386,17 @@ where
         &mut self,
         value: ty::Binder<I, T>,
         param_env: I::ParamEnv,
+        binder_kind: ForallBinderKind,
         f: impl FnOnce(&mut Self, T) -> U,
     ) -> U {
         self.delegate.enter_forall_without_assumptions(value, |value| {
             // Invariant: we shouldn't insert empty assumptions if assumptions computation fails.
             // When handling placeholder constraints, we rely on vacancies to force ambiguity.
             let u = self.delegate.universe();
-            if self.cx().assumptions_on_binders()
+            // The minimal coroutine mode only computes assumptions for coroutine witness binders.
+            if (self.cx().assumptions_on_binders_full()
+                || (self.cx().assumptions_on_binders_min_coroutines()
+                    && binder_kind == ForallBinderKind::CoroutineWitness))
                 && let Some(assumptions) = self.region_assumptions_for_placeholders_in_universe(
                     value.clone(),
                     u,
@@ -1627,7 +1647,7 @@ where
             previous call to `try_evaluate_added_goals!`"
         );
 
-        let goals_certainty = match self.delegate.cx().assumptions_on_binders() {
+        let goals_certainty = match self.delegate.cx().assumptions_on_binders_any() {
             true => {
                 let certainty = self.eagerly_handle_placeholders()?;
                 certainty.and(goals_certainty)
@@ -1759,7 +1779,7 @@ where
         // region constraints from an ambiguous nested goal. This is tested in both
         // `tests/ui/higher-ranked/leak-check/leak-check-in-selection-5-ambig.rs` and
         // `tests/ui/higher-ranked/leak-check/leak-check-in-selection-6-ambig-unify.rs`.
-        let region_constraints = if self.cx().assumptions_on_binders() {
+        let region_constraints = if self.cx().assumptions_on_binders_any() {
             ExternalRegionConstraints::NextGen(if let Certainty::Yes = certainty {
                 let constraint = self.delegate.get_solver_region_constraint();
                 constraint

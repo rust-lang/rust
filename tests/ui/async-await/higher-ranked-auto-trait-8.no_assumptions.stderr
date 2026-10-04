@@ -1,5 +1,5 @@
 error: higher-ranked lifetime error
-  --> $DIR/higher-ranked-auto-trait-8.rs:26:5
+  --> $DIR/higher-ranked-auto-trait-8.rs:28:5
    |
 LL |     needs_send(use_my_struct(second_struct)); // ERROR
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
