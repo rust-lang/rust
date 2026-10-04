@@ -626,10 +626,34 @@ impl CombineAttributeParser for RustcMirParser {
             .filter_map(|mi| {
                 if let Some(ident) = mi.ident() {
                     match ident.name {
-                        sym::rustc_peek_maybe_init => Some(RustcMirKind::PeekMaybeInit),
-                        sym::rustc_peek_maybe_uninit => Some(RustcMirKind::PeekMaybeUninit),
-                        sym::rustc_peek_liveness => Some(RustcMirKind::PeekLiveness),
-                        sym::stop_after_dataflow => Some(RustcMirKind::StopAfterDataflow),
+                        sym::rustc_pretty_live_locals => {
+                            cx.expect_no_args(mi.args())?;
+                            Some(RustcMirKind::PrettyLiveLocals)
+                        }
+                        sym::rustc_pretty_precise_liveness => {
+                            cx.expect_no_args(mi.args())?;
+                            Some(RustcMirKind::PrettyPreciseLiveness)
+                        }
+                        sym::rustc_pretty_transitive_live_locals => {
+                            cx.expect_no_args(mi.args())?;
+                            Some(RustcMirKind::PrettyTransitiveLiveLocals)
+                        }
+                        sym::rustc_peek_maybe_init => {
+                            cx.expect_no_args(mi.args())?;
+                            Some(RustcMirKind::PeekMaybeInit)
+                        }
+                        sym::rustc_peek_maybe_uninit => {
+                            cx.expect_no_args(mi.args())?;
+                            Some(RustcMirKind::PeekMaybeUninit)
+                        }
+                        sym::rustc_peek_liveness => {
+                            cx.expect_no_args(mi.args())?;
+                            Some(RustcMirKind::PeekLiveness)
+                        }
+                        sym::stop_after_dataflow => {
+                            cx.expect_no_args(mi.args())?;
+                            Some(RustcMirKind::StopAfterDataflow)
+                        }
                         sym::borrowck_graphviz_postflow => {
                             let nv = cx.expect_name_value(
                                 mi.args(),
