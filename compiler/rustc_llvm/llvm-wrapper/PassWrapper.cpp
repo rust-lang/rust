@@ -5,10 +5,8 @@
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Analysis/Lint.h"
-#include "llvm/Analysis/TargetLibraryInfo.h"
-#if LLVM_VERSION_GE(22, 0)
 #include "llvm/Analysis/RuntimeLibcallInfo.h"
-#endif
+#include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/CodeGen/CommandFlags.h"
@@ -24,12 +22,8 @@
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Passes/PassBuilder.h"
-#if LLVM_VERSION_GE(22, 0)
-#include "llvm/Plugins/PassPlugin.h"
-#else
-#include "llvm/Passes/PassPlugin.h"
-#endif
 #include "llvm/Passes/StandardInstrumentations.h"
+#include "llvm/Plugins/PassPlugin.h"
 #include "llvm/Support/CBindingWrapping.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Program.h"
@@ -100,11 +94,7 @@ LLVMRustCreateMCSubtargetInfo(const char *TripleStr, const char *CPU,
     return nullptr;
   }
 
-#if LLVM_VERSION_GE(22, 0)
   return TheTarget->createMCSubtargetInfo(Trip, CPU, Features);
-#else
-  return TheTarget->createMCSubtargetInfo(Trip.str(), CPU, Features);
-#endif
 }
 
 extern "C" bool LLVMRustMCSubtargetInfoCheckFeatures(MCSubtargetInfo *MCInfo,
@@ -498,7 +488,7 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
   // module flags respectively instead.
   PM->add(new RuntimeLibraryInfoWrapper(Options->MCOptions.ABIName,
                                         Options->VecLib));
-#elif LLVM_VERSION_GE(22, 0)
+#else
   PM->add(new RuntimeLibraryInfoWrapper(
       TargetTriple, Options->ExceptionModel, Options->FloatABIType,
       Options->EABIVersion, Options->MCOptions.ABIName, Options->VecLib));
@@ -721,44 +711,25 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   }
 
   std::optional<PGOOptions> PGOOpt;
-#if LLVM_VERSION_LT(22, 0)
-  auto FS = vfs::getRealFileSystem();
-#endif
   if (PGOGenPath) {
     assert(!PGOUsePath && !PGOSampleUsePath);
     PGOOpt = PGOOptions(
-#if LLVM_VERSION_GE(22, 0)
         PGOGenPath, "", "", "", PGOOptions::IRInstr, PGOOptions::NoCSAction,
-#else
-        PGOGenPath, "", "", "", FS, PGOOptions::IRInstr, PGOOptions::NoCSAction,
-#endif
         PGOOptions::ColdFuncOpt::Default, DebugInfoForProfiling);
   } else if (PGOUsePath) {
     assert(!PGOSampleUsePath);
     PGOOpt = PGOOptions(
-#if LLVM_VERSION_GE(22, 0)
         PGOUsePath, "", "", "", PGOOptions::IRUse, PGOOptions::NoCSAction,
-#else
-        PGOUsePath, "", "", "", FS, PGOOptions::IRUse, PGOOptions::NoCSAction,
-#endif
         PGOOptions::ColdFuncOpt::Default, DebugInfoForProfiling);
   } else if (PGOSampleUsePath) {
     PGOOpt =
-#if LLVM_VERSION_GE(22, 0)
         PGOOptions(PGOSampleUsePath, "", "", "", PGOOptions::SampleUse,
-#else
-        PGOOptions(PGOSampleUsePath, "", "", "", FS, PGOOptions::SampleUse,
-#endif
                    PGOOptions::NoCSAction, PGOOptions::ColdFuncOpt::Default,
                    DebugInfoForProfiling);
   } else if (DebugInfoForProfiling) {
-    PGOOpt = PGOOptions(
-#if LLVM_VERSION_GE(22, 0)
-        "", "", "", "", PGOOptions::NoAction, PGOOptions::NoCSAction,
-#else
-        "", "", "", "", FS, PGOOptions::NoAction, PGOOptions::NoCSAction,
-#endif
-        PGOOptions::ColdFuncOpt::Default, DebugInfoForProfiling);
+    PGOOpt =
+        PGOOptions("", "", "", "", PGOOptions::NoAction, PGOOptions::NoCSAction,
+                   PGOOptions::ColdFuncOpt::Default, DebugInfoForProfiling);
   }
 
   auto PB = PassBuilder(TM, PTO, PGOOpt, &PIC);
@@ -1389,11 +1360,7 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
   // being lifted from `lib/LTO/LTO.cpp` as well
   DenseMap<GlobalValue::GUID, const GlobalValueSummary *> PrevailingCopy;
   for (auto &I : Ret->Index) {
-#if LLVM_VERSION_GE(22, 0)
     const auto &SummaryList = I.second.getSummaryList();
-#else
-    const auto &SummaryList = I.second.SummaryList;
-#endif
     if (SummaryList.size() > 1)
       PrevailingCopy[I.first] = getFirstDefinitionForLinker(SummaryList);
   }
@@ -1426,11 +1393,7 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
   // linkage will stay as external, and internal will stay as internal.
   std::set<GlobalValue::GUID> ExportedGUIDs;
   for (auto &List : Ret->Index) {
-#if LLVM_VERSION_GE(22, 0)
     const auto &SummaryList = List.second.getSummaryList();
-#else
-    const auto &SummaryList = List.second.SummaryList;
-#endif
     for (auto &GVS : SummaryList) {
       if (GlobalValue::isLocalLinkage(GVS->linkage()))
         continue;

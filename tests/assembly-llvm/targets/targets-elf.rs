@@ -845,9 +845,6 @@
 //@ [xtensa_esp32s3_espidf] compile-flags: --target xtensa-esp32s3-espidf
 //@ [xtensa_esp32s3_espidf] needs-llvm-components: xtensa
 
-// xtensa support requires a more recent LLVM.
-//@ min-llvm-version: 22
-
 // Sanity-check that each target can produce assembly code.
 
 #![feature(no_core, lang_items)]

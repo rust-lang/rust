@@ -1,6 +1,7 @@
 // Alias might not cover type parameters.
 
 //@ revisions: classic next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 //@ aux-crate:foreign=parametrized-trait.rs

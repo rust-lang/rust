@@ -527,9 +527,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.visit_struct(&StructParts::from_item(item));
                 }
                 ast::ItemKind::Enum(ident, ref generics, ref def) => {
-                    self.format_missing_with_indent(source!(self, item.span).lo());
                     self.visit_enum(ident, &item.vis, def, generics, item.span);
-                    self.last_pos = source!(self, item.span).hi();
                 }
                 ast::ItemKind::Mod(safety, ident, ref mod_kind) => {
                     self.format_missing_with_indent(source!(self, item.span).lo());

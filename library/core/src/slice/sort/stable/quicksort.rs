@@ -96,7 +96,7 @@ fn stable_partition<T, F: FnMut(&T, &T) -> bool>(
     let len = v.len();
 
     if intrinsics::unlikely(scratch.len() < len || pivot_pos >= len) {
-        core::intrinsics::abort()
+        core::intrinsics::abort_immediate()
     }
 
     let v_base = v.as_ptr();

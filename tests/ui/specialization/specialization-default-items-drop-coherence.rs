@@ -1,4 +1,5 @@
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 // Should fail. Default items completely drop candidates instead of ambiguity,
