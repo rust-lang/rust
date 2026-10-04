@@ -20,6 +20,7 @@
           StorageLive(_4);
           _4 = (const 1_i32,);
 -         _2 = <Box<dyn Fn(i32)> as Fn<(i32,)>>::call(move _3, move _4) -> [return: bb1, unwind: bb3];
++         StorageAlloc(_2);
 +         StorageLive(_6);
 +         StorageLive(_7);
 +         StorageLive(_5);

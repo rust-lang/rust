@@ -873,7 +873,9 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
                     state,
                 );
             }
-            StatementKind::Nop | StatementKind::SetDiscriminant { .. } => {
+            StatementKind::Nop
+            | StatementKind::StorageAlloc(..)
+            | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")
             }
         }

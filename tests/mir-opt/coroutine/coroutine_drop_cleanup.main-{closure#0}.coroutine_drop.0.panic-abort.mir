@@ -14,6 +14,7 @@ fn main::{closure#0}(_1: &mut {coroutine@$DIR/coroutine_drop_cleanup.rs:12:5: 12
 
     bb0: {
         _7 = discriminant((*_1));
+        _0 = const ();
         switchInt(move _7) -> [0: bb5, 3: bb6, otherwise: bb7];
     }
 

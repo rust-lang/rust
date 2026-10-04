@@ -1,0 +1,35 @@
+error: Undefined Behavior: memory access failed: ALLOC has been freed, so this pointer is dangling
+  --> tests/fail/move_elimination/call_move_overlap_field_first.rs:LL:CC
+   |
+LL | fn field_whole(_: MaybeUninit<u32>, _: Value) {
+   |                ^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+help: ALLOC was allocated here:
+  --> tests/fail/move_elimination/call_move_overlap_field_first.rs:LL:CC
+   |
+LL | /     mir! {
+LL | |         let unit: ();
+LL | |         {
+LL | |             let value = const { (MaybeUninit::new(1u32), MaybeUninit::new(2u32)) };
+...  |
+LL | |         done = { Return() }
+LL | |     }
+   | |_____^
+help: ALLOC was deallocated here:
+  --> tests/fail/move_elimination/call_move_overlap_field_first.rs:LL:CC
+   |
+LL |             Call(unit = field_whole(Move(value.0), Move(value)), ReturnTo(done), UnwindContinue())
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: field_whole
+               at tests/fail/move_elimination/call_move_overlap_field_first.rs:LL:CC
+           1: main
+               at tests/fail/move_elimination/call_move_overlap_field_first.rs:LL:CC
+   = note: this error originates in the macro `::core::intrinsics::mir::__internal_extract_let` which comes from the expansion of the macro `mir` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

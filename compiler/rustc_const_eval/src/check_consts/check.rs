@@ -707,6 +707,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             StatementKind::Assign(..)
             | StatementKind::SetDiscriminant { .. }
             | StatementKind::FakeRead(..)
+            | StatementKind::StorageAlloc(_)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::PlaceMention(..)

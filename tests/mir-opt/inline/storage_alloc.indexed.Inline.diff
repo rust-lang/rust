@@ -1,0 +1,36 @@
+- // MIR for `indexed` before Inline
++ // MIR for `indexed` after Inline
+  
+  fn indexed(_1: usize) -> MaybeUninit<u8> {
+      let mut _0: std::mem::MaybeUninit<u8>;
+      let mut _2: [std::mem::MaybeUninit<u8>; 2];
++     let mut _3: *mut std::mem::MaybeUninit<u8>;
++     let mut _4: std::mem::MaybeUninit<u8>;
++     scope 1 (inlined callee) {
++         let _5: ();
++         scope 2 (inlined MaybeUninit::<u8>::uninit) {
++         }
++     }
+  
+      bb0: {
+-         _2[_1] = callee() -> [return: bb1, unwind continue];
++         StorageAlloc(_2);
++         StorageLive(_3);
++         _3 = &raw mut _2[_1];
++         StorageLive(_4);
++         StorageLive(_5);
++         _5 = opaque() -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
++         StorageDead(_5);
++         StorageAlloc(_4);
++         _4 = MaybeUninit::<u8> { uninit: const () };
++         (*_3) = move _4;
++         StorageDead(_4);
++         StorageDead(_3);
+          _0 = copy _2[_1];
+          return;
+      }
+  }
+  

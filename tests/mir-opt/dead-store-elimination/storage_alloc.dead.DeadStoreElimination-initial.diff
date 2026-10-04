@@ -1,0 +1,15 @@
+- // MIR for `dead` before DeadStoreElimination-initial
++ // MIR for `dead` after DeadStoreElimination-initial
+  
+  fn dead(_1: MaybeUninit<u8>) -> MaybeUninit<u8> {
+      let mut _0: std::mem::MaybeUninit<u8>;
+      let mut _2: std::mem::MaybeUninit<u8>;
+  
+      bb0: {
+-         StorageAlloc(_2);
+          _2 = copy _1;
+          _0 = copy _2;
+          return;
+      }
+  }
+  

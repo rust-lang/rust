@@ -45,6 +45,7 @@
           StorageLive(_2);
 -         _2 = Option::<Layout>::None;
 +         _2 = const Option::<Layout>::None;
+          StorageAlloc(_1);
           StorageLive(_8);
 -         _8 = discriminant(_2);
 -         switchInt(move _8) -> [0: bb2, 1: bb3, otherwise: bb1];
@@ -84,6 +85,7 @@
       }
   
       bb5: {
+          _11 = const std::alloc::AllocError;
           StorageLive(_13);
           StorageLive(_14);
           _14 = &_11;
@@ -100,6 +102,7 @@
           _3 = copy _4 as *mut u8 (PtrToPtr);
           StorageDead(_4);
           StorageDead(_3);
+          _0 = const ();
           StorageDead(_1);
           return;
       }

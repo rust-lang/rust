@@ -170,6 +170,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         _18 = Offset(copy _15, const 1_usize);
         _8 = copy _18 as std::ptr::NonNull<T> (Transmute);
         StorageDead(_18);
+        StorageAlloc(_11);
         goto -> bb13;
     }
 
@@ -195,6 +196,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageDead(_12);
         StorageDead(_15);
         StorageDead(_20);
+        _0 = const ();
         StorageDead(_23);
         drop(_2) -> [return: bb11, unwind unreachable];
     }
@@ -205,6 +207,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb12: {
         _20 = SubUnchecked(copy _19, const 1_usize);
+        StorageAlloc(_8);
         _11 = copy _20 as *const T (Transmute);
         StorageDead(_19);
         goto -> bb13;

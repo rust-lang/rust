@@ -201,6 +201,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
             | StatementKind::BackwardIncompatibleDropHint { .. }
+            | StatementKind::StorageAlloc(_)
             | StatementKind::AscribeUserType(..) => {}
         }
     }

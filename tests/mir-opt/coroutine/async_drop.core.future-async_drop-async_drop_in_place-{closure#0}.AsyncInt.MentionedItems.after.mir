@@ -29,6 +29,7 @@ yields ()
     }
 
     bb1: {
+        _0 = const ();
         return;
     }
 
@@ -86,7 +87,7 @@ yields ()
     }
 
     bb13: {
-        _10 = move _2;
+        _10 = copy _2;
         _9 = std::future::get_context::<'_, '_>(move _10) -> [return: bb12, unwind: bb5];
     }
 
@@ -122,7 +123,7 @@ yields ()
     }
 
     bb20: {
-        _17 = move _2;
+        _17 = copy _2;
         _16 = std::future::get_context::<'_, '_>(move _17) -> [return: bb19, unwind: bb5];
     }
 

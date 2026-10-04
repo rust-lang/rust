@@ -1,0 +1,31 @@
+
+thread 'main' ($TID) panicked at tests/fail/function_calls/return_local_on_unwind.rs:LL:CC:
+unwind
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
+error: Undefined Behavior: constructing invalid value of type u32: encountered uninitialized memory, but expected an integer
+  --> tests/fail/function_calls/return_local_on_unwind.rs:LL:CC
+   |
+LL |             RET = value;
+   |             ^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: stack backtrace:
+           0: call
+               at tests/fail/function_calls/return_local_on_unwind.rs:LL:CC
+           1: <fn() -> u32 {call} as std::ops::FnOnce<()>>::call_once - shim(fn() -> u32 {call})
+               at RUSTLIB/core/src/ops/function.rs:LL:CC
+           2: std::panicking::catch_unwind::do_call::<fn() -> u32 {call}, u32>
+               at RUSTLIB/std/src/panicking.rs:LL:CC
+           3: std::panicking::catch_unwind::<u32, fn() -> u32 {call}>
+               at RUSTLIB/std/src/panicking.rs:LL:CC
+           4: std::panic::catch_unwind::<fn() -> u32 {call}, u32>
+               at RUSTLIB/std/src/panic.rs:LL:CC
+           5: main
+               at tests/fail/function_calls/return_local_on_unwind.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

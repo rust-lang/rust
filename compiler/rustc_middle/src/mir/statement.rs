@@ -57,6 +57,7 @@ impl<'tcx> StatementKind<'tcx> {
             StatementKind::SetDiscriminant { .. } => "SetDiscriminant",
             StatementKind::StorageLive(..) => "StorageLive",
             StatementKind::StorageDead(..) => "StorageDead",
+            StatementKind::StorageAlloc(..) => "StorageAlloc",
             StatementKind::PlaceMention(..) => "PlaceMention",
             StatementKind::AscribeUserType(..) => "AscribeUserType",
             StatementKind::Coverage(..) => "Coverage",
