@@ -1090,6 +1090,9 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
 /// Runs all analyses that we guarantee to run, even if errors were reported in earlier analyses.
 /// This function never fails.
 fn run_required_analyses(tcx: TyCtxt<'_>) {
+    LocalExpnId::commit_end_of_determinism();
+    SyntaxContext::commit_end_of_determinism();
+
     if tcx.sess.opts.unstable_opts.input_stats {
         rustc_passes::input_stats::print_hir_stats(tcx);
     }
