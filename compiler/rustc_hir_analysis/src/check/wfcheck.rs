@@ -1103,6 +1103,7 @@ pub(crate) fn check_trait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
                 E0714,
                 "marker traits cannot have associated items",
             )
+            .with_span_context(tcx.def_span(def_id))
             .emit();
         }
     }

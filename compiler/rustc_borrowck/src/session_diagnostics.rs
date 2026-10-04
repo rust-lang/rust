@@ -528,7 +528,7 @@ pub(crate) enum CaptureReasonNote {
         func: String,
         place_name: String,
         #[primary_span]
-        span: Span,
+        span: MultiSpan,
     },
     #[note(
         "the {$desugar_name} is desugared into a call to `{$func}`, which takes ownership of the \
@@ -539,7 +539,7 @@ pub(crate) enum CaptureReasonNote {
         func: String,
         place_name: String,
         #[primary_span]
-        span: Span,
+        span: MultiSpan,
     },
 }
 
