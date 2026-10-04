@@ -14,8 +14,6 @@
 #![deny(rust_2024_compatibility)]
 #![allow(edition_2024_expr_fragment_specifier)]
 //
-// FIXME(float_bits_const): remove when stable
-#![allow(unstable_name_collisions)]
 // Allow idioms that come from ported C or may be more clear
 #![allow(clippy::assign_op_pattern)]
 #![allow(clippy::int_plus_one)]
