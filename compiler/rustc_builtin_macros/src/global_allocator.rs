@@ -3,7 +3,7 @@ use rustc_ast::expand::allocator::{
 };
 use rustc_ast::{
     self as ast, AttrVec, Expr, FnHeader, FnSig, Generics, ItemKind, Mutability, Param, Safety,
-    Stmt, StmtKind, Ty, TyKind,
+    Stmt, StmtKind, Ty,
 };
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Ident, Span, Symbol, sym};
@@ -164,7 +164,7 @@ impl AllocFnFactory<'_, '_> {
         match *ty {
             AllocatorTy::ResultPtr => self.ptr_u8(),
 
-            AllocatorTy::Unit => self.cx.ty(self.span, TyKind::Tup(ThinVec::new())),
+            AllocatorTy::Unit => self.cx.ty_unit(self.span),
 
             AllocatorTy::Layout | AllocatorTy::Never | AllocatorTy::Usize | AllocatorTy::Ptr => {
                 panic!("can't convert `AllocatorTy` to an output")

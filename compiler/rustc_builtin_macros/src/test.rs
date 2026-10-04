@@ -271,7 +271,7 @@ pub(crate) fn expand_test_or_bench(
             cx.attr_nested_word(sym::doc, sym::hidden, attr_sp),
         ],
         Ident::new(fn_.ident.name, sp),
-        cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
+        cx.ty_path(test_path("TestDescAndFn")),
         Mutability::Not,
         // test::TestDescAndFn {
         cx.expr_struct(

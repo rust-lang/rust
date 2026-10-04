@@ -299,7 +299,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> Box<ast::Item> {
                 ProcMacro::Derive(m) => m.span,
                 ProcMacro::Attr(m) | ProcMacro::Bang(m) => m.span,
             };
-            let local_path = |cx: &ExtCtxt<'_>, ident| cx.expr_path(cx.path(span, vec![ident]));
+            let local_path = |cx: &ExtCtxt<'_>, ident| cx.expr_ident(span, ident);
             let proc_macro_ty_method_path = |cx: &ExtCtxt<'_>, method| {
                 cx.expr_path(cx.path(
                     span.with_ctxt(harness_span.ctxt()),

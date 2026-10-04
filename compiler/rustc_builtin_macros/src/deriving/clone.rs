@@ -1,7 +1,7 @@
 use rustc_ast::{self as ast, Generics, ItemKind, Safety, VariantData};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
+use rustc_span::{DUMMY_SP, Span, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::deriving::generic::*;
@@ -138,7 +138,7 @@ fn cs_clone_simple(
     if is_union {
         // Just a single assertion for unions, that the union impls `Copy`.
         // let _: AssertParamIsCopy<Self>;
-        let self_ty = cx.ty_path(cx.path_ident(trait_span, Ident::with_dummy_span(kw::SelfUpper)));
+        let self_ty = cx.ty_self(DUMMY_SP);
         super::assert_ty_bounds(
             cx,
             &mut stmts,
