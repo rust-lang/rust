@@ -70,7 +70,7 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{ErrorOutputType, Input, RustcOptGroup, make_crate_type_option};
+use rustc_session::config::{ErrorOutputType, Input, RustcOptGroup, rustc_optgroups};
 use rustc_session::{EarlyDiagCtxt, getopts};
 use rustc_span::{BytePos, Span, SyntaxContext};
 use tracing::info;
@@ -195,12 +195,43 @@ fn init_logging(early_dcx: &EarlyDiagCtxt) {
     tracing::subscriber::set_global_default(subscriber).unwrap();
 }
 
+/// rustc options that rustdoc declares itself instead of inheriting from `rustc_optgroups`,
+/// because their meaning, kind or stability differs in rustdoc.
+const RUSTDOC_OVERRIDES: &[&str] = &[
+    // repeat-tolerant (`FlagMulti`) in rustdoc, only singular versions accepted in rustc
+    "help",
+    "version",
+    "verbose",
+    // `-o` is an output directory, not a file as in rustc
+    // both long and short forms MUST be listed as they are declared separately in rustc
+    "o",
+    "out-dir",
+    // runs doctests instead of building a test harness as rustc does
+    "test",
+    // rustdoc-specific emission types
+    "emit",
+    // unstable in rustdoc
+    "print",
+    "remap-path-scope",
+    // rustc only accepts the short-flag, rustdoc accepts both short and long names.
+    "L",
+    // same meaning as in rustc, redeclared to carry rustdoc-specific help text
+    "l",
+    "cap-lints",
+];
+
 fn opts() -> Vec<RustcOptGroup> {
     use rustc_session::config::OptionKind::{Flag, FlagMulti, Multi, Opt};
     use rustc_session::config::OptionStability::{Stable, Unstable};
     use rustc_session::config::make_opt as opt;
 
-    vec![
+    // rustc-only flags are accepted for command-line compatibility but they are mostly inert for
+    // the documentation build and a subset may be forwarded to doctest compilation.
+    let mut options: Vec<RustcOptGroup> = rustc_optgroups()
+        .into_iter()
+        .filter(|opt| !RUSTDOC_OVERRIDES.contains(&opt.name))
+        .collect();
+    options.extend([
         opt(Stable, FlagMulti, "h", "help", "show this help message", ""),
         opt(Stable, FlagMulti, "V", "version", "print rustdoc's version", ""),
         opt(Stable, FlagMulti, "v", "verbose", "use verbose output", ""),
@@ -214,12 +245,31 @@ fn opts() -> Vec<RustcOptGroup> {
             "PATH",
         ),
         opt(Stable, Opt, "o", "out-dir", "which directory to place the output", "PATH"),
-        opt(Stable, Opt, "", "crate-name", "specify the name of this crate", "NAME"),
-        make_crate_type_option(),
         opt(Stable, Multi, "L", "library-path", "directory to add to crate search path", "DIR"),
-        opt(Stable, Multi, "", "cfg", "pass a --cfg to rustc", ""),
-        opt(Stable, Multi, "", "check-cfg", "pass a --check-cfg to rustc", ""),
-        opt(Stable, Multi, "", "extern", "pass an --extern to rustc", "NAME[=PATH]"),
+        opt(
+            Stable,
+            Multi,
+            "l",
+            "",
+            "Link the generated doctest(s) to the specified native\n\
+                library NAME. The optional KIND can be one of\n\
+                <static|framework|dylib> (default: dylib).\n\
+                Optional comma separated MODIFIERS\n\
+                <bundle|verbatim|whole-archive|as-needed>\n\
+                may be specified each with a prefix of either '+' to\n\
+                enable or '-' to disable.",
+            "[<KIND>[:<MODIFIERS>]=]<NAME>[:<RENAME>]",
+        ),
+        opt(
+            Stable,
+            Multi,
+            "",
+            "cap-lints",
+            "Set the most restrictive lint level. \
+                More restrictive lints are capped at this level. \
+                By default, it is at `forbid` level.",
+            "LEVEL",
+        ),
         opt(
             Unstable,
             Multi,
@@ -237,7 +287,6 @@ fn opts() -> Vec<RustcOptGroup> {
             "give precedence to `--extern-html-root-url`, not `html_root_url`",
             "",
         ),
-        opt(Stable, Multi, "C", "codegen", "pass a codegen option to rustc", "OPT[=VALUE]"),
         opt(Stable, FlagMulti, "", "document-private-items", "document private items", ""),
         opt(
             Unstable,
@@ -257,7 +306,6 @@ fn opts() -> Vec<RustcOptGroup> {
             "The working directory in which to run tests",
             "PATH",
         ),
-        opt(Stable, Opt, "", "target", "target triple to document", "TRIPLE"),
         opt(
             Stable,
             Multi,
@@ -322,15 +370,6 @@ fn opts() -> Vec<RustcOptGroup> {
                 However, your theme might break if the rustdoc's generated HTML changes, so be careful!",
             "PATH",
         ),
-        opt(
-            Unstable,
-            Multi,
-            "Z",
-            "",
-            "unstable / perma-unstable options (only on nightly build)",
-            "FLAG",
-        ),
-        opt(Stable, Opt, "", "sysroot", "Override the system root", "PATH"),
         opt(
             Unstable,
             Opt,
@@ -401,65 +440,6 @@ fn opts() -> Vec<RustcOptGroup> {
             "suffix to add to CSS and JavaScript files, \
                 e.g., \"search-index.js\" will become \"search-index-suffix.js\"",
             "PATH",
-        ),
-        opt(
-            Stable,
-            Opt,
-            "",
-            "edition",
-            "edition to use when compiling rust code (default: 2015)",
-            "EDITION",
-        ),
-        opt(
-            Stable,
-            Opt,
-            "",
-            "color",
-            "Configure coloring of output:
-                                          auto   = colorize, if output goes to a tty (default);
-                                          always = always colorize output;
-                                          never  = never colorize output",
-            "auto|always|never",
-        ),
-        opt(
-            Stable,
-            Opt,
-            "",
-            "error-format",
-            "How errors and other messages are produced",
-            "human|json|short",
-        ),
-        opt(
-            Stable,
-            Opt,
-            "",
-            "diagnostic-width",
-            "Provide width of the output for truncated error messages",
-            "WIDTH",
-        ),
-        opt(Stable, Opt, "", "json", "Configure the structure of JSON diagnostics", "CONFIG"),
-        opt(Stable, Multi, "A", "allow", "Set lint allowed", "LINT"),
-        opt(Stable, Multi, "W", "warn", "Set lint warnings", "LINT"),
-        opt(Stable, Multi, "", "force-warn", "Set lint force-warn", "LINT"),
-        opt(Stable, Multi, "D", "deny", "Set lint denied", "LINT"),
-        opt(Stable, Multi, "F", "forbid", "Set lint forbidden", "LINT"),
-        opt(
-            Stable,
-            Multi,
-            "",
-            "cap-lints",
-            "Set the most restrictive lint level. \
-                More restrictive lints are capped at this level. \
-                By default, it is at `forbid` level.",
-            "LEVEL",
-        ),
-        opt(
-            Stable,
-            Multi,
-            "",
-            "remap-path-prefix",
-            "Remap source names in compiler messages",
-            "FROM=TO",
         ),
         opt(Unstable, Opt, "", "index-page", "Markdown file to be used as index page", "PATH"),
         opt(
@@ -717,7 +697,8 @@ fn opts() -> Vec<RustcOptGroup> {
             "removed, see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information",
             "[rust]",
         ),
-    ]
+    ]);
+    options
 }
 
 fn usage(argv0: &str) {

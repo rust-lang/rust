@@ -30,6 +30,9 @@ use crate::html::static_files;
 use crate::scrape_examples::{AllCallLocations, ScrapeExamplesOptions};
 use crate::{html, opts, theme};
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum OutputFormat {
     /// `--output-format=json` without `--show-coverage`.
@@ -75,8 +78,6 @@ pub(crate) struct Options {
     pub(crate) diagnostic_width: Option<usize>,
     /// Library search paths to hand to the compiler.
     pub(crate) libs: Vec<SearchPath>,
-    /// Library search paths strings to hand to the compiler.
-    pub(crate) lib_strs: Vec<String>,
     /// The list of external crates to link against.
     pub(crate) externs: Externs,
     /// The list of external crates strings to link against.
@@ -87,12 +88,12 @@ pub(crate) struct Options {
     pub(crate) check_cfgs: Vec<String>,
     /// Codegen options to hand to the compiler.
     pub(crate) codegen_options: CodegenOptions,
-    /// Codegen options strings to hand to the compiler.
-    pub(crate) codegen_options_strs: Vec<String>,
     /// Unstable (`-Z`) options to pass to the compiler.
     pub(crate) unstable_opts: UnstableOptions,
-    /// Unstable (`-Z`) options strings to pass to the compiler.
-    pub(crate) unstable_opts_strs: Vec<String>,
+    /// Compiler options, in command-line order, to hand to the compiler building doctests.
+    pub(crate) forwarded_rustc_args: Vec<String>,
+    /// Native libraries (`-l`) to link into doctest binaries.
+    pub(crate) native_lib_strs: Vec<String>,
     /// The target used to compile the crate against.
     pub(crate) target: TargetTuple,
     /// Edition used when reading the crate. Defaults to "2015". Also used by default when
@@ -853,9 +854,8 @@ impl Options {
         let test_run_directory = matches.opt_str("test-run-directory").map(PathBuf::from);
         let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
         let test_builder = matches.opt_str("test-builder").map(PathBuf::from);
-        let codegen_options_strs = matches.opt_strs("C");
-        let unstable_opts_strs = matches.opt_strs("Z");
-        let lib_strs = matches.opt_strs("L");
+        let forwarded_rustc_args = forwarded_rustc_args(matches);
+        let native_lib_strs = matches.opt_strs("l");
         let extern_strs = matches.opt_strs("extern");
         let test_runtool = matches.opt_str("test-runtool");
         let test_runtool_args = matches.opt_strs("test-runtool-arg");
@@ -902,15 +902,14 @@ impl Options {
             error_format,
             diagnostic_width,
             libs,
-            lib_strs,
             externs,
             extern_strs,
             cfgs,
             check_cfgs,
             codegen_options,
-            codegen_options_strs,
             unstable_opts,
-            unstable_opts_strs,
+            forwarded_rustc_args,
+            native_lib_strs,
             target,
             edition,
             sysroot,
@@ -984,6 +983,36 @@ impl Options {
 /// Returns `true` if the file given as `self.input` is a Markdown file.
 pub(crate) fn markdown_input(input: &Input) -> Option<&Path> {
     input.opt_path().filter(|p| matches!(p.extension(), Some(e) if e == "md" || e == "markdown"))
+}
+
+/// Re-serializes, in their original command-line order, the options that the compiler building
+/// doctests must see. Order is preserved because rustc resolves `-O` against `-C opt-level` and
+/// `-g` against `-C debuginfo` by position.
+///
+/// `-l` is deliberately absent: these arguments are shared with the merged-doctest runner, which
+/// links the native libraries through the bundle rlib and must not be given them a second time.
+pub(crate) fn forwarded_rustc_args(matches: &getopts::Matches) -> Vec<String> {
+    let mut args = Vec::new();
+    for (name, prefix) in [
+        ("cfg", "--cfg="),
+        ("check-cfg", "--check-cfg="),
+        ("library-path", "-L"),
+        ("extern", "--extern="),
+        ("codegen", "-C"),
+        ("Z", "-Z"),
+    ] {
+        args.extend(
+            matches
+                .opt_strs_pos(name)
+                .into_iter()
+                .map(|(pos, val)| (pos, format!("{prefix}{val}"))),
+        );
+    }
+    for name in ["O", "g"] {
+        args.extend(matches.opt_positions(name).into_iter().map(|pos| (pos, format!("-{name}"))));
+    }
+    args.sort_by_key(|(pos, _)| *pos);
+    args.into_iter().map(|(_, arg)| arg).collect()
 }
 
 fn parse_remap_path_prefix(

@@ -1,6 +1,58 @@
 rustdoc [options] <input>
 
 Options:
+        --cfg <SPEC>    Configure the compilation environment.
+                        SPEC supports the syntax `<NAME>[="<VALUE>"]`.
+        --check-cfg <SPEC>
+                        Provide list of expected cfgs for checking
+        --crate-type <bin|lib|rlib|dylib|cdylib|staticlib|proc-macro>
+                        Comma separated list of types of crates
+                        for the compiler to emit
+        --crate-name <NAME>
+                        Specify the name of the crate being built
+        --edition <2015|2018|2021|2024|future>
+                        Specify which edition of the compiler to use when
+                        compiling code. The default is 2015 and the latest
+                        stable edition is 2024.
+    -g                  Equivalent to -C debuginfo=2
+    -O                  Equivalent to -C opt-level=3
+        --explain <OPT> Provide a detailed explanation of an error message
+        --target <TARGET>
+                        Target tuple for which the code is compiled
+    -A, --allow <LINT>  Set lint allowed
+    -W, --warn <LINT>   Set lint warnings
+        --force-warn <LINT>
+                        Set lint force-warn
+    -D, --deny <LINT>   Set lint denied
+    -F, --forbid <LINT> Set lint forbidden
+    -C, --codegen <OPT>[=<VALUE>]
+                        Set a codegen option
+        --extern <NAME>[=<PATH>]
+                        Specify where an external rust library is located
+        --sysroot <PATH>
+                        Override the system root
+    -Z <FLAG>           Set unstable / perma-unstable options
+        --error-format <human|json|short>
+                        How errors and other messages are produced
+        --json <CONFIG> Configure the JSON output of the compiler
+        --color <auto|always|never>
+                        Configure coloring of output:
+                        * auto = colorize, if output goes to a tty (default);
+                        * always = always colorize output;
+                        * never = never colorize output
+        --diagnostic-width <WIDTH>
+                        Inform rustc of the width of the output so that
+                        diagnostics can be truncated to fit
+        --remap-path-prefix <FROM>=<TO>
+                        Remap source names in all output (compiler messages
+                        and output files)
+    -j, --jobs <N>      Limit on the number of used parallel jobs
+        --jobs-frontend <N>
+                        Limit on the number of parallel jobs used by frontend
+        --jobs-backend <N>
+                        Limit on the number of parallel jobs used by backend
+        --jobs-linker <N>
+                        Limit on the number of parallel jobs used by linker
     -h, --help          show this help message
     -V, --version       print rustdoc's version
     -v, --verbose       use verbose output
@@ -9,17 +61,20 @@ Options:
         --output PATH   Which directory to place the output. This option is
                         deprecated, use --out-dir instead.
     -o, --out-dir PATH  which directory to place the output
-        --crate-name NAME
-                        specify the name of this crate
-        --crate-type <bin|lib|rlib|dylib|cdylib|staticlib|proc-macro>
-                        Comma separated list of types of crates
-                        for the compiler to emit
     -L, --library-path DIR
                         directory to add to crate search path
-        --cfg           pass a --cfg to rustc
-        --check-cfg     pass a --check-cfg to rustc
-        --extern NAME[=PATH]
-                        pass an --extern to rustc
+    -l [<KIND>[:<MODIFIERS>]=]<NAME>[:<RENAME>]
+                        Link the generated doctest(s) to the specified native
+                        library NAME. The optional KIND can be one of
+                        <static|framework|dylib> (default: dylib).
+                        Optional comma separated MODIFIERS
+                        <bundle|verbatim|whole-archive|as-needed>
+                        may be specified each with a prefix of either '+' to
+                        enable or '-' to disable.
+        --cap-lints LEVEL
+                        Set the most restrictive lint level. More restrictive
+                        lints are capped at this level. By default, it is at
+                        `forbid` level.
         --extern-html-root-url NAME=URL
                         base URL to use for dependencies; for example,
                         "std=/doc" links std::vec::Vec to
@@ -27,8 +82,6 @@ Options:
         --extern-html-root-takes-precedence 
                         give precedence to `--extern-html-root-url`, not
                         `html_root_url`
-    -C, --codegen OPT[=VALUE]
-                        pass a codegen option to rustc
         --document-private-items 
                         document private items
         --document-hidden-items 
@@ -38,7 +91,6 @@ Options:
                         arguments to pass to the test runner
         --test-run-directory PATH
                         The working directory in which to run tests
-        --target TRIPLE target triple to document
         --markdown-css FILES
                         CSS files to include via <link> in a rendered Markdown
                         file
@@ -68,9 +120,6 @@ Options:
                         doc with your own theme. However, your theme might
                         break if the rustdoc's generated HTML changes, so be
                         careful!
-    -Z FLAG             unstable / perma-unstable options (only on nightly
-                        build)
-        --sysroot PATH  Override the system root
         --playground-url URL
                         URL to send code snippets to, may be reset by
                         --markdown-playground-url or
@@ -101,32 +150,6 @@ Options:
         --resource-suffix PATH
                         suffix to add to CSS and JavaScript files, e.g.,
                         "search-index.js" will become "search-index-suffix.js"
-        --edition EDITION
-                        edition to use when compiling rust code (default:
-                        2015)
-        --color auto|always|never
-                        Configure coloring of output:
-                        auto = colorize, if output goes to a tty (default);
-                        always = always colorize output;
-                        never = never colorize output
-        --error-format human|json|short
-                        How errors and other messages are produced
-        --diagnostic-width WIDTH
-                        Provide width of the output for truncated error
-                        messages
-        --json CONFIG   Configure the structure of JSON diagnostics
-    -A, --allow LINT    Set lint allowed
-    -W, --warn LINT     Set lint warnings
-        --force-warn LINT
-                        Set lint force-warn
-    -D, --deny LINT     Set lint denied
-    -F, --forbid LINT   Set lint forbidden
-        --cap-lints LEVEL
-                        Set the most restrictive lint level. More restrictive
-                        lints are capped at this level. By default, it is at
-                        `forbid` level.
-        --remap-path-prefix FROM=TO
-                        Remap source names in compiler messages
         --index-page PATH
                         Markdown file to be used as index page
         --enable-index-page 
