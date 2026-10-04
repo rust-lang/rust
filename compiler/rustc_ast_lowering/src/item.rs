@@ -1676,14 +1676,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             RestrictionKind::Restricted { path, id, shorthand: _ } => {
                 let res = self.get_partial_res(*id);
                 let parent_module = self.tcx.parent_module(hir_id);
+                let span = path.span();
                 if let Some(did) = res.and_then(|res| res.expect_full_res().opt_def_id()) {
                     if !self.tcx.is_descendant_of(parent_module, did) {
                         // If the restriction path is not an ancestor of the item,
                         // emit an error and recover by lowering the restriction to `Unrestricted`.
-                        self.dcx().emit_err(RestrictionAncestorOnly {
-                            span: path.span(),
-                            kind: resolving_kind,
-                        });
+                        self.dcx().emit_err(RestrictionAncestorOnly { span, kind: resolving_kind });
                         hir::RestrictionKind::Unrestricted
                     } else {
                         hir::RestrictionKind::Restricted(self.arena.alloc(hir::Path {
@@ -1691,7 +1689,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             segments: self.arena.alloc_from_iter(path.iter_segments().map(
                                 |segment| {
                                     self.lower_path_segment(
-                                        path.span(),
+                                        span,
                                         segment,
                                         ParamMode::Explicit,
                                         GenericArgsMode::Err,
@@ -1700,11 +1698,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                     )
                                 },
                             )),
-                            span: self.lower_span(path.span()),
+                            span: self.lower_span(span),
                         }))
                     }
                 } else {
-                    self.dcx().span_delayed_bug(path.span(), "should have errored in resolve");
+                    self.dcx().span_delayed_bug(span, "should have errored in resolve");
                     hir::RestrictionKind::Unrestricted
                 }
             }
