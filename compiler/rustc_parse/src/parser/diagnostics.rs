@@ -2322,7 +2322,7 @@ impl<'a> Parser<'a> {
                 Applicability::MaybeIncorrect,
             );
         }
-        Err(err.into())
+        Err(err)
     }
 
     /// Handle encountering a symbol in a generic argument list that is not a `,` or `>`. In this
