@@ -29,13 +29,12 @@ error: implementation of `Fn` is not general enough
    |
 LL |     bad(&b);
    |     ^^^^^^^
-...
-LL | fn bad<F: Fn(&()) -> &()>(_: F) {}
-   |    ---    -------------- unsatisfied where-clause on `bad`
-   |    |
-   |    due to a where-clause on `bad`...
    |
-   = note: ...closure with signature `fn(&'2 ()) -> &()` must implement `Fn<(&'1 (),)>`, for any lifetime `'1`...
+note: closure with signature `fn(&'2 ()) -> &()` must implement `Fn<(&'1 (),)>`, for any lifetime `'1`...
+  --> $DIR/location-insensitive-scopes-issue-117146.rs:21:11
+   |
+LL | fn bad<F: Fn(&()) -> &()>(_: F) {}
+   |           ^^^^^^^^^^^^^^ required by this bound in `bad`
    = note: ...but it actually implements `Fn<(&'2 (),)>`, for some specific lifetime `'2`
 help: consider adding an explicit type annotation to the closure's argument
    |
@@ -47,13 +46,12 @@ error: implementation of `FnOnce` is not general enough
    |
 LL |     bad(&b);
    |     ^^^^^^^
-...
-LL | fn bad<F: Fn(&()) -> &()>(_: F) {}
-   |    ---               --- unsatisfied where-clause on `bad`
-   |    |
-   |    due to a where-clause on `bad`...
    |
-   = note: ...closure with signature `fn(&'2 ()) -> &()` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
+note: closure with signature `fn(&'2 ()) -> &()` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
+  --> $DIR/location-insensitive-scopes-issue-117146.rs:21:22
+   |
+LL | fn bad<F: Fn(&()) -> &()>(_: F) {}
+   |                      ^^^ required by this bound in `bad`
    = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
 help: consider adding an explicit type annotation to the closure's argument
    |
