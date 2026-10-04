@@ -36,18 +36,18 @@ mod m {
     impl TraitWithAssocTy for Priv { type AssocTy = u8; }
 
     pub macro m() {
-        priv_fn; //~ ERROR type `fn() {priv_fn}` is private
+        priv_fn; //~ ERROR function `priv_fn` is private
         PRIV_STATIC; // OK, not cross-crate
         PrivEnum::Variant; //~ ERROR type `PrivEnum` is private
         PubEnum::Variant; // OK
-        <u8 as PrivTrait>::method; //~ ERROR type `fn() {<u8 as PrivTrait>::method}` is private
+        <u8 as PrivTrait>::method; //~ ERROR associated function `PrivTrait::method` is private
         <u8 as PubTrait>::method; // OK
         PrivTupleStruct;
         //~^ ERROR type `fn(u8) -> PrivTupleStruct {PrivTupleStruct}` is private
         PubTupleStruct;
         //~^ ERROR type `fn(u8) -> PubTupleStruct {PubTupleStruct}` is private
         Pub(0u8).priv_method();
-        //~^ ERROR type `for<'a> fn(&'a Pub<u8>) {Pub::<u8>::priv_method}` is private
+        //~^ ERROR method `Pub::<u8>::priv_method` is private
     }
 
     trait Trait {}
