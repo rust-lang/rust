@@ -122,6 +122,7 @@ const itemTypes = Object.freeze({
     attribute: 27,
     decl_macro_attribute: 28,
     decl_macro_derive: 29,
+    feature: 30,
 });
 const itemTypesName = Array.from(Object.keys(itemTypes));
 
@@ -2179,7 +2180,7 @@ class DocSearch {
                 displayPath = item.modulePath + "::";
                 href = this.rootPath + item.modulePath.replace(/::/g, "/") +
                     "/index.html#reexport." + name;
-            } else if (type === "primitive" || type === "keyword" || type === "attribute") {
+            } else if (["primitive", "keyword", "attribute", "feature"].includes(type)) {
                 displayPath = "";
                 exactPath = "";
                 href = this.rootPath + path.replace(/::/g, "/") +
@@ -4827,6 +4828,7 @@ const longItemTypes = [
     "attribute",
     "", // decl macro attribute, never used as is
     "", // decl macro derive, never used as is
+    "feature",
 ];
 // @ts-expect-error
 let currentResults;

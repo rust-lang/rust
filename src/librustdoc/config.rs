@@ -59,6 +59,12 @@ pub(crate) enum MergeDoctests {
     Auto,
 }
 
+#[derive(Clone, Debug)]
+pub(crate) struct Feature {
+    pub(crate) name: String,
+    pub(crate) documentation: Option<String>,
+}
+
 /// Configuration options for rustdoc.
 #[derive(Clone)]
 pub(crate) struct Options {
@@ -172,6 +178,9 @@ pub(crate) struct Options {
 
     /// Target modifiers.
     pub(crate) target_modifiers: BTreeMap<OptionsTargetModifiers, String>,
+
+    /// Documentation for crate features.
+    pub(crate) documented_features: Vec<Feature>,
 }
 
 impl fmt::Debug for Options {
@@ -218,6 +227,7 @@ impl fmt::Debug for Options {
             .field("no_capture", &self.no_capture)
             .field("scrape_examples_options", &self.scrape_examples_options)
             .field("unstable_features", &self.unstable_features)
+            .field("documented_features", &self.documented_features)
             .finish()
     }
 }
@@ -896,6 +906,8 @@ impl Options {
 
         let disable_minification = matches.opt_present("disable-minification");
 
+        let documented_features = parse_feature_documentation(matches, dcx);
+
         let options = Options {
             bin_crate,
             proc_macro_crate,
@@ -941,6 +953,7 @@ impl Options {
             unstable_features,
             doctest_build_args,
             target_modifiers: collected_options.target_modifiers,
+            documented_features,
         };
         let render_options = RenderOptions {
             output,
@@ -1131,4 +1144,43 @@ fn parse_merge_doctests(
             dcx.fatal("argument to --merge-doctests must be a boolean (true/false) or 'auto'")
         }
     }
+}
+
+const OPT_NAME: &str = "feature-documentation";
+
+fn remove_wrapping_quotes<'a>(
+    dcx: DiagCtxtHandle<'_>,
+    full: &str,
+    s: &'a str,
+    c: char,
+) -> Option<&'a str> {
+    let Some(s) = s.strip_prefix(c) else { return None };
+    let Some(s) = s.strip_suffix(c) else {
+        dcx.fatal(format!("unclosed documentation string for `--{OPT_NAME}` in {full:?}"));
+    };
+    Some(s.trim())
+}
+
+fn parse_feature_documentation(m: &getopts::Matches, dcx: DiagCtxtHandle<'_>) -> Vec<Feature> {
+    let entries = m.opt_strs(OPT_NAME);
+    let mut features: Vec<Feature> = Vec::with_capacity(entries.len());
+    for entry in entries {
+        let Some((name, doc)) = entry.split_once('=') else {
+            dcx.fatal(format!(
+                "invalid argument for `--{OPT_NAME}`: expected `name=doc`, found {entry:?}",
+            ));
+        };
+        if features.iter().any(|feature| feature.name == name) {
+            dcx.fatal(format!("feature {name:?} is passed more than once in `--{OPT_NAME}`"));
+        }
+        let doc = doc.trim();
+        let doc = remove_wrapping_quotes(dcx, &entry, doc, '"')
+            .or_else(|| remove_wrapping_quotes(dcx, &entry, doc, '\''))
+            .unwrap_or(doc);
+        features.push(Feature {
+            name: name.to_string(),
+            documentation: if doc.is_empty() { None } else { Some(doc.to_string()) },
+        });
+    }
+    features
 }

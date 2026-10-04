@@ -2614,6 +2614,7 @@ pub(crate) enum ItemSection {
     AttributeMacros,
     DeriveMacros,
     TraitAliases,
+    Features,
 }
 
 impl ItemSection {
@@ -2622,6 +2623,7 @@ impl ItemSection {
         // NOTE: The order here affects the order in the UI.
         // Keep this synchronized with addSidebarItems in main.js
         &[
+            Features,
             Reexports,
             PrimitiveTypes,
             Modules,
@@ -2677,6 +2679,7 @@ impl ItemSection {
             Self::AttributeMacros => "attributes",
             Self::DeriveMacros => "derives",
             Self::TraitAliases => "trait-aliases",
+            Self::Features => "features",
         }
     }
 
@@ -2707,6 +2710,7 @@ impl ItemSection {
             Self::AttributeMacros => "Attribute Macros",
             Self::DeriveMacros => "Derive Macros",
             Self::TraitAliases => "Trait Aliases",
+            Self::Features => "Features",
         }
     }
 }
@@ -2738,6 +2742,7 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
         ItemType::ProcAttribute | ItemType::DeclMacroAttribute => ItemSection::AttributeMacros,
         ItemType::ProcDerive | ItemType::DeclMacroDerive => ItemSection::DeriveMacros,
         ItemType::TraitAlias => ItemSection::TraitAliases,
+        ItemType::Feature => ItemSection::Features,
     }
 }
 
