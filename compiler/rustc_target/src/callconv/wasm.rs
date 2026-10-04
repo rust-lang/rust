@@ -11,7 +11,8 @@ where
     C: HasDataLayout,
 {
     // The base case: a single scalar is a singleton scalar.
-    if !(layout.is_aggregate() || layout.peel_transparent_wrappers(cx).is_enum()) {
+    // We're only looking for scalar types that are non-ZST.
+    if !(layout.is_aggregate() || layout.peel_transparent_wrappers_from_non_1zst(cx).is_enum()) {
         let BackendRepr::Scalar(scalar) = layout.backend_repr else {
             return None;
         };
@@ -62,7 +63,9 @@ where
 {
     // An enum that is represented as an integer is not an aggregate to rust, but may still
     // need to be passed as one if its variants have any (even ZST) fields.
-    if !(val.layout.is_aggregate() || val.layout.peel_transparent_wrappers(cx).is_enum()) {
+    if !(val.layout.is_aggregate()
+        || val.layout.peel_transparent_wrappers_from_non_1zst(cx).is_enum())
+    {
         return false;
     }
 
