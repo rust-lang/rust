@@ -340,6 +340,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcDumpItemBounds => (),
             AttributeKind::RustcDumpLayout(..) => (),
             AttributeKind::RustcDumpObjectLifetimeDefaults => (),
+            AttributeKind::RustcDumpPtrauthDiscriminator(..) => (),
             AttributeKind::RustcDumpSymbolName(..) => (),
             AttributeKind::RustcDumpUserArgs => (),
             AttributeKind::RustcDumpVariances => (),

@@ -1116,6 +1116,10 @@ Contains only 2 tests, related to a single issue, which was about an error cause
 
 **FIXME**: Probably rehome under some typecheck / binop directory.
 
+## `tests/ui/ptrauth/`: Function pointer type discrimination
+
+Contain only 1 tests, related to how Rust computes function pointer type discriminators for pointer authenticated code. The test uses `ptrauth_encoding` and `ptrauth_hash` attributes to obtain string encoding and hashed value respectively.
+
 ## `tests/ui/pub/`: `pub` keyword
 
 A large category about function and type public/private visibility, and its impact when using features across crates. Checks both visibility-related error messages and previously buggy cases.
