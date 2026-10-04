@@ -9,6 +9,7 @@ LL |     whiskers -= other;
 note: a field by that name exists in `Self`
   --> $DIR/issue-2356.rs:6:3
    |
+LL | pub struct Cat {
 LL |   whiskers: isize,
    |   ^^^^^^^^
 
@@ -49,6 +50,7 @@ LL |     whiskers = 4;
 note: a field by that name exists in `Self`
   --> $DIR/issue-2356.rs:6:3
    |
+LL | pub struct Cat {
 LL |   whiskers: isize,
    |   ^^^^^^^^
 

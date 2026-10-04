@@ -10,6 +10,7 @@ LL |             banana: banana
 note: a field by that name exists in `Self`
   --> $DIR/issue-60057.rs:2:5
    |
+LL | struct A {
 LL |     banana: u8,
    |     ^^^^^^
 

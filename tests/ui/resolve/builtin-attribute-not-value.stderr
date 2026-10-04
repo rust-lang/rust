@@ -30,6 +30,7 @@ LL |         Wat { path }
 note: a field by that name exists in `Self`
   --> $DIR/builtin-attribute-not-value.rs:19:5
    |
+LL | struct Wat {
 LL |     path: (),
    |     ^^^^
 
