@@ -1039,13 +1039,11 @@ impl ExternEntry {
     }
 }
 
+/// Where the new trait solver should be enabled only in coherence or everywhere.
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct NextSolverConfig {
-    /// Whether the new trait solver should be enabled in coherence.
-    pub coherence: bool = true,
-    /// Whether the new trait solver should be enabled everywhere.
-    /// This is only `true` if `coherence` is also enabled.
-    pub globally: bool = false,
+pub enum NextSolverConfig {
+    Coherence,
+    Globally,
 }
 
 // FIXME(#160895): Using -Znext-solver as default on nightly
@@ -1053,9 +1051,9 @@ pub struct NextSolverConfig {
 impl Default for NextSolverConfig {
     fn default() -> Self {
         if option_env!("CFG_DEFAULT_NEXT_SOLVER_GLOBALLY").is_some() {
-            Self { coherence: true, globally: true }
+            Self::Globally
         } else {
-            Self { coherence: true, globally: false }
+            Self::Coherence
         }
     }
 }
@@ -2734,17 +2732,22 @@ pub fn build_session_options(
 
     // `-Zassumptions-on-binders` requires the next trait solver globally. Normalize after
     // parsing so the effective config is independent of flag order and so consumers that
-    // read `next_solver.globally` directly (e.g. feature-gate checks) see the right value.
+    // read `next_solver` directly (e.g. feature-gate checks) see the right value.
     if unstable_opts.assumptions_on_binders {
-        // `NextSolverConfig::default()` has `coherence: true`; the only way `coherence` is
-        // false here is an explicit `-Znext-solver=no`.
-        if !unstable_opts.next_solver.coherence {
+        // Only warn when the last `-Znext-solver` given has a value that doesn't enable
+        // the solver globally, so a later `-Znext-solver=globally` overrides an earlier one.
+        let no_next_solver = matches
+            .opt_strs("Z")
+            .iter()
+            .rfind(|arg| arg.starts_with("next-solver"))
+            .is_some_and(|arg| *arg == "next-solver=no" || *arg == "next-solver=coherence");
+        if no_next_solver {
             early_dcx.early_warn(
                 "-Zassumptions-on-binders unconditionally enables the next trait solver; \
                  `-Znext-solver=no` is ignored",
             );
         }
-        unstable_opts.next_solver = NextSolverConfig { coherence: true, globally: true };
+        unstable_opts.next_solver = NextSolverConfig::Globally;
     }
 
     if unstable_opts.staticlib_hide_internal_symbols && !crate_types.contains(&CrateType::StaticLib)
