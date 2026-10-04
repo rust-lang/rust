@@ -155,6 +155,29 @@ use crate::sys::{FromInner, IntoInner, time};
 #[cfg_attr(not(test), rustc_diagnostic_item = "Instant")]
 pub struct Instant(time::Instant);
 
+/// A timer optimized for performance measurements.
+///
+/// Calling [`Stopwatch::start`] is as cheap as possible so can be used
+/// as a low-impact way to capture a point in time.
+/// [`elapsed`](Stopwatch::elapsed) or [`duration_since`](Stopwatch::duration_since) can
+/// then resolve the duration the timer has been running.
+///
+/// Unlike [`Instant`] you cannot add or subtract durations therefore there can never be
+/// a `Stopwatch` that represents a time before the first call to `Stopwatch::start`.
+///
+/// # Underlying System calls
+///
+/// On most systems this currently uses the same underlying system call as [`Instant`].
+/// The exception is Darwin, which uses [`mach_absolute_time`] directly instead of
+/// `CLOCK_UPTIME_RAW`.
+///
+/// [`mach_absolute_time`]: https://developer.apple.com/documentation/kernel/1462446-mach_absolute_time
+///
+/// **Disclaimer:** System calls might change over time.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[unstable(feature = "stopwatch", issue = "161809")]
+pub struct Stopwatch(time::Stopwatch);
+
 /// A measurement of the system clock, useful for talking to
 /// external entities like the file system or other processes.
 ///
@@ -474,6 +497,101 @@ impl Sub<Instant> for Instant {
 
 #[stable(feature = "time2", since = "1.8.0")]
 impl fmt::Debug for Instant {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl Stopwatch {
+    /// Begins the timer for a `Stopwatch`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(stopwatch)]
+    /// use std::time::Stopwatch;
+    ///
+    /// let now = Stopwatch::start();
+    /// ```
+    #[must_use]
+    #[unstable(feature = "stopwatch", issue = "161809")]
+    pub fn start() -> Self {
+        Self(time::Stopwatch::start())
+    }
+
+    /// Returns the amount of time elapsed from another `Stopwatch` to this one,
+    /// or zero duration if that Stopwatch is later than this one.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(stopwatch)]
+    /// use std::time::{Duration, Stopwatch};
+    /// use std::thread::sleep;
+    ///
+    /// let start = Stopwatch::start();
+    /// sleep(Duration::new(1, 0));
+    /// let end = Stopwatch::start();
+    /// println!("{:?}", end.duration_since(start));
+    /// println!("{:?}", start.duration_since(end)); // 0ns
+    /// ```
+    #[must_use]
+    #[unstable(feature = "stopwatch", issue = "161809")]
+    pub fn duration_since(self, earlier: Self) -> Duration {
+        self.checked_duration_since(earlier).unwrap_or_default()
+    }
+
+    /// Returns the amount of time elapsed from another `Stopwatch` to this one,
+    /// or `None` if that `Stopwatch` is later than this one.
+    ///
+    /// Under rare circumstances this may return `None` even if the other `Stopwatch` was earlier.
+    /// See [Monotonicity].
+    ///
+    /// [Monotonicity]: Instant#monotonicity
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(stopwatch)]
+    /// use std::time::{Duration, Stopwatch};
+    /// use std::thread::sleep;
+    ///
+    /// let start = Stopwatch::start();
+    /// sleep(Duration::new(1, 0));
+    /// let end = Stopwatch::start();
+    /// println!("{:?}", end.checked_duration_since(start));
+    /// println!("{:?}", start.checked_duration_since(end)); // None
+    /// ```
+    #[must_use]
+    #[unstable(feature = "stopwatch", issue = "161809")]
+    pub fn checked_duration_since(self, earlier: Self) -> Option<Duration> {
+        self.0.checked_duration_since(earlier.0)
+    }
+
+    /// Returns the amount of time elapsed since this Stopwatch was started.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(stopwatch)]
+    /// use std::thread::sleep;
+    /// use std::time::{Duration, Stopwatch};
+    ///
+    /// let stopwatch = Stopwatch::start();
+    /// let three_secs = Duration::from_secs(3);
+    /// sleep(three_secs);
+    /// assert!(stopwatch.elapsed() >= three_secs);
+    /// ```
+    #[must_use]
+    #[unstable(feature = "stopwatch", issue = "161809")]
+    pub fn elapsed(self) -> Duration {
+        let end = Self::start();
+        end.checked_duration_since(self).unwrap_or_default()
+    }
+}
+
+#[unstable(feature = "stopwatch", issue = "161809")]
+impl fmt::Debug for Stopwatch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }

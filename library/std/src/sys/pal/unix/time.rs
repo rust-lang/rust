@@ -229,3 +229,20 @@ impl __timespec64 {
         Self { tv_sec, tv_nsec, _padding: 0 }
     }
 }
+
+#[cfg(target_vendor = "apple")]
+#[repr(C)]
+pub(crate) struct mach_timebase_info {
+    pub numer: u32,
+    pub denom: u32,
+}
+
+#[cfg(target_vendor = "apple")]
+pub(crate) fn mach_timebase_info() -> mach_timebase_info {
+    unsafe extern "C" {
+        unsafe fn mach_timebase_info(info: *mut mach_timebase_info) -> libc::kern_return_t;
+    }
+    let mut timebase = mach_timebase_info { numer: 0, denom: 0 };
+    assert_eq!(unsafe { mach_timebase_info(&mut timebase) }, libc::KERN_SUCCESS);
+    timebase
+}
