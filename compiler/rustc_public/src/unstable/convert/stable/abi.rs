@@ -10,10 +10,11 @@ use rustc_target::callconv;
 
 use crate::IndexedVal;
 use crate::abi::{
-    AddressSpace, ArgAbi, ArgAttributes, ArgExtension, CallConvention, CastTarget, FieldsShape,
-    FloatLength, FnAbi, IndirectMode, IntegerLength, IntegerType, Layout, LayoutShape,
-    NumScalableVectors, PassMode, Primitive, Reg, RegKind, ReprFlags, ReprOptions, Scalar,
-    TagEncoding, TyAndLayout, Uniform, ValueRepr, VariantFields, VariantsShape, WrappingRange,
+    AddressSpace, ArgAbi, ArgAttributeFlags, ArgAttributes, ArgExtension, CallConvention,
+    CastTarget, FieldsShape, FloatLength, FnAbi, IndirectMode, IntegerLength, IntegerType, Layout,
+    LayoutShape, NumScalableVectors, PassMode, Primitive, Reg, RegKind, ReprFlags, ReprOptions,
+    Scalar, TagEncoding, TyAndLayout, Uniform, ValueRepr, VariantFields, VariantsShape,
+    WrappingRange,
 };
 use crate::compiler_interface::BridgeTys;
 use crate::target::MachineSize as Size;
@@ -260,6 +261,18 @@ impl<'tcx> Stable<'tcx> for callconv::ArgAttributes {
         _: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         ArgAttributes {
+            regular: ArgAttributeFlags {
+                captures_none: self.regular.contains(callconv::ArgAttribute::CapturesNone),
+                captures_address: self.regular.contains(callconv::ArgAttribute::CapturesAddress),
+                captures_read_only: self.regular.contains(callconv::ArgAttribute::CapturesReadOnly),
+                no_alias: self.regular.contains(callconv::ArgAttribute::NoAlias),
+                non_null: self.regular.contains(callconv::ArgAttribute::NonNull),
+                read_only: self.regular.contains(callconv::ArgAttribute::ReadOnly),
+                in_reg: self.regular.contains(callconv::ArgAttribute::InReg),
+                no_undef: self.regular.contains(callconv::ArgAttribute::NoUndef),
+                writable: self.regular.contains(callconv::ArgAttribute::Writable),
+                no_free: self.regular.contains(callconv::ArgAttribute::NoFree),
+            },
             arg_ext: match self.arg_ext {
                 callconv::ArgExtension::None => ArgExtension::None,
                 callconv::ArgExtension::Zext => ArgExtension::Zext,

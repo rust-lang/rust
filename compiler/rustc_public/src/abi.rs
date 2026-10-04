@@ -97,19 +97,21 @@ pub enum PassMode {
     },
 }
 
-/// Attributes of a function argument that affect its ABI.
-///
-/// Not all internal compiler attributes are exposed here, as some are
-/// LLVM-specific optimization hints. The internal representation is kept
-/// private so it can be expanded in the future.
+/// Attributes of a function argument or return value.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct ArgAttributes {
+    pub(crate) regular: ArgAttributeFlags,
     pub(crate) arg_ext: ArgExtension,
     pub(crate) pointee_size: Size,
     pub(crate) pointee_align: Option<Align>,
 }
 
 impl ArgAttributes {
+    /// Return the calling convention and optimization flags for this argument.
+    pub fn regular(&self) -> ArgAttributeFlags {
+        self.regular
+    }
+
     /// Return how this argument should be extended when passed in a register.
     ///
     /// Relevant for integer arguments smaller than the register width.
@@ -125,10 +127,34 @@ impl ArgAttributes {
         self.pointee_align
     }
 
-    /// Return the minimum dereferenceable size of the pointee, if known.
+    /// Return the minimum dereferenceable size of the pointee, if it is non-null,
+    /// at function entry (for arguments) or return (for return values).
+    ///
+    /// This alone does not guarantee dereferenceability for the duration of the call.
+    /// rustc only emits LLVM's `dereferenceable` or `dereferenceable_or_null` attributes
+    /// when [`ArgAttributeFlags::no_free`] is set.
     pub fn pointee_size(&self) -> Size {
         self.pointee_size
     }
+}
+
+/// Calling convention and optimization flags for a function argument or return value.
+///
+/// The capture flags overlap: `captures_none` implies `captures_address`, which
+/// implies `captures_read_only`.
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+pub struct ArgAttributeFlags {
+    pub captures_none: bool,
+    pub captures_address: bool,
+    pub captures_read_only: bool,
+    pub no_alias: bool,
+    pub non_null: bool,
+    pub read_only: bool,
+    pub in_reg: bool,
+    pub no_undef: bool,
+    pub writable: bool,
+    pub no_free: bool,
 }
 
 /// How a small integer argument should be extended to fill a register.
