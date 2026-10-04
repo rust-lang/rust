@@ -1,11 +1,17 @@
 error[E0532]: expected unit struct, unit variant or constant, found tuple variant `MyEnum::HasTupleField`
   --> $DIR/unit-pattern-error-on-tuple-and-struct-variants-63983.rs:9:9
    |
+LL | enum MyEnum {
 LL |     HasTupleField(i32),
    |     ------------------ `MyEnum::HasTupleField` defined here
 ...
 LL |         MyEnum::HasTupleField => "",
-   |         ^^^^^^^^^^^^^^^^^^^^^ help: use the tuple variant pattern syntax instead: `MyEnum::HasTupleField(_)`
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use the tuple variant pattern syntax instead
+   |
+LL |         MyEnum::HasTupleField(_) => "",
+   |                              +++
 
 error[E0533]: expected unit struct, unit variant or constant, found struct variant `MyEnum::HasStructField`
   --> $DIR/unit-pattern-error-on-tuple-and-struct-variants-63983.rs:11:9
