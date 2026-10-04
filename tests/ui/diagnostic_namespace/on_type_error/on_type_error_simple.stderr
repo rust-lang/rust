@@ -18,6 +18,10 @@ note: tuple struct defined here
    |
 LL | struct S<T>(T);
    |        ^
+help: consider parsing the string to numeric type
+   |
+LL |     let s: S<i32> = S(String::new().parse::<i32>().unwrap_or_default());
+   |                                    +++++++++++++++++++++++++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/on_type_error_simple.rs:16:30
