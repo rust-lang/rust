@@ -399,13 +399,13 @@ impl fmt::Debug for LocalDefId {
 }
 
 impl<E: SpanEncoder> Encodable<E> for LocalDefId {
-    fn encode(&self, s: &mut E) {
-        self.to_def_id().encode(s);
+    default fn encode(&self, e: &mut E) {
+        self.to_def_id().encode(e);
     }
 }
 
 impl<D: SpanDecoder> Decodable<D> for LocalDefId {
-    fn decode(d: &mut D) -> LocalDefId {
+    default fn decode(d: &mut D) -> LocalDefId {
         DefId::decode(d).expect_local()
     }
 }
