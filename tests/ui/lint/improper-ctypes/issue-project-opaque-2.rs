@@ -1,6 +1,10 @@
 #![feature(type_alias_impl_trait)]
 #![deny(improper_ctypes)]
 
+// Issue: https://github.com/rust-lang/rust/issues/73251
+// Decisions on whether projections that normalize to opaque types then to something else
+// should warn or not
+
 pub trait TraitA {
     type Assoc;
 }

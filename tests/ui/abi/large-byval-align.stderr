@@ -1,0 +1,17 @@
+warning: `extern` fn uses type `A`, which is not FFI-safe
+  --> $DIR/large-byval-align.rs:9:26
+   |
+LL | pub extern "C" fn foo(x: A) {}
+   |                          ^ not FFI-safe
+   |
+   = help: consider removing the `#[repr(align)]` attribute from this struct
+   = note: `A` has unspecified layout
+note: the type is defined here
+  --> $DIR/large-byval-align.rs:7:1
+   |
+LL | pub struct A(i64);
+   | ^^^^^^^^^^^^
+   = note: `#[warn(improper_ctypes_definitions)]` (part of `#[warn(improper_c_boundaries)]`) on by default
+
+warning: 1 warning emitted
+
