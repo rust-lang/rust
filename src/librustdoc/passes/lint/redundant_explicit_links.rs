@@ -480,6 +480,10 @@ fn local_href_for_res(cx: &DocContext<'_>, module_id: DefId, res: Res<NodeId>) -
     let mut url_parts = href_relative_parts(module_fqp, &current_fqp);
     match item_type {
         ItemType::Module => url_parts.push("index.html"),
+        // <https://gist.github.com/notriddle/08752eb42289c82a69638d65553571c4>
+        ItemType::Enum | ItemType::Struct | ItemType::Union => {
+            url_parts.push_fmt(format_args!("type.{last}.html", last = fqp.last()?))
+        }
         _ => url_parts.push_fmt(format_args!(
             "{}.{last}.html",
             item_type.as_str(),

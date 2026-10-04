@@ -692,6 +692,11 @@ fn make_href(
         ItemType::Module => {
             url_parts.push("index.html");
         }
+        // <https://gist.github.com/notriddle/08752eb42289c82a69638d65553571c4>
+        ItemType::Enum | ItemType::Struct | ItemType::Union => {
+            let last = fqp.last().unwrap();
+            url_parts.push_fmt(format_args!("type.{last}.html"));
+        }
         _ => {
             let last = fqp.last().unwrap();
             url_parts.push_fmt(format_args!("{shortty}.{last}.html"));

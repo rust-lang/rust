@@ -809,6 +809,26 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                     let redir_dst = self.dst.join(redir_name);
                     self.shared.fs.write(redir_dst, v)?;
                 }
+            } else if let Some(html_redirect_filename) = item.html_redirect_filename() {
+                if let Some(ref redirections) = self.shared.redirections {
+                    let to_path = fmt::from_fn(|f| {
+                        for name in &self.current {
+                            write!(f, "{name}/")?;
+                        }
+                        write!(f, "{}", item.html_filename())
+                    });
+                    let from_path = fmt::from_fn(|f| {
+                        for name in &self.current {
+                            write!(f, "{name}/")?;
+                        }
+                        write!(f, "{}", html_redirect_filename)
+                    });
+                    redirections.borrow_mut().insert(from_path.to_string(), to_path.to_string());
+                } else {
+                    let v = layout::redirect(&item.html_filename());
+                    let redir_dst = self.dst.join(html_redirect_filename);
+                    self.shared.fs.write(redir_dst, v)?;
+                }
             }
         }
 

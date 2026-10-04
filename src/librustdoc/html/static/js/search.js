@@ -2171,6 +2171,17 @@ class DocSearch {
             let path = item.modulePath;
             let exactPath = item.exactModulePath;
 
+            /**
+             * @param {string} type
+             * @returns {string}
+             */
+            const normalizeType = type => {
+                if (type === "struct" || type === "enum" || type === "union") {
+                    return "type";
+                }
+                return type;
+            };
+
             if (type === "mod") {
                 displayPath = path + "::";
                 href = this.rootPath + path.replace(/::/g, "/") + "/" +
@@ -2220,13 +2231,13 @@ class DocSearch {
                     anchor = item.entry.associatedItemDisambiguatorOrExternCrateUrl + "/" + anchor;
                 }
                 href = this.rootPath + path.replace(/::/g, "/") +
-                    "/" + pageType +
+                    "/" + normalizeType(pageType) +
                     "." + pageName +
                     ".html#" + anchor;
             } else {
                 displayPath = item.modulePath + "::";
                 href = this.rootPath + item.modulePath.replace(/::/g, "/") +
-                    "/" + type + "." + name + ".html";
+                    "/" + normalizeType(type) + "." + name + ".html";
             }
             if (item.traitParent) {
                 const tparent = item.traitParent;
