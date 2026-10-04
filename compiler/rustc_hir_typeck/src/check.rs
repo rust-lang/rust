@@ -118,6 +118,15 @@ pub(super) fn check_fn<'a, 'tcx>(
             hir::FnRetTy::Return(ty) => ty.span,
         };
 
+        fcx.register_wf_obligation(
+            declared_ret_ty.into(),
+            return_or_body_span,
+            ObligationCauseCode::WellFormed(Some(WellFormedLoc::Param {
+                function: fn_def_id,
+                param_idx: decl.inputs.len(),
+            })),
+        );
+
         fcx.require_type_is_sized(
             declared_ret_ty,
             return_or_body_span,
