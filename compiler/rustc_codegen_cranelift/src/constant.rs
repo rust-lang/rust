@@ -9,6 +9,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
     AllocId, GlobalAlloc, PointerArithmetic, Scalar, read_target_uint,
 };
+use rustc_middle::ty::layout::HasTypingEnv as _;
 use rustc_middle::ty::{ExistentialTraitRef, ScalarInt};
 
 use crate::prelude::*;
@@ -81,7 +82,7 @@ pub(crate) fn eval_mir_constant<'tcx>(
     let cv = fx.monomorphize(constant.const_);
     // This cannot fail because we checked all required_consts in advance.
     let val = cv
-        .eval(fx.tcx, ty::TypingEnv::fully_monomorphized(), constant.span)
+        .eval(fx.tcx, fx.typing_env(), constant.span)
         .expect("erroneous constant missed by mono item collection");
     (val, cv.ty())
 }
