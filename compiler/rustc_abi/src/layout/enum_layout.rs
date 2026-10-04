@@ -358,6 +358,44 @@ struct VariantLayoutInfo {
     align_abi: Align,
 }
 
+fn calculate_niche_abi<FieldIdx: Idx, VariantIdx: Idx>(
+    variant_layouts: &IndexSlice<VariantIdx, VariantLayout<FieldIdx>>,
+    variants_info: &IndexSlice<VariantIdx, VariantLayoutInfo>,
+    niche_scalar: Scalar,
+    largest_variant_index: VariantIdx,
+    size: Size,
+    align: Align,
+    niche_offset: Size,
+) -> BackendRepr {
+    let others_zst = variant_layouts
+        .iter_enumerated()
+        .all(|(i, layout)| i == largest_variant_index || layout.size == Size::ZERO);
+    let same_size = size == variant_layouts[largest_variant_index].size;
+    let same_align = align == variants_info[largest_variant_index].align_abi;
+
+    if same_size && same_align && others_zst {
+        match variant_layouts[largest_variant_index].backend_repr {
+            // When the total alignment and size match, we can use the
+            // same ABI as the scalar variant with the reserved niche.
+            BackendRepr::Scalar(_) => BackendRepr::Scalar(niche_scalar),
+            BackendRepr::ScalarPair { a: first, b: second, b_offset } => {
+                // Only the niche is guaranteed to be initialised,
+                // so use union layouts for the other primitive.
+                //
+                // How can this be nonzero when everything else is a ZST? `others_zst` is true here
+                if niche_offset == Size::ZERO {
+                    BackendRepr::ScalarPair { a: niche_scalar, b: second.to_union(), b_offset }
+                } else {
+                    BackendRepr::ScalarPair { a: first.to_union(), b: niche_scalar, b_offset }
+                }
+            }
+            _ => BackendRepr::Memory { sized: true },
+        }
+    } else {
+        BackendRepr::Memory { sized: true }
+    }
+}
+
 fn calculate_niche_filling_layout<'a, Cx: HasDataLayout, FieldIdx, VariantIdx, F>(
     calculator: &LayoutCalculator<Cx>,
     repr: &ReprOptions,
@@ -460,33 +498,17 @@ where
     }
 
     let largest_niche = Niche::from_scalar(dl, niche_offset, niche_scalar);
-
-    let others_zst = variant_layouts
-        .iter_enumerated()
-        .all(|(i, layout)| i == largest_variant_index || layout.size == Size::ZERO);
-    let same_size = size == variant_layouts[largest_variant_index].size;
-    let same_align = align == variants_info[largest_variant_index].align_abi;
-
     let uninhabited = variant_layouts.iter().all(|v| v.is_uninhabited());
-    let abi = if same_size && same_align && others_zst {
-        match variant_layouts[largest_variant_index].backend_repr {
-            // When the total alignment and size match, we can use the
-            // same ABI as the scalar variant with the reserved niche.
-            BackendRepr::Scalar(_) => BackendRepr::Scalar(niche_scalar),
-            BackendRepr::ScalarPair { a: first, b: second, b_offset } => {
-                // Only the niche is guaranteed to be initialised,
-                // so use union layouts for the other primitive.
-                if niche_offset == Size::ZERO {
-                    BackendRepr::ScalarPair { a: niche_scalar, b: second.to_union(), b_offset }
-                } else {
-                    BackendRepr::ScalarPair { a: first.to_union(), b: niche_scalar, b_offset }
-                }
-            }
-            _ => BackendRepr::Memory { sized: true },
-        }
-    } else {
-        BackendRepr::Memory { sized: true }
-    };
+
+    let abi = calculate_niche_abi(
+        &variant_layouts,
+        &variants_info,
+        niche_scalar,
+        largest_variant_index,
+        size,
+        align,
+        niche_offset,
+    );
 
     let layout = LayoutData {
         variants: Variants::Multiple {
