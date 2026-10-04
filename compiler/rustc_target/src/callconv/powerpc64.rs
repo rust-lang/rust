@@ -75,7 +75,13 @@ where
             RegKind::Vector { .. } => unit.size.bits() == 128,
         };
 
-        valid_unit.then_some(Uniform::consecutive(unit, arg.layout.size))
+        if arg.layout.size == unit.size {
+            // Pass a single unit as just `unit`. Instead using `Uniform::consecutive`
+            // would use a layout of `[1 x unit]` which is not compatible.
+            valid_unit.then_some(Uniform::new(unit, unit.size))
+        } else {
+            valid_unit.then_some(Uniform::consecutive(unit, arg.layout.size))
+        }
     })
 }
 
