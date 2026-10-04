@@ -231,22 +231,22 @@ impl<'a> ExtCtxt<'a> {
         ast::Stmt { id: ast::DUMMY_NODE_ID, span: expr.span, kind: ast::StmtKind::Expr(expr) }
     }
 
-    pub fn stmt_let(&self, sp: Span, mutbl: bool, ident: Ident, ex: Box<ast::Expr>) -> ast::Stmt {
-        self.stmt_let_ty(sp, mutbl, ident, None, ex)
+    pub fn stmt_let(&self, sp: Span, mutbl: bool, name: Symbol, ex: Box<ast::Expr>) -> ast::Stmt {
+        self.stmt_let_ty(sp, mutbl, name, None, ex)
     }
 
     pub fn stmt_let_ty(
         &self,
         sp: Span,
         mutbl: bool,
-        ident: Ident,
+        name: Symbol,
         ty: Option<Box<ast::Ty>>,
         ex: Box<ast::Expr>,
     ) -> ast::Stmt {
         let pat = if mutbl {
-            self.pat_ident_binding_mode(sp, ident, ast::BindingMode::MUT)
+            self.pat_ident_binding_mode(sp, name, ast::BindingMode::MUT)
         } else {
-            self.pat_ident(sp, ident)
+            self.pat_ident(sp, name)
         };
         let local = Box::new(ast::Local {
             super_: None,
@@ -494,17 +494,17 @@ impl<'a> ExtCtxt<'a> {
     pub fn pat_wild(&self, span: Span) -> ast::Pat {
         self.pat(span, PatKind::Wild)
     }
-    pub fn pat_ident(&self, span: Span, ident: Ident) -> ast::Pat {
-        self.pat_ident_binding_mode(span, ident, ast::BindingMode::NONE)
+    pub fn pat_ident(&self, span: Span, name: Symbol) -> ast::Pat {
+        self.pat_ident_binding_mode(span, name, ast::BindingMode::NONE)
     }
 
     pub fn pat_ident_binding_mode(
         &self,
         span: Span,
-        ident: Ident,
+        name: Symbol,
         ann: ast::BindingMode,
     ) -> ast::Pat {
-        let pat = PatKind::Ident(ann, ident.with_span_pos(span), None);
+        let pat = PatKind::Ident(ann, Ident::new(name, span), None);
         self.pat(span, pat)
     }
     pub fn pat_path(&self, span: Span, path: ast::Path) -> ast::Pat {
@@ -597,7 +597,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn param(&self, span: Span, name: Symbol, ty: Box<ast::Ty>) -> ast::Param {
-        let pat = Box::new(self.pat_ident_sym(span, name));
+        let pat = Box::new(self.pat_ident(span, name));
         ast::Param {
             attrs: AttrVec::default(),
             id: ast::DUMMY_NODE_ID,

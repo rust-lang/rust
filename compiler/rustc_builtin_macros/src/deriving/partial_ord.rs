@@ -1,6 +1,6 @@
 use rustc_ast::{Expr, ItemKind, Safety, ast};
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{Ident, Span, kw, sym};
+use rustc_span::{Span, kw, sym};
 use thin_vec::thin_vec;
 
 use crate::deriving::generic::*;
@@ -195,9 +195,8 @@ pub(crate) fn cmp_body(
                 if is_partial_ord { cx.pat_some(span, eq_pat) } else { eq_pat },
                 expr1,
             );
-            let cmp_ident = Ident::new(sym::cmp, span);
-            let neq_arm =
-                cx.arm(span, cx.pat_ident(span, cmp_ident), cx.expr_ident(span, cmp_ident));
+            let cmp = sym::cmp;
+            let neq_arm = cx.arm(span, cx.pat_ident(span, cmp), cx.expr_ident_sym(span, cmp));
             cx.expr_match(span, expr2, thin_vec![eq_arm, neq_arm])
         }
     };

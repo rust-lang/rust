@@ -348,7 +348,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             self.cx.expr_path(self.cx.path(self.span, init_std_path)),
             ThinVec::new(),
         );
-        let capture = Capture { decl: self.cx.stmt_let(self.span, true, ident, init), ident };
+        let capture = Capture { decl: self.cx.stmt_let(self.span, true, ident.name, init), ident };
         self.capture_decls.push(capture);
         self.manage_try_capture(ident, curr_capture_idx, expr);
     }
@@ -366,7 +366,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         expr: &mut Box<Expr>,
     ) {
         let local_bind_string = format!("__local_bind{curr_capture_idx}");
-        let local_bind = Ident::new(Symbol::intern(&local_bind_string), self.span);
+        let local_bind = Symbol::intern(&local_bind_string);
         self.local_bind_decls.push(self.cx.stmt_let(
             self.span,
             false,
@@ -378,7 +378,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             self.cx.expr_path(
                 self.cx.path(self.span, self.cx.std_path(&[sym::asserting, sym::Wrapper])),
             ),
-            thin_vec![self.cx.expr_path(Path::from_ident(local_bind))],
+            thin_vec![self.cx.expr_path(self.cx.path_sym(self.span, local_bind))],
         );
         let try_capture_call = self
             .cx
@@ -393,7 +393,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 )],
             ))
             .add_trailing_semicolon();
-        let local_bind_path = self.cx.expr_path(Path::from_ident(local_bind));
+        let local_bind_path = self.cx.expr_path(self.cx.path_sym(self.span, local_bind));
         let rslt = if self.is_consumed {
             let ret = self.cx.stmt_expr(local_bind_path);
             self.cx.expr_block(self.cx.block(self.span, thin_vec![try_capture_call, ret]))

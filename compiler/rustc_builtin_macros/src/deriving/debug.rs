@@ -159,7 +159,7 @@ fn show_substructure(
             cx.stmt_let_ty(
                 span,
                 false,
-                Ident::new(sym::names, span),
+                sym::names,
                 Some(ty_static_ref),
                 cx.expr_array_ref(span, name_exprs),
             )
@@ -181,7 +181,7 @@ fn show_substructure(
         let values_let = cx.stmt_let_ty(
             span,
             false,
-            Ident::new(sym::values, span),
+            sym::values,
             Some(cx.ty_ref(span, ty_slice, None, ast::Mutability::Not)),
             cx.expr_array_ref(span, value_exprs),
         );

@@ -1150,9 +1150,8 @@ fn create_struct_patterns(
         .iter()
         .map(|prefix| {
             let pieces_iter = struct_def.fields().iter().enumerate().map(|(i, struct_field)| {
-                let ident = mk_pattern_ident(span, prefix, i);
-                let path = ident.with_span_pos(struct_field.span);
-                (struct_field.ident, cx.pat_ident(path.span, path))
+                let ident = mk_pattern_ident(span, prefix, i).name;
+                (struct_field.ident, cx.pat_ident(struct_field.span.with_ctxt(span.ctxt()), ident))
             });
 
             let struct_path = struct_path.clone();
