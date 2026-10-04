@@ -868,13 +868,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 extend_bool(b_attrs, b);
             }
 
-            if arg_idx.is_none()
-                && arg.layout.size > Primitive::Pointer(AddressSpace::ZERO).size(cx) * 2
-                && !matches!(
-                    arg.layout.backend_repr,
-                    BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. }
-                )
-            {
+            if arg_idx.is_none() {
                 // Return values larger than 2 registers using a return area
                 // pointer. LLVM and Cranelift disagree about how to return
                 // values that don't fit in the registers designated for return
@@ -917,8 +911,43 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 //
                 // The adjustment is not necessary nor desired for types with a vector
                 // representation; those are handled below.
-                arg.make_indirect();
-                continue;
+
+                let target_spec = cx.target_spec();
+                // This is an estimate of the amount of supported return registers.
+                // A too high estimate will cause ABI incompatibilities between LLVM
+                // and other backends, but won't cause issues for the LLVM backend
+                // itself.
+                let estimated_max_ret_regs =
+                    if target_spec.arch == Arch::X86_64 && target_spec.is_like_windows {
+                        1
+                    } else {
+                        2
+                    };
+
+                let regs_for_scalar = |a: Scalar| {
+                    a.size(cx)
+                        .bytes()
+                        .div_ceil(Primitive::Pointer(AddressSpace::ZERO).size(cx).bytes())
+                };
+
+                let required_args = match arg.layout.backend_repr {
+                    BackendRepr::Scalar(a) => Some(regs_for_scalar(a)),
+                    BackendRepr::ScalarPair { a, b, b_offset: _ } => {
+                        Some(regs_for_scalar(a) + regs_for_scalar(b))
+                    }
+                    BackendRepr::SimdScalableVector { .. }
+                    | BackendRepr::SimdVector { .. }
+                    | BackendRepr::Memory { .. } => None,
+                };
+
+                if let Some(required_args) = required_args
+                    && required_args > estimated_max_ret_regs
+                {
+                    {
+                        arg.make_indirect();
+                        continue;
+                    }
+                }
             }
 
             match arg.layout.backend_repr {
