@@ -334,20 +334,6 @@ impl<'sess> AttributeParser<'sess> {
                 }
             }
 
-            fn is_doc_non_lit_expr(attr: &ast::Attribute) -> bool {
-                if !attr.has_name(sym::doc) {
-                    return false;
-                }
-                let ast::AttrKind::Normal(n) = &attr.kind else { return false };
-                let ast::AttrArgs::Eq { expr, .. } = &n.item.args else { return false };
-                !matches!(expr.kind, ast::ExprKind::Lit(_))
-            }
-
-            // FIXME accidentally allowed on Stable Rust
-            if target == Target::MacroCall && is_doc_non_lit_expr(attr) {
-                continue;
-            }
-
             let attr_span = lower_span(attr.span);
             match &attr.kind {
                 ast::AttrKind::DocComment(comment_kind, symbol) => {
