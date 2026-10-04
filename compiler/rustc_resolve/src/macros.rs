@@ -1083,11 +1083,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         path: &ast::Path,
         node_id: NodeId,
     ) {
-        let span = path.span();
         if let Some(stability) = &ext.stability
             && let StabilityLevel::Unstable { reason, issue, implied_by, .. } = stability.level
         {
             let feature = stability.feature;
+            let span = path.span();
 
             let is_allowed =
                 |feature| self.features.enabled(feature) || span.allows_unstable(feature);
@@ -1104,6 +1104,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
         if let Some(depr) = &ext.deprecation {
+            let span = path.span();
             let path = pprust::path_to_string(path);
             stability::early_report_macro_deprecation(
                 &mut self.lint_buffer,
