@@ -13,6 +13,7 @@ use rustc_attr_ir::{
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{Symbol, sym};
 use rustc_span::{DUMMY_SP, Span};
@@ -841,6 +842,7 @@ pub(crate) fn extract_cfg_from_attrs<
     attrs: I,
     tcx: TyCtxt<'_>,
     cfg_info: &mut CfgInfo,
+    item_def_id: Option<DefId>,
 ) -> Option<Arc<Cfg>> {
     fn check_changed_auto_active_status(
         changed_auto_active_status: &mut Option<rustc_span::Span>,
@@ -940,6 +942,22 @@ pub(crate) fn extract_cfg_from_attrs<
         {
             for (new_cfg, _) in cfgs {
                 cfg_info.current_cfg &= Cfg(new_cfg.clone());
+            }
+        }
+    }
+    if let Some(def_id) = item_def_id {
+        if !def_id.is_local() && tcx.def_kind(def_id).is_fn_like() {
+            let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
+            for feature in &codegen_fn_attrs.target_features {
+                if feature.kind
+                    == rustc_middle::middle::codegen_fn_attrs::TargetFeatureKind::Enabled
+                {
+                    cfg_info.current_cfg &= Cfg(CfgEntry::NameValue {
+                        name: sym::target_feature,
+                        value: Some(feature.name),
+                        span: DUMMY_SP,
+                    });
+                }
             }
         }
     }
