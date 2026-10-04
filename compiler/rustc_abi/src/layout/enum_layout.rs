@@ -32,6 +32,43 @@ where
 
     let niche_filling_layout = calculate_niche_filling_layout(calculator, repr, variants);
 
+    let tagged_layout =
+        calculate_tagged_layout(calculator, repr, variants, discr_range_of_repr, discriminants)?;
+
+    let best_layout = match (tagged_layout, niche_filling_layout) {
+        (tl, Some(nl)) => {
+            // Pick the smaller layout; otherwise,
+            // pick the layout with the larger niche; otherwise,
+            // pick tagged as it has simpler codegen.
+            use cmp::Ordering::*;
+            let niche_size = |l: &LayoutData<FieldIdx, VariantIdx>| {
+                l.largest_niche.map_or(0, |n| n.available(dl))
+            };
+            match (tl.size.cmp(&nl.size), niche_size(&tl).cmp(&niche_size(&nl))) {
+                (Greater, _) => nl,
+                (Equal, Less) => nl,
+                _ => tl,
+            }
+        }
+        (tl, None) => tl,
+    };
+
+    Ok(best_layout)
+}
+
+fn calculate_tagged_layout<'a, Cx: HasDataLayout, FieldIdx, VariantIdx, F>(
+    calculator: &LayoutCalculator<Cx>,
+    repr: &ReprOptions,
+    variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
+    discr_range_of_repr: impl Fn(RangeFrom<i128>, RangeToInclusive<u128>) -> (Integer, bool),
+    discriminants: impl Iterator<Item = (VariantIdx, u128)>,
+) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
+where
+    FieldIdx: Idx,
+    VariantIdx: Idx,
+    F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+{
+    let dl = calculator.cx.data_layout();
     let discr_type = repr.discr_type();
     let discr_size = Integer::from_attr(dl, discr_type).size();
 
@@ -311,7 +348,7 @@ where
 
     let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag);
 
-    let tagged_layout = LayoutData {
+    Ok(LayoutData {
         variants: Variants::Multiple {
             tag,
             tag_encoding: TagEncoding::Direct,
@@ -331,27 +368,7 @@ where
         unadjusted_abi_align,
         repr_c: repr.c(),
         randomization_seed: combined_seed,
-    };
-
-    let best_layout = match (tagged_layout, niche_filling_layout) {
-        (tl, Some(nl)) => {
-            // Pick the smaller layout; otherwise,
-            // pick the layout with the larger niche; otherwise,
-            // pick tagged as it has simpler codegen.
-            use cmp::Ordering::*;
-            let niche_size = |l: &LayoutData<FieldIdx, VariantIdx>| {
-                l.largest_niche.map_or(0, |n| n.available(dl))
-            };
-            match (tl.size.cmp(&nl.size), niche_size(&tl).cmp(&niche_size(&nl))) {
-                (Greater, _) => nl,
-                (Equal, Less) => nl,
-                _ => tl,
-            }
-        }
-        (tl, None) => tl,
-    };
-
-    Ok(best_layout)
+    })
 }
 
 struct VariantLayoutInfo {
