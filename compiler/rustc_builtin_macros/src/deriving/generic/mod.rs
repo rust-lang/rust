@@ -175,7 +175,6 @@
 //! ```
 
 use std::ops::Not;
-use std::vec;
 
 pub(crate) use Substructure::*;
 pub(crate) use rustc_ast as ast;
@@ -260,10 +259,6 @@ pub(crate) enum FieldlessVariantsStrategy {
     /// Don't do anything special about fieldless variants. They are
     /// handled like any other variant.
     Default,
-    /// If all variants of the enum are fieldless, expand the special
-    /// `AllFieldLessEnum` substructure, so that the entire enum can be handled
-    /// at once.
-    SpecializeIfAllVariantsFieldless,
 }
 
 /// Summary of the relevant parts of a struct/enum field.
@@ -285,11 +280,6 @@ pub(crate) struct FieldInfo {
 pub(crate) enum Substructure<'a> {
     /// A non-static method where `Self` is a struct.
     Struct(&'a ast::VariantData, Vec<FieldInfo>),
-
-    /// A non-static method handling the entire enum at once
-    /// (after it has been determined that none of the enum
-    /// variants has any fields).
-    AllFieldlessEnum(&'a ast::EnumDef),
 
     /// Matching variants of the enum: ast::Variant,
     /// fields: the field name is only non-`None` in the case of a struct
@@ -712,8 +702,7 @@ impl<'a> TraitDef<'a> {
             .collect();
 
         // Create the type of `self`.
-        let path =
-            cx.path_all(type_ident.span.with_ctxt(ctxt), false, vec![type_ident], self_params);
+        let path = cx.path_all(type_ident.span.with_ctxt(ctxt), [type_ident], self_params);
         let self_type = cx.ty_path(path);
 
         let mut attrs = thin_vec![cx.attr_word(sym::automatically_derived, self.span),];
@@ -843,7 +832,6 @@ impl<'a> MethodDef<'a> {
         let trait_lo_sp = span.shrink_to_lo();
 
         let sig = ast::FnSig { header: ast::FnHeader::default(), decl: fn_decl, span };
-        let defaultness = ast::Defaultness::Implicit;
 
         // Create the method.
         Some(Box::new(ast::AssocItem {
@@ -851,16 +839,12 @@ impl<'a> MethodDef<'a> {
             attrs: self.attributes.clone(),
             span,
             vis: ast::Visibility { span: trait_lo_sp, kind: ast::VisibilityKind::Inherited },
-            kind: ast::AssocItemKind::Fn(Box::new(ast::Fn {
-                defaultness,
+            kind: ast::AssocItemKind::Fn(cx.item_fn(
                 sig,
-                ident: method_ident,
-                generics: fn_generics,
-                contract: None,
-                body: Some(body_block),
-                define_opaque: None,
-                eii_impl: None,
-            })),
+                method_ident,
+                fn_generics,
+                Some(body_block),
+            )),
             tokens: None,
         }))
     }
@@ -957,10 +941,6 @@ impl<'a> MethodDef<'a> {
     ) -> BlockOrExpr {
         let variants = &enum_def.variants;
 
-        // Traits that unify fieldless variants always use the discriminant(s).
-        let unify_fieldless_variants =
-            self.fieldless_variants_strategy == FieldlessVariantsStrategy::Unify;
-
         // For zero-variant enum, this function body is unreachable. Generate
         // `match *self {}`. This produces machine code identical to `unsafe {
         // core::intrinsics::unreachable() }` while being safe and stable.
@@ -970,14 +950,6 @@ impl<'a> MethodDef<'a> {
             let expr = cx.expr_match(span, match_arg, match_arms);
             return BlockOrExpr(ThinVec::new(), Some(expr));
         }
-
-        let selflike_args = self.get_selflike_args(cx, span);
-
-        let prefixes: &[&str] = match selflike_args.len() {
-            1 => &["__self"],
-            2 => &["__self", "__arg1"],
-            _ => unreachable!(),
-        };
 
         // There are some special cases involving fieldless enums where no
         // match is necessary.
@@ -991,9 +963,6 @@ impl<'a> MethodDef<'a> {
                         // the discriminant(s).
                         return self.call_substructure_method(cx, span, EnumDiscr(None));
                     }
-                    FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless => {
-                        return self.call_substructure_method(cx, span, AllFieldlessEnum(enum_def));
-                    }
                     FieldlessVariantsStrategy::Default => (),
                 }
             } else if let [variant] = variants.as_slice() {
@@ -1002,6 +971,13 @@ impl<'a> MethodDef<'a> {
                 return self.call_substructure_method(cx, span, EnumMatching(variant, Vec::new()));
             }
         }
+
+        // Traits that unify fieldless variants always use the discriminant(s).
+        let unify_fieldless_variants =
+            self.fieldless_variants_strategy == FieldlessVariantsStrategy::Unify;
+
+        let prefixes: &[&str] =
+            if self.has_other_selflike_arg { &["__self", "__arg1"] } else { &["__self"] };
 
         // These arms are of the form:
         // (Variant1, Variant1, ...) => Body1
@@ -1018,8 +994,7 @@ impl<'a> MethodDef<'a> {
                 let fields = create_struct_pattern_fields(span, cx, &variant.data, &prefixes);
 
                 let sp = variant.span.with_ctxt(span.ctxt());
-                let variant_path =
-                    cx.path(sp, vec![Ident::new(kw::SelfUpper, span), variant.ident]);
+                let variant_path = cx.path(sp, [Ident::new(kw::SelfUpper, span), variant.ident]);
                 let mut subpats =
                     create_struct_patterns(span, cx, variant_path, &variant.data, &prefixes);
 
@@ -1038,9 +1013,9 @@ impl<'a> MethodDef<'a> {
                 // expressions for referencing every field of every
                 // Self arg, assuming all are instances of VariantK.
                 // Build up code associated with such a case.
-                let substructure = EnumMatching(variant, fields);
-                let arm_expr =
-                    self.call_substructure_method(cx, span, substructure).into_expr(cx, span);
+                let arm_expr = self
+                    .call_substructure_method(cx, span, EnumMatching(variant, fields))
+                    .into_expr(cx, span);
 
                 cx.arm(span, single_pat, arm_expr)
             })
@@ -1056,7 +1031,7 @@ impl<'a> MethodDef<'a> {
                         .into_expr(cx, span),
                 )
             }
-            _ if variants.len() > 1 && selflike_args.len() > 1 => {
+            _ if variants.len() > 1 && self.has_other_selflike_arg => {
                 // Because we know that all the arguments will match if we reach
                 // the match expression we add the unreachable intrinsic as the
                 // result of the default which should help llvm in optimizing it.
@@ -1071,28 +1046,27 @@ impl<'a> MethodDef<'a> {
         // Create a match expression with one arm per discriminant plus
         // possibly a default arm, e.g.:
         //      match (self, other) {
-        //          (Variant1, Variant1, ...) => Body1
-        //          (Variant2, Variant2, ...) => Body2,
+        //          (Variant1, Variant1) => Body1
+        //          (Variant2, Variant2) => Body2,
         //          ...
         //          _ => ::core::intrinsics::unreachable(),
         //      }
-        let get_match_expr = |mut selflike_args: ThinVec<Box<Expr>>| {
-            let match_arg = if selflike_args.len() == 1 {
-                selflike_args.pop().unwrap()
-            } else {
-                cx.expr_tuple(span, selflike_args)
-            };
-            cx.expr_match(span, match_arg, match_arms)
+        let mut selflike_args = self.get_selflike_args(cx, span);
+        let match_arg = if selflike_args.len() == 1 {
+            selflike_args.pop().unwrap()
+        } else {
+            cx.expr_tuple(span, selflike_args)
         };
+        let match_expr = cx.expr_match(span, match_arg, match_arms);
 
         // If the trait uses the discriminant and there are multiple variants, we need
         // to add a discriminant check operation before the match. Otherwise, the match
         // is enough.
         if unify_fieldless_variants && variants.len() > 1 {
             // Combine a discriminant check with the match.
-            self.call_substructure_method(cx, span, EnumDiscr(Some(get_match_expr(selflike_args))))
+            self.call_substructure_method(cx, span, EnumDiscr(Some(match_expr)))
         } else {
-            BlockOrExpr(ThinVec::new(), Some(get_match_expr(selflike_args)))
+            BlockOrExpr(ThinVec::new(), Some(match_expr))
         }
     }
 }

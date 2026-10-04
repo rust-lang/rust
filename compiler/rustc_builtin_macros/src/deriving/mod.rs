@@ -1,15 +1,13 @@
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
-use std::iter::once;
-
 use rustc_ast as ast;
 use rustc_ast::{GenericArg, MetaItem};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
-use rustc_span::{Ident, Span, Symbol, kw, sym};
+use rustc_span::{Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 macro pathvec($($rest:ident)::+) {{
-    &[ $( sym::$rest ),+ ]
+    [ $( sym::$rest ),+ ]
 }}
 
 macro path_std($cx: expr, $span: expr, $($x:tt)*) {
@@ -77,26 +75,14 @@ impl MultiItemModifier for BuiltinDerive {
     }
 }
 
-/// Constructs an expression that calls an intrinsic
-fn call_intrinsic(
-    cx: &ExtCtxt<'_>,
-    span: Span,
-    intrinsic: Symbol,
-    args: ThinVec<Box<ast::Expr>>,
-) -> Box<ast::Expr> {
-    let span = cx.with_def_site_ctxt(span);
-    let path = cx.std_path(&[sym::intrinsics, intrinsic]);
-    cx.expr_call_global(span, path, args)
-}
-
 /// Constructs an expression that calls the `discriminant_value` intrinsic.
 fn call_discriminant_value(cx: &ExtCtxt<'_>, span: Span, arg: Symbol) -> Box<ast::Expr> {
-    call_intrinsic(cx, span, sym::discriminant_value, thin_vec![cx.expr_ident_sym(span, arg)])
+    cx.expr_call_intrinsic(span, sym::discriminant_value, thin_vec![cx.expr_ident_sym(span, arg)])
 }
 
 /// Constructs an expression that calls the `unreachable` intrinsic.
 fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
-    let call = call_intrinsic(cx, span, sym::unreachable, ThinVec::new());
+    let call = cx.expr_call_intrinsic(span, sym::unreachable, ThinVec::new());
     cx.expr_block(Box::new(ast::Block {
         stmts: thin_vec![cx.stmt_expr(call)],
         id: ast::DUMMY_NODE_ID,
@@ -105,23 +91,26 @@ fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
     }))
 }
 
-fn assert_ty_bounds(
+fn assert_ty_bounds<const N: usize>(
     cx: &ExtCtxt<'_>,
     stmts: &mut ThinVec<ast::Stmt>,
     ty: Box<ast::Ty>,
     span: Span,
-    assert_path: &[Symbol],
+    assert_path: [Symbol; N],
 ) {
     // Generate statement `let _: assert_path<ty>;`.
     let span = cx.with_def_site_ctxt(span);
-    let assert_path = cx.path_all(span, true, cx.std_path(assert_path), vec![GenericArg::Type(ty)]);
+    let assert_path = cx.path_all(span, cx.std_path(assert_path), vec![GenericArg::Type(ty)]);
     stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
 }
 
-fn new_path(cx: &ExtCtxt<'_>, span: Span, path: &[Symbol], params: Vec<Box<ast::Ty>>) -> ast::Path {
-    let idents = path.iter().map(|s| Ident::new(*s, span));
+fn new_path<const N: usize>(
+    cx: &ExtCtxt<'_>,
+    span: Span,
+    path: [Symbol; N],
+    params: Vec<Box<ast::Ty>>,
+) -> ast::Path {
     let params = params.into_iter().map(GenericArg::Type).collect();
-
-    let idents = once(Ident::new(kw::DollarCrate, span)).chain(idents).collect();
-    cx.path_all(span, false, idents, params)
+    let idents = cx.std_path(path);
+    cx.path_all(span, idents, params)
 }

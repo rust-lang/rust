@@ -129,7 +129,7 @@ fn cs_clone_simple(
                     &mut stmts,
                     field.ty.clone(),
                     field.span,
-                    &[sym::clone, sym::AssertParamIsClone],
+                    [sym::clone, sym::AssertParamIsClone],
                 );
             }
         }
@@ -144,7 +144,7 @@ fn cs_clone_simple(
             &mut stmts,
             self_ty,
             trait_span,
-            &[sym::clone, sym::AssertParamIsCopy],
+            [sym::clone, sym::AssertParamIsCopy],
         );
     } else {
         match substr {
@@ -163,7 +163,7 @@ fn cs_clone_simple(
 }
 
 fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {
-    let fn_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone]);
+    let fn_path = cx.std_path([sym::clone, sym::Clone, sym::clone]);
     let subcall = |field: FieldInfo| {
         let args = thin_vec![field.self_expr];
         cx.expr_call_global(field.span, fn_path.clone(), args)
@@ -175,12 +175,12 @@ fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> Blo
     let vdata;
     match substr {
         Struct(vdata_, af) => {
-            ctor_path = cx.path(trait_span, vec![self_ident]);
+            ctor_path = cx.path(trait_span, &[self_ident][..]);
             all_fields = af;
             vdata = vdata_;
         }
         EnumMatching(.., variant, af) => {
-            ctor_path = cx.path(trait_span, vec![self_ident, variant.ident]);
+            ctor_path = cx.path(trait_span, &[self_ident, variant.ident][..]);
             all_fields = af;
             vdata = &variant.data;
         }

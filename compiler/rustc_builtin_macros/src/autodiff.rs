@@ -332,16 +332,7 @@ mod llvm_enzyme {
         );
 
         // The first element of it is the name of the function to be generated
-        let d_fn = Box::new(ast::Fn {
-            defaultness: ast::Defaultness::Implicit,
-            sig: d_sig,
-            ident: first_ident(&meta_item_vec[0]),
-            generics,
-            contract: None,
-            body: Some(d_body),
-            define_opaque: None,
-            eii_impl: None,
-        });
+        let d_fn = ecx.item_fn(d_sig, first_ident(&meta_item_vec[0]), generics, Some(d_body));
         let mut rustc_ad_attr =
             Box::new(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
 
@@ -562,11 +553,9 @@ mod llvm_enzyme {
                 .collect::<ThinVec<_>>(),
         );
 
-        let enzyme_path_idents = ecx.std_path(&[sym::intrinsics, sym::autodiff]);
-        let enzyme_path = ecx.path(span, enzyme_path_idents);
-        let call_expr = ecx.expr_call(
+        let call_expr = ecx.expr_call_intrinsic(
             span,
-            ecx.expr_path(enzyme_path),
+            sym::autodiff,
             thin_vec![primal_fn_ptr, diff_path_expr, tuple_expr],
         );
 
@@ -601,9 +590,8 @@ mod llvm_enzyme {
             })
             .collect::<Vec<_>>();
 
-        let idents =
-            if is_impl { vec![Ident::new(kw::SelfUpper, span), ident] } else { vec![ident] };
-        let path = ecx.path_all(span, false, idents, generic_args);
+        let idents = if is_impl { &[Ident::new(kw::SelfUpper, span), ident][..] } else { &[ident] };
+        let path = ecx.path_all(span, idents, generic_args);
 
         ecx.expr_path(path)
     }
@@ -707,8 +695,8 @@ mod llvm_enzyme {
                             panic!("not an ident?");
                         };
                         let name = format!("d{}_{}", old_name, i);
-                        let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
-                        *shadow_arg.pat = ecx.pat_ident(shadow_arg.pat.span, ident);
+                        *shadow_arg.pat =
+                            ecx.pat_ident_sym(shadow_arg.pat.span, Symbol::intern(&name));
                         d_inputs.push(shadow_arg);
                     }
                 }
@@ -733,9 +721,9 @@ mod llvm_enzyme {
                             panic!("not an ident?");
                         };
                         let name = format!("b{}_{}", old_name, i);
-                        let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
 
-                        *shadow_arg.pat = ecx.pat_ident(shadow_arg.pat.span, ident);
+                        *shadow_arg.pat =
+                            ecx.pat_ident_sym(shadow_arg.pat.span, Symbol::intern(&name));
                         d_inputs.push(shadow_arg);
                     }
                 }

@@ -108,12 +108,12 @@ fn push_marker_impl(
     trait_args: Vec<Box<ast::Ty>>,
     push: &mut dyn FnMut(Box<ast::Item>),
 ) {
-    let trait_path = new_path(cx, span, &[sym::core, sym::marker, trait_name], trait_args);
+    let trait_path = new_path(cx, span, [sym::core, sym::marker, trait_name], trait_args);
     let trait_ref = cx.trait_ref(trait_path);
 
     let self_params: Vec<_> =
         generics.params.iter().map(|p| generic_param_to_arg(cx, p, p.span())).collect();
-    let self_ty = cx.ty_path(cx.path_all(span, false, vec![ident], self_params));
+    let self_ty = cx.ty_path(cx.path_all(span, [ident], self_params));
 
     push(cx.item_trait_impl(
         span,

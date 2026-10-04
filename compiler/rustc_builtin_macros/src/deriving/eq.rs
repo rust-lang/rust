@@ -66,7 +66,7 @@ fn cs_total_eq_assert(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'
                     &mut stmts,
                     field.ty.clone(),
                     field.span,
-                    &[sym::cmp, sym::AssertParamIsEq],
+                    [sym::cmp, sym::AssertParamIsEq],
                 );
             }
         }

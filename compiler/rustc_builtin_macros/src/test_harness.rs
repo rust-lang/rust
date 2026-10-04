@@ -301,7 +301,7 @@ fn add_main(cx: &mut TestCtxt<'_>, c: &mut ast::Crate) {
         } else {
             "test_main_env_args_abort"
         };
-        ecx.path(sp, vec![test_ident, Ident::from_str_and_span(runner_name, sp)])
+        ecx.path(sp, [test_ident, Ident::from_str_and_span(runner_name, sp)])
     });
 
     test_runner.span = sp;
@@ -324,7 +324,7 @@ fn add_main(cx: &mut TestCtxt<'_>, c: &mut ast::Crate) {
     // pub fn main() -> ExitCode { ... }
     let main_ret_ty = if cx.test_runner.is_none() {
         // Built-in runner has return type `ExitCode`.
-        let exit_code_path = vec![test_ident, Ident::new(sym::ExitCode, sp)];
+        let exit_code_path = [test_ident, Ident::new(sym::ExitCode, sp)];
         ecx.ty(sp, ast::TyKind::Path(None, ecx.path(sp, exit_code_path)))
     } else {
         // User-defined runners have return type `()`.
@@ -335,24 +335,14 @@ fn add_main(cx: &mut TestCtxt<'_>, c: &mut ast::Crate) {
 
     let decl = ecx.fn_decl(ThinVec::new(), ast::FnRetTy::Ty(main_ret_ty));
     let sig = ast::FnSig { decl, header: ast::FnHeader::default(), span: sp };
-    let defaultness = ast::Defaultness::Implicit;
-
     // Honor the reexport_test_harness_main attribute
     let main_ident = match cx.reexport_test_harness_main {
         Some(sym) => Ident::new(sym, sp.with_ctxt(SyntaxContext::root())),
         None => Ident::new(sym::main, sp),
     };
 
-    let main = ast::ItemKind::Fn(Box::new(ast::Fn {
-        defaultness,
-        sig,
-        ident: main_ident,
-        generics: ast::Generics::default(),
-        contract: None,
-        body: Some(main_body),
-        define_opaque: None,
-        eii_impl: None,
-    }));
+    let main =
+        ast::ItemKind::Fn(ecx.item_fn(sig, main_ident, ast::Generics::default(), Some(main_body)));
 
     let main = Box::new(ast::Item {
         attrs: thin_vec![main_attr, coverage_attr, doc_hidden_attr],
@@ -389,7 +379,7 @@ fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> Box<ast::Expr> {
         tests
             .iter()
             .map(|test| {
-                ecx.expr_addr_of(test.span, ecx.expr_path(ecx.path(test.span, vec![test.ident])))
+                ecx.expr_addr_of(test.span, ecx.expr_path(ecx.path(test.span, [test.ident])))
             })
             .collect(),
     )

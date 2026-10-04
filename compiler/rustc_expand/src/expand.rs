@@ -742,7 +742,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         }
                         Err(guar) => return ExpandResult::Ready(fragment_kind.dummy(span, guar)),
                     }
-                } else if let Some(expander) = ext.as_legacy_bang() {
+                } else if let Some(expander) = ext.as_builtin_bang() {
                     let tok_result = match expander.expand(self.cx, span, mac.args.tokens.clone()) {
                         ExpandResult::Ready(tok_result) => tok_result,
                         ExpandResult::Retry(_) => {
@@ -856,7 +856,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         }
                         Err(guar) => return ExpandResult::Ready(fragment_kind.dummy(span, guar)),
                     }
-                } else if let SyntaxExtensionKind::LegacyAttr(expander) = ext {
+                } else if let SyntaxExtensionKind::BuiltinAttr(expander) = ext {
                     self.gate_proc_macro_attr_item(span, &item);
                     // `LegacyAttr` is only used for builtin attribute macros, which have their
                     // safety checked by `check_builtin_meta_item`, so we don't need to check
@@ -913,7 +913,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             InvocationKind::Derive { path, item, is_const } => match ext {
                 SyntaxExtensionKind::Derive(expander)
-                | SyntaxExtensionKind::LegacyDerive(expander) => {
+                | SyntaxExtensionKind::BuiltinDerive(expander) => {
                     // The `MetaItem` representing the trait to derive can't
                     // have an unsafe around it (as of now).
                     let meta = ast::MetaItem {
