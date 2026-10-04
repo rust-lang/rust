@@ -497,21 +497,16 @@ where
     // Use the largest niche in the largest variant.
     let niche = variant_layouts[largest_variant_index].largest_niche?;
     let (niche_start, niche_scalar) = niche.reserve(dl, count)?;
-    let niche_offset = niche.offset;
-    let niche_size = niche.value.size(dl);
     let size = variant_layouts[largest_variant_index].size.align_to(align);
 
     let variant_layouts = try_fixup_non_niche_variants(
         variant_layouts,
         &variants_info,
         largest_variant_index,
-        niche_offset,
-        niche_size,
+        niche.offset,
+        niche.value.size(dl),
         size,
     )?;
-
-    let largest_niche = Niche::from_scalar(dl, niche_offset, niche_scalar);
-    let uninhabited = variant_layouts.iter().all(|v| v.is_uninhabited());
 
     let abi = calculate_niche_abi(
         &variant_layouts,
@@ -520,10 +515,11 @@ where
         largest_variant_index,
         size,
         align,
-        niche_offset,
+        niche.offset,
     );
 
     let layout = LayoutData {
+        uninhabited: variant_layouts.iter().all(|v| v.is_uninhabited()),
         variants: Variants::Multiple {
             tag: niche_scalar,
             tag_encoding: TagEncoding::Niche {
@@ -535,12 +531,11 @@ where
             variants: variant_layouts,
         },
         fields: FieldsShape::Arbitrary {
-            offsets: [niche_offset].into(),
+            offsets: [niche.offset].into(),
             in_memory_order: [FieldIdx::new(0)].into(),
         },
         backend_repr: abi,
-        largest_niche,
-        uninhabited,
+        largest_niche: Niche::from_scalar(dl, niche.offset, niche_scalar),
         size,
         align: AbiAlign::new(align),
         max_repr_align,
