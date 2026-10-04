@@ -19,6 +19,8 @@ cfg_select! {
         pub use unix::{chown, fchown, lchown, mkfifo};
 
         use crate::sys::helpers::run_path_with_cstr as with_native_path;
+        #[cfg(target_os = "linux")]
+        pub(crate) use unix::cfg_has_statx;
     }
     target_os = "windows" => {
         mod windows;
