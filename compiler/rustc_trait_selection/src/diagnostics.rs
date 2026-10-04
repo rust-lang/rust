@@ -1925,6 +1925,20 @@ impl Subdiagnostic for AddPreciseCapturingAndParams {
     }
 }
 
+pub(crate) struct AddPreciseCapturingAndNameLifetimes {
+    pub suggs: Vec<(Span, String)>,
+}
+
+impl Subdiagnostic for AddPreciseCapturingAndNameLifetimes {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
+        diag.multipart_suggestion(
+            msg!("add `use<...>` bound and name the elided lifetimes to explicitly capture them"),
+            self.suggs,
+            Applicability::MachineApplicable,
+        );
+    }
+}
+
 /// Given a set of captured `DefId` for an RPIT (opaque_def_id) and a given
 /// function (fn_def_id), try to suggest adding `+ use<...>` to capture just
 /// the specified parameters. If one of those parameters is an APIT, then try
