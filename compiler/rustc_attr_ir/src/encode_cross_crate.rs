@@ -116,6 +116,7 @@ impl AttributeKind {
             RustcCaptureAnalysis => No,
             RustcCguTestAttr { .. } => No,
             RustcClean { .. } => No,
+            RustcCoherenceFutureImpls => No, // Encoded in TraitDef.
             RustcCoherenceIsCore => No,
             RustcCoinductive => No,
             RustcComptime(..) => No, // Encoded directly in signature
@@ -330,6 +331,7 @@ impl AttributeKind {
             RustcCaptureAnalysis => false,
             RustcCguTestAttr { .. } => false,
             RustcClean { .. } => false,
+            RustcCoherenceFutureImpls => false,
             RustcCoherenceIsCore => false,
             RustcCoinductive => false,
             RustcComptime(..) => false,

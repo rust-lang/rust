@@ -1,0 +1,33 @@
+error[E0119]: conflicting implementations of trait `Direct` for type `Thing`
+  --> $DIR/coherence-va-arg-safe.rs:14:1
+   |
+LL | impl<T: VaArgSafe> Direct for T {}
+   | ------------------------------- first implementation here
+LL | impl Direct for Thing {}
+   | ^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Thing`
+   |
+   = note: upstream crates may add a new impl of trait `std::ffi::VaArgSafe` for type `Thing` in future versions
+
+error[E0119]: conflicting implementations of trait `Fundamental` for type `&Thing`
+  --> $DIR/coherence-va-arg-safe.rs:19:1
+   |
+LL | impl<T: VaArgSafe> Fundamental for T {}
+   | ------------------------------------ first implementation here
+LL | impl Fundamental for &Thing {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `&Thing`
+   |
+   = note: upstream crates may add a new impl of trait `std::ffi::VaArgSafe` for type `&Thing` in future versions
+
+error[E0119]: conflicting implementations of trait `HigherRanked` for type `Thing`
+  --> $DIR/coherence-va-arg-safe.rs:24:1
+   |
+LL | impl<T> HigherRanked for T where for<'a> &'a T: VaArgSafe {}
+   | --------------------------------------------------------- first implementation here
+LL | impl HigherRanked for Thing {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Thing`
+   |
+   = note: upstream crates may add a new impl of trait `std::ffi::VaArgSafe` for type `&'a Thing` in future versions
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0119`.
