@@ -1,0 +1,86 @@
+error: conflicting doc inlining attributes
+  --> $DIR/doc-inline-validation.rs:29:7
+   |
+LL | #[doc(inline)]
+   |       ^^^^^^ this attribute...
+...
+LL | #[doc(no_inline)]
+   |       ^^^^^^^^^ ...conflicts with this attribute
+   |
+   = help: remove one of the conflicting attributes
+
+error: conflicting doc inlining attributes
+  --> $DIR/doc-inline-validation.rs:35:7
+   |
+LL | #[doc(no_inline)]
+   |       ^^^^^^^^^ this attribute...
+...
+LL | #[doc(inline)]
+   |       ^^^^^^ ...conflicts with this attribute
+   |
+   = help: remove one of the conflicting attributes
+
+error: conflicting doc inlining attributes
+  --> $DIR/doc-inline-validation.rs:42:7
+   |
+LL | #[doc(inline, no_inline)]
+   |       ^^^^^^  ^^^^^^^^^ ...conflicts with this attribute
+   |       |
+   |       this attribute...
+   |
+   = help: remove one of the conflicting attributes
+
+error: conflicting doc inlining attributes
+  --> $DIR/doc-inline-validation.rs:64:7
+   |
+LL | #[doc(inline)]
+   |       ^^^^^^ this attribute...
+...
+LL | #[doc(no_inline)]
+   |       ^^^^^^^^^ ...conflicts with this attribute
+   |
+   = help: remove one of the conflicting attributes
+
+error: this attribute can only be applied to a `use` item
+  --> $DIR/doc-inline-validation.rs:49:7
+   |
+LL | #[doc(inline)]
+   |       ^^^^^^ only applicable on `use` items
+LL |
+LL | pub fn fn_with_inline() {}
+   | -------------------------- not a `use` item
+   |
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline> for more information
+note: the lint level is defined here
+  --> $DIR/doc-inline-validation.rs:48:8
+   |
+LL | #[deny(invalid_doc_attributes)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+
+error: this attribute can only be applied to a `use` item
+  --> $DIR/doc-inline-validation.rs:58:7
+   |
+LL | #[doc(no_inline)]
+   |       ^^^^^^^^^ only applicable on `use` items
+LL |
+LL | pub struct StructWithNoInline;
+   | ------------------------------ not a `use` item
+   |
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline> for more information
+note: the lint level is defined here
+  --> $DIR/doc-inline-validation.rs:57:8
+   |
+LL | #[deny(invalid_doc_attributes)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: didn't expect any arguments here
+  --> $DIR/doc-inline-validation.rs:71:14
+   |
+LL | #[doc(inline = "foo")]
+   |              ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: `#[warn(invalid_doc_attributes)]` on by default
+
+error: aborting due to 6 previous errors; 1 warning emitted
+

@@ -2,7 +2,7 @@ use std::io::Error;
 use std::path::{Path, PathBuf};
 
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, Level, MultiSpan, msg};
+use rustc_errors::{Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, Level, msg};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::middle::resolve::MainDefinition;
 use rustc_middle::ty::Ty;
@@ -73,26 +73,6 @@ pub(crate) struct DocKeywordOnlyImpl {
 pub(crate) struct DocSearchUnboxInvalid {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("conflicting doc inlining attributes")]
-#[help("remove one of the conflicting attributes")]
-pub(crate) struct DocInlineConflict {
-    #[primary_span]
-    pub spans: MultiSpan,
-}
-
-#[derive(Diagnostic)]
-#[diag("this attribute can only be applied to a `use` item")]
-#[note(
-    "read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline> for more information"
-)]
-pub(crate) struct DocInlineOnlyUse {
-    #[label("only applicable on `use` items")]
-    pub attr_span: Span,
-    #[label("not a `use` item")]
-    pub item_span: Span,
 }
 
 #[derive(Diagnostic)]

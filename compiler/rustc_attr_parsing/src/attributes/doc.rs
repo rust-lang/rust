@@ -2,26 +2,26 @@ use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
 use rustc_attr_ir::target::Target;
 use rustc_attr_ir::{
     AttributeKind, CfgEntry, CfgHideShow, DocAttribute, DocCfgHideShow, DocCfgHideShowValue,
-    DocInline, HideOrShow,
+    DocInline, HideOrShow, find_attr,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, MultiSpan, msg};
 use rustc_feature::AttributeStability;
 use rustc_lint_defs::builtin::{INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES};
 use rustc_span::{Span, Symbol, edition, sym};
 
 use super::prelude::{ALL_TARGETS, AllowedTargets};
-use super::{AcceptMapping, AttributeParser, template};
-use crate::context::{AcceptContext, FinalizeContext};
+use super::{AcceptMapping, AttributeParser, FinalizeCheckFn, template};
+use crate::context::{AcceptContext, FinalizeCheckContext, FinalizeContext};
 use crate::diagnostics::{
     AttrCrateLevelOnly, DocAliasBadChar, DocAliasDuplicated, DocAliasEmpty, DocAliasMalformed,
     DocAliasStartEnd, DocAttrNotCrateLevel, DocAttributeNotAttribute, DocAutoCfgExpectsHideOrShow,
     DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowNoIdentBeforeValues,
     DocAutoCfgHideShowUnexpectedItem, DocAutoCfgHideShowUnexpectedItemAfterValues,
-    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocKeywordNotKeyword, DocTestLiteral,
-    DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude, DocUnknownPasses,
-    DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs,
-    IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
+    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocInlineConflict, DocInlineOnlyUse,
+    DocKeywordNotKeyword, DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny,
+    DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue,
+    ExpectedNoArgs, IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
@@ -741,6 +741,44 @@ impl DocParser {
             }
         }
     }
+
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, _attr_span: Span) {
+        let Some(doc) = find_attr!(cx.parsed_attrs, Doc(doc) => doc) else {
+            return;
+        };
+
+        let span = match doc.inline.as_slice() {
+            [] => return,
+            [(_, span)] => *span,
+            [(inline, span), rest @ ..] => {
+                for (inline2, span2) in rest {
+                    if inline2 != inline {
+                        let mut spans = MultiSpan::from_spans(vec![*span, *span2]);
+                        spans.push_span_label(*span, msg!("this attribute..."));
+                        spans.push_span_label(
+                            *span2,
+                            msg!("{\".\"}..conflicts with this attribute"),
+                        );
+                        cx.emit_err(DocInlineConflict { spans });
+                        return;
+                    }
+                }
+                *span
+            }
+        };
+
+        match cx.target {
+            Target::Use | Target::ExternCrate => {}
+            _ => {
+                let item_span = cx.target_span;
+                cx.emit_lint(
+                    INVALID_DOC_ATTRIBUTES,
+                    DocInlineOnlyUse { attr_span: span, item_span },
+                    span,
+                );
+            }
+        }
+    }
 }
 
 impl AttributeParser for DocParser {
@@ -815,5 +853,10 @@ impl AttributeParser for DocParser {
         } else {
             None
         }
+    }
+
+    fn deferred_finalize_check(&self) -> Option<(FinalizeCheckFn, Span)> {
+        let &(_, span) = self.attribute.inline.first()?;
+        Some((Self::finalize_check, span))
     }
 }
