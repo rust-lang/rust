@@ -4,7 +4,7 @@ error[E0539]: malformed `repr` attribute input
 LL | #[repr]
    |   ^^^^ expected this to be a list
    |
-   = note: -Ztrack-diagnostics: created at compiler/rustc_attr_parsing/src/interface.rs:LL:CC
+   = note: -Ztrack-diagnostics: created at compiler/rustc_attr_parsing/src/attributes/repr.rs:LL:CC
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
 warning: unknown diagnostic attribute
