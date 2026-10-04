@@ -531,12 +531,25 @@ impl<X: Cx> NestedGoals<X> {
     /// to all nested goals of that nested goal are also inductive. Otherwise the paths are
     /// the same as for the child.
     fn extend_from_child(&mut self, step_kind: PathKind, nested_goals: &NestedGoals<X>) {
-        // Each nested goal is updated independently, and `insert` only unions paths for that
-        // goal, so traversal order cannot affect the result.
+        if nested_goals.is_empty() {
+            return;
+        }
+
+        // Each nested goal is updated independently, so traversal order cannot
+        // affect the result.
         #[allow(rustc::potential_query_instability)]
-        for (input, paths_to_nested) in nested_goals.iter() {
-            let paths_to_nested = paths_to_nested.extend_with(step_kind);
-            self.insert(input, paths_to_nested);
+        if self.is_empty() {
+            // Manually avoid HashMap lookups for every input if there aren't
+            // any preexisting entries.
+            self.nested_goals.clone_from(&nested_goals.nested_goals);
+            for (_input, paths_to_nested) in &mut self.nested_goals {
+                *paths_to_nested = paths_to_nested.extend_with(step_kind);
+            }
+        } else {
+            for (input, paths_to_nested) in nested_goals.iter() {
+                let paths_to_nested = paths_to_nested.extend_with(step_kind);
+                self.insert(input, paths_to_nested);
+            }
         }
     }
 
