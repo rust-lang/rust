@@ -3,10 +3,10 @@
 //@ only-windows
 //@ only-msvc
 //@ ignore-64bit 64-bit table based SEH has slightly different behaviors than classic SEH
-//@ [all] compile-flags: -Z stack-protector=all
-//@ [strong] compile-flags: -Z stack-protector=strong
-//@ [none] compile-flags: -Z stack-protector=none
-//@ compile-flags: -C opt-level=2 -Z merge-functions=disabled
+//@ [all] compile-flags: -C stack-protector=all
+//@ [strong] compile-flags: -C stack-protector=strong
+//@ [none] compile-flags: -C stack-protector=none
+//@ compile-flags: -Z allow-partial-mitigations=stack-protector -C opt-level=2 -Z merge-functions=disabled
 
 #![crate_type = "lib"]
 #![allow(internal_features)]

@@ -3,6 +3,7 @@
 
 use std::sync::Arc;
 
+use rustc_ast::ast;
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -145,6 +146,16 @@ impl ParseSess {
         diagnostic: impl Into<DecorateDiagCompat>,
     ) {
         self.opt_span_buffer_lint(lint, Some(span.into()), node_id, diagnostic.into())
+    }
+
+    /// Buffer a crate-level lint. This is used for lints that are associated with command-line
+    /// arguments and dependency structure.
+    pub fn buffer_crate_lint(
+        &self,
+        lint: &'static Lint,
+        diagnostic: impl Into<DecorateDiagCompat>,
+    ) {
+        self.opt_span_buffer_lint(lint, None, ast::CRATE_NODE_ID, diagnostic.into())
     }
 
     pub fn dyn_buffer_lint<
