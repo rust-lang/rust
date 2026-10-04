@@ -21,13 +21,17 @@ LL |     pathh;
 error[E0423]: cannot find value `path` in this scope
   --> $DIR/builtin-attribute-not-value.rs:24:15
    |
-LL |     path: (),
-   |     ---- a field by that name exists in `Self`
-...
+LL | impl Wat {
+LL |     fn new() -> Wat {
 LL |         Wat { path }
    |               ^^^^
    |
    = note: a built-in attribute named `path` exists in another namespace
+note: a field by that name exists in `Self`
+  --> $DIR/builtin-attribute-not-value.rs:19:5
+   |
+LL |     path: (),
+   |     ^^^^
 
 error[E0423]: cannot find function `path` in this scope
   --> $DIR/builtin-attribute-not-value.rs:7:5

@@ -1,11 +1,17 @@
 error[E0425]: cannot find value `banana` in this scope
   --> $DIR/issue-60057.rs:8:21
    |
-LL |     banana: u8,
-   |     ------ a field by that name exists in `Self`
-...
+LL | impl A {
+LL |     fn new(peach: u8) -> A {
+LL |         A {
 LL |             banana: banana
    |                     ^^^^^^
+   |
+note: a field by that name exists in `Self`
+  --> $DIR/issue-60057.rs:2:5
+   |
+LL |     banana: u8,
+   |     ^^^^^^
 
 error[E0425]: cannot find value `banana` in this scope
   --> $DIR/issue-60057.rs:14:21
