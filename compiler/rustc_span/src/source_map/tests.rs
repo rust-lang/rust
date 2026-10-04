@@ -797,3 +797,31 @@ fn read_binary_file_handles_lying_stat() {
     let bin = RealFileLoader.read_binary_file(kernel_max).unwrap();
     assert_eq!(&real[..], &bin[..]);
 }
+
+#[test]
+fn filename_for_diagnostics_resolves_parent_dir() {
+    let sm = SourceMap::new(FilePathMapping::empty());
+
+    let with_parent = filename(&sm, "tests/sub/../helper.rs");
+    assert_eq!(sm.filename_for_diagnostics(&with_parent).to_string(), path_str("tests/helper.rs"));
+
+    let clean = filename(&sm, "tests/clean.rs");
+    assert_eq!(sm.filename_for_diagnostics(&clean).to_string(), path_str("tests/clean.rs"));
+}
+
+#[test]
+fn filename_for_diagnostics_verbose_keeps_parent_dir() {
+    let sm = SourceMap::with_inputs(SourceMapInputs {
+        file_loader: Box::new(RealFileLoader),
+        path_mapping: FilePathMapping::empty(),
+        hash_kind: SourceFileHashAlgorithm::Md5,
+        checksum_hash_kind: None,
+        verbose: true,
+    });
+
+    let with_parent = filename(&sm, "tests/sub/../helper.rs");
+    assert_eq!(
+        sm.filename_for_diagnostics(&with_parent).to_string(),
+        path_str("tests/sub/../helper.rs"),
+    );
+}
