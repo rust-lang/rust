@@ -1,20 +1,82 @@
 error: removing an expression is not supported in this position
-  --> $DIR/cfg-non-opt-expr.rs:5:13
+  --> $DIR/cfg-non-opt-expr.rs:18:17
+   |
+LL |     let _ = 1 + #[cfg(unix)] 2;
+   |                 ^^^^^^^^^^^^
+
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:20:17
+   |
+LL |     let _ = 1 + #[cfg(windows)] 2;
+   |                 ^^^^^^^^^^^^^^^
+
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:22:17
+   |
+LL |     let _ = 1 + #[cfg(all())] 2;
+   |                 ^^^^^^^^^^^^^
+
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:24:13
    |
 LL |     let _ = #[cfg(false)] ();
    |             ^^^^^^^^^^^^^
 
 error: removing an expression is not supported in this position
-  --> $DIR/cfg-non-opt-expr.rs:7:21
+  --> $DIR/cfg-non-opt-expr.rs:26:21
    |
 LL |     let _ = 1 + 2 + #[cfg(false)] 3;
    |                     ^^^^^^^^^^^^^
 
 error: removing an expression is not supported in this position
-  --> $DIR/cfg-non-opt-expr.rs:9:23
+  --> $DIR/cfg-non-opt-expr.rs:28:23
    |
 LL |     let _ = [1, 2, 3][#[cfg(false)] 1];
    |                       ^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:32:13
+   |
+LL |     let _ = #[cfg(true)] ();
+   |             ^^^^^^^^^^^^
+
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:34:21
+   |
+LL |     let _ = 1 + 2 + #[cfg(true)] 3;
+   |                     ^^^^^^^^^^^^
+
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:36:23
+   |
+LL |     let _ = [1, 2, 3][#[cfg(true)] 1];
+   |                       ^^^^^^^^^^^^
+
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:6:10
+   |
+LL |     V1 = #[cfg(true)] 1,
+   |          ^^^^^^^^^^^^
+
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:6:10
+   |
+LL |     V1 = #[cfg(true)] 1,
+   |          ^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:9:27
+   |
+LL |     V2 = #[cfg_attr(true, cfg(true))] 2,
+   |                           ^^^^^^^^^
+
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:30:18
+   |
+LL |     let _ = mac!(#[cfg(true)] 10);
+   |                  ^^^^^^^^^^^^
+
+error: aborting due to 13 previous errors
 
