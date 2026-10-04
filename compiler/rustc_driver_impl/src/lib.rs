@@ -64,6 +64,8 @@ use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTuple};
 use tracing::trace;
 
+use crate::config::TargetStage;
+
 #[allow(unused_macros)]
 macro do_not_use_print($($t:tt)*) {
     std::compile_error!(
@@ -292,6 +294,7 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
 
         let linker = create_and_enter_global_ctxt(compiler, krate, |tcx| {
             // Make sure name resolution and macro expansion is run.
+            // This is earliest point at which name resolution is done.
             let _ = tcx.resolver_for_lowering();
 
             if callbacks.after_expansion(compiler, tcx) == Compilation::Stop {
@@ -302,9 +305,17 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
 
             passes::write_interface(tcx);
 
+            if sess.target_stage == TargetStage::NameResolution {
+                debug_assert!(rustc_metadata::fs::encode_and_write_metadata(tcx, true).is_ok());
+                return None;
+            }
+
             if sess.opts.output_types.contains_key(&OutputType::DepInfo)
                 && sess.opts.output_types.len() == 1
             {
+                if sess.target_stage == TargetStage::Analysis {
+                    debug_assert!(rustc_metadata::fs::encode_and_write_metadata(tcx, true).is_ok());
+                }
                 return None;
             }
 
@@ -315,6 +326,11 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
             tcx.ensure_ok().analysis(());
 
             if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
+                return None;
+            }
+
+            if sess.target_stage == TargetStage::Analysis {
+                debug_assert!(rustc_metadata::fs::encode_and_write_metadata(tcx, true).is_ok());
                 return None;
             }
 

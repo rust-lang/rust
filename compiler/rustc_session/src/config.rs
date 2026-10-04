@@ -586,6 +586,25 @@ impl FmtDebug {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Hash, Debug)]
+pub enum TargetStage {
+    End,
+    Analysis,
+    NameResolution,
+}
+
+impl TargetStage {
+    /// Whether this target stage should use the `analysis` query for more
+    /// than just compiling information about the crate. If it returns `true`,
+    // the `analysis` query will also lint and do a bunch of side-analysis
+    pub fn should_analyse(&self) -> bool {
+        match self {
+            Self::End | Self::Analysis => true,
+            Self::NameResolution => false,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum SwitchWithOptPath {
     Enabled(Option<PathBuf>),
