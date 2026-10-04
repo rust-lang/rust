@@ -125,6 +125,12 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             return;
         };
 
+        // We can't deduce the shim for a function pointer,
+        // and therefore cannot guarantee stack safety.
+        if self.tcx.sess.use_tail_call_fallback() && ty.is_fn_ptr() {
+            self.report_unknown_callee_with_fallback(expr.span);
+        }
+
         // Erase regions since tail calls don't care about lifetimes
         let callee_sig =
             self.tcx.normalize_erasing_late_bound_regions(self.typing_env, ty.fn_sig(self.tcx));
@@ -433,6 +439,37 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             .emit_err();
 
         self.found_errors = Err(guar);
+    }
+
+    fn report_unknown_callee_with_fallback(&mut self, sp: Span) {
+        let sess = self.tcx.sess;
+        let dcx = self.tcx.dcx();
+
+        let mut err = dcx.struct_span_err(
+            sp,
+            "`become` through a function pointer is not supported on this target",
+        );
+
+        if sess.opts.unstable_opts.force_tail_call_fallback {
+            err.note(
+                "`-Zforce-tail-call-fallback` is enabled, and lowers `become` to a trampoline",
+            );
+        } else {
+            err.note(format!(
+                "the `{}` target does not support guaranteed tail calls, \
+                so `become` is lowered to a trampoline",
+                sess.target.llvm_target,
+            ));
+        }
+        err.note("the trampoline can only guarantee a tail call when the callee is known at compile time");
+
+        if sess.target.is_like_wasm {
+            err.help("enable the `tail-call` target feature to use native tail calls");
+        } else {
+            err.help("use `become` with a function item directly");
+        }
+
+        self.found_errors = Err(err.emit_err());
     }
 }
 
