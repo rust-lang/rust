@@ -20,9 +20,10 @@ pub macro thread_local_inner {
 
     // used to generate the `LocalKey` value for `thread_local!`.
     (@key $t:ty, $($(#[$($align_attr:tt)*])+)?, $init:expr) => {{
-        // We intentionally have an argument-position `'static` lifetime so that elided lifetimes in `$t`
-        // become `'static` like they do for `const`s and `static`s, including in the other two
-        // `thread_local!` implementations.
+        // NOTE: The `PhantomData` here is a nice trick to ensure that *all* usages of `$t` can be
+        // inferred to have static lifetimes. This function definition would normally *not* be such
+        // a definition, but because lifetime elision tends to prefer lifetimes matching arguments
+        // to a function, the `'static` lifetime inside the `PhantomData` qualifies here.
         #[allow(mismatched_lifetime_syntaxes)]
         #[inline]
         fn __rust_std_internal_init_fn(_lifetime_elision: $crate::marker::PhantomData<&'static ()>) -> $t { $init }
@@ -32,6 +33,7 @@ pub macro thread_local_inner {
         // in `tests/thread.rs` if these types are renamed.
         unsafe {
             $crate::thread::LocalKey::new(|__rust_std_internal_init| {
+                // NOTE: `$t`'s lifetimes can always be inferred `'static` for `static`s
                 static __RUST_STD_INTERNAL_VAL: $crate::thread::local_impl::Storage<$t, {
                     $({
                         // Ensure that attributes have valid syntax
@@ -42,6 +44,7 @@ pub macro thread_local_inner {
                     })?
 
                     #[allow(unused_mut)]
+                    // NOTE: `$t`'s lifetimes can always be inferred in turbofish position
                     let mut final_align = $crate::thread::local_impl::value_align::<$t>();
                     $($($crate::thread::local_impl::thread_local_inner!(@align final_align, $($align_attr)*);)+)?
                     final_align
