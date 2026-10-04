@@ -32,9 +32,10 @@ use rustc_middle::ty::print::{
     with_types_for_suggestion,
 };
 use rustc_middle::ty::{
-    self, AdtKind, GenericArgs, InferTy, IsSuggestable, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, TypeckResults,
-    Unnormalized, Upcast, suggest_arbitrary_trait_bound, suggest_constraining_type_param,
+    self, AdtKind, CallerBoundsIterator, GenericArgs, InferTy, IsSuggestable, Ty, TyCtxt,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitableExt, TypeVisitor,
+    TypeckResults, Unnormalized, Upcast, suggest_arbitrary_trait_bound,
+    suggest_constraining_type_param,
 };
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{
@@ -1571,7 +1572,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     } else {
                         DefIdOrName::Name("type parameter")
                     };
-                    param_env.caller_bounds().find_map(|clause| {
+
+                    param_env.caller_bounds().non_trait_clauses().iter().find_map(|clause| {
                         if let ty::ClauseKind::Projection(proj) = clause.kind().skip_binder()
                             && self
                                 .tcx

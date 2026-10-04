@@ -12,7 +12,8 @@ use rustc_middle::traits::select::OverflowError;
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ImplSourceUserDefinedData};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
-    self, FieldInfo, Term, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
+    self, CallerBoundsIterator, FieldInfo, Term, Ty, TyCtxt, TypeVisitableExt, TypingMode,
+    Unnormalized, Upcast,
 };
 use rustc_span::{bug, span_bug, sym};
 use tracing::{debug, instrument};
@@ -798,7 +799,7 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
         obligation,
         candidate_set,
         ProjectionCandidate::ParamEnv,
-        obligation.param_env.caller_bounds(),
+        obligation.param_env.caller_bounds().all_clauses().iter(),
         false,
     );
 }

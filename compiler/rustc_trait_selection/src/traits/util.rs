@@ -8,8 +8,8 @@ use rustc_infer::traits::PolyTraitObligation;
 pub use rustc_infer::traits::util::*;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
-    self, ClausePolarity, PolyTraitClause, SizedTraitKind, TraitClause, TraitRef, Ty, TyCtxt,
-    TypeFoldable, TypeVisitableExt, Unnormalized,
+    self, CallerBoundsIterator, ClausePolarity, PolyTraitClause, SizedTraitKind, TraitClause,
+    TraitRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Unnormalized,
 };
 pub use rustc_next_trait_solver::placeholder::{BoundVarReplacer, PlaceholderReplacer};
 use rustc_span::Span;
@@ -241,13 +241,17 @@ pub fn sizedness_fast_path<'tcx>(
         }
 
         if matches!(trait_pred.self_ty().kind(), ty::Param(_) | ty::Placeholder(_)) {
-            for clause in param_env.caller_bounds() {
-                if let ty::ClauseKind::Trait(clause_pred) = clause.kind().skip_binder()
-                    && clause_pred.polarity == ty::ClausePolarity::Positive
-                    && clause_pred.self_ty() == trait_pred.self_ty()
-                    && (clause_pred.def_id() == trait_pred.def_id()
-                        || (sizedness == SizedTraitKind::MetaSized
-                            && tcx.is_lang_item(clause_pred.def_id(), LangItem::Sized)))
+            for clause_pred in param_env
+                .caller_bounds()
+                .trait_clauses()
+                .with_polarity(ty::ClausePolarity::Positive)
+                .with_self_ty(trait_pred.self_ty())
+                .iter()
+            {
+                let clause_pred = clause_pred.skip_binder();
+                if clause_pred.def_id() == trait_pred.def_id()
+                    || (sizedness == SizedTraitKind::MetaSized
+                        && tcx.is_lang_item(clause_pred.def_id(), LangItem::Sized))
                 {
                     return true;
                 }

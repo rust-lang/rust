@@ -236,7 +236,11 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 .upcast(tcx)
             })
             .collect::<Vec<ty::Clause<'tcx>>>();
-        let full_user_env = ty::ParamEnv::new(tcx, orig_env.caller_bounds().chain(field_clauses));
+
+        let full_user_env = ty::ParamEnv::new(
+            tcx,
+            orig_env.caller_bounds().all_clauses().iter().chain(field_clauses),
+        );
 
         let fresh_args = infcx.fresh_args_for_item(DUMMY_SP, adt_def.did());
         let fresh_ty = ty::EarlyBinder::bind(tcx, ty).instantiate(tcx, fresh_args).skip_norm_wip();
@@ -308,7 +312,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         // Don't try to process any nested obligations involving predicates
         // that are already in the `ParamEnv` (modulo regions): we already
         // know that they must hold.
-        for clause in param_env.caller_bounds() {
+        for clause in param_env.caller_bounds().all_clauses().iter() {
             fresh_preds.insert(self.clean_pred(infcx, clause.as_predicate()));
         }
 
@@ -323,8 +327,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             polarity: ty::ClausePolarity::Positive,
         }));
 
-        let computed_clauses = param_env.caller_bounds();
-        let mut user_computed_clauses: FxIndexSet<_> = user_env.caller_bounds().collect();
+        let computed_clauses = param_env.caller_bounds().all_clauses().iter().collect::<Vec<_>>();
+        let mut user_computed_clauses: FxIndexSet<_> =
+            user_env.caller_bounds().all_clauses().iter().collect();
 
         let mut new_env = param_env;
         let dummy_cause = ObligationCause::dummy();
@@ -399,7 +404,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
             let normalized_preds = elaborate(
                 tcx,
-                computed_clauses.clone().chain(user_computed_clauses.iter().cloned()),
+                computed_clauses.iter().copied().chain(user_computed_clauses.iter().cloned()),
             );
             new_env = ty::ParamEnv::new(tcx, normalized_preds);
         }

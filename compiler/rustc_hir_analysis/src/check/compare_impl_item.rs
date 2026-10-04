@@ -14,9 +14,9 @@ use rustc_infer::infer::{self, BoundRegionConversionTime, InferCtxt, TyCtxtInfer
 use rustc_infer::traits::{TraitErrors, util};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
-    Unnormalized, Upcast,
+    self, BottomUpFolder, CallerBoundsIterator, GenericArgs, GenericParamDefKind, Generics, Ty,
+    TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt,
+    TypeVisitor, TypingMode, Unnormalized, Upcast,
 };
 use rustc_span::{BytePos, DUMMY_SP, Span, bug, span_bug};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -2639,7 +2639,7 @@ fn param_env_with_gat_bounds<'tcx>(
 ) -> ty::ParamEnv<'tcx> {
     let param_env = tcx.param_env(impl_ty.def_id);
     let container_id = impl_ty.container_id(tcx);
-    let mut clauses = param_env.caller_bounds().collect::<Vec<_>>();
+    let mut clauses = param_env.caller_bounds().all_clauses().iter().collect::<Vec<_>>();
 
     // for RPITITs, we should install predicates that allow us to project all
     // of the RPITITs associated with the same body. This is because checking

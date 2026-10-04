@@ -19,7 +19,8 @@ use rustc_hir_analysis::hir_ty_lowering::{
 use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_infer::traits::{DynCompatibilityViolation, Obligation, TraitErrors};
 use rustc_middle::ty::{
-    self, CantBeErased, Const, Flags, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
+    self, CallerBoundsIterator, CantBeErased, Const, Flags, Ty, TyCtxt, TypeVisitableExt,
+    TypingMode, Unnormalized,
 };
 use rustc_session::Session;
 use rustc_span::def_id::LocalModId;
@@ -306,14 +307,19 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         // HACK(eddyb) should get the original `Span`.
         let span = tcx.def_span(def_id);
 
-        ty::EarlyBinder::bind_iter(tcx.arena.alloc_from_iter(
-            self.param_env.caller_bounds().filter_map(|clause| match clause.kind().skip_binder() {
-                ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
-                    Some((ty::set_aliases_to_non_rigid(tcx, clause).skip_norm_wip(), span))
-                }
-                _ => None,
-            }),
-        ))
+        ty::EarlyBinder::bind_iter(
+            tcx.arena.alloc_from_iter(
+                self.param_env
+                    .caller_bounds()
+                    .trait_clauses()
+                    .validate_self_ty(|actual_self_ty| actual_self_ty.is_param(index))
+                    .interned()
+                    .iter()
+                    .map(|trait_clause| {
+                        (ty::set_aliases_to_non_rigid(tcx, trait_clause).skip_norm_wip(), span)
+                    }),
+            ),
+        )
     }
 
     fn select_inherent_assoc_candidates(
