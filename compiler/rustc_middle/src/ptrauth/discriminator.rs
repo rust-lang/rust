@@ -81,6 +81,7 @@ use rustc_session::PointerAuthSchema;
 use rustc_span::sym;
 
 use crate::ptrauth::llvm_siphash::llvm_pointer_auth_stable_siphash;
+use crate::ty::layout::LayoutCx;
 
 /// Types that can serve as a source for function pointer type discrimination.
 ///
@@ -317,35 +318,46 @@ enum ClangDiscTy<'tcx> {
     Void,
 }
 
-// Canonicalize Option-wrapped pointer types used to model C nullable pointers.
+// Canonicalize types that are ABI-compatible with C's nullable pointer
+// convention, so the rest of this encoder can treat them like the corresponding
+// plain pointer type.
 //
-// Rust and Clang should compute identical discriminators for equivalent C APIs.
-// Clang does not distinguish nullable from non-nullable pointer types when
-// computing function pointer authentication discriminators, so
-// `Option<fn>` and `Option<*mut T>` are encoded identically to their
-// underlying pointer types.
+// Rust guarantees the null-pointer optimization for references, function
+// pointers, Box, NonNull, and NonZero*. `Option<fn>` and `Option<&T>` are
+// therefore unwrapped here. `Option<*mut T>` and `Option<*const T>` are
+// deliberately left unchanged: raw pointers are not covered by the NPO
+// guarantee and are handled by the general `Adt` arm in `to_clang_disc_ty`.
 //
-// Although `Option<*mut T>` is not considered FFI-safe by Rust and triggers the
-// `improper_ctypes`/`improper_ctypes_definitions` lints, this is a warning
-// rather than a hard error. Canonicalizing it here preserves Clang-compatible
-// discriminator computation.
-//
-// Please see the following tests for sample use cases:
-// pauth-fn-ptr-type-discrimination-option-callback.rs,
-// pauth-fn-ptr-type-discrimination-option-return.rs and pauth-fn-ptr-type-discrimination-option.rs
-fn canonicalize_c_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    if let ty::Adt(def, args) = ty.kind()
-        && tcx.is_diagnostic_item(sym::Option, def.did())
-    {
-        let inner = args.type_at(0);
+// Also peels `repr(transparent)` wrappers to canonicalize them to their
+// underlying type.
+fn canonicalize_c_type<'tcx>(tcx: TyCtxt<'tcx>, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+    loop {
+        let before = ty;
 
-        match inner.kind() {
-            ty::FnPtr(..) | ty::RawPtr(..) => return inner,
-            _ => {}
+        if let ty::Adt(def, args) = ty.kind()
+            && tcx.is_diagnostic_item(sym::Option, def.did())
+        {
+            let inner = args.type_at(0);
+            if let ty::FnPtr(..) | ty::Ref(..) = inner.kind() {
+                ty = inner;
+            }
+        }
+
+        // Only ADTs can be repr(transparent); skip the layout query entirely
+        // for everything else.
+        if matches!(ty.kind(), ty::Adt(..)) {
+            let typing_env = ty::TypingEnv::fully_monomorphized();
+
+            if let Ok(layout) = tcx.layout_of(typing_env.as_query_input(ty)) {
+                let cx = LayoutCx::new(tcx, typing_env);
+                ty = layout.peel_transparent_wrappers(&cx).ty;
+            }
+        }
+
+        if ty == before {
+            return ty;
         }
     }
-
-    ty
 }
 
 /// Lowers a Rust type into a Clang-compatible discriminator type.
@@ -388,8 +400,14 @@ fn to_clang_disc_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ClangDiscTy<'tcx> 
         // arrays ignore size
         ty::Array(elem, _) => ClangDiscTy::Array { elem: *elem },
 
-        // enums to integer collapse
-        ty::Adt(def, _) if def.is_enum() => ClangDiscTy::EnumLikeInt,
+        // enums to integer collapse - mirrors Clang's Type::Enum handling,
+        // which recurses into the enum's underlying integer type per C11
+        // 6.7.2.2p4.
+        // A non-niche, data-carrying enum (e.g. Option<*mut T>) is not an
+        // "enumerated type" in the C11 sense, such enums fall through to the
+        // general Adt(_) => AdtName(..) arm below instead.
+        ty::Adt(def, _) if def.is_enum() && def.is_payloadfree() => ClangDiscTy::EnumLikeInt,
+
         // simd vectors
         ty::Adt(def, args) if def.repr().simd() => {
             // Clang encodes SIMD vectors by their total size
