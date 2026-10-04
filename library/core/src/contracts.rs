@@ -18,7 +18,7 @@ pub use crate::macros::builtin::{contracts_ensures as ensures, contracts_require
 #[lang = "contract_build_check_ensures"]
 pub const fn build_check_ensures<Ret, C>(cond: C) -> C
 where
-    C: Fn(&Ret) -> bool + Copy + 'static,
+    C: Fn(&Ret) -> bool + Copy,
 {
     cond
 }
