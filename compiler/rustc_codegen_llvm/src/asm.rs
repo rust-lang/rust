@@ -94,7 +94,21 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         // disabled. This is necessary otherwise LLVM will try
                         // to actually allocate a register for the dummy output.
                         assert_matches!(reg, InlineAsmRegOrRegClass::Reg(_));
-                        clobbers.push(format!("~{}", reg_to_llvm(reg, None)));
+
+                        // However sometimes LLVM marks registers as reserved when the target
+                        // feature is not enabled. Don't clobber in those cases.
+                        let is_register_available = match reg.reg_class() {
+                            InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg) => {
+                                // Without d32 the d16..=d31 registers are not available.
+                                false
+                            }
+                            _ => true,
+                        };
+
+                        if is_register_available {
+                            clobbers.push(format!("~{}", reg_to_llvm(reg, None)));
+                        }
+
                         continue;
                     } else {
                         // If the output is discarded, we don't really care what
