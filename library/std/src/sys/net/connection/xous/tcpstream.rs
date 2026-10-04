@@ -39,12 +39,13 @@ pub struct TcpStream {
     nonblocking: Arc<Atomic<bool>>,
 }
 
-fn sockaddr_to_buf(duration: Duration, addr: &SocketAddr, buf: &mut [u8]) {
+fn sockaddr_to_buf(duration: Option<Duration>, addr: &SocketAddr, buf: &mut [u8]) {
     // Construct the request.
     let port_bytes = addr.port().to_le_bytes();
     buf[0] = port_bytes[0];
     buf[1] = port_bytes[1];
-    for (dest, src) in buf[2..].iter_mut().zip((duration.as_millis() as u64).to_le_bytes()) {
+    let millis = duration.map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX).max(1));
+    for (dest, src) in buf[2..].iter_mut().zip(millis.to_le_bytes()) {
         *dest = src;
     }
     match addr.ip() {
@@ -82,15 +83,11 @@ impl TcpStream {
         }
     }
 
-    pub fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<TcpStream> {
-        each_addr(addr, |addr| Self::connect_timeout(addr, Duration::ZERO))
-    }
-
-    pub fn connect_timeout(addr: &SocketAddr, duration: Duration) -> io::Result<TcpStream> {
+    fn connect_inner(addr: &SocketAddr, timeout: Option<Duration>) -> io::Result<TcpStream> {
         let mut connect_request = ConnectRequest { raw: [0u8; 4096] };
 
         // Construct the request.
-        sockaddr_to_buf(duration, &addr, &mut connect_request.raw);
+        sockaddr_to_buf(timeout, &addr, &mut connect_request.raw);
 
         let Ok((_, valid)) = crate::os::xous::ffi::lend_mut(
             services::net_server(),
@@ -138,6 +135,17 @@ impl TcpStream {
         })
     }
 
+    pub fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<TcpStream> {
+        each_addr(addr, |addr| Self::connect_inner(addr, None))
+    }
+
+    pub fn connect_timeout(addr: &SocketAddr, duration: Duration) -> io::Result<TcpStream> {
+        if duration.is_zero() {
+            return Err(io::Error::ZERO_TIMEOUT);
+        }
+        Self::connect_inner(addr, Some(duration))
+    }
+
     pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         if let Some(to) = timeout {
             if to.is_zero() {
@@ -145,7 +153,7 @@ impl TcpStream {
             }
         }
         self.read_timeout.store(
-            timeout.map(|t| t.as_millis().min(u32::MAX as u128) as u32).unwrap_or_default(),
+            timeout.map_or(0, |t| u32::try_from(t.as_millis()).unwrap_or(u32::MAX).max(1)),
             Ordering::Relaxed,
         );
         Ok(())
@@ -158,7 +166,7 @@ impl TcpStream {
             }
         }
         self.write_timeout.store(
-            timeout.map(|t| t.as_millis().min(u32::MAX as u128) as u32).unwrap_or_default(),
+            timeout.map_or(0, |t| u32::try_from(t.as_millis()).unwrap_or(u32::MAX).max(1)),
             Ordering::Relaxed,
         );
         Ok(())
