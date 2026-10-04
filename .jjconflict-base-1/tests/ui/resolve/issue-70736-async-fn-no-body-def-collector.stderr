@@ -1,0 +1,26 @@
+error: free function without a body
+  --> $DIR/issue-70736-async-fn-no-body-def-collector.rs:3:1
+   |
+LL | async fn free();
+   | ^^^^^^^^^^^^^^^-
+   |                |
+   |                help: provide a definition for the function: `{ <body> }`
+
+error: associated function in `impl` without body
+  --> $DIR/issue-70736-async-fn-no-body-def-collector.rs:7:5
+   |
+LL |     async fn inherent();
+   |     ^^^^^^^^^^^^^^^^^^^-
+   |                        |
+   |                        help: provide a definition for the function: `{ <body> }`
+
+error: associated function in `impl` without body
+  --> $DIR/issue-70736-async-fn-no-body-def-collector.rs:14:5
+   |
+LL |     async fn associated();
+   |     ^^^^^^^^^^^^^^^^^^^^^-
+   |                          |
+   |                          help: provide a definition for the function: `{ <body> }`
+
+error: aborting due to 3 previous errors
+

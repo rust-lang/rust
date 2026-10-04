@@ -1,0 +1,20 @@
+error: expected type, found keyword `true`
+  --> $DIR/true-false-type-issue-162947.rs:6:16
+   |
+LL |     fn _a() -> true {
+   |                ^^^^
+   |                |
+   |                expected type
+   |                help: the type is called: `bool`
+
+error: expected type, found keyword `true`
+  --> $DIR/true-false-type-issue-162947.rs:16:13
+   |
+LL |     let _b: true = true;
+   |             ^^^^
+   |             |
+   |             expected type
+   |             help: the type is called: `bool`
+
+error: aborting due to 2 previous errors
+

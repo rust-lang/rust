@@ -1,0 +1,38 @@
+error: unexpected token: `...`
+  --> $DIR/issue-90993.rs:2:5
+   |
+LL |     ...=.
+   |     ^^^
+   |
+help: use `..` for an exclusive range
+   |
+LL -     ...=.
+LL +     ..=.
+   |
+help: or `..=` for an inclusive range
+   |
+LL -     ...=.
+LL +     ..==.
+   |
+
+error: unexpected `=` after inclusive range
+  --> $DIR/issue-90993.rs:2:5
+   |
+LL |     ...=.
+   |     ^^^^
+   |
+   = note: inclusive ranges end with a single equals sign (`..=`)
+help: use `..=` instead
+   |
+LL -     ...=.
+LL +     ..=.
+   |
+
+error: expected one of `-`, `;`, `}`, or path, found `.`
+  --> $DIR/issue-90993.rs:2:9
+   |
+LL |     ...=.
+   |         ^ expected one of `-`, `;`, `}`, or path
+
+error: aborting due to 3 previous errors
+

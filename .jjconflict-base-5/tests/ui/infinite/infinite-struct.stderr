@@ -1,0 +1,27 @@
+error[E0072]: recursive type `Take` has infinite size
+  --> $DIR/infinite-struct.rs:1:1
+   |
+LL | struct Take(Take);
+   | ^^^^^^^^^^^ ---- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL | struct Take(Box<Take>);
+   |             ++++    +
+
+error[E0072]: recursive type `Foo` has infinite size
+  --> $DIR/infinite-struct.rs:10:1
+   |
+LL | struct Foo {
+   | ^^^^^^^^^^
+LL |     x: Bar<Foo>,
+   |            --- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL |     x: Bar<Box<Foo>>,
+   |            ++++   +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0072`.

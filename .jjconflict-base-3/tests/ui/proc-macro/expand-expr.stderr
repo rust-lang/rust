@@ -1,0 +1,59 @@
+error: expected one of `.`, `?`, or an operator, found `;`
+  --> $DIR/expand-expr.rs:109:27
+   |
+LL | expand_expr_fail!("string"; hello);
+   |                           ^ expected one of `.`, `?`, or an operator
+
+error: expected expression, found `$`
+  --> $DIR/expand-expr.rs:112:19
+   |
+LL | expand_expr_fail!($);
+   |                   ^ expected expression
+
+error: expected expression, found `$`
+  --> $DIR/expand-expr.rs:113:29
+   |
+LL | expand_expr_fail!(echo_tts!($));
+   |                             ^ expected expression
+
+error: expected expression, found `$`
+  --> $DIR/expand-expr.rs:114:28
+   |
+LL | expand_expr_fail!(echo_pm!($));
+   |                            ^ expected expression
+
+error: macro expansion ignores `hello` and any tokens following
+  --> $DIR/expand-expr.rs:118:47
+   |
+LL | expand_expr_is!("string", echo_tts!("string"; hello));
+   |                           --------------------^^^^^- caused by the macro expansion here
+   |
+   = note: the usage of `echo_tts!` is likely invalid in expression context
+help: you might be missing a semicolon here
+   |
+LL | expand_expr_is!("string", echo_tts!("string"; hello););
+   |                                                     +
+
+error: macro expansion ignores `;` and any tokens following
+  --> $DIR/expand-expr.rs:119:44
+   |
+LL | expand_expr_is!("string", echo_pm!("string"; hello));
+   |                           -----------------^------- caused by the macro expansion here
+   |
+   = note: the usage of `echo_pm!` is likely invalid in expression context
+help: you might be missing a semicolon here
+   |
+LL | expand_expr_is!("string", echo_pm!("string"; hello););
+   |                                                    +
+
+error: recursion limit reached while expanding `recursive_expand!`
+  --> $DIR/expand-expr.rs:127:16
+   |
+LL | const _: u32 = recursive_expand!();
+   |                ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`expand_expr`)
+   = note: this error originates in the macro `recursive_expand` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 7 previous errors
+

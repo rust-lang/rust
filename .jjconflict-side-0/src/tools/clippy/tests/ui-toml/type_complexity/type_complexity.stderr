@@ -1,0 +1,11 @@
+error: very complex type used. Consider factoring parts into `type` definitions
+  --> tests/ui-toml/type_complexity/type_complexity.rs:4:10
+   |
+LL | fn f2(_: (u8, (u8, (u8, (u8, (u8, (u8, u8))))))) {}
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::type-complexity` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::type_complexity)]`
+
+error: aborting due to 1 previous error
+

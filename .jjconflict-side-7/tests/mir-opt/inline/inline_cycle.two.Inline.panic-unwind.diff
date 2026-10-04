@@ -1,0 +1,41 @@
+- // MIR for `two` before Inline
++ // MIR for `two` after Inline
+  
+  fn two() -> () {
+      let mut _0: ();
+      let _1: ();
++     let mut _2: fn() {f};
++     let mut _4: ();
++     scope 1 (inlined call::<fn() {f}>) {
++         debug f => _2;
++         let _3: ();
++         scope 2 (inlined <fn() {f} as FnOnce<()>>::call_once - shim(fn() {f})) {
++             scope 3 (inlined f) {
++                 let _5: ();
++             }
++         }
++     }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = call::<fn() {f}>(f) -> [return: bb1, unwind continue];
++         StorageLive(_2);
++         _2 = f;
++         StorageLive(_3);
++         StorageLive(_4);
++         _4 = const ();
++         StorageLive(_5);
++         _5 = call::<fn() {f}>(f) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
++         StorageDead(_5);
++         StorageDead(_4);
++         StorageDead(_3);
++         StorageDead(_2);
+          StorageDead(_1);
+          _0 = const ();
+          return;
+      }
+  }
+  

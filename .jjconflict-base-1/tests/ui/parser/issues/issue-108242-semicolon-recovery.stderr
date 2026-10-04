@@ -1,0 +1,13 @@
+error: mismatched closing delimiter: `}`
+  --> $DIR/issue-108242-semicolon-recovery.rs:4:8
+   |
+LL | fn main() {
+   |           - closing delimiter possibly meant for this
+LL |     foo(;
+LL |     foo(;
+   |        ^ unclosed delimiter
+LL | }
+   | ^ mismatched closing delimiter
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,114 @@
+warning: unnecessary parentheses around pattern
+  --> $DIR/unused-parens-pinned-reference-patterns.rs:13:20
+   |
+LL |     let &pin const (_x) = pin_const;
+   |                    ^  ^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-parens-pinned-reference-patterns.rs:6:9
+   |
+LL | #![warn(unused_parens)]
+   |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     let &pin const (_x) = pin_const;
+LL +     let &pin const _x = pin_const;
+   |
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/unused-parens-pinned-reference-patterns.rs:16:20
+   |
+LL |     let &pin const (mut _x) = pin_const;
+   |                    ^      ^
+   |
+help: remove these parentheses
+   |
+LL -     let &pin const (mut _x) = pin_const;
+LL +     let &pin const mut _x = pin_const;
+   |
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/unused-parens-pinned-reference-patterns.rs:19:20
+   |
+LL |     let &pin const (mut _x @ _) = pin_const;
+   |                    ^          ^
+   |
+help: remove these parentheses
+   |
+LL -     let &pin const (mut _x @ _) = pin_const;
+LL +     let &pin const mut _x @ _ = pin_const;
+   |
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/unused-parens-pinned-reference-patterns.rs:22:18
+   |
+LL |     let &pin mut (mut _x) = pin_mut;
+   |                  ^      ^
+   |
+help: remove these parentheses
+   |
+LL -     let &pin mut (mut _x) = pin_mut;
+LL +     let &pin mut mut _x = pin_mut;
+   |
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/unused-parens-pinned-reference-patterns.rs:25:20
+   |
+LL |     let &pin const (&pin const _x) = nested_pin_const;
+   |                    ^             ^
+   |
+help: remove these parentheses
+   |
+LL -     let &pin const (&pin const _x) = nested_pin_const;
+LL +     let &pin const &pin const _x = nested_pin_const;
+   |
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/unused-parens-pinned-reference-patterns.rs:28:20
+   |
+LL |     let &pin const (ref pin const _x) = pin_const;
+   |                    ^                ^
+   |
+help: remove these parentheses
+   |
+LL -     let &pin const (ref pin const _x) = pin_const;
+LL +     let &pin const ref pin const _x = pin_const;
+   |
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/unused-parens-pinned-reference-patterns.rs:31:18
+   |
+LL |     let &pin mut (ref pin mut _x) = pin_mut;
+   |                  ^              ^
+   |
+help: remove these parentheses
+   |
+LL -     let &pin mut (ref pin mut _x) = pin_mut;
+LL +     let &pin mut ref pin mut _x = pin_mut;
+   |
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/unused-parens-pinned-reference-patterns.rs:34:20
+   |
+LL |     let &pin const (mut ref pin const _x) = pin_const;
+   |                    ^                    ^
+   |
+help: remove these parentheses
+   |
+LL -     let &pin const (mut ref pin const _x) = pin_const;
+LL +     let &pin const mut ref pin const _x = pin_const;
+   |
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/unused-parens-pinned-reference-patterns.rs:37:18
+   |
+LL |     let &pin mut (mut ref pin mut _x) = pin_mut;
+   |                  ^                  ^
+   |
+help: remove these parentheses
+   |
+LL -     let &pin mut (mut ref pin mut _x) = pin_mut;
+LL +     let &pin mut mut ref pin mut _x = pin_mut;
+   |
+
+warning: 9 warnings emitted

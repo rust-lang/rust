@@ -1,0 +1,27 @@
+error[E0573]: cannot find type `X` in this scope
+  --> $DIR/impl-on-non-type.rs:6:6
+   |
+LL | impl X {}
+   |      ^ not found in this scope
+   |
+   = note: a constant named `X` exists in another namespace
+
+error[E0573]: cannot find type `Y` in this scope
+  --> $DIR/impl-on-non-type.rs:8:6
+   |
+LL | impl Y {}
+   |      ^ not found in this scope
+   |
+   = note: a static named `Y` exists in another namespace
+
+error[E0573]: cannot find type `foo` in this scope
+  --> $DIR/impl-on-non-type.rs:10:6
+   |
+LL | impl foo {}
+   |      ^^^ not found in this scope
+   |
+   = note: a function named `foo` exists in another namespace
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0573`.

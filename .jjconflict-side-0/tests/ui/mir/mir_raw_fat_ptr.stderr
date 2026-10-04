@@ -1,0 +1,12 @@
+warning: method `foo` is never used
+  --> $DIR/mir_raw_fat_ptr.rs:100:16
+   |
+LL | trait Foo { fn foo(&self) -> usize; }
+   |       ---      ^^^
+   |       |
+   |       method in this trait
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,11 @@
+// MIR for `tuples` after built
+
+fn tuples(_1: (u32, i32)) -> (u32, i32) {
+    let mut _0: (u32, i32);
+
+    bb0: {
+        (_0.0: u32) = copy (_1.0: u32);
+        (_0.1: i32) = copy (_1.1: i32);
+        return;
+    }
+}

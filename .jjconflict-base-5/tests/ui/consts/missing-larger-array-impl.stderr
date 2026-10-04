@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `[X; 35]: Default` is not satisfied
+  --> $DIR/missing-larger-array-impl.rs:7:6
+   |
+LL |     <[X; 35] as Default>::default();
+   |      ^^^^^^^ the trait `Default` is not implemented for `[X; 35]`
+   |
+   = help: the following other types implement trait `Default`:
+             &[T]
+             &mut [T]
+             [T; 0]
+             [T; 1]
+             [T; 2]
+             [T; 3]
+             [T; 4]
+             [T; 5]
+           and 27 others
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

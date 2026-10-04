@@ -1,0 +1,8 @@
+error: 'a
+ --> $DIR/rustc_dump_object_lifetime_defaults.rs:7:16
+  |
+7 | struct Ref<'a, T: 'a>(&'a T);
+  |                ^
+
+error: aborting due to 1 previous error
+

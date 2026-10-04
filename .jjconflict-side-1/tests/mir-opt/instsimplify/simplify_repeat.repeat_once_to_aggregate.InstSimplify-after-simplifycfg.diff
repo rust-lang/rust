@@ -1,0 +1,30 @@
+- // MIR for `repeat_once_to_aggregate` before InstSimplify-after-simplifycfg
++ // MIR for `repeat_once_to_aggregate` after InstSimplify-after-simplifycfg
+  
+  fn repeat_once_to_aggregate(_1: T) -> [T; 1] {
+      debug x => _1;
+      let mut _0: [T; 1];
+      let _2: [T; 1];
+      let mut _3: T;
+      let mut _4: T;
+      scope 1 {
+          debug other => _2;
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+-         _2 = [move _3; 1];
++         _2 = [move _3];
+          StorageDead(_3);
+          StorageLive(_4);
+          _4 = copy _1;
+-         _0 = [move _4; 1];
++         _0 = [move _4];
+          StorageDead(_4);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

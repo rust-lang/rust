@@ -1,0 +1,21 @@
+error[E0446]: private type `Bar` in public interface
+  --> $DIR/E0446.rs:10:5
+   |
+LL | struct Bar;
+   | ---------- `Bar` declared as private
+...
+LL |     type Alias1 = Bar;
+   |     ^^^^^^^^^^^ can't leak private type
+
+error[E0446]: private trait `PrivTr` in public interface
+  --> $DIR/E0446.rs:11:5
+   |
+LL | trait PrivTr {}
+   | ------------ `PrivTr` declared as private
+...
+LL |     type Alias2 = Box<dyn PrivTr>;
+   |     ^^^^^^^^^^^ can't leak private trait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0446`.

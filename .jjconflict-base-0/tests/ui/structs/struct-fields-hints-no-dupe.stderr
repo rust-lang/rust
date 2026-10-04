@@ -1,0 +1,14 @@
+error[E0560]: struct `A` has no field named `bar`
+  --> $DIR/struct-fields-hints-no-dupe.rs:10:9
+   |
+LL |         bar : 42,
+   |         ^^^ unknown field
+   |
+help: a field with a similar name exists
+   |
+LL |         barr : 42,
+   |            +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0560`.

@@ -1,0 +1,74 @@
+- // MIR for `opt5` before EarlyOtherwiseBranch
++ // MIR for `opt5` after EarlyOtherwiseBranch
+  
+  fn opt5(_1: u32, _2: u32) -> u32 {
+      debug x => _1;
+      debug y => _2;
+      let mut _0: u32;
+      let mut _3: (u32, u32);
+      let mut _4: u32;
+      let mut _5: u32;
++     let mut _6: bool;
+  
+      bb0: {
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = copy _1;
+          StorageLive(_5);
+          _5 = copy _2;
+          _3 = (move _4, move _5);
+          StorageDead(_5);
+          StorageDead(_4);
+-         switchInt(copy (_3.0: u32)) -> [1: bb2, 2: bb3, 3: bb4, otherwise: bb1];
++         _6 = Ne(copy (_3.0: u32), copy (_3.1: u32));
++         switchInt(move _6) -> [0: bb6, otherwise: bb1];
+      }
+  
+      bb1: {
+          _0 = const 0_u32;
+-         goto -> bb8;
++         goto -> bb5;
+      }
+  
+      bb2: {
+-         switchInt(copy (_3.1: u32)) -> [1: bb7, otherwise: bb1];
++         _0 = const 6_u32;
++         goto -> bb5;
+      }
+  
+      bb3: {
+-         switchInt(copy (_3.1: u32)) -> [2: bb6, otherwise: bb1];
++         _0 = const 5_u32;
++         goto -> bb5;
+      }
+  
+      bb4: {
+-         switchInt(copy (_3.1: u32)) -> [3: bb5, otherwise: bb1];
++         _0 = const 4_u32;
++         goto -> bb5;
+      }
+  
+      bb5: {
+-         _0 = const 6_u32;
+-         goto -> bb8;
++         StorageDead(_3);
++         return;
+      }
+  
+      bb6: {
+-         _0 = const 5_u32;
+-         goto -> bb8;
+-     }
+- 
+-     bb7: {
+-         _0 = const 4_u32;
+-         goto -> bb8;
+-     }
+- 
+-     bb8: {
+-         StorageDead(_3);
+-         return;
++         switchInt(copy (_3.0: u32)) -> [1: bb4, 2: bb3, 3: bb2, otherwise: bb1];
+      }
+  }
+  

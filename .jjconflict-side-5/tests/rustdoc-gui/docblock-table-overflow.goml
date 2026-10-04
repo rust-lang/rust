@@ -1,0 +1,17 @@
+// This test ensures that the type declaration content overflow is handled inside the <pre> directly.
+go-to: "file://" + |DOC_PATH| + "/lib2/long_table/struct.Foo.html"
+// We set a fixed size so there is no chance of "random" resize.
+set-window-size: (1100, 800)
+// Logically, the ".docblock" and the "<p>" should have the same scroll width.
+compare-elements-property: (".top-doc .docblock", ".top-doc .docblock > p", ["scrollWidth"])
+assert-property: (".top-doc .docblock", {"scrollWidth": "816"})
+// However, since there is overflow in the <table>, its scroll width is bigger.
+assert-property: (".top-doc .docblock table", {"scrollWidth": "1572"})
+
+// Checking it works on other doc blocks as well...
+
+// Logically, the ".docblock" and the "<p>" should have the same scroll width (if we exclude the margin).
+assert-property: ("#implementations-list > details .docblock", {"scrollWidth": 835})
+assert-property: ("#implementations-list > details .docblock > p", {"scrollWidth": 835})
+// However, since there is overflow in the <table>, its scroll width is bigger.
+assert-property: ("#implementations-list > details .docblock table", {"scrollWidth": "1572"})

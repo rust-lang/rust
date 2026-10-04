@@ -1,0 +1,18 @@
+//@ run-rustfix
+
+#![allow(warnings)]
+
+struct Bar;
+
+trait Foo {
+    fn foo();
+}
+
+ impl Bar {} //~ ERROR E0449
+
+ impl Foo for Bar { //~ ERROR E0449
+     fn foo() {} //~ ERROR E0449
+}
+
+fn main() {
+}

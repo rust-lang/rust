@@ -1,0 +1,14 @@
+error: homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
+  --> $DIR/homogeneous-aggr-zero-sized-c-struct.rs:22:1
+   |
+LL | pub type TestMiddle = Middle;
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
+  --> $DIR/homogeneous-aggr-zero-sized-c-struct.rs:33:1
+   |
+LL | pub type TestFinal = Final;
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,9 @@
+error[E0606]: casting `&[u8; 3]` as `*const [u32; 3]` is invalid
+  --> $DIR/cast-array-issue-138836.rs:4:13
+   |
+LL |     let c = b as *const [u32; 3];
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0606`.

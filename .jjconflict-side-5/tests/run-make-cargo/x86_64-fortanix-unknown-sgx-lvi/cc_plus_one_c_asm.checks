@@ -1,0 +1,15 @@
+CHECK: cc_plus_one_c_asm
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK-NEXT: incl
+CHECK-NEXT: jmp
+CHECK-NEXT: shlq	$0x0, (%rsp)
+CHECK-NEXT: lfence
+CHECK-NEXT: retq
+CHECK:      popq
+CHECK-NEXT: popq [[REGISTER:%[a-z]+]]
+CHECK-NEXT: lfence
+CHECK-NEXT: jmpq *[[REGISTER]]

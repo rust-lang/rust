@@ -1,0 +1,86 @@
+error: missing condition for `if` expression
+  --> $DIR/bad-if-statements.rs:2:7
+   |
+LL |     if {}
+   |       ^- if this block is the condition of the `if` expression, then it must be followed by another block
+   |       |
+   |       expected condition here
+
+error: this `if` expression is missing a block after the condition
+  --> $DIR/bad-if-statements.rs:7:5
+   |
+LL |     if true && {}
+   |     ^^
+   |
+help: this binary operation is possibly unfinished
+  --> $DIR/bad-if-statements.rs:7:8
+   |
+LL |     if true && {}
+   |        ^^^^^^^
+
+error: expected `{`, found `x`
+  --> $DIR/bad-if-statements.rs:13:13
+   |
+LL |     if true x
+   |             ^ expected `{`
+   |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/bad-if-statements.rs:13:8
+   |
+LL |     if true x
+   |        ^^^^
+help: you might have meant to write this as part of a block
+   |
+LL |     if true { x }
+   |             +   +
+
+error: missing condition for `if` expression
+  --> $DIR/bad-if-statements.rs:18:7
+   |
+LL |     if {} else {}
+   |       ^- if this block is the condition of the `if` expression, then it must be followed by another block
+   |       |
+   |       expected condition here
+
+error: this `if` expression is missing a block after the condition
+  --> $DIR/bad-if-statements.rs:23:5
+   |
+LL |     if true && {} else {}
+   |     ^^
+   |
+help: this binary operation is possibly unfinished
+  --> $DIR/bad-if-statements.rs:23:8
+   |
+LL |     if true && {} else {}
+   |        ^^^^^^^
+
+error: expected `{`, found `x`
+  --> $DIR/bad-if-statements.rs:29:13
+   |
+LL |     if true x else {}
+   |             ^ expected `{`
+   |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/bad-if-statements.rs:29:8
+   |
+LL |     if true x else {}
+   |        ^^^^
+help: you might have meant to write this as part of a block
+   |
+LL |     if true { x } else {}
+   |             +   +
+
+error: this `if` expression is missing a block after the condition
+  --> $DIR/bad-if-statements.rs:34:5
+   |
+LL |     if true else {}
+   |     ^^
+   |
+help: add a block here
+  --> $DIR/bad-if-statements.rs:34:12
+   |
+LL |     if true else {}
+   |            ^
+
+error: aborting due to 7 previous errors
+

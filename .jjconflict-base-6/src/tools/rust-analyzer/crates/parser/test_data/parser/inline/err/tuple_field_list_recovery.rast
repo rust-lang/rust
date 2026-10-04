@@ -1,0 +1,44 @@
+SOURCE_FILE
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    TUPLE_FIELD_LIST
+      L_PAREN "("
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    TUPLE_FIELD_LIST
+      L_PAREN "("
+      TUPLE_FIELD
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "A"
+      COMMA ","
+      ERROR
+        COMMA ","
+      TUPLE_FIELD
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "B"
+      R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 9: expected a type
+error 9: expected R_PAREN
+error 9: expected SEMICOLON
+error 30: expected tuple field

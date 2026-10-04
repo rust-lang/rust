@@ -1,0 +1,22 @@
+error[E0369]: no implementation for `SingleVariant | ()`
+  --> $DIR/span-bug-issue-121445.rs:6:9
+   |
+LL |       let c2 = SingleVariant::Points(0)
+   |                ------------------------ SingleVariant
+LL |           | match x {
+   |  _________^_-
+LL | |             _ => (),
+LL | |         };
+   | |_________- ()
+   |
+note: an implementation of `BitOr<()>` might be missing for `SingleVariant`
+  --> $DIR/span-bug-issue-121445.rs:11:1
+   |
+LL | enum SingleVariant {
+   | ^^^^^^^^^^^^^^^^^^ must implement `BitOr<()>`
+note: the trait `BitOr` must be implemented
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

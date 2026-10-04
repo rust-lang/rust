@@ -1,0 +1,35 @@
+error[E0510]: cannot assign `x` in indexing expression
+  --> $DIR/slice-index-bounds-check-invalidation.rs:36:12
+   |
+LL |     x[1][{ x = y; 2}]
+   |     ----   ^^^^^ cannot assign
+   |     |
+   |     value is immutable in indexing expression
+
+error[E0510]: cannot assign `x` in indexing expression
+  --> $DIR/slice-index-bounds-check-invalidation.rs:50:12
+   |
+LL |     x[1][{ x = y; 2}]
+   |     ----   ^^^^^ cannot assign
+   |     |
+   |     value is immutable in indexing expression
+
+error[E0510]: cannot assign `x` in indexing expression
+  --> $DIR/slice-index-bounds-check-invalidation.rs:64:12
+   |
+LL |     x[1][{ x = y; 2}][0]
+   |     ----   ^^^^^ cannot assign
+   |     |
+   |     value is immutable in indexing expression
+
+error[E0510]: cannot assign `x` in indexing expression
+  --> $DIR/slice-index-bounds-check-invalidation.rs:71:12
+   |
+LL |     x[1][{ x = y; 2}][0]
+   |     ----   ^^^^^ cannot assign
+   |     |
+   |     value is immutable in indexing expression
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0510`.

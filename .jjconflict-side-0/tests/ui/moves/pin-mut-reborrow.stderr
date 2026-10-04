@@ -1,0 +1,23 @@
+error[E0382]: use of moved value: `foo`
+  --> $DIR/pin-mut-reborrow.rs:14:5
+   |
+LL |     let mut foo = Pin::new(&mut foo);
+   |         ------- move occurs because `foo` has type `Pin<&mut Foo>`, which does not implement the `Copy` trait
+LL |     foo.foo();
+   |         ----- `foo` moved due to this method call
+LL |     foo.foo();
+   |     ^^^ value used here after move
+   |
+note: `Foo::foo` takes ownership of the receiver `self`, which moves `foo`
+  --> $DIR/pin-mut-reborrow.rs:7:12
+   |
+LL |     fn foo(self: Pin<&mut Self>) {}
+   |            ^^^^
+help: consider reborrowing the `Pin` instead of moving it
+   |
+LL |     foo.as_mut().foo();
+   |        +++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

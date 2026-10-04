@@ -1,0 +1,8 @@
+error: macros must contain at least one rule
+  --> $DIR/issue-7970b.rs:3:1
+   |
+LL | macro_rules! test {}
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

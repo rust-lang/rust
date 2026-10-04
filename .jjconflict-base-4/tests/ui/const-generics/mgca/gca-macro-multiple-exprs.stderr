@@ -1,0 +1,8 @@
+error: gca! takes 1 argument
+  --> $DIR/gca-macro-multiple-exprs.rs:4:45
+   |
+LL | fn foo<const N: usize, const M: usize>(_: S<gca!(N, M)>) {}
+   |                                             ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

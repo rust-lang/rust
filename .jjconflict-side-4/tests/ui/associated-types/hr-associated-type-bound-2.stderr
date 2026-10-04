@@ -1,0 +1,23 @@
+error[E0275]: overflow evaluating the requirement `for<'b> u32: X<'b>`
+  --> $DIR/hr-associated-type-bound-2.rs:11:1
+   |
+LL | / impl X<'_> for u32
+LL | | where
+LL | |     for<'b> <Self as X<'b>>::U: Clone,
+   | |______________________________________^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`hr_associated_type_bound_2`)
+note: required for `u32` to implement `for<'b> X<'b>`
+  --> $DIR/hr-associated-type-bound-2.rs:11:6
+   |
+LL | impl X<'_> for u32
+   |      ^^^^^     ^^^
+LL | where
+LL |     for<'b> <Self as X<'b>>::U: Clone,
+   |                                 ----- unsatisfied trait bound introduced here
+   = note: 128 redundant requirements hidden
+   = note: required for `u32` to implement `for<'b> X<'b>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

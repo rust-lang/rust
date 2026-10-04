@@ -1,0 +1,1 @@
+arithmetic-side-effects-allowed = ["rustc_abi::Size", "rustc_apfloat::ieee::IeeeFloat"]

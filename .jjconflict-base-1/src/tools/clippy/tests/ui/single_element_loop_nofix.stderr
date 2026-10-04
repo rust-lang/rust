@@ -1,0 +1,16 @@
+error: for loop over a single element
+  --> tests/ui/single_element_loop_nofix.rs:6:5
+   |
+LL | /     for _ in [..5] {
+LL | |
+LL | |         if print {
+LL | |             println!("Hello from f");
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::single-element-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_element_loop)]`
+
+error: aborting due to 1 previous error
+

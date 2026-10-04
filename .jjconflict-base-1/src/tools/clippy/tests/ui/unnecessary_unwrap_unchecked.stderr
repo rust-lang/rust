@@ -1,0 +1,88 @@
+error: usage of `unwrap_unchecked` when an `_unchecked` variant of the function exists
+  --> tests/ui/unnecessary_unwrap_unchecked.rs:63:33
+   |
+LL |     let string_slice = unsafe { std::str::from_utf8(&[]).unwrap_unchecked() };
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unnecessary-unwrap-unchecked` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_unwrap_unchecked)]`
+help: use `std::str::from_utf8_unchecked` instead, and remove the call to `.unwrap_unchecked()`
+   |
+LL -     let string_slice = unsafe { std::str::from_utf8(&[]).unwrap_unchecked() };
+LL +     let string_slice = unsafe { std::str::from_utf8_unchecked(&[]) };
+   |
+
+error: usage of `unwrap_unchecked` when an `_unchecked` variant of the method exists
+  --> tests/ui/unnecessary_unwrap_unchecked.rs:65:22
+   |
+LL |     let a = unsafe { A::a(&A).unwrap_unchecked() };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `A::a_unchecked` instead, and remove the call to `.unwrap_unchecked()`
+   |
+LL -     let a = unsafe { A::a(&A).unwrap_unchecked() };
+LL +     let a = unsafe { A::a_unchecked(&A) };
+   |
+
+error: usage of `unwrap_unchecked` when an `_unchecked` variant of the method exists
+  --> tests/ui/unnecessary_unwrap_unchecked.rs:69:9
+   |
+LL |         a.a().unwrap_unchecked()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `A::a_unchecked` instead, and remove the call to `.unwrap_unchecked()`
+   |
+LL -         a.a().unwrap_unchecked()
+LL +         a.a_unchecked()
+   |
+
+error: usage of `unwrap_unchecked` when an `_unchecked` variant of the associated function exists
+  --> tests/ui/unnecessary_unwrap_unchecked.rs:72:32
+   |
+LL |     let an_assoc_fn = unsafe { A::an_assoc_fn().unwrap_unchecked() };
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `A::an_assoc_fn_unchecked` instead, and remove the call to `.unwrap_unchecked()`
+   |
+LL -     let an_assoc_fn = unsafe { A::an_assoc_fn().unwrap_unchecked() };
+LL +     let an_assoc_fn = unsafe { A::an_assoc_fn_unchecked() };
+   |
+
+error: usage of `unwrap_unchecked` when an `_unchecked` variant of the function exists
+  --> tests/ui/unnecessary_unwrap_unchecked.rs:74:30
+   |
+LL |     let extern_fn = unsafe { lol().unwrap_unchecked() };
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `unnecessary_unwrap_unchecked_helper::lol_unchecked` instead, and remove the call to `.unwrap_unchecked()`
+   |
+LL -     let extern_fn = unsafe { lol().unwrap_unchecked() };
+LL +     let extern_fn = unsafe { unnecessary_unwrap_unchecked_helper::lol_unchecked() };
+   |
+
+error: usage of `unwrap_unchecked` when an `_unchecked` variant of the function exists
+  --> tests/ui/unnecessary_unwrap_unchecked.rs:76:40
+   |
+LL |     let extern_fn_qualified = unsafe { unnecessary_unwrap_unchecked_helper::lol().unwrap_unchecked() };
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `unnecessary_unwrap_unchecked_helper::lol_unchecked` instead, and remove the call to `.unwrap_unchecked()`
+   |
+LL -     let extern_fn_qualified = unsafe { unnecessary_unwrap_unchecked_helper::lol().unwrap_unchecked() };
+LL +     let extern_fn_qualified = unsafe { unnecessary_unwrap_unchecked_helper::lol_unchecked() };
+   |
+
+error: usage of `unwrap_unchecked` when an `_unchecked` variant of the function exists
+  --> tests/ui/unnecessary_unwrap_unchecked.rs:78:29
+   |
+LL |     let local_fn = unsafe { b::test_fn().unwrap_unchecked() };
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `b::test_fn_unchecked` instead, and remove the call to `.unwrap_unchecked()`
+   |
+LL -     let local_fn = unsafe { b::test_fn().unwrap_unchecked() };
+LL +     let local_fn = unsafe { b::test_fn_unchecked() };
+   |
+
+error: aborting due to 7 previous errors
+

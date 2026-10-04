@@ -1,0 +1,27 @@
+- // MIR for `main` before GVN
++ // MIR for `main` after GVN
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: i32;
+      let mut _2: &i32;
+      let _3: (i32, i32);
+      let mut _4: &(i32, i32);
+      scope 1 {
+          debug a => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _4 = const main::promoted[0];
+          _2 = &((*_4).1: i32);
+-         _1 = copy (*_2);
++         _1 = const 5_i32;
+          StorageDead(_2);
+          _0 = const ();
+          StorageDead(_1);
+          return;
+      }
+  }
+  

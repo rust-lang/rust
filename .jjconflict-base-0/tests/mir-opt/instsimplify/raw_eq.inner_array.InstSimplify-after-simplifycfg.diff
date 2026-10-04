@@ -1,0 +1,25 @@
+- // MIR for `inner_array` before InstSimplify-after-simplifycfg
++ // MIR for `inner_array` after InstSimplify-after-simplifycfg
+  
+  fn inner_array(_1: &&[i32; 2], _2: &&[i32; 2]) -> bool {
+      let mut _0: bool;
++     let mut _3: &[i32; 2];
++     let mut _4: u64;
++     let mut _5: &[i32; 2];
++     let mut _6: u64;
+  
+      bb0: {
+-         _0 = raw_eq::<[i32; 2]>(copy (*_1), copy (*_2)) -> [return: bb1, unwind unreachable];
++         _3 = copy (*_1);
++         _4 = copy (*_3) as u64 (Transmute);
++         _5 = copy (*_2);
++         _6 = copy (*_5) as u64 (Transmute);
++         _0 = Eq(move _4, move _6);
++         goto -> bb1;
+      }
+  
+      bb1: {
+          return;
+      }
+  }
+  

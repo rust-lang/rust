@@ -1,0 +1,38 @@
+SOURCE_FILE
+  FN
+    COMMENT "// 2015"
+    WHITESPACE "\n"
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        EXPR_STMT
+          MACRO_EXPR
+            MACRO_CALL
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "try"
+              BANG "!"
+              TOKEN_TREE
+                L_PAREN "("
+                IDENT "Ok"
+                TOKEN_TREE
+                  L_PAREN "("
+                  TOKEN_TREE
+                    L_PAREN "("
+                    R_PAREN ")"
+                  R_PAREN ")"
+                R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"

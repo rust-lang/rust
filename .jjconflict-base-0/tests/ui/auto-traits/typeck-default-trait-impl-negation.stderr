@@ -1,0 +1,37 @@
+error[E0277]: the trait bound `ThisImplsUnsafeTrait: MyTrait` is not satisfied
+  --> $DIR/typeck-default-trait-impl-negation.rs:22:19
+   |
+LL |     is_my_trait::<ThisImplsUnsafeTrait>();
+   |                   ^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `MyTrait` is not implemented for `ThisImplsUnsafeTrait`
+  --> $DIR/typeck-default-trait-impl-negation.rs:13:1
+   |
+LL | struct ThisImplsUnsafeTrait;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `is_my_trait`
+  --> $DIR/typeck-default-trait-impl-negation.rs:17:19
+   |
+LL | fn is_my_trait<T: MyTrait>() {}
+   |                   ^^^^^^^ required by this bound in `is_my_trait`
+
+error[E0277]: the trait bound `ThisImplsTrait: MyUnsafeTrait` is not satisfied
+  --> $DIR/typeck-default-trait-impl-negation.rs:25:26
+   |
+LL |     is_my_unsafe_trait::<ThisImplsTrait>();
+   |                          ^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `MyUnsafeTrait` is not implemented for `ThisImplsTrait`
+  --> $DIR/typeck-default-trait-impl-negation.rs:8:1
+   |
+LL | struct ThisImplsTrait;
+   | ^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `is_my_unsafe_trait`
+  --> $DIR/typeck-default-trait-impl-negation.rs:18:26
+   |
+LL | fn is_my_unsafe_trait<T: MyUnsafeTrait>() {}
+   |                          ^^^^^^^^^^^^^ required by this bound in `is_my_unsafe_trait`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

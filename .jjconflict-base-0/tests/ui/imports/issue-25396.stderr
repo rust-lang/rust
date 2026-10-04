@@ -1,0 +1,59 @@
+error[E0252]: the name `baz` is defined multiple times
+  --> $DIR/issue-25396.rs:4:5
+   |
+LL | use foo::baz;
+   |     -------- previous import of the module `baz` here
+LL | use bar::baz;
+   |     ^^^^^^^^ `baz` reimported here
+   |
+   = note: `baz` must be defined only once in the type namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | use bar::baz as other_baz;
+   |              ++++++++++++
+
+error[E0252]: the name `Quux` is defined multiple times
+  --> $DIR/issue-25396.rs:7:5
+   |
+LL | use foo::Quux;
+   |     --------- previous import of the trait `Quux` here
+LL | use bar::Quux;
+   |     ^^^^^^^^^ `Quux` reimported here
+   |
+   = note: `Quux` must be defined only once in the type namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | use bar::Quux as OtherQuux;
+   |               ++++++++++++
+
+error[E0252]: the name `blah` is defined multiple times
+  --> $DIR/issue-25396.rs:10:5
+   |
+LL | use foo::blah;
+   |     --------- previous import of the type `blah` here
+LL | use bar::blah;
+   |     ^^^^^^^^^ `blah` reimported here
+   |
+   = note: `blah` must be defined only once in the type namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | use bar::blah as other_blah;
+   |               +++++++++++++
+
+error[E0252]: the name `WOMP` is defined multiple times
+  --> $DIR/issue-25396.rs:13:5
+   |
+LL | use foo::WOMP;
+   |     --------- previous import of the value `WOMP` here
+LL | use bar::WOMP;
+   |     ^^^^^^^^^ `WOMP` reimported here
+   |
+   = note: `WOMP` must be defined only once in the value namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | use bar::WOMP as OtherWOMP;
+   |               ++++++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0252`.

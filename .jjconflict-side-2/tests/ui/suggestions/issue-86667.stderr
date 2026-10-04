@@ -1,0 +1,27 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-86667.rs:6:35
+   |
+LL | async fn a(s1: &str, s2: &str) -> &str {
+   |                ----      ----     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `s1` or `s2`
+help: consider introducing a named lifetime parameter
+   |
+LL | async fn a<'a>(s1: &'a str, s2: &'a str) -> &'a str {
+   |           ++++      ++           ++          ++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-86667.rs:11:29
+   |
+LL | fn b(s1: &str, s2: &str) -> &str {
+   |          ----      ----     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `s1` or `s2`
+help: consider introducing a named lifetime parameter
+   |
+LL | fn b<'a>(s1: &'a str, s2: &'a str) -> &'a str {
+   |     ++++      ++           ++          ++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

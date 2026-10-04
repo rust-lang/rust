@@ -1,0 +1,30 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/method-ambig-two-traits-from-impls.rs:15:11
+   |
+LL |     AB {}.foo();
+   |           ^^^ multiple `foo` found
+   |
+note: candidate #1 is defined in an impl of the trait `A` for the type `AB`
+  --> $DIR/method-ambig-two-traits-from-impls.rs:7:5
+   |
+LL |     fn foo(self) {}
+   |     ^^^^^^^^^^^^
+note: candidate #2 is defined in an impl of the trait `B` for the type `AB`
+  --> $DIR/method-ambig-two-traits-from-impls.rs:11:5
+   |
+LL |     fn foo(self) {}
+   |     ^^^^^^^^^^^^
+help: disambiguate the method for candidate #1
+   |
+LL -     AB {}.foo();
+LL +     A::foo(AB {});
+   |
+help: disambiguate the method for candidate #2
+   |
+LL -     AB {}.foo();
+LL +     B::foo(AB {});
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0034`.

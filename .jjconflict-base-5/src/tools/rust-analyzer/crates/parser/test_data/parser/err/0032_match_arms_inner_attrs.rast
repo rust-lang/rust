@@ -1,0 +1,199 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          MATCH_EXPR
+            MATCH_KW "match"
+            WHITESPACE " "
+            TUPLE_EXPR
+              L_PAREN "("
+              R_PAREN ")"
+            WHITESPACE " "
+            MATCH_ARM_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              MATCH_ARM
+                WILDCARD_PAT
+                  UNDERSCORE "_"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                ATTR
+                  POUND "#"
+                NOT_NULL
+                  BANG "!"
+                  SLICE_PAT
+                    L_BRACK "["
+                    TUPLE_STRUCT_PAT
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "doc"
+                      L_PAREN "("
+                      LITERAL_PAT
+                        LITERAL
+                          STRING "\"Not allowed here\""
+                      R_PAREN ")"
+                    R_BRACK "]"
+                WHITESPACE "\n        "
+                UNDERSCORE_EXPR
+                  UNDERSCORE "_"
+              WHITESPACE " "
+              MATCH_ARM
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n\n    "
+        EXPR_STMT
+          MATCH_EXPR
+            MATCH_KW "match"
+            WHITESPACE " "
+            TUPLE_EXPR
+              L_PAREN "("
+              R_PAREN ")"
+            WHITESPACE " "
+            MATCH_ARM_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              MATCH_ARM
+                WILDCARD_PAT
+                  UNDERSCORE "_"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                WILDCARD_PAT
+                  UNDERSCORE "_"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                ATTR
+                  POUND "#"
+                NOT_NULL
+                  BANG "!"
+                  SLICE_PAT
+                    L_BRACK "["
+                    TUPLE_STRUCT_PAT
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "doc"
+                      L_PAREN "("
+                      LITERAL_PAT
+                        LITERAL
+                          STRING "\"Nor here\""
+                      R_PAREN ")"
+                    R_BRACK "]"
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n\n    "
+        MATCH_EXPR
+          MATCH_KW "match"
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          WHITESPACE " "
+          MATCH_ARM_LIST
+            L_CURLY "{"
+            WHITESPACE "\n        "
+            MATCH_ARM
+              ATTR
+                POUND "#"
+                L_BRACK "["
+                CFG_META
+                  CFG_KW "cfg"
+                  L_PAREN "("
+                  CFG_ATOM
+                    IDENT "test"
+                  R_PAREN ")"
+                R_BRACK "]"
+              WHITESPACE "\n        "
+              ATTR
+                POUND "#"
+              NOT_NULL
+                BANG "!"
+                SLICE_PAT
+                  L_BRACK "["
+                  TUPLE_STRUCT_PAT
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "doc"
+                    L_PAREN "("
+                    LITERAL_PAT
+                      LITERAL
+                        STRING "\"Nor here\""
+                    R_PAREN ")"
+                  R_BRACK "]"
+              WHITESPACE "\n        "
+              UNDERSCORE_EXPR
+                UNDERSCORE "_"
+            WHITESPACE " "
+            MATCH_ARM
+              FAT_ARROW "=>"
+              WHITESPACE " "
+              TUPLE_EXPR
+                L_PAREN "("
+                R_PAREN ")"
+              COMMA ","
+            WHITESPACE "\n        "
+            MATCH_ARM
+              WILDCARD_PAT
+                UNDERSCORE "_"
+              WHITESPACE " "
+              FAT_ARROW "=>"
+              WHITESPACE " "
+              TUPLE_EXPR
+                L_PAREN "("
+                R_PAREN ")"
+              COMMA ","
+            WHITESPACE "\n    "
+            R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 52: expected L_BRACK
+error 78: expected FAT_ARROW
+error 88: expected `,`
+error 89: expected pattern
+error 161: expected L_BRACK
+error 179: expected FAT_ARROW
+error 179: expected expression
+error 232: expected L_BRACK
+error 250: expected FAT_ARROW
+error 260: expected `,`
+error 261: expected pattern

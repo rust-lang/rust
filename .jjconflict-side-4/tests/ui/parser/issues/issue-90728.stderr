@@ -1,0 +1,20 @@
+error: expected at least one digit in exponent
+  --> $DIR/issue-90728.rs:2:7
+   |
+LL |     a.5.2E+
+   |       ^^^^^
+
+error: unexpected token: `5.2E+`
+  --> $DIR/issue-90728.rs:2:7
+   |
+LL |     a.5.2E+
+   |       ^^^^^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `5.2E+`
+  --> $DIR/issue-90728.rs:2:7
+   |
+LL |     a.5.2E+
+   |       ^^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: aborting due to 3 previous errors
+

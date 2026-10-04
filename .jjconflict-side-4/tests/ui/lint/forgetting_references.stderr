@@ -1,0 +1,163 @@
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references.rs:10:5
+   |
+LL |     forget(&SomeStruct);
+   |     ^^^^^^^-----------^
+   |            |
+   |            argument has type `&SomeStruct`
+   |
+note: the lint level is defined here
+  --> $DIR/forgetting_references.rs:3:9
+   |
+LL | #![warn(forgetting_references)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(&SomeStruct);
+LL +     let _ = &SomeStruct;
+   |
+
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references.rs:13:5
+   |
+LL |     forget(&owned);
+   |     ^^^^^^^------^
+   |            |
+   |            argument has type `&SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(&owned);
+LL +     let _ = &owned;
+   |
+
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references.rs:14:5
+   |
+LL |     forget(&&owned);
+   |     ^^^^^^^-------^
+   |            |
+   |            argument has type `&&SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(&&owned);
+LL +     let _ = &&owned;
+   |
+
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references.rs:15:5
+   |
+LL |     forget(&mut owned);
+   |     ^^^^^^^----------^
+   |            |
+   |            argument has type `&mut SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(&mut owned);
+LL +     let _ = &mut owned;
+   |
+
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references.rs:19:5
+   |
+LL |     forget(&*reference1);
+   |     ^^^^^^^------------^
+   |            |
+   |            argument has type `&SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(&*reference1);
+LL +     let _ = &*reference1;
+   |
+
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references.rs:22:5
+   |
+LL |     forget(reference2);
+   |     ^^^^^^^----------^
+   |            |
+   |            argument has type `&mut SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(reference2);
+LL +     let _ = reference2;
+   |
+
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references.rs:25:5
+   |
+LL |     forget(reference3);
+   |     ^^^^^^^----------^
+   |            |
+   |            argument has type `&SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(reference3);
+LL +     let _ = reference3;
+   |
+
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references.rs:31:14
+   |
+LL |         1 => forget(&*reference1),
+   |              ^^^^^^^------------^
+   |                     |
+   |                     argument has type `&SomeStruct`
+   |
+   = note: use `let _ = ...` to ignore the expression or result
+
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references.rs:32:14
+   |
+LL |         2 => forget(reference3),
+   |              ^^^^^^^----------^
+   |                     |
+   |                     argument has type `&SomeStruct`
+   |
+   = note: use `let _ = ...` to ignore the expression or result
+
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references.rs:33:14
+   |
+LL |         3 => forget(reference4),
+   |              ^^^^^^^----------^
+   |                     |
+   |                     argument has type `&SomeStruct`
+   |
+   = note: use `let _ = ...` to ignore the expression or result
+
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references.rs:40:5
+   |
+LL |     forget(&val);
+   |     ^^^^^^^----^
+   |            |
+   |            argument has type `&T`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(&val);
+LL +     let _ = &val;
+   |
+
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references.rs:48:5
+   |
+LL |     std::mem::forget(&SomeStruct);
+   |     ^^^^^^^^^^^^^^^^^-----------^
+   |                      |
+   |                      argument has type `&SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     std::mem::forget(&SomeStruct);
+LL +     let _ = &SomeStruct;
+   |
+
+warning: 12 warnings emitted
+

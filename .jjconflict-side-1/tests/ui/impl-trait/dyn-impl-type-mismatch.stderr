@@ -1,0 +1,43 @@
+error[E0308]: mismatched types
+  --> $DIR/dyn-impl-type-mismatch.rs:11:9
+   |
+LL | fn foo() -> impl Trait {
+   |             ---------- the found opaque type
+...
+LL |         foo()
+   |         ^^^^^ expected `Box<dyn Trait>`, found opaque type
+   |
+   = note:   expected struct `Box<dyn Trait>`
+           found opaque type `impl Trait`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |         Box::new(foo())
+   |         +++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/dyn-impl-type-mismatch.rs:14:9
+   |
+LL |         Struct
+   |         ^^^^^^ expected `dyn Trait`, found `Struct`
+   |
+   = note: expected trait object `dyn Trait`
+                    found struct `Struct`
+   = help: `Struct` implements `Trait` so you could box the found value and coerce it to the trait object `Box<dyn Trait>`, you will have to change the expected type as well
+
+error[E0308]: mismatched types
+  --> $DIR/dyn-impl-type-mismatch.rs:16:9
+   |
+LL | fn foo() -> impl Trait {
+   |             ---------- the found opaque type
+...
+LL |         foo()
+   |         ^^^^^ expected `dyn Trait`, found opaque type
+   |
+   = note: expected trait object `dyn Trait`
+               found opaque type `impl Trait`
+   = help: you can box the `impl Trait` to coerce it to `Box<dyn Trait>`, but you'll have to change the expected type as well
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

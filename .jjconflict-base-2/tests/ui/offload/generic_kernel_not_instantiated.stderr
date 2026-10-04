@@ -1,0 +1,10 @@
+error: generic offload kernel `kernel` is not instantiated
+  --> $DIR/generic_kernel_not_instantiated.rs:15:1
+   |
+LL | fn kernel<T: Copy>(x: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: with `-Zoffload=Device` (without a manifest), generic kernels are only discovered via monomorphization; if this kernel is called from host code, pass `-Zoffload=Device=<manifest>`, using the manifest written by `-Zoffload=HostMetadata=<manifest>`
+
+error: aborting due to 1 previous error
+

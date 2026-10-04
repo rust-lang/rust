@@ -1,0 +1,4 @@
+
+thread 'main' ($TID) panicked at $DIR/location-detail-panic-no-line.rs:0:5:
+line-redacted
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

@@ -1,0 +1,171 @@
+error: variant name ends with the enum's name
+  --> tests/ui/enum_variants.rs:16:5
+   |
+LL |     cFoo,
+   |     ^^^^
+   |
+   = note: `-D clippy::enum-variant-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::enum_variant_names)]`
+
+error: all variants have the same prefix: `c`
+  --> tests/ui/enum_variants.rs:14:1
+   |
+LL | / enum Foo {
+LL | |
+LL | |     cFoo,
+...  |
+LL | |     cBaz,
+LL | | }
+   | |_^
+   |
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
+
+error: variant name starts with the enum's name
+  --> tests/ui/enum_variants.rs:29:5
+   |
+LL |     FoodGood,
+   |     ^^^^^^^^
+
+error: variant name starts with the enum's name
+  --> tests/ui/enum_variants.rs:31:5
+   |
+LL |     FoodMiddle,
+   |     ^^^^^^^^^^
+
+error: variant name starts with the enum's name
+  --> tests/ui/enum_variants.rs:33:5
+   |
+LL |     FoodBad,
+   |     ^^^^^^^
+
+error: all variants have the same prefix: `Food`
+  --> tests/ui/enum_variants.rs:27:1
+   |
+LL | / enum Food {
+LL | |
+LL | |     FoodGood,
+...  |
+LL | | }
+   | |_^
+   |
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
+
+error: all variants have the same prefix: `CallType`
+  --> tests/ui/enum_variants.rs:41:1
+   |
+LL | / enum BadCallType {
+LL | |
+LL | |     CallTypeCall,
+LL | |     CallTypeCreate,
+LL | |     CallTypeDestroy,
+LL | | }
+   | |_^
+   |
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
+
+error: all variants have the same prefix: `Constant`
+  --> tests/ui/enum_variants.rs:54:1
+   |
+LL | / enum Consts {
+LL | |
+LL | |     ConstantInt,
+LL | |     ConstantCake,
+LL | |     ConstantLie,
+LL | | }
+   | |_^
+   |
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
+
+error: all variants have the same prefix: `C`
+  --> tests/ui/enum_variants.rs:67:1
+   |
+LL | / enum Something {
+LL | |
+LL | |     CCall,
+LL | |     CCreate,
+LL | |     CCryogenize,
+LL | | }
+   | |_^
+   |
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
+
+error: all variants have the same prefix: `WithOut`
+  --> tests/ui/enum_variants.rs:90:1
+   |
+LL | / enum Seallll {
+LL | |
+LL | |     WithOutCake,
+LL | |     WithOutTea,
+LL | |     WithOut,
+LL | | }
+   | |_^
+   |
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
+
+error: all variants have the same postfix: `IData`
+  --> tests/ui/enum_variants.rs:146:1
+   |
+LL | / enum IDataRequest {
+LL | |
+LL | |     PutIData(String),
+LL | |     GetIData(String),
+LL | |     DeleteUnpubIData(String),
+LL | | }
+   | |_^
+   |
+   = help: remove the postfixes and use full paths to the variants instead of glob imports
+
+error: all variants have the same postfix: `HIData`
+  --> tests/ui/enum_variants.rs:153:1
+   |
+LL | / enum HIDataRequest {
+LL | |
+LL | |     PutHIData(String),
+LL | |     GetHIData(String),
+LL | |     DeleteUnpubHIData(String),
+LL | | }
+   | |_^
+   |
+   = help: remove the postfixes and use full paths to the variants instead of glob imports
+
+error: all variants have the same prefix: `_Type`
+  --> tests/ui/enum_variants.rs:174:5
+   |
+LL | /     enum DoLint {
+LL | |
+LL | |         _TypeCreate,
+LL | |         _TypeRead,
+LL | |         _TypeUpdate,
+LL | |         _TypeDestroy,
+LL | |     }
+   | |_____^
+   |
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
+
+error: all variants have the same postfix: `Type`
+  --> tests/ui/enum_variants.rs:182:5
+   |
+LL | /     enum DoLintToo {
+LL | |
+LL | |         _CreateType,
+LL | |         _UpdateType,
+LL | |         _DeleteType,
+LL | |     }
+   | |_____^
+   |
+   = help: remove the postfixes and use full paths to the variants instead of glob imports
+
+error: variant name starts with the enum's name
+  --> tests/ui/enum_variants.rs:211:9
+   |
+LL |         DataDependent,
+   |         ^^^^^^^^^^^^^
+
+error: variant name starts with the enum's name
+  --> tests/ui/enum_variants.rs:216:9
+   |
+LL |         DatasDependent,
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to 16 previous errors
+

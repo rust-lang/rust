@@ -1,0 +1,8 @@
+error: expected one of `,` or `>`, found `;`
+  --> $DIR/nested-missing-closing-angle-bracket.rs:2:46
+   |
+LL |   let v : Vec::<Vec<(u32,_,_)> = vec![vec![]];
+   |         - while parsing the type for `v`     ^ expected one of `,` or `>`
+
+error: aborting due to 1 previous error
+

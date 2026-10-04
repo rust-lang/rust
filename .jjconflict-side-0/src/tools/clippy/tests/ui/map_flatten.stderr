@@ -1,0 +1,116 @@
+error: called `map(..).flatten()` on `Option`
+  --> tests/ui/map_flatten.rs:8:10
+   |
+LL |           .map(|x| {
+   |  __________^
+...  |
+LL | |         })
+LL | |         .flatten();
+   | |__________________^
+   |
+   = note: `-D clippy::map-flatten` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::map_flatten)]`
+help: try replacing `map` with `and_then` and remove the `.flatten()`
+   |
+LL ~         .and_then(|x| {
+LL +
+LL + 
+LL + 
+LL +             if x <= 5 {
+LL +                 Some(x)
+LL +             } else {
+LL +                 None
+LL +             }
+LL ~         });
+   |
+
+error: called `map(..).flatten()` on `Result`
+  --> tests/ui/map_flatten.rs:21:10
+   |
+LL |           .map(|x| {
+   |  __________^
+LL | |
+LL | |
+LL | |             if x == 1 {
+...  |
+LL | |         })
+LL | |         .flatten();
+   | |__________________^
+   |
+help: try replacing `map` with `and_then` and remove the `.flatten()`
+   |
+LL ~         .and_then(|x| {
+LL +
+LL + 
+LL +             if x == 1 {
+LL +                 Ok(x)
+LL +             } else {
+LL +                 Err(0)
+LL +             }
+LL ~         });
+   |
+
+error: called `map(..).flatten()` on `Result`
+  --> tests/ui/map_flatten.rs:35:10
+   |
+LL |           .map(|res| {
+   |  __________^
+LL | |
+LL | |
+LL | |             if res > 0 {
+...  |
+LL | |         })
+LL | |         .flatten();
+   | |__________________^
+   |
+help: try replacing `map` with `and_then` and remove the `.flatten()`
+   |
+LL ~         .and_then(|res| {
+LL +
+LL + 
+LL +             if res > 0 {
+LL +                 do_something();
+LL +                 Ok(res)
+LL +             } else {
+LL +                 Err(0)
+LL +             }
+LL ~         });
+   |
+
+error: called `map(..).flatten()` on `Iterator`
+  --> tests/ui/map_flatten.rs:49:10
+   |
+LL |           .map(|some_value| {
+   |  __________^
+LL | |
+LL | |
+LL | |             if some_value > 3 {
+...  |
+LL | |         })
+LL | |         .flatten()
+   | |__________________^
+   |
+help: try replacing `map` with `filter_map` and remove the `.flatten()`
+   |
+LL ~         .filter_map(|some_value| {
+LL +
+LL + 
+LL +             if some_value > 3 {
+LL +                 Some(some_value)
+LL +             } else {
+LL +                 None
+LL +             }
+LL +         })
+   |
+
+error: called `map(..).flatten()` on `Iterator`
+  --> tests/ui/map_flatten.rs:68:10
+   |
+LL |           .map(|x| x.iter())
+   |  __________^
+...  |
+LL | |         .flatten();
+   | |__________________^ help: try replacing `map` with `flat_map` and remove the `.flatten()`: `flat_map(|x| x.iter())`
+
+error: aborting due to 5 previous errors
+

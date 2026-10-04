@@ -1,0 +1,21 @@
+error[E0603]: tuple struct constructor `A` is private
+  --> $DIR/issue-111220-tuple-struct-fields.rs:8:13
+   |
+LL |         let Self(x) = self;
+   |             ^^^^^^^
+
+error[E0603]: tuple struct constructor `A` is private
+  --> $DIR/issue-111220-tuple-struct-fields.rs:20:13
+   |
+LL |         let Self(a) = self;
+   |             ^^^^^^^
+
+error[E0603]: tuple struct constructor `A` is private
+  --> $DIR/issue-111220-tuple-struct-fields.rs:40:13
+   |
+LL |         let Self(a) = self;
+   |             ^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0603`.

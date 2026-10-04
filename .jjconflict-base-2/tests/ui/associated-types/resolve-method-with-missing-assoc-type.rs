@@ -1,0 +1,17 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/28344>.
+//! Test we don't ICE on item resolution when associated type is omitted.
+//@ edition:2015
+
+use std::ops::BitXor;
+
+fn main() {
+    let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
+    //~^ ERROR must be specified
+    //~| WARN trait objects without an explicit `dyn` are deprecated
+    //~| WARN this is accepted in the current edition
+
+    let g = BitXor::bitor;
+    //~^ ERROR must be specified
+    //~| WARN trait objects without an explicit `dyn` are deprecated
+    //~| WARN this is accepted in the current edition
+}

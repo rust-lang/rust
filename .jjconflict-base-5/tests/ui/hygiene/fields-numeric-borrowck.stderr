@@ -1,0 +1,14 @@
+error[E0499]: cannot borrow `s.0` as mutable more than once at a time
+  --> $DIR/fields-numeric-borrowck.rs:6:16
+   |
+LL |     let borrow1 = &mut s.0;
+   |                   -------- first mutable borrow occurs here
+LL |     let S { 0: ref mut borrow2 } = s;
+   |                ^^^^^^^^^^^^^^^ second mutable borrow occurs here
+...
+LL |     borrow1.use_mut();
+   |     ------- first borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0499`.

@@ -1,0 +1,69 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/154493>
+//@ run-rustfix
+#![deny(mismatched_lifetime_syntaxes)]
+#![allow(unused)]
+
+struct Foo<'a, 'b> {
+    ptr1: &'a str,
+    ptr2: &'b str,
+}
+
+// with generic
+struct Bar<'a, 'b, T> {
+    ptr1: &'a T,
+    ptr2: &'b T,
+}
+
+struct Wrapper<T>(T);
+
+fn missing(_: &str) -> Foo {
+    //~^ ERROR: hiding a lifetime that's elided elsewhere is confusing
+    todo!()
+}
+
+fn missing_double(_: &str) -> (Foo, Foo) {
+    //~^ ERROR: hiding a lifetime that's elided elsewhere is confusing
+    todo!()
+}
+
+fn empty(_: &str) -> Foo<> {
+    //~^ ERROR: hiding a lifetime that's elided elsewhere is confusing
+    todo!()
+}
+
+fn wrapper_missing(_: &str) -> Wrapper<Foo> {
+    //~^ ERROR: hiding a lifetime that's elided elsewhere is confusing
+    todo!()
+}
+
+fn missing_generic(_: &str) -> Bar<u8> {
+    //~^ ERROR: hiding a lifetime that's elided elsewhere is confusing
+    todo!()
+}
+
+fn named_missing<'a>(_: &'a u8) -> Foo {
+    //~^ ERROR: hiding a lifetime that's named elsewhere is confusing
+    todo!()
+}
+
+fn named_empty<'a>(_: &'a u8) -> Foo<> {
+    //~^ ERROR: hiding a lifetime that's named elsewhere is confusing
+    todo!()
+}
+
+fn static_missing(_: &'static u8) -> Foo {
+    //~^ ERROR: hiding a lifetime that's named elsewhere is confusing
+    todo!()
+}
+
+fn static_empty(_: &'static u8) -> Foo<> {
+    //~^ ERROR: hiding a lifetime that's named elsewhere is confusing
+    todo!()
+}
+
+fn static_missing_generic(_: &'static str) -> Bar<u8> {
+    //~^ ERROR: hiding a lifetime that's named elsewhere is confusing
+    todo!()
+}
+
+fn main() {}

@@ -1,0 +1,14 @@
+error[E0423]: cannot find value `X` in this scope
+  --> $DIR/issue-61226.rs:4:18
+   |
+LL | struct X {}
+   | ----------- `X` defined here
+LL | fn main() {
+LL |     let _ = vec![X]; //…
+   |                  ^ help: use struct literal syntax instead: `X {}`
+   |
+   = note: a struct named `X` exists in another namespace
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0423`.

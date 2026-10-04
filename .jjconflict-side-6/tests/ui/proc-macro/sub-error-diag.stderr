@@ -1,0 +1,11 @@
+error: Parent message
+   |
+error: Child message
+  --> $DIR/sub-error-diag.rs:9:1
+   |
+LL | #[sub_error_diag::proc_emit_err]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the attribute macro `sub_error_diag::proc_emit_err` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

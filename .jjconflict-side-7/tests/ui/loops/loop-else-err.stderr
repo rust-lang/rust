@@ -1,0 +1,16 @@
+error: `loop...else` loops are not supported
+  --> $DIR/loop-else-err.rs:4:7
+   |
+LL |       loop {
+   |       ---- `else` is attached to this loop
+LL |
+LL |       } else {
+   |  _______^
+...  |
+LL | |     }
+   | |_____^
+   |
+   = note: consider moving this `else` clause to a separate `if` statement and use a `bool` variable to control if it should run
+
+error: aborting due to 1 previous error
+

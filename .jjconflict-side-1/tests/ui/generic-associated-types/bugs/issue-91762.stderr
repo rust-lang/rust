@@ -1,0 +1,15 @@
+error[E0284]: type annotations needed
+  --> $DIR/issue-91762.rs:24:15
+   |
+LL |         ret = <Self::Base as Functor>::fmap(arg);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the associated function `fmap`
+   |
+   = note: cannot satisfy `<<Self as FunctorExt<T>>::Base as Functor>::With<_> == Self`
+help: consider specifying the generic arguments
+   |
+LL |         ret = <Self::Base as Functor>::fmap::<T, U>(arg);
+   |                                            ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0284`.

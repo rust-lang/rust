@@ -1,0 +1,15 @@
+error: `?` may only modify trait bounds, not lifetime bounds
+  --> $DIR/issue-68890-2.rs:3:15
+   |
+LL | type X<'a> = (?'a) +;
+   |               ^
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/issue-68890-2.rs:3:14
+   |
+LL | type X<'a> = (?'a) +;
+   |              ^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0224`.

@@ -1,0 +1,33 @@
+error[E0658]: `#[naked]` is currently unstable on `extern "Rust"` functions
+  --> $DIR/feature-gate-naked_functions_rustic_abi.rs:9:1
+   |
+LL | pub unsafe fn rust_implicit() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #138997 <https://github.com/rust-lang/rust/issues/138997> for more information
+   = help: add `#![feature(naked_functions_rustic_abi)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[naked]` is currently unstable on `extern "Rust"` functions
+  --> $DIR/feature-gate-naked_functions_rustic_abi.rs:15:1
+   |
+LL | pub unsafe extern "Rust" fn rust_explicit() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #138997 <https://github.com/rust-lang/rust/issues/138997> for more information
+   = help: add `#![feature(naked_functions_rustic_abi)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[naked]` is currently unstable on `extern "rust-cold"` functions
+  --> $DIR/feature-gate-naked_functions_rustic_abi.rs:21:1
+   |
+LL | pub unsafe extern "rust-cold" fn rust_cold() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #138997 <https://github.com/rust-lang/rust/issues/138997> for more information
+   = help: add `#![feature(naked_functions_rustic_abi)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

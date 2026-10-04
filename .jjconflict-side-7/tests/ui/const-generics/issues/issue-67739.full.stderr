@@ -1,0 +1,13 @@
+error: unconstrained generic constant
+  --> $DIR/issue-67739.rs:11:15
+   |
+LL |         [0u8; mem::size_of::<Self::Associated>()];
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL |     fn associated_size(&self) -> usize where [(); mem::size_of::<Self::Associated>()]: {
+   |                                        +++++++++++++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,13 @@
+error: missing `fn` or `struct` for function or struct definition
+  --> $DIR/pub-ident-fn-or-struct.rs:1:1
+   |
+LL | pub S (foo) bar
+   | ^^^^^
+   |
+help: if you meant to call a macro, try
+   |
+LL | pub S! (foo) bar
+   |      +
+
+error: aborting due to 1 previous error
+

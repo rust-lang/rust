@@ -1,0 +1,39 @@
+error[E0308]: mismatched types
+  --> $DIR/dyn-incompatible-trait-in-return-position-impl-trait.rs:36:5
+   |
+LL | fn can() -> impl DynIncompatible {
+   |             -------------------- expected a single type implementing `DynIncompatible` because of return type
+LL |     if true {
+LL |         return A;
+   |                - return type resolved to be `A`
+LL |     }
+LL |     B
+   |     ^ expected `A`, found `B`
+
+error[E0308]: mismatched types
+  --> $DIR/dyn-incompatible-trait-in-return-position-impl-trait.rs:43:5
+   |
+LL | fn cat() -> impl DynCompatible {
+   |             ------------------ expected a single type implementing `DynCompatible` because of return type
+LL |     if true {
+LL |         return A;
+   |                - return type resolved to be `A`
+LL |     }
+LL |     B
+   |     ^ expected `A`, found `B`
+   |
+help: you could change the return type to be a boxed trait object
+   |
+LL - fn cat() -> impl DynCompatible {
+LL + fn cat() -> Box<dyn DynCompatible> {
+   |
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL ~         return Box::new(A);
+LL |     }
+LL ~     Box::new(B)
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

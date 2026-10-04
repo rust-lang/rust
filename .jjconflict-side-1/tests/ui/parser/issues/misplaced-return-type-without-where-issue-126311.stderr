@@ -1,0 +1,8 @@
+error: expected one of `!`, `(`, `+`, `::`, `<`, `where`, or `{`, found `->`
+  --> $DIR/misplaced-return-type-without-where-issue-126311.rs:1:19
+   |
+LL | fn bar<T>() -> u8 -> u64 {}
+   |                   ^^ expected one of 7 possible tokens
+
+error: aborting due to 1 previous error
+

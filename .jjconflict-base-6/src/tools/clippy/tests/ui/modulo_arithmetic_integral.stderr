@@ -1,0 +1,157 @@
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui/modulo_arithmetic_integral.rs:8:5
+   |
+LL |     a % b;
+   |     ^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+   = note: `-D clippy::modulo-arithmetic` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::modulo_arithmetic)]`
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui/modulo_arithmetic_integral.rs:11:5
+   |
+LL |     b % a;
+   |     ^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui/modulo_arithmetic_integral.rs:14:5
+   |
+LL |     b %= a;
+   |     ^^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui/modulo_arithmetic_integral.rs:19:5
+   |
+LL |     a_i8 % b_i8;
+   |     ^^^^^^^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui/modulo_arithmetic_integral.rs:22:5
+   |
+LL |     b_i8 %= a_i8;
+   |     ^^^^^^^^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui/modulo_arithmetic_integral.rs:27:5
+   |
+LL |     a_i16 % b_i16;
+   |     ^^^^^^^^^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui/modulo_arithmetic_integral.rs:30:5
+   |
+LL |     b_i16 %= a_i16;
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui/modulo_arithmetic_integral.rs:35:5
+   |
+LL |     a_i32 % b_i32;
+   |     ^^^^^^^^^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui/modulo_arithmetic_integral.rs:38:5
+   |
+LL |     b_i32 %= a_i32;
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui/modulo_arithmetic_integral.rs:43:5
+   |
+LL |     a_i64 % b_i64;
+   |     ^^^^^^^^^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui/modulo_arithmetic_integral.rs:46:5
+   |
+LL |     b_i64 %= a_i64;
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui/modulo_arithmetic_integral.rs:51:5
+   |
+LL |     a_i128 % b_i128;
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui/modulo_arithmetic_integral.rs:54:5
+   |
+LL |     b_i128 %= a_i128;
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui/modulo_arithmetic_integral.rs:59:5
+   |
+LL |     a_isize % b_isize;
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui/modulo_arithmetic_integral.rs:62:5
+   |
+LL |     b_isize %= a_isize;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui/modulo_arithmetic_integral.rs:67:5
+   |
+LL |     a % b;
+   |     ^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui/modulo_arithmetic_integral.rs:70:5
+   |
+LL |     b %= a;
+   |     ^^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: aborting due to 17 previous errors
+

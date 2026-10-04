@@ -1,0 +1,48 @@
+error: struct literal body without path
+  --> $DIR/struct-lit-placeholder-or-empty-path.rs:2:13
+   |
+LL |     let _ = {foo: (), bar: {} };
+   |             ^^^^^^^^^^^^^^^^^^^ struct name missing for struct literal
+   |
+help: add the correct type
+   |
+LL |     let _ = /* Type */ {foo: (), bar: {} };
+   |             ++++++++++
+
+error: placeholder `_` is not allowed for the path in struct literals
+  --> $DIR/struct-lit-placeholder-or-empty-path.rs:5:13
+   |
+LL |     let _ = _ {foo: (), bar: {} };
+   |             ^ not allowed in struct literals
+   |
+help: replace it with the correct type
+   |
+LL -     let _ = _ {foo: (), bar: {} };
+LL +     let _ = /* Type */ {foo: (), bar: {} };
+   |
+
+error: struct literal body without path
+  --> $DIR/struct-lit-placeholder-or-empty-path.rs:8:13
+   |
+LL |     let _ = {foo: ()};
+   |             ^^^^^^^^^ struct name missing for struct literal
+   |
+help: add the correct type
+   |
+LL |     let _ = /* Type */ {foo: ()};
+   |             ++++++++++
+
+error: placeholder `_` is not allowed for the path in struct literals
+  --> $DIR/struct-lit-placeholder-or-empty-path.rs:11:13
+   |
+LL |     let _ = _ {foo: ()};
+   |             ^ not allowed in struct literals
+   |
+help: replace it with the correct type
+   |
+LL -     let _ = _ {foo: ()};
+LL +     let _ = /* Type */ {foo: ()};
+   |
+
+error: aborting due to 4 previous errors
+

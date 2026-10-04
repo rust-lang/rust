@@ -1,0 +1,24 @@
+From f4a31d2c57cdbd578b778ab70eb2a0cfb248652c Mon Sep 17 00:00:00 2001
+From: Antoni Boucher <bouanto@zoho.com>
+Date: Tue, 5 Mar 2024 12:39:44 -0500
+Subject: [PATCH] Remove #[deny(warnings)]
+
+---
+ src/lib.rs | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/src/lib.rs b/src/lib.rs
+index 8ade2881d5..e26c595e38 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -47,7 +47,6 @@
+ )]
+ #![deny(missing_docs)]
+ #![deny(missing_debug_implementations)]
+-#![doc(test(attr(allow(unused_variables), deny(warnings))))]
+ #![no_std]
+ #![cfg_attr(feature = "simd_support", feature(stdsimd, portable_simd))]
+ #![cfg_attr(doc_cfg, feature(doc_cfg))]
+-- 
+2.44.0
+

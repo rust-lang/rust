@@ -1,0 +1,158 @@
+error: missing documentation for a type alias
+  --> $DIR/lint-missing-doc.rs:16:1
+   |
+LL | pub type PubTypedef = String;
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-missing-doc.rs:4:9
+   |
+LL | #![deny(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+error: missing documentation for a struct
+  --> $DIR/lint-missing-doc.rs:23:1
+   |
+LL | pub struct PubFoo {
+   | ^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a struct field
+  --> $DIR/lint-missing-doc.rs:24:5
+   |
+LL |     pub a: isize,
+   |     ^^^^^^^^^^^^
+
+error: missing documentation for a module
+  --> $DIR/lint-missing-doc.rs:35:1
+   |
+LL | pub mod pub_module_no_dox {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a function
+  --> $DIR/lint-missing-doc.rs:39:1
+   |
+LL | pub fn foo2() {}
+   | ^^^^^^^^^^^^^
+
+error: missing documentation for a trait
+  --> $DIR/lint-missing-doc.rs:57:1
+   |
+LL | pub trait C {
+   | ^^^^^^^^^^^
+
+error: missing documentation for a method
+  --> $DIR/lint-missing-doc.rs:58:5
+   |
+LL |     fn foo(&self);
+   |     ^^^^^^^^^^^^^^
+
+error: missing documentation for a method
+  --> $DIR/lint-missing-doc.rs:59:5
+   |
+LL |     fn foo_with_impl(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for an associated function
+  --> $DIR/lint-missing-doc.rs:60:5
+   |
+LL |     fn foo_no_self();
+   |     ^^^^^^^^^^^^^^^^^
+
+error: missing documentation for an associated function
+  --> $DIR/lint-missing-doc.rs:61:5
+   |
+LL |     fn foo_no_self_with_impl() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for an associated type
+  --> $DIR/lint-missing-doc.rs:71:5
+   |
+LL |     type AssociatedType;
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for an associated type
+  --> $DIR/lint-missing-doc.rs:72:5
+   |
+LL |     type AssociatedTypeDef = Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for an associated function
+  --> $DIR/lint-missing-doc.rs:88:5
+   |
+LL |     pub fn foo() {}
+   |     ^^^^^^^^^^^^
+
+error: missing documentation for an enum
+  --> $DIR/lint-missing-doc.rs:125:1
+   |
+LL | pub enum PubBaz {
+   | ^^^^^^^^^^^^^^^
+
+error: missing documentation for a variant
+  --> $DIR/lint-missing-doc.rs:126:5
+   |
+LL |     PubBazA {
+   |     ^^^^^^^
+
+error: missing documentation for a struct field
+  --> $DIR/lint-missing-doc.rs:127:9
+   |
+LL |         a: isize,
+   |         ^^^^^^^^
+
+error: missing documentation for a constant
+  --> $DIR/lint-missing-doc.rs:158:1
+   |
+LL | pub const FOO4: u32 = 0;
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a static
+  --> $DIR/lint-missing-doc.rs:168:1
+   |
+LL | pub static BAR4: u32 = 0;
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a function
+  --> $DIR/lint-missing-doc.rs:196:5
+   |
+LL |     pub fn extern_fn_undocumented(f: f32) -> f32;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a static
+  --> $DIR/lint-missing-doc.rs:201:5
+   |
+LL |     pub static EXTERN_STATIC_UNDOCUMENTED: u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a foreign type
+  --> $DIR/lint-missing-doc.rs:206:5
+   |
+LL |     pub type ExternTyUndocumented;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a trait alias
+  --> $DIR/lint-missing-doc.rs:210:1
+   |
+LL | pub trait T = Sync;
+   | ^^^^^^^^^^^
+
+error: missing documentation for a function
+  --> $DIR/lint-missing-doc.rs:174:5
+   |
+LL |     pub fn undocumented1() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a function
+  --> $DIR/lint-missing-doc.rs:175:5
+   |
+LL |     pub fn undocumented2() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a function
+  --> $DIR/lint-missing-doc.rs:181:9
+   |
+LL |         pub fn also_undocumented1() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 25 previous errors
+

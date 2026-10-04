@@ -1,0 +1,8 @@
+error: `ensures` attribute requires an argument, e.g., `#[ensures(|result: &T| condition)]`
+  --> $DIR/empty-ensures.rs:8:1
+   |
+LL | #[ensures()]
+   | ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

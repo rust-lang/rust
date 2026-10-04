@@ -1,0 +1,41 @@
+error[E0407]: method `foo` is not a member of trait `Foo`
+  --> $DIR/ice-mir-const-qualif-125837.rs:10:5
+   |
+LL | /     fn foo<'a>(&'a self) -> impl Debug {
+LL | |
+LL | |         const { return }
+LL | |
+LL | |     }
+   | |_____^ not a member of trait `Foo`
+
+error[E0107]: missing generics for trait `Foo`
+  --> $DIR/ice-mir-const-qualif-125837.rs:8:30
+   |
+LL | impl<Item, D: Debug + Clone> Foo for D {
+   |                              ^^^ expected 1 generic argument
+   |
+note: trait defined here, with 1 generic parameter: `Item`
+  --> $DIR/ice-mir-const-qualif-125837.rs:6:7
+   |
+LL | trait Foo<Item> {}
+   |       ^^^ ----
+help: add missing generic argument
+   |
+LL | impl<Item, D: Debug + Clone> Foo<Item> for D {
+   |                                 ++++++
+
+error[E0572]: return statement outside of function body
+  --> $DIR/ice-mir-const-qualif-125837.rs:12:17
+   |
+LL | /     fn foo<'a>(&'a self) -> impl Debug {
+LL | |
+LL | |         const { return }
+   | |               --^^^^^^-- the return is part of this body...
+LL | |
+LL | |     }
+   | |_____- ...not the enclosing function body
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0107, E0407, E0572.
+For more information about an error, try `rustc --explain E0107`.

@@ -1,0 +1,43 @@
+warning: value assigned to `x` is never read
+  --> $DIR/or-pattern-drop-order.rs:43:9
+   |
+LL |         x = LogDrop(o, 2);
+   |         ^
+   |
+   = help: maybe it is overwritten before being read?
+   = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `y` is never read
+  --> $DIR/or-pattern-drop-order.rs:44:9
+   |
+LL |         y = LogDrop(o, 1);
+   |         ^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value assigned to `x` is never read
+  --> $DIR/or-pattern-drop-order.rs:38:9
+   |
+LL |         x = LogDrop(o, 3);
+   |         ^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value assigned to `y` is never read
+  --> $DIR/or-pattern-drop-order.rs:37:9
+   |
+LL |         y = LogDrop(o, 2);
+   |         ^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value assigned to `z` is never read
+  --> $DIR/or-pattern-drop-order.rs:36:9
+   |
+LL |         z = LogDrop(o, 1);
+   |         ^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: 5 warnings emitted
+

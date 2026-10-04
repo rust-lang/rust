@@ -1,0 +1,10 @@
+error: `Self` is not valid in the self type of an impl block
+  --> $DIR/issue-23305.rs:5:16
+   |
+LL | impl dyn ToNbt<Self> {}
+   |                ^^^^
+   |
+   = note: replace `Self` with a different type
+
+error: aborting due to 1 previous error
+

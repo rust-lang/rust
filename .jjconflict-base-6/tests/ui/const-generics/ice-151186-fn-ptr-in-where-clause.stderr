@@ -1,0 +1,16 @@
+error: function items cannot be used as const args
+  --> $DIR/ice-151186-fn-ptr-in-where-clause.rs:13:43
+   |
+LL | impl<T> Maybe<T> for T where T: MyTrait<{ foo }> {}
+   |                                           ^^^
+
+error: using function pointers as const generic parameters is forbidden
+  --> $DIR/ice-151186-fn-ptr-in-where-clause.rs:8:24
+   |
+LL | trait MyTrait<const F: fn() -> ()> {}
+   |                        ^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error: aborting due to 2 previous errors
+

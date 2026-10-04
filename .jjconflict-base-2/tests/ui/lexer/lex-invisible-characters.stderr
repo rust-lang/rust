@@ -1,0 +1,10 @@
+error: unknown start of token: \u{200b}
+  --> $DIR/lex-invisible-characters.rs:3:8
+   |
+LL | fn main​() {
+   |        ^
+   |
+   = help: invisible characters like '\u{200b}' are not usually visible in text editors
+
+error: aborting due to 1 previous error
+

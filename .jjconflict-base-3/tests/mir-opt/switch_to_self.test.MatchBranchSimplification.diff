@@ -1,0 +1,19 @@
+- // MIR for `test` before MatchBranchSimplification
++ // MIR for `test` after MatchBranchSimplification
+  
+  fn test(_1: bool) -> () {
+      let mut _0: ();
+  
+      bb0: {
+          goto -> bb1;
+      }
+  
+      bb1: {
+          switchInt(copy _1) -> [0: bb1, otherwise: bb2];
+      }
+  
+      bb2: {
+          switchInt(copy _1) -> [0: bb1, otherwise: bb2];
+      }
+  }
+  

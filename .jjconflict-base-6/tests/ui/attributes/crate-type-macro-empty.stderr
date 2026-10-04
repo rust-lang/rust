@@ -1,0 +1,20 @@
+error: macros must contain at least one rule
+  --> $DIR/crate-type-macro-empty.rs:5:1
+   |
+LL | macro_rules! foo {}
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: cannot find macro `foo` in this scope
+  --> $DIR/crate-type-macro-empty.rs:2:16
+   |
+LL | #[crate_type = foo!()]
+   |                ^^^ consider moving the definition of `foo` before this call
+   |
+note: a macro with the same name exists, but it appears later
+  --> $DIR/crate-type-macro-empty.rs:5:14
+   |
+LL | macro_rules! foo {}
+   |              ^^^
+
+error: aborting due to 2 previous errors
+

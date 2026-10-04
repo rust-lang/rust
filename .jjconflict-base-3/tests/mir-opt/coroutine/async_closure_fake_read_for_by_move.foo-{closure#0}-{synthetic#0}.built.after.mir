@@ -1,0 +1,64 @@
+// MIR for `foo::{closure#0}::{synthetic#0}` after built
+
+fn foo::{closure#0}::{synthetic#0}(_1: {async closure body@$DIR/async_closure_fake_read_for_by_move.rs:12:27: 15:6}, _2: std::future::ResumeTy) -> ()
+yields ()
+ {
+    debug _task_context => _2;
+    debug f => (*(_1.0: &Foo));
+    let mut _0: ();
+    let mut _3: &Foo;
+    let mut _4: &&Foo;
+    let mut _5: isize;
+    let mut _6: bool;
+
+    bb0: {
+        _5 = discriminant((*(_1.0: &Foo)));
+        switchInt(move _5) -> [0: bb2, otherwise: bb1];
+    }
+
+    bb1: {
+        _0 = const ();
+        goto -> bb6;
+    }
+
+    bb2: {
+        falseEdge -> [real: bb3, imaginary: bb1];
+    }
+
+    bb3: {
+        _3 = &fake shallow (*(_1.0: &Foo));
+        nop;
+        StorageLive(_6);
+        _6 = const true;
+        switchInt(move _6) -> [0: bb5, otherwise: bb4];
+    }
+
+    bb4: {
+        StorageDead(_6);
+        FakeRead(ForMatchGuard, _3);
+        FakeRead(ForMatchGuard, _4);
+        _0 = const ();
+        goto -> bb6;
+    }
+
+    bb5: {
+        StorageDead(_6);
+        falseEdge -> [real: bb1, imaginary: bb1];
+    }
+
+    bb6: {
+        drop(_1) -> [return: bb7, unwind: bb9, drop: bb8];
+    }
+
+    bb7: {
+        return;
+    }
+
+    bb8: {
+        coroutine_drop;
+    }
+
+    bb9 (cleanup): {
+        resume;
+    }
+}

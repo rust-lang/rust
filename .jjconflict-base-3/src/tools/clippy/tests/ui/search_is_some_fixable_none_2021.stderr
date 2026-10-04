@@ -1,0 +1,35 @@
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> tests/ui/search_is_some_fixable_none_2021.rs:6:17
+   |
+LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|(&x, y)| x == *y).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `![&(&1, 2), &(&3, 4), &(&5, 4)].iter().any(|(&x, y)| x == *y)`
+   |
+   = note: `-D clippy::search-is-some` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::search_is_some)]`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> tests/ui/search_is_some_fixable_none_2021.rs:8:17
+   |
+LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|&(&x, y)| x == *y).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `![&(&1, 2), &(&3, 4), &(&5, 4)].iter().any(|(&x, y)| x == *y)`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> tests/ui/search_is_some_fixable_none_2021.rs:10:17
+   |
+LL |           let _ = [&(&1, 2), &(&3, 4), &(&5, 4)]
+   |  _________________^
+LL | |
+LL | |             .iter()
+LL | |             .find(|&&&(&x, ref y)| x == *y)
+LL | |             .is_none();
+   | |______________________^
+   |
+help: consider using
+   |
+LL ~         let _ = ![&(&1, 2), &(&3, 4), &(&5, 4)]
+LL +
+LL ~             .iter().any(|&&(&x, ref y)| x == *y);
+   |
+
+error: aborting due to 3 previous errors
+

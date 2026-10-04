@@ -1,0 +1,11 @@
+warning: function `foo` is never used
+  --> $DIR/unused-fn-with-check-pass.rs:4:4
+   |
+LL | fn foo() -> &'static str {
+   |    ^^^
+   |
+   = note: `-W dead-code` implied by `-W unused`
+   = help: to override `-W unused` add `#[expect(dead_code)]` or `#[allow(dead_code)]`
+
+warning: 1 warning emitted
+

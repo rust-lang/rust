@@ -1,0 +1,10 @@
+error: ABI does not support guaranteed tail calls
+  --> $DIR/cmse-nonsecure-entry.rs:20:5
+   |
+LL |     become entry(c, x, y)
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `become` is not supported for `extern "cmse-nonsecure-entry"` functions
+
+error: aborting due to 1 previous error
+

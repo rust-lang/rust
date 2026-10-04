@@ -1,0 +1,101 @@
+error[E0310]: the associated type `<P as Service>::Error` may not live long enough
+  --> $DIR/sod_service_chain.rs:31:5
+   |
+LL | /     pub fn next<NS: Service<Input = S::Output>>(
+...  |
+LL | |         self,
+LL | |     ) -> ServiceChainBuilder<ServiceChain<P, S>, NS> {
+   | |                                                    ^
+   | |                                                    |
+   | |____________________________________________________the associated type `<P as Service>::Error` must be valid for the static lifetime...
+   |                                                      ...so that the type `<P as Service>::Error` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     ) -> ServiceChainBuilder<ServiceChain<P, S>, NS> where <P as Service>::Error: 'static {
+   |                                                      ++++++++++++++++++++++++++++++++++++
+
+error[E0310]: the associated type `<S as Service>::Error` may not live long enough
+  --> $DIR/sod_service_chain.rs:31:5
+   |
+LL | /     pub fn next<NS: Service<Input = S::Output>>(
+...  |
+LL | |         self,
+LL | |     ) -> ServiceChainBuilder<ServiceChain<P, S>, NS> {
+   | |                                                    ^
+   | |                                                    |
+   | |____________________________________________________the associated type `<S as Service>::Error` must be valid for the static lifetime...
+   |                                                      ...so that the type `<S as Service>::Error` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     ) -> ServiceChainBuilder<ServiceChain<P, S>, NS> where <S as Service>::Error: 'static {
+   |                                                      ++++++++++++++++++++++++++++++++++++
+
+error[E0310]: the associated type `<P as Service>::Error` may not live long enough
+  --> $DIR/sod_service_chain.rs:40:10
+   |
+LL |     ) -> ServiceChainBuilder<ServiceChain<P, S>, NS> {
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          the associated type `<P as Service>::Error` must be valid for the static lifetime...
+   |          ...so that the type `<P as Service>::Error` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     ) -> ServiceChainBuilder<ServiceChain<P, S>, NS> where <P as Service>::Error: 'static {
+   |                                                      ++++++++++++++++++++++++++++++++++++
+
+error[E0310]: the associated type `<S as Service>::Error` may not live long enough
+  --> $DIR/sod_service_chain.rs:40:10
+   |
+LL |     ) -> ServiceChainBuilder<ServiceChain<P, S>, NS> {
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          the associated type `<S as Service>::Error` must be valid for the static lifetime...
+   |          ...so that the type `<S as Service>::Error` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     ) -> ServiceChainBuilder<ServiceChain<P, S>, NS> where <S as Service>::Error: 'static {
+   |                                                      ++++++++++++++++++++++++++++++++++++
+
+error[E0310]: the associated type `<P as Service>::Error` may not live long enough
+  --> $DIR/sod_service_chain.rs:31:5
+   |
+LL | /     pub fn next<NS: Service<Input = S::Output>>(
+...  |
+LL | |         self,
+LL | |     ) -> ServiceChainBuilder<ServiceChain<P, S>, NS> {
+   | |                                                    ^
+   | |                                                    |
+   | |____________________________________________________the associated type `<P as Service>::Error` must be valid for the static lifetime...
+   |                                                      ...so that the type `<P as Service>::Error` will meet its required lifetime bounds
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL |     ) -> ServiceChainBuilder<ServiceChain<P, S>, NS> where <P as Service>::Error: 'static {
+   |                                                      ++++++++++++++++++++++++++++++++++++
+
+error[E0310]: the associated type `<S as Service>::Error` may not live long enough
+  --> $DIR/sod_service_chain.rs:31:5
+   |
+LL | /     pub fn next<NS: Service<Input = S::Output>>(
+...  |
+LL | |         self,
+LL | |     ) -> ServiceChainBuilder<ServiceChain<P, S>, NS> {
+   | |                                                    ^
+   | |                                                    |
+   | |____________________________________________________the associated type `<S as Service>::Error` must be valid for the static lifetime...
+   |                                                      ...so that the type `<S as Service>::Error` will meet its required lifetime bounds
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL |     ) -> ServiceChainBuilder<ServiceChain<P, S>, NS> where <S as Service>::Error: 'static {
+   |                                                      ++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0310`.

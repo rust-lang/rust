@@ -1,0 +1,10 @@
+error: nonexistent builtin attribute `diagnostic::do_not_recommend` used in `#[doc(attribute = "...")]`
+  --> $DIR/doc-attribute-unsupported.rs:5:19
+   |
+LL | #[doc(attribute = "diagnostic::do_not_recommend")]
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only existing builtin attributes are allowed in core/std
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,47 @@
+error: lifetime may not live long enough
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:7:9
+   |
+LL |     fn a(self: Pin<&Foo>, f: &Foo) -> &Foo {
+   |                    -         - let's call the lifetime of this reference `'1`
+   |                    |
+   |                    let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn a<'a>(self: Pin<&Foo>, f: &'a Foo) -> &'a Foo {
+   |         ++++                      ++          ++
+
+error: lifetime may not live long enough
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:14:9
+   |
+LL |     fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) {
+   |                    -          - let's call the lifetime of this reference `'1`
+   |                    |
+   |                    let's call the lifetime of this reference `'2`
+LL |         (self, f)
+   |         ^^^^^^^^^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn c<'a>(self: Pin<&Self>, f: &'a Foo, g: &Foo) -> (Pin<&'a Foo>, &'a Foo) {
+   |         ++++                       ++                        ++        ++
+
+error: lifetime may not live long enough
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:21:9
+   |
+LL |     fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() {
+   |            --  ---- has type `Pin<&'1 Foo>`
+   |            |
+   |            lifetime `'a` defined here
+LL |         arg
+   |         ^^^ method was supposed to return data with lifetime `'1` but it is returning data with lifetime `'a`
+   |
+help: consider reusing a named lifetime parameter and update trait if needed
+   |
+LL |     fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &'a () {
+   |                                                     ++
+
+error: aborting due to 3 previous errors
+

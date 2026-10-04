@@ -1,0 +1,14 @@
+error: expected identifier, found keyword `as`
+  --> $DIR/use-as-where-use-ends-with-mod-sep.rs:1:16
+   |
+LL | use std::any:: as foo;
+   |                ^^ expected identifier, found keyword
+
+error: expected one of `::`, `;`, or `as`, found `foo`
+  --> $DIR/use-as-where-use-ends-with-mod-sep.rs:1:19
+   |
+LL | use std::any:: as foo;
+   |                   ^^^ expected one of `::`, `;`, or `as`
+
+error: aborting due to 2 previous errors
+

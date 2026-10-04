@@ -1,0 +1,16 @@
+error: `#[no_mangle]` cannot be used on internal language items
+  --> $DIR/no-mangle-on-panic-handler.rs:10:1
+   |
+LL | #[unsafe(no_mangle)]
+   | ^^^^^^^^^^^^^^^^^^^^
+LL | #[panic_handler]
+LL | pub unsafe fn panic_fmt(pi: &PanicInfo) -> ! {
+   | -------------------------------------------- should be the internal language item
+   |
+   = note: Rustc requires this item to have a specific mangled name.
+   = note: If you are trying to prevent mangling to ease debugging, many
+   = note: debuggers support a command such as `rbreak rust_begin_unwind` to
+   = note: match `.*rust_begin_unwind.*` instead of `break rust_begin_unwind` on a specific name
+
+error: aborting due to 1 previous error
+

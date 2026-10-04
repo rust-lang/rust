@@ -1,0 +1,64 @@
+error[E0493]: destructor of `SafeStruct` cannot be evaluated at compile-time
+  --> $DIR/check-values-constraints.rs:65:7
+   |
+LL |       ..SafeStruct {
+   |  _______^
+LL | |
+LL | |         field1: SafeEnum::Variant3(WithDtor),
+LL | |         field2: SafeEnum::Variant1,
+LL | |     }
+   | |_____^ the destructor for this type cannot be evaluated in statics
+LL |   };
+   |   - value is dropped here
+
+error[E0015]: cannot call non-const method `<str as ToString>::to_string` in statics
+  --> $DIR/check-values-constraints.rs:91:38
+   |
+LL |     field2: SafeEnum::Variant4("str".to_string()),
+   |                                      ^^^^^^^^^^^
+   |
+note: method `to_string` is not const because trait `ToString` is not const
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+   |
+   = note: this trait is not const
+  ::: $SRC_DIR/alloc/src/string.rs:LL:COL
+   |
+   = note: this method is not const
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
+   = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
+
+error: encountered `const_allocate` pointer in final value that was not made global
+  --> $DIR/check-values-constraints.rs:106:1
+   |
+LL | static STATIC19: Vec<isize> = vec![3];
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: use `const_make_global` to turn allocated pointers into immutable globals before returning
+
+error: encountered `const_allocate` pointer in final value that was not made global
+  --> $DIR/check-values-constraints.rs:112:9
+   |
+LL |         static x: Vec<isize> = vec![3];
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: use `const_make_global` to turn allocated pointers into immutable globals before returning
+
+error[E0507]: cannot move out of static item `x`
+  --> $DIR/check-values-constraints.rs:114:9
+   |
+LL |         x
+   |         ^ move occurs because `x` has type `Vec<isize>`, which does not implement the `Copy` trait
+   |
+help: consider borrowing here
+   |
+LL |         &x
+   |         +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         x.clone()
+   |          ++++++++
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0015, E0493, E0507.
+For more information about an error, try `rustc --explain E0015`.
