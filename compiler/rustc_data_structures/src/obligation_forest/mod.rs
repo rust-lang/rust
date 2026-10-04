@@ -434,7 +434,10 @@ impl<O: ForestObligation> ObligationForest<O> {
     where
         P: ObligationProcessor<Obligation = O>,
     {
+        const MAX_PROCESS_COUNT: usize = 200_000;
         let mut outcome = P::OUT::new();
+
+        let mut process_count = 0;
 
         // Fixpoint computation: we repeat until the inner loop stalls.
         loop {
@@ -466,6 +469,15 @@ impl<O: ForestObligation> ObligationForest<O> {
                 // `self.active_cache`. This means that `self.active_cache` can get
                 // out of sync with `nodes`. It's not very common, but it does
                 // happen, and code in `compress` has to allow for it.
+
+                if process_count >= MAX_PROCESS_COUNT {
+                    // It's possible for nodes to recursively add obligations in an endless cycle,
+                    // for example https://github.com/rust-lang/rust/issues/152857.
+                    self.error_at(index);
+                    return outcome;
+                }
+
+                process_count += 1;
 
                 // This code is much less hot.
                 match processor.process_obligation(&mut node.obligation) {
