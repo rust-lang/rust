@@ -4,7 +4,8 @@ error[E0637]: `&` without an explicit lifetime name cannot be used here
 LL | fn should_error<T>() where T : Into<&u32> {}
    |                                     ^ explicit lifetime name needed here
    |
-help: consider introducing a higher-ranked lifetime here
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the bound lifetime-generic with a new `'a` lifetime
    |
 LL | fn should_error<T>() where T : for<'a> Into<&'a u32> {}
    |                                +++++++       ++
