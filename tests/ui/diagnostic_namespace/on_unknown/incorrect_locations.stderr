@@ -1,5 +1,5 @@
 warning: the `diagnostic::on_unknown` attribute cannot be used on extern crates
-  --> $DIR/incorrect_locations.rs:5:3
+  --> $DIR/incorrect_locations.rs:4:3
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
 warning: the `diagnostic::on_unknown` attribute cannot be used on constants
-  --> $DIR/incorrect_locations.rs:9:3
+  --> $DIR/incorrect_locations.rs:8:3
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 
 warning: the `diagnostic::on_unknown` attribute cannot be used on statics
-  --> $DIR/incorrect_locations.rs:13:3
+  --> $DIR/incorrect_locations.rs:12:3
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 
 warning: the `diagnostic::on_unknown` attribute cannot be used on type aliases
-  --> $DIR/incorrect_locations.rs:17:3
+  --> $DIR/incorrect_locations.rs:16:3
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 
 warning: the `diagnostic::on_unknown` attribute cannot be used on enums
-  --> $DIR/incorrect_locations.rs:21:3
+  --> $DIR/incorrect_locations.rs:20:3
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 
 warning: the `diagnostic::on_unknown` attribute cannot be used on inherent impl blocks
-  --> $DIR/incorrect_locations.rs:25:3
+  --> $DIR/incorrect_locations.rs:24:3
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
@@ -48,7 +48,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 
 warning: the `diagnostic::on_unknown` attribute cannot be used on foreign modules
-  --> $DIR/incorrect_locations.rs:29:3
+  --> $DIR/incorrect_locations.rs:28:3
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
@@ -56,7 +56,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 
 warning: the `diagnostic::on_unknown` attribute cannot be used on functions
-  --> $DIR/incorrect_locations.rs:33:3
+  --> $DIR/incorrect_locations.rs:32:3
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
@@ -64,7 +64,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 
 warning: the `diagnostic::on_unknown` attribute cannot be used on structs
-  --> $DIR/incorrect_locations.rs:37:3
+  --> $DIR/incorrect_locations.rs:36:3
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
@@ -72,7 +72,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 
 warning: the `diagnostic::on_unknown` attribute cannot be used on traits
-  --> $DIR/incorrect_locations.rs:41:3
+  --> $DIR/incorrect_locations.rs:40:3
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
@@ -80,7 +80,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 
 warning: the `diagnostic::on_unknown` attribute cannot be used on trait impl blocks
-  --> $DIR/incorrect_locations.rs:45:3
+  --> $DIR/incorrect_locations.rs:44:3
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^

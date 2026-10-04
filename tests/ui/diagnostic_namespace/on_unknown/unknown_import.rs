@@ -1,4 +1,3 @@
-#![feature(diagnostic_on_unknown)]
 pub mod foo {
     pub struct Bar;
 }

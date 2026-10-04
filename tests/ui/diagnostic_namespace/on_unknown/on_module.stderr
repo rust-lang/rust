@@ -1,5 +1,5 @@
 error[E0432]: oh no, `Bar` is not in module `x`
-  --> $DIR/on_module.rs:9:9
+  --> $DIR/on_module.rs:8:9
    |
 LL | pub use x::Bar;
    |         ^^^---
