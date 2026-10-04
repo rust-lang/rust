@@ -518,8 +518,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         max_vis: Option<ty::Visibility>,
         level: Level,
     ) -> bool {
-        let private_vis =
-            ty::Visibility::Restricted(self.tcx.parent_module_from_def_id(def_id).into());
+        let private_vis = ty::Visibility::Restricted(self.tcx.parent_module_from_def_id(def_id));
         if max_vis != Some(private_vis) {
             return self.effective_visibilities.update(
                 def_id,
