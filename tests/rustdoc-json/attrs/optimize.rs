@@ -1,5 +1,3 @@
-#![feature(optimize_attribute)]
-
 //@ is "$.index[?(@.name=='speed')].attrs" '[{"other": "#[attr = Optimize(Speed)]"}]'
 #[optimize(speed)]
 pub fn speed() {}
