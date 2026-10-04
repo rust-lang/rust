@@ -80,6 +80,8 @@ where
             var_kinds: outer.var_kinds,
             var_values: outer.var_values,
             current_goal_kind: outer.current_goal_kind,
+            where_bound_inference_mode: outer.where_bound_inference_mode,
+            used_where_bound_guidance: outer.used_where_bound_guidance,
             max_input_universe,
             initial_opaque_types_storage_num_entries: outer
                 .initial_opaque_types_storage_num_entries,

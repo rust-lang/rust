@@ -98,6 +98,7 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
                         cause: MaybeCause::Ambiguity,
                         opaque_types_jank: _,
                         stalled_on_coroutines: _,
+                        stalled_on_where_bound_inference_mode: _,
                     }),
                 ..
             }) => (FulfillmentErrorCode::Ambiguity { overflow: None }, true),
@@ -108,6 +109,7 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
                             MaybeCause::Overflow { suggest_increasing_limit, keep_constraints: _ },
                         opaque_types_jank: _,
                         stalled_on_coroutines: _,
+                        stalled_on_where_bound_inference_mode: _,
                     }),
                 ..
             }) => (
@@ -268,6 +270,7 @@ impl<'tcx> BestObligation<'tcx> {
                         cause: MaybeCause::Ambiguity,
                         opaque_types_jank: _,
                         stalled_on_coroutines: _,
+                        stalled_on_where_bound_inference_mode: _,
                     })),
                 )
                 | (false, Err(_)) => {}
@@ -412,6 +415,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                     cause: MaybeCause::Ambiguity,
                     opaque_types_jank: _,
                     stalled_on_coroutines: _,
+                    stalled_on_where_bound_inference_mode: _,
                 })),
             )
             | (false, Err(_)) => {}

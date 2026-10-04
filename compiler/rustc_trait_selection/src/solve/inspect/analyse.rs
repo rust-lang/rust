@@ -255,6 +255,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                             cause: MaybeCause::Ambiguity,
                             opaque_types_jank: _,
                             stalled_on_coroutines: _,
+                            stalled_on_where_bound_inference_mode: _,
                         }))
                     );
                 }

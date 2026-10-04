@@ -101,6 +101,20 @@ where
         }
     }
 
+    fn evaluate_obligations_with_where_bound_guidance(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+    ) -> TraitErrors<E> {
+        match self {
+            FulfillmentEngine::Old(engine) => {
+                engine.evaluate_obligations_with_where_bound_guidance(infcx)
+            }
+            FulfillmentEngine::Next(engine) => {
+                engine.evaluate_obligations_with_where_bound_guidance(infcx)
+            }
+        }
+    }
+
     fn has_pending_obligations(&self) -> bool {
         match self {
             FulfillmentEngine::Old(engine) => engine.has_pending_obligations(),

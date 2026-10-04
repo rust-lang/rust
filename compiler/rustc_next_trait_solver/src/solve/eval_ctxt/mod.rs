@@ -44,7 +44,7 @@ use crate::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, FIXPOINT_STEP_LIMIT, Goal,
     GoalEvaluation, GoalSource, GoalStalledOn, GoalStalledOnOpaques, HasChanged, MaybeCause,
     NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, SucceededInErased,
-    VisibleForLeakCheck, inspect,
+    VisibleForLeakCheck, WhereBoundInferenceMode, inspect,
 };
 
 pub mod fast_path;
@@ -131,6 +131,15 @@ where
     current_goal_kind: CurrentGoalKind,
     pub(super) var_values: CanonicalVarValues<I>,
 
+    /// Whether we apply inference constraints that came from non-global where-bounds that shadow
+    /// potentially applicable impls in the root goal. This is used only by the root goal.
+    pub(super) where_bound_inference_mode: WhereBoundInferenceMode,
+
+    /// Whether we've applied inference constraints from a nested goal whose response
+    /// depends on a where-bound shadowing an impl. If so, our own response does too,
+    /// propagating upwards to the root goal.
+    pub(super) used_where_bound_guidance: bool,
+
     /// The highest universe index nameable by the caller.
     ///
     /// When we enter a new binder inside of the query we create new universes
@@ -183,6 +192,7 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
         span: <Self::Interner as Interner>::Span,
         stalled_on: Option<GoalStalledOn<Self::Interner>>,
+        where_bound_inference_mode: WhereBoundInferenceMode,
     ) -> Result<GoalEvaluation<Self::Interner>, NoSolution>;
 
     /// Checks whether a stalled goal would remain stalled if re-evaluated, without consuming
@@ -234,10 +244,15 @@ where
         goal: Goal<I, I::Predicate>,
         span: I::Span,
         stalled_on: Option<GoalStalledOn<I>>,
+        where_bound_inference_mode: WhereBoundInferenceMode,
     ) -> Result<GoalEvaluation<I>, NoSolution> {
         // Run fast paths *before* building an `EvalCtxt`, saving a little bit of time.
         if let RerunStalled::WontMakeProgress(stalled_maybe_info) =
-            rerunning_stalled_goal_may_make_progress(self, stalled_on.as_ref())
+            rerunning_stalled_goal_may_make_progress(
+                self,
+                stalled_on.as_ref(),
+                where_bound_inference_mode,
+            )
         {
             return Ok(GoalEvaluation {
                 goal,
@@ -256,10 +271,20 @@ where
             return Ok(res);
         }
 
-        let mut result = EvalCtxt::enter_root(self, self.cx().recursion_limit(), span, |ecx| {
-            ecx.evaluate_goal_no_fast_paths(GoalSource::Misc, goal)
-        });
-        maybe_evaluate_root_goal_with_higher_recursion_limit(self, goal, span, &mut result);
+        let mut result = EvalCtxt::enter_root(
+            self,
+            self.cx().recursion_limit(),
+            span,
+            where_bound_inference_mode,
+            |ecx| ecx.evaluate_goal_no_fast_paths(GoalSource::Misc, goal),
+        );
+        maybe_evaluate_root_goal_with_higher_recursion_limit(
+            self,
+            goal,
+            span,
+            where_bound_inference_mode,
+            &mut result,
+        );
 
         match result {
             Ok(i) => Ok(i),
@@ -291,6 +316,7 @@ where
                     cause: _,
                     opaque_types_jank,
                     stalled_on_coroutines: _,
+                    stalled_on_where_bound_inference_mode: _,
                 }) => match opaque_types_jank {
                     OpaqueTypesJank::AllGood => true,
                     OpaqueTypesJank::ErrorIfRigidSelfTy => false,
@@ -339,6 +365,7 @@ fn maybe_evaluate_root_goal_with_higher_recursion_limit<D, I>(
     delegate: &D,
     goal: Goal<I, I::Predicate>,
     span: I::Span,
+    where_bound_inference_mode: WhereBoundInferenceMode,
     initial_result: &mut Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased>,
 ) where
     D: SolverDelegate<Interner = I>,
@@ -355,10 +382,13 @@ fn maybe_evaluate_root_goal_with_higher_recursion_limit<D, I>(
     };
 
     let rerun_result = delegate.commit_if_ok(|| {
-        let rerun_result =
-            EvalCtxt::enter_root(delegate, delegate.cx().recursion_limit() * 2, span, |ecx| {
-                ecx.evaluate_goal_no_fast_paths(GoalSource::Misc, goal)
-            });
+        let rerun_result = EvalCtxt::enter_root(
+            delegate,
+            delegate.cx().recursion_limit() * 2,
+            span,
+            where_bound_inference_mode,
+            |ecx| ecx.evaluate_goal_no_fast_paths(GoalSource::Misc, goal),
+        );
 
         if rerun_result.as_ref().is_ok_and(|evaluation| evaluation.certainty.is_overflow()) {
             Err(())
@@ -464,6 +494,7 @@ where
         delegate: &D,
         root_depth: usize,
         origin_span: I::Span,
+        where_bound_inference_mode: WhereBoundInferenceMode,
         f: impl FnOnce(&mut EvalCtxt<'_, D>) -> R,
     ) -> R {
         let mut search_graph = SearchGraph::new(root_depth);
@@ -481,6 +512,8 @@ where
             var_kinds: Default::default(),
             var_values: CanonicalVarValues::dummy(),
             current_goal_kind: CurrentGoalKind::Misc,
+            where_bound_inference_mode,
+            used_where_bound_guidance: false,
             origin_span,
             tainted: Ok(()),
             opaque_accesses: AccessedOpaques::default(),
@@ -541,6 +574,8 @@ where
             var_kinds: canonical_input.canonical.var_kinds,
             var_values,
             current_goal_kind: CurrentGoalKind::from_query_input(cx, input),
+            where_bound_inference_mode: WhereBoundInferenceMode::NoPreference,
+            used_where_bound_guidance: false,
             max_input_universe: canonical_input.canonical.max_universe,
             initial_opaque_types_storage_num_entries,
             search_graph,
@@ -594,7 +629,11 @@ where
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased> {
         if let RerunStalled::WontMakeProgress(stalled_maybe_info) =
-            rerunning_stalled_goal_may_make_progress(self.delegate, stalled_on.as_ref())
+            rerunning_stalled_goal_may_make_progress(
+                self.delegate,
+                stalled_on.as_ref(),
+                self.where_bound_inference_mode,
+            )
         {
             return Ok(GoalEvaluation {
                 goal,
@@ -861,7 +900,7 @@ where
         };
 
         debug!(?result);
-        let response = match result {
+        let mut response = match result {
             Ok(response) => {
                 debug!("success");
                 response
@@ -873,6 +912,25 @@ where
         };
 
         drop(tracing_span);
+
+        // If the response was proven via where-bounds and resulted in inference constraints,
+        // we drop those constraints if we're a root goal and in `NoPreference` mode. Otherwise,
+        // keep our constraints and just keep track of whether we used where-bounds to determine
+        // inference constraints.
+        if response.value.certainty.is_stalled_on_where_bound_inference_mode()
+            && !has_only_region_constraints(response)
+        {
+            if !self.search_graph.is_empty() {
+                self.used_where_bound_guidance = true;
+            } else if self.where_bound_inference_mode == WhereBoundInferenceMode::NoPreference {
+                response = response_no_constraints_raw(
+                    self.cx(),
+                    canonical_goal.canonical.max_universe,
+                    canonical_goal.canonical.var_kinds,
+                    response.value.certainty,
+                );
+            }
+        }
 
         let has_changed =
             if !has_only_region_constraints(response) { HasChanged::Yes } else { HasChanged::No };
@@ -1660,15 +1718,22 @@ where
                     if goals.is_empty() {
                         assert!(matches!(goals_certainty, Certainty::Yes));
                     }
+                    let mut certainty = Certainty::Yes;
+                    if self.used_where_bound_guidance {
+                        certainty = certainty.stalled_on_where_bound_inference_mode();
+                    }
                     (
-                        Certainty::Yes,
+                        certainty,
                         NestedNormalizationGoals(
                             goals.into_iter().map(|(s, g, _)| (s, g)).collect(),
                         ),
                     )
                 }
                 _ => {
-                    let certainty = shallow_certainty.and(goals_certainty);
+                    let mut certainty = shallow_certainty.and(goals_certainty);
+                    if self.used_where_bound_guidance {
+                        certainty = certainty.stalled_on_where_bound_inference_mode();
+                    }
                     (certainty, NestedNormalizationGoals::empty())
                 }
             };
@@ -1678,6 +1743,7 @@ where
                 cause: MaybeCause::Overflow { keep_constraints: false, .. },
                 opaque_types_jank: _,
                 stalled_on_coroutines: _,
+                stalled_on_where_bound_inference_mode: _,
             },
         ) = certainty
         {
@@ -2054,6 +2120,21 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     let response = match canonical_result {
         Err(e) => return (Err(e), proof_tree),
         Ok(response) => response,
+    };
+
+    // Since we only use proof trees to inspect goals, we stay conservative here and don't
+    // apply any inference constraints `WhereBoundInferenceMode::NoPreference` wouldn't have.
+    let response = if response.value.certainty.is_stalled_on_where_bound_inference_mode()
+        && !has_only_region_constraints(response)
+    {
+        response_no_constraints_raw(
+            delegate.cx(),
+            canonical_goal.canonical.max_universe,
+            canonical_goal.canonical.var_kinds,
+            response.value.certainty,
+        )
+    } else {
+        response
     };
 
     let (normalization_nested_goals, _certainty) = instantiate_and_apply_query_response(

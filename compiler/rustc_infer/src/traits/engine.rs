@@ -192,6 +192,14 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
         self.collect_remaining_errors(infcx)
     }
 
+    #[must_use]
+    fn evaluate_obligations_with_where_bound_guidance(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+    ) -> TraitErrors<E> {
+        self.try_evaluate_obligations(infcx)
+    }
+
     fn has_pending_obligations(&self) -> bool;
 
     fn pending_obligations(&self) -> PredicateObligations<'tcx>;

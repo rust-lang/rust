@@ -8,7 +8,7 @@
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{
     Certainty, ComputeGoalFastPathOutcome, Goal, GoalStalledOn, GoalStalledOnOpaques, MaybeInfo,
-    SucceededInErased,
+    StalledOnWhereBoundInferenceMode, SucceededInErased, WhereBoundInferenceMode,
 };
 use rustc_type_ir::{InferCtxtLike, Interner};
 
@@ -30,12 +30,17 @@ pub(super) enum RerunStalled {
 pub(super) fn rerunning_stalled_goal_may_make_progress<D, I>(
     delegate: &D,
     stalled_on: Option<&GoalStalledOn<I>>,
+    where_bound_inference_mode: WhereBoundInferenceMode,
 ) -> RerunStalled
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    inlined_rerunning_stalled_goal_may_make_progress(delegate, stalled_on)
+    inlined_rerunning_stalled_goal_may_make_progress(
+        delegate,
+        stalled_on,
+        where_bound_inference_mode,
+    )
 }
 
 // Always-inlined variant for the one hot call site.
@@ -43,6 +48,7 @@ where
 pub(super) fn inlined_rerunning_stalled_goal_may_make_progress<D, I>(
     delegate: &D,
     stalled_on: Option<&GoalStalledOn<I>>,
+    where_bound_inference_mode: WhereBoundInferenceMode,
 ) -> RerunStalled
 where
     D: SolverDelegate<Interner = I>,
@@ -61,6 +67,15 @@ where
     else {
         return MayMakeProgress;
     };
+
+    // If the goal is stalled because we didn't prefer where-bounds,
+    // rerunning while preferring them might make progress.
+    if where_bound_inference_mode == WhereBoundInferenceMode::PreferWhereBounds
+        && stalled_maybe_info.stalled_on_where_bound_inference_mode
+            == StalledOnWhereBoundInferenceMode::Yes
+    {
+        return MayMakeProgress;
+    }
 
     // If any of the stalled goal's generic arguments changed,
     // rerunning might make progress so we should rerun.

@@ -10,6 +10,7 @@ use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_next_trait_solver::solve::fast_path::compute_goal_fast_path;
 use rustc_next_trait_solver::solve::{
     GoalEvaluation, GoalStalledOn, HasChanged, SolverDelegateEvalExt as _, StalledOnCoroutines,
+    StalledOnWhereBoundInferenceMode, WhereBoundInferenceMode,
 };
 use thin_vec::ThinVec;
 use tracing::instrument;
@@ -120,29 +121,52 @@ impl<'tcx, E: 'tcx> FulfillmentCtxt<'tcx, E> {
         }
     }
 
-    fn try_evaluate_obligations_inner(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E>
+    fn try_evaluate_obligations_inner(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+        where_bound_inference_mode: WhereBoundInferenceMode,
+    ) -> TraitErrors<E>
     where
         E: FromSolverError<'tcx, NextSolverError<'tcx>>,
     {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
         let mut errors = TraitErrors::NoErrors;
         let delegate = <&SolverDelegate<'tcx>>::from(infcx);
+        // Start by trying to evaluate all pending obligations without preferring where-bounds, and
+        // only fall back to `where_bound_inference_mode` once we can't make any more progress
+        // without using where-bounds.
+        let mut current_inference_mode = WhereBoundInferenceMode::NoPreference;
         loop {
             let mut any_changed = false;
 
             self.obligations.pending.retain_mut(|(obligation, opt_stalled_on)| {
-                // Common case: still stalled; keep the obligation. This path is extremely hot in
-                // some cases; there can be thousands of pending obligations.
-                if let Some(stalled_on) = opt_stalled_on
-                    && delegate.goal_remains_stalled(stalled_on)
-                {
-                    return true;
+                match current_inference_mode {
+                    WhereBoundInferenceMode::NoPreference => {
+                        // Common case: still stalled; keep the obligation. This path is extremely
+                        // hot in some cases; there can be thousands of pending obligations.
+                        if let Some(stalled_on) = opt_stalled_on
+                            && delegate.goal_remains_stalled(stalled_on)
+                        {
+                            return true;
+                        }
+                    }
+                    WhereBoundInferenceMode::PreferWhereBounds => {
+                        let stalled_on_where_bound_inference_mode =
+                            opt_stalled_on.as_ref().is_some_and(|stalled_on| {
+                                stalled_on.stalled_maybe_info.stalled_on_where_bound_inference_mode
+                                    == StalledOnWhereBoundInferenceMode::Yes
+                            });
+                        if !stalled_on_where_bound_inference_mode {
+                            return true;
+                        }
+                    }
                 }
 
                 let result = delegate.evaluate_root_goal(
                     obligation.as_goal(),
                     obligation.cause.span,
                     opt_stalled_on.take(),
+                    current_inference_mode,
                 );
                 Self::inspect_evaluated_obligation(infcx, &obligation, &result);
                 let GoalEvaluation { goal, certainty, has_changed, stalled_on } = match result {
@@ -216,7 +240,18 @@ impl<'tcx, E: 'tcx> FulfillmentCtxt<'tcx, E> {
                 }
             });
 
-            if !any_changed {
+            if any_changed {
+                // Since we constrained some inference vars, we may make some progress on goals
+                // that were stalled on those vars.
+                current_inference_mode = WhereBoundInferenceMode::NoPreference;
+            } else if current_inference_mode == WhereBoundInferenceMode::NoPreference
+                && where_bound_inference_mode == WhereBoundInferenceMode::PreferWhereBounds
+            {
+                // We can't make any more progress without preferring where-bounds, so try to
+                // make some progress using where-bounds if `where_bound_inference_mode` allows
+                // us to.
+                current_inference_mode = WhereBoundInferenceMode::PreferWhereBounds;
+            } else {
                 break;
             }
         }
@@ -266,7 +301,14 @@ where
     }
 
     fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
-        self.try_evaluate_obligations_inner(infcx)
+        self.try_evaluate_obligations_inner(infcx, WhereBoundInferenceMode::NoPreference)
+    }
+
+    fn evaluate_obligations_with_where_bound_guidance(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+    ) -> TraitErrors<E> {
+        self.try_evaluate_obligations_inner(infcx, WhereBoundInferenceMode::PreferWhereBounds)
     }
 
     fn has_pending_obligations(&self) -> bool {

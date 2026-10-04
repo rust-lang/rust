@@ -7,7 +7,7 @@ use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::solve::{
     AliasBoundKind, CandidatePreferenceMode, CanonicalResponse, ExternalConstraintsData, MaybeInfo,
     NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunNonErased,
-    RerunReason, RerunResultExt, SizedTraitKind,
+    RerunReason, RerunResultExt, SizedTraitKind, StalledOnWhereBoundInferenceMode,
 };
 use rustc_type_ir::{
     self as ty, ClausePolarity, ExistentialPredicate, FieldInfo, Interner, MayBeErased, Movability,
@@ -1671,7 +1671,7 @@ where
             let where_bounds: Vec<_> = candidates
                 .extract_if(.., |c| matches!(c.source, CandidateSource::ParamEnv(_)))
                 .collect();
-            let Some((response, info)) = self.try_merge_candidates(&where_bounds) else {
+            let Some((mut response, info)) = self.try_merge_candidates(&where_bounds) else {
                 return Ok((self.bail_with_ambiguity(&where_bounds), None));
             };
             match info {
@@ -1702,6 +1702,23 @@ where
                     self.ignore_candidate_head_usages(failed_candidate_info.param_env_head_usages);
                 }
                 MergeCandidateInfo::EqualResponse => {}
+            }
+            // Shadowing impls with where-bounds can cause typeck to fail when it should
+            // succeed, so typeck shouldn't use where-bounds to guide type inference if
+            // an impl could also apply. If both a where-bound and an impl could apply,
+            // we mark the response as stalled on where-bound inference mode, allowing us to
+            // potentially make progress via impls in the future. We only apply inference
+            // constraints in the root goal when we're in `PreferWhereBounds` mode.
+            // See https://github.com/rust-lang/trait-system-refactor-initiative/issues/226
+            // for one such example of a false positive due to applying a where-bound
+            // prematurely.
+            if !response.value.var_values.is_identity_modulo_regions()
+                && candidates.iter().any(|c| {
+                    matches!(c.source, CandidateSource::Impl(_) | CandidateSource::BuiltinImpl(_))
+                })
+            {
+                response.value.certainty =
+                    response.value.certainty.stalled_on_where_bound_inference_mode();
             }
             return Ok((response, Some(TraitGoalProvenVia::ParamEnv)));
         }
@@ -1762,6 +1779,8 @@ where
                             cause: MaybeCause::Ambiguity,
                             opaque_types_jank: OpaqueTypesJank::AllGood,
                             stalled_on_coroutines: StalledOnCoroutines::Yes,
+                            stalled_on_where_bound_inference_mode:
+                                StalledOnWhereBoundInferenceMode::No,
                         }));
                     }
                 }

@@ -12,6 +12,7 @@ use rustc_type_ir::search_graph::CandidateHeadUsages;
 use rustc_type_ir::solve::{
     AliasBoundKind, MaybeInfo, NoSolutionOrRerunNonErased, QueryResultOrRerunNonErased,
     RerunNonErased, RerunReason, RerunResultExt, SizedTraitKind, StalledOnCoroutines,
+    StalledOnWhereBoundInferenceMode,
 };
 use rustc_type_ir::{
     self as ty, AliasTy, Const, Interner, MayBeErased, Region, TypeFlags, TypeFoldable, TypeFolder,
@@ -457,6 +458,17 @@ impl AssembleCandidatesFrom {
     }
 }
 
+/// Which user-written impls to assemble candidates for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum AssembleImpls {
+    All,
+    /// Stop after the first applicable impl candidate. We use this if a non-global
+    /// where-bound shadows all impls, as we only need to know whether any impl may
+    /// apply in this case.
+    UntilFirstApplicable,
+    No,
+}
+
 /// This is currently used to track the [CandidateHeadUsages] of all failed `ParamEnv`
 /// candidates. This is then used to ignore their head usages in case there's another
 /// always applicable `ParamEnv` candidate. Look at how `param_env_head_usages` is
@@ -529,25 +541,43 @@ where
                 // as we may want to weaken inference guidance in the future and don't want
                 // to worry about causing major performance regressions when doing so.
                 // See trait-system-refactor-initiative#226 for some ideas here.
+                //
+                // If a candidate that may shadow impls does have constraints, we only want
+                // to see if there are any impls that could also apply, which decides whether
+                // a goal gets stalled on where-bounds. See `merge_trait_candidates` and
+                // `StalledOnWhereBoundInferenceMode`.
                 let assemble_impls = match self.typing_mode() {
-                    TypingMode::Coherence => true,
+                    TypingMode::Coherence => AssembleImpls::All,
                     TypingMode::Typeck { .. }
                     | TypingMode::PostTypeckUntilBorrowck { .. }
                     | TypingMode::Reflection
                     | TypingMode::PostBorrowck { .. }
                     | TypingMode::PostAnalysis
                     | TypingMode::Codegen
-                    | TypingMode::ErasedNotCoherence(MayBeErased) => !candidates.iter().any(|c| {
-                        matches!(
-                            c.source,
-                            CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)
-                                | CandidateSource::AliasBound(_)
-                        ) && has_no_inference_or_external_constraints(c.result)
-                    }),
+                    | TypingMode::ErasedNotCoherence(MayBeErased) => {
+                        if candidates.iter().any(|c| {
+                            matches!(
+                                c.source,
+                                CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)
+                                    | CandidateSource::AliasBound(_)
+                            ) && has_no_inference_or_external_constraints(c.result)
+                        }) {
+                            AssembleImpls::No
+                        } else if candidates.iter().any(|c| {
+                            matches!(c.source, CandidateSource::ParamEnv(ParamEnvSource::NonGlobal))
+                        }) {
+                            AssembleImpls::UntilFirstApplicable
+                        } else {
+                            AssembleImpls::All
+                        }
+                    }
                 };
-                if assemble_impls {
-                    self.assemble_impl_candidates(goal, &mut candidates)?;
-                    self.assemble_object_bound_candidates(goal, &mut candidates);
+                match assemble_impls {
+                    AssembleImpls::No => {}
+                    AssembleImpls::All | AssembleImpls::UntilFirstApplicable => {
+                        self.assemble_impl_candidates(goal, &mut candidates, assemble_impls)?;
+                        self.assemble_object_bound_candidates(goal, &mut candidates);
+                    }
                 }
             }
             AssembleCandidatesFrom::EnvAndBounds => {
@@ -588,16 +618,25 @@ where
         &mut self,
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
+        assemble_impls: AssembleImpls,
     ) -> Result<(), RerunNonErased> {
         let cx = self.cx();
         let goal_trait_ref = goal.predicate.trait_ref(cx);
+        let mut found_applicable_impl = false;
         cx.for_each_relevant_impl(goal_trait_ref, |impl_def_id| -> Result<_, _> {
+            if found_applicable_impl && assemble_impls == AssembleImpls::UntilFirstApplicable {
+                return Ok(());
+            }
+
             match G::consider_impl_candidate(self, goal, goal_trait_ref, impl_def_id, |ecx| {
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             })
             .map_err_to_rerun()?
             {
-                Ok(candidate) => candidates.push(candidate),
+                Ok(candidate) => {
+                    candidates.push(candidate);
+                    found_applicable_impl = true;
+                }
                 Err(NoSolution) => {}
             }
 
@@ -1241,6 +1280,7 @@ where
                 cause: MaybeCause::Ambiguity,
                 opaque_types_jank: OpaqueTypesJank::ErrorIfRigidSelfTy,
                 stalled_on_coroutines: StalledOnCoroutines::No,
+                stalled_on_where_bound_inference_mode: StalledOnWhereBoundInferenceMode::No,
             });
             candidates
                 .extend(self.probe_trait_candidate(source).enter(|this| {
@@ -1460,6 +1500,7 @@ where
                         },
                         opaque_types_jank: OpaqueTypesJank::AllGood,
                         stalled_on_coroutines: StalledOnCoroutines::No,
+                        stalled_on_where_bound_inference_mode: StalledOnWhereBoundInferenceMode::No,
                     })));
                 }
                 let result = ty.super_visit_with(self);

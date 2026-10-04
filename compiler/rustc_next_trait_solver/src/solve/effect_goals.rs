@@ -483,16 +483,30 @@ where
         &mut self,
         goal: Goal<I, ty::HostEffectClause<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
-        let (_, proven_via) = self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
-            let trait_goal: Goal<I, ty::TraitClause<I>> =
-                goal.with(ecx.cx(), goal.predicate.trait_ref);
-            ecx.compute_trait_goal(trait_goal).map_err(Into::into)
-        })?;
-        self.assemble_and_merge_candidates(
+        let (trait_response, proven_via) =
+            self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
+                let trait_goal: Goal<I, ty::TraitClause<I>> =
+                    goal.with(ecx.cx(), goal.predicate.trait_ref);
+                ecx.compute_trait_goal(trait_goal).map_err(Into::into)
+            })?;
+        let result = self.assemble_and_merge_candidates(
             proven_via,
             goal,
             |_ecx| None,
             |_ecx| Err(NoSolution.into()),
-        )
+        );
+        // If `trait_response` depends on a where-bound that shadowed a potentially applicable impl
+        // candidate, and this resulted in inference vars being constrained, then `result` also has
+        // this dependency transitively, as we assembled candidates based on how we proved the
+        // trait goal. This holds regardless of `result`'s original certainty.
+        if trait_response.value.certainty.is_stalled_on_where_bound_inference_mode() {
+            result.map(|mut response| {
+                response.value.certainty =
+                    response.value.certainty.stalled_on_where_bound_inference_mode();
+                response
+            })
+        } else {
+            result
+        }
     }
 }

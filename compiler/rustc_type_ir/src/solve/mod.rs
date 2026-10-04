@@ -448,6 +448,26 @@ pub struct QueryInput<I: Interner, P> {
 
 impl<I: Interner, P: Eq> Eq for QueryInput<I, P> {}
 
+/// Whether the caller of a root goal should use inference guidance, if the solver used
+/// non-global where-bounds that shadow a potentially applicable impl candidate.
+///
+/// Inside the solver, non-global where-bounds always shadow impls. If doing so constrains
+/// inference variables while an impl may also apply, the response is marked with
+/// [`StalledOnWhereBoundInferenceMode::Yes`] and returned as [`Certainty::Maybe`], with
+/// constraints. This only changes behavior of the root goal; nested goals are unaffected and
+/// still always prefer where-bounds over impls. We use `PreferWhereBounds` mode whenever we
+/// need to resolve an inference var to a concrete type, or when we would otherwise use a
+/// fallback ty.
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+pub enum WhereBoundInferenceMode {
+    /// Drop the constraints in the root goal's response and return ambiguity if they came from
+    /// where-clauses.
+    NoPreference,
+    /// Apply constraints in the root goal's response regardless of whether they were proved via
+    /// non-global where-clauses or not.
+    PreferWhereBounds,
+}
+
 /// Which trait candidates should be preferred over other candidates? By default, prefer where
 /// bounds over alias bounds. For marker traits, prefer alias bounds over where bounds.
 #[derive(Clone, Copy, Debug)]
@@ -723,6 +743,7 @@ pub struct MaybeInfo {
     pub cause: MaybeCause,
     pub opaque_types_jank: OpaqueTypesJank,
     pub stalled_on_coroutines: StalledOnCoroutines,
+    pub stalled_on_where_bound_inference_mode: StalledOnWhereBoundInferenceMode,
 }
 
 impl MaybeInfo {
@@ -730,6 +751,7 @@ impl MaybeInfo {
         cause: MaybeCause::Ambiguity,
         opaque_types_jank: OpaqueTypesJank::AllGood,
         stalled_on_coroutines: StalledOnCoroutines::No,
+        stalled_on_where_bound_inference_mode: StalledOnWhereBoundInferenceMode::No,
     };
 
     fn and(self, other: MaybeInfo) -> MaybeInfo {
@@ -737,6 +759,9 @@ impl MaybeInfo {
             cause: self.cause.and(other.cause),
             opaque_types_jank: self.opaque_types_jank.and(other.opaque_types_jank),
             stalled_on_coroutines: self.stalled_on_coroutines.and(other.stalled_on_coroutines),
+            stalled_on_where_bound_inference_mode: self
+                .stalled_on_where_bound_inference_mode
+                .and(other.stalled_on_where_bound_inference_mode),
         }
     }
 
@@ -745,6 +770,9 @@ impl MaybeInfo {
             cause: self.cause.or(other.cause),
             opaque_types_jank: self.opaque_types_jank.or(other.opaque_types_jank),
             stalled_on_coroutines: self.stalled_on_coroutines.or(other.stalled_on_coroutines),
+            stalled_on_where_bound_inference_mode: self
+                .stalled_on_where_bound_inference_mode
+                .or(other.stalled_on_where_bound_inference_mode),
         }
     }
 }
@@ -830,8 +858,57 @@ impl StalledOnCoroutines {
     }
 }
 
+/// Whether this goal is ambiguous due to not preferring where-bounds during
+/// inference. See [`WhereBoundInferenceMode`].
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
+pub enum StalledOnWhereBoundInferenceMode {
+    Yes,
+    No,
+}
+
+impl StalledOnWhereBoundInferenceMode {
+    fn and(self, other: Self) -> Self {
+        match (self, other) {
+            (StalledOnWhereBoundInferenceMode::No, StalledOnWhereBoundInferenceMode::No) => {
+                StalledOnWhereBoundInferenceMode::No
+            }
+            (StalledOnWhereBoundInferenceMode::Yes, _)
+            | (_, StalledOnWhereBoundInferenceMode::Yes) => StalledOnWhereBoundInferenceMode::Yes,
+        }
+    }
+
+    pub fn or(self, other: Self) -> Self {
+        // This is contagious, like `StalledOnCoroutines::Yes`, as using the where-bound
+        // may change the result of the stalled candidate.
+        self.and(other)
+    }
+}
+
 impl Certainty {
     pub const AMBIGUOUS: Certainty = Certainty::Maybe(MaybeInfo::AMBIGUOUS);
+
+    /// The response depends on a non-global where-bound that constrained inference vars, and the
+    /// goal could have been proven via an impl as well. See [`WhereBoundInferenceMode`].
+    pub fn stalled_on_where_bound_inference_mode(self) -> Certainty {
+        let maybe = match self {
+            Certainty::Yes => MaybeInfo::AMBIGUOUS,
+            Certainty::Maybe(maybe) => maybe,
+        };
+        Certainty::Maybe(MaybeInfo {
+            stalled_on_where_bound_inference_mode: StalledOnWhereBoundInferenceMode::Yes,
+            ..maybe
+        })
+    }
+
+    pub fn is_stalled_on_where_bound_inference_mode(self) -> bool {
+        match self {
+            Certainty::Yes => false,
+            Certainty::Maybe(maybe) => {
+                maybe.stalled_on_where_bound_inference_mode == StalledOnWhereBoundInferenceMode::Yes
+            }
+        }
+    }
 
     /// Use this function to merge the certainty of multiple nested subgoals.
     ///
@@ -861,6 +938,7 @@ impl Certainty {
             cause: MaybeCause::Overflow { suggest_increasing_limit, keep_constraints: false },
             opaque_types_jank: OpaqueTypesJank::AllGood,
             stalled_on_coroutines: StalledOnCoroutines::No,
+            stalled_on_where_bound_inference_mode: StalledOnWhereBoundInferenceMode::No,
         })
     }
 
