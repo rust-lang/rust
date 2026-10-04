@@ -6,7 +6,7 @@ use rustc_ast::{
     Stmt, StmtKind, Ty, TyKind,
 };
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::{Ident, Span, Symbol, kw, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::diagnostics;
@@ -53,10 +53,7 @@ pub(crate) fn expand(
     let stmts = ALLOCATOR_METHODS.iter().map(|method| f.allocator_fn(method)).collect();
 
     // Generate anonymous constant serving as container for the allocator methods.
-    let const_ty = ecx.ty(ty_span, TyKind::Tup(ThinVec::new()));
-    let const_body = ecx.expr_block(ecx.block(span, stmts));
-    let const_item =
-        ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, Some(const_body));
+    let const_item = ecx.item_const_underscore(span, ecx.block(span, stmts));
     let const_item = if is_stmt {
         Annotatable::Stmt(Box::new(ecx.stmt_item(span, const_item)))
     } else {

@@ -718,6 +718,15 @@ impl<'a> ExtCtxt<'a> {
         )
     }
 
+    pub fn item_const_underscore(&self, span: Span, body: Box<ast::Block>) -> Box<ast::Item> {
+        self.item_const(
+            span,
+            Ident::new(kw::Underscore, span),
+            self.ty_unit(span),
+            Some(self.expr_block(body)),
+        )
+    }
+
     pub fn item_fn(
         &self,
         sig: ast::FnSig,

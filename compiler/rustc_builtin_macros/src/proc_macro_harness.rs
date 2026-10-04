@@ -12,9 +12,9 @@ use rustc_feature::Features;
 use rustc_session::Session;
 use rustc_span::hygiene::AstPass;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, sym};
 use smallvec::smallvec;
-use thin_vec::{ThinVec, thin_vec};
+use thin_vec::thin_vec;
 
 use crate::diagnostics;
 
@@ -361,16 +361,10 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> Box<ast::Item> {
         cx.attr_nested_word(sym::allow, sym::deprecated, span),
     ]);
 
-    let block = cx.expr_block(
-        cx.block(span, thin_vec![cx.stmt_item(span, krate), cx.stmt_item(span, decls_static)]),
-    );
+    let block =
+        cx.block(span, thin_vec![cx.stmt_item(span, krate), cx.stmt_item(span, decls_static)]);
 
-    let anon_constant = cx.item_const(
-        span,
-        Ident::new(kw::Underscore, span),
-        cx.ty(span, ast::TyKind::Tup(ThinVec::new())),
-        Some(block),
-    );
+    let anon_constant = cx.item_const_underscore(span, block);
 
     // Integrate the new item into existing module structures.
     let items = AstFragment::Items(smallvec![anon_constant]);
