@@ -168,6 +168,22 @@ impl UnixFileDescription for FileHandle {
                 },
         }
     }
+
+    fn get_flags<'tcx>(&self, ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Scalar> {
+        interp_ok(match (self.readable, self.writable) {
+            (true, true) => ecx.eval_libc("O_RDWR"),
+            (true, false) => ecx.eval_libc("O_RDONLY"),
+            (false, true) => ecx.eval_libc("O_WRONLY"),
+            _ => unreachable!(),
+        })
+    }
+}
+
+impl UnixFileDescription for DirHandle {
+    fn get_flags<'tcx>(&self, ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Scalar> {
+        // Directories are always readonly on Unix.
+        interp_ok(ecx.eval_libc("O_RDONLY"))
+    }
 }
 
 /// The table of open directories.
@@ -666,6 +682,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 windows => {
                     use std::os::windows::fs;
                     // This is racy, but not much we can do about that.
+                    // FIXME: maybe we can retry based on the error code?
                     if src.is_dir() {
                         fs::symlink_dir(src, dst)
                     } else {

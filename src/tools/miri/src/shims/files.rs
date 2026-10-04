@@ -195,25 +195,10 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         false
     }
 
-    fn as_unix<'tcx>(
-        self: FileDescriptionRef<Self>,
-        _ecx: &MiriInterpCx<'tcx>,
-    ) -> FileDescriptionRef<dyn UnixFileDescription> {
-        panic!("Not a unix file descriptor: {}", self.name());
-    }
-
-    /// Implementation of fcntl(F_GETFL) for this FD.
-    fn get_flags<'tcx>(&self, _ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Scalar> {
-        throw_unsup_format!("fcntl: {} is not supported for F_GETFL", self.name());
-    }
-
-    /// Implementation of fcntl(F_SETFL) for this FD.
-    fn set_flags<'tcx>(
-        &self,
-        _flag: i32,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
-        throw_unsup_format!("fcntl: {} is not supported for F_SETFL", self.name());
+    /// Converts this FD into a unix file description. Must succeed for all FD types that can be
+    /// created on Unix targets!
+    fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
+        panic!("Not a unix file description: {}", self.name());
     }
 
     /// Get the `ReadinessWatched` of the file description.
@@ -228,7 +213,7 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
 }
 
 #[derive(Debug)]
-struct Stdin {
+pub struct Stdin {
     stdin: io::Stdin,
     watched: ReadinessWatched,
 }
@@ -278,10 +263,14 @@ impl FileDescription for Stdin {
         readiness.writable = true;
         readiness
     }
+
+    fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
+        self
+    }
 }
 
 #[derive(Debug)]
-struct Stdout {
+pub struct Stdout {
     stdout: io::Stdout,
     watched: ReadinessWatched,
 }
@@ -331,10 +320,14 @@ impl FileDescription for Stdout {
         readiness.writable = true;
         readiness
     }
+
+    fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
+        self
+    }
 }
 
 #[derive(Debug)]
-struct Stderr {
+pub struct Stderr {
     stderr: io::Stderr,
     watched: ReadinessWatched,
 }
@@ -378,6 +371,10 @@ impl FileDescription for Stderr {
         readiness.writable = true;
         readiness
     }
+
+    fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
+        self
+    }
 }
 
 /// Like /dev/null
@@ -418,6 +415,10 @@ impl FileDescription for NullOutput {
         let mut readiness = Readiness::EMPTY;
         readiness.writable = true;
         readiness
+    }
+
+    fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
+        self
     }
 }
 
@@ -505,14 +506,7 @@ impl FileDescription for FileHandle {
         true
     }
 
-    fn as_unix<'tcx>(
-        self: FileDescriptionRef<Self>,
-        ecx: &MiriInterpCx<'tcx>,
-    ) -> FileDescriptionRef<dyn UnixFileDescription> {
-        assert!(
-            ecx.target_os_is_unix(),
-            "unix file operations are only available for unix targets"
-        );
+    fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
         self
     }
 }
@@ -586,6 +580,10 @@ impl FileDescription for DirHandle {
             // No idea what this should do on Windows.
             throw_unsup_format!("writing directories is not supported on this target");
         }
+    }
+
+    fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
+        self
     }
 }
 

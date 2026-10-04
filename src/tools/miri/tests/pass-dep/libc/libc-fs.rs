@@ -29,6 +29,7 @@ fn main() {
     #[cfg(target_os = "linux")]
     test_ftruncate::<libc::off64_t>(libc::ftruncate64);
     test_create_read_write();
+    test_read_and_uninit();
     test_file_open_args();
     test_file_open_nofollow();
     test_file_open_dangling_symlink();
@@ -61,7 +62,7 @@ fn main() {
     test_lstat();
     test_futimens();
     test_isatty();
-    test_read_and_uninit();
+    test_getfl();
     #[cfg(target_os = "macos")]
     test_ioctl();
     #[cfg(target_os = "linux")]
@@ -1211,6 +1212,34 @@ fn test_isatty() {
         drop(file);
         remove_file(&path).unwrap();
     }
+}
+
+fn test_getfl() {
+    let path = utils::prepare_with_content("miri-test-getfl.txt", b"hello");
+    let cpath = utils::into_c_string(&path);
+
+    for flag in [libc::O_RDONLY, libc::O_WRONLY, libc::O_RDWR] {
+        let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), flag) }).unwrap();
+        // These flags contain "junk" that the kernel adds, such as a O_LARGEFILE flag, even on
+        // x86-64 where glibc sets O_LARGEFILE to 0 (but the kernel still says it is 0x8000).
+        // So we do not check the full flag, just the access mode.
+        assert_eq!(
+            errno_result(unsafe { libc::fcntl(fd, libc::F_GETFL) }).unwrap() & libc::O_ACCMODE,
+            flag
+        );
+        errno_check(unsafe { libc::close(fd) });
+    }
+
+    // Also test it on a directory.
+    let fd = errno_result(unsafe {
+        libc::open(utils::into_c_string(path.parent().unwrap()).as_ptr(), libc::O_RDONLY)
+    })
+    .unwrap();
+    assert_eq!(
+        errno_result(unsafe { libc::fcntl(fd, libc::F_GETFL) }).unwrap() & libc::O_ACCMODE,
+        libc::O_RDONLY
+    );
+    errno_check(unsafe { libc::close(fd) });
 }
 
 fn test_read_and_uninit() {
