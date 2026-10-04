@@ -97,6 +97,7 @@ impl fmt::Debug for Scope {
             ScopeData::IfThen => write!(fmt, "IfThen({:?})", self.local_id),
             ScopeData::IfThenRescope => write!(fmt, "IfThen[edition2024]({:?})", self.local_id),
             ScopeData::MatchGuard => write!(fmt, "MatchGuard({:?})", self.local_id),
+            ScopeData::MatchFakeBorrows => write!(fmt, "MatchFakeBorrows({:?})", self.local_id),
             ScopeData::Remainder(fsi) => write!(
                 fmt,
                 "Remainder {{ block: {:?}, first_statement_index: {}}}",
@@ -136,6 +137,9 @@ pub enum ScopeData {
     /// Used for variables introduced in an if-let guard,
     /// whose lifetimes do not cross beyond this scope.
     MatchGuard,
+
+    /// Dummy scope used for matches' fake borrow temporaries.
+    MatchFakeBorrows,
 
     /// Scope following a `let id = expr;` binding in a block.
     Remainder(FirstStatementIndex),
@@ -323,6 +327,7 @@ impl ScopeTree {
                 | ScopeData::CallSite
                 | ScopeData::Arguments
                 | ScopeData::IfThen
+                | ScopeData::MatchFakeBorrows
                 | ScopeData::Remainder(_) => {
                     // If we haven't already passed through a backwards-incompatible node,
                     // then check if we are passing through one now and record it if so.
