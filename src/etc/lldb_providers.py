@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 from enum import Flag, auto
-from typing import TYPE_CHECKING, Dict, Generator, List, Optional
+from typing import TYPE_CHECKING, ClassVar, Dict, Generator, List, Optional
 
 from lldb import (
     SBData,
@@ -666,7 +666,7 @@ class StdStringSyntheticProvider:
 
 
 class MSVCStrSyntheticProvider:
-    _name_map: Dict[str, str] = {
+    _name_map: ClassVar[Dict[str, str]] = {
         "ref$<str$>": "&str",
         "ref_mut$<str$>": "&mut str",
         "ptr_const$<str$>": "*const str",
@@ -743,7 +743,7 @@ class ClangEncodedEnumProvider:
     DISCRIMINANT_MEMBER_NAME = "$discr$"
     VALUE_MEMBER_NAME = "value"
 
-    __slots__ = ("valobj", "variant", "value")
+    __slots__ = ("valobj", "value", "variant")
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
@@ -829,27 +829,28 @@ class MSVCEnumSyntheticProvider:
         self.update()
 
     def update(self):
-        tag: SBValue = self.valobj.GetChildMemberWithName("tag")
+        if LLDBFeature.StaticFields not in FEATURE_FLAGS:
+            # LLDB versions prior to 19.0.0 do not have the `SBTypeGetStaticField` API.
+            # With current DI generation there's not a great way to provide a "best effort"
+            # evaluation either, so we just return the object itself with no further
+            # attempts to inspect the type information
+            self.variant = self.valobj
+            self.value = self.valobj
+            return
 
-        if tag.IsValid():
-            tag: int = tag.GetValueAsUnsigned()
+        tag_val: SBValue = self.valobj.GetChildMemberWithName("tag")
+
+        if tag_val.IsValid():
+            tag: int = tag_val.GetValueAsUnsigned()
             for child in self.valobj.GetNonSyntheticValue().children:
                 if not child.name.startswith("variant"):
                     continue
 
                 variant_type: SBType = child.GetType()
-                try:
-                    exact: SBTypeStaticField = variant_type.GetStaticFieldWithName(
-                        "DISCR_EXACT"
-                    )
-                except AttributeError:
-                    # LLDB versions prior to 19.0.0 do not have the `SBTypeGetStaticField` API.
-                    # With current DI generation there's not a great way to provide a "best effort"
-                    # evaluation either, so we just return the object itself with no further
-                    # attempts to inspect the type information
-                    self.variant = self.valobj
-                    self.value = self.valobj
-                    return
+                exact: SBTypeStaticField = variant_type.GetStaticFieldWithName(
+                    "DISCR_EXACT"
+                )
+
 
                 if exact.IsValid():
                     discr: int = exact.GetConstantValue(
@@ -906,12 +907,12 @@ class MSVCEnumSyntheticProvider:
                     continue
 
                 variant_type: SBType = child.GetType()
-                exact_lo: SBTypeStaticField = variant_type.GetStaticFieldWithName(
+                exact_lo_field: SBTypeStaticField = variant_type.GetStaticFieldWithName(
                     "DISCR128_EXACT_LO"
                 )
 
-                if exact_lo.IsValid():
-                    exact_lo: int = exact_lo.GetConstantValue(
+                if exact_lo_field.IsValid():
+                    exact_lo: int = exact_lo_field.GetConstantValue(
                         self.valobj.target
                     ).GetValueAsUnsigned()
                     exact_hi: int = (
@@ -1003,14 +1004,15 @@ def MSVCEnumSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     variant_names: SBType = valobj.target.FindFirstType(
         f"{enum_synth.valobj.GetTypeName()}::VariantNames"
     )
-    try:
+
+    if LLDBFeature.StaticFields in FEATURE_FLAGS:
         name_idx = (
             enum_synth.variant.GetType()
             .GetStaticFieldWithName("NAME")
             .GetConstantValue(valobj.target)
             .GetValueAsUnsigned()
         )
-    except AttributeError:
+    else:
         # LLDB versions prior to 19 do not have the `SBTypeGetStaticField` API, and have no way
         # to determine the value based on the tag field.
         tag: SBValue = valobj.GetChildMemberWithName("tag")
