@@ -4,7 +4,7 @@
 
 //@ has 'src/foo/non-local-method.rs.html'
 
-//@ has - '//a[@href="{{channel}}/alloc/boxed/struct.Box.html"]' 'std::boxed::Box'
+//@ has - '//a[@href="{{channel}}/alloc/boxed/type.Box.html"]' 'std::boxed::Box'
 use std::boxed::Box;
 //@ has - '//a[@href="{{channel}}/alloc/io/read/trait.Read.html"]' 'std::io::Read'
 use std::io::Read;
@@ -21,8 +21,8 @@ pub fn bar2<T: Read>(readable: T) {
 }
 
 pub fn bar() {
-    //@ has - '//a[@href="{{channel}}/alloc/boxed/struct.Box.html"]' 'Box'
-    //@ has - '//a[@href="{{channel}}/alloc/boxed/struct.Box.html#method.new"]' 'new'
+    //@ has - '//a[@href="{{channel}}/alloc/boxed/type.Box.html"]' 'Box'
+    //@ has - '//a[@href="{{channel}}/alloc/boxed/type.Box.html#method.new"]' 'new'
     let _ = Box::new(0);
     //@ has - '//a[@href="#49"]' 'local_private'
     local_private();
@@ -40,9 +40,9 @@ pub fn macro_call() -> Result<(), ()> {
 }
 
 pub fn variant() {
-    //@ has - '//a[@href="{{channel}}/core/cmp/enum.Ordering.html#variant.Less"]' 'Less'
+    //@ has - '//a[@href="{{channel}}/core/cmp/type.Ordering.html#variant.Less"]' 'Less'
     let _ = Ordering::Less;
-    //@ has - '//a[@href="{{channel}}/core/marker/struct.PhantomData.html"]' 'PhantomData'
+    //@ has - '//a[@href="{{channel}}/core/marker/type.PhantomData.html"]' 'PhantomData'
     let _: PhantomData::<usize> = PhantomData;
 }
 

@@ -30,15 +30,15 @@ pub use all_item_types::foo_fn;
 #[doc(no_inline)]
 pub use all_item_types::FooTrait;
 
-//@ has 'foo/index.html' '//a[@href="../all_item_types/struct.FooStruct.html"]' 'FooStruct'
+//@ has 'foo/index.html' '//a[@href="../all_item_types/type.FooStruct.html"]' 'FooStruct'
 #[doc(no_inline)]
 pub use all_item_types::FooStruct;
 
-//@ has 'foo/index.html' '//a[@href="../all_item_types/enum.FooEnum.html"]' 'FooEnum'
+//@ has 'foo/index.html' '//a[@href="../all_item_types/type.FooEnum.html"]' 'FooEnum'
 #[doc(no_inline)]
 pub use all_item_types::FooEnum;
 
-//@ has 'foo/index.html' '//a[@href="../all_item_types/union.FooUnion.html"]' 'FooUnion'
+//@ has 'foo/index.html' '//a[@href="../all_item_types/type.FooUnion.html"]' 'FooUnion'
 #[doc(no_inline)]
 pub use all_item_types::FooUnion;
 

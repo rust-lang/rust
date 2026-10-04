@@ -13,8 +13,8 @@ mod bar {
     }
 }
 
-//@ has foo/struct.Foo.html
+//@ has foo/type.Foo.html
 pub use foo::Foo;
 
-//@ has foo/struct.Bar.html
+//@ has foo/type.Bar.html
 pub use self::bar::Bar;

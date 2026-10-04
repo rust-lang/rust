@@ -15,7 +15,7 @@ pub const trait Tr {
 pub struct ConstImpl {}
 pub struct NonConstImpl {}
 
-//@ has foo/struct.ConstImpl.html
+//@ has foo/type.ConstImpl.html
 //@ has - '//*[@id="method.required"]' 'fn required()'
 //@ !has - '//*[@id="method.required"]' 'const'
 //@ has - '//*[@id="method.defaulted"]' 'fn defaulted()'
@@ -24,7 +24,7 @@ const impl Tr for ConstImpl {
     fn required() {}
 }
 
-//@ has foo/struct.NonConstImpl.html
+//@ has foo/type.NonConstImpl.html
 //@ has - '//*[@id="method.required"]' 'fn required()'
 //@ !has - '//*[@id="method.required"]' 'const'
 //@ has - '//*[@id="method.defaulted"]' 'fn defaulted()'

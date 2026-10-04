@@ -5,7 +5,7 @@
 //@ matches '-' '//dt//*[@class="stab portability"]' '^sync$'
 //@ has '-' '//dt//*[@class="stab portability"]/@title' 'Available on crate feature `sync` only'
 
-//@ has 'foo/struct.Foo.html'
+//@ has 'foo/type.Foo.html'
 //@ has '-' '//*[@class="stab portability"]' 'sync'
 #[doc(cfg(feature = "sync"))]
 #[doc(cfg(feature = "sync"))]
@@ -16,7 +16,7 @@ pub struct Foo;
 //@ has '-' '//*[@class="stab portability"]' 'Available on crate feature sync only.'
 #[doc(cfg(feature = "sync"))]
 pub mod bar {
-    //@ has 'foo/bar/struct.Bar.html'
+    //@ has 'foo/bar/type.Bar.html'
     //@ has '-' '//*[@class="stab portability"]' 'Available on crate feature sync only.'
     #[doc(cfg(feature = "sync"))]
     pub struct Bar;
@@ -26,7 +26,7 @@ pub mod bar {
 //@ has '-' '//*[@class="stab portability"]' 'Available on crate features send and sync only.'
 #[doc(cfg(all(feature = "sync", feature = "send")))]
 pub mod baz {
-    //@ has 'foo/baz/struct.Baz.html'
+    //@ has 'foo/baz/type.Baz.html'
     //@ has '-' '//*[@class="stab portability"]' 'Available on crate features send and sync only.'
     #[doc(cfg(feature = "sync"))]
     pub struct Baz;
@@ -36,7 +36,7 @@ pub mod baz {
 //@ has '-' '//*[@class="stab portability"]' 'Available on crate feature sync only.'
 #[doc(cfg(feature = "sync"))]
 pub mod qux {
-    //@ has 'foo/qux/struct.Qux.html'
+    //@ has 'foo/qux/type.Qux.html'
     //@ has '-' '//*[@class="stab portability"]' 'Available on crate features send and sync only.'
     #[doc(cfg(all(feature = "sync", feature = "send")))]
     pub struct Qux;
@@ -46,7 +46,7 @@ pub mod qux {
 //@ has '-' '//*[@class="stab portability"]' 'Available on foo and crate feature send and crate feature sync only.'
 #[doc(cfg(all(feature = "sync", feature = "send", foo)))]
 pub mod quux {
-    //@ has 'foo/quux/struct.Quux.html'
+    //@ has 'foo/quux/type.Quux.html'
     //@ has '-' '//*[@class="stab portability"]' 'Available on bar and foo and crate feature send and crate feature sync only.'
     #[doc(cfg(all(feature = "send", feature = "sync", bar)))]
     pub struct Quux;

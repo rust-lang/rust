@@ -1,4 +1,4 @@
-//@ has strip_enum_variant/enum.MyThing.html
+//@ has strip_enum_variant/type.MyThing.html
 //@ has - '//code' 'Shown'
 //@ !has - '//code' 'NotShown'
 //@ has - '//code' '// some variants omitted'

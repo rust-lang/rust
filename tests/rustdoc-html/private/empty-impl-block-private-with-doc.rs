@@ -4,7 +4,7 @@
 #![allow(incomplete_features)]
 #![crate_name = "foo"]
 
-//@ has 'foo/struct.Foo.html'
+//@ has 'foo/type.Foo.html'
 pub struct Foo;
 
 // There are 3 impl blocks with public item and one that should not be displayed

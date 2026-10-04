@@ -27,7 +27,7 @@ where
 {
 }
 
-//@ has foo/struct.Foo.html
+//@ has foo/type.Foo.html
 pub struct Foo<'a> {
     _x: &'a u8,
     pub some_trait: &'a dyn for<'b> Trait<'b>,
@@ -52,7 +52,7 @@ pub trait B<'x> {}
 //@ has - '//h3[@class="code-header"]' "impl<'a> B<'a> for dyn for<'b> Trait<'b>"
 impl<'a> B<'a> for dyn for<'b> Trait<'b> {}
 
-//@ has foo/struct.Bar.html
+//@ has foo/type.Bar.html
 //@ has - '//span[@id="structfield.bar"]' "bar: &'a (dyn for<'b> Trait<'b> + Unpin)"
 //@ has - '//span[@id="structfield.baz"]' "baz: &'a (dyn Unpin + for<'b> Trait<'b>)"
 pub struct Bar<'a> {

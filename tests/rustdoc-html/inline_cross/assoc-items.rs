@@ -6,7 +6,7 @@
 
 extern crate assoc_items;
 
-//@ has foo/struct.MyStruct.html
+//@ has foo/type.MyStruct.html
 //@ !hasraw - 'PrivateConst'
 //@ has - '//*[@id="associatedconstant.PublicConst"]' 'pub const PublicConst: u8'
 //@ has - '//*[@class="docblock"]' 'docs for PublicConst'

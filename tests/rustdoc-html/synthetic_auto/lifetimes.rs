@@ -8,7 +8,7 @@ where
     T: for<'b> Fn(&'b bool) -> &'a u8,
 {}
 
-//@ has lifetimes/struct.Foo.html
+//@ has lifetimes/type.Foo.html
 //@ has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl<'c, K> Send for Foo<'c, K>where 'c: 'static, K: for<'b> Fn(&'b bool) -> &'c u8,"
 //

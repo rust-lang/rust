@@ -1,6 +1,6 @@
 #![crate_name = "foo"]
 
-//@ has foo/struct.Foo0.html
+//@ has foo/type.Foo0.html
 pub struct Foo0;
 
 impl Foo0 {
@@ -47,7 +47,7 @@ pub trait Bar {
     fn fn_def_def_without_doc() {}
 }
 
-//@ has foo/struct.Foo1.html
+//@ has foo/type.Foo1.html
 pub struct Foo1;
 
 impl Bar for Foo1 {
@@ -80,7 +80,7 @@ impl Bar for Foo1 {
     //@ has - '//*[@class="stab deprecated"]' 'Deprecated since 1.0.8: fn_def_def_without_doc'
 }
 
-//@ has foo/struct.Foo2.html
+//@ has foo/type.Foo2.html
 pub struct Foo2;
 
 impl Bar for Foo2 {

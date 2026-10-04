@@ -10,7 +10,7 @@
 //@ has - '//*[@id="main-content"]/h2' 'Re-exports'
 // The 3 re-exports.
 //@ count - '//*[@id="main-content"]//*[@class="item-table reexports"]/dt//code' 3
-// The public struct.
+// The public type.
 //@ count - '//*[@id="main-content"]//a[@class="struct"]' 1
 
 mod ext {

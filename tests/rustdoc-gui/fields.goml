@@ -22,13 +22,13 @@ define-function: (
 )
 
 call-function: ("check-fields", {
-    "path": "struct.Struct.html",
+    "path": "type.Struct.html",
     "selector_1": "#structfield\.a",
     "selector_2": "#structfield\.b",
 })
 
 call-function: ("check-fields", {
-    "path": "union.Union.html",
+    "path": "type.Union.html",
     "selector_1": "#structfield\.a",
     "selector_2": "#structfield\.b",
 })

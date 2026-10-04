@@ -13,7 +13,7 @@
 
 pub auto trait Marker {}
 
-//@ has 'it/struct.Subject.html'
+//@ has 'it/type.Subject.html'
 #[derive(Clone, Copy)]
 pub struct Subject;
 

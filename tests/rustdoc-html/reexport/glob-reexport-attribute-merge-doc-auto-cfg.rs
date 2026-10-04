@@ -20,10 +20,10 @@ mod b {
     pub struct Test2;
 }
 
-//@ has 'foo/struct.Test1.html'
+//@ has 'foo/type.Test1.html'
 //@ count - '//*[@id="main-content"]/*[@class="item-info"]' 1
 //@ has - '//*[@id="main-content"]/*[@class="item-info"]' 'Available on non-crate feature a only.'
 pub use a::*;
-//@ has 'foo/struct.Test2.html'
+//@ has 'foo/type.Test2.html'
 //@ count - '//*[@id="main-content"]/*[@class="item-info"]' 0
 pub use b::Test2;

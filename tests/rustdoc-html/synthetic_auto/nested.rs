@@ -8,7 +8,7 @@ where
 {
 }
 
-//@ has nested/struct.Foo.html
+//@ has nested/type.Foo.html
 //@ has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // 'impl<T> Send for Foo<T>where T: Copy'
 //

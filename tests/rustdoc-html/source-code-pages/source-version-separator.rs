@@ -13,7 +13,7 @@ pub trait Bar {
 
 //@ has - '//div[@id="implementors-list"]//*[@class="rightside"]' '4.0.0 · Source'
 
-//@ has foo/struct.Foo.html
+//@ has foo/type.Foo.html
 //@ has - '//div[@class="main-heading"]/*[@class="sub-heading"]' '1.0.0 · Source'
 #[stable(feature = "baz", since = "1.0")]
 pub struct Foo;

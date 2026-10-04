@@ -1,6 +1,6 @@
 #![crate_name = "foo"]
 
-//@ has foo/struct.Foo.html
+//@ has foo/type.Foo.html
 //@ has - '//h2[@id="fields"]' 'Tuple Fields'
 //@ has - '//div[@class="sidebar-elems"]//h3/a[@href="#fields"]' 'Tuple Fields'
 //@ has - '//*[@id="structfield.0"]' '0: u32'
@@ -18,7 +18,7 @@ pub struct Foo(
     pub i8,
 );
 
-//@ has foo/enum.Bar.html
+//@ has foo/type.Bar.html
 //@ has - '//pre[@class="rust item-decl"]' 'BarVariant(String),'
 //@ matches - '//*[@id="variant.BarVariant.fields"]/h4' '^Tuple Fields$'
 //@ has - '//*[@id="variant.BarVariant.field.0"]' '0: String'

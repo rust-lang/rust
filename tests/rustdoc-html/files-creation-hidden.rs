@@ -1,14 +1,14 @@
 #![crate_name="foo"]
 
 //@ files foo '["index.html", "all.html", "sidebar-items.js"]'
-//@ !has "foo/struct.Foo.html"
+//@ !has "foo/type.Foo.html"
 #[doc(hidden)]
 pub struct Foo;
 
-//@ !has "foo/struct.Bar.html"
+//@ !has "foo/type.Bar.html"
 pub use crate::Foo as Bar;
 
-//@ !has "foo/struct.Baz.html"
+//@ !has "foo/type.Baz.html"
 #[doc(hidden)]
 pub use crate::Foo as Baz;
 

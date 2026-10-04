@@ -7,8 +7,8 @@ use inner::SomeTrait;
 
 pub struct SomeStruct;
 
- //@ has 'traits/struct.SomeStruct.html' '//a[@href="../inner/trait.SomeTrait.html"]' 'SomeTrait'
+ //@ has 'traits/type.SomeStruct.html' '//a[@href="../inner/trait.SomeTrait.html"]' 'SomeTrait'
 impl SomeTrait for SomeStruct {
-    //@ has 'traits/struct.SomeStruct.html' '//a[@href="../inner/trait.SomeTrait.html"]' 'a trait'
+    //@ has 'traits/type.SomeStruct.html' '//a[@href="../inner/trait.SomeTrait.html"]' 'a trait'
     fn foo() {}
 }

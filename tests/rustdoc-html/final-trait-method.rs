@@ -12,7 +12,7 @@ pub trait Item {
     fn bar() {}
 }
 
-//@ has final_trait_method/struct.Foo.html
+//@ has final_trait_method/type.Foo.html
 pub struct Foo;
 impl Item for Foo {
     //@ has - '//*[@id="method.bar"]' 'fn bar()'

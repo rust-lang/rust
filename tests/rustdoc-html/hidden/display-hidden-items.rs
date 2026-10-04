@@ -37,7 +37,7 @@ pub trait Trait {
 }
 
 //@ has 'foo/index.html' '//dt/a[@class="struct"]' 'Struct'
-//@ has 'foo/struct.Struct.html'
+//@ has 'foo/type.Struct.html'
 pub struct Struct {
     //@ has - '//*[@id="structfield.a"]/code' 'a: u32'
     #[doc(hidden)]
@@ -58,9 +58,9 @@ impl Trait for Struct {
 impl TraitHidden for Struct {}
 
 //@ has 'foo/index.html' '//dt/a[@class="enum"]' 'HiddenEnum'
-//@ has 'foo/enum.HiddenEnum.html'
-//@ has 'foo/enum.HiddenEnum.html' '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[doc(hidden)]'
-//@ has 'foo/enum.HiddenEnum.html' '//*[@class="rust item-decl"]/code' 'pub enum HiddenEnum'
+//@ has 'foo/type.HiddenEnum.html'
+//@ has 'foo/type.HiddenEnum.html' '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[doc(hidden)]'
+//@ has 'foo/type.HiddenEnum.html' '//*[@class="rust item-decl"]/code' 'pub enum HiddenEnum'
 #[doc(hidden)]
 pub enum HiddenEnum {
     A,
@@ -68,8 +68,8 @@ pub enum HiddenEnum {
 
 //@ has 'foo/index.html' '//dt/a[@class="enum"]' 'Enum'
 pub enum Enum {
-    //@ has 'foo/enum.Enum.html' '//*[@id="variant.A"]/*[@class="code-header"]/*[@class="code-attribute"]' '#[doc(hidden)]'
-    //@ has 'foo/enum.Enum.html' '//*[@id="variant.A"]/*[@class="code-header"]' 'A'
+    //@ has 'foo/type.Enum.html' '//*[@id="variant.A"]/*[@class="code-header"]/*[@class="code-attribute"]' '#[doc(hidden)]'
+    //@ has 'foo/type.Enum.html' '//*[@id="variant.A"]/*[@class="code-header"]' 'A'
     #[doc(hidden)]
     A,
 }

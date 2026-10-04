@@ -19,7 +19,7 @@ impl<'a, T> MyTrait for Inner<'a, T> {
     type Output = &'a T;
 }
 
-//@ has foo/struct.Parser.html
+//@ has foo/type.Parser.html
 //@ has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl<'a> Send for Parser<'a>"
 pub struct Parser<'a> {

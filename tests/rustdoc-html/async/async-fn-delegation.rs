@@ -34,8 +34,8 @@ pub reuse Trait::nonunit;
 pub struct S;
 impl Trait for S {}
 
-//@ has async_delegation/struct.S.html '//*[@class="code-header"]' 'pub async fn unit(self: &S)'
-//@ has async_delegation/struct.S.html '//*[@class="code-header"]' 'pub async fn nonunit(self: &S) -> i32'
+//@ has async_delegation/type.S.html '//*[@class="code-header"]' 'pub async fn unit(self: &S)'
+//@ has async_delegation/type.S.html '//*[@class="code-header"]' 'pub async fn nonunit(self: &S) -> i32'
 impl S {
     pub reuse Trait::unit { self }
     pub reuse Trait::nonunit { self }

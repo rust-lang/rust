@@ -2,7 +2,7 @@
 #![feature(doc_cfg)]
 #![crate_name = "xenogenous"]
 
-//@ has 'xenogenous/struct.Worricow.html'
+//@ has 'xenogenous/type.Worricow.html'
 //@ count   - '//*[@class="stab portability"]' 1
 #[cfg(feature = "worricow")]
 pub struct Worricow;

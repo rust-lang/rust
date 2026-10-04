@@ -4,7 +4,7 @@
 //@ has foo/trait.Trait.html
 pub trait Trait<T> {}
 
-//@ has foo/struct.WithConst.html
+//@ has foo/type.WithConst.html
 pub struct WithConst<const N: usize>;
 
 macro_rules! spans_from_macro {
@@ -36,6 +36,6 @@ impl Trait<WithConst<41>> for WithConst<41> {}
 //@ has - '//*[@class="impl"]//h3[@class="code-header"]' \
 //     "impl Trait<WithConst<44>> for WithConst<44>"
 
-//@ has foo/struct.Other.html
+//@ has foo/type.Other.html
 //@ has - //pre "pub field: WithConst<42>"
 spans_from_macro!();

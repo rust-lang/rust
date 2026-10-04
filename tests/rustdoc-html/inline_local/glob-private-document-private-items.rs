@@ -21,10 +21,10 @@ pub use mod1::*;
 //@ !hasraw - "mod2"
 //@ hasraw - "Mod2Public"
 //@ !hasraw - "Mod2Private"
-//@ has foo/struct.Mod1Public.html
-//@ !has foo/struct.Mod1Private.html
-//@ has foo/struct.Mod2Public.html
-//@ !has foo/struct.Mod2Private.html
+//@ has foo/type.Mod1Public.html
+//@ !has foo/type.Mod1Private.html
+//@ has foo/type.Mod2Public.html
+//@ !has foo/type.Mod2Private.html
 
 //@ has foo/mod1/index.html
 //@ hasraw - "mod2"
@@ -32,17 +32,17 @@ pub use mod1::*;
 //@ hasraw - "Mod1Private"
 //@ !hasraw - "Mod2Public"
 //@ !hasraw - "Mod2Private"
-//@ has foo/mod1/struct.Mod1Public.html
-//@ has foo/mod1/struct.Mod1Private.html
-//@ !has foo/mod1/struct.Mod2Public.html
-//@ !has foo/mod1/struct.Mod2Private.html
+//@ has foo/mod1/type.Mod1Public.html
+//@ has foo/mod1/type.Mod1Private.html
+//@ !has foo/mod1/type.Mod2Public.html
+//@ !has foo/mod1/type.Mod2Private.html
 
 //@ has foo/mod1/mod2/index.html
 //@ hasraw - "Mod2Public"
 //@ hasraw - "Mod2Private"
-//@ has foo/mod1/mod2/struct.Mod2Public.html
-//@ has foo/mod1/mod2/struct.Mod2Private.html
+//@ has foo/mod1/mod2/type.Mod2Public.html
+//@ has foo/mod1/mod2/type.Mod2Private.html
 
 //@ !has foo/mod2/index.html
-//@ !has foo/mod2/struct.Mod2Public.html
-//@ !has foo/mod2/struct.Mod2Private.html
+//@ !has foo/mod2/type.Mod2Public.html
+//@ !has foo/mod2/type.Mod2Private.html

@@ -4,7 +4,7 @@
 
 #![crate_name = "foo"]
 
-//@ has 'foo/enum.Enum.html'
+//@ has 'foo/type.Enum.html'
 //@ has - '//*[@class="docblock"]//a[@title="field foo::Enum::Variant::field"]' 'Enum::Variant::field'
 
 /// [Enum::Variant::field]

@@ -8,9 +8,9 @@
 //@ has 'foo/macro.d1.html'
 //@ has 'foo/macro.d2.html'
 //@ has 'foo/macro.d3.html'
-//@ has 'foo/struct.a1.html'
-//@ has 'foo/struct.a2.html'
-//@ has 'foo/struct.a3.html'
+//@ has 'foo/type.a1.html'
+//@ has 'foo/type.a2.html'
+//@ has 'foo/type.a3.html'
 
 //@ has 'foo/index.html'
 
@@ -28,11 +28,11 @@ pub use std::debug_assert as d2;
 /// Link to [`d2`].
 pub use std::debug_assert as d3;
 
-//@ has - '//dd/a[@href="struct.a1.html"]' 'a1'
+//@ has - '//dd/a[@href="type.a1.html"]' 'a1'
 //@ has - '//dd/a[@title="struct foo::a1"]' 'a1'
-//@ has - '//dd/a[@href="struct.a2.html"]' 'a2'
+//@ has - '//dd/a[@href="type.a2.html"]' 'a2'
 //@ has - '//dd/a[@title="struct foo::a2"]' 'a2'
-//@ has - '//dd/a[@href="struct.a3.html"]' 'a3'
+//@ has - '//dd/a[@href="type.a3.html"]' 'a3'
 //@ has - '//dd/a[@title="struct foo::a3"]' 'a3'
 
 /// Link to [`a3`].

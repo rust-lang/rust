@@ -15,10 +15,10 @@ extern crate alloc;
 use alloc::io;
 
 pub fn foo() -> Option<io::Error> {
-    //@ has - '//a[@href="{{channel}}/core/io/error/struct.Error.html"]' 'Error'
-    //@ has - '//a[@href="{{channel}}/std/io/struct.Error.html#method.new"]' 'new'
+    //@ has - '//a[@href="{{channel}}/core/io/error/type.Error.html"]' 'Error'
+    //@ has - '//a[@href="{{channel}}/std/io/type.Error.html#method.new"]' 'new'
     // This check is just to show that we also link to `core` when relevant.
-    //@ has - '//a[@href="{{channel}}/core/io/error/enum.ErrorKind.html#variant.InvalidInput"]' \
+    //@ has - '//a[@href="{{channel}}/core/io/error/type.ErrorKind.html#variant.InvalidInput"]' \
     //        'InvalidInput'
     Some(io::Error::new(io::ErrorKind::InvalidInput, "blob"))
 }

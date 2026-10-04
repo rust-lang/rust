@@ -8,7 +8,7 @@
 #![allow(incomplete_features)]
 #![crate_name = "foo"]
 
-//@ has 'foo/struct.Bar.html'
+//@ has 'foo/type.Bar.html'
 pub struct Bar;
 
 impl Bar {

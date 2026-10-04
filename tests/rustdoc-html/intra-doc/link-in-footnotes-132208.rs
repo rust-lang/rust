@@ -8,8 +8,8 @@
 #![crate_name = "foo"]
 
 //@ has 'foo/index.html'
-//@ has - '//*[@class="docblock"]//a[@href="struct.Bar.html"]' 'a'
-//@ has - '//*[@class="docblock"]//*[@class="footnotes"]//a[@href="struct.Foo.html"]' 'b'
+//@ has - '//*[@class="docblock"]//a[@href="type.Bar.html"]' 'a'
+//@ has - '//*[@class="docblock"]//*[@class="footnotes"]//a[@href="type.Foo.html"]' 'b'
 
 //! [a]: crate::Bar
 //! [b]: crate::Foo

@@ -3,7 +3,7 @@
 
 #![crate_name = "foo"]
 
-//@ has 'foo/enum.Foo.html'
+//@ has 'foo/type.Foo.html'
 //@ has - '//*[@id="variant.A"]' 'A'
 //@ count - '//*[@id="variant.A.fields"]' 0
 //@ has - '//*[@id="variant.B"]' 'B'

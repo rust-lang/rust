@@ -17,7 +17,7 @@ pub use generic_const_items::K;
 //     T: 'a + Eq"
 pub use generic_const_items::Trait;
 
-//@ has user/struct.Implementor.html
+//@ has user/type.Implementor.html
 //@ has - '//h3[@class="code-header"]' 'impl Trait<str> for Implementor'
 //@ has - '//*[@id="associatedconstant.C"]' \
 // "const C<'a>: &'a str = \"C\" \

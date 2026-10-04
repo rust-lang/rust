@@ -27,12 +27,12 @@ pub fn foo_fn() {}
 //@ matches - '//h2[@class="location"]' 'FooTrait'
 pub trait FooTrait {}
 
-//@ matches 'foo/struct.FooStruct.html' '//h1' 'Struct FooStruct'
+//@ matches 'foo/type.FooStruct.html' '//h1' 'Struct FooStruct'
 //@ matches - '//*[@class="rustdoc-breadcrumbs"]' 'foo'
 //@ matches - '//h2[@class="location"]' 'FooStruct'
 pub struct FooStruct;
 
-//@ matches 'foo/enum.FooEnum.html' '//h1' 'Enum FooEnum'
+//@ matches 'foo/type.FooEnum.html' '//h1' 'Enum FooEnum'
 //@ matches - '//*[@class="rustdoc-breadcrumbs"]' 'foo'
 //@ matches - '//h2[@class="location"]' 'FooEnum'
 pub enum FooEnum {}

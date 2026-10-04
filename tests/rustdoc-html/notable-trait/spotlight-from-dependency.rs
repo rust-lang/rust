@@ -2,7 +2,7 @@
 
 use std::iter::Iterator;
 
-//@ has foo/struct.Odd.html
+//@ has foo/type.Odd.html
 //@ has - '//*[@id="method.new"]//a[@class="tooltip"]/@data-notable-ty' 'Odd'
 //@ snapshot odd - '//script[@id="notable-traits-data"]'
 pub struct Odd {

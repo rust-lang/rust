@@ -13,22 +13,22 @@ pub(self) use reexports::addr_of_self;
 //@ !has 'foo/macro.addr_of_local.html'
 use reexports::addr_of_local;
 
-//@ has 'foo/struct.Foo.html' '//*[@class="rust item-decl"]' 'pub struct Foo;'
+//@ has 'foo/type.Foo.html' '//*[@class="rust item-decl"]' 'pub struct Foo;'
 pub use reexports::Foo;
-//@ !has 'foo/struct.FooCrate.html'
+//@ !has 'foo/type.FooCrate.html'
 pub(crate) use reexports::FooCrate;
-//@ !has 'foo/struct.FooSelf.html'
+//@ !has 'foo/type.FooSelf.html'
 pub(self) use reexports::FooSelf;
-//@ !has 'foo/struct.FooLocal.html'
+//@ !has 'foo/type.FooLocal.html'
 use reexports::FooLocal;
 
-//@ has 'foo/enum.Bar.html' '//*[@class="rust item-decl"]' 'pub enum Bar {'
+//@ has 'foo/type.Bar.html' '//*[@class="rust item-decl"]' 'pub enum Bar {'
 pub use reexports::Bar;
-//@ !has 'foo/enum.BarCrate.html'
+//@ !has 'foo/type.BarCrate.html'
 pub(crate) use reexports::BarCrate;
-//@ !has 'foo/enum.BarSelf.html'
+//@ !has 'foo/type.BarSelf.html'
 pub(self) use reexports::BarSelf;
-//@ !has 'foo/enum.BarLocal.html'
+//@ !has 'foo/type.BarLocal.html'
 use reexports::BarLocal;
 
 //@ has 'foo/fn.foo.html' '//pre[@class="rust item-decl"]' 'pub fn foo()'
@@ -49,13 +49,13 @@ pub(self) use reexports::TypeSelf;
 //@ !has 'foo/type.TypeLocal.html'
 use reexports::TypeLocal;
 
-//@ has 'foo/union.Union.html' '//*[@class="rust item-decl"]' 'pub union Union {'
+//@ has 'foo/type.Union.html' '//*[@class="rust item-decl"]' 'pub union Union {'
 pub use reexports::Union;
-//@ !has 'foo/union.UnionCrate.html'
+//@ !has 'foo/type.UnionCrate.html'
 pub(crate) use reexports::UnionCrate;
-//@ !has 'foo/union.UnionSelf.html'
+//@ !has 'foo/type.UnionSelf.html'
 pub(self) use reexports::UnionSelf;
-//@ !has 'foo/union.UnionLocal.html'
+//@ !has 'foo/type.UnionLocal.html'
 use reexports::UnionLocal;
 
 pub mod outer {
@@ -71,26 +71,26 @@ pub mod outer {
         //@ !has 'foo/outer/inner/macro.addr_of_local.html'
         use reexports::addr_of_local;
 
-        //@ has 'foo/outer/inner/struct.Foo.html' '//*[@class="rust item-decl"]' 'pub struct Foo;'
+        //@ has 'foo/outer/inner/type.Foo.html' '//*[@class="rust item-decl"]' 'pub struct Foo;'
         pub use reexports::Foo;
-        //@ !has 'foo/outer/inner/struct.FooCrate.html'
+        //@ !has 'foo/outer/inner/type.FooCrate.html'
         pub(crate) use reexports::FooCrate;
-        //@ !has 'foo/outer/inner/struct.FooSuper.html'
+        //@ !has 'foo/outer/inner/type.FooSuper.html'
         pub(super) use reexports::FooSuper;
-        //@ !has 'foo/outer/inner/struct.FooSelf.html'
+        //@ !has 'foo/outer/inner/type.FooSelf.html'
         pub(self) use reexports::FooSelf;
-        //@ !has 'foo/outer/inner/struct.FooLocal.html'
+        //@ !has 'foo/outer/inner/type.FooLocal.html'
         use reexports::FooLocal;
 
-        //@ has 'foo/outer/inner/enum.Bar.html' '//*[@class="rust item-decl"]' 'pub enum Bar {'
+        //@ has 'foo/outer/inner/type.Bar.html' '//*[@class="rust item-decl"]' 'pub enum Bar {'
         pub use reexports::Bar;
-        //@ !has 'foo/outer/inner/enum.BarCrate.html'
+        //@ !has 'foo/outer/inner/type.BarCrate.html'
         pub(crate) use reexports::BarCrate;
-        //@ !has 'foo/outer/inner/enum.BarSuper.html'
+        //@ !has 'foo/outer/inner/type.BarSuper.html'
         pub(super) use reexports::BarSuper;
-        //@ !has 'foo/outer/inner/enum.BarSelf.html'
+        //@ !has 'foo/outer/inner/type.BarSelf.html'
         pub(self) use reexports::BarSelf;
-        //@ !has 'foo/outer/inner/enum.BarLocal.html'
+        //@ !has 'foo/outer/inner/type.BarLocal.html'
         use reexports::BarLocal;
 
         //@ has 'foo/outer/inner/fn.foo.html' '//pre[@class="rust item-decl"]' 'pub fn foo()'
@@ -115,15 +115,15 @@ pub mod outer {
         //@ !has 'foo/outer/inner/type.TypeLocal.html'
         use reexports::TypeLocal;
 
-        //@ has 'foo/outer/inner/union.Union.html' '//*[@class="rust item-decl"]' 'pub union Union {'
+        //@ has 'foo/outer/inner/type.Union.html' '//*[@class="rust item-decl"]' 'pub union Union {'
         pub use reexports::Union;
-        //@ !has 'foo/outer/inner/union.UnionCrate.html'
+        //@ !has 'foo/outer/inner/type.UnionCrate.html'
         pub(crate) use reexports::UnionCrate;
-        //@ !has 'foo/outer/inner/union.UnionSuper.html'
+        //@ !has 'foo/outer/inner/type.UnionSuper.html'
         pub(super) use reexports::UnionSuper;
-        //@ !has 'foo/outer/inner/union.UnionSelf.html'
+        //@ !has 'foo/outer/inner/type.UnionSelf.html'
         pub(self) use reexports::UnionSelf;
-        //@ !has 'foo/outer/inner/union.UnionLocal.html'
+        //@ !has 'foo/outer/inner/type.UnionLocal.html'
         use reexports::UnionLocal;
     }
 }

@@ -11,13 +11,13 @@
 extern crate incoherent_impl1 as bar;
 
 //@ has 'src/foo/incoherent_impl.rs.html'
-//@ has - '//pre//a[@href="../../incoherent_impl1/error/struct.Error.html#method.new"]' 'new'
-//@ has - '//pre//a[@href="../../incoherent_impl2/struct.Error.html"]' 'Error'
+//@ has - '//pre//a[@href="../../incoherent_impl1/error/type.Error.html#method.new"]' 'new'
+//@ has - '//pre//a[@href="../../incoherent_impl2/type.Error.html"]' 'Error'
 
 // Now we check that the target files exist and contain the information we want.
-//@ has 'incoherent_impl1/error/struct.Error.html'
+//@ has 'incoherent_impl1/error/type.Error.html'
 //@ has - '//*[@id="method.new"]' 'pub fn new() -> Self'
-//@ has 'incoherent_impl2/struct.Error.html'
+//@ has 'incoherent_impl2/type.Error.html'
 
 fn foo() {
     let x = bar::error::Error::new();

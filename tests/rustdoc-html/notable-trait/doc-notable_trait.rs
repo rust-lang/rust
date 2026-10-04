@@ -22,7 +22,7 @@ pub struct SomeStruct;
 impl SomeTrait for SomeStruct {}
 
 impl SomeStruct {
-    //@ has doc_notable_trait/struct.SomeStruct.html
+    //@ has doc_notable_trait/type.SomeStruct.html
     //@ has - '//a[@class="tooltip"]/@data-notable-ty' 'SomeStruct'
     //@ snapshot some-struct-new - '//script[@id="notable-traits-data"]'
     pub fn new() -> SomeStruct {

@@ -1,4 +1,4 @@
-//@ has union/union.U.html
+//@ has union/type.U.html
 pub union U {
     //@ has - //pre "pub a: u8"
     pub a: u8,

@@ -8,7 +8,7 @@ use std::pin::Pin;
 
 pub struct Local;
 
-//@ has 'foo/struct.Local.html'
+//@ has 'foo/type.Local.html'
 
 // Nested fundamental + foreign Self.
 //@ has '-' '//*[@id="impl-From%3CBox%3CLocal%3E%3E-for-String"]' 'impl From<Box<Local>> for String'
@@ -54,5 +54,5 @@ impl From<u64> for Pin<Box<Local>> {
 // trait's own page.
 pub trait Marker {}
 //@ has 'foo/trait.Marker.html' '//*[@id="impl-Marker-for-Vec%3CLocal%3E"]' 'impl Marker for Vec<Local>'
-//@ !has 'foo/struct.Local.html' '//*[@id="impl-Marker-for-Vec%3CLocal%3E"]' 'impl Marker for Vec<Local>'
+//@ !has 'foo/type.Local.html' '//*[@id="impl-Marker-for-Vec%3CLocal%3E"]' 'impl Marker for Vec<Local>'
 impl Marker for Vec<Local> {}

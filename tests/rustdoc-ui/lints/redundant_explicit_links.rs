@@ -158,7 +158,7 @@ pub fn should_warn_reference() {}
 pub fn should_not_warn_reference() {}
 
 // Regression test for https://github.com/rust-lang/rust/issues/155458.
-/// [Issue155458B](struct.Issue155458B.html)
+/// [Issue155458B](type.Issue155458B.html)
 //~^ ERROR redundant explicit link target
 pub struct Issue155458A;
 

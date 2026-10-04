@@ -12,7 +12,7 @@ pub trait Read {
 
 pub struct Foo;
 
-//@ has foo/struct.Foo.html
+//@ has foo/type.Foo.html
 impl Foo {
     //@ has - '//h5' 'Implementation header'
     /// # Implementation header

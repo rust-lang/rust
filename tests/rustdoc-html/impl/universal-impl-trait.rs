@@ -21,14 +21,14 @@ pub trait Trait {
 pub struct S<T>(T);
 
 impl<T> S<T> {
-    //@ has foo/struct.S.html
+    //@ has foo/type.S.html
     //@ hasraw - 'bar</a>('
     //@ matchesraw - '_bar: impl <a class="trait" href="[^"]+/trait\.Copy\.html"'
     pub fn bar(_bar: impl Copy) {
     }
 
     //@ hasraw - 'baz</a>('
-    //@ matchesraw - '_baz:.+struct\.S\.html.+impl .+trait\.Clone\.html'
+    //@ matchesraw - '_baz:.+type\.S\.html.+impl .+trait\.Clone\.html'
     pub fn baz(_baz: S<impl Clone>) {
     }
 

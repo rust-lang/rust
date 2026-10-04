@@ -9,16 +9,16 @@ extern crate masked;
 
 //@ !hasraw 'search.index/name/*.js' 'masked_method'
 
-//@ !hasraw 'foo/struct.String.html' 'MaskedTrait'
-//@ !hasraw 'foo/struct.String.html' 'MaskedBlanketTrait'
-//@ !hasraw 'foo/struct.String.html' 'masked_method'
+//@ !hasraw 'foo/type.String.html' 'MaskedTrait'
+//@ !hasraw 'foo/type.String.html' 'MaskedBlanketTrait'
+//@ !hasraw 'foo/type.String.html' 'masked_method'
 pub use std::string::String;
 
 //@ !hasraw 'foo/trait.Clone.html' 'MaskedStruct'
 pub use std::clone::Clone;
 
-//@ !hasraw 'foo/struct.MyStruct.html' 'MaskedTrait'
-//@ !hasraw 'foo/struct.MyStruct.html' 'masked_method'
+//@ !hasraw 'foo/type.MyStruct.html' 'MaskedTrait'
+//@ !hasraw 'foo/type.MyStruct.html' 'masked_method'
 pub struct MyStruct;
 
 impl masked::MaskedTrait for MyStruct {

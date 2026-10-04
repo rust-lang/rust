@@ -13,7 +13,8 @@ pub trait MetaSized: PointeeSized {}
 pub trait Sized: MetaSized {}
 
 //@ files "foo" "['sidebar-items.js', 'all.html', 'hidden', 'index.html', 'struct.Bar.html', \
-//        'visible', 'trait.Sized.html', 'trait.MetaSized.html', 'trait.PointeeSized.html']"
+//        'visible', 'trait.Sized.html', 'trait.MetaSized.html', 'trait.PointeeSized.html', \
+//        'type.Bar.html']"
 //@ files "foo/hidden" "['inner']"
 //@ files "foo/hidden/inner" "['trait.Foo.html']"
 //@ files "foo/visible" "['index.html', 'sidebar-items.js', 'trait.Foo.html']"
@@ -39,6 +40,8 @@ pub mod hidden {
 pub use hidden::inner as visible;
 
 //@ has 'foo/struct.Bar.html'
+//@ matchesraw - '<meta http-equiv="refresh" content="0;URL=type.Bar.html">'
+//@ has 'foo/type.Bar.html'
 //@ count - '//*[@id="impl-Foo-for-Bar"]' 1
 pub struct Bar;
 

@@ -16,7 +16,7 @@ where
     type Item2 = C;
 }
 
-//@ has foo/struct.Switch.html
+//@ has foo/type.Switch.html
 //@ has - '//h3[@class="code-header"]' 'impl<B> Send for Switch<B>where <B as Signal>::Item: Send'
 //@ has - '//h3[@class="code-header"]' 'impl<B> Sync for Switch<B>where <B as Signal>::Item: Sync'
 //@ count - '//*[@id="implementations-list"]//*[@class="impl"]' 0

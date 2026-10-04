@@ -1,7 +1,7 @@
 // https://github.com/rust-lang/rust/issues/41783
 #![crate_name="foo"]
 
-//@ has foo/struct.Foo.html
+//@ has foo/type.Foo.html
 //@ !hasraw - 'space'
 //@ !hasraw - 'comment'
 //@ hasraw - '<span class="attr">#[outer]'

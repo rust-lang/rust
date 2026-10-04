@@ -7,7 +7,7 @@ pub trait Neg {}
 pub trait Pos {}
 
 // A negative impl must not produce a badge.
-//@ has 'foo/struct.T.html'
+//@ has 'foo/type.T.html'
 //@ count - '//div[@class="notable-trait-badge-container"]/a' 1
 //@ has - '//div[@class="notable-trait-badge-container"]/a[@href="trait.Pos.html"]' 'Pos'
 pub struct T;

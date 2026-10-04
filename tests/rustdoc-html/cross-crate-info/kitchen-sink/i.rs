@@ -13,12 +13,12 @@
 //@ has index.html '//ul[@class="all-items"]//a[@href="r/index.html"]' 'r'
 //@ has index.html '//ul[@class="all-items"]//a[@href="s/index.html"]' 's'
 //@ has index.html '//ul[@class="all-items"]//a[@href="t/index.html"]' 't'
-//@ has q/struct.Quebec.html
+//@ has q/type.Quebec.html
 //@ has r/type.Romeo.html
-//@ has s/struct.Sierra.html
+//@ has s/type.Sierra.html
 //@ has t/trait.Tango.html
-//@ hasraw s/struct.Sierra.html 'Tango'
-//@ hasraw trait.impl/t/trait.Tango.js 'struct.Sierra.html'
+//@ hasraw s/type.Sierra.html 'Tango'
+//@ hasraw trait.impl/t/trait.Tango.js 'type.Sierra.html'
 //@ hasraw search.index/name/*.js 'Quebec'
 //@ hasraw search.index/name/*.js 'Romeo'
 //@ hasraw search.index/name/*.js 'Sierra'

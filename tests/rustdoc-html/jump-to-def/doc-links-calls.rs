@@ -4,7 +4,7 @@
 
 //@ has 'src/foo/doc-links-calls.rs.html'
 
-//@ has - '//a[@href="../../foo/struct.Bar.html"]' 'Bar'
+//@ has - '//a[@href="../../foo/type.Bar.html"]' 'Bar'
 pub struct Bar;
 
 impl std::default::Default for Bar {

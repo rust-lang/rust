@@ -8,7 +8,7 @@ where
 {
 }
 
-//@ has no_redundancy/struct.Outer.html
+//@ has no_redundancy/type.Outer.html
 //@ has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl<T> Send for Outer<T>where T: Copy + Send"
 pub struct Outer<T> {

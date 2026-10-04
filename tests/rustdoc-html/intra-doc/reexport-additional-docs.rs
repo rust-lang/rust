@@ -3,7 +3,7 @@
 #![crate_name = "foo"]
 extern crate inner;
 
-//@ has foo/struct.Inner.html '//a[@href="fn.with_code.html"]' 'crate::with_code'
+//@ has foo/type.Inner.html '//a[@href="fn.with_code.html"]' 'crate::with_code'
 /// [crate::with_code]
 //@ has - '//a[@href="fn.with_code.html"]' 'different text'
 /// [different text][with_code]

@@ -27,7 +27,7 @@ pub mod bar {
     //@ has foo/bar/trait.Foobar.html '//a/@href' '../../src/foo/src-links.rs.html'
     pub trait Foobar { fn dummy(&self) { } }
 
-    //@ has foo/bar/struct.Foo.html '//a/@href' '../../src/foo/src-links.rs.html'
+    //@ has foo/bar/type.Foo.html '//a/@href' '../../src/foo/src-links.rs.html'
     pub struct Foo { x: i32, y: u32 }
 
     //@ has foo/bar/fn.prawns.html '//a/@href' '../../src/foo/src-links.rs.html'
@@ -46,6 +46,6 @@ pub fn modfn() { }
 //@ has foo/qux/bar/baz/index.html '//a/@href' '../../../../src/foo/src-links/mod.rs.html'
 //@ has foo/qux/bar/baz/fn.baz.html '//a/@href' '../../../../src/foo/src-links/mod.rs.html'
 //@ has foo/qux/bar/trait.Foobar.html '//a/@href' '../../../src/foo/src-links/mod.rs.html'
-//@ has foo/qux/bar/struct.Foo.html '//a/@href' '../../../src/foo/src-links/mod.rs.html'
+//@ has foo/qux/bar/type.Foo.html '//a/@href' '../../../src/foo/src-links/mod.rs.html'
 //@ has foo/qux/bar/fn.prawns.html '//a/@href' '../../../src/foo/src-links/mod.rs.html'
 //@ has foo/qux/fn.modfn.html '//a/@href' '../../src/foo/src-links/mod.rs.html'

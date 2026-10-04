@@ -1,7 +1,7 @@
 // https://github.com/rust-lang/rust/issues/32890
 #![crate_name="issue_32890"]
 
-//@ has issue_32890/struct.Foo.html
+//@ has issue_32890/type.Foo.html
 pub struct Foo<T>(T);
 
 impl Foo<u8> {

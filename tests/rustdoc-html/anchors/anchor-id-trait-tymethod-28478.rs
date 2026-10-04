@@ -17,7 +17,7 @@ pub trait Bar {
     fn baz() { }
 }
 
-//@ has issue_28478/struct.Foo.html
+//@ has issue_28478/type.Foo.html
 pub struct Foo;
 
 impl Foo {

@@ -16,7 +16,7 @@ impl Deref for Bar {
     fn deref(&self) -> &Foo { loop {} }
 }
 
-//@ has issue_19190/struct.Bar.html
+//@ has issue_19190/type.Bar.html
 //@ has - '//*[@id="method.foo"]//h4[@class="code-header"]' 'fn foo(&self)'
 //@ has - '//*[@id="method.foo"]' 'fn foo(&self)'
 //@ !has - '//*[@id="method.static_foo"]//h4[@class="code-header"]' 'fn static_foo()'

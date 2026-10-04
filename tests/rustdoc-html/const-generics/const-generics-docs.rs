@@ -6,7 +6,7 @@ extern crate extern_crate;
 //@ has foo/fn.extern_fn.html '//pre[@class="rust item-decl"]' \
 //      'pub fn extern_fn<const N: usize>() -> impl Iterator<Item = [u8; N]>'
 pub use extern_crate::extern_fn;
-//@ has foo/struct.ExternTy.html '//pre[@class="rust item-decl"]' \
+//@ has foo/type.ExternTy.html '//pre[@class="rust item-decl"]' \
 //      'pub struct ExternTy<const N: usize> {'
 pub use extern_crate::ExternTy;
 //@ has foo/type.TyAlias.html '//pre[@class="rust item-decl"]' \
@@ -30,13 +30,13 @@ impl Trait<2> for u8 {}
 impl Trait<{1 + 2}> for u8 {}
 impl<const N: usize> Trait<N> for [u8; N] {}
 
-//@ has foo/struct.Foo.html '//pre[@class="rust item-decl"]' \
+//@ has foo/type.Foo.html '//pre[@class="rust item-decl"]' \
 //      'pub struct Foo<const N: usize> where u8: Trait<N>'
 pub struct Foo<const N: usize> where u8: Trait<N>;
-//@ has foo/struct.Bar.html '//pre[@class="rust item-decl"]' 'pub struct Bar<T, const N: usize>('
+//@ has foo/type.Bar.html '//pre[@class="rust item-decl"]' 'pub struct Bar<T, const N: usize>('
 pub struct Bar<T, const N: usize>([T; N]);
 
-//@ has foo/struct.Foo.html '//*[@id="impl-Foo%3CM%3E"]/h3[@class="code-header"]' 'impl<const M: usize> Foo<M>where u8: Trait<M>'
+//@ has foo/type.Foo.html '//*[@id="impl-Foo%3CM%3E"]/h3[@class="code-header"]' 'impl<const M: usize> Foo<M>where u8: Trait<M>'
 impl<const M: usize> Foo<M> where u8: Trait<M> {
     //@ has - '//*[@id="associatedconstant.FOO_ASSOC"]' 'pub const FOO_ASSOC: usize'
     pub const FOO_ASSOC: usize = M + 13;
@@ -47,7 +47,7 @@ impl<const M: usize> Foo<M> where u8: Trait<M> {
     }
 }
 
-//@ has foo/struct.Bar.html '//*[@id="impl-Bar%3Cu8,+M%3E"]/h3[@class="code-header"]' 'impl<const M: usize> Bar<u8, M>'
+//@ has foo/type.Bar.html '//*[@id="impl-Bar%3Cu8,+M%3E"]/h3[@class="code-header"]' 'impl<const M: usize> Bar<u8, M>'
 impl<const M: usize> Bar<u8, M> {
     //@ has - '//*[@id="method.hey"]' \
     //      'pub fn hey<const N: usize>(&self) -> Foo<N>where u8: Trait<N>'
@@ -91,7 +91,7 @@ macro_rules! define_me {
     }
 }
 
-//@ has foo/struct.Foz.html '//pre[@class="rust item-decl"]' \
+//@ has foo/type.Foz.html '//pre[@class="rust item-decl"]' \
 //      'pub struct Foz<const N: usize>(/* private fields */);'
 define_me!(Foz<N>);
 
@@ -109,7 +109,7 @@ pub fn q_user() -> [u8; <[u8; 13] as Q>::ASSOC] {
     [0; <[u8; 13] as Q>::ASSOC]
 }
 
-//@ has foo/union.Union.html '//pre[@class="rust item-decl"]' \
+//@ has foo/type.Union.html '//pre[@class="rust item-decl"]' \
 //      'pub union Union<const N: usize>'
 pub union Union<const N: usize> {
     //@ has - //pre "pub arr: [u8; N]"
@@ -118,7 +118,7 @@ pub union Union<const N: usize> {
     pub another_arr: [(); N],
 }
 
-//@ has foo/enum.Enum.html '//pre[@class="rust item-decl"]' \
+//@ has foo/type.Enum.html '//pre[@class="rust item-decl"]' \
 //      'pub enum Enum<const N: usize>'
 pub enum Enum<const N: usize> {
     //@ has - //pre "Variant([u8; N])"

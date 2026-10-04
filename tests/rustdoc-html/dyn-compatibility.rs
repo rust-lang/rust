@@ -21,7 +21,7 @@ pub trait DynCompatible {
     fn foo(&self);
 }
 
-//@ has 'foo/struct.Foo.html'
+//@ has 'foo/type.Foo.html'
 //@ count - '//*[@class="dyn-compatibility-info"]' 0
 //@ count - '//*[@id="dyn-compatibility"]' 0
 pub struct Foo;
