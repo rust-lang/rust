@@ -147,63 +147,8 @@ impl FileDescription for VirtualSocket {
         false
     }
 
-    fn as_unix<'tcx>(
-        self: FileDescriptionRef<Self>,
-        _ecx: &MiriInterpCx<'tcx>,
-    ) -> FileDescriptionRef<dyn UnixFileDescription> {
+    fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
         self
-    }
-
-    fn get_flags<'tcx>(&self, ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let mut flags = 0;
-
-        // Get flag for file access mode.
-        // The flag for both socketpair and pipe will remain the same even when the peer
-        // fd is closed, so we need to look at the original type of this socket, not at whether
-        // the peer socket still exists.
-        match self.fd_type {
-            VirtualSocketType::Socketpair => {
-                flags |= ecx.eval_libc_i32("O_RDWR");
-            }
-            VirtualSocketType::PipeRead => {
-                flags |= ecx.eval_libc_i32("O_RDONLY");
-            }
-            VirtualSocketType::PipeWrite => {
-                flags |= ecx.eval_libc_i32("O_WRONLY");
-            }
-        }
-
-        // Get flag for blocking status.
-        if self.is_nonblock.get() {
-            flags |= ecx.eval_libc_i32("O_NONBLOCK");
-        }
-
-        interp_ok(Scalar::from_i32(flags))
-    }
-
-    fn set_flags<'tcx>(
-        &self,
-        mut flag: i32,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
-        let o_nonblock = ecx.eval_libc_i32("O_NONBLOCK");
-
-        // O_NONBLOCK flag can be set / unset by user.
-        if flag & o_nonblock == o_nonblock {
-            self.is_nonblock.set(true);
-            flag &= !o_nonblock;
-        } else {
-            self.is_nonblock.set(false);
-        }
-
-        // Throw error if there is any unsupported flag.
-        if flag != 0 {
-            throw_unsup_format!(
-                "fcntl: only O_NONBLOCK is supported for F_SETFL on socketpairs and pipes"
-            )
-        }
-
-        interp_ok(Scalar::from_i32(0))
     }
 
     fn readiness_watched(&self) -> Option<&ReadinessWatched> {
@@ -258,6 +203,58 @@ impl FileDescription for VirtualSocket {
 }
 
 impl UnixFileDescription for VirtualSocket {
+    fn get_flags<'tcx>(&self, ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Scalar> {
+        let mut flags = 0;
+
+        // Get flag for file access mode.
+        // The flag for both socketpair and pipe will remain the same even when the peer
+        // fd is closed, so we need to look at the original type of this socket, not at whether
+        // the peer socket still exists.
+        match self.fd_type {
+            VirtualSocketType::Socketpair => {
+                flags |= ecx.eval_libc_i32("O_RDWR");
+            }
+            VirtualSocketType::PipeRead => {
+                flags |= ecx.eval_libc_i32("O_RDONLY");
+            }
+            VirtualSocketType::PipeWrite => {
+                flags |= ecx.eval_libc_i32("O_WRONLY");
+            }
+        }
+
+        // Get flag for blocking status.
+        if self.is_nonblock.get() {
+            flags |= ecx.eval_libc_i32("O_NONBLOCK");
+        }
+
+        interp_ok(Scalar::from_i32(flags))
+    }
+
+    fn set_flags<'tcx>(
+        &self,
+        mut flag: i32,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let o_nonblock = ecx.eval_libc_i32("O_NONBLOCK");
+
+        // O_NONBLOCK flag can be set / unset by user.
+        if flag & o_nonblock == o_nonblock {
+            self.is_nonblock.set(true);
+            flag &= !o_nonblock;
+        } else {
+            self.is_nonblock.set(false);
+        }
+
+        // Throw error if there is any unsupported flag.
+        if flag != 0 {
+            throw_unsup_format!(
+                "fcntl: only O_NONBLOCK is supported for F_SETFL on socketpairs and pipes"
+            )
+        }
+
+        interp_ok(Scalar::from_i32(0))
+    }
+
     fn ioctl<'tcx>(
         &self,
         op: Scalar,
@@ -301,9 +298,8 @@ impl UnixFileDescription for VirtualSocket {
         throw_unsup_format!("ioctl: unsupported operation {op:#x} on socket");
     }
 
-    fn as_socket<'tcx>(
+    fn as_socket(
         self: FileDescriptionRef<Self>,
-        _ecx: &MiriInterpCx<'tcx>,
     ) -> Option<FileDescriptionRef<dyn UnixSocketFileDescription>> {
         match self.fd_type {
             VirtualSocketType::Socketpair => Some(self),

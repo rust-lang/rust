@@ -28,10 +28,13 @@ fn main() {
     test_ftruncate::<libc::off_t>(libc::ftruncate);
     #[cfg(target_os = "linux")]
     test_ftruncate::<libc::off64_t>(libc::ftruncate64);
-    test_file_open_allow_two_args();
-    test_file_open_needs_three_args();
-    test_file_open_extra_third_arg();
+    test_create_read_write();
+    test_read_and_uninit();
+    test_file_open_args();
     test_file_open_nofollow();
+    test_file_open_dangling_symlink();
+    test_file_open_directory();
+    test_file_open_exclusive();
     #[cfg(target_os = "linux")]
     test_o_tmpfile_flag();
     test_posix_mkstemp();
@@ -59,7 +62,7 @@ fn main() {
     test_lstat();
     test_futimens();
     test_isatty();
-    test_read_and_uninit();
+    test_getfl();
     #[cfg(target_os = "macos")]
     test_ioctl();
     #[cfg(target_os = "linux")]
@@ -208,10 +211,13 @@ fn test_statx() {
     }
 
     // Relative to a dirfd.
-    // The only way to get a dirfd in Miri currently is via a `dirfd`. Slightly silly, but whatever.
-    let dirstream = unsafe { libc::opendir(utils::into_c_string(path.parent().unwrap()).as_ptr()) };
-    assert!(!dirstream.is_null());
-    let dirfd = unsafe { libc::dirfd(dirstream) };
+    let dirfd = errno_result(unsafe {
+        libc::open(
+            utils::into_c_string(path.parent().unwrap()).as_ptr(),
+            libc::O_RDONLY | libc::O_DIRECTORY,
+        )
+    })
+    .unwrap();
     unsafe {
         let mut stx = MaybeUninit::<libc::statx>::zeroed();
         errno_check(libc::statx(
@@ -225,7 +231,7 @@ fn test_statx() {
         let stx = stx.assume_init();
         assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
     }
-    errno_check(unsafe { libc::closedir(dirstream) });
+    errno_check(unsafe { libc::close(dirfd) });
 
     remove_file(&path).unwrap();
 }
@@ -306,26 +312,12 @@ fn test_statx_on_empty_path() {
     }
 }
 
-fn test_file_open_allow_two_args() {
-    let path = utils::prepare_with_content("miri_test_file_open_allow_two_args.txt", &[]);
+fn test_file_open_args() {
+    let path = utils::prepare_with_content("miri_test_file_open_args.txt", &[]);
     let name = utils::into_c_string(path);
 
+    // Works with 2 or 3 arguments.
     let _fd = errno_result(unsafe { libc::open(name.as_ptr(), libc::O_RDONLY) }).unwrap();
-}
-
-fn test_file_open_needs_three_args() {
-    let path = utils::prepare_with_content("miri_test_file_open_needs_three_args.txt", &[]);
-    let name = utils::into_c_string(path);
-
-    let _fd =
-        errno_result(unsafe { libc::open(name.as_ptr(), libc::O_CREAT | libc::O_RDWR, 0o666) })
-            .unwrap();
-}
-
-fn test_file_open_extra_third_arg() {
-    let path = utils::prepare_with_content("miri_test_file_open_extra_third_arg.txt", &[]);
-    let name = utils::into_c_string(path);
-
     let _fd = errno_result(unsafe { libc::open(name.as_ptr(), libc::O_RDONLY, 42) }).unwrap();
 }
 
@@ -355,7 +347,133 @@ fn test_file_open_nofollow() {
         // while POSIX specifies returning ELOOP. Since this test is run on both native FreeBSD and native
         // Linux hosts, we just assert that its either of those error codes.
         assert!([libc::ELOOP, libc::EMLINK].contains(&err.raw_os_error().unwrap()));
+
+        // Also check symlink to directory.
+        let symlink_path = utils::prepare("miri_test_open_nofollow_symlink_to_dir");
+        // We make the symlink point to its parent directory.
+        std::os::unix::fs::symlink(&symlink_path.parent().unwrap(), &symlink_path).unwrap();
+        let symlink_cpath = utils::into_c_string(symlink_path);
+        let err = errno_result(unsafe { libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW) })
+            .unwrap_err();
+        assert!(
+            [libc::ELOOP, libc::EMLINK].contains(&err.raw_os_error().unwrap()),
+            "unexpected errno: {err}"
+        );
+        // If we set O_DIRECTORY, we get a different error on Linux, but still EMLINK on FreeBSD.
+        let err = errno_result(unsafe {
+            libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_DIRECTORY)
+        })
+        .unwrap_err();
+        assert!(
+            [libc::ENOTDIR, libc::EMLINK].contains(&err.raw_os_error().unwrap()),
+            "unexpected errno: {err}"
+        );
     }
+}
+
+fn test_file_open_dangling_symlink() {
+    if !utils::have_symlink_permission() {
+        return;
+    }
+
+    let symlink_path = utils::prepare("miri_test_open_dangling_symlink");
+    std::os::unix::fs::symlink("does-not-exist", &symlink_path).unwrap();
+    let symlink_cpath = utils::into_c_string(symlink_path);
+
+    let err =
+        errno_result(unsafe { libc::open(symlink_cpath.as_ptr(), libc::O_RDONLY) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT, "unexpected errno: {err}");
+    let err =
+        errno_result(unsafe { libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW) }).unwrap_err();
+    assert!(
+        [libc::ELOOP, libc::EMLINK].contains(&err.raw_os_error().unwrap()),
+        "unexpected errno: {err}"
+    );
+    let err =
+        errno_result(unsafe { libc::open(symlink_cpath.as_ptr(), libc::O_DIRECTORY) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT, "unexpected errno: {err}");
+}
+
+fn test_file_open_directory() {
+    let dir_path = utils::prepare_dir("miri_test_file_open_directory");
+    create_dir(&dir_path).unwrap();
+    let dir_name = utils::into_c_string(dir_path);
+
+    // Opening it for read-write fails.
+    let err = errno_result(unsafe { libc::open(dir_name.as_ptr(), libc::O_RDWR) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EISDIR);
+
+    // Opening it for reading succeeds, but then reading/writing fails.
+    let fd = errno_result(unsafe { libc::open(dir_name.as_ptr(), libc::O_RDONLY) }).unwrap();
+    let mut buf = [0u8; 4];
+    let err =
+        errno_result(unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EISDIR, "unexpected errno: {err}");
+    let err = errno_result(unsafe { libc::write(fd, buf.as_ptr().cast(), buf.len()) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EBADF, "unexpected errno: {err}");
+    errno_check(unsafe { libc::close(fd) });
+
+    // Ensure it errors on non-directories when we add the flag.
+    let path = utils::prepare_with_content("miri_test_fs_not_a_dir", &[]);
+    let err = errno_result(unsafe {
+        libc::open(utils::into_c_string(path).as_ptr(), libc::O_RDONLY | libc::O_DIRECTORY)
+    })
+    .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOTDIR);
+    let err = errno_result(unsafe {
+        libc::open(c"doesnotexist".as_ptr(), libc::O_RDONLY | libc::O_DIRECTORY)
+    })
+    .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
+
+    if utils::have_symlink_permission() {
+        // Also check symlink behavior.
+        let symlink_path = utils::prepare("miri_test_open_directory_symlink");
+        // We make the symlink point to its parent directory.
+        std::os::unix::fs::symlink(&symlink_path.parent().unwrap(), &symlink_path).unwrap();
+        let symlink_cpath = utils::into_c_string(symlink_path);
+        let fd =
+            errno_result(unsafe { libc::open(symlink_cpath.as_ptr(), libc::O_DIRECTORY) }).unwrap();
+        errno_check(unsafe { libc::close(fd) });
+    }
+}
+
+fn test_file_open_exclusive() {
+    let path = utils::prepare("miri_test_file_open_exclusive.txt");
+    let cpath = utils::into_c_string(path);
+
+    let fd = errno_result(unsafe {
+        libc::open(cpath.as_ptr(), libc::O_WRONLY | libc::O_CREAT | libc::O_EXCL, 0o666)
+    })
+    .unwrap();
+    errno_check(unsafe { libc::close(fd) });
+
+    let exist_err = errno_result(unsafe {
+        libc::open(cpath.as_ptr(), libc::O_WRONLY | libc::O_CREAT | libc::O_EXCL, 0o666)
+    })
+    .unwrap_err();
+    assert_eq!(exist_err.raw_os_error().unwrap(), libc::EEXIST, "unexpected errno: {exist_err}");
+}
+
+fn test_create_read_write() {
+    let content = b"hello test";
+    let path = utils::prepare("miri_test_create_read_write.txt");
+    let cpath = utils::into_c_string(path);
+
+    let fd =
+        errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY | libc::O_CREAT, 0o666) })
+            .unwrap();
+    let read_err = libc_utils::read_exact_array::<4>(fd).unwrap_err();
+    assert_eq!(read_err.raw_os_error().unwrap(), libc::EBADF, "unexpected errno: {read_err}");
+    libc_utils::write_all(fd, content).unwrap();
+    errno_check(unsafe { libc::close(fd) });
+
+    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) }).unwrap();
+    let write_err = libc_utils::write_all(fd, content).unwrap_err();
+    assert_eq!(write_err.raw_os_error().unwrap(), libc::EBADF, "unexpected errno: {write_err}");
+    let data = libc_utils::read_exact_array::<8>(fd).unwrap();
+    assert!(content.starts_with(&data));
+    errno_check(unsafe { libc::close(fd) });
 }
 
 fn test_dup_stdout_stderr() {
@@ -887,12 +1005,8 @@ fn test_fstatat() {
     let cfilename = c"file.txt";
     fs::write(testdir.join(filename), b"hello").unwrap();
     let absfilename = testdir.join(filename);
+    let cabsfilename = utils::into_c_string(&absfilename);
     assert!(absfilename.is_absolute());
-
-    // The only way to get a dirfd in Miri currently is via a `dirfd`. Slightly silly, but whatever.
-    let dirstream = unsafe { libc::opendir(utils::into_c_string(&testdir).as_ptr()) };
-    assert!(!dirstream.is_null());
-    let dirfd = unsafe { libc::dirfd(dirstream) };
 
     let checkstat = |stat: &libc::stat| {
         assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
@@ -914,7 +1028,7 @@ fn test_fstatat() {
     errno_check(unsafe {
         libc::fstatat(
             999, // dirfd
-            utils::into_c_string(&absfilename).as_ptr(),
+            cabsfilename.as_ptr(),
             stat.as_mut_ptr(),
             0, // flags
         )
@@ -922,9 +1036,32 @@ fn test_fstatat() {
     checkstat(unsafe { stat.assume_init_ref() });
 
     // Relative to dirfd.
+    let dirfd = errno_result(unsafe {
+        libc::open(utils::into_c_string(&testdir).as_ptr(), libc::O_RDONLY | libc::O_DIRECTORY)
+    })
+    .unwrap();
     let mut stat = MaybeUninit::<libc::stat>::uninit();
     errno_check(unsafe { libc::fstatat(dirfd, cfilename.as_ptr(), stat.as_mut_ptr(), 0) });
     checkstat(unsafe { stat.assume_init_ref() });
+
+    // Relative to bogus FD that's not a dir.
+    let err = errno_result(unsafe { libc::fstatat(0, cfilename.as_ptr(), stat.as_mut_ptr(), 0) })
+        .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOTDIR, "unexpected errno: {err}");
+    let fd = errno_result(unsafe { libc::open(cabsfilename.as_ptr(), libc::O_RDONLY) }).unwrap();
+    let err = errno_result(unsafe { libc::fstatat(fd, cfilename.as_ptr(), stat.as_mut_ptr(), 0) })
+        .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOTDIR, "unexpected errno: {err}");
+    errno_check(unsafe { libc::close(fd) });
+    let err = errno_result(unsafe { libc::fstatat(fd, cfilename.as_ptr(), stat.as_mut_ptr(), 0) })
+        .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EBADF, "unexpected errno: {err}");
+
+    // Empty path errors. (We do not support AT_EMPTY_PATH.)
+    let err =
+        errno_result(unsafe { libc::fstatat(libc::AT_FDCWD, c"".as_ptr(), stat.as_mut_ptr(), 0) })
+            .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT, "unexpected errno: {err}");
 
     if utils::have_symlink_permission() {
         // Symlink following.
@@ -943,7 +1080,7 @@ fn test_fstatat() {
         check_stat_fields(stat);
     }
 
-    errno_check(unsafe { libc::closedir(dirstream) });
+    errno_check(unsafe { libc::close(dirfd) });
 }
 
 fn test_stat() {
@@ -1075,6 +1212,34 @@ fn test_isatty() {
         drop(file);
         remove_file(&path).unwrap();
     }
+}
+
+fn test_getfl() {
+    let path = utils::prepare_with_content("miri-test-getfl.txt", b"hello");
+    let cpath = utils::into_c_string(&path);
+
+    for flag in [libc::O_RDONLY, libc::O_WRONLY, libc::O_RDWR] {
+        let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), flag) }).unwrap();
+        // These flags contain "junk" that the kernel adds, such as a O_LARGEFILE flag, even on
+        // x86-64 where glibc sets O_LARGEFILE to 0 (but the kernel still says it is 0x8000).
+        // So we do not check the full flag, just the access mode.
+        assert_eq!(
+            errno_result(unsafe { libc::fcntl(fd, libc::F_GETFL) }).unwrap() & libc::O_ACCMODE,
+            flag
+        );
+        errno_check(unsafe { libc::close(fd) });
+    }
+
+    // Also test it on a directory.
+    let fd = errno_result(unsafe {
+        libc::open(utils::into_c_string(path.parent().unwrap()).as_ptr(), libc::O_RDONLY)
+    })
+    .unwrap();
+    assert_eq!(
+        errno_result(unsafe { libc::fcntl(fd, libc::F_GETFL) }).unwrap() & libc::O_ACCMODE,
+        libc::O_RDONLY
+    );
+    errno_check(unsafe { libc::close(fd) });
 }
 
 fn test_read_and_uninit() {
@@ -1219,9 +1384,22 @@ fn test_dirfd() {
     // Check that all fields are initialized.
     check_stat_fields(stat);
 
+    // We can also call fstatat on this.
+    let mut stat = MaybeUninit::<libc::stat>::uninit();
+    let err =
+        errno_result(unsafe { libc::fstatat(dirfd, c"missing".as_ptr(), stat.as_mut_ptr(), 0) })
+            .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
+    errno_check(unsafe { libc::fstatat(dirfd, c".".as_ptr(), stat.as_mut_ptr(), 0) });
+    let stat = unsafe { stat.assume_init_ref() };
+    assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFDIR);
+    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+    check_stat_fields(stat);
+
+    // Close the stream.
     errno_check(unsafe { libc::closedir(dir) });
 
-    // `closedir` should also have closed the stream.
+    // `closedir` should also have closed the underlying FD.
     let err = errno_result(unsafe { libc::close(dirfd) }).unwrap_err();
     assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
 }

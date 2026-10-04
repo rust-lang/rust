@@ -3,6 +3,7 @@
 
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
+#![feature(dirfd)]
 #![cfg_attr(unix, feature(unix_file_vectored_at))]
 #![allow(unused_features)] // feature use depends on target
 
@@ -60,6 +61,8 @@ fn main() {
         test_pread_pwrite();
         #[cfg(all(unix, not(target_os = "solaris")))]
         test_preadv_pwritev();
+
+        test_directory_handle();
     }
 }
 
@@ -93,9 +96,12 @@ fn test_file() {
 
     assert!(!file.is_terminal());
 
-    // Writing to a file opened for reading should error (and not stop interpretation). std does not
-    // categorize the error so we don't check for details.
-    file.write(&[0]).unwrap_err();
+    // Writing to a file opened for reading should error (and not stop interpretation). This
+    // produces EBADF on Unix but std does not categorize the error so we don't check for details.
+    let err = file.write(&[0]).unwrap_err();
+    if cfg!(windows) {
+        assert_eq!(err.kind(), ErrorKind::PermissionDenied);
+    }
     // However, writing 0 bytes can succeed or fail.
     let _ignore = file.write(&[]);
 
@@ -104,6 +110,26 @@ fn test_file() {
 
     // Removing file should succeed.
     remove_file(&path).unwrap();
+
+    // Opening a directory as a file has target-specific behavior.
+    let res = File::open(&path.parent().unwrap());
+    if cfg!(unix) {
+        // On Unix this just works.
+        let mut file = res.unwrap();
+        // But reading errors.
+        let err = file.read(&mut [0u8; 32]).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::IsADirectory);
+    } else {
+        // On Windows, it errors.
+        assert_eq!(res.unwrap_err().kind(), ErrorKind::PermissionDenied);
+    }
+    // Opening for writing has a target-specific error.
+    let err = OpenOptions::new().write(true).open(&path.parent().unwrap()).unwrap_err();
+    if cfg!(unix) {
+        assert_eq!(err.kind(), ErrorKind::IsADirectory);
+    } else {
+        assert_eq!(err.kind(), ErrorKind::PermissionDenied);
+    }
 }
 
 fn test_file_partial_reads_writes() {
@@ -618,4 +644,21 @@ fn test_hard_link() {
     // Cleanup after test
     remove_file(&source).unwrap();
     remove_file(&link).unwrap();
+}
+
+fn test_directory_handle() {
+    let filename = utils::prepare_with_content("miri_test_directory_handle.txt", b"hello");
+    assert!(filename.is_absolute());
+    let dir = fs::Dir::open(filename.parent().unwrap()).unwrap();
+    assert!(dir.self_metadata().unwrap().is_dir());
+
+    let stat = dir.metadata(filename.file_name().unwrap()).unwrap();
+    assert!(stat.is_file());
+    assert!(stat.len() == 5);
+    let stat = dir.metadata(&filename).unwrap(); // absolute path
+    assert!(stat.is_file());
+    assert!(stat.len() == 5);
+
+    let err = fs::Dir::open(filename).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::NotADirectory);
 }

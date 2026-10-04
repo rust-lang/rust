@@ -202,8 +202,8 @@ const WINDOWS_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
     &[
         ("WSAEADDRINUSE", AddrInUse),
         ("WSAEADDRNOTAVAIL", AddrNotAvailable),
-        ("ERROR_ALREADY_EXISTS", AlreadyExists),
         ("ERROR_FILE_EXISTS", AlreadyExists),
+        ("ERROR_ALREADY_EXISTS", AlreadyExists),
         ("ERROR_NO_DATA", BrokenPipe),
         ("WSAECONNABORTED", ConnectionAborted),
         ("WSAECONNREFUSED", ConnectionRefused),
