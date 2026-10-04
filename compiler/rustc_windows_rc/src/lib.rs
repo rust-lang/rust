@@ -37,7 +37,7 @@ pub fn compile_windows_resource_file(
         path.into()
     } else {
         find_msvc_tools::find_tool(&env::var("CARGO_CFG_TARGET_ARCH").unwrap(), "rc.exe")
-            .expect("found rc.exe")
+            .expect("couldn't find `rc.exe`")
             .path()
             .to_owned()
     };
@@ -54,10 +54,10 @@ pub fn compile_windows_resource_file(
         .arg(&rc_path)
         .status()
         .expect("can execute resource compiler");
-    assert!(status.success(), "rc.exe failed with status {}", status);
+    assert!(status.success(), "`rc.exe` failed with status {}", status);
     assert!(
         res_path.try_exists().unwrap_or(false),
-        "resource file {} was not created",
+        "resource file `{}` was not created",
         res_path.display()
     );
     res_path
@@ -95,7 +95,7 @@ fn write_resource_script_file(
         .replace("@RUSTC_PRODUCTVERSION_STR@", &descriptive_version);
 
     fs::write(&rc_path, resource_script)
-        .unwrap_or_else(|_| panic!("failed to write resource file {}", rc_path.display()));
+        .unwrap_or_else(|_| panic!("failed to write resource file `{}`", rc_path.display()));
 }
 
 fn product_name(channel: String) -> String {
