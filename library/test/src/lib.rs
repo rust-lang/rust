@@ -616,10 +616,11 @@ pub fn run_test(
 ) -> Option<thread::JoinHandle<()>> {
     let TestDescAndFn { desc, testfn } = test;
 
-    // Emscripten can catch panics but other wasm targets cannot
+    // Emscripten can catch panics, and test for `panic=unwind` on other wasm
+    // targets to see if they can catch panics.
     let ignore_because_no_process_support = desc.should_panic != ShouldPanic::No
         && (cfg!(target_family = "wasm") || cfg!(target_os = "zkvm"))
-        && !cfg!(target_os = "emscripten");
+        && !(cfg!(target_os = "emscripten") || cfg!(panic = "unwind"));
 
     if force_ignore || desc.ignore || ignore_because_no_process_support {
         let message = CompletedTest::new(id, desc, TrIgnored, None, Vec::new());
