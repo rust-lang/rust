@@ -358,6 +358,48 @@ struct VariantLayoutInfo {
     align_abi: Align,
 }
 
+fn try_fixup_non_niche_variants<VariantIdx: Idx, FieldIdx: Idx>(
+    mut variant_layouts: IndexVec<VariantIdx, VariantLayout<FieldIdx>>,
+    variants_info: &IndexSlice<VariantIdx, VariantLayoutInfo>,
+    largest_variant_index: VariantIdx,
+    niche_offset: Size,
+    niche_size: Size,
+    size: Size,
+) -> Option<IndexVec<VariantIdx, VariantLayout<FieldIdx>>> {
+    for (i, layout) in variant_layouts.iter_enumerated_mut() {
+        if i == largest_variant_index {
+            continue;
+        }
+
+        layout.largest_niche = None;
+
+        if layout.size <= niche_offset {
+            // This variant will fit before the niche.
+            continue;
+        }
+
+        // Determine if it'll fit after the niche.
+        let this_align = variants_info[i].align_abi;
+        let this_offset = (niche_offset + niche_size).align_to(this_align);
+
+        if this_offset + layout.size > size {
+            return None;
+        }
+
+        // It'll fit, but we need to make some adjustments.
+        for offset in layout.field_offsets.iter_mut() {
+            *offset += this_offset;
+        }
+
+        // It can't be a Scalar or ScalarPair because the offset isn't 0.
+        if !layout.is_uninhabited() {
+            layout.backend_repr = BackendRepr::Memory { sized: true };
+        }
+        layout.size += this_offset;
+    }
+    Some(variant_layouts)
+}
+
 fn calculate_niche_abi<FieldIdx: Idx, VariantIdx: Idx>(
     variant_layouts: &IndexSlice<VariantIdx, VariantLayout<FieldIdx>>,
     variants_info: &IndexSlice<VariantIdx, VariantLayoutInfo>,
@@ -421,7 +463,7 @@ where
     let mut combined_seed = repr.field_shuffle_seed;
 
     let mut variants_info = IndexVec::<VariantIdx, _>::with_capacity(variants.len());
-    let mut variant_layouts = variants
+    let variant_layouts = variants
         .iter()
         .map(|v| {
             let st = calculator.layout_of_univariant(v, repr, StructKind::AlwaysSized).ok()?;
@@ -459,43 +501,14 @@ where
     let niche_size = niche.value.size(dl);
     let size = variant_layouts[largest_variant_index].size.align_to(align);
 
-    let all_variants_fit = variant_layouts.iter_enumerated_mut().all(|(i, layout)| {
-        if i == largest_variant_index {
-            return true;
-        }
-
-        layout.largest_niche = None;
-
-        if layout.size <= niche_offset {
-            // This variant will fit before the niche.
-            return true;
-        }
-
-        // Determine if it'll fit after the niche.
-        let this_align = variants_info[i].align_abi;
-        let this_offset = (niche_offset + niche_size).align_to(this_align);
-
-        if this_offset + layout.size > size {
-            return false;
-        }
-
-        // It'll fit, but we need to make some adjustments.
-        for offset in layout.field_offsets.iter_mut() {
-            *offset += this_offset;
-        }
-
-        // It can't be a Scalar or ScalarPair because the offset isn't 0.
-        if !layout.is_uninhabited() {
-            layout.backend_repr = BackendRepr::Memory { sized: true };
-        }
-        layout.size += this_offset;
-
-        true
-    });
-
-    if !all_variants_fit {
-        return None;
-    }
+    let variant_layouts = try_fixup_non_niche_variants(
+        variant_layouts,
+        &variants_info,
+        largest_variant_index,
+        niche_offset,
+        niche_size,
+        size,
+    )?;
 
     let largest_niche = Niche::from_scalar(dl, niche_offset, niche_scalar);
     let uninhabited = variant_layouts.iter().all(|v| v.is_uninhabited());
