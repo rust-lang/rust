@@ -9,6 +9,7 @@ LL |         f(cx);
 note: a field by that name exists in `Self`
   --> $DIR/unresolved_static_type_field.rs:4:5
    |
+LL | struct Foo {
 LL |     cx: bool,
    |     ^^
 

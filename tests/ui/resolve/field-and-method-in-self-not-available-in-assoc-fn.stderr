@@ -12,6 +12,7 @@ LL |         field;
 note: a field by that name exists in `Self`
   --> $DIR/field-and-method-in-self-not-available-in-assoc-fn.rs:2:5
    |
+LL | struct Foo {
 LL |     field: u32,
    |     ^^^^^
 
@@ -30,6 +31,7 @@ LL |         Foo { field }
 note: a field by that name exists in `Self`
   --> $DIR/field-and-method-in-self-not-available-in-assoc-fn.rs:2:5
    |
+LL | struct Foo {
 LL |     field: u32,
    |     ^^^^^
 

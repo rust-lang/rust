@@ -1143,8 +1143,19 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 // Show the current assoc item.
                                 err.span_context(item.span.shrink_to_lo());
                             }
-                            // FIXME(estebank): we should add span_context for the field's item.
-                            err.span_note(def_span, "a field by that name exists in `Self`");
+                            let mut span: MultiSpan = def_span.into();
+                            if let Some(ty) = self.diag_metadata.current_self_type
+                                && let Some(res) = self.r.partial_res_map.get(&ty.id)
+                                && let Some(res) = res.full_res()
+                                && let Res::Def(
+                                    DefKind::Struct | DefKind::Union | DefKind::Enum,
+                                    def_id,
+                                ) = res
+                            {
+                                span.push_span_context(self.r.def_span(def_id).shrink_to_lo());
+                            }
+
+                            err.span_note(span, "a field by that name exists in `Self`");
                         }
                     }
                     AssocSuggestion::MethodWithSelf { .. }
