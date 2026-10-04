@@ -13,10 +13,10 @@
 //@[with-doc-scope] compile-flags: --remap-path-prefix={{src-base}}=remapped
 //@[without-scopes] compile-flags: --remap-path-prefix={{src-base}}=remapped
 
-//@[with-diag-scope] compile-flags: -Zunstable-options --remap-path-scope=diagnostics
-//@[with-macro-scope] compile-flags: -Zunstable-options --remap-path-scope=macro
-//@[with-debuginfo-scope] compile-flags: -Zunstable-options --remap-path-scope=debuginfo
-//@[with-doc-scope] compile-flags: -Zunstable-options --remap-path-scope=documentation
+//@[with-diag-scope] compile-flags: --remap-path-scope=diagnostics
+//@[with-macro-scope] compile-flags: --remap-path-scope=macro
+//@[with-debuginfo-scope] compile-flags: --remap-path-scope=debuginfo
+//@[with-doc-scope] compile-flags: --remap-path-scope=documentation
 
 compile_error!(concat!("file!() = ", file!()));
 //[with-macro-scope]~^ ERROR file!()

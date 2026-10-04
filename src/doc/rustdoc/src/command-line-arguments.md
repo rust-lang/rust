@@ -195,6 +195,19 @@ It permits remapping (as a best effort) source path prefixes in all output, incl
 debug information, macro expansions, generated documentation, etc. It takes a value of the
 form `FROM=TO` where a path prefix equal to `FROM` is rewritten to the value `TO`.
 
+## `--remap-path-scope`: Scopes to which the source remapping should be done
+
+This flag is the equivalent flag from `rustc` `--remap-path-scope`.
+
+Defines which scopes of paths should be remapped by --remap-path-prefix.
+
+### `documentation` scope
+
+`rustdoc` (and by extension `rustc`) have a special `documentation` remapping scope, it
+permits remapping source paths that ends up in the generated documentation.
+
+It can specified with `--remap-path-scope=documentation`.
+
 ## `--test`: run code examples as tests
 
 Using this flag looks like this:
