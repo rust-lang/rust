@@ -41,7 +41,7 @@ fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
         StorageLive(_3);
         StorageLive(_5);
         _3 = discriminant(_4);
-        _5 = Eq(copy _3, const 0_isize);
+        _5 = Eq(const 0_isize, copy _3);
         assume(move _5);
         _0 = const Option::<i32>::None;
         StorageDead(_5);
@@ -58,7 +58,7 @@ fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
         StorageDead(_6);
         StorageDead(_2);
         _8 = copy ((_7 as Continue).0: i32);
-        _9 = Add(copy _8, const 1_i32);
+        _9 = Add(const 1_i32, copy _8);
         _0 = Option::<i32>::Some(move _9);
         StorageDead(_9);
         StorageDead(_7);

@@ -430,7 +430,7 @@
       }
   
       bb22: {
-          _7 = Eq(move _46, const 0_i32);
+          _7 = Eq(const 0_i32, move _46);
           StorageDead(_46);
           StorageDead(_43);
           StorageDead(_42);
@@ -472,7 +472,7 @@
       }
   
       bb26: {
-          _14 = Eq(move _66, const 0_i32);
+          _14 = Eq(const 0_i32, move _66);
           StorageDead(_66);
           StorageDead(_63);
           StorageDead(_62);

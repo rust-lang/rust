@@ -26,7 +26,7 @@ fn direct(_1: Option<std::cmp::Ordering>) -> bool {
     bb2: {
         StorageLive(_3);
         _3 = discriminant(((_1 as Some).0: std::cmp::Ordering));
-        _0 = Eq(move _3, const 0_i8);
+        _0 = Eq(const 0_i8, move _3);
         StorageDead(_3);
         goto -> bb3;
     }

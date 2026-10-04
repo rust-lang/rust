@@ -13,7 +13,7 @@
   
       bb1: {
           _2 = copy _1 as u32 (IntToInt);
-          _3 = Eq(copy _2, const 42_u32);
+          _3 = Eq(const 42_u32, copy _2);
           StorageDead(_2);
           StorageLive(_2);
           switchInt(move _3) -> [1: bb1, otherwise: bb2];

@@ -62,7 +62,7 @@
           StorageLive(_10);
           StorageLive(_12);
           _10 = discriminant(_4);
-          _12 = Eq(copy _10, const 1_isize);
+          _12 = Eq(const 1_isize, copy _10);
           assume(move _12);
           StorageLive(_11);
           _11 = copy ((_4 as Err).0: i32);

@@ -26,7 +26,7 @@
           StorageLive(_5);
           _5 = copy _2;
 -         _4 = Add(move _5, const 1_usize);
-+         _4 = Add(copy _2, const 1_usize);
++         _4 = Add(const 1_usize, copy _2);
           StorageDead(_5);
           StorageLive(_6);
           _6 = copy _4;

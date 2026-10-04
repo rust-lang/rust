@@ -102,7 +102,7 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
         _8 = copy ((*_1).1: *mut T);
         _9 = copy _8 as usize (Transmute);
         StorageDead(_8);
-        _7 = Eq(copy _9, const 0_usize);
+        _7 = Eq(const 0_usize, copy _9);
         StorageDead(_9);
         goto -> bb3;
     }

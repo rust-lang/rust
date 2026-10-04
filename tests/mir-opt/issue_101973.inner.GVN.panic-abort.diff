@@ -31,11 +31,11 @@
           StorageLive(_5);
           _5 = copy _1;
 -         StorageLive(_14);
--         _14 = BitAnd(copy _5, const 255_u32);
+-         _14 = BitAnd(const 255_u32, copy _5);
 -         _4 = BitOr(const 0_u32, move _14);
 -         StorageDead(_14);
 +         nop;
-+         _14 = BitAnd(copy _1, const 255_u32);
++         _14 = BitAnd(const 255_u32, copy _1);
 +         _4 = copy _14;
 +         nop;
           StorageDead(_5);
@@ -56,7 +56,8 @@
 -         _8 = Shr(move _9, const 8_i32);
 +         _8 = Shr(copy _1, const 8_i32);
           StorageDead(_9);
-          _7 = BitAnd(move _8, const 15_u32);
+-         _7 = BitAnd(move _8, const 15_u32);
++         _7 = BitAnd(const 15_u32, move _8);
           StorageDead(_8);
 -         _12 = const 1_i32 as u32 (IntToInt);
 -         _13 = Lt(move _12, const 32_u32);

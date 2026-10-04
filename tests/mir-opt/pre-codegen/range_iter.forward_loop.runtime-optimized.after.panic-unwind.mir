@@ -66,7 +66,7 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     bb4: {
         StorageLive(_6);
         _6 = copy _1;
-        _1 = AddUnchecked(copy _6, const 1_u32);
+        _1 = AddUnchecked(const 1_u32, copy _6);
         _7 = Option::<u32>::Some(copy _6);
         StorageDead(_6);
         StorageDead(_5);

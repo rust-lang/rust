@@ -116,12 +116,12 @@
 + 
 +     bb3: {
 +         _15 = &raw mut (*_13)[_14];
-+         _14 = Add(move _14, const 1_usize);
++         _14 = Add(const 1_usize, move _14);
 +         drop((*_15)) -> [return: bb4, unwind unreachable];
 +     }
 + 
 +     bb4: {
-+         _16 = Eq(copy _14, copy _11);
++         _16 = Eq(copy _11, copy _14);
 +         switchInt(move _16) -> [0: bb3, otherwise: bb2];
 +     }
 + 

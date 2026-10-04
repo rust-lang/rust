@@ -257,7 +257,7 @@
           _19 = copy _2;
 -         _20 = Eq(copy _19, const 0_u64);
 -         assert(!move _20, "attempt to divide `{}` by zero", copy _18) -> [success: bb4, unwind unreachable];
-+         _20 = Eq(copy _2, const 0_u64);
++         _20 = Eq(const 0_u64, copy _2);
 +         assert(!copy _20, "attempt to divide `{}` by zero", copy _1) -> [success: bb4, unwind unreachable];
       }
   
@@ -766,7 +766,7 @@
           StorageLive(_130);
           _130 = copy _1;
 -         _128 = Add(move _129, move _130);
-+         _128 = Add(copy _129, copy _1);
++         _128 = Add(copy _1, copy _129);
           StorageDead(_130);
 -         StorageDead(_129);
 -         _127 = opaque::<u64>(move _128) -> [return: bb35, unwind unreachable];
@@ -805,7 +805,7 @@
           StorageLive(_139);
           _139 = copy _1;
 -         _137 = Add(move _138, move _139);
-+         _137 = Add(move _138, copy _1);
++         _137 = Add(copy _1, move _138);
           StorageDead(_139);
           StorageDead(_138);
           _136 = opaque::<u64>(move _137) -> [return: bb37, unwind unreachable];
@@ -821,7 +821,7 @@
           StorageLive(_143);
           _143 = copy _1;
 -         _141 = Add(move _142, move _143);
-+         _141 = Add(move _142, copy _1);
++         _141 = Add(copy _1, move _142);
           StorageDead(_143);
           StorageDead(_142);
           _140 = opaque::<u64>(move _141) -> [return: bb38, unwind unreachable];
@@ -840,7 +840,7 @@
           StorageLive(_149);
           _149 = copy _1;
 -         _147 = Add(move _148, move _149);
-+         _147 = Add(move _148, copy _1);
++         _147 = Add(copy _1, move _148);
           StorageDead(_149);
           StorageDead(_148);
           _146 = opaque::<u64>(move _147) -> [return: bb39, unwind unreachable];
@@ -856,7 +856,7 @@
           StorageLive(_153);
           _153 = copy _1;
 -         _151 = Add(move _152, move _153);
-+         _151 = Add(move _152, copy _1);
++         _151 = Add(copy _1, move _152);
           StorageDead(_153);
           StorageDead(_152);
           _150 = opaque::<u64>(move _151) -> [return: bb40, unwind unreachable];
@@ -874,7 +874,7 @@
           StorageLive(_158);
           _158 = copy _1;
 -         _156 = Add(move _157, move _158);
-+         _156 = Add(move _157, copy _1);
++         _156 = Add(copy _1, move _157);
           StorageDead(_158);
           StorageDead(_157);
           _155 = opaque::<u64>(move _156) -> [return: bb41, unwind unreachable];
@@ -890,7 +890,7 @@
           StorageLive(_162);
           _162 = copy _1;
 -         _160 = Add(move _161, move _162);
-+         _160 = Add(move _161, copy _1);
++         _160 = Add(copy _1, move _161);
           StorageDead(_162);
           StorageDead(_161);
           _159 = opaque::<u64>(move _160) -> [return: bb42, unwind unreachable];
@@ -914,7 +914,7 @@
           StorageLive(_167);
           _167 = copy _1;
 -         _165 = Add(move _166, move _167);
-+         _165 = Add(copy _166, copy _1);
++         _165 = Add(copy _1, copy _166);
           StorageDead(_167);
 -         StorageDead(_166);
 -         _164 = opaque::<u64>(move _165) -> [return: bb43, unwind unreachable];

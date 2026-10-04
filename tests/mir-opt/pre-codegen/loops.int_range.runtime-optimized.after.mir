@@ -82,7 +82,7 @@ fn int_range(_1: usize, _2: usize) -> () {
         StorageLive(_7);
         _7 = copy (_3.0: usize);
         StorageLive(_8);
-        _8 = AddUnchecked(copy _7, const 1_usize);
+        _8 = AddUnchecked(const 1_usize, copy _7);
         (_3.0: usize) = move _8;
         StorageDead(_8);
         _9 = Option::<usize>::Some(copy _7);
