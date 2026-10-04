@@ -63,29 +63,29 @@ impl DocFolder for StabilityPropagator<'_, '_> {
                 };
 
                 let kind = match &item.kind {
-                    ItemKind::StrippedItem(kind) => kind,
+                    ItemKind::Stripped(kind) => kind,
                     kind => kind,
                 };
                 match kind {
-                    ItemKind::ExternCrateItem { .. }
-                    | ItemKind::ImportItem(..)
-                    | ItemKind::StructItem(..)
-                    | ItemKind::UnionItem(..)
-                    | ItemKind::EnumItem(..)
-                    | ItemKind::FunctionItem(..)
-                    | ItemKind::ModuleItem(..)
-                    | ItemKind::TypeAliasItem(..)
-                    | ItemKind::StaticItem(..)
-                    | ItemKind::TraitItem(..)
-                    | ItemKind::TraitAliasItem(..)
-                    | ItemKind::StructFieldItem(..)
-                    | ItemKind::VariantItem(..)
-                    | ItemKind::ForeignFunctionItem(..)
-                    | ItemKind::ForeignStaticItem(..)
-                    | ItemKind::ForeignTypeItem
-                    | ItemKind::MacroItem(..)
-                    | ItemKind::ProcMacroItem(..)
-                    | ItemKind::ConstantItem(..) => {
+                    ItemKind::ExternCrate { .. }
+                    | ItemKind::Import(..)
+                    | ItemKind::Struct(..)
+                    | ItemKind::Union(..)
+                    | ItemKind::Enum(..)
+                    | ItemKind::Fn(..)
+                    | ItemKind::Module(..)
+                    | ItemKind::TyAlias(..)
+                    | ItemKind::Static(..)
+                    | ItemKind::Trait(..)
+                    | ItemKind::TraitAlias(..)
+                    | ItemKind::StructField(..)
+                    | ItemKind::Variant(..)
+                    | ItemKind::ForeignFn(..)
+                    | ItemKind::ForeignStatic(..)
+                    | ItemKind::ForeignTy
+                    | ItemKind::DeclMacro(..)
+                    | ItemKind::ProcMacro(..)
+                    | ItemKind::Const(..) => {
                         // If any of the item's parents was stabilized later or is still unstable,
                         // then use the parent's stability instead.
                         merge_stability(own_stability, parent_stability)
@@ -93,20 +93,16 @@ impl DocFolder for StabilityPropagator<'_, '_> {
 
                     // Don't inherit the parent's stability for these items, because they
                     // are potentially accessible even if the parent is more unstable.
-                    ItemKind::ImplItem(..)
-                    | ItemKind::RequiredMethodItem(..)
-                    | ItemKind::MethodItem(..)
-                    | ItemKind::RequiredAssocConstItem(..)
-                    | ItemKind::ProvidedAssocConstItem(..)
-                    | ItemKind::ImplAssocConstItem(..)
-                    | ItemKind::RequiredAssocTypeItem(..)
-                    | ItemKind::AssocTypeItem(..)
-                    | ItemKind::PrimitiveItem(..)
-                    | ItemKind::KeywordItem
-                    | ItemKind::AttributeItem
-                    | ItemKind::PlaceholderImplItem => own_stability,
+                    ItemKind::Impl(..)
+                    | ItemKind::AssocFn(..)
+                    | ItemKind::AssocConst(..)
+                    | ItemKind::AssocTy(..)
+                    | ItemKind::Primitive(..)
+                    | ItemKind::Keyword
+                    | ItemKind::Attribute
+                    | ItemKind::PlaceholderImpl => own_stability,
 
-                    ItemKind::StrippedItem(..) => unreachable!(),
+                    ItemKind::Stripped(..) => unreachable!(),
                 }
             }
             ItemId::Auto { .. } | ItemId::Blanket { .. } => {

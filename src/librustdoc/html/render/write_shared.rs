@@ -986,12 +986,12 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
     fn visit_item(&mut self, it: &'item Item) {
         self.visit_item_recur(it);
         let cache = &self.cx.shared.cache;
-        let ItemKind::TypeAliasItem(ref t) = it.kind else { return };
+        let ItemKind::TyAlias(ref t) = it.kind else { return };
         let Some(self_did) = it.item_id.as_def_id() else { return };
         if !self.visited_aliases.insert(self_did) {
             return;
         }
-        let Some(target_did) = t.type_.def_id(cache) else { return };
+        let Some(target_did) = t.ty.def_id(cache) else { return };
         let get_extern =
             { || cache.external_paths.get(&target_did).map(|(parts, ty)| (parts, *ty)) };
         let Some((target_fqp, target_type)) =
