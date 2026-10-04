@@ -915,7 +915,7 @@ fn test_libcore_doctests(env: &Env, args: &TestArg) -> Result<(), String> {
         // it, that doctest fails to compile with `E0658` on any backend.
         &"-Zforce-unstable-if-unmarked",
         // FIXME: one test cannot compile due to an upstream bug in the new trait solver.
-        &"-Znext-solver=coherence",
+        &"-Znext-solver=globally",
     ];
     for flag in &rustflags {
         command.push(flag);
