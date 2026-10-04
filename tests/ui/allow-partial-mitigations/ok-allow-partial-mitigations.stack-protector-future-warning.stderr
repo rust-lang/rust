@@ -1,39 +1,38 @@
-error: your program uses the crate `std`, that is not compiled with `stack-protector=all` enabled
+warning: your program uses the crate `std`, that is not compiled with `stack-protector=all` enabled
    |
    = note: recompile `std` with `stack-protector=all` enabled, or use `-Z allow-partial-mitigations=stack-protector` to allow creating an artifact that has the mitigation partially enabled
    = help: it is possible to disable `-Z allow-partial-mitigations=stack-protector` via `-Z deny-partial-mitigations=stack-protector`
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #154613 <https://github.com/rust-lang/rust/issues/154613>
-   = note: `-D partial-stack-protector` implied by `-D future-incompatible`
-   = help: to override `-D future-incompatible` add `#[allow(partial_stack_protector)]`
+   = note: `#[warn(partial_stack_protector)]` (part of `#[warn(future_incompatible)]`) on by default
 
-error: your program uses the crate `core`, that is not compiled with `stack-protector=all` enabled
+warning: your program uses the crate `core`, that is not compiled with `stack-protector=all` enabled
    |
    = note: recompile `core` with `stack-protector=all` enabled, or use `-Z allow-partial-mitigations=stack-protector` to allow creating an artifact that has the mitigation partially enabled
    = help: it is possible to disable `-Z allow-partial-mitigations=stack-protector` via `-Z deny-partial-mitigations=stack-protector`
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #154613 <https://github.com/rust-lang/rust/issues/154613>
 
-error: your program uses the crate `alloc`, that is not compiled with `stack-protector=all` enabled
+warning: your program uses the crate `alloc`, that is not compiled with `stack-protector=all` enabled
    |
    = note: recompile `alloc` with `stack-protector=all` enabled, or use `-Z allow-partial-mitigations=stack-protector` to allow creating an artifact that has the mitigation partially enabled
    = help: it is possible to disable `-Z allow-partial-mitigations=stack-protector` via `-Z deny-partial-mitigations=stack-protector`
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #154613 <https://github.com/rust-lang/rust/issues/154613>
 
-error: your program uses the crate `compiler_builtins`, that is not compiled with `stack-protector=all` enabled
+warning: your program uses the crate `compiler_builtins`, that is not compiled with `stack-protector=all` enabled
    |
    = note: recompile `compiler_builtins` with `stack-protector=all` enabled, or use `-Z allow-partial-mitigations=stack-protector` to allow creating an artifact that has the mitigation partially enabled
    = help: it is possible to disable `-Z allow-partial-mitigations=stack-protector` via `-Z deny-partial-mitigations=stack-protector`
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #154613 <https://github.com/rust-lang/rust/issues/154613>
 
-error: your program uses the crate `unwind/libc`, that is not compiled with `stack-protector=all` enabled
+warning: your program uses the crate `unwind/libc`, that is not compiled with `stack-protector=all` enabled
    |
    = note: recompile `unwind/libc` with `stack-protector=all` enabled, or use `-Z allow-partial-mitigations=stack-protector` to allow creating an artifact that has the mitigation partially enabled
    = help: it is possible to disable `-Z allow-partial-mitigations=stack-protector` via `-Z deny-partial-mitigations=stack-protector`
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #154613 <https://github.com/rust-lang/rust/issues/154613>
 
-error: aborting due to 5 previous errors
+warning: 5 warnings emitted
 
