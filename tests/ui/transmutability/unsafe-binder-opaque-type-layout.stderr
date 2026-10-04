@@ -1,11 +1,20 @@
-error[E0277]: the trait bound `OpaqueType::{opaque#0}: Copy` is not satisfied
-  --> $DIR/unsafe-binder-opaque-type-layout.rs:9:19
+error[E0277]: the trait bound `OpaqueType::{opaque#0}: Copy` is not satisfied in `OpaqueType::{opaque#0}`
+  --> $DIR/unsafe-binder-opaque-type-layout.rs:12:19
    |
 LL | type OpaqueType = unsafe<> impl OpaqueTrait;
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `OpaqueType::{opaque#0}`
+   |                   ^^^^^^^^^----------------
+   |                   |        |
+   |                   |        within this `OpaqueType::{opaque#0}`
+   |                   within `OpaqueType::{opaque#0}`, the trait `Copy` is not implemented for `OpaqueType::{opaque#0}`
+   |
+note: required because it appears within the type `OpaqueType::{opaque#0}`
+  --> $DIR/unsafe-binder-opaque-type-layout.rs:12:28
+   |
+LL | type OpaqueType = unsafe<> impl OpaqueTrait;
+   |                            ^^^^^^^^^^^^^^^^
 
 error[E0119]: conflicting implementations of trait `AnotherTrait` for type `unsafe<> _`
-  --> $DIR/unsafe-binder-opaque-type-layout.rs:14:1
+  --> $DIR/unsafe-binder-opaque-type-layout.rs:17:1
    |
 LL | impl<T: std::mem::TransmuteFrom<()>> AnotherTrait for T {}
    | ------------------------------------------------------- first implementation here
@@ -13,7 +22,7 @@ LL | impl AnotherTrait for OpaqueType {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `unsafe<> _`
 
 error: unconstrained opaque type
-  --> $DIR/unsafe-binder-opaque-type-layout.rs:9:28
+  --> $DIR/unsafe-binder-opaque-type-layout.rs:12:28
    |
 LL | type OpaqueType = unsafe<> impl OpaqueTrait;
    |                            ^^^^^^^^^^^^^^^^

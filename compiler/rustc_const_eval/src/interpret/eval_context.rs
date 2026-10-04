@@ -508,6 +508,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             ty::Foreign(_) => interp_ok(None),
 
+            ty::UnsafeBinder(inner) => self.size_and_align_from_meta(
+                metadata,
+                &TyAndLayout { layout: layout.layout, ty: inner.skip_binder() },
+            ),
+
             _ => span_bug!(self.cur_span(), "size_and_align_of::<{}> not supported", layout.ty),
         }
     }

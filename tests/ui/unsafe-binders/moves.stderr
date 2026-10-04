@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `base`
-  --> $DIR/moves.rs:14:14
+  --> $DIR/moves.rs:15:14
    |
 LL |         let base = NotCopy::default();
    |             ---- move occurs because `base` has type `ManuallyDrop<NotCopyInner>`, which does not implement the `Copy` trait
@@ -9,7 +9,7 @@ LL |         drop(base);
    |              ^^^^ value used here after move
    |
 note: if `NotCopyInner` implemented `Clone`, you could clone the value
-  --> $DIR/moves.rs:7:1
+  --> $DIR/moves.rs:8:1
    |
 LL | struct NotCopyInner;
    | ^^^^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
@@ -18,7 +18,7 @@ LL |         let binder: unsafe<> NotCopy = wrap_binder!(base);
    |                                                     ---- you could clone this value
 
 error[E0382]: use of moved value: `binder`
-  --> $DIR/moves.rs:23:14
+  --> $DIR/moves.rs:24:14
    |
 LL |         drop(unwrap_binder!(binder));
    |              ---------------------- value moved here
@@ -28,7 +28,7 @@ LL |         drop(unwrap_binder!(binder));
    = note: move occurs because `binder` has type `ManuallyDrop<NotCopyInner>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `binder.0`
-  --> $DIR/moves.rs:35:14
+  --> $DIR/moves.rs:36:14
    |
 LL |         drop(unwrap_binder!(binder).0);
    |              ------------------------ value moved here

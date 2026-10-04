@@ -280,12 +280,21 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     fn wrap_binder<T, F: FnOnce(&T, &mut Self) -> Result<(), fmt::Error>>(
         &mut self,
         value: &ty::Binder<'tcx, T>,
-        _mode: WrapBinderMode,
+        mode: WrapBinderMode,
         f: F,
     ) -> Result<(), PrintError>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
+        // The lifetimes on the unsafe binder are important for the identity of
+        // the type, and are not *implied* without an `unsafe<>` wrapper.
+        // We don't have state here, so we can't really do anything but print
+        // `unsafe<>` to ensure that it's clear that lifetimes are ambiguous
+        // here.
+        if mode == WrapBinderMode::Unsafe {
+            write!(self, "{}", mode.start_str())?;
+            write!(self, "> ")?;
+        }
         f(value.as_ref().skip_binder(), self)
     }
 

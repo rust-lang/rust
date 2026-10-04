@@ -4095,6 +4095,15 @@ pub(crate) struct UnknownBuiltinConstruct {
 }
 
 #[derive(Diagnostic)]
+#[diag("the type ascription argument of `{$macro_name}!` is not supported yet")]
+#[help("annotate the type of the unsafe binder elsewhere, for example on a `let` binding")]
+pub(crate) struct UnsafeBinderAscription {
+    #[primary_span]
+    pub span: Span,
+    pub macro_name: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag("expected identifier after `builtin #`")]
 pub(crate) struct ExpectedBuiltinIdent {
     #[primary_span]

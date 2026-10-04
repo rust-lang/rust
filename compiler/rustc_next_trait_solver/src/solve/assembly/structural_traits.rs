@@ -765,12 +765,12 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
 pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
     cx: I,
     self_ty: I::Ty,
-) -> Result<Vec<ty::TraitRef<I>>, NoSolution> {
+) -> Result<ty::Binder<I, Vec<ty::TraitRef<I>>>, NoSolution> {
     let destruct_def_id = cx.require_trait_lang_item(SolverTraitLangItem::Destruct);
 
     match self_ty.kind() {
         // `ManuallyDrop` is trivially `[const] Destruct` as we do not run any drop glue on it.
-        ty::Adt(adt_def, _) if adt_def.is_manually_drop() => Ok(vec![]),
+        ty::Adt(adt_def, _) if adt_def.is_manually_drop() => Ok(ty::Binder::dummy(vec![])),
 
         // An ADT is `[const] Destruct` only if all of the fields are,
         // *and* if there is a `Drop` impl, that `Drop` impl is also `[const]`.
@@ -793,17 +793,16 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
                 // No `Drop` impl, no need to require anything else.
                 None => {}
             }
-            Ok(const_conditions)
+            Ok(ty::Binder::dummy(const_conditions))
         }
 
         ty::Array(ty, _) | ty::Pat(ty, _) | ty::Slice(ty) => {
-            Ok(vec![ty::TraitRef::new(cx, destruct_def_id, [ty])])
+            Ok(ty::Binder::dummy(vec![ty::TraitRef::new(cx, destruct_def_id, [ty])]))
         }
 
-        ty::Tuple(tys) => Ok(tys
-            .iter()
-            .map(|field_ty| ty::TraitRef::new(cx, destruct_def_id, [field_ty]))
-            .collect()),
+        ty::Tuple(tys) => Ok(ty::Binder::dummy(
+            tys.iter().map(|field_ty| ty::TraitRef::new(cx, destruct_def_id, [field_ty])).collect(),
+        )),
 
         // Trivially implement `[const] Destruct`
         ty::Bool
@@ -818,12 +817,16 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
         | ty::FnPtr(..)
         | ty::Never
         | ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
-        | ty::Error(_) => Ok(vec![]),
+        | ty::Error(_) => Ok(ty::Binder::dummy(vec![])),
 
         // Closures are [const] Destruct when all of their upvars (captures) are [const] Destruct.
         ty::Closure(_, args) => {
             let closure_args = args.as_closure();
-            Ok(vec![ty::TraitRef::new(cx, destruct_def_id, [closure_args.tupled_upvars_ty()])])
+            Ok(ty::Binder::dummy(vec![ty::TraitRef::new(
+                cx,
+                destruct_def_id,
+                [closure_args.tupled_upvars_ty()],
+            )]))
         }
         // Coroutines could implement `[const] Drop`,
         // but they don't really need to right now.
@@ -831,9 +834,9 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
             Err(NoSolution)
         }
 
-        // FIXME(unsafe_binders): Unsafe binders could implement `[const] Drop`
-        // if their inner type implements it.
-        ty::UnsafeBinder(_) => Err(NoSolution),
+        ty::UnsafeBinder(bound_ty) => {
+            Ok(bound_ty.map_bound(|ty| vec![ty::TraitRef::new(cx, destruct_def_id, [ty])]))
+        }
 
         ty::Dynamic(..) | ty::Param(_) | ty::Alias(..) | ty::Placeholder(_) | ty::Foreign(_) => {
             Err(NoSolution)

@@ -1,0 +1,14 @@
+error: unnecessary `unsafe` block
+  --> $DIR/unused-unsafe.rs:16:5
+   |
+LL |     unsafe { unsafe { unwrap_binder!(b) } }
+   |     ^^^^^^ unnecessary `unsafe` block
+   |
+note: the lint level is defined here
+  --> $DIR/unused-unsafe.rs:7:9
+   |
+LL | #![deny(unused_unsafe)]
+   |         ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
