@@ -270,7 +270,7 @@ pub(crate) enum Mode {
     Path,
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub(crate) enum ProbeScope<'tcx> {
     // Single candidate coming from pre-resolved delegation method.
     Single(DefId, Option<Ty<'tcx>> /* self_ty override */),
@@ -343,17 +343,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         scope_expr_id: HirId,
         scope: ProbeScope<'tcx>,
     ) -> PickResult<'tcx> {
-        self.probe_op(
-            item_name.span,
-            mode,
-            Some(item_name),
-            return_type,
-            is_suggestion,
-            self_ty,
-            scope_expr_id,
-            scope,
-            |probe_cx| probe_cx.pick(),
-        )
+        let probe = || {
+            self.probe_op(
+                item_name.span,
+                mode,
+                Some(item_name),
+                return_type,
+                is_suggestion,
+                self_ty,
+                scope_expr_id,
+                scope,
+                |probe_cx| probe_cx.pick(),
+            )
+        };
+        match probe() {
+            // The lookup may be ambiguous because we don't know enough about `self_ty` yet, so
+            // try to find out more by applying where-bounds.
+            Err(MethodError::Ambiguity(_)) if !is_suggestion.0 => {
+                self.select_obligations_with_where_bound_guidance();
+                probe()
+            }
+            result => result,
+        }
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -410,7 +421,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         #[help("consider providing a type annotation")]
         struct MethodCallOnDivergingInferenceVariable;
 
-        let (orig_values, steps) = self.autoderef_steps_for_probe_op(span, mode, self_ty);
+        let (mut orig_values, mut steps) = self.autoderef_steps_for_probe_op(span, mode, self_ty);
+        // Autoderef may get stuck because we don't know enough about `self_ty` yet, so
+        // try using where-bounds to make some progress on inference vars.
+        if !is_suggestion.0 && steps.opt_bad_ty.is_some() {
+            self.select_obligations_with_where_bound_guidance();
+            (orig_values, steps) = self.autoderef_steps_for_probe_op(span, mode, self_ty);
+        }
 
         // If our autoderef loop had reached the recursion limit,
         // report an overflow error, but continue going on with

@@ -742,6 +742,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    pub(crate) fn select_obligations_with_where_bound_guidance(&self) {
+        let result =
+            self.fulfillment_cx.borrow_mut().evaluate_obligations_with_where_bound_guidance(self);
+        if let TraitErrors::HasErrors(mut errors) = result {
+            self.adjust_fulfillment_errors_for_expr_obligation(&mut errors);
+            self.err_ctxt().report_fulfillment_errors(errors);
+        }
+    }
+
     /// For the overloaded place expressions (`*x`, `x[3]`), the trait
     /// returns a type of `&T`, but the actual type we assign to the
     /// *expression* is `T`. So this function just peels off the return
@@ -1547,7 +1556,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// If no resolution is possible, then an error is reported.
     /// Numeric inference variables may be left unresolved.
     pub(crate) fn structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let ty = self.deeply_resolve_ignoring_regions_with_obligations(ty);
+        let mut ty = self.deeply_resolve_ignoring_regions_with_obligations(ty);
+        if ty.is_ty_var() {
+            // We need to know the type at this point, but we don't. Maybe using
+            // where-bounds can help.
+            self.select_obligations_with_where_bound_guidance();
+            ty = self.deeply_resolve_ignoring_regions(ty);
+        }
 
         if !ty.is_ty_var() { ty } else { self.type_must_be_known_at_this_point(sp, ty) }
     }

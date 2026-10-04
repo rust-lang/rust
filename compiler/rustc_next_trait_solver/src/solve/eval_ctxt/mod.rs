@@ -298,7 +298,11 @@ where
     // This function is very hot and has a single call site.
     #[inline(always)]
     fn goal_remains_stalled(&self, stalled_on: &GoalStalledOn<Self::Interner>) -> bool {
-        match inlined_rerunning_stalled_goal_may_make_progress(self, Some(stalled_on)) {
+        match inlined_rerunning_stalled_goal_may_make_progress(
+            self,
+            Some(stalled_on),
+            WhereBoundInferenceMode::NoPreference,
+        ) {
             RerunStalled::WontMakeProgress(_) => true,
             RerunStalled::MayMakeProgress => false,
         }
@@ -310,7 +314,13 @@ where
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
     ) -> bool {
         self.probe(|| {
-            self.evaluate_root_goal(goal, I::Span::dummy(), None).is_ok_and(|r| match r.certainty {
+            let evaluation = self.evaluate_root_goal(
+                goal,
+                I::Span::dummy(),
+                None,
+                WhereBoundInferenceMode::NoPreference,
+            );
+            evaluation.is_ok_and(|r| match r.certainty {
                 Certainty::Yes => true,
                 Certainty::Maybe(MaybeInfo {
                     cause: _,
@@ -331,9 +341,13 @@ where
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
     ) -> bool {
         self.probe(|| {
-            EvalCtxt::enter_root(self, root_depth, I::Span::dummy(), |ecx| {
-                ecx.evaluate_goal(GoalSource::Misc, goal, None)
-            })
+            EvalCtxt::enter_root(
+                self,
+                root_depth,
+                I::Span::dummy(),
+                WhereBoundInferenceMode::NoPreference,
+                |ecx| ecx.evaluate_goal(GoalSource::Misc, goal, None),
+            )
         })
         .is_ok()
     }

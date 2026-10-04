@@ -1,6 +1,6 @@
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::at::At;
-use rustc_infer::traits::solve::Goal;
+use rustc_infer::traits::solve::{Goal, WhereBoundInferenceMode};
 use rustc_infer::traits::{
     FromSolverError, Normalized, Obligation, PredicateObligation, PredicateObligations,
     TraitEngine, TraitErrors,
@@ -64,7 +64,13 @@ where
         let infer_term = delegate.next_term_var_of_alias_kind(alias_term, at.cause.span);
         let predicate = ty::ProjectionClause { projection_term: alias_term, term: infer_term };
         let goal = Goal::new(infcx.tcx, at.param_env, predicate);
-        let result = match delegate.evaluate_root_goal(goal, at.cause.span, None) {
+        let evaluation = delegate.evaluate_root_goal(
+            goal,
+            at.cause.span,
+            None,
+            WhereBoundInferenceMode::NoPreference,
+        );
+        let result = match evaluation {
             Ok(result) => result,
             Err(_) => {
                 return Err(Obligation::new(

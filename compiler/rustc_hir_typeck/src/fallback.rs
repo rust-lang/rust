@@ -29,7 +29,9 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         );
 
         // All type checking constraints were added, try to fallback unsolved variables.
-        self.select_obligations_where_possible(|_| {});
+        // Try to let where-bounds constrain any remaining unresolved inference vars
+        // before falling back.
+        self.select_obligations_with_where_bound_guidance();
 
         debug!(
             "type-inference-fallback post selection obligations: {:#?}",
@@ -40,7 +42,9 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
         if fallback_occurred {
             // if fallback occurred, previously stalled goals may make progress again
-            self.select_obligations_where_possible(|_| {});
+            // This includes goals which are only now stalled on where-bound inference mode,
+            // e.g. `{integer}: CastInto<?x>` falling back to `i32: CastInto<?x>`.
+            self.select_obligations_with_where_bound_guidance();
         }
     }
 

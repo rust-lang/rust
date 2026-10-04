@@ -2,7 +2,9 @@ use std::ops::ControlFlow;
 
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_infer::infer::InferCtxt;
-use rustc_infer::traits::solve::{CandidateSource, GoalSource, MaybeCause};
+use rustc_infer::traits::solve::{
+    CandidateSource, GoalSource, MaybeCause, WhereBoundInferenceMode,
+};
 use rustc_infer::traits::{
     self, MismatchedProjectionTypes, Obligation, ObligationCause, ObligationCauseCode,
     PredicateObligation, SelectionError,
@@ -91,6 +93,7 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
             root_obligation.as_goal(),
             root_obligation.cause.span,
             None,
+            WhereBoundInferenceMode::NoPreference,
         ) {
             Ok(GoalEvaluation {
                 certainty:
