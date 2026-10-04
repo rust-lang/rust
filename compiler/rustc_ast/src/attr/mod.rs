@@ -520,12 +520,13 @@ impl MetaItem {
         };
         let list_closing_paren_pos = iter.peek().map(|tt| tt.span().hi());
         let kind = MetaItemKind::from_tokens(iter)?;
-        let hi = match &kind {
-            MetaItemKind::NameValue(lit) => lit.span.hi(),
-            MetaItemKind::List(..) => list_closing_paren_pos.unwrap_or(path.span().hi()),
-            _ => path.span().hi(),
+        let span = match &kind {
+            MetaItemKind::NameValue(lit) => path.span().with_hi(lit.span.hi()),
+            MetaItemKind::List(..) if let Some(list_closing_paren_pos) = list_closing_paren_pos => {
+                path.span().with_hi(list_closing_paren_pos)
+            }
+            _ => path.span(),
         };
-        let span = path.span().with_hi(hi);
         // FIXME: This parses `unsafe()` not as unsafe attribute syntax in `MetaItem`,
         // but as a parenthesized list. This (and likely `MetaItem`) should be changed in
         // such a way that builtin macros don't accept extraneous `unsafe()`.
