@@ -1176,6 +1176,14 @@ impl Session {
         self.config.target_config.get(&target).map(|t| t.no_std)
     }
 
+    /// Returns `true` if we can execute binaries built for `target`, either natively or through
+    /// an emulator or a remote device.
+    pub(crate) fn can_run_binaries(&self, target: TargetSelection) -> bool {
+        self.config.is_host_target(target)
+            || self.remote_tested(target)
+            || self.runner(target).is_some()
+    }
+
     /// Returns `true` if the target will be tested using the `remote-test-client`
     /// and `remote-test-server` binaries.
     pub(crate) fn remote_tested(&self, target: TargetSelection) -> bool {
