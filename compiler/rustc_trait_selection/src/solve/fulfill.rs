@@ -119,49 +119,11 @@ impl<'tcx, E: 'tcx> FulfillmentCtxt<'tcx, E> {
             (inspector)(infcx, &obligation, result);
         }
     }
-}
 
-impl<'tcx, E> TraitEngine<'tcx, E> for FulfillmentCtxt<'tcx, E>
-where
-    E: FromSolverError<'tcx, NextSolverError<'tcx>>,
-{
-    #[instrument(level = "trace", skip(self, infcx))]
-    fn register_predicate_obligation(
-        &mut self,
-        infcx: &InferCtxt<'tcx>,
-        obligation: PredicateObligation<'tcx>,
-    ) {
-        assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
-
-        let delegate = <&SolverDelegate<'tcx>>::from(infcx);
-        if let Some(GoalEvaluation { goal: _, certainty, has_changed: _, stalled_on }) =
-            compute_goal_fast_path(delegate, obligation.as_goal(), obligation.cause.span)
-        {
-            // If we can take the fast path, don't even bother adding the goal to obligations,
-            // or if `Certainty::Maybe`, add it with precise stalled_on information.
-            match certainty {
-                Certainty::Yes => {}
-                Certainty::Maybe(_) => {
-                    self.obligations.register(obligation, stalled_on);
-                }
-            }
-        } else {
-            self.obligations.register(obligation, None);
-        }
-    }
-
-    #[inline]
-    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
-        if self.obligations.pending.is_empty() {
-            // Typically in more than 99.9% of cases this condition is true, therefore we outline
-            // the other case.
-            TraitErrors::NoErrors
-        } else {
-            TraitErrors::HasErrors(collect_remaining_errors_impl(self, infcx))
-        }
-    }
-
-    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
+    fn try_evaluate_obligations_inner(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E>
+    where
+        E: FromSolverError<'tcx, NextSolverError<'tcx>>,
+    {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
         let mut errors = TraitErrors::NoErrors;
         let delegate = <&SolverDelegate<'tcx>>::from(infcx);
@@ -260,6 +222,51 @@ where
         }
 
         errors
+    }
+}
+
+impl<'tcx, E> TraitEngine<'tcx, E> for FulfillmentCtxt<'tcx, E>
+where
+    E: FromSolverError<'tcx, NextSolverError<'tcx>>,
+{
+    #[instrument(level = "trace", skip(self, infcx))]
+    fn register_predicate_obligation(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+        obligation: PredicateObligation<'tcx>,
+    ) {
+        assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
+
+        let delegate = <&SolverDelegate<'tcx>>::from(infcx);
+        if let Some(GoalEvaluation { goal: _, certainty, has_changed: _, stalled_on }) =
+            compute_goal_fast_path(delegate, obligation.as_goal(), obligation.cause.span)
+        {
+            // If we can take the fast path, don't even bother adding the goal to obligations,
+            // or if `Certainty::Maybe`, add it with precise stalled_on information.
+            match certainty {
+                Certainty::Yes => {}
+                Certainty::Maybe(_) => {
+                    self.obligations.register(obligation, stalled_on);
+                }
+            }
+        } else {
+            self.obligations.register(obligation, None);
+        }
+    }
+
+    #[inline]
+    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
+        if self.obligations.pending.is_empty() {
+            // Typically in more than 99.9% of cases this condition is true, therefore we outline
+            // the other case.
+            TraitErrors::NoErrors
+        } else {
+            TraitErrors::HasErrors(collect_remaining_errors_impl(self, infcx))
+        }
+    }
+
+    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
+        self.try_evaluate_obligations_inner(infcx)
     }
 
     fn has_pending_obligations(&self) -> bool {
