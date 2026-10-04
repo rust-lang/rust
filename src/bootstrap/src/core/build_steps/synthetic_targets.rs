@@ -11,18 +11,40 @@ use crate::core::builder::{Builder, Step};
 use crate::core::compiler::Compiler;
 use crate::core::config::TargetSelection;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct MirOptPanicAbortSyntheticTarget {
-    pub(crate) compiler: Compiler,
-    pub(crate) base: TargetSelection,
+/// Note that this currently only contains panic strategies that we somehow use in bootstrap, not
+/// all possible strategires supported by rustc.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub(crate) enum PanicStrategy {
+    Unwind,
+    Abort,
 }
 
-impl Step for MirOptPanicAbortSyntheticTarget {
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct SyntheticTargetWithPanicStrategy {
+    pub(crate) compiler: Compiler,
+    pub(crate) base: TargetSelection,
+    pub(crate) strategy: PanicStrategy,
+}
+
+impl SyntheticTargetWithPanicStrategy {
+    pub(crate) fn panic_abort(compiler: Compiler, base: TargetSelection) -> Self {
+        Self { compiler, base, strategy: PanicStrategy::Abort }
+    }
+    pub(crate) fn panic_unwind(compiler: Compiler, base: TargetSelection) -> Self {
+        Self { compiler, base, strategy: PanicStrategy::Unwind }
+    }
+}
+
+impl Step for SyntheticTargetWithPanicStrategy {
     type Output = TargetSelection;
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let strategy = match self.strategy {
+            PanicStrategy::Unwind => "unwind",
+            PanicStrategy::Abort => "abort",
+        };
         create_synthetic_target(builder, self.compiler, "miropt-abort", self.base, |spec| {
-            spec.insert("panic-strategy".into(), "abort".into());
+            spec.insert("panic-strategy".into(), strategy.into());
         })
     }
 }
@@ -49,16 +71,7 @@ fn create_synthetic_target(
         return TargetSelection::create_synthetic(&name, path.to_str().unwrap());
     }
 
-    let mut cmd = builder.rustc_cmd(compiler);
-    cmd.arg("--target").arg(base.rustc_target_arg());
-    cmd.args(["-Zunstable-options", "--print", "target-spec-json"]);
-
-    // If `rust.channel` is set to either beta or stable, rustc will complain that
-    // we cannot use nightly features. So `RUSTC_BOOTSTRAP` is needed here.
-    cmd.env("RUSTC_BOOTSTRAP", "1");
-
-    let output = cmd.run_capture(builder).stdout();
-    let mut spec: serde_json::Value = serde_json::from_slice(output.as_bytes()).unwrap();
+    let mut spec = get_target_specs(builder, compiler, base);
     let spec_map = spec.as_object_mut().unwrap();
 
     // The `is-builtin` attribute of a spec needs to be removed, otherwise rustc will complain.
@@ -68,4 +81,24 @@ fn create_synthetic_target(
 
     std::fs::write(&path, serde_json::to_vec_pretty(&spec).unwrap()).unwrap();
     TargetSelection::create_synthetic(&name, path.to_str().unwrap())
+}
+
+/// Get the JSON target specs from the given compiler.
+/// Note that the set of targets will differ between the stage0 and stage1+ (in-tree) compiler!
+pub fn get_target_specs(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    target: TargetSelection,
+) -> serde_json::Value {
+    let mut cmd = builder.rustc_cmd(compiler);
+    cmd.arg("--target").arg(target.rustc_target_arg());
+    cmd.args(["-Zunstable-options", "--print", "target-spec-json"]);
+
+    // If `rust.channel` is set to either beta or stable, rustc will complain that
+    // we cannot use nightly features. So `RUSTC_BOOTSTRAP` is needed here.
+    cmd.env("RUSTC_BOOTSTRAP", "1");
+
+    let output = cmd.cached().run_capture(builder).stdout();
+    let spec: serde_json::Value = serde_json::from_slice(output.as_bytes()).unwrap();
+    spec
 }
