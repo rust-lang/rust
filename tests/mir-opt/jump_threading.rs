@@ -656,6 +656,34 @@ fn chained_conditions() -> u8 {
     }
 }
 
+union U {
+    a: u8,
+    b: u8,
+}
+
+fn union_field(x: u8) -> u8 {
+    // CHECK-LABEL: fn union_field(
+    // CHECK: ({{_.*}}.1: u8) = const 5_u8;
+    // CHECK-NOT: ({{_.*}}.1: u8) = const 5_u8;
+
+    // Test for #161898, where the write to `u.b` did not invalidate what was known about `u.a`.
+    let mut u = U { a: x };
+    let r = unsafe {
+        match u.a {
+            0 => 100,
+            _ => 200,
+        }
+    };
+    u.b = 5;
+    let r2 = unsafe {
+        match u.a {
+            0 => 1,
+            _ => 2,
+        }
+    };
+    r + r2
+}
+
 fn main() {
     // CHECK-LABEL: fn main(
     too_complex(Ok(0));
@@ -673,6 +701,7 @@ fn main() {
     floats();
     bitwise_not();
     logical_not();
+    union_field(0);
 }
 
 // EMIT_MIR jump_threading.too_complex.JumpThreading.diff
@@ -693,3 +722,4 @@ fn main() {
 // EMIT_MIR jump_threading.bitwise_not.JumpThreading.diff
 // EMIT_MIR jump_threading.logical_not.JumpThreading.diff
 // EMIT_MIR jump_threading.chained_conditions.JumpThreading.diff
+// EMIT_MIR jump_threading.union_field.JumpThreading.diff
