@@ -1011,6 +1011,39 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
+    pub fn suggest_async_closure_for_async_block(
+        &self,
+        _obligation: &PredicateObligation<'tcx>,
+        err: &mut Diag<'_>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
+    ) -> bool {
+        let self_ty = trait_pred.self_ty().skip_binder();
+
+        let ty::Coroutine(def_id, _) = *self_ty.kind() else {
+            return false;
+        };
+
+        let Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Block)) =
+            self.tcx.coroutine_kind(def_id)
+        else {
+            return false;
+        };
+
+        let Some(async_fn_kind) = self.tcx.async_fn_trait_kind_from_def_id(trait_pred.def_id())
+        else {
+            return false;
+        };
+
+        if async_fn_kind != ty::ClosureKind::FnOnce {
+            return false;
+        }
+
+        err.help("the trait `AsyncFnOnce()` is not implemented for `()`");
+        err.note("wrap the `()` in a closure with no arguments: `async || { /* code */ }`");
+
+        true
+    }
+
     /// We tried to apply the bound to an `fn` or closure. Check whether calling it would
     /// evaluate to a type that *would* satisfy the trait bound. If it would, suggest calling
     /// it: `bar(foo)` → `bar(foo())`. This case is *very* likely to be hit if `foo` is `async`.

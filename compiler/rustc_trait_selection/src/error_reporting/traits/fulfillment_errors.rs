@@ -488,6 +488,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     leaf_trait_predicate,
                                 );
 
+                        suggested |= self.suggest_async_closure_for_async_block(
+                            &obligation,
+                            &mut err,
+                            leaf_trait_predicate,
+                        );
+
                         suggested |=
                             self.suggest_fn_call(&obligation, &mut err, leaf_trait_predicate);
                         suggested |= self.suggest_cast_to_fn_pointer(
