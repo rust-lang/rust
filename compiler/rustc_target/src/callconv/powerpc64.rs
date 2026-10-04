@@ -34,6 +34,7 @@ where
         return false;
     }
     match layout.fields {
+        FieldsShape::Opaque => false,
         FieldsShape::Primitive => false,
         // A `repr(transparent)` union is guaranteed to be ABI-compatible with its single
         // non-1-ZST field, so look through it instead of rejecting it.

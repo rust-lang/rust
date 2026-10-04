@@ -462,9 +462,13 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
     debug!("type_di_node: {:?} kind: {:?}", t, t.kind());
 
     let DINodeCreationResult { di_node, already_stored_in_typemap } = match *t.kind() {
-        ty::Never | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
-            build_basic_type_di_node(cx, t)
-        }
+        ty::Never
+        | ty::Erased(..)
+        | ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_) => build_basic_type_di_node(cx, t),
         ty::Tuple(elements) if elements.is_empty() => build_basic_type_di_node(cx, t),
         ty::Array(..) => build_fixed_size_array_di_node(cx, unique_type_id, t, span),
         ty::Slice(_) | ty::Str => build_slice_type_di_node(cx, t, unique_type_id, span),
@@ -763,6 +767,7 @@ fn build_basic_type_di_node<'ll, 'tcx>(
 
     let (name, encoding) = match t.kind() {
         ty::Never => ("!", DW_ATE_unsigned),
+        ty::Erased(..) => ("{erased}", DW_ATE_unsigned),
         ty::Tuple(elements) if elements.is_empty() => {
             if cpp_like_debuginfo {
                 return build_tuple_type_di_node(cx, UniqueTypeId::for_ty(cx.tcx, t));

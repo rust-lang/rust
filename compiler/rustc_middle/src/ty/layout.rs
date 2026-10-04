@@ -802,6 +802,8 @@ where
         variant_index: VariantIdx,
     ) -> TyAndLayout<'tcx> {
         let layout = match this.variants {
+            Variants::Opaque => bug!("`ty_and_layout_for_variant` on opaque layout"),
+
             // If all variants but one are uninhabited, the variant layout is the enum layout.
             Variants::Single { index } if index == variant_index => {
                 return this;
@@ -981,7 +983,7 @@ where
                 ),
 
                 ty::Coroutine(def_id, args) => match this.variants {
-                    Variants::Empty => unreachable!(),
+                    Variants::Opaque | Variants::Empty => unreachable!(),
                     Variants::Single { index } => TyMaybeWithLayout::Ty(
                         args.as_coroutine()
                             .state_tys(def_id, tcx)
@@ -1004,6 +1006,7 @@ where
                 // ADTs.
                 ty::Adt(def, args) => {
                     match this.variants {
+                        Variants::Opaque => unreachable!(),
                         Variants::Single { index } => {
                             let field = &def.variant(index).fields[FieldIdx::from_usize(i)];
                             TyMaybeWithLayout::Ty(field.ty(tcx, args).skip_norm_wip())
@@ -1022,6 +1025,8 @@ where
                 | ty::Bound(..)
                 | ty::Placeholder(..)
                 | ty::Param(_)
+                // TODO: probably need to support this
+                | ty::Erased(..)
                 | ty::Infer(_)
                 | ty::Error(_) => bug!("TyAndLayout::field: unexpected type `{}`", this.ty),
             }
@@ -1117,8 +1122,11 @@ where
                 })
             }
 
+            ty::Erased(..) => None,
+
             _ => {
                 let mut data_variant = match &this.variants {
+                    Variants::Opaque => unreachable!(),
                     // Within the discriminant field, only the niche itself is
                     // always initialized, so we only check for a pointer at its
                     // offset.
@@ -1219,6 +1227,10 @@ where
         );
 
         pointee_info
+    }
+
+    fn is_erased_ty(this: TyAndLayout<'tcx>) -> bool {
+        this.ty.is_erased()
     }
 
     fn is_adt(this: TyAndLayout<'tcx>) -> bool {

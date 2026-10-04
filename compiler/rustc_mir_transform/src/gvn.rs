@@ -1743,6 +1743,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 | ty::Infer(_)
                 | ty::Alias(..)
                 | ty::Param(_)
+                | ty::Erased(..)
                 | ty::Placeholder(_) => true,
             }
         }
