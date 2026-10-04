@@ -27,11 +27,9 @@ fn main() {
     //~| ERROR labels cannot use keyword names
 
     f<'_>();
-    //~^ ERROR comparison operators cannot be chained
-    //~| HELP use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
-    //~| ERROR expected
-    //~| HELP add `'` to close the char literal
+    //~^ ERROR cannot find function `f` in this scope
     //~| ERROR labels cannot use keyword names
+    //~| HELP use `::<...>` instead of `<...>` to specify lifetime arguments for `f`
 
     let _ = f<u8>;
     //~^ ERROR comparison operators cannot be chained
