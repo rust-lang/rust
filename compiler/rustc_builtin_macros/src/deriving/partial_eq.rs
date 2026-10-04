@@ -1,6 +1,6 @@
 use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, Mutability, Safety};
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{Ident, Span, kw, sym};
+use rustc_span::{Span, kw, sym};
 use thin_vec::thin_vec;
 
 use crate::deriving::generic::*;
@@ -42,7 +42,7 @@ pub(crate) fn expand_deriving_partial_eq(
         explicit_self: true,
         nonself_args: smallvec![(cx.ty_self_ref(span), sym::other)],
         has_other_selflike_arg: true,
-        ret_ty: cx.ty_path(cx.path_ident(span, Ident::new(sym::bool, span))),
+        ret_ty: cx.ty_sym(span, sym::bool),
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
         combine_substructure: combine_substructure(get_substructure_equality_expr),

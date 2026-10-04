@@ -61,8 +61,7 @@ pub(crate) fn expand(
 //     handler(core::alloc::Layout::from_size_align_unchecked(size, align))
 // }
 fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span) -> Stmt {
-    let usize = cx.path_ident(span, Ident::new(sym::usize, span));
-    let ty_usize = cx.ty_path(usize);
+    let ty_usize = cx.ty_sym(span, sym::usize);
     let size = Ident::new(sym::size, span);
     let align = Ident::new(sym::align, span);
 

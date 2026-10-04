@@ -26,6 +26,9 @@ impl<'a> ExtCtxt<'a> {
     pub fn path_ident(&self, span: Span, id: Ident) -> ast::Path {
         self.path(span, vec![id])
     }
+    pub fn path_sym(&self, span: Span, name: Symbol) -> ast::Path {
+        ast::Path::from_ident(Ident::new(name, span))
+    }
     pub fn path_global(&self, span: Span, strs: Vec<Ident>) -> ast::Path {
         self.path_all(span, true, strs, vec![])
     }
@@ -89,10 +92,12 @@ impl<'a> ExtCtxt<'a> {
         self.ty(path.span, ast::TyKind::Path(None, path))
     }
 
-    // Might need to take bounds as an argument in the future, if you ever want
-    // to generate a bounded existential trait type.
     pub fn ty_ident(&self, span: Span, ident: Ident) -> Box<ast::Ty> {
         self.ty_path(self.path_ident(span, ident))
+    }
+
+    pub fn ty_sym(&self, span: Span, name: Symbol) -> Box<ast::Ty> {
+        self.ty_path(self.path_sym(span, name))
     }
 
     pub fn anon_const(&self, span: Span, kind: ast::ExprKind) -> ast::AnonConst {
@@ -135,7 +140,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn ty_self(&self, span: Span) -> Box<ast::Ty> {
-        self.ty_path(self.path_ident(span, Ident::new(kw::SelfUpper, span)))
+        self.ty_path(self.path_sym(span, kw::SelfUpper))
     }
     pub fn ty_self_ref(&self, span: Span) -> Box<ast::Ty> {
         self.ty_ref(span, self.ty_self(span), None, ast::Mutability::Not)
