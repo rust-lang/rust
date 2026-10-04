@@ -244,7 +244,7 @@ pub(crate) struct CrateHeader {
     /// Stubs do not contain the full metadata (it will be typically stored
     /// in a separate rmeta file).
     ///
-    /// This is used inside rlibs and dylibs when using `-Zembed-metadata=no`.
+    /// This is used inside rlibs and dylibs when using `-Cembed-metadata=no`.
     pub(crate) is_stub: bool,
 }
 

@@ -2948,6 +2948,10 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
             .early_warn("using -Z remark-dir without enabling remarks using e.g. -C remark=all");
     }
 
+    if cg.embed_metadata.is_some() && unstable_opts.embed_metadata.is_some() {
+        early_dcx.early_fatal("can't use both -Z embed-metadata and -C embed-metadata");
+    }
+
     let externs = parse_externs(early_dcx, matches, &unstable_opts);
 
     let remap_path_prefix = parse_remap_path_prefix(early_dcx, matches);
