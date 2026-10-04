@@ -454,7 +454,6 @@ fn receiver_is_dispatchable<'db>(
 
         ParamEnv {
             clauses: Clauses::new_from_iter(
-                interner,
                 generic_predicates
                     .iter_identity()
                     .map(Unnormalized::skip_norm_wip)

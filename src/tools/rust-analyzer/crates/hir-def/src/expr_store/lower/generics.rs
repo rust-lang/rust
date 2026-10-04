@@ -86,10 +86,13 @@ impl GenericParamsCollector {
 
     pub(crate) fn finish(self) -> GenericParams {
         let Self { mut lifetimes, mut type_or_consts, where_predicates, parent: _ } = self;
+        let early_bound_lifetimes_len =
+            lifetimes.iter().filter(|(_, lt)| lt.is_early_bound()).count();
 
         lifetimes.shrink_to_fit();
         type_or_consts.shrink_to_fit();
         GenericParams {
+            early_bound_lifetimes_len,
             type_or_consts,
             lifetimes,
             where_predicates: where_predicates.into_boxed_slice(),
