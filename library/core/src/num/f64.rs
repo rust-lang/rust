@@ -1803,6 +1803,30 @@ impl f64 {
         intrinsics::copysignf64(self, sign)
     }
 
+    /// Placeholder.
+    #[inline]
+    #[unstable(feature = "float_exponent_methods", issue = "163184")]
+    #[rustc_const_unstable(feature = "float_exponent_methods", issue = "163184")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    pub const fn scalbn(self, exponent: i32) -> f64 {
+        intrinsics::scalbn(self, exponent)
+    }
+
+    /// Placeholder.
+    #[inline]
+    #[unstable(feature = "float_exponent_methods", issue = "163184")]
+    #[rustc_const_unstable(feature = "float_exponent_methods", issue = "163184")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    pub const fn ilogb(self) -> Option<i32> {
+        if self.is_nan() {
+            None
+        } else if self == 0.0 {
+            Some(i32::MIN)
+        } else {
+            Some(intrinsics::ilogb(self))
+        }
+    }
+
     /// Float addition that allows optimizations based on algebraic rules.
     ///
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.

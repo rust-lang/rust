@@ -35,9 +35,11 @@ pub mod full_availability {
         fn fminimum_numf16(x: f16, y: f16) -> f16;
         fn fminimumf16(x: f16, y: f16) -> f16;
         fn fmodf16(x: f16, y: f16) -> f16;
+        fn ilogbf16(x: f16) -> i32;
         fn rintf16(x: f16) -> f16;
         fn roundevenf16(x: f16) -> f16;
         fn roundf16(x: f16) -> f16;
+        fn scalbnf16(x: f16, n: i32) -> f16;
         fn sqrtf16(x: f16) -> f16;
         fn truncf16(x: f16) -> f16;
     }
@@ -58,8 +60,10 @@ pub mod full_availability {
         fn fmaxf(x: f32, y: f32) -> f32;
         fn fminf(x: f32, y: f32) -> f32;
         fn fmodf(x: f32, y: f32) -> f32;
+        fn ilogbf(x: f32) -> i32;
         fn rintf(x: f32) -> f32;
         fn roundf(x: f32) -> f32;
+        fn scalbnf(x: f32, n: i32) -> f32;
         fn sqrtf(x: f32) -> f32;
         fn truncf(x: f32) -> f32;
 
@@ -74,8 +78,10 @@ pub mod full_availability {
         fn fmax(x: f64, y: f64) -> f64;
         fn fmin(x: f64, y: f64) -> f64;
         fn fmod(x: f64, y: f64) -> f64;
+        fn ilogb(x: f64) -> i32;
         fn rint(x: f64) -> f64;
         fn round(x: f64) -> f64;
+        fn scalbn(x: f64, n: i32) -> f64;
         fn sqrt(x: f64) -> f64;
         fn trunc(x: f64) -> f64;
     }
@@ -110,9 +116,11 @@ pub mod full_availability {
         fn fminimum_numf128(x: f128, y: f128) -> f128;
         fn fminimumf128(x: f128, y: f128) -> f128;
         fn fmodf128(x: f128, y: f128) -> f128;
+        fn ilogbf128(x: f128) -> i32;
         fn rintf128(x: f128) -> f128;
         fn roundevenf128(x: f128) -> f128;
         fn roundf128(x: f128) -> f128;
+        fn scalbnf128(x: f128, n: i32) -> f128;
         fn sqrtf128(x: f128) -> f128;
         fn truncf128(x: f128) -> f128;
     }

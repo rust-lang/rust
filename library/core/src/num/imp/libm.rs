@@ -54,6 +54,10 @@ unsafe extern "C" {
     pub(crate) safe fn fmodf(x: f32, y: f32) -> f32;
     pub(crate) safe fn fmodf128(x: f128, y: f128) -> f128;
     pub(crate) safe fn fmodf16(x: f16, y: f16) -> f16;
+    pub(crate) safe fn ilogb(x: f64) -> i32;
+    pub(crate) safe fn ilogbf(x: f32) -> i32;
+    pub(crate) safe fn ilogbf128(x: f128) -> i32;
+    pub(crate) safe fn ilogbf16(x: f16) -> i32;
     pub(crate) safe fn rint(x: f64) -> f64;
     pub(crate) safe fn rintf(x: f32) -> f32;
     pub(crate) safe fn rintf128(x: f128) -> f128;
@@ -66,6 +70,10 @@ unsafe extern "C" {
     pub(crate) safe fn roundf(x: f32) -> f32;
     pub(crate) safe fn roundf128(x: f128) -> f128;
     pub(crate) safe fn roundf16(x: f16) -> f16;
+    pub(crate) safe fn scalbn(x: f64, e: i32) -> f64;
+    pub(crate) safe fn scalbnf(x: f32, e: i32) -> f32;
+    pub(crate) safe fn scalbnf128(x: f128, e: i32) -> f128;
+    pub(crate) safe fn scalbnf16(x: f16, e: i32) -> f16;
     pub(crate) safe fn sqrt(x: f64) -> f64;
     pub(crate) safe fn sqrtf(x: f32) -> f32;
     pub(crate) safe fn sqrtf128(x: f128) -> f128;
