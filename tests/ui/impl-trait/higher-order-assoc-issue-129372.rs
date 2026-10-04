@@ -1,6 +1,17 @@
-//@ known-bug: #129372
+//@ edition: 2021
+//@ revisions: current next
 //@ compile-flags: -Cdebuginfo=2 -Copt-level=0
-//@ ignore-backends: gcc
+//@ [next] compile-flags: -Znext-solver
+//@ [current] known-bug: #129372
+//@ [current] ignore-backends: gcc
+//@ [current] failure-status: 101
+//@ [current] dont-check-compiler-stderr
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@ [current] build-fail
+//@ [next] build-pass
+
+// Regression test for <https://github.com/rust-lang/rust/issues/129372>.
+// Used to ICE
 
 pub struct Wrapper<T>(T);
 struct Struct;
