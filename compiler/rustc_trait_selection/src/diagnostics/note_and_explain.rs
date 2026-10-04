@@ -74,7 +74,11 @@ impl<'a> DescriptionCtx<'a> {
 
             ty::RePlaceholder(_) | ty::ReError(_) => return None,
 
-            ty::ReVar(_) | ty::ReBound(..) | ty::ReErased => {
+            ty::ReErased => (alt_span, "reerased", String::new()),
+
+            ty::ReVar(_) => (alt_span, "revar", region.to_string()),
+
+            ty::ReBound(..) => {
                 bug!("unexpected region for DescriptionCtx: {:?}", region);
             }
         };
