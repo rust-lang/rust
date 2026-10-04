@@ -12,7 +12,7 @@ use rustc_ast::{AttrStyle, MetaItemLit, Safety};
 use rustc_attr_ir::target::Target;
 use rustc_attr_ir::{AttrPath, Attribute, AttributeKind};
 use rustc_data_structures::sync::{DynSend, DynSync};
-use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
+use rustc_errors::{Diag, DiagCtxtHandle, DiagLocation, Diagnostic, Level, MultiSpan};
 use rustc_feature::AttributeStability;
 use rustc_lint_defs::builtin::UNUSED_ATTRIBUTES;
 use rustc_lint_defs::{Lint, LintId};
@@ -416,15 +416,21 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
     /// Emit a lint. This method is somewhat special, since lints emitted during attribute parsing
     /// must be delayed until after HIR is built. This method will take care of the details of
     /// that.
+    #[track_caller]
     pub(crate) fn emit_lint(
         &mut self,
         lint: &'static Lint,
         diagnostic: impl for<'x> Diagnostic<'x> + DynSend + DynSync + 'static,
         span: impl Into<MultiSpan>,
     ) {
+        let emitted_at = DiagLocation::caller();
         self.emit_lint_inner(
             lint,
-            EmitAttribute(Box::new(move |dcx, level, _| diagnostic.into_diag(dcx, level))),
+            EmitAttribute(Box::new(move |dcx, level, _| {
+                let mut diag = diagnostic.into_diag(dcx, level);
+                diag.emitted_at = emitted_at;
+                diag
+            })),
             span,
         );
     }
