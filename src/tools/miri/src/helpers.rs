@@ -429,6 +429,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         );
         let caller_fn_abi = this.fn_abi_of_fn_ptr(ty::Binder::dummy(sig), ty::List::empty())?;
 
+        let callee_receives_caller_location = f.def.requires_caller_location(*this.tcx);
         // This will also show proper errors if there is any ABI mismatch.
         this.init_stack_frame(
             f,
@@ -436,6 +437,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             caller_fn_abi,
             &args.iter().map(|a| FnArg::Copy(a.clone().into())).collect::<Vec<_>>(),
             /*with_caller_location*/ false,
+            callee_receives_caller_location,
             &dest.into(),
             cont,
         )
