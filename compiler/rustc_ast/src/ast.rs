@@ -289,6 +289,7 @@ impl Path {
     }
 }
 
+#[inline]
 fn segments_span(segments: &[PathSegment]) -> Span {
     segments[0].ident.span.to(segments.last().unwrap().span())
 }
