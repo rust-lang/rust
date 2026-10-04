@@ -1,6 +1,7 @@
 use rand::RngCore;
 
 use super::Dir;
+use super::dirs::{HomeDirs, MediaDirs};
 use crate::fs::{self, File, FileTimes, OpenOptions, TryLockError, exists};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
@@ -3165,4 +3166,66 @@ fn test_dir_metadata() {
     let metadata = check!(dir.symlink_metadata("link"));
     assert!(!metadata.is_file());
     assert!(metadata.is_symlink());
+}
+
+fn root_test_dir(what: &str) -> PathBuf {
+    crate::env::current_dir().unwrap().ancestors().last().unwrap().join(what)
+}
+
+#[test]
+fn test_home_dirs_field_hookup_matches() {
+    let mut dirs = HomeDirs::empty();
+
+    assert_eq!(dirs.config_home(), None);
+    assert_eq!(dirs.data_home(), None);
+    assert_eq!(dirs.state_home(), None);
+    assert_eq!(dirs.cache_home(), None);
+
+    let config = root_test_dir("config");
+    let data = root_test_dir("data");
+    let state = root_test_dir("state");
+    let cache = root_test_dir("cache");
+
+    dirs.set_config_home(config.clone());
+    dirs.set_data_home(data.clone());
+    dirs.set_state_home(state.clone());
+    dirs.set_cache_home(cache.clone());
+
+    assert_eq!(dirs.config_home(), Some(config.as_ref()));
+    assert_eq!(dirs.data_home(), Some(data.as_ref()));
+    assert_eq!(dirs.state_home(), Some(state.as_ref()));
+    assert_eq!(dirs.cache_home(), Some(cache.as_ref()));
+}
+
+#[test]
+fn test_media_dirs_field_hookup_matches() {
+    let mut dirs = MediaDirs::empty();
+
+    assert_eq!(dirs.desktop(), None);
+    assert_eq!(dirs.documents(), None);
+    assert_eq!(dirs.downloads(), None);
+    assert_eq!(dirs.music(), None);
+    assert_eq!(dirs.pictures(), None);
+    assert_eq!(dirs.videos(), None);
+
+    let desktop = root_test_dir("desktop");
+    let documents = root_test_dir("documents");
+    let downloads = root_test_dir("downloads");
+    let music = root_test_dir("music");
+    let pictures = root_test_dir("pictures");
+    let videos = root_test_dir("videos");
+
+    dirs.set_desktop(desktop.clone());
+    dirs.set_documents(documents.clone());
+    dirs.set_downloads(downloads.clone());
+    dirs.set_music(music.clone());
+    dirs.set_pictures(pictures.clone());
+    dirs.set_videos(videos.clone());
+
+    assert_eq!(dirs.desktop(), Some(desktop.as_ref()));
+    assert_eq!(dirs.documents(), Some(documents.as_ref()));
+    assert_eq!(dirs.downloads(), Some(downloads.as_ref()));
+    assert_eq!(dirs.music(), Some(music.as_ref()));
+    assert_eq!(dirs.pictures(), Some(pictures.as_ref()));
+    assert_eq!(dirs.videos(), Some(videos.as_ref()));
 }
