@@ -1402,6 +1402,8 @@ symbols! {
         more_qualified_paths,
         more_struct_aliases,
         movbe_target_feature,
+        movdir64b_target_feature,
+        movdiri_target_feature,
         move_expr,
         move_ref_pattern,
         move_size_limit,
