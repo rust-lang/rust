@@ -184,14 +184,24 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
 
     let args = args::arg_expand_all(&default_early_dcx, at_args);
 
+    // For the purposes of checking that an --edition was passed, we only emit a message if the only
+    // argument passed to rustc is a file name.
+    let warn_unspecified_edition = match &args[..] {
+        [] => false,
+        // We explicitly don't emit the note if we're consuming code from stdin, or passing non-file
+        // flags. This can happen on some cargo invocations too.
+        [name] if name.starts_with("-") => false,
+        [_] => true,
+        _ => false,
+    };
     let (matches, help_only) = match handle_options(&default_early_dcx, &args) {
         HandledOptions::None => return,
         HandledOptions::Normal(matches) => (matches, false),
         HandledOptions::HelpOnly(matches) => (matches, true),
     };
 
-    let sopts = config::build_session_options(&mut default_early_dcx, &matches);
-    // fully initialize ice path static once unstable options are available as context
+    let sopts =
+        config::build_session_options(&mut default_early_dcx, &matches, warn_unspecified_edition);
     let ice_file = ice_path_with_config(Some(&sopts.unstable_opts)).clone();
 
     if let Some(ref code) = matches.opt_str("explain") {

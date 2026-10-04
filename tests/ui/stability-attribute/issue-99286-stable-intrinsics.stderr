@@ -1,0 +1,90 @@
+Future incompatibility report: Future breakage diagnostic:
+warning: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/issue-99286-stable-intrinsics.rs:11:5
+   |
+LL | use std::intrinsics::copy_nonoverlapping as _;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+help: import this function via the `ptr` module instead
+   |
+LL - use std::intrinsics::copy_nonoverlapping as _;
+LL + use std::ptr::copy_nonoverlapping as _;
+   |
+
+Future breakage diagnostic:
+warning: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/issue-99286-stable-intrinsics.rs:12:5
+   |
+LL | use std::intrinsics::copy as _;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+help: import this function via the `ptr` module instead
+   |
+LL - use std::intrinsics::copy as _;
+LL + use std::ptr::copy as _;
+   |
+
+Future breakage diagnostic:
+warning: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/issue-99286-stable-intrinsics.rs:13:5
+   |
+LL | use std::intrinsics::write_bytes as _;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+help: import this function via the `ptr` module instead
+   |
+LL - use std::intrinsics::write_bytes as _;
+LL + use std::ptr::write_bytes as _;
+   |
+
+Future breakage diagnostic:
+warning: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/issue-99286-stable-intrinsics.rs:14:23
+   |
+LL | use std::intrinsics::{copy_nonoverlapping, copy, write_bytes};
+   |                       ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+help: import this function via the `ptr` module instead
+   |
+LL - use std::intrinsics::{copy_nonoverlapping, copy, write_bytes};
+LL + use std::ptr::{copy_nonoverlapping, copy, write_bytes};
+   |
+
+Future breakage diagnostic:
+warning: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/issue-99286-stable-intrinsics.rs:14:44
+   |
+LL | use std::intrinsics::{copy_nonoverlapping, copy, write_bytes};
+   |                                            ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+help: import this function via the `ptr` module instead
+   |
+LL - use std::intrinsics::{copy_nonoverlapping, copy, write_bytes};
+LL + use std::ptr::{copy_nonoverlapping, copy, write_bytes};
+   |
+
+Future breakage diagnostic:
+warning: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/issue-99286-stable-intrinsics.rs:14:50
+   |
+LL | use std::intrinsics::{copy_nonoverlapping, copy, write_bytes};
+   |                                                  ^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+help: import this function via the `ptr` module instead
+   |
+LL - use std::intrinsics::{copy_nonoverlapping, copy, write_bytes};
+LL + use std::ptr::{copy_nonoverlapping, copy, write_bytes};
+   |
+
