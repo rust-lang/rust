@@ -11,9 +11,8 @@ LL |     let _ = statement!();
    = note: the macro call doesn't expand to an expression, but it can expand to a statement
 help: surround the macro invocation with `{}` to interpret the expansion as a statement
    |
-LL -     let _ = statement!();
-LL +     let _ = { statement!(); };
-   |
+LL |     let _ = { statement!(); };
+   |             +             +++
 
 error: aborting due to 1 previous error
 
