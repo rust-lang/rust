@@ -183,7 +183,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     &i.attrs,
                     i.span,
                     Target::MacroDef,
-                    None,
+                    rustc_attr_ir::target::AstTarget::from_ast_item(&i.kind),
                     std::convert::identity,
                     |_lint_id, _span, _kind| {
                         // FIXME(jdonszelmann): emit lints here properly
