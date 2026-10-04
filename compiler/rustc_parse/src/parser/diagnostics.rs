@@ -2236,7 +2236,7 @@ impl<'a> Parser<'a> {
         };
         let mut err = self.dcx().struct_span_err(span, msg);
         let sp = self.psess.source_map().start_point(self.token.span);
-        if let Some(sp) = self.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
+        if let Some(sp) = self.psess.complete_stmt_exprs_before_bin_op_lookalike.borrow().get(&sp) {
             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
         }
         err.span_label(span, "expected expression");
