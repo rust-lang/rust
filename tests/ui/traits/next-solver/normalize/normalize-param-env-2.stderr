@@ -15,11 +15,10 @@ error[E0277]: the trait bound `<() as A<T>>::Assoc: A<T>` is not satisfied
 LL |         Self::Assoc: A<T>,
    |                      ^^^^ the trait `A<T>` is not implemented for `<() as A<T>>::Assoc`
    |
-help: the trait `A<T>` is implemented for `()`
-  --> $DIR/normalize-param-env-2.rs:19:1
+help: consider further restricting the associated type
    |
-LL | impl<T> A<T> for () {
-   | ^^^^^^^^^^^^^^^^^^^
+LL |         Self::Assoc: A<T>, <() as A<T>>::Assoc: A<T>
+   |                            +++++++++++++++++++++++++
 
 error[E0277]: the trait bound `<() as A<T>>::Assoc: A<T>` is not satisfied
   --> $DIR/normalize-param-env-2.rs:27:18
@@ -27,11 +26,6 @@ error[E0277]: the trait bound `<() as A<T>>::Assoc: A<T>` is not satisfied
 LL |         <() as A<T>>::f();
    |                  ^ the trait `A<T>` is not implemented for `<() as A<T>>::Assoc`
    |
-help: the trait `A<T>` is implemented for `()`
-  --> $DIR/normalize-param-env-2.rs:19:1
-   |
-LL | impl<T> A<T> for () {
-   | ^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `A::f`
   --> $DIR/normalize-param-env-2.rs:14:22
    |
@@ -41,6 +35,10 @@ LL |     fn f()
 LL |     where
 LL |         Self::Assoc: A<T>,
    |                      ^^^^ required by this bound in `A::f`
+help: consider further restricting the associated type
+   |
+LL |         Self::Assoc: A<T>, <() as A<T>>::Assoc: A<T>
+   |                            +++++++++++++++++++++++++
 
 error: aborting due to 3 previous errors
 
