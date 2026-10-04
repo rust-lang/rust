@@ -2,7 +2,7 @@ use rustc_attr_ir::AttributeKind;
 use rustc_attr_ir::lint::{LintCheck, LintCheckKind};
 use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
 use rustc_lint_defs::builtin::UNUSED_ATTRIBUTES;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::sym;
 use thin_vec::ThinVec;
 
 use crate::attributes::{AcceptMapping, AttributeParser, AttributeStability};
@@ -26,7 +26,6 @@ impl LintParser {
     fn parse(&mut self, kind: LintCheckKind, cx: &mut AcceptContext<'_, '_>, args: &ArgParser) {
         let attr_span = cx.attr_span;
         let attr_id = cx.attr_id.expect("no `AttrId` for lint attribute");
-        let mut lints: Vec<(Option<Symbol>, Symbol, Option<Box<[Symbol]>>, Span)> = Vec::new();
 
         if let Some(list) = cx.expect_list(args, cx.attr_span) {
             let mut parsers = list.sub_parsers();
@@ -52,23 +51,30 @@ impl LintParser {
                 if let Some(p) = item.meta_item() {
                     match p.args() {
                         ArgParser::NoArgs => {
-                            let (tool_name, lint_name, rest) = match &*p.path().0.segments {
+                            let (tool, lint_name, rest) = match &*p.path().0.segments {
                                 [] => unreachable!(),
                                 [lint_name] => (None, lint_name.ident.name, None),
-                                [tool_name, lint_name] => {
-                                    (Some(tool_name.ident.name), lint_name.ident.name, None)
-                                }
-                                [tool_name, lint_name, rest @ ..] => {
+                                [tool, lint_name] => (Some(tool.ident), lint_name.ident.name, None),
+                                [tool, lint_name, rest @ ..] => {
                                     let rest = rest
                                         .iter()
                                         .map(|s| s.ident.name)
                                         .collect::<Vec<_>>()
                                         .into();
-                                    (Some(tool_name.ident.name), lint_name.ident.name, Some(rest))
+                                    (Some(tool.ident), lint_name.ident.name, Some(rest))
                                 }
                             };
 
-                            lints.push((tool_name, lint_name, rest, p.span()))
+                            self.lints.push(LintCheck {
+                                tool,
+                                lint_name,
+                                lint_span: p.span(),
+                                kind,
+                                attr_id,
+                                reason,
+                                attr_span,
+                                rest,
+                            })
                         }
                         // We're found a `reason = "reason"` but we're not the last element.
                         ArgParser::NameValue(nv) if p.path().word_is(sym::reason) => {
@@ -109,19 +115,6 @@ impl LintParser {
                     },
                     attr_span,
                 );
-            }
-
-            for (tool_name, lint_name, rest, lint_span) in lints.into_iter() {
-                self.lints.push(LintCheck {
-                    tool_name,
-                    lint_name,
-                    lint_span,
-                    kind,
-                    attr_id,
-                    reason,
-                    attr_span,
-                    rest,
-                })
             }
         }
     }

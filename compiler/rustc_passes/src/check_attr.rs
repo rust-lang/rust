@@ -1347,7 +1347,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_lint_check(&self, hir_id: HirId, lints: &[LintCheck]) {
         for lint in lints {
             let LintCheck {
-                tool_name: None,
+                tool: None,
                 lint_name,
                 lint_span,
                 rest: None,

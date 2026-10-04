@@ -1,5 +1,5 @@
 use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 
 use crate::{HashIgnoredAttrId, PrintAttribute};
 #[derive(Clone, Copy, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
@@ -44,7 +44,7 @@ impl LintCheckKind {
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct LintCheck {
     /// The lint's tool name, if present.
-    pub tool_name: Option<Symbol>,
+    pub tool: Option<Ident>,
     /// The lint's name.
     ///
     /// With e.g. `clippy:blah` this will be `blah`.

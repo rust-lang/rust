@@ -31,7 +31,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
 use rustc_span::def_id::CRATE_MOD_ID;
-use rustc_span::{AttrId, DUMMY_SP, Span, Symbol, sym};
+use rustc_span::{AttrId, DUMMY_SP, Ident, Span, Symbol, sym};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
@@ -659,34 +659,28 @@ where
         &mut self,
         attrs: &[A],
     ) -> ThinVec<LintCheck> {
-        use std::any::TypeId;
-        if TypeId::of::<A>() == TypeId::of::<rustc_attr_ir::Attribute>() {
-            let attrs = unsafe {
-                core::slice::from_raw_parts(
-                    attrs.as_ptr().cast::<rustc_attr_ir::Attribute>(),
-                    attrs.len(),
-                )
-            };
+        fn try_cast_slice<'a, T: 'static, U: 'static>(slice: &'a [T]) -> Option<&'a [U]> {
+            use std::any::TypeId;
+            if TypeId::of::<T>() == TypeId::of::<U>() {
+                // SAFETY: T == U, so it is sound to cast `&[T]` to `&[U]`
+                unsafe {
+                    Some(core::slice::from_raw_parts(slice.as_ptr().cast::<U>(), slice.len()))
+                }
+            } else {
+                None
+            }
+        }
+
+        if let Some(attrs) = try_cast_slice::<A, rustc_attr_ir::Attribute>(attrs) {
             return find_attr!(attrs, LintCheck(lints) => lints.clone())
                 .unwrap_or_else(ThinVec::new);
         }
 
-        fn cast<'a, A: AttributeExt + 'static>(attrs: &'a [A]) -> &'a [ast::Attribute] {
-            if TypeId::of::<A>() == TypeId::of::<ast::Attribute>() {
-                unsafe {
-                    core::slice::from_raw_parts(
-                        attrs.as_ptr().cast::<ast::Attribute>(),
-                        attrs.len(),
-                    )
-                }
-            } else {
-                unreachable!("unknown implementor of `AttributeExt` {}", std::any::type_name::<A>())
-            }
-        }
-
         let parsed = AttributeParser::parse_limited_all(
             self.sess,
-            cast(attrs),
+            try_cast_slice(attrs).unwrap_or_else(|| {
+                unreachable!("unknown implementor of `AttributeExt` {}", std::any::type_name::<A>())
+            }),
             Some(&|attr| {
                 // This is ...complicated. Sometimes we need to parse lint check
                 // attributes pre-expansion, but of course things are allowed to
@@ -706,13 +700,12 @@ where
                 // const _: () = ();
                 //
                 // FIXME: just allow everything?
-                let can_parse_pre_expansion = attr.meta_item_list().is_some();
                 (attr.path_matches(&[sym::allow])
                     || attr.path_matches(&[sym::warn])
                     || attr.path_matches(&[sym::deny])
                     || attr.path_matches(&[sym::forbid])
                     || attr.path_matches(&[sym::expect]))
-                    && can_parse_pre_expansion
+                    && attr.meta_item_list().is_some()
             }),
             Target::Crate,
             DUMMY_SP,
@@ -759,17 +752,10 @@ where
 
         let sess = self.sess;
 
+        // FIXME: consider performing these checks in attribute parsing instead
         for (lint_index, lint_check) in lint_checks.into_iter().enumerate() {
-            let LintCheck {
-                tool_name,
-                lint_name,
-                lint_span,
-                kind,
-                reason,
-                attr_id,
-                attr_span: _,
-                rest,
-            } = lint_check;
+            let LintCheck { tool, lint_name, lint_span, kind, reason, attr_id, attr_span: _, rest } =
+                lint_check;
 
             let full_lint_name = if let Some(rest) = rest {
                 &join_path_syms([lint_name].into_iter().chain(rest))
@@ -790,8 +776,11 @@ where
             let lint_id = (level == Level::Expect)
                 .then(|| self.provider.mk_lint_expectation_id(attr_id.attr_id, lint_index as u16));
 
-            let lint_result =
-                self.store.check_lint_name(full_lint_name, tool_name, self.registered_lint_tools);
+            let lint_result = self.store.check_lint_name(
+                full_lint_name,
+                tool.map(|i| i.name),
+                self.registered_lint_tools,
+            );
 
             let (ids, name) = match lint_result {
                 CheckLintNameResult::Ok(ids) => (ids, lint_name),
@@ -799,7 +788,7 @@ where
                 CheckLintNameResult::Tool(ids, new_lint_name) => {
                     let name = match new_lint_name {
                         None => {
-                            let complete_name = &format!("{}::{}", tool_name.unwrap(), lint_name);
+                            let complete_name = &format!("{}::{}", tool.unwrap().name, lint_name);
                             Symbol::intern(complete_name)
                         }
                         Some(new_lint_name) => {
@@ -828,8 +817,8 @@ where
 
                 CheckLintNameResult::NoTool => {
                     sess.dcx().emit_err(UnknownToolInScopedLint {
-                        span: Some(lint_span),
-                        tool_name: tool_name.unwrap(),
+                        span: Some(tool.unwrap().span),
+                        tool_name: tool.unwrap().name,
                         lint_name: full_lint_name.to_string(),
                         is_nightly_build: sess.is_nightly_build(),
                     });
@@ -840,8 +829,8 @@ where
                     if self.lint_added_lints {
                         let suggestion =
                             RenamedLintSuggestion::WithSpan { suggestion: lint_span, replace };
-                        let name = tool_name
-                            .map(|tool_name| format!("{tool_name}::{full_lint_name}"))
+                        let name = tool
+                            .map(|Ident { name, .. }| format!("{name}::{full_lint_name}"))
                             .unwrap_or_else(|| full_lint_name.to_string());
                         self.emit_span_lint(
                             RENAMED_AND_REMOVED_LINTS,
@@ -866,8 +855,8 @@ where
 
                 CheckLintNameResult::Removed(ref reason) => {
                     if self.lint_added_lints {
-                        let name = if let Some(tool_name) = tool_name {
-                            &format!("{tool_name}::{full_lint_name}")
+                        let name = if let Some(Ident { name, .. }) = tool {
+                            &format!("{name}::{full_lint_name}")
                         } else {
                             full_lint_name
                         };
@@ -882,8 +871,8 @@ where
 
                 CheckLintNameResult::NoLint(suggestion) => {
                     if self.lint_added_lints {
-                        let name = tool_name
-                            .map(|tool_name| format!("{tool_name}::{full_lint_name}"))
+                        let name = tool
+                            .map(|Ident { name, .. }| format!("{name}::{full_lint_name}"))
                             .unwrap_or_else(|| full_lint_name.to_string());
                         let suggestion = suggestion.map(|(replace, from_rustc)| {
                             UnknownLintSuggestion::WithSpan {
@@ -928,7 +917,7 @@ where
                         reason,
                         lint_span,
                         is_unfulfilled_lint_expectations,
-                        tool_name,
+                        tool.map(|i| i.name),
                     ),
                 );
             }
