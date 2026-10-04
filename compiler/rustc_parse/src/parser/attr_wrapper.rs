@@ -95,7 +95,7 @@ impl<'a> Parser<'a> {
     pub(super) fn collect_pos(&self) -> CollectPos {
         CollectPos {
             start_token: (self.token, self.token_spacing),
-            cursor_snapshot: self.token_cursor.clone(),
+            cursor_snapshot: self.token_cursor.clone_without_stack(),
             start_pos: self.num_bump_calls,
         }
     }
