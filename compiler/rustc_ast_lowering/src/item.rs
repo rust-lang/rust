@@ -563,7 +563,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                 }
 
-                let res = self.lower_import_res(id, path.span());
+                let res = self.lower_import_res(id, &path);
                 let path = self.lower_use_path(res, &path, ParamMode::Explicit);
                 let ident = self.lower_ident(ident);
                 hir::UseTree { prefix: path, kind: hir::UseKind::Single(ident) }

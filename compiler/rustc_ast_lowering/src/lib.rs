@@ -943,7 +943,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.get_partial_res(id).map_or(Res::Err, |pr| pr.expect_full_res())
     }
 
-    fn lower_import_res(&self, id: NodeId, span: Span) -> PerNS<Option<Res>> {
+    fn lower_import_res(&self, id: NodeId, path: &ast::Path) -> PerNS<Option<Res>> {
         let per_ns = self
             .curr_owner
             .owner
@@ -962,7 +962,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         if per_ns.is_empty() {
             // Propagate the error to all namespaces, just to be sure.
-            self.dcx().span_delayed_bug(span, "no resolution for an import");
+            self.dcx().span_delayed_bug(path.span(), "no resolution for an import");
             let err = Some(Res::Err);
             return PerNS { type_ns: err, value_ns: err, macro_ns: err };
         }
