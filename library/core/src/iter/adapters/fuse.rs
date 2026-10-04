@@ -139,6 +139,11 @@ where
     }
 
     #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        FuseImpl::advance_back_by(self, n)
+    }
+
+    #[inline]
     fn nth_back(&mut self, n: usize) -> Option<<I as Iterator>::Item> {
         FuseImpl::nth_back(self, n)
     }
@@ -279,6 +284,9 @@ trait FuseImpl<I> {
     fn next_back(&mut self) -> Option<Self::Item>
     where
         I: DoubleEndedIterator;
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>>
+    where
+        I: DoubleEndedIterator;
     fn nth_back(&mut self, n: usize) -> Option<Self::Item>
     where
         I: DoubleEndedIterator;
@@ -356,6 +364,25 @@ where
         I: DoubleEndedIterator,
     {
         and_then_or_clear(&mut self.iter, |iter| iter.next_back())
+    }
+
+    #[inline]
+    default fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>>
+    where
+        I: DoubleEndedIterator,
+    {
+        let Some(iter) = &mut self.iter else {
+            return match NonZero::new(n) {
+                Some(n) => Err(n),
+                None => Ok(()),
+            };
+        };
+
+        let res = iter.advance_back_by(n);
+        if res.is_err() {
+            self.iter = None;
+        }
+        res
     }
 
     #[inline]
@@ -446,6 +473,20 @@ where
         I: DoubleEndedIterator,
     {
         self.iter.as_mut()?.next_back()
+    }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>>
+    where
+        I: DoubleEndedIterator,
+    {
+        match &mut self.iter {
+            Some(iter) => iter.advance_back_by(n),
+            None => match NonZero::new(n) {
+                Some(n) => Err(n),
+                None => Ok(()),
+            },
+        }
     }
 
     #[inline]
