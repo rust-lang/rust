@@ -25,9 +25,9 @@ use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, CandidatePreferenceMode, CantBeErased, DeepRejectCtxt, GenericArgsRef,
-    PolyProjectionClause, SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode,
-    Unnormalized, Upcast, elaborate, may_use_unstable_feature,
+    self, CallerBoundsIterator, CandidatePreferenceMode, CantBeErased, DeepRejectCtxt,
+    GenericArgsRef, PolyProjectionClause, SizedTraitKind, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt, TypingMode, Unnormalized, Upcast, elaborate, may_use_unstable_feature,
 };
 use rustc_next_trait_solver::solve::AliasBoundKind;
 use rustc_span::bug;
@@ -1002,7 +1002,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<EvaluationResult, OverflowError> {
         if !self.typing_mode().is_coherence()
             && obligation.is_global()
-            && obligation.param_env.caller_bounds().all(|bound| bound.has_param())
+            && obligation
+                .param_env
+                .caller_bounds()
+                .all_clauses()
+                .iter()
+                .all(|bound| bound.has_param())
         {
             // If a param env has no global bounds, global obligations do not
             // depend on its particular value in order to work, so we can clear

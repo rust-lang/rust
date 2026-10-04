@@ -4,7 +4,7 @@ use rustc_hir::def_id::DefId;
 use rustc_lint_defs::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, CallerBoundsIterator, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
 use rustc_span::{Span, Spanned, sym};
 
 use crate::diagnostics;
@@ -76,8 +76,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         source_info: SourceInfo,
     ) {
         let param_env = self.tcx.param_env(def_id);
-        let bounds = param_env.caller_bounds();
-        for bound in bounds {
+        for bound in param_env.caller_bounds().all_clauses().iter() {
             if let Some(bound_ty) = self.is_pointer_trait(bound) {
                 // Get the argument types as they appear in the function signature.
                 let arg_defs =

@@ -16,7 +16,8 @@ use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldabl
 use crate::inherent::*;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::{
-    self as ty, Const, DebruijnIndex, Interner, PredicateProxy, Region, UniverseIndex, Unnormalized,
+    self as ty, CallerBoundsIterator, Const, DebruijnIndex, Interner, PredicateProxy, Region,
+    UniverseIndex, Unnormalized,
 };
 
 /// `Binder` is a binder for higher-ranked lifetimes or types. It is part of the
@@ -1272,7 +1273,7 @@ impl<I: Interner> PlaceholderConst<I> {
     }
 
     pub fn find_const_ty_from_env(self, env: I::ParamEnv) -> I::Ty {
-        let mut candidates = env.caller_bounds().filter_map(|clause| {
+        let mut candidates = env.caller_bounds().non_trait_clauses().iter().filter_map(|clause| {
             // `ConstArgHasType` are never desugared to be higher ranked.
             match clause.kind().skip_binder() {
                 ty::ClauseKind::ConstArgHasType(placeholder_ct, ty) => {

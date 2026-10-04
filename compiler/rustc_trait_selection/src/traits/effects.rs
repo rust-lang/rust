@@ -8,7 +8,7 @@ use rustc_infer::traits::{
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::elaborate::elaborate;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, Ty, Unnormalized};
+use rustc_middle::ty::{self, CallerBoundsIterator, Ty, Unnormalized};
 use rustc_span::span_bug;
 use thin_vec::{ThinVec, thin_vec};
 
@@ -131,7 +131,7 @@ fn evaluate_host_effect_from_bounds<'tcx>(
     let drcx = DeepRejectCtxt::relate_rigid_rigid(selcx.tcx());
     let mut candidate = None;
 
-    for clause in obligation.param_env.caller_bounds() {
+    for clause in obligation.param_env.caller_bounds().non_trait_clauses().iter() {
         let bound_clause = clause.kind();
         let ty::ClauseKind::HostEffect(data) = bound_clause.skip_binder() else {
             continue;

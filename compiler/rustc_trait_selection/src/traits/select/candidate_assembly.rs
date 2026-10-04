@@ -15,8 +15,8 @@ use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
 use rustc_infer::traits::{Obligation, PolyTraitObligation, PredicateObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
-    self, ExistentialPredicate, FieldInfo, SizedTraitKind, TraitRef, Ty, TypeVisitableExt,
-    elaborate,
+    self, CallerBoundsIterator, ExistentialPredicate, FieldInfo, SizedTraitKind, TraitRef, Ty,
+    TypeVisitableExt, elaborate,
 };
 use rustc_span::{DUMMY_SP, bug, span_bug};
 use tracing::{debug, instrument, trace};
@@ -280,9 +280,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .obligation
             .param_env
             .caller_bounds()
-            .filter_map(|c| c.as_trait_clause())
+            .trait_clauses()
             // Micro-optimization: filter out predicates with different polarities.
-            .filter(|p| p.polarity() == stack.obligation.predicate.polarity());
+            .with_polarity(stack.obligation.predicate.polarity())
+            .iter();
 
         let drcx = DeepRejectCtxt::relate_rigid_rigid(self.tcx());
         let obligation_args = stack.obligation.predicate.skip_binder().trait_ref.args;

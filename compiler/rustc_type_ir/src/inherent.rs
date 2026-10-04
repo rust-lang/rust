@@ -14,8 +14,8 @@ use crate::relate::Relate;
 use crate::solve::{AdtDestructorKind, SizedTraitKind};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
-    self as ty, ClauseKind, CollectAndApply, Const, FieldInfo, Interner, PredicateKind, Region,
-    UpcastFrom,
+    self as ty, CallerBoundsAccessor, ClauseKind, CollectAndApply, Const, FieldInfo, Interner,
+    NoClauses, PredicateKind, Region, UpcastFrom,
 };
 
 #[rust_analyzer::prefer_underscore_import]
@@ -583,7 +583,7 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
 
 #[rust_analyzer::prefer_underscore_import]
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
-    fn caller_bounds(self) -> impl Iterator<Item = I::Clause>;
+    fn caller_bounds(self) -> CallerBoundsAccessor<I, impl Iterator<Item = I::Clause>, NoClauses>;
 }
 
 #[rust_analyzer::prefer_underscore_import]
