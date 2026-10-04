@@ -1375,16 +1375,13 @@ impl<T> *const T {
     ///
     /// The `len` argument is the number of **elements**, not the number of bytes.
     ///
-    /// This function is safe, but actually using the return value is unsafe.
-    /// See the documentation of [`slice::from_raw_parts`] for slice safety requirements.
+    /// See [`ptr::slice_from_raw_parts`] for more information.
     ///
-    /// [`slice::from_raw_parts`]: crate::slice::from_raw_parts
+    /// [`ptr::slice_from_raw_parts`]: crate::ptr::slice_from_raw_parts
     ///
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(ptr_cast_slice)]
-    ///
     /// // create a slice pointer when starting out with a pointer to the first element
     /// let x = [5, 6, 7];
     /// let raw_slice = x.as_ptr().cast_slice(3);
@@ -1395,7 +1392,6 @@ impl<T> *const T {
     /// the raw slice. A slice reference must never have a null pointer, even if it's empty.
     ///
     /// ```rust,should_panic
-    /// #![feature(ptr_cast_slice)]
     /// use std::ptr;
     /// let danger: *const [u8] = ptr::null::<u8>().cast_slice(0);
     /// unsafe {
@@ -1403,7 +1399,8 @@ impl<T> *const T {
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "ptr_cast_slice", issue = "149103")]
+    #[stable(feature = "ptr_cast_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ptr_cast_slice", since = "CURRENT_RUSTC_VERSION")]
     pub const fn cast_slice(self, len: usize) -> *const [T] {
         slice_from_raw_parts(self, len)
     }
