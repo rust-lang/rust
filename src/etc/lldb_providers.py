@@ -610,6 +610,8 @@ class StdStringSyntheticProvider:
         ptr_size = valobj.GetTarget().GetAddressByteSize() * 8
         self.no_hi_bit_max = 1 << (ptr_size - 1)
 
+        self.element_type = valobj.GetType().GetBasicType(eBasicTypeUnsignedChar)
+
         self.update()
 
     def update(self):
@@ -637,8 +639,6 @@ class StdStringSyntheticProvider:
             self.length = 0
         else:
             self.length = inner_vec.GetChildMemberWithName("len").GetValueAsUnsigned()
-
-        self.element_type = self.data_ptr.GetType().GetPointeeType()
 
     def has_children(self) -> bool:
         return True
@@ -1136,6 +1136,15 @@ class StdVecSyntheticProvider:
         self.element_type = None
         ptr_size = valobj.GetTarget().GetAddressByteSize() * 8
         self.no_hi_bit_max = 1 << (ptr_size - 1)
+
+        self.element_type = self.valobj.GetType().GetTemplateArgumentType(0)
+
+        if not self.element_type.IsValid():
+            arg_name = next(get_template_args(self.valobj.GetTypeName()))
+
+            self.element_type = resolve_msvc_template_arg(arg_name, self.valobj.GetTarget())
+
+        self.element_type_size = self.element_type.GetByteSize()
         self.update()
 
     def num_children(self) -> int:
@@ -1170,14 +1179,7 @@ class StdVecSyntheticProvider:
         else:
             self.length = self.valobj.GetChildMemberWithName("len").GetValueAsUnsigned()
 
-        self.element_type = self.valobj.GetType().GetTemplateArgumentType(0)
 
-        if not self.element_type.IsValid():
-            arg_name = next(get_template_args(self.valobj.GetTypeName()))
-
-            self.element_type = resolve_msvc_template_arg(arg_name, self.valobj.target)
-
-        self.element_type_size = self.element_type.GetByteSize()
 
     def has_children(self) -> bool:
         return True
@@ -1206,7 +1208,11 @@ class StdSliceSyntheticProvider:
             "ptr_const$<str>",
             "ptr_mut$<str>",
         }
+
         self.update()
+
+        self.element_type = self.data_ptr.GetType().GetPointeeType()
+        self.element_size = self.element_type.GetByteSize()
 
     def num_children(self) -> int:
         return self.length
@@ -1232,9 +1238,6 @@ class StdSliceSyntheticProvider:
     def update(self):
         self.length = self.valobj.GetChildMemberWithName("length").GetValueAsUnsigned()
         self.data_ptr = self.valobj.GetChildMemberWithName("data_ptr")
-
-        self.element_type = self.data_ptr.GetType().GetPointeeType()
-        self.element_size = self.element_type.GetByteSize()
 
     def has_children(self) -> bool:
         return True
@@ -1345,14 +1348,7 @@ class StdVecDequeSyntheticProvider:
             self.buf.GetChildMemberWithName("ptr")
         )
 
-        self.element_type = self.valobj.GetType().GetTemplateArgumentType(0)
 
-        if not self.element_type.IsValid():
-            arg_name = next(get_template_args(self.valobj.GetTypeName()))
-
-            self.element_type = resolve_msvc_template_arg(arg_name, self.valobj.target)
-
-        self.element_type_size = self.element_type.GetByteSize()
 
     def has_children(self) -> bool:
         return True
