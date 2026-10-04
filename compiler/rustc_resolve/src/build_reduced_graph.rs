@@ -759,9 +759,10 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 }
             }
             ast::UseTreeKind::Nested { ref items, .. } => {
+                let use_tree_span = use_tree.span();
                 for tree in items {
                     let id = tree.id;
-                    let feed = self.create_def(id, None, DefKind::Use, use_tree.span());
+                    let feed = self.create_def(id, None, DefKind::Use, use_tree_span);
                     self.build_reduced_graph_for_use_tree(
                         item,
                         &tree.inner,
