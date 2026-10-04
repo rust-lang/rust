@@ -1,0 +1,30 @@
+error: missing lifetime in associated type
+  --> $DIR/missing-lifetime-in-assoc-type-1.rs:9:17
+   |
+LL | impl<'a> IntoIterator for &S {
+   |     ---- there is a named lifetime specified on the impl block you could use
+...
+LL |     type Item = &T;
+   |                 ^ this lifetime must come from the implemented type
+   |
+note: in the trait the associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+help: consider using the lifetime from the impl block
+   |
+LL |     type Item = &'a T;
+   |                  ++
+
+error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/missing-lifetime-in-assoc-type-1.rs:4:6
+   |
+LL | impl<'a> IntoIterator for &S {
+   |      ^^ unconstrained lifetime parameter
+   |
+help: consider using the named lifetime here instead of an implicit lifetime
+   |
+LL | impl<'a> IntoIterator for &'a S {
+   |                            ++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0207`.

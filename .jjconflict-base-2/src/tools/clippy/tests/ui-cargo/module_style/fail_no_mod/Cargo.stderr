@@ -1,0 +1,11 @@
+error: `mod.rs` files are not allowed, found `src/bad/mod.rs`
+ --> src/bad/mod.rs:1:1
+  |
+1 | pub struct Thing;
+  | ^
+  |
+  = help: move `src/bad/mod.rs` to `src/bad.rs`
+  = note: `-D clippy::mod-module-files` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(clippy::mod_module_files)]`
+
+error: could not compile `fail-no-mod` (bin "fail-no-mod") due to 1 previous error

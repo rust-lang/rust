@@ -1,0 +1,15 @@
+error[E0080]: attempt to compute `0_u32 - 1_u32`, which would overflow
+  --> $DIR/issue-43197.rs:6:20
+   |
+LL |     const X: u32 = 0 - 1;
+   |                    ^^^^^ evaluation of `main::X` failed here
+
+error[E0080]: attempt to compute `0_u32 - 1_u32`, which would overflow
+  --> $DIR/issue-43197.rs:8:24
+   |
+LL |     const Y: u32 = foo(0 - 1);
+   |                        ^^^^^ evaluation of `main::Y` failed here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

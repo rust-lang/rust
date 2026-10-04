@@ -1,0 +1,62 @@
+(priroda) breakpoint added: {MANIFEST_DIR}/tests/ui/locals_source_shapes.rs:71
+(priroda) Hit breakpoint
+{MANIFEST_DIR}/tests/ui/locals_source_shapes.rs:71
+(priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
+Name: named, Id: _1, Ty: Named, Value: Named { a: [01], b: [02 03] }
+Name: empty_braced, Id: _2, Ty: EmptyBraced, Value: EmptyBraced {}
+Name: unit_struct, Id: _3, Ty: UnitStruct, Value: UnitStruct
+Name: tuple_struct, Id: _4, Ty: TupleStruct, Value: TupleStruct([04], [05 06])
+Name: single_tuple_struct, Id: _5, Ty: SingleTupleStruct, Value: SingleTupleStruct([07])
+Name: zero_tuple_struct, Id: _6, Ty: ZeroTupleStruct, Value: ZeroTupleStruct()
+Name: tuple_zero, Id: _7, Ty: (), Value: ()
+Name: tuple_one, Id: _8, Ty: (u8,), Value: ([08],)
+Name: tuple_many, Id: _9, Ty: (u8, u16), Value: ([09], [0a 0b])
+Name: array_zero, Id: _10, Ty: [u8; 0], Value: []
+Name: array_one, Id: _11, Ty: [u8; 1], Value: [[0c]]
+Name: array_many, Id: _12, Ty: [u8; 3], Value: [[0d], [0e], [0f]]
+Name: variant_unit, Id: _13, Ty: Variants, Value: Variants::Unit
+Name: variant_tuple, Id: _14, Ty: Variants, Value: Variants::Tuple([10], [11 12])
+Name: variant_single_tuple, Id: _15, Ty: Variants, Value: Variants::SingleTuple([13])
+Name: variant_struct, Id: _16, Ty: Variants, Value: Variants::Struct { n: [14 15 16 17], ok: [00] }
+Name: variant_empty_struct, Id: _17, Ty: Variants, Value: Variants::EmptyStruct {}
+Name: raw_union, Id: _18, Ty: RawUnion, Value: [18 19]
+Name: <none>, Id: _19, Ty: (&Named, &EmptyBraced, &UnitStruct, &TupleStruct, &SingleTupleStruct, &ZeroTupleStruct, &(), &(u8,), &(u8, u16), &[u8; 0], &[u8; 1], &[u8; 3], &Variants, &Variants, &Variants, &Variants, &Variants, &RawUnion), Value: <dead>
+Name: <none>, Id: _20, Ty: (&Named, &EmptyBraced, &UnitStruct, &TupleStruct, &SingleTupleStruct, &ZeroTupleStruct, &(), &(u8,), &(u8, u16), &[u8; 0], &[u8; 1], &[u8; 3], &Variants, &Variants, &Variants, &Variants, &Variants, &RawUnion), Value: <dead>
+Name: <none>, Id: _21, Ty: &Named, Value: <dead>
+Name: <none>, Id: _22, Ty: &EmptyBraced, Value: <dead>
+Name: <none>, Id: _23, Ty: &UnitStruct, Value: <dead>
+Name: <none>, Id: _24, Ty: &TupleStruct, Value: <dead>
+Name: <none>, Id: _25, Ty: &SingleTupleStruct, Value: <dead>
+Name: <none>, Id: _26, Ty: &ZeroTupleStruct, Value: <dead>
+Name: <none>, Id: _27, Ty: &(), Value: <dead>
+Name: <none>, Id: _28, Ty: &(u8,), Value: <dead>
+Name: <none>, Id: _29, Ty: &(u8, u16), Value: <dead>
+Name: <none>, Id: _30, Ty: &[u8; 0], Value: <dead>
+Name: <none>, Id: _31, Ty: &[u8; 1], Value: <dead>
+Name: <none>, Id: _32, Ty: &[u8; 3], Value: <dead>
+Name: <none>, Id: _33, Ty: &Variants, Value: <dead>
+Name: <none>, Id: _34, Ty: &Variants, Value: <dead>
+Name: <none>, Id: _35, Ty: &Variants, Value: <dead>
+Name: <none>, Id: _36, Ty: &Variants, Value: <dead>
+Name: <none>, Id: _37, Ty: &Variants, Value: <dead>
+Name: <none>, Id: _38, Ty: &RawUnion, Value: <dead>
+Name: <none>, Id: _39, Ty: u8, Value: <dead>
+(priroda) Id: _1, Ty: Named, Value: Named { a: [01], b: [02 03] }
+(priroda) Id: _2, Ty: EmptyBraced, Value: EmptyBraced {}
+(priroda) Id: _3, Ty: UnitStruct, Value: UnitStruct
+(priroda) Id: _4, Ty: TupleStruct, Value: TupleStruct([04], [05 06])
+(priroda) Id: _5, Ty: SingleTupleStruct, Value: SingleTupleStruct([07])
+(priroda) Id: _6, Ty: ZeroTupleStruct, Value: ZeroTupleStruct()
+(priroda) Id: _7, Ty: (), Value: ()
+(priroda) Id: _8, Ty: (u8,), Value: ([08],)
+(priroda) Id: _9, Ty: (u8, u16), Value: ([09], [0a 0b])
+(priroda) Id: _10, Ty: [u8; 0], Value: []
+(priroda) Id: _11, Ty: [u8; 1], Value: [[0c]]
+(priroda) Id: _12, Ty: [u8; 3], Value: [[0d], [0e], [0f]]
+(priroda) Id: _13, Ty: Variants, Value: Variants::Unit
+(priroda) Id: _14, Ty: Variants, Value: Variants::Tuple([10], [11 12])
+(priroda) Id: _15, Ty: Variants, Value: Variants::SingleTuple([13])
+(priroda) Id: _16, Ty: Variants, Value: Variants::Struct { n: [14 15 16 17], ok: [00] }
+(priroda) Id: _17, Ty: Variants, Value: Variants::EmptyStruct {}
+(priroda) Id: _18, Ty: RawUnion, Value: [18 19]
+(priroda) quitting

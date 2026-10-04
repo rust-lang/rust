@@ -1,0 +1,12 @@
+error[E0592]: duplicate definitions with name `test`
+  --> $DIR/auto-dedup-in-impl.rs:14:5
+   |
+LL |     fn test(&self) { println!("one"); }
+   |     ^^^^^^^^^^^^^^ duplicate definitions for `test`
+...
+LL |     fn test(&self) { println!("two"); }
+   |     -------------- other definition for `test`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0592`.

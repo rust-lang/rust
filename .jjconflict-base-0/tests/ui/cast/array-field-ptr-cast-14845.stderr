@@ -1,0 +1,15 @@
+error[E0606]: casting `&[u8; 1]` as `*mut u8` is invalid
+  --> $DIR/array-field-ptr-cast-14845.rs:9:14
+   |
+LL |     let _f = &x.a as *mut u8;
+   |              ^^^^^^^^^^^^^^^
+
+error[E0606]: casting `&[u8; 1]` as `*mut u8` is invalid
+  --> $DIR/array-field-ptr-cast-14845.rs:12:14
+   |
+LL |     let _v = &local as *mut u8;
+   |              ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0606`.

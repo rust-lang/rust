@@ -1,0 +1,12 @@
+warning: unexpected `cfg` condition name: `crossbeam_loom`
+  --> $DIR/stmt-no-ice.rs:8:11
+   |
+LL |     #[cfg(crossbeam_loom)]
+   |           ^^^^^^^^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(crossbeam_loom)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,17 @@
+error: pattern requires `..` due to inaccessible fields
+  --> $DIR/inaccessible-private-fields-trailing-comma-149787.rs:19:9
+   |
+LL |       let m::S {
+   |  _________^
+LL | |
+LL | |         visible,
+LL | |     } = m::S::new();
+   | |_____^
+   |
+help: ignore the inaccessible and unused fields
+   |
+LL |         visible, ..
+   |                  ++
+
+error: aborting due to 1 previous error
+

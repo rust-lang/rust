@@ -1,0 +1,36 @@
+error: First Pass analysis includes:
+  --> $DIR/capture-disjoint-field-tuple.rs:9:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{}", t.0);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing t[(0, 0)] -> Immutable
+  --> $DIR/capture-disjoint-field-tuple.rs:12:24
+   |
+LL |         println!("{}", t.0);
+   |                        ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/capture-disjoint-field-tuple.rs:9:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{}", t.0);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture t[(0, 0)] -> Immutable
+  --> $DIR/capture-disjoint-field-tuple.rs:12:24
+   |
+LL |         println!("{}", t.0);
+   |                        ^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,8 @@
+// Checks that the scrollbar is visible on the page rather than the code block.
+go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+set-window-size: (800, 1000)
+// "scrollWidth" should be superior than "clientWidth".
+assert-property: ("body", {"scrollWidth": 1780, "clientWidth": 800})
+
+// Both properties should be equal (ie, no scroll on the code block).
+assert-property: (".example-wrap .rust", {"scrollWidth": 1715, "clientWidth": 1715})

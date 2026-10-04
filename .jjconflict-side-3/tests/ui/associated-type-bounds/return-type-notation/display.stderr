@@ -1,0 +1,77 @@
+error[E0277]: the trait bound `impl Sized { <T as Assoc>::method(..) }: Trait` is not satisfied
+  --> $DIR/display.rs:14:17
+   |
+LL |     needs_trait(T::method());
+   |     ----------- ^^^^^^^^^^^ the trait `Trait` is not implemented for `impl Sized { <T as Assoc>::method(..) }`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `needs_trait`
+  --> $DIR/display.rs:4:24
+   |
+LL | fn needs_trait(_: impl Trait) {}
+   |                        ^^^^^ required by this bound in `needs_trait`
+help: consider further restricting the associated type
+   |
+LL | fn foo<T: Assoc>(t: T) where <T as Assoc>::method(..): Trait {
+   |                        +++++++++++++++++++++++++++++++++++++
+
+error[E0277]: the trait bound `impl Sized { <T as Assoc>::method_with_lt(..) }: Trait` is not satisfied
+  --> $DIR/display.rs:16:17
+   |
+LL |     needs_trait(T::method_with_lt());
+   |     ----------- ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `impl Sized { <T as Assoc>::method_with_lt(..) }`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `needs_trait`
+  --> $DIR/display.rs:4:24
+   |
+LL | fn needs_trait(_: impl Trait) {}
+   |                        ^^^^^ required by this bound in `needs_trait`
+help: consider further restricting the associated type
+   |
+LL | fn foo<T: Assoc>(t: T) where <T as Assoc>::method_with_lt(..): Trait {
+   |                        +++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0277]: the trait bound `impl Sized: Trait` is not satisfied
+  --> $DIR/display.rs:18:17
+   |
+LL |     needs_trait(T::method_with_ty());
+   |     ----------- ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `impl Sized`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/display.rs:3:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
+note: required by a bound in `needs_trait`
+  --> $DIR/display.rs:4:24
+   |
+LL | fn needs_trait(_: impl Trait) {}
+   |                        ^^^^^ required by this bound in `needs_trait`
+
+error[E0277]: the trait bound `impl Sized: Trait` is not satisfied
+  --> $DIR/display.rs:20:17
+   |
+LL |     needs_trait(T::method_with_ct());
+   |     ----------- ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `impl Sized`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/display.rs:3:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
+note: required by a bound in `needs_trait`
+  --> $DIR/display.rs:4:24
+   |
+LL | fn needs_trait(_: impl Trait) {}
+   |                        ^^^^^ required by this bound in `needs_trait`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

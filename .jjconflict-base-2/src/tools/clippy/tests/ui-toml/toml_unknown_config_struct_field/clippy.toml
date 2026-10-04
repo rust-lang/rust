@@ -1,0 +1,4 @@
+# In the following configuration, "recommendation" should be "reason" or "replacement".
+disallowed-macros = [
+    { path = "std::panic", recommendation = "return a `std::result::Result::Error` instead" },
+]

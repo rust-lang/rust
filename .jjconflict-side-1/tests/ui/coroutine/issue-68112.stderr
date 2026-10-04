@@ -1,0 +1,60 @@
+error: coroutine cannot be sent between threads safely
+  --> $DIR/issue-68112.rs:40:5
+   |
+LL |     require_send(send_gen);
+   |     ^^^^^^^^^^^^^^^^^^^^^^ coroutine is not `Send`
+   |
+   = help: the trait `Sync` is not implemented for `RefCell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
+note: coroutine is not `Send` as this value is used across a yield
+  --> $DIR/issue-68112.rs:36:9
+   |
+LL |         let _non_send_gen = make_non_send_coroutine();
+   |             ------------- has type `impl Coroutine<Return = Arc<RefCell<i32>>>` which is not `Send`
+LL |
+LL |         yield;
+   |         ^^^^^ yield occurs here, with `_non_send_gen` maybe used later
+note: required by a bound in `require_send`
+  --> $DIR/issue-68112.rs:22:25
+   |
+LL | fn require_send(_: impl Send) {}
+   |                         ^^^^ required by this bound in `require_send`
+
+error[E0277]: `RefCell<i32>` cannot be shared between threads safely
+  --> $DIR/issue-68112.rs:64:5
+   |
+LL |     require_send(send_gen);
+   |     ^^^^^^^^^^^^^^^^^^^^^^ `RefCell<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `RefCell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
+   = note: required for `Arc<RefCell<i32>>` to implement `Send`
+note: required because it's used within this coroutine
+  --> $DIR/issue-68112.rs:49:18
+   |
+LL |     #[coroutine] || {
+   |                  ^^
+note: required because it appears within the type `impl Coroutine<Return = Arc<RefCell<i32>>>`
+  --> $DIR/issue-68112.rs:46:30
+   |
+LL | pub fn make_gen2<T>(t: T) -> impl Coroutine<Return = T> {
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required because it appears within the type `impl Coroutine<Return = Arc<RefCell<i32>>>`
+  --> $DIR/issue-68112.rs:54:34
+   |
+LL | fn make_non_send_coroutine2() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required because it's used within this coroutine
+  --> $DIR/issue-68112.rs:60:33
+   |
+LL |     let send_gen = #[coroutine] || {
+   |                                 ^^
+note: required by a bound in `require_send`
+  --> $DIR/issue-68112.rs:22:25
+   |
+LL | fn require_send(_: impl Send) {}
+   |                         ^^^^ required by this bound in `require_send`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

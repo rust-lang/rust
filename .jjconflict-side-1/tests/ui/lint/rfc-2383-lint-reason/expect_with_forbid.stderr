@@ -1,0 +1,33 @@
+error[E0453]: expect(unused_variables) incompatible with previous forbid
+  --> $DIR/expect_with_forbid.rs:5:10
+   |
+LL | #[forbid(unused_variables)]
+   |          ---------------- `forbid` level set here
+LL |
+LL | #[expect(unused_variables)]
+   |          ^^^^^^^^^^^^^^^^ overruled by previous forbid
+
+error[E0453]: expect(while_true) incompatible with previous forbid
+  --> $DIR/expect_with_forbid.rs:13:10
+   |
+LL | #[forbid(while_true)]
+   |          ---------- `forbid` level set here
+...
+LL | #[expect(while_true)]
+   |          ^^^^^^^^^^ overruled by previous forbid
+
+error: denote infinite loops with `loop { ... }`
+  --> $DIR/expect_with_forbid.rs:20:5
+   |
+LL |     while true {}
+   |     ^^^^^^^^^^ help: use `loop`
+   |
+note: the lint level is defined here
+  --> $DIR/expect_with_forbid.rs:10:10
+   |
+LL | #[forbid(while_true)]
+   |          ^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0453`.

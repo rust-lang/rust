@@ -1,0 +1,17 @@
+//@ run-rustfix
+
+// There was a logic error in `redundant_explicit_links` that caused the lint
+// to skip all remaining links once it skipped a link containing inline markups.
+// This test asserts that the lint continues after skipping such links.
+
+#![deny(rustdoc::redundant_explicit_links)]
+
+/// [Option]
+///~^ ERROR redundant explicit link target
+///
+/// [**u8**](u8)
+/// This link should not lint.
+///
+/// [Result]
+///~^ ERROR redundant explicit link target
+pub fn func() {}

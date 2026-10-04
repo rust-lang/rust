@@ -1,0 +1,10 @@
+error: invalid format string: unmatched `}` found
+  --> $DIR/issue-86085.rs:4:12
+   |
+LL | format ! ( concat ! ( r#"lJ𐏿Æ�.𐏿�"# , "r} {}" )     ) ;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unmatched `}` in format string
+   |
+   = note: if you intended to print `}`, you can escape it using `}}`
+
+error: aborting due to 1 previous error
+

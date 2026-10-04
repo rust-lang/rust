@@ -1,0 +1,26 @@
+{
+  "arch": "m68k",
+  "cpu": "M68020",
+  "crt-static-respected": true,
+  "data-layout": "E-m:e-p:32:16:32-i8:8:8-i16:16:16-i32:16:32-n8:16:32-a:0:16-S16",
+  "dynamic-linking": true,
+  "env": "gnu",
+  "has-rpath": true,
+  "has-thread-local": true,
+  "llvm-target": "m68k-unknown-linux-gnu",
+  "max-atomic-width": 32,
+  "os": "linux",
+  "position-independent-executables": true,
+  "relro-level": "full",
+  "supported-split-debuginfo": [
+    "packed",
+    "unpacked",
+    "off"
+  ],
+  "target-endian": "big",
+  "target-family": [
+    "unix"
+  ],
+  "target-mcount": "_mcount",
+  "target-pointer-width": 32
+}

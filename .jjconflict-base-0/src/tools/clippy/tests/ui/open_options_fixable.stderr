@@ -1,0 +1,14 @@
+error: file opened with `create`, but `truncate` behavior not defined
+  --> tests/ui/open_options_fixable.rs:5:24
+   |
+LL |     OpenOptions::new().create(true).open("foo.txt");
+   |                        ^^^^^^^^^^^^- help: add: `.truncate(true)`
+   |
+   = help: if you intend to overwrite an existing file entirely, call `.truncate(true)`
+   = help: if you instead know that you may want to keep some parts of the old file, call `.truncate(false)`
+   = help: alternatively, use `.append(true)` to append to the file instead of overwriting it
+   = note: `-D clippy::suspicious-open-options` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_open_options)]`
+
+error: aborting due to 1 previous error
+

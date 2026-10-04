@@ -1,0 +1,47 @@
+error: no rules expected keyword `type`
+  --> $DIR/decl-macro-matching.rs:12:23
+   |
+LL | macro_rules! accept {
+   | ------------------- when calling this macro
+...
+LL | accept!(ForcedKeyword type);
+   |                       ^^^^ no rules expected this token in macro call
+   |
+note: while trying to match keyword `k#type`
+  --> $DIR/decl-macro-matching.rs:8:20
+   |
+LL |     (ForcedKeyword k#type) => {};
+   |                    ^^^^^^
+
+error: no rules expected `r#type`
+  --> $DIR/decl-macro-matching.rs:13:23
+   |
+LL | macro_rules! accept {
+   | ------------------- when calling this macro
+...
+LL | accept!(ForcedKeyword r#type);
+   |                       ^^^^^^ no rules expected this token in macro call
+   |
+note: while trying to match keyword `k#type`
+  --> $DIR/decl-macro-matching.rs:8:20
+   |
+LL |     (ForcedKeyword k#type) => {};
+   |                    ^^^^^^
+
+error: no rules expected keyword `k#type`
+  --> $DIR/decl-macro-matching.rs:16:16
+   |
+LL | macro_rules! accept {
+   | ------------------- when calling this macro
+...
+LL | accept!(Normal k#type);
+   |                ^^^^^^ no rules expected this token in macro call
+   |
+note: while trying to match keyword `type`
+  --> $DIR/decl-macro-matching.rs:9:13
+   |
+LL |     (Normal type) => {};
+   |             ^^^^
+
+error: aborting due to 3 previous errors
+

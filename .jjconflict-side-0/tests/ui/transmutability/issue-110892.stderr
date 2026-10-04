@@ -1,0 +1,36 @@
+error: expected parameter name, found `,`
+  --> $DIR/issue-110892.rs:25:9
+   |
+LL |         ,
+   |         ^ expected parameter name
+
+error: expected parameter name, found `,`
+  --> $DIR/issue-110892.rs:26:9
+   |
+LL |         ,
+   |         ^ expected parameter name
+
+error: expected parameter name, found `,`
+  --> $DIR/issue-110892.rs:27:9
+   |
+LL |         ,
+   |         ^ expected parameter name
+
+error: expected parameter name, found `,`
+  --> $DIR/issue-110892.rs:28:9
+   |
+LL |         ,
+   |         ^ expected parameter name
+
+error[E0308]: mismatched types
+  --> $DIR/issue-110892.rs:29:10
+   |
+LL |     const fn from_options(
+   |              ------------ implicitly returns `()` as its body has no tail or `return` expression
+...
+LL |     ) -> Assume {}
+   |          ^^^^^^ expected `Assume`, found `()`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

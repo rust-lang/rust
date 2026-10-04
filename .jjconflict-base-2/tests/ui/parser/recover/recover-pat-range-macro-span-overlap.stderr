@@ -1,0 +1,21 @@
+error: expected a pattern range bound, found an expression
+  --> $DIR/recover-pat-range-macro-span-overlap.rs:5:19
+   |
+LL |   macro_rules! m {
+...
+LL |               Bar = $value,
+   |  ___________________^
+LL | |
+LL | |         }
+LL | |         fn main() {
+LL | |             match 0 {
+LL | |                 0..Foo::Bar + $value | _ => (),
+   | |_____________________________^ not a pattern
+...
+LL |   m!(1);
+   |   ----- in this macro invocation
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+
+error: aborting due to 1 previous error
+

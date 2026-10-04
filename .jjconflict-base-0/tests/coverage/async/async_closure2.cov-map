@@ -1,0 +1,66 @@
+Function name: async_closure2::call_once::<async_closure2::main::{closure#0}>
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 0d, 01, 00, 2a]
+Number of files: 1
+- file 0 => $DIR/async_closure2.rs
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 13, 1) to (start + 0, 42)
+Highest counter ID seen: c0
+
+Function name: async_closure2::call_once::<async_closure2::main::{closure#0}>::{closure#0}
+Raw bytes (26): 0x[01, 01, 01, 05, 09, 04, 01, 0d, 2b, 00, 2c, 01, 01, 05, 00, 08, 01, 00, 09, 00, 0e, 02, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/async_closure2.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 13, 43) to (start + 0, 44)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 8)
+- Code(Counter(0)) at (prev + 0, 9) to (start + 0, 14)
+- Code(Expression(0, Sub)) at (prev + 1, 1) to (start + 0, 2)
+    = (c1 - c2)
+Highest counter ID seen: c0
+
+Function name: async_closure2::main
+Raw bytes (39): 0x[01, 01, 00, 07, 01, 11, 01, 00, 0e, 01, 05, 05, 00, 31, 01, 00, 05, 00, 17, 01, 01, 05, 00, 0f, 01, 00, 10, 00, 2c, 01, 00, 2e, 00, 2f, 05, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/async_closure2.rs
+Number of expressions: 0
+Number of file 0 mappings: 7
+- Code(Counter(0)) at (prev + 17, 1) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 5, 5) to (start + 0, 49)
+- Code(Counter(0)) at (prev + 0, 5) to (start + 0, 23)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 0, 16) to (start + 0, 44)
+- Code(Counter(0)) at (prev + 0, 46) to (start + 0, 47)
+- Code(Counter(1)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+
+Function name: async_closure2::main::{closure#0}
+Raw bytes (34): 0x[01, 01, 00, 06, 01, 12, 22, 00, 23, 01, 01, 09, 00, 2d, 01, 00, 09, 00, 0e, 01, 01, 09, 00, 2d, 01, 00, 09, 00, 0e, 01, 01, 05, 00, 06]
+Number of files: 1
+- file 0 => $DIR/async_closure2.rs
+Number of expressions: 0
+Number of file 0 mappings: 6
+- Code(Counter(0)) at (prev + 18, 34) to (start + 0, 35)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 45)
+- Code(Counter(0)) at (prev + 0, 9) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 45)
+- Code(Counter(0)) at (prev + 0, 9) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 6)
+Highest counter ID seen: c0
+
+Function name: async_closure2::main::{closure#0}::{closure#0}::<_> (unused)
+Raw bytes (34): 0x[01, 01, 00, 06, 00, 12, 22, 00, 23, 00, 01, 09, 00, 2d, 00, 00, 09, 00, 0e, 00, 01, 09, 00, 2d, 00, 00, 09, 00, 0e, 00, 01, 05, 00, 06]
+Number of files: 1
+- file 0 => $DIR/async_closure2.rs
+Number of expressions: 0
+Number of file 0 mappings: 6
+- Code(Zero) at (prev + 18, 34) to (start + 0, 35)
+- Code(Zero) at (prev + 1, 9) to (start + 0, 45)
+- Code(Zero) at (prev + 0, 9) to (start + 0, 14)
+- Code(Zero) at (prev + 1, 9) to (start + 0, 45)
+- Code(Zero) at (prev + 0, 9) to (start + 0, 14)
+- Code(Zero) at (prev + 1, 5) to (start + 0, 6)
+Highest counter ID seen: (none)
+

@@ -1,0 +1,15 @@
+error: replacing text with itself
+  --> tests/ui/clippy_all_group.rs:8:5
+   |
+LL |     "a".replace("a", "a");
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> tests/ui/clippy_all_group.rs:5:9
+   |
+LL | #![deny(clippy::all)]
+   |         ^^^^^^^^^^^
+   = note: `#[deny(clippy::no_effect_replace)]` implied by `#[deny(clippy::all)]`
+
+error: aborting due to 1 previous error
+

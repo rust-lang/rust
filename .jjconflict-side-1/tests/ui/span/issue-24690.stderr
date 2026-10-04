@@ -1,0 +1,29 @@
+warning: unused variable: `theOtherTwo`
+  --> $DIR/issue-24690.rs:13:9
+   |
+LL |     let theOtherTwo = 2;
+   |         ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_theOtherTwo`
+   |
+note: the lint level is defined here
+  --> $DIR/issue-24690.rs:8:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
+warning: variable `theTwo` should have a snake case name
+  --> $DIR/issue-24690.rs:12:9
+   |
+LL |     let theTwo = 2;
+   |         ^^^^^^ help: convert the identifier to snake case: `the_two`
+   |
+   = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: variable `theOtherTwo` should have a snake case name
+  --> $DIR/issue-24690.rs:13:9
+   |
+LL |     let theOtherTwo = 2;
+   |         ^^^^^^^^^^^ help: convert the identifier to snake case: `the_other_two`
+
+warning: 3 warnings emitted
+

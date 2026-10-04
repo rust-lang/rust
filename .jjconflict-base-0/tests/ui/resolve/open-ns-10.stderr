@@ -1,0 +1,2 @@
+error: crate name `nscrate::three::segments` passed to `--extern` can have at most two segments.
+

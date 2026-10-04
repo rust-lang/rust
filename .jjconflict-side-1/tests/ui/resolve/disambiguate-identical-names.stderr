@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/disambiguate-identical-names.rs:13:10
+   |
+LL |     test(&v);
+   |     ---- ^^ expected `&Vec<Vec<u32>>`, found `&HashMap<u8, u8>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&std::vec::Vec<std::vec::Vec<u32>>`
+              found reference `&HashMap<u8, u8>`
+note: function defined here
+  --> $DIR/disambiguate-identical-names.rs:6:4
+   |
+LL | fn test(_v: &Vec<Vec<u32>>) {
+   |    ^^^^ ------------------
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

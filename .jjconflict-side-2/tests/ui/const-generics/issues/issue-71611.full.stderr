@@ -1,0 +1,9 @@
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/issue-71611.rs:5:31
+   |
+LL | fn func<A, const F: fn(inner: A)>(outer: A) {
+   |                               ^ the type must not depend on the parameter `A`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0770`.

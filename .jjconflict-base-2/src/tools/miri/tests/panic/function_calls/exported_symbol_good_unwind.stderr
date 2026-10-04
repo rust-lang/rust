@@ -1,0 +1,11 @@
+
+thread 'main' ($TID) panicked at tests/panic/function_calls/exported_symbol_good_unwind.rs:LL:CC:
+explicit panic
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
+
+thread 'main' ($TID) panicked at tests/panic/function_calls/exported_symbol_good_unwind.rs:LL:CC:
+explicit panic
+
+thread 'main' ($TID) panicked at tests/panic/function_calls/exported_symbol_good_unwind.rs:LL:CC:
+explicit panic

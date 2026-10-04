@@ -1,0 +1,12 @@
+warning: method `noop` is never used
+  --> $DIR/trait-object-coercion-distribution-9951.rs:7:6
+   |
+LL | trait Bar {
+   |       --- method in this trait
+LL |   fn noop(&self);
+   |      ^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

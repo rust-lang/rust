@@ -1,0 +1,35 @@
+error: negative integers cannot be used to index on a `Vec<{integer}>`
+  --> $DIR/negative-literal-index.rs:15:7
+   |
+LL |     x[-1];
+   |       ^^ cannot use a negative integer for indexing on `Vec<{integer}>`
+   |
+help: to access an element starting from the end of the `Vec<{integer}>`, compute the index
+   |
+LL |     x[x.len() -1];
+   |       +++++++
+
+error: negative integers cannot be used to index on a `[{integer}; 3]`
+  --> $DIR/negative-literal-index.rs:17:7
+   |
+LL |     x[-1];
+   |       ^^ cannot use a negative integer for indexing on `[{integer}; 3]`
+   |
+help: to access an element starting from the end of the `[{integer}; 3]`, compute the index
+   |
+LL |     x[x.len() -1];
+   |       +++++++
+
+error: negative integers cannot be used to index on a `[{integer}; 3]`
+  --> $DIR/negative-literal-index.rs:19:7
+   |
+LL |     x[-1];
+   |       ^^ cannot use a negative integer for indexing on `[{integer}; 3]`
+   |
+help: to access an element starting from the end of the `[{integer}; 3]`, compute the index
+   |
+LL |     x[x.len() -1];
+   |       +++++++
+
+error: aborting due to 3 previous errors
+

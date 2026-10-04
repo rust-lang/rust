@@ -1,0 +1,21 @@
+TokenStream [Ident { ident: "fn", span: #0 bytes(201..203) }, Ident { ident: "span_preservation", span: #0 bytes(204..221) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: #0 bytes(221..223) }, Group { delimiter: Brace, stream: TokenStream [Ident { ident: "let", span: #0 bytes(231..234) }, Ident { ident: "tst", span: #0 bytes(235..238) }, Punct { ch: '=', spacing: Alone, span: #0 bytes(239..240) }, Literal { kind: Integer, symbol: "123", suffix: None, span: #0 bytes(241..244) }, Punct { ch: ';', spacing: Joint, span: #0 bytes(244..245) }, Punct { ch: ';', spacing: Alone, span: #0 bytes(245..246) }, Ident { ident: "match", span: #0 bytes(292..297) }, Ident { ident: "tst", span: #0 bytes(298..301) }, Group { delimiter: Brace, stream: TokenStream [Literal { kind: Integer, symbol: "123", suffix: None, span: #0 bytes(486..489) }, Punct { ch: '=', spacing: Joint, span: #0 bytes(490..491) }, Punct { ch: '>', spacing: Alone, span: #0 bytes(491..492) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: #0 bytes(493..495) }, Punct { ch: ',', spacing: Alone, span: #0 bytes(495..496) }, Ident { ident: "_", span: #0 bytes(505..506) }, Punct { ch: '=', spacing: Joint, span: #0 bytes(507..508) }, Punct { ch: '>', spacing: Alone, span: #0 bytes(508..509) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: #0 bytes(510..512) }], span: #0 bytes(302..518) }, Punct { ch: ';', spacing: Joint, span: #0 bytes(518..519) }, Punct { ch: ';', spacing: Joint, span: #0 bytes(519..520) }, Punct { ch: ';', spacing: Alone, span: #0 bytes(520..521) }], span: #0 bytes(225..565) }]
+error: unnecessary trailing semicolon
+  --> $DIR/redundant-semi-proc-macro.rs:9:19
+   |
+LL |     let tst = 123;;
+   |                   ^ help: remove this semicolon
+   |
+note: the lint level is defined here
+  --> $DIR/redundant-semi-proc-macro.rs:3:9
+   |
+LL | #![deny(redundant_semicolons)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: unnecessary trailing semicolons
+  --> $DIR/redundant-semi-proc-macro.rs:16:7
+   |
+LL |     };;;
+   |       ^^ help: remove these semicolons
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,18 @@
+error[E0658]: use of unstable library feature `eii_internals`
+  --> $DIR/feature-gate-eii-internals.rs:5:3
+   |
+LL | #[eii_declaration(bar)]
+   |   ^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(eii_internals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: cannot find a built-in macro with name `foo`
+  --> $DIR/feature-gate-eii-internals.rs:7:1
+   |
+LL | macro foo() {}
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1,0 +1,33 @@
+error[E0506]: cannot assign to `x` because it is borrowed
+  --> $DIR/closure-use-spans.rs:5:5
+   |
+LL |     let y = &x;
+   |             -- `x` is borrowed here
+LL |     x = 0;
+   |     ^^^^^ `x` is assigned to here but it was already borrowed
+LL |     || *y;
+   |        -- borrow later captured here by closure
+
+error[E0506]: cannot assign to `x` because it is borrowed
+  --> $DIR/closure-use-spans.rs:11:5
+   |
+LL |     let y = &mut x;
+   |             ------ `x` is borrowed here
+LL |     x = 0;
+   |     ^^^^^ `x` is assigned to here but it was already borrowed
+LL |     || *y = 1;
+   |        -- borrow later captured here by closure
+
+error[E0506]: cannot assign to `x` because it is borrowed
+  --> $DIR/closure-use-spans.rs:17:5
+   |
+LL |     let y = &x;
+   |             -- `x` is borrowed here
+LL |     x = 0;
+   |     ^^^^^ `x` is assigned to here but it was already borrowed
+LL |     move || *y;
+   |             -- borrow later captured here by closure
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0506`.

@@ -1,0 +1,139 @@
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:8:5
+   |
+LL | use std::intrinsics::transmute as _;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/accidentally-stable-intrinsics.rs:4:9
+   |
+LL | #![deny(deprecated)]
+   |         ^^^^^^^^^^
+help: import this function via the `mem` module instead
+   |
+LL - use std::intrinsics::transmute as _;
+LL + use std::mem::transmute as _;
+   |
+
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:10:5
+   |
+LL | use core::intrinsics::copy as _;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: import this function via the `ptr` module instead
+   |
+LL - use core::intrinsics::copy as _;
+LL + use core::ptr::copy as _;
+   |
+
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:12:5
+   |
+LL | use std::intrinsics::copy_nonoverlapping as _;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: import this function via the `ptr` module instead
+   |
+LL - use std::intrinsics::copy_nonoverlapping as _;
+LL + use std::ptr::copy_nonoverlapping as _;
+   |
+
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:14:5
+   |
+LL | use core::intrinsics::write_bytes as _;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: import this function via the `ptr` module instead
+   |
+LL - use core::intrinsics::write_bytes as _;
+LL + use core::ptr::write_bytes as _;
+   |
+
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:18:5
+   |
+LL |     copy as _,
+   |     ^^^^
+   |
+help: import this function via the `ptr` module instead
+   |
+LL - use core::intrinsics::{
+LL + use core::ptr::{
+   |
+
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:20:5
+   |
+LL |     copy_nonoverlapping as _,
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+help: import this function via the `ptr` module instead
+   |
+LL - use core::intrinsics::{
+LL + use core::ptr::{
+   |
+
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:22:5
+   |
+LL |     write_bytes as _,
+   |     ^^^^^^^^^^^
+   |
+help: import this function via the `ptr` module instead
+   |
+LL - use core::intrinsics::{
+LL + use core::ptr::{
+   |
+
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:30:17
+   |
+LL |         let _ = std::intrinsics::transmute::<u8, i8>(value);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: import this function via the `mem` module instead
+   |
+LL -         let _ = std::intrinsics::transmute::<u8, i8>(value);
+LL +         let _ = std::mem::transmute::<u8, i8>(value);
+   |
+
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:32:9
+   |
+LL |         core::intrinsics::copy(&value, &mut dst, 1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: import this function via the `ptr` module instead
+   |
+LL -         core::intrinsics::copy(&value, &mut dst, 1);
+LL +         core::ptr::copy(&value, &mut dst, 1);
+   |
+
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:34:9
+   |
+LL |         core::intrinsics::copy_nonoverlapping(&value, &mut dst, 1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: import this function via the `ptr` module instead
+   |
+LL -         core::intrinsics::copy_nonoverlapping(&value, &mut dst, 1);
+LL +         core::ptr::copy_nonoverlapping(&value, &mut dst, 1);
+   |
+
+error: use of deprecated import through accidentally stabilized module `intrinsics`
+  --> $DIR/accidentally-stable-intrinsics.rs:36:9
+   |
+LL |         std::intrinsics::write_bytes(&mut dst, value, 1)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: import this function via the `ptr` module instead
+   |
+LL -         std::intrinsics::write_bytes(&mut dst, value, 1)
+LL +         std::ptr::write_bytes(&mut dst, value, 1)
+   |
+
+error: aborting due to 11 previous errors
+

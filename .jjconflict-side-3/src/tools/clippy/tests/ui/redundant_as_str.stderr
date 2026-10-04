@@ -1,0 +1,17 @@
+error: this `as_str` is redundant and can be removed as the method immediately following exists on `String` too
+  --> tests/ui/redundant_as_str.rs:8:29
+   |
+LL |     let _redundant = string.as_str().as_bytes();
+   |                             ^^^^^^^^^^^^^^^^^ help: try: `as_bytes`
+   |
+   = note: `-D clippy::redundant-as-str` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_as_str)]`
+
+error: this `as_str` is redundant and can be removed as the method immediately following exists on `String` too
+  --> tests/ui/redundant_as_str.rs:10:29
+   |
+LL |     let _redundant = string.as_str().is_empty();
+   |                             ^^^^^^^^^^^^^^^^^ help: try: `is_empty`
+
+error: aborting due to 2 previous errors
+

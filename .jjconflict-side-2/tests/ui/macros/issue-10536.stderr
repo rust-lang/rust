@@ -1,0 +1,14 @@
+error: expected one of `(`, `[`, or `{`, found `two`
+  --> $DIR/issue-10536.rs:14:19
+   |
+LL |     assert!({one! two()});
+   |                   ^^^ expected one of `(`, `[`, or `{`
+
+error: expected one of `(`, `[`, or `{`, found `two`
+  --> $DIR/issue-10536.rs:18:19
+   |
+LL |     assert!({one! two});
+   |                   ^^^ expected one of `(`, `[`, or `{`
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,21 @@
+- // MIR for `caller::{closure#0}` before ForceInline
++ // MIR for `caller::{closure#0}` after ForceInline
+  
+  fn caller::{closure#0}(_1: &{closure@$DIR/forced_closure.rs:10:6: 10:8}) -> () {
+      let mut _0: ();
+      let _2: ();
++     scope 1 (inlined callee_forced) {
++     }
+  
+      bb0: {
+          StorageLive(_2);
+-         _2 = callee_forced() -> [return: bb1, unwind continue];
+-     }
+- 
+-     bb1: {
+          StorageDead(_2);
+          _0 = const ();
+          return;
+      }
+  }
+  

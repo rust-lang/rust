@@ -1,0 +1,4 @@
+// Check that enzyme_type attributes are present when TypeTree is enabled
+// This verifies our TypeTree metadata attachment is working
+
+CHECK: define{{.*}}"enzyme_type"="{[-1]:Float@double}"{{.*}}@square{{.*}}"enzyme_type"="{[-1]:Pointer, [-1,0]:Float@double}"

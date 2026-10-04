@@ -1,0 +1,19 @@
+error: lifetime may not live long enough
+  --> $DIR/ex3-both-anon-regions-2.rs:1:14
+   |
+LL | fn foo(&mut (ref mut v, w): &mut (&u8, &u8), x: &u8) {
+   |              ^^^^^^^^^            -             - let's call the lifetime of this reference `'1`
+   |              |                    |
+   |              |                    let's call the lifetime of this reference `'2`
+   |              assignment requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of a mutable reference to `&u8`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+help: consider introducing a named lifetime parameter
+   |
+LL | fn foo<'a>(&mut (ref mut v, w): &mut (&'a u8, &u8), x: &'a u8) {
+   |       ++++                             ++               ++
+
+error: aborting due to 1 previous error
+

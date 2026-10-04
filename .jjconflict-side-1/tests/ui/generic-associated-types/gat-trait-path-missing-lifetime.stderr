@@ -1,0 +1,57 @@
+error[E0049]: associated function `foo` has 1 type parameter but its trait declaration has 0 type parameters
+  --> $DIR/gat-trait-path-missing-lifetime.rs:8:10
+   |
+LL |   fn foo<'a>(t : Self::Y<'a>) -> Self::Y<'a> { t }
+   |          -- expected 0 type parameters
+...
+LL |   fn foo<'a, T1: X<Y = T1>>(t : T1) -> T1::Y<'a> {
+   |          ^^  ^^
+   |          |
+   |          found 1 type parameter
+
+error[E0046]: not all trait items implemented, missing: `Y`
+  --> $DIR/gat-trait-path-missing-lifetime.rs:7:1
+   |
+LL |   type Y<'a>;
+   |   ---------- `Y` from trait
+...
+LL | impl<T> X for T {
+   | ^^^^^^^^^^^^^^^ missing `Y` in implementation
+
+error[E0107]: missing generics for associated type `X::Y`
+  --> $DIR/gat-trait-path-missing-lifetime.rs:8:20
+   |
+LL |   fn foo<'a, T1: X<Y = T1>>(t : T1) -> T1::Y<'a> {
+   |                    ^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/gat-trait-path-missing-lifetime.rs:2:8
+   |
+LL |   type Y<'a>;
+   |        ^ --
+help: add missing lifetime argument
+   |
+LL |   fn foo<'a, T1: X<Y<'a> = T1>>(t : T1) -> T1::Y<'a> {
+   |                     ++++
+
+error[E0107]: missing generics for associated type `X::Y`
+  --> $DIR/gat-trait-path-missing-lifetime.rs:8:20
+   |
+LL |   fn foo<'a, T1: X<Y = T1>>(t : T1) -> T1::Y<'a> {
+   |                    ^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/gat-trait-path-missing-lifetime.rs:2:8
+   |
+LL |   type Y<'a>;
+   |        ^ --
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: add missing lifetime argument
+   |
+LL |   fn foo<'a, T1: X<Y<'a> = T1>>(t : T1) -> T1::Y<'a> {
+   |                     ++++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0046, E0049, E0107.
+For more information about an error, try `rustc --explain E0046`.

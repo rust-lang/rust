@@ -1,0 +1,8 @@
+error: cannot cast enum `E` into integer `u32` because it implements `Drop`
+  --> $DIR/enum-drop-cast-error.rs:17:13
+   |
+LL |     let i = e as u32;
+   |             ^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,13 @@
+error: expected identifier, found keyword `if`
+  --> $DIR/keyword-if-as-identifier.rs:4:9
+   |
+LL |     let if = "foo";
+   |         ^^ expected identifier, found keyword
+   |
+help: escape `if` to use it as an identifier
+   |
+LL |     let r#if = "foo";
+   |         ++
+
+error: aborting due to 1 previous error
+

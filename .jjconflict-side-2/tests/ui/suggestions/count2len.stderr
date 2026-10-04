@@ -1,0 +1,36 @@
+error[E0599]: no method named `count` found for array `[{integer}; 4]` in the current scope
+  --> $DIR/count2len.rs:5:11
+   |
+LL |     slice.count();
+   |           ^^^^^
+   |           |
+   |           method cannot be called on `[{integer}; 4]` due to unsatisfied trait bounds
+   |           help: consider using `len` instead
+   |
+   = note: `count` is defined on `Iterator`, which `[{integer}; 4]` does not implement
+
+error[E0599]: no method named `count` found for struct `Vec<{integer}>` in the current scope
+  --> $DIR/count2len.rs:6:9
+   |
+LL |     vec.count();
+   |         ^^^^^
+   |         |
+   |         method cannot be called on `Vec<{integer}>` due to unsatisfied trait bounds
+   |         help: consider using `len` instead
+   |
+   = note: `count` is defined on `Iterator`, which `Vec<{integer}>` does not implement
+
+error[E0599]: no method named `count` found for reference `&[{integer}]` in the current scope
+  --> $DIR/count2len.rs:7:20
+   |
+LL |     vec.as_slice().count();
+   |                    ^^^^^
+   |                    |
+   |                    method cannot be called on `&[{integer}]` due to unsatisfied trait bounds
+   |                    help: consider using `len` instead
+   |
+   = note: `count` is defined on `Iterator`, which `&[{integer}]` does not implement
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

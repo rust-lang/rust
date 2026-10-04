@@ -1,0 +1,8 @@
+error: `requires` attribute requires an argument, e.g., `#[requires(condition)]`
+  --> $DIR/empty-requires.rs:8:1
+   |
+LL | #[requires()]
+   | ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

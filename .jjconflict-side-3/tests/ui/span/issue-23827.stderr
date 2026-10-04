@@ -1,0 +1,11 @@
+error[E0046]: not all trait items implemented, missing: `Output`
+  --> $DIR/issue-23827.rs:27:1
+   |
+LL | impl<C: Component> FnOnce<(C,)> for Prototype {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `Output` in implementation
+   |
+   = help: implement the missing item: `type Output = /* Type */;`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

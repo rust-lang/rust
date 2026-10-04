@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/fully-qualified-path-impl-trait.rs:14:8
+   |
+LL |     ().foo(|| ())
+   |        ^^^ cannot infer type for type parameter `T` declared on the trait `Foo`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.
