@@ -2,16 +2,20 @@
 
 #![deny(dead_code)]
 
+#[allow(dead_code)]
+struct Foo;
+
+impl Foo {
+    fn foo(&self) {}
+}
+
 pub trait Tr {
     fn foo(&self);
 }
 
-#[allow(dead_code)]
-struct Foo;
-
 impl Tr for Foo {
     fn foo(&self) {
-        bar();
+        bar()
     }
 }
 
