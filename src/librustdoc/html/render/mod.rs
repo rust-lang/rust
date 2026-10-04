@@ -39,7 +39,7 @@ mod sorted_template;
 mod type_layout;
 mod write_shared;
 
-use std::borrow::Cow;
+use std::borrow::{Borrow, Cow};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt::{self, Display as _, Write};
@@ -1458,16 +1458,77 @@ fn render_all_impls(
     Ok(())
 }
 
+fn aliased_type_deref_impl<'a>(
+    cx: &'a Context<'_>,
+    alias_def_id: DefId,
+    aliased_def_id: DefId,
+) -> Option<(&'a Impl, bool)> {
+    let tcx = cx.tcx();
+    let applies = |impl_: &Impl| {
+        impl_.impl_item.item_id.as_def_id().is_some_and(|impl_def_id| {
+            clean::types::impl_may_apply_to_type_alias(tcx, alias_def_id, impl_def_id)
+        })
+    };
+    let impls = cx.cache().impls.get(&aliased_def_id)?;
+    let mut deref_impl = None;
+    let mut has_deref_mut = false;
+
+    for impl_ in impls {
+        if impl_.is_deref_trait(tcx) {
+            if !impl_.is_negative_trait_impl() && applies(impl_) {
+                deref_impl = Some(impl_);
+            }
+        } else if impl_.is_deref_mut_trait(tcx) && applies(impl_) {
+            has_deref_mut = true;
+        }
+    }
+    Some((deref_impl?, has_deref_mut))
+}
+
+/// Try to get the `Deref` trait `Impl` for `item`. If it cannot be found, it will try to do the
+/// same with `aliased_type`. Returns a tuple containing the `Deref` `Impl`, and a bool set to
+/// `true` if `DerefMut` is also implemented.
+fn get_deref_impls<'a, I: Borrow<Impl>>(
+    cx: &'a Context<'_>,
+    trait_impls: &'a [I],
+    item: DefId,
+    aliased_type: Option<DefId>,
+) -> Option<(&'a Impl, bool)> {
+    let tcx = cx.tcx();
+    let mut impls = trait_impls.iter().map(|t| t.borrow());
+    if let Some(impl_) =
+        impls.clone().find(|t| t.is_deref_trait(tcx) && !t.is_negative_trait_impl())
+    {
+        let has_deref_mut = impls.any(|t| t.is_deref_mut_trait(tcx));
+        Some((impl_, has_deref_mut))
+    } else {
+        aliased_type.and_then(|aliased_did| aliased_type_deref_impl(cx, item, aliased_did))
+    }
+}
+
 fn render_assoc_items(
     cx: &Context<'_>,
     containing_item: &clean::Item,
     it: DefId,
     what: AssocItemRender<'_>,
 ) -> impl fmt::Display {
+    render_assoc_items_with_aliased_type(cx, containing_item, it, what, None)
+}
+
+fn render_assoc_items_with_aliased_type(
+    cx: &Context<'_>,
+    containing_item: &clean::Item,
+    it: DefId,
+    what: AssocItemRender<'_>,
+    aliased_type: Option<DefId>,
+) -> impl fmt::Display {
     fmt::from_fn(move |f| {
         let mut derefs = DefIdSet::default();
         derefs.insert(it);
-        render_assoc_items_inner(f, cx, containing_item, it, what, &mut derefs)
+        if let Some(aliased_type) = aliased_type {
+            derefs.insert(aliased_type);
+        }
+        render_assoc_items_inner(f, cx, containing_item, it, what, &mut derefs, aliased_type)
     })
 }
 
@@ -1478,10 +1539,15 @@ fn render_assoc_items_inner(
     it: DefId,
     what: AssocItemRender<'_>,
     derefs: &mut DefIdSet,
+    aliased_type: Option<DefId>,
 ) -> fmt::Result {
     info!("Documenting associated items of {:?}", containing_item.name);
     let cache = &cx.shared.cache;
-    let Some(impls) = cache.impls.get(&it) else { return Ok(()) };
+    let impls = match cache.impls.get(&it) {
+        Some(impls) => impls.as_slice(),
+        None if aliased_type.is_some() => &[],
+        None => return Ok(()),
+    };
     let (mut inherent_impls, trait_impls): (Vec<_>, _) =
         impls.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !inherent_impls.is_empty() {
@@ -1507,9 +1573,8 @@ fn render_assoc_items_inner(
                 // we should not show methods from `[MaybeUninit<u8>]`.
                 // this `retain` filters out any instances where
                 // the types do not line up perfectly.
-                inherent_impls.retain(|impl_| {
-                    type_.is_doc_subtype_of(&impl_.inner_impl().for_, &cx.shared.cache)
-                });
+                inherent_impls
+                    .retain(|impl_| type_.is_doc_subtype_of(&impl_.inner_impl().for_, &cx));
                 let derived_id = cx.derive_id(&id);
                 if let Some(def_id) = type_.def_id(cx.cache()) {
                     cx.deref_id_map.borrow_mut().insert(def_id, id.clone());
@@ -1569,17 +1634,11 @@ fn render_assoc_items_inner(
         }
     }
 
-    if !trait_impls.is_empty() {
-        let deref_impl = trait_impls.iter().find(|t| {
-            t.trait_did() == cx.tcx().lang_items().deref_trait() && !t.is_negative_trait_impl()
-        });
-        if let Some(impl_) = deref_impl {
-            let has_deref_mut = trait_impls
-                .iter()
-                .any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
-            render_deref_methods(&mut w, cx, impl_, containing_item, has_deref_mut, derefs)?;
-        }
+    if let Some((impl_, has_deref_mut)) = get_deref_impls(cx, &trait_impls, it, aliased_type) {
+        render_deref_methods(&mut w, cx, impl_, containing_item, has_deref_mut, derefs)?;
+    }
 
+    if !trait_impls.is_empty() {
         // If we were already one level into rendering deref methods, we don't want to render
         // anything after recursing into any further deref methods above.
         if let AssocItemRender::DerefFor { .. } = what {
@@ -1633,11 +1692,11 @@ fn render_deref_methods(
                 return Ok(());
             }
         }
-        render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs)?;
+        render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs, None)?;
     } else if let Some(prim) = target.primitive_type()
         && let Some(&did) = cache.primitive_locations.get(&prim)
     {
-        render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs)?;
+        render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs, None)?;
     }
     Ok(())
 }
@@ -1696,7 +1755,7 @@ fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Option<impl fmt:
             impl_.polarity == ty::ImplPolarity::Positive
                 // Two different types might have the same did,
                 // without actually being the same.
-                && ty.is_doc_subtype_of(&impl_.for_, cx.cache())
+                && ty.is_doc_subtype_of(&impl_.for_, cx)
         })
         .filter_map(|impl_| impl_.trait_.as_ref())
         .filter_map(|trait_| cx.cache().traits.get(&trait_.def_id()))
@@ -1726,7 +1785,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
             .filter(|impl_| impl_.polarity == ty::ImplPolarity::Positive)
             .filter(|impl_| {
                 // Two different types might have the same did, without actually being the same.
-                ty.is_doc_subtype_of(&impl_.for_, cx.cache())
+                ty.is_doc_subtype_of(&impl_.for_, cx)
             })
             .filter_map(|impl_| {
                 if let Some(trait_) = &impl_.trait_

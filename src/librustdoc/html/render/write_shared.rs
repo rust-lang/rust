@@ -28,7 +28,6 @@ use indexmap::IndexMap;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_session::Session;
 use rustc_span::Symbol;
 use rustc_span::def_id::DefId;
@@ -37,6 +36,7 @@ use serde::ser::SerializeSeq;
 use serde::{Deserialize, Serialize, Serializer};
 
 use super::{Context, RenderMode, collect_paths_for_type, ensure_trailing_slash};
+use crate::clean::types::impl_may_apply_to_type_alias;
 use crate::clean::{Crate, Item, ItemId, ItemKind};
 use crate::config::{EmitType, PathToParts, RenderOptions, ShouldMerge};
 use crate::docfs::PathError;
@@ -1015,7 +1015,6 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
         let Some(self_fqp) = cache.exact_paths.get(&self_did).or_else(get_local) else {
             return;
         };
-        let aliased_ty = self.cx.tcx().type_of(self_did).skip_binder();
         // Exclude impls that are directly on this type. They're already in the HTML.
         // Some inlining scenarios can cause there to be two versions of the same
         // impl: one on the type alias and one on the underlying target type.
@@ -1024,15 +1023,8 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
         for (impl_item_id, aliased_type_impl) in &mut aliased_type.impl_ {
             // Only include this impl if it actually unifies with this alias.
             // Synthetic impls are not included; those are also included in the HTML.
-            //
-            // FIXME(checked_type_alias): Once the feature is complete or stable, rewrite this
-            // to use type unification.
-            // Be aware of `tests/rustdoc-html/type-alias/deeply-nested-112515.rs` which might
-            // regress.
             let Some(impl_did) = impl_item_id.as_def_id() else { continue };
-            let for_ty = self.cx.tcx().type_of(impl_did).skip_binder();
-            let reject_cx = DeepRejectCtxt::relate_infer_infer(self.cx.tcx());
-            if !reject_cx.types_may_unify(aliased_ty, for_ty) {
+            if !impl_may_apply_to_type_alias(self.cx.tcx(), self_did, impl_did) {
                 continue;
             }
             // Avoid duplicates
