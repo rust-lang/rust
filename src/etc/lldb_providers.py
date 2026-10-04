@@ -361,7 +361,7 @@ def TupleSummaryProvider(valobj: SBValue, _dict: LLDBOpaque):
 
 
 def aggregate_field_summary(valobj: SBValue, _dict) -> Generator[str, None, None]:
-    for i in range(0, valobj.GetNumChildren()):
+    for i in range(valobj.GetNumChildren()):
         child: SBValue = valobj.GetChildAtIndex(i)
         summary = child.summary
         if summary is None:
@@ -542,7 +542,7 @@ def sequence_formatter(output: str, valobj: SBValue, _dict: LLDBOpaque):
         return output
 
     long: bool = False
-    for i in range(0, length):
+    for i in range(length):
         if len(output) > 32:
             long = True
             break
@@ -1152,7 +1152,7 @@ class StdVecSyntheticProvider:
         start = self.data_ptr.GetValueAsUnsigned()
         address = start + index * self.element_type_size
         element = self.data_ptr.CreateValueFromAddress(
-            "[%s]" % index, address, self.element_type
+            f"[{index}]", address, self.element_type
         )
         return element
 
@@ -1222,7 +1222,7 @@ class StdSliceSyntheticProvider:
         start = self.data_ptr.GetValueAsUnsigned()
         address = start + index * self.element_size
         element = self.data_ptr.CreateValueFromAddress(
-            "[%s]" % index, address, self.element_type
+            f"[{index}]", address, self.element_type
         )
 
         if self.is_str:
@@ -1297,7 +1297,15 @@ class StdVecDequeSyntheticProvider:
         # logger = Logger.Logger()
         # logger >> "[StdVecDequeSyntheticProvider] for " + str(valobj.GetName())
         self.valobj = valobj
-        self.element_type = None
+        self.element_type = self.valobj.GetType().GetTemplateArgumentType(0)
+
+        if not self.element_type.IsValid():
+            arg_name = next(get_template_args(self.valobj.GetTypeName()))
+
+            self.element_type = resolve_msvc_template_arg(arg_name, self.valobj.target)
+
+        self.element_type_size = self.element_type.GetByteSize()
+
         self.update()
 
     def num_children(self) -> int:
@@ -1314,7 +1322,7 @@ class StdVecDequeSyntheticProvider:
         start = self.data_ptr.GetValueAsUnsigned()
         address = start + ((index + self.head) % self.cap) * self.element_type_size
         element = self.data_ptr.CreateValueFromAddress(
-            "[%s]" % index, address, self.element_type
+            f"[{index}]", address, self.element_type
         )
         return element
 
@@ -1398,14 +1406,14 @@ class StdOldHashMapSyntheticProvider:
         idx = table_index & self.capacity_mask
         address = pairs_start + idx * self.pair_type_size
         element = self.data_ptr.CreateValueFromAddress(
-            "[%s]" % index, address, self.pair_type
+            f"[{index}]", address, self.pair_type
         )
         if self.show_values:
             return element
         else:
             key = element.GetChildAtIndex(0)
             return self.valobj.CreateValueFromData(
-                "[%s]" % index, key.GetData(), key.GetType()
+                f"[{index}]", key.GetData(), key.GetType()
             )
 
     def update(self):
@@ -1432,7 +1440,7 @@ class StdOldHashMapSyntheticProvider:
         for idx in range(self.capacity):
             address = self.data_ptr.GetValueAsUnsigned() + idx * self.hash_uint_size
             hash_uint = self.data_ptr.CreateValueFromAddress(
-                "[%s]" % idx, address, self.hash_uint_type
+                f"[{idx}]", address, self.hash_uint_type
             )
             hash_ptr = hash_uint.GetChildAtIndex(0).GetChildAtIndex(0)
             if hash_ptr.GetValueAsUnsigned() != 0:
@@ -1469,7 +1477,7 @@ class StdHashMapSyntheticProvider:
             idx = -(idx + 1)
         address = pairs_start + idx * self.pair_type_size
         element = self.data_ptr.CreateValueFromAddress(
-            "[%s]" % index, address, self.pair_type
+            f"[{index}]", address, self.pair_type
         )
 
         if self.show_values:
@@ -1477,7 +1485,7 @@ class StdHashMapSyntheticProvider:
         else:
             key = element.GetChildAtIndex(0)
             return self.valobj.CreateValueFromData(
-                "[%s]" % index, key.GetData(), key.GetType()
+                f"[{index}]", key.GetData(), key.GetType()
             )
 
     def update(self):
@@ -1519,7 +1527,7 @@ class StdHashMapSyntheticProvider:
         for idx in range(capacity):
             address = ctrl.GetValueAsUnsigned() + idx * u8_type_size
             value = ctrl.CreateValueFromAddress(
-                "ctrl[%s]" % idx, address, u8_type
+                f"ctrl[{idx}]", address, u8_type
             ).GetValueAsUnsigned()
             is_present = value & 128 == 0
             if is_present:
@@ -1656,7 +1664,7 @@ class StdCellSyntheticProvider:
 def StdRefSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     borrow = valobj.GetChildMemberWithName("borrow").GetValueAsSigned()
     return (
-        "borrow={}".format(borrow) if borrow >= 0 else "borrow_mut={}".format(-borrow)
+        f"borrow={borrow}" if borrow >= 0 else f"borrow_mut={-borrow}"
     )
 
 
