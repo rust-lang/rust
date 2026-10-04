@@ -1120,8 +1120,29 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn take_opaque_types(&self) -> Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)> {
-        self.inner.borrow_mut().opaque_type_storage.take_opaque_types().collect()
+    pub fn take_opaque_types(
+        &self,
+    ) -> (
+        Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)>,
+        Vec<(TyVid, ty::PseudoRigidDueToOpaquesBound<'tcx>)>,
+    ) {
+        let mut inner = self.inner.borrow_mut();
+        let (opaques, pseudo_rigids) = inner.opaque_type_storage.take_opaque_types();
+        (opaques.collect(), pseudo_rigids)
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    pub fn take_opaque_types_old_solver(
+        &self,
+    ) -> Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)> {
+        assert!(!self.next_trait_solver());
+        let mut inner = self.inner.borrow_mut();
+        let (opaques, pseudo_rigids) = inner.opaque_type_storage.take_opaque_types();
+        debug_assert!(
+            pseudo_rigids.is_empty(),
+            "We don't track any pseudo-rigids with the old solver"
+        );
+        opaques.collect()
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -1129,7 +1150,10 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().opaque_type_storage.iter_opaque_types().collect()
     }
 
-    pub fn has_opaques_with_sub_unified_hidden_type(&self, ty_vid: TyVid) -> bool {
+    /// In the next solver, we normalize alias types by replacing them with infer vars and
+    /// registering/evaluating projection goals
+    /// They often but when we are in the defining scope of an opaque type and we haven't fully
+    pub fn is_pseudo_rigid_due_to_opaques(&self, ty_vid: TyVid) -> bool {
         if !self.next_trait_solver() {
             return false;
         }
@@ -1137,15 +1161,9 @@ impl<'tcx> InferCtxt<'tcx> {
         let ty_sub_vid = self.sub_unification_table_root_var(ty_vid);
         let inner = &mut *self.inner.borrow_mut();
         let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
-        inner.opaque_type_storage.iter_opaque_types().any(|(_, hidden_ty)| {
-            if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.ty.kind() {
-                let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
-                if opaque_sub_vid == ty_sub_vid {
-                    return true;
-                }
-            }
-
-            false
+        inner.opaque_type_storage.iter_pseudo_rigid_due_to_opaques().any(|(hidden_vid, _)| {
+            let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
+            opaque_sub_vid == ty_sub_vid
         })
     }
 
@@ -1182,6 +1200,30 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
 
                 None
+            })
+            .collect()
+    }
+
+    pub fn pseudo_rigid_due_to_opaques(
+        &self,
+        ty_vid: TyVid,
+    ) -> Vec<ty::PseudoRigidDueToOpaquesBound<'tcx>> {
+        // Avoid accidentally allowing more code to compile with the old solver.
+        if !self.next_trait_solver() {
+            return vec![];
+        }
+
+        let ty_sub_vid = self.sub_unification_table_root_var(ty_vid);
+        let inner = &mut *self.inner.borrow_mut();
+        // This is iffy, can't call `type_variables()` as we're already
+        // borrowing the `opaque_type_storage` here.
+        let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
+        inner
+            .opaque_type_storage
+            .iter_pseudo_rigid_due_to_opaques()
+            .filter_map(|(hidden_vid, bound)| {
+                let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
+                if opaque_sub_vid == ty_sub_vid { Some(bound) } else { None }
             })
             .collect()
     }

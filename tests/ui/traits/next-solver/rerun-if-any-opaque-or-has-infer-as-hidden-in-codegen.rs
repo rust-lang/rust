@@ -15,7 +15,7 @@ fn main() {
     // The blanket impl requires `FlatMap<...>: Iterator`.
     // The `Iterator` impl of `FlatMap` has nested goals:
     // `Projection(Fn::Output<parse_feature, (?assoc,)>, iter::Once`.
-    // We normalize this goal and set rerun condition to `AnyOpaqueHasInferAsHidden`
+    // We normalize this goal and set rerun condition to `PseudoRigidInStorage`
     // with reason `SelfTyInfer` because we instantiated impls with infers when
     // assembling candidates for intermediate goals.
     // Then we evaluate the normalized goal:
@@ -25,7 +25,7 @@ fn main() {
     // But the expected term is revealed `iter::Once` thus relating failed.
     // The goal fails with rerun condition `OpaqueInStorage(parse_feature::opaque)`.
     // This goal should be rerun in `TypingMode::Codegen` mode, but
-    // `AnyOpaqueHasInferAsHidden + OpaqueInStorage = OpaqueInStorageOrAnyOpaqueHasInferAsHidden`
+    // `PseudoRigidInStorage + OpaqueInStorage = OpaqueInStorageOrPseudoRigidInStorage`
     // which didn't trigger rerun in `TypingMode::Codegen` mode previously.
     mk_vec()
         .into_iter()

@@ -39,6 +39,10 @@ where
         self.def_id()
     }
 
+    fn as_normalizes_to(self) -> Option<ty::NormalizesTo<I>> {
+        None
+    }
+
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,

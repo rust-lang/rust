@@ -207,6 +207,40 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().opaque_types().register(opaque_type_key, hidden_ty)
     }
 
+    pub fn register_pseudo_rigid_due_to_opaques_in_storage(
+        &self,
+        pseudo_rigid: Ty<'tcx>,
+        bounds: impl IntoIterator<Item = ty::PseudoRigidDueToOpaquesBound<'tcx>>,
+    ) {
+        assert!(self.next_trait_solver());
+        let ty::Infer(ty::TyVar(vid)) = *pseudo_rigid.kind() else {
+            return;
+        };
+        if self.try_resolve_ty_var(vid).is_ok() {
+            return;
+        }
+
+        let bounds: Vec<_> = bounds
+            .into_iter()
+            .map(|bound| self.deeply_resolve_via_unification_table(bound))
+            .collect();
+
+        let ty_sub_vid = self.sub_unification_table_root_var(vid);
+        self.inner.borrow_mut().opaque_types().add_pseudo_rigid_due_to_opaques(ty_sub_vid, bounds);
+    }
+
+    pub fn register_pseudo_rigid_due_to_opaques_in_storage_with_flattened(
+        &self,
+        bounds: &[(Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)],
+    ) {
+        for chunk in bounds.chunk_by(|a, b| a.0 == b.0) {
+            self.register_pseudo_rigid_due_to_opaques_in_storage(
+                chunk[0].0,
+                chunk.iter().map(|(_, bound)| *bound),
+            );
+        }
+    }
+
     /// Insert a hidden type into the opaque type storage, equating it
     /// with any previous entries if necessary.
     ///

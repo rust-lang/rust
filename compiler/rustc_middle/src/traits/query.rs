@@ -70,6 +70,7 @@ pub struct MethodAutoderefSteps<'tcx> {
     ///
     /// Only used by the new solver for now.
     pub predefined_opaques_in_body: solve::PredefinedOpaques<'tcx>,
+    pub pseudo_rigid_due_to_opaques: solve::PseudoRigidDueToOpaques<'tcx>,
     pub self_ty: Ty<'tcx>,
 }
 
@@ -155,7 +156,7 @@ impl<'tcx> FromIterator<DropckConstraint<'tcx>> for DropckConstraint<'tcx> {
 #[derive(Debug, StableHash)]
 pub struct CandidateStep<'tcx> {
     pub self_ty: Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>,
-    pub self_ty_is_opaque: bool,
+    pub self_ty_is_pseudo_rigid_due_to_opaques: bool,
     pub autoderefs: usize,
     /// `true` if the type results from a dereference of a raw pointer.
     /// when assembling candidates, we include these steps, but not when

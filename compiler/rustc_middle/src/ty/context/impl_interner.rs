@@ -75,6 +75,16 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     ) -> Self::PredefinedOpaques {
         self.mk_predefined_opaques_in_body(data)
     }
+
+    type PseudoRigidDueToOpaques = solve::PseudoRigidDueToOpaques<'tcx>;
+
+    fn mk_pseudo_rigid_due_to_opaques(
+        self,
+        data: &[(Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)],
+    ) -> Self::PseudoRigidDueToOpaques {
+        self.mk_pseudo_rigid_due_to_opaques(data)
+    }
+
     type LocalDefIds = &'tcx ty::List<LocalDefId>;
     type CanonicalVarKinds = CanonicalVarKinds<'tcx>;
     fn mk_canonical_var_kinds(

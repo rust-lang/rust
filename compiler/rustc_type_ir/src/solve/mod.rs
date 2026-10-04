@@ -164,12 +164,12 @@ impl<T: Copy + Debug + Hash + Eq> AsRef<[T]> for SmallCopySet<T> {
 /// Information about how we accessed opaque types
 /// This is what the trait solver does when each states is encountered:
 ///
-/// |                         | bail? | rerun goal?                                                                                                          |
-/// | ----------------------- | ----- | -------------------------------------------------------------------------------------------------------------------- |
-/// | never                   | no    | no                                                                                                                   |
-/// | always                  | yes   | yes                                                                                                                  |
-/// | [defid in storage]      | no    | only if any of the defids in the list is in the opaque type storage OR if TypingMode::PostAnalysis                   |
-/// | opaque with hidden type | no    | only if any of the opaques in the opaque type storage has a hidden type in this list AND if TypingMode::Typeck       |
+/// |                           | bail? | rerun goal?                                                                                                          |
+/// | ------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------- |
+/// | never                     | no    | no                                                                                                                   |
+/// | always                    | yes   | yes                                                                                                                  |
+/// | [defid in storage]        | no    | only if any of the defids in the list is in the opaque type storage OR if TypingMode::PostAnalysis                   |
+/// | [pseudo-rigid in storage] | no    | only if there's a pseudo-rigid relevant for this goal                                                                |
 ///
 /// - "bail" is implemented with [`should_bail`](Self::should_bail).
 ///   If true, we're abandoning our attempt to canonicalize in [`TypingMode::ErasedNotCoherence`],
@@ -186,14 +186,14 @@ pub enum RerunCondition<I: Interner> {
     Never,
 
     /// Note that this only reruns according to the condition *if* we are in [`TypingMode::Typeck`].
-    AnyOpaqueHasInferAsHidden,
+    PseudoRigidInStorage,
     /// Note: unconditionally reruns in postanalysis
     OpaqueInStorage(SmallCopySet<I::LocalDefId>),
 
-    /// Merges [`Self::AnyOpaqueHasInferAsHidden`] and [`Self::OpaqueInStorage`].
+    /// Merges [`Self::PseudoRigidInStorage`] and [`Self::OpaqueInStorage`].
     /// Note that just like the unmerged [`Self::OpaqueInStorage`], that part of the
     /// condition only matters in [`TypingMode::Typeck`]
-    OpaqueInStorageOrAnyOpaqueHasInferAsHidden(SmallCopySet<I::LocalDefId>),
+    OpaqueInStorageOrPseudoRigidInStorage(SmallCopySet<I::LocalDefId>),
 
     Always,
 }
@@ -223,35 +223,30 @@ impl<I: Interner> RerunCondition<I> {
             (Self::OpaqueInStorage(a), Self::OpaqueInStorage(b)) => {
                 a.union(b).map(Self::OpaqueInStorage).unwrap_or(Self::Always)
             }
-            (Self::AnyOpaqueHasInferAsHidden, Self::AnyOpaqueHasInferAsHidden) => {
-                Self::AnyOpaqueHasInferAsHidden
+            (Self::PseudoRigidInStorage, Self::PseudoRigidInStorage) => Self::PseudoRigidInStorage,
+            // The pseudo-rigid storage is always empty if the opaque type storage is empty,
+            // so "pseudo-rigid in storage x opaque type in storage" just results in
+            // "opaque type in storage".
+            (Self::PseudoRigidInStorage, Self::OpaqueInStorageOrPseudoRigidInStorage(a))
+            | (Self::OpaqueInStorageOrPseudoRigidInStorage(a), Self::PseudoRigidInStorage) => {
+                Self::OpaqueInStorage(a)
             }
-            (
-                Self::AnyOpaqueHasInferAsHidden,
-                Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),
-            )
-            | (
-                Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),
-                Self::AnyOpaqueHasInferAsHidden,
-            ) => Self::OpaqueInStorage(a),
 
             (
-                Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),
-                Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(b),
-            ) => a
-                .union(b)
-                .map(Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden)
-                .unwrap_or(Self::Always),
+                Self::OpaqueInStorageOrPseudoRigidInStorage(a),
+                Self::OpaqueInStorageOrPseudoRigidInStorage(b),
+            ) => {
+                a.union(b).map(Self::OpaqueInStorageOrPseudoRigidInStorage).unwrap_or(Self::Always)
+            }
 
-            (Self::OpaqueInStorage(a), Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(b))
-            | (Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(b), Self::OpaqueInStorage(a)) => a
-                .union(b)
-                .map(Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden)
-                .unwrap_or(Self::Always),
+            (Self::OpaqueInStorage(a), Self::OpaqueInStorageOrPseudoRigidInStorage(b))
+            | (Self::OpaqueInStorageOrPseudoRigidInStorage(b), Self::OpaqueInStorage(a)) => {
+                a.union(b).map(Self::OpaqueInStorageOrPseudoRigidInStorage).unwrap_or(Self::Always)
+            }
 
-            (Self::OpaqueInStorage(a), Self::AnyOpaqueHasInferAsHidden)
-            | (Self::AnyOpaqueHasInferAsHidden, Self::OpaqueInStorage(a)) => {
-                Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a)
+            (Self::OpaqueInStorage(a), Self::PseudoRigidInStorage)
+            | (Self::PseudoRigidInStorage, Self::OpaqueInStorage(a)) => {
+                Self::OpaqueInStorageOrPseudoRigidInStorage(a)
             }
         };
         debug!("merging rerun state {self:?} + {other:?} => {merged:?}");
@@ -264,8 +259,8 @@ impl<I: Interner> RerunCondition<I> {
             Self::Always => Err(RerunNonErased(())),
             Self::Never
             | Self::OpaqueInStorage(_)
-            | Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(_)
-            | Self::AnyOpaqueHasInferAsHidden => Ok(()),
+            | Self::OpaqueInStorageOrPseudoRigidInStorage(_)
+            | Self::PseudoRigidInStorage => Ok(()),
         }
     }
 
@@ -276,9 +271,9 @@ impl<I: Interner> RerunCondition<I> {
         match self {
             Self::Never => false,
             Self::Always
-            | Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(_)
+            | Self::OpaqueInStorageOrPseudoRigidInStorage(_)
             | Self::OpaqueInStorage(_)
-            | Self::AnyOpaqueHasInferAsHidden => true,
+            | Self::PseudoRigidInStorage => true,
         }
     }
 }
@@ -366,14 +361,11 @@ impl<I: Interner> AccessedOpaques<I> {
         })
     }
 
-    pub fn rerun_if_any_opaque_has_infer_as_hidden_type(
-        &mut self,
-        reason: RerunReason,
-    ) -> Result<(), RerunNonErased> {
-        debug!("set rerun if any opaque in the storage has a hidden type that is an infer var");
+    pub fn rerun_if_any_pseudo_rigid(&mut self, reason: RerunReason) -> Result<(), RerunNonErased> {
+        debug!("set rerun if any inference variable is pseudo-rigid");
         self.update(AccessedOpaques {
             reason: Some(reason),
-            rerun: RerunCondition::AnyOpaqueHasInferAsHidden,
+            rerun: RerunCondition::PseudoRigidInStorage,
         })
     }
 }
@@ -444,6 +436,7 @@ pub enum GoalSource {
 pub struct QueryInput<I: Interner, P> {
     pub goal: Goal<I, P>,
     pub predefined_opaques_in_body: I::PredefinedOpaques,
+    pub pseudo_rigid_due_to_opaques: I::PseudoRigidDueToOpaques,
 }
 
 impl<I: Interner, P: Eq> Eq for QueryInput<I, P> {}
@@ -551,7 +544,7 @@ pub enum ParamEnvSource {
 pub enum AliasBoundKind {
     /// Alias bound from the self type of a projection
     SelfBounds,
-    // Alias bound having recursed on the self type of a projection
+    /// Alias bound having recursed on the self type of a projection
     NonSelfBounds,
 }
 
@@ -620,7 +613,8 @@ impl<I: Interner> ExternalRegionConstraints<I> {
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 pub struct ExternalConstraintsData<I: Interner> {
     pub region_constraints: ExternalRegionConstraints<I>,
-    pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
+    pub opaque_types: I::PredefinedOpaques,
+    pub pseudo_rigid_due_to_opaques: I::PseudoRigidDueToOpaques,
     pub normalization_nested_goals: NestedNormalizationGoals<I>,
 }
 
@@ -635,7 +629,8 @@ impl<I: Interner> ExternalConstraintsData<I> {
 
         Self {
             region_constraints,
-            opaque_types: vec![],
+            opaque_types: cx.mk_predefined_opaques_in_body(&[]),
+            pseudo_rigid_due_to_opaques: cx.mk_pseudo_rigid_due_to_opaques(&[]),
             normalization_nested_goals: NestedNormalizationGoals::default(),
         }
     }
@@ -644,10 +639,12 @@ impl<I: Interner> ExternalConstraintsData<I> {
         let ExternalConstraintsData {
             region_constraints,
             opaque_types,
+            pseudo_rigid_due_to_opaques,
             normalization_nested_goals,
         } = self;
         region_constraints.is_empty()
             && opaque_types.is_empty()
+            && pseudo_rigid_due_to_opaques.is_empty()
             && normalization_nested_goals.is_empty()
     }
 }
@@ -990,6 +987,7 @@ pub enum GoalStalledOnOpaques<I: Interner> {
     No,
     Yes {
         num_opaques_in_storage: usize,
+        num_hidden_ty_bounds_in_storage: usize,
         previously_succeeded_in_erased: SucceededInErased<I>,
     },
 }

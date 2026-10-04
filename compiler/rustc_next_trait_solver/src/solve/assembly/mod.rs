@@ -14,9 +14,9 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt, SizedTraitKind, StalledOnCoroutines,
 };
 use rustc_type_ir::{
-    self as ty, AliasTy, Const, Interner, MayBeErased, Region, TypeFlags, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-    TypingMode, Unnormalized, Upcast, elaborate,
+    self as ty, AliasTerm, AliasTy, Const, Interner, MayBeErased, Region, TypeFlags, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
+    Upcast, elaborate,
 };
 use tracing::{debug, instrument};
 
@@ -56,6 +56,8 @@ where
     fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self;
 
     fn trait_def_id(self, cx: I) -> I::TraitId;
+
+    fn as_normalizes_to(self) -> Option<ty::NormalizesTo<I>>;
 
     /// Consider a clause, which consists of a "assumption" and some "requirements",
     /// to satisfy a goal. If the requirements hold, then attempt to satisfy our
@@ -1127,10 +1129,11 @@ where
         assemble_from: AssembleCandidatesFrom,
         candidates: &mut Vec<Candidate<I>>,
     ) -> Result<(), RerunNonErased> {
+        let cx = self.cx();
         let self_ty = goal.predicate.self_ty();
         // We only use this hack during HIR typeck.
-        let opaque_types = match self.typing_mode() {
-            TypingMode::Typeck { .. } => self.opaques_with_sub_unified_hidden_type(self_ty),
+        let pseudo_rigid = match self.typing_mode() {
+            TypingMode::Typeck { .. } => self.pseudo_rigid_due_to_opaques(self_ty),
             TypingMode::Coherence
             | TypingMode::PostTypeckUntilBorrowck { .. }
             | TypingMode::PostBorrowck { .. }
@@ -1138,58 +1141,28 @@ where
             | TypingMode::Reflection
             | TypingMode::Codegen => vec![],
             TypingMode::ErasedNotCoherence(MayBeErased) => {
-                self.opaque_accesses
-                    .rerun_if_any_opaque_has_infer_as_hidden_type(RerunReason::SelfTyInfer)?;
+                self.opaque_accesses.rerun_if_any_pseudo_rigid(RerunReason::SelfTyInfer)?;
                 Vec::new()
             }
         };
 
-        if opaque_types.is_empty() {
+        if pseudo_rigid.is_empty() {
             candidates.extend(self.forced_ambiguity(MaybeInfo::AMBIGUOUS));
             return Ok(());
         }
 
-        for &opaque_ty in &opaque_types {
-            debug!("self ty is sub unified with {opaque_ty:?}");
-
-            struct ReplaceOpaque<I: Interner> {
-                cx: I,
-                opaque_ty: ty::OpaqueAliasTy<I>,
-                self_ty: I::Ty,
-            }
-            impl<I: Interner> TypeFolder<I> for ReplaceOpaque<I> {
-                fn cx(&self) -> I {
-                    self.cx
-                }
-                fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
-                    if let ty::Alias(is_rigid, alias_ty) = ty.kind()
-                        && let Some(opaque_ty) = alias_ty.try_to_opaque()
-                    {
-                        if opaque_ty == self.opaque_ty {
-                            debug_assert_eq!(is_rigid, ty::IsRigid::No);
-                            return self.self_ty;
-                        }
-                    }
-                    ty.super_fold_with(self)
-                }
-            }
-
-            // We look at all item-bounds of the opaque, replacing the
-            // opaque with the current self type before considering
-            // them as a candidate. Imagine we've got `?x: Trait<?y>`
-            // and `?x` has been sub-unified with the hidden type of
-            // `impl Trait<u32>`, We take the item bound `opaque: Trait<u32>`
+        for bound in &pseudo_rigid {
+            debug!("self ty is sub unified with {pseudo_rigid:?}");
+            let assumption = bound.instantiate(cx, goal.predicate.self_ty());
+            // We look at all item-bounds of the type being pseudo rigid due to opaques,
+            // instantiating the self type of the bound with the current self
+            // type before considering them as a candidate. Imagine we've got
+            // `?x: Trait<?y>` and `?x` has been sub-unified with the hidden
+            // type of `impl Trait<u32>`, We take the item bound `opaque: Trait<u32>`
             // and replace all occurrences of `opaque` with `?x`. This results
             // in a `?x: Trait<u32>` alias-bound candidate.
-            for item_bound in self
-                .cx()
-                .item_self_bounds(opaque_ty.kind.into())
-                .iter_instantiated(self.cx(), opaque_ty.args)
-                .map(Unnormalized::skip_norm_wip)
-            {
-                let assumption =
-                    item_bound.fold_with(&mut ReplaceOpaque { cx: self.cx(), opaque_ty, self_ty });
-                candidates.extend(G::probe_and_match_goal_against_assumption(
+            candidates.extend(
+                G::probe_and_match_goal_against_assumption(
                     self,
                     CandidateSource::AliasBound(AliasBoundKind::SelfBounds),
                     goal,
@@ -1199,8 +1172,25 @@ where
                         // hidden type, so we force the certainty to `Maybe`.
                         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                     },
-                ));
-            }
+                )
+                .map_err_to_rerun()?,
+            );
+        }
+
+        // We need to support associated types of not-yet-defined opaque types.
+        if candidates.is_empty()
+            && let Some(ty::NormalizesTo { alias, term }) = G::as_normalizes_to(goal.predicate)
+            && let Some(unconstrained_ty) = term.as_type()
+        {
+            candidates.extend(
+                self.consider_unconstrained_assoc_type_of_pseudo_rigid_candidate(
+                    goal,
+                    alias,
+                    unconstrained_ty,
+                    &pseudo_rigid,
+                )
+                .map_err_to_rerun()?,
+            );
         }
 
         // If the self type is sub unified with any opaque type, we also look at blanket
@@ -1208,7 +1198,6 @@ where
         //
         // See tests/ui/impl-trait/non-defining-uses/use-blanket-impl.rs for an example.
         if assemble_from.should_assemble_impl_candidates() {
-            let cx = self.cx();
             let goal_trait_ref = goal.predicate.trait_ref(cx);
 
             cx.for_each_blanket_impl(goal.predicate.trait_def_id(cx), |impl_def_id| {
@@ -1249,6 +1238,67 @@ where
         }
 
         Ok(())
+    }
+
+    /// If the given `alias` is not mentioned among the given `existing_bounds`,
+    /// create one for it.
+    ///
+    /// This is needed to support the non-defining usages like in the following case:
+    ///
+    /// ```no_run
+    /// fn argument_types() -> impl IntoIterator<Item = i32> {
+    ///     argument_types().into_iter().collect::<Vec<_>>()
+    /// //                 ^           ^
+    /// //                 |           |
+    /// //              `{opaque}`     |
+    /// //                           `<{opaque} as IntoIterator>::IntoIter`
+    /// }
+    /// ```
+    ///
+    /// We need to solve a projection goal `<{opaque} as IntoIterator>::IntoIter = ?x` to
+    /// infer the self type for a method call `.collect()`. We can't do so eagerly as
+    /// it's not specified on the opaque type. We do want to also treat `?x` as
+    /// pseudo-rigid, so we add an ambiguous candidate which adds all the item bounds
+    /// of `IntoIterator::IntoIter` as [ty::PseudoRigidDueToOpaquesBound<I>].
+    ///
+    /// This way `?x` is now also a valid self type of a method call.
+    fn consider_unconstrained_assoc_type_of_pseudo_rigid_candidate<G: GoalKind<D>>(
+        &mut self,
+        goal: Goal<I, G>,
+        alias: AliasTerm<I>,
+        unconstrained_ty: I::Ty,
+        existing_bounds: &[ty::PseudoRigidDueToOpaquesBound<I>],
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+        let cx = self.cx();
+        let trait_def_id = alias.trait_def_id(cx);
+        // We only treat associated types as pseudo-rigid if their self type is pseudo-rigid and required
+        // to implement the relevant trait.
+        if !existing_bounds.iter().any(|bound| bound.is_trait_clause_with_def_id(trait_def_id)) {
+            return Err(NoSolutionOrRerunNonErased::NoSolution(NoSolution));
+        }
+
+        let trivial_assumption =
+            ty::ProjectionClause { projection_term: alias.into(), term: unconstrained_ty.into() }
+                .upcast(cx);
+        G::probe_and_match_goal_against_assumption(
+            self,
+            CandidateSource::AliasBound(AliasBoundKind::SelfBounds),
+            goal,
+            trivial_assumption,
+            |ecx| {
+                ecx.register_pseudo_rigid_due_to_opaques_in_storage(
+                    unconstrained_ty,
+                    ty::PseudoRigidDueToOpaquesBound::iter_item_self_bounds_for_hidden_ty(
+                        cx,
+                        alias.expect_ty(),
+                    ),
+                );
+
+                // We want to reprove this goal once we've inferred the
+                // hidden type, so we force the certainty to `Maybe`.
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+            },
+        )
     }
 
     /// Assemble and merge candidates for goals which are related to an underlying trait
