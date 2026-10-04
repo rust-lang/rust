@@ -378,10 +378,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Adjust::Pointer(_pointer_coercion) => {
                     // FIXME(const_trait_impl): We should probably enforce these.
                 }
-                Adjust::GenericReborrow(_) => {
+                Adjust::CoerceShared => {
                     // FIXME(reborrow): figure out if we have effects to enforce here.
                 }
-                Adjust::Borrow(_) => {
+                Adjust::Borrow(_) | Adjust::FakeMutReborrow => {
                     // No effects to enforce here.
                 }
             }
@@ -393,7 +393,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             matches!(
                 adj,
                 &Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. })),
+                    kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. }))
+                        | Adjust::FakeMutReborrow,
                     ..
                 }
             )
@@ -421,11 +422,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     (
-                        &mut [
+                        [
                             Adjustment { kind: Adjust::Deref(_), .. },
                             Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), .. },
-                        ],
-                        &[
+                        ]
+                        | [Adjustment { kind: Adjust::FakeMutReborrow, .. }],
+                        [
                             Adjustment { kind: Adjust::Deref(_), .. },
                             .., // Any following adjustments are allowed.
                         ],

@@ -1,11 +1,12 @@
+//@ run-pass
+
 struct State;
 
 fn once(_: impl FnOnce()) {}
 
 fn fill_memory_blocks_mt(state: &mut State) {
-    loop {
+    for _ in 0..100 {
         once(move || {
-            //~^ ERROR use of moved value: `state`
             fill_segment(state);
         });
     }
@@ -13,4 +14,6 @@ fn fill_memory_blocks_mt(state: &mut State) {
 
 fn fill_segment(_: &mut State) {}
 
-fn main() {}
+fn main() {
+    fill_memory_blocks_mt(&mut State);
+}

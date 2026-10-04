@@ -28,7 +28,7 @@ pub fn main() {
             Err(k) ?;
             i = 10; //~ ERROR cannot assign to `i` because it is borrowed
         };
-        ::std::mem::drop(k); //~ ERROR use of moved value: `k`
+        ::std::mem::drop(k); //~ ERROR cannot borrow `*k` as mutable more than once at a time [E0499]
         i = 40; //~ ERROR cannot assign to `i` because it is borrowed
 
         let i_ptr = if let Err(i_ptr) = j { i_ptr } else { panic ! ("") };

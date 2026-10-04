@@ -552,8 +552,6 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             is_partial_move: false,
             is_loop_message: false,
             is_move_msg: false,
-            is_loop_move: false,
-            has_suggest_reborrow: false,
             maybe_reinitialized_locations_is_empty: true,
         };
         let suggested_cloning = if let Some(use_spans) = use_spans {

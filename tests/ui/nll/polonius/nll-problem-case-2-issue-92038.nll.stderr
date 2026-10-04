@@ -6,10 +6,9 @@ LL | fn reborrow(a: &mut u8) -> &mut u8 {
 LL |     let b = &mut *a;
    |             ------- first mutable borrow occurs here
 LL |     if true { b } else { a }
-   |     ---------------------^--
-   |     |                    |
-   |     |                    second mutable borrow occurs here
-   |     returning this value requires that `*a` is borrowed for `'1`
+   |               -          ^ second mutable borrow occurs here
+   |               |
+   |               returning this value requires that `*a` is borrowed for `'1`
 
 error: aborting due to 1 previous error
 

@@ -43,6 +43,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir_analysis::autoderef::AutoderefKind;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, InferResult, RegionVariableOrigin};
@@ -505,24 +506,41 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         };
 
-        if coerced_a == a && mt_a.mutbl.is_not() && autoderef.step_count() == 1 {
-            // As a special case, if we would produce `&'a *x`, that's
-            // a total no-op. We end up with the type `&'a T` just as
-            // we started with. In that case, just skip it altogether.
-            //
-            // Unfortunately, this can actually effect capture analysis
-            // which in turn means this effects borrow checking. This can
-            // also effect diagnostics.
-            // FIXME(BoxyUwU): we should always emit reborrow coercions
-            //
-            // Note that for `&mut`, we DO want to reborrow --
-            // otherwise, this would be a move, which might be an
-            // error. For example `foo(self.x)` where `self` and
-            // `self.x` both have `&mut `type would be a move of
-            // `self.x`, but we auto-coerce it to `foo(&mut *self.x)`,
-            // which is a borrow.
-            assert!(mutbl_b.is_not()); // can only coerce &T -> &U
-            return success(vec![], coerced_a, obligations);
+        if mt_a.mutbl == mutbl_b
+            && let [(_, AutoderefKind::Builtin)] = autoderef.steps()
+        {
+            match mt_a.mutbl {
+                ty::Mutability::Not if coerced_a == a => {
+                    // As a special case, if we would produce `&'a *x`, that's
+                    // a total no-op. We end up with the type `&'a T` just as
+                    // we started with. In that case, just skip it altogether.
+                    //
+                    // Unfortunately, this can actually effect capture analysis
+                    // which in turn means this effects borrow checking. This can
+                    // also effect diagnostics.
+                    // FIXME(BoxyUwU): we should always emit reborrow coercions
+                    //
+                    // Note that for `&mut`, we DO want to reborrow --
+                    // otherwise, this would be a move, which might be an
+                    // error. For example `foo(self.x)` where `self` and
+                    // `self.x` both have `&mut `type would be a move of
+                    // `self.x`, but we auto-coerce it to `foo(&mut *self.x)`,
+                    // which is a borrow.
+                    assert!(mutbl_b.is_not()); // can only coerce &T -> &U
+                    return success(vec![], coerced_a, obligations);
+                }
+                ty::Mutability::Mut if self.allow_two_phase == AllowTwoPhase::No => {
+                    // `&mut` -> `&mut` reborrows actually get inserted in MIR building,
+                    // but for closure capture analysis we need to keep some fake ones around in HIR.
+                    // FIXME: figure out how to make this work for 2-phase as well
+                    return success(
+                        vec![Adjustment { kind: Adjust::FakeMutReborrow, target: coerced_a }],
+                        coerced_a,
+                        obligations,
+                    );
+                }
+                _ => {}
+            }
         }
 
         let InferOk { value: mut adjustments, obligations: o } =
@@ -962,13 +980,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         };
         if a_def.did() == b_def.did() {
             // Reborrow is applicable here
-            self.unify_and(
-                a,
-                b,
-                [],
-                Adjust::GenericReborrow(ty::Mutability::Mut),
-                ForceLeakCheck::No,
-            )
+            self.unify_and(a, b, [], Adjust::FakeMutReborrow, ForceLeakCheck::No)
         } else {
             // FIXME: CoerceShared check goes here, error for now
             Err(TypeError::Mismatch)
@@ -1004,13 +1016,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let errs = ocx.evaluate_obligations_error_on_ambiguity();
         if errs.no_errors() {
             Ok(InferOk {
-                value: (
-                    vec![Adjustment {
-                        kind: Adjust::GenericReborrow(ty::Mutability::Not),
-                        target: b,
-                    }],
-                    b,
-                ),
+                value: (vec![Adjustment { kind: Adjust::CoerceShared, target: b }], b),
                 obligations: ocx.into_pending_obligations(),
             })
         } else {
