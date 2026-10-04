@@ -1199,8 +1199,8 @@ impl Config {
                 flags_stage.or(build_test_stage).unwrap_or(if download_rustc { 2 } else { 1 })
             }
             Subcommand::Bench { .. } => flags_stage.or(build_bench_stage).unwrap_or(2),
-            Subcommand::Dist => flags_stage.or(build_dist_stage).unwrap_or(2),
-            Subcommand::Install => flags_stage.or(build_install_stage).unwrap_or(2),
+            Subcommand::Dist { .. } => flags_stage.or(build_dist_stage).unwrap_or(2),
+            Subcommand::Install { .. } => flags_stage.or(build_install_stage).unwrap_or(2),
             Subcommand::Perf { .. } => flags_stage.unwrap_or(1),
             // Most of the run commands execute bootstrap tools, which don't depend on the compiler.
             // Other commands listed here should always use bootstrap tools.
@@ -1238,10 +1238,10 @@ impl Config {
             (0, Subcommand::Clippy { .. }) => {
                 check_stage0("clippy");
             }
-            (0, Subcommand::Dist) => {
+            (0, Subcommand::Dist { .. }) => {
                 check_stage0("dist");
             }
-            (0, Subcommand::Install) => {
+            (0, Subcommand::Install { .. }) => {
                 check_stage0("install");
             }
             (0, Subcommand::Test { .. }) if build_compiletest_allow_stage0 != Some(true) => {
@@ -1272,8 +1272,8 @@ impl Config {
                 | Subcommand::Doc { .. }
                 | Subcommand::Build { .. }
                 | Subcommand::Bench { .. }
-                | Subcommand::Dist
-                | Subcommand::Install => {
+                | Subcommand::Dist { .. }
+                | Subcommand::Install { .. } => {
                     assert_eq!(
                         stage, 2,
                         "\

@@ -104,6 +104,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand build" -l reproducible-artifac
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l timings -d 'Pass `--timings` to Cargo to get crate build timings'
+complete -c x.py -n "__fish_x.py_using_subcommand build" -l dist-std -d 'Build the standard library under the `dist` profile'
 complete -c x.py -n "__fish_x.py_using_subcommand build" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_x.py_using_subcommand build" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand build" -s i -l incremental -d 'use incremental compilation'
@@ -141,6 +142,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand b" -l reproducible-artifact -d
 complete -c x.py -n "__fish_x.py_using_subcommand b" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand b" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand b" -l timings -d 'Pass `--timings` to Cargo to get crate build timings'
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l dist-std -d 'Build the standard library under the `dist` profile'
 complete -c x.py -n "__fish_x.py_using_subcommand b" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_x.py_using_subcommand b" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand b" -s i -l incremental -d 'use incremental compilation'
@@ -465,6 +467,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand test" -l only-modified -d 'onl
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l rustfix-coverage -d 'enable this to generate a Rustfix coverage file, which is saved in `/<build_base>/rustfix_missing_coverage.txt`'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l no-capture -d 'don\'t capture stdout/stderr of tests'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l bypass-ignore-backends -d 'Ignore `//@ ignore-backends` directives'
+complete -c x.py -n "__fish_x.py_using_subcommand test" -l dist-std -d 'Build the standard library under the `dist` profile'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l no-doc -d 'Deprecated. Use `--all-targets` or `--tests` instead'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l record -d 'Record all the failed tests in a file in the build directory'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l rerun -d 'Rerun tests that previously failed, and stored with `--record`'
@@ -522,6 +525,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand t" -l only-modified -d 'only r
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l rustfix-coverage -d 'enable this to generate a Rustfix coverage file, which is saved in `/<build_base>/rustfix_missing_coverage.txt`'
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l no-capture -d 'don\'t capture stdout/stderr of tests'
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l bypass-ignore-backends -d 'Ignore `//@ ignore-backends` directives'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l dist-std -d 'Build the standard library under the `dist` profile'
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l no-doc -d 'Deprecated. Use `--all-targets` or `--tests` instead'
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l record -d 'Record all the failed tests in a file in the build directory'
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l rerun -d 'Rerun tests that previously failed, and stored with `--record`'
@@ -604,6 +608,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand bench" -l llvm-profile-use -d 
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand bench" -l dist-std -d 'Build the standard library under the `dist` profile'
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -s i -l incremental -d 'use incremental compilation'
@@ -677,6 +682,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand dist" -l llvm-profile-use -d '
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand dist" -l dist-std -d 'Build the standard library under the `dist` profile'
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -s i -l incremental -d 'use incremental compilation'
@@ -713,6 +719,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand install" -l llvm-profile-use -
 complete -c x.py -n "__fish_x.py_using_subcommand install" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
 complete -c x.py -n "__fish_x.py_using_subcommand install" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand install" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand install" -l dist-std -d 'Build the standard library under the `dist` profile'
 complete -c x.py -n "__fish_x.py_using_subcommand install" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_x.py_using_subcommand install" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand install" -s i -l incremental -d 'use incremental compilation'
