@@ -396,6 +396,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_dump_generics,
     sym::rustc_dump_hidden_type_of_opaques,
     sym::rustc_dump_layout,
+    sym::rustc_dump_ptrauth_discriminator,
     sym::rustc_abi,
     sym::rustc_regions,
     sym::rustc_delayed_bug_from_inside_query,
