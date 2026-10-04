@@ -51,3 +51,13 @@ fn multi_args(a: i32, b: i32) -> fn(i32, i32) -> i32 {
     |x, y| x + y + a + b
     //~^ ERROR mismatched types
 }
+
+fn hrtb(x: i32) -> for<'a> fn(&'a i32) -> &'a i32 {
+    |y| &(x + y)
+    //~^ ERROR mismatched types
+}
+
+fn hrtb_out_of_order(x: i32) -> for<'b, 'a> fn(&'a i32, &'b i32) -> (&'b i32, &'a i32) {
+    |y, z| (&(x + y + z), unimplemented!())
+    //~^ ERROR mismatched types
+}
