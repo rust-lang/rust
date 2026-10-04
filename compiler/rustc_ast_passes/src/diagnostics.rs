@@ -192,16 +192,6 @@ pub(crate) struct FnParamDocComment {
     pub span: Span,
 }
 
-// FIXME(splat): add splat to the allowed built-in attributes when it is complete/stabilized
-#[derive(Diagnostic)]
-#[diag(
-    "allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters"
-)]
-pub(crate) struct FnParamForbiddenAttr {
-    #[primary_span]
-    pub span: Span,
-}
-
 #[derive(Diagnostic)]
 #[diag("`#[{$eii_name}]` is not allowed to have `#[{$attr_name}]`")]
 pub(crate) struct EiiImplAttributeNotSupported<'a> {

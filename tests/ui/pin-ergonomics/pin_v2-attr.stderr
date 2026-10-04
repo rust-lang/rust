@@ -1,17 +1,11 @@
 error: the `pin_v2` attribute cannot be used on macro calls
-  --> $DIR/pin_v2-attr.rs:135:3
+  --> $DIR/pin_v2-attr.rs:134:3
    |
 LL | #[pin_v2]
    |   ^^^^^^
    |
    = help: the `pin_v2` attribute can only be applied to data types
    = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
-
-error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/pin_v2-attr.rs:84:12
-   |
-LL | fn f<T, U>(#[pin_v2] param: Foo<T, U>)
-   |            ^^^^^^^^^
 
 error: the `pin_v2` attribute cannot be used on crates
   --> $DIR/pin_v2-attr.rs:10:4
@@ -198,7 +192,7 @@ LL | fn f<T, U>(#[pin_v2] param: Foo<T, U>)
    = help: the `pin_v2` attribute can only be applied to data types
 
 error: the `pin_v2` attribute cannot be used on closures
-  --> $DIR/pin_v2-attr.rs:92:7
+  --> $DIR/pin_v2-attr.rs:91:7
    |
 LL |     #[pin_v2]
    |       ^^^^^^
@@ -206,7 +200,7 @@ LL |     #[pin_v2]
    = help: the `pin_v2` attribute can only be applied to data types
 
 error: the `pin_v2` attribute cannot be used on expressions
-  --> $DIR/pin_v2-attr.rs:94:7
+  --> $DIR/pin_v2-attr.rs:93:7
    |
 LL |     #[pin_v2]
    |       ^^^^^^
@@ -214,7 +208,7 @@ LL |     #[pin_v2]
    = help: the `pin_v2` attribute can only be applied to data types
 
 error: the `pin_v2` attribute cannot be used on struct fields
-  --> $DIR/pin_v2-attr.rs:98:11
+  --> $DIR/pin_v2-attr.rs:97:11
    |
 LL |         #[pin_v2]
    |           ^^^^^^
@@ -222,7 +216,7 @@ LL |         #[pin_v2]
    = help: the `pin_v2` attribute can only be applied to data types
 
 error: the `pin_v2` attribute cannot be used on statements
-  --> $DIR/pin_v2-attr.rs:96:7
+  --> $DIR/pin_v2-attr.rs:95:7
    |
 LL |     #[pin_v2]
    |       ^^^^^^
@@ -230,7 +224,7 @@ LL |     #[pin_v2]
    = help: the `pin_v2` attribute can only be applied to data types
 
 error: the `pin_v2` attribute cannot be used on match arms
-  --> $DIR/pin_v2-attr.rs:102:11
+  --> $DIR/pin_v2-attr.rs:101:11
    |
 LL |         #[pin_v2]
    |           ^^^^^^
@@ -238,7 +232,7 @@ LL |         #[pin_v2]
    = help: the `pin_v2` attribute can only be applied to data types
 
 error: the `pin_v2` attribute cannot be used on pattern fields
-  --> $DIR/pin_v2-attr.rs:106:15
+  --> $DIR/pin_v2-attr.rs:105:15
    |
 LL |             #[pin_v2]
    |               ^^^^^^
@@ -246,7 +240,7 @@ LL |             #[pin_v2]
    = help: the `pin_v2` attribute can only be applied to data types
 
 error: the `pin_v2` attribute cannot be used on where predicates
-  --> $DIR/pin_v2-attr.rs:88:7
+  --> $DIR/pin_v2-attr.rs:87:7
    |
 LL |     #[pin_v2]
    |       ^^^^^^
@@ -254,7 +248,7 @@ LL |     #[pin_v2]
    = help: the `pin_v2` attribute can only be applied to data types
 
 error: the `pin_v2` attribute cannot be used on modules
-  --> $DIR/pin_v2-attr.rs:112:3
+  --> $DIR/pin_v2-attr.rs:111:3
    |
 LL | #[pin_v2]
    |   ^^^^^^
@@ -262,7 +256,7 @@ LL | #[pin_v2]
    = help: the `pin_v2` attribute can only be applied to data types
 
 error: the `pin_v2` attribute cannot be used on foreign modules
-  --> $DIR/pin_v2-attr.rs:115:3
+  --> $DIR/pin_v2-attr.rs:114:3
    |
 LL | #[pin_v2]
    |   ^^^^^^
@@ -270,7 +264,7 @@ LL | #[pin_v2]
    = help: the `pin_v2` attribute can only be applied to data types
 
 error: the `pin_v2` attribute cannot be used on foreign types
-  --> $DIR/pin_v2-attr.rs:117:7
+  --> $DIR/pin_v2-attr.rs:116:7
    |
 LL |     #[pin_v2]
    |       ^^^^^^
@@ -278,7 +272,7 @@ LL |     #[pin_v2]
    = help: the `pin_v2` attribute can only be applied to data types
 
 error: the `pin_v2` attribute cannot be used on foreign statics
-  --> $DIR/pin_v2-attr.rs:120:7
+  --> $DIR/pin_v2-attr.rs:119:7
    |
 LL |     #[pin_v2]
    |       ^^^^^^
@@ -286,7 +280,7 @@ LL |     #[pin_v2]
    = help: the `pin_v2` attribute can only be applied to data types
 
 error: the `pin_v2` attribute cannot be used on foreign functions
-  --> $DIR/pin_v2-attr.rs:123:7
+  --> $DIR/pin_v2-attr.rs:122:7
    |
 LL |     #[pin_v2]
    |       ^^^^^^
@@ -294,7 +288,7 @@ LL |     #[pin_v2]
    = help: the `pin_v2` attribute can only be applied to data types
 
 error: the `pin_v2` attribute cannot be used on type aliases
-  --> $DIR/pin_v2-attr.rs:127:3
+  --> $DIR/pin_v2-attr.rs:126:3
    |
 LL | #[pin_v2]
    |   ^^^^^^
@@ -302,12 +296,12 @@ LL | #[pin_v2]
    = help: the `pin_v2` attribute can only be applied to data types
 
 error: the `pin_v2` attribute cannot be used on macro defs
-  --> $DIR/pin_v2-attr.rs:130:3
+  --> $DIR/pin_v2-attr.rs:129:3
    |
 LL | #[pin_v2]
    |   ^^^^^^
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
-error: aborting due to 39 previous errors
+error: aborting due to 38 previous errors
 

@@ -2,7 +2,6 @@
 
 fn function(#[inline] param: u32) {
     //~^ ERROR attribute cannot be used on
-    //~| ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes
 }
 
 fn main() {}

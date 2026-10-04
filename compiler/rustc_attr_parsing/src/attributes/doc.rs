@@ -15,13 +15,13 @@ use super::{AcceptMapping, AttributeParser, template};
 use crate::context::{AcceptContext, FinalizeContext};
 use crate::diagnostics::{
     AttrCrateLevelOnly, DocAliasBadChar, DocAliasDuplicated, DocAliasEmpty, DocAliasMalformed,
-    DocAliasStartEnd, DocAttrNotCrateLevel, DocAttributeNotAttribute, DocAutoCfgExpectsHideOrShow,
-    DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowNoIdentBeforeValues,
-    DocAutoCfgHideShowUnexpectedItem, DocAutoCfgHideShowUnexpectedItemAfterValues,
-    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocKeywordNotKeyword, DocTestLiteral,
-    DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude, DocUnknownPasses,
-    DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs,
-    IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
+    DocAliasStartEnd, DocAttrNotCrateLevel, DocAttrNotParameters, DocAttributeNotAttribute,
+    DocAutoCfgExpectsHideOrShow, DocAutoCfgHideShowExpectsList,
+    DocAutoCfgHideShowNoIdentBeforeValues, DocAutoCfgHideShowUnexpectedItem,
+    DocAutoCfgHideShowUnexpectedItemAfterValues, DocAutoCfgHideShowValuesMix,
+    DocAutoCfgWrongLiteral, DocKeywordNotKeyword, DocTestLiteral, DocTestTakesList, DocTestUnknown,
+    DocUnknownAny, DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight,
+    ExpectedNameValue, ExpectedNoArgs, IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
@@ -58,6 +58,10 @@ fn check_attr_not_crate_level(
 ) -> bool {
     if cx.shared.target == Target::Crate {
         cx.emit_err(DocAttrNotCrateLevel { span, attr_name });
+        return false;
+    }
+    if cx.shared.target == Target::Param {
+        cx.emit_err(DocAttrNotParameters { span, attr_name });
         return false;
     }
     true

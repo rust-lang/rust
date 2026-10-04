@@ -129,8 +129,7 @@ impl<T> FooBaz for Bar<T> {
 macro_rules! barqux { ($foo:tt) => { $foo }; }
 
 fn barqux(#[rustc_force_inline] _x: u32) {}
-//~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-//~^^ ERROR attribute cannot be used on
+//~^ ERROR attribute cannot be used on
 
 #[rustc_force_inline]
 //~^ ERROR attribute cannot be applied to a `async`, `gen` or `async gen` function

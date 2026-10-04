@@ -21,6 +21,7 @@ impl SingleAttributeParser for MustUseParser {
         // `#[must_use]`
         Allow(Target::Trait),
         Error(Target::WherePredicate),
+        Error(Target::Param),
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         Word, NameValueStr: "reason",
