@@ -1721,9 +1721,18 @@ impl String {
         // Slow path: at least one character is going to be removed.
         let mut g = PanicGuard { s: self, write };
         while read < len {
-            // SAFETY: `read` is within bound because `read` < `len`, so taking
-            // a slice with `len` is safe.
-            let ch = unsafe { g.s.get_unchecked(read..len).chars().next().unwrap_unchecked() };
+            // SAFETY: Use `vec`: `String`'s deref includes `write..read`,
+            // which may be invalid UTF-8. The vector's length is still `len`;
+            // `read < len`, so `read..len` is in bounds and non-empty.
+            // At least one character was removed, so `write < read`.
+            // Copies end before the next `read`, preserving unread bytes.
+            // `read` starts after a `char_indices` character and advances by whole
+            // characters, so it stays on a char boundary. The original string was valid UTF-8,
+            // so the unchanged, non-empty tail is valid UTF-8 and `chars().next()` returns `Some`.
+            let ch = unsafe {
+                let tail = str::from_utf8_unchecked(g.s.vec.get_unchecked(read..len));
+                tail.chars().next().unwrap_unchecked()
+            };
             let ch_len = ch.len_utf8();
             if f(ch) {
                 // SAFETY: `read` is on a char boundary, as guaranteed above; `g.write` is
