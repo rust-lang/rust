@@ -2502,8 +2502,10 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Saturating integer addition. Computes `self + rhs`, saturating at
+        /// Saturating integer addition. Computes `self + rhs`, [saturating] at
         /// the numeric bounds instead of overflowing.
+        ///
+        /// [saturating]: https://en.wikipedia.org/wiki/Saturation_arithmetic
         ///
         /// # Examples
         ///
@@ -2521,7 +2523,9 @@ macro_rules! uint_impl {
         }
 
         /// Saturating addition with a signed integer. Computes `self + rhs`,
-        /// saturating at the numeric bounds instead of overflowing.
+        /// [saturating] at the numeric bounds instead of overflowing.
+        ///
+        /// [saturating]: https://en.wikipedia.org/wiki/Saturation_arithmetic
         ///
         /// # Examples
         ///
@@ -2546,8 +2550,10 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Saturating integer subtraction. Computes `self - rhs`, saturating
+        /// Saturating integer subtraction. Computes `self - rhs`, [saturating]
         /// at the numeric bounds instead of overflowing.
+        ///
+        /// [saturating]: https://en.wikipedia.org/wiki/Saturation_arithmetic
         ///
         /// # Examples
         ///
@@ -2564,8 +2570,10 @@ macro_rules! uint_impl {
             intrinsics::saturating_sub(self, rhs)
         }
 
-        /// Saturating integer subtraction. Computes `self` - `rhs`, saturating at
+        /// Saturating integer subtraction. Computes `self` - `rhs`, [saturating] at
         /// the numeric bounds instead of overflowing.
+        ///
+        /// [saturating]: https://en.wikipedia.org/wiki/Saturation_arithmetic
         ///
         /// # Examples
         ///
@@ -2592,7 +2600,9 @@ macro_rules! uint_impl {
         }
 
         /// Saturating integer multiplication. Computes `self * rhs`,
-        /// saturating at the numeric bounds instead of overflowing.
+        /// [saturating] at the numeric bounds instead of overflowing.
+        ///
+        /// [saturating]: https://en.wikipedia.org/wiki/Saturation_arithmetic
         ///
         /// # Examples
         ///
@@ -2612,8 +2622,10 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Saturating integer division. Computes `self / rhs`, saturating at the
+        /// Saturating integer division. Computes `self / rhs`, [saturating] at the
         /// numeric bounds instead of overflowing.
+        ///
+        /// [saturating]: https://en.wikipedia.org/wiki/Saturation_arithmetic
         ///
         /// # Panics
         ///
@@ -2637,7 +2649,9 @@ macro_rules! uint_impl {
         }
 
         /// Saturating integer exponentiation. Computes `self.pow(exp)`,
-        /// saturating at the numeric bounds instead of overflowing.
+        /// [saturating] at the numeric bounds instead of overflowing.
+        ///
+        /// [saturating]: https://en.wikipedia.org/wiki/Saturation_arithmetic
         ///
         /// # Examples
         ///
@@ -2659,7 +2673,9 @@ macro_rules! uint_impl {
         }
 
         /// Wrapping (modular) addition. Computes `self + rhs`,
-        /// wrapping around at the boundary of the type.
+        /// [wrapping] around at the boundary of the type.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Examples
         ///
@@ -2677,7 +2693,9 @@ macro_rules! uint_impl {
         }
 
         /// Wrapping (modular) addition with a signed integer. Computes
-        /// `self + rhs`, wrapping around at the boundary of the type.
+        /// `self + rhs`, [wrapping] around at the boundary of the type.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Examples
         ///
@@ -2696,7 +2714,9 @@ macro_rules! uint_impl {
         }
 
         /// Wrapping (modular) subtraction. Computes `self - rhs`,
-        /// wrapping around at the boundary of the type.
+        /// [wrapping] around at the boundary of the type.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Examples
         ///
@@ -2714,7 +2734,9 @@ macro_rules! uint_impl {
         }
 
         /// Wrapping (modular) subtraction with a signed integer. Computes
-        /// `self - rhs`, wrapping around at the boundary of the type.
+        /// `self - rhs`, [wrapping] around at the boundary of the type.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Examples
         ///
@@ -2733,7 +2755,9 @@ macro_rules! uint_impl {
         }
 
         /// Wrapping (modular) multiplication. Computes `self *
-        /// rhs`, wrapping around at the boundary of the type.
+        /// rhs`, [wrapping] around at the boundary of the type.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Examples
         ///
@@ -2752,11 +2776,13 @@ macro_rules! uint_impl {
             intrinsics::wrapping_mul(self, rhs)
         }
 
-        /// Wrapping (modular) division. Computes `self / rhs`.
+        /// [Wrapping] (modular) division. Computes `self / rhs`.
         ///
         /// Wrapped division on unsigned types is just normal division. There's
         /// no way wrapping could ever happen. This function exists so that all
         /// operations are accounted for in the wrapping operations.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Panics
         ///
@@ -2777,13 +2803,15 @@ macro_rules! uint_impl {
             self / rhs
         }
 
-        /// Wrapping Euclidean division. Computes `self.div_euclid(rhs)`.
+        /// [Wrapping] Euclidean division. Computes `self.div_euclid(rhs)`.
         ///
         /// Wrapped division on unsigned types is just normal division. There's
         /// no way wrapping could ever happen. This function exists so that all
         /// operations are accounted for in the wrapping operations. Since, for
         /// the positive integers, all common definitions of division are equal,
         /// this is exactly equal to `self.wrapping_div(rhs)`.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Panics
         ///
@@ -2804,12 +2832,14 @@ macro_rules! uint_impl {
             self / rhs
         }
 
-        /// Wrapping (modular) remainder. Computes `self % rhs`.
+        /// [Wrapping] (modular) remainder. Computes `self % rhs`.
         ///
         /// Wrapped remainder calculation on unsigned types is just the regular
         /// remainder calculation. There's no way wrapping could ever happen.
         /// This function exists so that all operations are accounted for in the
         /// wrapping operations.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Panics
         ///
@@ -2830,7 +2860,7 @@ macro_rules! uint_impl {
             self % rhs
         }
 
-        /// Wrapping Euclidean modulo. Computes `self.rem_euclid(rhs)`.
+        /// [Wrapping] Euclidean modulo. Computes `self.rem_euclid(rhs)`.
         ///
         /// Wrapped modulo calculation on unsigned types is just the regular
         /// remainder calculation. There's no way wrapping could ever happen.
@@ -2838,6 +2868,8 @@ macro_rules! uint_impl {
         /// wrapping operations. Since, for the positive integers, all common
         /// definitions of division are equal, this is exactly equal to
         /// `self.wrapping_rem(rhs)`.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Panics
         ///
@@ -2859,7 +2891,7 @@ macro_rules! uint_impl {
         }
 
         /// Wrapping (modular) negation. Computes `-self`,
-        /// wrapping around at the boundary of the type.
+        /// [wrapping] around at the boundary of the type.
         ///
         /// Since unsigned types do not have negative equivalents
         /// all applications of this function will wrap (except for `-0`).
@@ -2867,6 +2899,8 @@ macro_rules! uint_impl {
         /// the result is the same as casting the corresponding signed value.
         /// Any larger values are equivalent to `MAX + 1 - (val - MAX - 1)` where
         /// `MAX` is the corresponding signed type's maximum.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Examples
         ///
@@ -2974,7 +3008,9 @@ macro_rules! uint_impl {
         }
 
         /// Wrapping (modular) exponentiation. Computes `self.pow(exp)`,
-        /// wrapping around at the boundary of the type.
+        /// [wrapping] around at the boundary of the type.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Examples
         ///
@@ -2996,8 +3032,10 @@ macro_rules! uint_impl {
         /// Calculates `self` + `rhs`.
         ///
         /// Returns a tuple of the addition along with a boolean indicating
-        /// whether an arithmetic overflow would occur. If an overflow would
+        /// whether an arithmetic [overflow] would occur. If an overflow would
         /// have occurred then the wrapped value is returned.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Examples
         ///
@@ -3072,8 +3110,10 @@ macro_rules! uint_impl {
         /// Calculates `self` + `rhs` with a signed `rhs`.
         ///
         /// Returns a tuple of the addition along with a boolean indicating
-        /// whether an arithmetic overflow would occur. If an overflow would
+        /// whether an arithmetic [overflow] would occur. If an overflow would
         /// have occurred then the wrapped value is returned.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Examples
         ///
@@ -3095,8 +3135,10 @@ macro_rules! uint_impl {
         /// Calculates `self` - `rhs`.
         ///
         /// Returns a tuple of the subtraction along with a boolean indicating
-        /// whether an arithmetic overflow would occur. If an overflow would
+        /// whether an arithmetic [overflow] would occur. If an overflow would
         /// have occurred then the wrapped value is returned.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Examples
         ///
@@ -3162,8 +3204,10 @@ macro_rules! uint_impl {
         /// Calculates `self` - `rhs` with a signed `rhs`
         ///
         /// Returns a tuple of the subtraction along with a boolean indicating
-        /// whether an arithmetic overflow would occur. If an overflow would
+        /// whether an arithmetic [overflow] would occur. If an overflow would
         /// have occurred then the wrapped value is returned.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Examples
         ///
@@ -3213,11 +3257,13 @@ macro_rules! uint_impl {
         /// Calculates the multiplication of `self` and `rhs`.
         ///
         /// Returns a tuple of the multiplication along with a boolean
-        /// indicating whether an arithmetic overflow would occur. If an
+        /// indicating whether an arithmetic [overflow] would occur. If an
         /// overflow would have occurred then the wrapped value is returned.
         ///
         /// If you want the *value* of the overflow, rather than just *whether*
         /// an overflow occurred, see [`Self::carrying_mul`].
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Examples
         ///
@@ -3390,9 +3436,11 @@ macro_rules! uint_impl {
         /// Calculates the divisor when `self` is divided by `rhs`.
         ///
         /// Returns a tuple of the divisor along with a boolean indicating
-        /// whether an arithmetic overflow would occur. Note that for unsigned
+        /// whether an arithmetic [overflow] would occur. Note that for unsigned
         /// integers overflow never occurs, so the second value is always
         /// `false`.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Panics
         ///
@@ -3416,12 +3464,14 @@ macro_rules! uint_impl {
         /// Calculates the quotient of Euclidean division `self.div_euclid(rhs)`.
         ///
         /// Returns a tuple of the divisor along with a boolean indicating
-        /// whether an arithmetic overflow would occur. Note that for unsigned
+        /// whether an arithmetic [overflow] would occur. Note that for unsigned
         /// integers overflow never occurs, so the second value is always
         /// `false`.
         /// Since, for the positive integers, all common
         /// definitions of division are equal, this
         /// is exactly equal to `self.overflowing_div(rhs)`.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Panics
         ///
@@ -3445,9 +3495,11 @@ macro_rules! uint_impl {
         /// Calculates the remainder when `self` is divided by `rhs`.
         ///
         /// Returns a tuple of the remainder after dividing along with a boolean
-        /// indicating whether an arithmetic overflow would occur. Note that for
+        /// indicating whether an arithmetic [overflow] would occur. Note that for
         /// unsigned integers overflow never occurs, so the second value is
         /// always `false`.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Panics
         ///
@@ -3471,12 +3523,14 @@ macro_rules! uint_impl {
         /// Calculates the remainder `self.rem_euclid(rhs)` as if by Euclidean division.
         ///
         /// Returns a tuple of the modulo after dividing along with a boolean
-        /// indicating whether an arithmetic overflow would occur. Note that for
+        /// indicating whether an arithmetic [overflow] would occur. Note that for
         /// unsigned integers overflow never occurs, so the second value is
         /// always `false`.
         /// Since, for the positive integers, all common
         /// definitions of division are equal, this operation
         /// is exactly equal to `self.overflowing_rem(rhs)`.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Panics
         ///
@@ -3501,8 +3555,10 @@ macro_rules! uint_impl {
         ///
         /// Returns `!self + 1` using wrapping operations to return the value
         /// that represents the negation of this unsigned value. Note that for
-        /// positive unsigned values overflow always occurs, but negating 0 does
+        /// positive unsigned values [overflow] always occurs, but negating 0 does
         /// not overflow.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Examples
         ///
@@ -3569,7 +3625,9 @@ macro_rules! uint_impl {
         /// Raises self to the power of `exp`, using exponentiation by squaring.
         ///
         /// Returns a tuple of the exponentiation along with a bool indicating
-        /// whether an overflow happened.
+        /// whether an [overflow] happened.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Examples
         ///

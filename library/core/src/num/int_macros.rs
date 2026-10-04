@@ -1963,8 +1963,10 @@ macro_rules! int_impl {
             }
         }
 
-        /// Saturating integer addition. Computes `self + rhs`, saturating at the numeric
+        /// Saturating integer addition. Computes `self + rhs`, [saturating] at the numeric
         /// bounds instead of overflowing.
+        ///
+        /// [saturating]: https://en.wikipedia.org/wiki/Saturation_arithmetic
         ///
         /// # Examples
         ///
@@ -1984,7 +1986,9 @@ macro_rules! int_impl {
         }
 
         /// Saturating addition with an unsigned integer. Computes `self + rhs`,
-        /// saturating at the numeric bounds instead of overflowing.
+        /// [saturating] at the numeric bounds instead of overflowing.
+        ///
+        /// [saturating]: https://en.wikipedia.org/wiki/Saturation_arithmetic
         ///
         /// # Examples
         ///
@@ -2006,8 +2010,10 @@ macro_rules! int_impl {
             }
         }
 
-        /// Saturating integer subtraction. Computes `self - rhs`, saturating at the
+        /// Saturating integer subtraction. Computes `self - rhs`, [saturating] at the
         /// numeric bounds instead of overflowing.
+        ///
+        /// [saturating]: https://en.wikipedia.org/wiki/Saturation_arithmetic
         ///
         /// # Examples
         ///
@@ -2026,7 +2032,9 @@ macro_rules! int_impl {
         }
 
         /// Saturating subtraction with an unsigned integer. Computes `self - rhs`,
-        /// saturating at the numeric bounds instead of overflowing.
+        /// [saturating] at the numeric bounds instead of overflowing.
+        ///
+        /// [saturating]: https://en.wikipedia.org/wiki/Saturation_arithmetic
         ///
         /// # Examples
         ///
@@ -2048,8 +2056,10 @@ macro_rules! int_impl {
             }
         }
 
-        /// Saturating integer negation. Computes `-self`, returning `MAX` if `self == MIN`
+        /// [Saturating] integer negation. Computes `-self`, returning `MAX` if `self == MIN`
         /// instead of overflowing.
+        ///
+        /// [saturating]: https://en.wikipedia.org/wiki/Saturation_arithmetic
         ///
         /// # Examples
         ///
@@ -2069,8 +2079,10 @@ macro_rules! int_impl {
             intrinsics::saturating_sub(0, self)
         }
 
-        /// Saturating absolute value. Computes `self.abs()`, returning `MAX` if `self ==
+        /// [Saturating] absolute value. Computes `self.abs()`, returning `MAX` if `self ==
         /// MIN` instead of overflowing.
+        ///
+        /// [saturating]: https://en.wikipedia.org/wiki/Saturation_arithmetic
         ///
         /// # Examples
         ///
@@ -2094,8 +2106,10 @@ macro_rules! int_impl {
             }
         }
 
-        /// Saturating integer multiplication. Computes `self * rhs`, saturating at the
+        /// Saturating integer multiplication. Computes `self * rhs`, [saturating] at the
         /// numeric bounds instead of overflowing.
+        ///
+        /// [saturating]: https://en.wikipedia.org/wiki/Saturation_arithmetic
         ///
         /// # Examples
         ///
@@ -2120,8 +2134,10 @@ macro_rules! int_impl {
             }
         }
 
-        /// Saturating integer division. Computes `self / rhs`, saturating at the
+        /// Saturating integer division. Computes `self / rhs`, [saturating] at the
         /// numeric bounds instead of overflowing.
+        ///
+        /// [saturating]: https://en.wikipedia.org/wiki/Saturation_arithmetic
         ///
         /// # Panics
         ///
@@ -2149,7 +2165,9 @@ macro_rules! int_impl {
         }
 
         /// Saturating integer exponentiation. Computes `self.pow(exp)`,
-        /// saturating at the numeric bounds instead of overflowing.
+        /// [saturating] at the numeric bounds instead of overflowing.
+        ///
+        /// [saturating]: https://en.wikipedia.org/wiki/Saturation_arithmetic
         ///
         /// # Examples
         ///
@@ -2172,8 +2190,10 @@ macro_rules! int_impl {
             }
         }
 
-        /// Wrapping (modular) addition. Computes `self + rhs`, wrapping around at the
+        /// Wrapping (modular) addition. Computes `self + rhs`, [wrapping] around at the
         /// boundary of the type.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Examples
         ///
@@ -2191,7 +2211,9 @@ macro_rules! int_impl {
         }
 
         /// Wrapping (modular) addition with an unsigned integer. Computes
-        /// `self + rhs`, wrapping around at the boundary of the type.
+        /// `self + rhs`, [wrapping] around at the boundary of the type.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Examples
         ///
@@ -2208,8 +2230,10 @@ macro_rules! int_impl {
             self.wrapping_add(rhs as Self)
         }
 
-        /// Wrapping (modular) subtraction. Computes `self - rhs`, wrapping around at the
+        /// Wrapping (modular) subtraction. Computes `self - rhs`, [wrapping] around at the
         /// boundary of the type.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Examples
         ///
@@ -2227,7 +2251,9 @@ macro_rules! int_impl {
         }
 
         /// Wrapping (modular) subtraction with an unsigned integer. Computes
-        /// `self - rhs`, wrapping around at the boundary of the type.
+        /// `self - rhs`, [wrapping] around at the boundary of the type.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Examples
         ///
@@ -2244,8 +2270,10 @@ macro_rules! int_impl {
             self.wrapping_sub(rhs as Self)
         }
 
-        /// Wrapping (modular) multiplication. Computes `self * rhs`, wrapping around at
+        /// Wrapping (modular) multiplication. Computes `self * rhs`, [wrapping] around at
         /// the boundary of the type.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Examples
         ///
@@ -2262,12 +2290,14 @@ macro_rules! int_impl {
             intrinsics::wrapping_mul(self, rhs)
         }
 
-        /// Wrapping (modular) division. Computes `self / rhs`, wrapping around at the
+        /// Wrapping (modular) division. Computes `self / rhs`, [wrapping] around at the
         /// boundary of the type.
         ///
         /// The only case where such wrapping can occur is when one divides `MIN / -1` on a signed type (where
         /// [`MIN`](Self::MIN) is the negative minimal value for the type); this is equivalent to `-MIN`, a positive value
         /// that is too large to represent in the type. In such a case, this function returns [`MIN`](Self::MIN) itself.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Panics
         ///
@@ -2290,11 +2320,13 @@ macro_rules! int_impl {
         }
 
         /// Wrapping Euclidean division. Computes `self.div_euclid(rhs)`,
-        /// wrapping around at the boundary of the type.
+        /// [wrapping] around at the boundary of the type.
         ///
         /// Wrapping will only occur in `MIN / -1` on a signed type (where [`MIN`](Self::MIN) is the negative minimal value
         /// for the type). This is equivalent to `-MIN`, a positive value that is too large to represent in the
         /// type. In this case, this method returns [`MIN`](Self::MIN) itself.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Panics
         ///
@@ -2316,12 +2348,14 @@ macro_rules! int_impl {
             self.overflowing_div_euclid(rhs).0
         }
 
-        /// Wrapping (modular) remainder. Computes `self % rhs`, wrapping around at the
+        /// Wrapping (modular) remainder. Computes `self % rhs`, [wrapping] around at the
         /// boundary of the type.
         ///
         /// Such wrap-around never actually occurs mathematically; implementation artifacts make `x % y`
         /// invalid for `MIN / -1` on a signed type (where [`MIN`](Self::MIN) is the negative minimal value). In such a case,
         /// this function returns `0`.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Panics
         ///
@@ -2343,11 +2377,13 @@ macro_rules! int_impl {
             self.overflowing_rem(rhs).0
         }
 
-        /// Wrapping Euclidean remainder. Computes `self.rem_euclid(rhs)`, wrapping around
+        /// Wrapping Euclidean remainder. Computes `self.rem_euclid(rhs)`, [wrapping] around
         /// at the boundary of the type.
         ///
         /// Wrapping will only occur in `MIN % -1` on a signed type (where [`MIN`](Self::MIN) is
         /// the negative minimal value for the type). In this case, this method returns 0.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Panics
         ///
@@ -2369,12 +2405,14 @@ macro_rules! int_impl {
             self.overflowing_rem_euclid(rhs).0
         }
 
-        /// Wrapping (modular) negation. Computes `-self`, wrapping around at the boundary
+        /// Wrapping (modular) negation. Computes `-self`, [wrapping] around at the boundary
         /// of the type.
         ///
         /// The only case where such wrapping can occur is when one negates [`MIN`](Self::MIN) on a signed type (where [`MIN`](Self::MIN)
         /// is the negative minimal value for the type); this is a positive value that is too large to represent
         /// in the type. In such a case, this function returns [`MIN`](Self::MIN) itself.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Examples
         ///
@@ -2466,12 +2504,14 @@ macro_rules! int_impl {
             }
         }
 
-        /// Wrapping (modular) absolute value. Computes `self.abs()`, wrapping around at
+        /// Wrapping (modular) absolute value. Computes `self.abs()`, [wrapping] around at
         /// the boundary of the type.
         ///
         /// The only case where such wrapping can occur is when one takes the absolute value of the negative
         /// minimal value for the type; this is a positive value that is too large to represent in the type. In
         /// such a case, this function returns [`MIN`](Self::MIN) itself.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Examples
         ///
@@ -2515,7 +2555,9 @@ macro_rules! int_impl {
         }
 
         /// Wrapping (modular) exponentiation. Computes `self.pow(exp)`,
-        /// wrapping around at the boundary of the type.
+        /// [wrapping] around at the boundary of the type.
+        ///
+        /// [wrapping]: ../book/ch03-02-data-types.html#integer-overflow
         ///
         /// # Examples
         ///
@@ -2538,9 +2580,11 @@ macro_rules! int_impl {
         /// Calculates `self` + `rhs`.
         ///
         /// Returns a tuple of the addition along with a boolean indicating
-        /// whether an arithmetic overflow would occur. If an overflow would have
+        /// whether an arithmetic [overflow] would occur. If an overflow would have
         /// occurred then the wrapped value is returned (negative if overflowed
         /// above [`MAX`](Self::MAX), non-negative if below [`MIN`](Self::MIN)).
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Examples
         ///
@@ -2621,8 +2665,10 @@ macro_rules! int_impl {
         /// Calculates `self` + `rhs` with an unsigned `rhs`.
         ///
         /// Returns a tuple of the addition along with a boolean indicating
-        /// whether an arithmetic overflow would occur. If an overflow would
+        /// whether an arithmetic [overflow] would occur. If an overflow would
         /// have occurred then the wrapped value is returned.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Examples
         ///
@@ -2644,9 +2690,11 @@ macro_rules! int_impl {
 
         /// Calculates `self` - `rhs`.
         ///
-        /// Returns a tuple of the subtraction along with a boolean indicating whether an arithmetic overflow
+        /// Returns a tuple of the subtraction along with a boolean indicating whether an arithmetic [overflow]
         /// would occur. If an overflow would have occurred then the wrapped value is returned
         /// (negative if overflowed above [`MAX`](Self::MAX), non-negative if below [`MIN`](Self::MIN)).
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Examples
         ///
@@ -2728,8 +2776,10 @@ macro_rules! int_impl {
         /// Calculates `self` - `rhs` with an unsigned `rhs`.
         ///
         /// Returns a tuple of the subtraction along with a boolean indicating
-        /// whether an arithmetic overflow would occur. If an overflow would
+        /// whether an arithmetic [overflow] would occur. If an overflow would
         /// have occurred then the wrapped value is returned.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Examples
         ///
@@ -2751,8 +2801,10 @@ macro_rules! int_impl {
 
         /// Calculates the multiplication of `self` and `rhs`.
         ///
-        /// Returns a tuple of the multiplication along with a boolean indicating whether an arithmetic overflow
+        /// Returns a tuple of the multiplication along with a boolean indicating whether an arithmetic [overflow]
         /// would occur. If an overflow would have occurred then the wrapped value is returned.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Examples
         ///
@@ -2842,8 +2894,10 @@ macro_rules! int_impl {
 
         /// Calculates the divisor when `self` is divided by `rhs`.
         ///
-        /// Returns a tuple of the divisor along with a boolean indicating whether an arithmetic overflow would
+        /// Returns a tuple of the divisor along with a boolean indicating whether an arithmetic [overflow] would
         /// occur. If an overflow would occur then self is returned.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Panics
         ///
@@ -2872,8 +2926,10 @@ macro_rules! int_impl {
 
         /// Calculates the quotient of Euclidean division `self.div_euclid(rhs)`.
         ///
-        /// Returns a tuple of the divisor along with a boolean indicating whether an arithmetic overflow would
+        /// Returns a tuple of the divisor along with a boolean indicating whether an arithmetic [overflow] would
         /// occur. If an overflow would occur then `self` is returned.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Panics
         ///
@@ -2903,7 +2959,9 @@ macro_rules! int_impl {
         /// Calculates the remainder when `self` is divided by `rhs`.
         ///
         /// Returns a tuple of the remainder after dividing along with a boolean indicating whether an
-        /// arithmetic overflow would occur. If an overflow would occur then 0 is returned.
+        /// arithmetic [overflow] would occur. If an overflow would occur then 0 is returned.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Panics
         ///
@@ -2933,7 +2991,9 @@ macro_rules! int_impl {
         /// Overflowing Euclidean remainder. Calculates `self.rem_euclid(rhs)`.
         ///
         /// Returns a tuple of the remainder after dividing along with a boolean indicating whether an
-        /// arithmetic overflow would occur. If an overflow would occur then 0 is returned.
+        /// arithmetic [overflow] would occur. If an overflow would occur then 0 is returned.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Panics
         ///
@@ -2962,9 +3022,11 @@ macro_rules! int_impl {
 
         /// Negates self, overflowing if this is equal to the minimum value.
         ///
-        /// Returns a tuple of the negated version of self along with a boolean indicating whether an overflow
+        /// Returns a tuple of the negated version of self along with a boolean indicating whether an [overflow]Z
         /// happened. If `self` is the minimum value (e.g., [`i32::MIN`] for values of type [`i32`]), then the
         /// minimum value will be returned again and `true` will be returned for an overflow happening.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Examples
         ///
@@ -3030,11 +3092,13 @@ macro_rules! int_impl {
 
         /// Computes the absolute value of `self`.
         ///
-        /// Returns a tuple of the absolute version of self along with a boolean indicating whether an overflow
+        /// Returns a tuple of the absolute version of self along with a boolean indicating whether an [overflow]
         /// happened. If self is the minimum value
         #[doc = concat!("(e.g., [`", stringify!($SelfT), "::MIN`] for values of type [`", stringify!($SelfT), "`]),")]
         /// then the minimum value will be returned again and true will be returned
         /// for an overflow happening.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Examples
         ///
@@ -3055,7 +3119,9 @@ macro_rules! int_impl {
         /// Raises self to the power of `exp`, using exponentiation by squaring.
         ///
         /// Returns a tuple of the exponentiation along with a bool indicating
-        /// whether an overflow happened.
+        /// whether an [overflow] happened.
+        ///
+        /// [overflow]: ../reference/expressions/operator-expr.html#overflow
         ///
         /// # Examples
         ///
