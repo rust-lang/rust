@@ -932,6 +932,16 @@ pub enum AttributeKind {
     /// Represents `#[linkage]`.
     Linkage(Linkage, Span),
 
+    /// Represents `#[lint::as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
+    LintAsPtr,
+
+    /// Represents `#[lint::never_returns_null_ptr]` (used by the `useless_ptr_null_checks` lint).
+    LintNeverReturnsNullPtr,
+
+    /// Represents `#[lint::should_not_be_called_on_const_items]` (used by the
+    /// `const_item_interior_mutations` lint).
+    LintShouldNotBeCalledOnConstItems,
+
     /// Represents `#[loop_match]`.
     LoopMatch(Span),
 
@@ -1142,9 +1152,6 @@ pub enum AttributeKind {
     /// Represents `#[rustc_allow_lifetime_dependent_specialization]`.
     RustcAllowLifetimeDependentSpecialization,
 
-    /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
-    RustcAsPtr,
-
     /// Represents `#[rustc_autodiff]`.
     RustcAutodiff(Option<Box<RustcAutodiff>>),
 
@@ -1333,9 +1340,6 @@ pub enum AttributeKind {
     /// Represents `#[rustc_must_match_exhaustively]`
     RustcMustMatchExhaustively(Span),
 
-    /// Represents `#[rustc_never_returns_null_ptr]`
-    RustcNeverReturnsNullPtr,
-
     /// Represents `#[rustc_no_implicit_autorefs]`
     RustcNoImplicitAutorefs,
 
@@ -1403,9 +1407,6 @@ pub enum AttributeKind {
         /// is not provided for representing tuple types.
         element_count: Option<u16>,
     },
-
-    /// Represents `#[rustc_should_not_be_called_on_const_items]`
-    RustcShouldNotBeCalledOnConstItems,
 
     /// Represents `#[rustc_simd_monomorphize_lane_limit = "N"]`.
     RustcSimdMonomorphizeLaneLimit(Limit),

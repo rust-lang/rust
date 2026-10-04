@@ -376,6 +376,7 @@
 #![feature(ptr_mask)]
 #![feature(random)]
 #![feature(raw_os_error_ty)]
+#![feature(register_tool)]
 #![feature(seek_io_take_position)]
 #![feature(seek_stream_len)]
 #![feature(share_trait)]
@@ -451,6 +452,10 @@
     link = "https://github.com/rust-lang/rust/issues/29599#issuecomment-2986866250",
     since = "1.90.0"
 )]
+// tidy-alphabetical-start
+#![register_tool(lint)]
+// tidy-alphabetical-end
+//
 
 // The Rust prelude
 // The compiler expects the prelude definition to be defined before its use statement.

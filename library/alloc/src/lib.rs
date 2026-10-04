@@ -161,6 +161,7 @@
 #![feature(ptr_metadata)]
 #![feature(random)]
 #![feature(raw_os_error_ty)]
+#![feature(register_tool)]
 #![feature(rev_into_inner)]
 #![feature(seek_stream_len)]
 #![feature(set_ptr_value)]
@@ -219,7 +220,11 @@
 #![feature(with_negative_coherence)]
 #![rustc_preserve_ub_checks]
 // tidy-alphabetical-end
-//
+
+// tidy-alphabetical-start
+#![register_tool(lint)]
+// tidy-alphabetical-end
+
 // Rustdoc features:
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]

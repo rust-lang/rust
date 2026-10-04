@@ -23,7 +23,7 @@ use crate::context::{
 use crate::diagnostics::ParsedDescription;
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
 use crate::synthetic::SyntheticAttrState;
-use crate::{AttributeTemplate, ShouldEmit};
+use crate::{AttributeTemplate, ShouldEmit, diagnostics};
 
 pub struct EmitAttribute(
     pub  Box<
@@ -452,6 +452,23 @@ impl<'sess> AttributeParser<'sess> {
                         }
                     } else if let [sym::diagnostic, _unknown, ..] = &*parts {
                         self.unknown_diagnostic_attr(&n.item.path.segments[1], &mut emit_lint);
+                    } else if let [sym::lint, unknown, ..] = &*parts {
+                        // Avoid cascading errors. If the `lint` tool has not been registered,
+                        // we could be here in the `#[lint::attribute_macro] not found` case,
+                        // which recovers with a `NonMacroAttr` res.
+                        if let Some(tools) = self.attr_tools
+                            && tools.iter().any(|i| i.name == sym::lint)
+                        {
+                            self.emit_err(diagnostics::UnknownLintHelper {
+                                span: n.item.span,
+                                unknown: *unknown,
+                            });
+                        } else {
+                            self.dcx().span_delayed_bug(
+                                n.item.span,
+                                "encountered `lint` tool attribute but error not reported",
+                            );
+                        }
                     } else {
                         let attr = AttrItem {
                             path: attr_path.clone(),
