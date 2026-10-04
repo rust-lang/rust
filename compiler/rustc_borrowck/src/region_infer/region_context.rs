@@ -50,10 +50,10 @@ pub struct RegionInferenceContextInner<'tcx> {
     /// regions, these start out empty and steadily grow, though for
     /// each universally quantified region R they start out containing
     /// the entire CFG and `end(R)`.
-    liveness_constraints: LivenessValues,
+    pub(crate) liveness_constraints: LivenessValues,
 
     /// The outlives constraints computed by the type-check.
-    pub(super) constraints: Frozen<OutlivesConstraintSet<'tcx>>,
+    pub(crate) constraints: Frozen<OutlivesConstraintSet<'tcx>>,
 
     /// The constraint-set, but in graph form, making it easy to traverse
     /// the constraints adjacent to a particular region. Used to construct
@@ -77,7 +77,7 @@ pub struct RegionInferenceContextInner<'tcx> {
 
     /// Information about how the universally quantified regions in
     /// scope on this function relate to one another.
-    pub(super) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
+    pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
 }
 
 /// This contains data around region constraints and liveness, up to and after solving.
@@ -99,7 +99,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// unsatisfiable constraints. If this is a closure, returns the
     /// region requirements to propagate to our creator, if any.
     #[instrument(
-        skip(infcx, lowered_constraints, location_map, body, polonius_output),
+        skip(infcx, lowered_constraints, location_map, body, polonius_output, finalize,),
         level = "debug"
     )]
     pub(crate) fn solve(
@@ -109,6 +109,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         location_map: Rc<DenseLocationMap>,
         body: &Body<'tcx>,
         polonius_output: Option<Box<PoloniusOutput>>,
+        finalize: impl FnOnce(&mut UnsolvedRegionInferenceContext<'tcx>),
     ) -> (RegionInferenceContext<'tcx>, Option<ClosureRegionRequirements<'tcx>>, RegionErrors<'tcx>)
     {
         // 1. We first prepare the data needed for the `UnsolvedRegionInferenceContext` to do the
@@ -187,6 +188,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 scc_values,
             },
             type_tests,
+            type_test_constraints: vec![],
         };
 
         // 2. And now we can do the actual solving, the region inference.
@@ -230,6 +232,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         debug!(?errors_buffer);
 
+        finalize(&mut unsolved_regioncx);
+
         let propagated_outlives_requirements = propagated_outlives_requirements.unwrap_or_default();
         if propagated_outlives_requirements.is_empty() {
             (
@@ -271,11 +275,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 }
 
 /// This contains data around region constraints and liveness, up to solving.
-struct UnsolvedRegionInferenceContext<'tcx> {
-    inner: RegionInferenceContextInner<'tcx>,
+pub(crate) struct UnsolvedRegionInferenceContext<'tcx> {
+    pub(crate) inner: RegionInferenceContextInner<'tcx>,
 
     /// Type constraints that we check after solving.
     type_tests: Vec<TypeTest<'tcx>>,
+
+    pub(crate) type_test_constraints: Vec<OutlivesConstraint<'tcx>>,
 }
 
 impl<'tcx> Deref for UnsolvedRegionInferenceContext<'tcx> {
@@ -898,7 +904,7 @@ impl<'tcx> UnsolvedRegionInferenceContext<'tcx> {
     /// type tests encode type-outlives relationships like `T:
     /// 'a`. See `TypeTest` for more details.
     fn check_type_tests(
-        &self,
+        &mut self,
         infcx: &InferCtxt<'tcx>,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
         errors_buffer: &mut RegionErrors<'tcx>,
@@ -915,12 +921,28 @@ impl<'tcx> UnsolvedRegionInferenceContext<'tcx> {
             debug!("check_type_test: {:?}", type_test);
 
             let generic_ty = type_test.generic_kind.to_ty(tcx);
+            let mut regions_used = Vec::new();
             if self.eval_verify_bound(
                 infcx,
                 generic_ty,
                 type_test.lower_bound,
                 &type_test.verify_bound,
+                &mut regions_used,
             ) {
+                for region in regions_used {
+                    if region == type_test.lower_bound {
+                        continue;
+                    }
+                    self.type_test_constraints.push(OutlivesConstraint {
+                        sup: region,
+                        sub: type_test.lower_bound,
+                        locations: type_test.locations,
+                        span: type_test.span,
+                        category: ConstraintCategory::Boring,
+                        variance_info: ty::VarianceDiagInfo::default(),
+                        from_closure: false,
+                    });
+                }
                 continue;
             }
 
@@ -1015,7 +1037,7 @@ impl<'tcx> UnsolvedRegionInferenceContext<'tcx> {
         propagated_outlives_requirements: &mut Vec<ClosureOutlivesRequirement<'tcx>>,
     ) -> bool {
         let tcx = infcx.tcx;
-        let TypeTest { generic_kind, lower_bound, span: blame_span, verify_bound: _ } = *type_test;
+        let TypeTest { generic_kind, lower_bound, span: blame_span, .. } = *type_test;
 
         let generic_ty = generic_kind.to_ty(tcx);
         let Some(subject) = self.try_promote_type_test_subject(infcx, generic_ty) else {
@@ -1138,12 +1160,13 @@ impl<'tcx> UnsolvedRegionInferenceContext<'tcx> {
         generic_ty: Ty<'tcx>,
         lower_bound: RegionVid,
         verify_bound: &VerifyBound<'tcx>,
+        regions_used: &mut Vec<RegionVid>,
     ) -> bool {
         debug!("eval_verify_bound(lower_bound={:?}, verify_bound={:?})", lower_bound, verify_bound);
 
         match verify_bound {
             VerifyBound::IfEq(verify_if_eq_b) => {
-                self.eval_if_eq(infcx, generic_ty, lower_bound, *verify_if_eq_b)
+                self.eval_if_eq(infcx, generic_ty, lower_bound, *verify_if_eq_b, regions_used)
             }
 
             VerifyBound::IsEmpty => {
@@ -1153,16 +1176,55 @@ impl<'tcx> UnsolvedRegionInferenceContext<'tcx> {
 
             VerifyBound::OutlivedBy(r) => {
                 let r_vid = self.to_region_vid(*r);
-                self.eval_outlives(r_vid, lower_bound)
+                let outlives = self.eval_outlives(r_vid, lower_bound);
+                if outlives {
+                    regions_used.push(r_vid);
+                }
+                outlives
             }
 
-            VerifyBound::AnyBound(verify_bounds) => verify_bounds.iter().any(|verify_bound| {
-                self.eval_verify_bound(infcx, generic_ty, lower_bound, verify_bound)
-            }),
+            VerifyBound::AnyBound(verify_bounds) => {
+                // Although we only need to find one bound that is satisfied, we
+                // don't know which one *other* code relies on, so we still need
+                // to evaluate all the bounds so we can record that the outlives
+                // constraints needs to and does hold *here*.
+                let mut any = false;
+                for verify_bound in verify_bounds {
+                    if self.eval_verify_bound(
+                        infcx,
+                        generic_ty,
+                        lower_bound,
+                        verify_bound,
+                        regions_used,
+                    ) {
+                        any = true;
+                    }
+                }
+                any
+            }
 
-            VerifyBound::AllBounds(verify_bounds) => verify_bounds.iter().all(|verify_bound| {
-                self.eval_verify_bound(infcx, generic_ty, lower_bound, verify_bound)
-            }),
+            VerifyBound::AllBounds(verify_bounds) => {
+                // If any of these bounds don't hold, then we don't add any new
+                // constraints at all.
+                let len = regions_used.len();
+                let mut all = true;
+                for verify_bound in verify_bounds {
+                    if !self.eval_verify_bound(
+                        infcx,
+                        generic_ty,
+                        lower_bound,
+                        verify_bound,
+                        regions_used,
+                    ) {
+                        all = false;
+                        break;
+                    }
+                }
+                if !all {
+                    regions_used.truncate(len);
+                }
+                all
+            }
         }
     }
 
@@ -1172,13 +1234,18 @@ impl<'tcx> UnsolvedRegionInferenceContext<'tcx> {
         generic_ty: Ty<'tcx>,
         lower_bound: RegionVid,
         verify_if_eq_b: ty::Binder<'tcx, VerifyIfEq<'tcx>>,
+        regions_used: &mut Vec<RegionVid>,
     ) -> bool {
         let generic_ty = self.normalize_to_scc_representatives(infcx.tcx, generic_ty);
         let verify_if_eq_b = self.normalize_to_scc_representatives(infcx.tcx, verify_if_eq_b);
         match test_type_match::extract_verify_if_eq(infcx.tcx, &verify_if_eq_b, generic_ty) {
             Some(r) => {
                 let r_vid = self.to_region_vid(r);
-                self.eval_outlives(r_vid, lower_bound)
+                let outlives = self.eval_outlives(r_vid, lower_bound);
+                if outlives {
+                    regions_used.push(r_vid);
+                }
+                outlives
             }
             None => false,
         }
