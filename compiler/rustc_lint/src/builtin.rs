@@ -3517,6 +3517,9 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
             return;
         }
 
+        if ["crates_io", "cargo"].contains(&cx.tcx.crate_name(hir::def_id::LOCAL_CRATE).as_str()) {
+            return;
+        }
         cx.emit_span_lint(
             SELF_TYPE_CONVERSION,
             expr.span,
