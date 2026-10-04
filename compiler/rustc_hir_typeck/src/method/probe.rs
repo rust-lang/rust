@@ -410,50 +410,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         #[help("consider providing a type annotation")]
         struct MethodCallOnDivergingInferenceVariable;
 
-        let mut orig_values = OriginalQueryValues::default();
-        let predefined_opaques_in_body = if self.next_trait_solver() {
-            self.tcx.mk_predefined_opaques_in_body_from_iter(
-                self.inner.borrow_mut().opaque_types().iter_opaque_types().map(|(k, v)| (k, v.ty)),
-            )
-        } else {
-            ty::List::empty()
-        };
-        let value = query::MethodAutoderefSteps { predefined_opaques_in_body, self_ty };
-        let query_input = self
-            .canonicalize_query(ParamEnvAnd { param_env: self.param_env, value }, &mut orig_values);
-
-        let steps = match mode {
-            Mode::MethodCall => self.tcx.method_autoderef_steps(query_input),
-            Mode::Path => self.probe(|_| {
-                // Mode::Path - the deref steps is "trivial". This turns
-                // our CanonicalQuery into a "trivial" QueryResponse. This
-                // is a bit inefficient, but I don't think that writing
-                // special handling for this "trivial case" is a good idea.
-
-                let infcx = &self.infcx;
-                let (ParamEnvAnd { param_env: _, value }, var_values) =
-                    infcx.instantiate_canonical(span, &query_input.canonical);
-                let query::MethodAutoderefSteps { predefined_opaques_in_body: _, self_ty } = value;
-                debug!(?self_ty, ?query_input, "probe_op: Mode::Path");
-                let prev_opaque_entries = self.inner.borrow_mut().opaque_types().num_entries();
-                MethodAutoderefStepsResult {
-                    steps: infcx.tcx.arena.alloc_from_iter([CandidateStep {
-                        self_ty: self.make_query_response_ignoring_pending_obligations(
-                            var_values,
-                            self_ty,
-                            prev_opaque_entries,
-                        ),
-                        self_ty_is_opaque: false,
-                        autoderefs: 0,
-                        from_unsafe_deref: false,
-                        unsize: false,
-                        reachable_via_deref: true,
-                    }]),
-                    opt_bad_ty: None,
-                    reached_recursion_limit: false,
-                }
-            }),
-        };
+        let (orig_values, steps) = self.autoderef_steps_for_probe_op(span, mode, self_ty);
 
         // If our autoderef loop had reached the recursion limit,
         // report an overflow error, but continue going on with
@@ -629,6 +586,59 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             op(probe_cx)
         })
+    }
+
+    fn autoderef_steps_for_probe_op(
+        &self,
+        span: Span,
+        mode: Mode,
+        self_ty: Ty<'tcx>,
+    ) -> (OriginalQueryValues<'tcx>, MethodAutoderefStepsResult<'tcx>) {
+        let mut orig_values = OriginalQueryValues::default();
+        let predefined_opaques_in_body = if self.next_trait_solver() {
+            self.tcx.mk_predefined_opaques_in_body_from_iter(
+                self.inner.borrow_mut().opaque_types().iter_opaque_types().map(|(k, v)| (k, v.ty)),
+            )
+        } else {
+            ty::List::empty()
+        };
+        let value = query::MethodAutoderefSteps { predefined_opaques_in_body, self_ty };
+        let query_input = self
+            .canonicalize_query(ParamEnvAnd { param_env: self.param_env, value }, &mut orig_values);
+
+        let steps = match mode {
+            Mode::MethodCall => self.tcx.method_autoderef_steps(query_input),
+            Mode::Path => self.probe(|_| {
+                // Mode::Path - the deref steps is "trivial". This turns
+                // our CanonicalQuery into a "trivial" QueryResponse. This
+                // is a bit inefficient, but I don't think that writing
+                // special handling for this "trivial case" is a good idea.
+
+                let infcx = &self.infcx;
+                let (ParamEnvAnd { param_env: _, value }, var_values) =
+                    infcx.instantiate_canonical(span, &query_input.canonical);
+                let query::MethodAutoderefSteps { predefined_opaques_in_body: _, self_ty } = value;
+                debug!(?self_ty, ?query_input, "probe_op: Mode::Path");
+                let prev_opaque_entries = self.inner.borrow_mut().opaque_types().num_entries();
+                MethodAutoderefStepsResult {
+                    steps: infcx.tcx.arena.alloc_from_iter([CandidateStep {
+                        self_ty: self.make_query_response_ignoring_pending_obligations(
+                            var_values,
+                            self_ty,
+                            prev_opaque_entries,
+                        ),
+                        self_ty_is_opaque: false,
+                        autoderefs: 0,
+                        from_unsafe_deref: false,
+                        unsize: false,
+                        reachable_via_deref: true,
+                    }]),
+                    opt_bad_ty: None,
+                    reached_recursion_limit: false,
+                }
+            }),
+        };
+        (orig_values, steps)
     }
 }
 
