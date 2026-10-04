@@ -280,6 +280,7 @@
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
 #![feature(const_trait_impl)]
+#![feature(debug_closure_helpers)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
 #![feature(diagnostic_on_move)]

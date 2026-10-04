@@ -1077,12 +1077,6 @@ impl Process {
 #[derive(PartialEq, Eq, Clone, Copy, Default)]
 pub struct ExitStatus(c_int);
 
-impl fmt::Debug for ExitStatus {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("unix_wait_status").field(&self.0).finish()
-    }
-}
-
 impl ExitStatus {
     pub fn new(status: c_int) -> ExitStatus {
         ExitStatus(status)
@@ -1156,56 +1150,56 @@ impl From<c_int> for ExitStatus {
 /// If a signal is unrecognized, it returns the empty string, so that
 /// you just get the number like "0". If it is recognized, you'll get
 /// something like "9 (SIGKILL)".
-fn signal_string(signal: i32) -> &'static str {
-    match signal {
-        libc::SIGHUP => " (SIGHUP)",
-        libc::SIGINT => " (SIGINT)",
-        libc::SIGQUIT => " (SIGQUIT)",
-        libc::SIGILL => " (SIGILL)",
-        libc::SIGTRAP => " (SIGTRAP)",
-        libc::SIGABRT => " (SIGABRT)",
+fn signal_string(signal: i32) -> Option<&'static str> {
+    let name = match signal {
+        libc::SIGHUP => "SIGHUP",
+        libc::SIGINT => "SIGINT",
+        libc::SIGQUIT => "SIGQUIT",
+        libc::SIGILL => "SIGILL",
+        libc::SIGTRAP => "SIGTRAP",
+        libc::SIGABRT => "SIGABRT",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGBUS => " (SIGBUS)",
-        libc::SIGFPE => " (SIGFPE)",
-        libc::SIGKILL => " (SIGKILL)",
+        libc::SIGBUS => "SIGBUS",
+        libc::SIGFPE => "SIGFPE",
+        libc::SIGKILL => "SIGKILL",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGUSR1 => " (SIGUSR1)",
-        libc::SIGSEGV => " (SIGSEGV)",
+        libc::SIGUSR1 => "SIGUSR1",
+        libc::SIGSEGV => "SIGSEGV",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGUSR2 => " (SIGUSR2)",
-        libc::SIGPIPE => " (SIGPIPE)",
-        libc::SIGALRM => " (SIGALRM)",
-        libc::SIGTERM => " (SIGTERM)",
+        libc::SIGUSR2 => "SIGUSR2",
+        libc::SIGPIPE => "SIGPIPE",
+        libc::SIGALRM => "SIGALRM",
+        libc::SIGTERM => "SIGTERM",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGCHLD => " (SIGCHLD)",
+        libc::SIGCHLD => "SIGCHLD",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGCONT => " (SIGCONT)",
+        libc::SIGCONT => "SIGCONT",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGSTOP => " (SIGSTOP)",
+        libc::SIGSTOP => "SIGSTOP",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGTSTP => " (SIGTSTP)",
+        libc::SIGTSTP => "SIGTSTP",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGTTIN => " (SIGTTIN)",
+        libc::SIGTTIN => "SIGTTIN",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGTTOU => " (SIGTTOU)",
+        libc::SIGTTOU => "SIGTTOU",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGURG => " (SIGURG)",
+        libc::SIGURG => "SIGURG",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGXCPU => " (SIGXCPU)",
+        libc::SIGXCPU => "SIGXCPU",
         #[cfg(not(any(target_os = "l4re", target_os = "rtems")))]
-        libc::SIGXFSZ => " (SIGXFSZ)",
+        libc::SIGXFSZ => "SIGXFSZ",
         #[cfg(not(any(target_os = "l4re", target_os = "rtems")))]
-        libc::SIGVTALRM => " (SIGVTALRM)",
+        libc::SIGVTALRM => "SIGVTALRM",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGPROF => " (SIGPROF)",
+        libc::SIGPROF => "SIGPROF",
         #[cfg(not(any(target_os = "l4re", target_os = "rtems")))]
-        libc::SIGWINCH => " (SIGWINCH)",
+        libc::SIGWINCH => "SIGWINCH",
         #[cfg(not(any(target_os = "haiku", target_os = "l4re")))]
-        libc::SIGIO => " (SIGIO)",
+        libc::SIGIO => "SIGIO",
         #[cfg(target_os = "haiku")]
-        libc::SIGPOLL => " (SIGPOLL)",
+        libc::SIGPOLL => "SIGPOLL",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGSYS => " (SIGSYS)",
+        libc::SIGSYS => "SIGSYS",
         // For information on Linux signals, run `man 7 signal`
         #[cfg(all(
             target_os = "linux",
@@ -1216,14 +1210,14 @@ fn signal_string(signal: i32) -> &'static str {
                 target_arch = "aarch64"
             )
         ))]
-        libc::SIGSTKFLT => " (SIGSTKFLT)",
+        libc::SIGSTKFLT => "SIGSTKFLT",
         #[cfg(any(
             target_os = "linux",
             target_os = "nto",
             target_os = "qnx",
             target_os = "cygwin"
         ))]
-        libc::SIGPWR => " (SIGPWR)",
+        libc::SIGPWR => "SIGPWR",
         #[cfg(any(
             target_os = "freebsd",
             target_os = "netbsd",
@@ -1234,7 +1228,7 @@ fn signal_string(signal: i32) -> &'static str {
             target_vendor = "apple",
             target_os = "cygwin",
         ))]
-        libc::SIGEMT => " (SIGEMT)",
+        libc::SIGEMT => "SIGEMT",
         #[cfg(any(
             target_os = "freebsd",
             target_os = "netbsd",
@@ -1242,36 +1236,75 @@ fn signal_string(signal: i32) -> &'static str {
             target_os = "dragonfly",
             target_vendor = "apple",
         ))]
-        libc::SIGINFO => " (SIGINFO)",
+        libc::SIGINFO => "SIGINFO",
         #[cfg(target_os = "hurd")]
-        libc::SIGLOST => " (SIGLOST)",
+        libc::SIGLOST => "SIGLOST",
         #[cfg(target_os = "freebsd")]
-        libc::SIGTHR => " (SIGTHR)",
+        libc::SIGTHR => "SIGTHR",
         #[cfg(target_os = "freebsd")]
-        libc::SIGLIBRT => " (SIGLIBRT)",
-        _ => "",
+        libc::SIGLIBRT => "SIGLIBRT",
+        _ => return None,
+    };
+    Some(name)
+}
+
+impl fmt::Debug for ExitStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Display this like an `enum _ { Exited(i32), Signaled { signal: i32, ... } ... }`.
+        // `write!` is used rather than `debug_{tuple,struct}` here so as to reduce the number
+        // of lines taken up with `#` formatting.
+        let write_structural = |f: &mut fmt::Formatter<'_>| {
+            if let Some(code) = self.code() {
+                write!(f, "Exited({code})")?;
+            } else if let Some(signal) = self.signal() {
+                let name = signal_string(signal).unwrap_or("<unknown>");
+                write!(
+                    f,
+                    "Signaled {{ signal: {signal}, name: {name}, core_dumped: {} }}",
+                    self.core_dumped()
+                )?;
+            } else if let Some(signal) = self.stopped_signal() {
+                let name = signal_string(signal).unwrap_or("<unknown>");
+                write!(f, "Stopped {{ signal: {signal}, name: {name} }}")?;
+            } else if self.continued() {
+                let name = "WIFCONTINUED";
+                write!(f, "Continued {{ name: {name} }}")?;
+            } else {
+                write!(f, "Unrecognized({:#x})", self.0)?;
+            }
+            Ok(())
+        };
+
+        f.debug_struct("unix_wait_status")
+            .field("value", &self.0)
+            .field_with("status", write_structural)
+            .finish()
     }
 }
 
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(code) = self.code() {
-            write!(f, "exit status: {code}")
+            write!(f, "exit status: {code}")?;
         } else if let Some(signal) = self.signal() {
-            let signal_string = signal_string(signal);
+            write!(f, "signal: {signal}")?;
+            if let Some(name) = signal_string(signal) {
+                write!(f, " ({name})")?;
+            }
             if self.core_dumped() {
-                write!(f, "signal: {signal}{signal_string} (core dumped)")
-            } else {
-                write!(f, "signal: {signal}{signal_string}")
+                write!(f, " (core dumped)")?;
             }
         } else if let Some(signal) = self.stopped_signal() {
-            let signal_string = signal_string(signal);
-            write!(f, "stopped (not terminated) by signal: {signal}{signal_string}")
+            write!(f, "stopped (not terminated) by signal: {signal}")?;
+            if let Some(name) = signal_string(signal) {
+                write!(f, " ({name})")?;
+            }
         } else if self.continued() {
-            write!(f, "continued (WIFCONTINUED)")
+            write!(f, "continued (WIFCONTINUED)")?;
         } else {
-            write!(f, "unrecognised wait status: {} {:#x}", self.0, self.0)
+            write!(f, "unrecognised wait status: {} {:#x}", self.0, self.0)?;
         }
+        Ok(())
     }
 }
 
