@@ -351,8 +351,11 @@ impl Diagnostic<'_> for LinkingFailed<'_> {
         let contains_undefined_ref = self.escaped_output.contains("undefined reference to");
 
         if self.verbose {
-            diag.note(format!("{:?}", self.command));
-        } else {
+            diag.note(format!("executed command:\n{:?}", self.command));
+            diag.note(format!("command output:\n{}", self.escaped_output));
+        } else if !self.unexpected_error {
+            // We only print the entire command and its output if the linker is present. If it
+            // isn't, then all of this is just noise.
             self.command.env_clear();
 
             enum ArgGroup {
@@ -392,7 +395,8 @@ impl Diagnostic<'_> for LinkingFailed<'_> {
             let crate_hash = regex::bytes::Regex::new(r"-[0-9a-f]+").unwrap();
             self.command.args(args.into_iter().map(|arg_group| {
                 match arg_group {
-                    // SAFETY: we are only matching on ASCII, not any surrogate pairs, so any replacements we do will still be valid.
+                    // SAFETY: we are only matching on ASCII, not any surrogate pairs, so any
+                    // replacements we do will still be valid.
                     ArgGroup::Regular(arg) => unsafe {
                         use bstr::ByteSlice;
                         OsString::from_encoded_bytes_unchecked(
@@ -404,6 +408,8 @@ impl Diagnostic<'_> for LinkingFailed<'_> {
                     },
                     ArgGroup::Objects(n) => OsString::from(format!("<{n} object files omitted>")),
                     ArgGroup::Rlibs(mut dir, rlibs) => {
+                        // FIXME(estebank): Empirically, this needs some improvement to properly
+                        // replace `<sysroot>` on Windows.
                         let is_sysroot_dir = match dir.strip_prefix(&self.sysroot_dir) {
                             Ok(short) => {
                                 dir = Path::new("<sysroot>").join(short);
@@ -444,11 +450,13 @@ impl Diagnostic<'_> for LinkingFailed<'_> {
                 }
             }));
 
-            diag.note(format!("{:?}", self.command).trim_start_matches("env -i").to_owned());
+            diag.note(format!("executed command:\n{:?}", self.command).trim_start_matches("env -i").to_owned());
             diag.note("some arguments are omitted; use `--verbose` to show all linker arguments");
-        }
 
-        diag.note(self.escaped_output);
+            diag.note(format!("command output:\n{}", self.escaped_output));
+        } else {
+            diag.note("linker command and its output are omitted; use `--verbose` to show them");
+        }
 
         // Trying to match an error from OS linkers
         // which by now we have no way to translate.
