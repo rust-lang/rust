@@ -579,7 +579,7 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn closure(&self, span: Span, ids: Vec<Symbol>, body: Box<ast::Expr>) -> Box<ast::Expr> {
         let fn_decl = self.fn_decl(
-            ids.iter().map(|id| self.param(span, *id, self.ty(span, ast::TyKind::Infer))).collect(),
+            ids.iter().map(|id| self.param(span, *id, self.ty_infer(span))).collect(),
             ast::FnRetTy::Default(span),
         );
 

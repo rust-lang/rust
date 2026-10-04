@@ -14,7 +14,7 @@ mod llvm_enzyme {
     use rustc_ast::tokenstream::*;
     use rustc_ast::visit::AssocCtxt::*;
     use rustc_ast::{
-        self as ast, AnonConst, FnRetTy, FnSig, GenericArg, GenericParamKind, Generics, ItemKind,
+        self as ast, FnRetTy, FnSig, GenericArg, GenericParamKind, Generics, ItemKind,
         MetaItemInner, PatKind, TyKind, Visibility,
     };
     use rustc_attr_ir::RustcAutodiff;
@@ -493,7 +493,7 @@ mod llvm_enzyme {
     ) -> rustc_ast::Stmt {
         let primal_path_expr = gen_turbofish_expr(ecx, primal, generics, span, is_impl);
 
-        let self_ty = || ecx.ty_path(ast::Path::from_ident(Ident::with_dummy_span(kw::SelfUpper)));
+        let self_ty = || ecx.ty_self(DUMMY_SP);
         let fn_ptr_params: ThinVec<ast::Param> = p_sig
             .decl
             .inputs
@@ -582,8 +582,7 @@ mod llvm_enzyme {
                     Some(GenericArg::Type(ty))
                 }
                 GenericParamKind::Const { .. } => {
-                    let expr = ecx.expr_path(ast::Path::from_ident(p.ident));
-                    let anon_const = AnonConst { id: ast::DUMMY_NODE_ID, value: expr };
+                    let anon_const = ecx.const_ident(span, p.ident);
                     Some(GenericArg::Const(anon_const))
                 }
                 GenericParamKind::Lifetime => None,
@@ -696,8 +695,7 @@ mod llvm_enzyme {
                             panic!("not an ident?");
                         };
                         let name = format!("d{}_{}", old_name, i);
-                        *shadow_arg.pat =
-                            ecx.pat_ident(shadow_arg.pat.span, Symbol::intern(&name));
+                        *shadow_arg.pat = ecx.pat_ident(shadow_arg.pat.span, Symbol::intern(&name));
                         d_inputs.push(shadow_arg);
                     }
                 }
@@ -723,8 +721,7 @@ mod llvm_enzyme {
                         };
                         let name = format!("b{}_{}", old_name, i);
 
-                        *shadow_arg.pat =
-                            ecx.pat_ident(shadow_arg.pat.span, Symbol::intern(&name));
+                        *shadow_arg.pat = ecx.pat_ident(shadow_arg.pat.span, Symbol::intern(&name));
                         d_inputs.push(shadow_arg);
                     }
                 }
@@ -828,8 +825,7 @@ mod llvm_enzyme {
                     if act_ret.len() == 1 {
                         act_ret[0].clone()
                     } else {
-                        let kind = TyKind::Tup(act_ret);
-                        Box::new(rustc_ast::Ty { kind, id: ast::DUMMY_NODE_ID, span })
+                        ecx.ty(span, TyKind::Tup(act_ret))
                     }
                 }
             };

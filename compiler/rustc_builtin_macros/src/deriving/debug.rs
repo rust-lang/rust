@@ -33,7 +33,7 @@ pub(crate) fn expand_deriving_debug(
             name: sym::fmt,
             generics: cx.empty_generics(span),
             explicit_self: true,
-            nonself_args: smallvec![(fmtr, sym::character('f'))],
+            nonself_args: smallvec![(fmtr, sym::f)],
             has_other_selflike_arg: false,
             ret_ty: cx.ty_path(path_std!(cx, span, fmt::Result)),
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
@@ -51,10 +51,6 @@ pub(crate) fn expand_deriving_debug(
         document: true,
     };
     trait_def.expand(cx, item, push)
-}
-
-fn formatter_ident(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
-    cx.expr_ident_sym(span, sym::character('f'))
 }
 
 fn show_substructure(
@@ -76,7 +72,7 @@ fn show_substructure(
     };
 
     let name = cx.expr_str(span, ident.name);
-    let fmt = formatter_ident(cx, span);
+    let fmt = cx.expr_ident_sym(span, sym::f);
 
     // Fieldless enums have been special-cased earlier
     if fmt_detail == FmtDebug::Shallow {
@@ -232,7 +228,7 @@ fn show_fieldless_enum(
     def: &EnumDef,
     type_ident: Ident,
 ) -> BlockOrExpr {
-    let fmt = formatter_ident(cx, span);
+    let fmt = cx.expr_ident_sym(span, sym::f);
     let arms = def
         .variants
         .iter()

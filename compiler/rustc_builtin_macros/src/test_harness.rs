@@ -325,10 +325,10 @@ fn add_main(cx: &mut TestCtxt<'_>, c: &mut ast::Crate) {
     let main_ret_ty = if cx.test_runner.is_none() {
         // Built-in runner has return type `ExitCode`.
         let exit_code_path = vec![test_ident, Ident::new(sym::ExitCode, sp)];
-        ecx.ty(sp, ast::TyKind::Path(None, ecx.path(sp, exit_code_path)))
+        ecx.ty_path(ecx.path(sp, exit_code_path))
     } else {
         // User-defined runners have return type `()`.
-        ecx.ty(sp, ast::TyKind::Tup(ThinVec::new()))
+        ecx.ty_unit(sp)
     };
 
     let main_body = ecx.block(sp, thin_vec![call_test_main]);
