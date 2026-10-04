@@ -284,7 +284,7 @@ fn compute_fn_ptr_type_discriminator<'tcx>(
 
     let hash = enc.finish();
 
-    hash.into()
+    hash
 }
 
 // Clang disc type.
