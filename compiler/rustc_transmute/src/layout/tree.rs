@@ -302,33 +302,24 @@ pub(crate) mod rustc {
 
     impl<'tcx> Tree<Def<'tcx>, Region<'tcx>, Ty<'tcx>> {
         pub(crate) fn from_ty(ty: Ty<'tcx>, cx: LayoutCx<'tcx>) -> Result<Self, Err> {
-            use rustc_abi::HasDataLayout;
             let layout = layout_of(cx, ty)?;
+            Self::from_ty_and_layout((ty, layout), cx)
+        }
 
+        /// Constructs a tree using a layout already queried for `ty` in `cx`.
+        /// Callers pass the original type so reference nodes retain its regions.
+        fn from_ty_and_layout(
+            (ty, layout): (Ty<'tcx>, Layout<'tcx>),
+            cx: LayoutCx<'tcx>,
+        ) -> Result<Self, Err> {
             if let Err(e) = ty.error_reported() {
                 return Err(Err::TypeError(e));
             }
 
-            let target = cx.data_layout();
-            let pointer_size = target.pointer_size();
-
             match ty.kind() {
                 ty::Bool => Ok(Self::bool()),
 
-                ty::Float(nty) => {
-                    let width = nty.bit_width() / 8;
-                    Ok(Self::number(width.try_into().unwrap()))
-                }
-
-                ty::Int(nty) => {
-                    let width = nty.normalize(pointer_size.bits() as _).bit_width().unwrap() / 8;
-                    Ok(Self::number(width.try_into().unwrap()))
-                }
-
-                ty::Uint(nty) => {
-                    let width = nty.normalize(pointer_size.bits() as _).bit_width().unwrap() / 8;
-                    Ok(Self::number(width.try_into().unwrap()))
-                }
+                ty::Float(_) | ty::Int(_) | ty::Uint(_) => Ok(Self::number(layout.size.bytes())),
 
                 ty::Tuple(members) => Self::from_tuple((ty, layout), members, cx),
 
@@ -338,7 +329,7 @@ pub(crate) mod rustc {
                     };
                     let inner_layout = layout_of(cx, *inner_ty)?;
                     assert_eq!(*stride, inner_layout.size);
-                    let elt = Tree::from_ty(*inner_ty, cx)?;
+                    let elt = Self::from_ty_and_layout((*inner_ty, inner_layout), cx)?;
                     Ok(std::iter::repeat_n(elt, *count as usize)
                         .fold(Tree::unit(), |tree, elt| tree.then(elt)))
                 }
@@ -451,13 +442,11 @@ pub(crate) mod rustc {
                     // currently always the first field of the layout.
                     assert_eq!(tag_field, FieldIdx::ZERO);
 
-                    let variants = def.discriminants(cx.tcx()).try_fold(
-                        Self::uninhabited(),
-                        |variants, (idx, _discriminant)| {
+                    let variants =
+                        def.variant_range().try_fold(Self::uninhabited(), |variants, idx| {
                             let variant = layout_of_variant(idx, Some(tag_encoding))?;
                             Result::<Self, Err>::Ok(variants.or(variant))
-                        },
-                    )?;
+                        })?;
 
                     Ok(Self::def(Def::Adt(def)).then(variants))
                 }
@@ -517,7 +506,7 @@ pub(crate) mod rustc {
 
                 let field_ty = ty_field(cx, (ty, layout), field_idx);
                 let field_layout = layout_of(cx, field_ty)?;
-                let field_tree = Self::from_ty(field_ty, cx)?;
+                let field_tree = Self::from_ty_and_layout((field_ty, field_layout), cx)?;
 
                 struct_tree = struct_tree.then(padding).then(field_tree);
 
@@ -574,7 +563,7 @@ pub(crate) mod rustc {
                 |fields, (idx, _field_def)| {
                     let field_ty = ty_field(cx, (ty, layout), idx);
                     let field_layout = layout_of(cx, field_ty)?;
-                    let field = Self::from_ty(field_ty, cx)?;
+                    let field = Self::from_ty_and_layout((field_ty, field_layout), cx)?;
                     let trailing_padding_needed = layout.size - field_layout.size;
                     let trailing_padding = Self::padding(trailing_padding_needed.bytes_usize());
                     let field_and_padding = field.then(trailing_padding);

@@ -124,6 +124,11 @@ where
     }
 
     /// Concatenate two `Dfa`s.
+    ///
+    /// A unit (`start == accept`) acts as an identity. For other inputs, state
+    /// identifiers must be disjoint, and `self.accept` must not be a key in
+    /// `self.transitions`. The method joins the inputs by replacing `other.start`
+    /// with `self.accept`.
     pub(crate) fn concat(self, other: Self) -> Self {
         if self.start == self.accept {
             return other;
@@ -139,11 +144,10 @@ where
         for (source, transition) in other.transitions {
             let fix_state = |state| if state == other.start { self.accept } else { state };
             let byte_transitions = transition.byte_transitions.map_states(&fix_state);
-            let ref_transitions = transition
-                .ref_transitions
-                .into_iter()
-                .map(|(r, state)| (r, fix_state(state)))
-                .collect();
+            let mut ref_transitions = transition.ref_transitions;
+            for state in ref_transitions.values_mut() {
+                *state = fix_state(*state);
+            }
 
             let old = transitions
                 .insert(fix_state(source), Transitions { byte_transitions, ref_transitions });
@@ -154,6 +158,10 @@ where
     }
 
     /// Compute the union of two `Dfa`s.
+    ///
+    /// `new_state` must return a distinct identifier on each call. The output has
+    /// its own state namespace: its identifiers may also occur in either input,
+    /// and the two inputs may share identifiers with each other.
     pub(crate) fn union(self, other: Self, mut new_state: impl FnMut() -> State) -> Self {
         // We implement `union` by lazily initializing a set of states
         // corresponding to the product of states in `self` and `other`, and
@@ -230,18 +238,23 @@ where
                 },
             );
 
-            let ref_transitions =
-                a_transitions.ref_transitions.keys().chain(b_transitions.ref_transitions.keys());
+            let a_refs = a_transitions.ref_transitions.iter().map(|(r, &a_dst)| {
+                let b_dst = b_transitions.ref_transitions.get(r).copied();
+                (*r, Some(a_dst), b_dst)
+            });
+            let b_refs = b_transitions.ref_transitions.iter().filter_map(|(r, &b_dst)| {
+                if a_transitions.ref_transitions.contains_key(r) {
+                    None
+                } else {
+                    Some((*r, None, Some(b_dst)))
+                }
+            });
 
-            let ref_transitions = ref_transitions
-                .map(|ref_transition| {
-                    let a_dst = a_transitions.ref_transitions.get(ref_transition).copied();
-                    let b_dst = b_transitions.ref_transitions.get(ref_transition).copied();
-
-                    assert!(a_dst.is_some() || b_dst.is_some());
-
+            let ref_transitions = a_refs
+                .chain(b_refs)
+                .map(|(r, a_dst, b_dst)| {
                     queue.enqueue(a_dst, b_dst);
-                    (*ref_transition, mapped((a_dst, b_dst)))
+                    (r, mapped((a_dst, b_dst)))
                 })
                 .collect();
 
@@ -366,6 +379,15 @@ mod edge_set {
             S: Ord,
         {
             edges.sort();
+            for (range, _) in &edges {
+                assert!(
+                    range.start < range.end && range.end <= Byte::UNINIT + 1,
+                    "invalid byte edge range: {range:?}",
+                );
+            }
+            for pair in edges.windows(2) {
+                assert!(pair[0].0.end <= pair[1].0.start, "byte edge ranges overlap");
+            }
             Self { runs: edges.into() }
         }
 
