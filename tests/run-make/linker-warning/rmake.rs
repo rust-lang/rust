@@ -53,7 +53,7 @@ fn main() {
 
     // Make sure we short-circuit this new path if the linker exits with an error
     // (so the diagnostic is less verbose)
-    run_rustc().link_arg("run_make_error").run_fail().assert_stderr_contains("note: error: baz");
+    run_rustc().link_arg("run_make_error").run_fail().assert_stderr_contains("   error: baz");
 
     // Make sure we don't show the linker args unless `--verbose` is passed
     let out = run_rustc().link_arg("run_make_error").verbose().run_fail();

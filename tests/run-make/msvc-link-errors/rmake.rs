@@ -23,8 +23,5 @@ fn main() {
         .opt()
         .arg(&format!("-Clinker=link_"))
         .run_fail();
-    diff()
-        .expected_file("missing_link.stderr")
-        .actual_text("(linker)", out.stderr())
-        .run();
+    diff().expected_file("missing_link.stderr").actual_text("(linker)", out.stderr()).run();
 }
