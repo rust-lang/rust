@@ -50,8 +50,10 @@ pub(crate) struct MissingQueryDepGraph {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "found malformed codegen unit name `{$user_path}`. codegen units names must always start with the name of the crate (`{$crate_name}` in this case)"
+#[diag("found malformed codegen unit name `{$user_path}`")]
+#[note(
+    "codegen units names must always start with the name of the crate \
+     (`{$crate_name}` in this case)"
 )]
 pub(crate) struct MalformedCguName<'a> {
     #[primary_span]
@@ -61,7 +63,8 @@ pub(crate) struct MalformedCguName<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("no module named `{$user_path}` (mangled: {$cgu_name}). available modules: {$cgu_names}")]
+#[diag("no module named `{$user_path}` (mangled: {$cgu_name})")]
+#[help("available modules: {$cgu_names}")]
 pub(crate) struct NoModuleNamed<'a> {
     #[primary_span]
     pub span: Span,
@@ -148,13 +151,13 @@ pub(crate) struct BinaryOutputToTty {
 }
 
 #[derive(Diagnostic)]
-#[diag("ignoring emit path because multiple .{$extension} files were produced")]
+#[diag("ignoring emit path because multiple `.{$extension}` files were produced")]
 pub(crate) struct IgnoringEmitPath {
     pub extension: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag("ignoring -o because multiple .{$extension} files were produced")]
+#[diag("ignoring -o because multiple `.{$extension}` files were produced")]
 pub(crate) struct IgnoringOutput {
     pub extension: &'static str,
 }
@@ -332,6 +335,10 @@ pub(crate) struct LinkingFailed<'a> {
     pub escaped_output: String,
     pub verbose: bool,
     pub sysroot_dir: PathBuf,
+    pub unexpected_error: bool,
+    pub link_exe_status_stack_buffer_overrun: bool,
+    pub is_vs_installed: bool,
+    pub has_linker: bool,
 }
 
 impl Diagnostic<'_> for LinkingFailed<'_> {
@@ -438,7 +445,7 @@ impl Diagnostic<'_> for LinkingFailed<'_> {
             }));
 
             diag.note(format!("{:?}", self.command).trim_start_matches("env -i").to_owned());
-            diag.note("some arguments are omitted. use `--verbose` to show all linker arguments");
+            diag.note("some arguments are omitted; use `--verbose` to show all linker arguments");
         }
 
         diag.note(self.escaped_output);
@@ -453,42 +460,32 @@ impl Diagnostic<'_> for LinkingFailed<'_> {
                 diag.note(msg!("use the `cargo:rustc-link-lib` directive to specify the native libraries to link with Cargo (see https://doc.rust-lang.org/cargo/reference/build-scripts.html#rustc-link-lib)"));
             }
         }
+        if self.unexpected_error {
+            diag.note(msg!("`link.exe` returned an unexpected error"));
+            if self.link_exe_status_stack_buffer_overrun {
+                diag.note(msg!("0xc0000409 is `STATUS_STACK_BUFFER_OVERRUN`"));
+                diag.note(msg!(
+                    "this may have been caused by a program abort and not a stack buffer overrun"
+                ));
+                diag.note(msg!("consider checking the Application Event Log for Windows Error Reporting events to see the fail fast error code"));
+            }
+            if self.is_vs_installed && self.has_linker {
+                // the linker is broken
+                diag.note(msg!("the Visual Studio build tools may need to be repaired using the Visual Studio installer"));
+                diag.note(msg!(
+                    "or a necessary component may be missing from the \"C++ build tools\" workload"
+                ));
+            } else if self.is_vs_installed {
+                // the linker is not installed
+                diag.note(msg!("in the Visual Studio installer, ensure the \"C++ build tools\" workload is selected"));
+            } else {
+                // visual studio is not installed
+                diag.note(msg!("you may need to install Visual Studio build tools with the \"C++ build tools\" workload"));
+            }
+        }
         diag
     }
 }
-
-#[derive(Diagnostic)]
-#[diag("`link.exe` returned an unexpected error")]
-pub(crate) struct LinkExeUnexpectedError;
-
-pub(crate) struct LinkExeStatusStackBufferOverrun;
-
-impl<'a> Diagnostic<'a> for LinkExeStatusStackBufferOverrun {
-    fn into_diag(self, dcx: rustc_errors::DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
-        let mut diag = Diag::new(dcx, level, msg!("0xc0000409 is `STATUS_STACK_BUFFER_OVERRUN`"));
-        diag.note(msg!(
-            "this may have been caused by a program abort and not a stack buffer overrun"
-        ));
-        diag.note(msg!("consider checking the Application Event Log for Windows Error Reporting events to see the fail fast error code"));
-        diag
-    }
-}
-
-#[derive(Diagnostic)]
-#[diag("the Visual Studio build tools may need to be repaired using the Visual Studio installer")]
-pub(crate) struct RepairVSBuildTools;
-
-#[derive(Diagnostic)]
-#[diag("or a necessary component may be missing from the \"C++ build tools\" workload")]
-pub(crate) struct MissingCppBuildToolComponent;
-
-#[derive(Diagnostic)]
-#[diag("in the Visual Studio installer, ensure the \"C++ build tools\" workload is selected")]
-pub(crate) struct SelectCppBuildToolWorkload;
-
-#[derive(Diagnostic)]
-#[diag("you may need to install Visual Studio build tools with the \"C++ build tools\" workload")]
-pub(crate) struct VisualStudioNotInstalled;
 
 #[derive(Diagnostic)]
 #[diag("linker `{$linker_path}` not found")]
@@ -496,6 +493,12 @@ pub(crate) struct VisualStudioNotInstalled;
 pub(crate) struct LinkerNotFound {
     pub linker_path: PathBuf,
     pub error: Error,
+    #[note("the msvc targets depend on the msvc linker but `link.exe` was not found")]
+    #[note(
+        "please ensure that Visual Studio 2017 or later, or Build Tools for Visual Studio were installed with the Visual C++ option"
+    )]
+    #[note("VS Code is a different product, and is not sufficient")]
+    pub msvc: bool,
 }
 
 #[derive(Diagnostic)]
@@ -509,24 +512,10 @@ pub(crate) struct UnableToExeLinker {
 }
 
 #[derive(Diagnostic)]
-#[diag("the msvc targets depend on the msvc linker but `link.exe` was not found")]
-pub(crate) struct MsvcMissingLinker;
-
-#[derive(Diagnostic)]
 #[diag(
     "the self-contained linker was requested, but it wasn't found in the target's sysroot, or in rustc's sysroot"
 )]
 pub(crate) struct SelfContainedLinkerMissing;
-
-#[derive(Diagnostic)]
-#[diag(
-    "please ensure that Visual Studio 2017 or later, or Build Tools for Visual Studio were installed with the Visual C++ option"
-)]
-pub(crate) struct CheckInstalledVisualStudio;
-
-#[derive(Diagnostic)]
-#[diag("VS Code is a different product, and is not sufficient")]
-pub(crate) struct InsufficientVSCodeProduct;
 
 #[derive(Diagnostic)]
 #[diag("target requires explicitly specifying a cpu with `-C target-cpu`")]
@@ -573,15 +562,13 @@ pub(crate) struct UnableToRun<'a> {
 pub(crate) struct LinkerFileStem;
 
 #[derive(Diagnostic)]
-#[diag(
-    "link against the following native artifacts when linking against this static library. The order and any duplication can be significant on some platforms"
-)]
+#[diag("link against the following native artifacts when linking against this static library")]
+#[note("the order and any duplication can be significant on some platforms")]
 pub(crate) struct StaticLibraryNativeArtifacts;
 
 #[derive(Diagnostic)]
-#[diag(
-    "native artifacts to link against have been written to {$path}. The order and any duplication can be significant on some platforms"
-)]
+#[diag("native artifacts to link against have been written to `{$path}`")]
+#[note("the order and any duplication can be significant on some platforms")]
 pub(crate) struct StaticLibraryNativeArtifactsToFile<'a> {
     pub path: &'a Path,
 }
@@ -1125,13 +1112,13 @@ pub(crate) struct DlltoolFailImportLibrary<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("error writing .DEF file: {$error}")]
+#[diag("error writing `.DEF` file: {$error}")]
 pub(crate) struct ErrorWritingDEFFile {
     pub error: std::io::Error,
 }
 
 #[derive(Diagnostic)]
-#[diag("error calling dlltool '{$dlltool_path}': {$error}")]
+#[diag("error calling dlltool `{$dlltool_path}`: {$error}")]
 pub(crate) struct ErrorCallingDllTool<'a> {
     pub dlltool_path: Cow<'a, str>,
     pub error: std::io::Error,
@@ -1144,9 +1131,8 @@ pub(crate) struct ErrorCreatingRemarkDir {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "`compiler_builtins` cannot call functions through upstream monomorphizations; encountered invalid call from `{$caller}` to `{$callee}`"
-)]
+#[diag("`compiler_builtins` cannot call functions through upstream monomorphizations")]
+#[note("encountered invalid call from `{$caller}` to `{$callee}`")]
 pub struct CompilerBuiltinsCannotCall {
     pub caller: String,
     pub callee: String,
@@ -1167,10 +1153,10 @@ pub(crate) struct AixStripNotUsed;
 
 #[derive(Diagnostic, Debug)]
 pub(crate) enum XcrunError {
-    #[diag("invoking `{$command_formatted}` to find {$sdk_name}.sdk failed: {$error}")]
+    #[diag("invoking `{$command_formatted}` to find `{$sdk_name}.sdk` failed: {$error}")]
     FailedInvoking { sdk_name: &'static str, command_formatted: String, error: std::io::Error },
 
-    #[diag("failed running `{$command_formatted}` to find {$sdk_name}.sdk")]
+    #[diag("failed running `{$command_formatted}` to find `{$sdk_name}.sdk`")]
     #[note("{$stdout}{$stderr}")]
     Unsuccessful {
         sdk_name: &'static str,
@@ -1181,7 +1167,7 @@ pub(crate) enum XcrunError {
 }
 
 #[derive(Diagnostic, Debug)]
-#[diag("output of `xcrun` while finding {$sdk_name}.sdk")]
+#[diag("output of `xcrun` while finding `{$sdk_name}.sdk`")]
 #[note("{$stderr}")]
 pub(crate) struct XcrunSdkPathWarning {
     pub sdk_name: &'static str,
@@ -1344,11 +1330,12 @@ pub(crate) struct LtoProcMacro;
 
 #[derive(Diagnostic)]
 #[diag("cannot prefer dynamic linking when performing LTO")]
-#[note("only 'staticlib', 'bin', and 'cdylib' outputs are supported with LTO")]
+#[note("only `staticlib`, `bin`, and `cdylib` outputs are supported with LTO")]
 pub(crate) struct DynamicLinkingWithLTO;
 
 #[derive(Diagnostic)]
-#[diag("could not find native static library `{$libname}`, perhaps an -L flag is missing?")]
+#[diag("could not find native static library `{$libname}`")]
+#[help("an `-L` flag might be missing")]
 pub(crate) struct MissingNativeLibrary<'a> {
     libname: &'a str,
     #[subdiagnostic]
