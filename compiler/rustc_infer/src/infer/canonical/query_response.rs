@@ -155,13 +155,7 @@ impl<'tcx> InferCtxt<'tcx> {
         });
         debug!(?region_constraints);
 
-        let opaque_types = self
-            .inner
-            .borrow_mut()
-            .opaque_type_storage
-            .take_opaque_types()
-            .map(|(k, v)| (k, v.ty))
-            .collect();
+        let opaque_types = self.take_opaque_types().into_iter().map(|(k, v)| (k, v.ty)).collect();
 
         Ok(QueryResponse {
             var_values: inference_vars,
