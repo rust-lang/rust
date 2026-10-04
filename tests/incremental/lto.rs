@@ -1,11 +1,20 @@
 //@ no-prefer-dynamic
 //@ revisions:rpass1 rpass2
-//@ compile-flags: -C lto
+//@ compile-flags: -Z query-dep-graph -C lto=fat
 //@ ignore-backends: gcc
+
+#![feature(rustc_attrs)]
+#![rustc_partition_codegened(module = "lto", cfg = "rpass1")]
+#![rustc_partition_codegened(module = "lto-x", cfg = "rpass1")]
+#![rustc_partition_codegened(module = "lto-y", cfg = "rpass1")]
+#![rustc_partition_reused(module = "lto", cfg = "rpass2")]
+#![rustc_partition_codegened(module = "lto-x", cfg = "rpass2")]
+#![rustc_partition_reused(module = "lto-y", cfg = "rpass2")]
 
 mod x {
     pub struct X {
-        x: u32, y: u32,
+        x: u32,
+        y: u32,
     }
 
     #[cfg(rpass1)]

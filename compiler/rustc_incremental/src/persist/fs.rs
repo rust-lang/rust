@@ -268,7 +268,7 @@ pub(crate) fn prepare_session_directory(
         None
     };
 
-    IncrCompSession { old_session_directory, new_session_directory }
+    IncrCompSession::new(old_session_directory, new_session_directory)
 }
 
 /// This function finalizes and thus 'publishes' the session directory by
