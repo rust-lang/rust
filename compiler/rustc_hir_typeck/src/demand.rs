@@ -1274,15 +1274,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return;
             }
             let fn_sig = fn_ty.fn_sig(self.tcx).skip_binder();
-            let Some(&arg) = fn_sig
-                .inputs()
-                .get(arg_idx + if matches!(kind, CallableKind::Method) { 1 } else { 0 })
-            else {
+            let sig_idx = arg_idx + if matches!(kind, CallableKind::Method) { 1 } else { 0 };
+            let Some(&arg) = fn_sig.inputs().get(sig_idx) else {
                 return;
             };
             if matches!(arg.kind(), ty::Param(_))
                 && fn_sig.output().contains(arg)
                 && self.node_ty(args[arg_idx].hir_id) == checked_ty
+                && fn_sig
+                    .inputs()
+                    .iter()
+                    .enumerate()
+                    .all(|(i, &input)| i == sig_idx || !input.contains(arg))
             {
                 let mut multi_span: MultiSpan = parent_expr.span.into();
                 multi_span.push_span_label(
