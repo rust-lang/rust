@@ -6,8 +6,8 @@ trait MyTrait {
 
 impl MyTrait for i32 {
     fn foo<const N: Self>() {}
-    //~^ ERROR cannot use `Self` in const parameter type
-    //~| ERROR associated function `foo` has an incompatible generic parameter for trait `MyTrait`
+    //~^ HELP add `#![feature(min_adt_const_params)]` to the crate attributes to enable `Self` as a const parameter type
+    //~| ERROR cannot use `Self` in const parameter type
 }
 
 fn main(){}
