@@ -2,6 +2,7 @@
 //! one way for the serial compiler, and another way the parallel compiler.
 
 use std::any::Any;
+use std::ops::Range;
 use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 
 use parking_lot::Mutex;
@@ -123,6 +124,8 @@ where
     }
 }
 
+const MAX_GROUP_COUNT: usize = 128;
+
 fn par_slice<I: DynSend>(
     items: &mut [I],
     guard: &ParallelGuard,
@@ -143,7 +146,6 @@ fn par_slice<I: DynSend>(
     rustc_thread_pool::scope(|s| {
         let proof = items.derive(());
 
-        const MAX_GROUP_COUNT: usize = 128;
         let group_size = items.len().div_ceil(MAX_GROUP_COUNT);
         let mut groups = items.chunks_mut(group_size);
 
@@ -167,6 +169,40 @@ fn par_slice<I: DynSend>(
             guard.run(|| for_each(i));
         }
     });
+}
+
+pub fn par_range(range: Range<usize>, op: impl Fn(usize) + DynSync + DynSend) {
+    if let Some(proof) = mode::check_dyn_thread_safe() {
+        parallel_guard(|guard| {
+            let op = proof.derive(op);
+            rustc_thread_pool::scope(|s| {
+                let len = range.end - range.start;
+                let group_size = len.div_ceil(MAX_GROUP_COUNT);
+                let mut current = range.start + group_size;
+
+                while current < range.end {
+                    let mut c_range = current..(current + group_size);
+                    c_range.end = range.end.min(c_range.end);
+
+                    s.spawn(|_| {
+                        for idx in c_range {
+                            guard.run(|| op(idx));
+                        }
+                    });
+
+                    current += group_size;
+                }
+
+                for idx in range.start..range.end.min(range.start + group_size) {
+                    guard.run(|| op(idx));
+                }
+            })
+        });
+    } else {
+        for idx in range {
+            op(idx);
+        }
+    }
 }
 
 pub fn par_for_each_in<I: DynSend, T: IntoIterator<Item = I>>(
