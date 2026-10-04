@@ -36,7 +36,7 @@ use crate::{
     AmbiguityError, BindingKey, Decl, DeclData, DeclKind, Determinacy, Finalize, IdentKey,
     ImportSuggestion, ImportSummary, LocalModule, ModuleOrUniformRoot, ParentScope, PathResult,
     PerNS, Res, ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string,
-    names_to_string,
+    names_to_string, with_owner,
 };
 
 /// A potential import declaration in the process of being planted into a module.
@@ -911,7 +911,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             .expect("planting a glob cannot fail");
                     }
 
-                    self.record_partial_res(*id, PartialRes::new(module.res().unwrap()));
+                    with_owner(self, import.root_id, |this| {
+                        this.record_partial_res(*id, PartialRes::new(module.res().unwrap()))
+                    });
                 }
 
                 // Something weird happened, which shouldn't have happened.
@@ -941,7 +943,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .map(|i| (false, i))
             .chain(indeterminate_imports.iter().map(|(i, _, _)| (true, i)))
         {
-            let unresolved_import_error = self.finalize_import(*import);
+            let unresolved_import_error =
+                with_owner(self, import.root_id, |this| this.finalize_import(*import));
             // If this import is unresolved then create a dummy import
             // resolution for it so that later resolve stages won't complain.
             self.import_dummy_binding(*import, is_indeterminate);
@@ -1645,12 +1648,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // purposes it's good enough to just favor one over the other.
         self.per_ns_mut(|this, ns| {
             if let Some(binding) = bindings[ns].get().decl().map(|b| b.import_source()) {
-                this.owners
-                    .get_mut(&import.root_id)
-                    .unwrap()
-                    .import_res
-                    .entry(import_id)
-                    .or_default()[ns] = Some(binding.res());
+                this.current_owner.import_res.entry(import_id).or_default()[ns] =
+                    Some(binding.res());
             }
         });
 
