@@ -767,23 +767,24 @@ const LIBRSVG: Project = Project::new("https://gitlab.gnome.org/GNOME/librsvg")
     // maximum layer nesting depth; librsvg's own CI sets the same value.
     .environment_variables(&[("RUST_MIN_STACK", "8388608")]);
 
+/// Sorted from the slowest to the fastest in the CI, so that `projects_part` balances the parts.
 const PROJECTS: &[Project] = &[
-    Project::new("https://github.com/rust-random/getrandom"),
-    Project::new("https://github.com/BurntSushi/memchr"),
+    Project::new("https://github.com/marshallpierce/rust-base64"),
+    Project::new("https://github.com/serde-rs/serde"),
+    Project::new("https://github.com/rayon-rs/rayon"),
+    // The test suite refuses to build unless every feature is enabled; it otherwise spawns a
+    // nested `cargo test --all-features` which would not use this backend.
+    Project::new("https://github.com/time-rs/time").cargo_arguments(&["--all-features"]),
+    Project::new("https://github.com/bitflags/bitflags"),
     Project::new("https://github.com/dtolnay/itoa"),
-    Project::new("https://github.com/rust-lang/cfg-if"),
     // The `ui` test compares against the diagnostics of the compiler it was blessed with, so it
     // fails on the nightly we use no matter which backend produces the code.
     Project::new("https://github.com/rust-lang-nursery/lazy-static.rs")
         .test_harness_arguments(&["--skip", "ui", "--exact"]),
-    Project::new("https://github.com/marshallpierce/rust-base64"),
-    // The test suite refuses to build unless every feature is enabled; it otherwise spawns a
-    // nested `cargo test --all-features` which would not use this backend.
-    Project::new("https://github.com/time-rs/time").cargo_arguments(&["--all-features"]),
+    Project::new("https://github.com/BurntSushi/memchr"),
     Project::new("https://github.com/rust-lang/log"),
-    Project::new("https://github.com/bitflags/bitflags"),
-    Project::new("https://github.com/serde-rs/serde"),
-    Project::new("https://github.com/rayon-rs/rayon"),
+    Project::new("https://github.com/rust-random/getrandom"),
+    Project::new("https://github.com/rust-lang/cfg-if"),
     // FIXME: too slow to run in the CI: the release build alone takes 46 minutes and the
     // `cargo` crate itself needs 5.4 GB of memory in a single rustc process.
     //Project::new("https://github.com/rust-lang/cargo"),
@@ -825,12 +826,23 @@ fn test_project(
     run_cargo_command(&test_command, Some(repo_path), &project_environment, args)
 }
 
-/// Returns the projects of `current_part` when `projects` is split into `nb_parts` parts.
-fn projects_part(projects: &[Project], nb_parts: usize, current_part: usize) -> &[Project] {
-    let count = projects.len().div_ceil(nb_parts);
-    let start = (current_part * count).min(projects.len());
-    let end = (start + count).min(projects.len());
-    &projects[start..end]
+/// Returns the projects of `current_part` when `projects` is dealt out to `nb_parts` parts back and
+/// forth (0, 1, 2, 2, 1, 0, 0, ...), which spreads the slowest projects over different parts.
+fn projects_part(projects: &[Project], nb_parts: usize, current_part: usize) -> Vec<&Project> {
+    projects
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| {
+            let position = index % nb_parts;
+            let part = if (index / nb_parts).is_multiple_of(2) {
+                position
+            } else {
+                nb_parts - 1 - position
+            };
+            part == current_part
+        })
+        .map(|(_, project)| project)
+        .collect()
 }
 
 fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
@@ -841,7 +853,7 @@ fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
         (Some(nb_parts), Some(current_part)) if nb_parts > 0 => {
             projects_part(PROJECTS, nb_parts, current_part)
         }
-        _ => PROJECTS,
+        _ => PROJECTS.iter().collect(),
     };
     for project in projects {
         test_project(project, projects_path, env, args)?;
@@ -1756,14 +1768,44 @@ mod tests {
 
     #[test]
     fn test_projects_parts_cover_every_project() {
-        let urls = |projects: &[Project]| -> Vec<&str> {
-            projects.iter().map(|project| project.url).collect()
-        };
+        let mut all_urls: Vec<&str> = PROJECTS.iter().map(|project| project.url).collect();
+        all_urls.sort_unstable();
         for nb_parts in 1..=PROJECTS.len() + 1 {
-            let parts: Vec<&str> = (0..nb_parts)
-                .flat_map(|current_part| urls(projects_part(PROJECTS, nb_parts, current_part)))
+            let mut parts_urls: Vec<&str> = (0..nb_parts)
+                .flat_map(|current_part| projects_part(PROJECTS, nb_parts, current_part))
+                .map(|project| project.url)
                 .collect();
-            assert_eq!(parts, urls(PROJECTS), "splitting into {nb_parts} parts");
+            parts_urls.sort_unstable();
+            assert_eq!(parts_urls, all_urls, "splitting into {nb_parts} parts");
         }
+    }
+
+    // Each round deals one project per part, every other round in reverse, so the slowest
+    // projects at the front of the list never share a part.
+    #[test]
+    fn test_projects_part_deals_back_and_forth() {
+        const PROJECTS: &[Project] = &[
+            Project::new("0"),
+            Project::new("1"),
+            Project::new("2"),
+            Project::new("3"),
+            Project::new("4"),
+            Project::new("5"),
+            Project::new("6"),
+        ];
+        let part = |nb_parts, current_part| -> Vec<&str> {
+            projects_part(PROJECTS, nb_parts, current_part)
+                .iter()
+                .map(|project| project.url)
+                .collect()
+        };
+
+        assert_eq!(part(3, 0), ["0", "5", "6"]);
+        assert_eq!(part(3, 1), ["1", "4"]);
+        assert_eq!(part(3, 2), ["2", "3"]);
+
+        assert_eq!(part(1, 0), ["0", "1", "2", "3", "4", "5", "6"]);
+        assert_eq!(part(8, 6), ["6"]);
+        assert!(part(8, 7).is_empty());
     }
 }
