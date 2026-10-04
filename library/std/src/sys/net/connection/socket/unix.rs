@@ -5,6 +5,8 @@ use crate::ffi::CStr;
 use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
+#[cfg(target_os = "nuttx")]
+use crate::ptr::null;
 use crate::sys::fd::FileDesc;
 use crate::sys::net::{getsockopt, setsockopt};
 use crate::sys::pal::IsMinusOne;
@@ -186,6 +188,16 @@ impl Socket {
             Err(e) => return Err(e),
         }
 
+        #[cfg(target_os = "nuttx")]
+        let mut pollfd = libc::pollfd {
+            fd: self.as_raw_fd(),
+            events: libc::POLLOUT,
+            revents: 0,
+            arg: null(),
+            cb: null(),
+            r#priv: null(),
+        };
+        #[cfg(not(target_os = "nuttx"))]
         let mut pollfd = libc::pollfd { fd: self.as_raw_fd(), events: libc::POLLOUT, revents: 0 };
 
         if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
