@@ -1,6 +1,6 @@
 use crate::spec::{
     Arch, Cc, LinkerFlavor, Lld, LlvmAbi, PanicStrategy, RelocModel, Target, TargetMetadata,
-    TargetOptions,
+    TargetOptions, base,
 };
 
 // Bare-metal RV32IMFC for cores that have hardware single-precision float (the `F`
@@ -29,6 +29,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
+            pre_link_args: base::riscv::pre_link_args(),
             cpu: "generic-rv32".into(),
             max_atomic_width: Some(32),
             atomic_cas: false,

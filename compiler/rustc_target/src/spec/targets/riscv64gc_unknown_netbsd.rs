@@ -19,6 +19,7 @@ pub(crate) fn target() -> Target {
             llvm_abiname: LlvmAbi::Lp64d,
             max_atomic_width: Some(64),
             mcount: "__mcount".into(),
+            pre_link_args: base::riscv::pre_link_args(),
             ..base::netbsd::opts()
         },
     }

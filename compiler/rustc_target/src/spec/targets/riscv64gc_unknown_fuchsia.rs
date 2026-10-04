@@ -16,6 +16,7 @@ pub(crate) fn target() -> Target {
         | SanitizerSet::SHADOWCALLSTACK;
     base.default_sanitizers = SanitizerSet::SHADOWCALLSTACK;
     base.supports_xray = true;
+    base.pre_link_args.append(&mut base::riscv::pre_link_args());
 
     Target {
         llvm_target: "riscv64-unknown-fuchsia".into(),

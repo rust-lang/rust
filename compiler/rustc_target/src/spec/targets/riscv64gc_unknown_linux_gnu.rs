@@ -24,6 +24,7 @@ pub(crate) fn target() -> Target {
             max_atomic_width: Some(64),
             supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
             mcount: "\u{1}_mcount".into(),
+            pre_link_args: base::riscv::pre_link_args(),
             ..base::linux_gnu::opts()
         },
     }

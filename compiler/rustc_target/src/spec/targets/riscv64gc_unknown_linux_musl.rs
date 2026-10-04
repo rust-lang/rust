@@ -23,6 +23,7 @@ pub(crate) fn target() -> Target {
             llvm_abiname: LlvmAbi::Lp64d,
             max_atomic_width: Some(64),
             supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
+            pre_link_args: base::riscv::pre_link_args(),
             ..base::linux_musl::opts()
         },
     }

@@ -22,6 +22,7 @@ pub(crate) fn target() -> Target {
             tls_model: TlsModel::LocalExec,
             max_atomic_width: Some(64),
             llvm_abiname: LlvmAbi::Lp64d,
+            pre_link_args: base::riscv::pre_link_args(),
             ..base::hermit::opts()
         },
     }

@@ -1,5 +1,6 @@
 use crate::spec::{
-    Arch, Env, LlvmAbi, Os, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions, cvs,
+    Arch, Env, LlvmAbi, Os, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions, base,
+    cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -21,6 +22,7 @@ pub(crate) fn target() -> Target {
             env: Env::Newlib,
             vendor: "espressif".into(),
             linker: Some("riscv32-esp-elf-gcc".into()),
+            pre_link_args: base::riscv::pre_link_args(),
             cpu: "generic-rv32".into(),
 
             // As RiscV32IMAC architecture does natively support atomics,

@@ -1,6 +1,6 @@
 use crate::spec::{
     Arch, Cc, CodeModel, LinkerFlavor, Lld, LlvmAbi, PanicStrategy, RelocModel, SanitizerSet,
-    Target, TargetMetadata, TargetOptions,
+    Target, TargetMetadata, TargetOptions, base,
 };
 
 pub(crate) fn target() -> Target {
@@ -29,6 +29,7 @@ pub(crate) fn target() -> Target {
             emit_debug_gdb_scripts: false,
             eh_frame_header: false,
             supported_sanitizers: SanitizerSet::KERNELADDRESS | SanitizerSet::SHADOWCALLSTACK,
+            pre_link_args: base::riscv::pre_link_args(),
             ..Default::default()
         },
     }
