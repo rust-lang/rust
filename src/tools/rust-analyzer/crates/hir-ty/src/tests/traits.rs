@@ -5411,3 +5411,26 @@ fn probe(h: &Holder<Node>) {
     "#,
     );
 }
+
+#[test]
+fn assoc_type_bounds_on_trait() {
+    check_types(
+        r#"
+trait Trait {
+    fn method(&self) -> i32;
+}
+
+trait Foo
+where
+    Self::Assoc: Trait,
+{
+    type Assoc;
+}
+
+fn foo<T: Foo>(v: T::Assoc) {
+    v.method();
+ // ^^^^^^^^^^ i32
+}
+    "#,
+    );
+}
