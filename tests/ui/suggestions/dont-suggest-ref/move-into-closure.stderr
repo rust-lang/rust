@@ -257,6 +257,7 @@ LL |         let X(_t) = x;
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
    |
+LL | trait T {
 LL |     fn consume_fn<F: Fn()>(_f: F) { }
    |                      ^^^^
 help: consider borrowing here
@@ -281,6 +282,7 @@ LL |         if let Either::One(_t) = e { }
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
    |
+LL | trait T {
 LL |     fn consume_fn<F: Fn()>(_f: F) { }
    |                      ^^^^
 help: consider borrowing here
@@ -305,6 +307,7 @@ LL |         while let Either::One(_t) = e { }
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
    |
+LL | trait T {
 LL |     fn consume_fn<F: Fn()>(_f: F) { }
    |                      ^^^^
 help: consider borrowing here
@@ -330,6 +333,7 @@ LL |             Either::One(_t)
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
    |
+LL | trait T {
 LL |     fn consume_fn<F: Fn()>(_f: F) { }
    |                      ^^^^
 help: consider borrowing here
@@ -355,6 +359,7 @@ LL |             Either::One(_t) => (),
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
    |
+LL | trait T {
 LL |     fn consume_fn<F: Fn()>(_f: F) { }
    |                      ^^^^
 help: consider borrowing here
@@ -379,6 +384,7 @@ LL |         let X(mut _t) = x;
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
    |
+LL | trait T {
 LL |     fn consume_fn<F: Fn()>(_f: F) { }
    |                      ^^^^
 help: consider borrowing here
@@ -403,6 +409,7 @@ LL |         if let Either::One(mut _t) = em { }
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
    |
+LL | trait T {
 LL |     fn consume_fn<F: Fn()>(_f: F) { }
    |                      ^^^^
 help: consider borrowing here
@@ -427,6 +434,7 @@ LL |         while let Either::One(mut _t) = em { }
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
    |
+LL | trait T {
 LL |     fn consume_fn<F: Fn()>(_f: F) { }
    |                      ^^^^
 help: consider borrowing here
@@ -452,6 +460,7 @@ LL |             Either::One(mut _t)
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
    |
+LL | trait T {
 LL |     fn consume_fn<F: Fn()>(_f: F) { }
    |                      ^^^^
 help: consider borrowing here
@@ -477,6 +486,7 @@ LL |             Either::One(mut _t) => (),
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
    |
+LL | trait T {
 LL |     fn consume_fn<F: Fn()>(_f: F) { }
    |                      ^^^^
 help: consider borrowing here
@@ -500,6 +510,8 @@ LL |         let X(_t) = x;
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
    |
+LL | trait T {
+...
 LL |     fn method_consume_fn<F: Fn()>(&self, _f: F) { }
    |                             ^^^^
 help: consider borrowing here
@@ -524,6 +536,8 @@ LL |         if let Either::One(_t) = e { }
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
    |
+LL | trait T {
+...
 LL |     fn method_consume_fn<F: Fn()>(&self, _f: F) { }
    |                             ^^^^
 help: consider borrowing here
@@ -548,6 +562,8 @@ LL |         while let Either::One(_t) = e { }
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
    |
+LL | trait T {
+...
 LL |     fn method_consume_fn<F: Fn()>(&self, _f: F) { }
    |                             ^^^^
 help: consider borrowing here
@@ -573,6 +589,8 @@ LL |             Either::One(_t)
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
    |
+LL | trait T {
+...
 LL |     fn method_consume_fn<F: Fn()>(&self, _f: F) { }
    |                             ^^^^
 help: consider borrowing here
@@ -598,6 +616,8 @@ LL |             Either::One(_t) => (),
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
    |
+LL | trait T {
+...
 LL |     fn method_consume_fn<F: Fn()>(&self, _f: F) { }
    |                             ^^^^
 help: consider borrowing here
@@ -622,6 +642,8 @@ LL |         let X(mut _t) = x;
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
    |
+LL | trait T {
+...
 LL |     fn method_consume_fn<F: Fn()>(&self, _f: F) { }
    |                             ^^^^
 help: consider borrowing here
@@ -646,6 +668,8 @@ LL |         if let Either::One(mut _t) = em { }
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
    |
+LL | trait T {
+...
 LL |     fn method_consume_fn<F: Fn()>(&self, _f: F) { }
    |                             ^^^^
 help: consider borrowing here
@@ -670,6 +694,8 @@ LL |         while let Either::One(mut _t) = em { }
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
    |
+LL | trait T {
+...
 LL |     fn method_consume_fn<F: Fn()>(&self, _f: F) { }
    |                             ^^^^
 help: consider borrowing here
@@ -695,6 +721,8 @@ LL |             Either::One(mut _t)
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
    |
+LL | trait T {
+...
 LL |     fn method_consume_fn<F: Fn()>(&self, _f: F) { }
    |                             ^^^^
 help: consider borrowing here
@@ -720,6 +748,8 @@ LL |             Either::One(mut _t) => (),
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
    |
+LL | trait T {
+...
 LL |     fn method_consume_fn<F: Fn()>(&self, _f: F) { }
    |                             ^^^^
 help: consider borrowing here
