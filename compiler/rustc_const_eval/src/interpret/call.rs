@@ -10,7 +10,7 @@ use rustc_attr_ir::find_attr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
-use rustc_middle::ty::{self, AdtDef, FieldDef, Instance, Ty, VariantDef};
+use rustc_middle::ty::{self, AdtDef, FieldDef, Instance, InstanceKind, Ty, VariantDef};
 use rustc_span::{bug, span_bug};
 use rustc_target::callconv::{ArgAbi, FnAbi};
 use tracing::field::Empty;
@@ -456,11 +456,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         caller_fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[FnArg<'tcx, M::Provenance>],
         with_caller_location: bool,
+        callee_receives_caller_location: bool,
         destination: &PlaceTy<'tcx, M::Provenance>,
         mut cont: ReturnContinuation,
     ) -> InterpResult<'tcx> {
         let _trace = enter_trace_span!(M, step::init_stack_frame, %instance, tracing_separate_thread = Empty);
         let def_id = instance.def_id();
+
+        assert!(!with_caller_location || callee_receives_caller_location);
+        let caller_location = callee_receives_caller_location.then(|| self.caller_location());
 
         // The first order of business is to figure out the callee signature.
         // However, that requires the list of variadic arguments.
@@ -542,6 +546,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 .collect::<Vec<_>>()
         );
 
+        self.frame_mut().track_caller_arg = caller_location;
+
         // Determine whether there is a special VaList argument. This is always the
         // last argument, and since arguments start at index 1 that's `arg_count`.
         let va_list_arg = callee_fn_abi.c_variadic.then(|| mir::Local::from_usize(body.arg_count));
@@ -563,7 +569,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // The "where they come from" part is easy, we expect the caller to do any special handling
         // that might be required here (e.g. for untupling).
         // If `with_caller_location` is set we pretend there is an extra argument (that
-        // we will not pass; our `caller_location` intrinsic implementation walks the stack instead).
+        // we will not pass normally; our `caller_location` intrinsic implementation handles
+        // that separately).
         assert_eq!(
             args.len() + if with_caller_location { 1 } else { 0 },
             caller_fn_abi.args.len(),
@@ -847,12 +854,22 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         Cow::from(args)
                     };
 
+                // Figure out if the callee receives a caller location argument.
+                // In the case where we are calling the fallback body of
+                // a `#[rustc_intrinsic] #[track_caller] fn`, we pretend that
+                // the caller doesn't pass a caller location argument (for checking ABI),
+                // but the caller receives a caller location argument from thin air anyway.
+                let callee_receives_caller_location = with_caller_location
+                    || (instance.def.requires_caller_location(*self.tcx)
+                        && matches!(instance.def, InstanceKind::Item(def_id) if self.tcx.intrinsic(def_id).is_some()));
+
                 self.init_stack_frame(
                     instance,
                     body,
                     caller_fn_abi,
                     &args,
                     with_caller_location,
+                    callee_receives_caller_location,
                     destination,
                     ReturnContinuation::Goto { ret: target, unwind },
                 )
