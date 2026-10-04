@@ -17,13 +17,24 @@ pub mod hidden {
 }
 
 //@ has foo/struct.Foo.html
-//@ !hasraw - 'Methods'
-//@ !has - '//code' 'impl Foo'
-//@ !hasraw - 'this_should_be_hidden'
+// Only `not_hidden` should be present.
+//@ count - '//*[@id="implementations-list"]//*[@class="method"]' 1
+//@ has - '//*[@id="implementations-list"]//*[@class="method"]' 'pub fn not_hidden'
+//@ count - '//*[@id="rustdoc-toc"]/*[@class="block method"]//a' 1
+//@ has - '//*[@id="rustdoc-toc"]/*[@class="block method"]//a' 'not_hidden'
 pub use hidden::Foo;
 
+impl Foo {
+    pub fn not_hidden() {}
+}
+
 //@ has foo/struct.Bar.html
-//@ !hasraw - 'Methods'
-//@ !has - '//code' 'impl Bar'
-//@ !hasraw - 'this_should_be_hidden'
+//@ count - '//*[@id="implementations-list"]//*[@class="method"]' 1
+//@ has - '//*[@id="implementations-list"]//*[@class="method"]' 'pub fn not_hidden'
+//@ count - '//*[@id="rustdoc-toc"]/*[@class="block method"]//a' 1
+//@ has - '//*[@id="rustdoc-toc"]/*[@class="block method"]//a' 'not_hidden'
 pub use hidden::Bar;
+
+impl Bar {
+    pub fn not_hidden() {}
+}
