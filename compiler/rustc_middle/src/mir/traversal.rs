@@ -19,17 +19,20 @@ use super::*;
 ///
 /// A preorder traversal of this graph is either `A B D C` or `A C D B`
 #[derive(Clone)]
-pub struct Preorder<'a, 'tcx> {
-    body: &'a Body<'tcx>,
+pub(crate) struct Preorder<'a, 'tcx> {
+    basic_blocks: &'a IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
     visited: DenseBitSet<BasicBlock>,
     worklist: Vec<BasicBlock>,
 }
 
 impl<'a, 'tcx> Preorder<'a, 'tcx> {
-    pub fn new(body: &'a Body<'tcx>, root: BasicBlock) -> Preorder<'a, 'tcx> {
+    pub(crate) fn new(
+        basic_blocks: &'a IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
+        root: BasicBlock,
+    ) -> Preorder<'a, 'tcx> {
         let worklist = vec![root];
 
-        Preorder { body, visited: DenseBitSet::new_empty(body.basic_blocks.len()), worklist }
+        Preorder { basic_blocks, visited: DenseBitSet::new_empty(basic_blocks.len()), worklist }
     }
 }
 
@@ -39,8 +42,10 @@ impl<'a, 'tcx> Preorder<'a, 'tcx> {
 /// returns basic blocks in a preorder.
 ///
 /// See [`Preorder`]'s docs to learn what is preorder traversal.
-pub fn preorder<'a, 'tcx>(body: &'a Body<'tcx>) -> Preorder<'a, 'tcx> {
-    Preorder::new(body, START_BLOCK)
+pub fn preorder<'a, 'tcx>(
+    body: &'a Body<'tcx>,
+) -> impl Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> {
+    body.basic_blocks.preorder().iter().map(|&bb| (bb, &body.basic_blocks[bb]))
 }
 
 impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
@@ -52,7 +57,7 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
                 continue;
             }
 
-            let data = &self.body[idx];
+            let data = &self.basic_blocks[idx];
 
             if let Some(ref term) = data.terminator {
                 self.worklist.extend(term.successors());
@@ -69,7 +74,7 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
         let lower = 0;
 
         // This is extremely loose, but it's not worth a popcnt loop to do better.
-        let upper = self.body.basic_blocks.len();
+        let upper = self.basic_blocks.len();
 
         (lower, Some(upper))
     }
@@ -251,9 +256,11 @@ pub fn reachable<'a, 'tcx>(
 
 /// Returns a `DenseBitSet` containing all basic blocks reachable from the `START_BLOCK`.
 pub fn reachable_as_bitset(body: &Body<'_>) -> DenseBitSet<BasicBlock> {
-    let mut iter = preorder(body);
-    while let Some(_) = iter.next() {}
-    iter.visited
+    let mut reachable = DenseBitSet::new_empty(body.basic_blocks.len());
+    for &bb in body.basic_blocks.preorder() {
+        reachable.insert(bb);
+    }
+    reachable
 }
 
 /// Reverse postorder traversal of a graph.
