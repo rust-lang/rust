@@ -3,7 +3,7 @@
 
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, NodeId};
-use rustc_attr_ir::StrippedCfgItem;
+use rustc_attr_ir::{LanguageItems, StrippedCfgItem};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
@@ -195,6 +195,7 @@ pub struct ResolverGlobalCtxt {
     pub delegation_infos: FxIndexMap<LocalDefId, DelegationInfo>,
     pub delegation_inherent_fn_map:
         FxIndexMap<LocalDefId, FxIndexMap<Ident, DelegationInherentFnKind>>,
+    pub lang_items: LanguageItems,
 }
 
 #[derive(Debug)]

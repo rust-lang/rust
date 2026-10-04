@@ -2297,7 +2297,6 @@ rustc_queries! {
     /// Returns the lang items defined in all crates by loading them from metadata of dependencies
     /// and collecting the ones from the current crate.
     query get_lang_items(_: ()) -> &'tcx LanguageItems {
-        arena_cache
         eval_always
         desc { "calculating the lang items map" }
     }

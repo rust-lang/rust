@@ -42,7 +42,7 @@ use rustc_ast::{
     self as ast, AngleBracketedArg, CRATE_NODE_ID, Crate, DUMMY_NODE_ID, Expr, ExprKind,
     GenericArg, GenericArgs, Generics, NodeId, Path, attr,
 };
-use rustc_attr_ir::{StrippedCfgItem, find_attr};
+use rustc_attr_ir::{LanguageItems, StrippedCfgItem, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, default};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
@@ -90,6 +90,7 @@ mod imports;
 mod late;
 mod macros;
 pub mod rustdoc;
+mod weak_lang_items;
 
 type Res = def::Res<NodeId>;
 
@@ -1581,6 +1582,8 @@ pub struct Resolver<'ra, 'tcx> {
     /// Stores `#[diagnostic::on_unknown]` attributes placed on module declarations.
     on_unknown_data: FxHashMap<LocalDefId, OnUnknownData> = default::fx_hash_map(),
     features: &'tcx Features,
+
+    lang_items: LanguageItems,
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
@@ -1900,6 +1903,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             current_crate_outer_attr_insert_span,
             disambiguators: Default::default(),
             features: tcx.features(),
+            lang_items: LanguageItems::new(),
             ..
         };
 
@@ -1970,6 +1974,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let confused_type_with_std_module = self.confused_type_with_std_module;
         let paths_matching_assoc_types = self.paths_matching_assoc_types;
         let effective_visibilities = self.effective_visibilities;
+        let lang_items = self.lang_items;
 
         let stripped_cfg_items = self
             .stripped_cfg_items
@@ -2006,6 +2011,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             stripped_cfg_items,
             delegation_infos: self.delegation_infos,
             delegation_inherent_fn_map: self.delegation_inherent_fn_map,
+            lang_items,
         };
         let ast_lowering = ResolverAstLowering {
             partial_res_map: self.partial_res_map,
@@ -2099,6 +2105,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.tcx
                 .sess
                 .time("resolve_postprocess", || self.cstore_mut().postprocess(self.tcx, krate));
+
+            self.tcx.sess.time("finalize_lang_items", || self.finalize_lang_items());
         });
 
         // Don't mutate the cstore or stable crate id map from here on.
@@ -2679,6 +2687,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.record_use(ident, name_binding, Used::Other);
         }
         self.main_def = Some(MainDefinition { res, is_import, span });
+    }
+
+    fn finalize_lang_items(&mut self) {
+        // Collect lang items in other crates.
+        for &cnum in self.tcx.used_crates(()) {
+            for &(def_id, lang_item) in self.tcx.defined_lang_items(cnum).iter() {
+                late::collect_item(self.tcx, &mut self.lang_items, lang_item, def_id, None);
+            }
+        }
+        crate::weak_lang_items::check_crate(self.tcx, &mut self.lang_items);
     }
 }
 
