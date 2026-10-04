@@ -2700,8 +2700,6 @@ fn test_rename_noreplace_directory_to_empty_directory() {
 #[test]
 #[cfg(any(target_os = "linux", target_os = "android", target_vendor = "apple", windows))]
 fn test_rename_noreplace_directory() {
-    // The `link`/`unlink` fallback cannot move directories, so only platforms
-    // with a native no-replace rename are tested.
     let tmpdir = tmpdir();
     let source_path = tmpdir.join("source_directory");
     let target_path = tmpdir.join("target_directory");
@@ -2709,9 +2707,19 @@ fn test_rename_noreplace_directory() {
     fs::create_dir(&source_path).unwrap();
     fs::write(source_path.join("file.txt"), b"hello world").unwrap();
 
-    fs::rename_noreplace(&source_path, &target_path).unwrap();
-    assert!(!source_path.exists());
-    assert_eq!(fs::read(target_path.join("file.txt")).unwrap(), b"hello world");
+    match fs::rename_noreplace(&source_path, &target_path) {
+        Ok(()) => {
+            assert!(!source_path.exists());
+            assert_eq!(fs::read(target_path.join("file.txt")).unwrap(), b"hello world");
+        }
+        // Without a native no-replace rename (Linux before 3.15), Unix
+        // platforms fall back to `link`/`unlink`, and it rejects directories.
+        Err(err) if cfg!(unix) && err.kind() == ErrorKind::PermissionDenied => {
+            assert!(source_path.exists());
+            assert!(!target_path.exists());
+        }
+        Err(err) => panic!("unexpected error: {err:?}"),
+    }
 }
 
 #[test]
