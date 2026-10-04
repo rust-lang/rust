@@ -877,10 +877,7 @@ impl<'a> Parser<'a> {
             // }
             debug!(?maybe_struct_name, ?self.token);
             let mut snapshot = self.create_snapshot_for_diagnostic();
-            let path = Path::General {
-                segments: ThinVec::new(),
-                span: self.prev_token.span.shrink_to_lo(),
-            };
+            let path = Path::from_segments(ThinVec::new(), self.prev_token.span.shrink_to_lo());
             let struct_expr = snapshot.parse_expr_struct(None, path, false);
             let block_tail = self.parse_block_tail(lo, s, AttemptLocalParseRecovery::No);
             return Some(match (struct_expr, block_tail) {
@@ -1613,7 +1610,7 @@ impl<'a> Parser<'a> {
 
         let mut segments = ThinVec::new();
         self.parse_path_segments(&mut segments, T::PATH_STYLE, None)?;
-        let path = ast::Path::General { segments, span: ty_span.to(self.prev_token.span) };
+        let path = ast::Path::from_segments(segments, ty_span.to(self.prev_token.span));
 
         self.dcx().emit_err(BadQPathStage2 {
             span: ty_span,
@@ -2564,7 +2561,8 @@ impl<'a> Parser<'a> {
                                             0,
                                             PathSegment { ident: *ident, id: *id, args: None },
                                         ),
-                                        Path::General { segments: old_segments, .. } => {
+                                        Path::NoSpan { segments: old_segments }
+                                        | Path::General((old_segments, _)) => {
                                             std::mem::swap(segments, old_segments);
                                             segments.append(old_segments);
                                         }
@@ -2581,13 +2579,13 @@ impl<'a> Parser<'a> {
                                     PatKind::Ident(_, old_ident, _) => {
                                         let path = PatKind::Path(
                                             None,
-                                            Path::General {
-                                                span: new_span,
-                                                segments: thin_vec![
+                                            Path::from_segments(
+                                                thin_vec![
                                                     PathSegment::from_ident(*old_ident),
                                                     PathSegment::from_ident(*ident),
                                                 ],
-                                            },
+                                                new_span,
+                                            ),
                                         );
                                         first_pat = self.mk_pat(new_span, path);
                                         show_sugg = true;

@@ -15,21 +15,21 @@ ast-stats - Ptr                       56 (NN.N%)             1
 ast-stats - Ref                       56 (NN.N%)             1
 ast-stats - ImplicitSelf             112 (NN.N%)             2
 ast-stats - Path                     560 (NN.N%)            10
-ast-stats Expr                     648 (NN.N%)             9            72
-ast-stats - InlineAsm                 72 (NN.N%)             1
-ast-stats - Match                     72 (NN.N%)             1
-ast-stats - Path                      72 (NN.N%)             1
-ast-stats - Struct                    72 (NN.N%)             1
-ast-stats - Lit                      144 (NN.N%)             2
-ast-stats - Block                    216 (NN.N%)             3
-ast-stats Pat                      504 (NN.N%)             7            72
-ast-stats - Struct                    72 (NN.N%)             1
-ast-stats - Wild                      72 (NN.N%)             1
-ast-stats - Ident                    360 (NN.N%)             5
+ast-stats Expr                     576 (NN.N%)             9            64
+ast-stats - InlineAsm                 64 (NN.N%)             1
+ast-stats - Match                     64 (NN.N%)             1
+ast-stats - Path                      64 (NN.N%)             1
+ast-stats - Struct                    64 (NN.N%)             1
+ast-stats - Lit                      128 (NN.N%)             2
+ast-stats - Block                    192 (NN.N%)             3
+ast-stats Pat                      448 (NN.N%)             7            64
+ast-stats - Struct                    64 (NN.N%)             1
+ast-stats - Wild                      64 (NN.N%)             1
+ast-stats - Ident                    320 (NN.N%)             5
 ast-stats PathSegment              432 (NN.N%)            18            24
 ast-stats GenericParam             400 (NN.N%)             5            80
-ast-stats GenericBound             352 (NN.N%)             4            88
-ast-stats - Trait                    352 (NN.N%)             4
+ast-stats GenericBound             320 (NN.N%)             4            80
+ast-stats - Trait                    320 (NN.N%)             4
 ast-stats AssocItem                288 (NN.N%)             4            72
 ast-stats - Fn                       144 (NN.N%)             2
 ast-stats - Type                     144 (NN.N%)             2
@@ -58,9 +58,9 @@ ast-stats GenericArgs               40 (NN.N%)             1            40
 ast-stats - AngleBracketed            40 (NN.N%)             1
 ast-stats Crate                     40 (NN.N%)             1            40
 ast-stats ----------------------------------------------------------------
-ast-stats Total                  6_624                   109
+ast-stats Total                  6_464                   109
 ast-stats ----------------------------------------------------------------
-ast-stats - Path Ident: 17  General segs 0: 0  1: 1  2: 2  3: 3  4+: 1  Span reconstructible: 7
+ast-stats - Path Ident: 17  Other segs 0: 0  1: 1  2: 2  3: 3  4+: 1  NoSpan: 7
 ast-stats ================================================================
 hir-stats ================================================================
 hir-stats HIR STATS: input_stats

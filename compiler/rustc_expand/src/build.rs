@@ -28,7 +28,7 @@ impl<'a> ExtCtxt<'a> {
         if ident.span == span {
             ast::Path::from_ident(ident)
         } else {
-            ast::Path::General { segments: thin_vec![ast::PathSegment::from_ident(ident)], span }
+            ast::Path::General(Box::new((thin_vec![ast::PathSegment::from_ident(ident)], span)))
         }
     }
     pub fn path_global(&self, span: Span, strs: Vec<Ident>) -> ast::Path {
@@ -68,7 +68,7 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             args,
         });
-        ast::Path::General { span, segments }
+        ast::Path::from_segments(segments, span)
     }
 
     pub fn macro_call(

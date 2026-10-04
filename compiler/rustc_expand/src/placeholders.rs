@@ -16,7 +16,7 @@ pub(crate) fn placeholder(
 ) -> AstFragment {
     fn mac_placeholder() -> Box<ast::MacCall> {
         Box::new(ast::MacCall {
-            path: ast::Path::General { span: DUMMY_SP, segments: ThinVec::new() },
+            path: ast::Path::from_segments(ThinVec::new(), DUMMY_SP),
             args: Box::new(ast::DelimArgs {
                 dspan: ast::tokenstream::DelimSpan::dummy(),
                 delim: Delimiter::Parenthesis,

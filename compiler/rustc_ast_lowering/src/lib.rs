@@ -644,7 +644,7 @@ fn index_ast<'tcx>(
                 // Lacking a better choice, we replace the contents with a macro call.
                 // Unexpanded macros should never reach lowering, so this is not confusing.
                 kind: dummy(Box::new(MacCall {
-                    path: Path::General { span, segments: thin_vec![] },
+                    path: Path::from_segments(thin_vec![], span),
                     args: Box::new(DelimArgs {
                         dspan: DelimSpan::from_single(span),
                         delim: Delimiter::Parenthesis,

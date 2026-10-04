@@ -1445,9 +1445,8 @@ impl<'a> Parser<'a> {
         match self.parse_fn_decl(&mode, AllowPlus::No, RecoverReturnSign::OnlyFatArrow) {
             Ok(decl) => {
                 self.dcx().emit_err(ExpectedFnPathFoundFnKeyword { fn_token_span });
-                Some(ast::Path::General {
-                    span: fn_token_span.to(self.prev_token.span),
-                    segments: thin_vec![ast::PathSegment {
+                Some(ast::Path::from_segments(
+                    thin_vec![ast::PathSegment {
                         ident: Ident::new(sym::Fn, fn_token_span),
                         id: DUMMY_NODE_ID,
                         args: Some(Box::new(ast::GenericArgs::Parenthesized(
@@ -1459,7 +1458,8 @@ impl<'a> Parser<'a> {
                             }
                         ))),
                     }],
-                })
+                    fn_token_span.to(self.prev_token.span),
+                ))
             }
             Err(diag) => {
                 diag.cancel();

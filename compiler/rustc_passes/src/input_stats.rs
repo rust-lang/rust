@@ -65,8 +65,8 @@ struct StatCollector<'k> {
 #[derive(Default)]
 struct PathStats {
     idents: usize,
+    no_spans: usize,
     generals: [usize; 5],
-    span_reconstructible: usize,
 }
 
 pub fn print_hir_stats(tcx: TyCtxt<'_>) {
@@ -205,14 +205,14 @@ impl<'k> StatCollector<'k> {
         if self.tcx.is_none() {
             _ = writeln!(
                 s,
-                "{prefix} - Path Ident: {}  General segs 0: {}  1: {}  2: {}  3: {}  4+: {}  Span reconstructible: {}",
+                "{prefix} - Path Ident: {}  Other segs 0: {}  1: {}  2: {}  3: {}  4+: {}  NoSpan: {}",
                 self.paths.idents,
                 self.paths.generals[0],
                 self.paths.generals[1],
                 self.paths.generals[2],
                 self.paths.generals[3],
                 self.paths.generals[4],
-                self.paths.span_reconstructible,
+                self.paths.no_spans,
             );
         } else {
             _ = writeln!(
@@ -802,12 +802,13 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_path(&mut self, path: &'v ast::Path) {
         match path {
             ast::Path::Ident { .. } => self.paths.idents += 1,
-            ast::Path::General { segments, span } => {
+            ast::Path::NoSpan { segments } | ast::Path::General((segments, _)) => {
                 let len = segments.len().min(4);
                 self.paths.generals[len] += 1;
-                let len = segments.len();
-                if len > 0 && segments[0].span().to(segments[len - 1].span()) == *span {
-                    self.paths.span_reconstructible += 1;
+                if let ast::Path::General(boxed) = path {
+                    self.record("Path::General payload", None, boxed.as_ref());
+                } else {
+                    self.paths.no_spans += 1;
                 }
             }
         }

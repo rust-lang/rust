@@ -89,7 +89,7 @@ impl<'a> Parser<'a> {
             (segments, span) = path.force_general_mut();
             *span = path_lo.to(self.prev_token.span);
         } else {
-            path = ast::Path::General { segments: ThinVec::new(), span: self.token.span };
+            path = ast::Path::from_segments(ThinVec::new(), self.token.span);
             (segments, span) = path.force_general_mut();
         }
 
@@ -175,10 +175,8 @@ impl<'a> Parser<'a> {
             //
             //     m!(inline<u8>); //~ ERROR: unexpected generic arguments in path
             //
-            if style == PathStyle::Mod
-                && let Path::General { ref mut segments, .. } = path
-                && segments.iter().any(|s| s.args.is_some())
-            {
+            if style == PathStyle::Mod && path.iter_segments().any(|s| s.args.is_some()) {
+                let segments = path.force_general_mut().0;
                 let span = segments
                     .iter()
                     .filter_map(|segment| segment.args.as_ref())
@@ -215,14 +213,7 @@ impl<'a> Parser<'a> {
         }
         self.parse_path_segments(&mut segments, style, ty_generics)?;
         let span = lo.to(self.prev_token.span);
-        if let [segment] = segments.as_slice()
-            && segment.args.is_none()
-            && segment.ident.span == span
-        {
-            Ok(Path::Ident { ident: segment.ident, id: segment.id })
-        } else {
-            Ok(Path::General { segments, span })
-        }
+        Ok(Path::from_segments(segments, span))
     }
 
     pub(super) fn parse_path_segments(

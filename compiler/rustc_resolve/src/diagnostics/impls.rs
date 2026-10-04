@@ -1756,7 +1756,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     segms.append(&mut path_segments.clone());
 
                     segms.push(ast::PathSegment::from_ident(ident.orig(orig_ident_span)));
-                    let path = Path::General { span: name_binding.span, segments: segms };
+                    let path = Path::from_segments(segms, name_binding.span);
 
                     if child_accessible
                         // Remove invisible match if exists
@@ -2615,7 +2615,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return;
         }
 
-        *path = Path::General { span: path.span(), segments: new_segments };
+        *path = Path::from_segments(new_segments, path.span());
     }
 
     fn report_privacy_error(&mut self, privacy_error: &PrivacyError<'ra>) {
@@ -2813,16 +2813,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         module_path.map(|module_path| {
                             // `import.module_path` is relative to the import's module, not to the
                             // failing use site.
-                            let mut path = Path::General {
-                                span: ident.span,
-                                segments: module_path
+                            let mut path = Path::from_segments(
+                                module_path
                                     .into_iter()
                                     .chain(std::iter::once(ident.name))
                                     .map(|name| {
                                         ast::PathSegment::from_ident(Ident::with_dummy_span(name))
                                     })
                                     .collect(),
-                            };
+                                ident.span,
+                            );
                             self.shorten_import_path(res_def_id, &mut path, parent_scope.module);
                             path.iter_idents().copied().collect()
                         })

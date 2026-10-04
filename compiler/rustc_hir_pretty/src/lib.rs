@@ -131,10 +131,8 @@ impl<'a> State<'a> {
 
     fn print_attr_item(&mut self, item: &AttrItem, span: Span) {
         let ib = self.ibox(0);
-        let path = ast::Path::General {
-            span,
-            segments: item
-                .path
+        let path = ast::Path::from_segments(
+            item.path
                 .segments
                 .iter()
                 .map(|i| ast::PathSegment {
@@ -143,7 +141,8 @@ impl<'a> State<'a> {
                     id: DUMMY_NODE_ID,
                 })
                 .collect(),
-        };
+            span,
+        );
 
         match &item.args {
             AttrArgs::Delimited(DelimArgs { dspan: _, delim, tokens }) => self.print_mac_common(

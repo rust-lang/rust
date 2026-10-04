@@ -3224,8 +3224,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     let doc_visible = doc_visible
                         && (module_def_id.is_local() || !r.tcx.is_doc_hidden(module_def_id));
                     if module_def_id == def_id {
-                        let path =
-                            Path::General { span: name_binding.span, segments: path_segments };
+                        let path = Path::from_segments(path_segments, name_binding.span);
                         result = Some((
                             r.expect_module(module_def_id),
                             ImportSuggestion {
@@ -4657,7 +4656,7 @@ fn mk_where_bound_predicate(
     ty: &Ty,
 ) -> Option<ast::WhereBoundPredicate> {
     let modified_segments = {
-        let Path::General { segments, .. } = path else {
+        let (Path::NoSpan { segments } | Path::General((segments, _))) = path else {
             return None;
         };
         let mut segments = segments.clone();
@@ -4705,7 +4704,7 @@ fn mk_where_bound_predicate(
             bound_generic_params: ThinVec::new(),
             modifiers: ast::TraitBoundModifiers::NONE,
             trait_ref: ast::TraitRef {
-                path: ast::Path::General { segments: modified_segments, span: DUMMY_SP },
+                path: ast::Path::from_segments(modified_segments, DUMMY_SP),
                 ref_id: DUMMY_NODE_ID,
             },
             span: DUMMY_SP,

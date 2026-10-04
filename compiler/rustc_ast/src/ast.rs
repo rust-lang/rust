@@ -95,13 +95,15 @@ impl fmt::Display for Lifetime {
 pub enum Path {
     /// The common case of a single identifier (e.g. `x`)
     Ident { ident: Ident, id: NodeId },
-    General {
-        /// The span of the whole path; might differ from the combined spans of the segments.
-        span: Span,
-        /// The segments in the path: the things separated by `::`.
-        /// Global paths begin with `kw::PathRoot`.
+    /// The common case of a general path, which must have at least one segment, and the span can be
+    /// trivially reconstructed from the spans of the first and last segments.
+    NoSpan {
+        /// The segments in the path: the things separated by `::`. Global paths begin with
+        /// `kw::PathRoot`.
         segments: ThinVec<PathSegment>,
     },
+    /// A fully general path where the path's span differs. Boxed to avoid making `Path` larger.
+    General(Box<(ThinVec<PathSegment>, Span)>),
 }
 
 // Succeeds if the path has a single segment that is arg-free and matches the given symbol.
@@ -123,7 +125,7 @@ impl PartialEq<&[Symbol]> for Path {
                 };
                 ident.name == *name
             }
-            Path::General { segments, .. } => segments.iter().eq(*names),
+            Path::NoSpan { segments } | Path::General((segments, _)) => segments.iter().eq(*names),
         }
     }
 }
@@ -142,11 +144,27 @@ impl Path {
         Path::Ident { ident, id: DUMMY_NODE_ID }
     }
 
+    /// Convert a set of segments and a span to the corresponding `Path`.
+    #[inline]
+    pub fn from_segments(segments: ThinVec<PathSegment>, span: Span) -> Path {
+        if let [segment] = segments.as_slice()
+            && segment.ident.span == span
+            && segment.args.is_none()
+        {
+            Path::Ident { ident: segment.ident, id: segment.id }
+        } else if !segments.is_empty() && segments_span(&segments) == span {
+            Path::NoSpan { segments }
+        } else {
+            Path::General(Box::new((segments, span)))
+        }
+    }
+
     #[inline]
     pub fn span(&self) -> Span {
         match self {
             Path::Ident { ident, .. } => ident.span,
-            Path::General { span, .. } => *span,
+            Path::NoSpan { segments } => segments_span(segments),
+            Path::General((_, span)) => *span,
         }
     }
 
@@ -169,10 +187,11 @@ impl Path {
     #[inline]
     pub fn as_single_argless_ident(&self) -> Option<Ident> {
         // This can't *exclusively* handle the `Path::Ident` case, because a single ident can use
-        // `Path::General` if the path span differs from the ident span.
+        // `Path::General` if the path span differs from the ident span, or `Path::NoSpan` if it
+        // isn't in canonical form.
         match self {
             Path::Ident { ident, .. } => Some(*ident),
-            Path::General { segments, .. } => {
+            Path::NoSpan { segments } | Path::General((segments, _)) => {
                 let [segment] = segments.as_ref() else {
                     return None;
                 };
@@ -191,25 +210,27 @@ impl Path {
 
     #[inline]
     pub fn is_empty(&self) -> bool {
-        let Path::General { segments, .. } = self else {
-            return false;
-        };
-        segments.is_empty()
+        match self {
+            Path::General((segments, _)) => segments.is_empty(),
+            _ => false,
+        }
     }
 
     #[inline]
     pub fn num_segments(&self) -> usize {
-        let Path::General { segments, .. } = self else {
-            return 1;
-        };
-        segments.len()
+        match self {
+            Path::Ident { .. } => 1,
+            Path::NoSpan { segments } | Path::General((segments, _)) => segments.len(),
+        }
     }
 
     #[inline]
     pub fn iter_idents(&self) -> impl DoubleEndedIterator<Item = &Ident> + ExactSizeIterator {
         match self {
             Path::Ident { ident, .. } => Either::Left(iter::once(ident)),
-            Path::General { segments, .. } => Either::Right(segments.iter().map(|s| &s.ident)),
+            Path::NoSpan { segments } | Path::General((segments, _)) => {
+                Either::Right(segments.iter().map(|s| &s.ident))
+            }
         }
     }
 
@@ -221,7 +242,7 @@ impl Path {
             &Path::Ident { ref ident, id } => {
                 Either::Left(iter::once(PathSegmentRef { ident, id, args: None }))
             }
-            Path::General { segments, .. } => {
+            Path::NoSpan { segments } | Path::General((segments, _)) => {
                 Either::Right(segments.iter().map(PathSegment::as_ref))
             }
         }
@@ -231,7 +252,9 @@ impl Path {
     pub fn last_segment(&self) -> Option<PathSegmentRef<'_>> {
         match self {
             &Path::Ident { ref ident, id } => Some(PathSegmentRef { ident, id, args: None }),
-            Path::General { segments, .. } => segments.last().map(PathSegment::as_ref),
+            Path::NoSpan { segments } | Path::General((segments, _)) => {
+                segments.last().map(PathSegment::as_ref)
+            }
         }
     }
 
@@ -239,25 +262,35 @@ impl Path {
     pub fn last_ident(&self) -> Option<Ident> {
         match self {
             &Path::Ident { ident, .. } => Some(ident),
-            Path::General { segments, .. } => segments.last().map(|s| s.ident),
+            Path::NoSpan { segments } | Path::General((segments, _)) => {
+                segments.last().map(|s| s.ident)
+            }
         }
     }
 
     pub fn force_general_mut(&mut self) -> (&mut ThinVec<PathSegment>, &mut Span) {
         match self {
-            Path::General { segments, span } => (segments, span),
+            Path::General((segments, span)) => return (segments, span),
+            Path::NoSpan { segments } => {
+                let span = segments_span(segments);
+                *self = Path::General(Box::new((std::mem::take(segments), span)))
+            }
             &mut Path::Ident { ident, id } => {
-                *self = Path::General {
-                    segments: thin_vec![PathSegment { ident, id, args: None }],
-                    span: ident.span,
-                };
-                match self {
-                    Path::Ident { .. } => unreachable!(),
-                    Path::General { segments, span } => (segments, span),
-                }
+                *self = Path::General(Box::new((
+                    thin_vec![PathSegment { ident, id, args: None }],
+                    ident.span,
+                )));
             }
         }
+        match self {
+            Path::General((segments, span)) => (segments, span),
+            _ => unreachable!(),
+        }
     }
+}
+
+fn segments_span(segments: &[PathSegment]) -> Span {
+    segments[0].ident.span.to(segments.last().unwrap().span())
 }
 
 /// Joins multiple symbols with "::" into a path, e.g. "a::b::c". If the first
@@ -4584,8 +4617,8 @@ mod size_asserts {
     static_assert_size!(AttrKind, 16);
     static_assert_size!(Attribute, 32);
     static_assert_size!(Block, 24);
-    static_assert_size!(Expr, 72);
-    static_assert_size!(ExprKind, 40);
+    static_assert_size!(Expr, 64);
+    static_assert_size!(ExprKind, 32);
     static_assert_size!(FieldDef, 80);
     static_assert_size!(Fn, 192);
     static_assert_size!(FnDecl, 24);
@@ -4595,7 +4628,7 @@ mod size_asserts {
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);
     static_assert_size!(GenericArgs, 40);
-    static_assert_size!(GenericBound, 88);
+    static_assert_size!(GenericBound, 80);
     static_assert_size!(GenericParam, 80);
     static_assert_size!(Generics, 40);
     static_assert_size!(Impl, 80);
@@ -4604,19 +4637,19 @@ mod size_asserts {
     static_assert_size!(Lifetime, 16);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 96);
-    static_assert_size!(MetaItem, 88);
+    static_assert_size!(MetaItem, 80);
     static_assert_size!(MetaItemKind, 40);
     static_assert_size!(MetaItemLit, 40);
-    static_assert_size!(NormalAttr, 88);
+    static_assert_size!(NormalAttr, 80);
     static_assert_size!(Param, 40);
-    static_assert_size!(Pat, 72);
-    static_assert_size!(PatKind, 56);
-    static_assert_size!(Path, 24);
+    static_assert_size!(Pat, 64);
+    static_assert_size!(PatKind, 48);
+    static_assert_size!(Path, 16);
     static_assert_size!(PathSegment, 24);
     static_assert_size!(QSelf, 24);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
-    static_assert_size!(TraitImplHeader, 72);
+    static_assert_size!(TraitImplHeader, 64);
     static_assert_size!(Ty, 56);
     static_assert_size!(TyKind, 40);
     // tidy-alphabetical-end

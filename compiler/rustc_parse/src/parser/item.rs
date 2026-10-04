@@ -1349,7 +1349,7 @@ impl<'a> Parser<'a> {
                 prefix = if self.eat_path_sep() {
                     ast::Path::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt))
                 } else {
-                    ast::Path::General { segments: ThinVec::new(), span: lo.shrink_to_lo() }
+                    ast::Path::from_segments(ThinVec::new(), lo.shrink_to_lo())
                 };
 
                 self.parse_use_tree_glob_or_nested(use_token_span, use_path)?

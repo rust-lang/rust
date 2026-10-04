@@ -555,19 +555,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 // Correctly resolve `self` imports.
                 let mut path = tree.prefix.clone();
-                match &mut path {
-                    Path::General { segments, .. } => {
-                        if segments.len() > 1
-                            && segments.last().unwrap().ident.name == kw::SelfLower
-                        {
-                            let _ = segments.pop();
-                            if rename.is_none() {
-                                ident = segments.last().unwrap().ident;
-                            }
-                        }
+                if path.num_segments() > 1 && path.last_ident().unwrap().name == kw::SelfLower {
+                    let segments = path.force_general_mut().0;
+                    let _ = segments.pop();
+                    if rename.is_none() {
+                        ident = segments.last().unwrap().ident;
                     }
-                    // Can't end in `::self`
-                    Path::Ident { .. } => {}
                 }
 
                 let res = self.lower_import_res(id, path.span());

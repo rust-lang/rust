@@ -500,7 +500,7 @@ impl MetaItem {
                     iter.next();
                 }
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
-                Path::General { span, segments }
+                Path::from_segments(segments, span)
             }
             Some(TokenTree::Delimited(
                 _span,
