@@ -131,13 +131,11 @@ impl AllocFnFactory<'_, '_> {
                 // disambiguated somehow. Currently the generated code would
                 // fail to compile with "identifier is bound more than once in
                 // this parameter list".
-                let size = Ident::new(sym::size, self.span);
-                let align = Ident::new(sym::align, self.span);
 
                 let ty_usize = self.usize();
-                args.push(self.cx.param(self.span, size, ty_usize));
+                args.push(self.cx.param(self.span, sym::size, ty_usize));
                 let ty_align = self.ptr_alignment();
-                args.push(self.cx.param(self.span, align, ty_align));
+                args.push(self.cx.param(self.span, sym::align, ty_align));
 
                 let layout_new = self.cx.std_path(&[
                     sym::alloc,
@@ -145,22 +143,22 @@ impl AllocFnFactory<'_, '_> {
                     sym::from_size_alignment_unchecked,
                 ]);
                 let layout_new = self.cx.expr_path(self.cx.path(self.span, layout_new));
-                let size = self.cx.expr_ident(self.span, size);
-                let align = self.cx.expr_ident(self.span, align);
+                let size = self.cx.expr_ident_sym(self.span, sym::size);
+                let align = self.cx.expr_ident_sym(self.span, sym::align);
                 let layout = self.cx.expr_call(self.span, layout_new, thin_vec![size, align]);
                 layout
             }
 
             AllocatorTy::Ptr => {
-                let ident = Ident::from_str_and_span(input.name, self.span);
-                args.push(self.cx.param(self.span, ident, self.ptr_u8()));
-                self.cx.expr_ident(self.span, ident)
+                let name = Symbol::intern(input.name);
+                args.push(self.cx.param(self.span, name, self.ptr_u8()));
+                self.cx.expr_ident_sym(self.span, name)
             }
 
             AllocatorTy::Usize => {
-                let ident = Ident::from_str_and_span(input.name, self.span);
-                args.push(self.cx.param(self.span, ident, self.usize()));
-                self.cx.expr_ident(self.span, ident)
+                let name = Symbol::intern(input.name);
+                args.push(self.cx.param(self.span, name, self.usize()));
+                self.cx.expr_ident_sym(self.span, name)
             }
 
             AllocatorTy::Never | AllocatorTy::ResultPtr | AllocatorTy::Unit => {

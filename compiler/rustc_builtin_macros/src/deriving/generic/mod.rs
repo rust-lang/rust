@@ -839,8 +839,7 @@ impl<'a> MethodDef<'a> {
             .into_iter()
             .chain(self.nonself_args.iter().map(|(ty, name)| {
                 let ast_ty = ty.clone();
-                let ident = Ident::new(*name, span);
-                cx.param(span, ident, ast_ty)
+                cx.param(span, *name, ast_ty)
             }))
             .collect();
 

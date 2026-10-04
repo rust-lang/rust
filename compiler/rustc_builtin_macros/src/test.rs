@@ -194,8 +194,7 @@ pub(crate) fn expand_test_or_bench(
 
     let test_fn = if is_bench {
         // avoid name collisions by using the function name within the identifier, see bug #148275
-        let bencher_param =
-            Ident::from_str_and_span(&format!("__bench_{}", fn_.ident.name), attr_sp);
+        let bencher_param = Symbol::intern(&format!("__bench_{}", fn_.ident.name));
         cx.expr_call(
             sp,
             cx.expr_path(test_path("StaticBenchFn")),
@@ -213,7 +212,7 @@ pub(crate) fn expand_test_or_bench(
                             cx.expr_call(
                                 ret_ty_sp,
                                 cx.expr_path(cx.path(sp, vec![fn_.ident])),
-                                thin_vec![cx.expr_ident(sp, bencher_param)],
+                                thin_vec![cx.expr_ident_sym(sp, bencher_param)],
                             ),
                         ],
                     ),
