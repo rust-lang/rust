@@ -336,6 +336,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                         let size = cast.size(&start_bx).max(layout.size);
                         return LocalRef::Place(PlaceRef::alloca_size(&mut start_bx, size, layout));
                     }
+                    PassMode::IndirectUnsized { .. } => bug!("unsized returns are not supported"),
                     _ => {}
                 };
             }
@@ -561,7 +562,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             match arg.mode {
                 // Sized indirect arguments
-                PassMode::Indirect { attrs, meta_attrs: None, address_space: _, mode } => {
+                PassMode::Indirect { attrs, address_space: _, mode } => {
                     // Don't copy an indirect argument to an alloca, the caller already put it
                     // in a temporary alloca and gave it up.
                     // AmdgpuKernelArg/byref arguments must not be modified, so always create a
@@ -586,7 +587,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     }
                 }
                 // Unsized indirect arguments
-                PassMode::Indirect { attrs: _, meta_attrs: Some(_), address_space: _, mode: _ } => {
+                PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => {
                     // As the storage for the indirect argument lives during
                     // the whole function call, we just copy the wide pointer.
                     let llarg = bx.get_param(llarg_idx);

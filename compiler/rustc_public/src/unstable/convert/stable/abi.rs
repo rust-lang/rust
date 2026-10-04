@@ -188,12 +188,15 @@ impl<'tcx> Stable<'tcx> for callconv::PassMode {
             callconv::PassMode::Cast { pad_i32_count, cast } => {
                 PassMode::Cast { pad_i32_count: *pad_i32_count, cast: cast.stable(tables, cx) }
             }
-            callconv::PassMode::Indirect { attrs, meta_attrs, address_space, mode } => {
-                PassMode::Indirect {
+            callconv::PassMode::Indirect { attrs, address_space, mode } => PassMode::Indirect {
+                attrs: attrs.stable(tables, cx),
+                address_space: address_space.stable(tables, cx),
+                mode: mode.stable(tables, cx),
+            },
+            callconv::PassMode::IndirectUnsized { attrs, meta_attrs } => {
+                PassMode::IndirectUnsized {
                     attrs: attrs.stable(tables, cx),
-                    meta_attrs: meta_attrs.map(|a| a.stable(tables, cx)),
-                    address_space: address_space.stable(tables, cx),
-                    mode: mode.stable(tables, cx),
+                    meta_attrs: meta_attrs.stable(tables, cx),
                 }
             }
         }
