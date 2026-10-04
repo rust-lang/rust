@@ -764,9 +764,7 @@ mod llvm_enzyme {
                             panic!("Did not expect Default ret ty: {:?}", span);
                         }
                     };
-                    let name = "dret".to_string();
-                    let ident = Ident::from_str_and_span(&name, ty.span);
-                    let shadow_arg = ecx.param(ty.span, ident, ty);
+                    let shadow_arg = ecx.param(ty.span, sym::dret, ty);
                     d_inputs.push(shadow_arg);
                 }
                 _ => {}

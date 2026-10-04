@@ -568,7 +568,7 @@ impl<'a> ExtCtxt<'a> {
         self.expr(span, ast::ExprKind::If(cond, self.block_expr(then), els))
     }
 
-    pub fn closure(&self, span: Span, ids: Vec<Ident>, body: Box<ast::Expr>) -> Box<ast::Expr> {
+    pub fn closure(&self, span: Span, ids: Vec<Symbol>, body: Box<ast::Expr>) -> Box<ast::Expr> {
         let fn_decl = self.fn_decl(
             ids.iter().map(|id| self.param(span, *id, self.ty(span, ast::TyKind::Infer))).collect(),
             ast::FnRetTy::Default(span),
@@ -596,8 +596,8 @@ impl<'a> ExtCtxt<'a> {
         )
     }
 
-    pub fn param(&self, span: Span, ident: Ident, ty: Box<ast::Ty>) -> ast::Param {
-        let pat = Box::new(self.pat_ident(span, ident));
+    pub fn param(&self, span: Span, name: Symbol, ty: Box<ast::Ty>) -> ast::Param {
+        let pat = Box::new(self.pat_ident_sym(span, name));
         ast::Param {
             attrs: AttrVec::default(),
             id: ast::DUMMY_NODE_ID,

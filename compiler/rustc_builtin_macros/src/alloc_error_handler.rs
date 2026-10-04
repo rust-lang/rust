@@ -62,21 +62,22 @@ pub(crate) fn expand(
 // }
 fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span) -> Stmt {
     let ty_usize = cx.ty_sym(span, sym::usize);
-    let size = Ident::new(sym::size, span);
-    let align = Ident::new(sym::align, span);
 
     let layout_new = cx.std_path(&[sym::alloc, sym::Layout, sym::from_size_align_unchecked]);
     let layout_new = cx.expr_path(cx.path(span, layout_new));
     let layout = cx.expr_call(
         span,
         layout_new,
-        thin_vec![cx.expr_ident(span, size), cx.expr_ident(span, align)],
+        thin_vec![cx.expr_ident_sym(span, sym::size), cx.expr_ident_sym(span, sym::align)],
     );
 
     let call = cx.expr_call_ident(sig_span, handler, thin_vec![layout]);
 
     let never = ast::FnRetTy::Ty(cx.ty(span, TyKind::Never));
-    let params = thin_vec![cx.param(span, size, ty_usize.clone()), cx.param(span, align, ty_usize)];
+    let params = thin_vec![
+        cx.param(span, sym::size, ty_usize.clone()),
+        cx.param(span, sym::align, ty_usize)
+    ];
     let decl = cx.fn_decl(params, never);
     let header = FnHeader { safety: Safety::Unsafe(span), ..FnHeader::default() };
     let sig = FnSig { decl, header, span };
