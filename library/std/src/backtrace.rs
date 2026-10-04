@@ -159,7 +159,10 @@ enum RawFrame {
     Fake,
 }
 
-struct BacktraceSymbol {
+/// A single symbol associated with a backtrace frame, which may include a
+/// function name, filename, line number, and column number.
+#[unstable(feature = "backtrace_internals_accessors", issue = "122899")]
+pub struct BacktraceSymbol {
     name: Option<Vec<u8>>,
     filename: Option<BytesOrWide>,
     lineno: Option<u32>,
@@ -207,6 +210,41 @@ impl fmt::Debug for BacktraceFrame {
     }
 }
 
+///NOTE: This is never intended to become stable. It doesn't have an ACP
+/// Its meant to help us port the tests mentioned in issue #122899
+#[unstable(feature = "backtrace_internals_accessors", issue = "122899")]
+impl BacktraceFrame {
+    /// Returns the instruction pointer associated with this frame.
+    pub fn ip(&self) -> *mut c_void {
+        self.frame.ip()
+    }
+
+    /// Returns the symbols associated with this frame, if any.
+    pub fn symbols(&self) -> &[BacktraceSymbol] {
+        &self.symbols
+    }
+
+    /// Returns the base address of the module this frame belongs to, if available.
+    pub fn module_base_address(&self) -> Option<*mut c_void> {
+        match &self.frame {
+            RawFrame::Actual(frame) => frame.module_base_address(),
+            #[cfg(test)]
+            RawFrame::Fake => None,
+        }
+    }
+}
+
+///NOTE: This is never intended to become stable. It doesn't have an ACP
+/// Its meant to help us port the tests mentioned in issue #122899
+impl BacktraceSymbol {
+    /// Returns the name of this symbol, if available.
+    #[unstable(feature = "backtrace_internals_accessors", issue = "122899")]
+    pub fn name(&self) -> Option<&[u8]> {
+        self.name.as_deref()
+    }
+}
+
+#[unstable(feature = "backtrace_internals_accessors", issue = "122899")]
 impl fmt::Debug for BacktraceSymbol {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         // FIXME: improve formatting: https://github.com/rust-lang/rust/issues/65280
