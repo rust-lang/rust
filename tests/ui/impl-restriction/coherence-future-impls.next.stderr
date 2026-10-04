@@ -1,0 +1,43 @@
+error[E0119]: conflicting implementations of trait `Direct` for type `Thing`
+  --> $DIR/coherence-future-impls.rs:13:1
+   |
+LL | impl<T: upstream::Restricted> Direct for T {}
+   | ------------------------------------------ first implementation here
+LL | impl Direct for Thing {}
+   | ^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Thing`
+   |
+   = note: upstream crates may add a new impl of trait `upstream::Restricted` for type `Thing` in future versions
+
+error[E0119]: conflicting implementations of trait `Fundamental` for type `&Thing`
+  --> $DIR/coherence-future-impls.rs:18:1
+   |
+LL | impl<T: upstream::Restricted> Fundamental for T {}
+   | ----------------------------------------------- first implementation here
+LL | impl Fundamental for &Thing {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `&Thing`
+   |
+   = note: upstream crates may add a new impl of trait `upstream::Restricted` for type `&Thing` in future versions
+
+error[E0119]: conflicting implementations of trait `HigherRanked` for type `Thing`
+  --> $DIR/coherence-future-impls.rs:23:1
+   |
+LL | impl<T> HigherRanked for T where for<'a> &'a T: upstream::Restricted {}
+   | -------------------------------------------------------------------- first implementation here
+LL | impl HigherRanked for Thing {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Thing`
+   |
+   = note: upstream crates may add a new impl of trait `upstream::Restricted` for type `&'a Thing` in future versions
+
+error[E0119]: conflicting implementations of trait `UnrestrictedMarked` for type `Other`
+  --> $DIR/coherence-future-impls.rs:33:1
+   |
+LL | impl<T: upstream::Unrestricted> UnrestrictedMarked for T {}
+   | -------------------------------------------------------- first implementation here
+LL | impl UnrestrictedMarked for Other {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Other`
+   |
+   = note: upstream crates may add a new impl of trait `upstream::Unrestricted` for type `Other` in future versions
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

@@ -55,7 +55,21 @@ where
     I: Interner,
     E: Debug,
 {
-    if orphan_check_trait_ref(infcx, trait_ref, InCrate::Remote, &mut lazily_normalize_ty)?.is_ok()
+    // Some traits explicitly reserve the right for their defining crate to add
+    // future impls even where the normal rebalancing-coherence rules would let
+    // downstream crates rely on negative knowledge.
+    if !trait_ref.def_id.is_local()
+        && infcx.cx().trait_has_coherence_future_impls(trait_ref.def_id)
+        && !infcx.cx().trait_is_fundamental(trait_ref.def_id)
+    {
+        return Ok(Err(Conflict::Upstream));
+    }
+
+    // An impl restriction means unknown downstream/sibling crates cannot add
+    // implementations of this trait.
+    if !infcx.cx().trait_is_impl_restricted(trait_ref.def_id)
+        && orphan_check_trait_ref(infcx, trait_ref, InCrate::Remote, &mut lazily_normalize_ty)?
+            .is_ok()
     {
         // A downstream or cousin crate is allowed to implement some
         // generic parameters of this trait-ref.

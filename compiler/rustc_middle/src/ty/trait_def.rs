@@ -23,6 +23,10 @@ pub struct TraitDef {
     /// Restrictions on trait implementations.
     pub impl_restriction: RestrictionKind,
 
+    /// Whether downstream coherence must account for future upstream
+    /// implementations of this trait.
+    pub coherence_future_impls: bool,
+
     pub safety: hir::Safety,
 
     /// Whether this trait is `const`.

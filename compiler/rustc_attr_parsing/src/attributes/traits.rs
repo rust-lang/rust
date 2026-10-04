@@ -110,6 +110,14 @@ impl NoArgsAttributeParser for RustcAllowLifetimeDependentSpecializationParser {
 
 // Coherence
 
+pub(crate) struct RustcCoherenceFutureImplsParser;
+impl NoArgsAttributeParser for RustcCoherenceFutureImplsParser {
+    const PATH: &[Symbol] = &[sym::rustc_coherence_future_impls];
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcCoherenceFutureImpls;
+}
+
 pub(crate) struct RustcCoinductiveParser;
 impl NoArgsAttributeParser for RustcCoinductiveParser {
     const PATH: &[Symbol] = &[sym::rustc_coinductive];

@@ -1125,8 +1125,16 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     // Only regular traits can be marker.
     let is_marker = !is_alias && find_attr!(attrs, Marker);
 
+    let coherence_future_impls = find_attr!(attrs, RustcCoherenceFutureImpls);
     let rustc_coinductive = find_attr!(attrs, RustcCoinductive);
     let is_fundamental = find_attr!(attrs, Fundamental);
+
+    if coherence_future_impls && is_fundamental {
+        tcx.dcx().span_err(
+            item.span,
+            "`#[rustc_coherence_future_impls]` cannot be used with `#[fundamental]`",
+        );
+    }
 
     let [skip_array_during_method_dispatch, skip_boxed_slice_during_method_dispatch] = find_attr!(
         attrs,
@@ -1157,6 +1165,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     ty::TraitDef {
         def_id: def_id.to_def_id(),
         impl_restriction,
+        coherence_future_impls,
         safety,
         constness,
         paren_sugar,

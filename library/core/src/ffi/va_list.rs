@@ -310,6 +310,7 @@ const impl<'f> Drop for VaList<'f> {
 #[lang = "va_arg_safe"]
 #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
 #[rustc_dyn_incompatible_trait]
+#[rustc_coherence_future_impls]
 pub impl(self) unsafe trait VaArgSafe {}
 
 crate::cfg_select! {

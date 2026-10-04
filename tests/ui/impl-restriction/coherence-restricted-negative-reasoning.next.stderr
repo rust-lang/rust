@@ -1,0 +1,13 @@
+error[E0119]: conflicting implementations of trait `UnrestrictedCase` for type `&_`
+  --> $DIR/coherence-restricted-negative-reasoning.rs:17:1
+   |
+LL | impl<T: Unrestricted> UnrestrictedCase for T {}
+   | -------------------------------------------- first implementation here
+LL | impl<T> UnrestrictedCase for &T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `&_`
+   |
+   = note: downstream crates may implement trait `Unrestricted` for type `&_`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.
