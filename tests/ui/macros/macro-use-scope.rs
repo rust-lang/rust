@@ -1,6 +1,6 @@
 //@ aux-build:two_macros.rs
 
-//@ build-pass (FIXME(62277): could be check-pass?)
+//@ check-pass
 #![allow(unused)]
 
 fn f() {
