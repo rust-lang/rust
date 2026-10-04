@@ -7,32 +7,59 @@
 extern crate libc;
 
 use std::alloc::{GlobalAlloc, Layout, System};
-use std::ptr;
-use std::mem;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::thread::Thread;
+use std::{mem, ptr};
 
-static SHOULD_PANIC_ON_GLOBAL_ALLOC_ACCESS: AtomicBool = AtomicBool::new(false);
+static ALLOCATED: AtomicUsize = AtomicUsize::new(0);
 static PTHREAD_ACTIVE: AtomicBool = AtomicBool::new(false);
 static PTHREAD_SUCCEEDED_ALLOC: AtomicBool = AtomicBool::new(false);
 static PTHREAD_SUCCEEDED_DEALLOC: AtomicBool = AtomicBool::new(false);
-static LOCAL_TRY_WITH_SUCCEEDED_ALLOC: AtomicBool = AtomicBool::new(false);
-static LOCAL_TRY_WITH_SUCCEEDED_DEALLOC: AtomicBool = AtomicBool::new(false);
-
 
 #[global_allocator]
 static ALLOC: Alloc = Alloc;
 struct Alloc;
 
+fn call_function(f: impl FnOnce()) {
+    ALLOCATED.store(0, Ordering::Relaxed);
+    f();
+    assert_eq!(ALLOCATED.load(Ordering::Relaxed), 0);
+}
+
+// https://doc.rust-lang.org/nightly/std/alloc/trait.GlobalAlloc.html#re-entrance
+fn guarantee_functions() {
+    call_function(|| {
+        drop(std::thread::current());
+    });
+
+    call_function(|| {
+        std::thread::current().unpark();
+    });
+
+    call_function(std::thread::park);
+
+    call_function(|| {
+        drop(std::thread::current().clone());
+    });
+
+    call_function(|| {
+        LOCAL_FOR_ALLOCATOR_WITH_DROP
+            .with(|local| assert!(local.0.id() == std::thread::current().id()))
+    });
+}
+
 extern "C" fn start(c: *mut libc::c_void) -> *mut libc::c_void {
-    PTHREAD_ACTIVE.store(true, Ordering::Relaxed);
+    PTHREAD_ACTIVE.swap(true, Ordering::Relaxed);
     std::hint::black_box(vec![1, 2]);
+
+    guarantee_functions();
+
     unsafe {
         let c: *mut u32 = c.cast();
         drop(Box::from_raw(c))
     }
 
-    PTHREAD_ACTIVE.store(false, Ordering::Relaxed);
+    PTHREAD_ACTIVE.swap(false, Ordering::Relaxed);
     ptr::null_mut()
 }
 
@@ -46,61 +73,33 @@ thread_local! {
 
 unsafe impl GlobalAlloc for Alloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        assert!(!SHOULD_PANIC_ON_GLOBAL_ALLOC_ACCESS.load(Ordering::Relaxed));
-        SHOULD_PANIC_ON_GLOBAL_ALLOC_ACCESS.store(true, Ordering::Relaxed);
-
         if PTHREAD_ACTIVE.load(Ordering::Relaxed) {
-            PTHREAD_SUCCEEDED_ALLOC.store(true, Ordering::Relaxed);
+            PTHREAD_SUCCEEDED_ALLOC.swap(true, Ordering::Relaxed);
         }
 
-        // https://doc.rust-lang.org/nightly/std/alloc/trait.GlobalAlloc.html#re-entrance
-        let th : Thread = std::thread::current();
-        th.unpark();
-        std::thread::park();
-        drop(th.clone());
-
-        let try_with_ret = LOCAL_FOR_ALLOCATOR_WITH_DROP.try_with(|local| {
-            assert!(local.0.id() == std::thread::current().id());
-        });
-        LOCAL_TRY_WITH_SUCCEEDED_ALLOC.fetch_or(try_with_ret.is_ok(), Ordering::Relaxed);
-
-        let ret = unsafe {
-            System.alloc(layout)
-        };
-        SHOULD_PANIC_ON_GLOBAL_ALLOC_ACCESS.store(false, Ordering::Relaxed);
+        let ret = unsafe { System.alloc(layout) };
+        if !ret.is_null() {
+            ALLOCATED.fetch_add(1, Ordering::Relaxed);
+        }
         ret
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        assert!(!SHOULD_PANIC_ON_GLOBAL_ALLOC_ACCESS.load(Ordering::Relaxed));
-        SHOULD_PANIC_ON_GLOBAL_ALLOC_ACCESS.store(true, Ordering::Relaxed);
-
         if PTHREAD_ACTIVE.load(Ordering::Relaxed) {
-            PTHREAD_SUCCEEDED_DEALLOC.store(true, Ordering::Relaxed);
+            PTHREAD_SUCCEEDED_DEALLOC.swap(true, Ordering::Relaxed);
         }
 
-        let th : Thread = std::thread::current();
-        th.unpark();
-        std::thread::park();
-        drop(th.clone());
-
-        let try_with_ret = LOCAL_FOR_ALLOCATOR_WITH_DROP.try_with(|local| {
-            assert!(local.0.id() == std::thread::current().id());
-        });
-        LOCAL_TRY_WITH_SUCCEEDED_DEALLOC.fetch_or(try_with_ret.is_ok(), Ordering::Relaxed);
-
-        SHOULD_PANIC_ON_GLOBAL_ALLOC_ACCESS.store(false, Ordering::Relaxed);
         unsafe {
             System.dealloc(ptr, layout);
         }
+        ALLOCATED.fetch_add(1, Ordering::Relaxed);
     }
 }
 
-
 fn main() {
     unsafe {
-        let c : *mut u32 = Box::into_raw(Box::new(1));
-        let mut t : libc::pthread_t = mem::zeroed();
+        let c: *mut u32 = Box::into_raw(Box::new(1));
+        let mut t: libc::pthread_t = mem::zeroed();
         libc::pthread_create(&mut t, ptr::null(), start, c.cast());
         libc::pthread_join(t, ptr::null_mut());
     }
@@ -109,18 +108,12 @@ fn main() {
     assert!(PTHREAD_SUCCEEDED_ALLOC.load(Ordering::Relaxed));
     assert!(PTHREAD_SUCCEEDED_DEALLOC.load(Ordering::Relaxed));
 
-    assert!(LOCAL_TRY_WITH_SUCCEEDED_ALLOC.load(Ordering::Relaxed));
-    assert!(LOCAL_TRY_WITH_SUCCEEDED_DEALLOC.load(Ordering::Relaxed));
-
-    LOCAL_TRY_WITH_SUCCEEDED_ALLOC.store(false, Ordering::Relaxed);
-    LOCAL_TRY_WITH_SUCCEEDED_DEALLOC.store(false, Ordering::Relaxed);
-
     std::thread::spawn(|| {
         std::hint::black_box(vec![1, 2]);
+        guarantee_functions();
     })
     .join()
     .unwrap();
 
-    assert!(LOCAL_TRY_WITH_SUCCEEDED_ALLOC.load(Ordering::Relaxed));
-    assert!(LOCAL_TRY_WITH_SUCCEEDED_DEALLOC.load(Ordering::Relaxed));
+    guarantee_functions();
 }
