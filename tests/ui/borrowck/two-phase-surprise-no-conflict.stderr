@@ -15,7 +15,7 @@ error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as im
 LL |                 self.hash_expr(&self.cx_mut.body(eid).value);
    |                 ^^^^^---------^^-----------^^^^^^^^^^^^^^^^^
    |                 |    |          |
-   |                 |    |          immutable borrow occurs here
+   |                 |    |          immutable borrow of `*self.cx_mut` occurs here
    |                 |    immutable borrow later used by call
    |                 mutable borrow occurs here
 
