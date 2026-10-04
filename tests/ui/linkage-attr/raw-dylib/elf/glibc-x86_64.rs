@@ -6,6 +6,7 @@
 //@ ignore-backends: gcc
 
 #![allow(incomplete_features)]
+#![feature(lang_items)]
 #![feature(raw_dylib_elf)]
 #![no_std]
 #![no_main]
@@ -69,7 +70,7 @@ fn panic_handler(_: &core::panic::PanicInfo<'_>) -> ! {
     exit(1);
 }
 
-#[unsafe(no_mangle)]
+#[lang = "eh_personality"]
 extern "C" fn rust_eh_personality(
     _version: i32,
     _actions: i32,
