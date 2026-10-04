@@ -3264,7 +3264,7 @@ declare_lint! {
     /// exhaustive: if a containing *module* is the one that is gated with a `cfg` attribute, this
     /// lint will not detect that.
     pub SELF_TYPE_CONVERSION_IN_MACRO,
-    Deny,
+    Allow,
     "unnecessary call to `.into()` within a macro expansion",
 }
 
