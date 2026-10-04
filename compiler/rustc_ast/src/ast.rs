@@ -3506,7 +3506,10 @@ impl UseTree {
     /// closing `}` or nested spans, `*` of glob spans or the end of the
     /// identifier of simple spans.
     pub fn span(&self) -> Span {
-        self.prefix.span().to(self.hi_span())
+        match self.kind {
+            UseTreeKind::Simple(None) => self.prefix.span(),
+            _ => self.prefix.span().to(self.hi_span()),
+        }
     }
 
     /// Returns the trailing element's span. So for a nested
