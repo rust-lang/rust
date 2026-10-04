@@ -1242,7 +1242,10 @@ impl<'db> InferCtxt<'db> {
         }
     }
 
-    fn sub_unification_table_root_var(&self, var: rustc_type_ir::TyVid) -> rustc_type_ir::TyVid {
+    pub(crate) fn sub_unification_table_root_var(
+        &self,
+        var: rustc_type_ir::TyVid,
+    ) -> rustc_type_ir::TyVid {
         self.inner.borrow_mut().type_variables().sub_unification_table_root_var(var)
     }
 
