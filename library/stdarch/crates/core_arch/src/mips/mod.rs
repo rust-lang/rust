@@ -16,5 +16,5 @@ use stdarch_test::assert_instr;
 #[inline]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn break_() -> ! {
-    crate::intrinsics::abort()
+    crate::intrinsics::abort_immediate()
 }

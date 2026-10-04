@@ -1,18 +1,18 @@
 error[E0283]: type annotations needed
-  --> $DIR/constraint-from-nested-projection.rs:31:5
+  --> $DIR/constraint-from-nested-projection.rs:32:5
    |
 LL |     pick::<(), _>();
    |     ^^^^^^^^^^^^^ cannot infer type of the type parameter `U` declared on the function `pick`
    |
 note: multiple `impl`s satisfying `(): Pick<_>` found
-  --> $DIR/constraint-from-nested-projection.rs:25:1
+  --> $DIR/constraint-from-nested-projection.rs:26:1
    |
 LL | impl<T: for<'a> RequiresProject<'a>> Pick<u32> for T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL | impl<T> Pick<u16> for T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `pick`
-  --> $DIR/constraint-from-nested-projection.rs:28:12
+  --> $DIR/constraint-from-nested-projection.rs:29:12
    |
 LL | fn pick<T: Pick<U>, U>() {}
    |            ^^^^^^^ required by this bound in `pick`

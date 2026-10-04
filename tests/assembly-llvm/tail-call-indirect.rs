@@ -1,5 +1,4 @@
 //@ add-minicore
-//@ min-llvm-version: 22
 //@ assembly-output: emit-asm
 //@ needs-llvm-components: x86
 //@ compile-flags: --target=x86_64-unknown-linux-gnu

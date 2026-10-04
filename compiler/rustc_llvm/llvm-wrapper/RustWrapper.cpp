@@ -195,16 +195,6 @@ LLVMRustVerifyFunction(LLVMValueRef Fn, LLVMRustVerifierFailureAction Action) {
   return LLVMVerifyFunction(Fn, fromRust(Action));
 }
 
-extern "C" LLVMValueRef LLVMRustGetOrInsertFunction(LLVMModuleRef M,
-                                                    const char *Name,
-                                                    size_t NameLen,
-                                                    LLVMTypeRef FunctionTy) {
-  return wrap(unwrap(M)
-                  ->getOrInsertFunction(StringRef(Name, NameLen),
-                                        unwrap<FunctionType>(FunctionTy))
-                  .getCallee());
-}
-
 // Get the global variable with the given name if it exists or create a new
 // external global.
 extern "C" LLVMValueRef
@@ -1164,16 +1154,10 @@ LLVMRustDICreateVectorType(LLVMDIBuilderRef Builder, uint64_t Size,
                            uint32_t AlignInBits, LLVMMetadataRef Type,
                            LLVMMetadataRef Subscripts,
                            LLVMMetadataRef BitStride) {
-#if LLVM_VERSION_GE(22, 0)
   return wrap(unwrap(Builder)->createVectorType(
       Size, AlignInBits, unwrapDI<DIType>(Type),
       DINodeArray(unwrapDI<MDTuple>(Subscripts)),
       unwrapDI<Metadata>(BitStride)));
-#else
-  return wrap(unwrap(Builder)->createVectorType(
-      Size, AlignInBits, unwrapDI<DIType>(Type),
-      DINodeArray(unwrapDI<MDTuple>(Subscripts))));
-#endif
 }
 
 extern "C" LLVMMetadataRef
@@ -1562,13 +1546,11 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
           RemarkStreamer(std::move(RemarkStreamer)),
           LlvmRemarkStreamer(std::move(LlvmRemarkStreamer)) {}
 
-#if LLVM_VERSION_GE(22, 0)
     ~RustDiagnosticHandler() {
       if (RemarkStreamer) {
         RemarkStreamer->releaseSerializer();
       }
     }
-#endif
 
     virtual bool handleDiagnostics(const DiagnosticInfo &DI) override {
       // If this diagnostic is one of the optimization remark kinds, we can
@@ -1664,14 +1646,8 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
     // Do not delete the file after we gather remarks
     RemarkFile->keep();
 
-#if LLVM_VERSION_GE(22, 0)
     auto RemarkSerializer = remarks::createRemarkSerializer(
         llvm::remarks::Format::YAML, RemarkFile->os());
-#else
-    auto RemarkSerializer = remarks::createRemarkSerializer(
-        llvm::remarks::Format::YAML, remarks::SerializerMode::Separate,
-        RemarkFile->os());
-#endif
     if (Error E = RemarkSerializer.takeError()) {
       std::string Error = std::string("Cannot create remark serializer: ") +
                           toString(std::move(E));
@@ -1777,16 +1753,12 @@ extern "C" LLVMValueRef LLVMRustConstPtrAuth(LLVMValueRef Ptr, uint32_t Key,
       AddrDiversity ? dyn_cast<Constant>(unwrap<Value>(AddrDiversity))
                     : ConstantPointerNull::get(cast<PointerType>(C->getType()));
   assert(AddrDiv && "Failed to get Address Diversity");
-#if LLVM_VERSION_GE(22, 0)
   Constant *DeactivationSym =
       DeactivationSymbol ? dyn_cast<Constant>(unwrap<Value>(DeactivationSymbol))
                          : ConstantPointerNull::get(PTy);
   assert(DeactivationSym && "Failed to get Deactivation Symbol");
 
   return wrap(ConstantPtrAuth::get(C, KeyC, DiscC, AddrDiv, DeactivationSym));
-#else
-  return wrap(ConstantPtrAuth::get(C, KeyC, DiscC, AddrDiv));
-#endif
 }
 
 // Statically assert that the fixed metadata kind IDs declared in
@@ -1885,7 +1857,6 @@ private:
 
   std::vector<SanitizerSection> SanitizerSections;
 
-#if LLVM_VERSION_GE(22, 0)
   static bool matchSection(const Section &S, llvm::StringRef Name) {
     return S.matchName(Name);
   }
@@ -1894,24 +1865,9 @@ private:
     return S.getLastMatch(Prefix, Query, Category);
   }
   static unsigned getFileIndex(const Section &S) { return S.fileIndex(); }
-#else
-  static bool matchSection(const Section &S, llvm::StringRef Name) {
-    return S.SectionMatcher && S.SectionMatcher->match(Name) != 0;
-  }
-  unsigned getLastMatch(const Section &S, llvm::StringRef Prefix,
-                        llvm::StringRef Query, llvm::StringRef Category) const {
-    return llvm::SpecialCaseList::inSectionBlame(S.Entries, Prefix, Query,
-                                                 Category);
-  }
-  static unsigned getFileIndex(const Section &S) { return S.FileIdx; }
-#endif
 
   void createSanitizerSections() {
-#if LLVM_VERSION_GE(22, 0)
     const auto &SecList = sections();
-#else
-    const auto &SecList = Sections;
-#endif
     for (const auto &S : SecList) {
       uint32_t Mask = 0;
 

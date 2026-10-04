@@ -1,5 +1,5 @@
 error[E0381]: used binding `x` isn't initialized
-  --> $DIR/precise-capture-155151.rs:20:18
+  --> $DIR/precise-capture-155151.rs:21:18
    |
 LL |         let Foo { x } = foo;
    |                   - binding declared here but left uninitialized

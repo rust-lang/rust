@@ -509,7 +509,7 @@ pub trait FnMut<Args: Tuple>: FnOnce<Args> {
 pub fn panic(_msg: &'static str) -> ! {
     unsafe {
         libc::puts("Panicking\n\0" as *const str as *const u8);
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 }
 
@@ -546,7 +546,7 @@ panic_const! {
 fn panic_cannot_unwind() -> ! {
     unsafe {
         libc::puts("Panicking\n\0" as *const str as *const u8);
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 }
 
@@ -555,7 +555,7 @@ fn panic_cannot_unwind() -> ! {
 fn panic_in_cleanup() -> ! {
     unsafe {
         libc::printf("panic in a destructor during cleanup\n\0" as *const str as *const i8);
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 }
 
@@ -568,7 +568,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
             len,
             index,
         );
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 }
 
@@ -698,7 +698,7 @@ pub mod intrinsics {
     #[rustc_intrinsic]
     pub const fn black_box<T>(_dummy: T) -> T;
     #[rustc_intrinsic]
-    pub fn abort() -> !;
+    pub fn abort_immediate() -> !;
     #[rustc_intrinsic]
     pub const fn size_of<T>() -> usize;
     #[rustc_intrinsic]

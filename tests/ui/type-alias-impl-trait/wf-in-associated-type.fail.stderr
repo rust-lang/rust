@@ -1,5 +1,5 @@
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/wf-in-associated-type.rs:40:13
+  --> $DIR/wf-in-associated-type.rs:41:13
    |
 LL |     impl<'a, T> Trait<'a, T> for () {
    |          -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
@@ -8,7 +8,7 @@ LL |             req
    |             ^^^ ...so that the type `&'a T` will meet its required lifetime bounds...
    |
 note: ...that is required by this bound
-  --> $DIR/wf-in-associated-type.rs:38:36
+  --> $DIR/wf-in-associated-type.rs:39:36
    |
 LL |         type Opaque = impl Sized + 'a;
    |                                    ^^
@@ -18,7 +18,7 @@ LL |     impl<'a, T: 'a> Trait<'a, T> for () {
    |               ++++
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/wf-in-associated-type.rs:40:13
+  --> $DIR/wf-in-associated-type.rs:41:13
    |
 LL |     impl<'a, T> Trait<'a, T> for () {
    |          -- the parameter type `T` must be valid for the lifetime `'a` as defined here...

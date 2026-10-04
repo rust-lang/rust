@@ -1,3 +1,7 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] check-pass
 //! This test checks that when checking for opaque types that
 //! only differ in lifetimes, we handle the case of non-generic
 //! regions correctly.
@@ -11,7 +15,7 @@ type Opq<'a> = impl Sized;
 #[define_opaque(Opq)]
 fn build<'a>() -> Opq<'a> {
     let _: Opq<'_> = ();
-    //~^ ERROR expected generic lifetime parameter, found `'_`
+    //[current]~^ ERROR expected generic lifetime parameter, found `'_`
 }
 
 fn main() {}

@@ -1,0 +1,26 @@
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+  --> $DIR/impl-fn-in-ret-pos-invalid-binder.rs:13:43
+   |
+LL | fn a<'a>() -> impl for<'b> Fn(&'a u8) -> (impl Sized + 'b) {
+   |                                           ^^^^^^^^^^^^^--
+   |                                           |
+   |                                           `impl Trait` implicitly captures all lifetimes in scope
+   |
+note: lifetime declared here
+  --> $DIR/impl-fn-in-ret-pos-invalid-binder.rs:13:24
+   |
+LL | fn a<'a>() -> impl for<'b> Fn(&'a u8) -> (impl Sized + 'b) {
+   |                        ^^
+
+error[E0275]: overflow evaluating the requirement `a<'a>::{opaque#0}<'a> == {closure@$DIR/impl-fn-in-ret-pos-invalid-binder.rs:14:5: 14:8}`
+  --> $DIR/impl-fn-in-ret-pos-invalid-binder.rs:13:15
+   |
+LL | fn a<'a>() -> impl for<'b> Fn(&'a u8) -> (impl Sized + 'b) {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`impl_fn_in_ret_pos_invalid_binder`)
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0275, E0657.
+For more information about an error, try `rustc --explain E0275`.

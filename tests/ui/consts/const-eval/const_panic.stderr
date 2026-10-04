@@ -76,7 +76,7 @@ error[E0080]: the program aborted execution
 LL | const ABORT: () = core::process::abort_immediate();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `ABORT` failed inside this call
    |
-note: inside `abort_immediate`
+note: inside `std::process::abort_immediate`
   --> $SRC_DIR/core/src/process.rs:LL:COL
 
 error: aborting due to 13 previous errors
