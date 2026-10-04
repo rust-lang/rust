@@ -303,6 +303,18 @@ impl<'tcx> InstanceKind<'tcx> {
         }
     }
 
+    /// Checks if calling `self` requires passing an implicit caller location argument.
+    ///
+    /// Note that this returns `false` on the coroutine of a `#[track_caller] async fn`,
+    /// since calling the coroutine doesn't require any extra arguments, even if
+    /// the coroutine does "override" the caller location.
+    ///
+    /// In Miri, when reporting the stack trace of UB or other errors,
+    /// frames where this function returns true are skipped by default,
+    /// and `#[track_caller]` on an `async fn` is ignored for the generated coroutine.
+    /// This is because resolving the caller (as opposed to the poller) of a coroutine
+    /// requires reading the memory of the running program, and this memory can potentially
+    /// be corrupted by misbehaving user code.
     pub fn requires_caller_location(&self, tcx: TyCtxt<'_>) -> bool {
         match *self {
             InstanceKind::Item(def_id)

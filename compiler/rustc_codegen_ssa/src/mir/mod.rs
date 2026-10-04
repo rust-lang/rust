@@ -1,5 +1,6 @@
 use std::iter;
 
+use rustc_abi::FieldIdx;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -125,8 +126,19 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// This is `None` if no variable debuginfo/names are needed.
     per_local_var_debug_info: Option<PerLocalVarDebugInfoIndexVec<'tcx, Bx::DIVariable>>,
 
-    /// Caller location propagated if this function has `#[track_caller]`.
-    caller_location: Option<OperandRef<'tcx, Bx::Value>>,
+    /// Where to access the caller location (for the parent-most body if there's inlining)
+    /// when there's `#[track_caller]`.
+    caller_location: Option<CallerLocation<'tcx, Bx::Value>>,
+}
+
+#[derive(Clone, Copy)]
+enum CallerLocation<'tcx, Value> {
+    /// Typical case: This function has `#[track_caller]`.
+    /// We track the caller location argument directly.
+    Direct(OperandRef<'tcx, Value>),
+    /// Used if we're in a desugared coroutine inside a coroutine fn.
+    /// We track the field index inside `Self` that stores the caller location.
+    Captured(FieldIdx),
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -634,7 +646,15 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         fx.cached_llbbs[mir::START_BLOCK] = CachedLlbb::Some(bx.llbb());
     }
 
-    if fx.instance.def.requires_caller_location(bx.tcx()) {
+    if let Some(coro_info) = mir.coroutine.as_deref()
+        && let Some(captured_caller_location_idx) = coro_info.captured_caller_location
+    {
+        assert!(
+            !fx.instance.def.requires_caller_location(bx.tcx()),
+            "should have only one source of truth for caller_location"
+        );
+        fx.caller_location = Some(CallerLocation::Captured(captured_caller_location_idx));
+    } else if fx.instance.def.requires_caller_location(bx.tcx()) {
         let mir_args = if let Some(num_untupled) = num_untupled {
             // Subtract off the tupled argument that gets 'expanded'
             args.len() - 1 + num_untupled
@@ -654,11 +674,11 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             _ => bug!("caller location must be PassMode::Direct, found {:?}", arg.mode),
         }
 
-        fx.caller_location = Some(OperandRef {
+        fx.caller_location = Some(CallerLocation::Direct(OperandRef {
             val: OperandValue::Immediate(bx.get_param(llarg_idx)),
             layout: arg.layout,
             move_annotation: None,
-        });
+        }));
     }
 
     args

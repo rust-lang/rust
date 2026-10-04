@@ -885,6 +885,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             _ => return,
         };
 
+        let captured_caller_location =
+            self.tcx.hir_node_by_def_id(self.def_id).expect_closure().captured_caller_location;
+
         // In analyze_closure() in upvar.rs we gathered a list of upvars used by an
         // indexed closure and we stored in a map called closure_min_captures in TypeckResults
         // with the closure's DefId. Here, we run through that vec of UpvarIds for
@@ -914,7 +917,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let mutability = captured_place.mutability;
 
                 let mut projs = closure_env_projs.clone();
-                projs.push(ProjectionElem::Field(FieldIdx::new(i), ty));
+                let field_idx = FieldIdx::new(i);
+                projs.push(ProjectionElem::Field(field_idx, ty));
                 match capture {
                     ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {}
                     ty::UpvarCapture::ByRef(..) => {
@@ -933,6 +937,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     composite: None,
                     argument_index: None,
                 });
+
+                if captured_caller_location
+                    .is_some_and(|hir_id| captured_place.get_root_variable() == hir_id)
+                {
+                    let coroutine_info = self
+                        .coroutine
+                        .as_deref_mut()
+                        .expect("caller location should only be captured in a coroutine");
+                    assert!(
+                        coroutine_info.captured_caller_location.is_none(),
+                        "should only have one captured_caller_location"
+                    );
+                    coroutine_info.captured_caller_location = Some(field_idx);
+                }
 
                 let capture = Capture { captured_place, use_place, mutability };
                 (var_id, capture)

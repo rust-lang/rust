@@ -730,6 +730,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         let frame = self.frame();
+        self.local_in_frame_to_op(frame, local, layout)
+    }
+
+    /// Read from a local of the specified frame.
+    /// Will not access memory, instead an indirect `Operand` is returned.
+    pub fn local_in_frame_to_op(
+        &self,
+        frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
+        local: mir::Local,
+        layout: Option<TyAndLayout<'tcx>>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         let layout = self.layout_of_local(frame, local, layout)?;
         let op = *frame.locals[local].access()?;
         if matches!(op, Operand::Immediate(_)) {

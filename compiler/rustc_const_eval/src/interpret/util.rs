@@ -9,9 +9,8 @@ use rustc_span::span_bug;
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::debug;
 
-use super::{InterpCx, MPlaceTy, MemoryKind, interp_ok, throw_inval};
+use super::{CallerLocation, InterpCx, MPlaceTy, Machine, MemoryKind, interp_ok, throw_inval};
 use crate::const_eval::{CompileTimeInterpCx, CompileTimeMachine, InterpretationResult};
-use crate::interpret::Machine;
 
 /// Checks if a type implements predicates.
 /// Calls `ensure_monomorphic_enough` on `ty` and `trait_ty` for you.
@@ -24,8 +23,12 @@ pub(crate) fn type_implements_dyn_trait<'tcx, M: Machine<'tcx>>(
     ensure_monomorphic_enough(trait_ty)?;
 
     let ty::Dynamic(preds, _) = trait_ty.kind() else {
+        let span = match ecx.find_closest_untracked_caller_location() {
+            CallerLocation::Direct(span) => span,
+            CallerLocation::Captured { fallback_span, .. } => fallback_span,
+        };
         span_bug!(
-            ecx.find_closest_untracked_caller_location(),
+            span,
             "Invalid type provided to type_implements_predicates. U must be dyn Trait, got {trait_ty}."
         );
     };

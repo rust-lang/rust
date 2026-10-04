@@ -2,6 +2,7 @@ use std::borrow::{Borrow, Cow};
 use std::hash::Hash;
 use std::{fmt, mem};
 
+use either::Either::{Left, Right};
 use rustc_abi::{Align, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::Mutability;
 use rustc_attr_ir::find_attr;
@@ -17,7 +18,7 @@ use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{self, FieldInfo, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{mir, throw_machine_stop};
-use rustc_span::{Span, Symbol, bug, span_bug, sym};
+use rustc_span::{Symbol, bug, span_bug, sym};
 use rustc_target::callconv::FnAbi;
 use tracing::debug;
 
@@ -212,18 +213,41 @@ impl interpret::MayLeak for ! {
 }
 
 impl<'tcx> CompileTimeInterpCx<'tcx> {
-    fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32) {
-        let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
-        let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
+    fn caller_location_triple(&self) -> InterpResult<'tcx, (Symbol, u32, u32)> {
+        interp_ok(match self.caller_location()? {
+            Left(span) => {
+                let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
+                let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
 
-        use rustc_span::RemapPathScopeComponents;
-        (
-            Symbol::intern(
-                &caller.file.name.display(RemapPathScopeComponents::DIAGNOSTICS).to_string_lossy(),
-            ),
-            u32::try_from(caller.line).unwrap(),
-            u32::try_from(caller.col_display).unwrap().checked_add(1).unwrap(),
-        )
+                use rustc_span::RemapPathScopeComponents;
+                (
+                    Symbol::intern(
+                        &caller
+                            .file
+                            .name
+                            .display(RemapPathScopeComponents::DIAGNOSTICS)
+                            .to_string_lossy(),
+                    ),
+                    u32::try_from(caller.line).unwrap(),
+                    u32::try_from(caller.col_display).unwrap().checked_add(1).unwrap(),
+                )
+            }
+            Right(place) => {
+                // `place` refers to a `Location`. Read its fields.
+                let filename =
+                    Symbol::intern(self.read_str(&self.deref_pointer(&self.project_field(
+                        &self.project_field(&place, FieldIdx::from_usize(0))?,
+                        FieldIdx::from_usize(0),
+                    )?)?)?);
+                let line = self
+                    .read_scalar(&self.project_field(&place, FieldIdx::from_usize(1))?)?
+                    .to_u32()?;
+                let col = self
+                    .read_scalar(&self.project_field(&place, FieldIdx::from_usize(2))?)?
+                    .to_u32()?;
+                (filename, line, col)
+            }
+        })
     }
 
     /// "Intercept" a function call, because we have something special to do for it.
@@ -253,8 +277,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
             }
 
             let msg = Symbol::intern(self.read_str(&msg_place)?);
-            let span = self.find_closest_untracked_caller_location();
-            let (file, line, col) = self.location_triple_for_span(span);
+            let (file, line, col) = self.caller_location_triple()?;
             return Err(ConstEvalErrKind::Panic { msg, file, line, col }).into();
         } else if self.tcx.is_lang_item(def_id, LangItem::PanicFmt) {
             // For panic_fmt, call const_panic_fmt instead.
@@ -463,8 +486,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
     fn panic_nounwind(ecx: &mut InterpCx<'tcx, Self>, msg: &str) -> InterpResult<'tcx> {
         let msg = Symbol::intern(msg);
-        let span = ecx.find_closest_untracked_caller_location();
-        let (file, line, col) = ecx.location_triple_for_span(span);
+        let (file, line, col) = ecx.caller_location_triple()?;
         Err(ConstEvalErrKind::Panic { msg, file, line, col }).into()
     }
 
