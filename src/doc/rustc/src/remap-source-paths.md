@@ -48,11 +48,12 @@ This flag accepts a comma-separated list of values and may be specified multiple
 The valid scopes are:
 
 - `macro` - apply remappings to the expansion of `std::file!()` macro. This is where paths in embedded panic messages come from
+- `documentation` - apply remappings to `rustdoc` specific output
 - `diagnostics` - apply remappings to printed compiler diagnostics
 - `debuginfo` - apply remappings to debug information
 - `coverage` - apply remappings to coverage information
 - `object` - apply remappings to all paths in compiled executables and libraries, but not elsewhere.
-   - Currently an alias for `macro,coverage,debuginfo`.
+   - Currently an alias for `macro,coverage,debuginfo,documentation`.
    - Does not apply to `rustc` generated metadata (see below for more details).
 - `all` (default) - an alias for all of the above (and unstable scopes), also equivalent to supplying only `--remap-path-prefix` without `--remap-path-scope`.
 

@@ -11,10 +11,10 @@
 //@ compile-flags:--test --test-args --test-threads=1
 //@ compile-flags:--remap-path-prefix={{src-base}}=remapped_path
 
-//@[with-diag-scope] compile-flags: -Zunstable-options --remap-path-scope=diagnostics
-//@[with-macro-scope] compile-flags: -Zunstable-options --remap-path-scope=macro
-//@[with-object-scope] compile-flags: -Zunstable-options --remap-path-scope=debuginfo
-//@[with-doc-scope] compile-flags: -Zunstable-options --remap-path-scope=documentation
+//@[with-diag-scope] compile-flags: --remap-path-scope=diagnostics
+//@[with-macro-scope] compile-flags: --remap-path-scope=macro
+//@[with-object-scope] compile-flags: --remap-path-scope=debuginfo
+//@[with-doc-scope] compile-flags: --remap-path-scope=documentation
 
 /// ```
 /// fn invalid(
