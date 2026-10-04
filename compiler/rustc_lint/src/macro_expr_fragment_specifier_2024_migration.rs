@@ -2,7 +2,7 @@
 
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
-use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw};
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::sym;
 use tracing::debug;
@@ -70,9 +70,7 @@ declare_lint! {
     Allow,
     "The `expr` fragment specifier will accept more expressions in the 2024 edition. \
     To keep the existing behavior, use the `expr_2021` fragment specifier.",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionSemanticsChange 2024 "macro-fragment-specifiers"),
-    };
+    @future_incompatible = edition_semantics_change(2024, "macro-fragment-specifiers");
 }
 
 declare_lint_pass!(Expr2024 => [EDITION_2024_EXPR_FRAGMENT_SPECIFIER,]);

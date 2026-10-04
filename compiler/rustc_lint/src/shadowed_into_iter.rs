@@ -1,6 +1,6 @@
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir as hir;
-use rustc_lint_defs::{declare_lint, fcw, impl_lint_pass};
+use rustc_lint_defs::{declare_lint, impl_lint_pass};
 use rustc_middle::ty::{self, Ty};
 
 use crate::diagnostics::{ShadowedIntoIterDiag, ShadowedIntoIterDiagSub};
@@ -29,9 +29,7 @@ declare_lint! {
     pub ARRAY_INTO_ITER,
     Warn,
     "detects calling `into_iter` on arrays in Rust 2015 and 2018",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionSemanticsChange 2021 "IntoIterator-for-arrays"),
-    };
+    @future_incompatible = edition_semantics_change(2021, "IntoIterator-for-arrays");
 }
 
 declare_lint! {
@@ -57,9 +55,7 @@ declare_lint! {
     pub BOXED_SLICE_INTO_ITER,
     Warn,
     "detects calling `into_iter` on boxed slices in Rust 2015, 2018, and 2021",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionSemanticsChange 2024 "intoiterator-box-slice"),
-    };
+    @future_incompatible = edition_semantics_change(2024, "intoiterator-box-slice");
 }
 
 #[derive(Copy, Clone)]

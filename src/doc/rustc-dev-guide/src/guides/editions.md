@@ -181,9 +181,7 @@ declare_lint! {
     pub KEYWORD_IDENTS,
     Allow,
     "detects edition keywords being used as an identifier",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2018 "slug-of-edition-guide-page")
-    };
+    @future_incompatible = edition_error(2018, "slug-of-edition-guide-page");
 }
 ```
 

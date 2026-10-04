@@ -4,7 +4,7 @@ use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level, msg};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw};
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty;
 use rustc_parse_format::{ParseMode, Parser, Piece};
 use rustc_span::{InnerSpan, Span, Symbol, bug, hygiene, sym};
@@ -37,10 +37,7 @@ declare_lint! {
     NON_FMT_PANICS,
     Warn,
     "detect single-argument panic!() invocations in which the argument is not a format string",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionSemanticsChange 2021 "panic-macro-consistency"),
-        explain_reason: false,
-    };
+    @future_incompatible = edition_semantics_change(2021, "panic-macro-consistency").dont_explain_reason();
     report_in_external_macro
 }
 

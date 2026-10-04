@@ -16,7 +16,8 @@ use rustc_lint_defs::builtin::{
     UNFULFILLED_LINT_EXPECTATIONS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES,
 };
 use rustc_lint_defs::{
-    Level, Lint, LintExpectationId, LintId, StableLintExpectationId, UnstableLintExpectationId,
+    Level, Lint, LintExpectationId, LintId, ReportInDeps, StableLintExpectationId,
+    UnstableLintExpectationId,
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::{
@@ -121,8 +122,9 @@ fn skippable_lints(tcx: TyCtxt<'_>, (): ()) -> UnordSet<LintId> {
         .into_iter()
         .filter(|lint| {
             // Lints that show up in future-compat reports must always be run.
-            let has_future_breakage =
-                lint.future_incompatible.is_some_and(|fut| fut.report_in_deps);
+            let has_future_breakage = lint
+                .future_incompatible
+                .is_some_and(|fut| matches!(fut.reason.report_in_deps(), ReportInDeps::Yes));
             !has_future_breakage && !lint.eval_always
         })
         .filter(|lint| {
