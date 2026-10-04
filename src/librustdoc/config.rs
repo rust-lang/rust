@@ -421,8 +421,7 @@ impl Options {
                 early_dcx.early_fatal(err);
             }
         };
-        let remap_path_scope =
-            rustc_session::config::parse_remap_path_scope(early_dcx, matches, &unstable_opts);
+        let remap_path_scope = rustc_session::config::parse_remap_path_scope(early_dcx, matches);
 
         let dcx = new_dcx(error_format, None, diagnostic_width, &unstable_opts);
         let dcx = dcx.handle();

@@ -461,6 +461,14 @@ fn opts() -> Vec<RustcOptGroup> {
             "Remap source names in compiler messages",
             "FROM=TO",
         ),
+        opt(
+            Stable,
+            Opt,
+            "",
+            "remap-path-scope",
+            "Defines which scopes of paths should be remapped by `--remap-path-prefix`",
+            "[macro,diagnostics,documentation,debuginfo,coverage,object,all]",
+        ),
         opt(Unstable, Opt, "", "index-page", "Markdown file to be used as index page", "PATH"),
         opt(
             Unstable,
@@ -560,14 +568,6 @@ fn opts() -> Vec<RustcOptGroup> {
             "merge-doctests",
             "Force all doctests to be compiled as a single binary, instead of one binary per test. If merging fails, rustdoc will emit a hard error.",
             "yes|no|auto",
-        ),
-        opt(
-            Unstable,
-            Opt,
-            "",
-            "remap-path-scope",
-            "Defines which scopes of paths should be remapped by `--remap-path-prefix`",
-            "[macro,diagnostics,debuginfo,coverage,object,all]",
         ),
         opt(
             Unstable,

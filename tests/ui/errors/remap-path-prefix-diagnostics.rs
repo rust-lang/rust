@@ -16,7 +16,7 @@
 //@[with-diag-in-deps] compile-flags: --remap-path-scope=diagnostics
 //@[with-macro-in-deps] compile-flags: --remap-path-scope=macro
 //@[with-debuginfo-in-deps] compile-flags: --remap-path-scope=debuginfo
-//@[with-doc-in-deps] compile-flags: --remap-path-scope=documentation -Zunstable-options
+//@[with-doc-in-deps] compile-flags: --remap-path-scope=documentation
 //@[not-diag-in-deps] compile-flags: --remap-path-scope=diagnostics
 
 //@[with-diag-in-deps] aux-build:trait-diag.rs
