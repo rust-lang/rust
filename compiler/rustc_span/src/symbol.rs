@@ -2968,6 +2968,7 @@ impl Interner {
         })
     }
 
+    #[inline(never)]
     fn intern_inner_big(&self, byte_str: &[u8]) -> u32 {
         self.0.with_lock(|inner| {
             // FIXME(matyas) SliceOrd compares element by element before it compares len, we could maybe
