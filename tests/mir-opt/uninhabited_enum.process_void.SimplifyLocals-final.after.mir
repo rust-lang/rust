@@ -8,6 +8,7 @@ fn process_void(_1: *const Void) -> () {
     }
 
     bb0: {
+        _0 = const ();
         return;
     }
 }

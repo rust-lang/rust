@@ -15,6 +15,7 @@
           StorageLive(_1);
 -         _1 = foo() -> [return: bb1, unwind continue];
 +         StorageLive(_2);
++         _2 = const D;
 +         asm!("", options(MAY_UNWIND)) -> [return: bb2, unwind: bb3];
       }
   
@@ -26,6 +27,7 @@
 +     }
 + 
 +     bb2: {
++         _1 = const ();
 +         drop(_2) -> [return: bb1, unwind continue];
 +     }
 + 

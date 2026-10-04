@@ -25,10 +25,10 @@ pub fn test1(x: bool) {
     }
 
     // CHECK-LABEL: @test1(
-    // CHECK: br i1 %x, label %bb1, label %bb2, !prof ![[NUM:[0-9]+]]
-    // CHECK: bb2:
+    // CHECK: br i1 %x, label %[[TRUE:bb[0-9]+]], label %[[FALSE:bb[0-9]+]], !prof ![[NUM:[0-9]+]]
+    // CHECK: [[FALSE]]:
     // CHECK: path_b
-    // CHECK: bb1:
+    // CHECK: [[TRUE]]:
     // CHECK: path_a
 }
 
@@ -43,10 +43,10 @@ pub fn test2(x: i32) {
     }
 
     // CHECK-LABEL: @test2(
-    // CHECK: br i1 %_2, label %bb2, label %bb1, !prof ![[NUM]]
-    // CHECK: bb1:
+    // CHECK: br i1 %_2, label %[[TRUE:bb[0-9]+]], label %[[FALSE:bb[0-9]+]], !prof ![[NUM]]
+    // CHECK: [[FALSE]]:
     // CHECK: path_b
-    // CHECK: bb2:
+    // CHECK: [[TRUE]]:
     // CHECK: path_a
 }
 
