@@ -313,7 +313,13 @@ mod impls {
 }
 
 unsafe extern "C" {
-    /// A type representing a pointer to a function pointer.
+    /// A type representing the machine code of a function.
+    ///
+    /// A pointer pointing to this type is similar to a [function pointer][fn],
+    /// but does not specify the signature or ABI of the function, and cannot be used
+    /// to call the function from safe code.
+    ///
+    /// Pointers to this type may be obtained using the [`FnPtr`] trait.
     #[unstable(feature = "fn_static", issue = "148768")]
     #[lang = "code"]
     pub type Code;
