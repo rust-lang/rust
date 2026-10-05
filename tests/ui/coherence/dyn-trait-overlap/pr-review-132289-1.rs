@@ -3,7 +3,11 @@
 // the first example from @steffahn during review.
 // https://github.com/rust-lang/rust/pull/132289#issuecomment-2564492153
 
-//@ check-pass
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[old] known-bug: #57893
+//@[old] check-pass
 
 type A = &'static [usize; 1];
 type B = &'static [usize; 100];
@@ -47,6 +51,5 @@ fn main() {
 
     // this (`_arr2`) can't ever become B either, soundly
     let _arr2: A = y.method();
-    // there aren't any other arrays being defined anywhere in this
-    // test case, besides the length-1 one containing [1337]
+    //[next]~^ ERROR: type annotations needed
 }
