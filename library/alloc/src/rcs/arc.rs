@@ -264,6 +264,9 @@ macro_rules! acquire {
 )]
 pub struct Arc<
     T: ?Sized,
+    // FIXME: When stabilizing this parameter, the `AllocatorNightly`
+    // bound on the `From<Box>` impl *must* be weaked to `Allocator`,
+    // as `Box` is fundamental!
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     ptr: NonNull<ArcInner<T>>,

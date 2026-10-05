@@ -328,6 +328,26 @@ pub(crate) struct DocTestLiteral;
 pub(crate) struct AttrCrateLevelOnly;
 
 #[derive(Diagnostic)]
+#[diag("conflicting doc inlining attributes")]
+#[help("remove one of the conflicting attributes")]
+pub(crate) struct DocInlineConflict {
+    #[primary_span]
+    pub spans: MultiSpan,
+}
+
+#[derive(Diagnostic)]
+#[diag("this attribute can only be applied to a `use` item")]
+#[note(
+    "read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline> for more information"
+)]
+pub(crate) struct DocInlineOnlyUse {
+    #[label("only applicable on `use` items")]
+    pub attr_span: Span,
+    #[label("not a `use` item")]
+    pub item_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#[diagnostic::do_not_recommend]` does not expect any arguments")]
 pub(crate) struct DoNotRecommendDoesNotExpectArgs;
 
