@@ -18,7 +18,6 @@ struct Foo<'lt, T, const C: usize> where $0 {}
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
-            tt Trait
             un Union                  Union
             bt u32                      u32
             kw crate::
@@ -95,7 +94,6 @@ struct Foo<'lt, T, const C: usize> where for<'a> $0 {}
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
-            tt Trait
             un Union                  Union
             bt u32                      u32
             kw crate::
@@ -124,7 +122,6 @@ impl Record {
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
-            tt Trait
             un Union                  Union
             bt u32                      u32
             kw crate::

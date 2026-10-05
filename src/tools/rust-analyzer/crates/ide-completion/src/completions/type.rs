@@ -38,6 +38,10 @@ pub(crate) fn complete_type_path<'db>(
             {
                 true
             }
+            ScopeDef::ModuleDef(Trait(_)) if ctx.edition.at_least_2021() => matches!(
+                location,
+                TypeLocation::ImplTarget | TypeLocation::ImplTrait | TypeLocation::TypeBound
+            ),
             // Type things are fine
             ScopeDef::ModuleDef(BuiltinType(_) | Adt(_) | Module(_) | Trait(_) | TypeAlias(_))
             | ScopeDef::AdtSelfType(_)
