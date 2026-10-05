@@ -233,9 +233,7 @@ impl TestContext {
                 "-Ainternal_features",
                 "-Zui-testing",
                 "-Zdeduplicate-diagnostics=no",
-                // FIXME(#160895): While the new solver is enabled by default on nightly,
-                // we don't want to use it in our tests for now.
-                "-Znext-solver=coherence",
+                "-Znext-solver=globally",
                 "-Dwarnings",
             ]
             .map(OsString::from),

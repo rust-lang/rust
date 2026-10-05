@@ -1,9 +1,18 @@
-error[E0275]: overflow evaluating the requirement `<i32 as std::ops::Add>::Output == issue10041::X`
-  --> tests/ui/new_ret_no_self_overflow.rs:21:25
+error: item does not constrain `issue10041::X::{opaque#0}`
+  --> tests/ui/new_ret_no_self_overflow.rs:23:16
    |
 LL |         pub fn new() -> X {
-   |                         ^
+   |                ^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> tests/ui/new_ret_no_self_overflow.rs:17:14
+   |
+LL |     type X = impl std::ops::Add<Output = X>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error[E0275]: overflow evaluating the requirement `issue10041::X == _`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0275`.

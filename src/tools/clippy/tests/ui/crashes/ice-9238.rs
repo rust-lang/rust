@@ -1,4 +1,5 @@
 //@ check-pass
+//@ compile-flags: -Znext-solver=coherence
 
 #![expect(incomplete_features)]
 #![feature(generic_const_exprs)]
