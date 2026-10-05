@@ -130,7 +130,14 @@ use crate::ops::ControlFlow;
 #[doc(alias = "?")]
 #[lang = "Try"]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-pub const trait Try: [const] FromResidual {
+pub const trait Try: [const] FromResidual<Self::Residual, Self::Kind> {
+    /// A marker type to signify the general meaning of the `?` operation on this type.
+    /// For example, `<Result as Try>::Kind = TryResult`, and `TryResult` should be used for
+    /// custom "result-like" types which may contain an error.
+    /// When using `?` within a function, the return type of the function must implement
+    /// `FromResidual<T, <T as Try>::Kind>` where `T` is the type of the target of `?`.
+    type Kind;
+
     /// The type of the value produced by `?` when *not* short-circuiting.
     #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
     type Output;
@@ -228,7 +235,7 @@ pub const trait Try: [const] FromResidual {
         all(
             from_desugaring = "QuestionMark",
             Self = "core::result::Result<T, E>",
-            R = "core::option::Option<!>",
+            Kind = "core::option::TryOption",
         ),
         message = "the `?` operator can only be used on `Result`s, not `Option`s, \
             in {ItemContext} that returns `Result`",
@@ -252,7 +259,7 @@ pub const trait Try: [const] FromResidual {
         all(
             from_desugaring = "QuestionMark",
             Self = "core::option::Option<T>",
-            R = "core::result::Result<T, E>",
+            Kind = "core::result::TryResult",
         ),
         message = "the `?` operator can only be used on `Option`s, not `Result`s, \
             in {ItemContext} that returns `Option`",
@@ -275,7 +282,7 @@ pub const trait Try: [const] FromResidual {
         all(
             from_desugaring = "QuestionMark",
             Self = "core::ops::control_flow::ControlFlow<B, C>",
-            R = "core::ops::control_flow::ControlFlow<B, C>",
+            Kind = "core::ops::control_flow::TryControlFlow",
         ),
         message = "the `?` operator in {ItemContext} that returns `ControlFlow<B, _>` \
             can only be used on other `ControlFlow<B, _>`s (with the same Break type)",
@@ -306,7 +313,7 @@ pub const trait Try: [const] FromResidual {
 #[rustc_diagnostic_item = "FromResidual"]
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-pub const trait FromResidual<R = <Self as Try>::Residual> {
+pub const trait FromResidual<R = <Self as Try>::Residual, Kind = <Self as Try>::Kind> {
     /// Constructs the type from a compatible `Residual` type.
     ///
     /// This should be implemented consistently with the `branch` method such
@@ -337,7 +344,7 @@ pub const trait FromResidual<R = <Self as Try>::Residual> {
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 pub const trait TryAs<T>: Try {
     /// The Try type that is similar to Self, but with `Output` changed to `T`
-    type Try: [const] Try<Output = T, Residual = Self::Residual>;
+    type Try: [const] Try<Kind = Self::Kind, Output = T, Residual = Self::Residual>;
 }
 
 #[unstable(
@@ -351,9 +358,9 @@ pub const trait TryAs<T>: Try {
 #[allow(unreachable_pub)] // not-exposed but still used via lang-item
 pub fn from_yeet<T, Y>(yeeted: Y) -> T
 where
-    T: FromResidual<Yeet<Y>>,
+    T: Try<Residual: From<Y>>,
 {
-    FromResidual::from_residual(Yeet(yeeted))
+    T::from_residual(yeeted.into())
 }
 
 /// Used by `?` desugaring to call `Try::branch` and wrap the `Residual` with `TryResidual`.
@@ -385,7 +392,7 @@ impl<T: Try> TryResidual<T> {
     #[inline]
     pub const fn into_try_heterogeneous<U>(self) -> U
     where
-        U: [const] FromResidual<T::Residual>,
+        U: [const] FromResidual<T::Residual, T::Kind>,
     {
         FromResidual::from_residual(self.0)
     }
@@ -446,15 +453,16 @@ const impl<T, U> TryAs<U> for NeverShortCircuit<T> {
     type Try = NeverShortCircuit<U>;
 }
 
-pub(crate) enum NeverShortCircuitResidual {}
+pub(crate) struct TryNeverShortCircuit(());
 
 #[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
 const impl<T> Try for NeverShortCircuit<T> {
+    type Kind = TryNeverShortCircuit;
     type Output = T;
-    type Residual = NeverShortCircuitResidual;
+    type Residual = !;
 
     #[inline]
-    fn branch(self) -> ControlFlow<NeverShortCircuitResidual, T> {
+    fn branch(self) -> ControlFlow<!, T> {
         ControlFlow::Continue(self.0)
     }
 
@@ -463,10 +471,11 @@ const impl<T> Try for NeverShortCircuit<T> {
         NeverShortCircuit(x)
     }
 }
+
 #[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
 const impl<T> FromResidual for NeverShortCircuit<T> {
     #[inline]
-    fn from_residual(never: NeverShortCircuitResidual) -> Self {
+    fn from_residual(never: !) -> Self {
         match never {}
     }
 }

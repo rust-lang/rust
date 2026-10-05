@@ -1939,7 +1939,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ///         // If there is an enclosing `try {...}`:
     ///         break 'catch_target Residual::into_try_type(residual),
     ///         // Otherwise:
-    ///         return Try::from_residual(residual),
+    ///         return FromResidual::from_residual(residual),
     /// }
     /// ```
     fn lower_expr_try(&mut self, span: Span, sub_expr: &Expr) -> hir::ExprKind<'hir> {
@@ -1981,7 +1981,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // `ControlFlow::Break(residual) =>
         //     #[allow(unreachable_code)]
-        //     return Try::from_residual(residual),`
+        //     return FromResidual::from_residual(residual),`
         let break_arm = {
             let residual_ident = Ident::with_dummy_span(sym::residual);
             let (residual_local, residual_local_nid) = self.pat_ident(try_span, residual_ident);

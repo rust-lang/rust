@@ -353,6 +353,7 @@ symbols! {
         TryCapturePrintable,
         TryFrom,
         TryInto,
+        TryResult,
         Tuple,
         Ty,
         TyCtxt,

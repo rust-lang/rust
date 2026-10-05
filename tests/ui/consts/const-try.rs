@@ -11,6 +11,7 @@
 #![feature(const_try)]
 
 use std::ops::{ControlFlow, FromResidual, Try};
+use std::result::TryResult;
 
 struct TryMe;
 struct Error;
@@ -22,6 +23,7 @@ const impl FromResidual<Error> for TryMe {
 }
 
 const impl Try for TryMe {
+    type Kind = TryResult;
     type Output = ();
     type Residual = Error;
     fn from_output(output: Self::Output) -> Self {

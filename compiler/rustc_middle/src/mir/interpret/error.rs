@@ -1,7 +1,9 @@
 use std::any::Any;
 use std::backtrace::Backtrace;
 use std::borrow::Cow;
-use std::{convert, fmt, mem, ops};
+#[cfg(bootstrap)]
+use std::convert;
+use std::{fmt, mem, ops};
 
 use either::Either;
 use rustc_abi::{Align, Size, VariantIdx};
@@ -945,8 +947,14 @@ pub struct InterpResult<'tcx, T = ()> {
 }
 
 impl<'tcx, T> ops::Try for InterpResult<'tcx, T> {
+    #[cfg(not(bootstrap))]
+    type Kind = std::result::TryResult;
+
     type Output = T;
+    #[cfg(bootstrap)]
     type Residual = InterpResult<'tcx, convert::Infallible>;
+    #[cfg(not(bootstrap))]
+    type Residual = InterpErrorInfo<'tcx>;
 
     #[inline]
     fn from_output(output: Self::Output) -> Self {
@@ -957,7 +965,10 @@ impl<'tcx, T> ops::Try for InterpResult<'tcx, T> {
     fn branch(self) -> ops::ControlFlow<Self::Residual, Self::Output> {
         match self.disarm() {
             Ok(v) => ops::ControlFlow::Continue(v),
+            #[cfg(bootstrap)]
             Err(e) => ops::ControlFlow::Break(InterpResult::new(Err(e))),
+            #[cfg(not(bootstrap))]
+            Err(e) => ops::ControlFlow::Break(e),
         }
     }
 }
@@ -972,6 +983,7 @@ impl<'tcx, T, U> ops::TryAs<U> for InterpResult<'tcx, T> {
     type Try = InterpResult<'tcx, U>;
 }
 
+#[cfg(bootstrap)]
 impl<'tcx, T> ops::FromResidual for InterpResult<'tcx, T> {
     #[inline]
     #[track_caller]
@@ -982,7 +994,17 @@ impl<'tcx, T> ops::FromResidual for InterpResult<'tcx, T> {
     }
 }
 
+#[cfg(not(bootstrap))]
+impl<'tcx, T, E: Into<InterpErrorInfo<'tcx>>> ops::FromResidual<E> for InterpResult<'tcx, T> {
+    #[inline]
+    #[track_caller]
+    fn from_residual(e: E) -> Self {
+        Self::new(Err(e.into()))
+    }
+}
+
 // Allow `yeet`ing `InterpError` in functions returning `InterpResult_`.
+#[cfg(bootstrap)]
 impl<'tcx, T> ops::FromResidual<ops::Yeet<InterpErrorKind<'tcx>>> for InterpResult<'tcx, T> {
     #[inline]
     fn from_residual(ops::Yeet(e): ops::Yeet<InterpErrorKind<'tcx>>) -> Self {
@@ -992,6 +1014,7 @@ impl<'tcx, T> ops::FromResidual<ops::Yeet<InterpErrorKind<'tcx>>> for InterpResu
 
 // Allow `?` on `Result<_, InterpError>` in functions returning `InterpResult_`.
 // This is useful e.g. for `option.ok_or_else(|| err_ub!(...))`.
+#[cfg(bootstrap)]
 impl<'tcx, T, E: Into<InterpErrorInfo<'tcx>>> ops::FromResidual<Result<convert::Infallible, E>>
     for InterpResult<'tcx, T>
 {

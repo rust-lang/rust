@@ -3,17 +3,17 @@
 #![feature(try_trait_v2)]
 
 use std::ops::{ControlFlow, FromResidual, Try, TryAs};
+use std::result::TryResult;
 
 enum MyResult<T, U> {
     Awesome(T),
     Terrible(U),
 }
 
-enum Never {}
-
 impl<U, V> Try for MyResult<U, V> {
+    type Kind = TryResult;
     type Output = U;
-    type Residual = MyResult<Never, V>;
+    type Residual = V;
 
     fn from_output(u: U) -> MyResult<U, V> {
         MyResult::Awesome(u)
@@ -22,18 +22,7 @@ impl<U, V> Try for MyResult<U, V> {
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             MyResult::Awesome(u) => ControlFlow::Continue(u),
-            MyResult::Terrible(e) => ControlFlow::Break(MyResult::Terrible(e)),
-        }
-    }
-}
-
-impl<U, V, W> FromResidual<MyResult<Never, V>> for MyResult<U, W>
-where
-    V: Into<W>,
-{
-    fn from_residual(x: MyResult<Never, V>) -> Self {
-        match x {
-            MyResult::Terrible(e) => MyResult::Terrible(e.into()),
+            MyResult::Terrible(e) => ControlFlow::Break(e),
         }
     }
 }
@@ -42,27 +31,12 @@ impl<T, U, V> TryAs<U> for MyResult<T, V> {
     type Try = MyResult<U, V>;
 }
 
-type ResultResidual<E> = Result<!, E>;
-
-impl<U, V, W> FromResidual<ResultResidual<V>> for MyResult<U, W>
+impl<T, E, F> FromResidual<E> for MyResult<T, F>
 where
-    V: Into<W>,
+    E: Into<F>
 {
-    fn from_residual(x: ResultResidual<V>) -> Self {
-        match x {
-            Err(e) => MyResult::Terrible(e.into()),
-        }
-    }
-}
-
-impl<U, V, W> FromResidual<MyResult<Never, V>> for Result<U, W>
-where
-    V: Into<W>,
-{
-    fn from_residual(x: MyResult<Never, V>) -> Self {
-        match x {
-            MyResult::Terrible(e) => Err(e.into()),
-        }
+    fn from_residual(e: E) -> Self {
+        MyResult::Terrible(e.into())
     }
 }
 

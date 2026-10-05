@@ -5,7 +5,6 @@
 #![feature(const_trait_impl)]
 #![feature(const_t_try)]
 #![feature(const_try)]
-#![feature(const_try_residual)]
 #![feature(try_trait_v2)]
 #![stable(feature = "foo", since = "1.0")]
 

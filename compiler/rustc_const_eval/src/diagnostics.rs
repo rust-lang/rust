@@ -163,6 +163,13 @@ pub(crate) struct UnstableConstTrait {
 }
 
 #[derive(Diagnostic)]
+#[diag("`?` is not yet stable in const contexts")]
+pub(crate) struct UnstableConstTry {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`{$name}` is not yet stable as a const intrinsic")]
 pub(crate) struct UnstableIntrinsic {
     #[primary_span]

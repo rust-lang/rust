@@ -9,7 +9,7 @@ LL |     Some(())?;
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: `Try` is not yet stable as a const trait
+error: `?` is not yet stable in const contexts
   --> $DIR/const-try-feature-gate.rs:4:5
    |
 LL |     Some(())?;
@@ -32,12 +32,13 @@ LL |     Some(())?;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: `FromResidual` is not yet stable as a const trait
+error: `?` is not yet stable in const contexts
   --> $DIR/const-try-feature-gate.rs:4:5
    |
 LL |     Some(())?;
    |     ^^^^^^^^^
    |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: add `#![feature(const_try)]` to the crate attributes to enable
    |
 LL + #![feature(const_try)]

@@ -6504,10 +6504,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let node = self.tcx.hir_node_by_def_id(obligation.cause.body_def_id);
         if let Some((fn_decl, body_id)) = choose_suggest_items(self.tcx, node)
             && let hir::FnRetTy::DefaultReturn(ret_span) = fn_decl.output
+            // () as FromResidual<_, TryResult>
             && self.tcx.is_diagnostic_item(sym::FromResidual, trait_pred.def_id())
             && trait_pred.skip_binder().trait_ref.args.type_at(0).is_unit()
-            && let ty::Adt(def, _) = trait_pred.skip_binder().trait_ref.args.type_at(1).kind()
-            && self.tcx.is_diagnostic_item(sym::Result, def.did())
+            && let ty::Adt(def, _) = trait_pred.skip_binder().trait_ref.args.type_at(2).kind()
+            && self.tcx.is_diagnostic_item(sym::TryResult, def.did())
         {
             let mut sugg_spans =
                 vec![(ret_span, " -> Result<(), Box<dyn std::error::Error>>".to_string())];

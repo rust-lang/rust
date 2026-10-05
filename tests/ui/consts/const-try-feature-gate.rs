@@ -4,8 +4,8 @@ const fn t() -> Option<()> {
     Some(())?;
     //~^ ERROR `?` is not allowed
     //~| ERROR `?` is not allowed
-    //~| ERROR `Try` is not yet stable as a const trait
-    //~| ERROR `FromResidual` is not yet stable as a const trait
+    //~| ERROR `?` is not yet stable in const contexts
+    //~| ERROR `?` is not yet stable in const contexts
     None
 }
 

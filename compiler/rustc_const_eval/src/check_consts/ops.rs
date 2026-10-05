@@ -458,6 +458,8 @@ pub(crate) struct CallUnstable {
     pub safe_to_expose_on_stable: bool,
     /// true if `def_id` is the function we are calling, false if `def_id` is an unstable trait.
     pub is_function_call: bool,
+    /// true if this is a function call from `?` desugaring
+    pub is_try: bool,
 }
 
 impl<'tcx> NonConstOp<'tcx> for CallUnstable {
@@ -473,10 +475,14 @@ impl<'tcx> NonConstOp<'tcx> for CallUnstable {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         assert!(!self.feature_enabled);
         let mut err = if self.is_function_call {
-            ccx.dcx().create_err(diagnostics::UnstableConstFn {
-                span,
-                def_path: ccx.tcx.def_path_str(self.def_id),
-            })
+            if self.is_try {
+                ccx.dcx().create_err(diagnostics::UnstableConstTry { span })
+            } else {
+                ccx.dcx().create_err(diagnostics::UnstableConstFn {
+                    span,
+                    def_path: ccx.tcx.def_path_str(self.def_id),
+                })
+            }
         } else {
             ccx.dcx().create_err(diagnostics::UnstableConstTrait {
                 span,

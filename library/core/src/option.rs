@@ -2857,11 +2857,18 @@ impl<T, V: FromIterator<T>> FromIterator<Option<T>> for Option<V> {
     }
 }
 
+/// The Try Kind for short-circuiting when a value is absent.
+/// The canonical type with this kind is `Option`.
+#[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+#[expect(missing_debug_implementations)]
+pub struct TryOption(());
+
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 const impl<T> ops::Try for Option<T> {
+    type Kind = TryOption;
     type Output = T;
-    type Residual = Option<!>;
+    type Residual = ();
 
     #[inline]
     fn from_output(output: Self::Output) -> Self {
@@ -2872,7 +2879,7 @@ const impl<T> ops::Try for Option<T> {
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             Some(v) => ControlFlow::Continue(v),
-            None => ControlFlow::Break(None),
+            None => ControlFlow::Break(()),
         }
     }
 }
@@ -2881,21 +2888,9 @@ const impl<T> ops::Try for Option<T> {
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 // Note: manually specifying the residual type instead of using the default to work around
 // https://github.com/rust-lang/rust/issues/99940
-const impl<T> ops::FromResidual<Option<!>> for Option<T> {
+const impl<T> ops::FromResidual for Option<T> {
     #[inline]
-    fn from_residual(residual: Option<!>) -> Self {
-        match residual {
-            None => None,
-        }
-    }
-}
-
-#[diagnostic::do_not_recommend]
-#[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
-const impl<T> ops::FromResidual<ops::Yeet<()>> for Option<T> {
-    #[inline]
-    fn from_residual(ops::Yeet(()): ops::Yeet<()>) -> Self {
+    fn from_residual(_: ()) -> Self {
         None
     }
 }

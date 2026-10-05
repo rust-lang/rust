@@ -100,11 +100,17 @@ pub enum ControlFlow<B, C = ()> {
     // is a no-op conversion in the `Try` implementation.
 }
 
+/// The Try Kind specifically for `ControlFlow`.
+#[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+#[expect(missing_debug_implementations)]
+pub struct TryControlFlow(());
+
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 const impl<B, C> ops::Try for ControlFlow<B, C> {
+    type Kind = TryControlFlow;
     type Output = C;
-    type Residual = ControlFlow<B, !>;
+    type Residual = B;
 
     #[inline]
     fn from_output(output: Self::Output) -> Self {
@@ -115,7 +121,7 @@ const impl<B, C> ops::Try for ControlFlow<B, C> {
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             ControlFlow::Continue(c) => ControlFlow::Continue(c),
-            ControlFlow::Break(b) => ControlFlow::Break(ControlFlow::Break(b)),
+            ControlFlow::Break(b) => ControlFlow::Break(b),
         }
     }
 }
@@ -124,12 +130,10 @@ const impl<B, C> ops::Try for ControlFlow<B, C> {
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 // Note: manually specifying the residual type instead of using the default to work around
 // https://github.com/rust-lang/rust/issues/99940
-const impl<B, C> ops::FromResidual<ControlFlow<B, !>> for ControlFlow<B, C> {
+const impl<B, C> ops::FromResidual for ControlFlow<B, C> {
     #[inline]
-    fn from_residual(residual: ControlFlow<B, !>) -> Self {
-        match residual {
-            ControlFlow::Break(b) => ControlFlow::Break(b),
-        }
+    fn from_residual(b: B) -> Self {
+        ControlFlow::Break(b)
     }
 }
 
