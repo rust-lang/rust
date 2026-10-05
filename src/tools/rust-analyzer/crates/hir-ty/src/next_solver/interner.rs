@@ -2488,7 +2488,7 @@ mod tls_db {
 
         #[inline]
         fn with<R>(&self, op: impl FnOnce(&dyn HirDatabase) -> R) -> R {
-            let db = self.database.get().expect("Try to use attached db, but not db is attached");
+            let db = self.database.get().expect("Tried to use attached db, but no db is attached");
 
             // SAFETY: The db is attached, so it must be valid.
             op(unsafe { db.as_ref() })
