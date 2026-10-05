@@ -2230,7 +2230,11 @@ pub struct MacCall {
 
 impl MacCall {
     pub fn span(&self) -> Span {
-        self.path.span().to(self.args.dspan.entire())
+        let first_span = match &self.path {
+            Path::NoSpan { segments } => segments[0].ident.span,
+            _ => self.path.span(),
+        };
+        first_span.to(self.args.dspan.entire())
     }
 }
 
