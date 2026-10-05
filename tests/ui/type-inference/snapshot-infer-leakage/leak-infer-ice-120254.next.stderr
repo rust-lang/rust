@@ -1,0 +1,60 @@
+error[E0277]: the trait bound `E: Dbg` is not satisfied
+  --> $DIR/leak-infer-ice-120254.rs:30:28
+   |
+LL |     fn record_err(self, _: <Self as Bar>::Checkpoint) -> () {}
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Dbg` is not implemented for `E`
+   |
+note: required for `Foo<I, E>` to implement `Bar`
+  --> $DIR/leak-infer-ice-120254.rs:21:22
+   |
+LL | impl<I: Bar, E: Dbg> Bar for Foo<I, E> {
+   |                 ---  ^^^     ^^^^^^^^^
+   |                 |
+   |                 unsatisfied trait bound introduced here
+help: consider restricting type parameter `E` with trait `Dbg`
+   |
+LL | impl<I: Bar, E: Dbg> Foo<I, E> {
+   |               +++++
+
+error[E0277]: the trait bound `E: Dbg` is not satisfied
+   |
+note: required for `Foo<I, E>` to implement `Bar`
+  --> $DIR/leak-infer-ice-120254.rs:21:22
+   |
+LL | impl<I: Bar, E: Dbg> Bar for Foo<I, E> {
+   |                 ---  ^^^     ^^^^^^^^^
+   |                 |
+   |                 unsatisfied trait bound introduced here
+help: consider restricting type parameter `E` with trait `Dbg`
+   |
+LL | impl<I: Bar, E: Dbg> Foo<I, E> {
+   |               +++++
+
+error: the type `<Foo<I, E> as Bar>::Checkpoint` is not well-formed
+  --> $DIR/leak-infer-ice-120254.rs:30:28
+   |
+LL |     fn record_err(self, _: <Self as Bar>::Checkpoint) -> () {}
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `E: Dbg` is not satisfied
+  --> $DIR/leak-infer-ice-120254.rs:30:28
+   |
+LL |     fn record_err(self, _: <Self as Bar>::Checkpoint) -> () {}
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Dbg` is not implemented for `E`
+   |
+note: required for `Foo<I, E>` to implement `Bar`
+  --> $DIR/leak-infer-ice-120254.rs:21:22
+   |
+LL | impl<I: Bar, E: Dbg> Bar for Foo<I, E> {
+   |                 ---  ^^^     ^^^^^^^^^
+   |                 |
+   |                 unsatisfied trait bound introduced here
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider restricting type parameter `E` with trait `Dbg`
+   |
+LL | impl<I: Bar, E: Dbg> Foo<I, E> {
+   |               +++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
