@@ -19,6 +19,7 @@
           StorageLive(_2);
           _2 = ();
 -         _1 = <fn() {b} as FnOnce<()>>::call_once(b, move _2) -> [return: bb1, unwind unreachable];
++         StorageAlloc(_1);
 +         StorageLive(_5);
 +         _5 = b;
 +         _1 = move _5() -> [return: bb1, unwind unreachable];
@@ -32,6 +33,7 @@
           StorageLive(_4);
           _4 = ();
 -         _3 = <fn() {a} as FnOnce<()>>::call_once(a, move _4) -> [return: bb2, unwind unreachable];
++         StorageAlloc(_3);
 +         StorageLive(_6);
 +         _6 = a;
 +         _3 = move _6() -> [return: bb2, unwind unreachable];

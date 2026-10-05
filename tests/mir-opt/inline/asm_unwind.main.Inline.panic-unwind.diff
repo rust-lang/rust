@@ -14,6 +14,7 @@
       bb0: {
           StorageLive(_1);
 -         _1 = foo() -> [return: bb1, unwind continue];
++         StorageAlloc(_1);
 +         StorageLive(_2);
 +         asm!("", options(MAY_UNWIND)) -> [return: bb2, unwind: bb3];
       }

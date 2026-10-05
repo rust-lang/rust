@@ -239,6 +239,9 @@ impl<'a> MaybeTransitiveLiveLocals<'a> {
             StatementKind::SetDiscriminant { place, .. } => {
                 (!debuginfo_locals.contains(place.local)).then_some(**place)
             }
+            StatementKind::StorageAlloc(local) => {
+                (!debuginfo_locals.contains(*local)).then_some((*local).into())
+            }
             StatementKind::FakeRead(_)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)

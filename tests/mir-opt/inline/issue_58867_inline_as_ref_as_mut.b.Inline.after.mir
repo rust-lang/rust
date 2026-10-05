@@ -17,6 +17,7 @@ fn b(_1: &mut Box<T>) -> &mut T {
         StorageLive(_3);
         StorageLive(_4);
         _4 = no_retag copy _1;
+        StorageAlloc(_3);
         StorageLive(_5);
         StorageLive(_6);
         _6 = no_retag copy ((*_4).0: std::ptr::Unique<T>);

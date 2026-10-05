@@ -73,6 +73,8 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
     }
 
     bb0: {
+        StorageAlloc(_0);
+        StorageAlloc(_0);
         StorageLive(_3);
         StorageLive(_5);
         StorageLive(_8);

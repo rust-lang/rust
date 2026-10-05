@@ -18,8 +18,10 @@
 -     }
 - 
 -     bb1: {
++         StorageAlloc(_0);
 +         StorageLive(_3);
 +         _3 = &mut (*_2);
++         StorageAlloc(_0);
 +         StorageDead(_3);
           StorageDead(_2);
           return;

@@ -23,6 +23,7 @@
 -     }
 - 
 -     bb1: {
++         StorageAlloc(_4);
           _3 = &_4;
           StorageLive(_5);
           _5 = ();
@@ -30,6 +31,8 @@
 -     }
 - 
 -     bb2: {
++         StorageAlloc(_2);
++         StorageAlloc(_2);
           StorageDead(_5);
           StorageDead(_3);
           StorageDead(_4);

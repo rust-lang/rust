@@ -143,7 +143,7 @@ yields ()
     }
 
     bb14: {
-        _10 = move _2;
+        _10 = copy _2;
         _9 = std::future::get_context::<'_, '_>(move _10) -> [return: bb13, unwind: bb6];
     }
 
@@ -203,7 +203,7 @@ yields ()
     }
 
     bb26: {
-        _20 = move _2;
+        _20 = copy _2;
         _19 = std::future::get_context::<'_, '_>(move _20) -> [return: bb25, unwind: bb19];
     }
 
@@ -268,7 +268,7 @@ yields ()
     }
 
     bb39: {
-        _30 = move _2;
+        _30 = copy _2;
         _29 = std::future::get_context::<'_, '_>(move _30) -> [return: bb38, unwind: bb32];
     }
 
@@ -304,7 +304,7 @@ yields ()
     }
 
     bb46: {
-        _37 = move _2;
+        _37 = copy _2;
         _36 = std::future::get_context::<'_, '_>(move _37) -> [return: bb45, unwind: bb32];
     }
 
@@ -369,7 +369,7 @@ yields ()
     }
 
     bb59: {
-        _47 = move _2;
+        _47 = copy _2;
         _46 = std::future::get_context::<'_, '_>(move _47) -> [return: bb58, unwind: bb52];
     }
 
@@ -405,7 +405,7 @@ yields ()
     }
 
     bb66: {
-        _54 = move _2;
+        _54 = copy _2;
         _53 = std::future::get_context::<'_, '_>(move _54) -> [return: bb65, unwind: bb52];
     }
 
@@ -470,7 +470,7 @@ yields ()
     }
 
     bb79: {
-        _64 = move _2;
+        _64 = copy _2;
         _63 = std::future::get_context::<'_, '_>(move _64) -> [return: bb78, unwind: bb72];
     }
 
@@ -506,7 +506,7 @@ yields ()
     }
 
     bb86: {
-        _71 = move _2;
+        _71 = copy _2;
         _70 = std::future::get_context::<'_, '_>(move _71) -> [return: bb85, unwind: bb72];
     }
 

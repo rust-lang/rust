@@ -38,21 +38,27 @@
       bb0: {
           StorageLive(_1);
 -         _1 = <() as G>::call() -> [return: bb1, unwind unreachable];
++         StorageAlloc(_1);
 +         StorageLive(_2);
 +         StorageLive(_3);
 +         StorageLive(_4);
++         StorageAlloc(_2);
 +         StorageLive(_5);
 +         StorageLive(_6);
 +         StorageLive(_7);
++         StorageAlloc(_5);
 +         StorageLive(_8);
 +         StorageLive(_9);
 +         StorageLive(_10);
++         StorageAlloc(_8);
 +         StorageLive(_11);
 +         StorageLive(_12);
 +         StorageLive(_13);
++         StorageAlloc(_11);
 +         StorageLive(_14);
 +         StorageLive(_15);
 +         StorageLive(_16);
++         StorageAlloc(_14);
 +         StorageLive(_17);
 +         StorageLive(_18);
 +         StorageLive(_19);

@@ -6,7 +6,8 @@
 unsafe fn slice_in_place(ptr: *mut [char]) {
     // CHECK-LABEL: fn slice_in_place(_1: *mut [char])
     // CHECK:      bb0: {
-    // CHECK-NEXT:   return;
+    // CHECK-NOT:  ->
+    // CHECK:        return;
     // CHECK-NEXT: }
     std::ptr::drop_in_place(ptr)
 }
