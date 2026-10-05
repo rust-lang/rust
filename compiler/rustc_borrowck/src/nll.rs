@@ -6,8 +6,8 @@ use std::rc::Rc;
 use std::str::FromStr;
 
 use polonius_engine::{Algorithm, AllFacts, Output};
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::frozen::Frozen;
-use rustc_hir::find_attr;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::pretty::PrettyPrintMirOptions;
 use rustc_middle::mir::{Body, MirDumper, PassWhere, Promoted};
@@ -96,14 +96,15 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
         &universal_region_relations,
         infcx,
     );
-    let mut regioncx = RegionInferenceContext::new(
+    let (_, closure_region_requirements, _nll_errors) = RegionInferenceContext::solve(
         &infcx,
         lowered_constraints,
         universal_region_relations.clone(),
         location_map,
+        body,
+        None,
     );
 
-    let (closure_region_requirements, _nll_errors) = regioncx.solve(infcx, body, None);
     closure_region_requirements
 }
 
@@ -161,13 +162,6 @@ pub(crate) fn compute_regions<'tcx>(
         );
     }
 
-    let mut regioncx = RegionInferenceContext::new(
-        infcx,
-        lowered_constraints,
-        universal_region_relations,
-        location_map,
-    );
-
     // If requested: dump NLL facts, and run legacy polonius analysis.
     let polonius_output = polonius_facts.as_ref().and_then(|polonius_facts| {
         if infcx.tcx.sess.opts.unstable_opts.nll_facts {
@@ -190,8 +184,14 @@ pub(crate) fn compute_regions<'tcx>(
     });
 
     // Solve the region constraints.
-    let (closure_region_requirements, nll_errors) =
-        regioncx.solve(infcx, body, polonius_output.clone());
+    let (regioncx, closure_region_requirements, nll_errors) = RegionInferenceContext::solve(
+        infcx,
+        lowered_constraints,
+        universal_region_relations,
+        location_map,
+        body,
+        polonius_output.clone(),
+    );
 
     NllOutput {
         regioncx,

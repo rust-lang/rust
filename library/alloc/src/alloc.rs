@@ -43,25 +43,52 @@ unsafe extern "Rust" {
     fn __rust_no_alloc_shim_is_unstable_v2();
 }
 
-/// The global memory allocator.
+/// A wrapper for the global allocator.
 ///
 /// This type implements the [`Allocator`] trait by forwarding calls
 /// to the allocator registered with the `#[global_allocator]` attribute
 /// if there is one, or the `std` crate’s default.
 ///
-/// Note: while this type is unstable, the functionality it provides can be
-/// accessed through the [free functions in `alloc`](self#functions).
-#[unstable(feature = "allocator_api", issue = "32838")]
+/// `Global` is not "the global allocator", but a wrapper for it.
+/// If the global allocator used `Global`, it would call itself recursively.
+/// To avoid this, `Global` does not implement [`GlobalAlloc`].
+///
+/// Similar to [`alloc`], [`dealloc`], and the other global allocation functions,
+/// when and how calls are forwarded to the allocator registered with
+/// `#[global_allocator]` is unspecified. See their safety docs for more information.
+///
+/// In particular, even if you know which allocator was registered
+/// as the global allocator, calling it directly is not the same as calling
+/// `Global`. You cannot deallocate memory from one using the other.
+///
+/// `Global` must be treated like an opaque allocator that only guarantees the contract
+/// described in the docs of [`Allocator`], as well as the following:
+/// * All instances of `Global` are [*equivalent*].
+/// * Allocations from `Global` are only invalidated by calls to de-/reallocating functions.
+///   If no such call is made, then the allocation will live for the rest of the program.
+/// * The global allocation functions in the [`alloc`](self) module are equivalent to the
+///   methods on `Global`, except that they disallow zero-sized allocations, and implicitly
+///   ignore any returned excess size.
+///   In particular, you may deallocate memory from [`alloc::alloc`](self::alloc) using
+///   [`Global.deallocate`](Global::deallocate) and vice-versa.
+///
+/// Note that the current implementation of `Global` does not take advantage of
+/// some features of [`Allocator`], such as zero-sized allocations (which currently
+/// return a dangling pointer) and overallocating.
+/// This may change in the future. You must not rely on it for correctness!
+///
+/// [*equivalent*]: Allocator#equivalent-allocators
+#[stable(feature = "allocator_api", since = "1.100.0")]
 #[derive(Copy, Debug)]
 #[derive_const(Clone, Default)]
 // the compiler needs to know when a Box uses the global allocator vs a custom one
 #[lang = "global_alloc_ty"]
 pub struct Global;
 
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 unsafe impl core::alloc::AllocatorClone for Global {}
 
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 unsafe impl core::alloc::StaticAllocator for Global {}
 
 /// Allocates memory with the global allocator.
@@ -539,7 +566,7 @@ impl Global {
     }
 }
 
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "allocator_api", since = "1.100.0")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 const unsafe impl Allocator for Global {
     #[inline]
@@ -676,27 +703,5 @@ pub mod __alloc_error_handler {
     }
 }
 
-/// Allocator marker trait that is implemented only on `Global`, except when
-/// the allocator feature gate is enabled (in which case it is implemented
-/// for all allocators).
-///
-/// This is to prevent stable code from e.g. constructing `Arc<T, NotGlobal>`
-/// using the `From<Box<T, A>> for Arc<T, A>` impl.
-///
-/// Note that this trait cannot appear in specialization impls (even if not
-/// specialized on).
-///
-/// This trait should be used as a bound whenever a function constructing
-/// a type with an `#[unstable] A: Allocator = Global` parameter may be
-/// callable for `A != Global`.
-#[marker]
-#[unstable(feature = "allocator_api", issue = "32838")]
-#[doc(hidden)]
-pub trait AllocatorNightly: Allocator {}
-
-#[unstable(feature = "allocator_api", issue = "32838")]
-#[unstable_feature_bound(allocator_api)]
-impl<A: Allocator + ?Sized> AllocatorNightly for A {}
-
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 impl AllocatorNightly for Global {}

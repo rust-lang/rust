@@ -4,13 +4,14 @@ use std::{fmt, iter};
 
 use rustc_abi::{Float, Integer, IntegerType, Size};
 use rustc_apfloat::Float as _;
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hashes::Hash128;
+use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
-use rustc_hir::{self as hir, find_attr};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_span::{bug, span_bug, sym};
@@ -378,7 +379,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         adt_did: LocalDefId,
         validate: impl Fn(Self, LocalDefId) -> Result<(), ErrorGuaranteed>,
-        impossible_self_ty: impl Fn(Self, LocalDefId) -> bool,
     ) -> Option<ty::Destructor> {
         let drop_trait = self.lang_items().drop_trait()?;
         self.ensure_result().coherent_trait(drop_trait).ok()?;
@@ -393,11 +393,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
             if validate(self, impl_did).is_err() {
                 // Already `ErrorGuaranteed`, no need to delay a span bug here.
-                continue;
-            }
-
-            if impossible_self_ty(self, adt_did) {
-                // The self ty is unnameable, so it can't be constructed in the first place.
                 continue;
             }
 
@@ -431,7 +426,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         adt_did: LocalDefId,
         validate: impl Fn(Self, LocalDefId) -> Result<(), ErrorGuaranteed>,
-        impossible_self_ty: impl Fn(Self, LocalDefId) -> bool,
     ) -> Option<ty::AsyncDestructor> {
         let async_drop_trait = self.lang_items().async_drop_trait()?;
         self.ensure_result().coherent_trait(async_drop_trait).ok()?;
@@ -446,11 +440,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
             if validate(self, impl_did).is_err() {
                 // Already `ErrorGuaranteed`, no need to delay a span bug here.
-                continue;
-            }
-
-            if impossible_self_ty(self, adt_did) {
-                // The self ty is unnameable, so it can't be constructed in the first place.
                 continue;
             }
 

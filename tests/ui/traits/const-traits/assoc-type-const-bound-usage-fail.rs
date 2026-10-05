@@ -1,4 +1,5 @@
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 // Check that `[const]` item bounds only hold if the parent trait is `[const]`.

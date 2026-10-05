@@ -60,8 +60,8 @@ cargo install --locked addr2line --features="bin"
 ### Gathering a perf profile from a `perf.rust-lang.org` test
 
 Often we want to analyze a specific test from `perf.rust-lang.org`.
-The easiest way to do that is to use the [rustc-perf]
-benchmarking suite, this approach is described [here](with-rustc-perf.md).
+The easiest way to do that is to use the [rustc-perf] benchmarking suite,
+this approach is described [here](with-rustc-perf.md).
 
 Instead of using the benchmark suite CLI, you can also profile the benchmarks manually.
 First, you need to clone the [rustc-perf] repository:
@@ -96,8 +96,8 @@ CARGO_INCREMENTAL=0 cargo +<toolchain> check
 
 Next: we want record the execution time for *just* the clap-rs crate,
 running cargo check.
-I tend to use `cargo rustc` for this, since it
-also allows me to add explicit flags, which we'll do later on.
+I tend to use `cargo rustc` for this, since it also allows me to add explicit flags,
+which we'll do later on.
 
 ```bash
 touch src/lib.rs
@@ -106,8 +106,8 @@ CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo rustc --profile ch
 
 Note that final command: it's a doozy!
 It uses the `cargo rustc` command, which executes rustc with (potentially) additional options;
-the `--profile check` and `--lib` options specify that we are doing a
-`cargo check` execution, and that this is a library (not a binary).
+the `--profile check` and `--lib` options specify that we are doing a `cargo check` execution,
+and that this is a library (not a binary).
 
 At this point, we can use `perf` tooling to analyze the results.
 For example:
@@ -121,14 +121,14 @@ In simple cases, that can be helpful.
 For more detailed examination, the [`perf-focus` tool][pf] can be helpful; it is covered below.
 
 **A note of caution.** Each of the rustc-perf tests is its own special snowflake.
-  In particular, some of them are not libraries, in which
-  case you would want to do `touch src/main.rs` and avoid passing `--lib`.
+  In particular, some of them are not libraries,
+  in which case you would want to do `touch src/main.rs` and avoid passing `--lib`.
   I'm not sure how best to tell which test is which to be honest.
 
 ### Gathering NLL data
 
-If you want to profile an NLL run, you can just pass extra options to
-the `cargo rustc` command, like so:
+If you want to profile an NLL run, you can just pass extra options to the `cargo rustc` command,
+like so:
 
 ```bash
 touch src/lib.rs
@@ -152,8 +152,8 @@ To understand how it works, you have to know just a bit about perf.
 Basically, perf works by *sampling* your process on a regular basis (or whenever some event occurs).
 For each sample, perf gathers a backtrace.
 `perf focus` lets you write a regular expression that tests
-which functions appear in that backtrace, and then tells you which
-percentage of samples had a backtrace that met the regular expression.
+which functions appear in that backtrace,
+and then tells you which percentage of samples had a backtrace that met the regular expression.
 It's probably easiest to explain by walking through how I would analyze NLL performance.
 
 ### Installing `perf-focus`
@@ -168,8 +168,7 @@ cargo install --locked perf-focus
 
 Let's say we've gathered the NLL data for a test.
 We'd like to know how much time it is spending in the MIR borrow-checker.
-The "main" function of the MIR borrowck is called `do_mir_borrowck`, so we can do
-this command:
+The "main" function of the MIR borrowck is called `do_mir_borrowck`, so we can do this command:
 
 ```bash
 $ perf focus '{do_mir_borrowck}'
@@ -179,22 +178,22 @@ Not Matches: 542
 Percentage : 29%
 ```
 
-The `'{do_mir_borrowck}'` argument is called the **matcher**. It
-specifies the test to be applied on the backtrace.
+The `'{do_mir_borrowck}'` argument is called the **matcher**.
+It specifies the test to be applied on the backtrace.
 In this case, the `{X}` indicates that there must be *some* function on the backtrace
 that meets the regular expression `X`.
-In this case, that regex is just the name of the function we want
-(in fact, it's a subset of the name;
+In this case, that regex is just the name of the function we want (in fact,
+it's a subset of the name;
 the full name includes a bunch of other stuff, like the module path).
 In this mode, perf-focus just prints out the percentage of
 samples where `do_mir_borrowck` was on the stack: in this case, 29%.
 
-**A note about c++filt.** To get the data from `perf`, `perf focus`
-  currently executes `perf script` (perhaps there is a better way...).
+**A note about c++filt.** To get the data from `perf`,
+  `perf focus` currently executes `perf script` (perhaps there is a better way...).
   I've sometimes found that `perf script` outputs C++ mangled
   names. This is annoying. You can tell by running `perf script |
-  head` yourself — if you see names like `5rustc6middle` instead of
-  `rustc::middle`, then you have the same problem.
+  head` yourself — if you see names like `5rustc6middle` instead of `rustc::middle`,
+  then you have the same problem.
   You can solve this by doing:
 
 ```bash
@@ -203,10 +202,10 @@ perf script | c++filt | perf focus --from-stdin ...
 
 This will pipe the output from `perf script` through `c++filt` and
 should mostly convert those names into a more friendly format.
-The `--from-stdin` flag to `perf focus` tells it to get its data from
-stdin, rather than executing `perf focus`.
-We should make this more convenient (at worst, maybe add a `c++filt` option to `perf focus`, or
-just always use it — it's pretty harmless).
+The `--from-stdin` flag to `perf focus` tells it to get its data from stdin,
+rather than executing `perf focus`.
+We should make this more convenient (at worst, maybe add a `c++filt` option to `perf focus`,
+or just always use it — it's pretty harmless).
 
 ### Example: How much time does MIR borrowck spend solving traits?
 
@@ -275,17 +274,16 @@ Usually "total" is the more interesting number, but not always.
 
 ### Relative percentages
 
-By default, all in perf-focus are relative to the **total program
-execution**. This is useful to help you keep perspective — often as
-we drill down to find hot spots, we can lose sight of the fact that,
+By default, all in perf-focus are relative to the **total program execution**.
+This is useful to help you keep perspective — often as we drill down to find hot spots,
+we can lose sight of the fact that,
 in terms of overall program execution, this "hot spot" is actually not important.
 It also ensures that percentages between different queries are easily compared against one another.
 
-That said, sometimes it's useful to get relative percentages, so `perf
-focus` offers a `--relative` option.
+That said, sometimes it's useful to get relative percentages,
+so `perf focus` offers a `--relative` option.
 In this case, the percentages are listed only for samples that match (vs all samples).
-So for example we could get our percentages relative to the borrowck itself
-like so:
+So, for example, we could get our percentages relative to the borrowck itself like so:
 
 ```bash
 $ perf focus '{do_mir_borrowck}' --tree-callees --relative --tree-max-depth 1 --tree-min-percent 5

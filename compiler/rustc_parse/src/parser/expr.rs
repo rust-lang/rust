@@ -36,7 +36,7 @@ use super::{
 };
 use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
 
-mod diagnostics;
+pub(super) mod diagnostics;
 
 #[derive(Debug)]
 pub(super) enum DestructuredFloat {
@@ -57,7 +57,11 @@ impl<'a> Parser<'a> {
         self.current_closure.take();
         self.parse_expr_res(Restrictions::empty())
     }
-
+    #[inline]
+    pub fn parse_expr_in_let(&mut self) -> PResult<'a, Box<Expr>> {
+        self.current_closure.take();
+        self.parse_expr_res(Restrictions::IN_LET)
+    }
     /// Parses an expression, forcing tokens to be collected.
     pub fn parse_expr_force_collect(&mut self) -> PResult<'a, Box<Expr>> {
         self.current_closure.take();
@@ -145,7 +149,7 @@ impl<'a> Parser<'a> {
         mut lhs: Box<Expr>,
     ) -> PResult<'a, (Box<Expr>, bool)> {
         let mut parsed_something = false;
-        if !self.should_continue_as_assoc_expr(&lhs) {
+        if self.expr_is_complete(&lhs) && !self.recover_from_bin_op_after_complete_stmt_expr(&lhs) {
             return Ok((lhs, parsed_something));
         }
 
@@ -220,52 +224,6 @@ impl<'a> Parser<'a> {
         }
 
         Ok((lhs, parsed_something))
-    }
-
-    fn should_continue_as_assoc_expr(&mut self, lhs: &Expr) -> bool {
-        match (self.expr_is_complete(lhs), AssocOp::from_token(&self.token)) {
-            // Semi-statement forms are odd:
-            // See https://github.com/rust-lang/rust/issues/29071
-            (true, None) => false,
-            (false, _) => true, // Continue parsing the expression.
-            // An exhaustive check is done in the following block, but these are checked first
-            // because they *are* ambiguous but also reasonable looking incorrect syntax, so we
-            // want to keep their span info to improve diagnostics in these cases in a later stage.
-            (true, Some(AssocOp::Binary(
-                BinOpKind::Mul | // `{ 42 } *foo = bar;` or `{ 42 } * 3`
-                BinOpKind::Sub | // `{ 42 } -5`
-                BinOpKind::Add | // `{ 42 } + 42` (unary plus)
-                BinOpKind::And | // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
-                BinOpKind::Or | // `{ 42 } || 42` ("logical or" or closure)
-                BinOpKind::BitOr // `{ 42 } | 42` or `{ 42 } |x| 42`
-            ))) => {
-                // These cases are ambiguous and can't be identified in the parser alone.
-                //
-                // Bitwise AND is left out because guessing intent is hard. We can make
-                // suggestions based on the assumption that double-refs are rarely intentional,
-                // and closures are distinct enough that they don't get mixed up with their
-                // return value.
-                let sp = self.psess.source_map().start_point(self.token.span);
-                self.psess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
-                false
-            }
-            (true, Some(op)) if !op.can_continue_expr_unambiguously() => false,
-            (true, Some(_)) => {
-                self.error_found_expr_would_be_stmt(lhs);
-                true
-            }
-        }
-    }
-
-    /// We've found an expression that would be parsed as a statement,
-    /// but the next token implies this should be parsed as an expression.
-    /// For example: `if let Some(x) = x { x } else { 0 } / 2`.
-    fn error_found_expr_would_be_stmt(&self, lhs: &Expr) {
-        self.dcx().emit_err(crate::diagnostics::FoundExprWouldBeStmt {
-            span: self.token.span,
-            token: pprust::token_to_string(&self.token),
-            suggestion: crate::diagnostics::ExprParenthesesNeeded::surrounding(lhs.span),
-        });
     }
 
     /// Possibly translate the current token to an associative operator.
@@ -421,7 +379,9 @@ impl<'a> Parser<'a> {
                 };
 
                 // a block on the LHS might have been intended to be an expression instead
-                if let Some(sp) = this.psess.ambiguous_block_expr_parse.borrow().get(&lo) {
+                if let Some(sp) =
+                    this.psess.complete_stmt_exprs_before_bin_op_lookalike.borrow().get(&lo)
+                {
                     err.add_parentheses =
                         Some(crate::diagnostics::ExprParenthesesNeeded::surrounding(*sp));
                 } else {
@@ -741,8 +701,7 @@ impl<'a> Parser<'a> {
         lo: Span,
     ) -> PResult<'a, Box<Expr>> {
         let mut res = loop {
-            let has_question = if self.prev_token == TokenKind::Ident(kw::Return, IdentKind::Normal)
-            {
+            let has_question = if self.prev_token.is_keyword(kw::Return) {
                 // We are using noexpect here because we don't expect a `?` directly after
                 // a `return` which could be suggested otherwise.
                 self.eat_noexpect(&token::Question)
@@ -754,7 +713,7 @@ impl<'a> Parser<'a> {
                 e = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Try(e));
                 continue;
             }
-            let has_dot = if self.prev_token == TokenKind::Ident(kw::Return, IdentKind::Normal) {
+            let has_dot = if self.prev_token.is_keyword(kw::Return) {
                 // We are using noexpect here because we don't expect a `.` directly after
                 // a `return` which could be suggested otherwise.
                 self.eat_noexpect(&token::Dot)
@@ -1361,7 +1320,9 @@ impl<'a> Parser<'a> {
                 this.parse_expr_closure().map_err(|mut err| {
                     // If the input is something like `if a { 1 } else { 2 } | if a { 3 } else { 4 }`
                     // then suggest parens around the lhs.
-                    if let Some(sp) = this.psess.ambiguous_block_expr_parse.borrow().get(&lo) {
+                    if let Some(sp) =
+                        this.psess.complete_stmt_exprs_before_bin_op_lookalike.borrow().get(&lo)
+                    {
                         err.subdiagnostic(crate::diagnostics::ExprParenthesesNeeded::surrounding(
                             *sp,
                         ));
@@ -1443,6 +1404,7 @@ impl<'a> Parser<'a> {
                 // or `async gen {}` and `async gen move {}`
                 // FIXME: (async) gen closures aren't yet parsed.
                 // FIXME(gen_blocks): Parse `gen async` and suggest swap
+                // FIXME(forced_keywords): Allow k#gen blocks prior to Rust 2024, too!
                 if this.token_uninterpolated_span().at_least_rust_2024()
                     && this.is_gen_block(kw::Gen, at_async as usize)
                 {
@@ -2088,7 +2050,9 @@ impl<'a> Parser<'a> {
             }
         };
         match self.token.uninterpolate().kind {
-            token::Ident(name, IdentKind::Normal) if name.is_bool_lit() => {
+            token::Ident(name, IdentKind::Normal | IdentKind::ForcedKeyword)
+                if name.is_bool_lit() =>
+            {
                 self.bump();
                 Some(token::Lit::new(token::Bool, name, None))
             }
@@ -3680,11 +3644,12 @@ impl<'a> Parser<'a> {
             Option<ErrorGuaranteed>, /* async blocks are forbidden in Rust 2015 */
         ),
     > {
+        let open_span = self.prev_token.span; //{
         let mut fields = ThinVec::new();
         let mut base = ast::StructRest::None;
         let mut recovered_async = None;
         let in_if_guard = self.restrictions.contains(Restrictions::IN_IF_GUARD);
-
+        let in_let = self.restrictions.contains(Restrictions::IN_LET);
         let async_block_err = |e: &mut Diag<'_>, span: Span| {
             crate::diagnostics::AsyncBlockIn2015 { span }.add_to_diag(e);
             crate::diagnostics::HelpUseLatestEdition::new().add_to_diag(e);
@@ -3769,6 +3734,28 @@ impl<'a> Parser<'a> {
                         return Err(e);
                     }
 
+                    if in_let {
+                        // Better diagnostic for `foo { return 42; };`
+                        // We've consumed `foo {` already
+                        let mut snapshot = self.create_snapshot_for_diagnostic();
+                        let might_be_stmt = snapshot.token.is_keyword(kw::Return);
+                        snapshot.consume_block(
+                            exp!(OpenBrace),
+                            exp!(CloseBrace),
+                            super::diagnostics::ConsumeClosingDelim::Yes,
+                        ); //consume to the end of the block, including `}`
+
+                        // make sure the block is at the end by eating a `;`,
+                        // we shouldn't report such diagnostic for `let a = foo{return 43;}+bar;`
+                        // also skip the suggestion if the span cross macro boundaries
+                        if might_be_stmt && snapshot.eat(exp!(Semi)) && pth.span.eq_ctxt(open_span)
+                        {
+                            let span = pth.span.between(open_span);
+                            e.subdiagnostic(crate::diagnostics::MissingElseInLet { span });
+                            self.restore_snapshot(snapshot);
+                            return Err(e);
+                        }
+                    }
                     let guar = e.emit_err();
                     if pth == kw::Async {
                         recovered_async = Some(guar);
@@ -4331,7 +4318,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::IncludedBytes(_)
             | ExprKind::FormatArgs(_)
             | ExprKind::Err(_)
-            | ExprKind::DirectConstArg(_)
+            | ExprKind::GcaMacro(_)
             | ExprKind::Dummy => {
                 // These would forbid any let expressions they contain already.
             }

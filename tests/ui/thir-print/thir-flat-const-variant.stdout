@@ -3,7 +3,7 @@ Thir {
     body_type: Const(
         Foo,
     ),
-    attributes: {},
+    loop_hint_attrs: {},
     arms: [],
     blocks: [],
     exprs: [
@@ -65,7 +65,7 @@ Thir {
     body_type: Const(
         Foo,
     ),
-    attributes: {},
+    loop_hint_attrs: {},
     arms: [],
     blocks: [],
     exprs: [
@@ -127,7 +127,7 @@ Thir {
     body_type: Const(
         Foo,
     ),
-    attributes: {},
+    loop_hint_attrs: {},
     arms: [],
     blocks: [],
     exprs: [
@@ -189,7 +189,7 @@ Thir {
     body_type: Const(
         Foo,
     ),
-    attributes: {},
+    loop_hint_attrs: {},
     arms: [],
     blocks: [],
     exprs: [
@@ -251,7 +251,7 @@ Thir {
     body_type: Fn(
         fn(),
     ),
-    attributes: {},
+    loop_hint_attrs: {},
     arms: [],
     blocks: [
         Block {

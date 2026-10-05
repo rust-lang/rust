@@ -1,10 +1,9 @@
 use std::fs::File;
-use std::io::Write;
-use std::path::PathBuf;
+use std::io::{BufWriter, Write};
+use std::path::Path;
 use std::str::FromStr;
 use std::sync::LazyLock;
 
-use crate::format_code;
 use crate::input::InputType;
 use crate::intrinsic::Intrinsic;
 use crate::typekinds::BaseType;
@@ -38,15 +37,11 @@ const LEN_U64: usize = VL_MAX_BYTES / core::mem::size_of::<u64>();
 pub fn generate_load_store_tests(
     load_intrinsics: Vec<Intrinsic>,
     store_intrinsics: Vec<Intrinsic>,
-    out_path: Option<&PathBuf>,
+    out_path: &Path,
 ) -> Result<(), String> {
-    let output = match out_path {
-        Some(out) => {
-            Box::new(File::create(out).map_err(|e| format!("couldn't create tests file: {e}"))?)
-                as Box<dyn Write>
-        }
-        None => Box::new(std::io::stdout()) as Box<dyn Write>,
-    };
+    let mut output = BufWriter::new(
+        File::create(out_path).map_err(|e| format!("couldn't create tests file: {e}"))?,
+    );
     let mut used_stores = vec![false; store_intrinsics.len()];
     let tests: Vec<_> = load_intrinsics
         .iter()
@@ -89,10 +84,9 @@ pub fn generate_load_store_tests(
             .map_err(|e| format!("Manual tests are invalid: {e}"))?,
         _ => quote!(),
     };
-    format_code(
+    write!(
         output,
-        format!(
-            "// This code is automatically generated. DO NOT MODIFY.
+        "// This code is automatically generated. DO NOT MODIFY.
 //
 // Instead, modify `crates/stdarch-gen-arm/spec/sve` and run the following command to re-generate
 // this file:
@@ -101,8 +95,7 @@ pub fn generate_load_store_tests(
 // cargo run --bin=stdarch-gen-arm -- crates/stdarch-gen-arm/spec
 // ```
 {}",
-            quote! { #preamble #(#tests)* #manual_tests }
-        ),
+        quote! { #preamble #(#tests)* #manual_tests }
     )
     .map_err(|e| format!("couldn't write tests: {e}"))
 }

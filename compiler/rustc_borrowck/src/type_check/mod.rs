@@ -4,11 +4,11 @@ use std::rc::Rc;
 use std::{fmt, iter, mem};
 
 use rustc_abi::FieldIdx;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::{IndexSlice, IndexVec};
@@ -318,7 +318,7 @@ impl<'tcx> MirTypeckRegionConstraints<'tcx> {
 /// required to hold. Normally, this is at a particular point which
 /// created the obligation, but for constraints that the user gave, we
 /// want the constraint to hold at all points.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Locations {
     /// Indicates that a type constraint should always be true. This
     /// is particularly important in the new borrowck analysis for
@@ -1361,7 +1361,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int(_))) => (),
+                            (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int)) => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1379,7 +1379,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Int(_)), Some(CastTy::Ptr(_))) => (),
+                            (Some(CastTy::Int), Some(CastTy::Ptr(_))) => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1396,7 +1396,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Int(_)), Some(CastTy::Int(_))) => (),
+                            (Some(from), Some(to)) if from.is_int_like() && to.is_int_like() => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1413,7 +1413,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Int(_)), Some(CastTy::Float)) => (),
+                            (Some(CastTy::Int), Some(CastTy::Float)) => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1430,7 +1430,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Float), Some(CastTy::Int(_))) => (),
+                            (Some(CastTy::Float), Some(CastTy::Int)) => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1848,7 +1848,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                 assert_eq!(tcx.trait_impl_of_assoc(def_id), None);
                 self.prove_clauses(
-                    args.terms().map(|t| ty::ClauseKind::WellFormed(t.into())),
+                    args.terms().map(|t| ty::ClauseKind::WellFormed(t)),
                     locations,
                     ConstraintCategory::Boring,
                 );

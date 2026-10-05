@@ -1,8 +1,8 @@
 use std::ops::ControlFlow;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::{Applicability, Diag, E0283, E0284, E0790, MultiSpan, struct_span_code_err};
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor as _;
@@ -361,8 +361,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let pred = self.tcx.short_string(predicate, &mut err.long_ty_path());
                         err.note(format!("cannot satisfy `{pred}`"));
                     }
-                    let impl_candidates =
-                        self.find_similar_impl_candidates(predicate.as_trait_clause().unwrap());
+                    let clause = predicate.as_trait_clause().unwrap();
+                    let impl_candidates = self.find_similar_impl_candidates(
+                        clause.def_id(),
+                        clause.self_ty().skip_binder(),
+                    );
                     if impl_candidates.len() < 40 {
                         self.report_similar_impl_candidates(
                             impl_candidates.as_slice(),

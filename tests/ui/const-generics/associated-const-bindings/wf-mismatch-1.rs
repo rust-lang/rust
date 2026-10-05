@@ -1,7 +1,7 @@
 //! Check that we correctly handle associated const bindings
 //! in `impl Trait` where the RHS is a const param (#151642).
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
 
 trait Trait {

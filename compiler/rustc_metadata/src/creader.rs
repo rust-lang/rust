@@ -14,9 +14,8 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
 use rustc_data_structures::unord::UnordMap;
 use rustc_expand::base::SyntaxExtension;
-use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE, LocalDefId, StableCrateId};
-use rustc_hir::definitions::Definitions;
+use rustc_hir::definitions::{DefPathData, Definitions};
 use rustc_index::IndexVec;
 use rustc_lint_defs as lint;
 use rustc_lint_defs::builtin::UNUSED_CRATE_DEPENDENCIES;
@@ -89,7 +88,7 @@ pub enum LoadedMacro {
     MacroDef {
         def: MacroDef,
         ident: Ident,
-        attrs: Vec<hir::Attribute>,
+        attrs: Vec<rustc_attr_ir::Attribute>,
         span: Span,
         edition: Edition,
     },
@@ -144,6 +143,10 @@ enum CrateOrigin<'a> {
         parent_private: bool,
         /// Dependency info about this crate.
         dep: &'a CrateDep,
+        /// The dependency's `-C extra-filename`, used to narrow the search for it on disk. Stored
+        /// separately from `dep` because it is encoded outside the hashed crate root; see
+        /// `CrateRootUnhashed::dep_extra_filenames`.
+        dep_extra_filename: &'a str,
     },
     /// Injected by `rustc`.
     Injected,
@@ -166,6 +169,14 @@ impl<'a> CrateOrigin<'a> {
     fn dep(&self) -> Option<&'a CrateDep> {
         match self {
             CrateOrigin::IndirectDependency { dep, .. } => Some(dep),
+            _ => None,
+        }
+    }
+
+    /// Return the dependency's `-C extra-filename`, if any.
+    fn dep_extra_filename(&self) -> Option<&'a str> {
+        match self {
+            CrateOrigin::IndirectDependency { dep_extra_filename, .. } => Some(dep_extra_filename),
             _ => None,
         }
     }
@@ -583,7 +594,8 @@ impl CStore {
 
         let Library { source, metadata } = lib;
         let crate_root = metadata.get_root();
-        let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
+        let unhashed = metadata.get_root_unhashed();
+        let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_crate_hash());
         let private_dep = self.is_private_dep(&tcx.sess.opts.externs, name, private_dep);
 
         // Claim this crate number and cache it
@@ -636,6 +648,7 @@ impl CStore {
             tcx,
             metadata,
             crate_root,
+            unhashed,
             raw_proc_macros,
             cnum,
             cnum_map,
@@ -778,7 +791,7 @@ impl CStore {
         let dep = origin.dep();
         let hash = dep.map(|d| d.hash);
         let host_hash = dep.map(|d| d.host_hash).flatten();
-        let extra_filename = dep.map(|d| &d.extra_filename[..]);
+        let extra_filename = origin.dep_extra_filename();
         let path_kind = if dep.is_some() { PathKind::Dependency } else { PathKind::Crate };
         let private_dep = origin.private_dep();
 
@@ -859,10 +872,11 @@ impl CStore {
         // against a hash, we could load a crate which has the same hash
         // as an already loaded crate. If this is the case prevent
         // duplicates by just using the first crate.
-        let root = library.metadata.get_root();
+        let root_name = library.metadata.get_root().name();
+        let root_hash = library.metadata.get_crate_hash();
         let mut result = LoadResult::Loaded(library);
         for (cnum, data) in self.iter_crate_data() {
-            if data.name() == root.name() && root.hash() == data.hash() {
+            if data.name() == root_name && data.hash() == root_hash {
                 assert!(locator.hash.is_none());
                 info!("load success, going to previous cnum: {}", cnum);
                 result = LoadResult::Previous(cnum);
@@ -896,15 +910,26 @@ impl CStore {
         // We map 0 and all other holes in the map to our parent crate. The "additional"
         // self-dependencies should be harmless.
         let deps = crate_root.decode_crate_deps(metadata);
+        // Encoded outside the hashed crate root; see `CrateRootUnhashed::dep_extra_filenames`.
+        // Holds one entry per dep after the unused `LOCAL_CRATE` slot, so it lines up with `deps`
+        // once that slot is skipped.
+        let dep_extra_filenames = metadata.get_dep_extra_filenames();
+        assert_eq!(
+            dep_extra_filenames.len(),
+            deps.len() + 1,
+            "expected one dep_extra_filename per crate dep, plus the unused LOCAL_CRATE slot",
+        );
         let mut crate_num_map = CrateNumMap::with_capacity(1 + deps.len());
         crate_num_map.push(krate);
-        for dep in deps {
+        for (dep, dep_extra_filename) in
+            deps.zip(dep_extra_filenames.iter().skip(1).map(String::as_str))
+        {
             info!(
                 "resolving dep `{}`->`{}` hash: `{}` extra filename: `{}` private {}",
                 crate_root.name(),
                 dep.name,
                 dep.hash,
-                dep.extra_filename,
+                dep_extra_filename,
                 dep.is_private,
             );
             let dep_kind = match dep_kind {
@@ -919,6 +944,7 @@ impl CStore {
                     dep_root_for_errors,
                     parent_private: parent_is_private,
                     dep: &dep,
+                    dep_extra_filename,
                 },
             )?;
             crate_num_map.push(cnum);
@@ -1332,14 +1358,24 @@ impl CStore {
                 let cnum =
                     self.resolve_crate(tcx, name, item.span, dep_kind, CrateOrigin::Extern)?;
 
-                let path_len = definitions.def_path(def_id).data.len();
+                let def_path = definitions.def_path(def_id);
+                // An extern crate is only globally nameable if every segment in its path
+                // is in the type namespace (i.e., it is purely nested inside modules).
+                // If any segment is in the value namespace (e.g. inside a fn or const),
+                // it is unnameable from outside that block.
+                let is_unnameable =
+                    def_path.data.iter().any(|d| !matches!(d.data, DefPathData::TypeNs(_)));
                 self.update_extern_crate(
                     cnum,
                     name,
                     ExternCrate {
-                        src: ExternCrateSource::Extern(def_id.to_def_id()),
+                        src: if is_unnameable {
+                            ExternCrateSource::Path
+                        } else {
+                            ExternCrateSource::Extern(def_id.to_def_id())
+                        },
                         span: item.span,
-                        path_len,
+                        path_len: if is_unnameable { usize::MAX } else { def_path.data.len() },
                         dependency_of: LOCAL_CRATE,
                     },
                 );

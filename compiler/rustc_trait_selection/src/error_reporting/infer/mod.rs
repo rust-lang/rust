@@ -51,12 +51,13 @@ use std::path::PathBuf;
 use std::{cmp, fmt, iter};
 
 use rustc_abi::ExternAbi;
+use rustc_attr_ir::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, DiagStyledString, IntoDiagArg, StringPart, pluralize};
-use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
+use rustc_hir as hir;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, find_attr};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_macros::extension;
 use rustc_middle::traits::PatternOriginExpr;
@@ -1607,15 +1608,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ValuePairs::TraitRefs(_) => (false, Mismatch::Fixed("trait")),
                     ValuePairs::Aliases(ExpectedFound { expected, .. }) => {
                         let def_id = match expected.kind {
-                            ty::AliasTermKind::ProjectionTy { def_id } => def_id.into(),
-                            ty::AliasTermKind::InherentTy { def_id } => def_id.into(),
-                            ty::AliasTermKind::OpaqueTy { def_id } => def_id.into(),
-                            ty::AliasTermKind::FreeTy { def_id } => def_id.into(),
-                            ty::AliasTermKind::AnonConst { def_id } => def_id.into(),
-                            ty::AliasTermKind::ProjectionConst { def_id } => def_id.into(),
-                            ty::AliasTermKind::FreeConst { def_id } => def_id.into(),
-                            ty::AliasTermKind::InherentConstSelf { def_id } => def_id.into(),
-                            ty::AliasTermKind::InherentConstImpl { def_id } => def_id.into(),
+                            ty::AliasTermKind::ProjectionTy { def_id }
+                            | ty::AliasTermKind::InherentTy { def_id }
+                            | ty::AliasTermKind::OpaqueTy { def_id }
+                            | ty::AliasTermKind::FreeTy { def_id }
+                            | ty::AliasTermKind::AnonConst { def_id }
+                            | ty::AliasTermKind::ProjectionConst { def_id }
+                            | ty::AliasTermKind::FreeConst { def_id }
+                            | ty::AliasTermKind::InherentConstSelf { def_id }
+                            | ty::AliasTermKind::InherentConstImpl { def_id } => def_id,
                         };
                         (false, Mismatch::Fixed(self.tcx.def_descr(def_id)))
                     }

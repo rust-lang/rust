@@ -22,6 +22,15 @@ pub fn bare_rustc() -> Rustc {
     Rustc::bare()
 }
 
+/// Construct a plain `rustc` invocation with no flags set that behaves like a stable compiler,
+/// i.e. rejects unstable flags.
+/// Note that [`set_host_compiler_dylib_path`] still presets the environment variable
+/// `HOST_RUSTC_DYLIB_PATH` by default.
+#[track_caller]
+pub fn stable_bare_rustc() -> Rustc {
+    Rustc::bare_stable()
+}
+
 /// Construct a `rustc` invocation for building `minicore`.
 ///
 /// This function:
@@ -76,9 +85,6 @@ pub fn rustc_path() -> String {
 fn setup_common() -> Command {
     let mut cmd = Command::new(rustc_path());
     set_host_compiler_dylib_path(&mut cmd);
-    if let Ok(codegen_backend) = std::env::var("RUSTC_CODEGEN_BACKEND") {
-        cmd.arg(format!("-Zcodegen-backend={codegen_backend}"));
-    }
     cmd
 }
 
@@ -100,6 +106,10 @@ impl Rustc {
             cmd.arg("-Ctarget-feature=-crt-static");
         }
 
+        if let Ok(codegen_backend) = std::env::var("RUSTC_CODEGEN_BACKEND") {
+            cmd.arg(format!("-Zcodegen-backend={codegen_backend}"));
+        }
+
         // Automatically default to cross-compilation
         Self { cmd, target: Some(target()) }
     }
@@ -108,6 +118,14 @@ impl Rustc {
     #[track_caller]
     pub fn bare() -> Self {
         let cmd = setup_common();
+        Self { cmd, target: None }
+    }
+
+    /// Construct a bare `rustc` invocation with no flags set that acts like a stable compiler.
+    #[track_caller]
+    pub fn bare_stable() -> Self {
+        let mut cmd = setup_common();
+        cmd.env("RUSTC_BOOTSTRAP", "-1");
         Self { cmd, target: None }
     }
 

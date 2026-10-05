@@ -1,5 +1,5 @@
 warning: overflow evaluating the requirement `W<W<W<W<W<()>>>>>: Overflow`
-  --> $DIR/fcw-overflow-to-error.rs:34:23
+  --> $DIR/fcw-overflow-to-error.rs:35:23
    |
 LL |     W(W(W(W(W(()))))).foo();
    |                       ^^^

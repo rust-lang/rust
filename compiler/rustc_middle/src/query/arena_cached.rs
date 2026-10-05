@@ -5,13 +5,15 @@ use rustc_span::ErrorGuaranteed;
 
 use crate::ty::TyCtxt;
 
-/// Helper trait that allows `arena_cache` queries to return `Option<&T>`
-/// instead of `&Option<T>`, and avoid allocating `None` in the arena.
+/// Helper trait that allows `arena_cache` queries to return:
+/// - `Option<&T>` instead of `&Option<T>`, and avoid allocating `None` in the arena; or
+/// - `Result<&T, ErrorGuaranteed>` instead of `&Result<T, ErrorGuaranteed>`, and avoid allocating
+///   `Err(ErrorGuaranteed)` in the arena.
 ///
-/// An arena-cached query must be declared to return a type that implements
-/// this trait, i.e. either `&'tcx T` or `Option<&'tcx T>`. This trait then
-/// determines the types returned by the provider and stored in the arena,
-/// and provides a function to bridge between the three types.
+/// An arena-cached query must be declared to return a type that implements this trait, i.e.
+/// `&'tcx T`, `Option<&'tcx T>`, or `Result<&'tcx T, ErrorGuaranteed>`. This trait then determines
+/// the types returned by the provider and stored in the arena, and provides a function to bridge
+/// between the three types.
 pub trait ArenaCached<'tcx>: Sized {
     /// Type that is returned by the query provider.
     type Provided;

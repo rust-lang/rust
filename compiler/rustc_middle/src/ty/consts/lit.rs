@@ -1,6 +1,5 @@
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
-use rustc_hir;
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_macros::StableHash;
 
 use crate::ty::{self, Ty, TyCtxt};

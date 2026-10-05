@@ -17,6 +17,8 @@ use std::{debug_assert_matches, fmt, iter, mem};
 
 use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
 use rustc_ast as ast;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_crate_store::{CrateStoreDyn, Untracked};
 use rustc_data_structures::defer;
 use rustc_data_structures::fx::FxHashMap;
@@ -29,16 +31,16 @@ use rustc_data_structures::sync::{
     self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
 };
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, MultiSpan};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefPathData, Definitions, PerParentDisambiguatorState};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, Node, TraitCandidate, find_attr};
+use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, Node, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_lint_defs::Lint;
 use rustc_lint_defs::builtin::UNUSED_FEATURES;
 use rustc_macros::Diagnostic;
+use rustc_session::config::NextSolverConfig;
 use rustc_session::{IncrCompSession, Session};
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, sym};
@@ -109,8 +111,8 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
         self.generic_const_exprs()
     }
 
-    fn generic_const_args(self) -> bool {
-        self.generic_const_args()
+    fn gca_const_items(self) -> bool {
+        self.gca_const_items()
     }
 
     fn coroutine_clone(self) -> bool {
@@ -990,7 +992,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Obtain all lang items of this crate and all dependencies (recursively)
-    pub fn lang_items(self) -> &'tcx rustc_hir::attrs::lang_items::LanguageItems {
+    pub fn lang_items(self) -> &'tcx rustc_attr_ir::lang_items::LanguageItems {
         self.get_lang_items(())
     }
 
@@ -1029,7 +1031,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// because it has a directly represented RHS, or is a trait definition that is marked as
     /// requiring its implementation to have a directly represented RHS.
     ///
-    /// Note: Be very careful with using this method - under `generic_const_args`, a trait can
+    /// Note: Be very careful with using this method - under `gca_const_items`, a trait can
     /// declare a regular const, but an `impl` could implement it with a directly represented const
     /// (a la refinement). This method would return false in such a case.
     pub fn is_direct_const(self, def_id: DefId) -> bool {
@@ -1134,7 +1136,7 @@ impl<'tcx> TyCtxt<'tcx> {
             | CrateType::Cdylib
             | CrateType::Sdylib => false,
             CrateType::Rlib | CrateType::Dylib | CrateType::ProcMacro => true,
-        })
+        }) && !self.sess.opts.actually_rustdoc
     }
 
     pub fn needs_hir_hash(self) -> bool {
@@ -1154,6 +1156,27 @@ impl<'tcx> TyCtxt<'tcx> {
             || self.needs_metadata()
             || self.sess.instrument_coverage()
             || self.sess.opts.unstable_opts.metrics_dir.is_some()
+    }
+
+    /// Whether the combined per-owner HIR hash (`OwnerInfo::opt_hash`, which folds `parenting`,
+    /// `trait_map` and `children` on top of the node/attr hashes) needs to be computed during
+    /// lowering.
+    ///
+    /// This is a strict subset of [`Self::needs_hir_hash`]: notably it drops the plain
+    /// `needs_metadata` case. With metadata-based crate hashing (the default) the crate hash is
+    /// built from the encoded metadata plus each owner's cheaper `OwnerInfo::fingerprint` (just the
+    /// node and attr sub-hashes), so the combined hash is never read and computing it is wasted
+    /// work. It is still required for:
+    /// - `-Z metadata-crate-hash=no`, where `crate_hash` falls back to hashing each `OwnerInfo`;
+    /// - incremental, where the `lower_to_hir` result is fingerprinted for red/green tracking;
+    /// - debug assertions, where every query result is fingerprinted to catch nondeterminism.
+    ///
+    /// The `needs_hir_hash()` conjunct guarantees the node/attr sub-hashes it folds in are present.
+    pub fn needs_owner_info_hash(self) -> bool {
+        self.needs_hir_hash()
+            && (!self.sess.opts.unstable_opts.metadata_crate_hash
+                || self.sess.opts.incremental.is_some()
+                || cfg!(debug_assertions))
     }
 
     #[inline]
@@ -1377,9 +1400,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.untracked.definitions.freeze()
     }
 
-    pub fn def_path_hash_to_def_index_map(
-        self,
-    ) -> &'tcx rustc_hir::def_path_hash_map::DefPathHashMap {
+    pub fn def_path_hash_to_def_index_map(self) -> &'tcx rustc_hir::definitions::DefPathToIndexMap {
         // Create a dependency to the crate to be sure we re-execute this when the amount of
         // definitions change.
         self.ensure_ok().hir_crate_items(());
@@ -1404,13 +1425,6 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn definitions_untracked(self) -> FreezeReadGuard<'tcx, Definitions> {
         self.untracked.definitions.read()
-    }
-
-    /// Note that this is *untracked* and should only be used within the query
-    /// system if the result is otherwise tracked through queries
-    #[inline]
-    pub fn source_span_untracked(self, def_id: LocalDefId) -> Span {
-        self.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP)
     }
 
     #[inline(always)]
@@ -2803,11 +2817,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn next_trait_solver_globally(self) -> bool {
-        self.sess.opts.unstable_opts.next_solver.globally && !self.features().generic_const_exprs()
-    }
-
-    pub fn next_trait_solver_in_coherence(self) -> bool {
-        self.sess.opts.unstable_opts.next_solver.coherence
+        self.sess.opts.unstable_opts.next_solver == NextSolverConfig::Globally
+            && !self.features().generic_const_exprs()
     }
 
     pub fn disable_trait_solver_fast_paths(self) -> bool {

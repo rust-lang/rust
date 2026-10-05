@@ -3,9 +3,9 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_hir};
 use clippy_utils::str_utils::{camel_case_split, count_match_end, count_match_start, to_camel_case, to_snake_case};
 use clippy_utils::{is_bool, is_from_proc_macro};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::{Body, EnumDef, FieldDef, Item, ItemKind, QPath, TyKind, UseKind, Variant, VariantData};
+use rustc_hir::{Body, EnumDef, FieldDef, Item, ItemKind, QPath, TyKind, UseKind, UseTree, Variant, VariantData};
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{Ident, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -199,6 +199,63 @@ impl ItemNameRepetitions {
 
     fn is_allowed_prefix(&self, prefix: &str) -> bool {
         self.allowed_prefixes.contains(prefix)
+    }
+
+    fn check_item_kind(&self, cx: &LateContext<'_>, item: &Item<'_>) -> Option<Ident> {
+        match item.kind {
+            ItemKind::Mod(ident, _) => {
+                if let [.., prev] = &*self.modules
+                    && prev.name == ident.name
+                    && prev.in_body_count == 0
+                    && (!self.allow_private_module_inception || prev.is_public)
+                    && !item.span.from_expansion()
+                    && !is_from_proc_macro(cx, item)
+                {
+                    span_lint(
+                        cx,
+                        MODULE_INCEPTION,
+                        item.span,
+                        "module has the same name as its containing module",
+                    );
+                }
+                Some(ident)
+            },
+
+            ItemKind::Enum(ident, _, def) => {
+                if !ident.span.in_external_macro(cx.tcx.sess.source_map()) {
+                    self.check_variants(cx, item, &def);
+                }
+                Some(ident)
+            },
+            ItemKind::Struct(ident, _, data) => {
+                if let VariantData::Struct { fields, .. } = data
+                    && !ident.span.in_external_macro(cx.tcx.sess.source_map())
+                {
+                    self.check_fields(cx, item, fields);
+                }
+                Some(ident)
+            },
+
+            ItemKind::Const(ident, ..)
+            | ItemKind::ExternCrate(_, ident)
+            | ItemKind::Fn { ident, .. }
+            | ItemKind::Macro(ident, ..)
+            | ItemKind::Static(_, ident, ..)
+            | ItemKind::Trait { ident, .. }
+            | ItemKind::TraitAlias(_, ident, ..)
+            | ItemKind::TyAlias(ident, ..)
+            | ItemKind::Union(ident, ..)
+            | ItemKind::Use(UseTree {
+                kind: UseKind::Single(ident),
+                ..
+            }) => Some(ident),
+
+            ItemKind::ForeignMod { .. }
+            | ItemKind::GlobalAsm { .. }
+            | ItemKind::Impl(_)
+            | ItemKind::Use(..)
+            | ItemKind::TestBinderConstraints { .. } => None,
+        }
     }
 }
 
@@ -488,56 +545,8 @@ impl LateLintPass<'_> for ItemNameRepetitions {
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        let ident = match item.kind {
-            ItemKind::Mod(ident, _) => {
-                if let [.., prev] = &*self.modules
-                    && prev.name == ident.name
-                    && prev.in_body_count == 0
-                    && (!self.allow_private_module_inception || prev.is_public)
-                    && !item.span.from_expansion()
-                    && !is_from_proc_macro(cx, item)
-                {
-                    span_lint(
-                        cx,
-                        MODULE_INCEPTION,
-                        item.span,
-                        "module has the same name as its containing module",
-                    );
-                }
-                ident
-            },
-
-            ItemKind::Enum(ident, _, def) => {
-                if !ident.span.in_external_macro(cx.tcx.sess.source_map()) {
-                    self.check_variants(cx, item, &def);
-                }
-                ident
-            },
-            ItemKind::Struct(ident, _, data) => {
-                if let VariantData::Struct { fields, .. } = data
-                    && !ident.span.in_external_macro(cx.tcx.sess.source_map())
-                {
-                    self.check_fields(cx, item, fields);
-                }
-                ident
-            },
-
-            ItemKind::Const(ident, ..)
-            | ItemKind::ExternCrate(_, ident)
-            | ItemKind::Fn { ident, .. }
-            | ItemKind::Macro(ident, ..)
-            | ItemKind::Static(_, ident, ..)
-            | ItemKind::Trait { ident, .. }
-            | ItemKind::TraitAlias(_, ident, ..)
-            | ItemKind::TyAlias(ident, ..)
-            | ItemKind::Union(ident, ..)
-            | ItemKind::Use(_, UseKind::Single(ident)) => ident,
-
-            ItemKind::ForeignMod { .. }
-            | ItemKind::GlobalAsm { .. }
-            | ItemKind::Impl(_)
-            | ItemKind::Use(..)
-            | ItemKind::TestBinderConstraints { .. } => return,
+        let Some(ident) = self.check_item_kind(cx, item) else {
+            return;
         };
 
         let item_name = ident.name.as_str();

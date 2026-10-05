@@ -10,15 +10,8 @@ use crate::walk::*;
 
 // Should be kept in sync with `CompareMode` in `src/tools/compiletest/src/common.rs`,
 // as well as `run`.
-const IGNORES: &[&str] = &[
-    "polonius",
-    "chalk",
-    "split-dwarf",
-    "split-dwarf-single",
-    "next-solver-coherence",
-    "next-solver",
-    "run",
-];
+const IGNORES: &[&str] =
+    &["polonius", "chalk", "split-dwarf", "split-dwarf-single", "next-solver", "run"];
 const EXTENSIONS: &[&str] = &["stdout", "stderr"];
 const SPECIAL_TEST: &str = "tests/ui/command/need-crate-arg-ignore-tidy.x.rs";
 

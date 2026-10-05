@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// Coercion or `from()` is another way to convert bool to a number.
     /// Both methods are guaranteed to return 1 for true, and 0 for false.
     ///
-    /// See https://doc.rust-lang.org/std/primitive.bool.html#impl-From%3Cbool%3E
+    /// See <https://doc.rust-lang.org/std/primitive.bool.html#impl-From%3Cbool%3E-for-u8>
     ///
     /// ### Example
     /// ```no_run

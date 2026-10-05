@@ -1,10 +1,10 @@
 //@ edition: 2024
 
-#![feature(min_generic_const_args, type_alias_impl_trait, return_type_notation)]
+#![feature(gca_min_const_items, type_alias_impl_trait, return_type_notation)]
 #![expect(incomplete_features)]
 #![allow(refining_impl_trait_internal)]
 
-use std::iter;
+use std::{gca, iter};
 
 fn rpit1() -> impl Iterator<Item: Copy, Item: Send> {
     iter::empty()
@@ -55,7 +55,7 @@ trait Trait {
 impl Trait for () {
     type Gat<T> = ();
 
-    const ASSOC: i32 = core::direct_const_arg!(3);
+    const ASSOC: i32 = gca!(3);
 
     fn foo() {}
 }
@@ -63,7 +63,7 @@ impl Trait for () {
 impl Trait for u32 {
     type Gat<T> = ();
 
-    const ASSOC: i32 = core::direct_const_arg!(4);
+    const ASSOC: i32 = gca!(4);
 
     fn foo() -> u32 {
         42

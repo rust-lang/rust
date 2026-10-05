@@ -18,12 +18,12 @@ use std::{panic, str};
 pub(crate) use make::{BuildDocTestBuilder, DocTestBuilder};
 pub(crate) use markdown::test as test_markdown;
 use proc_macro2::{TokenStream, TokenTree};
+use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxHasher, FxIndexMap, FxIndexSet};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagCtxtHandle};
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_hir::{Attribute, CRATE_HIR_ID};
 use rustc_interface::interface;
 use rustc_lint as lint;
 use rustc_middle::ty::TyCtxt;
@@ -423,33 +423,19 @@ pub(crate) fn run_tests(
     // `running 0 tests...`.
     if ran_edition_tests == 0 || !standalone_tests.is_empty() {
         standalone_tests.sort_by(|a, b| a.desc.name.as_slice().cmp(b.desc.name.as_slice()));
-        cfg_select! {
-            bootstrap => {
-                test::test_main_with_exit_callback(&test_args, standalone_tests, None, || {
-                    let times = times.times_in_secs();
-                    // We ensure temp dir destructor is called.
-                    std::mem::drop(temp_dir.take());
-                    if let Some((total_time, compilation_time)) = times {
-                        test::print_merged_doctests_times(&test_args, total_time, compilation_time);
-                    }
-                });
-            }
-            _ => {
-                // We need a vector of `&TestDescAndFn`.
-                let standalone_test_refs = &standalone_tests.iter().collect::<Vec<_>>();
-                let exit = test::test_main(&test_args, standalone_test_refs);
-                let times = times.times_in_secs();
-                // We ensure temp dir destructor is called.
-                std::mem::drop(standalone_tests);
-                std::mem::drop(temp_dir.take());
-                if let Some((total_time, compilation_time)) = times {
-                    test::print_merged_doctests_times(&test_args, total_time, compilation_time);
-                }
-                // Fall through on success, the caller may want to do more stuff.
-                if exit != std::process::ExitCode::SUCCESS {
-                    exit.exit_process();
-                }
-            }
+        // We need a vector of `&TestDescAndFn`.
+        let standalone_test_refs = &standalone_tests.iter().collect::<Vec<_>>();
+        let exit = test::test_main(&test_args, standalone_test_refs);
+        let times = times.times_in_secs();
+        // We ensure temp dir destructor is called.
+        std::mem::drop(standalone_tests);
+        std::mem::drop(temp_dir.take());
+        if let Some((total_time, compilation_time)) = times {
+            test::print_merged_doctests_times(&test_args, total_time, compilation_time);
+        }
+        // Fall through on success, the caller may want to do more stuff.
+        if exit != std::process::ExitCode::SUCCESS {
+            exit.exit_process();
         }
     } else {
         // If the first condition branch exited successfully, it will
@@ -1175,18 +1161,6 @@ fn generate_test_desc_and_fn(
             no_run: scraped_test.no_run(&rustdoc_options),
             test_type: test::TestType::DocTest,
         },
-        #[cfg(bootstrap)]
-        testfn: test::DynTestFn(Box::new(move || {
-            doctest_run_fn(
-                &rustdoc_test_options,
-                &opts,
-                &test,
-                &scraped_test,
-                &rustdoc_options,
-                &unused_externs,
-            )
-        })),
-        #[cfg(not(bootstrap))]
         testfn: test::DynTestFn(Arc::new(move || {
             doctest_run_fn(
                 &rustdoc_test_options,

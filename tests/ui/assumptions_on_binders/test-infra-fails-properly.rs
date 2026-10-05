@@ -1,4 +1,4 @@
-//@ compile-flags: -Zassumptions-on-binders
+//@ compile-flags: -Zassumptions-on-binders -Znext-solver=globally
 #![feature(test_binder_constraints)]
 #![expect(incomplete_features)]
 
@@ -60,7 +60,7 @@ core::test_binder_constraints! {
         } expect {
             or {
                 'c: 'b,
-                'c: 'c,
+                'b: 'c,
                 //~^ ERROR forall expect clause failed
             }
         }

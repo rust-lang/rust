@@ -6,9 +6,9 @@ use rustc_abi::{
     PointerKind, Primitive, ReprFlags, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
     TyAbiInterface, VariantIdx, Variants,
 };
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::{Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, IntoDiagArg, Level};
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
@@ -1061,19 +1061,40 @@ where
             }
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
                 tcx.layout_of(typing_env.as_query_input(ty)).ok().map(|layout| {
-                    let kind = match mt {
+                    let kind;
+                    let size;
+
+                    match mt {
                         hir::Mutability::Not => {
                             let frozen = optimize && ty.is_freeze(tcx, typing_env);
-                            PointerKind::SharedRef { frozen }
+                            kind = PointerKind::SharedRef { frozen };
+
+                            // Set the `size` to zero for non-frozen shared references.
+                            //
+                            // `PointeeInfo::size` is defined to allow adding spurious reads.
+                            // Adding spurious reads is only valid for `&Freeze` and `&mut Unpin`
+                            // references, as otherwise the spurious read can invalidate aliasing
+                            // references.
+                            //
+                            // See discussions in
+                            // - https://github.com/rust-lang/unsafe-code-guidelines/issues/381
+                            // - https://github.com/llvm/llvm-project/pull/218413
+                            // - https://discourse.llvm.org/t/interaction-of-noalias-and-dereferenceable/66979
+                            size = layout.size * frozen as _;
                         }
                         hir::Mutability::Mut => {
                             let unpin = optimize
                                 && ty.is_unpin(tcx, typing_env)
                                 && ty.is_unsafe_unpin(tcx, typing_env);
-                            PointerKind::MutableRef { unpin }
+                            kind = PointerKind::MutableRef { unpin };
+
+                            // Set the `size` to zero for non-unpin unique references.
+                            // See the above comment for reasons to do this.
+                            size = layout.size * unpin as _;
                         }
                     };
-                    PointeeInfo { safe: Some(kind), size: layout.size, align: layout.align.abi }
+
+                    PointeeInfo { safe: Some(kind), size, align: layout.align.abi }
                 })
             }
 
@@ -1081,16 +1102,18 @@ where
                 if offset.bytes() == 0
                     && let Some(pointee) = this.ty.boxed_ty() =>
             {
-                tcx.layout_of(typing_env.as_query_input(pointee)).ok().map(|layout| PointeeInfo {
-                    safe: Some(PointerKind::Box {
-                        // Same logic as for mutable references above.
-                        unpin: optimize
-                            && pointee.is_unpin(tcx, typing_env)
-                            && pointee.is_unsafe_unpin(tcx, typing_env),
-                        global: this.ty.is_box_global(tcx),
-                    }),
-                    size: layout.size,
-                    align: layout.align.abi,
+                tcx.layout_of(typing_env.as_query_input(pointee)).ok().map(|layout| {
+                    // Same logic as for mutable references above.
+                    let unpin = optimize
+                        && pointee.is_unpin(tcx, typing_env)
+                        && pointee.is_unsafe_unpin(tcx, typing_env);
+                    let size = layout.size * unpin as _;
+
+                    PointeeInfo {
+                        safe: Some(PointerKind::Box { unpin, global: this.ty.is_box_global(tcx) }),
+                        size,
+                        align: layout.align.abi,
+                    }
                 })
             }
 

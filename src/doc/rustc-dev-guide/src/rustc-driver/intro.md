@@ -6,7 +6,7 @@ The [`rustc_driver`] is essentially `rustc`'s `main` function.
 It acts as the glue for running the various phases of the compiler in the correct order,
 using the interface defined in the [`rustc_interface`] crate. Where possible, using [`rustc_driver`] rather than [`rustc_interface`] is recommended.
 
-The main entry point of [`rustc_driver`] is [`rustc_driver::run_compiler`][rd_rc].
+The main entry point of [`rustc_driver`] is [`rustc_driver::compiler_entrypoint`][rd_ce].
 This builder accepts the same command-line args as rustc as well as an implementation of [`Callbacks`] and a couple of other optional options.
 [`Callbacks`] is a `trait` that allows for custom compiler configuration,
 as well as allowing custom code to run after different phases of the compilation.
@@ -23,7 +23,7 @@ Inside the `closure` you can use the `Compiler` to call various functions to com
 You can see a minimal example of how to use [`rustc_interface`] [here][example].
 
 You can see an example of how to use the various functions using [`rustc_interface`] needs by looking at the `rustc_driver` implementation,
-specifically [`rustc_driver_impl::run_compiler`][rdi_rc]
+specifically [`rustc_driver_impl::compiler_entrypoint`][rdi_ce]
 (not to be confused with [`rustc_interface::run_compiler`][i_rc]).
 
 > **Warning:** By its very nature, the internal compiler APIs are always going
@@ -36,5 +36,5 @@ specifically [`rustc_driver_impl::run_compiler`][rdi_rc]
 [`Callbacks`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/trait.Callbacks.html
 [example]: https://github.com/rust-lang/rustc-dev-guide/blob/main/examples/rustc-interface-example.rs
 [i_rc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/fn.run_compiler.html
-[rd_rc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/fn.run_compiler.html
-[rdi_rc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver_impl/fn.run_compiler.html
+[rd_ce]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/fn.compiler_entrypoint.html
+[rdi_ce]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver_impl/fn.compiler_entrypoint.html

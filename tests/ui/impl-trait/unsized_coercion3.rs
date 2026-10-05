@@ -2,6 +2,7 @@
 //! constraining their hidden type to a trait object.
 
 //@ revisions: next old
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 trait Trait {}

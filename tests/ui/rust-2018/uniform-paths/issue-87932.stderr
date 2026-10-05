@@ -10,7 +10,7 @@ LL |     A::deserialize();
    = help: items from traits can only be used if the trait is in scope
 help: trait `Deserialize` which provides `deserialize` is implemented but not in scope; perhaps you want to import it
    |
-LL + use <crate::A as issue_87932_a::Deserialize>::deserialize::_a::Deserialize;
+LL + use issue_87932_a::Deserialize;
    |
 
 error: aborting due to 1 previous error

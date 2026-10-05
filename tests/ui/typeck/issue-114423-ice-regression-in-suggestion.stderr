@@ -18,9 +18,8 @@ LL |     let _ = RGB { r, g, b };
    |
 help: a local variable with a similar name exists
    |
-LL -     let _ = RGB { r, g, b };
-LL +     let _ = RGB { r, b, b };
-   |
+LL |     let _ = RGB { r, g: b, b };
+   |                       +++
 
 error[E0308]: mismatched types
   --> $DIR/issue-114423-ice-regression-in-suggestion.rs:7:50

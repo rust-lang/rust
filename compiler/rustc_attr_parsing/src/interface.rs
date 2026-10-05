@@ -510,23 +510,25 @@ impl<'sess> AttributeParser<'sess> {
 
         // Now that all attributes have been parsed, run the deferred checks. These can
         // inspect the fully parsed attributes via `FinalizeCheckContext::parsed_attrs`.
-        for (check, attr_span) in deferred_checks {
-            check(
-                &FinalizeCheckContext {
-                    shared: SharedContext {
-                        cx: self,
-                        target_span,
-                        target,
-                        emit_lint: &mut emit_lint,
-                        #[cfg(debug_assertions)]
-                        has_lint_been_emitted: AtomicBool::new(false),
+        if !matches!(self.should_emit, ShouldEmit::Nothing) {
+            for (check, attr_span) in deferred_checks {
+                check(
+                    &mut FinalizeCheckContext {
+                        shared: SharedContext {
+                            cx: self,
+                            target_span,
+                            target,
+                            emit_lint: &mut emit_lint,
+                            #[cfg(debug_assertions)]
+                            has_lint_been_emitted: AtomicBool::new(false),
+                        },
+                        all_attrs: &attr_paths,
+                        parsed_attrs: &attributes,
+                        target_item,
                     },
-                    all_attrs: &attr_paths,
-                    parsed_attrs: &attributes,
-                    target_item,
-                },
-                attr_span,
-            );
+                    attr_span,
+                );
+            }
         }
 
         if !matches!(self.should_emit, ShouldEmit::Nothing) && target == Target::WherePredicate {

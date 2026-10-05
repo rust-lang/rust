@@ -75,10 +75,10 @@ LL |         self.generate();
    |         ^^^^^^^^^^^^^^^
    |
    = note: this `Result` may be an `Err` variant, which should be handled
-help: use `let _ = ...` to ignore the resulting value
+help: use `let _unused = ...` to ignore the resulting value without dropping it immediately
    |
-LL |         let _ = self.generate();
-   |         +++++++
+LL |         let _unused = self.generate();
+   |         +++++++++++++
 
 error: aborting due to 7 previous errors
 

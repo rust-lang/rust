@@ -715,8 +715,6 @@ unsafe extern "C" {
 }
 #[repr(C)]
 pub(crate) struct Builder<'a>(InvariantOpaque<'a>);
-#[repr(C)]
-pub(crate) struct PassManager<'a>(InvariantOpaque<'a>);
 unsafe extern "C" {
     pub type TargetMachine;
 }
@@ -1127,6 +1125,12 @@ unsafe extern "C" {
         FunctionTy: &'a Type,
     ) -> &'a Value;
     pub(crate) fn LLVMDeleteFunction(Fn: &Value);
+    pub(crate) fn LLVMGetOrInsertFunction<'a>(
+        M: &'a Module,
+        Name: *const c_char,
+        NameLen: size_t,
+        FunctionTy: &'a Type,
+    ) -> &'a Value;
 
     // Operations about llvm intrinsics
     pub(crate) fn LLVMLookupIntrinsicID(Name: *const c_char, NameLen: size_t) -> c_uint;
@@ -1637,11 +1641,6 @@ unsafe extern "C" {
     /// Writes a module to the specified path. Returns 0 on success.
     pub(crate) fn LLVMWriteBitcodeToFile(M: &Module, Path: *const c_char) -> c_int;
 
-    /// Creates a legacy pass manager -- only used for final codegen.
-    pub(crate) fn LLVMCreatePassManager<'a>() -> &'a mut PassManager<'a>;
-
-    pub(crate) fn LLVMAddAnalysisPasses<'a>(T: &'a TargetMachine, PM: &PassManager<'a>);
-
     pub(crate) fn LLVMGetHostCPUFeatures() -> *mut c_char;
 
     pub(crate) fn LLVMDisposeMessage(message: *mut c_char);
@@ -2016,6 +2015,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustCreateDereferenceableAttr(C: &Context, bytes: u64) -> &Attribute;
     pub(crate) fn LLVMRustCreateDereferenceableOrNullAttr(C: &Context, bytes: u64) -> &Attribute;
     pub(crate) fn LLVMRustCreateByValAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
+    pub(crate) fn LLVMRustCreateByRefAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
     pub(crate) fn LLVMRustCreateStructRetAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
     pub(crate) fn LLVMRustCreateElementTypeAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
     pub(crate) fn LLVMRustCreateUWTableAttr(C: &Context, async_: bool) -> &Attribute;
@@ -2039,13 +2039,6 @@ unsafe extern "C" {
     ) -> &Attribute;
 
     // Operations on functions
-    /// FIXME: After dropping LLVM 21, migrate to LLVM-C's `LLVMGetOrInsertFunction`.
-    pub(crate) fn LLVMRustGetOrInsertFunction<'a>(
-        M: &'a Module,
-        Name: *const c_char,
-        NameLen: size_t,
-        FunctionTy: &'a Type,
-    ) -> &'a Value;
     pub(crate) fn LLVMRustAddFunctionAttributes<'a>(
         Fn: &'a Value,
         index: c_uint,
@@ -2421,27 +2414,22 @@ unsafe extern "C" {
         Features: *const c_char,
     ) -> *mut MCSubtargetInfo;
 
-    pub(crate) fn LLVMRustMCSubtargetInfoHasFeature(
+    pub(crate) fn LLVMRustMCSubtargetInfoCheckFeatures(
         MCInfo: &MCSubtargetInfo,
-        Feature: *const c_char,
+        Features: *const c_uchar, // See "PTR_LEN_STR".
+        FeaturesLen: usize,
     ) -> bool;
 
     pub(crate) fn LLVMRustDisposeMCSubtargetInfo(MCInfo: ptr::NonNull<MCSubtargetInfo>);
 
-    pub(crate) fn LLVMRustAddLibraryInfo<'a>(
-        T: &TargetMachine,
-        PM: &PassManager<'a>,
-        M: &'a Module,
-        DisableSimplifyLibCalls: bool,
-    );
     pub(crate) fn LLVMRustWriteOutputFile<'a>(
         T: &'a TargetMachine,
-        PM: *mut PassManager<'a>,
         M: &'a Module,
         Output: *const c_char,
         DwoOutput: *const c_char,
         FileType: FileType,
         VerifyIR: bool,
+        DisableSimplifyLibCalls: bool,
     ) -> LLVMRustResult;
     pub(crate) fn LLVMRustOptimize<'a>(
         M: &'a Module,

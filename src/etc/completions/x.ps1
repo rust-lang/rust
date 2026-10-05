@@ -1093,6 +1093,8 @@ Register-ArgumentCompleter -Native -CommandName 'x' -ScriptBlock {
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Select the benchmarks matching a prefix in this comma-separated list that you don''t want to run')
             [CompletionResult]::new('--scenarios', '--scenarios', [CompletionResultType]::ParameterName, 'Select the scenarios that should be benchmarked')
             [CompletionResult]::new('--profiles', '--profiles', [CompletionResultType]::ParameterName, 'Select the profiles that should be benchmarked')
+            [CompletionResult]::new('--database-path', '--database-path', [CompletionResultType]::ParameterName, 'database-path')
+            [CompletionResult]::new('--frontend-threads', '--frontend-threads', [CompletionResultType]::ParameterName, 'Comma-separated list of thread counts for the parallel frontend. Maps directly to the `-Zthreads` rustc option. If unspecified, `rustc-perf` uses only 1')
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
             [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
@@ -1140,6 +1142,8 @@ Register-ArgumentCompleter -Native -CommandName 'x' -ScriptBlock {
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Select the benchmarks matching a prefix in this comma-separated list that you don''t want to run')
             [CompletionResult]::new('--scenarios', '--scenarios', [CompletionResultType]::ParameterName, 'Select the scenarios that should be benchmarked')
             [CompletionResult]::new('--profiles', '--profiles', [CompletionResultType]::ParameterName, 'Select the profiles that should be benchmarked')
+            [CompletionResult]::new('--database-path', '--database-path', [CompletionResultType]::ParameterName, 'database-path')
+            [CompletionResult]::new('--frontend-threads', '--frontend-threads', [CompletionResultType]::ParameterName, 'Comma-separated list of thread counts for the parallel frontend. Maps directly to the `-Zthreads` rustc option. If unspecified, `rustc-perf` uses only 1')
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
             [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
@@ -1187,6 +1191,8 @@ Register-ArgumentCompleter -Native -CommandName 'x' -ScriptBlock {
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Select the benchmarks matching a prefix in this comma-separated list that you don''t want to run')
             [CompletionResult]::new('--scenarios', '--scenarios', [CompletionResultType]::ParameterName, 'Select the scenarios that should be benchmarked')
             [CompletionResult]::new('--profiles', '--profiles', [CompletionResultType]::ParameterName, 'Select the profiles that should be benchmarked')
+            [CompletionResult]::new('--database-path', '--database-path', [CompletionResultType]::ParameterName, 'database-path')
+            [CompletionResult]::new('--frontend-threads', '--frontend-threads', [CompletionResultType]::ParameterName, 'Comma-separated list of thread counts for the parallel frontend. Maps directly to the `-Zthreads` rustc option. If unspecified, `rustc-perf` uses only 1')
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
             [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
@@ -1234,6 +1240,8 @@ Register-ArgumentCompleter -Native -CommandName 'x' -ScriptBlock {
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Select the benchmarks matching a prefix in this comma-separated list that you don''t want to run')
             [CompletionResult]::new('--scenarios', '--scenarios', [CompletionResultType]::ParameterName, 'Select the scenarios that should be benchmarked')
             [CompletionResult]::new('--profiles', '--profiles', [CompletionResultType]::ParameterName, 'Select the profiles that should be benchmarked')
+            [CompletionResult]::new('--database-path', '--database-path', [CompletionResultType]::ParameterName, 'database-path')
+            [CompletionResult]::new('--frontend-threads', '--frontend-threads', [CompletionResultType]::ParameterName, 'Comma-separated list of thread counts for the parallel frontend. Maps directly to the `-Zthreads` rustc option. If unspecified, `rustc-perf` uses only 1')
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
             [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
@@ -1277,6 +1285,7 @@ Register-ArgumentCompleter -Native -CommandName 'x' -ScriptBlock {
             break
         }
         'x;perf;compare' {
+            [CompletionResult]::new('--database-path', '--database-path', [CompletionResultType]::ParameterName, 'database-path')
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
             [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')

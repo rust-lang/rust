@@ -990,58 +990,6 @@ mod snapshot {
     }
 
     #[test]
-    fn dist_compiler_docs() {
-        let ctx = TestCtx::new();
-        insta::assert_snapshot!(
-            ctx.config("dist")
-                .path("rustc-docs")
-                .args(&["--set", "build.compiler-docs=true"])
-                .render_steps(), @r"
-        [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
-        [doc] unstable-book (book) <host>
-        [doc] book (book) <host>
-        [doc] book/first-edition (book) <host>
-        [doc] book/second-edition (book) <host>
-        [doc] book/2018-edition (book) <host>
-        [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> standalone 2 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [doc] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [doc] rustc 1 <host> -> Rustdoc 2 <host>
-        [doc] rustc 1 <host> -> Rustfmt 2 <host>
-        [build] rustc 1 <host> -> error-index 2 <host>
-        [doc] rustc 1 <host> -> error-index 2 <host>
-        [doc] nomicon (book) <host>
-        [doc] rustc 1 <host> -> reference (book) 2 <host>
-        [doc] rustdoc (book) <host>
-        [doc] rust-by-example (book) <host>
-        [build] rustc 0 <host> -> LintDocs 1 <host>
-        [doc] rustc (book) <host>
-        [doc] rustc 1 <host> -> Cargo 2 <host>
-        [doc] cargo (book) <host>
-        [doc] rustc 1 <host> -> Clippy 2 <host>
-        [doc] clippy (book) <host>
-        [doc] rustc 1 <host> -> Miri 2 <host>
-        [doc] embedded-book (book) <host>
-        [doc] edition-guide (book) <host>
-        [doc] style-guide (book) <host>
-        [doc] rustc 1 <host> -> Tidy 2 <host>
-        [doc] rustc 1 <host> -> Bootstrap 2 <host>
-        [doc] rustc 1 <host> -> releases 2 <host>
-        [doc] rustc 1 <host> -> RunMakeSupport 2 <host>
-        [doc] rustc 1 <host> -> BuildHelper 2 <host>
-        [doc] rustc 1 <host> -> Compiletest 2 <host>
-        [build] rustc 0 <host> -> RustInstaller 1 <host>
-        "
-        );
-    }
-
-    #[test]
     fn dist_extended() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
@@ -1624,35 +1572,24 @@ mod snapshot {
             ctx
                 .config("dist")
                 .path("rustc-docs")
-                .render_steps(), @r"
+                .render_steps(), @"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
-        [doc] unstable-book (book) <host>
-        [doc] book (book) <host>
-        [doc] book/first-edition (book) <host>
-        [doc] book/second-edition (book) <host>
-        [doc] book/2018-edition (book) <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> standalone 2 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> error-index 2 <host>
-        [doc] rustc 1 <host> -> error-index 2 <host>
-        [doc] nomicon (book) <host>
-        [doc] rustc 1 <host> -> reference (book) 2 <host>
-        [doc] rustdoc (book) <host>
-        [doc] rust-by-example (book) <host>
-        [build] rustc 0 <host> -> LintDocs 1 <host>
-        [doc] rustc (book) <host>
-        [doc] cargo (book) <host>
-        [doc] clippy (book) <host>
-        [doc] embedded-book (book) <host>
-        [doc] edition-guide (book) <host>
-        [doc] style-guide (book) <host>
-        [doc] rustc 1 <host> -> releases 2 <host>
+        [doc] rustc 1 <host> -> Rustdoc 2 <host>
+        [doc] rustc 1 <host> -> Rustfmt 2 <host>
+        [doc] rustc 1 <host> -> Clippy 2 <host>
+        [doc] rustc 1 <host> -> Miri 2 <host>
+        [doc] rustc 1 <host> -> Cargo 2 <host>
+        [doc] rustc 1 <host> -> Tidy 2 <host>
+        [doc] rustc 1 <host> -> Bootstrap 2 <host>
+        [doc] rustc 1 <host> -> BuildHelper 2 <host>
+        [doc] rustc 1 <host> -> Compiletest 2 <host>
+        [doc] rustc 1 <host> -> RunMakeSupport 2 <host>
+        [doc] rustc 1 <host> -> CompilerWithTools 2 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         ");
     }
@@ -1943,6 +1880,7 @@ mod snapshot {
         [test] compiletest-mir-opt 1 <host>
         [test] compiletest-codegen-llvm 1 <host>
         [test] compiletest-codegen-units 1 <host>
+        [test] compiletest-assembly-gcc 1 <host>
         [test] compiletest-assembly-llvm 1 <host>
         [test] compiletest-incremental 1 <host>
         [test] compiletest-debuginfo 1 <host>
@@ -2124,6 +2062,7 @@ mod snapshot {
         [test] compiletest-mir-opt 2 <host>
         [test] compiletest-codegen-llvm 2 <host>
         [test] compiletest-codegen-units 2 <host>
+        [test] compiletest-assembly-gcc 2 <host>
         [test] compiletest-assembly-llvm 2 <host>
         [test] compiletest-incremental 2 <host>
         [test] compiletest-debuginfo 2 <host>
@@ -2437,6 +2376,31 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        ");
+    }
+
+    #[test]
+    fn doc_compiler_with_tools() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .arg("compiler-with-tools")
+                .render_steps(), @"
+        [build] rustdoc 0 <host>
+        [doc] rustc 0 <host> -> rustc 1 <host>
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [doc] rustc 0 <host> -> Rustdoc 1 <host>
+        [doc] rustc 0 <host> -> Rustfmt 1 <host>
+        [doc] rustc 0 <host> -> Clippy 1 <host>
+        [doc] rustc 0 <host> -> Miri 1 <host>
+        [doc] rustc 0 <host> -> Cargo 1 <host>
+        [doc] rustc 0 <host> -> Tidy 1 <host>
+        [doc] rustc 0 <host> -> Bootstrap 1 <host>
+        [doc] rustc 0 <host> -> BuildHelper 1 <host>
+        [doc] rustc 0 <host> -> Compiletest 1 <host>
+        [doc] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [doc] rustc 0 <host> -> CompilerWithTools 1 <host>
         ");
     }
 
@@ -2798,7 +2762,7 @@ mod snapshot {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("install")
-                .path("src")
+                .path("rust-src")
                 .args(&[
                     // Using backslashes fails with `--set`
                     "--set", &format!("install.prefix={}", ctx.normalized_dir()),
@@ -2815,36 +2779,7 @@ mod snapshot {
                 .render_with(RenderConfig {
                     normalize_host: false
                 }), @r"
-        [build] llvm <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> rustc 1 <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> UnstableBookGen 1 <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> Rustbook 1 <x86_64-unknown-linux-gnu>
-        [doc] unstable-book (book) <x86_64-unknown-linux-gnu>
-        [doc] book (book) <x86_64-unknown-linux-gnu>
-        [doc] book/first-edition (book) <x86_64-unknown-linux-gnu>
-        [doc] book/second-edition (book) <x86_64-unknown-linux-gnu>
-        [doc] book/2018-edition (book) <x86_64-unknown-linux-gnu>
-        [build] rustdoc 1 <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> standalone 2 <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> rustc 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>
-        [doc] nomicon (book) <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> reference (book) 2 <x86_64-unknown-linux-gnu>
-        [doc] rustdoc (book) <x86_64-unknown-linux-gnu>
-        [doc] rust-by-example (book) <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> LintDocs 1 <x86_64-unknown-linux-gnu>
-        [doc] rustc (book) <x86_64-unknown-linux-gnu>
-        [doc] cargo (book) <x86_64-unknown-linux-gnu>
-        [doc] clippy (book) <x86_64-unknown-linux-gnu>
-        [doc] embedded-book (book) <x86_64-unknown-linux-gnu>
-        [doc] edition-guide (book) <x86_64-unknown-linux-gnu>
-        [doc] style-guide (book) <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> releases 2 <x86_64-unknown-linux-gnu>
         [build] rustc 0 <x86_64-unknown-linux-gnu> -> RustInstaller 1 <x86_64-unknown-linux-gnu>
-        [dist] docs <x86_64-unknown-linux-gnu>
         [dist] src <>
         ");
     }
@@ -2854,7 +2789,7 @@ mod snapshot {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("install")
-                .path("src")
+                .path("rust-src")
                 .args(&[
                     // Using backslashes fails with `--set`
                     "--set", &format!("install.prefix={}", ctx.normalized_dir()),
@@ -2872,10 +2807,7 @@ mod snapshot {
                 .render_with(RenderConfig {
                     normalize_host: false
                 }), @r"
-        [build] llvm <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> rustc 1 <x86_64-unknown-linux-gnu>
         [build] rustc 0 <x86_64-unknown-linux-gnu> -> RustInstaller 1 <x86_64-unknown-linux-gnu>
-        [dist] docs <x86_64-unknown-linux-gnu>
         [dist] src <>
         ");
     }

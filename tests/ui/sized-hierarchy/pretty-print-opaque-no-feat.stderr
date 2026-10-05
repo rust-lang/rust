@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `impl Tr + ?Sized` cannot be known at compilation time
-  --> $DIR/pretty-print-opaque-no-feat.rs:9:30
+  --> $DIR/pretty-print-opaque-no-feat.rs:9:26
    |
-LL |         let y: Box<dyn Tr> = x;
-   |                              ^ doesn't have a size known at compile-time
+LL |     let _: Box<dyn Tr> = foo();
+   |                          ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `impl Tr + ?Sized`
    = note: required for the cast from `Box<impl Tr + ?Sized>` to `Box<dyn Tr>`

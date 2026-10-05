@@ -1,5 +1,6 @@
+use rustc_attr_ir::find_attr;
 use rustc_hir::def::Res;
-use rustc_hir::{self as hir, AmbigArg, GenericArg, PathSegment, QPath, TyKind, find_attr};
+use rustc_hir::{self as hir, AmbigArg, GenericArg, PathSegment, QPath, TyKind};
 use rustc_lint_defs::{declare_lint_pass, declare_tool_lint};
 use rustc_middle::ty;
 
@@ -22,7 +23,7 @@ declare_lint_pass!(DisallowedPassByRef => [DISALLOWED_PASS_BY_REF]);
 impl<'tcx> LateLintPass<'tcx> for DisallowedPassByRef {
     fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         match &ty.kind {
-            TyKind::Ref(_, hir::MutTy { ty: inner_ty, mutbl: hir::Mutability::Not }) => {
+            TyKind::Ref(_, inner_ty, hir::Mutability::Not) => {
                 if cx.tcx.trait_impl_of_assoc(ty.hir_id.owner.to_def_id()).is_some() {
                     return;
                 }

@@ -1,16 +1,15 @@
 //@ needs-target-std
-// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
 //@ ignore-backends: gcc
 
 // Test output of const super trait errors in both stable and nightly.
 // We don't want to provide suggestions on stable that only make sense in nightly.
 
-use run_make_support::{diff, rustc};
+use run_make_support::{diff, rustc, stable_bare_rustc};
 
 fn main() {
-    let out = rustc()
+    let out = stable_bare_rustc()
+        .edition("2015")
         .input("const-super-trait.rs")
-        .env("RUSTC_BOOTSTRAP", "-1")
         .cfg("feature_enabled")
         .run_fail()
         .assert_stderr_not_contains("as `const` to allow it to have `const` implementations")
@@ -24,6 +23,7 @@ fn main() {
         .actual_text("(rustc)", &out)
         .run();
     let out = rustc()
+        .edition("2015")
         .input("const-super-trait.rs")
         .cfg("feature_enabled")
         .ui_testing()
@@ -35,9 +35,9 @@ fn main() {
         .expected_file("const-super-trait-nightly-enabled.stderr")
         .actual_text("(rustc)", &out)
         .run();
-    let out = rustc()
+    let out = stable_bare_rustc()
+        .edition("2015")
         .input("const-super-trait.rs")
-        .env("RUSTC_BOOTSTRAP", "-1")
         .run_fail()
         .assert_stderr_not_contains("enable `#![feature(const_trait_impl)]` in your crate and mark")
         .assert_stderr_not_contains("as `const` to allow it to have `const` implementations")
@@ -47,6 +47,7 @@ fn main() {
         .actual_text("(rustc)", &out)
         .run();
     let out = rustc()
+        .edition("2015")
         .input("const-super-trait.rs")
         .ui_testing()
         .run_fail()

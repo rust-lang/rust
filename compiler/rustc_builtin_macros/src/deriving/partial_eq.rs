@@ -1,11 +1,10 @@
 use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, Mutability, Safety};
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::thin_vec;
 
-use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
-use crate::deriving::path_std;
+use crate::deriving::{call_discriminant_value, path_std};
 
 /// Expands a `#[derive(PartialEq)]` attribute into an implementation for the
 /// target item.
@@ -29,7 +28,6 @@ pub(crate) fn expand_deriving_partial_eq(
         // a second check here would lead to redundant error messages.
         supports_unions: true,
         methods: SmallVec::new(),
-        associated_types: SmallVec::new(),
         is_const: false,
         safety: Safety::Default,
         document: true,
@@ -42,8 +40,9 @@ pub(crate) fn expand_deriving_partial_eq(
         name: sym::eq,
         generics: cx.empty_generics(span),
         explicit_self: true,
-        nonself_args: smallvec![(self_ref(), sym::other)],
-        ret_ty: Path(cx.path_ident(span, Ident::new(sym::bool, span))),
+        nonself_args: smallvec![(cx.ty_self_ref(span), sym::other)],
+        has_other_selflike_arg: true,
+        ret_ty: cx.ty_path(cx.path_ident(span, Ident::new(sym::bool, span))),
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
         combine_substructure: combine_substructure(get_substructure_equality_expr),
@@ -57,7 +56,6 @@ pub(crate) fn expand_deriving_partial_eq(
         additional_bounds: SmallVec::new(),
         supports_unions: false,
         methods,
-        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,
@@ -123,8 +121,18 @@ fn get_substructure_equality_expr(
 ) -> BlockOrExpr {
     BlockOrExpr::new_expr(match substructure {
         EnumMatching(.., fields) | Struct(.., fields) => {
-            let combine = move |acc, field| {
-                let rhs = get_field_equality_expr(cx, field);
+            let combine = move |acc, field: &FieldInfo| {
+                let rhs = field
+                    .other_selflike_expr
+                    .as_ref()
+                    .expect("not exactly 2 arguments in `derive(PartialEq)`");
+
+                let rhs = cx.expr_binary(
+                    field.span,
+                    BinOpKind::Eq,
+                    wrap_block_expr(cx, peel_refs(&field.self_expr)),
+                    wrap_block_expr(cx, peel_refs(rhs)),
+                );
                 match acc {
                     // Combine the previous comparison with the current field
                     // using logical AND.
@@ -144,41 +152,19 @@ fn get_substructure_equality_expr(
                 // If there are no fields, treat as always equal.
                 .unwrap_or_else(|| cx.expr_bool(span, true))
         }
-        EnumDiscr(disc, match_expr) => {
-            let lhs = get_field_equality_expr(cx, &disc);
+        EnumDiscr(match_expr) => {
+            let self_expr = call_discriminant_value(cx, span, kw::SelfLower);
+            let other_selflike_expr = call_discriminant_value(cx, span, sym::other);
+            let lhs = cx.expr_binary(span, BinOpKind::Eq, self_expr, other_selflike_expr);
             let Some(match_expr) = match_expr else {
                 return BlockOrExpr::new_expr(lhs);
             };
             // Compare the discriminant first (cheaper), then the rest of the
             // fields.
-            cx.expr_binary(disc.span, BinOpKind::And, lhs, match_expr.clone())
+            cx.expr_binary(span, BinOpKind::And, lhs, match_expr)
         }
         _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(PartialEq)`"),
     })
-}
-
-/// Generates an equality comparison expression for a single struct or enum
-/// field.
-///
-/// This function produces an AST expression that compares the `self` and
-/// `other` values for a field using `==`. It removes any leading references
-/// from both sides for readability. If the field is a block expression, it is
-/// wrapped in parentheses to ensure valid syntax.
-///
-/// # Panics
-///
-/// Panics if there are not exactly two arguments to compare (should be `self`
-/// and `other`).
-fn get_field_equality_expr(cx: &ExtCtxt<'_>, field: &FieldInfo) -> Box<Expr> {
-    let rhs =
-        field.other_selflike_expr.as_ref().expect("not exactly 2 arguments in `derive(PartialEq)`");
-
-    cx.expr_binary(
-        field.span,
-        BinOpKind::Eq,
-        wrap_block_expr(cx, peel_refs(&field.self_expr)),
-        wrap_block_expr(cx, peel_refs(rhs)),
-    )
 }
 
 /// Removes all leading immutable references from an expression.

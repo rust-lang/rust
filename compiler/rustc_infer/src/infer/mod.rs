@@ -1,5 +1,6 @@
 use std::cell::{Cell, RefCell};
 use std::fmt;
+use std::range::RangeInclusive;
 
 pub use at::DefineOpaqueTypes;
 use free_regions::RegionRelations;
@@ -335,10 +336,7 @@ pub struct InferCtxt<'tcx> {
     // FIXME(-Zassumptions-on-binders): This and `universe` should probably be
     // in `InferCtxtInner` so they can participate in rollbacks and whatnot
     placeholder_assumptions_for_next_solver: RefCell<
-        FxIndexMap<
-            ty::UniverseIndex,
-            Option<rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>>,
-        >,
+        FxIndexMap<ty::UniverseIndex, rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>>,
     >,
 
     next_trait_solver: bool,
@@ -465,7 +463,7 @@ pub enum SubregionOrigin<'tcx> {
         trait_item_def_id: DefId,
     },
 
-    AscribeUserTypeProvePredicate(Span),
+    AscribeUserTypeProvePredicate(Span, DefId),
 
     // FIXME(-Zassumptions-on-binders): this is a temporary hack until we support
     // proper diagnostics for solver region constraints.
@@ -480,7 +478,9 @@ impl<'tcx> SubregionOrigin<'tcx> {
     pub fn to_constraint_category(&self) -> ConstraintCategory<'tcx> {
         match self {
             Self::Subtype(type_trace) => type_trace.cause.to_constraint_category(),
-            Self::AscribeUserTypeProvePredicate(span) => ConstraintCategory::Predicate(*span),
+            Self::AscribeUserTypeProvePredicate(span, def_id) => {
+                ConstraintCategory::Predicate(*span, *def_id)
+            }
             Self::SolverRegionConstraint(span) => ConstraintCategory::SolverRegionConstraint(*span),
             _ => ConstraintCategory::BoringNoLocation,
         }
@@ -1579,28 +1579,34 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn insert_placeholder_assumptions(
         &self,
         u: ty::UniverseIndex,
-        assumptions: Option<rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>>,
+        assumptions: rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>,
     ) {
-        if let Some(assumptions) = &assumptions {
-            assert!(
-                !assumptions.type_outlives.has_escaping_bound_vars(),
-                "assumptions has escaping bound vars, which is indicative of a bug in how assumptions are handled: {:?}",
-                assumptions.type_outlives
-            );
-            assert!(
-                assumptions.region_outlives.base_edges().all(|r| !r.has_escaping_bound_vars()),
-                "assumptions has escaping bound vars, which is indicative of a bug in how assumptions are handled: {:?}",
-                assumptions.region_outlives
-            );
-        }
+        assert!(
+            !assumptions.type_outlives.has_escaping_bound_vars(),
+            "assumptions has escaping bound vars, which is indicative of a bug in how assumptions are handled: {:?}",
+            assumptions.type_outlives
+        );
+        assert!(
+            assumptions.region_outlives.base_edges().all(|r| !r.has_escaping_bound_vars()),
+            "assumptions has escaping bound vars, which is indicative of a bug in how assumptions are handled: {:?}",
+            assumptions.region_outlives
+        );
         self.placeholder_assumptions_for_next_solver.borrow_mut().insert(u, assumptions);
     }
 
     pub fn get_placeholder_assumptions(
         &self,
         u: ty::UniverseIndex,
-    ) -> Option<rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>> {
-        self.placeholder_assumptions_for_next_solver.borrow().get(&u).unwrap().as_ref().cloned()
+    ) -> rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>> {
+        self.placeholder_assumptions_for_next_solver.borrow().get(&u).unwrap().clone()
+    }
+
+    pub fn has_placeholder_assumptions(&self, range: RangeInclusive<ty::UniverseIndex>) -> bool {
+        let assumptions = self.placeholder_assumptions_for_next_solver.borrow();
+        // Walk around that `Step` trait is nightly only.
+        (range.start.index()..=range.last.index())
+            .map(ty::UniverseIndex::from_usize)
+            .all(|u| assumptions.get(&u).is_some())
     }
 
     pub fn get_solver_region_constraint(&self) -> SolverRegionConstraint<'tcx> {
@@ -1836,7 +1842,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
             SubregionOrigin::Reborrow(a) => a,
             SubregionOrigin::ReferenceOutlivesReferent(_, a) => a,
             SubregionOrigin::CompareImplItemObligation { span, .. } => span,
-            SubregionOrigin::AscribeUserTypeProvePredicate(span) => span,
+            SubregionOrigin::AscribeUserTypeProvePredicate(span, _) => span,
             SubregionOrigin::CheckAssociatedTypeBounds { ref parent, .. } => parent.span(),
             SubregionOrigin::SolverRegionConstraint(a) => a,
         }
@@ -1870,8 +1876,8 @@ impl<'tcx> SubregionOrigin<'tcx> {
                 parent: Box::new(default()),
             },
 
-            traits::ObligationCauseCode::AscribeUserTypeProvePredicate(span) => {
-                SubregionOrigin::AscribeUserTypeProvePredicate(span)
+            traits::ObligationCauseCode::AscribeUserTypeProvePredicate(span, def_id) => {
+                SubregionOrigin::AscribeUserTypeProvePredicate(span, def_id)
             }
 
             traits::ObligationCauseCode::ObjectTypeBound(ty, _reg) => {

@@ -11,7 +11,7 @@ use core::iter;
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{
-    Arm, Block, Expr, ExprKind, HirId, HirIdSet, ItemKind, LetStmt, Node, Stmt, StmtKind, UseKind, intravisit,
+    Arm, Block, Expr, ExprKind, HirId, HirIdSet, ItemKind, LetStmt, Node, Stmt, StmtKind, UseKind, UseTree, intravisit,
 };
 use rustc_lint::LateContext;
 use rustc_span::hygiene::walk_chain;
@@ -259,7 +259,10 @@ fn eq_binding_names(cx: &LateContext<'_>, s: &Stmt<'_>, names: &[(HirId, Symbol)
                 | ItemKind::Const(ident, ..)
                 | ItemKind::Fn { ident, .. }
                 | ItemKind::TyAlias(ident, ..)
-                | ItemKind::Use(_, UseKind::Single(ident))
+                | ItemKind::Use(UseTree {
+                    kind: UseKind::Single(ident),
+                    ..
+                })
                 | ItemKind::Mod(ident, _) = item.kind =>
         {
             *name == ident.name

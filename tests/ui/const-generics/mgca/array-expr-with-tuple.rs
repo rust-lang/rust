@@ -1,11 +1,11 @@
 //@ run-pass
 #![feature(
-    min_generic_const_args,
-    macroless_generic_const_args,
     adt_const_params,
+    gca_adts,
+    gca_macroless_args,
+    gca_min_const_items,
     unsized_const_params
 )]
-#![expect(incomplete_features)]
 #![allow(dead_code)]
 
 fn takes_tuple<const T: ([u32; 2], u32, [u32; 2])>() {}

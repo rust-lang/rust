@@ -38,7 +38,5 @@ pub fn test() {
 }
 
 //[wrong_arch]~? ERROR `-Zpacked-stack` is only supported on s390x
-//[backchain_cli]~? WARN unstable feature specified for `-Ctarget-feature`: `backchain`
 //[backchain_cli]~? ERROR `-Zpacked-stack` is incompatible with `backchain` target feature
 //[backchain_attr]~? ERROR `-Zpacked-stack` is incompatible with `backchain` target feature
-//[with_softfloat]~? WARN unstable feature specified for `-Ctarget-feature`: `backchain`

@@ -490,25 +490,25 @@ pub trait Clause<I: Interner<Clause = Self>>:
 
     fn as_trait_clause(self) -> Option<ty::Binder<I, ty::TraitClause<I>>> {
         self.kind()
-            .map_bound(|clause| if let ty::ClauseKind::Trait(t) = clause { Some(t) } else { None })
+            .map_bound_no_validate_bound_vars(|clause| {
+                if let ty::ClauseKind::Trait(t) = clause { Some(t) } else { None }
+            })
             .transpose()
     }
 
     fn as_host_effect_clause(self) -> Option<ty::Binder<I, ty::HostEffectClause<I>>> {
         self.kind()
-            .map_bound(
-                |clause| if let ty::ClauseKind::HostEffect(t) = clause { Some(t) } else { None },
-            )
+            .map_bound_no_validate_bound_vars(|clause| {
+                if let ty::ClauseKind::HostEffect(t) = clause { Some(t) } else { None }
+            })
             .transpose()
     }
 
     fn as_projection_clause(self) -> Option<ty::Binder<I, ty::ProjectionClause<I>>> {
         self.kind()
-            .map_bound(
-                |clause| {
-                    if let ty::ClauseKind::Projection(p) = clause { Some(p) } else { None }
-                },
-            )
+            .map_bound_no_validate_bound_vars(|clause| {
+                if let ty::ClauseKind::Projection(p) = clause { Some(p) } else { None }
+            })
             .transpose()
     }
 
@@ -590,7 +590,7 @@ pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
 pub trait Features<I: Interner>: Copy {
     fn generic_const_exprs(self) -> bool;
 
-    fn generic_const_args(self) -> bool;
+    fn gca_const_items(self) -> bool;
 
     fn coroutine_clone(self) -> bool;
 

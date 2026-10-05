@@ -1,5 +1,5 @@
 error[E0392]: type parameter `T` is never used
-  --> $DIR/macro-const-arg-infer.rs:11:10
+  --> $DIR/macro-const-arg-infer.rs:14:10
    |
 LL | struct A<T>;
    |          ^ unused type parameter
@@ -8,29 +8,29 @@ LL | struct A<T>;
    = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
 
 error[E0747]: constant provided when a type was expected
-  --> $DIR/macro-const-arg-infer.rs:6:9
+  --> $DIR/macro-const-arg-infer.rs:9:9
    |
 LL |   macro_rules! y {
 LL |       ( $($matcher:tt)*) => {
 LL |           _
    |           ^
 ...
-LL |       core::direct_const_arg!(y! {
-   |  _____________________________-
+LL |       gca!(y! {
+   |  __________-
 LL | |         x
 LL | |     }),
    | |_____- in this macro invocation
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
-  --> $DIR/macro-const-arg-infer.rs:6:9
+  --> $DIR/macro-const-arg-infer.rs:9:9
    |
 LL |   macro_rules! y {
 LL |       ( $($matcher:tt)*) => {
 LL |           _
    |           ^ not allowed in type signatures
 ...
-LL |       core::direct_const_arg!(y! {
-   |  _____________________________-
+LL |       gca!(y! {
+   |  __________-
 LL | |         x
 LL | |     }),
    | |_____- in this macro invocation

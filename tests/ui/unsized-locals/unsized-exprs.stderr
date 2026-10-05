@@ -6,10 +6,10 @@ LL |     udrop::<A<[u8]>>(A { 0: *foo() });
    |
    = help: within `A<[u8]>`, the trait `Sized` is not implemented for `[u8]`
 note: required because it appears within the type `A<[u8]>`
-  --> $DIR/unsized-exprs.rs:3:8
+  --> $DIR/unsized-exprs.rs:3:21
    |
 LL | struct A<X: ?Sized>(X);
-   |        ^            - required by this field
+   |                     ^ required by this field
 note: unsized values must be place expressions and cannot be put in temporaries
   --> $DIR/unsized-exprs.rs:19:22
    |
@@ -24,10 +24,10 @@ LL |     udrop::<A<[u8]>>(A(*foo()));
    |
    = help: within `A<[u8]>`, the trait `Sized` is not implemented for `[u8]`
 note: required because it appears within the type `A<[u8]>`
-  --> $DIR/unsized-exprs.rs:3:8
+  --> $DIR/unsized-exprs.rs:3:21
    |
 LL | struct A<X: ?Sized>(X);
-   |        ^            - required by this field
+   |                     ^ required by this field
 note: unsized values must be place expressions and cannot be put in temporaries
   --> $DIR/unsized-exprs.rs:21:22
    |

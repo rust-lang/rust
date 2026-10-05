@@ -927,8 +927,15 @@ impl ToJson for SmallDataThresholdSupport {
 
 crate::target_spec_enum! {
     pub enum MergeFunctions {
+        /// Disable function merging entirely.
         Disabled = "disabled",
+        /// Allow function merging via trampolines (i.e., functions can be implemented
+        /// in terms of a jump to an unrelated function with identical behavior), but
+        /// not via object-format-level global aliases.
         Trampolines = "trampolines",
+        /// (Default) allow function merging via either trampolines or (object format
+        /// level) global aliases. LLVM will normally use global aliases for merging, but
+        /// trampolines are also permissible.
         Aliases = "aliases",
     }
 
@@ -1695,6 +1702,9 @@ supported_targets! {
     ("i686-oe-linux-gnu", i686_oe_linux_gnu),
     ("riscv64-oe-linux-gnu", riscv64_oe_linux_gnu),
     ("x86_64-oe-linux-gnu", x86_64_oe_linux_gnu),
+
+    ("aarch64-unknown-hyperlight", aarch64_unknown_hyperlight),
+    ("x86_64-unknown-hyperlight", x86_64_unknown_hyperlight),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
@@ -1850,6 +1860,7 @@ crate::target_spec_enum! {
         Hermit = "hermit",
         Horizon = "horizon",
         Hurd = "hurd",
+        Hyperlight = "hyperlight",
         Illumos = "illumos",
         IOs = "ios",
         L4Re = "l4re",

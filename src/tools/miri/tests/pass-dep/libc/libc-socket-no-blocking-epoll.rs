@@ -57,9 +57,9 @@ fn test_connect_nonblock() {
         net::accept_ipv4(server_sockfd).unwrap();
     });
 
-    // Non-blocking connects always "fail" with EINPROGRESS.
-    let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::InProgress);
+    let result = net::connect_ipv4(client_sockfd, addr);
+    // This might succeed immediately or return EINPROGRESS.
+    assert!(result.is_ok() || result.is_err_and(|e| e.kind() == ErrorKind::InProgress));
 
     // Add client socket with WRITABLE interest to epoll.
     epoll_ctl_add(epfd, client_sockfd, EPOLLOUT | EPOLLET | EPOLLERR).unwrap();
@@ -145,9 +145,10 @@ fn test_connect_nonblock_err() {
     // a zero port.
     let addr = net::sock_addr_ipv4([127, 0, 1, 1], 12321);
 
-    // Non-blocking connect should fail with EINPROGRESS.
     let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::InProgress);
+    // Since the address is not bound, the `connect` can never succeed
+    // immediately and thus it always "fails" with EINPROGRESS.
+    assert!(err.kind() == ErrorKind::InProgress);
 
     // Add interest for client socket.
     epoll_ctl_add(epfd, client_sockfd, EPOLLOUT | EPOLLET | libc::EPOLLERR).unwrap();

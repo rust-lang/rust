@@ -17,11 +17,11 @@ use rustc_hir::{
     BinOpKind, Block, ConstArgKind, ConstBlock, ConstItemRhs, Expr, ExprKind, HirId, PatExpr, PatExprKind, QPath,
     TyKind, UnOp,
 };
-use rustc_middle::ty::consts::ConstExt;
 use rustc_lexer::{FrontmatterAllowed, tokenize};
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{Scalar, alloc_range};
 use rustc_middle::mir::{self, ConstValue};
+use rustc_middle::ty::consts::ConstExt as _;
 use rustc_middle::ty::{self, FloatTy, IntTy, ScalarInt, Ty, TyCtxt, TypeckResults, UintTy};
 use rustc_span::{Symbol, SyntaxContext, bug, span_bug};
 use std::cell::Cell;
@@ -871,7 +871,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             {
                 did
             },
-            // TODO: revisit when feature `min_generic_const_args` is stabilized. In the meantime,
+            // TODO: revisit when feature `gca_min_const_items` is stabilized. In the meantime,
             // `TyCtxt::const_eval_resolve()` will trigger an ICE when evaluating the body of the
             // `type const` definition.
             _ if let Res::Def(DefKind::Const | DefKind::AssocConst, did) = self.typeck.qpath_res(qpath, id)

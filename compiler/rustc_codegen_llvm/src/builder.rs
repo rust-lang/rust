@@ -8,13 +8,13 @@ pub(crate) mod gpu_offload;
 
 use libc::{c_char, c_uint};
 use rustc_abi::{self as abi, Align, CanonAbi, Size, WrappingRange};
+use rustc_attr_ir::{AttributeKind, UnrollAttr};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_hir::attrs::{AttributeKind, UnrollAttr};
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
@@ -340,14 +340,14 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn br_with_attrs(&mut self, dest: &'ll BasicBlock, attributes: &[AttributeKind]) {
+    fn br_with_attrs(&mut self, dest: &'ll BasicBlock, loop_hint_attrs: &[AttributeKind]) {
         unsafe {
             let val = llvm::LLVMBuildBr(self.llbuilder, dest);
 
             let mut nodes = Vec::new();
 
-            for attribute in attributes {
-                let AttributeKind::Unroll(unroll) = attribute else {
+            for loop_hint_attr in loop_hint_attrs {
+                let AttributeKind::Unroll(unroll) = loop_hint_attr else {
                     continue;
                 };
                 // UnrollAttr::Count needs a second operand, the provided count, but the other
@@ -919,9 +919,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                     self.set_metadata_node(store, llvm::MD_nontemporal, &[one]);
                 }
             }
-            if flags.contains(MemFlags::CAPTURES_READ_ONLY)
-                && crate::llvm_util::get_version() >= (22, 0, 0)
-            {
+            if flags.contains(MemFlags::CAPTURES_READ_ONLY) {
                 assert!(
                     self.type_kind(self.val_ty(val)) == TypeKind::Pointer,
                     "CAPTURED_READ_ONLY is only supported on pointer stores"
@@ -1903,14 +1901,10 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             return;
         }
 
-        if crate::llvm_util::get_version() >= (22, 0, 0) {
-            // LLVM 22 requires the lifetime intrinsic to act directly on the alloca,
-            // there can't be an addrspacecast in between.
-            let ptr = unsafe { llvm::LLVMRustStripPointerCasts(ptr) };
-            self.call_intrinsic(intrinsic, &[self.val_ty(ptr)], &[ptr]);
-        } else {
-            self.call_intrinsic(intrinsic, &[self.val_ty(ptr)], &[self.cx.const_u64(size), ptr]);
-        }
+        // LLVM 22 requires the lifetime intrinsic to act directly on the alloca,
+        // there can't be an addrspacecast in between.
+        let ptr = unsafe { llvm::LLVMRustStripPointerCasts(ptr) };
+        self.call_intrinsic(intrinsic, &[self.val_ty(ptr)], &[ptr]);
     }
 }
 impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
@@ -2065,17 +2059,24 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             let is_diag = self.tcx.sess.opts.unstable_opts.sanitizer_cfi_diag.unwrap_or(false);
             let is_recover =
                 self.tcx.sess.opts.unstable_opts.sanitizer_cfi_recover.unwrap_or(false);
+            let is_minimal =
+                self.tcx.sess.opts.unstable_opts.sanitizer_cfi_minimal_runtime.unwrap_or(false);
 
             if is_diag || is_recover {
-                let fty = self.cx.type_func(
-                    &[self.cx.type_ptr(), self.cx.type_isize(), self.cx.type_isize()],
-                    self.cx.type_void(),
-                );
+                let fty = if is_minimal {
+                    self.cx.type_func(&[], self.cx.type_void())
+                } else {
+                    self.cx.type_func(
+                        &[self.cx.type_ptr(), self.cx.type_isize(), self.cx.type_isize()],
+                        self.cx.type_void(),
+                    )
+                };
                 let ubsan_handler = self.declare_cfn(
-                    if is_recover {
-                        "__ubsan_handle_cfi_check_fail"
-                    } else {
-                        "__ubsan_handle_cfi_check_fail_abort"
+                    match (is_minimal, is_recover) {
+                        (true, true) => "__ubsan_handle_cfi_check_fail_minimal",
+                        (true, false) => "__ubsan_handle_cfi_check_fail_minimal_abort",
+                        (false, true) => "__ubsan_handle_cfi_check_fail",
+                        (false, false) => "__ubsan_handle_cfi_check_fail_abort",
                     },
                     llvm::UnnamedAddr::Global,
                     fty,
@@ -2101,13 +2102,18 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                     self.generate_ubsan_cfi_diag_data(self.span, expected_ty, check_kind);
 
                 let function_address = self.ptrtoint(llfn, self.cx.type_isize());
+                let arguments: &[_] = if is_minimal {
+                    &[]
+                } else {
+                    &[diag_data, function_address, self.const_usize(0)]
+                };
                 self.call(
                     fty,
                     None,
                     None,
                     ubsan_handler,
                     ReturnSlot::Direct,
-                    &[diag_data, function_address, self.const_usize(0)],
+                    arguments,
                     None,
                     None,
                 );
@@ -2117,7 +2123,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                     self.unreachable();
                 }
             } else {
-                self.abort();
+                self.abort_immediate();
                 self.unreachable();
             }
 

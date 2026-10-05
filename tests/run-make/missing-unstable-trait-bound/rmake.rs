@@ -2,17 +2,16 @@
 //@ ignore-wasm32
 //@ ignore-wasm64
 // ignore-tidy-linelength
-// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
 //@ ignore-backends: gcc
 
 // Ensure that on stable we don't suggest restricting with an unsafe trait and we continue
 // mentioning the rest of the obligation chain.
 
-use run_make_support::{diff, rustc};
+use run_make_support::{diff, stable_bare_rustc};
 
 fn main() {
-    let out = rustc()
-        .env("RUSTC_BOOTSTRAP", "-1")
+    let out = stable_bare_rustc()
+        .edition("2015")
         .input("missing-bound.rs")
         .run_fail()
         .assert_stderr_not_contains("help: consider restricting type parameter `T`")

@@ -55,7 +55,7 @@ declare_features! (
     /// Allows using the `amdgpu-kernel` ABI.
     (removed, abi_amdgpu_kernel, "1.77.0", Some(51575), None, 120495),
     (removed, abi_c_cmse_nonsecure_call, "1.90.0", Some(81391), Some("renamed to abi_cmse_nonsecure_call"), 142146),
-    (removed, abi_unadjusted, "CURRENT_RUSTC_VERSION", None, Some("merged into link_llvm_intrinsics"), 161398),
+    (removed, abi_unadjusted, "1.100.0", None, Some("merged into link_llvm_intrinsics"), 161398),
     (removed, advanced_slice_patterns, "1.42.0", Some(62254),
      Some("merged into `#![feature(slice_patterns)]`"), 67712),
     (removed, allocator, "1.0.0", None, None),
@@ -63,11 +63,11 @@ declare_features! (
     (removed, allow_fail, "1.60.0", Some(46488), Some("removed due to no clear use cases"), 93416),
     /// Allows users to enforce equality of associated constants `TraitImpl<AssocConst=3>`.
     (removed, associated_const_equality, "1.94.0", Some(92827),
-     Some("merged into `min_generic_const_args`")),
+     Some("merged into `gca_min_const_items`")),
     (removed, await_macro, "1.38.0", Some(50547),
      Some("subsumed by `.await` syntax"), 62293),
     /// Allows using `box` in patterns (RFC 469).
-    (removed, box_patterns, "CURRENT_RUSTC_VERSION", Some(29641), Some("superseded by `deref_patterns`")),
+    (removed, box_patterns, "1.100.0", Some(29641), Some("superseded by `deref_patterns`")),
     /// Allows using the `box $expr` syntax.
     (removed, box_syntax, "1.70.0", Some(49733), Some("replaced with `#[rustc_box]`"), 108471),
     /// Allows capturing disjoint fields in a closure/coroutine (RFC 2229).
@@ -167,6 +167,7 @@ declare_features! (
         ),
         133768
     ),
+    (removed, generic_const_args, "1.100.0", Some(151972), Some("renamed to `gca_const_items`")),
     (removed, import_shadowing, "1.0.0", None, None),
     /// Allows in-band quantification of lifetime bindings (e.g., `fn foo(x: &'a u8) -> &'a u8`).
     (removed, in_band_lifetimes, "1.61.0", Some(44524),
@@ -192,9 +193,12 @@ declare_features! (
            which is available from cargo build scripts with `cargo:rustc-link-arg` now"), 83820),
     (removed, macro_reexport, "1.0.0", Some(29638),
      Some("subsumed by `pub use`"), 49982),
+    (removed, macroless_const_item_generic_const_args, "1.100.0", Some(162540), Some("renamed to `gca_macroless_items`")),
+    (removed, macroless_generic_const_args, "1.100.0", Some(159006), Some("renamed to `gca_macroless_args`")),
     /// Allows using `#[main]` to replace the entrypoint `#[lang = "start"]` calls.
     (removed, main, "1.53.0", Some(29634), None, 84217),
     (removed, managed_boxes, "1.0.0", None, None),
+    (removed, min_generic_const_args, "1.100.0", Some(132980), Some("renamed to `gca_min_const_items`")),
     /// Allows the use of type alias impl trait in function return positions
     (removed, min_type_alias_impl_trait, "1.56.0", Some(63063),
      Some("removed in favor of full type_alias_impl_trait"), 87564),

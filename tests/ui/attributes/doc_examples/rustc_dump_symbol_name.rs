@@ -1,5 +1,5 @@
 //@ dont-require-annotations: ERROR
-//@ compile-flags: --crate-type lib -Z ui-testing=no
+//@ compile-flags: --crate-type lib --crate-name crate_name -Z ui-testing=no
 //@ build-fail
 
 #![feature(rustc_attrs)]

@@ -5,9 +5,9 @@ use core::iter;
 use hir::def_id::LocalDefId;
 use itertools::Itertools;
 use rustc_ast::util::parser::ExprPrecedence;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diag, MultiSpan, listify, msg};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{
@@ -1027,7 +1027,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .segments
                         .last()
                         .and_then(|seg| seg.args)
-                        .map_or(false, |args| !args.constraints.is_empty())
+                        .is_some_and(|args| !args.constraints.is_empty())
                 {
                     // Use the path to get the trait name string
                     let trait_name = trait_ref
@@ -1467,7 +1467,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
     ) -> bool {
         let sp = self.tcx.sess.source_map().start_point(expr.span).with_parent(None);
-        if let Some(sp) = self.tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
+        if let Some(sp) =
+            self.tcx.sess.psess.complete_stmt_exprs_before_bin_op_lookalike.borrow().get(&sp)
+        {
             // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
             true
@@ -1692,12 +1694,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let suggestion = match self.tcx.hir_maybe_get_struct_pattern_shorthand_field(expr) {
-            Some(ident) => format!(": {ident}.is_some()"),
-            None => ".is_some()".to_string(),
+            Some(ident) => vec![(expr.span.shrink_to_hi(), format!(": {ident}.is_some()"))],
+            None if self.precedence(expr) < ExprPrecedence::Unambiguous => {
+                // Apply the method to the whole expression, e.g. `(*value).is_some()`.
+                vec![
+                    (expr.span.shrink_to_lo(), "(".to_string()),
+                    (expr.span.shrink_to_hi(), ").is_some()".to_string()),
+                ]
+            }
+            None => vec![(expr.span.shrink_to_hi(), ".is_some()".to_string())],
         };
 
-        diag.span_suggestion_verbose(
-            expr.span.shrink_to_hi(),
+        diag.multipart_suggestion(
             "use `Option::is_some` to test if the `Option` has a value",
             suggestion,
             Applicability::MachineApplicable,
@@ -2856,7 +2864,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         true
     }
 
-    /// Identify some cases where `as_ref()` would be appropriate and suggest it.
+    /// Identify some cases where `as_ref()` or `as_mut()` would be appropriate and suggest it.
     ///
     /// Given the following code:
     /// ```compile_fail,E0308
@@ -2872,7 +2880,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```ignore (illustrative)
     /// opt.map(|param| { takes_ref(param) });
     /// ```
-    fn can_use_as_ref(&self, expr: &hir::Expr<'_>) -> Option<(Vec<(Span, String)>, &'static str)> {
+    fn can_use_as_ref_or_mut(
+        &self,
+        expr: &hir::Expr<'_>,
+        mutability: hir::Mutability,
+    ) -> Option<(Vec<(Span, String)>, &'static str)> {
         let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind else {
             return None;
         };
@@ -2909,9 +2921,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        let self_ty = self.typeck_results.borrow().expr_ty_opt(receiver)?;
+        let mut self_ty = self.typeck_results.borrow().expr_ty_opt(receiver)?;
+        while let ty::Ref(_, inner, ref_mutability) = self_ty.kind() {
+            // `as_mut()` cannot borrow through a shared reference,
+            // also we cannot suggest `as_ref()` either when the reference is shared
+            if mutability.is_mut() && ref_mutability.is_not() {
+                return None;
+            }
+            self_ty = *inner;
+        }
         let name = method_path.ident.name;
-        let is_as_ref_able = match self_ty.peel_refs().kind() {
+        let can_borrow = match self_ty.kind() {
             ty::Adt(def, _) => {
                 (self.tcx.is_diagnostic_item(sym::Option, def.did())
                     || self.tcx.is_diagnostic_item(sym::Result, def.did()))
@@ -2919,11 +2939,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => false,
         };
-        if is_as_ref_able {
-            Some((
-                vec![(method_path.ident.span.shrink_to_lo(), "as_ref().".to_string())],
-                "consider using `as_ref` instead",
-            ))
+        if can_borrow {
+            let (suggestion, message) = match mutability {
+                hir::Mutability::Not => ("as_ref().", "consider using `as_ref` instead"),
+                hir::Mutability::Mut => ("as_mut().", "consider using `as_mut` instead"),
+            };
+            Some((vec![(method_path.ident.span.shrink_to_lo(), suggestion.to_string())], message))
         } else {
             None
         }
@@ -3114,7 +3135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return Some((suggs, help, app, mutref));
                     }
 
-                    if let Some((sugg, msg)) = self.can_use_as_ref(expr) {
+                    if let Some((sugg, msg)) = self.can_use_as_ref_or_mut(expr, mutability) {
                         return Some((
                             sugg,
                             msg.to_string(),

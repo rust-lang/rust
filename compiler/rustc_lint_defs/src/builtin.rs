@@ -137,6 +137,7 @@ pub mod hardwired {
             UNREACHABLE_PATTERNS,
             UNSAFE_ATTR_OUTSIDE_UNSAFE,
             UNSAFE_OP_IN_UNSAFE_FN,
+            UNSTABLE_IMPORTS,
             UNSTABLE_NAME_COLLISIONS,
             UNSTABLE_SYNTAX_PRE_EXPANSION,
             UNSUPPORTED_CALLING_CONVENTIONS,
@@ -2825,8 +2826,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    #[cfg_attr(bootstrap, doc = "```rust,ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
+    /// ```rust,compile_fail
     /// #![feature(staged_api)]
     /// #![stable(feature = "test", since = "1.0.0")]
     ///
@@ -2837,9 +2837,9 @@ declare_lint! {
     /// pub use self::S as T;
     ///
     /// fn main() {}
-    #[doc = "```"]
+    /// ```
     ///
-    #[cfg_attr(not(bootstrap), doc = "{{produces}}")]
+    /// {{produces}}
     ///
     /// ### Explanation
     ///
@@ -5857,4 +5857,68 @@ declare_lint! {
     Deny,
     "`repr(C, align)` types nested inside `repr(C, packed)` types \
     do not always have a C-compatible layout",
+}
+
+declare_lint! {
+    /// The `unstable_imports` lints detects imports that go through unstable modules.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// use core::intrinsics::transmute;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Previous versions of Rust accidentally allowed certain imports through unstable modules
+    /// because stability information of modules was not correctly accounted for if the imported
+    /// item was stable itself.
+    pub UNSTABLE_IMPORTS,
+    Deny,
+    "lints on accidentally allowed unstable imports",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError # 163160),
+        report_in_deps: true,
+    };
+}
+
+declare_lint! {
+    /// The `unsafe_panic_handlers` lint detects unsafe functions with
+    /// the `#[panic_handler]` attribute.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![no_std]
+    ///
+    /// use core::panic::PanicInfo;
+    ///
+    /// #[panic_handler]
+    /// unsafe fn handle(_: &PanicInfo<'_>) -> ! {
+    ///     loop {}
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Unsafe functions (declared as `unsafe fn`) are functions that can only be called
+    /// when the caller ensures that their safety requirements are met. On the other hand,
+    /// `#[panic_handler]` functions get called automatically by the compiler without
+    /// checking for any preconditions. Therefore, using the `#[panic_handler]` attribute
+    /// on unsafe functions is either incorrect or a misuse of `unsafe fn`.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard
+    /// error in the future. See [issue #163263] for more details.
+    ///
+    /// [issue #163263]: https://github.com/rust-lang/rust/issues/163263
+    pub UNSAFE_PANIC_HANDLERS,
+    Warn,
+    "detects unsafe functions with the `#[panic_handler]` attribute",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #163263),
+    };
 }

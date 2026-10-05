@@ -6,7 +6,7 @@ LL |     let sb : &S = &s.borrow();
    |
 help: the trait `Borrow<S>` is not implemented for `Rc<RefCell<S>>`
       but trait `Borrow<RefCell<S>>` is implemented for it
-  --> $SRC_DIR/alloc/src/rc.rs:LL:COL
+  --> $SRC_DIR/alloc/src/rcs/rc.rs:LL:COL
    = help: for that trait implementation, expected `RefCell<S>`, found `S`
    = note: there's an inherent method on `RefCell<S>` of the same name, which can be auto-dereferenced from `&RefCell<T>`
 help: to access the inherent method on `RefCell<S>`, use the fully-qualified path

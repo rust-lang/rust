@@ -29,7 +29,7 @@ pub use self::memory::*;
 #[inline]
 #[stable(feature = "unreachable_wasm32", since = "1.37.0")]
 pub fn unreachable() -> ! {
-    crate::intrinsics::abort()
+    crate::intrinsics::abort_immediate()
 }
 
 /// Generates the [`f32.ceil`] instruction, returning the smallest integer greater than or equal to `a`.

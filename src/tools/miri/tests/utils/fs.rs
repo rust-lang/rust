@@ -1,15 +1,11 @@
-use std::ffi::OsString;
+use std::ffi::{CStr, OsString};
 use std::path::PathBuf;
 use std::{fs, io};
 
-use super::miri_extern;
+use super::{into_c_string, miri_extern};
 
 pub fn host_to_target_path(path: OsString) -> PathBuf {
-    use std::ffi::{CStr, CString};
-
-    // Once into_encoded_bytes is stable we can use it here.
-    // (Unstable features would need feature flags in each test...)
-    let path = CString::new(path.into_string().unwrap()).unwrap();
+    let path = into_c_string(path);
     let mut out = Vec::with_capacity(1024);
 
     unsafe {
@@ -32,6 +28,8 @@ pub fn tmp() -> PathBuf {
 
 /// Prepare: compute filename and make sure the file does not exist.
 pub fn prepare(filename: &str) -> PathBuf {
+    assert!(filename.starts_with("miri"));
+
     let path = tmp().join(filename);
     // Clean the paths for robustness.
     fs::remove_file(&path).ok();
@@ -47,6 +45,8 @@ pub fn prepare_with_content(filename: &str, content: &[u8]) -> PathBuf {
 
 /// Prepare directory: compute directory name and make sure it does not exist.
 pub fn prepare_dir(dirname: &str) -> PathBuf {
+    assert!(dirname.starts_with("miri"));
+
     let path = tmp().join(&dirname);
     // Clean the directory for robustness.
     fs::remove_dir_all(&path).ok();

@@ -133,6 +133,7 @@
     - [\*-unikraft-linux-musl](platform-support/unikraft-linux-musl.md)
     - [\*-unknown-helenos](platform-support/helenos.md)
     - [\*-unknown-hermit](platform-support/hermit.md)
+    - [\*-unknown-hyperlight](platform-support/hyperlight.md)
     - [\*-unknown-freebsd](platform-support/freebsd.md)
     - [\*-unknown-managarm-mlibc](platform-support/managarm.md)
     - [\*-unknown-motor](platform-support/motor.md)

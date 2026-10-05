@@ -1,9 +1,9 @@
 // .debug_gdb_scripts binary section.
 
 use rustc_abi::Align;
+use rustc_attr_ir::DebuggerVisualizerType;
 use rustc_codegen_ssa::base::collect_debugger_visualizers_transitive;
 use rustc_codegen_ssa::traits::*;
-use rustc_hir::attrs::DebuggerVisualizerType;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_session::config::DebugInfo;
 use rustc_span::bug;

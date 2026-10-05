@@ -309,7 +309,7 @@ impl Socket {
     ) -> io::Result<(usize, SocketAddr)> {
         let mut storage = unsafe { mem::zeroed::<c::SOCKADDR_STORAGE>() };
         let mut addrlen = size_of_val(&storage) as netc::socklen_t;
-        let length = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
+        let length = cmp::min(buf.len(), super::MAX_SEND_LEN) as wrlen_t;
 
         // On unix when a socket is shut down all further reads return 0, so we
         // do the same on windows to map a shut down socket to returning EOF.

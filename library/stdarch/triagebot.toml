@@ -1,3 +1,35 @@
+[relabel]
+allow-unauthenticated = [
+    "A-*",
+    "B-*",
+    "C-*",
+    "D-*",
+    "E-*",
+    "F-*",
+    "I-*",
+    "L-*",
+    "NLL-*",
+    "O-*",
+    "PG-*",
+    "S-*",
+    "T-*",
+    "WG-*",
+    "-Z*",
+    "beta-nominated",
+    "CI-spurious-*",
+    "const-hack",
+    "llvm-*",
+    "needs-fcp",
+    "relnotes",
+    "release-blog-post",
+    "requires-*",
+    "regression-*",
+    "rla-*",
+    "perf-*",
+    "AsyncAwait-OnDeck",
+    "needs-triage",
+    "has-merge-commits",]
+
 [assign]
 
 [assign.owners]

@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/auto-trait-selection-freeze.rs:19:16
+  --> $DIR/auto-trait-selection-freeze.rs:20:16
    |
 LL |     if false { is_trait(foo()) } else { Default::default() }
    |                ^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `is_trait`

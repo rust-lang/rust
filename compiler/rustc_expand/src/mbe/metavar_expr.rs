@@ -9,14 +9,16 @@ use rustc_span::{Ident, Span, Symbol, sym};
 
 use crate::diagnostics;
 
-pub(crate) const RAW_IDENT_ERR: &str = "`${concat(..)}` currently does not support raw identifiers";
 pub(crate) const UNSUPPORTED_CONCAT_ELEM_ERR: &str = "expected identifier or string literal";
 
 /// A meta-variable expression, for expansions based on properties of meta-variables.
 #[derive(Debug, PartialEq, Encodable, Decodable)]
 pub(crate) enum MetaVarExpr {
-    /// Unification of two or more identifiers.
-    Concat(Box<[MetaVarExprConcatElem]>),
+    /// Unification of two or more identifiers/literals/metavariables into an identifier.
+    ConcatIdent(Box<[MetaVarExprConcatElem]>),
+
+    /// Unification of two or more identifiers/literals/metavariables into a string literal.
+    ConcatStr(Box<[MetaVarExprConcatElem]>),
 
     /// The number of repetitions of an identifier.
     Count(Ident, usize),
@@ -73,7 +75,12 @@ impl MetaVarExpr {
 
         let mut iter = args.iter();
         let rslt = match ident.name {
-            sym::concat => parse_concat(&mut iter, psess, outer_span, ident.span)?,
+            sym::concat => {
+                MetaVarExpr::ConcatIdent(parse_concat(&mut iter, psess, outer_span, ident.span)?)
+            }
+            sym::concat_str => {
+                MetaVarExpr::ConcatStr(parse_concat(&mut iter, psess, outer_span, ident.span)?)
+            }
             sym::count => parse_count(&mut iter, psess, ident.span)?,
             sym::ignore => {
                 eat_dollar(&mut iter, psess, ident.span)?;
@@ -95,7 +102,7 @@ impl MetaVarExpr {
 
     pub(crate) fn for_each_metavar<A>(&self, mut aux: A, mut cb: impl FnMut(A, &Ident) -> A) -> A {
         match self {
-            MetaVarExpr::Concat(elems) => {
+            MetaVarExpr::ConcatIdent(elems) | MetaVarExpr::ConcatStr(elems) => {
                 for elem in elems {
                     if let MetaVarExprConcatElem::Var(ident) = elem {
                         aux = cb(aux, ident)
@@ -175,7 +182,7 @@ fn parse_concat<'psess>(
     psess: &'psess ParseSess,
     outer_span: Span,
     expr_ident_span: Span,
-) -> PResult<'psess, MetaVarExpr> {
+) -> PResult<'psess, Box<[MetaVarExprConcatElem]>> {
     let mut result = Vec::new();
     loop {
         let is_var = try_eat_dollar(iter);
@@ -189,6 +196,10 @@ fn parse_concat<'psess>(
         } else {
             match parse_ident_from_token(psess, token) {
                 Err(err) => {
+                    // FIXME: Canceling this error means we emit a worse message when encountering
+                    //        raw identifiers (`r#ident`). However, we also don't want to forward
+                    //        (the current version of) this error as is since we also want to
+                    //        mentioning string literals as a valid token kind.
                     err.cancel();
                     return Err(psess
                         .dcx()
@@ -210,7 +221,7 @@ fn parse_concat<'psess>(
             .dcx()
             .struct_span_err(expr_ident_span, "`concat` must have at least two elements"));
     }
-    Ok(MetaVarExpr::Concat(result.into()))
+    Ok(result.into())
 }
 
 /// Parse a meta-variable `count` expression: `count(ident[, depth])`
@@ -273,9 +284,7 @@ fn parse_ident_from_token<'psess>(
     token: &Token,
 ) -> PResult<'psess, Ident> {
     if let Some((elem, kind)) = token.ident() {
-        if let IdentKind::Raw = kind {
-            return Err(psess.dcx().struct_span_err(elem.span, RAW_IDENT_ERR));
-        }
+        validate_ident_kind(psess.dcx(), kind, elem.span)?;
         return Ok(elem);
     }
     let token_str = pprust::token_to_string(token);
@@ -338,4 +347,17 @@ fn eat_dollar<'psess>(
         span,
         "meta-variables within meta-variable expressions must be referenced using a dollar sign",
     ))
+}
+
+pub(crate) fn validate_ident_kind<'a>(
+    dcx: rustc_errors::DiagCtxtHandle<'a>,
+    kind: IdentKind,
+    span: Span,
+) -> PResult<'a, ()> {
+    let kind = match kind {
+        IdentKind::Normal => return Ok(()),
+        IdentKind::Raw => "raw identifiers",
+        IdentKind::ForcedKeyword => "forced keywords",
+    };
+    Err(dcx.struct_span_err(span, format!("`${{concat(..)}}` currently does not support {kind}")))
 }

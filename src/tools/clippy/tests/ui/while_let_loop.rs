@@ -274,3 +274,50 @@ fn issue16378() {
         println!("x = {x}");
     }
 }
+
+fn issue17590_labeled_loop() {
+    let mut it = [1, 2, 3].iter();
+    'cool: loop {
+        //~^ while_let_loop
+        match it.next() {
+            Some(_) => {},
+            None => break 'cool,
+        }
+    }
+}
+
+fn issue17590_labeled_if_let() {
+    let mut it = [1, 2, 3].iter();
+    'outer: loop {
+        //~^ while_let_loop
+        if let Some(x) = it.next() {
+            println!("{x}");
+        } else {
+            break 'outer;
+        }
+    }
+}
+
+fn issue17590_labeled_let_else() {
+    let mut it = [1, 2, 3].iter();
+    'outer: loop {
+        //~^ while_let_loop
+        let Some(x) = it.next() else { break 'outer };
+        println!("{x}");
+    }
+}
+
+fn issue17590_labeled_loop_false_positive() {
+    let mut it = [1, 2, 3].iter();
+    'cool: loop {
+        match it.next() {
+            Some(_) => {},
+            None => 'cool: {
+                break 'cool;
+            },
+        }
+        println!(
+            "this is an infinite loop, but clippy would rewrite this loop to terminate when it reaches the end of the list"
+        );
+    }
+}
