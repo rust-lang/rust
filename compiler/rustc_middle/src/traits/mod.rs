@@ -339,6 +339,8 @@ pub enum ObligationCauseCode<'tcx> {
         tail_defines_return_position_impl_trait: Option<LocalDefId>,
     },
 
+    IfChainCoerce(Box<IfChainCoerceCause<'tcx>>),
+
     /// Computing common supertype of an if expression with no else counter-part
     IfExpressionWithNoElse,
 
@@ -548,6 +550,20 @@ pub struct MatchExpressionArmCause<'tcx> {
     /// These are used for pointing out errors that may affect several arms.
     pub prior_non_diverging_arms: Vec<Span>,
     /// Is the expectation of this match expression an RPIT?
+    pub tail_defines_return_position_impl_trait: Option<LocalDefId>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
+#[derive(TypeVisitable, TypeFoldable)]
+pub struct IfChainCoerceCause<'tcx> {
+    /// Outermost `if` of the chain, for the outer "incompatible types" label.
+    pub outer_if_expr_id: HirId,
+    pub source_branch_expr_id: HirId,
+    pub source_branch_ty: Ty<'tcx>,
+    pub source_branch_span: Span,
+    pub target_branch_expr_id: HirId,
+    pub target_branch_ty: Ty<'tcx>,
+    pub target_branch_span: Span,
     pub tail_defines_return_position_impl_trait: Option<LocalDefId>,
 }
 
