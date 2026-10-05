@@ -764,6 +764,7 @@ pub(super) enum UseSpans<'tcx> {
     },
     /// This access is caused by a `match` or `if let` pattern.
     PatUse(Span),
+    QuestionMarkUse(Span),
     /// This access has a single span associated to it: common case.
     OtherUse(Span),
 }
@@ -773,7 +774,8 @@ impl UseSpans<'_> {
         match self {
             UseSpans::ClosureUse { args_span: span, .. }
             | UseSpans::PatUse(span)
-            | UseSpans::OtherUse(span) => span,
+            | UseSpans::OtherUse(span)
+            | UseSpans::QuestionMarkUse(span) => span,
             UseSpans::FnSelfUse { var_span, .. } => var_span,
         }
     }
@@ -783,7 +785,8 @@ impl UseSpans<'_> {
         match self {
             UseSpans::ClosureUse { path_span: span, .. }
             | UseSpans::PatUse(span)
-            | UseSpans::OtherUse(span) => span,
+            | UseSpans::OtherUse(span)
+            | UseSpans::QuestionMarkUse(span) => span,
             UseSpans::FnSelfUse { var_span, .. } => var_span,
         }
     }
@@ -793,7 +796,8 @@ impl UseSpans<'_> {
         match self {
             UseSpans::ClosureUse { capture_kind_span: span, .. }
             | UseSpans::PatUse(span)
-            | UseSpans::OtherUse(span) => span,
+            | UseSpans::OtherUse(span)
+            | UseSpans::QuestionMarkUse(span) => span,
             UseSpans::FnSelfUse { var_span, .. } => var_span,
         }
     }
@@ -902,9 +906,10 @@ impl UseSpans<'_> {
         F: FnOnce() -> Self,
     {
         match self {
-            closure @ UseSpans::ClosureUse { .. } => closure,
+            UseSpans::ClosureUse { .. }
+            | UseSpans::FnSelfUse { .. }
+            | UseSpans::QuestionMarkUse(_) => self,
             UseSpans::PatUse(_) | UseSpans::OtherUse(_) => if_other(),
-            fn_self @ UseSpans::FnSelfUse { .. } => fn_self,
         }
     }
 }
@@ -1082,34 +1087,43 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
         debug!("move_spans: target_temp = {:?}", target_temp);
 
-        if let Some(Terminator {
-            kind: TerminatorKind::Call { fn_span, call_source, .. }, ..
-        }) = &self.body[location.block].terminator
+        if let Some(terminator) = &self.body[location.block].terminator
+            && let TerminatorKind::Call {
+                ref args,
+                fn_span,
+                func: Operand::Constant(ref func),
+                call_source,
+                ..
+            } = terminator.kind
         {
-            let Some((method_did, method_args)) =
+            if let Some((method_did, method_args)) =
                 find_self_call(self.infcx.tcx, self.body, target_temp, location.block)
-            else {
-                return normal_ret;
-            };
+            {
+                let kind = call_kind(
+                    self.infcx.tcx,
+                    self.infcx.typing_env(self.infcx.param_env),
+                    method_did,
+                    method_args,
+                    fn_span,
+                    call_source.from_hir_call(),
+                    self.infcx.tcx.fn_arg_idents(method_did)[0],
+                );
 
-            let kind = call_kind(
-                self.infcx.tcx,
-                self.infcx.typing_env(self.infcx.param_env),
-                method_did,
-                method_args,
-                *fn_span,
-                call_source.from_hir_call(),
-                self.infcx.tcx.fn_arg_idents(method_did)[0],
-            );
-
-            return FnSelfUse {
-                var_span: stmt.source_info.span,
-                fn_call_span: *fn_span,
-                fn_span: self.infcx.tcx.def_span(method_did),
-                kind,
-            };
+                return FnSelfUse {
+                    var_span: stmt.source_info.span,
+                    fn_call_span: fn_span,
+                    fn_span: self.infcx.tcx.def_span(method_did),
+                    kind,
+                };
+            } else if let ty::FnDef(def_id, _) = *func.ty().kind()
+                && self.infcx.tcx.is_lang_item(def_id, LangItem::TryOperatorBranch)
+                && let [arg] = args
+                && let Operand::Move(arg_place) | Operand::Copy(arg_place) = arg.node
+                && arg_place.as_local() == Some(target_temp)
+            {
+                return QuestionMarkUse(fn_span);
+            }
         }
-
         normal_ret
     }
 
@@ -1471,14 +1485,6 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                                     is_loop_message,
                                 });
                             }
-                            Some((CallDesugaringKind::QuestionBranch, _)) => {
-                                err.subdiagnostic(CaptureReasonLabel::QuestionMark {
-                                    fn_call_span,
-                                    place_name: &place_name,
-                                    is_partial,
-                                    is_loop_message,
-                                });
-                            }
                             _ => {
                                 err.subdiagnostic(CaptureReasonLabel::MethodCall {
                                     fn_call_span,
@@ -1509,113 +1515,26 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             });
                             has_sugg = true;
                         }
-                        if let Some(clone_trait) = tcx.lang_items().clone_trait() {
-                            // Check whether the deref is from a custom Deref impl
-                            // (e.g. Rc, Box) or a built-in reference deref.
-                            // For built-in derefs with Clone fully satisfied, we skip
-                            // the UFCS suggestion here and let `suggest_cloning`
-                            // downstream emit a simpler `.clone()` suggestion instead.
-                            let has_overloaded_deref =
-                                moved_place.iter_projections().any(|(place, elem)| {
-                                    matches!(elem, ProjectionElem::Deref)
-                                        && matches!(
-                                            self.borrowed_content_source(place),
-                                            BorrowedContentSource::OverloadedDeref(_)
-                                                | BorrowedContentSource::OverloadedIndex(_)
-                                        )
-                                });
-
-                            let has_deref = moved_place
-                                .iter_projections()
-                                .any(|(_, elem)| matches!(elem, ProjectionElem::Deref));
-
-                            let sugg = if has_deref {
-                                let (start, end) = if let Some(expr) = self.find_expr(move_span)
-                                    && let Some(_) = self.clone_on_reference(expr)
-                                    && let hir::ExprKind::MethodCall(_, rcvr, _, _) = expr.kind
-                                {
-                                    (move_span.shrink_to_lo(), move_span.with_lo(rcvr.span.hi()))
-                                } else {
-                                    (move_span.shrink_to_lo(), move_span.shrink_to_hi())
-                                };
-                                vec![
-                                    // We use the fully-qualified path because `.clone()` can
-                                    // sometimes choose `<&T as Clone>` instead of `<T as Clone>`
-                                    // when going through auto-deref, so this ensures that doesn't
-                                    // happen, causing suggestions for `.clone().clone()`.
-                                    (start, format!("<{ty} as Clone>::clone(&")),
-                                    (end, ")".to_string()),
-                                ]
-                            } else {
-                                vec![(move_span.shrink_to_hi(), ".clone()".to_string())]
-                            };
-                            if let Some(errors) = self.infcx.type_implements_trait_shallow(
-                                clone_trait,
-                                ty,
-                                self.infcx.param_env,
-                            ) && !has_sugg
-                            {
-                                let skip_for_simple_clone =
-                                    has_deref && !has_overloaded_deref && errors.no_errors();
-                                if !skip_for_simple_clone {
-                                    let msg = match errors.as_slice() {
-                                        [] => "you can `clone` the value and consume it, but \
-                                               this might not be your desired behavior"
-                                            .to_string(),
-                                        [error] => {
-                                            format!(
-                                                "you could `clone` the value and consume it, if \
-                                                 the `{}` trait bound could be satisfied",
-                                                error.obligation.predicate,
-                                            )
-                                        }
-                                        _ => {
-                                            format!(
-                                                "you could `clone` the value and consume it, if \
-                                                 the following trait bounds could be satisfied: \
-                                                 {}",
-                                                listify(
-                                                    errors.as_slice(),
-                                                    |e: &FulfillmentError<'tcx>| format!(
-                                                        "`{}`",
-                                                        e.obligation.predicate
-                                                    )
-                                                )
-                                                .unwrap(),
-                                            )
-                                        }
-                                    };
-                                    err.multipart_suggestion(
-                                        msg,
-                                        sugg,
-                                        Applicability::MaybeIncorrect,
-                                    );
-
-                                    suggested_cloning = errors.no_errors();
-
-                                    for error in errors {
-                                        if let FulfillmentErrorCode::Select(
-                                            SelectionError::Unimplemented,
-                                        ) = error.code
-                                            && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(
-                                                pred,
-                                            )) = error.obligation.predicate.kind().skip_binder()
-                                        {
-                                            self.infcx.err_ctxt().suggest_derive(
-                                                &error.obligation,
-                                                err,
-                                                error.obligation.predicate.kind().rebind(pred),
-                                            );
-                                        }
-                                    }
-                                }
-                            }
+                        if !has_sugg {
+                            suggested_cloning = self.suggest_clone(err, moved_place, move_span)
                         }
                     }
                 }
                 // Other desugarings takes &self, which cannot cause a move
                 _ => {}
             }
+        } else if let UseSpans::QuestionMarkUse(span) = move_spans {
+            let place_name = self
+                .describe_place(moved_place.as_ref())
+                .map(|n| format!("`{n}`"))
+                .unwrap_or_else(|| "value".to_owned());
+            err.subdiagnostic(CaptureReasonLabel::QuestionMark {
+                span,
+                place_name: &place_name,
+                is_partial,
+                is_loop_message,
+            });
+            suggested_cloning = self.suggest_clone(err, moved_place, move_span)
         } else {
             if move_span != span || is_loop_message {
                 err.subdiagnostic(CaptureReasonLabel::MovedHere {
@@ -1644,6 +1563,104 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     /// Skip over locals that begin with an underscore or have no name
     pub(crate) fn local_excluded_from_unused_mut_lint(&self, index: Local) -> bool {
         self.local_name(index).is_none_or(|name| name.as_str().starts_with('_'))
+    }
+
+    fn suggest_clone(&self, err: &mut Diag<'_>, moved_place: Place<'tcx>, move_span: Span) -> bool {
+        let tcx = self.infcx.tcx;
+        let Some(clone_trait) = tcx.lang_items().clone_trait() else {
+            return false;
+        };
+        // Check whether the deref is from a custom Deref impl
+        // (e.g. Rc, Box) or a built-in reference deref.
+        // For built-in derefs with Clone fully satisfied, we skip
+        // the UFCS suggestion here and let `suggest_cloning`
+        // downstream emit a simpler `.clone()` suggestion instead.
+        let has_overloaded_deref = moved_place.iter_projections().any(|(place, elem)| {
+            matches!(elem, ProjectionElem::Deref)
+                && matches!(
+                    self.borrowed_content_source(place),
+                    BorrowedContentSource::OverloadedDeref(_)
+                        | BorrowedContentSource::OverloadedIndex(_)
+                )
+        });
+
+        let has_deref =
+            moved_place.iter_projections().any(|(_, elem)| matches!(elem, ProjectionElem::Deref));
+        let ty = moved_place.ty(self.body, tcx).ty;
+
+        let sugg = if has_deref {
+            let (start, end) = if let Some(expr) = self.find_expr(move_span)
+                && let Some(_) = self.clone_on_reference(expr)
+                && let hir::ExprKind::MethodCall(_, rcvr, _, _) = expr.kind
+            {
+                (move_span.shrink_to_lo(), move_span.with_lo(rcvr.span.hi()))
+            } else {
+                (move_span.shrink_to_lo(), move_span.shrink_to_hi())
+            };
+            vec![
+                // We use the fully-qualified path because `.clone()` can
+                // sometimes choose `<&T as Clone>` instead of `<T as Clone>`
+                // when going through auto-deref, so this ensures that doesn't
+                // happen, causing suggestions for `.clone().clone()`.
+                (start, format!("<{ty} as Clone>::clone(&")),
+                (end, ")".to_string()),
+            ]
+        } else {
+            vec![(move_span.shrink_to_hi(), ".clone()".to_string())]
+        };
+        let Some(errors) =
+            self.infcx.type_implements_trait_shallow(clone_trait, ty, self.infcx.param_env)
+        else {
+            return false;
+        };
+        let skip_for_simple_clone = has_deref && !has_overloaded_deref && errors.no_errors();
+        if skip_for_simple_clone {
+            return false;
+        }
+        let msg = match errors.as_slice() {
+            [] => "you can `clone` the value and consume it, but \
+                                   this might not be your desired behavior"
+                .to_string(),
+            [error] => {
+                format!(
+                    "you could `clone` the value and consume it, if \
+                                     the `{}` trait bound could be satisfied",
+                    error.obligation.predicate,
+                )
+            }
+            _ => {
+                format!(
+                    "you could `clone` the value and consume it, if \
+                                     the following trait bounds could be satisfied: \
+                                     {}",
+                    listify(errors.as_slice(), |e: &FulfillmentError<'tcx>| format!(
+                        "`{}`",
+                        e.obligation.predicate
+                    ))
+                    .unwrap(),
+                )
+            }
+        };
+        err.multipart_suggestion(msg, sugg, Applicability::MaybeIncorrect);
+
+        if errors.no_errors() {
+            return false;
+        }
+
+        for error in errors {
+            if let FulfillmentErrorCode::Select(SelectionError::Unimplemented) = error.code
+                && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) =
+                    error.obligation.predicate.kind().skip_binder()
+            {
+                self.infcx.err_ctxt().suggest_derive(
+                    &error.obligation,
+                    err,
+                    error.obligation.predicate.kind().rebind(pred),
+                );
+            }
+        }
+
+        true
     }
 }
 
