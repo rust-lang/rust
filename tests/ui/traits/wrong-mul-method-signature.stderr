@@ -6,7 +6,7 @@ LL |     fn mul(self, s: &f64) -> Vec1 {
    |
    = note: expected signature `fn(Vec1, _) -> Vec1`
               found signature `fn(Vec1, &_) -> Vec1`
-note: expected to match this type parameter
+note: expected to match type parameter `Rhs`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 help: change the parameter type to match the trait
    |
@@ -22,7 +22,7 @@ LL |     fn mul(self, s: f64) -> Vec2 {
    |
    = note: expected signature `fn(Vec2, Vec2) -> f64`
               found signature `fn(Vec2, f64) -> Vec2`
-note: expected to match this type parameter
+note: expected to match the `Self` default of type parameter `Rhs`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 help: change the parameter type to match the trait
    |
