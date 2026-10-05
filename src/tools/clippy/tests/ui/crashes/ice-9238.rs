@@ -1,4 +1,5 @@
 //@ check-pass
+// Disabling the new solver due to GCE.
 //@ compile-flags: -Znext-solver=coherence
 
 #![expect(incomplete_features)]
