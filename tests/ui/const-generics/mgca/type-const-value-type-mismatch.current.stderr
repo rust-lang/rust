@@ -1,12 +1,16 @@
 error[E0053]: method `arr` has an incompatible type for trait
   --> $DIR/type-const-value-type-mismatch.rs:24:5
    |
+LL | impl Array for A {
+...
 LL |     fn arr() -> [u8; const { Self::LEN }] {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected an array with a size of 0, found one with a size of const { Self::LEN }
    |
 note: type in trait
   --> $DIR/type-const-value-type-mismatch.rs:17:5
    |
+LL | pub trait Array {
+...
 LL |     fn arr() -> [u8; Self::LEN];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: expected signature `fn() -> [u8; 0]`
