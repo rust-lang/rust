@@ -175,12 +175,12 @@ impl SingleAttributeParser for RustcLegacyConstGenericsParser {
             // Invalid targets are already diagnosed by target checking.
             return;
         }
-        let Some(item) = cx.target_item else { return };
-        let ItemKind::Fn(function) = &item.kind else { return };
-        let Some(index_list) = rustc_attr_ir::find_attr!(cx.parsed_attrs, RustcLegacyConstGenerics { fn_indexes, .. } => fn_indexes)
-        else {
-            return;
+        let item = cx.target_item.expect("missing AST target item for Target::Fn");
+        let ItemKind::Fn(function) = &item.kind else {
+            panic!("expected fn AST target item for Target::Fn");
         };
+        let index_list = rustc_attr_ir::find_attr!(cx.parsed_attrs, RustcLegacyConstGenerics { fn_indexes, .. } => fn_indexes)
+            .expect("missing parsed RustcLegacyConstGenerics attribute in finalize_check");
         let generics = &function.generics;
 
         for param in &generics.params {
