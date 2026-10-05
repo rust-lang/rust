@@ -94,55 +94,56 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let path_span_lo = span.shrink_to_lo();
         let proj_start = p_num_segments - unresolved_segments;
+        let segments = self.arena.alloc_from_iter(
+            p.iter_segments().take(proj_start).enumerate().map(|(i, segment)| {
+                let param_mode = match (qself_position, param_mode) {
+                    (Some(j), ParamMode::Optional) if i < j => {
+                        // This segment is part of the trait path in a
+                        // qualified path - one of `a`, `b` or `Trait`
+                        // in `<X as a::b::Trait>::T::U::method`.
+                        ParamMode::Explicit
+                    }
+                    _ => param_mode,
+                };
+
+                let generic_args_mode = match base_res {
+                    // `a::b::Trait(Args)`
+                    Res::Def(DefKind::Trait, _) if i + 1 == proj_start => {
+                        GenericArgsMode::ParenSugar
+                    }
+                    // `a::b::Trait(Args)::TraitItem`
+                    Res::Def(DefKind::AssocFn, _)
+                    | Res::Def(DefKind::AssocConst, _)
+                    | Res::Def(DefKind::AssocTy, _)
+                        if i + 2 == proj_start =>
+                    {
+                        GenericArgsMode::ParenSugar
+                    }
+                    Res::Def(DefKind::AssocFn, _) if i + 1 == proj_start => {
+                        match allow_return_type_notation {
+                            AllowReturnTypeNotation::Yes => GenericArgsMode::ReturnTypeNotation,
+                            AllowReturnTypeNotation::No => GenericArgsMode::Err,
+                        }
+                    }
+                    // Avoid duplicated errors.
+                    Res::Err => GenericArgsMode::Silence,
+                    // An error
+                    _ => GenericArgsMode::Err,
+                };
+
+                self.lower_path_segment(
+                    span,
+                    segment,
+                    param_mode,
+                    generic_args_mode,
+                    itctx(i),
+                    bound_modifier_allowed_features.clone(),
+                )
+            }),
+        );
         let path = self.arena.alloc(hir::Path {
             res,
-            segments: self.arena.alloc_from_iter(
-                p.iter_segments().take(proj_start).enumerate().map(|(i, segment)| {
-                    let param_mode = match (qself_position, param_mode) {
-                        (Some(j), ParamMode::Optional) if i < j => {
-                            // This segment is part of the trait path in a
-                            // qualified path - one of `a`, `b` or `Trait`
-                            // in `<X as a::b::Trait>::T::U::method`.
-                            ParamMode::Explicit
-                        }
-                        _ => param_mode,
-                    };
-
-                    let generic_args_mode = match base_res {
-                        // `a::b::Trait(Args)`
-                        Res::Def(DefKind::Trait, _) if i + 1 == proj_start => {
-                            GenericArgsMode::ParenSugar
-                        }
-                        // `a::b::Trait(Args)::TraitItem`
-                        Res::Def(DefKind::AssocFn, _)
-                        | Res::Def(DefKind::AssocConst, _)
-                        | Res::Def(DefKind::AssocTy, _)
-                            if i + 2 == proj_start =>
-                        {
-                            GenericArgsMode::ParenSugar
-                        }
-                        Res::Def(DefKind::AssocFn, _) if i + 1 == proj_start => {
-                            match allow_return_type_notation {
-                                AllowReturnTypeNotation::Yes => GenericArgsMode::ReturnTypeNotation,
-                                AllowReturnTypeNotation::No => GenericArgsMode::Err,
-                            }
-                        }
-                        // Avoid duplicated errors.
-                        Res::Err => GenericArgsMode::Silence,
-                        // An error
-                        _ => GenericArgsMode::Err,
-                    };
-
-                    self.lower_path_segment(
-                        span,
-                        segment,
-                        param_mode,
-                        generic_args_mode,
-                        itctx(i),
-                        bound_modifier_allowed_features.clone(),
-                    )
-                }),
-            ),
+            segments,
             span: self.lower_span(
                 p.iter_segments()
                     .take(proj_start)
