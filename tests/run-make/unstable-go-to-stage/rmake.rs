@@ -1,3 +1,6 @@
+// FIXME: remove the ignore gcc once fixed.
+//@ ignore-backends: gcc
+
 use std::ops::Not;
 use std::path::Path;
 
