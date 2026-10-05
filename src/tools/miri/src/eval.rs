@@ -111,6 +111,8 @@ pub struct MiriConfig {
     pub set_env_vars: FxHashMap<String, String>,
     /// Command-line arguments passed to the interpreted program.
     pub args: Vec<String>,
+    /// The binary we pretend to be.
+    pub current_exe: Option<PathBuf>,
     /// The seed to use when non-determinism or randomness are required (e.g. ptr-to-int cast, `getrandom()`).
     pub seed: Option<u64>,
     /// The stacked borrows pointer ids to report about.
@@ -184,6 +186,7 @@ impl Default for MiriConfig {
             forwarded_env_vars: vec![],
             set_env_vars: FxHashMap::default(),
             args: vec![],
+            current_exe: None,
             seed: None,
             tracked_pointer_tags: FxHashSet::default(),
             tracked_alloc_ids: FxHashSet::default(),

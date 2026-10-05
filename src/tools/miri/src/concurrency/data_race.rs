@@ -1184,12 +1184,12 @@ impl VClockAlloc {
             op1: RacingOp {
                 action: other_access.description(None, other_size),
                 thread_info: other_thread_info,
-                span: other_clock.as_slice()[other_thread.index()].span_data(),
+                span: other_clock.as_slice()[other_thread.index()].span,
             },
             op2: RacingOp {
                 action: access.description(ty, other_size.map(|_| access_size)),
                 thread_info: active_thread_info,
-                span: active_clocks.clock.as_slice()[active_index.index()].span_data(),
+                span: active_clocks.clock.as_slice()[active_index.index()].span,
             },
         }))?
     }

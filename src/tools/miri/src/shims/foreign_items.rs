@@ -176,9 +176,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                         throw_machine_stop!(
                                             TerminationInfo::MultipleSymbolDefinitions {
                                                 link_name,
-                                                first: original_span.data(),
+                                                first: original_span,
                                                 first_crate: tcx.crate_name(original.cnum),
-                                                second: span.data(),
+                                                second: span,
                                                 second_crate: tcx.crate_name(cnum),
                                             }
                                         );
@@ -186,9 +186,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                         throw_machine_stop!(
                                             TerminationInfo::MultipleSymbolDefinitions {
                                                 link_name,
-                                                first: span.data(),
+                                                first: span,
                                                 first_crate: tcx.crate_name(cnum),
-                                                second: original_span.data(),
+                                                second: original_span,
                                                 second_crate: tcx.crate_name(original.cnum),
                                             }
                                         );

@@ -2122,7 +2122,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
 
         hir::TestBinderBoundTypeConstraint {
-            span: *span,
+            span: self.lower_span(*span),
             hir_id: self.lower_node_id(*node_id),
             params: generics.params,
             lhs,

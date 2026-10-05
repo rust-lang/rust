@@ -1,4 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Since FreeBSD stores user-installed binaries in `/usr/local/bin` we
+# cannot use the `/bin/bash` shebang and instead use the the bash from PATH.
+
 set -eu
 
 function begingroup {
@@ -19,6 +22,8 @@ if ! rustc -vV | grep -q "^host: $HOST_TARGET\$"; then
   rustc -vV
   exit 1
 fi
+
+export CI=true # just to be sure that it is truly set
 
 endgroup
 
@@ -199,6 +204,10 @@ case $HOST_TARGET in
     GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Extra tier 1
     MANY_SEEDS=64 TEST_TARGET=i686-unknown-linux-gnu run_tests
+    ;;
+  x86_64-unknown-freebsd)
+    # Host
+    MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     ;;
   *)
     echo "FATAL: unknown host target: $HOST_TARGET"
