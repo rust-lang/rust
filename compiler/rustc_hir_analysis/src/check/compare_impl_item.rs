@@ -1083,24 +1083,9 @@ fn report_trait_method_mismatch<'tcx>(
     }
 
     cause.span = impl_err_span;
-    infcx.err_ctxt().note_type_err(
-        &mut diag,
-        &cause,
-        trait_err_span.map(|sp| {
-            let mut span: MultiSpan = sp.into();
-            span.push_span_context(tcx.def_span(trait_m.container_id(tcx)).shrink_to_lo());
-            span.push_span_context(tcx.def_span(trait_m.def_id).shrink_to_lo());
-            (span, Cow::from("type in trait"), false)
-        }),
-        Some(param_env.and(infer::ValuePairs::PolySigs(ExpectedFound {
-            expected: ty::Binder::dummy(trait_sig),
-            found: ty::Binder::dummy(impl_sig),
-        }))),
-        terr,
-        false,
-        None,
-    );
 
+    let mut labels = vec![];
+    let mut context = vec![];
     if let TypeError::ArgumentSorts(_, i) = &terr
         && let Some(ty) =
             tcx.fn_sig(trait_m.def_id).skip_binder().inputs_and_output().skip_binder().get(*i)
@@ -1111,8 +1096,7 @@ fn report_trait_method_mismatch<'tcx>(
         && let param = generics.type_param(*param, tcx)
         && let GenericParamDefKind::Type { has_default: true, .. } = param.kind
     {
-        let mut span: MultiSpan = tcx.def_span(param.def_id).into();
-        span.push_span_context(tcx.def_span(trait_m.container_id(tcx)).shrink_to_lo());
+        context.push(tcx.def_span(trait_m.container_id(tcx)).shrink_to_lo());
 
         let param_name = param.name;
         let msg = if let Some(ty) = trait_sig.inputs_and_output.get(*i)
@@ -1128,8 +1112,32 @@ fn report_trait_method_mismatch<'tcx>(
         } else {
             format!("expected to match type parameter `{param_name}`")
         };
-        diag.span_note(span, msg);
+        labels.push((tcx.def_span(param.def_id), msg));
     }
+
+    infcx.err_ctxt().note_type_err(
+        &mut diag,
+        &cause,
+        trait_err_span.map(|sp| {
+            let mut span: MultiSpan = sp.into();
+            span.push_span_context(tcx.def_span(trait_m.container_id(tcx)).shrink_to_lo());
+            span.push_span_context(tcx.def_span(trait_m.def_id).shrink_to_lo());
+            for (sp, label) in labels {
+                span.push_span_label(sp, label);
+            }
+            for sp in context {
+                span.push_span_context(sp);
+            }
+            (span, Cow::from("type in trait"), false)
+        }),
+        Some(param_env.and(infer::ValuePairs::PolySigs(ExpectedFound {
+            expected: ty::Binder::dummy(trait_sig),
+            found: ty::Binder::dummy(impl_sig),
+        }))),
+        terr,
+        false,
+        None,
+    );
 
     diag.emit_err()
 }
