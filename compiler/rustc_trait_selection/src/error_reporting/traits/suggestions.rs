@@ -3911,6 +3911,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::AwaitableExpr(_)
             | ObligationCauseCode::ForLoopIterator(_)
             | ObligationCauseCode::QuestionMark
+            | ObligationCauseCode::QuestionMarkIntoTry
             | ObligationCauseCode::CheckAssociatedTypeBounds { .. }
             | ObligationCauseCode::LetElse
             | ObligationCauseCode::UnOp { .. }
@@ -6464,7 +6465,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitClause<'tcx>,
     ) {
-        if ObligationCauseCode::QuestionMark != *obligation.cause.code().peel_derives() {
+        if ObligationCauseCode::QuestionMarkIntoTry != *obligation.cause.code().peel_derives() {
             return;
         }
 

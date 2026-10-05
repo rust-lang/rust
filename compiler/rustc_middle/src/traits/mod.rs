@@ -377,6 +377,8 @@ pub enum ObligationCauseCode<'tcx> {
     ForLoopIterator(HirId),
 
     QuestionMark,
+    // todo rename QuestionMark too?
+    QuestionMarkIntoTry,
 
     /// Well-formed checking. If a `WellFormedLoc` is provided,
     /// then it will be used to perform HIR-based wf checking
