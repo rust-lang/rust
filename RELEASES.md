@@ -1537,7 +1537,7 @@ for more information on Rust's tiered platform support.
 Libraries
 ---------
 - [Stabilize the anonymous pipe API](https://github.com/rust-lang/rust/issues/127154)
-- [Add support for unbounded left/right shift operations](https://github.com/rust-lang/rust/issues/129375) 
+- [Add support for unbounded left/right shift operations](https://github.com/rust-lang/rust/issues/129375)
 - [Print pointer metadata in `Debug` impl of raw pointers](https://github.com/rust-lang/rust/pull/135080)
 - [`Vec::with_capacity` guarantees it allocates with the amount requested, even if `Vec::capacity` returns a different number.](https://github.com/rust-lang/rust/pull/135933)
 - Most `std::arch` intrinsics which don't take pointer arguments can now be called from safe code if the caller has the appropriate target features already enabled (https://github.com/rust-lang/stdarch/pull/1714, https://github.com/rust-lang/stdarch/pull/1716, https://github.com/rust-lang/stdarch/pull/1717)
@@ -1611,7 +1611,7 @@ These previously stable APIs are now stable in const contexts:
 - [`char::is_digit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_digit)
 - [`char::is_whitespace`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_whitespace)
 - [`<[[T; N]]>::as_flattened`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_flattened)
-- [`<[[T; N]]>::as_flattened_mut`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_flattened_mut) 
+- [`<[[T; N]]>::as_flattened_mut`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_flattened_mut)
 - [`String::into_bytes`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.into_bytes)
 - [`String::as_str`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.as_str)
 - [`String::capacity`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.capacity)
