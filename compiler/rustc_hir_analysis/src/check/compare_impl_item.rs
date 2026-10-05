@@ -18,7 +18,7 @@ use rustc_middle::ty::{
     TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
     Unnormalized, Upcast,
 };
-use rustc_span::{BytePos, DUMMY_SP, Span, bug, span_bug};
+use rustc_span::{BytePos, DUMMY_SP, Span, bug, kw, span_bug};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
@@ -1103,7 +1103,22 @@ fn report_trait_method_mismatch<'tcx>(
     {
         let mut span: MultiSpan = tcx.def_span(param.def_id).into();
         span.push_span_context(tcx.def_span(trait_m.container_id(tcx)).shrink_to_lo());
-        diag.span_note(span, format!("expected to match this type parameter"));
+
+        let param_name = param.name;
+        let msg = if let Some(ty) = trait_sig.inputs_and_output.get(*i)
+            && infcx.can_eq(param_env, *ty, tcx.type_of(param.def_id).skip_binder())
+        {
+            format!("expected to match the default of type parameter `{param_name}`")
+        } else if let Some(ty) = trait_sig.inputs_and_output.get(*i)
+            && let ty::Param(p) = tcx.type_of(param.def_id).skip_binder().kind()
+            && p.name == kw::SelfUpper
+            && infcx.can_eq(param_env, *ty, impl_trait_ref.self_ty())
+        {
+            format!("expected to match the `Self` default of type parameter `{param_name}`")
+        } else {
+            format!("expected to match type parameter `{param_name}`")
+        };
+        diag.span_note(span, msg);
     }
 
     diag.emit_err()

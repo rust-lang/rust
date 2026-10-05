@@ -11,7 +11,7 @@ LL |     fn foo() -> T;
    |                 ^
    = note: expected signature `fn() -> ()`
               found signature `fn() -> u32`
-note: expected to match this type parameter
+note: expected to match the default of type parameter `T`
   --> $DIR/default-type-parameter.rs:1:13
    |
 LL | trait Trait<T = ()> {
@@ -35,7 +35,7 @@ LL |     fn foo() -> T;
    |                 ^
    = note: expected signature `fn() -> i32`
               found signature `fn() -> u32`
-note: expected to match this type parameter
+note: expected to match type parameter `T`
   --> $DIR/default-type-parameter.rs:1:13
    |
 LL | trait Trait<T = ()> {
