@@ -18,12 +18,15 @@
   
 -     bb1: {
 +     bb0: {
++         StorageAlloc(_0);
 +         StorageLive(_1);
 +         _1 = yield_number;
 +         StorageLive(_2);
 +         _2 = move _1;
 +         StorageLive(_3);
 +         _3 = ();
++         StorageAlloc(_0);
++         StorageAlloc(_0);
 +         _0 = const 64_i32;
 +         StorageDead(_3);
 +         StorageDead(_2);

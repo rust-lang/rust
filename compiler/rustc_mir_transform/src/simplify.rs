@@ -576,7 +576,8 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
             StatementKind::ConstEvalCounter
             | StatementKind::Nop
             | StatementKind::StorageLive(..)
-            | StatementKind::StorageDead(..) => {}
+            | StatementKind::StorageDead(..)
+            | StatementKind::StorageAlloc(..) => {}
             StatementKind::Assign((ref place, ref rvalue)) => {
                 if rvalue.is_safe_to_remove() {
                     self.visit_lhs(place, location);
@@ -618,12 +619,12 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
         modified = false;
 
         for data in body.basic_blocks.as_mut_preserves_cfg() {
-            // Remove unnecessary StorageLive and StorageDead annotations.
+            // Remove storage statements for unused locals.
             for statement in data.statements.iter_mut() {
                 let keep_statement = match &statement.kind {
-                    StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
-                        used_locals.is_used(*local)
-                    }
+                    StatementKind::StorageLive(local)
+                    | StatementKind::StorageDead(local)
+                    | StatementKind::StorageAlloc(local) => used_locals.is_used(*local),
                     StatementKind::Assign((place, _)) => used_locals.is_used(place.local),
                     StatementKind::SetDiscriminant { place, .. }
                     | StatementKind::BackwardIncompatibleDropHint { place, .. } => {
@@ -688,12 +689,12 @@ impl UsedInStmtLocals {
 
     pub(crate) fn remove_unused_storage_annotations<'tcx>(&self, body: &mut Body<'tcx>) {
         for data in body.basic_blocks.as_mut_preserves_cfg() {
-            // Remove unnecessary StorageLive and StorageDead annotations.
+            // Remove storage statements for unused locals.
             for statement in data.statements.iter_mut() {
                 let keep_statement = match &statement.kind {
-                    StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
-                        self.locals.contains(*local)
-                    }
+                    StatementKind::StorageLive(local)
+                    | StatementKind::StorageDead(local)
+                    | StatementKind::StorageAlloc(local) => self.locals.contains(*local),
                     _ => continue,
                 };
                 if keep_statement {

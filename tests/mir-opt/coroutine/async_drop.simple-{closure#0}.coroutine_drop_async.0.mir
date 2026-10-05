@@ -109,7 +109,7 @@ fn simple::{closure#0}(_1: Pin<&mut {async fn body of simple()}>, _2: &mut Conte
     }
 
     bb14: {
-        _11 = move _25;
+        _11 = copy _25;
         _10 = copy (_11.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
         goto -> bb13;
     }

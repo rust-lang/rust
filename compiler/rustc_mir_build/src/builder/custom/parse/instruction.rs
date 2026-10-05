@@ -18,6 +18,9 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
             @call(mir_storage_live, args) => {
                 Ok(StatementKind::StorageLive(self.parse_local(args[0])?))
             },
+            @call(mir_storage_alloc, args) => {
+                Ok(StatementKind::StorageAlloc(self.parse_local(args[0])?))
+            },
             @call(mir_storage_dead, args) => {
                 Ok(StatementKind::StorageDead(self.parse_local(args[0])?))
             },

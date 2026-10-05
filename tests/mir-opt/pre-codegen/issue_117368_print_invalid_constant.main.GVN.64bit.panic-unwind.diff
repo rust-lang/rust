@@ -34,6 +34,7 @@
           StorageLive(_2);
 -         _2 = Option::<Layout>::None;
 +         _2 = const Option::<Layout>::None;
+          StorageAlloc(_1);
           StorageLive(_8);
 -         _8 = discriminant(_2);
 -         switchInt(move _8) -> [0: bb3, 1: bb4, otherwise: bb2];
@@ -48,6 +49,7 @@
           _3 = copy _4 as *mut u8 (PtrToPtr);
           StorageDead(_4);
           StorageDead(_3);
+          _0 = const ();
           StorageDead(_1);
           return;
       }

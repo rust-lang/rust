@@ -31,6 +31,7 @@
       bb0: {
           StorageLive(_1);
           StorageLive(_2);
+          StorageAlloc(_2);
           StorageLive(_3);
           StorageLive(_4);
           StorageLive(_5);

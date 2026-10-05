@@ -49,12 +49,13 @@
           StorageLive(_8);
 -         _8 = NoVariants { int: const 0_u32 };
 +         _8 = const NoVariants {{ int: 0_u32, empty: ZeroSized: Empty }};
-          nop;
-          nop;
+          _7 = const ZeroSized: Empty;
+-         _6 = [const ZeroSized: Empty];
++         _6 = const [ZeroSized: Empty];
           nop;
           StorageDead(_8);
           nop;
-          nop;
+          _0 = const ();
           nop;
           nop;
           StorageDead(_3);

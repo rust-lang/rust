@@ -54,6 +54,7 @@ fn hello_world::{closure#0}(_1: &mut {async fn body of hello_world()}) -> () {
 
     bb0: {
         _34 = discriminant((*_1));
+        _0 = const ();
         switchInt(move _34) -> [0: bb9, 3: bb10, otherwise: bb11];
     }
 

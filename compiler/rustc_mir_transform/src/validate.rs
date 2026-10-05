@@ -309,6 +309,11 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     );
                 }
             }
+            StatementKind::StorageAlloc(_) => {
+                if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(location, "`StorageAlloc` is only allowed in runtime MIR");
+                }
+            }
             StatementKind::SetDiscriminant { .. } => {
                 if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(location, "`SetDiscriminant`is not allowed until deaggregation");
@@ -382,6 +387,23 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                         self.check_edge(location, target, EdgeKind::Normal);
                     }
                     self.check_unwind_edge(location, unwind);
+
+                    // With move-elimination semantics from RFC 3943, the
+                    // destination is evaluated last. It must not allocate fresh
+                    // storage for a moved argument's local: that would hide an
+                    // overlap forbidden by in-place argument and return
+                    // passing.
+                    //
+                    // We forbid this as malformed MIR instead of treating as
+                    // runtime UB.
+                    if !destination.is_indirect()
+                        && args.iter().any(|arg| {
+                            matches!(&arg.node, Operand::Move(place)
+                                if place.as_local() == Some(destination.local))
+                        })
+                    {
+                        self.fail(location, "return destination refers to a moved local");
+                    }
 
                     // The code generation assumes that there are no critical call edges. The
                     // assumption is used to simplify inserting code that should be executed along
@@ -1588,7 +1610,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::StorageLive(_)
+            StatementKind::StorageAlloc(_)
+            | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Coverage(_)
             | StatementKind::ConstEvalCounter

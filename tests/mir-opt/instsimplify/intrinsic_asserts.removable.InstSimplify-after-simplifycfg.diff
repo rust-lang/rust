@@ -10,6 +10,7 @@
       bb0: {
           StorageLive(_1);
 -         _1 = assert_inhabited::<()>() -> [return: bb1, unwind unreachable];
++         _1 = const ();
 +         goto -> bb1;
       }
   
@@ -17,6 +18,7 @@
           StorageDead(_1);
           StorageLive(_2);
 -         _2 = assert_zero_valid::<u8>() -> [return: bb2, unwind unreachable];
++         _2 = const ();
 +         goto -> bb2;
       }
   
@@ -24,6 +26,7 @@
           StorageDead(_2);
           StorageLive(_3);
 -         _3 = assert_mem_uninitialized_valid::<u8>() -> [return: bb3, unwind unreachable];
++         _3 = const ();
 +         goto -> bb3;
       }
   

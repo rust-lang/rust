@@ -590,7 +590,7 @@ where
                 unwind,
                 vec![self.assign(
                     entry_resume_local.into(),
-                    Rvalue::Use(Operand::Move(resume_place), WithRetag::Yes),
+                    Rvalue::Use(Operand::Copy(resume_place), WithRetag::Yes),
                 )],
                 TerminatorKind::Call {
                     func: Operand::function_handle(
