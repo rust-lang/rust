@@ -509,3 +509,5 @@ cast_into_float!(i16);
 cast_into_float!(i32);
 cast_into_float!(i64);
 cast_into_float!(i128);
+cast_into_float!(u64; f64);
+cast_into_float!(f64; f32, i32, i64);

@@ -12,7 +12,7 @@ use libm::hf16;
 use libm::hf128;
 use libm::{hf32, hf64};
 
-use crate::{CheckBasis, CheckCtx, GeneratorKind, MathOp, op};
+use crate::{CheckBasis, CheckCtx, Float, GeneratorKind, MathOp, op};
 
 pub struct TestCase<Op: MathOp> {
     pub input: Op::RustArgs,
@@ -850,6 +850,122 @@ fn exp2_cases() -> Vec<TestCase<op::exp2::Routine>> {
 
 fn exp2f_cases() -> Vec<TestCase<op::exp2f::Routine>> {
     cases![]
+}
+
+fn exp2m1f_cases() -> Vec<TestCase<op::exp2m1f::Routine>> {
+    let mut cases = cases![];
+
+    // Boundary values from CORE-MATH's binary32/exp2m1/exp2m1f.c.
+    // Test each value and its neighbors with both signs against MPFR.
+    for bits in [
+        0x0000_0001,
+        0x0080_0000,
+        0x2538_aa3b,
+        0x331f_dd82,
+        0x37d3_2ef6,
+        0x3a35_8876,
+        0x3bac_1405,
+        0x3caa_2fee,
+        0x3d67_a4cc,
+        0x3df9_5f1f,
+        0x41c8_0000,
+        0x4300_0000,
+    ] {
+        for adjacent in [bits - 1, bits, bits + 1] {
+            for sign in [0, f32::SIGN_MASK] {
+                cases.push(TestCase {
+                    input: (f32::from_bits(adjacent | sign),),
+                    output: None,
+                });
+            }
+        }
+    }
+
+    // Special rounding cases from the same CORE-MATH file.
+    // Test each value and its neighbors against MPFR.
+    for bits in [0xb3d8_5005, 0x3338_428d, 0x388b_ca4f] {
+        for adjacent in [bits - 1, bits, bits + 1] {
+            cases.push(TestCase {
+                input: (f32::from_bits(adjacent),),
+                output: None,
+            });
+        }
+    }
+
+    cases
+}
+
+fn exp2m1_cases() -> Vec<TestCase<op::exp2m1::Routine>> {
+    let mut cases = cases![];
+
+    // Check their neighbors with MPFR.
+    for i in 1..=53 {
+        let x = i as f64;
+
+        for adjacent in [x.to_bits() - 1, x.to_bits() + 1] {
+            for sign in [0, f64::SIGN_MASK] {
+                cases.push(TestCase {
+                    input: (f64::from_bits(adjacent | sign),),
+                    output: None,
+                });
+            }
+        }
+    }
+
+    // Subnormal, polynomial, saturation, and overflow boundaries, with both signs.
+    for x in [
+        f64::from_bits(1),
+        f64::MIN_POSITIVE,
+        hf64!("0x1.71547652b82fdp-1022"),
+        hf64!("0x1p-104"),
+        hf64!("0x1.0527dbd87e24dp-51"),
+        0.125,
+        54.0,
+        1024.0,
+    ] {
+        let bits = x.to_bits();
+        for adjacent in [bits - 1, bits, bits + 1] {
+            for sign in [0, f64::SIGN_MASK] {
+                cases.push(TestCase {
+                    input: (f64::from_bits(adjacent | sign),),
+                    output: None,
+                });
+            }
+        }
+    }
+
+    // Difficult rounding cases from the CORE-MATH exception tables and their neighbors.
+    for x in [
+        hf64!("-0x1.a16826a8e825dp-56"),
+        hf64!("-0x1.f1bc3ef3e6f36p-65"),
+        hf64!("-0x1.1e3a6eaa49c6ep-84"),
+        hf64!("-0x1.1d65d5fc31246p-98"),
+        hf64!("0x1.8a5dd21ef35afp-104"),
+        hf64!("0x1.086cbb0e900cfp-96"),
+        hf64!("0x1.453f5d718374ap-88"),
+        hf64!("0x1.02f371449097fp-51"),
+        hf64!("-0x1.f6ec73d3948c3p-4"),
+        hf64!("-0x1.3918e8608bd5bp-8"),
+        hf64!("-0x1.2c506b0368099p-51"),
+        hf64!("0x1.391609b20beaap-51"),
+        hf64!("0x1.4753a08baf7fbp-22"),
+        hf64!("0x1.d4a8ebce833a3p-4"),
+        hf64!("-0x1.da22611253866p+0"),
+        hf64!("-0x1.8827da1dbf35ep-2"),
+        hf64!("0x1.12eecf76d63cdp+1"),
+        hf64!("0x1.ffef3f31766b7p+5"),
+        hf64!("0x1.6f33cdaf56d6p+6"),
+    ] {
+        let bits = x.to_bits();
+        for adjacent in [bits - 1, bits, bits + 1] {
+            cases.push(TestCase {
+                input: (f64::from_bits(adjacent),),
+                output: None,
+            });
+        }
+    }
+
+    cases
 }
 
 fn expf_cases() -> Vec<TestCase<op::expf::Routine>> {

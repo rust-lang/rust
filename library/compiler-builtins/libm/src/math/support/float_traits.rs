@@ -223,6 +223,12 @@ pub trait Float:
     /// Fused multiply add, rounding once.
     fn fma(self, y: Self, z: Self) -> Self;
 
+    /// Round down to the nearest integer.
+    fn floor(self) -> Self;
+
+    /// Round to the nearest integer, breaking ties toward even.
+    fn roundeven(self) -> Self;
+
     /// Returns (normalized exponent, normalized significand)
     fn normalize(significand: Self::Int) -> (i32, Self::Int);
 
@@ -303,7 +309,11 @@ macro_rules! float_impl {
         $from_bits:path,
         $to_bits:path,
         $fma_fn:ident,
-        $fma_intrinsic:ident
+        $fma_intrinsic:ident,
+        $floor_fn:ident,
+        $floor_intrinsic:ident,
+        $roundeven_fn:ident,
+        $roundeven_intrinsic:ident
     ) => {
         impl Float for $ty {
             type Int = $ity;
@@ -433,6 +443,27 @@ macro_rules! float_impl {
                     }
                 }
             }
+            #[inline]
+            fn floor(self) -> Self {
+                cfg_select_nofmt! {
+                    intrinsics_enabled => {
+                        core::intrinsics::$floor_intrinsic(self)
+                    }
+                    _ => {
+                        super::super::$floor_fn(self)
+                    }
+                }
+            }
+            fn roundeven(self) -> Self {
+                cfg_select_nofmt! {
+                    intrinsics_enabled => {
+                        core::intrinsics::$roundeven_intrinsic(self)
+                    }
+                    _ => {
+                        super::super::$roundeven_fn(self)
+                    }
+                }
+            }
             fn normalize(significand: Self::Int) -> (i32, Self::Int) {
                 let shift = significand.leading_zeros().wrapping_sub(Self::EXP_BITS);
                 (1i32.wrapping_sub(shift as i32), significand << shift)
@@ -451,7 +482,11 @@ float_impl!(
     f16::from_bits,
     f16::to_bits,
     fmaf16,
-    fmaf16
+    fmaf16,
+    floorf16,
+    floorf16,
+    roundevenf16,
+    round_ties_even_f16
 );
 float_impl!(
     f32,
@@ -462,7 +497,11 @@ float_impl!(
     f32_from_bits,
     f32_to_bits,
     fmaf,
-    fmaf32
+    fmaf32,
+    floorf,
+    floorf32,
+    roundevenf,
+    round_ties_even_f32
 );
 float_impl!(
     f64,
@@ -473,7 +512,11 @@ float_impl!(
     f64_from_bits,
     f64_to_bits,
     fma,
-    fmaf64
+    fmaf64,
+    floor,
+    floorf64,
+    roundeven,
+    round_ties_even_f64
 );
 #[cfg(f128_enabled)]
 float_impl!(
@@ -485,7 +528,11 @@ float_impl!(
     f128::from_bits,
     f128::to_bits,
     fmaf128,
-    fmaf128
+    fmaf128,
+    floorf128,
+    floorf128,
+    roundevenf128,
+    round_ties_even_f128
 );
 
 /* FIXME(msrv): vendor some things that are not const stable at our MSRV */
