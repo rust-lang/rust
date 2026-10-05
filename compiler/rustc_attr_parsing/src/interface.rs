@@ -436,7 +436,7 @@ impl<'sess> AttributeParser<'sess> {
                             parsed_description: ParsedDescription::Attribute,
                             template: &accept.template,
                             attr_safety: n.item.unsafety,
-                            attr_path: attr_path.clone(),
+                            attr_path,
                             #[cfg(debug_assertions)]
                             has_target_been_checked: false,
                         };
@@ -456,7 +456,7 @@ impl<'sess> AttributeParser<'sess> {
                         );
                     } else {
                         let attr = AttrItem {
-                            path: attr_path.clone(),
+                            path: attr_path,
                             args: self.lower_attr_args(&n.item.args, lower_span),
                             id: HashIgnoredAttrId { attr_id: attr.id },
                             style: attr.style,
@@ -464,7 +464,7 @@ impl<'sess> AttributeParser<'sess> {
                         };
 
                         self.check_attribute_safety(
-                            &attr_path,
+                            &attr.path,
                             inner_span,
                             n.item.unsafety,
                             AttributeSafety::Normal,
