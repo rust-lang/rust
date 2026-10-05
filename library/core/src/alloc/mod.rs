@@ -772,7 +772,7 @@ unsafe impl<A: StaticAllocator + ?Sized> StaticAllocator for &mut A {}
 ///
 /// Note that this trait *will* be removed in the future, but downstream
 /// allocators should still feel free to implement it on nightly, to
-/// allow use of all containers with unstable allocator support
+/// allow use of all containers with unstable allocator support.
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 pub trait AllocatorNightly: Allocator {}
 
