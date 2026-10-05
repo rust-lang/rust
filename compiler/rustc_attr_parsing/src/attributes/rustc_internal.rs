@@ -170,7 +170,7 @@ impl SingleAttributeParser for RustcLegacyConstGenericsParser {
         })
     }
 
-    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         if cx.target != Target::Fn {
             // Invalid targets are already diagnosed by target checking.
             return;
