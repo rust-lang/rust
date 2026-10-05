@@ -4,8 +4,8 @@ error: `#[no_mangle]` cannot be used on internal language items
 LL | #[unsafe(no_mangle)]
    | ^^^^^^^^^^^^^^^^^^^^
 LL | #[panic_handler]
-LL | pub unsafe fn panic_fmt(pi: &PanicInfo) -> ! {
-   | -------------------------------------------- should be the internal language item
+LL | pub fn panic_fmt(pi: &PanicInfo) -> ! {
+   | ------------------------------------- should be the internal language item
    |
    = note: Rustc requires this item to have a specific mangled name.
    = note: If you are trying to prevent mangling to ease debugging, many

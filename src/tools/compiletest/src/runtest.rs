@@ -1943,9 +1943,6 @@ impl<'test> TestCx<'test> {
             Some(CompareMode::NextSolver) => {
                 compiler.args(&["-Znext-solver"]);
             }
-            Some(CompareMode::NextSolverCoherence) => {
-                compiler.args(&["-Znext-solver=coherence"]);
-            }
             Some(CompareMode::SplitDwarf) if self.config.target.contains("windows") => {
                 compiler.args(&["-Csplit-debuginfo=unpacked", "-Zunstable-options"]);
             }

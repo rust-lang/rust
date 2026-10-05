@@ -406,6 +406,104 @@ const _: () = ();
 /// [the `no_std` attribute]: ../reference/names/preludes.html#the-no_std-attribute
 const _: () = ();
 
+#[doc(attribute = "no_main")]
+/// Prevents emitting the `main` entrypoint symbol.
+///
+/// Written as an inner attribute at the top of the crate root, the `no_main` attribute prevents
+/// the compiler from generating the program's standard Rust entrypoint, leaving that up to you.
+/// This is useful when some other object being linked into the program defines the entrypoint,
+/// or when you want to define the platform's `main` symbol yourself.
+///
+/// If you define an entry point symbol that is suitable for your target, it must also be exported
+/// under an unmangled name using the [`no_mangle` attribute]:
+///
+/// ```no_run
+/// #![no_main]
+///
+/// use std::ffi::{c_char, c_int};
+///
+/// #[unsafe(no_mangle)]
+/// pub extern "C" fn main(_argc: c_int, _argv: *const *const c_char) -> c_int {
+///     println!("Hello world!");
+///     0
+/// }
+/// ```
+///
+/// Unlike `no_std`, the `no_main` attribute does not prevent the compiler from generating
+/// the startup routine or linking the standard library provided by the operating system's executable [ABI].
+///
+/// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
+/// [`no_mangle` attribute]: ../reference/abi.html#the-no_mangle-attribute
+const _: () = ();
+
+#[doc(attribute = "repr")]
+/// Specifies the [representation] of a type.
+///
+/// Written as an outer attribute on a `struct`, `enum` or `union`, `repr` controls how the
+/// type is laid out in memory. This is needed when passing types across an [FFI] boundary
+/// or whenever you rely on a specific layout.
+///
+/// The available representations are:
+///
+/// * [`Rust`] (the default): the layout is unspecified and may change between compilations.
+/// * [`C`]: the layout follows the rules of the C language for the target platform.
+/// * The [primitive representations] (`u8`, `i32`, `usize`, ...): set the discriminant
+///   type of an enum.
+/// * [`transparent`]: the type has the same layout and ABI as its only non-zero-sized field.
+///
+/// The `align(N)` and `packed(N)` modifiers raise or lower the alignment of a type, respectively.
+/// `N` must be a power of two no greater than 2<sup>29</sup>. The two modifiers cannot be
+/// applied to the same type, and references to fields of a `packed` type cannot be created,
+/// since they may be unaligned.
+///
+/// # Examples
+///
+/// ```
+/// #[repr(C, align(16))]
+/// struct Foo {
+///     first: u32,
+///     second: u32,
+///     third: u32,
+/// }
+///
+/// assert_eq!(align_of::<Foo>(), 16);
+/// // 12 bytes of fields, rounded up to a multiple of the alignment.
+/// assert_eq!(size_of::<Foo>(), 16);
+/// ```
+///
+/// ```
+/// #[repr(C, packed(2))]
+/// struct Foo {
+///     first: u32,
+///     second: u32,
+///     third: u32,
+/// }
+///
+/// assert_eq!(align_of::<Foo>(), 2);
+/// assert_eq!(size_of::<Foo>(), 12);
+/// ```
+///
+/// ```
+/// #[repr(C)]
+/// struct Foo<T> {
+///     item: T,
+/// }
+/// ```
+///
+/// `Foo` is laid out according to the C rules and is guaranteed to be 16-byte aligned.
+///
+/// The representation is a property of the type definition, so it does
+/// parameters: below, `Foo<u8>` and `Foo<u64>` both use the `C` representation. Their actual
+/// layouts still differ, because they depend on `T`.
+///
+/// [representation]: ../reference/type-layout.html#representations
+/// [`Rust`]: ../reference/type-layout.html#the-rust-representation
+/// [`C`]: ../reference/type-layout.html#the-c-representation
+/// [primitive representations]: ../reference/type-layout.html#primitive-representations
+/// [`transparent`]: ../reference/type-layout.html#the-transparent-representation
+/// [FFI]: https://en.wikipedia.org/wiki/Foreign_function_interface
+const _: () = ();
+
 #[doc(attribute = "inline")]
 //
 /// Suggest that the compiler inline a function at its call sites.

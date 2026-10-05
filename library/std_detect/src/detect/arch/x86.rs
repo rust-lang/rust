@@ -111,6 +111,8 @@ features! {
     /// * `"adx"`
     /// * `"rtm"`
     /// * `"movbe"`
+    /// * `"movdir64b"`
+    /// * `"movdiri"`
     /// * `"ermsb"`
     /// * `"movrs"`
     /// * `"xop"`
@@ -271,6 +273,10 @@ features! {
     /// RTM, Intel (Restricted Transactional Memory)
     @FEATURE: #[stable(feature = "movbe_target_feature", since = "1.67.0")] movbe: "movbe";
     /// MOVBE (Move Data After Swapping Bytes)
+    @FEATURE: #[unstable(feature = "movdir64b_target_feature", issue = "163741")] movdir64b: "movdir64b";
+    /// MOVDIR64B (Move 64 Bytes as Direct Store)
+    @FEATURE: #[unstable(feature = "movdiri_target_feature", issue = "163741")] movdiri: "movdiri";
+    /// MOVDIRI (Move Doubleword as Direct Store)
     @FEATURE: #[unstable(feature = "movrs_target_feature", issue = "137976")] movrs: "movrs";
     /// MOVRS (Move data with the read-shared hint)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] ermsb: "ermsb";

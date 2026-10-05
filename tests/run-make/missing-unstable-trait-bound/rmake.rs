@@ -11,6 +11,7 @@ use run_make_support::{diff, stable_bare_rustc};
 
 fn main() {
     let out = stable_bare_rustc()
+        .edition("2015")
         .input("missing-bound.rs")
         .run_fail()
         .assert_stderr_not_contains("help: consider restricting type parameter `T`")

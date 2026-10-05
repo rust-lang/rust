@@ -40,5 +40,5 @@
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[doc(alias = "halt")]
 pub const fn abort_immediate() -> ! {
-    crate::intrinsics::abort()
+    crate::intrinsics::abort_immediate()
 }

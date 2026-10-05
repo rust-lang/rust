@@ -768,11 +768,15 @@ pub(crate) fn href_with_root_path(
             false,
         ),
         None => {
-            // Associated items are handled differently with "jump to def". The anchor is generated
+            // Associated items are handled differently with "jump to def": the anchor is generated
             // directly here whereas for intra-doc links, we have some extra computation being
             // performed there.
-            let def_id_to_get = if root_path.is_some() { original_did } else { did };
-            if let Some(&(ref fqp, shortty)) = cache.external_paths.get(&def_id_to_get) {
+            //
+            // So if `root_path` is `Some()` and it's an associated item, we enter to enter the
+            // `else` branch to have the anchor generated here directly.
+            if (root_path.is_none() || original_did == did)
+                && let Some(&(ref fqp, shortty)) = cache.external_paths.get(&did)
+            {
                 let module_fqp = to_module_fqp(shortty, fqp);
                 let (parts, is_absolute) = url_parts(cache, did, module_fqp, relative_to)?;
                 (fqp.as_slice(), shortty, parts, is_absolute)

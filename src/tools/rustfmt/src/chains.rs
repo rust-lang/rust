@@ -463,9 +463,7 @@ impl Chain {
         }
         while let Some(chain_item) = iter.next() {
             let comment_snippet = context.snippet(chain_item.span);
-            // FIXME: Figure out the way to get a correct span when converting `try!` to `?`.
-            let handle_comment =
-                !(context.config.use_try_shorthand() || is_tries(comment_snippet.trim()));
+            let handle_comment = !is_tries(comment_snippet.trim());
 
             // Pre-comment
             if handle_comment {

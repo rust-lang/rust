@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `[A]: ToOwned` is not satisfied
-  --> $DIR/cow-slice-missing-clone-issue-141241.rs:16:11
+  --> $DIR/cow-slice-missing-clone-issue-141241.rs:17:11
    |
 LL |     test: Cow<'static, [A]>,
    |           ^^^^^^^^^^^^^^^^^ the trait `ToOwned` is not implemented for `[A]`

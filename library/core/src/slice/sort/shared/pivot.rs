@@ -17,7 +17,7 @@ pub fn choose_pivot<T, F: FnMut(&T, &T) -> bool>(v: &[T], is_less: &mut F) -> us
 
     let len = v.len();
     if len < 8 {
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 
     // SAFETY: a, b, c point to initialized regions of len_div_8 elements,

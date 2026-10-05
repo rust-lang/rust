@@ -29,7 +29,7 @@ pub struct BoolFloat {
     f: f32,
 }
 
-// CHECK: define inreg { i32, float } @structboolfloat()
+// CHECK: define inreg{{( noundef)?}} { i32, float } @structboolfloat()
 // CHECK-NEXT: start:
 // CHECK-NEXT: ret { i32, float } { i32 16777216, float {{0x40091EB860000000|3.140000e\+00}} }
 #[no_mangle]
@@ -48,7 +48,7 @@ pub struct ShortDouble {
     d: f64,
 }
 
-// CHECK: define { i64, double } @structshortdouble()
+// CHECK: define{{( noundef)?}} { i64, double } @structshortdouble()
 // CHECK-NEXT: start:
 // CHECK-NEXT: ret { i64, double } { i64 34621422135410688, double 3.140000e+00 }
 #[no_mangle]
@@ -88,7 +88,7 @@ pub struct NestedStructs {
     b: FloatFloat,
 }
 
-// CHECK: define inreg { float, float, float, float } @structnestestructs()
+// CHECK: define inreg{{( noundef)?}} { float, float, float, float } @structnestestructs()
 // CHECK-NEXT: start:
 // CHECK-NEXT: ret { float, float, float, float } { float {{0x3FB99999A0000000|1.000000e-01}}, float {{0x3FF19999A0000000|1.100000e\+00}}, float {{0x40019999A0000000|2.200000e\+00}}, float {{0x400A666660000000|3.300000e\+00}} }
 #[no_mangle]

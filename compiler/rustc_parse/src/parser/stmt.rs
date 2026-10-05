@@ -1134,7 +1134,7 @@ impl<'a> Parser<'a> {
                                 {
                                     true
                                 } else if let Some(op) = self.check_assoc_op()
-                                    && op.node.can_continue_expr_unambiguously()
+                                    && super::expr::diagnostics::op_can_continue_stmt_expr_unambiguously(op.node)
                                 {
                                     true
                                 } else {

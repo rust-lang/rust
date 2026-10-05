@@ -834,8 +834,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     Err(super::place::UninhabitedVariantError) => {
                         // Like codegen_set_discr we use a sound abort, but could
                         // potentially `unreachable` or just return the poison for
-                        // more optimizability, if that turns out to be helpful.
-                        bx.abort();
+                        // optimizability, if that turns out to be helpful.
+                        bx.abort_immediate();
                         let val = OperandValue::poison(bx, layout);
                         OperandRef { val, layout, move_annotation: None }
                     }

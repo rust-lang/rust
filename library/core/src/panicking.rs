@@ -59,7 +59,7 @@ compile_error!(
 #[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
 pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if cfg!(panic = "immediate-abort") {
-        super::intrinsics::abort()
+        super::intrinsics::abort_immediate()
     }
 
     // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
@@ -100,7 +100,7 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
             panic_fmt(fmt)
         } else #[track_caller] {
             if cfg!(panic = "immediate-abort") {
-                super::intrinsics::abort()
+                super::intrinsics::abort_immediate()
             }
 
             // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
@@ -265,7 +265,7 @@ pub const fn panic_display<T: fmt::Display>(x: &T) -> ! {
 #[lang = "panic_bounds_check"] // needed by codegen for panic on OOB array/slice access
 fn panic_bounds_check(index: usize, len: usize) -> ! {
     if cfg!(panic = "immediate-abort") {
-        super::intrinsics::abort()
+        super::intrinsics::abort_immediate()
     }
 
     panic!("index out of bounds: the len is {len} but the index is {index}")
@@ -278,7 +278,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 #[rustc_nounwind] // `CheckAlignment` MIR pass requires this function to never unwind
 fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
     if cfg!(panic = "immediate-abort") {
-        super::intrinsics::abort()
+        super::intrinsics::abort_immediate()
     }
 
     panic_nounwind_fmt(
@@ -296,7 +296,7 @@ fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
 #[rustc_nounwind] // `CheckNull` MIR pass requires this function to never unwind
 fn panic_null_pointer_dereference() -> ! {
     if cfg!(panic = "immediate-abort") {
-        super::intrinsics::abort()
+        super::intrinsics::abort_immediate()
     }
 
     panic_nounwind_fmt(
@@ -312,7 +312,7 @@ fn panic_null_pointer_dereference() -> ! {
 #[rustc_nounwind] // `CheckNull` MIR pass requires this function to never unwind
 fn panic_null_reference_constructed() -> ! {
     if cfg!(panic = "immediate-abort") {
-        super::intrinsics::abort()
+        super::intrinsics::abort_immediate()
     }
 
     panic_nounwind_fmt(format_args!("null reference produced"), /* force_no_backtrace */ false)
@@ -325,7 +325,7 @@ fn panic_null_reference_constructed() -> ! {
 #[rustc_nounwind] // `CheckEnums` MIR pass requires this function to never unwind
 fn panic_invalid_enum_construction(source: u128) -> ! {
     if cfg!(panic = "immediate-abort") {
-        super::intrinsics::abort()
+        super::intrinsics::abort_immediate()
     }
 
     panic_nounwind_fmt(

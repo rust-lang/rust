@@ -3,7 +3,7 @@
 //! rust-lang/rust#70201 gave `<CStr as ToOwned>::clone_into` a path that moved the
 //! target `CString`'s buffer out before growing a `Vec`; if that growth's allocation
 //! failed and unwound, the target was left without its nul terminator. This only
-//! reproduces under Miri: in a normal build the `#[global_allocator]` below can't
+//! reproduces under Miri: in a normal build, the `#[global_allocator]` below can't
 //! intercept the reallocation inside `CString::clone_into` (it lives in libstd, which
 //! library tests link with `-C prefer-dynamic`), so as a regular test it just checks
 //! the happy path.
@@ -46,6 +46,8 @@ unsafe impl GlobalAlloc for OneShotFailingAlloc {
     }
 }
 
+// This doesn't actually do anything outside Miri because of `-C prefer-dynamic` which effectively
+// hard-codes the default allocator.
 #[global_allocator]
 static ALLOC: OneShotFailingAlloc = OneShotFailingAlloc;
 

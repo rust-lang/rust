@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed for `<X as Trait<'static>>::Out<_>`
-  --> $DIR/norm-before-method-resolution-opaque-type.rs:25:9
+  --> $DIR/norm-before-method-resolution-opaque-type.rs:26:9
    |
 LL |     let x = *x;
    |         ^

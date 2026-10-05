@@ -1,31 +1,31 @@
 error: implementation of `Trait` is not general enough
   --> $DIR/issue-59311.rs:17:5
    |
-LL | pub fn crash<V>(v: &V)
-   |        ----- due to a where-clause on `crash`...
-LL | where
-LL |     for<'a> &'a V: Trait + 'static,
-   |                    ----- unsatisfied where-clause on `crash`
-LL | {
 LL |     v.t(|| {});
    |     ^^^^^^^^^^
    |
-   = note: ...`Trait` would have to be implemented for the type `&'a V`
+note: `Trait` would have to be implemented for the type `&'a V`
+  --> $DIR/issue-59311.rs:15:20
+   |
+LL | pub fn crash<V>(v: &V)
+LL | where
+LL |     for<'a> &'a V: Trait + 'static,
+   |                    ^^^^^ required by this bound in `crash`
    = note: ...but `Trait` is actually implemented for the type `&'0 V`, for some specific lifetime `'0`
 
 error: implementation of `Trait` is not general enough
   --> $DIR/issue-59311.rs:17:5
    |
-LL | pub fn crash<V>(v: &V)
-   |        ----- due to a where-clause on `crash`...
-LL | where
-LL |     for<'a> &'a V: Trait + 'static,
-   |                    ----- unsatisfied where-clause on `crash`
-LL | {
 LL |     v.t(|| {});
    |     ^^^^^^^^^^
    |
-   = note: ...`Trait` would have to be implemented for the type `&'a V`
+note: `Trait` would have to be implemented for the type `&'a V`
+  --> $DIR/issue-59311.rs:15:20
+   |
+LL | pub fn crash<V>(v: &V)
+LL | where
+LL |     for<'a> &'a V: Trait + 'static,
+   |                    ^^^^^ required by this bound in `crash`
    = note: ...but `Trait` is actually implemented for the type `&'0 V`, for some specific lifetime `'0`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

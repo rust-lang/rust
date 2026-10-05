@@ -1,8 +1,8 @@
 // Adapted from https://github.com/sunfishcode/mir2cranelift/blob/master/rust-examples/nocore-hello-world.rs
 
 #![feature(
-    no_core, unboxed_closures, lang_items, never_type, linkage,
-    extern_types, thread_local
+    no_core, unboxed_closures, lang_items, linkage,
+    extern_types, thread_local, rustc_private
 )]
 #![no_core]
 #![allow(dead_code, internal_features, non_camel_case_types)]
@@ -438,10 +438,10 @@ pub enum E2<X> {
 #[allow(unreachable_patterns)]
 fn check_niche_behavior () {
     if let E1::V2 { .. } = (E1::V1 { f: true }) {
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 
     if let E2::V1 { .. } = E2::V3::<Infallible> {
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 }

@@ -26,7 +26,7 @@ pub(crate) const ALIGN: usize = 40;
 
 /// An indication of where we are in the control flow graph. Used for printing
 /// extra information in `dump_mir`
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PassWhere {
     /// We have not started dumping the control flow graph, but we are about to.
     BeforeCFG,
@@ -332,7 +332,13 @@ pub fn write_mir_pretty<'tcx>(tcx: TyCtxt<'tcx>, w: &mut dyn io::Write) -> io::R
         }
 
         let render_body = |w: &mut dyn io::Write, body| -> io::Result<()> {
-            writer.write_mir_fn(body, w)?;
+            if let Some(mut extra_data) = tcx.mir_pretty_extra_data(body) {
+                let mut writer = MirWriter::new(tcx);
+                writer.extra_data = &mut *extra_data;
+                writer.write_mir_fn(body, w)?;
+            } else {
+                writer.write_mir_fn(body, w)?;
+            }
 
             for body in tcx.promoted_mir(def_id) {
                 writeln!(w)?;

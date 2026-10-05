@@ -661,7 +661,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         llret
     }
 
-    fn abort(&mut self) {
+    fn abort_immediate(&mut self) {
         let func = self.context.get_builtin_function("__builtin_trap");
         self.block.add_eval(self.location, self.context.new_call(self.location, func, &[]));
     }

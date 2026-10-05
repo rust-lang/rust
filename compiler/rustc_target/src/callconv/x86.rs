@@ -206,7 +206,11 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
     // An `extern "fastcall"` and `extern "vectorcall"` function always have 2 registers available.
     // Otherwise the `regparam` count (in the range 0..=3) determines the number of available
     // registers. If unspecified, no registers are used for argument passing.
+    //
+    // Functions that take a variable number of arguments continue to be passed all of their
+    // arguments on the stack.
     let mut free_regs = match opts.flavor {
+        _ if fn_abi.c_variadic => 0,
         Flavor::FastcallOrVectorcall => 2,
         Flavor::General { regparam } => u64::from(regparam.unwrap_or(0)),
     };

@@ -641,6 +641,10 @@ declare_features! (
     (unstable, mips_target_feature, "1.27.0", Some(150253)),
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
     (unstable, more_qualified_paths, "1.54.0", Some(86935)),
+    /// The `movdir64b` target feature on x86.
+    (unstable, movdir64b_target_feature, "CURRENT_RUSTC_VERSION", Some(163741)),
+    /// The `movdiri` target feature on x86.
+    (unstable, movdiri_target_feature, "CURRENT_RUSTC_VERSION", Some(163741)),
     /// Allows `move(expr)` in closures.
     (incomplete, move_expr, "1.97.0", Some(155050)),
     /// The `movrs` target feature on x86.
