@@ -3,7 +3,11 @@
 // the second example from @steffahn during review.
 // https://github.com/rust-lang/rust/pull/132289#issuecomment-2564587796
 
-//@ run-pass
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[old] known-bug: #57893
+//@[old] run-pass
 //@ aux-build: pr_review_132289_2_lib.rs
 
 extern crate pr_review_132289_2_lib;
@@ -22,5 +26,6 @@ impl LocallyUnimplemented<Param> for Dyn<Param> {}
 // is consistent with the function definition's body.
 fn main() {
     let (arr, len) = function::<Param>();
+    //[next]~^ ERROR: type annotations needed for `(_, usize)`
     assert_eq!(arr.len(), len);
 }

@@ -1,4 +1,13 @@
-//@ known-bug: #117392
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] check-pass
+//@[old] known-bug: #117392
+//@[old] failure-status: 101
+//@[old] dont-check-compiler-stderr
+
+// This test previously caused an ICE in `fn crash` when relating opaque
+// types. This has been fixed by the opaque type rework in the new solver.
 pub trait BorrowComposite {
     type Ref<'a>: 'a;
 }

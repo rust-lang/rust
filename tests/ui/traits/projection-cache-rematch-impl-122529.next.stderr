@@ -1,0 +1,65 @@
+error[E0277]: the trait bound `&'a [u8]: Archive` is not satisfied
+  --> $DIR/projection-cache-rematch-impl-122529.rs:16:22
+   |
+LL | impl<'a> Archive for <&'a [u8] as Archive>::Archived {
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Archive` is not implemented for `&'a [u8]`
+   |
+help: the trait `Archive` is implemented for `<&'a [u8] as Archive>::Archived`
+  --> $DIR/projection-cache-rematch-impl-122529.rs:16:1
+   |
+LL | impl<'a> Archive for <&'a [u8] as Archive>::Archived {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `&'a [u8]: Archive` is not satisfied
+  --> $DIR/projection-cache-rematch-impl-122529.rs:16:10
+   |
+LL | impl<'a> Archive for <&'a [u8] as Archive>::Archived {
+   |          ^^^^^^^ the trait `Archive` is not implemented for `&'a [u8]`
+   |
+help: the trait `Archive` is implemented for `<&'a [u8] as Archive>::Archived`
+  --> $DIR/projection-cache-rematch-impl-122529.rs:16:1
+   |
+LL | impl<'a> Archive for <&'a [u8] as Archive>::Archived {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `&'a [u8]: Archive` is not satisfied
+  --> $DIR/projection-cache-rematch-impl-122529.rs:21:21
+   |
+LL |     type Archived = ();
+   |                     ^^ the trait `Archive` is not implemented for `&'a [u8]`
+   |
+help: the trait `Archive` is implemented for `<&'a [u8] as Archive>::Archived`
+  --> $DIR/projection-cache-rematch-impl-122529.rs:16:1
+   |
+LL | impl<'a> Archive for <&'a [u8] as Archive>::Archived {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `&'a [u8]: Archive` is not satisfied
+  --> $DIR/projection-cache-rematch-impl-122529.rs:16:22
+   |
+LL | impl<'a> Archive for <&'a [u8] as Archive>::Archived {
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Archive` is not implemented for `&'a [u8]`
+   |
+help: the trait `Archive` is implemented for `<&'a [u8] as Archive>::Archived`
+  --> $DIR/projection-cache-rematch-impl-122529.rs:16:1
+   |
+LL | impl<'a> Archive for <&'a [u8] as Archive>::Archived {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: the trait bound `&'a [u8]: Archive` is not satisfied
+  --> $DIR/projection-cache-rematch-impl-122529.rs:16:22
+   |
+LL | impl<'a> Archive for <&'a [u8] as Archive>::Archived {
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Archive` is not implemented for `&'a [u8]`
+   |
+help: the trait `Archive` is implemented for `<&'a [u8] as Archive>::Archived`
+  --> $DIR/projection-cache-rematch-impl-122529.rs:16:1
+   |
+LL | impl<'a> Archive for <&'a [u8] as Archive>::Archived {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -3,8 +3,11 @@
 // the third example from @steffahn during review.
 // https://github.com/rust-lang/rust/pull/132289#issuecomment-2564599221
 
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 //@ run-pass
-//@ check-run-results
+//@[old] check-run-results
 //@ aux-build: pr_review_132289_3_lib.rs
 
 extern crate pr_review_132289_3_lib;
