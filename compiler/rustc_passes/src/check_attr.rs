@@ -24,8 +24,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam, GenericParamKind,
-    HirId, Item, ItemKind, Mod, Node, ParamName, TraitItem,
+    self as hir, CRATE_HIR_ID, Constness, ForeignItem, GenericParam, GenericParamKind, HirId, Item,
+    ItemKind, Mod, Node, ParamName, TraitItem,
 };
 use rustc_lint_defs::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
@@ -203,9 +203,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
             AttributeKind::Naked(..) => self.check_naked(hir_id, target),
             AttributeKind::MayDangle(attr_span) => self.check_may_dangle(hir_id, *attr_span),
-            AttributeKind::RustcLegacyConstGenerics { attr_span, fn_indexes } => {
-                self.check_rustc_legacy_const_generics(item, *attr_span, fn_indexes)
-            }
             AttributeKind::Doc(attr) => self.check_doc_attrs(attr, hir_id, target),
             AttributeKind::EiiImpl(eii_impl) => self.check_eii_impl(eii_impl),
             AttributeKind::RustcMustImplementOneOf { attr_span, fn_names } => {
@@ -355,6 +352,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcInsignificantDtor => (),
             AttributeKind::RustcIntrinsic => (),
             AttributeKind::RustcIntrinsicConstStableIndirect => (),
+            AttributeKind::RustcLegacyConstGenerics { .. } => (),
             AttributeKind::RustcLintOptDenyFieldAccess { .. } => (),
             AttributeKind::RustcLintOptTy => (),
             AttributeKind::RustcLintQueryInstability => (),
@@ -1063,51 +1061,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
 
         self.dcx().emit_err(diagnostics::InvalidMayDangle { attr_span });
-    }
-
-    /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid argument.
-    fn check_rustc_legacy_const_generics(
-        &self,
-        item: Option<&'tcx Item<'tcx>>,
-        attr_span: Span,
-        index_list: &ThinVec<(usize, Span)>,
-    ) {
-        let Some(Item { kind: ItemKind::Fn { sig: FnSig { decl, .. }, generics, .. }, .. }) = item
-        else {
-            // No error here, since it's already given by the parser
-            return;
-        };
-
-        for param in generics.params {
-            match param.kind {
-                hir::GenericParamKind::Const { .. } => {}
-                _ => {
-                    self.dcx().emit_err(diagnostics::RustcLegacyConstGenericsOnly {
-                        attr_span,
-                        param_span: param.span,
-                    });
-                    return;
-                }
-            }
-        }
-
-        if index_list.len() != generics.params.len() {
-            self.dcx().emit_err(diagnostics::RustcLegacyConstGenericsIndex {
-                attr_span,
-                generics_span: generics.span,
-            });
-            return;
-        }
-
-        let arg_count = decl.inputs.len() + generics.params.len();
-        for (index, span) in index_list {
-            if *index >= arg_count {
-                self.dcx().emit_err(diagnostics::RustcLegacyConstGenericsIndexExceed {
-                    span: *span,
-                    arg_count,
-                });
-            }
-        }
     }
 
     /// Checks if the `#[repr]` attributes on `item` are valid.
