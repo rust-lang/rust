@@ -635,15 +635,14 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
 
         if !matches!(arg.kind, FormatArgumentKind::Captured(_))
             && let rustc_ast::ExprKind::Path(None, path) = &arg.expr.kind
-            && let [segment] = path.segments.as_slice()
-            && segment.args.is_none()
+            && let Some(name) = path.as_single_argless_name()
             && let Some(arg_span) = format_arg_removal_span(self.format_args, index)
             && let Some(pos_span) = pos.span
         {
             let replacement = match usage {
-                FormatParamUsage::Argument => segment.ident.name.to_string(),
-                FormatParamUsage::Width => format!("{}$", segment.ident.name),
-                FormatParamUsage::Precision => format!(".{}$", segment.ident.name),
+                FormatParamUsage::Argument => name.to_string(),
+                FormatParamUsage::Width => format!("{name}$"),
+                FormatParamUsage::Precision => format!(".{name}$"),
             };
             fixes.push((pos_span, replacement));
             fixes.push((arg_span, String::new()));

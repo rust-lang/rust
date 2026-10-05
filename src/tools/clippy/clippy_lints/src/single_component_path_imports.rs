@@ -103,20 +103,24 @@ struct ImportUsageVisitor {
 impl Visitor<'_> for ImportUsageVisitor {
     fn visit_expr(&mut self, expr: &Expr) {
         if let ExprKind::Path(_, path) = &expr.kind
-            && path.segments.len() > 1
-            && path.segments[0].ident.name == kw::SelfLower
+            && let mut path_iter = path.iter_idents()
+            && let Some(ident) = path_iter.next()
+            && ident.name == kw::SelfLower
+            && let Some(ident) = path_iter.next()
         {
-            self.imports_referenced_with_self.push(path.segments[1].ident.name);
+            self.imports_referenced_with_self.push(ident.name);
         }
         walk_expr(self, expr);
     }
 
     fn visit_ty(&mut self, ty: &Ty) {
         if let TyKind::Path(_, path) = &ty.kind
-            && path.segments.len() > 1
-            && path.segments[0].ident.name == kw::SelfLower
+            && let mut path_iter = path.iter_idents()
+            && let Some(ident) = path_iter.next()
+            && ident.name == kw::SelfLower
+            && let Some(ident) = path_iter.next()
         {
-            self.imports_referenced_with_self.push(path.segments[1].ident.name);
+            self.imports_referenced_with_self.push(ident.name);
         }
     }
 }
@@ -175,6 +179,7 @@ impl SingleComponentPathImports {
         single_use_usages: &mut Vec<SingleUse>,
         macros: &mut Vec<Symbol>,
     ) {
+        use itertools::Itertools;
         if item.span.from_expansion() || item.vis.kind.is_pub() {
             return;
         }
@@ -187,12 +192,12 @@ impl SingleComponentPathImports {
                 macros.push(ident.name);
             },
             ItemKind::Use(use_tree) => {
-                let segments = &use_tree.prefix.segments;
+                let num_segments = use_tree.prefix.num_segments();
 
                 // keep track of `use some_module;` usages
-                if segments.len() == 1 {
+                if num_segments == 1 {
                     if let UseTreeKind::Simple(None) = use_tree.kind {
-                        let name = segments[0].ident.name;
+                        let name = use_tree.prefix.iter_idents().next().unwrap().name;
                         if !macros.contains(&name) {
                             single_use_usages.push(SingleUse {
                                 name,
@@ -205,15 +210,14 @@ impl SingleComponentPathImports {
                     return;
                 }
 
-                if segments.is_empty() {
+                if num_segments == 0 {
                     // keep track of `use {some_module, some_other_module};` usages
                     if let UseTreeKind::Nested { items, .. } = &use_tree.kind {
                         for tree in items {
-                            let segments = &tree.inner.prefix.segments;
-                            if segments.len() == 1
-                                && let UseTreeKind::Simple(None) = tree.inner.kind
+                            if let UseTreeKind::Simple(None) = tree.inner.kind
+                                && let Ok(ident) = tree.inner.prefix.iter_idents().exactly_one()
                             {
-                                let name = segments[0].ident.name;
+                                let name = ident.name;
                                 if !macros.contains(&name) {
                                     single_use_usages.push(SingleUse {
                                         name,
@@ -227,19 +231,21 @@ impl SingleComponentPathImports {
                     }
                 }
                 // keep track of `use self::some_module` usages
-                else if segments[0].ident.name == kw::SelfLower {
+                else if let mut ident_iter = use_tree.prefix.iter_idents()
+                    && let Some(ident) = ident_iter.next()
+                    && ident.name == kw::SelfLower
+                {
                     // simple case such as `use self::module::SomeStruct`
-                    if segments.len() > 1 {
-                        imports_reused_with_self.push(segments[1].ident.name);
+                    if let Some(ident) = ident_iter.next() {
+                        imports_reused_with_self.push(ident.name);
                         return;
                     }
 
                     // nested case such as `use self::{module1::Struct1, module2::Struct2}`
                     if let UseTreeKind::Nested { items, .. } = &use_tree.kind {
                         for tree in items {
-                            let segments = &tree.inner.prefix.segments;
-                            if !segments.is_empty() {
-                                imports_reused_with_self.push(segments[0].ident.name);
+                            if let Some(ident) = tree.inner.prefix.iter_idents().next() {
+                                imports_reused_with_self.push(ident.name);
                             }
                         }
                     }

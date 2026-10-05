@@ -53,7 +53,7 @@ impl MacroBraces {
 
 impl EarlyLintPass for MacroBraces {
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
-        if let Some(last_segment) = mac.path.segments.last()
+        if let Some(last_segment) = mac.path.last_segment()
             && let name = last_segment.ident.as_str()
             && let Some(&braces) = self.macro_braces.0.get(name)
             && let Some(snip) = snippet_opt(cx.sess(), mac.span().with_lo(last_segment.span().lo()))

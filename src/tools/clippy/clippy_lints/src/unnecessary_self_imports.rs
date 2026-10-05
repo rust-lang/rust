@@ -41,7 +41,7 @@ impl EarlyLintPass for UnnecessarySelfImports {
                 self_tree,
                 is_toplevel,
             } = self_import;
-            let Some(last_segment) = tree.prefix.segments.last() else {
+            let Some(last_segment) = tree.prefix.last_segment() else {
                 return;
             };
 
@@ -103,10 +103,11 @@ struct SelfImport<'a> {
 // XXX: rewrite as a generator returning `SelfImport`s, if those ever get stabilized
 fn for_each_self_import<'a>(tree: &'a UseTree, emit_lint: impl Fn(SelfImport<'a>) + Copy) {
     fn inner<'a>(tree: &'a UseTree, emit_lint: impl Fn(SelfImport<'a>) + Copy, is_toplevel: bool) {
+        use itertools::Itertools;
         if let UseTreeKind::Nested { items, .. } = &tree.kind {
             if let [self_tree] = &**items
-                && let [self_seg] = &*self_tree.inner.prefix.segments
-                && self_seg.ident.name == kw::SelfLower
+                && let Ok(self_ident) = self_tree.inner.prefix.iter_idents().exactly_one()
+                && self_ident.name == kw::SelfLower
             {
                 emit_lint(SelfImport {
                     tree,

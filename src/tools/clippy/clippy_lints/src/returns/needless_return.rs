@@ -121,6 +121,7 @@ fn check_final_expr<'tcx>(
     replacement: RetReplacement<'tcx>,
     match_ty_opt: Option<Ty<'_>>,
 ) {
+    use itertools::Itertools;
     let peeled_drop_expr = expr.peel_drop_temps();
     match &peeled_drop_expr.kind {
         // simple return is always "bad"
@@ -186,10 +187,10 @@ fn check_final_expr<'tcx>(
                         && let metas = attr.meta_item_list()
                         && let Some(lst) = metas
                         && let [MetaItemInner::MetaItem(meta_item), ..] = lst.as_slice()
-                        && let [tool, lint_name] = meta_item.path.segments.as_slice()
-                        && tool.ident.name == sym::clippy
+                        && let Some((tool, lint)) = meta_item.path.iter_idents().collect_tuple()
+                        && tool.name == sym::clippy
                         && matches!(
-                            lint_name.ident.name,
+                            lint.name,
                             sym::needless_return | sym::style | sym::all | sym::warnings
                         )
                     {

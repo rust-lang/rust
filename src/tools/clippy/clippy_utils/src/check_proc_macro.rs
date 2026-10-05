@@ -472,14 +472,14 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
         TyKind::Path(qself_path, path) => {
             let start = if qself_path.is_some() {
                 Pat::Str("<")
-            } else if let Some(first) = path.segments.first() {
-                ident_search_pat(first.ident).0
+            } else if let Some(first_ident) = path.iter_idents().next() {
+                ident_search_pat(*first_ident).0
             } else {
                 // this shouldn't be possible, but sure
                 Pat::Str("")
             };
-            let end = if let Some(last) = path.segments.last() {
-                match last.args.as_deref() {
+            let end = if let Some(last) = path.last_segment() {
+                match last.args {
                     // last `>` in `std::foo::Bar<T>`
                     Some(GenericArgs::AngleBracketed(_)) => Pat::Str(">"),
                     Some(GenericArgs::Parenthesized(par_args)) => match &par_args.output {
@@ -498,7 +498,7 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
                     // last `..` in `(..)` -- `)` gets stripped
                     Some(GenericArgs::ParenthesizedElided(_)) => Pat::Str(".."),
                     // `bar` in `std::foo::bar`
-                    None => ident_search_pat(last.ident).1,
+                    None => ident_search_pat(*last.ident).1,
                 }
             } else {
                 // this shouldn't be possible
@@ -524,8 +524,8 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
             }
         },
         TyKind::MacCall(mac_call) => {
-            let start = if let Some(first) = mac_call.path.segments.first() {
-                ident_search_pat(first.ident).0
+            let start = if let Some(first) = mac_call.path.iter_idents().next() {
+                ident_search_pat(*first).0
             } else {
                 Pat::Str("")
             };

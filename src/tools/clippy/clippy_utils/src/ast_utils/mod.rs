@@ -95,11 +95,18 @@ pub fn eq_maybe_qself(l: Option<&QSelf>, r: Option<&QSelf>) -> bool {
 }
 
 pub fn eq_path(l: &Path, r: &Path) -> bool {
-    over(&l.segments, &r.segments, eq_path_seg)
+    l.num_segments() == r.num_segments()
+        && l.iter_segments()
+            .zip(r.iter_segments())
+            .all(|(a, b)| eq_path_seg_ref(a, b))
 }
 
 fn eq_path_seg(l: &PathSegment, r: &PathSegment) -> bool {
     eq_id(l.ident, r.ident) && both(l.args.as_ref(), r.args.as_ref(), |l, r| eq_generic_args(l, r))
+}
+
+fn eq_path_seg_ref(l: PathSegmentRef<'_>, r: PathSegmentRef<'_>) -> bool {
+    eq_id(*l.ident, *r.ident) && both(l.args, r.args, |l, r| eq_generic_args(l, r))
 }
 
 fn eq_generic_args(l: &GenericArgs, r: &GenericArgs) -> bool {

@@ -54,9 +54,8 @@ impl EarlyLintPass for RedundantFieldNames {
             for field in &se.fields {
                 if !field.is_shorthand
                     && let ExprKind::Path(None, path) = &field.expr.kind
-                    && let [segment] = path.segments.as_slice()
-                    && segment.args.is_none()
-                    && segment.ident == field.ident
+                    && let Some(ident) = path.as_single_argless_ident()
+                    && ident == field.ident
                     && field.span.eq_ctxt(field.ident.span)
                     && !field.span.in_external_macro(cx.sess().source_map())
                 {

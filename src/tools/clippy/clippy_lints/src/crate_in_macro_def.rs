@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use rustc_ast::ast::{AttrKind, Attribute, Item, ItemKind};
+use rustc_ast::ast::{Attribute, Item, ItemKind};
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_errors::Applicability;
@@ -71,13 +71,7 @@ impl EarlyLintPass for CrateInMacroDef {
 }
 
 fn is_macro_export(attr: &Attribute) -> bool {
-    if let AttrKind::Normal(normal) = &attr.kind
-        && let [segment] = normal.item.path.segments.as_slice()
-    {
-        segment.ident.name == sym::macro_export
-    } else {
-        false
-    }
+    attr.has_name(sym::macro_export)
 }
 
 fn contains_unhygienic_crate_reference(tts: &TokenStream) -> Option<Span> {
