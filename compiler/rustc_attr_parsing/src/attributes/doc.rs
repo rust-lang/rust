@@ -18,9 +18,9 @@ use crate::diagnostics::{
     DocAliasStartEnd, DocAttrNotCrateLevel, DocAttributeNotAttribute, DocAutoCfgExpectsHideOrShow,
     DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowNoIdentBeforeValues,
     DocAutoCfgHideShowUnexpectedItem, DocAutoCfgHideShowUnexpectedItemAfterValues,
-    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocKeywordNotKeyword, DocTestLiteral,
-    DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude, DocUnknownPasses,
-    DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs,
+    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocKeywordNotKeyword, DocReserved,
+    DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude,
+    DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs,
     IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
 };
 use crate::parser::{
@@ -625,13 +625,11 @@ impl DocParser {
                 no_args_and_not_crate_level!(search_unbox)
             }
             Some(sym::rust_logo) => {
-                // FIXME: Only feature gated at the crate level (!!)
-                if cx.target == Target::Crate {
-                    gated!(
-                        rustdoc_internals,
-                        "the `#[doc(rust_logo)]` attribute is used for Rust branding"
-                    );
-                }
+                gated!(
+                    rustdoc_internals,
+                    "the `#[doc(rust_logo)]` attribute is used for Rust branding"
+                );
+
                 no_args_and_crate_level!(rust_logo)
             }
             Some(sym::auto_cfg) => {
@@ -666,18 +664,30 @@ impl DocParser {
                 let span = path.span();
                 cx.emit_lint(INVALID_DOC_ATTRIBUTES, DocUnknownSpotlight { sugg_span: span }, span);
             }
-            Some(sym::include) if let Some(nv) = args.as_name_value() => {
-                let inner = match cx.attr_style {
-                    AttrStyle::Outer => "",
-                    AttrStyle::Inner => "!",
-                };
-                let value = nv.value_as_lit().symbol;
-                let span = path.span();
-                cx.emit_lint(
-                    INVALID_DOC_ATTRIBUTES,
-                    DocUnknownInclude { inner, value, sugg: (span, Applicability::MaybeIncorrect) },
-                    span,
-                );
+            Some(sym::include) => {
+                if let Some(nv) = args.as_name_value() {
+                    let inner = match cx.attr_style {
+                        AttrStyle::Outer => "",
+                        AttrStyle::Inner => "!",
+                    };
+                    let value = nv.value_as_lit().symbol;
+                    let span = path.span();
+                    cx.emit_lint(
+                        INVALID_DOC_ATTRIBUTES,
+                        DocUnknownInclude {
+                            inner,
+                            value,
+                            sugg: (span, Applicability::MaybeIncorrect),
+                        },
+                        span,
+                    );
+                } else {
+                    cx.emit_lint(
+                        INVALID_DOC_ATTRIBUTES,
+                        DocUnknownAny { name: sym::include },
+                        path.span(),
+                    );
+                }
             }
             Some(name @ (sym::passes | sym::no_default_passes)) => {
                 let span = path.span();
@@ -692,13 +702,14 @@ impl DocParser {
                 cx.emit_lint(INVALID_DOC_ATTRIBUTES, DocUnknownPlugins { label_span: span }, span);
             }
             Some(name) => {
-                cx.emit_lint(INVALID_DOC_ATTRIBUTES, DocUnknownAny { name }, path.span());
+                cx.emit_err(DocReserved { name, span: path.span() });
             }
             None => {
                 let full_name =
                     path.segments().map(|s| s.as_str()).intersperse("::").collect::<String>();
                 let name = Symbol::intern(&full_name);
-                cx.emit_lint(INVALID_DOC_ATTRIBUTES, DocUnknownAny { name }, path.span());
+
+                cx.emit_err(DocReserved { name, span: path.span() });
             }
         }
     }
