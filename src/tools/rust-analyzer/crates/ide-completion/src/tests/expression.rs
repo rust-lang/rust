@@ -3951,6 +3951,64 @@ fn fn_field_in_previous_line_of_ambiguous_expr() {
 }
 
 #[test]
+fn let_not_in_non_in_block_like_ambiguous_expr() {
+    // For cases where postfix completion is good, path completion is not good
+    check(
+        r#"
+        fn f() {
+            &l$0
+            (1, 2).foo();
+        }"#,
+        expect![[r#"
+            fn f()  fn()
+            bt u32   u32
+            kw const
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw mut
+            kw raw
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+    check(
+        r#"
+        fn f() {
+            &l$0
+        }"#,
+        expect![[r#"
+            fn f()  fn()
+            bt u32   u32
+            kw const
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw mut
+            kw raw
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+}
+
+#[test]
 fn private_inherent_and_public_trait() {
     check(
         r#"

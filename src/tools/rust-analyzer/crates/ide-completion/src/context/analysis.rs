@@ -2045,11 +2045,13 @@ fn is_in_block(node: &SyntaxNode) -> bool {
 ///
 /// Check if `node` follows a newline and if the ancestors of `sense_node` can be split all the way to `StmtList`
 fn has_in_newline_expr_first(node: &SyntaxNode, sense_node: &SyntaxNode) -> bool {
+    let sense_mode = sense_node != node;
     let is_splitable = |node: &SyntaxNode| {
-        node.text_range().start() == sense_node.text_range().start()
-            || node.text_range().end() == sense_node.text_range().end()
+        let range = node.text_range();
+        let sense = sense_node.text_range();
+        range.start() == sense.start() || sense_mode && range.end() == sense.end()
     };
-    if (ast::PathExpr::can_cast(node.kind()) || sense_node != node)
+    if (ast::PathExpr::can_cast(node.kind()) || sense_mode)
         && let Some(next) = node.last_token().and_then(|it| it.next_token())
         && next.kind() == SyntaxKind::WHITESPACE
         && next.text().contains('\n')
