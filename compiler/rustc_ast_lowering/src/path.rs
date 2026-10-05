@@ -46,6 +46,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let base_res = partial_res.base_res();
         let unresolved_segments = partial_res.unresolved_segments();
         let span = p.span();
+        let p_num_segments = p.num_segments();
 
         let mut res = self.lower_res(base_res);
 
@@ -84,7 +85,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Only permit `impl Trait` in the final segment. E.g., we permit `Option<impl Trait>`,
         // `option::Option<T>::Xyz<impl Trait>` and reject `option::Option<impl Trait>::Xyz`.
         let itctx = |i| {
-            if i + 1 == p.num_segments() {
+            if i + 1 == p_num_segments {
                 itctx
             } else {
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path)
@@ -92,7 +93,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         let path_span_lo = span.shrink_to_lo();
-        let proj_start = p.num_segments() - unresolved_segments;
+        let proj_start = p_num_segments - unresolved_segments;
         let path = self.arena.alloc(hir::Path {
             res,
             segments: self.arena.alloc_from_iter(
@@ -189,7 +190,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // * final path is `<<<std::vec::Vec<T>>::IntoIter>::Item>::clone`
         for (i, segment) in p.iter_segments().enumerate().skip(proj_start) {
             // If this is a type-dependent `T::method(..)`.
-            let generic_args_mode = if i + 1 == p.num_segments()
+            let generic_args_mode = if i + 1 == p_num_segments
                 && matches!(allow_return_type_notation, AllowReturnTypeNotation::Yes)
             {
                 GenericArgsMode::ReturnTypeNotation
@@ -208,7 +209,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let qpath = hir::QPath::TypeRelative(ty, hir_segment);
 
             // It's finished, return the extension of the right node type.
-            if i == p.num_segments() - 1 {
+            if i == p_num_segments - 1 {
                 return qpath;
             }
 
@@ -223,8 +224,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span,
             format!(
                 "lower_qpath: no final extension segment in {}..{}",
-                proj_start,
-                p.num_segments()
+                proj_start, p_num_segments
             ),
         );
     }
