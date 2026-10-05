@@ -46,6 +46,18 @@ fn main() {
     )) {
         test_file_set_times();
     }
+    // In Miri, only these targets lower `fs::set_times` to the `utimensat` shim. Natively, it
+    // works everywhere.
+    if cfg!(any(
+        target_os = "linux",
+        target_os = "freebsd",
+        target_os = "solaris",
+        target_os = "illumos",
+        not(miri)
+    )) {
+        test_set_times();
+        test_set_times_nofollow();
+    }
     // Windows file handling is very incomplete.
     if cfg!(not(windows)) {
         test_directory();
@@ -298,6 +310,82 @@ fn test_file_set_times() {
     assert_eq!(metadata.accessed().unwrap(), accessed);
     assert_eq!(metadata.modified().unwrap(), newer_modified);
 
+    remove_file(&path).unwrap();
+}
+
+fn test_set_times() {
+    use std::fs::FileTimes;
+    use std::time::{Duration, SystemTime};
+
+    let path = utils::prepare_with_content("miri_test_fs_set_times_path.txt", b"hello");
+
+    // Use fixed, whole-second timestamps to avoid sub-second granularity differences between
+    // file systems.
+    let accessed = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000_000_000);
+    let modified = SystemTime::UNIX_EPOCH + Duration::from_secs(1_234_567_890);
+
+    // Setting both timestamps round-trips through the file's metadata.
+    fs::set_times(&path, FileTimes::new().set_accessed(accessed).set_modified(modified)).unwrap();
+    let metadata = fs::metadata(&path).unwrap();
+    assert_eq!(metadata.accessed().unwrap(), accessed);
+    assert_eq!(metadata.modified().unwrap(), modified);
+
+    // Setting only the modification time (`UTIME_OMIT` for access) leaves the access time alone.
+    let newer_modified = SystemTime::UNIX_EPOCH + Duration::from_secs(2_000_000_000);
+    fs::set_times(&path, FileTimes::new().set_modified(newer_modified)).unwrap();
+    let metadata = fs::metadata(&path).unwrap();
+    assert_eq!(metadata.accessed().unwrap(), accessed);
+    assert_eq!(metadata.modified().unwrap(), newer_modified);
+
+    // Setting neither timestamp (`UTIME_OMIT` for both) succeeds and changes nothing.
+    fs::set_times(&path, FileTimes::new()).unwrap();
+    let metadata = fs::metadata(&path).unwrap();
+    assert_eq!(metadata.accessed().unwrap(), accessed);
+    assert_eq!(metadata.modified().unwrap(), newer_modified);
+
+    remove_file(&path).unwrap();
+
+    // A missing file is reported as such.
+    let err = fs::set_times(&path, FileTimes::new().set_modified(modified)).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::NotFound);
+
+    // With nothing to update, Linux does not even look at the path. Other systems may still
+    // report the missing file.
+    let res = fs::set_times(&path, FileTimes::new());
+    if cfg!(target_os = "linux") {
+        res.expect("`set_times` without any timestamps should always succeed on Linux");
+    } else {
+        assert!(res.is_ok() || res.is_err_and(|e| e.kind() == ErrorKind::NotFound));
+    }
+}
+
+fn test_set_times_nofollow() {
+    use std::fs::FileTimes;
+    use std::time::{Duration, SystemTime};
+
+    if !utils::have_symlink_permission() {
+        return;
+    }
+
+    let path = utils::prepare_with_content("miri_test_fs_set_times_nofollow.txt", b"hello");
+    let symlink_path = utils::prepare("miri_test_fs_set_times_nofollow_symlink.txt");
+    symlink_file(&path, &symlink_path).unwrap();
+
+    let target_modified = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000_000_000);
+    let symlink_modified = SystemTime::UNIX_EPOCH + Duration::from_secs(1_234_567_890);
+
+    // `set_times` through the symlink changes the target, `set_times_nofollow` the symlink itself.
+    fs::set_times(&symlink_path, FileTimes::new().set_modified(target_modified)).unwrap();
+    fs::set_times_nofollow(&symlink_path, FileTimes::new().set_modified(symlink_modified)).unwrap();
+    assert_eq!(fs::metadata(&path).unwrap().modified().unwrap(), target_modified);
+    assert_eq!(fs::symlink_metadata(&symlink_path).unwrap().modified().unwrap(), symlink_modified);
+
+    // Setting neither timestamp succeeds and changes neither the symlink nor its target.
+    fs::set_times_nofollow(&symlink_path, FileTimes::new()).unwrap();
+    assert_eq!(fs::metadata(&path).unwrap().modified().unwrap(), target_modified);
+    assert_eq!(fs::symlink_metadata(&symlink_path).unwrap().modified().unwrap(), symlink_modified);
+
+    remove_file(&symlink_path).unwrap();
     remove_file(&path).unwrap();
 }
 

@@ -58,6 +58,7 @@ fn main() {
     test_stat();
     test_lstat();
     test_futimens();
+    test_utimensat();
     test_isatty();
     test_read_and_uninit();
     #[cfg(target_os = "macos")]
@@ -1048,11 +1049,166 @@ fn test_futimens() {
     assert!(atime.0 as u64 >= before);
     assert!(mtime.0 as u64 >= before);
 
+    // An out-of-range `tv_nsec` fails with `EINVAL`, in either slot, and changes nothing.
+    // Native macOS does not error here.
+    if cfg!(miri) || cfg!(not(target_vendor = "apple")) {
+        let (atime, mtime) = get_times();
+        for (atime_nsec, mtime_nsec) in [(1_000_000_000, 0), (0, 1_000_000_000)] {
+            let invalid_times = [
+                libc::timespec { tv_sec: 1, tv_nsec: atime_nsec },
+                libc::timespec { tv_sec: 1, tv_nsec: mtime_nsec },
+            ];
+            let err =
+                errno_result(unsafe { libc::futimens(fd, invalid_times.as_ptr()) }).unwrap_err();
+            assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+        }
+        assert_eq!(get_times(), (atime, mtime));
+    }
+
     // A bad file descriptor fails with `EBADF`.
     let err = errno_result(unsafe { libc::futimens(-1, times.as_ptr()) }).unwrap_err();
     assert_eq!(err.raw_os_error(), Some(libc::EBADF));
 
     remove_file(&path).unwrap();
+}
+
+fn test_utimensat() {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let path = utils::prepare_with_content("miri_test_libc_utimensat.txt", b"hello");
+    let cpath = utils::into_c_string(&path);
+
+    // Reads back a path's (access, modification) times as `(sec, nsec)` pairs via `fstatat`.
+    let get_times = |cpath: &CStr, flags: libc::c_int| {
+        let mut stat = MaybeUninit::<libc::stat>::uninit();
+        errno_check(unsafe {
+            libc::fstatat(libc::AT_FDCWD, cpath.as_ptr(), stat.as_mut_ptr(), flags)
+        });
+        let stat = unsafe { stat.assume_init_ref() };
+        ((stat.st_atime, stat.st_atime_nsec), (stat.st_mtime, stat.st_mtime_nsec))
+    };
+
+    // Setting both timestamps round-trips, including sub-second precision. We use 100ms since the
+    // coarsest clock any host rounds to is Windows/NTFS's 100ns.
+    let times = [
+        libc::timespec { tv_sec: 1_000_000_000, tv_nsec: 100_000_000 },
+        libc::timespec { tv_sec: 1_234_567_890, tv_nsec: 200_000_000 },
+    ];
+    errno_check(unsafe { libc::utimensat(libc::AT_FDCWD, cpath.as_ptr(), times.as_ptr(), 0) });
+    assert_eq!(get_times(&cpath, 0), ((1_000_000_000, 100_000_000), (1_234_567_890, 200_000_000)));
+
+    // `UTIME_OMIT` leaves the access time unchanged while updating the modification time.
+    // An absolute path makes the dirfd irrelevant.
+    let times = [
+        libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT },
+        libc::timespec { tv_sec: 2_000_000_000, tv_nsec: 0 },
+    ];
+    assert!(path.is_absolute());
+    errno_check(unsafe {
+        libc::utimensat(/* dirfd */ 999, cpath.as_ptr(), times.as_ptr(), 0)
+    });
+    assert_eq!(get_times(&cpath, 0), ((1_000_000_000, 100_000_000), (2_000_000_000, 0)));
+
+    // `UTIME_NOW` sets a timestamp to the current time (here for access, alongside `UTIME_OMIT`).
+    let before = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+    let now_times = [
+        libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_NOW },
+        libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT },
+    ];
+    errno_check(unsafe { libc::utimensat(libc::AT_FDCWD, cpath.as_ptr(), now_times.as_ptr(), 0) });
+    let (atime, mtime) = get_times(&cpath, 0);
+    assert!(atime.0 as u64 >= before);
+    assert_eq!(mtime, (2_000_000_000, 0));
+
+    // A NULL `times` pointer sets both timestamps to the current time.
+    errno_check(unsafe { libc::utimensat(libc::AT_FDCWD, cpath.as_ptr(), ptr::null(), 0) });
+    let (atime, mtime) = get_times(&cpath, 0);
+    assert!(atime.0 as u64 >= before);
+    assert!(mtime.0 as u64 >= before);
+
+    // A relative path with `AT_FDCWD` is resolved against the working directory.
+    let old_cwd = env::current_dir().unwrap();
+    env::set_current_dir(path.parent().unwrap()).unwrap();
+    let crelpath = CString::new(path.file_name().unwrap().as_bytes()).unwrap();
+    errno_check(unsafe { libc::utimensat(libc::AT_FDCWD, crelpath.as_ptr(), times.as_ptr(), 0) });
+    env::set_current_dir(old_cwd).unwrap();
+    assert_eq!(get_times(&cpath, 0).1, (2_000_000_000, 0));
+
+    // With `AT_SYMLINK_NOFOLLOW`, the symlink itself is updated rather than its target.
+    if utils::have_symlink_permission() {
+        let symlink_path = utils::prepare("miri_test_libc_utimensat_symlink.txt");
+        std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
+        let csymlink = utils::into_c_string(&symlink_path);
+
+        let symlink_times = [
+            libc::timespec { tv_sec: 1_500_000_000, tv_nsec: 0 },
+            libc::timespec { tv_sec: 1_600_000_000, tv_nsec: 0 },
+        ];
+        errno_check(unsafe {
+            libc::utimensat(
+                libc::AT_FDCWD,
+                csymlink.as_ptr(),
+                symlink_times.as_ptr(),
+                libc::AT_SYMLINK_NOFOLLOW,
+            )
+        });
+        assert_eq!(get_times(&csymlink, libc::AT_SYMLINK_NOFOLLOW).1, (1_600_000_000, 0));
+        assert_eq!(get_times(&cpath, 0).1, (2_000_000_000, 0));
+
+        // Without the flag, the symlink is followed.
+        errno_check(unsafe {
+            libc::utimensat(libc::AT_FDCWD, csymlink.as_ptr(), symlink_times.as_ptr(), 0)
+        });
+        assert_eq!(get_times(&csymlink, libc::AT_SYMLINK_NOFOLLOW).1, (1_600_000_000, 0));
+        assert_eq!(get_times(&cpath, 0), ((1_500_000_000, 0), (1_600_000_000, 0)));
+
+        remove_file(&symlink_path).unwrap();
+    }
+
+    // An out-of-range `tv_nsec` fails with `EINVAL`, in either slot, and changes nothing.
+    // Native macOS does not error here.
+    if cfg!(miri) || cfg!(not(target_vendor = "apple")) {
+        let before_invalid = get_times(&cpath, 0);
+        let invalid_times = [
+            libc::timespec { tv_sec: 1, tv_nsec: 0 },
+            libc::timespec { tv_sec: 1, tv_nsec: 1_000_000_000 },
+        ];
+        let err = errno_result(unsafe {
+            libc::utimensat(libc::AT_FDCWD, cpath.as_ptr(), invalid_times.as_ptr(), 0)
+        })
+        .unwrap_err();
+        assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+        assert_eq!(get_times(&cpath, 0), before_invalid);
+    }
+
+    remove_file(&path).unwrap();
+
+    // A missing file fails with `ENOENT`.
+    let err =
+        errno_result(unsafe { libc::utimensat(libc::AT_FDCWD, cpath.as_ptr(), times.as_ptr(), 0) })
+            .unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::ENOENT));
+
+    // A NULL path fails with `EFAULT`, or with `EINVAL` on glibc before 2.41.
+    let err =
+        errno_result(unsafe { libc::utimensat(libc::AT_FDCWD, ptr::null(), times.as_ptr(), 0) })
+            .unwrap_err();
+    assert!(matches!(err.raw_os_error(), Some(libc::EFAULT) | Some(libc::EINVAL)));
+
+    // With both timestamps `UTIME_OMIT` there is nothing to update, so Linux does not even look
+    // at the path. Other systems may still report the missing file.
+    let omit_times = [
+        libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT },
+        libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT },
+    ];
+    let res = errno_result(unsafe {
+        libc::utimensat(libc::AT_FDCWD, c"doesnotexist".as_ptr(), omit_times.as_ptr(), 0)
+    });
+    if cfg!(target_os = "linux") {
+        res.expect("utimensat with UTIME_OMIT for both timestamps should always succeed on Linux");
+    } else {
+        assert!(res.is_ok() || res.is_err_and(|e| e.raw_os_error() == Some(libc::ENOENT)));
+    }
 }
 
 fn test_isatty() {
