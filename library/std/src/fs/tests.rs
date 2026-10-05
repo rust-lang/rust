@@ -1278,7 +1278,9 @@ fn recursive_rmdir() {
     check!(fs::create_dir_all(&d2));
     check!(check!(File::create(&canary)).write(b"foo"));
     check!(junction_point(&d2, &dt.join("d2")));
-    let _ = symlink_file(&canary, &d1.join("canary"));
+    if got_symlink_permission(&tmpdir) {
+        let _ = symlink_file(&canary, &d1.join("canary"));
+    }
     check!(fs::remove_dir_all(&d1));
 
     assert!(!d1.is_dir());
