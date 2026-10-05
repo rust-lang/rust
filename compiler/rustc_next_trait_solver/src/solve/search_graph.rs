@@ -3,7 +3,9 @@ use std::marker::PhantomData;
 
 use rustc_type_ir::Interner;
 use rustc_type_ir::search_graph::{self, PathKind};
-use rustc_type_ir::solve::{AccessedOpaques, Certainty, NoSolution, QueryResult, RerunResultExt};
+use rustc_type_ir::solve::{
+    AccessedOpaques, Certainty, ExternalRegionConstraints, NoSolution, QueryResult, RerunResultExt,
+};
 
 use crate::canonical::response_no_constraints_raw;
 use crate::delegate::SolverDelegate;
@@ -114,6 +116,40 @@ where
                 None
             }
         })
+    }
+
+    fn is_same_result_for_fixpoint(
+        previous: (QueryResult<I>, AccessedOpaques<I>),
+        current: (QueryResult<I>, AccessedOpaques<I>),
+    ) -> bool {
+        if previous == current {
+            return true;
+        }
+
+        let ((Ok(previous), previous_accessed_opaques), (Ok(current), current_accessed_opaques)) =
+            (previous, current)
+        else {
+            return false;
+        };
+
+        if previous_accessed_opaques != current_accessed_opaques
+            || !super::equal_response_modulo_region_constraints(&previous, &current)
+        {
+            return false;
+        }
+
+        let previous = &previous.value.external_constraints.region_constraints;
+        let current = &current.value.external_constraints.region_constraints;
+
+        match (previous, current) {
+            // old-style region constraints are deduplicated but unordered and their
+            // insertion order may differ between otherwise identical fixpoint responses
+            (ExternalRegionConstraints::Old(previous), ExternalRegionConstraints::Old(current)) => {
+                previous.len() == current.len()
+                    && previous.iter().all(|constraint| current.contains(constraint))
+            }
+            (previous, current) => previous == current,
+        }
     }
 
     fn compute_goal(

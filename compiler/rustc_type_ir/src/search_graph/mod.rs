@@ -104,6 +104,17 @@ pub trait Delegate: Sized {
         result: <Self::Cx as Cx>::Result,
     ) -> Option<<Self::Cx as Cx>::AmbiguityKind>;
 
+    /// compares two results for fixpoint equality
+    ///
+    /// defaults to structural equality and can be overridden when result ordering is not
+    /// semantically significant
+    fn is_same_result_for_fixpoint(
+        previous: <Self::Cx as Cx>::Result,
+        current: <Self::Cx as Cx>::Result,
+    ) -> bool {
+        previous == current
+    }
+
     fn compute_goal(
         search_graph: &mut SearchGraph<Self>,
         cx: Self::Cx,
@@ -1339,7 +1350,11 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
     ) -> Result<Option<PathKind>, ()> {
         let provisional_result = stack_entry.provisional_result;
         if let Some(provisional_result) = provisional_result {
-            if provisional_result == result { Ok(None) } else { Err(()) }
+            if D::is_same_result_for_fixpoint(provisional_result, result) {
+                Ok(None)
+            } else {
+                Err(())
+            }
         } else if let Some(path_kind) = D::is_initial_provisional_result(result)
             .filter(|&path_kind| usages.is_single(path_kind))
         {
