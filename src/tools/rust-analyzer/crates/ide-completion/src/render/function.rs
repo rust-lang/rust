@@ -1073,4 +1073,34 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn no_turbofish() {
+        check_edit(
+            "handle",
+            r#"
+//- minicore: result
+struct State;
+enum E { E }
+impl State {
+    fn handle<T>(&mut self) -> Result<T, E> {
+    }
+}
+fn main() {
+    State.$0
+}
+"#,
+            r#"
+struct State;
+enum E { E }
+impl State {
+    fn handle<T>(&mut self) -> Result<T, E> {
+    }
+}
+fn main() {
+    State.handle()$0
+}
+"#,
+        );
+    }
 }
