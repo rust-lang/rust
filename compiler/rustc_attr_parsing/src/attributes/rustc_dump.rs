@@ -1,5 +1,7 @@
 use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
-use rustc_attr_ir::{AttributeKind, RustcDumpLayoutKind, RustcDumpPtrauthDiscriminatorKind, RustcShowSpansKind};};
+use rustc_attr_ir::{
+    AttributeKind, RustcDumpLayoutKind, RustcDumpPtrauthDiscriminatorKind, RustcShowSpansKind,
+};
 use rustc_feature::AttributeStability;
 use rustc_span::{Span, Symbol, sym};
 

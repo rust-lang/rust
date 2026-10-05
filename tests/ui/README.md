@@ -1118,7 +1118,7 @@ Contains only 2 tests, related to a single issue, which was about an error cause
 
 ## `tests/ui/ptrauth/`: Function pointer type discrimination
 
-Contain only 1 tests, related to how Rust computes function pointer type discriminators for pointer authenticated code. The test uses `ptrauth_encoding` and `ptrauth_hash` attributes to obtain string encoding and hashed value respectively.
+Contains only 1 tests, related to how Rust computes function pointer type discriminators for pointer authenticated code. The test uses `ptrauth_encoding` and `ptrauth_hash` attributes to obtain string encoding and hashed value respectively.
 
 ## `tests/ui/pub/`: `pub` keyword
 
