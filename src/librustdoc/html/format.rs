@@ -24,6 +24,7 @@ use rustc_metadata::creader::CStore;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypingMode};
 use rustc_span::symbol::kw;
 use rustc_span::{Ident, Symbol, sym};
+use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use tracing::{debug, trace};
 
 use super::url_parts_builder::UrlPartsBuilder;

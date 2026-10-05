@@ -27,12 +27,17 @@ pub fn normalize<'tcx, T>(
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
 {
-    match normalize_with_universes(at, value.clone(), vec![]) {
+    match normalize_with_universes(infcx, value.clone(), vec![], param_env, cause) {
         Ok(normalized) => normalized,
         Err(_) => {
-            let mut replacer =
-                ReplaceAliasWithInfer { at, obligations: Default::default(), universes: vec![] };
-            let value = at.infcx.deeply_resolve_ignoring_regions(value.skip_normalization());
+            let mut replacer = ReplaceAliasWithInfer {
+                infcx,
+                cause,
+                param_env,
+                obligations: Default::default(),
+                universes: vec![],
+            };
+            let value = infcx.deeply_resolve_ignoring_regions(value.skip_normalization());
             let value = value.fold_with(&mut replacer);
             Normalized { value, obligations: replacer.obligations }
         }
@@ -52,7 +57,7 @@ fn normalize_with_universes<'tcx, T>(
     universes: Vec<Option<UniverseIndex>>,
     param_env: ty::ParamEnv<'tcx>,
     cause: &ObligationCause<'tcx>,
-) -> Normalized<'tcx, T>
+) -> Result<Normalized<'tcx, T>, PredicateObligation<'tcx>>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
 {
@@ -74,7 +79,7 @@ where
             Err(_) => {
                 return Err(Obligation::new(
                     infcx.tcx,
-                    at.cause.clone(),
+                    cause.clone(),
                     goal.param_env,
                     goal.predicate,
                 ));
@@ -93,7 +98,7 @@ where
     let value = value.try_fold_with(&mut folder)?;
     let obligations = stalled_goals
         .into_iter()
-        .map(|goal| Obligation::new(infcx.tcx, at.cause.clone(), goal.param_env, goal.predicate))
+        .map(|goal| Obligation::new(infcx.tcx, cause.clone(), goal.param_env, goal.predicate))
         .collect();
     Ok(Normalized { value, obligations })
 }
@@ -149,7 +154,7 @@ impl<'me, 'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasWithInfer<'me, 'tcx> {
 
         if ty.has_escaping_bound_vars() {
             let (replaced, ..) =
-                BoundVarReplacer::replace_bound_vars(self.at.infcx, &mut self.universes, alias);
+                BoundVarReplacer::replace_bound_vars(self.infcx, &mut self.universes, alias);
             // Keep the higher-ranked alias in the folded value; the fresh term is only
             // used to register its projection obligation.
             let _ = self.term_to_infer(replaced.into());
@@ -171,11 +176,8 @@ impl<'me, 'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasWithInfer<'me, 'tcx> {
         }
 
         if ct.has_escaping_bound_vars() {
-            let (replaced, ..) = BoundVarReplacer::replace_bound_vars(
-                self.infcx,
-                &mut self.universes,
-                alias_const,
-            );
+            let (replaced, ..) =
+                BoundVarReplacer::replace_bound_vars(self.infcx, &mut self.universes, alias_const);
             // Keep the higher-ranked alias in the folded value; the fresh term is only
             // used to register its projection obligation.
             let _ = self.term_to_infer(replaced.into());
@@ -248,10 +250,12 @@ where
     T: TypeFoldable<TyCtxt<'tcx>>,
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
 {
-    let Normalized { value, obligations } = normalize_with_universes(at, value, universes)
-        .map_err(|obligation| {
-            thin_vec![E::from_solver_error(at.infcx, NextSolverError::TrueError(obligation))]
-        })?;
+    let Normalized { value, obligations } = normalize_with_universes(
+        infcx, value, universes, param_env, cause,
+    )
+    .map_err(|obligation| {
+        thin_vec![E::from_solver_error(infcx, NextSolverError::TrueError(obligation))]
+    })?;
 
     let mut fulfill_cx = FulfillmentCtxt::new(infcx);
     for pred in obligations {
