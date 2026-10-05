@@ -184,8 +184,7 @@ impl SingleAttributeParser for MacroExportParser {
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         match cx.ast_target {
             AstTarget::MacroDef(item_kind) => {
-                if let ItemKind::MacroDef(_, macro_def) =
-                    item_kind.expect("AstTarget::MacroDef should always have an ItemKind::MacroDef")
+                if let ItemKind::MacroDef(_, macro_def) = item_kind
                     && !macro_def.macro_rules
                 {
                     cx.emit_lint(UNUSED_ATTRIBUTES, MacroExport::OnDeclMacro, attr_span);

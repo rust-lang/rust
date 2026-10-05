@@ -97,7 +97,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             &f.attrs,
                             f.span,
                             Target::PatField,
-                            rustc_attr_ir::target::AstTarget::Pat(Some(pattern)),
+                            rustc_attr_ir::target::AstTarget::Pat(pattern),
                         );
 
                         hir::PatField {

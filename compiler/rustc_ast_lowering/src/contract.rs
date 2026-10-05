@@ -357,7 +357,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &attrs,
             span,
             Target::Expression,
-            rustc_attr_ir::target::AstTarget::from(Target::Expression),
+            rustc_attr_ir::target::AstTarget::None,
         );
 
         let ret_block = self.block_all(span, arena_vec![self; ret_stmt], Some(contract_check));

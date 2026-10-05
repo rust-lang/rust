@@ -25,7 +25,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &e.attrs,
             e.span,
             Target::from_expr(e),
-            rustc_attr_ir::target::AstTarget::Closure(Some(closure)),
+            rustc_attr_ir::target::AstTarget::Closure(closure),
         );
 
         match closure.coroutine_marker {

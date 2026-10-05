@@ -698,7 +698,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.dcx().span_fatal(v.span, "unnamed enum variants are not yet implemented");
         }
         let hir_id = self.lower_node_id(v.id);
-        self.lower_attrs(hir_id, &v.attrs, v.span, Target::Variant, AstTarget::Variant(Some(v)));
+        self.lower_attrs(hir_id, &v.attrs, v.span, Target::Variant, AstTarget::Variant(v));
         hir::Variant {
             hir_id,
             def_id: self.local_def_id(v.id),
@@ -785,7 +785,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let ty =
             self.lower_ty_alloc(&f.ty, ImplTraitContext::Disallowed(ImplTraitPosition::FieldTy));
         let hir_id = self.lower_node_id(f.id);
-        self.lower_attrs(hir_id, &f.attrs, f.span, Target::Field, AstTarget::Field(Some(f)));
+        self.lower_attrs(hir_id, &f.attrs, f.span, Target::Field, AstTarget::Field(f));
         hir::FieldDef {
             span: self.lower_span(f.span),
             hir_id,
@@ -1245,13 +1245,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_param(&mut self, param: &Param) -> hir::Param<'hir> {
         let hir_id = self.lower_node_id(param.id);
-        self.lower_attrs(
-            hir_id,
-            &param.attrs,
-            param.span,
-            Target::Param,
-            AstTarget::Param(Some(param)),
-        );
+        self.lower_attrs(hir_id, &param.attrs, param.span, Target::Param, AstTarget::Param(param));
         hir::Param {
             hir_id,
             pat: self.lower_pat(&param.pat),
@@ -1956,7 +1950,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &pred.attrs,
             span,
             Target::WherePredicate,
-            AstTarget::WherePredicate(Some(pred)),
+            AstTarget::WherePredicate(pred),
         );
         let kind = self.arena.alloc(match &pred.kind {
             WherePredicateKind::BoundPredicate(WhereBoundPredicate {

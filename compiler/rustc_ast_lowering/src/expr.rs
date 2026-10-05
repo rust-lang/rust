@@ -236,7 +236,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             e.span,
                             ex.hir_id,
                             Target::from_expr(e),
-                            AstTarget::from(Target::from_expr(e)),
+                            AstTarget::Expression(e),
                         )
                         .into_iter()
                         .chain(old_attrs.iter().cloned());
@@ -266,7 +266,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &e.attrs,
             e.span,
             Target::from_expr(e),
-            AstTarget::Expression(Some(e)),
+            AstTarget::Expression(e),
         );
 
         let kind = match &e.kind {
@@ -807,7 +807,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let guard = arm.guard.as_ref().map(|guard| self.lower_expr(&guard.cond));
         let hir_id = self.next_id();
         let span = self.lower_span(arm.span);
-        self.lower_attrs(hir_id, &arm.attrs, arm.span, Target::Arm, AstTarget::Arm(Some(arm)));
+        self.lower_attrs(hir_id, &arm.attrs, arm.span, Target::Arm, AstTarget::Arm(arm));
         let is_never_pattern = pat.is_never_pattern();
         // We need to lower the body even if it's unneeded for never pattern in match,
         // ensure that we can get HirId for DefId if need (issue #137708).
@@ -1671,13 +1671,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_expr_field(&mut self, f: &ExprField) -> hir::ExprField<'hir> {
         let hir_id = self.lower_node_id(f.id);
-        self.lower_attrs(
-            hir_id,
-            &f.attrs,
-            f.span,
-            Target::ExprField,
-            AstTarget::ExprField(Some(f)),
-        );
+        self.lower_attrs(hir_id, &f.attrs, f.span, Target::ExprField, AstTarget::ExprField(f));
         hir::ExprField {
             hir_id,
             ident: self.lower_ident(f.ident),
@@ -1949,7 +1943,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &e.attrs,
             e.span,
             Target::from_expr(e),
-            AstTarget::Expression(Some(e)),
+            AstTarget::Expression(e),
         );
         expr
     }
@@ -2003,7 +1997,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 &attrs,
                 span,
                 Target::Expression,
-                AstTarget::Expression(Some(sub_expr)),
+                AstTarget::Expression(sub_expr),
             );
             let continue_pat = self.pat_cf_continue(unstable_span, val_pat);
             self.arm(continue_pat, val_expr, try_span)
@@ -2051,7 +2045,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 &attrs,
                 span,
                 Target::Expression,
-                AstTarget::Expression(Some(sub_expr)),
+                AstTarget::Expression(sub_expr),
             );
 
             let break_pat = self.pat_cf_break(try_span, residual_local);
