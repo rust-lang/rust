@@ -265,7 +265,11 @@ pub(crate) struct LocalPointer {
 
 impl LocalPointer {
     pub const fn __new() -> LocalPointer {
-        LocalPointer { key: LazyKey::new(None) }
+        Self::__new_with_dtor(None)
+    }
+
+    pub const fn __new_with_dtor(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> LocalPointer {
+        LocalPointer { key: LazyKey::new(dtor) }
     }
 
     pub fn get(&'static self) -> *mut () {
