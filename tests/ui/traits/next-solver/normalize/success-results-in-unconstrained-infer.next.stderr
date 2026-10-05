@@ -1,0 +1,41 @@
+error[E0425]: cannot find type `Missing` in this scope
+  --> $DIR/success-results-in-unconstrained-infer.rs:35:15
+   |
+LL |     fn add(_: Missing, _: Self::Output) {}
+   |               ^^^^^^^ not found in this scope
+
+error[E0046]: not all trait items implemented, missing: `Assoc`
+  --> $DIR/success-results-in-unconstrained-infer.rs:25:1
+   |
+LL |     type Assoc;
+   |     ---------- `Assoc` from trait
+...
+LL | impl<B> IsSame<i16> for f32 where f32: IsSame<B, Assoc = B> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `Assoc` in implementation
+
+error[E0207]: the type parameter `B` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/success-results-in-unconstrained-infer.rs:25:6
+   |
+LL | impl<B> IsSame<i16> for f32 where f32: IsSame<B, Assoc = B> {}
+   |      ^ unconstrained type parameter
+
+error[E0277]: the trait bound `i8: Data` is not satisfied
+  --> $DIR/success-results-in-unconstrained-infer.rs:31:5
+   |
+LL |     i8: Data<Elem = A>,
+   |     ^^^^^^^^^^^^^^^^^^ the trait `Data` is not implemented for `i8`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/success-results-in-unconstrained-infer.rs:21:1
+   |
+LL | trait Data {
+   | ^^^^^^^^^^
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0046, E0207, E0277, E0425.
+For more information about an error, try `rustc --explain E0046`.
