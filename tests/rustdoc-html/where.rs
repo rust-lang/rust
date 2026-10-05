@@ -68,6 +68,6 @@ pub enum Foxtrot<F> { Foxtrot1(F) }
 impl<F> MyTrait for Foxtrot<F>where F: MyTrait {}
 
 //@ has foo/type.Golf.html '//pre[@class="rust item-decl"]' \
-//          "type Golf<T>where T: Clone, = (T, T)"
+//          "type Golf<T> where T: Clone = (T, T);"
 //@ snapshot golf_type_alias_decl - '//*[@class="rust item-decl"]/code'
 pub type Golf<T> where T: Clone = (T, T);

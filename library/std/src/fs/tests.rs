@@ -1,6 +1,7 @@
 use rand::RngCore;
 
 use super::Dir;
+use super::dirs::{HomeDirs, MediaDirs};
 use crate::fs::{self, File, FileTimes, OpenOptions, TryLockError, exists};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
@@ -13,7 +14,7 @@ use crate::os::unix::fs::symlink as symlink_file;
 use crate::os::unix::fs::symlink as junction_point;
 #[cfg(windows)]
 use crate::os::windows::fs::{OpenOptionsExt, junction_point, symlink_dir, symlink_file};
-use crate::path::Path;
+use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::test_helpers::{TempDir, tmpdir};
 use crate::time::{Duration, Instant, SystemTime};
@@ -613,12 +614,13 @@ fn set_get_unix_permissions() {
     assert_eq!(mask & metadata1.permissions().mode(), 0o0777);
 }
 
-#[cfg(not(target_os = "android"))]
+/// Test set_permissions_nofollow on a regular file.
 #[test]
 fn set_get_permissions_nofollows() {
     let tmpdir = tmpdir();
     let filename = tmpdir.join("set_get_unix_permissions_file");
     check!(File::create(&filename));
+
     let file_metadata = check!(fs::metadata(&filename));
     assert!(!file_metadata.permissions().readonly());
     let mut permission_bits = file_metadata.permissions();
@@ -648,18 +650,9 @@ fn set_get_permissions_nofollows() {
     }
 }
 
-// Only Windows and Unix support `fs::set_permissions_nofollow`
+/// Test set_permissions_nofollow on a symlink.
 #[test]
-#[cfg(all(
-    any(windows, unix),
-    not(any(target_os = "espidf", target_os = "horizon", target_os = "wasi"))
-))]
 fn set_get_permissions_nofollows_symlink() {
-    #[cfg(not(windows))]
-    use crate::os::unix::fs::symlink as symlink_file;
-    #[cfg(windows)]
-    use crate::os::windows::fs::symlink_file;
-
     let tmpdir = tmpdir();
     let filename = tmpdir.join("set_get_unix_permissions_file");
     let symlink_name = tmpdir.join("set_get_unix_permissions");
@@ -667,14 +660,20 @@ fn set_get_permissions_nofollows_symlink() {
     check!(symlink_file(&filename, &symlink_name));
 
     let init_symlink_metadata = check!(fs::symlink_metadata(&symlink_name));
-    let mut init_symlink_permissions = init_symlink_metadata.permissions();
-
+    assert!(!init_symlink_metadata.permissions().readonly());
     let init_target_metadata = check!(fs::metadata(&symlink_name));
-    let init_target_permissions = init_target_metadata.permissions();
+    assert!(!init_target_metadata.permissions().readonly());
 
     // Set symlink permissions to readonly
-    init_symlink_permissions.set_readonly(true);
-    let result = fs::set_permissions_nofollow(&symlink_name, init_symlink_permissions);
+    let result = fs::set_permissions_nofollow(&symlink_name, {
+        let mut permissions = init_symlink_metadata.permissions();
+        permissions.set_readonly(true);
+        permissions
+    });
+
+    // This should not change the permissions of the target!
+    let after_target_metadata = check!(fs::metadata(&symlink_name));
+    assert_eq!(after_target_metadata.permissions(), init_target_metadata.permissions());
 
     cfg_select! {
         any(
@@ -687,16 +686,11 @@ fn set_get_permissions_nofollows_symlink() {
             target_os = "nto",
             target_os = "qnx"
         ) => {
-            assert_eq!(result.unwrap(), ());
-
-            let after_target_metadata = check!(fs::metadata(&symlink_name));
-            // We should expect the target file to not have its permission bits
-            // changed
-            assert_eq!(after_target_metadata.permissions(), init_target_permissions);
-
-            let after_symlink_metadata = check!(fs::symlink_metadata(&symlink_name));
             // On these systems, it's confirmed the symlink itself is marked readonly
             // https://superuser.com/questions/1099634/change-permissions-symbolic-link-mac-os
+            assert_eq!(result.unwrap(), ());
+
+            let after_symlink_metadata = check!(fs::symlink_metadata(&symlink_name));
             assert!(after_symlink_metadata.permissions().readonly());
 
             // Reset the read-only bit under Windows 7: avoids the
@@ -710,11 +704,7 @@ fn set_get_permissions_nofollows_symlink() {
             }
         }
         _ => {
-            let after_target_metadata = check!(fs::metadata(&symlink_name));
-            // We should expect the target file to not have its permission bits
-            // changed
-            assert_eq!(after_target_metadata.permissions(), init_target_permissions);
-
+            // Everywhere else, this just fails.
             let error_kind = result.unwrap_err().kind();
             assert_eq!(error_kind, crate::io::ErrorKind::Unsupported);
         }
@@ -1071,6 +1061,43 @@ fn test_seek_read_buf() {
         // Seek read past eof
         check!(file.seek_read_buf(buf.clear().unfilled(), 10));
         assert_eq!(buf.filled(), b"");
+    }
+    check!(fs::remove_file(&filename));
+}
+
+#[test]
+#[cfg(windows)]
+fn test_seek_read_buf_exact() {
+    use crate::os::windows::fs::FileExt;
+
+    let tmpdir = tmpdir();
+    let filename = tmpdir.join("file_rt_io_file_test_seek_read_buf_exact.txt");
+    {
+        let oo = OpenOptions::new().create_new(true).write(true).read(true).clone();
+        let mut file = check!(oo.open(&filename));
+        check!(file.write_all(b"0123456789"));
+    }
+    {
+        let mut file = check!(File::open(&filename));
+        let mut buf: [MaybeUninit<u8>; 5] = [MaybeUninit::uninit(); 5];
+        let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+
+        // Exact read
+        check!(file.seek_read_buf_exact(buf.unfilled(), 2));
+        assert_eq!(buf.filled(), b"23456");
+        assert_eq!(check!(file.stream_position()), 7);
+
+        // Already full
+        check!(file.seek_read_buf_exact(buf.unfilled(), 3));
+        assert_eq!(check!(file.stream_position()), 7);
+        check!(file.seek_read_buf_exact(buf.unfilled(), 10)); // No call to seek_read()
+        assert_eq!(buf.filled(), b"23456");
+        assert_eq!(check!(file.stream_position()), 7);
+
+        // Non-empty exact read past eof fails
+        let err = file.seek_read_buf_exact(buf.clear().unfilled(), 6).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::UnexpectedEof);
+        assert_eq!(check!(file.stream_position()), 10);
     }
     check!(fs::remove_file(&filename));
 }
@@ -3015,10 +3042,10 @@ fn test_dir_clone() {
 }
 
 #[test]
-fn test_dir_metadata() {
+fn test_dir_self_metadata() {
     let tmpdir = tmpdir();
     let dir = check!(Dir::open(tmpdir.path()));
-    let metadata = check!(dir.metadata());
+    let metadata = check!(dir.self_metadata());
     assert!(metadata.is_dir());
 }
 
@@ -3062,6 +3089,10 @@ fn test_dir_rename_file() {
     assert_eq!(b"bar", &buf);
 }
 
+// FIXME: re-enable once QNX fixes TOCTOU bug for fs::remove_dir
+// Note that it may get fixed in QNX 8 in a future libc release
+// ... https://github.com/rust-lang/rust/issues/153781
+#[cfg_attr(any(target_os = "nto", target_os = "qnx"), ignore)]
 #[test]
 fn test_dir_remove_dir() {
     let tmpdir = tmpdir();
@@ -3105,4 +3136,90 @@ fn test_dir_open_dir() {
     let mut buf = [0u8; 3];
     check!(f.read_exact(&mut buf));
     assert_eq!(b"baz", &buf);
+}
+
+#[test]
+fn test_dir_metadata() {
+    let tmpdir = tmpdir();
+    let dir = check!(Dir::open(tmpdir.path()));
+    check!(dir.create_dir("subdir"));
+    // FIXME: `/` does not work as path separator on Windows.
+    let barpath = PathBuf::from("subdir").join("bar.txt");
+    drop(check!(dir.open_file_with(&barpath, &OpenOptions::new().create(true).write(true))));
+    check!(symlink_file(&tmpdir.join("subdir/bar.txt"), &tmpdir.join("link")));
+
+    let metadata = check!(dir.metadata(&barpath));
+    assert!(metadata.is_file());
+    let metadata = check!(dir.metadata("subdir"));
+    assert!(metadata.is_dir());
+    dir.metadata("does-not-exist").unwrap_err();
+
+    let metadata = check!(dir.metadata("link"));
+    assert!(metadata.is_file());
+    assert!(!metadata.is_symlink());
+    let metadata = check!(dir.symlink_metadata("link"));
+    assert!(!metadata.is_file());
+    assert!(metadata.is_symlink());
+}
+
+fn root_test_dir(what: &str) -> PathBuf {
+    crate::env::current_dir().unwrap().ancestors().last().unwrap().join(what)
+}
+
+#[test]
+fn test_home_dirs_field_hookup_matches() {
+    let mut dirs = HomeDirs::empty();
+
+    assert_eq!(dirs.config_home(), None);
+    assert_eq!(dirs.data_home(), None);
+    assert_eq!(dirs.state_home(), None);
+    assert_eq!(dirs.cache_home(), None);
+
+    let config = root_test_dir("config");
+    let data = root_test_dir("data");
+    let state = root_test_dir("state");
+    let cache = root_test_dir("cache");
+
+    dirs.set_config_home(config.clone());
+    dirs.set_data_home(data.clone());
+    dirs.set_state_home(state.clone());
+    dirs.set_cache_home(cache.clone());
+
+    assert_eq!(dirs.config_home(), Some(config.as_ref()));
+    assert_eq!(dirs.data_home(), Some(data.as_ref()));
+    assert_eq!(dirs.state_home(), Some(state.as_ref()));
+    assert_eq!(dirs.cache_home(), Some(cache.as_ref()));
+}
+
+#[test]
+fn test_media_dirs_field_hookup_matches() {
+    let mut dirs = MediaDirs::empty();
+
+    assert_eq!(dirs.desktop(), None);
+    assert_eq!(dirs.documents(), None);
+    assert_eq!(dirs.downloads(), None);
+    assert_eq!(dirs.music(), None);
+    assert_eq!(dirs.pictures(), None);
+    assert_eq!(dirs.videos(), None);
+
+    let desktop = root_test_dir("desktop");
+    let documents = root_test_dir("documents");
+    let downloads = root_test_dir("downloads");
+    let music = root_test_dir("music");
+    let pictures = root_test_dir("pictures");
+    let videos = root_test_dir("videos");
+
+    dirs.set_desktop(desktop.clone());
+    dirs.set_documents(documents.clone());
+    dirs.set_downloads(downloads.clone());
+    dirs.set_music(music.clone());
+    dirs.set_pictures(pictures.clone());
+    dirs.set_videos(videos.clone());
+
+    assert_eq!(dirs.desktop(), Some(desktop.as_ref()));
+    assert_eq!(dirs.documents(), Some(documents.as_ref()));
+    assert_eq!(dirs.downloads(), Some(downloads.as_ref()));
+    assert_eq!(dirs.music(), Some(music.as_ref()));
+    assert_eq!(dirs.pictures(), Some(pictures.as_ref()));
+    assert_eq!(dirs.videos(), Some(videos.as_ref()));
 }

@@ -1,7 +1,6 @@
 //@ run-pass
 //@ check-run-results
 //@ aux-build: other_crate_privacy1.rs
-//@ ignore-backends: gcc
 // FIXME(#125418): linking on Windows GNU targets is not yet supported.
 //@ ignore-windows-gnu
 // Tests whether re-exports work.

@@ -2,7 +2,7 @@ use rustc_abi::{
     AddressSpace, Align, BackendRepr, Float, HasDataLayout, Primitive, Reg, RegKind, TyAndLayout,
 };
 
-use crate::callconv::{ArgAttribute, FnAbi, PassMode, TyAbiInterface};
+use crate::callconv::{ArgAbi, ArgAttribute, FnAbi, PassMode, TyAbiInterface};
 use crate::spec::{HasTargetSpec, RustcAbi};
 
 /// Is this a struct with a single float field?
@@ -37,16 +37,126 @@ where
     }
 }
 
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub(crate) enum Flavor {
-    General,
+    General { regparam: Option<u32> },
     FastcallOrVectorcall,
 }
 
+#[derive(Clone, Copy)]
 pub(crate) struct X86Options {
     pub flavor: Flavor,
-    pub regparm: Option<u32>,
     pub reg_struct_return: bool,
+}
+
+fn classify_ret<'a, Ty, C>(cx: &C, opts: X86Options, ret: &mut ArgAbi<'a, Ty>)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout + HasTargetSpec,
+{
+    if ret.layout.is_aggregate() && ret.layout.is_sized() {
+        // Returning a structure. Most often, this will use
+        // a hidden first argument. On some platforms, though,
+        // small structs are returned as integers.
+        //
+        // Some links:
+        // https://www.angelcode.com/dev/callconv/callconv.html
+        // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
+        let t = cx.target_spec();
+        if let Some(Float::F16) = ret.layout.complex_float(cx) {
+            // `_Complex _Float16` is returned as `<2 x half>`.
+            let kind = RegKind::Vector { hint_vector_elem: Primitive::Float(Float::F16) };
+            ret.cast_to(Reg { kind, size: ret.layout.size });
+        } else if t.abi_return_struct_as_int
+            || opts.reg_struct_return
+            || ret.layout.is_complex_number(cx)
+        {
+            // According to Clang, everyone but MSVC returns single-element
+            // float aggregates directly in a floating-point register.
+            if is_single_fp_element(ret.layout, cx) {
+                match ret.layout.size.bytes() {
+                    2 => ret.cast_to(Reg::f16()),
+                    4 => ret.cast_to(Reg::f32()),
+                    8 => ret.cast_to(Reg::f64()),
+                    _ => ret.make_indirect(),
+                }
+            } else {
+                match ret.layout.size.bytes() {
+                    1 => ret.cast_to(Reg::i8()),
+                    2 => ret.cast_to(Reg::i16()),
+                    4 => ret.cast_to(Reg::i32()),
+                    8 => ret.cast_to(Reg::i64()),
+                    _ => ret.make_indirect(),
+                }
+            }
+        } else {
+            ret.make_indirect();
+        }
+    } else {
+        ret.extend_integer_width_to(32);
+    }
+}
+
+fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout + HasTargetSpec,
+{
+    let t = cx.target_spec();
+    let align_4 = Align::from_bytes(4).unwrap();
+    let align_16 = Align::from_bytes(16).unwrap();
+
+    if arg.layout.is_aggregate() {
+        // We need to compute the alignment of the `byval` argument. The rules can be found in
+        // `X86_32ABIInfo::getTypeStackAlignInBytes` in Clang's `TargetInfo.cpp`. Summarized
+        // here, they are:
+        //
+        // 1. If the natural alignment of the type is <= 4, the alignment is 4.
+        //
+        // 2. Otherwise, on Linux, the alignment of any vector type is the natural alignment.
+        // This doesn't matter here because we only pass aggregates via `byval`, not vectors.
+        //
+        // 3. Otherwise, on Apple platforms, the alignment of anything that contains a vector
+        // type is 16.
+        //
+        // 4. If none of these conditions are true, the alignment is 4.
+
+        fn contains_vector<'a, Ty, C>(cx: &C, layout: TyAndLayout<'a, Ty>) -> bool
+        where
+            Ty: TyAbiInterface<'a, C> + Copy,
+        {
+            match layout.backend_repr {
+                BackendRepr::Scalar(_) | BackendRepr::ScalarPair { .. } => false,
+                BackendRepr::SimdVector { .. } => true,
+                BackendRepr::Memory { .. } => {
+                    for i in 0..layout.fields.count() {
+                        if contains_vector(cx, layout.field(cx, i)) {
+                            return true;
+                        }
+                    }
+                    false
+                }
+                BackendRepr::SimdScalableVector { .. } => {
+                    panic!("scalable vectors are unsupported")
+                }
+            }
+        }
+
+        let byval_align = if arg.layout.align.abi < align_4 {
+            // (1.)
+            align_4
+        } else if t.is_like_darwin && contains_vector(cx, arg.layout) {
+            // (3.)
+            align_16
+        } else {
+            // (4.)
+            align_4
+        };
+
+        arg.pass_by_stack_offset(Some(byval_align));
+    } else {
+        arg.extend_integer_width_to(32);
+    }
 }
 
 pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, opts: X86Options)
@@ -55,47 +165,7 @@ where
     C: HasDataLayout + HasTargetSpec,
 {
     if !fn_abi.ret.is_ignore() {
-        if fn_abi.ret.layout.is_aggregate() && fn_abi.ret.layout.is_sized() {
-            // Returning a structure. Most often, this will use
-            // a hidden first argument. On some platforms, though,
-            // small structs are returned as integers.
-            //
-            // Some links:
-            // https://www.angelcode.com/dev/callconv/callconv.html
-            // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
-            let t = cx.target_spec();
-            if let Some(Float::F16) = fn_abi.ret.layout.complex_float(cx) {
-                // `_Complex _Float16` is returned as `<2 x half>`.
-                let kind = RegKind::Vector { hint_vector_elem: Primitive::Float(Float::F16) };
-                fn_abi.ret.cast_to(Reg { kind, size: fn_abi.ret.layout.size });
-            } else if t.abi_return_struct_as_int
-                || opts.reg_struct_return
-                || fn_abi.ret.layout.is_complex_number(cx)
-            {
-                // According to Clang, everyone but MSVC returns single-element
-                // float aggregates directly in a floating-point register.
-                if is_single_fp_element(fn_abi.ret.layout, cx) {
-                    match fn_abi.ret.layout.size.bytes() {
-                        2 => fn_abi.ret.cast_to(Reg::f16()),
-                        4 => fn_abi.ret.cast_to(Reg::f32()),
-                        8 => fn_abi.ret.cast_to(Reg::f64()),
-                        _ => fn_abi.ret.make_indirect(),
-                    }
-                } else {
-                    match fn_abi.ret.layout.size.bytes() {
-                        1 => fn_abi.ret.cast_to(Reg::i8()),
-                        2 => fn_abi.ret.cast_to(Reg::i16()),
-                        4 => fn_abi.ret.cast_to(Reg::i32()),
-                        8 => fn_abi.ret.cast_to(Reg::i64()),
-                        _ => fn_abi.ret.make_indirect(),
-                    }
-                }
-            } else {
-                fn_abi.ret.make_indirect();
-            }
-        } else {
-            fn_abi.ret.extend_integer_width_to(32);
-        }
+        classify_ret(cx, opts, &mut fn_abi.ret);
     }
 
     for arg in fn_abi.args.iter_mut() {
@@ -108,61 +178,7 @@ where
             continue;
         }
 
-        let t = cx.target_spec();
-        let align_4 = Align::from_bytes(4).unwrap();
-        let align_16 = Align::from_bytes(16).unwrap();
-
-        if arg.layout.is_aggregate() {
-            // We need to compute the alignment of the `byval` argument. The rules can be found in
-            // `X86_32ABIInfo::getTypeStackAlignInBytes` in Clang's `TargetInfo.cpp`. Summarized
-            // here, they are:
-            //
-            // 1. If the natural alignment of the type is <= 4, the alignment is 4.
-            //
-            // 2. Otherwise, on Linux, the alignment of any vector type is the natural alignment.
-            // This doesn't matter here because we only pass aggregates via `byval`, not vectors.
-            //
-            // 3. Otherwise, on Apple platforms, the alignment of anything that contains a vector
-            // type is 16.
-            //
-            // 4. If none of these conditions are true, the alignment is 4.
-
-            fn contains_vector<'a, Ty, C>(cx: &C, layout: TyAndLayout<'a, Ty>) -> bool
-            where
-                Ty: TyAbiInterface<'a, C> + Copy,
-            {
-                match layout.backend_repr {
-                    BackendRepr::Scalar(_) | BackendRepr::ScalarPair { .. } => false,
-                    BackendRepr::SimdVector { .. } => true,
-                    BackendRepr::Memory { .. } => {
-                        for i in 0..layout.fields.count() {
-                            if contains_vector(cx, layout.field(cx, i)) {
-                                return true;
-                            }
-                        }
-                        false
-                    }
-                    BackendRepr::SimdScalableVector { .. } => {
-                        panic!("scalable vectors are unsupported")
-                    }
-                }
-            }
-
-            let byval_align = if arg.layout.align.abi < align_4 {
-                // (1.)
-                align_4
-            } else if t.is_like_darwin && contains_vector(cx, arg.layout) {
-                // (3.)
-                align_16
-            } else {
-                // (4.)
-                align_4
-            };
-
-            arg.pass_by_stack_offset(Some(byval_align));
-        } else {
-            arg.extend_integer_width_to(32);
-        }
+        classify_arg(cx, arg);
     }
 
     fill_inregs(cx, fn_abi, opts, false);
@@ -176,9 +192,6 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
 ) where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
-    if opts.flavor != Flavor::FastcallOrVectorcall && opts.regparm.is_none_or(|x| x == 0) {
-        return;
-    }
     // Mark arguments as InReg like clang does it,
     // so our fastcall/vectorcall is compatible with C/C++ fastcall/vectorcall.
 
@@ -188,8 +201,23 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
     // IsSoftFloatABI is only set to true on ARM platforms,
     // which in turn can't be x86?
 
-    // 2 for fastcall/vectorcall, regparm limited by 3 otherwise
-    let mut free_regs = opts.regparm.unwrap_or(2).into();
+    // The number of registers available for argument passing.
+    //
+    // An `extern "fastcall"` and `extern "vectorcall"` function always have 2 registers available.
+    // Otherwise the `regparam` count (in the range 0..=3) determines the number of available
+    // registers. If unspecified, no registers are used for argument passing.
+    //
+    // Functions that take a variable number of arguments continue to be passed all of their
+    // arguments on the stack.
+    let mut free_regs = match opts.flavor {
+        _ if fn_abi.c_variadic => 0,
+        Flavor::FastcallOrVectorcall => 2,
+        Flavor::General { regparam } => u64::from(regparam.unwrap_or(0)),
+    };
+
+    if free_regs == 0 {
+        return;
+    }
 
     // For types generating PassMode::Cast, InRegs will not be set.
     // Maybe, this is a FIXME
@@ -200,12 +228,13 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
 
     for arg in fn_abi.args.iter_mut() {
         let attrs = match arg.mode {
-            PassMode::Ignore | PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => {
+            PassMode::Ignore
+            | PassMode::Indirect { attrs: _, meta_attrs: None, address_space: _, mode: _ } => {
                 continue;
             }
             PassMode::Direct(ref mut attrs) => attrs,
             PassMode::Pair(..)
-            | PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ }
+            | PassMode::Indirect { attrs: _, meta_attrs: Some(_), address_space: _, mode: _ }
             | PassMode::Cast { .. } => {
                 unreachable!("x86 shouldn't be passing arguments by {:?}", arg.mode)
             }

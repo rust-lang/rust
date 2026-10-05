@@ -1,8 +1,8 @@
 # The `ty` module: representing types
 
 The `ty` module defines how the Rust compiler represents types internally.
-It also defines the
-*typing context* (`tcx` or `TyCtxt`), which is the central data structure in the compiler.
+It also defines the *typing context* (`tcx` or `TyCtxt`),
+which is the central data structure in the compiler.
 
 ## `ty::Ty`
 
@@ -22,12 +22,13 @@ The distinction is important, so we will discuss it first before going into the 
 
 The HIR in rustc can be thought of as the high-level intermediate representation.
 It is more or less the AST (see [this chapter](hir.md)) as it represents the
-syntax that the user wrote, and is obtained after parsing and some *desugaring*. It has a
-representation of types, but in reality it reflects more of what the user wrote, that is, what they
-wrote so as to represent that type.
+syntax that the user wrote, and is obtained after parsing and some *desugaring*.
+It has a representation of types,
+but in reality, it reflects more of what the user wrote,
+so as to represent that type.
 
-In contrast, `ty::Ty` represents the semantics of a type, that is, the *meaning* of what the user
-wrote.
+In contrast, `ty::Ty` represents the semantics of a type;
+that is, the *meaning* of what the user wrote.
 For example, `rustc_hir::Ty` would record the fact that a user used the name `u32` twice
 in their program, but the `ty::Ty` would record the fact that both usages refer to the same type.
 
@@ -46,16 +47,16 @@ That is, they have two different [`Span`s][span] (locations).
 **Example: `fn foo(x: &u32) -> &u32`**
 
 In addition, HIR might have information left out.
-This type
-`&u32` is incomplete, since in the full Rust type there is actually a lifetime, but we didn’t need
+This type `&u32` is incomplete,
+since in the full Rust type there is actually a lifetime, but we didn’t need
 to write those lifetimes.
 There are also some elision rules that insert information.
 The result may look like `fn foo<'a>(x: &'a u32) -> &'a u32`.
 
 In the HIR level, these things are not spelled out and you can say the picture is rather incomplete.
 However, at the `ty::Ty` level, these details are added and it is complete.
-Moreover, we will have
-exactly one `ty::Ty` for a given type, like `u32`, and that `ty::Ty` is used for all `u32`s in the
+Moreover, we will have exactly one `ty::Ty` for a given type,
+like `u32`, and that `ty::Ty` is used for all `u32`s in the
 whole program, not a specific usage, unlike `rustc_hir::Ty`.
 
 Here is a summary:
@@ -74,8 +75,8 @@ Here is a summary:
 
 HIR is built directly from the AST, so it happens before any `ty::Ty` is produced.
 After HIR is built, some basic type inference and type checking is done.
-During the type inference, we
-figure out what the `ty::Ty` of everything is and we also check if the type of something is
+During the type inference,
+we figure out what the `ty::Ty` of everything is and we also check if the type of something is
 ambiguous.
 The `ty::Ty` is then used for type checking while making sure everything has the expected type.
 The [`hir_ty_lowering` module][hir_ty_lowering] is where the code responsible for
@@ -102,8 +103,8 @@ Consider another example: `fn foo<T>(x: T) -> u32`.
 Suppose that someone invokes `foo::<u32>(0)`.
 This means that `T` and `u32` (in this invocation) actually turns out to be the same type, so we
 would eventually end up with the same `ty::Ty` in the end, but we have distinct `rustc_hir::Ty`.
-(This is a bit over-simplified, though, since during type checking, we would check the function
-generically and would still have a `T` distinct from `u32`.
+(This is a bit over-simplified, though, since during type checking,
+we would check the function generically and would still have a `T` distinct from `u32`.
 Later, when doing code generation,
 we would always be handling "monomorphized" (fully substituted) versions of each function,
 and hence we would know what `T` represents (and specifically that it is `u32`).)
@@ -125,8 +126,8 @@ Here the type `X` will vary depending on context, clearly.
 If you look at the `rustc_hir::Ty`,
 you will get back that `X` is an alias in both cases (though it will be mapped via name resolution
 to distinct aliases).
-But if you look at the `ty::Ty` signature, it will be either `fn(u32) -> u32`
-or `fn(i32) -> i32` (with type aliases fully expanded).
+But if you look at the `ty::Ty` signature,
+it will be either `fn(u32) -> u32` or `fn(i32) -> i32` (with type aliases fully expanded).
 
 ## `ty::Ty` implementation
 
@@ -140,8 +141,7 @@ We always hide them within `Ty` and skip over it via `Deref` impls or methods.
 They
 are convenient hacks for efficiency and summarize information about the type that we may want to
 know, but they don’t come into the picture as much here.
-Finally, [`Interned`](./memory.md) allows the `ty::Ty` to be a thin pointer-like
-type.
+Finally, [`Interned`](./memory.md) allows the `ty::Ty` to be a thin pointer-like type.
 This allows us to do cheap comparisons for equality, along with the other benefits of interning.
 
 [tykind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/ty_kind/enum.TyKind.html
@@ -169,9 +169,9 @@ You can also find various common types in the `tcx` itself by accessing its fiel
 <!-- N.B: This section is linked from the type comparison internal lint. -->
 ## Comparing types
 
-Because types are interned, it is possible to compare them for equality efficiently using `==`
-– however, this is almost never what you want to do unless you happen to be hashing and looking
-for duplicates.
+Because types are interned, it is possible to compare them for equality efficiently using `==`.
+However, this is almost never what you want to do,
+unless you happen to be hashing and looking for duplicates.
 This is because often in Rust there are multiple ways to represent the same type,
 particularly once inference is involved.
 
@@ -182,11 +182,11 @@ diagnostics code).
 `==` on them will return `false` though, since they are different types.
 
 The simplest way to compare two types correctly requires an inference context (`infcx`).
-If you have one, you can use `infcx.can_eq(param_env, ty1, ty2)`
-to check whether the types can be made equal.
+If you have one,
+you can use `infcx.can_eq(param_env, ty1, ty2)` to check whether the types can be made equal.
 This is typically what you want to check during diagnostics, which is concerned with questions such
-as whether two types can be assigned to each other, not whether they're represented identically in
-the compiler's type-checking layer.
+as whether two types can be assigned to each other,
+not whether they're represented identically in the compiler's type-checking layer.
 
 When working with an inference context, you have to be careful to ensure that potential inference
 variables inside the types actually belong to that inference context.
@@ -199,24 +199,24 @@ To compare them correctly, you have to normalize the types first.
 This is primarily a concern during HIR type checking and with all types from a `TyCtxt` query
 (for example from `tcx.type_of()`).
 
-When a `FnCtxt` or an `ObligationCtxt` is available during type checking, `.normalize(ty)`
-should be used on them to normalize the type.
+When a `FnCtxt` or an `ObligationCtxt` is available during type checking,
+`.normalize(ty)` should be used on them to normalize the type.
 After type checking, diagnostics code can use `tcx.normalize_erasing_regions(ty)`.
 
 There are also cases where using `==` on `Ty` is fine.
-This is, for example, the case in late lints
-or after monomorphization, since type checking has been completed, meaning all inference variables
+This is, for example, the case in late lints or after monomorphization,
+since type checking has been completed, meaning all inference variables
 are resolved and all regions have been erased.
-In these cases, if you know that inference variables
-or normalization won't be a concern, `#[allow]` or `#[expect]`ing the lint is recommended.
+In these cases, if you know that inference variables or normalization won't be a concern,
+`#[allow]` or `#[expect]`ing the lint is recommended.
 
 When diagnostics code does not have access to an inference context, it should be threaded through
 the function calls if one is available in some place (like during type checking).
 
-If no inference context is available at all, then one can be created as described in
-[type-inference].
-But this is only useful when the involved types (for example, if
-they came from a query like `tcx.type_of()`) are actually substituted with fresh
+If no inference context is available at all,
+then one can be created as described in [type-inference].
+But this is only useful when the involved types (for example,
+if they came from a query like `tcx.type_of()`) are actually substituted with fresh
 inference variables using [`fresh_args_for_item`].
 This can be used to answer questions like "can `Vec<T>` for any `T` be unified with `Vec<u32>`?".
 
@@ -237,8 +237,8 @@ fn foo(x: Ty<'tcx>) {
 }
 ```
 
-The `kind` field is of type `TyKind<'tcx>`, which is an enum defining all of the different kinds of
-types in the compiler.
+The `kind` field is of type `TyKind<'tcx>`,
+which is an enum defining all of the different kinds of types in the compiler.
 
 > N.B. inspecting the `kind` field on types during type inference can be risky, as there may be
 > inference variables and other things to consider, or sometimes types are not yet known and will
@@ -247,8 +247,8 @@ types in the compiler.
 There are a lot of related types, and we’ll cover them in time (e.g regions/lifetimes,
 “substitutions”, etc).
 
-There are many variants on the `TyKind` enum, which you can see by looking at its
-[documentation][tykind].
+There are many variants on the `TyKind` enum,
+which you can see by looking at its [documentation][tykind].
 Here is a sampling:
 
 - [**Algebraic Data Types (ADTs)**][kindadt] An [*algebraic data type*][wikiadt] is a  `struct`,
@@ -264,8 +264,8 @@ Here is a sampling:
 - [**Array**][kindarray] Corresponds to `[T; n]`.
 - [**RawPtr**][kindrawptr] Corresponds to `*mut T` or `*const T`.
 - [**Ref**][kindref] `Ref` stands for safe references, `&'a mut T` or `&'a T`.
-  `Ref` has some
-  associated parts, like `Ty<'tcx>` which is the type that the reference references.
+  `Ref` has some associated parts,
+  like `Ty<'tcx>`, which is the type that the reference references.
   `Region<'tcx>` is the lifetime or region of the reference and `Mutability` if the reference
   is mutable or not.
 - [**Param**][kindparam] Represents a type parameter (e.g. the `T` in `Vec<T>`).
@@ -314,15 +314,15 @@ which case the error should've been reported when that error type was produced).
 
 It's important to maintain this invariant because the whole point of the `Error` type is to suppress
 other errors -- i.e., we don't report them. If we were to produce an `Error` type without actually
-emitting an error to the user, then this could cause later errors to be suppressed, and the
-compilation might inadvertently succeed!
+emitting an error to the user, then this could cause later errors to be suppressed,
+and the compilation might inadvertently succeed!
 
 Sometimes there is a third case.
 You believe that an error has been reported, but you believe it
 would've been reported earlier in the compilation, not locally.
 In that case, you can create a "delayed bug" with [`delayed_bug`] or [`span_delayed_bug`].
-This will make a note that you expect
-compilation to yield an error -- if, however, compilation should succeed, then it will trigger a
+This will make a note that you expect compilation to yield an error -- if,
+however, compilation should succeed, then it will trigger a
 compiler bug report.
 
 [`delayed_bug`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagCtxt.html#method.delayed_bug

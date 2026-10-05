@@ -7,7 +7,6 @@
 //! [`Condition`]s for the trait solver to discharge.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(never_type))]
 #![cfg_attr(test, feature(test))]
 #![feature(option_into_flat_iter)]
 // tidy-alphabetical-end
@@ -103,7 +102,7 @@ pub enum Reason<T> {
 
 #[cfg(feature = "rustc")]
 mod rustc {
-    use rustc_hir::attrs::lang_items::LangItem;
+    use rustc_attr_ir::lang_items::LangItem;
     use rustc_middle::ty::consts::ConstExt;
     use rustc_middle::ty::{Const, Region, Ty, TyCtxt};
 

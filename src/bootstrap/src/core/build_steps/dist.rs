@@ -23,7 +23,7 @@ use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::compile::{
     get_codegen_backend_file, libgccjit_path_relative_to_cg_dir, normalize_codegen_backend_name,
 };
-use crate::core::build_steps::doc::DocumentationFormat;
+use crate::core::build_steps::doc::{CompilerWithTools, DocumentationFormat};
 use crate::core::build_steps::gcc::GccTargetPair;
 use crate::core::build_steps::llvm::{
     LLVM_CI_LINK_TYPE_PATH, LlvmBuildStatus, LlvmKind, get_llvm_build_status,
@@ -185,7 +185,7 @@ impl CommandLineStep for JsonDocs {
     }
 }
 
-/// Builds the `rustc-docs` installer component.
+/// Builds the `rustc-docs` component.
 /// Apart from the documentation of the `rustc_*` crates, it also includes the documentation of
 /// various in-tree helper tools (bootstrap, build_helper, tidy),
 /// and also rustc_private tools like rustdoc, clippy, miri or rustfmt.
@@ -214,11 +214,12 @@ impl CommandLineStep for RustcDocs {
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let target = self.target;
-        builder.run_default_doc_steps();
+        let combined_docs =
+            builder.ensure(CompilerWithTools::for_stage(builder, builder.top_stage, self.target));
 
         let mut tarball = Tarball::new(builder, "rustc-docs", &target.triple);
         tarball.set_product_name("Rustc Documentation");
-        tarball.add_bulk_dir(builder.compiler_doc_out(target), "share/doc/rust/html/rustc-docs");
+        tarball.add_bulk_dir(combined_docs, "share/doc/rust/html/rustc-docs");
         tarball.generate()
     }
 }
@@ -1400,8 +1401,10 @@ fn prepare_source_tarball<'a>(
         builder.require_and_update_all_submodules();
 
         // Vendor packages that are required by opt-dist to collect PGO profiles.
-        let pkgs_for_pgo_training =
-            build_helper::LLVM_PGO_CRATES.iter().chain(build_helper::RUSTC_PGO_CRATES).map(|pkg| {
+        let pkgs_for_pgo_training = build_helper::BACKEND_PGO_CRATES
+            .iter()
+            .chain(build_helper::RUSTC_PGO_CRATES)
+            .map(|pkg| {
                 let mut manifest_path =
                     builder.src.join("./src/tools/rustc-perf/collector/compile-benchmarks");
                 manifest_path.push(pkg);
@@ -1736,7 +1739,7 @@ impl CommandLineStep for GccCodegenBackend {
     fn is_default_step(builder: &Builder<'_>) -> bool {
         // We only want to build the gcc backend in `x dist` if the backend was enabled
         // in rust.codegen-backends.
-        // Sadly, we don't have access to the actual target for which we're disting clif here..
+        // Sadly, we don't have access to the actual target for which we're disting gcc here..
         // So we just use the host target.
         builder
             .config
@@ -3141,6 +3144,7 @@ impl CommandLineStep for ReproducibleArtifacts {
             &builder.config.rustdoc_pgo.use_profile,
             &builder.config.cargo_pgo.use_profile,
             &builder.config.clippy_pgo.use_profile,
+            &builder.config.cranelift_pgo.use_profile,
         ];
         for profile in pgo_profiles {
             if let Some(path) = profile.as_ref() {

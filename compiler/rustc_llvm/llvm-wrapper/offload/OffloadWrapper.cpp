@@ -28,7 +28,6 @@
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/TargetParser/Triple.h"
 #include "llvm/Transforms/Utils/Cloning.h"
-#include "llvm/Transforms/Utils/ModuleUtils.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
 
 #include <optional>
@@ -85,22 +84,6 @@ extern "C" bool LLVMRustBundleImages(LLVMModuleRef M, TargetMachine &TM,
   if (Error E = writeFile(HostOutPath,
                           StringRef(BinaryData.begin(), BinaryData.size())))
     return false;
-  return true;
-}
-
-extern "C" bool LLVMRustOffloadEmbedBufferInModule(LLVMModuleRef HostM,
-                                                   const char *HostOutPath) {
-  auto MBOrErr = MemoryBuffer::getFile(HostOutPath);
-  if (!MBOrErr) {
-    auto E = MBOrErr.getError();
-    auto _B = errorCodeToError(E);
-    return false;
-  }
-  MemoryBufferRef Buf = (*MBOrErr)->getMemBufferRef();
-  Module *M = unwrap(HostM);
-  StringRef SectionName = ".llvm.offloading";
-  Align Alignment = Align(8);
-  llvm::embedBufferInModule(*M, Buf, SectionName, Alignment);
   return true;
 }
 

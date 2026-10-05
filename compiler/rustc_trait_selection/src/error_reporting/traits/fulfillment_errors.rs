@@ -6,18 +6,19 @@ use std::path::PathBuf;
 
 use rustc_ast::ast::LitKind;
 use rustc_ast::{LitIntType, TraitObjectSyntax};
+use rustc_attr_ir::diagnostic::CustomDiagnostic;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, StringPart, Sublevel, Suggestions,
-    msg, pluralize, struct_span_code_err,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, StringPart, Sublevel, msg, pluralize,
+    struct_span_code_err,
 };
-use rustc_hir::attrs::diagnostic::CustomDiagnostic;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, Node, expr_needs_parens, find_attr};
+use rustc_hir::{self as hir, Node, expr_needs_parens};
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::{ImplSource, TraitErrors};
@@ -41,7 +42,8 @@ use tracing::{debug, instrument};
 use super::suggestions::get_explanation_based_on_obligation;
 use super::{ArgKind, CandidateSimilarity, GetSafeTransmuteErrorAndReason, ImplCandidate};
 use crate::diagnostics::{
-    ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch, CoroClosureNotFn,
+    AssocTypeWithSameName, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
+    CoroClosureNotFn,
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
@@ -1176,7 +1178,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             type Result = ControlFlow<&'v hir::Expr<'v>>;
             fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) -> Self::Result {
                 if let hir::ExprKind::Match(expr, _arms, hir::MatchSource::TryDesugar(_)) = ex.kind
-                    && ex.span.with_lo(ex.span.hi() - BytePos(1)).source_equal(self.search_span)
+                    && ex.span.with_lo(ex.span.hi() - BytePos(1)).lo_hi()
+                        == self.search_span.lo_hi()
                     && let hir::ExprKind::Call(_, [expr, ..]) = expr.kind
                 {
                     ControlFlow::Break(expr)
@@ -2118,13 +2121,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    pub(super) fn find_similar_impl_candidates(
+    pub(crate) fn find_similar_impl_candidates(
         &self,
-        trait_pred: ty::PolyTraitClause<'tcx>,
+        trait_def_id: DefId,
+        self_ty: Ty<'tcx>,
     ) -> Vec<ImplCandidate<'tcx>> {
         let mut candidates: Vec<_> = self
             .tcx
-            .all_impls(trait_pred.def_id())
+            .all_impls(trait_def_id)
             .filter_map(|def_id| {
                 let imp = self.tcx.impl_trait_header(def_id);
                 if imp.polarity != ty::ImplPolarity::Positive
@@ -2134,9 +2138,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 let imp = imp.trait_ref.skip_binder();
 
-                self.fuzzy_match_tys(trait_pred.skip_binder().self_ty(), imp.self_ty(), false).map(
-                    |similarity| ImplCandidate { trait_ref: imp, similarity, impl_def_id: def_id },
-                )
+                self.fuzzy_match_tys(self_ty, imp.self_ty(), false).map(|similarity| {
+                    ImplCandidate { trait_ref: imp, similarity, impl_def_id: def_id }
+                })
             })
             .collect();
         if candidates.iter().any(|c| matches!(c.similarity, CandidateSimilarity::Exact { .. })) {
@@ -2769,7 +2773,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // the user might expect to be presented with. Instead this is
         // useful for less general traits.
         if peeled && !self.tcx.trait_is_auto(def_id) && self.tcx.as_lang_item(def_id).is_none() {
-            let impl_candidates = self.find_similar_impl_candidates(trait_pred);
+            let impl_candidates = self.find_similar_impl_candidates(
+                trait_pred.def_id(),
+                trait_pred.self_ty().skip_binder(),
+            );
             self.report_similar_impl_candidates(
                 &impl_candidates,
                 obligation,
@@ -3106,13 +3113,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             );
             self.suggest_unsized_bound_if_applicable(err, obligation);
             if let Some(span) = err.span.primary_span()
-                && let Some(mut diag) =
-                    self.dcx().steal_non_err(span, StashKey::AssociatedTypeSuggestion)
-                && let Suggestions::Enabled(ref mut s1) = err.suggestions
-                && let Suggestions::Enabled(ref mut s2) = diag.suggestions
+                && self
+                    .tcx
+                    .resolutions(())
+                    .paths_matching_assoc_types
+                    .contains(&span.with_parent(None))
             {
-                s1.append(s2);
-                diag.cancel()
+                err.subdiagnostic(AssocTypeWithSameName { span: span.shrink_to_lo() });
             }
         }
     }
@@ -3472,7 +3479,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             );
         } else if !suggested && trait_predicate.polarity() == ty::ClausePolarity::Positive {
             // Can't show anything else useful, try to find similar impls.
-            let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
+            let impl_candidates = self.find_similar_impl_candidates(
+                trait_predicate.def_id(),
+                trait_predicate.self_ty().skip_binder(),
+            );
             if !self.report_similar_impl_candidates(
                 &impl_candidates,
                 obligation,
@@ -3982,9 +3992,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         span: Span,
     ) -> Result<Diag<'a>, ErrorGuaranteed> {
-        if !self.tcx.features().generic_const_exprs()
-            && !self.tcx.features().min_generic_const_args()
-        {
+        if !self.tcx.features().generic_const_exprs() && !self.tcx.features().gca() {
             let guar = self
                 .dcx()
                 .struct_span_err(span, "constant expression depends on a generic parameter")

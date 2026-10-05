@@ -1,12 +1,12 @@
 //@ edition: 2024
 //@ run-pass
 
-#![feature(min_generic_const_args, return_type_notation)]
+#![feature(gca_min_const_items, return_type_notation)]
 #![expect(incomplete_features)]
 #![allow(dead_code, refining_impl_trait_internal, type_alias_bounds)]
 
-use std::iter;
 use std::mem::ManuallyDrop;
+use std::{gca, iter};
 
 struct Si1<T: Iterator<Item: Copy, Item: Send>> {
     f: T,
@@ -198,7 +198,7 @@ trait Trait {
 impl Trait for () {
     type Gat<T> = ();
 
-    const ASSOC: i32 = core::direct_const_arg!(3);
+    const ASSOC: i32 = gca!(3);
 
     fn foo() {}
 }

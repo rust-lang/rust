@@ -3,11 +3,11 @@
 
 use std::collections::BTreeMap;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::ItemKind;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::{self, InferCtxt, RegionResolutionError, SubregionOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, TraitErrors};
@@ -115,7 +115,11 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
         Err(CopyImplementationError::HasDestructor(did)) => {
             let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             let impl_ = tcx.def_span(did);
-            Err(tcx.dcx().emit_err(diagnostics::CopyImplOnTypeWithDtor { span, impl_ }))
+            Err(tcx.dcx().emit_err(diagnostics::TraitImplOnTypeWithDtor {
+                span,
+                impl_,
+                trait_name: sym::Copy,
+            }))
         }
         Err(CopyImplementationError::HasUnsafeFields) => {
             let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
@@ -535,6 +539,15 @@ pub(crate) fn reborrow_info<'tcx>(
 
         // Field does not implement Reborrow: it must be Copy.
         assert_field_type_is_copy(tcx, &infcx, impl_did, param_env, field.ty, field.span)?;
+    }
+
+    if let Some(did) = def.destructor(tcx).map(|dtor| dtor.did) {
+        let impl_ = tcx.def_span(did);
+        return Err(tcx.dcx().emit_err(diagnostics::TraitImplOnTypeWithDtor {
+            span,
+            impl_,
+            trait_name: sym::Reborrow,
+        }));
     }
 
     Ok(())

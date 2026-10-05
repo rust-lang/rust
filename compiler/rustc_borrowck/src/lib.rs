@@ -2,7 +2,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(file_buffered)]
@@ -232,7 +231,7 @@ pub struct ClosureOutlivesRequirement<'tcx> {
 
 // Make sure this enum doesn't unintentionally grow
 #[cfg(target_pointer_width = "64")]
-rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 16);
+rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 24);
 
 /// The subject of a `ClosureOutlivesRequirement` -- that is, the thing
 /// that must outlive some region.
@@ -347,7 +346,7 @@ fn borrowck_collect_region_constraints<'tcx>(
 
     let location_map = Rc::new(DenseLocationMap::new(body));
 
-    let polonius_input = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_input())
+    let polonius_input = root_cx.consumer.as_ref().is_some_and(|c| c.polonius_input())
         || infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
     let mut polonius_facts =
         (polonius_input || PoloniusFacts::enabled(infcx.tcx)).then_some(PoloniusFacts::default());

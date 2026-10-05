@@ -40,11 +40,11 @@ where
 
     #[rustc_dump_symbol_name]
     //[legacy]~^ ERROR symbol-name(_ZN72_$LT$issue_75326..Foo$LT$I$C$E$GT$$u20$as$u20$issue_75326..Iterator2$GT$4next
-    //[legacy]~| ERROR demangling(<issue_75326::Foo<I,E> as issue_75326::Iterator2>::next
-    //[legacy]~| ERROR demangling-alt(<issue_75326::Foo<I,E> as issue_75326::Iterator2>::next)
+    //[legacy]~| NOTE demangling(<issue_75326::Foo<I,E> as issue_75326::Iterator2>::next
+    //[legacy]~| NOTE demangling-alt(<issue_75326::Foo<I,E> as issue_75326::Iterator2>::next)
     //[v0]~^^^^  ERROR symbol-name
-    //[v0]~|     ERROR demangling
-    //[v0]~|     ERROR demangling-alt(<issue_75326::Foo<_, _> as issue_75326::Iterator2>::next)
+    //[v0]~|     NOTE demangling
+    //[v0]~|     NOTE demangling-alt(<issue_75326::Foo<_, _> as issue_75326::Iterator2>::next)
     fn next(&mut self) -> Option<Self::Item> {
         self.find(|_| true)
     }

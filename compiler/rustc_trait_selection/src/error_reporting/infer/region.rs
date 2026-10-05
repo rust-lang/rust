@@ -210,12 +210,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         // sort the errors by span, for better error message stability.
-        errors.sort_by_key(|u| match *u {
-            RegionResolutionError::ConcreteFailure(ref sro, _, _) => sro.span(),
-            RegionResolutionError::GenericBoundFailure(ref sro, _, _) => sro.span(),
-            RegionResolutionError::SubSupConflict(_, ref rvo, _, _, _, _, _) => rvo.span(),
-            RegionResolutionError::UpperBoundUniverseConflict(_, ref rvo, _, _, _) => rvo.span(),
-            RegionResolutionError::CannotNormalize(_, ref sro) => sro.span(),
+        errors.sort_by_key(|u| {
+            match *u {
+                RegionResolutionError::ConcreteFailure(ref sro, _, _) => sro.span(),
+                RegionResolutionError::GenericBoundFailure(ref sro, _, _) => sro.span(),
+                RegionResolutionError::SubSupConflict(_, ref rvo, _, _, _, _, _) => rvo.span(),
+                RegionResolutionError::UpperBoundUniverseConflict(_, ref rvo, _, _, _) => {
+                    rvo.span()
+                }
+                RegionResolutionError::CannotNormalize(_, ref sro) => sro.span(),
+            }
+            .lo_hi()
         });
         errors
     }
@@ -289,7 +294,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             SubregionOrigin::CheckAssociatedTypeBounds { ref parent, .. } => {
                 self.note_region_origin(err, parent);
             }
-            SubregionOrigin::AscribeUserTypeProvePredicate(span) => {
+            SubregionOrigin::AscribeUserTypeProvePredicate(span, _) => {
                 RegionOriginNote::Plain { span, msg: msg!("...so that the where clause holds") }
                     .add_to_diag(err);
             }
@@ -546,7 +551,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 err
             }
-            SubregionOrigin::AscribeUserTypeProvePredicate(span) => {
+            SubregionOrigin::AscribeUserTypeProvePredicate(span, _) => {
                 let instantiated = note_and_explain::RegionExplanation::new(
                     self.tcx,
                     generic_param_scope,
@@ -1380,6 +1385,15 @@ fn suggest_precise_capturing<'tcx>(
         hir::GenericBound::Use(args, span) => Some((args, span)),
         _ => None,
     }) {
+        // '_ is an elision marker, not a lifetime name, so it cannot appear twice in a
+        // capture list. the branch for opaques with no use<..> yet already skips captured
+        // lifetimes; do the same here to avoid suggesting use<'_, '_>.
+        if args.iter().any(|arg| {
+            matches!(arg, hir::PreciseCapturingArg::Lifetime(lt) if lt.ident.name == new_lifetime)
+        }) {
+            return;
+        }
+
         let last_lifetime_span = args.iter().rev().find_map(|arg| match arg {
             hir::PreciseCapturingArg::Lifetime(lt) => Some(lt.ident.span),
             _ => None,

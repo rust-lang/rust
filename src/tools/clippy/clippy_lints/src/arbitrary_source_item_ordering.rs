@@ -6,15 +6,14 @@ use clippy_config::types::{
 };
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::is_cfg_test;
-use rustc_attr_ir::AttributeKind;
+use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_hir::{
-    Attribute, FieldDef, ImplItemId, IsAuto, Item, ItemKind, Mod, OwnerId, QPath, TraitItemId, TyKind, Variant,
-    VariantData,
+    FieldDef, ImplItemId, IsAuto, Item, ItemKind, Mod, OwnerId, QPath, TraitItemId, TyKind, Variant, VariantData,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext, impl_lint_pass};
 use rustc_middle::ty::{AssocKind, TyCtxt};
-use rustc_span::{Ident, Symbol, bug};
 use rustc_span::def_id::LocalModId;
+use rustc_span::{Ident, Symbol, bug};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -59,13 +58,13 @@ declare_clippy_lint! {
     ///
     /// | Group              | Item Kinds           |
     /// |--------------------|----------------------|
-    /// | `modules`          | "mod", "foreign_mod" |
-    /// | `use`              | "use"                |
-    /// | `macros`           | "macro"              |
-    /// | `global_asm`       | "global_asm"         |
-    /// | `UPPER_SNAKE_CASE` | "static", "const"    |
-    /// | `PascalCase`       | "ty_alias", "opaque_ty", "enum", "struct", "union", "trait", "trait_alias", "impl" |
-    /// | `lower_snake_case` | "fn"                 |
+    /// | `modules`          | `mod`, `foreign_mod` |
+    /// | `use`              | `use`                |
+    /// | `macros`           | `macro`              |
+    /// | `global_asm`       | `global_asm`         |
+    /// | `UPPER_SNAKE_CASE` | `static`, `const`    |
+    /// | `PascalCase`       | `ty_alias`, `opaque_ty`, `enum`, `struct`, `union`, `trait`, `trait_alias`, `impl` |
+    /// | `lower_snake_case` | `fn`                 |
     ///
     /// The groups' names are arbitrary and can be changed to suit the
     /// conventions that should be enforced for a specific project.

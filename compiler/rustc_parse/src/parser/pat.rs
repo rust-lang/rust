@@ -353,7 +353,7 @@ impl<'a> Parser<'a> {
             matches!(
                 &token.uninterpolate().kind,
                 token::FatArrow // e.g. `a | => 0,`.
-                | token::Ident(kw::If, token::IdentKind::Normal) // e.g. `a | if expr`.
+                | token::Ident(kw::If, token::IdentKind::Normal | token::IdentKind::ForcedKeyword) // e.g. `a | if expr`.
                 | token::Eq // e.g. `let a | = 0`.
                 | token::Semi // e.g. `let a |;`.
                 | token::Colon // e.g. `let a | :`.
@@ -1334,7 +1334,7 @@ impl<'a> Parser<'a> {
         err.span_label(self.token.span, format!("expected {expected}"));
 
         let sp = self.psess.source_map().start_point(self.token.span);
-        if let Some(sp) = self.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
+        if let Some(sp) = self.psess.complete_stmt_exprs_before_bin_op_lookalike.borrow().get(&sp) {
             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
         }
 

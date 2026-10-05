@@ -2040,6 +2040,12 @@ test!(BuildStd {
     default: false
 });
 
+test!(AssemblyGcc {
+    path: "tests/assembly-gcc",
+    mode: CompiletestMode::Assembly,
+    suite: "assembly-gcc",
+    default: true
+});
 test!(AssemblyLlvm {
     path: "tests/assembly-llvm",
     mode: CompiletestMode::Assembly,
@@ -4524,20 +4530,25 @@ impl CommandLineStep for CodegenGCC {
 
         let gcc = builder.ensure(Gcc { target_pair: GccTargetPair::for_native_build(target) });
 
+        if builder.config.rustc_debug_assertions {
+            eprintln!(
+                "WARNING: cg_gcc tests will likely fail when debug assertions are enabled for rustc"
+            );
+        }
+
+        // We need to run the cg_gcc tests with the compiler which it links against, not with
+        // the build compiler.
+        let target_compiler = compilers.target_compiler();
+
         builder.ensure(
-            compile::Std::new(compilers.build_compiler(), target)
+            compile::Std::new(target_compiler, target)
                 .extra_rust_args(&["-Csymbol-mangling-version=v0", "-Cpanic=abort"]),
         );
 
-        let _guard = builder.msg_test(
-            "rustc_codegen_gcc",
-            compilers.target(),
-            compilers.target_compiler().stage,
-        );
-
+        let _guard = builder.msg_test("rustc_codegen_gcc", target, target_compiler.stage);
         let mut cargo = builder::Cargo::new(
             builder,
-            compilers.build_compiler(),
+            target_compiler,
             Mode::Codegen, // Must be codegen to ensure dlopen on compiled dylibs works
             SourceType::InTree,
             target,

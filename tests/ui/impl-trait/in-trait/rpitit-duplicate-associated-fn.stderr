@@ -42,9 +42,11 @@ LL |     fn foo() -> impl Sized;
 error[E0201]: duplicate definitions with name `method`:
   --> $DIR/rpitit-duplicate-associated-fn.rs:12:5
    |
+LL |   trait Bar {
 LL |       fn method() -> impl Sized;
    |       -------------------------- item in trait
 ...
+LL |   impl Bar for () {
 LL | /     fn method() -> impl Sized {
 LL | |         42
 LL | |     }
@@ -57,9 +59,11 @@ LL | |     }
 error[E0201]: duplicate definitions with name `method`:
   --> $DIR/rpitit-duplicate-associated-fn.rs:25:5
    |
+LL |   trait T {
 LL |       fn method() -> impl Sized;
    |       -------------------------- item in trait
 ...
+LL |   impl T for () {
 LL | /     fn method() -> impl Sized {
 LL | |         42
 LL | |     }

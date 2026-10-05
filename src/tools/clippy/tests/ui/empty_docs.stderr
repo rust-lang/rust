@@ -1,5 +1,5 @@
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:8:5
+  --> tests/ui/empty_docs.rs:11:5
    |
 LL |     //!
    |     ^^^
@@ -9,7 +9,7 @@ LL |     //!
    = help: to override `-D warnings` add `#[allow(clippy::empty_docs)]`
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:17:5
+  --> tests/ui/empty_docs.rs:20:5
    |
 LL |     ///
    |     ^^^
@@ -17,7 +17,7 @@ LL |     ///
    = help: consider removing or filling it
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:20:9
+  --> tests/ui/empty_docs.rs:23:9
    |
 LL |         ///
    |         ^^^
@@ -25,7 +25,7 @@ LL |         ///
    = help: consider removing or filling it
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:32:13
+  --> tests/ui/empty_docs.rs:35:13
    |
 LL |     #[doc = ""]
    |             ^^
@@ -33,7 +33,7 @@ LL |     #[doc = ""]
    = help: consider removing or filling it
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:36:13
+  --> tests/ui/empty_docs.rs:39:13
    |
 LL |       #[doc = ""]
    |  _____________^
@@ -43,7 +43,7 @@ LL | |     #[doc = ""]
    = help: consider removing or filling it
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:44:5
+  --> tests/ui/empty_docs.rs:47:5
    |
 LL |     ///
    |     ^^^
@@ -51,7 +51,7 @@ LL |     ///
    = help: consider removing or filling it
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:58:13
+  --> tests/ui/empty_docs.rs:61:13
    |
 LL |             /*! */
    |             ^^^^^^
@@ -59,7 +59,7 @@ LL |             /*! */
    = help: consider removing or filling it
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:67:13
+  --> tests/ui/empty_docs.rs:70:13
    |
 LL |             ///
    |             ^^^
@@ -67,12 +67,21 @@ LL |             ///
    = help: consider removing or filling it
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:76:9
+  --> tests/ui/empty_docs.rs:79:9
    |
 LL |         ///
    |         ^^^
    |
    = help: consider removing or filling it
 
-error: aborting due to 9 previous errors
+error: empty doc comment
+  --> tests/ui/empty_docs.rs:100:15
+   |
+LL |     #[doc = $("")]
+   |               ^^
+   |
+   = help: consider removing or filling it
+   = note: this error originates in the macro `external` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 10 previous errors
 

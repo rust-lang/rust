@@ -4,11 +4,12 @@
 //!
 //! This is necessary for `Drop` and negative impls to be well-formed.
 
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
-use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
+use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::util::CheckRegions;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_span::{span_bug, sym};
@@ -131,45 +132,6 @@ pub(crate) fn check_negative_auto_trait_impl<'tcx>(
             }
         }
     }
-}
-
-/// Checks if the self ty's where-clauses are able to be proven. For instance, if we have multiple
-/// overlapping drop impls, and we have `[T]: Sized` on both the impls and the self ty, we shouldn't
-/// error or ICE, since neither the ADT nor the impls are nameable in practice.
-///
-/// We already emit errors for the case where the impossible bound exists only on the self ty, or
-/// only on the impl(s).
-pub(crate) fn is_impossible_self_ty(tcx: TyCtxt<'_>, adt_did: LocalDefId) -> bool {
-    let clauses = tcx.clauses_of(adt_did).clauses;
-    if clauses.is_empty() {
-        return false;
-    }
-
-    // Be conservative in cases where we have `W<T: ?Sized>` and a method like `Self: Sized`,
-    // since that method *may* have some substitutions where the predicates hold.
-    //
-    // This replicates the logic we use in coherence.
-    let infcx = tcx
-        .infer_ctxt()
-        .ignoring_regions()
-        .with_next_trait_solver(true)
-        .enable_next_solver_overflow_fcw(false)
-        .build(TypingMode::Coherence);
-    let param_env = ty::ParamEnv::empty();
-    let args = infcx.fresh_args_for_item(tcx.def_span(adt_did), adt_did.to_def_id());
-
-    let obligations = clauses.iter().map(|(clause, span)| {
-        Obligation::new(
-            tcx,
-            ObligationCause::dummy_with_span(*span),
-            param_env,
-            ty::EarlyBinder::bind(tcx, *clause).instantiate(tcx, args).skip_norm_wip(),
-        )
-    });
-
-    let ocx = ObligationCtxt::new(&infcx);
-    ocx.register_obligations(obligations);
-    ocx.try_evaluate_obligations().has_errors()
 }
 
 fn ensure_impl_params_and_item_params_correspond<'tcx>(
@@ -442,7 +404,7 @@ fn check_drop_xor_pin_drop<'tcx>(
         }
         (Some(span), None) => {
             if tcx.adt_def(adt_def_id).is_pin_project() {
-                let pin_v2_span = rustc_hir::find_attr!(tcx, adt_def_id, PinV2(attr) => *attr);
+                let pin_v2_span = find_attr!(tcx, adt_def_id, PinV2(attr) => *attr);
                 let adt_name = tcx.item_name(adt_def_id);
                 return Err(tcx.dcx().emit_err(crate::diagnostics::PinV2WithoutPinDrop {
                     span,

@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// and suggest calling `count_bytes()` instead.
     ///
     /// ### Why is this bad?
-    /// libc::strlen is an unsafe function, which we don't need to call
+    /// `libc::strlen` is an unsafe function, which we don't need to call
     /// if all we want to know is the length of the c-string.
     ///
     /// ### Example

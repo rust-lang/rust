@@ -4,13 +4,14 @@
 
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::{VisitorResult, walk_list};
+use rustc_attr_ir::{Attribute, find_attr};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModId};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalModId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lints::DelayedLints;
@@ -18,6 +19,7 @@ use rustc_hir::*;
 use rustc_span::def_id::{CRATE_MOD_ID, StableCrateId};
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, bug, kw, span_bug, with_metavar_spans};
 
+use crate::hir::def_id::LOCAL_CRATE;
 use crate::hir::{ModuleItems, ProjectedMaybeOwner, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::query::{IntoQueryKey, LocalCrate};
@@ -792,6 +794,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             Node::Crate(..) => String::from("(root_crate)"),
             Node::WherePredicate(_) => node_str("where predicate"),
+            Node::NestedUseTree(_) => node_str("use"),
             Node::PreciseCapturingNonLifetimeArg(_param) => node_str("parameter"),
             Node::TestBinderForall(_) => node_str("forall"),
             Node::TestBinderExists(_) => node_str("exists"),
@@ -999,10 +1002,10 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             // Other cases.
             Node::Item(item) => match &item.kind {
-                ItemKind::Use(path, _) => {
+                ItemKind::Use(use_tree) => {
                     // Ensure that the returned span has the item's SyntaxContext, and not the
                     // SyntaxContext of the path.
-                    path.span.find_ancestor_in_same_ctxt(item.span).unwrap_or(item.span)
+                    use_tree.prefix.span.find_ancestor_in_same_ctxt(item.span).unwrap_or(item.span)
                 }
                 _ => {
                     if let Some(ident) = item.kind.ident() {
@@ -1071,6 +1074,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::Crate(item) => item.spans.inner_span,
             Node::WherePredicate(pred) => pred.span,
             Node::PreciseCapturingNonLifetimeArg(param) => param.ident.span,
+            Node::NestedUseTree(tree) => tree.prefix.span,
             Node::TestBinderForall(forall) => forall.span,
             Node::TestBinderExists(exists) => exists.span,
             Node::TestBinderBoundTypeConstraint(bound_type) => bound_type.span,
@@ -1160,7 +1164,47 @@ impl<'tcx> intravisit::HirTyCtxt<'tcx> for TyCtxt<'tcx> {
 }
 
 pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
+    // `-Z metadata-crate-hash=no` opts back into computing the SVH from the HIR rather than
+    // from the encoded crate metadata. This is a safety fallback for the metadata-based hashing.
+    if !tcx.sess.opts.unstable_opts.metadata_crate_hash {
+        return legacy_crate_hash(tcx);
+    }
+
+    // If metadata is being encoded, the crate hash has already been computed as part of the
+    // metadata encoding.
+    if tcx.needs_metadata() {
+        *tcx.untracked()
+            .local_crate_hash
+            .get()
+            .expect("crate_hash(LOCAL_CRATE) called before metadata encoding")
+    } else {
+        // When metadata isn't encoded, use an HIR based approximation. Encoding metadata for a
+        // dylib/binary is expensive and fragile. These fields are enough to identify the session.
+        let hir_body_hash = compute_hir_hash(tcx);
+
+        let upstream_crates = upstream_crates(tcx);
+
+        let crate_hash: Fingerprint = tcx.with_stable_hashing_context(|mut hcx| {
+            let mut stable_hasher = StableHasher::new();
+            hir_body_hash.stable_hash(&mut hcx, &mut stable_hasher);
+            upstream_crates.stable_hash(&mut hcx, &mut stable_hasher);
+            tcx.sess.opts.dep_tracking_hash(true).stable_hash(&mut hcx, &mut stable_hasher);
+            tcx.stable_crate_id(LOCAL_CRATE).stable_hash(&mut hcx, &mut stable_hasher);
+
+            stable_hasher.finish()
+        });
+
+        Svh::new(crate_hash)
+    }
+}
+
+/// Only reached when `-Z metadata-crate-hash=no` reverts to the pre-metadata-hashing behavior.
+/// The HIR-based hashing scheme here matches the `crate_hash` query as it existed before this PR.
+/// (The resulting SVH still differs from a pre-PR compiler, because `metadata_crate_hash` is a
+/// `[TRACKED]` option and therefore contributes to the dep-tracking hash hashed in below.)
+fn legacy_crate_hash(tcx: TyCtxt<'_>) -> Svh {
     let krate = tcx.hir_crate_items(());
+
     let upstream_crates = upstream_crates(tcx);
     let resolutions = tcx.resolutions(());
 
@@ -1234,6 +1278,19 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
     });
 
     Svh::new(crate_hash)
+}
+
+/// Compute the new, metadata-oriented HIR hash for the full crate.
+///
+/// Unlike the legacy hash (see [`legacy_crate_hash`]), this is an order-independent combine of each
+/// owner's fingerprint, so it does not depend on the iteration order of the owners. It becomes part
+/// of the `crate_hash` which is stored in the crate metadata.
+pub fn compute_hir_hash(tcx: TyCtxt<'_>) -> Fingerprint {
+    tcx.hir_crate_items(())
+        .owners()
+        .filter_map(|owner| Some(tcx.lower_to_hir(owner.def_id).as_owner()?.fingerprint()))
+        .reduce(Fingerprint::combine_commutative)
+        .expect("HIR hash requested without any content")
 }
 
 fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {

@@ -12,7 +12,7 @@ extern crate mini_core;
 use mini_core::*;
 
 fn test_fail() -> ! {
-    unsafe { intrinsics::abort() };
+    unsafe { intrinsics::abort_immediate() };
 }
 
 #[no_mangle]

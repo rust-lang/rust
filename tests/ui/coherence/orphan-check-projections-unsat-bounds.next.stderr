@@ -1,5 +1,5 @@
 warning: type parameter `T` must be covered by another type when it appears before the first local type (`LocalTy`)
-  --> $DIR/orphan-check-projections-unsat-bounds.rs:28:6
+  --> $DIR/orphan-check-projections-unsat-bounds.rs:29:6
    |
 LL | impl<T> foreign::Trait1<LocalTy, T> for <Wrapper<T> as Discard>::Output
    |      ^ uncovered type parameter

@@ -127,13 +127,6 @@ pub(crate) struct BothOptimizeNoneAndInline {
 }
 
 #[derive(Diagnostic)]
-#[diag("attribute should be applied to an `extern` block with non-Rust ABI")]
-#[warning(
-    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
-)]
-pub(crate) struct Link;
-
-#[derive(Diagnostic)]
 #[diag("#[rustc_legacy_const_generics] functions must only have const generics")]
 pub(crate) struct RustcLegacyConstGenericsOnly {
     #[primary_span]
@@ -204,13 +197,6 @@ pub(crate) struct RustcForceInlineCoro {
     pub attr_span: Span,
     #[label("`async`, `gen` or `async gen` function")]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-pub(crate) enum MacroExport {
-    #[diag("`#[macro_export]` has no effect on declarative macro definitions")]
-    #[note("declarative macros follow the same exporting rules as regular items")]
-    OnDeclMacro,
 }
 
 #[derive(Subdiagnostic)]
@@ -561,13 +547,6 @@ pub(crate) struct UselessAssignment<'a> {
     pub is_field_assign: bool,
     pub ty: Ty<'a>,
 }
-
-#[derive(Diagnostic)]
-#[diag("`#[inline]` is ignored on externally exported functions")]
-#[help(
-    "externally exported functions are functions with `#[no_mangle]`, `#[export_name]`, or `#[linkage]`"
-)]
-pub(crate) struct InlineIgnoredForExported;
 
 #[derive(Diagnostic)]
 #[diag("transparent {$target} cannot have other repr hints", code = E0692)]

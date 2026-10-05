@@ -60,6 +60,7 @@ impl TestMode {
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
     pub(crate) enum TestSuite {
+        AssemblyGcc => "assembly-gcc",
         AssemblyLlvm => "assembly-llvm",
         CodegenLlvm => "codegen-llvm",
         CodegenUnits => "codegen-units",
@@ -172,7 +173,6 @@ string_enum! {
     pub(crate) enum CompareMode {
         Polonius => "polonius",
         NextSolver => "next-solver",
-        NextSolverCoherence => "next-solver-coherence",
         SplitDwarf => "split-dwarf",
         SplitDwarfSingle => "split-dwarf-single",
     }

@@ -40,6 +40,10 @@ pub(crate) struct AssocKindMismatch {
     #[primary_span]
     #[label("unexpected {$got}")]
     pub span: Span,
+    #[context]
+    pub item_span: Span,
+    #[context]
+    pub enclosing_span: Option<Span>,
     pub expected: &'static str,
     pub got: &'static str,
     #[label("expected a {$expected} because of this associated {$expected}")]
@@ -292,13 +296,14 @@ pub(crate) struct FieldAlreadyDeclaredNestedHelp {
 }
 
 #[derive(Diagnostic)]
-#[diag("the trait `Copy` cannot be implemented for this type; the type has a destructor", code = E0184)]
-pub(crate) struct CopyImplOnTypeWithDtor {
+#[diag("the trait `{$trait_name}` cannot be implemented for this type; the type has a destructor", code = E0184)]
+pub(crate) struct TraitImplOnTypeWithDtor {
     #[primary_span]
-    #[label("`Copy` not allowed on types with destructors")]
+    #[label("`{$trait_name}` not allowed on types with destructors")]
     pub span: Span,
     #[note("destructor declared here")]
     pub impl_: Span,
+    pub trait_name: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -1736,7 +1741,7 @@ pub(crate) struct UnusedGenericParameter {
     pub span: Span,
     pub param_name: Ident,
     pub param_def_kind: &'static str,
-    #[label("`{$param_name}` is named here, but is likely unused in the containing type")]
+    #[label("`{$param_name}` is named here, but is not used in the type that wraps it")]
     pub usage_spans: Vec<Span>,
     #[subdiagnostic]
     pub help: UnusedGenericParameterHelp,

@@ -11,7 +11,7 @@ declare_tool_lint! {
     /// We like to pretend we're an example of tidy code.
     ///
     /// ### Example
-    /// Wrong ordering of the util::paths constants.
+    /// Wrong ordering of the `util::paths` constants.
     pub clippy::UNSORTED_CLIPPY_UTILS_PATHS,
     Warn,
     "various things that will negatively affect your clippy experience",

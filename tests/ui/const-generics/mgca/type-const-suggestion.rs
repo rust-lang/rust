@@ -1,6 +1,6 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/151602>.
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 trait Trait {
     #[rustc_always_gca]

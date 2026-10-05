@@ -7,9 +7,8 @@ use std::sync::mpsc::{Receiver, channel};
 
 use askama::Template;
 use rustc_ast::join_path_syms;
+use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_hir::Attribute;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;

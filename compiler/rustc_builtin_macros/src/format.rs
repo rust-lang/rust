@@ -339,7 +339,9 @@ fn make_format_args(
             parse::Suggestion::UsePositional => {
                 let captured_arg_span =
                     fmt_span.from_inner(InnerSpan::new(err.span.start, err.span.end));
-                if let Ok(arg) = ecx.source_map().span_to_snippet(captured_arg_span) {
+                if is_source_literal
+                    && let Ok(arg) = ecx.source_map().span_to_snippet(captured_arg_span)
+                {
                     let span = match args.unnamed_args().last() {
                         Some(arg) => arg.expr.span,
                         None => fmt_span,
@@ -360,17 +362,21 @@ fn make_format_args(
                 }
             }
             parse::Suggestion::ReorderFormatParameter(span, replacement) => {
-                let span = fmt_span.from_inner(InnerSpan::new(span.start, span.end));
-                e.sugg_ =
-                    Some(diagnostics::InvalidFormatStringSuggestion::ReorderFormatParameter {
-                        span,
-                        replacement,
-                    });
+                if is_source_literal {
+                    let span = fmt_span.from_inner(InnerSpan::new(span.start, span.end));
+                    e.sugg_ =
+                        Some(diagnostics::InvalidFormatStringSuggestion::ReorderFormatParameter {
+                            span,
+                            replacement,
+                        });
+                }
             }
             parse::Suggestion::AddMissingColon(span) => {
-                let span = fmt_span.from_inner(InnerSpan::new(span.start, span.end));
-                e.sugg_ =
-                    Some(diagnostics::InvalidFormatStringSuggestion::AddMissingColon { span });
+                if is_source_literal {
+                    let span = fmt_span.from_inner(InnerSpan::new(span.start, span.end));
+                    e.sugg_ =
+                        Some(diagnostics::InvalidFormatStringSuggestion::AddMissingColon { span });
+                }
             }
             parse::Suggestion::UseRustDebugPrintingMacro => {
                 // This targets `println!("{=}", x);` and `println!("{0=}", x);`
@@ -1107,7 +1113,7 @@ fn report_invalid_references(
         // for `println!("{7:7$}", 1);`
         indexes.sort();
         indexes.dedup();
-        let span: MultiSpan = if !parser.is_source_literal || parser.arg_places.is_empty() {
+        let span = if !parser.is_source_literal || parser.arg_places.is_empty() {
             MultiSpan::from_span(fmt_span)
         } else {
             MultiSpan::from_spans(invalid_refs.iter().filter_map(|&(_, span, _, _)| span).collect())

@@ -1656,8 +1656,8 @@ pub(crate) enum ExpectedSemiSugg {
         style = "short"
     )]
     ChangeToSemi(#[primary_span] Span),
-    #[suggestion("add `;` here", code = ";", applicability = "machine-applicable", style = "short")]
-    AddSemi(#[primary_span] Span),
+    #[suggestion("add `;` here", code = ";", style = "short")]
+    AddSemi(#[primary_span] Span, #[applicability] Applicability),
 }
 
 #[derive(Diagnostic)]
@@ -2439,6 +2439,23 @@ pub(crate) struct TraitAliasCannotBeImplRestricted {
 pub(crate) struct AssociatedStaticItemNotAllowed {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum FieldNotAllowedInTraitSugg {
+    #[help("consider using a method instead: `fn {$ident}(&self) -> {$ty};`")]
+    Method { ident: String, ty: String },
+    #[note("`self` can only appear as a method receiver; consider `fn method(self: {$ty})`")]
+    SelfReceiver { ty: String },
+}
+
+#[derive(Diagnostic)]
+#[diag("fields are not allowed in trait definitions")]
+pub(crate) struct FieldNotAllowedInTrait {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: FieldNotAllowedInTraitSugg,
 }
 
 #[derive(Diagnostic)]
@@ -4650,4 +4667,16 @@ pub(crate) struct SuggestIntroduceTypeParameter {
     #[primary_span]
     pub span: Span,
     pub parameters: String,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "you might have meant to write a diverging block on a refutable `let` statement by using `let-else`
+    for more information, visit <https://doc.rust-lang.org/beta/rust-by-example/flow_control/let_else.html>",
+    code = " else ",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct MissingElseInLet {
+    #[primary_span]
+    pub span: Span,
 }

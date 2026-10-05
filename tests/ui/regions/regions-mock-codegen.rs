@@ -1,7 +1,6 @@
 //@ run-pass
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
-#![feature(allocator_api)]
 
 use std::alloc::{handle_alloc_error, Allocator, Global, Layout};
 use std::ptr::NonNull;

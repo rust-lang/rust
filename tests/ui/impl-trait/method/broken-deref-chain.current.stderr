@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/broken-deref-chain.rs:41:30
+  --> $DIR/broken-deref-chain.rs:42:30
    |
 LL | fn trait_method() -> impl Trait {
    |                      ---------- the found opaque type

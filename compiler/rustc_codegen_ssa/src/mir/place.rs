@@ -264,7 +264,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             Err(UninhabitedVariantError) => {
                 // We play it safe by using a well-defined `abort`, but we could go for immediate UB
                 // if that turns out to be helpful.
-                bx.abort();
+                bx.abort_immediate();
             }
             Ok(Some((tag_field, imm))) => {
                 let tag_place = self.project_field(bx, tag_field.as_usize());

@@ -119,6 +119,13 @@ impl Features {
             false
         }
     }
+
+    /// The generic_const_args family of features has a set of common behavior that can be enabled
+    /// by either `gca_min_const_items` or `gca_adts`. There is no actual `gca` base feature, but
+    /// this method acts as one.
+    pub fn gca(&self) -> bool {
+        self.gca_min_const_items() || self.gca_adts()
+    }
 }
 
 macro_rules! declare_features {
@@ -228,7 +235,7 @@ declare_features! (
     /// Allows checking whether or not the backend correctly supports unstable float types.
     (internal, cfg_target_has_reliable_f16_f128, "1.88.0", None),
     /// Allows checking whether or not the backend correctly supports the unstable `f16b` type.
-    (internal, cfg_target_has_reliable_f16b, "CURRENT_RUSTC_VERSION", None),
+    (internal, cfg_target_has_reliable_f16b, "1.100.0", None),
     /// Allows checking whether or not the target might have thread support.
     (internal, cfg_target_has_threads, "1.99.0", None),
     /// Allows identifying the `compiler_builtins` crate.
@@ -250,7 +257,7 @@ declare_features! (
     /// Allows `#[link(..., cfg(..))]`; perma-unstable per #37406
     (internal, link_cfg, "1.14.0", None),
     /// Allows using `#[link_name="__enzyme_*"]`.
-    (internal, link_enzyme_intrinsics, "CURRENT_RUSTC_VERSION", None),
+    (internal, link_enzyme_intrinsics, "1.100.0", None),
     /// Allows using `?Trait` trait bounds in more contexts.
     (internal, more_maybe_bounds, "1.82.0", None),
     /// Allow negative trait bounds. This is an internal-only feature for testing the trait solver!
@@ -266,7 +273,7 @@ declare_features! (
     /// Allows using the `#[stable]` and `#[unstable]` attributes.
     (internal, staged_api, "1.0.0", None),
     /// Perma-unstable, only used in the test suite for binders (`for<'a>`).
-    (internal, test_binder_constraints, "CURRENT_RUSTC_VERSION", None),
+    (internal, test_binder_constraints, "1.100.0", None),
     /// Perma-unstable, only used to test the `incomplete_features` lint.
     (incomplete, test_incomplete_feature, "1.96.0", None),
     /// Added for testing unstable lints; perma-unstable.
@@ -523,7 +530,7 @@ declare_features! (
     /// Allow using 16-bit (half precision) floating point numbers.
     (unstable, f16, "1.78.0", Some(116909)),
     /// Allow using bfloat16 floating point numbers.
-    (unstable, f16b, "CURRENT_RUSTC_VERSION", Some(160630)),
+    (unstable, f16b, "1.100.0", Some(160630)),
     /// Allows the use of `#[ffi_const]` on foreign functions.
     (unstable, ffi_const, "1.45.0", Some(58328)),
     /// Allows the use of `#[ffi_pure]` on foreign functions.
@@ -541,15 +548,27 @@ declare_features! (
     /// Support delegating implementation of functions to other already implemented functions.
     (incomplete, fn_delegation, "1.76.0", Some(118212)),
     /// Traits for function pointers and items
-    (unstable, fn_static, "CURRENT_RUSTC_VERSION", Some(148768)),
+    (unstable, fn_static, "1.100.0", Some(148768)),
+    /// Allows using forced keywords `k#fn`.
+    (unstable, forced_keywords, "CURRENT_RUSTC_VERSION", Some(153839)),
     /// Allows impls for the Freeze trait.
     (internal, freeze_impls, "1.78.0", Some(121675)),
     /// Frontmatter `---` blocks for use by external tools.
     (unstable, frontmatter, "1.88.0", Some(136889)),
+    /// Allows using ADTs in directly represented generic const args.
+    (incomplete, gca_adts, "CURRENT_RUSTC_VERSION", Some(163420)),
+    /// Allows using generics in more complex const expressions, based on definitional equality.
+    (incomplete, gca_const_items, "1.95.0", Some(151972)),
+    /// Allows directly represented gca_const_items without the `gca!` macro.
+    (incomplete, gca_macroless_args, "1.99.0", Some(159006)),
+    /// Allows directly represented gca_const_items as the rhs of const items without the
+    /// `gca!` macro.
+    (incomplete, gca_macroless_items, "1.100.0", Some(162540)),
+    /// Enables the generic const args MVP (paths to type const items and constructors
+    /// for ADTs and primitives).
+    (incomplete, gca_min_const_items, "1.84.0", Some(132980)),
     /// Allows defining gen blocks and `gen fn`.
     (unstable, gen_blocks, "1.75.0", Some(117078)),
-    /// Allows using generics in more complex const expressions, based on definitional equality.
-    (incomplete, generic_const_args, "1.95.0", Some(151972)),
     /// Allows non-trivial generic constants which have to be shown to successfully evaluate
     /// to a value by being part of an item signature.
     (incomplete, generic_const_exprs, "1.56.0", Some(76560)),
@@ -609,19 +628,11 @@ declare_features! (
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Provides a way to concatenate identifiers using metavariable expressions.
     (unstable, macro_metavar_expr_concat, "1.81.0", Some(124225)),
-    /// Allows directly represented generic_const_args as the rhs of const items without the
-    /// `direct_const_arg!` macro.
-    (incomplete, macroless_const_item_generic_const_args, "CURRENT_RUSTC_VERSION", Some(162540)),
-    /// Allows directly represented generic_const_args without the `direct_const_arg!` macro.
-    (incomplete, macroless_generic_const_args, "1.99.0", Some(159006)),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
     /// Allows additional const parameter types, such as [u8; 10] or user defined types.
     /// User defined types must not have fields more private than the type itself.
     (unstable, min_adt_const_params, "1.96.0", Some(154042)),
-    /// Enables the generic const args MVP (paths to type const items and constructors
-    /// for ADTs and primitives).
-    (incomplete, min_generic_const_args, "1.84.0", Some(132980)),
     /// A minimal, sound subset of specialization intended to be used by the
     /// standard library until the soundness issues with specialization
     /// are fixed.
@@ -630,6 +641,10 @@ declare_features! (
     (unstable, mips_target_feature, "1.27.0", Some(150253)),
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
     (unstable, more_qualified_paths, "1.54.0", Some(86935)),
+    /// The `movdir64b` target feature on x86.
+    (unstable, movdir64b_target_feature, "CURRENT_RUSTC_VERSION", Some(163741)),
+    /// The `movdiri` target feature on x86.
+    (unstable, movdiri_target_feature, "CURRENT_RUSTC_VERSION", Some(163741)),
     /// Allows `move(expr)` in closures.
     (incomplete, move_expr, "1.97.0", Some(155050)),
     /// The `movrs` target feature on x86.
@@ -857,10 +872,25 @@ pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[
     (sym::ref_pat_eat_one_layer_2024, sym::ref_pat_eat_one_layer_2024_structural),
 ];
 
+pub enum DependentFeature {
+    And(&'static [DependentFeature]),
+    Or(&'static [DependentFeature]),
+    Leaf(Symbol),
+}
+
 /// Some features require one or more other features to be enabled.
-pub const DEPENDENT_FEATURES: &[(Symbol, &[Symbol])] = &[
-    (sym::generic_const_args, &[sym::min_generic_const_args]),
-    (sym::macroless_generic_const_args, &[sym::min_generic_const_args]),
-    (sym::macroless_const_item_generic_const_args, &[sym::min_generic_const_args]),
-    (sym::unsized_const_params, &[sym::adt_const_params]),
+pub const DEPENDENT_FEATURES: &[(Symbol, DependentFeature)] = &[
+    // tidy-alphabetical-start
+    (
+        sym::gca_adts,
+        DependentFeature::Or(&[
+            DependentFeature::Leaf(sym::min_adt_const_params),
+            DependentFeature::Leaf(sym::adt_const_params),
+        ]),
+    ),
+    (sym::gca_const_items, DependentFeature::Leaf(sym::gca_min_const_items)),
+    (sym::gca_macroless_args, DependentFeature::Leaf(sym::gca_min_const_items)),
+    (sym::gca_macroless_items, DependentFeature::Leaf(sym::gca_min_const_items)),
+    (sym::unsized_const_params, DependentFeature::Leaf(sym::adt_const_params)),
+    // tidy-alphabetical-end
 ];

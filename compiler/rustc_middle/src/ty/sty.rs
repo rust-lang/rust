@@ -8,9 +8,9 @@ use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
 use rustc_abi::{FIRST_VARIANT, FieldIdx, NumScalableVectors, ScalableElt, VariantIdx};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, extension};
 use rustc_span::{DUMMY_SP, Span, Symbol, bug, kw, sym};
@@ -2115,28 +2115,9 @@ impl<'tcx> Ty<'tcx> {
         match self.kind() {
             ty::Bool => Some(sym::bool),
             ty::Char => Some(sym::char),
-            ty::Float(f) => match f {
-                ty::FloatTy::F16 => Some(sym::f16),
-                ty::FloatTy::F32 => Some(sym::f32),
-                ty::FloatTy::F64 => Some(sym::f64),
-                ty::FloatTy::F128 => Some(sym::f128),
-            },
-            ty::Int(f) => match f {
-                ty::IntTy::Isize => Some(sym::isize),
-                ty::IntTy::I8 => Some(sym::i8),
-                ty::IntTy::I16 => Some(sym::i16),
-                ty::IntTy::I32 => Some(sym::i32),
-                ty::IntTy::I64 => Some(sym::i64),
-                ty::IntTy::I128 => Some(sym::i128),
-            },
-            ty::Uint(f) => match f {
-                ty::UintTy::Usize => Some(sym::usize),
-                ty::UintTy::U8 => Some(sym::u8),
-                ty::UintTy::U16 => Some(sym::u16),
-                ty::UintTy::U32 => Some(sym::u32),
-                ty::UintTy::U64 => Some(sym::u64),
-                ty::UintTy::U128 => Some(sym::u128),
-            },
+            ty::Int(i) => Some(i.name()),
+            ty::Uint(u) => Some(u.name()),
+            ty::Float(f) => Some(f.name()),
             ty::Str => Some(sym::str),
             _ => None,
         }
@@ -2190,7 +2171,7 @@ impl<'tcx> Ty<'tcx> {
                 def.flags().contains(AdtFlags::IS_MAYBE_DANGLING)
                     || def.flags().contains(AdtFlags::IS_MANUALLY_DROP)
             }
-            ty::Closure(..) | ty::Coroutine(..) | ty::CoroutineClosure(..) => true,
+            ty::Coroutine(..) => true,
             _ => false,
         }
     }

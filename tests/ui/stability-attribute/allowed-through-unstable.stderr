@@ -4,7 +4,13 @@ warning: use of deprecated import through accidentally stabilized module `unstab
 LL | use allowed_through_unstable_core::unstable_module::OldStableTraitAllowedThoughUnstable;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(deprecated)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+note: the lint level is defined here
+  --> $DIR/allowed-through-unstable.rs:5:9
+   |
+LL | #![warn(unstable_imports)]
+   |         ^^^^^^^^^^^^^^^^
 help: use the new path instead
    |
 LL - use allowed_through_unstable_core::unstable_module::OldStableTraitAllowedThoughUnstable;
@@ -12,7 +18,7 @@ LL + use allowed_through_unstable_core::stable::OldStableTraitAllowedThoughUnsta
    |
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/allowed-through-unstable.rs:9:36
+  --> $DIR/allowed-through-unstable.rs:10:36
    |
 LL | use allowed_through_unstable_core::unstable_module::NewStableTraitNotAllowedThroughUnstable;
    |                                    ^^^^^^^^^^^^^^^
@@ -24,3 +30,23 @@ LL | use allowed_through_unstable_core::unstable_module::NewStableTraitNotAllowe
 error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0658`.
+Future incompatibility report: Future breakage diagnostic:
+warning: use of deprecated import through accidentally stabilized module `unstable_module`
+  --> $DIR/allowed-through-unstable.rs:8:5
+   |
+LL | use allowed_through_unstable_core::unstable_module::OldStableTraitAllowedThoughUnstable;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163160 <https://github.com/rust-lang/rust/issues/163160>
+note: the lint level is defined here
+  --> $DIR/allowed-through-unstable.rs:5:9
+   |
+LL | #![warn(unstable_imports)]
+   |         ^^^^^^^^^^^^^^^^
+help: use the new path instead
+   |
+LL - use allowed_through_unstable_core::unstable_module::OldStableTraitAllowedThoughUnstable;
+LL + use allowed_through_unstable_core::stable::OldStableTraitAllowedThoughUnstable;
+   |
+

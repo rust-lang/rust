@@ -885,7 +885,7 @@ impl<T> [T] {
 
     /// Swaps two elements in the slice.
     ///
-    /// If `a` equals to `b`, it's guaranteed that elements won't change value.
+    /// If `a` equals `b`, it's guaranteed that elements won't change value.
     ///
     /// # Arguments
     ///
@@ -2125,7 +2125,7 @@ impl<T> [T] {
     /// Divides one slice into two at an index, returning `None` if the slice is
     /// too short.
     ///
-    /// If `mid ≤ len` returns a pair of slices where the first will contain all
+    /// If `mid ≤ len`, returns a pair of slices where the first will contain all
     /// indices from `[0, mid)` (excluding the index `mid` itself) and the
     /// second will contain all indices from `[mid, len)` (excluding the index
     /// `len` itself).
@@ -2174,7 +2174,7 @@ impl<T> [T] {
     /// Divides one mutable slice into two at an index, returning `None` if the
     /// slice is too short.
     ///
-    /// If `mid ≤ len` returns a pair of slices where the first will contain all
+    /// If `mid ≤ len`, returns a pair of slices where the first will contain all
     /// indices from `[0, mid)` (excluding the index `mid` itself) and the
     /// second will contain all indices from `[mid, len)` (excluding the index
     /// `len` itself).
@@ -2801,7 +2801,7 @@ impl<T> [T] {
     /// assert_eq!(b"hello".trim_prefix(prefix.as_bytes()), b"llo".as_ref());
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
-    #[stable(feature = "trim_prefix_suffix", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "trim_prefix_suffix", since = "1.100.0")]
     pub fn trim_prefix<P: SlicePattern<Item = T> + ?Sized>(&self, prefix: &P) -> &[T]
     where
         T: PartialEq,
@@ -2839,7 +2839,7 @@ impl<T> [T] {
     /// assert_eq!(v.trim_suffix(&[50, 30]), &[10, 40, 30][..]);
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
-    #[stable(feature = "trim_prefix_suffix", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "trim_prefix_suffix", since = "1.100.0")]
     pub fn trim_suffix<P: SlicePattern<Item = T> + ?Sized>(&self, suffix: &P) -> &[T]
     where
         T: PartialEq,

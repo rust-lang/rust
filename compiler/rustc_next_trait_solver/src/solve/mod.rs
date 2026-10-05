@@ -79,6 +79,34 @@ fn has_only_region_constraints<I: Interner>(response: ty::Canonical<I, Response<
         && normalization_nested_goals.is_empty()
 }
 
+/// Whether two canonical responses are exactly equal except for their
+/// region constraints.
+fn equal_response_modulo_region_constraints<I: Interner>(
+    a: &CanonicalResponse<I>,
+    b: &CanonicalResponse<I>,
+) -> bool {
+    let CanonicalResponse {
+        max_universe: a_max_universe,
+        var_kinds: a_var_kinds,
+        value:
+            Response {
+                var_values: a_var_values,
+                certainty: a_certainty,
+                external_constraints: a_external_constraints,
+            },
+    } = a;
+
+    let ExternalConstraintsData { region_constraints: _, opaque_types, normalization_nested_goals } =
+        &**a_external_constraints;
+
+    a_max_universe == &b.max_universe
+        && a_var_kinds == &b.var_kinds
+        && a_var_values == &b.value.var_values
+        && a_certainty == &b.value.certainty
+        && opaque_types == &b.value.external_constraints.opaque_types
+        && normalization_nested_goals == &b.value.external_constraints.normalization_nested_goals
+}
+
 impl<'a, D, I> EvalCtxt<'a, D>
 where
     D: SolverDelegate<Interner = I>,
@@ -90,16 +118,7 @@ where
         goal: Goal<I, ty::OutlivesClause<I, I::Ty>>,
     ) -> QueryResultOrRerunNonErased<I> {
         let ty::OutlivesClause(ty, lt) = goal.predicate;
-        let ty = self.normalize(GoalSource::Misc, goal.param_env, ty::Unnormalized::new_wip(ty))?;
-
-        if self.cx().assumptions_on_binders() {
-            use rustc_type_ir::region_constraint::RegionConstraint;
-
-            let constraint = self.destructure_type_outlives(ty, lt);
-            self.register_solver_region_constraint(RegionConstraint::new_from_or(constraint));
-        } else {
-            self.register_ty_outlives(ty, lt);
-        }
+        let ty = self.normalize(goal.param_env, ty::Unnormalized::new_wip(ty))?;
 
         // The normalized type can still contain non-rigid higher ranked aliases if their
         // normalization ends up with ambiguity. Or we have non-rigid aliases inside rigid ones.
@@ -109,6 +128,18 @@ where
         if ty.has_non_region_infer() || ty.has_non_rigid_aliases() {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
         } else {
+            // We drop region constraints in ambiguous response so there's no need to add them in
+            // the ambiguous branch. Also this guarantees we don't have ty vars when destructuring
+            // type outlives.
+            if self.cx().assumptions_on_binders() {
+                use rustc_type_ir::region_constraint::RegionConstraint;
+
+                let constraint = self.destructure_type_outlives(ty, lt);
+                self.register_solver_region_constraint(RegionConstraint::new_from_or(constraint));
+            } else {
+                self.register_ty_outlives(ty, lt);
+            }
+
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         }
     }
@@ -315,13 +346,36 @@ where
             candidate.result.value.certainty == Certainty::Yes
                 && has_no_inference_or_external_constraints(candidate.result)
         });
-        if let Some((i, c)) = always_applicable {
-            return Some((c.result, MergeCandidateInfo::AlwaysApplicable(i)));
+
+        if let Some((i, candidate)) = always_applicable {
+            return Some((candidate.result, MergeCandidateInfo::AlwaysApplicable(i)));
         }
 
         let one: CanonicalResponse<I> = candidates[0].result;
-        if candidates[1..].iter().all(|candidate| candidate.result == one) {
-            return Some((one, MergeCandidateInfo::EqualResponse));
+
+        if candidates[1..]
+            .iter()
+            .all(|candidate| equal_response_modulo_region_constraints(&one, &candidate.result))
+        {
+            let region_constraints = &one.value.external_constraints.region_constraints;
+            if candidates[1..].iter().all(|candidate| {
+                &candidate.result.value.external_constraints.region_constraints
+                    == region_constraints
+            }) {
+                return Some((one, MergeCandidateInfo::EqualResponse));
+            }
+
+            // If candidates differ only in region constraints, their merged region
+            // constraints are an `Or` of their respective constraints. If one of them
+            // has no region constraints, the `Or` constraint evaluates to `true`.
+            //
+            // This is a special case of `-Zassumptions-on-binders` and should be
+            // replaced eventually.
+            if let Some(candidate) = candidates.iter().find(|candidate| {
+                candidate.result.value.external_constraints.region_constraints.is_empty()
+            }) {
+                return Some((candidate.result, MergeCandidateInfo::EqualResponse));
+            }
         }
 
         None
@@ -402,7 +456,7 @@ where
             );
             // We normalize the self type to be able to relate it with
             // types from candidates.
-            self.add_goal(GoalSource::TypeRelating, projection_goal)?;
+            self.add_goal(GoalSource::Normalization, projection_goal)?;
             self.try_evaluate_added_goals()?;
             Ok(self.deeply_resolve_ignoring_regions(normalized_term))
         } else {

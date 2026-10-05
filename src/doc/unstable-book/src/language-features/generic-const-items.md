@@ -11,11 +11,11 @@ The tracking issue for this feature is: [#113521]
 Warning: This feature is an [experiment] and lacks an RFC.
 There are no guarantees that it will ever be stabilized.
 
-See also: [generic_const_exprs], [min_generic_const_args].
+See also: [generic_const_exprs], [gca_min_const_items].
 
 [experiment]: https://lang-team.rust-lang.org/how_to/experiment.html
 [generic_const_exprs]: generic-const-exprs.md
-[min_generic_const_args]: min-generic-const-args.md
+[gca_min_const_items]: gca-min-const-items.md
 
 ## Examples
 

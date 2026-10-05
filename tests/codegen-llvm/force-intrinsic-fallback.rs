@@ -2,7 +2,7 @@
 //
 //@ revisions: NORMAL FALLBACK
 //@ [FALLBACK] compile-flags: -Zforce-intrinsic-fallback
-#![feature(core_intrinsics, funnel_shifts)]
+#![feature(core_intrinsics)]
 
 // Check the effect of `-Zforce-intrinsic-fallback`.
 //

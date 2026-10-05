@@ -23,6 +23,9 @@ expression: test --skip=coverage-run
 [Test] test::CodegenUnits
     targets: [aarch64-unknown-linux-gnu]
     - Suite(tests/codegen-units)
+[Test] test::AssemblyGcc
+    targets: [aarch64-unknown-linux-gnu]
+    - Suite(tests/assembly-gcc)
 [Test] test::AssemblyLlvm
     targets: [aarch64-unknown-linux-gnu]
     - Suite(tests/assembly-llvm)

@@ -3,7 +3,7 @@
 #![deny(implicit_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![feature(alloc_io)]
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 #![feature(binary_heap_drain_sorted)]
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(binary_heap_pop_if)]
@@ -60,7 +60,6 @@
 #![feature(unique_rc_arc)]
 #![feature(vec_deque_retain_range)]
 #![feature(vec_peek_mut)]
-#![feature(vec_try_remove)]
 #![feature(write_all_vectored)]
 // tidy-alphabetical-end
 

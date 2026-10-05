@@ -1,5 +1,5 @@
 error[E0521]: borrowed data escapes outside of method
-  --> $DIR/issue-72312.rs:12:9
+  --> $DIR/issue-72312.rs:14:9
    |
 LL |       pub async fn start(&self) {
    |                          -----
@@ -14,6 +14,12 @@ LL | |         });
    | |          |
    | |__________`self` escapes the method body here
    |            argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `require_static` introduced here
+  --> $DIR/issue-72312.rs:2:22
+   |
+LL | fn require_static<T: 'static>(val: T) -> T {
+   |                      ^^^^^^^ lifetime requirement introduced here
 
 error: aborting due to 1 previous error
 

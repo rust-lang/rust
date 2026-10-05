@@ -1,0 +1,14 @@
+error: non-defining use of `case1::Opaque<'_>` in the defining scope
+  --> $DIR/defined-in-closure-external-lifetime.rs:10:29
+   |
+LL |         let _ = || { let _: Opaque<'s> = (); };
+   |                             ^^^^^^^^^^
+
+error: non-defining use of `case2::Opaque<'_>` in the defining scope
+  --> $DIR/defined-in-closure-external-lifetime.rs:20:23
+   |
+LL |         let _ = || -> Opaque<'s> {};
+   |                       ^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

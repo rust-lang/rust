@@ -7,12 +7,11 @@ use rustc_ast as ast;
 use rustc_ast::join_path_idents;
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
+use rustc_attr_ir::{DocAttribute, find_attr};
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_hir as hir;
-use rustc_hir::attrs::DocAttribute;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::find_attr;
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
@@ -357,11 +356,11 @@ pub(crate) fn print_const(tcx: TyCtxt<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
         ty::ConstKind::Alias(_, ty::AliasConst { kind, .. }) => {
             let def_id: DefId = match kind {
-                ty::AliasConstKind::Projection { def_id } => def_id.into(),
-                ty::AliasConstKind::InherentSelf { def_id } => def_id.into(),
-                ty::AliasConstKind::InherentImpl { def_id } => def_id.into(),
-                ty::AliasConstKind::Free { def_id } => def_id.into(),
-                ty::AliasConstKind::Anon { def_id } => def_id.into(),
+                ty::AliasConstKind::Projection { def_id }
+                | ty::AliasConstKind::InherentSelf { def_id }
+                | ty::AliasConstKind::InherentImpl { def_id }
+                | ty::AliasConstKind::Free { def_id }
+                | ty::AliasConstKind::Anon { def_id } => def_id,
             };
             if let Some(local_def_id) = def_id.as_local()
                 && let Some(body_id) = tcx.hir_maybe_body_owned_by(local_def_id)
@@ -580,7 +579,7 @@ pub(crate) fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Opti
     }
 }
 
-/// This function exists because it runs on `hir::Attributes` whereas the other is a
+/// This function exists because it runs on `rustc_attr_ir::Attributes` whereas the other is a
 /// `clean::Attributes` method.
 pub(crate) fn has_doc_flag<F: Fn(&DocAttribute) -> bool>(
     tcx: TyCtxt<'_>,

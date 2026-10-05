@@ -1,6 +1,6 @@
 //@ no-prefer-dynamic
 
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 #![crate_type = "rlib"]
 
 use std::alloc::{GlobalAlloc, System, Layout};

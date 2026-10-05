@@ -2,9 +2,9 @@
 
 use std::ops::ControlFlow;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
@@ -1034,8 +1034,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             // transmute checking and polymorphic MIR optimizations could
                             // get a result which isn't correct for all monomorphizations.
                             match selcx.typing_mode() {
-                                TypingMode::Coherence
-                                | TypingMode::Typeck { .. }
+                                TypingMode::Typeck { .. }
                                 | TypingMode::PostTypeckUntilBorrowck { .. }
                                 | TypingMode::Reflection
                                 | TypingMode::PostBorrowck { .. } => {
@@ -1052,6 +1051,9 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                                     let poly_trait_ref =
                                         selcx.infcx.deeply_resolve_ignoring_regions(trait_ref);
                                     !poly_trait_ref.still_further_specializable()
+                                }
+                                TypingMode::Coherence => {
+                                    unreachable!("old solver coherence")
                                 }
                             }
                         }

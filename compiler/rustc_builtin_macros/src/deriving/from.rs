@@ -5,9 +5,8 @@ use rustc_expand::base::{DummyResult, ExtCtxt};
 use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::thin_vec;
 
-use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
-use crate::deriving::pathvec;
+use crate::deriving::{new_path, pathvec};
 use crate::diagnostics;
 
 /// Generate an implementation of the `From` trait, provided that `item`
@@ -47,12 +46,12 @@ pub(crate) fn expand_deriving_from(
         _ => cx.dcx().bug("Invalid derive(From) ADT input"),
     };
 
-    let from_type = Ty::AstTy(match field {
+    let from_type = match field {
         Ok(ref field) => field.ty.clone(),
         Err(guar) => cx.ty(span, ast::TyKind::Err(guar)),
-    });
+    };
 
-    let path = new_path(cx, span, pathvec!(convert::From), &[from_type.clone()]);
+    let path = new_path(cx, span, pathvec!(convert::From), vec![from_type.clone()]);
 
     // Generate code like this:
     //
@@ -76,7 +75,8 @@ pub(crate) fn expand_deriving_from(
             generics: cx.empty_generics(span),
             explicit_self: false,
             nonself_args: smallvec![(from_type, sym::value)],
-            ret_ty: Ty::Self_,
+            has_other_selflike_arg: false,
+            ret_ty: cx.ty_self(span),
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: combine_substructure(|cx, span, substructure| {
@@ -97,14 +97,14 @@ pub(crate) fn expand_deriving_from(
                             thin_vec![cx.field_imm(
                                 span,
                                 field.ident.unwrap(),
-                                cx.expr_ident(span, Ident::new(sym::value, span))
+                                cx.expr_ident_sym(span, sym::value)
                             )],
                         ),
                         // Self(value)
                         VariantData::Tuple(_, _) => cx.expr_call_ident(
                             span,
                             self_kw,
-                            thin_vec![cx.expr_ident(span, Ident::new(sym::value, span))],
+                            thin_vec![cx.expr_ident_sym(span, sym::value)],
                         ),
                         variant => {
                             cx.dcx().bug(format!("Invalid derive(From) ADT variant: {variant:?}"));
@@ -115,7 +115,6 @@ pub(crate) fn expand_deriving_from(
                 BlockOrExpr::new_expr(expr)
             }),
         }],
-        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,

@@ -1,10 +1,10 @@
 // Ensure that traits with generic non-type associated consts are dyn *in*compatible,
-// even when non-type associated const equality is enabled by `generic_const_args`.
+// even when non-type associated const equality is enabled by `gca_const_items`.
 
 //@ dont-require-annotations: NOTE
 //@ compile-flags: -Znext-solver=globally
 
-#![feature(generic_const_args, generic_const_items, min_generic_const_args)]
+#![feature(gca_const_items, generic_const_items, gca_min_const_items)]
 #![expect(incomplete_features)]
 
 trait Trait {

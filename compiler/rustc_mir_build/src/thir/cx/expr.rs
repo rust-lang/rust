@@ -1,12 +1,12 @@
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::UnsafeBinderCastKind;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{AttributeKind, HasAttrs, find_attr};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::attrs::{AttributeKind, HasAttrs};
+use rustc_hir::HirId;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::{HirId, find_attr};
 use rustc_index::Idx;
 use rustc_middle::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
@@ -57,12 +57,14 @@ impl<'tcx> SplattedFunc<'tcx> {
     }
 }
 
-fn parsed_attrs(id: HirId, tcx: TyCtxt<'_>) -> ThinVec<AttributeKind> {
+fn filter_loop_hint_attrs(id: HirId, tcx: TyCtxt<'_>) -> ThinVec<AttributeKind> {
     HasAttrs::get_attrs(id, &tcx)
         .into_iter()
         .filter_map(|attr| match attr {
-            hir::Attribute::Parsed(attrkind) => Some(attrkind.clone()),
-            hir::Attribute::Unparsed(_) => None,
+            rustc_attr_ir::Attribute::Parsed(attrkind @ AttributeKind::Unroll(_)) => {
+                Some(attrkind.clone())
+            }
+            _ => None,
         })
         .collect()
 }
@@ -91,7 +93,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
         trace!(?expr.ty);
 
-        let mut attrs = ThinVec::new();
+        let mut loop_hint_attrs = ThinVec::new();
 
         if let hir::ExprKind::Loop(_, _, _, span) = hir_expr.kind {
             match span.desugaring_kind() {
@@ -103,12 +105,12 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     // ignore async for loops
                     if let hir::Node::Expr(expr) = self.tcx.parent_hir_node(expr.hir_id) {
                         std::assert_matches!(expr.kind, hir::ExprKind::DropTemps(..));
-                        attrs = parsed_attrs(expr.hir_id, self.tcx)
+                        loop_hint_attrs = filter_loop_hint_attrs(expr.hir_id, self.tcx)
                     }
                 }
                 // For loops defined with `loop` and `while`, the expr already has the attrs
                 Some(DesugaringKind::WhileLoop) | None => {
-                    attrs = parsed_attrs(hir_expr.hir_id, self.tcx);
+                    loop_hint_attrs = filter_loop_hint_attrs(hir_expr.hir_id, self.tcx);
                 }
                 _ => (),
             }
@@ -128,8 +130,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
         let ty = expr.ty;
         let value = self.thir.exprs.push(expr);
 
-        if !attrs.is_empty() {
-            self.thir.attributes.insert(value, attrs);
+        if !loop_hint_attrs.is_empty() {
+            self.thir.loop_hint_attrs.insert(value, loop_hint_attrs);
         }
 
         // Finally, wrap this up in the expr's scope.
@@ -827,22 +829,27 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     .operands
                     .iter()
                     .map(|(op, _op_sp)| match *op {
-                        hir::InlineAsmOperand::In { reg, expr } => {
-                            InlineAsmOperand::In { reg, expr: self.mirror_expr(expr) }
-                        }
+                        hir::InlineAsmOperand::In { reg, expr } => InlineAsmOperand::In {
+                            reg: reg.as_target(),
+                            expr: self.mirror_expr(expr),
+                        },
                         hir::InlineAsmOperand::Out { reg, late, ref expr } => {
                             InlineAsmOperand::Out {
-                                reg,
+                                reg: reg.as_target(),
                                 late,
                                 expr: expr.map(|expr| self.mirror_expr(expr)),
                             }
                         }
                         hir::InlineAsmOperand::InOut { reg, late, expr } => {
-                            InlineAsmOperand::InOut { reg, late, expr: self.mirror_expr(expr) }
+                            InlineAsmOperand::InOut {
+                                reg: reg.as_target(),
+                                late,
+                                expr: self.mirror_expr(expr),
+                            }
                         }
                         hir::InlineAsmOperand::SplitInOut { reg, late, in_expr, ref out_expr } => {
                             InlineAsmOperand::SplitInOut {
-                                reg,
+                                reg: reg.as_target(),
                                 late,
                                 in_expr: self.mirror_expr(in_expr),
                                 out_expr: out_expr.map(|expr| self.mirror_expr(expr)),

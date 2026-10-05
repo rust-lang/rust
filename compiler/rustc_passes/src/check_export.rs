@@ -2,11 +2,11 @@ use std::iter;
 use std::ops::ControlFlow;
 
 use rustc_abi::ExternAbi;
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::find_attr;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{EffectiveVisibility, Level};
@@ -132,13 +132,15 @@ impl<'tcx> Visitor<'tcx> for ExportableItemCollector<'tcx> {
             | hir::ItemKind::TyAlias(..) => {
                 self.add_exportable(def_id);
             }
-            hir::ItemKind::Use(path, _) => {
-                for res in path.res.present_items() {
-                    // Only local items are exportable.
-                    if let Some(res_id) = res.opt_def_id()
-                        && let Some(res_id) = res_id.as_local()
-                    {
-                        self.add_exportable(res_id);
+            hir::ItemKind::Use(tree) => {
+                for res in tree.resolutions() {
+                    for res in res.present_items() {
+                        // Only local items are exportable.
+                        if let Some(res_id) = res.opt_def_id()
+                            && let Some(res_id) = res_id.as_local()
+                        {
+                            self.add_exportable(res_id);
+                        }
                     }
                 }
             }

@@ -15,6 +15,15 @@ LL | |     })
    | |      |
    | |______`s` escapes the function body here
    |        argument requires that `'not_static` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `spawn` introduced here
+  --> $SRC_DIR/std/src/thread/functions.rs:LL:COL
+  ::: $SRC_DIR/std/src/thread/functions.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+  ::: $SRC_DIR/std/src/thread/functions.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
 
 error: aborting due to 1 previous error
 

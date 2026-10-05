@@ -32,78 +32,78 @@ unsafe fn unsafe_identity<T>(x: T) -> T {
 fn lint() {
     fn basic() {
         let one = Box::new(1);
-        let _ = NonNull::from_mut(Box::leak(one));
+        let _ = Box::into_non_null(one);
 
         let one = Box::new(1);
-        let _ = NonNull::from_mut(Box::leak(identity(one)));
+        let _ = Box::into_non_null(identity(one));
     }
 
     fn qualifiers() {
         let one = Box::new(1);
-        let _ = NonNull::from_mut(Box::leak(one));
+        let _ = Box::into_non_null(one);
 
         {
             use Box as Box2;
             use NonNull as NonNull2;
             let one = Box::new(1);
-            let _ = NonNull::from_mut(Box::leak(one));
+            let _ = Box::into_non_null(one);
         }
 
         {
             type Box2<T> = Box<T>;
             type NonNull2<T> = NonNull<T>;
             let one = Box::new(1);
-            let _ = NonNull::from_mut(Box::leak(one));
+            let _ = Box::into_non_null(one);
         }
     }
 
     fn macros() {
         let one = Box::new(1);
-        let _ = NonNull::from_mut(Box::leak(one));
+        let _ = Box::into_non_null(one);
 
         let one = Box::new(1);
-        let _ = identity!(NonNull::from_mut(Box::leak(one)));
+        let _ = identity!(Box::into_non_null(one));
 
         let one = Box::new(1);
-        let _ = NonNull::from_mut(Box::leak(one));
+        let _ = Box::into_non_null(one);
 
         let one = Box::new(1);
-        let _ = NonNull::from_mut(Box::leak(one));
+        let _ = Box::into_non_null(one);
 
         let one = Box::new(1);
-        let _ = NonNull::from_mut(Box::leak(one));
+        let _ = Box::into_non_null(one);
 
         let one = Box::new(1);
-        let _ = NonNull::from_mut(Box::leak(weird!(one)));
+        let _ = Box::into_non_null(weird!(one));
     }
 
     fn keep_unsafe_block() {
         let one = Box::new(1);
         let _ = unsafe {
-            NonNull::from_mut(Box::leak(unsafe_identity(one)))
+            Box::into_non_null(unsafe_identity(one))
             //~^ nonnull_unchecked_on_box_ptr
         };
 
         let one = Box::new(1);
         let _ = unsafe {
-            identity(NonNull::from_mut(Box::leak(one)))
+            identity(Box::into_non_null(one))
             //~^ nonnull_unchecked_on_box_ptr
         };
 
         let one = Box::new(1);
         let _ = unsafe {
-            unsafe_identity(NonNull::from_mut(Box::leak(one)))
+            unsafe_identity(Box::into_non_null(one))
             //~^ nonnull_unchecked_on_box_ptr
         };
 
         let _ = unsafe {
-            NonNull::from_mut(Box::leak(Box::new(std::num::NonZeroI32::new_unchecked(1))))
+            Box::into_non_null(Box::new(std::num::NonZeroI32::new_unchecked(1)))
             //~^ nonnull_unchecked_on_box_ptr
         };
 
         let _ = unsafe {
             let one = Box::new(1);
-            NonNull::from_mut(Box::leak(one))
+            Box::into_non_null(one)
             //~^ nonnull_unchecked_on_box_ptr
         };
     }
@@ -135,22 +135,16 @@ fn no_lint() {
     }
 }
 
-#[clippy::msrv = "1.25"]
-fn msrv_1_25() {
+#[clippy::msrv = "1.98"]
+fn msrv_1_98() {
     let one = Box::new(1);
     let _ = unsafe { NonNull::new_unchecked(Box::into_raw(one)) };
 }
 
-#[clippy::msrv = "1.26"]
-fn msrv_1_26() {
+#[clippy::msrv = "1.99"]
+fn msrv_1_99() {
     let one = Box::new(1);
-    let _ = NonNull::from(Box::leak(one));
-}
-
-#[clippy::msrv = "1.89"]
-fn msrv_1_89() {
-    let one = Box::new(1);
-    let _ = NonNull::from_mut(Box::leak(one));
+    let _ = Box::into_non_null(one);
 }
 
 fn main() {}

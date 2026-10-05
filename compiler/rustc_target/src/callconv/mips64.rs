@@ -1,6 +1,7 @@
 use arrayvec::ArrayVec;
 use rustc_abi::{
-    BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, Size, TyAbiInterface,
+    BackendRepr, FieldsShape, Float, HasDataLayout, Integer, Numeric, Primitive, Reg, RegKind,
+    Size, TyAbiInterface,
 };
 
 use crate::callconv::{ArgAbi, ArgAttribute, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
@@ -56,6 +57,22 @@ where
     let size = ret.layout.size;
     let bits = size.bits();
     if bits <= 128 {
+        // NOTE: Complex<f128> is returned indirectly.
+        if let Some(component) = ret.layout.complex_number(cx) {
+            match component {
+                Numeric::Int(Integer::I8 | Integer::I16 | Integer::I32, _) => {
+                    // Return a Complex<{integer}> packed into a single register when that fits.
+                    ret.cast_to(Reg { kind: RegKind::Integer, size });
+                }
+                _ => {
+                    // Otherwise pass in 2 registers.
+                    let reg = Reg { kind: component.reg_kind(), size: component.size() };
+                    ret.cast_to(CastTarget::pair(reg, reg));
+                }
+            }
+            return;
+        }
+
         // Unlike other architectures which return aggregates in registers, MIPS n64 limits the
         // use of float registers to structures (not unions) containing exactly one or two
         // float fields.
@@ -101,8 +118,67 @@ where
 
     if !arg.layout.is_aggregate() {
         extend_integer_width_mips(arg, 64);
+
+        // We always pad with an integer, even if the primitive is a float. This
+        // conflicts with our reading of the specification, which would require
+        // padding floats with floats and integers with integers.
+        // However, this implementation is consistent with GCC, which means we
+        // are compatible with the de-facto ABI on the platform.
+        if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
+            let kind = match scalar.primitive() {
+                Primitive::Int(_, _) | Primitive::Pointer(_) => RegKind::Integer,
+                Primitive::Float(_) => RegKind::Float,
+            };
+            arg.cast_to_and_pad_i32(CastTarget::from(Reg { kind, size }), pad_i32);
+        }
     } else if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
         arg.make_indirect();
+    } else if let Some(component) = arg.layout.complex_number(cx)
+        && !matches!(component, Numeric::Float(Float::F16))
+    {
+        let slot = dl.pointer_size();
+        let curr_offset = offset.align_to(align);
+
+        const NUM_ARG_SLOTS: u64 = 8;
+
+        match component {
+            Numeric::Float(Float::F16B) => unreachable!("Complex<f16b> is not C-compatible"),
+            Numeric::Float(Float::F16) => unreachable!("not supported on mips64"),
+            Numeric::Float(Float::F32 | Float::F64) => {
+                // Only pass a Complex<f32>/Complex<f64> in FPRs when two argument slots are free.
+                if curr_offset.bytes() / slot.bytes() + 2 <= NUM_ARG_SLOTS {
+                    // Both components claim a slot, even a Complex<f32> which could fit in one
+                    // slot.
+                    //
+                    // FIXME(complex_numbers): c-variadic arguments are passed in GPRs, so need a
+                    // special carve-out here and Complex<f32> is bitpacked into one 64-bit GPR.
+                    *offset = curr_offset + slot * 2;
+                    let unit = Reg { kind: RegKind::Float, size: component.size() };
+                    let cast_target = CastTarget::from(Uniform::new(unit, size));
+                    arg.cast_to(cast_target);
+                    return;
+                }
+
+                // Otherwise pack it into GPRs (or the stack) like an integer of the same size.
+                arg.cast_to_and_pad_i32(Uniform::new(Reg::i64(), size), pad_i32);
+            }
+            Numeric::Float(Float::F128) => {
+                // Complex<f128> is passed in 4 FPRs, but aligned to 16 so may need padding.
+                let reg = Reg { kind: RegKind::Float, size: arg.layout.field(cx, 0).size };
+                arg.cast_to_and_pad_i32(CastTarget::pair(reg, reg), pad_i32);
+            }
+            Numeric::Int(Integer::I8 | Integer::I16 | Integer::I32, _) => {
+                // Cast Complex<i8> into i16, Complex<i16> to i32, etc.
+                let cast_target = CastTarget::from(Reg { kind: RegKind::Integer, size });
+                // The inreg attribute makes the bits land in the right (upper) bits on BE targets.
+                arg.cast_to(cast_target.with_attrs(ArgAttribute::InReg.into()));
+            }
+            Numeric::Int(Integer::I64 | Integer::I128, _) => {
+                // Complex<i64> and Complex<i128> are passed as 2 separate arguments.
+                let cast_target = CastTarget::from(Reg { kind: RegKind::Integer, size });
+                arg.cast_to(cast_target);
+            }
+        }
     } else {
         match arg.layout.fields {
             FieldsShape::Primitive => unreachable!(),

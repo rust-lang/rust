@@ -1,11 +1,14 @@
 //! Shared check/bless harness for stdarch generators.
 
+use similar::TextDiff;
 use std::error::Error as StdError;
 use std::fmt;
 use std::fs;
 use std::io;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::str::FromStr;
 
 /// First-line marker identifying an auto-generated file. Generators emit this
 /// as the first line of every file they produce; the harness uses it to
@@ -13,7 +16,7 @@ use std::path::{Path, PathBuf};
 pub const GENERATED_MARKER: &str = "// This code is automatically generated. DO NOT MODIFY.";
 
 /// Controls what `run_generator` does with the generator's output.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     /// Verify that the `committed` matches the generator's output for owned files.
     ///
@@ -26,23 +29,20 @@ pub enum Mode {
     /// into `committed`. If the generator no longer produces an owned file, the
     /// committed copy is deleted. Files in `committed` that are not owned
     /// are left untouched.
+    #[default]
     Bless,
 }
 
-impl Mode {
-    /// Read the mode from the `STDARCH_GEN_MODE` environment variable.
-    ///
-    /// Recognized values:
-    /// - `"check"` → [`Mode::Check`]
-    /// - `"bless"` → [`Mode::Bless`]
-    /// - unset → [`Mode::Bless`]
-    /// - any other value → panic
-    pub fn from_env() -> Self {
-        match std::env::var("STDARCH_GEN_MODE").as_deref() {
-            Ok("check") => Mode::Check,
-            Ok("bless") => Mode::Bless,
-            Ok(other) => panic!("unknown STDARCH_GEN_MODE value: {other:?}"),
-            Err(_) => Mode::Bless,
+impl FromStr for Mode {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "check" => Ok(Mode::Check),
+            "bless" => Ok(Mode::Bless),
+            other => Err(format!(
+                "unknown stdarch generation mode: {other:?}. Possible values are `check` or `bless`."
+            )),
         }
     }
 }
@@ -102,6 +102,18 @@ impl From<io::Error> for Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+pub struct GeneratorCtx {
+    rustfmt_path: PathBuf,
+}
+
+impl GeneratorCtx {
+    pub fn new(rustfmt_path: Option<PathBuf>) -> Self {
+        Self {
+            rustfmt_path: rustfmt_path.unwrap_or_else(|| PathBuf::from("rustfmt")),
+        }
+    }
+}
+
 /// Run a generator under the chosen `mode`, reconciling its output with `committed`.
 ///
 /// Arguments:
@@ -120,7 +132,12 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// - [`Mode::Bless`]: runs the generator into a temp dir and copies owned
 ///   files into `committed`, or removes `committed`'s copy if the generator no
 ///   longer produces them.
-pub fn run_generator<F, E>(committed: &Path, mode: Mode, generate: F) -> Result<()>
+pub fn run_generator<F, E>(
+    ctx: &GeneratorCtx,
+    committed: &Path,
+    mode: Mode,
+    generate: F,
+) -> Result<()>
 where
     F: FnOnce(&Path) -> std::result::Result<(), E>,
     E: Into<Box<dyn StdError + Send + Sync>>,
@@ -130,6 +147,14 @@ where
 
     let owned = discover_owned(committed)?;
     let produced = discover_all(scratch.path())?;
+
+    // Format all generated Rust files
+    for file in &produced {
+        let fullpath = scratch.path().join(file);
+        if fullpath.extension().and_then(|s| s.to_str()) == Some("rs") {
+            reformat_file(ctx, &fullpath)?;
+        }
+    }
 
     let mut names: Vec<&String> = owned.iter().chain(produced.iter()).collect();
     names.sort();
@@ -142,6 +167,34 @@ where
         }
     }
     Ok(())
+}
+
+fn reformat_file(ctx: &GeneratorCtx, path: &Path) -> std::io::Result<()> {
+    let file = std::fs::File::open(path)?;
+    let proc = Command::new(&ctx.rustfmt_path)
+        // Ensure that rustfmt config files in other directories won't interfere with the formatting
+        // This is important for usage within the rust-lang/rust repository
+        .arg("--config-path")
+        .arg(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .join("rustfmt.toml"),
+        )
+        .stdin(Stdio::from(file))
+        .stdout(Stdio::piped())
+        .spawn()?;
+
+    let output = proc.wait_with_output()?;
+    if !output.status.success() {
+        panic!(
+            "Running {:?} on {path:?} failed with exit code {:?}",
+            ctx.rustfmt_path, output.status
+        );
+    }
+    std::fs::write(path, output.stdout)
 }
 
 /// Returns the names of files in `dir` whose first line begins with
@@ -199,7 +252,23 @@ fn compare(generated_dir: &Path, committed_dir: &Path, filename: &str) -> Result
         }),
         (false, false) => Ok(()),
         (true, true) => {
-            if fs::read(&gen_path)? != fs::read(&comm_path)? {
+            let generated = fs::read(&gen_path)?;
+            let committed = fs::read(&comm_path)?;
+            if generated != committed {
+                if let (Ok(committed), Ok(generated)) =
+                    (str::from_utf8(&committed), str::from_utf8(&generated))
+                {
+                    eprintln!(
+                        "{}",
+                        TextDiff::from_lines(committed, generated)
+                            .unified_diff()
+                            .context_radius(3)
+                            .header(
+                                &format!("committed/{filename}"),
+                                &format!("generated/{filename}"),
+                            )
+                    );
+                }
                 Err(Error::Mismatch {
                     path: rel_path,
                     kind: MismatchKind::ContentsDiffer,
@@ -249,7 +318,10 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let committed = tmp.path().join("c");
         write_marker(&committed.join("a.txt"), b"hi");
+
+        let ctx = GeneratorCtx::new(None);
         let e = run_generator(
+            &ctx,
             &committed,
             Mode::Check,
             |out| -> std::result::Result<(), io::Error> {
@@ -272,7 +344,10 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let committed = tmp.path().join("c");
         write_marker(&committed.join("a.txt"), b"hi");
+
+        let ctx = GeneratorCtx::new(None);
         let e = run_generator(
+            &ctx,
             &committed,
             Mode::Check,
             |_| -> std::result::Result<(), io::Error> { Ok(()) },
@@ -292,7 +367,10 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let committed = tmp.path().join("c");
         fs::create_dir_all(&committed).unwrap();
+
+        let ctx = GeneratorCtx::new(None);
         let e = run_generator(
+            &ctx,
             &committed,
             Mode::Check,
             |out| -> std::result::Result<(), io::Error> {
@@ -316,7 +394,10 @@ mod tests {
         let committed = tmp.path().join("c");
         write_marker(&committed.join("keep.txt"), b"");
         write_marker(&committed.join("stale.txt"), b"");
+
+        let ctx = GeneratorCtx::new(None);
         run_generator(
+            &ctx,
             &committed,
             Mode::Bless,
             |out| -> std::result::Result<(), io::Error> {
@@ -336,7 +417,9 @@ mod tests {
         fs::create_dir_all(&committed).unwrap();
         fs::write(committed.join("mod.rs"), b"hand-written").unwrap();
         fs::write(committed.join("old.txt"), b"old").unwrap();
+        let ctx = GeneratorCtx::new(None);
         run_generator(
+            &ctx,
             &committed,
             Mode::Bless,
             |out| -> std::result::Result<(), io::Error> {
@@ -348,5 +431,33 @@ mod tests {
         assert_eq!(fs::read(committed.join("mod.rs")).unwrap(), b"hand-written");
         assert_eq!(fs::read(committed.join("old.txt")).unwrap(), b"old");
         assert!(committed.join("new.txt").exists());
+    }
+
+    #[test]
+    fn generation_reformats_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        let committed = tmp.path().join("c");
+        let file = committed.join("a.rs");
+        write_marker(&file, b"foo");
+
+        let ctx = GeneratorCtx::new(None);
+        run_generator(
+            &ctx,
+            &committed,
+            Mode::Bless,
+            |out| -> std::result::Result<(), io::Error> {
+                write_marker(&out.join("a.rs"), b"fn      main() {}");
+                Ok(())
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            std::fs::read_to_string(file).unwrap(),
+            format!(
+                r#"{GENERATED_MARKER}
+fn main() {{}}
+"#
+            )
+        );
     }
 }

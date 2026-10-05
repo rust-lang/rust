@@ -68,5 +68,5 @@ These are written without a body:
 #![allow(internal_features)]
 
 #[rustc_intrinsic]
-pub fn abort() -> !;
+pub fn abort_immediate() -> !;
 ```

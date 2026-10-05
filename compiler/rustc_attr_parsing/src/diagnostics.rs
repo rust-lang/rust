@@ -897,6 +897,13 @@ pub(crate) struct InlineForceInlineConflict {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[inline]` is ignored on externally exported functions")]
+#[help(
+    "externally exported functions are functions with `#[no_mangle]`, `#[export_name]`, or `#[linkage]`"
+)]
+pub(crate) struct InlineIgnoredForExported;
+
+#[derive(Diagnostic)]
 #[diag("`#[ffi_const]` function cannot be `#[ffi_pure]`", code = E0757)]
 pub(crate) struct BothFfiConstAndPure {
     #[primary_span]
@@ -1228,7 +1235,7 @@ pub(crate) struct UnknownVersionLiteral {
 #[diag("multiple `{$name}` attributes")]
 pub(crate) struct UnusedMultiple {
     #[primary_span]
-    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
+    #[suggestion("remove this attribute", code = "", applicability = "unspecified")]
     pub this: Span,
     #[note("attribute also specified here")]
     pub other: Span,
@@ -1826,6 +1833,13 @@ pub(crate) struct EmptyLinkName {
 }
 
 #[derive(Diagnostic)]
+#[diag("attribute should be applied to an `extern` block with non-Rust ABI")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+pub(crate) struct Link;
+
+#[derive(Diagnostic)]
 #[diag("link kind `framework` is only supported on Apple targets", code = E0455)]
 pub(crate) struct LinkFrameworkApple {
     #[primary_span]
@@ -2047,7 +2061,7 @@ pub(crate) struct AdditionalCommaSuggestion {
 #[derive(Diagnostic)]
 #[diag("unused attribute")]
 pub(crate) struct UnusedDuplicate {
-    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
+    #[suggestion("remove this attribute", code = "", applicability = "unspecified")]
     pub this: Span,
     #[note("attribute also specified here")]
     pub other: Span,
@@ -2055,4 +2069,11 @@ pub(crate) struct UnusedDuplicate {
         "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
     )]
     pub warning: bool,
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum MacroExport {
+    #[diag("`#[macro_export]` has no effect on declarative macro definitions")]
+    #[note("declarative macros follow the same exporting rules as regular items")]
+    OnDeclMacro,
 }

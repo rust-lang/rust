@@ -16,6 +16,7 @@ use diagnostics::{
     UnnamedItemIsPrivate,
 };
 use rustc_ast::visit::{VisitorResult, try_visit};
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexmap::IndexSet;
 use rustc_data_structures::intern::Interned;
@@ -23,7 +24,7 @@ use rustc_errors::{MultiSpan, listify};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModId};
 use rustc_hir::intravisit::{self, InferKind, Visitor};
-use rustc_hir::{self as hir, AmbigArg, ForeignItemId, ItemId, OwnerId, PatKind, find_attr};
+use rustc_hir::{self as hir, AmbigArg, ForeignItemId, ItemId, OwnerId, PatKind};
 use rustc_lint_defs::builtin::{
     EXPORTED_PRIVATE_DEPENDENCIES, PRIVATE_BOUNDS, PRIVATE_INTERFACES, UNNAMEABLE_TYPES,
 };
@@ -517,8 +518,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         max_vis: Option<ty::Visibility>,
         level: Level,
     ) -> bool {
-        let private_vis =
-            ty::Visibility::Restricted(self.tcx.parent_module_from_def_id(def_id).into());
+        let private_vis = ty::Visibility::Restricted(self.tcx.parent_module_from_def_id(def_id));
         if max_vis != Some(private_vis) {
             return self.effective_visibilities.update(
                 def_id,

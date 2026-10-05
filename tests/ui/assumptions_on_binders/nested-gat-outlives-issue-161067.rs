@@ -1,4 +1,4 @@
-//@ compile-flags: -Zassumptions-on-binders
+//@ compile-flags: -Zassumptions-on-binders -Znext-solver=globally
 //@ needs-rustc-debug-assertions
 
 // Regression test for #161067. A nested non-rigid alias must be normalized

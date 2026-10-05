@@ -1,8 +1,7 @@
 //@ compile-flags: -Zunpretty=hir
 //@ check-pass
 
-#![feature(min_generic_const_args, macroless_generic_const_args, adt_const_params)]
-#![expect(incomplete_features)]
+#![feature(adt_const_params, gca_adts, gca_min_const_items, gca_macroless_args)]
 #![allow(dead_code)]
 
 use std::marker::ConstParamTy;
