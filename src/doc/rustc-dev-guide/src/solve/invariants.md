@@ -74,6 +74,16 @@ Many of the currently known unsound issues end up relying on this invariant bein
 It is however very difficult to imagine a sound type system without this invariant, so
 the issue is that the invariant is broken, not that we incorrectly rely on it.
 
+#### Successful normalization must not result in unconstrained inference variables ✅
+
+If a normalization goal succeeds, it must not result in unconstrained type or const inference variables. This not being the case causes type equality to not be transitive.
+
+This requirement also has to hold for invalid code to avoid compiler ICE:
+- this is subtly broken with the old solver: https://github.com/rust-lang/rust/issues/135122
+- and with both solvers for inherent associated types: https://github.com/rust-lang/rust/issues/163812
+
+Also see for https://github.com/rust-lang/rust/issues/141713 an unsoundness where this goes wrong with builtin impls and lifetimes.
+
 ### The type system is complete ❌
 
 The type system is not complete.
