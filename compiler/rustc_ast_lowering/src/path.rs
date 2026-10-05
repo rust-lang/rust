@@ -94,6 +94,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let path_span_lo = span.shrink_to_lo();
         let proj_start = p_num_segments - unresolved_segments;
+        let mut last_prefix_span = path_span_lo;
         let segments = self.arena.alloc_from_iter(
             p.iter_segments().take(proj_start).enumerate().map(|(i, segment)| {
                 let param_mode = match (qself_position, param_mode) {
@@ -131,6 +132,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     _ => GenericArgsMode::Err,
                 };
 
+                if i + 1 == proj_start {
+                    last_prefix_span = path_span_lo.to(segment.span());
+                }
+
                 self.lower_path_segment(
                     span,
                     segment,
@@ -141,16 +146,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 )
             }),
         );
-        let path = self.arena.alloc(hir::Path {
-            res,
-            segments,
-            span: self.lower_span(
-                p.iter_segments()
-                    .take(proj_start)
-                    .next_back()
-                    .map_or(path_span_lo, |segment| path_span_lo.to(segment.span())),
-            ),
-        });
+        let path =
+            self.arena.alloc(hir::Path { res, segments, span: self.lower_span(last_prefix_span) });
 
         if let Some(bound_modifier_allowed_features) = bound_modifier_allowed_features {
             path.span = self.mark_span_with_reason(
