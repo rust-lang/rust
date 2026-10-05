@@ -1095,12 +1095,14 @@ fn report_trait_method_mismatch<'tcx>(
         && let Some(ty) =
             tcx.fn_sig(trait_m.def_id).skip_binder().inputs_and_output().skip_binder().get(*i)
         && let ty::Param(param) = ty.kind()
-    {
         // The expected type corresponds to a type parameter, which migh thave a default type or
         // have been explicitly set in the `impl` with a different type.
-        let generics = tcx.generics_of(trait_m.def_id);
-        let param = generics.type_param(*param, tcx);
-        let span = tcx.def_span(param.def_id);
+        && let generics = tcx.generics_of(trait_m.def_id)
+        && let param = generics.type_param(*param, tcx)
+        && let GenericParamDefKind::Type { has_default: true, .. } = param.kind
+    {
+        let mut span: MultiSpan = tcx.def_span(param.def_id).into();
+        span.push_span_context(tcx.def_span(trait_m.container_id(tcx)).shrink_to_lo());
         diag.span_note(span, format!("expected to match this type parameter"));
     }
 
