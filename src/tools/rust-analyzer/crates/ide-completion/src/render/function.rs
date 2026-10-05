@@ -153,10 +153,6 @@ fn render(
         .lookup_by(name.as_str().to_smolstr());
 
     if let Some((cap, (self_param, params))) = complete_call_parens {
-        let with_type_param = || {
-            let gen_params = hir::GenericDef::Function(func).type_or_const_params(db);
-            gen_params.iter().any(|it| it.as_type_param(db).is_some())
-        };
         add_call_parens(
             &mut item,
             completion,
@@ -166,7 +162,7 @@ fn render(
             self_param,
             params,
             &ret_type,
-            with_type_param,
+            func,
         );
     }
 
@@ -223,12 +219,14 @@ pub(super) fn add_call_parens<'b>(
     self_param: Option<hir::SelfParam>,
     params: Vec<hir::Param<'_>>,
     ret_type: &hir::Type<'_>,
-    with_type_param: impl FnOnce() -> bool,
+    func: hir::Function,
 ) -> &'b mut Builder {
     cov_mark::hit!(inserts_parens_for_function_calls);
 
     let (mut snippet, label_suffix) = if self_param.is_none() && params.is_empty() {
-        let snippet = if with_type_param() && !ret_type.contains_unknown() {
+        let gen_params = hir::GenericDef::Function(func).type_or_const_params(ctx.db);
+        let with_type_param = gen_params.iter().any(|it| it.as_type_param(ctx.db).is_some());
+        let snippet = if with_type_param && !ret_type.contains_unknown() {
             // Return type not contained any generic param, so can't infer param
             // `fn size_of<T>() -> usize` -> `size_of::<$1>()$0`
             format!("{escaped_name}::<$1>()$0")
