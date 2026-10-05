@@ -825,6 +825,10 @@ mod err {
         run_and_expect_errors("test_data/parser/inline/err/async_without_semicolon.rs");
     }
     #[test]
+    fn attr_end_of_stmt_list() {
+        run_and_expect_errors("test_data/parser/inline/err/attr_end_of_stmt_list.rs");
+    }
+    #[test]
     fn bad_asm_expr() { run_and_expect_errors("test_data/parser/inline/err/bad_asm_expr.rs"); }
     #[test]
     fn closure_ret_recovery() {
@@ -850,6 +854,10 @@ mod err {
     }
     #[test]
     fn empty_segment() { run_and_expect_errors("test_data/parser/inline/err/empty_segment.rs"); }
+    #[test]
+    fn enum_variant_attrs_without_variant() {
+        run_and_expect_errors("test_data/parser/inline/err/enum_variant_attrs_without_variant.rs");
+    }
     #[test]
     fn fn_pointer_type_missing_fn() {
         run_and_expect_errors("test_data/parser/inline/err/fn_pointer_type_missing_fn.rs");
@@ -955,6 +963,10 @@ mod err {
     }
     #[test]
     fn pub_expr() { run_and_expect_errors("test_data/parser/inline/err/pub_expr.rs"); }
+    #[test]
+    fn record_field_attrs_without_field() {
+        run_and_expect_errors("test_data/parser/inline/err/record_field_attrs_without_field.rs");
+    }
     #[test]
     fn record_literal_before_ellipsis_recovery() {
         run_and_expect_errors(

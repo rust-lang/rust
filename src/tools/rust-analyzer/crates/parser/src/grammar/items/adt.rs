@@ -91,7 +91,13 @@ pub(crate) fn variant_list(p: &mut Parser<'_>) {
             p.bump(T![_]);
         } else {
             m.abandon(p);
-            p.err_and_bump("expected enum variant");
+            // test_err enum_variant_attrs_without_variant
+            // enum E {#[attr]}
+            if !p.at(T!['}']) {
+                p.err_and_bump("expected enum variant");
+            } else {
+                p.error("expected enum variant");
+            }
             return;
         }
         match p.current() {
@@ -174,7 +180,14 @@ pub(crate) fn record_field_list(p: &mut Parser<'_>) {
             m.complete(p, RECORD_FIELD);
         } else {
             m.abandon(p);
-            p.err_and_bump("expected field declaration");
+            // test_err record_field_attrs_without_field
+            // struct S {#[attr]}
+            // struct S {#[attr],}
+            if !p.at(T!['}']) {
+                p.err_and_bump("expected field declaration");
+            } else {
+                p.error("expected field declaration");
+            }
         }
     }
 }
