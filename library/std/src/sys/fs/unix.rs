@@ -2422,7 +2422,6 @@ mod remove_dir_impl {
 
     use super::{
         AsRawFd, DirEntry, DirStream, FromRawFd, InnerReadDir, IntoRawFd, OwnedFd, RawFd, ReadDir,
-        lstat,
     };
     use crate::ffi::CStr;
     use crate::io;
@@ -2493,7 +2492,8 @@ mod remove_dir_impl {
     }
 
     /// `parent_fd` being `None` indicates that this is the root where we start.
-    /// When it is `Some`, this will delete anything: directory or regular file.
+    /// In that case, `path` will only be deleted if it is a directory.
+    /// When it is `Some`, this will delete anything.
     fn remove_dir_all_recursive(parent_fd: Option<RawFd>, path: &CStr) -> io::Result<()> {
         // try opening as directory
         let fd = match openat_nofollow_dironly(parent_fd, path) {
@@ -2559,20 +2559,25 @@ mod remove_dir_impl {
         Ok(())
     }
 
-    fn remove_dir_all_modern(p: &CStr) -> io::Result<()> {
-        // We cannot just call remove_dir_all_recursive() here because that would not delete a passed
-        // symlink. No need to worry about races, because remove_dir_all_recursive() does not recurse
-        // into symlinks.
-        let attr = lstat(p)?;
-        if attr.file_type().is_symlink() {
-            // This unfortunately means we also delete symlinks to regular files.
-            super::unlink(p)
-        } else {
-            remove_dir_all_recursive(None, p)
-        }
-    }
-
     pub fn remove_dir_all(p: &Path) -> io::Result<()> {
-        run_path_with_cstr(p, &remove_dir_all_modern)
+        // The root is special because we must *not* delete `p` if it is a file, but must delete it
+        // if it is a symlink to a directory.
+        if p.is_symlink() {
+            if !p.is_dir() {
+                // This error is always correct, even under concurrent mutation: `p` was not a
+                // directory at some moment.
+                return Err(io::const_error!(
+                    io::ErrorKind::NotADirectory,
+                    "`remove_dir_all` only deletes directories",
+                ));
+            }
+            // This could still delete a regular file or a symlink to a file if the file system
+            // changesd. Not much we can do about that.
+            crate::fs::remove_file(p)
+        } else {
+            // There are no race conditions here: If `p` changes to a symlink (or a file),
+            // `remove_dir_all_recursive` with `None` will error.
+            run_path_with_cstr(p, &|p| remove_dir_all_recursive(None, p))
+        }
     }
 }

@@ -1348,9 +1348,6 @@ fn recursive_rmdir_of_file_fails() {
 }
 
 #[test]
-// Only Windows makes a distinction between file and directory symlinks, so we cannot make
-// this test work on Unix in a race-free way.
-#[cfg(windows)]
 fn recursive_rmdir_of_file_symlink() {
     let tmpdir = tmpdir();
     if !got_symlink_permission(&tmpdir) {
