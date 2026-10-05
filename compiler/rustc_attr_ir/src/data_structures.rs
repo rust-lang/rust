@@ -1256,7 +1256,7 @@ pub enum AttributeKind {
     /// Represents the [`rustc_dump_object_lifetime_defaults`](./attribute.rustc_dump_object_lifetime_defaults.html) attribute.
     RustcDumpObjectLifetimeDefaults,
 
-    /// Represents the [`rustc_dump_ptrauth_discriminator`](./attribute.:rustc_dump_ptrauth_discriminator.html) attribute.
+    /// Represents the [`rustc_dump_ptrauth_discriminator`](./attribute.rustc_dump_ptrauth_discriminator.html) attribute.
     RustcDumpPtrauthDiscriminator(ThinVec<RustcDumpPtrauthDiscriminatorKind>),
 
     /// Represents the [`rustc_dump_symbol_name`](./attribute.rustc_dump_symbol_name.html) attribute.
