@@ -1467,7 +1467,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
     ) -> bool {
         let sp = self.tcx.sess.source_map().start_point(expr.span).with_parent(None);
-        if let Some(sp) = self.tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
+        if let Some(sp) =
+            self.tcx.sess.psess.complete_stmt_exprs_before_bin_op_lookalike.borrow().get(&sp)
+        {
             // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
             true

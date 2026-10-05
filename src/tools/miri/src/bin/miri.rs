@@ -159,7 +159,10 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         // Obtain and complete the Miri configuration.
         let mut config = self.miri_config.take().expect("after_analysis must only be called once");
         // Add filename to `miri` arguments.
-        config.args.insert(0, tcx.sess.io.input.filestem().to_string());
+        let file_name = tcx.sess.io.input.file_name(tcx.sess);
+        config.args.insert(0, file_name.prefer_local_unconditionally().to_string());
+        // And configure the executable.
+        config.current_exe = file_name.into_local_path().and_then(|p| p.canonicalize().ok());
 
         // Adjust working directory for interpretation.
         if let Some(cwd) = env::var_os("MIRI_CWD") {
@@ -365,8 +368,9 @@ fn run_compiler_and_exit(
     rustc_driver::install_ctrlc_handler();
 
     // Invoke compiler, catch any unwinding panics and handle return code.
-    let exit_code =
-        rustc_driver::catch_with_exit_code(move || rustc_driver::run_compiler(args, callbacks));
+    let exit_code = rustc_driver::catch_with_exit_code(move || {
+        rustc_driver::compiler_entrypoint(args, callbacks)
+    });
     exit(if exit_code == ExitCode::SUCCESS {
         rustc_driver::EXIT_SUCCESS
     } else {

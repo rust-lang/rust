@@ -4,7 +4,6 @@ use ast::visit::Visitor;
 use hir::def::DefKind;
 use rustc_ast::{self as ast, AssocItemKind, Delegation, DelegationSource, Item, ItemKind, NodeId};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
 use rustc_middle::middle::resolve::{
     self as mid_res, AstOwner, DelegationInherentFnKind, TypeRelativeDelegationRes,
@@ -53,9 +52,10 @@ pub(crate) fn resolve_type_relative_delegations(
             // Also record resolutions for cases when signature is resolved but call path is not.
             mid_res::DelegationResolution::Partial
             | mid_res::DelegationResolution::PartialCall(_) => {
-                let Some(r_and_owner) = ast_index.get(def_id).map(Steal::borrow) else {
-                    unreachable!("ast index must contain delegations");
-                };
+                let r_and_owner = ast_index[def_id]
+                    .as_ref()
+                    .expect("ast index must contain delegations")
+                    .borrow();
 
                 let (r, owner) = &*r_and_owner;
 

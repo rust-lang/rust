@@ -78,7 +78,7 @@ unsafe extern "Rust" {
 /// This may change in the future. You must not rely on it for correctness!
 ///
 /// [*equivalent*]: Allocator#equivalent-allocators
-#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "allocator_api", since = "1.100.0")]
 #[derive(Copy, Debug)]
 #[derive_const(Clone, Default)]
 // the compiler needs to know when a Box uses the global allocator vs a custom one
@@ -566,7 +566,7 @@ impl Global {
     }
 }
 
-#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "allocator_api", since = "1.100.0")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 const unsafe impl Allocator for Global {
     #[inline]
@@ -702,28 +702,6 @@ pub mod __alloc_error_handler {
         )
     }
 }
-
-/// Allocator marker trait that is implemented only on `Global`, except when
-/// the allocator feature gate is enabled (in which case it is implemented
-/// for all allocators).
-///
-/// This is to prevent stable code from e.g. constructing `Arc<T, NotGlobal>`
-/// using the `From<Box<T, A>> for Arc<T, A>` impl.
-///
-/// Note that this trait cannot appear in specialization impls (even if not
-/// specialized on).
-///
-/// This trait should be used as a bound whenever a function constructing
-/// a type with an `#[unstable] A: Allocator = Global` parameter may be
-/// callable for `A != Global`.
-#[marker]
-#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
-#[doc(hidden)]
-pub trait AllocatorNightly: Allocator {}
-
-#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
-#[unstable_feature_bound(allocator_ext)]
-impl<A: Allocator + ?Sized> AllocatorNightly for A {}
 
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 impl AllocatorNightly for Global {}

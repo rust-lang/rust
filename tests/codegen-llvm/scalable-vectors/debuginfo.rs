@@ -2,9 +2,6 @@
 //@ only-aarch64
 //@ only-linux
 //@ compile-flags: -Cdebuginfo=2 -Copt-level=0
-//@ revisions: POST-LLVM-22 PRE-LLVM-22
-//@ [PRE-LLVM-22] max-llvm-major-version: 21
-//@ [POST-LLVM-22] min-llvm-version: 22
 
 #![crate_type = "lib"]
 #![allow(incomplete_features, internal_features)]
@@ -59,8 +56,7 @@ struct svfloat64_t(f64);
 #[target_feature(enable = "sve")]
 pub fn locals() {
     // CHECK-DAG: name: "svbool_t",{{.*}}, baseType: ![[CT1:[0-9]+]]
-    // PRE-LLVM-22-DAG: ![[CT1]] = !DICompositeType(tag: DW_TAG_array_type, baseType: ![[ELTTYU8:[0-9]+]],{{.*}}, flags: DIFlagVector, elements: ![[ELTS8:[0-9]+]])
-    // POST-LLVM-22-DAG: ![[CT1]] = !DICompositeType(tag: DW_TAG_array_type, baseType: ![[ELTTYU8:[0-9]+]],{{.*}}, flags: DIFlagVector, elements: ![[ELTS8:[0-9]+]], bitStride: i64 1)
+    // CHECK-DAG: ![[CT1]] = !DICompositeType(tag: DW_TAG_array_type, baseType: ![[ELTTYU8:[0-9]+]],{{.*}}, flags: DIFlagVector, elements: ![[ELTS8:[0-9]+]], bitStride: i64 1)
     // CHECK-DAG: ![[ELTTYU8]] = !DIBasicType(name: "u8", size: 8, encoding: DW_ATE_unsigned)
     // CHECK-DAG: ![[ELTS8]] = !{![[REALELTS8:[0-9]+]]}
     // CHECK-DAG: ![[REALELTS8]] = !DISubrange(lowerBound: 0, upperBound: !DIExpression(DW_OP_constu, 8, DW_OP_bregx, 46, 0, DW_OP_mul, DW_OP_constu, 1, DW_OP_minus))
@@ -71,9 +67,8 @@ pub fn locals() {
     // CHECK-DAG: ![[ELTTYS8]] = !DIBasicType(name: "i8", size: 8, encoding: DW_ATE_signed)
     let s8: svint8_t;
 
-    // PRE-LLVM-22-DAG: name: "svuint8_t",{{.*}}, baseType: ![[CT1:[0-9]+]]
-    // POST-LLVM-22-DAG: name: "svuint8_t",{{.*}}, baseType: ![[CT8:[0-9]+]]
-    // POST-LLVM-22-DAG: ![[CT8]] = !DICompositeType(tag: DW_TAG_array_type, baseType: ![[ELTTYU8]],{{.*}}, flags: DIFlagVector, elements: ![[ELTS8]])
+    // CHECK-DAG: name: "svuint8_t",{{.*}}, baseType: ![[CT8:[0-9]+]]
+    // CHECK-DAG: ![[CT8]] = !DICompositeType(tag: DW_TAG_array_type, baseType: ![[ELTTYU8]],{{.*}}, flags: DIFlagVector, elements: ![[ELTS8]])
     let u8: svuint8_t;
 
     // CHECK-DAG: name: "svint16_t",{{.*}}, baseType: ![[CT16:[0-9]+]]

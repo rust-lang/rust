@@ -144,7 +144,8 @@ should pass on its own. When we commit our lint, we need to commit the generated
  `.stderr` and if applicable `.fixed` files, too. In general, you should only
  commit files changed by `cargo bless` for the specific lint you are creating/editing.
 
-> _Note:_ you can run multiple test files by specifying a comma separated list:
+> [!NOTE]
+> you can run multiple test files by specifying a comma separated list:
 > `TESTNAME=foo_functions,test2,test3`.
 
 ### Cargo lints
@@ -529,6 +530,16 @@ define_Conf! {
 [`clippy_utils::msrvs`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/msrvs/index.html
 
 Afterwards update the documentation for the book as described in [Adding configuration to a lint](#adding-configuration-to-a-lint).
+
+> [!TIP]
+> Please be aware that items in the standard library usually have two stability dates.
+> One for regular and one for const contexts.
+> For example `str::split_at` became stable in Rust 1.4 and const stable in 1.86.
+>
+> To fix this, use `clippy_utils::is_in_const_context(cx)` together with MSRV checks.
+> `clippy_utils::std_or_core(cx)` can also be necessary
+> if the suggestions MSRV differs between `std` and `core`.
+> To test the suggestions, annotate a `const` function with `#[clippy::msrv]` before and after the MSRV.
 
 ## Author lint
 

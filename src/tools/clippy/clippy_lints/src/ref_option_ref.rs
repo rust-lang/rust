@@ -36,7 +36,7 @@ declare_lint_pass!(RefOptionRef => [REF_OPTION_REF]);
 
 impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
     fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx, AmbigArg>) {
-        if let TyKind::Ref(_, ref ref_ty, Mutability::Not) = ty.kind
+        if let TyKind::Ref(_, ref_ty, Mutability::Not) = ty.kind
             && let TyKind::Path(qpath) = &ref_ty.kind
             && let last = last_path_segment(qpath)
             && let Some(def_id) = last.res.opt_def_id()

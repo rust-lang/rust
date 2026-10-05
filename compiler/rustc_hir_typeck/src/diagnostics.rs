@@ -1345,3 +1345,7 @@ impl ExprParenthesesNeeded {
         ExprParenthesesNeeded { left: s.shrink_to_lo(), right: s.shrink_to_hi() }
     }
 }
+
+#[derive(Diagnostic)]
+#[diag("`#[panic_handler]` functions can't be `unsafe`")]
+pub(crate) struct UnsafePanicHandlers;

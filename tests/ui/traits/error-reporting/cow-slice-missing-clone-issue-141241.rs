@@ -1,4 +1,5 @@
 //@ revisions: current next with_clone
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@ [next] compile-flags: -Znext-solver
 //@ [with_clone] check-pass
 

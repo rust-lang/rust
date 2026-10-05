@@ -1,0 +1,27 @@
+// MIR for `fields` 0 dataflow
+
+fn fields() -> usize {
+    let mut _0: usize;
+    let mut _1: (usize, usize);
+
+    bb0: {
+        // live: []
+        // live: []
+        _1 = (const 1_usize, const 0_usize);
+        // live: []
+        // live: []
+        (_1.1: usize) = const 2_usize;
+        // live: []
+        // live: []
+        _1 = (const 0_usize, const 3_usize);
+        // live: [_1]
+        // live: [_1]
+        (_1.1: usize) = const 4_usize;
+        // live: [_1]
+        // live: [_1]
+        _0 = copy (_1.1: usize);
+        // live: [_0]
+        // live: [_0]
+        return;
+    }
+}

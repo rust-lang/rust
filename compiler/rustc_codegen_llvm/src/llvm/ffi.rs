@@ -715,8 +715,6 @@ unsafe extern "C" {
 }
 #[repr(C)]
 pub(crate) struct Builder<'a>(InvariantOpaque<'a>);
-#[repr(C)]
-pub(crate) struct PassManager<'a>(InvariantOpaque<'a>);
 unsafe extern "C" {
     pub type TargetMachine;
 }
@@ -948,6 +946,7 @@ unsafe extern "C" {
 
     // Operations on non-IEEE real types
     pub(crate) fn LLVMBFloatTypeInContext(C: &Context) -> &Type;
+    pub(crate) fn LLVMPPCFP128TypeInContext(C: &Context) -> &Type;
 
     // Operations on function types
     pub(crate) fn LLVMFunctionType<'a>(
@@ -994,6 +993,11 @@ unsafe extern "C" {
         Val: &'a Value,
         KindID: MetadataKindId,
         Metadata: &'a Metadata,
+    );
+    pub(crate) fn LLVMGlobalAddMetadata<'ll>(
+        Global: &'ll Value,
+        Kind: MetadataKindId,
+        MD: &'ll Metadata,
     );
     pub(crate) safe fn LLVMValueAsMetadata(Node: &Value) -> &Metadata;
 
@@ -1127,6 +1131,12 @@ unsafe extern "C" {
         FunctionTy: &'a Type,
     ) -> &'a Value;
     pub(crate) fn LLVMDeleteFunction(Fn: &Value);
+    pub(crate) fn LLVMGetOrInsertFunction<'a>(
+        M: &'a Module,
+        Name: *const c_char,
+        NameLen: size_t,
+        FunctionTy: &'a Type,
+    ) -> &'a Value;
 
     // Operations about llvm intrinsics
     pub(crate) fn LLVMLookupIntrinsicID(Name: *const c_char, NameLen: size_t) -> c_uint;
@@ -1637,11 +1647,6 @@ unsafe extern "C" {
     /// Writes a module to the specified path. Returns 0 on success.
     pub(crate) fn LLVMWriteBitcodeToFile(M: &Module, Path: *const c_char) -> c_int;
 
-    /// Creates a legacy pass manager -- only used for final codegen.
-    pub(crate) fn LLVMCreatePassManager<'a>() -> &'a mut PassManager<'a>;
-
-    pub(crate) fn LLVMAddAnalysisPasses<'a>(T: &'a TargetMachine, PM: &PassManager<'a>);
-
     pub(crate) fn LLVMGetHostCPUFeatures() -> *mut c_char;
 
     pub(crate) fn LLVMDisposeMessage(message: *mut c_char);
@@ -1969,12 +1974,6 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustDisableSystemDialogsOnCrash();
 
     // Operations on all values
-    /// FIXME: After dropping LLVM 21, migrate to LLVM-C's `LLVMGlobalAddMetadata`.
-    pub(crate) fn LLVMRustGlobalAddMetadata<'a>(
-        Val: &'a Value,
-        KindID: MetadataKindId,
-        Metadata: &'a Metadata,
-    );
     pub(crate) fn LLVMRustIsNonGVFunctionPointerTy(Val: &Value) -> bool;
     pub(crate) fn LLVMRustStripPointerCasts<'a>(Val: &'a Value) -> &'a Value;
 
@@ -2040,13 +2039,6 @@ unsafe extern "C" {
     ) -> &Attribute;
 
     // Operations on functions
-    /// FIXME: After dropping LLVM 21, migrate to LLVM-C's `LLVMGetOrInsertFunction`.
-    pub(crate) fn LLVMRustGetOrInsertFunction<'a>(
-        M: &'a Module,
-        Name: *const c_char,
-        NameLen: size_t,
-        FunctionTy: &'a Type,
-    ) -> &'a Value;
     pub(crate) fn LLVMRustAddFunctionAttributes<'a>(
         Fn: &'a Value,
         index: c_uint,
@@ -2430,20 +2422,14 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustDisposeMCSubtargetInfo(MCInfo: ptr::NonNull<MCSubtargetInfo>);
 
-    pub(crate) fn LLVMRustAddLibraryInfo<'a>(
-        T: &TargetMachine,
-        PM: &PassManager<'a>,
-        M: &'a Module,
-        DisableSimplifyLibCalls: bool,
-    );
     pub(crate) fn LLVMRustWriteOutputFile<'a>(
         T: &'a TargetMachine,
-        PM: *mut PassManager<'a>,
         M: &'a Module,
         Output: *const c_char,
         DwoOutput: *const c_char,
         FileType: FileType,
         VerifyIR: bool,
+        DisableSimplifyLibCalls: bool,
     ) -> LLVMRustResult;
     pub(crate) fn LLVMRustOptimize<'a>(
         M: &'a Module,

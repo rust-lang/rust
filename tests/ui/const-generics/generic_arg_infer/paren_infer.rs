@@ -1,5 +1,6 @@
 //@ check-pass
-//@ reference: items.generics.const.inferred
+//@ reference: expr.array.length-restriction
+//@ reference: paths.expr.complex-const-params
 
 struct Foo<const N: usize>;
 

@@ -1,14 +1,15 @@
-//@ignore-target: windows # no libc
+//@ignore-target: windows # libc bits exist, but we don't support them
 //@compile-flags: -Zmiri-disable-isolation
 //@run-native
 
 use std::ffi::{CStr, CString, OsString};
 use std::fs::{self, File, canonicalize, create_dir, remove_dir, remove_file};
 use std::io::{ErrorKind, Write};
+use std::mem::MaybeUninit;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
-use std::ptr;
+use std::{env, ptr};
 
 #[path = "../../utils/mod.rs"]
 mod utils;
@@ -27,10 +28,13 @@ fn main() {
     test_ftruncate::<libc::off_t>(libc::ftruncate);
     #[cfg(target_os = "linux")]
     test_ftruncate::<libc::off64_t>(libc::ftruncate64);
-    test_file_open_unix_allow_two_args();
-    test_file_open_unix_needs_three_args();
-    test_file_open_unix_extra_third_arg();
-    test_file_open_dir();
+    test_create_read_write();
+    test_read_and_uninit();
+    test_file_open_args();
+    test_file_open_nofollow();
+    test_file_open_dangling_symlink();
+    test_file_open_directory();
+    test_file_open_exclusive();
     #[cfg(target_os = "linux")]
     test_o_tmpfile_flag();
     test_posix_mkstemp();
@@ -49,24 +53,22 @@ fn main() {
     test_fallocate::<libc::off64_t>(libc::fallocate64);
     #[cfg(target_os = "linux")]
     test_sync_file_range();
+    test_opendir_closedir();
+    test_readdir();
+    test_dirfd();
     test_fstat();
+    test_fstatat();
     test_stat();
     test_lstat();
     test_futimens();
     test_isatty();
-    test_read_and_uninit();
-    test_nofollow_not_symlink();
+    test_getfl();
     #[cfg(target_os = "macos")]
     test_ioctl();
-    test_opendir_closedir();
-    test_readdir();
-    test_dirfd();
     #[cfg(target_os = "linux")]
-    test_statx_on_file_path();
+    test_statx();
     #[cfg(target_os = "linux")]
-    test_statx_on_file_descriptor();
-    #[cfg(target_os = "linux")]
-    test_statx_empty_path_on_pipe();
+    test_statx_on_empty_path();
     test_readv();
     test_readv_empty_bufs();
     #[cfg(not(target_os = "solaris"))]
@@ -77,6 +79,7 @@ fn main() {
     #[cfg(not(target_os = "solaris"))]
     test_pwritev();
     test_pwrite();
+    test_readlink();
     test_linkat();
 }
 
@@ -115,9 +118,126 @@ fn assert_statx_matches_metadata(stx: &libc::statx, meta: &fs::Metadata, expecte
 }
 
 #[cfg(target_os = "linux")]
-fn test_statx_on_file_descriptor() {
-    use std::mem::MaybeUninit;
+fn test_statx() {
+    let bytes = b"hello";
+    let path = utils::prepare_with_content("miri_test_libc_statx.txt", bytes);
+    let c_path = utils::into_c_string(&path);
+    let meta = fs::metadata(&path).unwrap();
 
+    // Relative to working directory.
+    unsafe {
+        let old_cwd = env::current_dir().unwrap();
+        env::set_current_dir(path.parent().unwrap()).unwrap();
+
+        let mut stx = MaybeUninit::<libc::statx>::zeroed();
+        errno_check(libc::statx(
+            libc::AT_FDCWD,
+            c"miri_test_libc_statx.txt".as_ptr(),
+            0,
+            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+            stx.as_mut_ptr(),
+        ));
+
+        let stx = stx.assume_init();
+        assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
+
+        env::set_current_dir(old_cwd).unwrap();
+    }
+
+    // Setting AT_EMPTY_PATH is fine even if the path is not actually empty.
+    unsafe {
+        let mut stx = MaybeUninit::<libc::statx>::zeroed();
+        errno_check(libc::statx(
+            libc::AT_FDCWD,
+            c_path.as_ptr(),
+            libc::AT_EMPTY_PATH,
+            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+            stx.as_mut_ptr(),
+        ));
+
+        let stx = stx.assume_init();
+        assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
+    }
+
+    // dirfd is ignored because our path is absolute.
+    assert!(path.is_absolute());
+    unsafe {
+        let mut stx = MaybeUninit::<libc::statx>::zeroed();
+        errno_check(libc::statx(
+            999, // dirfd
+            c_path.as_ptr(),
+            libc::AT_EMPTY_PATH,
+            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+            stx.as_mut_ptr(),
+        ));
+
+        let stx = stx.assume_init();
+        assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
+    }
+
+    // Symlink following.
+    if utils::have_symlink_permission() {
+        let symlinkpath = utils::prepare("miri_test_libc_statx.link");
+        let c_symlinkpath = utils::into_c_string(&symlinkpath);
+        std::os::unix::fs::symlink(&path, &symlinkpath).unwrap();
+        unsafe {
+            let mut stx = MaybeUninit::<libc::statx>::zeroed();
+            errno_check(libc::statx(
+                999, // dirfd
+                c_symlinkpath.as_ptr(),
+                libc::AT_EMPTY_PATH,
+                libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+                stx.as_mut_ptr(),
+            ));
+            let stx = stx.assume_init();
+            assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
+        }
+        unsafe {
+            let mut stx = MaybeUninit::<libc::statx>::zeroed();
+            errno_check(libc::statx(
+                999, // dirfd
+                c_symlinkpath.as_ptr(),
+                libc::AT_SYMLINK_NOFOLLOW,
+                libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+                stx.as_mut_ptr(),
+            ));
+            let stx = stx.assume_init();
+            assert!(stx.stx_mask & libc::STATX_TYPE != 0);
+            assert_eq!((stx.stx_mode as libc::mode_t) & libc::S_IFMT, libc::S_IFLNK);
+            assert!(stx.stx_mask & libc::STATX_MODE != 0);
+            assert_ne!((stx.stx_mode as libc::mode_t) & !libc::S_IFMT, 0);
+        }
+        remove_file(&symlinkpath).unwrap();
+    }
+
+    // Relative to a dirfd.
+    let dirfd = errno_result(unsafe {
+        libc::open(
+            utils::into_c_string(path.parent().unwrap()).as_ptr(),
+            libc::O_RDONLY | libc::O_DIRECTORY,
+        )
+    })
+    .unwrap();
+    unsafe {
+        let mut stx = MaybeUninit::<libc::statx>::zeroed();
+        errno_check(libc::statx(
+            dirfd,
+            c"miri_test_libc_statx.txt".as_ptr(),
+            libc::AT_EMPTY_PATH,
+            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+            stx.as_mut_ptr(),
+        ));
+
+        let stx = stx.assume_init();
+        assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
+    }
+    errno_check(unsafe { libc::close(dirfd) });
+
+    remove_file(&path).unwrap();
+}
+
+#[cfg(target_os = "linux")]
+fn test_statx_on_empty_path() {
     let bytes = b"hello";
     let path = utils::prepare_with_content("miri_test_libc_statx_fd.txt", bytes);
     let file = File::open(&path).unwrap();
@@ -153,72 +273,13 @@ fn test_statx_on_file_descriptor() {
 
     drop(file);
     remove_file(&path).unwrap();
-}
 
-#[cfg(target_os = "linux")]
-fn test_statx_on_file_path() {
-    use std::mem::MaybeUninit;
-
-    let bytes = b"hello";
-    let path = utils::prepare_with_content("miri_test_libc_statx.txt", bytes);
-    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
-    let meta = fs::metadata(&path).unwrap();
-
-    unsafe {
-        let mut stx = MaybeUninit::<libc::statx>::zeroed();
-        errno_check(libc::statx(
-            libc::AT_FDCWD,
-            c_path.as_ptr(),
-            0,
-            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
-            stx.as_mut_ptr(),
-        ));
-
-        let stx = stx.assume_init();
-        assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
-    }
-
-    // Setting AT_EMPTY_PATH is fine even if the path is not actually empty.
-    unsafe {
-        let mut stx = MaybeUninit::<libc::statx>::zeroed();
-        errno_check(libc::statx(
-            libc::AT_FDCWD,
-            c_path.as_ptr(),
-            libc::AT_EMPTY_PATH,
-            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
-            stx.as_mut_ptr(),
-        ));
-
-        let stx = stx.assume_init();
-        assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
-    }
-
-    // dirfd is ignored because our path is absolute.
-    assert!(path.is_absolute());
-    unsafe {
-        let mut stx = MaybeUninit::<libc::statx>::zeroed();
-        errno_check(libc::statx(
-            999, // dirfd
-            c_path.as_ptr(),
-            libc::AT_EMPTY_PATH,
-            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
-            stx.as_mut_ptr(),
-        ));
-
-        let stx = stx.assume_init();
-        assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
-    }
-
-    remove_file(&path).unwrap();
-}
-
-#[cfg(target_os = "linux")]
-fn test_statx_empty_path_on_pipe() {
+    // Test it on a pipe as well.
     unsafe {
         let mut fds = [0; 2];
         errno_check(libc::pipe(fds.as_mut_ptr()));
 
-        let mut statx_buf = std::mem::MaybeUninit::<libc::statx>::zeroed();
+        let mut statx_buf = MaybeUninit::<libc::statx>::zeroed();
 
         errno_check(libc::statx(
             fds[0],
@@ -251,50 +312,168 @@ fn test_statx_empty_path_on_pipe() {
     }
 }
 
-fn test_file_open_unix_allow_two_args() {
-    let path = utils::prepare_with_content("test_file_open_unix_allow_two_args.txt", &[]);
-    let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+fn test_file_open_args() {
+    let path = utils::prepare_with_content("miri_test_file_open_args.txt", &[]);
+    let name = utils::into_c_string(path);
 
+    // Works with 2 or 3 arguments.
     let _fd = errno_result(unsafe { libc::open(name.as_ptr(), libc::O_RDONLY) }).unwrap();
-}
-
-fn test_file_open_unix_needs_three_args() {
-    let path = utils::prepare_with_content("test_file_open_unix_needs_three_args.txt", &[]);
-    let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
-
-    let _fd =
-        errno_result(unsafe { libc::open(name.as_ptr(), libc::O_CREAT | libc::O_RDWR, 0o666) })
-            .unwrap();
-}
-
-fn test_file_open_unix_extra_third_arg() {
-    let path = utils::prepare_with_content("test_file_open_unix_extra_third_arg.txt", &[]);
-    let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
-
     let _fd = errno_result(unsafe { libc::open(name.as_ptr(), libc::O_RDONLY, 42) }).unwrap();
 }
 
-fn test_file_open_dir() {
-    let dir_path = utils::prepare_dir("miri_test_fs_dir");
-    create_dir(&dir_path).unwrap();
-    let dir_name = CString::new(dir_path.into_os_string().into_encoded_bytes()).unwrap();
+fn test_file_open_nofollow() {
+    // Regular files work like normal.
+    let bytes = b"Hello, World!\n";
+    let path = utils::prepare_with_content("miri_test_nofollow_not_symlink.txt", bytes);
+    let cpath = utils::into_c_string(path);
+    let fd =
+        errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC) })
+            .unwrap();
+    let data = libc_utils::read_exact_array::<5>(fd).unwrap();
+    assert!(bytes.starts_with(&data));
+    errno_check(unsafe { libc::close(fd) });
 
-    // Opening it for read-write fails. The error code differs between Unix and Windows hosts.
-    let err = errno_result(unsafe { libc::open(dir_name.as_ptr(), libc::O_RDWR) }).unwrap_err();
+    // But trying to open a symlink errors.
+    if utils::have_symlink_permission() {
+        let path = utils::prepare_with_content("miri_test_open_nofollow_symlink_target.txt", bytes);
+        let symlink_path = utils::prepare("miri_test_open_nofollow_symlink.txt");
+        std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
+        let symlink_cpath = utils::into_c_string(symlink_path);
+        let err = errno_result(unsafe {
+            libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC)
+        })
+        .unwrap_err();
+        // FreeBSD returns EMLINK when encountering a symlink on the final path segment with O_NOFOLLOW
+        // while POSIX specifies returning ELOOP. Since this test is run on both native FreeBSD and native
+        // Linux hosts, we just assert that its either of those error codes.
+        assert!([libc::ELOOP, libc::EMLINK].contains(&err.raw_os_error().unwrap()));
+
+        // Also check symlink to directory.
+        let symlink_path = utils::prepare("miri_test_open_nofollow_symlink_to_dir");
+        // We make the symlink point to its parent directory.
+        std::os::unix::fs::symlink(&symlink_path.parent().unwrap(), &symlink_path).unwrap();
+        let symlink_cpath = utils::into_c_string(symlink_path);
+        let err = errno_result(unsafe { libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW) })
+            .unwrap_err();
+        assert!(
+            [libc::ELOOP, libc::EMLINK].contains(&err.raw_os_error().unwrap()),
+            "unexpected errno: {err}"
+        );
+        // If we set O_DIRECTORY, we get a different error on Linux, but still EMLINK on FreeBSD.
+        let err = errno_result(unsafe {
+            libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_DIRECTORY)
+        })
+        .unwrap_err();
+        assert!(
+            [libc::ENOTDIR, libc::EMLINK].contains(&err.raw_os_error().unwrap()),
+            "unexpected errno: {err}"
+        );
+    }
+}
+
+fn test_file_open_dangling_symlink() {
+    if !utils::have_symlink_permission() {
+        return;
+    }
+
+    let symlink_path = utils::prepare("miri_test_open_dangling_symlink");
+    std::os::unix::fs::symlink("does-not-exist", &symlink_path).unwrap();
+    let symlink_cpath = utils::into_c_string(symlink_path);
+
+    let err =
+        errno_result(unsafe { libc::open(symlink_cpath.as_ptr(), libc::O_RDONLY) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT, "unexpected errno: {err}");
+    let err =
+        errno_result(unsafe { libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW) }).unwrap_err();
     assert!(
-        [libc::EISDIR, libc::EPERM].contains(&err.raw_os_error().unwrap()),
+        [libc::ELOOP, libc::EMLINK].contains(&err.raw_os_error().unwrap()),
         "unexpected errno: {err}"
     );
+    let err =
+        errno_result(unsafe { libc::open(symlink_cpath.as_ptr(), libc::O_DIRECTORY) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT, "unexpected errno: {err}");
+}
 
-    // Opening it for reading succeeds, but then reading fails.
-    // FIXME: currently does not behave as expected on Windows hosts.
-    // See <https://github.com/rust-lang/miri/issues/5084>.
-    // let fd = errno_result(unsafe { libc::open(dir_name.as_ptr(), libc::O_RDONLY) }).unwrap();
-    // let mut buf = [0u8; 4];
-    // let err =
-    //     errno_result(unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) }).unwrap_err();
-    // assert_eq!(err.raw_os_error().unwrap(), libc::EISDIR, "unexpected errno: {err}");
-    // errno_check(unsafe { libc::close(fd) });
+fn test_file_open_directory() {
+    let dir_path = utils::prepare_dir("miri_test_file_open_directory");
+    create_dir(&dir_path).unwrap();
+    let dir_name = utils::into_c_string(dir_path);
+
+    // Opening it for read-write fails.
+    let err = errno_result(unsafe { libc::open(dir_name.as_ptr(), libc::O_RDWR) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EISDIR);
+
+    // Opening it for reading succeeds, but then reading/writing fails.
+    let fd = errno_result(unsafe { libc::open(dir_name.as_ptr(), libc::O_RDONLY) }).unwrap();
+    let mut buf = [0u8; 4];
+    let err =
+        errno_result(unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EISDIR, "unexpected errno: {err}");
+    let err = errno_result(unsafe { libc::write(fd, buf.as_ptr().cast(), buf.len()) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EBADF, "unexpected errno: {err}");
+    errno_check(unsafe { libc::close(fd) });
+
+    // Ensure it errors on non-directories when we add the flag.
+    let path = utils::prepare_with_content("miri_test_fs_not_a_dir", &[]);
+    let err = errno_result(unsafe {
+        libc::open(utils::into_c_string(path).as_ptr(), libc::O_RDONLY | libc::O_DIRECTORY)
+    })
+    .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOTDIR);
+    let err = errno_result(unsafe {
+        libc::open(c"doesnotexist".as_ptr(), libc::O_RDONLY | libc::O_DIRECTORY)
+    })
+    .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
+
+    if utils::have_symlink_permission() {
+        // Also check symlink behavior.
+        let symlink_path = utils::prepare("miri_test_open_directory_symlink");
+        // We make the symlink point to its parent directory.
+        std::os::unix::fs::symlink(&symlink_path.parent().unwrap(), &symlink_path).unwrap();
+        let symlink_cpath = utils::into_c_string(symlink_path);
+        let fd =
+            errno_result(unsafe { libc::open(symlink_cpath.as_ptr(), libc::O_DIRECTORY) }).unwrap();
+        errno_check(unsafe { libc::close(fd) });
+    }
+}
+
+fn test_file_open_exclusive() {
+    let path = utils::prepare("miri_test_file_open_exclusive.txt");
+    let cpath = utils::into_c_string(path);
+
+    let fd = errno_result(unsafe {
+        libc::open(cpath.as_ptr(), libc::O_WRONLY | libc::O_CREAT | libc::O_EXCL, 0o666)
+    })
+    .unwrap();
+    errno_check(unsafe { libc::close(fd) });
+
+    let exist_err = errno_result(unsafe {
+        libc::open(cpath.as_ptr(), libc::O_WRONLY | libc::O_CREAT | libc::O_EXCL, 0o666)
+    })
+    .unwrap_err();
+    assert_eq!(exist_err.raw_os_error().unwrap(), libc::EEXIST, "unexpected errno: {exist_err}");
+}
+
+fn test_create_read_write() {
+    let content = b"hello test";
+    let path = utils::prepare("miri_test_create_read_write.txt");
+    let cpath = utils::into_c_string(path);
+
+    let fd =
+        errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY | libc::O_CREAT, 0o666) })
+            .unwrap();
+    let read_err = libc_utils::read_exact_array::<4>(fd).unwrap_err();
+    assert_eq!(read_err.raw_os_error().unwrap(), libc::EBADF, "unexpected errno: {read_err}");
+    libc_utils::write_all(fd, content).unwrap();
+    errno_check(unsafe { libc::close(fd) });
+
+    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) }).unwrap();
+    let write_err = libc_utils::write_all(fd, content).unwrap_err();
+    assert_eq!(write_err.raw_os_error().unwrap(), libc::EBADF, "unexpected errno: {write_err}");
+    let data = libc_utils::read_exact_array::<8>(fd).unwrap();
+    assert!(content.starts_with(&data));
+    errno_check(unsafe { libc::close(fd) });
 }
 
 fn test_dup_stdout_stderr() {
@@ -311,7 +490,7 @@ fn test_dup_stdout_stderr() {
 fn test_dup() {
     let bytes = b"dup and dup2";
     let path = utils::prepare_with_content("miri_test_libc_dup.txt", bytes);
-    let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let name = utils::into_c_string(path);
 
     unsafe {
         let fd = errno_result(libc::open(name.as_ptr(), libc::O_RDONLY)).unwrap();
@@ -373,8 +552,8 @@ fn test_rename() {
     let file = File::create(&path1).unwrap();
     drop(file);
 
-    let c_path1 = CString::new(path1.as_os_str().as_bytes()).expect("CString::new failed");
-    let c_path2 = CString::new(path2.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_path1 = utils::into_c_string(&path1);
+    let c_path2 = utils::into_c_string(&path2);
 
     // Renaming should succeed
     unsafe { libc::rename(c_path1.as_ptr(), c_path2.as_ptr()) };
@@ -404,7 +583,7 @@ fn test_ftruncate<T: From<i32>>(
     file.sync_all().unwrap();
     assert_eq!(file.metadata().unwrap().len(), 5);
 
-    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_path = utils::into_c_string(&path);
     let fd = unsafe { libc::open(c_path.as_ptr(), libc::O_RDWR) };
 
     // Truncate to a bigger size
@@ -484,9 +663,9 @@ fn test_posix_mkstemp() {
     drop(file);
     remove_file(path).unwrap();
 
-    // Test invalid inputs. We skip this on native macOS since macOS apparently does
-    // not bother to validate inputs.
-    if !cfg!(all(not(miri), target_vendor = "apple")) {
+    // Test invalid inputs. We skip this on native macOS and FreeBSD since those apparently
+    // don't bother to validate inputs.
+    if cfg!(miri) || !cfg!(any(target_vendor = "apple", target_os = "freebsd")) {
         let invalid_templates = vec!["foo", "barXX", "XXXXXXbaz", "whatXXXXXXever", "X"];
         for t in invalid_templates {
             let ptr = CString::new(t).unwrap().into_raw();
@@ -506,11 +685,11 @@ fn test_posix_mkstemp() {
 
 /// Test allocating variant of `realpath`.
 fn test_posix_realpath_alloc() {
-    use std::os::unix::ffi::{OsStrExt, OsStringExt};
+    use std::os::unix::ffi::OsStringExt;
 
     let buf;
     let path = utils::prepare("miri_test_libc_posix_realpath_alloc");
-    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_path = utils::into_c_string(&path);
 
     // Create file.
     drop(File::create(&path).unwrap());
@@ -529,11 +708,10 @@ fn test_posix_realpath_alloc() {
 
 /// Test non-allocating variant of `realpath`.
 fn test_posix_realpath_noalloc() {
-    use std::ffi::{CStr, CString};
-    use std::os::unix::ffi::OsStrExt;
+    use std::ffi::CStr;
 
     let path = utils::prepare("miri_test_libc_posix_realpath_noalloc");
-    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_path = utils::into_c_string(&path);
 
     let mut v = vec![0; libc::PATH_MAX as usize];
 
@@ -554,16 +732,12 @@ fn test_posix_realpath_noalloc() {
 
 /// Test failure cases for `realpath`.
 fn test_posix_realpath_errors() {
-    use std::ffi::CString;
-    use std::io::ErrorKind;
-
     // Test nonexistent path returns an error.
-    let c_path = CString::new("./nothing_to_see_here").expect("CString::new failed");
+    let c_path = c"./nothing_to_see_here";
     let r = unsafe { libc::realpath(c_path.as_ptr(), std::ptr::null_mut()) };
     assert!(r.is_null());
     let e = std::io::Error::last_os_error();
     assert_eq!(e.raw_os_error(), Some(libc::ENOENT));
-    assert_eq!(e.kind(), ErrorKind::NotFound);
 }
 
 #[cfg(target_os = "linux")]
@@ -615,7 +789,7 @@ fn test_posix_fallocate<T: From<i32>>(
         assert_eq!(ret, libc::EINVAL);
 
         // fd not writable
-        let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+        let c_path = utils::into_c_string(path);
         let fd = unsafe { libc::open(c_path.as_ptr(), libc::O_RDONLY) };
         let ret = unsafe { posix_fallocate(fd, T::from(0), T::from(10)) };
         assert_eq!(ret, libc::EBADF);
@@ -629,11 +803,22 @@ fn test_posix_fallocate<T: From<i32>>(
         file.sync_all().unwrap();
         assert_eq!(file.metadata().unwrap().len(), 5);
 
-        let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+        let c_path = utils::into_c_string(&path);
         let fd = unsafe { libc::open(c_path.as_ptr(), libc::O_RDWR) };
 
         // Allocate to a bigger size from offset 0
         let mut res = unsafe { posix_fallocate(fd, T::from(0), T::from(10)) };
+
+        if cfg!(all(not(miri), target_os = "freebsd")) {
+            // On native FreeBSD with a ZFS file system `posix_fallocate` isn't implemented
+            // and thus always returns EOPNOTSUPP.
+            if res == libc::EOPNOTSUPP {
+                // We don't have to execute the remaining tests since we'll always get EOPNOTSUPP.
+                // Thus, we exit early here.
+                return;
+            }
+        }
+
         assert_eq!(res, 0);
         assert_eq!(file.metadata().unwrap().len(), 10);
 
@@ -692,7 +877,7 @@ fn test_fallocate<T: From<i32>>(
     assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
 
     // fd not writable
-    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_path = utils::into_c_string(path);
     let fd = errno_result(unsafe { libc::open(c_path.as_ptr(), libc::O_RDONLY) }).unwrap();
     let err = errno_result(unsafe { fallocate(fd, 0, T::from(0), T::from(10)) }).unwrap_err();
     assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
@@ -705,7 +890,7 @@ fn test_fallocate<T: From<i32>>(
     file.sync_all().unwrap();
     assert_eq!(file.metadata().unwrap().len(), 5);
 
-    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_path = utils::into_c_string(&path);
     let fd = errno_result(unsafe { libc::open(c_path.as_ptr(), libc::O_RDWR) }).unwrap();
 
     // Allocate to a bigger size from offset 0
@@ -770,7 +955,6 @@ fn test_sync_file_range() {
 }
 
 fn test_fstat() {
-    use std::mem::MaybeUninit;
     use std::os::unix::io::AsRawFd;
 
     let path = utils::prepare_with_content("miri_test_libc_fstat.txt", b"hello");
@@ -789,17 +973,129 @@ fn test_fstat() {
     check_stat_fields(stat);
 
     remove_file(&path).unwrap();
+
+    // Test it on a pipe as well.
+    unsafe {
+        let mut fds = [0; 2];
+        errno_check(libc::pipe(fds.as_mut_ptr()));
+
+        let mut stat = MaybeUninit::<libc::stat>::uninit();
+        errno_check(libc::fstat(fds[0], stat.as_mut_ptr()));
+        let stat = stat.assume_init_ref();
+
+        assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFIFO);
+        if cfg!(target_os = "freebsd") {
+            // FIXME: Seems like FreeBSD does not set permissions for non-file-backed FDs.
+            // Miri currently gets this wrong.
+            // assert_eq!(stat.st_mode & !libc::S_IFMT, 0, "no permission should be set");
+        } else {
+            assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+        }
+        assert_eq!(stat.st_size, 0);
+
+        errno_check(libc::close(fds[0]));
+        errno_check(libc::close(fds[1]));
+    }
+}
+
+fn test_fstatat() {
+    let testdir = utils::prepare_dir("miri_test_fstatat");
+    fs::create_dir(&testdir).unwrap();
+    let filename = "file.txt";
+    let cfilename = c"file.txt";
+    fs::write(testdir.join(filename), b"hello").unwrap();
+    let absfilename = testdir.join(filename);
+    let cabsfilename = utils::into_c_string(&absfilename);
+    assert!(absfilename.is_absolute());
+
+    let checkstat = |stat: &libc::stat| {
+        assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
+        assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+        assert_eq!(stat.st_size, 5);
+        check_stat_fields(stat);
+    };
+
+    // Relative to working directory.
+    let old_cwd = env::current_dir().unwrap();
+    env::set_current_dir(&testdir).unwrap();
+    let mut stat = MaybeUninit::<libc::stat>::uninit();
+    errno_check(unsafe { libc::fstatat(libc::AT_FDCWD, cfilename.as_ptr(), stat.as_mut_ptr(), 0) });
+    checkstat(unsafe { stat.assume_init_ref() });
+    env::set_current_dir(old_cwd).unwrap();
+
+    // Absolute path, dirfd is ignored.
+    let mut stat = MaybeUninit::<libc::stat>::uninit();
+    errno_check(unsafe {
+        libc::fstatat(
+            999, // dirfd
+            cabsfilename.as_ptr(),
+            stat.as_mut_ptr(),
+            0, // flags
+        )
+    });
+    checkstat(unsafe { stat.assume_init_ref() });
+
+    // Relative to dirfd.
+    let dirfd = errno_result(unsafe {
+        libc::open(utils::into_c_string(&testdir).as_ptr(), libc::O_RDONLY | libc::O_DIRECTORY)
+    })
+    .unwrap();
+    let mut stat = MaybeUninit::<libc::stat>::uninit();
+    errno_check(unsafe { libc::fstatat(dirfd, cfilename.as_ptr(), stat.as_mut_ptr(), 0) });
+    checkstat(unsafe { stat.assume_init_ref() });
+
+    // Relative to bogus FD that's not a dir.
+    let err = errno_result(unsafe { libc::fstatat(0, cfilename.as_ptr(), stat.as_mut_ptr(), 0) })
+        .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOTDIR, "unexpected errno: {err}");
+    let fd = errno_result(unsafe { libc::open(cabsfilename.as_ptr(), libc::O_RDONLY) }).unwrap();
+    let err = errno_result(unsafe { libc::fstatat(fd, cfilename.as_ptr(), stat.as_mut_ptr(), 0) })
+        .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOTDIR, "unexpected errno: {err}");
+    errno_check(unsafe { libc::close(fd) });
+    let err = errno_result(unsafe { libc::fstatat(fd, cfilename.as_ptr(), stat.as_mut_ptr(), 0) })
+        .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EBADF, "unexpected errno: {err}");
+
+    // Empty path errors. (We do not support AT_EMPTY_PATH.)
+    let err =
+        errno_result(unsafe { libc::fstatat(libc::AT_FDCWD, c"".as_ptr(), stat.as_mut_ptr(), 0) })
+            .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT, "unexpected errno: {err}");
+
+    if utils::have_symlink_permission() {
+        // Symlink following.
+        let linkname = testdir.join("link");
+        std::os::unix::fs::symlink(&absfilename, &linkname).unwrap();
+        let mut stat = MaybeUninit::<libc::stat>::uninit();
+        errno_check(unsafe { libc::fstatat(dirfd, c"link".as_ptr(), stat.as_mut_ptr(), 0) });
+        checkstat(unsafe { stat.assume_init_ref() });
+        let mut stat = MaybeUninit::<libc::stat>::uninit();
+        errno_check(unsafe {
+            libc::fstatat(dirfd, c"link".as_ptr(), stat.as_mut_ptr(), libc::AT_SYMLINK_NOFOLLOW)
+        });
+        let stat = unsafe { stat.assume_init_ref() };
+        assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFLNK); // not S_IFREG!
+        assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+        check_stat_fields(stat);
+    }
+
+    errno_check(unsafe { libc::close(dirfd) });
 }
 
 fn test_stat() {
-    use std::mem::MaybeUninit;
-    // Also make sure we *do* follow symlinks.
-
     let path = utils::prepare_with_content("miri_test_libc_stat.txt", b"hello");
-    let symlink_path = utils::prepare("miri_test_libc_lstat_symlink.txt");
-    std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
+    let path = if utils::have_symlink_permission() {
+        // Also make sure we *do* follow symlinks.
+        let symlink_path = utils::prepare("miri_test_libc_lstat_symlink.txt");
+        std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
+        symlink_path
+    } else {
+        // Backup plan: just open the file directly.
+        path
+    };
 
-    let cpath = CString::new(symlink_path.as_os_str().as_bytes()).unwrap();
+    let cpath = utils::into_c_string(&path);
 
     let mut stat = MaybeUninit::<libc::stat>::uninit();
     errno_check(unsafe { libc::stat(cpath.as_ptr(), stat.as_mut_ptr()) });
@@ -816,13 +1112,15 @@ fn test_stat() {
 }
 
 fn test_lstat() {
-    use std::mem::MaybeUninit;
+    if !utils::have_symlink_permission() {
+        return;
+    }
 
     let path = utils::prepare_with_content("miri_test_libc_lstat.txt", b"hello");
     let symlink_path = utils::prepare("miri_test_libc_lstat_symlink.txt");
     std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
 
-    let cpath = CString::new(symlink_path.as_os_str().as_bytes()).unwrap();
+    let cpath = utils::into_c_string(&symlink_path);
 
     let mut stat = MaybeUninit::<libc::stat>::uninit();
     errno_check(unsafe { libc::lstat(cpath.as_ptr(), stat.as_mut_ptr()) });
@@ -839,7 +1137,6 @@ fn test_lstat() {
 }
 
 fn test_futimens() {
-    use std::mem::MaybeUninit;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     let path = utils::prepare_with_content("miri_test_libc_futimens.txt", b"hello");
@@ -905,7 +1202,7 @@ fn test_isatty() {
         libc::isatty(libc::STDERR_FILENO);
 
         // But when we open a file, it is definitely not a TTY.
-        let path = utils::prepare("notatty.txt");
+        let path = utils::prepare("miri_notatty.txt");
         let file = File::create(&path).unwrap();
 
         assert_eq!(libc::isatty(file.as_raw_fd()), 0);
@@ -917,16 +1214,43 @@ fn test_isatty() {
     }
 }
 
+fn test_getfl() {
+    let path = utils::prepare_with_content("miri-test-getfl.txt", b"hello");
+    let cpath = utils::into_c_string(&path);
+
+    for flag in [libc::O_RDONLY, libc::O_WRONLY, libc::O_RDWR] {
+        let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), flag) }).unwrap();
+        // These flags contain "junk" that the kernel adds, such as a O_LARGEFILE flag, even on
+        // x86-64 where glibc sets O_LARGEFILE to 0 (but the kernel still says it is 0x8000).
+        // So we do not check the full flag, just the access mode.
+        assert_eq!(
+            errno_result(unsafe { libc::fcntl(fd, libc::F_GETFL) }).unwrap() & libc::O_ACCMODE,
+            flag
+        );
+        errno_check(unsafe { libc::close(fd) });
+    }
+
+    // Also test it on a directory.
+    let fd = errno_result(unsafe {
+        libc::open(utils::into_c_string(path.parent().unwrap()).as_ptr(), libc::O_RDONLY)
+    })
+    .unwrap();
+    assert_eq!(
+        errno_result(unsafe { libc::fcntl(fd, libc::F_GETFL) }).unwrap() & libc::O_ACCMODE,
+        libc::O_RDONLY
+    );
+    errno_check(unsafe { libc::close(fd) });
+}
+
 fn test_read_and_uninit() {
-    use std::mem::MaybeUninit;
     {
         // We test that libc::read initializes its buffer.
-        let path = utils::prepare_with_content("pass-libc-read-and-uninit.txt", &[1u8, 2, 3]);
-        let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+        let path = utils::prepare_with_content("miri-pass-libc-read-and-uninit.txt", &[1u8, 2, 3]);
+        let cpath = utils::into_c_string(path);
         unsafe {
             let fd = libc::open(cpath.as_ptr(), libc::O_RDONLY);
             assert_ne!(fd, -1);
-            let mut buf: MaybeUninit<u8> = std::mem::MaybeUninit::uninit();
+            let mut buf: MaybeUninit<u8> = MaybeUninit::uninit();
             assert_eq!(libc::read(fd, buf.as_mut_ptr().cast::<std::ffi::c_void>(), 1), 1);
             let buf = buf.assume_init();
             assert_eq!(buf, 1);
@@ -938,8 +1262,8 @@ fn test_read_and_uninit() {
         // We test that if we requested to read 4 bytes, but actually read 3 bytes, then
         // 3 bytes (not 4) will be overwritten, and remaining byte will be left as-is.
         let data = [1u8, 2, 3];
-        let path = utils::prepare_with_content("pass-libc-read-and-uninit-2.txt", &data);
-        let cpath = CString::new(path.clone().into_os_string().into_encoded_bytes()).unwrap();
+        let path = utils::prepare_with_content("miri-pass-libc-read-and-uninit-2.txt", &data);
+        let cpath = utils::into_c_string(&path);
         unsafe {
             let fd = libc::open(cpath.as_ptr(), libc::O_RDONLY);
             assert_ne!(fd, -1);
@@ -959,18 +1283,10 @@ fn test_read_and_uninit() {
     }
 }
 
-fn test_nofollow_not_symlink() {
-    let bytes = b"Hello, World!\n";
-    let path = utils::prepare_with_content("test_nofollow_not_symlink.txt", bytes);
-    let cpath = CString::new(path.as_os_str().as_bytes()).unwrap();
-    let ret = unsafe { libc::open(cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC) };
-    assert!(ret >= 0);
-}
-
 #[cfg(target_os = "macos")]
 fn test_ioctl() {
     let path = utils::prepare_with_content("miri_test_libc_ioctl.txt", &[]);
-    let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let name = utils::into_c_string(path);
 
     unsafe {
         // 100 surely is an invalid FD.
@@ -987,7 +1303,7 @@ fn test_opendir_closedir() {
     // dir should exist
     let path = utils::prepare_dir("miri_test_libc_opendir_closedir");
     create_dir(&path).expect("create_dir failed");
-    let cpath = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let cpath = utils::into_c_string(&path);
     let dir: *mut libc::DIR = unsafe { libc::opendir(cpath.as_ptr()) };
     assert!(!dir.is_null());
     errno_check(unsafe { libc::closedir(dir) });
@@ -1001,8 +1317,8 @@ fn test_opendir_closedir() {
     assert_eq!(e.kind(), ErrorKind::NotFound);
 
     // open normal file as dir should fail
-    let file_path = utils::prepare_with_content("test_not_a_dir.txt", b"hello");
-    let cfile = CString::new(file_path.as_os_str().as_bytes()).expect("CString::new failed");
+    let file_path = utils::prepare_with_content("miri_test_not_a_dir.txt", b"hello");
+    let cfile = utils::into_c_string(&file_path);
     let dir: *mut libc::DIR = unsafe { libc::opendir(cfile.as_ptr()) };
     assert!(dir.is_null());
     let e = std::io::Error::last_os_error();
@@ -1023,7 +1339,7 @@ fn test_readdir() {
     write(&file1, b"content1").unwrap();
     write(&file2, b"content2").unwrap();
 
-    let c_path = CString::new(dir_path.as_os_str().as_bytes()).unwrap();
+    let c_path = utils::into_c_string(&dir_path);
 
     unsafe {
         let dirp = libc::opendir(c_path.as_ptr());
@@ -1050,11 +1366,9 @@ fn test_readdir() {
 }
 
 fn test_dirfd() {
-    use std::mem::MaybeUninit;
-
     let path = utils::prepare_dir("miri_test_libc_opendir_closedir");
     create_dir(&path).expect("create_dir failed");
-    let cpath = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let cpath = utils::into_c_string(path);
     let dir: *mut libc::DIR = unsafe { libc::opendir(cpath.as_ptr()) };
     assert!(!dir.is_null());
 
@@ -1070,9 +1384,22 @@ fn test_dirfd() {
     // Check that all fields are initialized.
     check_stat_fields(stat);
 
+    // We can also call fstatat on this.
+    let mut stat = MaybeUninit::<libc::stat>::uninit();
+    let err =
+        errno_result(unsafe { libc::fstatat(dirfd, c"missing".as_ptr(), stat.as_mut_ptr(), 0) })
+            .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
+    errno_check(unsafe { libc::fstatat(dirfd, c".".as_ptr(), stat.as_mut_ptr(), 0) });
+    let stat = unsafe { stat.assume_init_ref() };
+    assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFDIR);
+    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+    check_stat_fields(stat);
+
+    // Close the stream.
     errno_check(unsafe { libc::closedir(dir) });
 
-    // `closedir` should also have closed the stream.
+    // `closedir` should also have closed the underlying FD.
     let err = errno_result(unsafe { libc::close(dirfd) }).unwrap_err();
     assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
 }
@@ -1100,8 +1427,8 @@ pub fn check_stat_fields(stat: &libc::stat) {
 /// Test vectored reads with multiple buffers.
 fn test_readv() {
     let file_contents = [1u8, 2, 3, 4, 5, 6];
-    let path = utils::prepare_with_content("pass-libc-readv.txt", &file_contents);
-    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let path = utils::prepare_with_content("miri-pass-libc-readv.txt", &file_contents);
+    let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
     assert_ne!(fd, -1);
 
@@ -1136,8 +1463,8 @@ fn test_readv_empty_bufs() {
         return;
     }
 
-    let path = utils::prepare_with_content("pass-libc-readv-empty-bufs.txt", &[1u8, 2, 3]);
-    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let path = utils::prepare_with_content("miri-pass-libc-readv-empty-bufs.txt", &[1u8, 2, 3]);
+    let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
     assert_ne!(fd, -1);
     unsafe { assert_eq!(errno_result(libc::readv(fd, ptr::null::<libc::iovec>(), 0)).unwrap(), 0) };
@@ -1150,8 +1477,8 @@ fn test_readv_empty_bufs() {
 #[cfg(not(target_os = "solaris"))]
 fn test_preadv() {
     let file_contents = [1u8, 2, 3, 4, 5, 6];
-    let path = utils::prepare_with_content("pass-libc-preadv.txt", &file_contents);
-    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let path = utils::prepare_with_content("miri-pass-libc-preadv.txt", &file_contents);
+    let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
     assert_ne!(fd, -1);
 
@@ -1191,8 +1518,8 @@ fn test_preadv() {
 /// Test reading with an offset.
 fn test_pread() {
     let file_contents = [1u8, 2, 3, 4, 5, 6];
-    let path = utils::prepare_with_content("pass-libc-pread.txt", &file_contents);
-    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let path = utils::prepare_with_content("miri-pass-libc-pread.txt", &file_contents);
+    let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
     assert_ne!(fd, -1);
 
@@ -1218,8 +1545,8 @@ fn test_pread() {
 
 /// Test vectored writes with multiple buffers.
 fn test_writev() {
-    let path = utils::prepare_with_content("pass-libc-writev.txt", &[]);
-    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let path = utils::prepare_with_content("miri-pass-libc-writev.txt", &[]);
+    let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
     assert_ne!(fd, -1);
 
@@ -1269,8 +1596,8 @@ fn test_writev_empty_bufs() {
         return;
     }
 
-    let path = utils::prepare_with_content("pass-libc-writev-empty-bufs.txt", &[1u8, 2, 3]);
-    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let path = utils::prepare_with_content("miri-pass-libc-writev-empty-bufs.txt", &[1u8, 2, 3]);
+    let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
     assert_ne!(fd, -1);
     unsafe {
@@ -1284,8 +1611,8 @@ fn test_writev_empty_bufs() {
 /// doesn't have `pwritev`.
 #[cfg(not(target_os = "solaris"))]
 fn test_pwritev() {
-    let path = utils::prepare_with_content("pass-libc-pwritev.txt", &[]);
-    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let path = utils::prepare_with_content("miri-pass-libc-pwritev.txt", &[]);
+    let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
     assert_ne!(fd, -1);
 
@@ -1340,8 +1667,8 @@ fn test_pwritev() {
 
 /// Test writing with an offset.
 fn test_pwrite() {
-    let path = utils::prepare_with_content("pass-libc-pwritev.txt", &[]);
-    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let path = utils::prepare_with_content("miri-pass-libc-pwritev.txt", &[]);
+    let cpath = utils::into_c_string(path);
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
     assert_ne!(fd, -1);
 
@@ -1381,12 +1708,63 @@ fn test_pwrite() {
     assert_eq!(&write_buffer[0..bytes_written], &read_buffer[OFFSET..(bytes_written + OFFSET)]);
 }
 
+fn test_readlink() {
+    if !utils::have_symlink_permission() {
+        return;
+    }
+
+    let bytes = b"Hello, World!\n";
+    let path = utils::prepare_with_content("miri_test_fs_link_target.txt", bytes);
+    let expected_path = path.as_os_str().as_bytes();
+
+    let symlink_path = utils::prepare("miri_test_fs_symlink.txt");
+    std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
+
+    // Test that the expected string gets written to a buffer of proper
+    // length, and that a trailing null byte is not written.
+    let symlink_c_str = utils::into_c_string(symlink_path);
+    let symlink_c_ptr = symlink_c_str.as_ptr();
+
+    // Make the buf one byte larger than it needs to be,
+    // and check that the last byte is not overwritten.
+    let mut large_buf = vec![0xFF; expected_path.len() + 1];
+    let res = errno_result(unsafe {
+        libc::readlink(symlink_c_ptr, large_buf.as_mut_ptr().cast(), large_buf.len())
+    })
+    .unwrap();
+    // Check that the resolved path was properly written into the buf.
+    assert_eq!(&large_buf[..(large_buf.len() - 1)], expected_path);
+    assert_eq!(large_buf.last(), Some(&0xFF));
+    assert_eq!(res, (large_buf.len() - 1) as isize);
+
+    // Test that the resolved path is truncated if the provided buffer
+    // is too small.
+    let mut small_buf = [0u8; 2];
+    let res = errno_result(unsafe {
+        libc::readlink(symlink_c_ptr, small_buf.as_mut_ptr().cast(), small_buf.len())
+    })
+    .unwrap();
+    assert_eq!(small_buf, &expected_path[..small_buf.len()]);
+    assert_eq!(res, small_buf.len() as isize);
+
+    // Test that we report a proper error for a missing path.
+    let err = errno_result(unsafe {
+        libc::readlink(
+            c"MIRI_MISSING_FILE_NAME".as_ptr(),
+            small_buf.as_mut_ptr().cast(),
+            small_buf.len(),
+        )
+    })
+    .unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::NotFound);
+}
+
 fn test_linkat() {
     let source = utils::prepare_with_content("miri_test_libc_linkat_source.txt", b"hello");
     let link = utils::prepare("miri_test_libc_linkat_link.txt");
 
-    let c_source = CString::new(source.as_os_str().as_bytes()).expect("CString::new failed");
-    let c_link = CString::new(link.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_source = utils::into_c_string(&source);
+    let c_link = utils::into_c_string(&link);
 
     // Call linkat
     unsafe {

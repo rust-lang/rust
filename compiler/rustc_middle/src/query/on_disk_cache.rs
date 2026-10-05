@@ -25,6 +25,7 @@ use rustc_span::{
 };
 
 use crate::dep_graph::{DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
+use crate::ich::SourceSpanCache;
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use crate::mir::{self, interpret};
 use crate::mono::MonoItem;
@@ -235,6 +236,7 @@ impl OnDiskCache {
                 file_to_file_index,
                 hygiene_context: Default::default(),
                 symbol_index_table: Default::default(),
+                source_span_cache: Default::default(),
                 query_values_index: Default::default(),
                 side_effects_index: Default::default(),
             };
@@ -383,6 +385,7 @@ impl OnDiskCache {
             expn_data: &self.expn_data,
             foreign_expn_data: &self.foreign_expn_data,
             hygiene_context: &self.hygiene_context,
+            source_span_cache: SourceSpanCache::default(),
         };
         f(&mut decoder)
     }
@@ -403,6 +406,7 @@ pub struct CacheDecoder<'a, 'tcx> {
     expn_data: &'a UnhashMap<ExpnHash, AbsoluteBytePos>,
     foreign_expn_data: &'a UnhashMap<ExpnHash, u32>,
     hygiene_context: &'a HygieneDecodeContext,
+    source_span_cache: SourceSpanCache,
 }
 
 impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
@@ -611,7 +615,9 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
                 let dlo = u32::decode(self);
                 let dto = u32::decode(self);
 
-                let enclosing = self.tcx.source_span_untracked(parent.unwrap()).data_untracked();
+                let enclosing = self
+                    .source_span_cache
+                    .lookup(parent.unwrap(), &self.tcx.untracked().source_span);
                 (
                     BytePos(enclosing.lo.0.wrapping_add(dlo)),
                     BytePos(enclosing.lo.0.wrapping_add(dto)),
@@ -744,6 +750,7 @@ pub struct CacheEncoder<'tcx> {
     hygiene_context: Rc<RefCell<HygieneEncodeContext>>,
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
+    source_span_cache: SourceSpanCache,
 
     query_values_index: Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>,
     side_effects_index: Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>,
@@ -845,8 +852,9 @@ impl<'tcx> SpanEncoder for CacheEncoder<'tcx> {
             return TAG_PARTIAL_SPAN.encode(self);
         }
 
-        let parent =
-            span_data.parent.map(|parent| self.tcx.source_span_untracked(parent).data_untracked());
+        let parent = span_data
+            .parent
+            .map(|parent| self.source_span_cache.lookup(parent, &self.tcx.untracked().source_span));
         if let Some(parent) = parent
             && parent.contains(span_data)
         {
@@ -929,10 +937,12 @@ impl<'tcx> TyEncoder<'tcx> for CacheEncoder<'tcx> {
 
 macro_rules! encoder_methods {
     ($($name:ident($ty:ty);)*) => {
-        #[inline]
-        $(fn $name(&mut self, value: $ty) {
-            self.encoder.$name(value)
-        })*
+        $(
+            #[inline]
+            fn $name(&mut self, value: $ty) {
+                self.encoder.$name(value)
+            }
+        )*
     }
 }
 

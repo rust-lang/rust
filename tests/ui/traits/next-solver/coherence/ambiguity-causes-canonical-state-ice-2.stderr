@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Overlap` for type `str`
-  --> $DIR/ambiguity-causes-canonical-state-ice-2.rs:18:1
+  --> $DIR/ambiguity-causes-canonical-state-ice-2.rs:16:1
    |
 LL | impl<T: ToOwned<Owned = i8> + ?Sized> Overlap for T {}
    | --------------------------------------------------- first implementation here

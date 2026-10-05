@@ -1,9 +1,9 @@
-use rustc_middle::ty::consts::ConstExt;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::{has_repr_attr, is_in_test};
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty;
+use rustc_middle::ty::consts::ConstExt as _;
 
 declare_clippy_lint! {
     /// ### What it does

@@ -4556,6 +4556,7 @@ pub struct TestBinderExists<'hir> {
 pub enum TestBinderConstraint<'hir> {
     And { items: &'hir [TestBinderConstraint<'hir>] },
     Or { items: &'hir [TestBinderConstraint<'hir>] },
+    Ambiguity { span: Span },
     Lifetime { lhs: &'hir Lifetime, rhs: &'hir Lifetime },
     PlaceholderOutlives { lhs: &'hir Ty<'hir>, rhs: &'hir Lifetime },
     AliasOutlives { bound_type_constraint: &'hir TestBinderBoundTypeConstraint<'hir> },

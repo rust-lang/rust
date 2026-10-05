@@ -183,3 +183,21 @@ pub mod __macro {
 pub unsafe trait DocumentedUnsafeTraitWithImplementationHeader {
     fn method();
 }
+
+pub mod issue_16317 {
+    use super::external;
+
+    external! {
+        #[doc = $("# Safety")]
+        $(
+            pub unsafe fn expanded_unsafe_fn_with_safety() {}
+        )
+    }
+    external! {
+        #[doc = $("No safety comment")]
+        $(
+            pub unsafe fn expanded_unsafe_fn_without_safety() {}
+            //~^ missing_safety_doc
+        )
+    }
+}

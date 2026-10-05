@@ -9,35 +9,65 @@ use rustc_lint::LateContext;
 
 use super::EXTEND_WITH_DRAIN;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<'_>) {
-    let ty = cx.typeck_results().expr_ty(recv).peel_refs();
-    if ty.is_diag_item(cx, sym::Vec)
-        //check source object
-        && let ExprKind::MethodCall(src_method, drain_vec, [drain_arg], _) = &arg.kind
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, extend_receiver: &Expr<'_>, arg: &Expr<'_>) {
+    // `expr` is a method call expression which has already been checked to have the method name “extend”.
+    // `extend_receiver` is the receiver of that method call, which will be the collection being extended.
+
+    // Check whether the argument of the `extend()` is a `drain()` first, because it’s cheaper than checking types.
+    if let ExprKind::MethodCall(src_method, drain_receiver, drain_args, _) = &arg.kind
         && src_method.ident.name == sym::drain
-        && let src_ty = cx.typeck_results().expr_ty(drain_vec)
-        //check if actual src type is mutable for code suggestion
-        && let immutable = src_ty.is_mutable_ptr()
-        && let src_ty = src_ty.peel_refs()
-        && src_ty.is_diag_item(cx, sym::Vec)
-        //check drain range
-        && let src_ty_range = cx.typeck_results().expr_ty(drain_arg).peel_refs()
-        && src_ty_range.is_lang_item(cx, LangItem::RangeFull)
     {
-        let mut applicability = Applicability::MachineApplicable;
-        span_lint_and_sugg(
-            cx,
-            EXTEND_WITH_DRAIN,
-            expr.span,
-            "use of `extend` instead of `append` for adding the full range of a second vector",
-            "try",
-            format!(
-                "{}.append({}{})",
-                snippet_with_applicability(cx, recv.span, "..", &mut applicability),
-                if immutable { "" } else { "&mut " },
-                snippet_with_applicability(cx, drain_vec.span, "..", &mut applicability)
-            ),
-            applicability,
-        );
+        let extend_collection_ty = cx.typeck_results().expr_ty(extend_receiver).peel_refs();
+        let drain_receiver_ty = cx.typeck_results().expr_ty(drain_receiver);
+
+        // Each of these container types has:
+        // * A method `fn append(&mut self, other: &mut Self)`.
+        // * A method `fn drain(&mut self, /* maybe a range parameter too */)`.
+        for (container_type_sym, expect_drain_range_argument) in
+            [(sym::Vec, true), (sym::VecDeque, true), (sym::BinaryHeap, false)]
+        {
+            // Check that the source and destination collections are of the same type.
+            if extend_collection_ty.is_diag_item(cx, container_type_sym)
+                && drain_receiver_ty.peel_refs().is_diag_item(cx, container_type_sym)
+                // Check that the drain range (if there is one) is full, not partial
+                && drain_args_are_full_range(cx, drain_args, expect_drain_range_argument)
+            {
+                let mut applicability = Applicability::MachineApplicable;
+                span_lint_and_sugg(
+                    cx,
+                    EXTEND_WITH_DRAIN,
+                    expr.span,
+                    format!(
+                        "use of `extend` instead of `append` for moving \
+                        the full contents of a second `{container_type_sym}`"
+                    ),
+                    "try",
+                    format!(
+                        "{}.append({}{})",
+                        snippet_with_applicability(cx, extend_receiver.span, "..", &mut applicability),
+                        if drain_receiver_ty.is_mutable_ptr() {
+                            ""
+                        } else {
+                            "&mut "
+                        },
+                        snippet_with_applicability(cx, drain_receiver.span, "..", &mut applicability)
+                    ),
+                    applicability,
+                );
+            }
+        }
+    }
+}
+
+/// Check for the correct count of arguments to a `drain()` call, and, if a range is expected,
+/// that the range is the full range `..`.
+fn drain_args_are_full_range(cx: &LateContext<'_>, args: &[Expr<'_>], expect_drain_range_argument: bool) -> bool {
+    match (expect_drain_range_argument, args) {
+        (false, []) => true,
+        (true, [drain_arg]) => {
+            let src_ty_range = cx.typeck_results().expr_ty(drain_arg).peel_refs();
+            src_ty_range.is_lang_item(cx, LangItem::RangeFull)
+        },
+        (_, _) => false,
     }
 }

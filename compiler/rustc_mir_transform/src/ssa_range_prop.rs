@@ -155,12 +155,16 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
     fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
         self.super_terminator(terminator, location);
         match &terminator.kind {
-            TerminatorKind::Assert { cond, expected, target, .. }
+            TerminatorKind::Assert { cond, expected, target, msg, .. }
                 if let Some(place) = cond.place()
                     && self.is_ssa(place) =>
             {
                 let successor = Location { block: *target, statement_index: 0 };
-                if location.strictly_dominates(successor, &self.dominators) {
+                if location.strictly_dominates(successor, &self.dominators)
+                    // Don't propagate range information from built-in overflow checks,
+                    // this MIR might be lowered without them!
+                    && !msg.is_optional_overflow_check()
+                {
                     let val = *expected as u128;
                     let range = WrappingRange { start: val, end: val };
                     self.insert_range(place, successor, range);

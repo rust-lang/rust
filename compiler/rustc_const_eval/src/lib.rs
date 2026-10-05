@@ -1,5 +1,4 @@
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(array_try_map)]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]

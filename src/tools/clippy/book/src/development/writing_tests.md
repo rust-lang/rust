@@ -141,7 +141,8 @@ error: aborting due to 3 previous errors
 Note the *failures* label at the top of the fragment, we'll get rid of it
 (saving this output) in the next section.
 
-> _Note:_ You can run multiple test files by specifying a comma separated list:
+> [!NOTE]
+> You can run multiple test files by specifying a comma separated list:
 > `TESTNAME=foo_functions,bar_methods,baz_structs`.
 
 ### `cargo bless`
@@ -162,7 +163,8 @@ our lint, we need to commit the generated `.stderr` files, too.
 In general, you should only commit files changed by `cargo bless` for the
 specific lint you are creating/editing.
 
-> _Note:_ If the generated `.stderr`, and `.fixed` files are empty,
+> [!NOTE]
+> If the generated `.stderr`, and `.fixed` files are empty,
 > they should be removed.
 
 ## `toml` Tests

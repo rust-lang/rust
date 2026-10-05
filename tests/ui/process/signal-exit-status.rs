@@ -12,7 +12,7 @@ pub fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() >= 2 && args[1] == "signal" {
         // Raise an aborting signal without UB
-        core::intrinsics::abort();
+        core::intrinsics::abort_immediate();
     } else {
         let status = Command::new(&args[0]).arg("signal").status().unwrap();
         assert!(status.code().is_none());

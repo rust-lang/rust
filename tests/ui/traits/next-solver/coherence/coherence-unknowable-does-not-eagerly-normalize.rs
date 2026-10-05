@@ -1,4 +1,3 @@
-//@ compile-flags: -Znext-solver=coherence
 //@ check-pass
 //@ aux-build:coherence-unknowable-does-not-eagerly-normalize-dep.rs
 //

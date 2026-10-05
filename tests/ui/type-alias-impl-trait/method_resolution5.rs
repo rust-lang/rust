@@ -2,6 +2,7 @@
 //! not figure out that `u32` is the hidden type of `Foo` to call `bar`.
 
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@ check-pass
 

@@ -1,0 +1,9 @@
+error[E0284]: type annotations needed: cannot satisfy `<(dyn Something<Assoc = &'static [usize; 1]> + 'static) as Super>::Assoc == &[usize; 1]`
+  --> $DIR/pr-review-132289-1.rs:53:22
+   |
+LL |     let _arr2: A = y.method();
+   |                      ^^^^^^ cannot satisfy `<(dyn Something<Assoc = &'static [usize; 1]> + 'static) as Super>::Assoc == &[usize; 1]`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0284`.

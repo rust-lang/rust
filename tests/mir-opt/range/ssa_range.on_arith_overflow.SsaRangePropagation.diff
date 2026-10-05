@@ -1,0 +1,54 @@
+- // MIR for `on_arith_overflow` before SsaRangePropagation
++ // MIR for `on_arith_overflow` after SsaRangePropagation
+  
+  fn on_arith_overflow(_1: u32, _2: u32) -> bool {
+      debug a => _1;
+      debug b => _2;
+      let mut _0: bool;
+      let mut _3: u32;
+      let mut _4: u32;
+      let mut _5: u32;
+      let mut _6: (u32, bool);
+      let mut _7: u32;
+      let mut _8: u32;
+      scope 1 {
+          scope 3 (inlined core::num::<impl u32>::overflowing_add) {
+              scope 4 {
+              }
+          }
+      }
+      scope 2 (inlined #[track_caller] <u32 as Add>::add) {
+          let mut _9: (u32, bool);
+      }
+  
+      bb0: {
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = copy _1;
+          StorageLive(_5);
+          _5 = copy _2;
+          nop;
+          _9 = AddWithOverflow(copy _1, copy _2);
+          assert(!copy (_9.1: bool), "attempt to compute `{} + {}`, which would overflow", copy _1, copy _2) -> [success: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          _3 = copy (_9.0: u32);
+          nop;
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = copy _1;
+          StorageLive(_8);
+          _8 = copy _2;
+          _6 = copy _9;
+          StorageDead(_8);
+          StorageDead(_7);
+          _0 = copy (_9.1: bool);
+          StorageDead(_6);
+          return;
+      }
+  }
+  

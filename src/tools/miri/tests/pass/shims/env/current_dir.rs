@@ -1,4 +1,5 @@
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
 use std::env;
 use std::io::ErrorKind;
 

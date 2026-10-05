@@ -11,8 +11,8 @@ pub mod stage0_parser;
 pub mod targets;
 pub mod util;
 
-/// The default set of crates for opt-dist to collect LLVM profiles.
-pub const LLVM_PGO_CRATES: &[&str] = &[
+/// The default set of crates for opt-dist to collect backend (LLVM, Cranelift) profiles.
+pub const BACKEND_PGO_CRATES: &[&str] = &[
     "syn-2.0.101",
     "cargo-0.87.1",
     "serde-1.0.219",

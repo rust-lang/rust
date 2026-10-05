@@ -545,6 +545,17 @@ impl<'a> Parser<'a> {
         ))
     }
 
+    pub(super) fn parse_ref_ty_no_leading_ampersand(&mut self) -> (Mutability, Option<Box<Ty>>) {
+        let mutbl = self.parse_mutability();
+        match self.parse_ty_no_plus() {
+            Ok(ty) => (mutbl, Some(ty)),
+            Err(err) => {
+                err.cancel();
+                (mutbl, None)
+            }
+        }
+    }
+
     fn maybe_recover_ref_ty_no_leading_ampersand<'cx>(
         &mut self,
         lt: Lifetime,
@@ -555,9 +566,12 @@ impl<'a> Parser<'a> {
             return Err(err);
         }
         let snapshot = self.create_snapshot_for_diagnostic();
-        let mutbl = self.parse_mutability();
-        match self.parse_ty_no_plus() {
-            Ok(ty) => {
+        match self.parse_ref_ty_no_leading_ampersand() {
+            (_, None) => {
+                self.restore_snapshot(snapshot);
+                Err(err)
+            }
+            (mutbl, Some(ty)) => {
                 err.span_suggestion_verbose(
                     lo.shrink_to_lo(),
                     "you might have meant to write a reference type here",
@@ -566,11 +580,6 @@ impl<'a> Parser<'a> {
                 );
                 err.emit();
                 Ok(TyKind::Ref(Some(lt), ty, mutbl))
-            }
-            Err(diag) => {
-                diag.cancel();
-                self.restore_snapshot(snapshot);
-                Err(err)
             }
         }
     }

@@ -43,9 +43,8 @@ pub(crate) fn declare_simple_fn<'ll>(
     ty: &'ll Type,
 ) -> &'ll Value {
     debug!("declare_simple_fn(name={:?}, ty={:?})", name, ty);
-    let llfn = unsafe {
-        llvm::LLVMRustGetOrInsertFunction(cx.llmod, name.as_c_char_ptr(), name.len(), ty)
-    };
+    let llfn =
+        unsafe { llvm::LLVMGetOrInsertFunction(cx.llmod, name.as_c_char_ptr(), name.len(), ty) };
 
     llvm::SetFunctionCallConv(llfn, callconv);
     llvm::set_unnamed_address(llfn, unnamed);

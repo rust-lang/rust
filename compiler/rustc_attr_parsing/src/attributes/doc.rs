@@ -5,7 +5,7 @@ use rustc_attr_ir::{
     DocInline, HideOrShow,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, MultiSpan, msg};
 use rustc_feature::AttributeStability;
 use rustc_lint_defs::builtin::{INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES};
 use rustc_span::{Span, Symbol, edition, sym};
@@ -18,10 +18,10 @@ use crate::diagnostics::{
     DocAliasStartEnd, DocAttrNotCrateLevel, DocAttributeNotAttribute, DocAutoCfgExpectsHideOrShow,
     DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowNoIdentBeforeValues,
     DocAutoCfgHideShowUnexpectedItem, DocAutoCfgHideShowUnexpectedItemAfterValues,
-    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocKeywordNotKeyword, DocTestLiteral,
-    DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude, DocUnknownPasses,
-    DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs,
-    IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
+    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocInlineConflict, DocInlineOnlyUse,
+    DocKeywordNotKeyword, DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny,
+    DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue,
+    ExpectedNoArgs, IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
@@ -263,7 +263,29 @@ impl DocParser {
             return;
         }
 
-        self.attribute.inline.push((inline, path.span()));
+        let span = path.span();
+        if let Some((previous_inline, previous_span)) = self.attribute.inline {
+            if previous_inline != inline {
+                let mut spans = MultiSpan::from_spans(vec![previous_span, span]);
+                spans.push_span_label(previous_span, msg!("this attribute..."));
+                spans.push_span_label(span, msg!("{\".\"}..conflicts with this attribute"));
+                cx.emit_err(DocInlineConflict { spans });
+            }
+        } else {
+            self.attribute.inline = Some((inline, span));
+        }
+
+        match cx.target {
+            Target::Use | Target::ExternCrate => {}
+            _ => {
+                let item_span = cx.target_span;
+                cx.emit_lint(
+                    INVALID_DOC_ATTRIBUTES,
+                    DocInlineOnlyUse { attr_span: span, item_span },
+                    span,
+                );
+            }
+        }
     }
 
     fn parse_cfg(&mut self, cx: &mut AcceptContext<'_, '_>, args: &ArgParser) {

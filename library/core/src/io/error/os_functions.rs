@@ -6,7 +6,7 @@ use crate::fmt;
 /// The provided reference must point to data that is entirely constant; it must
 /// not be created during runtime.
 #[inline]
-pub(super) unsafe fn set_functions(f: &'static OsFunctions) {
+pub(super) unsafe fn set_functions(_f: &'static OsFunctions) {
     // FIXME: externally implementable items may allow for weak linkage, allowing
     // these methods to be overridden even when atomic pointers are not supported.
 }

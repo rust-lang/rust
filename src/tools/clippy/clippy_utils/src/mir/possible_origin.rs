@@ -21,6 +21,7 @@ impl<'a, 'tcx> PossibleOriginVisitor<'a, 'tcx> {
         }
     }
 
+    /// Returns a map of each non-`Copy` local to all locals that it can borrow or move from (excluding `_0`).
     pub fn into_map(self, cx: &LateContext<'tcx>) -> FxHashMap<mir::Local, DenseBitSet<mir::Local>> {
         let mut map = FxHashMap::default();
         for row in (1..self.body.local_decls.len()).map(mir::Local::from_usize) {
@@ -28,10 +29,10 @@ impl<'a, 'tcx> PossibleOriginVisitor<'a, 'tcx> {
                 continue;
             }
 
-            let mut borrowers = self.possible_origin.reachable_from(row, self.body.local_decls.len());
-            borrowers.remove(mir::Local::from_usize(0));
-            if !borrowers.is_empty() {
-                map.insert(row, borrowers);
+            let mut origins = self.possible_origin.reachable_from(row, self.body.local_decls.len());
+            origins.remove(mir::Local::from_usize(0));
+            if !origins.is_empty() {
+                map.insert(row, origins);
             }
         }
         map

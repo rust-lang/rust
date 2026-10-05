@@ -84,10 +84,21 @@ pub struct ParseSess {
     pub bad_unicode_identifiers: Lock<FxIndexMap<Symbol, Vec<Span>>>,
     source_map: Arc<SourceMap>,
     pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
-    /// Contains the spans of block expressions that could have been incomplete based on the
-    /// operation token that followed it, but that the parser cannot identify without further
-    /// analysis.
-    pub ambiguous_block_expr_parse: Lock<FxIndexMap<Span, Span>>,
+    /// Places where *complete* stmt exprs are followed by a token that would've been interpreted as
+    /// a binary operator instead of the start of a following stmt or pat *if we weren't in a stmt
+    /// expr context*.
+    ///
+    /// **For error recovery and diagnostic purposes only!**
+    ///
+    /// Maps from the [`start_point`] of the bin op lookalike to the span of the complete stmt expr
+    /// (e.g., block) that could be interpreted as its left operand.
+    ///
+    /// Examples: Given `fn f() { { dbg!(); } *ptr = 0; }` it maps the span of `*` to the span of
+    /// `{ dbg!(); }`; given `fn f() { { true } && panic!(); }` it maps the span of the first `&` to
+    /// the span of `{ true }`.
+    ///
+    /// [`start_point`]: SourceMap::start_point
+    pub complete_stmt_exprs_before_bin_op_lookalike: Lock<FxIndexMap<Span, Span>>,
     pub gated_spans: GatedSpans,
     pub symbol_gallery: SymbolGallery,
     /// Used to generate new `AttrId`s. Every `AttrId` is unique.
@@ -114,7 +125,7 @@ impl ParseSess {
             bad_unicode_identifiers: Lock::new(Default::default()),
             source_map,
             buffered_lints: Lock::new(vec![]),
-            ambiguous_block_expr_parse: Lock::new(Default::default()),
+            complete_stmt_exprs_before_bin_op_lookalike: Lock::new(Default::default()),
             gated_spans: GatedSpans::default(),
             symbol_gallery: SymbolGallery::default(),
             attr_id_generator: AttrIdGenerator::new(),

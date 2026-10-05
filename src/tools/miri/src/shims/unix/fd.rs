@@ -63,6 +63,20 @@ pub trait UnixFileDescription: FileDescription {
         throw_unsup_format!("cannot flock {}", self.name());
     }
 
+    /// Implementation of fcntl(F_GETFL) for this FD.
+    fn get_flags<'tcx>(&self, _ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Scalar> {
+        throw_unsup_format!("fcntl: {} is not supported for F_GETFL", self.name());
+    }
+
+    /// Implementation of fcntl(F_SETFL) for this FD.
+    fn set_flags<'tcx>(
+        &self,
+        _flag: i32,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        throw_unsup_format!("fcntl: {} is not supported for F_SETFL", self.name());
+    }
+
     /// Modifies device parameters.
     /// `op` is the device-dependent operation code. It's either a `c_long` or `c_int`, depending on
     /// the target and whether it uses glibc or musl.
@@ -78,13 +92,17 @@ pub trait UnixFileDescription: FileDescription {
     }
 
     /// Returns this file description as a Unix socket, if it represents one.
-    fn as_socket<'tcx>(
+    fn as_socket(
         self: FileDescriptionRef<Self>,
-        _ecx: &MiriInterpCx<'tcx>,
     ) -> Option<FileDescriptionRef<dyn UnixSocketFileDescription>> {
         None
     }
 }
+
+impl UnixFileDescription for shims::files::Stdin {}
+impl UnixFileDescription for shims::files::Stdout {}
+impl UnixFileDescription for shims::files::Stderr {}
+impl UnixFileDescription for shims::files::NullOutput {}
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
@@ -94,6 +112,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(fd) = this.machine.fds.remove(fd_num) else {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
+        let fd = fd.as_unix(); // sanity-check
         if this.tcx.sess.target.os == Os::Illumos {
             // Illumos didn't like the Linux semantics of epoll tracking file *descriptions*
             // rather than file *descriptors*. So on Illumos, when a file description is closed,
@@ -171,7 +190,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("unsupported flags {:#x}", op);
         };
 
-        let result = fd.as_unix(this).flock(this.machine.communicate(), parsed_op)?;
+        let result = fd.as_unix().flock(this.machine.communicate(), parsed_op)?;
         // return `0` if flock is successful
         let result = result.map(|()| 0i32);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
@@ -202,7 +221,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Since some ioctl operations use the return value as an output parameter, we cannot strictly use the convention of
         // zero indicating success and -1 indicating an error.
-        let return_value = fd.as_unix(this).ioctl(op, varargs, this)?;
+        let return_value = fd.as_unix().ioctl(op, varargs, this)?;
         interp_ok(Scalar::from_i32(return_value))
     }
 
@@ -262,7 +281,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
                 };
 
-                fd.get_flags(this)
+                fd.as_unix().get_flags(this)
             }
             cmd if cmd == f_setfl => {
                 // Check if this is a valid open file descriptor.
@@ -286,7 +305,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     | this.eval_libc_i32("O_NOCTTY")
                     | this.eval_libc_i32("O_TRUNC");
 
-                fd.set_flags(flag & !ignored_flags, this)
+                fd.as_unix().set_flags(flag & !ignored_flags, this)
             }
             cmd if this.tcx.sess.target.os == Os::MacOs
                 && cmd == this.eval_libc_i32("F_FULLFSYNC") =>
@@ -699,14 +718,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let Ok(offset) = u64::try_from(offset) else {
                     return finish.call(this, Err(LibcError("EINVAL")));
                 };
-                fd.as_unix(this).pread(
-                    this.machine.communicate(),
-                    offset,
-                    ptr,
-                    len,
-                    this,
-                    finish,
-                )?
+                fd.as_unix().pread(this.machine.communicate(), offset, ptr, len, this, finish)?
             }
         };
         interp_ok(())
@@ -758,14 +770,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let Ok(offset) = u64::try_from(offset) else {
                     return finish.call(this, Err(LibcError("EINVAL")));
                 };
-                fd.as_unix(this).pwrite(
-                    this.machine.communicate(),
-                    ptr,
-                    len,
-                    offset,
-                    this,
-                    finish,
-                )?
+                fd.as_unix().pwrite(this.machine.communicate(), ptr, len, offset, this, finish)?
             }
         };
         interp_ok(())

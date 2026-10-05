@@ -13,6 +13,41 @@ use crate::AttributeTemplate;
 use crate::context::Suggestion;
 
 #[derive(Diagnostic)]
+#[diag("#[rustc_legacy_const_generics] functions must only have const generics")]
+pub(crate) struct RustcLegacyConstGenericsOnly {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label("non-const generic parameter")]
+    pub param_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("#[rustc_legacy_const_generics] must have one index for each generic parameter")]
+pub(crate) struct RustcLegacyConstGenericsIndex {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label("generic parameters")]
+    pub generics_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("index exceeds number of arguments")]
+pub(crate) struct RustcLegacyConstGenericsIndexExceed {
+    #[primary_span]
+    #[label(
+        "there {$arg_count ->
+            [one] is
+            *[other] are
+        } only {$arg_count} {$arg_count ->
+            [one] argument
+            *[other] arguments
+        }"
+    )]
+    pub span: Span,
+    pub arg_count: usize,
+}
+
+#[derive(Diagnostic)]
 #[diag("`{$name}` attribute cannot be used at crate level")]
 pub(crate) struct InvalidAttrAtCrateLevel {
     #[primary_span]
@@ -291,6 +326,26 @@ pub(crate) struct DocTestLiteral;
     "read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information"
 )]
 pub(crate) struct AttrCrateLevelOnly;
+
+#[derive(Diagnostic)]
+#[diag("conflicting doc inlining attributes")]
+#[help("remove one of the conflicting attributes")]
+pub(crate) struct DocInlineConflict {
+    #[primary_span]
+    pub spans: MultiSpan,
+}
+
+#[derive(Diagnostic)]
+#[diag("this attribute can only be applied to a `use` item")]
+#[note(
+    "read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline> for more information"
+)]
+pub(crate) struct DocInlineOnlyUse {
+    #[label("only applicable on `use` items")]
+    pub attr_span: Span,
+    #[label("not a `use` item")]
+    pub item_span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag("`#[diagnostic::do_not_recommend]` does not expect any arguments")]
@@ -1235,7 +1290,7 @@ pub(crate) struct UnknownVersionLiteral {
 #[diag("multiple `{$name}` attributes")]
 pub(crate) struct UnusedMultiple {
     #[primary_span]
-    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
+    #[suggestion("remove this attribute", code = "", applicability = "unspecified")]
     pub this: Span,
     #[note("attribute also specified here")]
     pub other: Span,
@@ -2061,7 +2116,7 @@ pub(crate) struct AdditionalCommaSuggestion {
 #[derive(Diagnostic)]
 #[diag("unused attribute")]
 pub(crate) struct UnusedDuplicate {
-    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
+    #[suggestion("remove this attribute", code = "", applicability = "unspecified")]
     pub this: Span,
     #[note("attribute also specified here")]
     pub other: Span,
@@ -2069,4 +2124,11 @@ pub(crate) struct UnusedDuplicate {
         "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
     )]
     pub warning: bool,
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum MacroExport {
+    #[diag("`#[macro_export]` has no effect on declarative macro definitions")]
+    #[note("declarative macros follow the same exporting rules as regular items")]
+    OnDeclMacro,
 }

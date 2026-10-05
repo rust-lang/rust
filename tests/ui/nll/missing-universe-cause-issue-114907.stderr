@@ -2,9 +2,13 @@ error: implementation of `FnOnce` is not general enough
   --> $DIR/missing-universe-cause-issue-114907.rs:33:5
    |
 LL |     accept(callback);
-   |     ^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
+   |     ^^^^^^^^^^^^^^^^
    |
-   = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
+note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
+  --> $DIR/missing-universe-cause-issue-114907.rs:27:14
+   |
+LL | fn accept<C: FnOnce(&())>(_: C) -> Handshake<HandshakeCallback<C>> {
+   |              ^^^^^^^^^^^ required by this bound in `accept`
    = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
 help: consider adding an explicit type annotation to the closure's argument
    |
@@ -15,23 +19,13 @@ error: implementation of `FnOnce` is not general enough
   --> $DIR/missing-universe-cause-issue-114907.rs:33:5
    |
 LL |     accept(callback);
-   |     ^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
+   |     ^^^^^^^^^^^^^^^^
    |
-   = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider adding an explicit type annotation to the closure's argument
+note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
+  --> $DIR/missing-universe-cause-issue-114907.rs:27:14
    |
-LL |     let callback = |_: &()| {};
-   |                      +++++
-
-error: implementation of `FnOnce` is not general enough
-  --> $DIR/missing-universe-cause-issue-114907.rs:33:5
-   |
-LL |     accept(callback);
-   |     ^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
-   |
-   = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
+LL | fn accept<C: FnOnce(&())>(_: C) -> Handshake<HandshakeCallback<C>> {
+   |              ^^^^^^^^^^^ required by this bound in `accept`
    = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider adding an explicit type annotation to the closure's argument
@@ -43,9 +37,30 @@ error: implementation of `FnOnce` is not general enough
   --> $DIR/missing-universe-cause-issue-114907.rs:33:5
    |
 LL |     accept(callback);
-   |     ^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
+   |     ^^^^^^^^^^^^^^^^
    |
-   = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
+note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
+  --> $DIR/missing-universe-cause-issue-114907.rs:20:21
+   |
+LL | struct Handshake<R: Role> {
+   |                     ^^^^ required by this bound in `Handshake`
+   = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     let callback = |_: &()| {};
+   |                      +++++
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/missing-universe-cause-issue-114907.rs:33:5
+   |
+LL |     accept(callback);
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
+  --> $DIR/missing-universe-cause-issue-114907.rs:20:21
+   |
+LL | struct Handshake<R: Role> {
+   |                     ^^^^ required by this bound in `Handshake`
    = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider adding an explicit type annotation to the closure's argument

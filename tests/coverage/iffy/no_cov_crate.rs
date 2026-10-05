@@ -1,7 +1,5 @@
 #![feature(coverage_attribute)]
 // Enables `coverage(off)` on the entire crate
-//@ reference: attributes.coverage.intro
-//@ reference: attributes.coverage.nesting
 
 #[coverage(off)]
 fn do_not_add_coverage_1() {

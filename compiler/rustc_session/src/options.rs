@@ -877,7 +877,7 @@ mod desc {
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
     pub(crate) const parse_next_solver_config: &str =
-        "either `globally` (when used without an argument), `coherence` (default) or `no`";
+        "either `globally` (when used without an argument), or `coherence` (default)";
     pub(crate) const parse_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
     pub(crate) const parse_linker_plugin_lto: &str =
@@ -1795,13 +1795,12 @@ pub mod parse {
     pub(crate) fn parse_next_solver_config(slot: &mut NextSolverConfig, v: Option<&str>) -> bool {
         if let Some(config) = v {
             *slot = match config {
-                "no" => NextSolverConfig { coherence: false, globally: false },
-                "coherence" => NextSolverConfig { coherence: true, globally: false },
-                "globally" => NextSolverConfig { coherence: true, globally: true },
+                "no" | "coherence" => NextSolverConfig::Coherence,
+                "globally" => NextSolverConfig::Globally,
                 _ => return false,
             };
         } else {
-            *slot = NextSolverConfig { coherence: true, globally: true };
+            *slot = NextSolverConfig::Globally;
         }
 
         true
@@ -2687,6 +2686,8 @@ options! {
     mir_include_spans: MirIncludeSpans = (MirIncludeSpans::default(), parse_mir_include_spans, [UNTRACKED],
         "include extra comments in mir pretty printing, like line numbers and statement indices, \
          details about types, etc. (boolean for all passes, 'nll' to enable in NLL MIR only, default: 'nll')"),
+    mir_move_elimination: bool = (false, parse_bool, [TRACKED],
+        "enable the experimental MIR move elimination pass (default: no)"),
     mir_opt_bisect_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
         "limit the number of MIR optimization pass executions (global across all bodies). \
         Pass executions after this limit are skipped and reported. (default: no limit)"),

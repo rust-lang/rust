@@ -8,7 +8,7 @@
 //! Thank you!
 //! ~The `INTERNAL_METADATA_COLLECTOR` lint
 
-use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage, Diagnostic, Level, MultiSpan};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagLocation, DiagMessage, Diagnostic, Level, MultiSpan};
 #[cfg(debug_assertions)]
 use rustc_errors::{SubstitutionPart, Suggestions};
 use rustc_hir::HirId;
@@ -251,12 +251,15 @@ where
     }
 
     let sp = sp.into();
+    let emitted_at = DiagLocation::caller();
+
     #[expect(clippy::disallowed_methods)]
     cx.emit_span_lint(
         lint,
         sp.clone(),
         ClippyDiag(|diag: &mut Diag<'_>| {
             diag.primary_message(msg);
+            diag.emitted_at = emitted_at;
             diag.span(sp);
             f(diag);
             docs_link(diag, lint);
@@ -329,6 +332,8 @@ pub fn span_lint_hir_and_then(
     msg: impl Into<DiagMessage>,
     f: impl FnOnce(&mut Diag<'_>),
 ) {
+    let emitted_at = DiagLocation::caller();
+
     #[expect(clippy::disallowed_methods)]
     cx.tcx.emit_node_span_lint(
         lint,
@@ -336,6 +341,7 @@ pub fn span_lint_hir_and_then(
         sp,
         rustc_errors::DiagDecorator(|diag| {
             diag.primary_message(msg);
+            diag.emitted_at = emitted_at;
             f(diag);
             docs_link(diag, lint);
 

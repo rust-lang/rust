@@ -333,7 +333,6 @@
 #![feature(core_io)]
 #![feature(core_io_borrowed_buf)]
 #![feature(core_io_internals)]
-#![feature(cstr_display)]
 #![feature(cursor_split)]
 #![feature(derive_const)]
 #![feature(duration_constants)]

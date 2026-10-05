@@ -1,3 +1,7 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] check-pass
 #![feature(type_alias_impl_trait)]
 
 use std::fmt::Debug;
@@ -21,7 +25,7 @@ fn not_gooder() -> Foo {
     // while we could know this from the hidden type, it would
     // need extra roundabout logic to support it.
     is_send::<Foo>();
-    //~^ ERROR: type annotations needed: cannot satisfy `Foo: Send`
+    //[current]~^ ERROR: type annotations needed: cannot satisfy `Foo: Send`
 
     x
 }

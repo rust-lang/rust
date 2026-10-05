@@ -3,6 +3,7 @@
 
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
+#![feature(dirfd)]
 #![cfg_attr(unix, feature(unix_file_vectored_at))]
 #![allow(unused_features)] // feature use depends on target
 
@@ -52,6 +53,7 @@ fn main() {
         test_canonicalize();
         #[cfg(not(target_os = "solaris"))] // does not have flock
         test_flock();
+        test_symlink();
         test_hard_link();
 
         test_readv_writev();
@@ -59,6 +61,8 @@ fn main() {
         test_pread_pwrite();
         #[cfg(all(unix, not(target_os = "solaris")))]
         test_preadv_pwritev();
+
+        test_directory_handle();
     }
 }
 
@@ -92,9 +96,12 @@ fn test_file() {
 
     assert!(!file.is_terminal());
 
-    // Writing to a file opened for reading should error (and not stop interpretation). std does not
-    // categorize the error so we don't check for details.
-    file.write(&[0]).unwrap_err();
+    // Writing to a file opened for reading should error (and not stop interpretation). This
+    // produces EBADF on Unix but std does not categorize the error so we don't check for details.
+    let err = file.write(&[0]).unwrap_err();
+    if cfg!(windows) {
+        assert_eq!(err.kind(), ErrorKind::PermissionDenied);
+    }
     // However, writing 0 bytes can succeed or fail.
     let _ignore = file.write(&[]);
 
@@ -103,6 +110,26 @@ fn test_file() {
 
     // Removing file should succeed.
     remove_file(&path).unwrap();
+
+    // Opening a directory as a file has target-specific behavior.
+    let res = File::open(&path.parent().unwrap());
+    if cfg!(unix) {
+        // On Unix this just works.
+        let mut file = res.unwrap();
+        // But reading errors.
+        let err = file.read(&mut [0u8; 32]).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::IsADirectory);
+    } else {
+        // On Windows, it errors.
+        assert_eq!(res.unwrap_err().kind(), ErrorKind::PermissionDenied);
+    }
+    // Opening for writing has a target-specific error.
+    let err = OpenOptions::new().write(true).open(&path.parent().unwrap()).unwrap_err();
+    if cfg!(unix) {
+        assert_eq!(err.kind(), ErrorKind::IsADirectory);
+    } else {
+        assert_eq!(err.kind(), ErrorKind::PermissionDenied);
+    }
 }
 
 fn test_file_partial_reads_writes() {
@@ -557,6 +584,39 @@ fn test_preadv_pwritev() {
     assert_eq!(written_bytes.as_slice(), &write_buffer[0..bytes_written]);
 }
 
+fn test_symlink() {
+    if !utils::have_symlink_permission() {
+        return;
+    }
+
+    let bytes = b"Hello, World!\n";
+    let path = utils::prepare_with_content("miri_test_fs_link_target.txt", bytes);
+    let symlink_path = utils::prepare("miri_test_fs_symlink.txt");
+
+    // Creating a symbolic link should succeed.
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
+    #[cfg(windows)]
+    std::os::windows::fs::symlink_file(&path, &symlink_path).unwrap();
+    // Test that the symbolic link has the same contents as the file.
+    let mut symlink_file = File::open(&symlink_path).unwrap();
+    let mut contents = Vec::new();
+    symlink_file.read_to_end(&mut contents).unwrap();
+    assert_eq!(bytes, contents.as_slice());
+
+    // Test that metadata of a symbolic link (i.e., the file it points to) is correct.
+    check_metadata(bytes, &symlink_path).unwrap();
+    // Test that the metadata of a symbolic link is correct when not following it.
+    assert!(symlink_path.symlink_metadata().unwrap().file_type().is_symlink());
+    // Check that we can follow the link.
+    assert_eq!(fs::read_link(&symlink_path).unwrap(), path);
+    // Removing symbolic link should succeed.
+    remove_file(&symlink_path).unwrap();
+
+    // Removing file should succeed.
+    remove_file(&path).unwrap();
+}
+
 fn test_hard_link() {
     let source = utils::prepare_with_content("miri_test_fs_hard_link_source.txt", b"hello");
     let link = utils::prepare("miri_test_fs_hard_link_link.txt");
@@ -584,4 +644,21 @@ fn test_hard_link() {
     // Cleanup after test
     remove_file(&source).unwrap();
     remove_file(&link).unwrap();
+}
+
+fn test_directory_handle() {
+    let filename = utils::prepare_with_content("miri_test_directory_handle.txt", b"hello");
+    assert!(filename.is_absolute());
+    let dir = fs::Dir::open(filename.parent().unwrap()).unwrap();
+    assert!(dir.self_metadata().unwrap().is_dir());
+
+    let stat = dir.metadata(filename.file_name().unwrap()).unwrap();
+    assert!(stat.is_file());
+    assert!(stat.len() == 5);
+    let stat = dir.metadata(&filename).unwrap(); // absolute path
+    assert!(stat.is_file());
+    assert!(stat.len() == 5);
+
+    let err = fs::Dir::open(filename).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::NotADirectory);
 }

@@ -30,6 +30,7 @@ pub enum ConstEvalErrKind {
         col: u32,
         file: Symbol,
     },
+    Abort,
     WriteThroughImmutablePointer,
     /// Called `const_make_global` twice.
     ConstMakeGlobalPtrAlreadyMadeGlobal(AllocId),
@@ -51,6 +52,7 @@ impl fmt::Display for ConstEvalErrKind {
                 write!(f, "modifying a static's initial value from another static's initializer")
             }
             Panic { msg, .. } => write!(f, "evaluation panicked: {msg}"),
+            Abort => write!(f, "the program aborted execution"),
             RecursiveStatic => {
                 write!(f, "encountered static that tried to access itself during initialization")
             }

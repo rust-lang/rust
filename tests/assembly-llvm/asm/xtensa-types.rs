@@ -1,7 +1,6 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
 //@ compile-flags: --target xtensa-esp32-none-elf -Zmerge-functions=disabled
-//@ min-llvm-version: 22
 //@ needs-llvm-components: xtensa
 
 #![feature(no_core, lang_items, rustc_attrs, asm_experimental_arch)]

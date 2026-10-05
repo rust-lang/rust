@@ -149,6 +149,18 @@ impl<I: Interner, T> Binder<I, T> {
         Binder { value, bound_vars }
     }
 
+    /// There are some uses of `map_bound` which are incredibly hot and trivially
+    /// correct. Only use this if this significantly improves the performance of
+    /// builds with debug assertions.
+    pub fn map_bound_no_validate_bound_vars<F, U: TypeVisitable<I>>(self, f: F) -> Binder<I, U>
+    where
+        F: FnOnce(T) -> U,
+    {
+        let Binder { value, bound_vars } = self;
+        let value = f(value);
+        Binder { value, bound_vars }
+    }
+
     pub fn try_map_bound<F, U: TypeVisitable<I>, E>(self, f: F) -> Result<Binder<I, U>, E>
     where
         F: FnOnce(T) -> Result<U, E>,
@@ -241,10 +253,10 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
     }
 
     fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
-        if t.outer_exclusive_binder() < self.binder_index
+        if t.outer_exclusive_binder() <= self.binder_index
             || !self.visited.insert((self.binder_index, t))
         {
-            return ControlFlow::Break(());
+            return ControlFlow::Continue(());
         }
         match t.kind() {
             ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ty)
@@ -263,8 +275,8 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
     }
 
     fn visit_const(&mut self, c: Const<I>) -> Self::Result {
-        if c.outer_exclusive_binder() < self.binder_index {
-            return ControlFlow::Break(());
+        if c.outer_exclusive_binder() <= self.binder_index {
+            return ControlFlow::Continue(());
         }
         match c.kind() {
             ty::ConstKind::Bound(debruijn, bound_const)

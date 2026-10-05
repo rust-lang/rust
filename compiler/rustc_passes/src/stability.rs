@@ -19,8 +19,8 @@ use rustc_hir::{
     UsePath, Variant,
 };
 use rustc_lint_defs::builtin::{
-    DEPRECATED, DUPLICATE_FEATURES, INEFFECTIVE_UNSTABLE_REEXPORTS,
-    INEFFECTIVE_UNSTABLE_TRAIT_IMPL, STABLE_FEATURES,
+    DUPLICATE_FEATURES, INEFFECTIVE_UNSTABLE_REEXPORTS, INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
+    STABLE_FEATURES, UNSTABLE_IMPORTS,
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
@@ -1079,7 +1079,7 @@ impl<'tcx> Checker<'tcx> {
                             suggestion,
                         };
                         self.tcx.emit_node_span_lint(
-                            DEPRECATED,
+                            UNSTABLE_IMPORTS,
                             id,
                             method_span.unwrap_or(span),
                             diag,
