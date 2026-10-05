@@ -324,6 +324,9 @@ fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
 
 pub struct Rc<
     T: ?Sized,
+    // FIXME: When stabilizing this parameter, the `AllocatorNightly`
+    // bound on the `From<Box>` impl *must* be weaked to `Allocator`,
+    // as `Box` is fundamental!
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     ptr: NonNull<RcInner<T>>,
