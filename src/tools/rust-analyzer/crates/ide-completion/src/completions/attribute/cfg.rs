@@ -66,7 +66,7 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_, '_
                 hir::CfgAtom::KeyValue { key, .. } => (
                     key.as_str(),
                     if ctx.config.snippet_cap.is_some() {
-                        SmolStr::from_iter([key.as_str(), " = $0"])
+                        SmolStr::from_iter([key.as_str(), " = \"$1\""])
                     } else {
                         SmolStr::default()
                     },
