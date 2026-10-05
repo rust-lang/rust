@@ -185,12 +185,10 @@ impl<'sess> AttributeParser<'sess> {
         expected_safety: AttributeSafety,
     ) -> Option<T> {
         let attr_item = attr.get_normal_item();
-        let parts = attr_item.path.iter_idents().map(|i| i.name).collect::<Vec<_>>();
-
         let path = AttrPath::from_ast(&attr_item.path, identity);
         let args = ArgParser::from_attr_args(
             &attr_item.args,
-            &parts,
+            path.segments.as_ref(),
             &sess.psess,
             emit_errors,
             allow_expr_metavar,
@@ -364,10 +362,10 @@ impl<'sess> AttributeParser<'sess> {
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(&n.item.path));
                     let attr_path = AttrPath::from_ast(&n.item.path, lower_span);
-                    let parts = n.item.path.iter_idents().map(|i| i.name).collect::<Vec<_>>();
+                    let parts = attr_path.segments.as_ref();
                     let inner_span = lower_span(n.item.span);
 
-                    if let Some(accept) = ATTRIBUTE_PARSERS.accepters.get(parts.as_slice()) {
+                    if let Some(accept) = ATTRIBUTE_PARSERS.accepters.get(parts) {
                         self.check_attribute_safety(
                             &attr_path,
                             inner_span,
@@ -376,13 +374,13 @@ impl<'sess> AttributeParser<'sess> {
                             &mut emit_lint,
                         );
                         self.check_attribute_stability(&attr_path, attr_span, accept.stability);
-                        if let [part] = parts.as_slice() {
+                        if let [part] = parts {
                             debug_assert!(BUILTIN_ATTRIBUTE_SET.contains(part));
                         }
 
                         let Some(args) = ArgParser::from_attr_args(
                             &n.item.args,
-                            &parts,
+                            parts,
                             &self.sess.psess,
                             self.should_emit,
                             AllowExprMetavar::No,
@@ -449,7 +447,7 @@ impl<'sess> AttributeParser<'sess> {
                         if !cx.shared.has_lint_been_emitted.load(Ordering::Relaxed) {
                             cx.shared.cx.check_args_used(attr, &args)
                         }
-                    } else if let [sym::diagnostic, _unknown, ..] = &*parts {
+                    } else if let [sym::diagnostic, _unknown, ..] = parts {
                         self.unknown_diagnostic_attr(
                             n.item.path.iter_segments().nth(1).unwrap(),
                             &mut emit_lint,
