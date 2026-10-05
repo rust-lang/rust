@@ -767,7 +767,7 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
                 &c.attrs,
                 c.spans.inner_span,
                 Target::Crate,
-                AstTarget::Crate(Some(c)),
+                AstTarget::Crate(c),
             );
             hir::OwnerNode::Crate(module)
         }),
@@ -2008,7 +2008,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // FIXME This uses `fn_hir_id`, which is not correct, it should use the parameter hir id instead
                 // The parameter is currently not lowered for functions without bodies, so there is no place to store the lowered hir id
                 // This should be fixed by storing function parameters in the `hir::FnSig` instead of `hir::Body`
-                self.lower_attrs(fn_hir_id, &param.attrs, param.span, Target::Param);
+                self.lower_attrs(
+                    fn_hir_id,
+                    &param.attrs,
+                    param.span,
+                    Target::Param,
+                    AstTarget::None,
+                );
             }
             let itctx = match kind {
                 FnDeclKind::Fn | FnDeclKind::Inherent | FnDeclKind::Impl | FnDeclKind::Trait => {
@@ -2340,7 +2346,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             param_attrs,
             param_span,
             Target::from(&param_hir),
-            AstTarget::GenericParam(Some(param)),
+            AstTarget::GenericParam(param),
         );
         param_hir
     }
@@ -2950,7 +2956,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         &f.attrs,
                         f.span,
                         Target::ExprField,
-                        AstTarget::Expression(Some(expr)),
+                        AstTarget::Expression(expr),
                     );
                     let expr = self.lower_expr_to_const_arg_direct(&f.expr, None);
 
