@@ -2462,11 +2462,11 @@ unsafe extern "C" {
         llvm_selfprofiler: *mut c_void,
         begin_callback: SelfProfileBeforePassCallback,
         end_callback: SelfProfileAfterPassCallback,
-        PostEnzymePasses: *const c_char,
+        PostEnzymePasses: *const c_uchar, // See "PTR_LEN_STR".
         PostEnzymePassesLen: size_t,
-        ExtraPasses: *const c_char,
+        ExtraPasses: *const c_uchar, // See "PTR_LEN_STR".
         ExtraPassesLen: size_t,
-        LLVMPlugins: *const c_char,
+        LLVMPlugins: *const c_uchar, // See "PTR_LEN_STR".
         LLVMPluginsLen: size_t,
     ) -> LLVMRustResult;
     pub(crate) fn LLVMRustPrintModule(
