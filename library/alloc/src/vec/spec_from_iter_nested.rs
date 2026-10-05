@@ -24,9 +24,10 @@ where
         let mut vector = match iterator.next() {
             None => return Vec::new(),
             Some(element) => {
-                let (lower, _) = iterator.size_hint();
-                let initial_capacity =
-                    cmp::max(RawVec::<T>::MIN_NON_ZERO_CAP, lower.saturating_add(1));
+                let initial_capacity = match iterator.size_hint() {
+                    (lower, Some(upper)) if lower == upper => lower.saturating_add(1),
+                    (lower, _) => cmp::max(RawVec::<T>::MIN_NON_ZERO_CAP, lower.saturating_add(1)),
+                };
                 let mut vector = Vec::with_capacity(initial_capacity);
                 // SAFETY: We requested capacity at least 1
                 unsafe {
