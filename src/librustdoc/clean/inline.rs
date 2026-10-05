@@ -786,7 +786,7 @@ fn build_module_items(
             && find_attr!(
                 load_attrs(cx.tcx, reexport_def_id),
                 Doc(d)
-                if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::NoInline)
+                if d.inline.is_some_and(|(inline, _)| inline == DocInline::NoInline)
             )
         {
             // We don't inline foreign `use`.
