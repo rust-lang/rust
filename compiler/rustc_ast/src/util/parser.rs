@@ -110,32 +110,6 @@ impl AssocOp {
             Cast | Binary(_) | Range(_) => false,
         }
     }
-
-    /// This operator could be used to follow a block unambiguously.
-    ///
-    /// This is used for error recovery at the moment, providing a suggestion to wrap blocks with
-    /// parentheses while having a high degree of confidence on the correctness of the suggestion.
-    pub fn can_continue_expr_unambiguously(&self) -> bool {
-        use AssocOp::*;
-        use BinOpKind::*;
-        matches!(
-            self,
-            Assign | // `{ 42 } = { 42 }`
-            Binary(
-                BitXor | // `{ 42 } ^ 3`
-                Div | // `{ 42 } / 42`
-                Rem | // `{ 42 } % 2`
-                Shr | // `{ 42 } >> 2`
-                Le | // `{ 42 } <= 3`
-                Gt | // `{ 42 } > 3`
-                Ge   // `{ 42 } >= 3`
-            ) |
-            AssignOp(_) | // `{ 42 } +=`
-            // Equal | // `{ 42 } == { 42 }`    Accepting these here would regress incorrect
-            // NotEqual | // `{ 42 } != { 42 }  struct literals parser recovery.
-            Cast // `{ 42 } as usize`
-        )
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, PartialOrd)]

@@ -1,0 +1,23 @@
+error[E0391]: cycle detected when computing type of `<impl at $DIR/struct-assignment-validity.rs:20:1: 20:19>::Assoc::{opaque#0}`
+  --> $DIR/struct-assignment-validity.rs:21:18
+   |
+LL |     type Assoc = impl std::fmt::Debug;
+   |                  ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ...which requires computing type of opaque `<impl at $DIR/struct-assignment-validity.rs:20:1: 20:19>::Assoc::{opaque#0}`...
+note: ...which requires borrow-checking `<impl at $DIR/struct-assignment-validity.rs:20:1: 20:19>::foo`...
+  --> $DIR/struct-assignment-validity.rs:22:5
+   |
+LL | /     fn foo() -> Foo
+LL | |     where
+LL | |         Self::Assoc:,
+   | |_____________________^
+   = note: ...which requires promoting constants in MIR for `<impl at $DIR/struct-assignment-validity.rs:20:1: 20:19>::foo`...
+   = note: ...which requires normalizing `<Bar as Trait>::Assoc`...
+   = note: ...which again requires computing type of `<impl at $DIR/struct-assignment-validity.rs:20:1: 20:19>::Assoc::{opaque#0}`, completing the cycle
+   = note: cycle used when checking that `<impl at $DIR/struct-assignment-validity.rs:20:1: 20:19>::Assoc::{opaque#0}` is well-formed
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

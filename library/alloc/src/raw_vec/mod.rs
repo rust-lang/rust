@@ -663,7 +663,7 @@ impl<A: Allocator> RawVecInner<A> {
             unsafe {
                 let alloc_size = elem_layout.size().unchecked_mul(self.cap.as_inner());
                 let layout = Layout::from_size_align_unchecked(alloc_size, elem_layout.align());
-                Some((self.ptr.into(), layout))
+                Some((self.ptr, layout))
             }
         }
     }

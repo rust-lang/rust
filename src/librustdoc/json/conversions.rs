@@ -1172,7 +1172,7 @@ fn maybe_from_hir_attr(
                 ret.push(Attribute::Other(format!("#[doc(alias = {:?})]", alias.as_str())));
             }
             toggle_attr(&mut ret, "hidden", hidden);
-            if let Some(inline) = inline.first() {
+            if let Some(inline) = inline {
                 ret.push(Attribute::Other(format!(
                     "#[doc({})]",
                     match inline.0 {

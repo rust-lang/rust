@@ -1,0 +1,2 @@
+[workspace]
+members = ["inner_lib"]

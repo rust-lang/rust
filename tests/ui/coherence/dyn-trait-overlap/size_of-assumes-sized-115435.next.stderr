@@ -1,0 +1,11 @@
+error[E0284]: type annotations needed
+  --> $DIR/size_of-assumes-sized-115435.rs:21:5
+   |
+LL |     bug_run::<dyn MyTrait<Target = u8>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+   |
+   = note: cannot satisfy `<dyn MyTrait<Target = u8> as MyTrait>::Target == _`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0284`.

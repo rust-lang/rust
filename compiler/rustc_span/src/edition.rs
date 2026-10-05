@@ -45,7 +45,10 @@ pub const ALL_EDITIONS: &[Edition] = &[
     Edition::EditionFuture,
 ];
 
+/// All the valid editions that `--edition` will accept on nightly.
 pub const EDITION_NAME_LIST: &str = "<2015|2018|2021|2024|future>";
+/// All the valid editions on stable, which doesn't include `future`.
+pub const EDITION_NAME_LIST_STABLE: &str = "<2015|2018|2021|2024>";
 
 pub const DEFAULT_EDITION: Edition = Edition::Edition2015;
 
@@ -53,13 +56,7 @@ pub const LATEST_STABLE_EDITION: Edition = Edition::Edition2024;
 
 impl fmt::Display for Edition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match *self {
-            Edition::Edition2015 => "2015",
-            Edition::Edition2018 => "2018",
-            Edition::Edition2021 => "2021",
-            Edition::Edition2024 => "2024",
-            Edition::EditionFuture => "future",
-        };
+        let s = self.as_str();
         write!(f, "{s}")
     }
 }
@@ -72,6 +69,16 @@ impl Edition {
             Edition::Edition2021 => "rust_2021_compatibility",
             Edition::Edition2024 => "rust_2024_compatibility",
             Edition::EditionFuture => "edition_future_compatibility",
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match *self {
+            Edition::Edition2015 => "2015",
+            Edition::Edition2018 => "2018",
+            Edition::Edition2021 => "2021",
+            Edition::Edition2024 => "2024",
+            Edition::EditionFuture => "future",
         }
     }
 

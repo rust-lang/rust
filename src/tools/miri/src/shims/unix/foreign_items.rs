@@ -404,6 +404,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.stat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
+            "fstatat" => {
+                let [dirfd, path, buf, flags] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_, *_, i32) -> i32),
+                    (link_name, abi, args),
+                )?;
+                let result = this.fstatat(dirfd, path, buf, flags)?;
+                this.write_scalar(result, dest)?;
+            }
             "chmod" => {
                 let [path, mode] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, libc::mode_t) -> i32),

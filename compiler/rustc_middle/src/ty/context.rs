@@ -40,6 +40,7 @@ use rustc_index::IndexVec;
 use rustc_lint_defs::Lint;
 use rustc_lint_defs::builtin::UNUSED_FEATURES;
 use rustc_macros::Diagnostic;
+use rustc_session::config::NextSolverConfig;
 use rustc_session::{IncrCompSession, Session};
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, sym};
@@ -1135,7 +1136,7 @@ impl<'tcx> TyCtxt<'tcx> {
             | CrateType::Cdylib
             | CrateType::Sdylib => false,
             CrateType::Rlib | CrateType::Dylib | CrateType::ProcMacro => true,
-        })
+        }) && !self.sess.opts.actually_rustdoc
     }
 
     pub fn needs_hir_hash(self) -> bool {
@@ -1424,13 +1425,6 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn definitions_untracked(self) -> FreezeReadGuard<'tcx, Definitions> {
         self.untracked.definitions.read()
-    }
-
-    /// Note that this is *untracked* and should only be used within the query
-    /// system if the result is otherwise tracked through queries
-    #[inline]
-    pub fn source_span_untracked(self, def_id: LocalDefId) -> Span {
-        self.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP)
     }
 
     #[inline(always)]
@@ -2823,11 +2817,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn next_trait_solver_globally(self) -> bool {
-        self.sess.opts.unstable_opts.next_solver.globally && !self.features().generic_const_exprs()
-    }
-
-    pub fn next_trait_solver_in_coherence(self) -> bool {
-        self.sess.opts.unstable_opts.next_solver.coherence
+        self.sess.opts.unstable_opts.next_solver == NextSolverConfig::Globally
+            && !self.features().generic_const_exprs()
     }
 
     pub fn disable_trait_solver_fast_paths(self) -> bool {

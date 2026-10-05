@@ -1,4 +1,5 @@
 //@ revisions: classic next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 //@ check-pass

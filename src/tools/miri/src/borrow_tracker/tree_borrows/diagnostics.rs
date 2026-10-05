@@ -2,7 +2,7 @@ use std::fmt;
 use std::ops::Range;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_span::{Span, SpanData};
+use rustc_span::Span;
 
 use crate::borrow_tracker::tree_borrows::perms::{PermTransition, Permission};
 use crate::borrow_tracker::tree_borrows::tree::LocationState;
@@ -115,12 +115,9 @@ pub struct History {
 }
 
 /// History formatted for use by `src/diagnostics.rs`.
-///
-/// NOTE: needs to be `Send` because of a bound on `MachineStopType`, hence
-/// the use of `SpanData` rather than `Span`.
 #[derive(Debug, Clone, Default)]
 pub struct HistoryData {
-    pub events: Vec<(Option<SpanData>, String)>, // includes creation
+    pub events: Vec<(Option<Span>, String)>, // includes creation
 }
 
 impl History {
@@ -132,8 +129,6 @@ impl History {
 
 impl HistoryData {
     // Format events from `new_history` into those recorded by `self`.
-    //
-    // NOTE: also converts `Span` to `SpanData`.
     fn extend(&mut self, new_history: History, tag_name: &'static str, show_initial_state: bool) {
         let History { tag, created, events } = new_history;
         let this = format!("the {tag_name} tag {tag:?}");
@@ -143,7 +138,7 @@ impl HistoryData {
             maybe_msg_initial_state = if show_initial_state { &msg_initial_state } else { "" },
         );
 
-        self.events.push((Some(created.0.data()), msg_creation));
+        self.events.push((Some(created.0), msg_creation));
         for &Event {
             transition,
             is_foreign,
@@ -161,7 +156,7 @@ impl HistoryData {
                 None => format!("on every location previously accessed by this tag"),
             };
             self.events.push((
-                Some(span.data()),
+                Some(span),
                 format!(
                     "{this} later transitioned to {endpoint} due to a {access} {access_range_text}",
                     endpoint = transition.endpoint()

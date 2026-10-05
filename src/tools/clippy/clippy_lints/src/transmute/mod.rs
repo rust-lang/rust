@@ -241,7 +241,7 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// Creating a null function pointer is undefined behavior.
     ///
-    /// More info: https://doc.rust-lang.org/nomicon/ffi.html#the-nullable-pointer-optimization
+    /// More info: <https://doc.rust-lang.org/nomicon/ffi.html#the-nullable-pointer-optimization>
     ///
     /// ### Known problems
     /// Not all cases can be detected at the moment of this writing.

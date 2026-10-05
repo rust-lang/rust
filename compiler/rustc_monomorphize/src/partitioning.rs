@@ -1252,7 +1252,6 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
                         Linkage::WeakODR => "WeakODR",
                         Linkage::Internal => "Internal",
                         Linkage::ExternalWeak => "ExternalWeak",
-                        Linkage::Common => "Common",
                     };
 
                     output.push('[');

@@ -2,6 +2,7 @@
 //! constrain `foo`'s RPIT to `u32`.
 
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@ check-pass
 

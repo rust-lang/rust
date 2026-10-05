@@ -17,6 +17,10 @@ overrideCommand = [
     "--message-format=json",
 ]
 
+[language-server.rust-analyzer.config.diagnostics]
+# RA reports false errors due to <https://github.com/rust-lang/rust-analyzer/issues/19755>
+enable = false
+
 [language-server.rust-analyzer.config.cargo.extraEnv]
 MIRI_AUTO_OPS = "no"
 MIRI_IN_RA = "1"

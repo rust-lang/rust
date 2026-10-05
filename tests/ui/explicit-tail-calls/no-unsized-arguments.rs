@@ -1,6 +1,5 @@
 //@ add-minicore
 //@ ignore-backends: gcc
-//@ min-llvm-version: 22
 //
 //@ revisions: x86 x86_64 aarch64
 //

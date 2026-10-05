@@ -3,8 +3,7 @@
 
 #![allow(suspicious_runtime_symbol_definitions)]
 
-use std::ffi::{CString, OsStr, c_char, c_int};
-use std::os::unix::ffi::OsStrExt;
+use std::ffi::{c_char, c_int};
 
 extern "C" {
     fn open(path: *const c_char, oflag: c_int, ...) -> c_int;
@@ -13,7 +12,7 @@ extern "C" {
 }
 
 fn main() {
-    let c_path = CString::new(OsStr::new("./text").as_bytes()).expect("CString::new failed");
+    let c_path = c"./text";
     let fd = unsafe {
         open(c_path.as_ptr(), /* value does not matter */ 0)
     } as u32;

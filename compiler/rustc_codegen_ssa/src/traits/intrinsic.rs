@@ -38,7 +38,8 @@ pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
         is_cleanup: bool,
     ) -> Self::Value;
 
-    fn abort(&mut self);
+    /// Ungracefully stop execution in the simplest way possible.
+    fn abort_immediate(&mut self);
     fn assume(&mut self, val: Self::Value);
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value;
     /// Trait method used to load a function while testing if it is associated with a type

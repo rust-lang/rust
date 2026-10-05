@@ -13,69 +13,79 @@ use crate::{BytePos, SPAN_TRACK, SpanData};
 
 /// A compressed span.
 ///
-/// [`SpanData`] is 16 bytes, which is too big to stick everywhere. `Span` only
-/// takes up 8 bytes, with less space for the length, parent and context. The
-/// vast majority (99.9%+) of `SpanData` instances can be made to fit within
-/// those 8 bytes. Any `SpanData` whose fields don't fit into a `Span` are
-/// stored in a separate interner table, and the `Span` will index into that
-/// table. Interning is rare enough that the cost is low, but common enough
-/// that the code is exercised regularly.
+/// [`SpanData`] is 16 bytes, which is too big to stick everywhere. `Span` is
+/// only 8 bytes. A large majority of `SpanData` instances can be made to fit
+/// within those 8 bytes. Any `SpanData` whose fields don't fit into a `Span`
+/// are stored in a separate interner table, and the `Span` will index into
+/// that table.
 ///
 /// An earlier version of this code used only 4 bytes for `Span`, but that was
-/// slower because only 80--90% of spans could be stored inline (even less in
-/// very large crates) and so the interner was used a lot more. That version of
-/// the code also predated the storage of parents.
+/// slower because many fewer spans could be stored inline and the interner was
+/// used a lot more. That version of the code also predated the storage of
+/// parents.
+///
+/// Experiments with uncompressed spans yielded worse performance in most cases
+/// because memory usage and cache miss rates are significantly higher without
+/// compression.
 ///
 /// There are four different span forms.
 ///
-/// Inline-context format (requires non-huge length, non-huge context, and no parent):
-/// - `span.lo_or_index == span_data.lo`
-/// - `span.len_with_tag_or_marker == len == span_data.hi - span_data.lo` (must be `<= MAX_LEN`)
-/// - `span.ctxt_or_parent_or_marker == span_data.ctxt` (must be `<= MAX_CTXT`)
+/// Inline-context format (requires ~15-bit length, ~16-bit context, and no parent):
+/// - `span.lo_or_index` holds `span_data.lo`
+/// - `span.len_with_tag_or_marker` holds `span_data.hi - span_data.lo` (must be `<= MAX_LEN`)
+/// - `span.ctxt_or_parent_or_marker` holds `span_data.ctxt` (must be `<= MAX_CTXT_OR_PARENT`)
 ///
-/// Inline-parent format (requires non-huge length, root context, and non-huge parent):
-/// - `span.lo_or_index == span_data.lo`
-/// - `span.len_with_tag_or_marker & !PARENT_TAG == len == span_data.hi - span_data.lo`
-///   (must be `<= MAX_LEN`)
-/// - `span.len_with_tag_or_marker` has top bit (`PARENT_TAG`) set
-/// - `span.ctxt_or_parent_or_marker == span_data.parent` (must be `<= MAX_CTXT`)
+/// Inline-parent format (requires ~15-bit length, root context, and ~16-bit parent):
+/// - `span.lo_or_index` holds `span_data.lo`
+/// - `span.len_with_tag_or_marker` holds `PARENT_TAG | (span_data.hi - span_data.lo)`
+///   (the len part must be `<= MAX_LEN`)
+/// - `span.ctxt_or_parent_or_marker` holds `span_data.parent` (must be `<= MAX_CTXT_OR_PARENT`)
 ///
-/// Partially-interned format (requires non-huge context):
-/// - `span.lo_or_index == index` (indexes into the interner table)
-/// - `span.len_with_tag_or_marker == BASE_LEN_INTERNED_MARKER`
-/// - `span.ctxt_or_parent_or_marker == span_data.ctxt` (must be `<= MAX_CTXT`)
+/// Partially-interned format (requires ~16-bit context):
+/// - `span.lo_or_index` holds the index into the interner table
+/// - `span.len_with_tag_or_marker` is `LEN_INTERNED_MARKER` (all 1s)
+/// - `span.ctxt_or_parent_or_marker` holds `span_data.ctxt` (must be `<= MAX_CTXT_OR_PARENT`)
+/// - Requires looking in the interning table for lo and length, but the
+///   context is stored inline as well as interned because context lookups are
+///   often done in isolation.
 ///
 /// Fully-interned format (all cases not covered above):
-/// - `span.lo_or_index == index` (indexes into the interner table)
-/// - `span.len_with_tag_or_marker == BASE_LEN_INTERNED_MARKER`
-/// - `span.ctxt_or_parent_or_marker == CTXT_INTERNED_MARKER`
+/// - `span.lo_or_index` holds the index into the interner table
+/// - `span.len_with_tag_or_marker` is `LEN_INTERNED_MARKER` (all 1s)
+/// - `span.ctxt_or_parent_or_marker` is `CTXT_INTERNED_MARKER` (all 1s)
 ///
-/// The partially-interned form requires looking in the interning table for
-/// lo and length, but the context is stored inline as well as interned.
-/// This is useful because context lookups are often done in isolation, and
-/// inline lookups are quicker.
+/// In short (see `match_span_kind!` for the code version of this):
+/// - The absence/presence of `LEN_INTERNED_MARKER` in
+///   `len_with_tag_or_marker` distinguishes the inline forms from the interned
+///   forms.
+///   - The absence/presence of the `PARENT_TAG` bit in
+///     `len_with_tag_or_marker` distinguishes inline-context from inline-parent.
+///   - The absence/presence of `CTXT_INTERNED_MARKER` in
+///     `ctxt_or_parent_or_marker` distinguishes partially-interned from
+///     fully-interned.
 ///
 /// Notes about the choice of field sizes:
+///
 /// - `lo` is 32 bits in both `Span` and `SpanData`, which means that `lo`
 ///   values never cause interning. The number of bits needed for `lo`
 ///   depends on the crate size. 32 bits allows up to 4 GiB of code in a crate.
 ///   Having no compression on this field means there is no performance cliff
 ///   if a crate exceeds a particular size.
+///
 /// - `len` is ~15 bits in `Span` (a u16, minus 1 bit for PARENT_TAG) and 32
 ///   bits in `SpanData`, which means that large `len` values will cause
 ///   interning. The number of bits needed for `len` does not depend on the
 ///   crate size. The most common numbers of bits for `len` are from 0 to 7,
 ///   with a peak usually at 3 or 4, and then it drops off quickly from 8
-///   onwards. 15 bits is enough for 99.99%+ of cases, but larger values
+///   onwards. 15 bits is enough for 99.9%+ of cases, but larger values
 ///   (sometimes 20+ bits) might occur dozens of times in a typical crate.
+///
 /// - `ctxt_or_parent_or_marker` is 16 bits in `Span` and two 32 bit fields in
-///   `SpanData`, which means intering will happen if `ctxt` is large, if
+///   `SpanData`, which means interning will happen if `ctxt` is large, if
 ///   `parent` is large, or if both values are non-zero. The number of bits
 ///   needed for `ctxt` values depend partly on the crate size and partly on
-///   the form of the code. No crates in `rustc-perf` need more than 15 bits
-///   for `ctxt_or_parent_or_marker`, but larger crates might need more than 16
-///   bits. The number of bits needed for `parent` hasn't been measured,
-///   because `parent` isn't currently used by default.
+///   the form of the code. No crates in `rustc-perf` need more than 16 bits
+///   for `ctxt`, but larger crates might. The same is true for `parent`.
 ///
 /// In order to reliably use parented spans in incremental compilation,
 /// accesses to `lo` and `hi` must introduce a dependency to the parent definition's span.
@@ -181,7 +191,7 @@ impl PartiallyInterned {
     #[inline]
     fn span(index: u32, ctxt: u16) -> Span {
         let (lo_or_index, len_with_tag_or_marker, ctxt_or_parent_or_marker) =
-            (index, BASE_LEN_INTERNED_MARKER, ctxt);
+            (index, LEN_INTERNED_MARKER, ctxt);
         Span { lo_or_index, len_with_tag_or_marker, ctxt_or_parent_or_marker }
     }
     #[inline]
@@ -198,7 +208,7 @@ impl Interned {
     #[inline]
     fn span(index: u32) -> Span {
         let (lo_or_index, len_with_tag_or_marker, ctxt_or_parent_or_marker) =
-            (index, BASE_LEN_INTERNED_MARKER, CTXT_INTERNED_MARKER);
+            (index, LEN_INTERNED_MARKER, CTXT_INTERNED_MARKER);
         Span { lo_or_index, len_with_tag_or_marker, ctxt_or_parent_or_marker }
     }
     #[inline]
@@ -218,7 +228,7 @@ macro_rules! match_span_kind {
         PartiallyInterned($span3:ident) => $arm3:expr,
         Interned($span4:ident) => $arm4:expr,
     ) => {
-        if $span.len_with_tag_or_marker != BASE_LEN_INTERNED_MARKER {
+        if $span.len_with_tag_or_marker != LEN_INTERNED_MARKER {
             if $span.len_with_tag_or_marker & PARENT_TAG == 0 {
                 // Inline-context format.
                 let $span1 = InlineCtxt::from_span($span);
@@ -241,11 +251,14 @@ macro_rules! match_span_kind {
 }
 
 // `MAX_LEN` is chosen so that `PARENT_TAG | MAX_LEN` is distinct from
-// `BASE_LEN_INTERNED_MARKER`. (If `MAX_LEN` was 1 higher, this wouldn't be true.)
+// `LEN_INTERNED_MARKER`. (If `MAX_LEN` was 1 higher, this wouldn't be true.)
 const MAX_LEN: u32 = 0b0111_1111_1111_1110;
-const MAX_CTXT: u32 = 0b0111_1111_1111_1110;
 const PARENT_TAG: u16 = 0b1000_0000_0000_0000;
-const BASE_LEN_INTERNED_MARKER: u16 = 0b1111_1111_1111_1111;
+const LEN_INTERNED_MARKER: u16 = 0b1111_1111_1111_1111;
+
+// `MAX_CTXT_OR_PARENT` is chosen so it's as big as possible while not equal to
+// `CTXT_INTERNED_MARKER`.
+const MAX_CTXT_OR_PARENT: u32 = 0b1111_1111_1111_1110;
 const CTXT_INTERNED_MARKER: u16 = 0b1111_1111_1111_1111;
 
 /// The dummy span has zero position, length, and context, and no parent.
@@ -266,12 +279,12 @@ impl Span {
 
         // Small len and ctxt may enable one of fully inline formats (or may not).
         let (len, ctxt32) = (hi.0 - lo.0, ctxt.as_u32());
-        if len <= MAX_LEN && ctxt32 <= MAX_CTXT {
+        if len <= MAX_LEN && ctxt32 <= MAX_CTXT_OR_PARENT {
             match parent {
                 None => return InlineCtxt::span(lo.0, len as u16, ctxt32 as u16),
                 Some(parent) => {
                     let parent32 = parent.local_def_index.as_u32();
-                    if ctxt32 == 0 && parent32 <= MAX_CTXT {
+                    if ctxt32 == 0 && parent32 <= MAX_CTXT_OR_PARENT {
                         return InlineParent::span(lo.0, len as u16, parent32 as u16);
                     }
                 }
@@ -282,7 +295,7 @@ impl Span {
         let index = |ctxt| {
             with_span_interner(|interner| interner.intern(&SpanData { lo, hi, ctxt, parent }))
         };
-        if ctxt32 <= MAX_CTXT {
+        if ctxt32 <= MAX_CTXT_OR_PARENT {
             // Interned ctxt should never be read, so it can use any value.
             PartiallyInterned::span(index(SyntaxContext::from_u32(u32::MAX)), ctxt32 as u16)
         } else {
@@ -335,7 +348,7 @@ impl Span {
     /// Returns `true` if this is a dummy span with any hygienic context.
     #[inline]
     pub fn is_dummy(self) -> bool {
-        if self.len_with_tag_or_marker != BASE_LEN_INTERNED_MARKER {
+        if self.len_with_tag_or_marker != LEN_INTERNED_MARKER {
             // Inline-context or inline-parent format.
             let lo = self.lo_or_index;
             let len = (self.len_with_tag_or_marker & !PARENT_TAG) as u32;
@@ -358,7 +371,7 @@ impl Span {
                 // so it makes sense to micro-optimize it to avoid `span.data()` and `Span::new()`.
                 let new_ctxt = map(SyntaxContext::from_u16(span.ctxt));
                 let new_ctxt32 = new_ctxt.as_u32();
-                return if new_ctxt32 <= MAX_CTXT {
+                return if new_ctxt32 <= MAX_CTXT_OR_PARENT {
                     // Any small new context including zero will preserve the format.
                     InlineCtxt::span(span.lo, span.len, new_ctxt32 as u16)
                 } else {
@@ -399,9 +412,10 @@ impl Span {
     pub fn eq_ctxt(self, other: Span) -> bool {
         match (self.inline_ctxt(), other.inline_ctxt()) {
             (Ok(ctxt1), Ok(ctxt2)) => ctxt1 == ctxt2,
-            // If `inline_ctxt` returns `Ok` the context is <= MAX_CTXT.
-            // If it returns `Err` the span is fully interned and the context is > MAX_CTXT.
-            // As these do not overlap an `Ok` and `Err` result cannot have an equal context.
+            // If `inline_ctxt` returns `Ok` the context is <= MAX_CTXT_OR_PARENT.
+            // If it returns `Err` the span is fully interned and the context
+            // is > MAX_CTXT_OR_PARENT. As these do not overlap an `Ok` and `Err` result cannot
+            // have an equal context.
             (Ok(_), Err(_)) | (Err(_), Ok(_)) => false,
             (Err(index1), Err(index2)) => with_span_interner(|interner| {
                 interner.spans[index1].ctxt == interner.spans[index2].ctxt
@@ -421,7 +435,7 @@ impl Span {
                     None => return self,
                     Some(parent) => {
                         let parent32 = parent.local_def_index.as_u32();
-                        if span.ctxt == 0 && parent32 <= MAX_CTXT {
+                        if span.ctxt == 0 && parent32 <= MAX_CTXT_OR_PARENT {
                             return InlineParent::span(span.lo, span.len, parent32 as u16);
                         }
                     }

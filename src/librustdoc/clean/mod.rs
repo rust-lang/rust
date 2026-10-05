@@ -224,7 +224,7 @@ pub(crate) fn macro_reexport_is_inline(
         let is_inline = find_attr!(
             inline::load_attrs(tcx, reexport_def_id),
             Doc(d)
-            if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
+            if d.inline.is_some_and(|(inline, _)| inline == DocInline::Inline)
         );
 
         // hidden takes absolute priority over inline on the same node
@@ -261,7 +261,7 @@ fn generate_item_with_correct_attrs(
             let import_is_inline = find_attr!(
                 inline::load_attrs(tcx, import_id.to_def_id()),
                 Doc(d)
-                if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
+                if d.inline.is_some_and(|(inline, _)| inline == DocInline::Inline)
             ) || (is_glob_import(tcx, import_id)
                 && (cx.document_hidden() || !tcx.is_doc_hidden(def_id)))
                 || macro_reexport_is_inline(tcx, import_id, def_id);
@@ -2897,7 +2897,7 @@ fn add_without_unwanted_attributes<'hir>(
                 if is_inline {
                     attr.cfg = cfg.clone();
                 } else {
-                    attr.inline = inline.clone();
+                    attr.inline = *inline;
                     attr.hidden = hidden.clone();
                 }
                 attr.aliases = aliases.clone();
@@ -3172,7 +3172,7 @@ fn clean_extern_crate<'tcx>(
             matches!(
             a,
             rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d))
-            if d.inline.first().is_some_and(|(i, _)| *i == DocInline::Inline))
+            if d.inline.is_some_and(|(i, _)| i == DocInline::Inline))
         })
         && !cx.is_json_output();
 
@@ -3286,9 +3286,9 @@ fn clean_use_statement_leaf<'tcx>(
     let attrs = cx.tcx.hir_attrs(import_hir_id);
     let inline_attr = find_attr!(
         attrs,
-        Doc(d) if d.inline.first().is_some_and(|(i, _)| *i == DocInline::Inline) => d
+        Doc(d) if d.inline.is_some_and(|(i, _)| i == DocInline::Inline) => d
     )
-    .and_then(|d| d.inline.first());
+    .and_then(|d| d.inline);
     let pub_underscore = visibility.is_public() && name == Some(kw::Underscore);
     let current_mod = cx.tcx.parent_module_from_def_id(import_id);
     let import_def_id = import_id;
@@ -3309,7 +3309,7 @@ fn clean_use_statement_leaf<'tcx>(
     if pub_underscore && let Some((_, inline_span)) = inline_attr {
         struct_span_code_err!(
             cx.tcx.dcx(),
-            *inline_span,
+            inline_span,
             E0780,
             "anonymous imports cannot be inlined"
         )
@@ -3324,11 +3324,13 @@ fn clean_use_statement_leaf<'tcx>(
     let mut denied = cx.is_json_output()
         || !(visibility.is_public() || (cx.document_private() && is_visible_from_parent_mod))
         || pub_underscore
-        || attrs.iter().any(|a| matches!(
-            a,
-            rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d))
-            if d.hidden.is_some() || d.inline.first().is_some_and(|(i, _)| *i == DocInline::NoInline)
-        ));
+        || attrs.iter().any(|a| {
+            matches!(
+                a,
+                rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d))
+                if d.hidden.is_some() || d.inline.is_some_and(|(i, _)| i == DocInline::NoInline)
+            )
+        });
 
     // Also check whether imports were asked to be inlined, in case we're trying to re-export a
     // crate in Rust 2018+

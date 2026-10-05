@@ -308,6 +308,12 @@ impl<'tcx, T: QueryKey> QueryKey for ty::PseudoCanonicalInput<'tcx, T> {
     }
 }
 
+impl<'tcx> QueryKey for (ty::AdtDef<'tcx>, ty::GenericArgsRef<'tcx>) {
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        tcx.def_span(self.0.did())
+    }
+}
+
 impl QueryKey for Symbol {
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
         DUMMY_SP

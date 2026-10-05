@@ -705,12 +705,16 @@ impl<'a> Parser<'a> {
                     err.emit();
                     continue;
                 }
-                if !self.token.kind.should_end_const_arg()
-                    && self.handle_ambiguous_unbraced_const_arg(&mut args)?
-                {
-                    // We've managed to (partially) recover, so continue trying to parse
-                    // arguments.
-                    continue;
+                if !self.token.kind.should_end_const_arg() {
+                    if let Some(arg @ AngleBracketedArg::Arg(GenericArg::Lifetime(_))) = args.last()
+                    {
+                        self.handle_lifetime_arg_preceding_type(arg.span())?;
+                    }
+                    if self.handle_ambiguous_unbraced_const_arg(&mut args)? {
+                        // We've managed to (partially) recover, so continue trying to parse
+                        // arguments.
+                        continue;
+                    }
                 }
                 break;
             }

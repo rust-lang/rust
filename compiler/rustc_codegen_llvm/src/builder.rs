@@ -919,9 +919,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                     self.set_metadata_node(store, llvm::MD_nontemporal, &[one]);
                 }
             }
-            if flags.contains(MemFlags::CAPTURES_READ_ONLY)
-                && crate::llvm_util::get_version() >= (22, 0, 0)
-            {
+            if flags.contains(MemFlags::CAPTURES_READ_ONLY) {
                 assert!(
                     self.type_kind(self.val_ty(val)) == TypeKind::Pointer,
                     "CAPTURED_READ_ONLY is only supported on pointer stores"
@@ -1903,14 +1901,10 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             return;
         }
 
-        if crate::llvm_util::get_version() >= (22, 0, 0) {
-            // LLVM 22 requires the lifetime intrinsic to act directly on the alloca,
-            // there can't be an addrspacecast in between.
-            let ptr = unsafe { llvm::LLVMRustStripPointerCasts(ptr) };
-            self.call_intrinsic(intrinsic, &[self.val_ty(ptr)], &[ptr]);
-        } else {
-            self.call_intrinsic(intrinsic, &[self.val_ty(ptr)], &[self.cx.const_u64(size), ptr]);
-        }
+        // LLVM 22 requires the lifetime intrinsic to act directly on the alloca,
+        // there can't be an addrspacecast in between.
+        let ptr = unsafe { llvm::LLVMRustStripPointerCasts(ptr) };
+        self.call_intrinsic(intrinsic, &[self.val_ty(ptr)], &[ptr]);
     }
 }
 impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
@@ -2129,7 +2123,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                     self.unreachable();
                 }
             } else {
-                self.abort();
+                self.abort_immediate();
                 self.unreachable();
             }
 
@@ -2193,9 +2187,8 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         llfn: &'ll Value,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
     ) -> Option<llvm::OperandBundleBox<'ll>> {
-        if self.sess().pointer_authentication_functions().is_none() {
-            return None;
-        }
+        let schema = self.sess().pointer_authentication_functions()?;
+
         // Pointer authentication support is currently limited to extern "C" calls; filter out other
         // ABIs.
         if fn_abi?.conv != CanonAbi::C {
@@ -2213,11 +2206,12 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         // bundles.
         // Once this is resolved, we should analyze each call and skip direct calls. See the
         // discussion in the rust-lang issue: <https://github.com/rust-lang/rust/issues/152532>
-        let key: u32 = 0;
-        let discriminator: u64 = 0;
         Some(llvm::OperandBundleBox::new(
             "ptrauth",
-            &[self.const_u32(key), self.const_u64(discriminator)],
+            &[
+                self.const_u32(schema.key as u32),
+                self.const_u64(schema.constant_discriminator as u64),
+            ],
         ))
     }
 

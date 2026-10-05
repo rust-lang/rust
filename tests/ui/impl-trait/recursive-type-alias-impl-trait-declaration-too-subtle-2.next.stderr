@@ -1,0 +1,18 @@
+error: item does not constrain `Foo::{opaque#0}`
+  --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle-2.rs:11:4
+   |
+LL | fn foo() -> Foo {
+   |    ^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle-2.rs:8:16
+   |
+LL | pub type Foo = impl PartialEq<(Foo, i32)>;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `Foo == _`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

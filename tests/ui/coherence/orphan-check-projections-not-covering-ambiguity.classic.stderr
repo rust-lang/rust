@@ -1,5 +1,5 @@
 warning: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
-  --> $DIR/orphan-check-projections-not-covering-ambiguity.rs:25:6
+  --> $DIR/orphan-check-projections-not-covering-ambiguity.rs:26:6
    |
 LL | impl<T> foreign::Trait1<Local, T> for <T as Project>::Output {}
    |      ^ uncovered type parameter

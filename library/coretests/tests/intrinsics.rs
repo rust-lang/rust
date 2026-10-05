@@ -1,7 +1,7 @@
 use core::any::TypeId;
 use core::intrinsics::assume;
 use std::fmt::Debug;
-use std::intrinsics::type_id_vtable;
+use std::intrinsics::reflection::type_id_vtable;
 use std::option::Option;
 use std::ptr::DynMetadata;
 

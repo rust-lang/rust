@@ -248,7 +248,6 @@ use core::clone::TrivialClone;
 use core::clone::{CloneToUninit, Share, UseCloned};
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
-use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
 use core::marker::{PhantomData, Unsize};
@@ -264,11 +263,13 @@ use core::pin::PinSafePointer;
 use core::ptr::{self, NonNull, drop_in_place};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
-use core::{borrow, fmt, hint};
+use core::{borrow, fmt, hint, intrinsics};
 
-use crate::alloc::{AllocError, Allocator, AllocatorClone, Global, Layout, StaticAllocator};
 #[cfg(not(no_global_oom_handling))]
-use crate::alloc::{AllocatorNightly, handle_alloc_error};
+use crate::alloc::handle_alloc_error;
+use crate::alloc::{
+    AllocError, Allocator, AllocatorClone, AllocatorNightly, Global, Layout, StaticAllocator,
+};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 #[cfg(not(no_global_oom_handling))]
@@ -323,6 +324,9 @@ fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
 
 pub struct Rc<
     T: ?Sized,
+    // FIXME: When stabilizing this parameter, the `AllocatorNightly`
+    // bound on the `From<Box>` impl *must* be weaked to `Allocator`,
+    // as `Box` is fundamental!
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     ptr: NonNull<RcInner<T>>,
@@ -1056,7 +1060,7 @@ impl<T, A: Allocator> Rc<T, A> {
     /// assert_eq!(*new, 14);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "smart_pointer_map", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "smart_pointer_map", since = "1.100.0")]
     pub fn map<U>(this: Self, f: impl FnOnce(&T) -> U) -> Rc<U, A> {
         if size_of::<T>() == size_of::<U>()
             && align_of::<T>() == align_of::<U>()
@@ -1675,6 +1679,7 @@ impl<T: ?Sized> Rc<T> {
     /// }
     /// ```
     #[inline]
+    #[must_use]
     #[unstable(feature = "arc_raw_get_strong", issue = "157021")]
     pub unsafe fn strong_count_from_raw(ptr: *const T) -> usize {
         // SAFETY: Upheld by caller.
@@ -1875,6 +1880,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// assert_eq!(1, Rc::weak_count(&five));
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "rc_counts", since = "1.15.0")]
     pub fn weak_count(this: &Self) -> usize {
         this.inner().weak() - 1
@@ -1893,6 +1899,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// assert_eq!(2, Rc::strong_count(&five));
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "rc_counts", since = "1.15.0")]
     pub fn strong_count(this: &Self) -> usize {
         this.inner().strong()
@@ -1985,10 +1992,55 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
         unsafe { drop(Rc::from_raw_in(ptr, alloc)) };
     }
 
-    /// Returns `true` if there are no other `Rc` or [`Weak`] pointers to
-    /// this allocation.
+    /// Determine whether this is the unique reference to the underlying data.
+    ///
+    /// Returns `true` if there are no other `Rc` or [`Weak`] pointers to the same allocation;
+    /// returns `false` otherwise.
+    ///
+    /// If this function returns `true`, it is safe to call [`get_mut_unchecked`]
+    /// immediately afterward.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(arc_is_unique)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let x = Rc::new(3);
+    /// assert!(Rc::is_unique(&x));
+    ///
+    /// let y = Rc::clone(&x);
+    /// assert!(!Rc::is_unique(&x));
+    /// drop(y);
+    ///
+    /// // Weak references also count, because they could be upgraded at any time.
+    /// let z = Rc::downgrade(&x);
+    /// assert!(!Rc::is_unique(&x));
+    /// ```
+    ///
+    /// # Pointer invalidation
+    ///
+    /// This function will always return the same value as `Rc::get_mut(rc).is_some()`. However,
+    /// unlike that operation it does not produce any mutable references to the underlying data,
+    /// meaning no pointers to the data inside the `Rc` are invalidated by the call. Thus, the
+    /// following code is valid, even though it would be UB if it used `Rc::get_mut`:
+    ///
+    /// ```
+    /// #![feature(arc_is_unique)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let rc = Rc::new(5);
+    /// let pointer: *const i32 = &*rc;
+    /// assert!(Rc::is_unique(&rc));
+    /// assert_eq!(unsafe { *pointer }, 5);
+    /// ```
+    ///
+    /// [`get_mut_unchecked`]: Self::get_mut_unchecked
     #[inline]
-    fn is_unique(this: &Self) -> bool {
+    #[unstable(feature = "arc_is_unique", issue = "138938")]
+    pub fn is_unique(this: &Self) -> bool {
         Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
     }
 
@@ -3892,8 +3944,8 @@ trait RcInnerPtr {
         // We want to abort on overflow instead of dropping the value.
         // Checking for overflow after the store instead of before
         // allows for slightly better code generation.
-        if core::intrinsics::unlikely(strong == 0) {
-            abort();
+        if intrinsics::unlikely(strong == 0) {
+            intrinsics::abort_immediate();
         }
     }
 
@@ -3925,8 +3977,8 @@ trait RcInnerPtr {
         // We want to abort on overflow instead of dropping the value.
         // Checking for overflow after the store instead of before
         // allows for slightly better code generation.
-        if core::intrinsics::unlikely(weak == 0) {
-            abort();
+        if intrinsics::unlikely(weak == 0) {
+            intrinsics::abort_immediate();
         }
     }
 
@@ -4741,7 +4793,7 @@ impl<T: ?Sized, A: Allocator> Drop for UniqueRcUninit<T, A> {
     }
 }
 
-#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "allocator_api", since = "1.100.0")]
 unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Rc<T, A> {
     #[inline]
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
@@ -4792,6 +4844,9 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Rc<T, A> {
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+#[unstable_feature_bound(allocator_ext)]
+impl<T: ?Sized + Allocator, A: Allocator> AllocatorNightly for Rc<T, A> {}
 
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 unsafe impl<T: Allocator + ?Sized, A: AllocatorClone> AllocatorClone for Rc<T, A> {}

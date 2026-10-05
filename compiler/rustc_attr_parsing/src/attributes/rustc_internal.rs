@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use rustc_ast::{LitIntType, LitKind, MetaItemLit};
+use rustc_ast::{GenericParamKind, ItemKind, LitIntType, LitKind, MetaItemLit};
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{
     BorrowckGraphvizFormatKind, CguFields, CguKind, RustcCleanAttribute, RustcCleanQueries,
@@ -168,6 +168,48 @@ impl SingleAttributeParser for RustcLegacyConstGenericsParser {
             fn_indexes: parsed_indexes,
             attr_span: cx.attr_span,
         })
+    }
+
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        if cx.target != Target::Fn {
+            // Invalid targets are already diagnosed by target checking.
+            return;
+        }
+        let item = cx.target_item.expect("missing AST target item for Target::Fn");
+        let ItemKind::Fn(function) = &item.kind else {
+            panic!("expected fn AST target item for Target::Fn");
+        };
+        let index_list = rustc_attr_ir::find_attr!(cx.parsed_attrs, RustcLegacyConstGenerics { fn_indexes, .. } => fn_indexes)
+            .expect("missing parsed RustcLegacyConstGenerics attribute in finalize_check");
+        let generics = &function.generics;
+
+        for param in &generics.params {
+            if !matches!(param.kind, GenericParamKind::Const { .. }) {
+                cx.emit_err(diagnostics::RustcLegacyConstGenericsOnly {
+                    attr_span,
+                    param_span: param.span(),
+                });
+                return;
+            }
+        }
+
+        if index_list.len() != generics.params.len() {
+            cx.emit_err(diagnostics::RustcLegacyConstGenericsIndex {
+                attr_span,
+                generics_span: generics.span,
+            });
+            return;
+        }
+
+        let arg_count = function.sig.decl.inputs.len() + generics.params.len();
+        for (index, span) in index_list {
+            if *index >= arg_count {
+                cx.emit_err(diagnostics::RustcLegacyConstGenericsIndexExceed {
+                    span: *span,
+                    arg_count,
+                });
+            }
+        }
     }
 }
 
@@ -626,6 +668,14 @@ impl CombineAttributeParser for RustcMirParser {
             .filter_map(|mi| {
                 if let Some(ident) = mi.ident() {
                     match ident.name {
+                        sym::rustc_pretty_live_locals => {
+                            cx.expect_no_args(mi.args())?;
+                            Some(RustcMirKind::PrettyLiveLocals)
+                        }
+                        sym::rustc_pretty_transitive_live_locals => {
+                            cx.expect_no_args(mi.args())?;
+                            Some(RustcMirKind::PrettyTransitiveLiveLocals)
+                        }
                         sym::rustc_peek_maybe_init => Some(RustcMirKind::PeekMaybeInit),
                         sym::rustc_peek_maybe_uninit => Some(RustcMirKind::PeekMaybeUninit),
                         sym::rustc_peek_liveness => Some(RustcMirKind::PeekLiveness),

@@ -1,6 +1,7 @@
 //@ check-pass
 //@ compile-flags: --crate-type=lib
 //@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 #![feature(sized_hierarchy)]
 

@@ -33,11 +33,11 @@ __impl_slice_eq1! { [] Cow<'_, [T]>, &[U] where T: Clone, #[stable(feature = "ru
 #[cfg(not(no_global_oom_handling))]
 __impl_slice_eq1! { [] Cow<'_, [T]>, &mut [U] where T: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
 #[cfg(not(no_global_oom_handling))]
-__impl_slice_eq1! { [A: Allocator] Vec<T, A>, Cow<'_, [U]> where U: Clone, #[stable(feature = "partialeq_cow_for_vec_and_slice", since = "CURRENT_RUSTC_VERSION")] }
+__impl_slice_eq1! { [A: Allocator] Vec<T, A>, Cow<'_, [U]> where U: Clone, #[stable(feature = "partialeq_cow_for_vec_and_slice", since = "1.100.0")] }
 #[cfg(not(no_global_oom_handling))]
-__impl_slice_eq1! { [] &[T], Cow<'_, [U]> where U: Clone, #[stable(feature = "partialeq_cow_for_vec_and_slice", since = "CURRENT_RUSTC_VERSION")] }
+__impl_slice_eq1! { [] &[T], Cow<'_, [U]> where U: Clone, #[stable(feature = "partialeq_cow_for_vec_and_slice", since = "1.100.0")] }
 #[cfg(not(no_global_oom_handling))]
-__impl_slice_eq1! { [] &mut [T], Cow<'_, [U]> where U: Clone, #[stable(feature = "partialeq_cow_for_vec_and_slice", since = "CURRENT_RUSTC_VERSION")] }
+__impl_slice_eq1! { [] &mut [T], Cow<'_, [U]> where U: Clone, #[stable(feature = "partialeq_cow_for_vec_and_slice", since = "1.100.0")] }
 __impl_slice_eq1! { const, [A: Allocator, const N: usize] Vec<T, A>, [U; N], #[rustc_const_unstable(feature = "const_cmp", issue = "143800")] #[stable(feature = "rust1", since = "1.0.0")] }
 __impl_slice_eq1! { const, [A: Allocator, const N: usize] Vec<T, A>, &[U; N], #[rustc_const_unstable(feature = "const_cmp", issue = "143800")] #[stable(feature = "rust1", since = "1.0.0")] }
 

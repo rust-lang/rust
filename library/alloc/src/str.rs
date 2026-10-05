@@ -73,7 +73,8 @@ impl<S: Borrow<str>> Join<&str> for [S] {
     type Output = String;
 
     fn join(slice: &Self, sep: &str) -> String {
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: slice can be borrowed as `[&str]` and sep is `&str`, both are valid UTF-8,
+        // so the returned `Vec<u8>` of `join_generic_copy` is also valid UTF-8.
         unsafe { String::from_utf8_unchecked(join_generic_copy(slice, sep.as_bytes())) }
     }
 }
@@ -183,30 +184,37 @@ where
 
     let pos = result.len();
     debug_assert!(reserved_len >= pos);
-    // ignore-tidy-undocumented-unsafe
+
+    // SAFETY: The size of remaining spare is at least `reserved_len - pos`.
+    let target = unsafe { result.spare_capacity_mut().get_unchecked_mut(..reserved_len - pos) };
+
+    // Convert the separator and slices to slices of MaybeUninit
+    // to simplify implementation in specialize_for_lengths.
+    // SAFETY: `sep` is a slice of `T`, so `sep.as_ptr().cast()` is a valid pointer,
+    // and `sep.len()` is the number of elements in the slice, so `from_raw_parts` is safe.
+    let sep_uninit = unsafe { core::slice::from_raw_parts(sep.as_ptr().cast(), sep.len()) };
+    let iter_uninit = iter.map(|it| {
+        let it = it.borrow().as_ref();
+        // SAFETY: `it` is a slice of `T`, so `it.as_ptr().cast()` is a valid pointer,
+        // and `it.len()` is the number of elements in the slice, so `from_raw_parts` is safe.
+        unsafe { core::slice::from_raw_parts(it.as_ptr().cast(), it.len()) }
+    });
+
+    // copy separator and slices over without bounds checks.
+    // `specialize_for_lengths!` internally calls `s.borrow()`, but because it uses
+    // the bounds-checked `split_at_mut` any misbehaving implementation
+    // will not write out of bounds.
+    let remain = specialize_for_lengths!(sep_uninit, target, iter_uninit; 0, 1, 2, 3, 4);
+
+    // A weird borrow implementation may return different
+    // slices for the length calculation and the actual copy.
+    // Make sure we don't expose uninitialized bytes to the caller.
+    let result_len = reserved_len - remain.len();
+    // SAFETY: `result_len` is less than `reserved_len`, and all elements in `0..result_len` are initialized.
     unsafe {
-        let target = result.spare_capacity_mut().get_unchecked_mut(..reserved_len - pos);
-
-        // Convert the separator and slices to slices of MaybeUninit
-        // to simplify implementation in specialize_for_lengths.
-        let sep_uninit = core::slice::from_raw_parts(sep.as_ptr().cast(), sep.len());
-        let iter_uninit = iter.map(|it| {
-            let it = it.borrow().as_ref();
-            core::slice::from_raw_parts(it.as_ptr().cast(), it.len())
-        });
-
-        // copy separator and slices over without bounds checks.
-        // `specialize_for_lengths!` internally calls `s.borrow()`, but because it uses
-        // the bounds-checked `split_at_mut` any misbehaving implementation
-        // will not write out of bounds.
-        let remain = specialize_for_lengths!(sep_uninit, target, iter_uninit; 0, 1, 2, 3, 4);
-
-        // A weird borrow implementation may return different
-        // slices for the length calculation and the actual copy.
-        // Make sure we don't expose uninitialized bytes to the caller.
-        let result_len = reserved_len - remain.len();
         result.set_len(result_len);
     }
+
     result
 }
 
@@ -250,7 +258,7 @@ impl ToOwned for str {
 
     #[inline]
     fn to_owned(&self) -> String {
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: `self` is a valid UTF-8 str.
         unsafe { String::from_utf8_unchecked(self.as_bytes().to_owned()) }
     }
 
@@ -319,7 +327,7 @@ impl str {
             _ => None,
         } {
             if let [to_byte] = to.as_bytes() {
-                // ignore-tidy-undocumented-unsafe
+                // SAFETY: `self` is a valid UTF-8 str, `from_byte` and `to_byte` are ASCII bytes.
                 return unsafe { replace_ascii(self.as_bytes(), from_byte, *to_byte) };
             }
         }
@@ -332,12 +340,16 @@ impl str {
         let mut result = String::with_capacity(default_capacity);
         let mut last_end = 0;
         for (start, part) in self.match_indices(from) {
-            // ignore-tidy-undocumented-unsafe
+            // SAFETY: `last_end` does not exceed `start`, and `start` does not exceed `self.len()`.
+            // Therefore, `last_end..start` is within bounds of `self`.
+            // For each iteration, `last_end` and `start` lie on UTF-8 sequence boundaries.
             result.push_str(unsafe { self.get_unchecked(last_end..start) });
             result.push_str(to);
             last_end = start + part.len();
         }
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: `last_end` is the start of the remaining unmatched suffix of `self`.
+        // It is 0 or the end of a match returned by `match_indices`, so it is
+        // a UTF-8 boundary within `self`. `self.len()` is also a UTF-8 boundary.
         result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
         result
     }
@@ -374,12 +386,16 @@ impl str {
         let mut result = String::with_capacity(32);
         let mut last_end = 0;
         for (start, part) in self.match_indices(pat).take(count) {
-            // ignore-tidy-undocumented-unsafe
+            // SAFETY: `last_end` does not exceed `start`, and `start` does not exceed `self.len()`.
+            // Therefore, `last_end..start` is within bounds of `self`.
+            // For each iteration, `last_end` and `start` lie on UTF-8 sequence boundaries.
             result.push_str(unsafe { self.get_unchecked(last_end..start) });
             result.push_str(to);
             last_end = start + part.len();
         }
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: `last_end` is the start of the remaining suffix of `self`.
+        // It is 0 or the end of a match returned by `match_indices`, so it is
+        // a UTF-8 boundary within `self`. `self.len()` is also a UTF-8 boundary.
         result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
         result
     }
@@ -793,7 +809,7 @@ impl str {
     #[inline]
     pub fn into_string(self: Box<Self>) -> String {
         let slice = Box::<[u8]>::from(self);
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: `slice` is a valid UTF-8 sequence because it is created from a `Box<str>`.
         unsafe { String::from_utf8_unchecked(slice.into_vec()) }
     }
 
@@ -823,7 +839,7 @@ impl str {
     #[stable(feature = "repeat_str", since = "1.16.0")]
     #[inline]
     pub fn repeat(&self, n: usize) -> String {
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: The created Vec<u8> is valid UTF-8 because `self` is str.
         unsafe { String::from_utf8_unchecked(self.as_bytes().repeat(n)) }
     }
 
@@ -984,9 +1000,9 @@ pub unsafe fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &
         }
 
         ascii_prefix_len += N;
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: checked in loop condition.
         slice = unsafe { slice.get_unchecked(N..) };
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: out_slice has at least same length as input slice.
         out_slice = unsafe { out_slice.get_unchecked_mut(N..) };
     }
 
@@ -1001,9 +1017,9 @@ pub unsafe fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &
             *out_slice.get_unchecked_mut(0) = MaybeUninit::new(convert(&byte));
         }
         ascii_prefix_len += 1;
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: slice has at least one byte, so slicing from 1.. is safe
         slice = unsafe { slice.get_unchecked(1..) };
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: out_slice has at least same length as input slice
         out_slice = unsafe { out_slice.get_unchecked_mut(1..) };
     }
 
@@ -1024,6 +1040,11 @@ pub unsafe fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &
 #[allow(dead_code)]
 /// Faster implementation of string replacement for ASCII to ASCII cases.
 /// Should produce fast vectorized code.
+///
+/// # Safety
+///
+/// * `utf8_bytes` must contain valid UTF-8.
+/// * Both `from` and `to` must be ASCII bytes (at most `0x7F`).
 unsafe fn replace_ascii(utf8_bytes: &[u8], from: u8, to: u8) -> String {
     let result: Vec<u8> = utf8_bytes.iter().map(|b| if *b == from { to } else { *b }).collect();
     // SAFETY: We replaced ascii with ascii on valid utf8 strings.

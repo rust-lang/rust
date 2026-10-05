@@ -1,4 +1,4 @@
-//@ compile-flags: -Zassumptions-on-binders
+//@ compile-flags: -Zassumptions-on-binders -Znext-solver=globally
 #![feature(test_binder_constraints)]
 #![expect(incomplete_features)]
 
@@ -71,6 +71,38 @@ core::test_binder_constraints! {
     impl<'a, T> {
         for<> T: 'a
         //~^ ERROR bound type test binder constraint must be alias (it's a AliasTyOutlivesViaEnv)
+    }
+}
+
+core::test_binder_constraints! {
+    impl {
+        forall<'a> where 'a: 'static {
+        } expect {
+            ambiguity
+            //~^ ERROR forall expect clause failed
+        }
+    }
+}
+
+core::test_binder_constraints! {
+    impl {
+        forall<'a> where 'a: 'static {
+            //~^ ERROR forall expect clause failed
+            //~| ERROR unable to satisfy constraints involving placeholders due to unknown implied bounds
+            ambiguity
+        } expect {
+        }
+    }
+}
+
+core::test_binder_constraints! {
+    impl {
+        forall<'a> where 'a: 'static {
+            //~^ ERROR unable to satisfy constraints involving placeholders due to unknown implied bounds
+            ambiguity
+        } expect {
+            ambiguity
+        }
     }
 }
 

@@ -10,14 +10,6 @@ use crate::shims::unix::socket_address::EvalContextExt as _;
 use crate::shims::unix::tcp_socket::TcpSocket;
 use crate::*;
 
-#[derive(Debug, PartialEq)]
-pub enum SocketFamily {
-    // IPv4 internet protocols
-    IPv4,
-    // IPv6 internet protocols
-    IPv6,
-}
-
 /// Represents unix-specific socket file descriptions.
 ///
 /// Not to be confused with Unix domain sockets.
@@ -204,9 +196,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let family = if domain == this.eval_libc_i32("AF_INET") {
-            SocketFamily::IPv4
+            socket2::Domain::IPV4
         } else if domain == this.eval_libc_i32("AF_INET6") {
-            SocketFamily::IPv6
+            socket2::Domain::IPV6
         } else {
             throw_unsup_format!(
                 "socket: domain {:#x} is unsupported, only AF_INET and \
@@ -229,8 +221,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         }
 
+        let socket = match TcpSocket::new(family, is_non_block) {
+            Ok(socket) => socket,
+            Err(e) => return this.set_errno_and_return_neg1_i32(e),
+        };
         let fds = &mut this.machine.fds;
-        let fd = fds.new_ref(TcpSocket::new(family, is_non_block));
+        let fd = fds.new_ref(socket);
 
         interp_ok(Scalar::from_i32(fds.insert(fd)))
     }
@@ -254,7 +250,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
-        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+        let Some(socket) = fd.as_unix().as_socket() else {
             return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
@@ -275,7 +271,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
-        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+        let Some(socket) = fd.as_unix().as_socket() else {
             return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
@@ -309,7 +305,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
-        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+        let Some(socket) = fd.as_unix().as_socket() else {
             return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
         };
 
@@ -396,7 +392,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
-        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+        let Some(socket) = fd.as_unix().as_socket() else {
             return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
         };
 
@@ -442,7 +438,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
-        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+        let Some(socket) = fd.as_unix().as_socket() else {
             return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
         };
 
@@ -521,7 +517,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
-        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+        let Some(socket) = fd.as_unix().as_socket() else {
             return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
         };
 
@@ -613,7 +609,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
-        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+        let Some(socket) = fd.as_unix().as_socket() else {
             return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
@@ -650,7 +646,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
-        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+        let Some(socket) = fd.as_unix().as_socket() else {
             return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
@@ -718,7 +714,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
-        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+        let Some(socket) = fd.as_unix().as_socket() else {
             return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
@@ -750,7 +746,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
-        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+        let Some(socket) = fd.as_unix().as_socket() else {
             return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
         };
 
@@ -793,7 +789,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
-        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+        let Some(socket) = fd.as_unix().as_socket() else {
             return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 

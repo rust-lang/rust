@@ -9,6 +9,7 @@ use run_make_support::{run, rustc};
 
 fn main() {
     let out = rustc()
+        .edition("2015")
         .input("foo.rs")
         .arg("-Ctarget-cpu=native")
         .arg("-Zverify-llvm-ir")

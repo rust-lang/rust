@@ -725,6 +725,9 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 }
                 CastKind::Transmute | CastKind::Subtype => {
                     let value = self.eval_to_const(value)?;
+                    if value.is_immediate_uninit() {
+                        return Some(ImmTy::uninit(ty).into());
+                    }
                     // `offset` for immediates generally only supports projections that match the
                     // type of the immediate. However, as a HACK, we exploit that it can also do
                     // limited transmutes: it only works between types with the same layout, and
@@ -1947,6 +1950,8 @@ fn op_to_prop_const<'tcx>(
             // Transmuting a constant is just an offset in the allocation. If the alignment of the
             // allocation is not enough, fallback to copying into a properly aligned value.
             && alloc.inner().align >= op.layout.align.abi
+            // If this is a packed field the offset must also be sufficiently aligned.
+            && offset.bytes().is_multiple_of(op.layout.align.abi.bytes())
         {
             return Some(ConstValue::Indirect { alloc_id, offset });
         }

@@ -361,8 +361,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let pred = self.tcx.short_string(predicate, &mut err.long_ty_path());
                         err.note(format!("cannot satisfy `{pred}`"));
                     }
-                    let impl_candidates =
-                        self.find_similar_impl_candidates(predicate.as_trait_clause().unwrap());
+                    let clause = predicate.as_trait_clause().unwrap();
+                    let impl_candidates = self.find_similar_impl_candidates(
+                        clause.def_id(),
+                        clause.self_ty().skip_binder(),
+                    );
                     if impl_candidates.len() < 40 {
                         self.report_similar_impl_candidates(
                             impl_candidates.as_slice(),

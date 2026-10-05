@@ -31,5 +31,5 @@ pub fn unsupported_err() -> std_io::Error {
 }
 
 pub fn abort_internal() -> ! {
-    core::intrinsics::abort();
+    core::intrinsics::abort_immediate();
 }

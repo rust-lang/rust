@@ -1,0 +1,25 @@
+// MIR for `deref` 0 dataflow
+
+fn deref() -> () {
+    let mut _0: ();
+    let mut _1: usize;
+    let mut _2: &mut usize;
+
+    bb0: {
+        // live: []
+        // live: []
+        _1 = const 42_usize;
+        // live: [_1]
+        // live: [_1]
+        _2 = &mut _1;
+        // live: [_2]
+        // live: [_2]
+        (*_2) = const 24_usize;
+        // live: []
+        // live: []
+        _0 = ();
+        // live: [_0]
+        // live: [_0]
+        return;
+    }
+}

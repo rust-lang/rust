@@ -100,7 +100,7 @@ fn emit_lint(
                 let insert_span = match (bound.args, bound.constraints) {
                     ([.., arg], [.., constraint]) => {
                         max_by_key(arg.span(), constraint.span, |span| span.lo_hi()).shrink_to_hi()
-                    }
+                    },
                     ([.., arg], []) => arg.span().shrink_to_hi(),
                     ([], [.., constraint]) => constraint.span.shrink_to_hi(),
                     ([], []) => bound.span.shrink_to_hi(),

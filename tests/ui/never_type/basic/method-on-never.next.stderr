@@ -1,5 +1,5 @@
 warning: method call on a diverging inference variable
-  --> $DIR/method-on-never.rs:44:7
+  --> $DIR/method-on-never.rs:45:7
    |
 LL |     x.method();
    |       ^^^^^^
@@ -10,7 +10,7 @@ LL |     x.method();
    = note: `#[warn(method_call_on_diverging_infer_var)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: method call on a diverging inference variable
-  --> $DIR/method-on-never.rs:48:17
+  --> $DIR/method-on-never.rs:49:17
    |
 LL |     { loop {} }.method();
    |                 ^^^^^^
@@ -20,7 +20,7 @@ LL |     { loop {} }.method();
    = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
 
 warning: method call on a diverging inference variable
-  --> $DIR/method-on-never.rs:53:16
+  --> $DIR/method-on-never.rs:54:16
    |
 LL |         y => y.method(),
    |                ^^^^^^
@@ -30,7 +30,7 @@ LL |         y => y.method(),
    = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
 
 warning: method call on a diverging inference variable
-  --> $DIR/method-on-never.rs:59:27
+  --> $DIR/method-on-never.rs:60:27
    |
 LL |         error => (&error).anyhow_kind().new(error),
    |                           ^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL |         error => (&error).anyhow_kind().new(error),
    = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
 
 warning: method call on a diverging inference variable
-  --> $DIR/method-on-never.rs:65:9
+  --> $DIR/method-on-never.rs:66:9
    |
 LL |     res.method();
    |         ^^^^^^
@@ -53,7 +53,7 @@ warning: 5 warnings emitted
 
 Future incompatibility report: Future breakage diagnostic:
 warning: method call on a diverging inference variable
-  --> $DIR/method-on-never.rs:44:7
+  --> $DIR/method-on-never.rs:45:7
    |
 LL |     x.method();
    |       ^^^^^^
@@ -65,7 +65,7 @@ LL |     x.method();
 
 Future breakage diagnostic:
 warning: method call on a diverging inference variable
-  --> $DIR/method-on-never.rs:48:17
+  --> $DIR/method-on-never.rs:49:17
    |
 LL |     { loop {} }.method();
    |                 ^^^^^^
@@ -77,7 +77,7 @@ LL |     { loop {} }.method();
 
 Future breakage diagnostic:
 warning: method call on a diverging inference variable
-  --> $DIR/method-on-never.rs:53:16
+  --> $DIR/method-on-never.rs:54:16
    |
 LL |         y => y.method(),
    |                ^^^^^^
@@ -89,7 +89,7 @@ LL |         y => y.method(),
 
 Future breakage diagnostic:
 warning: method call on a diverging inference variable
-  --> $DIR/method-on-never.rs:59:27
+  --> $DIR/method-on-never.rs:60:27
    |
 LL |         error => (&error).anyhow_kind().new(error),
    |                           ^^^^^^^^^^^
@@ -101,7 +101,7 @@ LL |         error => (&error).anyhow_kind().new(error),
 
 Future breakage diagnostic:
 warning: method call on a diverging inference variable
-  --> $DIR/method-on-never.rs:65:9
+  --> $DIR/method-on-never.rs:66:9
    |
 LL |     res.method();
    |         ^^^^^^
