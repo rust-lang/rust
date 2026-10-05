@@ -95,8 +95,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let path_span_lo = span.shrink_to_lo();
         let proj_start = p_num_segments - unresolved_segments;
         let mut last_prefix_span = path_span_lo;
-        let segments = self.arena.alloc_from_iter(
-            p.iter_segments().take(proj_start).enumerate().map(|(i, segment)| {
+        let mut segment_iter = p.iter_segments().enumerate();
+        let segments = self.arena.alloc_from_iter(segment_iter.by_ref().take(proj_start).map(
+            |(i, segment)| {
                 let param_mode = match (qself_position, param_mode) {
                     (Some(j), ParamMode::Optional) if i < j => {
                         // This segment is part of the trait path in a
@@ -144,8 +145,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     itctx(i),
                     bound_modifier_allowed_features.clone(),
                 )
-            }),
-        );
+            },
+        ));
         let path =
             self.arena.alloc(hir::Path { res, segments, span: self.lower_span(last_prefix_span) });
 
@@ -186,7 +187,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         //   2. `<std::vec::Vec<T>>::IntoIter`
         //   3. `<<std::vec::Vec<T>>::IntoIter>::Item`
         // * final path is `<<<std::vec::Vec<T>>::IntoIter>::Item>::clone`
-        for (i, segment) in p.iter_segments().enumerate().skip(proj_start) {
+        //
+        // We've already consumed the prefix from `segment_iter`, so we can resume it here.
+        for (i, segment) in segment_iter {
             // If this is a type-dependent `T::method(..)`.
             let generic_args_mode = if i + 1 == p_num_segments
                 && matches!(allow_return_type_notation, AllowReturnTypeNotation::Yes)
