@@ -149,6 +149,29 @@ impl<'tcx> ImproperCTypesLint {
     fn cache_key(cx: &LateContext<'tcx>, ty: Ty<'tcx>, flags: RootUseFlags) -> (Hash128, u8) {
         (cx.tcx.type_id_hash(ty), flags.bits())
     }
+
+    fn check_ffi_type(
+        &self,
+        cx: &LateContext<'tcx>,
+        ty: Ty<'tcx>,
+        state: VisitorState,
+        span: Span,
+        mode: CItemKind,
+        check: impl FnOnce() -> FfiResult<'tcx>,
+    ) {
+        let key = Self::cache_key(cx, ty, state.root_use_flags);
+        if self.known_safe.borrow().contains(&key) {
+            return;
+        }
+
+        let ffi_res = check();
+
+        if matches!(ffi_res, FfiResult::FfiSafe) {
+            self.known_safe.borrow_mut().insert(key);
+        }
+
+        self.process_ffi_result(cx, span, ffi_res, mode);
+    }
 }
 
 impl_lint_pass!(ImproperCTypesLint => [
@@ -1123,16 +1146,10 @@ impl<'tcx> ImproperCTypesLint {
     fn check_foreign_static(&mut self, cx: &LateContext<'tcx>, id: hir::OwnerId, span: Span) {
         let ty = cx.tcx.type_of(id).instantiate_identity();
         let state = VisitorState::static_entry_point();
-        let key = Self::cache_key(cx, ty.skip_norm_wip(), state.root_use_flags);
-        if self.known_safe.borrow().contains(&key) {
-            return;
-        }
-        let mut visitor = ImproperCTypesVisitor::new(cx, ty, CItemKind::Declaration);
-        let ffi_res = visitor.check_type(state, ty);
-        if matches!(ffi_res, FfiResult::FfiSafe) {
-            self.known_safe.borrow_mut().insert(key);
-        }
-        self.process_ffi_result(cx, span, ffi_res, CItemKind::Declaration);
+        self.check_ffi_type(cx, ty.skip_norm_wip(), state, span, CItemKind::Declaration, || {
+            let mut visitor = ImproperCTypesVisitor::new(cx, ty, CItemKind::Declaration);
+            visitor.check_type(state, ty)
+        });
     }
 
     /// Check if a function's argument types and result type are "ffi-safe".
@@ -1148,31 +1165,20 @@ impl<'tcx> ImproperCTypesLint {
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
             let state = VisitorState::fn_entry_point(fn_mode, FnPos::Arg);
-            let key = Self::cache_key(cx, *input_ty, state.root_use_flags);
-            if self.known_safe.borrow().contains(&key) {
-                continue;
-            }
-            let input_ty = Unnormalized::new_wip(*input_ty);
-            let mut visitor = ImproperCTypesVisitor::new(cx, input_ty, fn_mode);
-            let ffi_res = visitor.check_type(state, input_ty);
-            if matches!(ffi_res, FfiResult::FfiSafe) {
-                self.known_safe.borrow_mut().insert(key);
-            }
-            self.process_ffi_result(cx, input_hir.span, ffi_res, fn_mode);
+            self.check_ffi_type(cx, *input_ty, state, input_hir.span, fn_mode, || {
+                let input_ty = Unnormalized::new_wip(*input_ty);
+                let mut visitor = ImproperCTypesVisitor::new(cx, input_ty, fn_mode);
+                visitor.check_type(state, input_ty)
+            });
         }
 
         if let hir::FnRetTy::Return(ret_hir) = decl.output {
             let state = VisitorState::fn_entry_point(fn_mode, FnPos::Ret);
-            let key = Self::cache_key(cx, sig.output(), state.root_use_flags);
-            if !self.known_safe.borrow().contains(&key) {
+            self.check_ffi_type(cx, sig.output(), state, ret_hir.span, fn_mode, || {
                 let output_ty = Unnormalized::new_wip(sig.output());
                 let mut visitor = ImproperCTypesVisitor::new(cx, output_ty, fn_mode);
-                let ffi_res = visitor.check_type(state, output_ty);
-                if matches!(ffi_res, FfiResult::FfiSafe) {
-                    self.known_safe.borrow_mut().insert(key);
-                }
-                self.process_ffi_result(cx, ret_hir.span, ffi_res, fn_mode);
-            }
+                visitor.check_type(state, output_ty)
+            });
         }
     }
 
