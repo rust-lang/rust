@@ -2035,7 +2035,13 @@ fn is_in_block(node: &SyntaxNode) -> bool {
     };
     sense_node
         .parent()
-        .map(|node| ast::ExprStmt::can_cast(node.kind()) || ast::StmtList::can_cast(node.kind()))
+        .map(|node| {
+            ast::ExprStmt::can_cast(node.kind())
+                || ast::StmtList::can_cast(node.kind())
+                // Because `is_in_block` is only called in the context of an expression,
+                // there is no need to consider expanding it into a type or pattern
+                || ast::MacroStmts::can_cast(node.kind())
+        })
         .unwrap_or(false)
 }
 

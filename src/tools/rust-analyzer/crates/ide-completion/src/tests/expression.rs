@@ -809,7 +809,7 @@ fn foo() {
 fn in_macro_expr_frag() {
     check(
         r#"
-macro_rules! m { ($e:expr) => { $e } }
+macro_rules! m { ($e:expr) => { let _ = $e; } }
 fn quux(x: i32) {
     m!($0);
 }
@@ -837,7 +837,7 @@ fn quux(x: i32) {
     );
     check(
         r"
-macro_rules! m { ($e:expr) => { $e } }
+macro_rules! m { ($e:expr) => { let _ = $e; } }
 fn quux(x: i32) {
     m!(x$0);
 }
@@ -861,11 +861,12 @@ fn quux(x: i32) {
             kw unsafe
             kw while
             kw while let
+            ex x
         "#]],
     );
     check(
         r#"
-macro_rules! m { ($e:expr) => { $e } }
+macro_rules! m { ($e:expr) => { let _ = $e; } }
 fn quux(x: i32) {
     let y = 92;
     m!(x$0
@@ -891,6 +892,56 @@ fn quux(x: i32) {
             kw unsafe
             kw while
             kw while let
+        "#]],
+    );
+}
+
+#[test]
+fn in_identity_macro() {
+    check(
+        r#"
+macro_rules! m { ($($t:tt)*) => { $($t)* } }
+fn quux(x: i32) {
+    m!(l$0);
+}
+"#,
+        expect![[r#"
+            fn quux(…)      fn(i32)
+            lc x                i32
+            ma m!(…) macro_rules! m
+            bt u32              u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
         "#]],
     );
 }
@@ -4154,20 +4205,23 @@ fn main() {
             ma bar macro_rules! bar
             ma foo macro_rules! foo
             bt u32              u32
-            kw const
             kw crate::
             kw false
             kw for
             kw if
             kw if let
+            kw let
+            kw letm
             kw loop
             kw match
             kw return
             kw self::
             kw true
-            kw unsafe
             kw while
             kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
         "#]],
     );
 }
