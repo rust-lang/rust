@@ -146,11 +146,11 @@ impl TcpStream {
     }
 
     pub fn set_hop_limit_v6(&self, _: u8) -> io::Result<()> {
-        self.0
+        unsupported()
     }
 
     pub fn hop_limit_v6(&self) -> io::Result<u8> {
-        self.0
+        unsupported()
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
@@ -206,11 +206,11 @@ impl TcpListener {
     }
 
     pub fn set_hop_limit_v6(&self, _: u8) -> io::Result<()> {
-        self.0
+        unsupported()
     }
 
     pub fn hop_limit_v6(&self) -> io::Result<u8> {
-        self.0
+        unsupported()
     }
 
     pub fn set_only_v6(&self, _: bool) -> io::Result<()> {
