@@ -364,6 +364,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         }
     }
 
+    #[inline]
     fn fold<B, F>(mut self, mut accum: B, mut f: F) -> B
     where
         F: FnMut(B, Self::Item) -> B,
@@ -396,6 +397,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         accum
     }
 
+    #[inline]
     fn try_fold<B, F, R>(&mut self, mut accum: B, mut f: F) -> R
     where
         Self: Sized,
