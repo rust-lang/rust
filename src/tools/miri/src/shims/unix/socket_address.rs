@@ -20,6 +20,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let node_ptr = this.read_pointer(node)?;
         let service_ptr = this.read_pointer(service)?;
         let hints_ptr = this.read_pointer(hints)?;
+        // FIXME: use `deref_pointer_as` with a fixed type instead.
         let res_mplace = this.deref_pointer(res)?;
 
         if node_ptr == Pointer::null() {

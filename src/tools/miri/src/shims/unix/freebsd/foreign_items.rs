@@ -157,12 +157,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "fstat@FBSD_1.0" => {
                 let [fd, buf] =
                     this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
-                let result = this.fstat(fd, buf)?;
+                let result = this.fstat(fd, buf, "stat")?;
                 this.write_scalar(result, dest)?;
             }
             "readdir@FBSD_1.0" => {
                 let [dirp] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
-                this.readdir(dirp, dest)?;
+                this.readdir(dirp, dest, "dirent")?;
             }
             // Miscellaneous
             "__error" => {

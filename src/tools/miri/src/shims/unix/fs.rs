@@ -33,9 +33,9 @@ struct DirStream {
     /// The "special" entries that must still be yielded by the iterator.
     /// Used for `.` and `..`.
     special_entries: Vec<&'static str>,
-    /// The most recent entry returned by readdir().
-    /// Will be freed by the next call.
-    entry: Option<Pointer>,
+    /// The most recent entry returned by readdir(). Will be freed by the next call.
+    /// The string is the type used to allocate it.
+    entry: Option<(Pointer, &'static str)>,
 }
 
 impl DirStream {
@@ -284,6 +284,7 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         metadata: FileMetadata,
         buf_op: &OpTy<'tcx>,
+        buf_type: &str,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -291,11 +292,7 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let (created_sec, created_nsec) = metadata.created.unwrap_or((0, 0));
         let (modified_sec, modified_nsec) = metadata.modified.unwrap_or((0, 0));
 
-        // We do *not* use `deref_pointer_as` here since determining the right pointee type
-        // is highly non-trivial: it depends on which exact alias of the function was invoked
-        // (e.g. `fstat` vs `fstat64`), and then on FreeBSD it also depends on the ABI level
-        // which can be different between the libc used by std and the libc used by everyone else.
-        let buf = this.deref_pointer(buf_op)?;
+        let buf = this.deref_pointer_as(buf_op, this.libc_ty_layout(buf_type))?;
 
         this.write_int_fields_named(
             &[
@@ -783,7 +780,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
 
-        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op, "stat")?))
     }
 
     // `lstat` is used to get symlink metadata.
@@ -811,10 +808,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
 
-        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op, "stat")?))
     }
 
-    fn fstat(&mut self, fd_op: &OpTy<'tcx>, buf_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+    fn fstat(
+        &mut self,
+        fd_op: &OpTy<'tcx>,
+        buf_op: &OpTy<'tcx>,
+        buf_type: &str,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         if !matches!(
@@ -837,7 +839,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(metadata) => metadata,
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
-        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op, buf_type)?))
     }
 
     fn fstatat(
@@ -891,7 +893,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(metadata) => metadata,
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
-        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op, "stat")?))
     }
 
     fn linux_statx(
@@ -1237,7 +1239,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    fn readdir(&mut self, dirp_op: &OpTy<'tcx>, dest: &MPlaceTy<'tcx>) -> InterpResult<'tcx> {
+    fn readdir(
+        &mut self,
+        dirp_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+        buf_type: &'static str,
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         if !matches!(
@@ -1311,13 +1318,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 //     pub d_name: [c_char; 1024],
                 // }
 
-                // We just use the pointee type here since determining the right pointee type
-                // independently is highly non-trivial: it depends on which exact alias of the
-                // function was invoked (e.g. `readdir` vs `readdir64`), and then on FreeBSD it also
-                // depends on the ABI level which can be different between the libc used by std and
-                // the libc used by everyone else.
-                let dirent_ty = dest.layout.ty.builtin_deref(true).unwrap();
-                let dirent_layout = this.layout_of(dirent_ty)?;
+                let dirent_layout = this.libc_ty_layout(buf_type);
                 let fields = &dirent_layout.fields;
                 let d_name_offset = fields.offset(fields.count().strict_sub(1)).bytes();
 
@@ -1376,8 +1377,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         let open_dir = this.machine.dirs.streams.get_mut(&dirp).unwrap();
-        let old_entry = std::mem::replace(&mut open_dir.entry, entry);
-        if let Some(old_entry) = old_entry {
+        if let Some((old_entry, old_type)) =
+            std::mem::replace(&mut open_dir.entry, entry.map(|e| (e, buf_type)))
+        {
+            if old_type != buf_type {
+                throw_ub_format!("mixing different `readdir` variants on the same `DIR` instance");
+            }
             this.deallocate_ptr(old_entry, None, MiriMemoryKind::Runtime.into())?;
         }
 
@@ -1426,7 +1431,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // And close it.
         this.close(open_dir.fd_num)?;
 
-        if let Some(entry) = open_dir.entry.take() {
+        if let Some((entry, _type)) = open_dir.entry.take() {
             this.deallocate_ptr(entry, None, MiriMemoryKind::Runtime.into())?;
         }
         // We drop the `open_dir`, which will close the host dir handle.
