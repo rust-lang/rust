@@ -2492,6 +2492,8 @@ mod remove_dir_impl {
         }
     }
 
+    /// `parent_fd` being `None` indicates that this is the root where we start.
+    /// When it is `Some`, this will delete anything: directory or regular file.
     fn remove_dir_all_recursive(parent_fd: Option<RawFd>, path: &CStr) -> io::Result<()> {
         // try opening as directory
         let fd = match openat_nofollow_dironly(parent_fd, path) {
@@ -2503,7 +2505,8 @@ mod remove_dir_impl {
                     Some(parent_fd) => {
                         cvt(unsafe { unlinkat(parent_fd, path.as_ptr(), 0) }).map(drop)
                     }
-                    // ...unless this was supposed to be the deletion root directory
+                    // ...unless this was supposed to be the deletion root directory. We don't want
+                    // to delete a file at the root, so we just forward the error.
                     None => Err(err),
                 };
             }
@@ -2562,6 +2565,7 @@ mod remove_dir_impl {
         // into symlinks.
         let attr = lstat(p)?;
         if attr.file_type().is_symlink() {
+            // This unfortunately means we also delete symlinks to regular files.
             super::unlink(p)
         } else {
             remove_dir_all_recursive(None, p)
