@@ -182,12 +182,14 @@ LL |         #[rustc_splat]
 error[E0053]: method `has_splat` has an incompatible type for trait
   --> $DIR/splat-invalid.rs:59:5
    |
+LL | impl FooTrait for Foo {
 LL |     fn has_splat(_: ()) {}
    |     ^^^^^^^^^^^^^^^^^^^ expected fn with arg 0 splatted, found fn with no splatted arg
    |
 note: type in trait
   --> $DIR/splat-invalid.rs:51:5
    |
+LL | trait FooTrait {
 LL |     fn has_splat(#[rustc_splat] _: ());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: expected signature `fn(#[rustc_splat] ())`
@@ -196,12 +198,16 @@ LL |     fn has_splat(#[rustc_splat] _: ());
 error[E0053]: method `no_splat` has an incompatible type for trait
   --> $DIR/splat-invalid.rs:61:5
    |
+LL | impl FooTrait for Foo {
+...
 LL |     fn no_splat(#[rustc_splat] _: (u32, f64)) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected fn with no splatted arg, found fn with arg 0 splatted
    |
 note: type in trait
   --> $DIR/splat-invalid.rs:53:5
    |
+LL | trait FooTrait {
+...
 LL |     fn no_splat(_: (u32, f64));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: expected signature `fn((_, _))`

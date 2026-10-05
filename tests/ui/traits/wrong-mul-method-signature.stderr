@@ -1,6 +1,8 @@
 error[E0053]: method `mul` has an incompatible type for trait
   --> $DIR/wrong-mul-method-signature.rs:16:21
    |
+LL | impl Mul<f64> for Vec1 {
+...
 LL |     fn mul(self, s: &f64) -> Vec1 {
    |                     ^^^^ expected `f64`, found `&f64`
    |
@@ -17,6 +19,8 @@ LL +     fn mul(self, s: f64) -> Vec1 {
 error[E0053]: method `mul` has an incompatible type for trait
   --> $DIR/wrong-mul-method-signature.rs:33:21
    |
+LL | impl Mul<Vec2> for Vec2 {
+...
 LL |     fn mul(self, s: f64) -> Vec2 {
    |                     ^^^ expected `Vec2`, found `f64`
    |
@@ -33,6 +37,8 @@ LL +     fn mul(self, s: crate::Vec2) -> Vec2 {
 error[E0053]: method `mul` has an incompatible type for trait
   --> $DIR/wrong-mul-method-signature.rs:52:29
    |
+LL | impl Mul<f64> for Vec3 {
+...
 LL |     fn mul(self, s: f64) -> f64 {
    |                             ^^^ expected `i32`, found `f64`
    |

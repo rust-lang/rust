@@ -1,12 +1,15 @@
 error[E0053]: method `make` has an incompatible type for trait
   --> $DIR/defaults-specialization.rs:18:18
    |
+LL | default impl<T> Tr for A<T> {
 LL |     fn make() -> u8 { 0 }
    |                  ^^ expected associated type, found `u8`
    |
 note: type in trait
   --> $DIR/defaults-specialization.rs:8:18
    |
+LL | trait Tr {
+...
 LL |     fn make() -> Self::Ty {
    |                  ^^^^^^^^
    = note: expected signature `fn() -> <A<T> as Tr>::Ty`
@@ -20,6 +23,7 @@ LL +     fn make() -> <A<T> as Tr>::Ty { 0 }
 error[E0053]: method `make` has an incompatible type for trait
   --> $DIR/defaults-specialization.rs:34:18
    |
+LL | impl<T> Tr for B<T> {
 LL |     default type Ty = bool;
    |     --------------- associated type is `default` and may be overridden
 LL |
@@ -29,6 +33,8 @@ LL |     fn make() -> bool { true }
 note: type in trait
   --> $DIR/defaults-specialization.rs:8:18
    |
+LL | trait Tr {
+...
 LL |     fn make() -> Self::Ty {
    |                  ^^^^^^^^
    = note: expected signature `fn() -> <B<T> as Tr>::Ty`

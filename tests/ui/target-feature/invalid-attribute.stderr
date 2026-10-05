@@ -197,12 +197,15 @@ LL |     fn foo() {}
 error[E0053]: method `foo` has an incompatible type for trait
   --> $DIR/invalid-attribute.rs:98:5
    |
+LL | impl Quux for Foo {
+...
 LL |     fn foo() {}
    |     ^^^^^^^^ expected safe fn, found unsafe fn
    |
 note: type in trait
   --> $DIR/invalid-attribute.rs:90:5
    |
+LL | trait Quux {
 LL |     fn foo();
    |     ^^^^^^^^^
    = note: expected signature `fn()`

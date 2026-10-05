@@ -1,6 +1,8 @@
 error[E0053]: method `b` has an incompatible type for trait
   --> $DIR/reordered-type-param.rs:16:30
    |
+LL | impl A for E {
+LL |   // n.b. The error message is awful -- see #3404
 LL |   fn b<F:Clone,G>(&self, _x: G) -> G { panic!() }
    |        -       -             ^ expected type parameter `F`, found type parameter `G`
    |        |       |
@@ -10,6 +12,7 @@ LL |   fn b<F:Clone,G>(&self, _x: G) -> G { panic!() }
 note: type in trait
   --> $DIR/reordered-type-param.rs:7:29
    |
+LL | trait A {
 LL |   fn b<C:Clone,D>(&self, x: C) -> C;
    |                             ^
    = note: expected signature `fn(&E, F) -> F`

@@ -624,12 +624,16 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 "method `{}` has an incompatible return type for trait",
                 trait_m.name()
             );
+            diag.span_context(tcx.def_span(impl_m.container_id(tcx)).shrink_to_lo());
             infcx.err_ctxt().note_type_err(
                 &mut diag,
                 &cause,
-                tcx.hir_get_if_local(impl_m.def_id)
-                    .and_then(|node| node.fn_decl())
-                    .map(|decl| (decl.output.span(), Cow::from("return type in trait"), false)),
+                tcx.hir_get_if_local(trait_m.def_id).and_then(|node| node.fn_decl()).map(|decl| {
+                    let mut span: MultiSpan = decl.output.span().into();
+                    span.push_span_context(tcx.def_span(trait_m.container_id(tcx)).shrink_to_lo());
+                    span.push_span_context(tcx.def_span(trait_m.def_id).shrink_to_lo());
+                    (span, Cow::from("return type in trait"), false)
+                }),
                 Some(param_env.and(infer::ValuePairs::Terms(ExpectedFound {
                     expected: trait_return_ty.into(),
                     found: impl_return_ty.into(),
@@ -1013,6 +1017,7 @@ fn report_trait_method_mismatch<'tcx>(
         "method `{}` has an incompatible type for trait",
         trait_m.name()
     );
+    diag.span_context(tcx.def_span(impl_m.container_id(tcx)).shrink_to_lo());
     match &terr {
         TypeError::ArgumentMutability(0) | TypeError::ArgumentSorts(_, 0)
             if trait_m.is_method() =>
@@ -1081,7 +1086,12 @@ fn report_trait_method_mismatch<'tcx>(
     infcx.err_ctxt().note_type_err(
         &mut diag,
         &cause,
-        trait_err_span.map(|sp| (sp, Cow::from("type in trait"), false)),
+        trait_err_span.map(|sp| {
+            let mut span: MultiSpan = sp.into();
+            span.push_span_context(tcx.def_span(trait_m.container_id(tcx)).shrink_to_lo());
+            span.push_span_context(tcx.def_span(trait_m.def_id).shrink_to_lo());
+            (span, Cow::from("type in trait"), false)
+        }),
         Some(param_env.and(infer::ValuePairs::PolySigs(ExpectedFound {
             expected: ty::Binder::dummy(trait_sig),
             found: ty::Binder::dummy(impl_sig),
@@ -2314,6 +2324,8 @@ fn compare_const_clause_entailment<'tcx>(
             "implemented const `{}` has an incompatible type for trait",
             trait_ct.name()
         );
+        diag.span_context(tcx.def_span(impl_ct.container_id(tcx)).shrink_to_lo());
+        diag.span_context(tcx.def_span(impl_ct.def_id).shrink_to_lo());
 
         let trait_c_span = trait_ct.def_id.as_local().map(|trait_ct_def_id| {
             // Add a label to the Span containing just the type of the const
@@ -2324,7 +2336,12 @@ fn compare_const_clause_entailment<'tcx>(
         infcx.err_ctxt().note_type_err(
             &mut diag,
             &cause,
-            trait_c_span.map(|span| (span, Cow::from("type in trait"), false)),
+            trait_c_span.map(|span| {
+                let mut span: MultiSpan = span.into();
+                span.push_span_context(tcx.def_span(trait_ct.container_id(tcx)).shrink_to_lo());
+                span.push_span_context(tcx.def_span(trait_ct.def_id).shrink_to_lo());
+                (span, Cow::from("type in trait"), false)
+            }),
             Some(param_env.and(infer::ValuePairs::Terms(ExpectedFound {
                 expected: trait_ty.into(),
                 found: impl_ty.into(),
