@@ -200,7 +200,7 @@ impl Spanned for ast::PreciseCapturingArg {
     fn span(&self) -> Span {
         match self {
             ast::PreciseCapturingArg::Lifetime(lt) => lt.ident.span,
-            ast::PreciseCapturingArg::Arg(path, _) => path.span,
+            ast::PreciseCapturingArg::Arg(path, _) => path.span(),
         }
     }
 }

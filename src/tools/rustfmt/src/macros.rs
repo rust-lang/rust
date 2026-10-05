@@ -105,9 +105,9 @@ impl Rewrite for MacroArg {
 
 /// Rewrite macro name without using pretty-printer if possible.
 fn rewrite_macro_name(context: &RewriteContext<'_>, path: &ast::Path) -> String {
-    if path.segments.len() == 1 {
+    if let Some(ident) = path.as_single_argless_ident() {
         // Avoid using pretty-printer in the common case.
-        format!("{}!", rewrite_ident(context, path.segments[0].ident))
+        format!("{}!", rewrite_ident(context, ident))
     } else {
         format!("{}!", pprust::path_to_string(path))
     }
@@ -165,7 +165,7 @@ pub(crate) fn rewrite_macro(
     let should_skip = context
         .skip_context
         .macros
-        .skip(context.snippet(mac.path.span));
+        .skip(context.snippet(mac.path.span()));
     if should_skip {
         Err(RewriteError::SkipFormatting)
     } else {

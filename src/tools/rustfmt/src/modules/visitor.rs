@@ -53,9 +53,9 @@ impl<'a, 'ast: 'a> CfgIfVisitor<'a> {
         // extern crate cfg_if;
         // cfg_if! {..}
         // ```
-        match mac.path.segments.first() {
-            Some(first_segment) => {
-                if first_segment.ident.name != Symbol::intern("cfg_if") {
+        match mac.path.iter_idents().next() {
+            Some(first_ident) => {
+                if first_ident.name != Symbol::intern("cfg_if") {
                     return Err("Expected cfg_if");
                 }
             }
@@ -112,9 +112,9 @@ impl<'a, 'ast: 'a> CfgSelectVisitor<'a> {
         // use std::cfg_select;
         // cfg_select! {..}
         // ```
-        match mac.path.segments.last() {
-            Some(last_segment) => {
-                if last_segment.ident.name != Symbol::intern("cfg_select") {
+        match mac.path.last_ident() {
+            Some(last_ident) => {
+                if last_ident.name != Symbol::intern("cfg_select") {
                     return Err("Expected cfg_select");
                 }
             }
