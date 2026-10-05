@@ -224,9 +224,11 @@ pub(super) fn add_call_parens<'b>(
     cov_mark::hit!(inserts_parens_for_function_calls);
 
     let (mut snippet, label_suffix) = if self_param.is_none() && params.is_empty() {
-        let gen_params = hir::GenericDef::Function(func).type_or_const_params(ctx.db);
-        let with_type_param = gen_params.iter().any(|it| it.as_type_param(ctx.db).is_some());
-        let snippet = if with_type_param && !ret_type.contains_unknown() {
+        let snippet = if ctx.config.enable_turbofish
+            && let gen_params = hir::GenericDef::Function(func).type_or_const_params(ctx.db)
+            && gen_params.iter().any(|it| it.as_type_param(ctx.db).is_some())
+            && !ret_type.contains_unknown()
+        {
             // Return type not contained any generic param, so can't infer param
             // `fn size_of<T>() -> usize` -> `size_of::<$1>()$0`
             format!("{escaped_name}::<$1>()$0")
@@ -1018,6 +1020,21 @@ fn main() {
             r#"
 fn main() {
     size_of::<$1>()$0
+}
+"#,
+        );
+        check_edit_with_config(
+            CompletionConfig { enable_turbofish: false, ..TEST_CONFIG },
+            "size_of",
+            r#"
+//- minicore: size_of
+fn main() {
+    si$0
+}
+"#,
+            r#"
+fn main() {
+    size_of()$0
 }
 "#,
         );
