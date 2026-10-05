@@ -450,7 +450,11 @@ impl Diagnostic<'_> for LinkingFailed<'_> {
                 }
             }));
 
-            diag.note(format!("executed command:\n{:?}", self.command).trim_start_matches("env -i").to_owned());
+            diag.note(
+                format!("executed command:\n{:?}", self.command)
+                    .trim_start_matches("env -i")
+                    .to_owned(),
+            );
             diag.note("some arguments are omitted; use `--verbose` to show all linker arguments");
 
             diag.note(format!("command output:\n{}", self.escaped_output));
