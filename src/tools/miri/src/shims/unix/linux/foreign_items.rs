@@ -38,6 +38,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match link_name.as_str() {
             // File related shims
             "open64" => {
+                // FIXME: This does not have a direct test (#3179).
                 // `open64` is variadic, the third argument is only present when the second argument
                 // has O_CREAT (or on linux O_TMPFILE, but miri doesn't support that) set
                 let ([path_raw, flag], varargs) = this.check_shim_sig_variadic(
@@ -83,16 +84,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let whence = this.read_scalar(whence)?.to_i32()?;
                 this.lseek(fd, offset, whence, dest)?;
             }
-            "ftruncate64" => {
-                let [fd, length] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, libc::off64_t) -> i32),
-                    (link_name, abi, args),
-                )?;
-                let fd = this.read_scalar(fd)?.to_i32()?;
-                let length = this.read_scalar(length)?.to_int(length.layout.size)?;
-                let result = this.ftruncate64(fd, length)?;
-                this.write_scalar(result, dest)?;
-            }
             "posix_fallocate64" => {
                 let [fd, offset, len] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off64_t, libc::off64_t) -> i32),
@@ -106,7 +97,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.posix_fallocate(fd, offset, len)?;
                 this.write_scalar(result, dest)?;
             }
-
             "fallocate" => {
                 let [fd, mode, offset, len] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32, libc::off_t, libc::off_t) -> i32),
@@ -123,7 +113,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.linux_fallocate(fd, mode, offset, len)?;
                 this.write_scalar(result, dest)?;
             }
-
             "fallocate64" => {
                 let [fd, mode, offset, len] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32, libc::off64_t, libc::off64_t) -> i32),
@@ -138,10 +127,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.linux_fallocate(fd, mode, offset, len)?;
                 this.write_scalar(result, dest)?;
             }
-
-            "readdir64" => {
-                let [dirp] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
-                this.readdir(dirp, dest)?;
+            "ftruncate64" => {
+                let [fd, length] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, libc::off64_t) -> i32),
+                    (link_name, abi, args),
+                )?;
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                let length = this.read_scalar(length)?.to_int(length.layout.size)?;
+                let result = this.ftruncate64(fd, length)?;
+                this.write_scalar(result, dest)?;
             }
             "sync_file_range" => {
                 let [fd, offset, nbytes, flags] =
@@ -155,6 +149,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.linux_statx(dirfd, pathname, flags, mask, statxbuf)?;
                 this.write_scalar(result, dest)?;
             }
+            "fstat64" => {
+                let [fd, buf] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
+                let result = this.fstat(fd, buf, "stat64")?;
+                this.write_scalar(result, dest)?;
+            }
+            "readdir64" => {
+                let [dirp] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                this.readdir(dirp, dest, "dirent64")?;
+            }
+
             // epoll, eventfd
             "epoll_create1" => {
                 let [flag] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;

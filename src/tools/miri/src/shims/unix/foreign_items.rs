@@ -385,7 +385,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(i32, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.fstat(fd, buf)?;
+                let result = this.fstat(fd, buf, "stat")?;
                 this.write_scalar(result, dest)?;
             }
             "lstat" => {
@@ -468,7 +468,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "readdir" => {
                 let [dirp] = this
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> *_), (link_name, abi, args))?;
-                this.readdir(dirp, dest)?;
+                this.readdir(dirp, dest, "dirent")?;
             }
             "dirfd" => {
                 let [dirp] = this

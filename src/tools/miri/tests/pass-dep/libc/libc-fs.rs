@@ -969,6 +969,18 @@ fn test_fstat() {
     assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
     assert_eq!(stat.st_size, 5);
 
+    // Ensure fstat64 also works.
+    #[cfg(target_os = "linux")]
+    {
+        let mut stat = MaybeUninit::<libc::stat64>::uninit();
+        errno_check(unsafe { libc::fstat64(fd, stat.as_mut_ptr()) });
+        let stat = unsafe { stat.assume_init_ref() };
+
+        assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
+        assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+        assert_eq!(stat.st_size, 5);
+    }
+
     // Check that all fields are initialized.
     check_stat_fields(stat);
 
@@ -1347,6 +1359,29 @@ fn test_readdir() {
         let mut entries = Vec::new();
         loop {
             let entry_ptr = libc::readdir(dirp);
+            if entry_ptr.is_null() {
+                break;
+            }
+            let name_ptr = std::ptr::addr_of!((*entry_ptr).d_name) as *const libc::c_char;
+            let name = CStr::from_ptr(name_ptr);
+            let name_str = name.to_string_lossy();
+            entries.push(name_str.into_owned());
+        }
+        errno_check(libc::closedir(dirp));
+        entries.sort();
+        assert_eq!(&entries, &[".", "..", "file1.txt", "file2.txt"]);
+    }
+
+    // On Linux, also test `readdir64`.
+    // Apparently, mixing `readdir` and `readdir64` on the same `DIR` is a bad idea;
+    // it breaks when run natively.
+    #[cfg(target_os = "linux")]
+    unsafe {
+        let dirp = libc::opendir(c_path.as_ptr());
+        assert!(!dirp.is_null());
+        let mut entries = Vec::new();
+        loop {
+            let entry_ptr = libc::readdir64(dirp);
             if entry_ptr.is_null() {
                 break;
             }
