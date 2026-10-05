@@ -374,7 +374,18 @@ struct Segment {
 
 impl Segment {
     fn from_path(path: &Path) -> Vec<Segment> {
-        path.iter_segments().map(Segment::from).collect()
+        match path {
+            &Path::Ident { ident, id } => vec![Segment {
+                ident,
+                id: Some(id),
+                has_generic_args: false,
+                has_lifetime_args: false,
+                args_span: DUMMY_SP,
+            }],
+            Path::NoSpan { segments } | Path::General((segments, _)) => {
+                segments.iter().map(|s| s.as_ref().into()).collect()
+            }
+        }
     }
 
     fn from_ident(ident: Ident) -> Segment {
