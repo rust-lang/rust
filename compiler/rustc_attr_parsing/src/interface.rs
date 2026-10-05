@@ -161,7 +161,7 @@ impl<'sess> AttributeParser<'sess> {
             attrs,
             target_span,
             target,
-            rustc_attr_ir::target::AstTarget::from(target),
+            rustc_attr_ir::target::AstTarget::None,
             std::convert::identity,
             |lint_id, span, kind| {
                 sess.psess.dyn_buffer_lint_sess(lint_id.lint, span, target_node_id, kind.0)
