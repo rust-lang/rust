@@ -3394,7 +3394,7 @@ impl UnrepresentableConstArgError {
         ConstArg {
             hir_id: lowering_context.next_id(),
             kind: hir::ConstArgKind::Error(e),
-            span: self.span,
+            span: lowering_context.lower_span(self.span),
         }
     }
 }
