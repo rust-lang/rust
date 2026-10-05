@@ -9,7 +9,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw};
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_macros::Diagnostic;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::ty::relate::{
@@ -68,9 +68,7 @@ declare_lint! {
     pub IMPL_TRAIT_OVERCAPTURES,
     Allow,
     "`impl Trait` will capture more lifetimes than possibly intended in edition 2024",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionSemanticsChange 2024 "rpit-lifetime-capture"),
-    };
+    @future_incompatible = edition_semantics_change(2024, "rpit-lifetime-capture");
 }
 
 declare_lint! {

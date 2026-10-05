@@ -7,7 +7,7 @@
 //! When removing a lint, make sure to also add a call to `register_removed` in
 //! compiler/rustc_lint/src/lib.rs.
 
-use crate::{declare_lint, declare_lint_pass, fcw};
+use crate::{ReportInDeps, custom_future_incompatible, declare_lint, declare_lint_pass};
 
 pub mod hardwired {
     use super::*;
@@ -196,10 +196,7 @@ declare_lint! {
     pub FORBIDDEN_LINT_GROUPS,
     Warn,
     "applying forbid to lint-groups",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #81670),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(81670, ReportInDeps::Yes);
     // We exempt `FORBIDDEN_LINT_GROUPS` from `-Dwarnings` because it specifically
     // triggers in cases (like #80988) where you have `forbid(warnings)`,
     // and so if we turned that into an error, it'd defeat the purpose of the
@@ -237,10 +234,7 @@ declare_lint! {
     pub ILL_FORMED_ATTRIBUTE_INPUT,
     Deny,
     "ill-formed attribute inputs that were previously accepted and used in practice",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #57571),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(57571, ReportInDeps::Yes);
     crate_level_only
 }
 
@@ -274,10 +268,7 @@ declare_lint! {
     pub CONFLICTING_REPR_HINTS,
     Deny,
     "conflicts between `#[repr(..)]` hints that were previously accepted and used in practice",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #68585),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(68585, ReportInDeps::Yes);
 }
 
 declare_lint! {
@@ -1386,10 +1377,7 @@ declare_lint! {
     pub PUB_USE_OF_PRIVATE_EXTERN_CRATE,
     Deny,
     "detect public re-exports of private extern crates",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #127909),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(127909, ReportInDeps::Yes);
 }
 
 declare_lint! {
@@ -1416,10 +1404,7 @@ declare_lint! {
     pub INVALID_TYPE_PARAM_DEFAULT,
     Deny,
     "type parameter default erroneously allowed in invalid location",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #36887),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(36887, ReportInDeps::Yes);
 }
 
 declare_lint! {
@@ -1555,9 +1540,7 @@ declare_lint! {
     pub PATTERNS_IN_FNS_WITHOUT_BODY,
     Deny,
     "patterns in functions without body were erroneously allowed",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #35203),
-    };
+    @future_incompatible = future_release_error(35203, ReportInDeps::No);
 }
 
 declare_lint! {
@@ -1596,9 +1579,7 @@ declare_lint! {
     pub LATE_BOUND_LIFETIME_ARGUMENTS,
     Warn,
     "detects generic lifetime arguments in path segments with late bound lifetime parameters",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #42868),
-    };
+    @future_incompatible = future_release_error(42868, ReportInDeps::No);
 }
 
 declare_lint! {
@@ -1635,9 +1616,7 @@ declare_lint! {
     pub COHERENCE_LEAK_CHECK,
     Warn,
     "distinct impls distinguished only by the leak-check code",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!("the behavior may change in a future release" #56105),
-    };
+    @future_incompatible = custom_future_incompatible("the behavior may change in a future release", 56105, ReportInDeps::No);
 }
 
 declare_lint! {
@@ -1738,9 +1717,7 @@ declare_lint! {
     pub RUST_2024_INCOMPATIBLE_PAT,
     Allow,
     "detects patterns whose meaning will change in Rust 2024",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionSemanticsChange 2024 "match-ergonomics"),
-    };
+    @future_incompatible = edition_semantics_change(2024, "match-ergonomics");
 }
 
 declare_lint! {
@@ -1885,9 +1862,7 @@ declare_lint! {
     pub TYVAR_BEHIND_RAW_POINTER,
     Warn,
     "raw pointer to an inference variable",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2018 "tyvar-behind-raw-pointer"),
-    };
+    @future_incompatible = edition_error(2018, "tyvar-behind-raw-pointer");
 }
 
 declare_lint! {
@@ -1951,9 +1926,7 @@ declare_lint! {
     pub BARE_TRAIT_OBJECTS,
     Warn,
     "suggest using `dyn Trait` for trait objects",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2021 "warnings-promoted-to-error"),
-    };
+    @future_incompatible = edition_error(2021, "warnings-promoted-to-error");
 }
 
 declare_lint! {
@@ -2005,9 +1978,7 @@ declare_lint! {
     Allow,
     "fully qualified paths that start with a module name \
      instead of `crate`, `self`, or an extern crate name",
-     @future_incompatible = FutureIncompatibleInfo {
-         reason: fcw!(EditionError 2018 "path-changes"),
-     };
+     @future_incompatible = edition_error( 2018, "path-changes");
 }
 
 declare_lint! {
@@ -2052,15 +2023,14 @@ declare_lint! {
     pub UNSTABLE_NAME_COLLISIONS,
     Warn,
     "detects name collision with an existing but unstable method",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(
-            "once this associated item is added to the standard library, \
-             the ambiguity may cause an error or change in behavior!"
-             #48919
-        ),
-        // Note: this item represents future incompatibility of all unstable functions in the
-        //       standard library, and thus should never be removed or changed to an error.
-    };
+    // Note: this item represents future incompatibility of all unstable functions in the
+    //       standard library, and thus should never be removed or changed to an error.
+    @future_incompatible = custom_future_incompatible(
+        "once this associated item is added to the standard library, \
+         the ambiguity may cause an error or change in behavior!",
+        48919,
+        ReportInDeps::No,
+    );
 }
 
 declare_lint! {
@@ -2185,10 +2155,7 @@ declare_lint! {
     pub PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
     Deny,
     "detects proc macro derives using inaccessible names from parent modules",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #83583),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(83583, ReportInDeps::Yes);
 }
 
 declare_lint! {
@@ -2288,10 +2255,7 @@ declare_lint! {
     Deny,
     "macro-expanded `macro_export` macros from the current crate \
      cannot be referred to by absolute paths",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #52234),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(52234, ReportInDeps::Yes);
     crate_level_only
 }
 
@@ -2441,9 +2405,7 @@ declare_lint! {
     pub AMBIGUOUS_ASSOCIATED_ITEMS,
     Deny,
     "ambiguous associated items",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #57644),
-    };
+    @future_incompatible = future_release_error(57644, ReportInDeps::No);
 }
 
 declare_lint! {
@@ -2649,10 +2611,7 @@ declare_lint! {
     pub UNSAFE_OP_IN_UNSAFE_FN,
     Allow,
     "unsafe operations in unsafe functions without an explicit unsafe block are deprecated",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2024 "unsafe-op-in-unsafe-fn"),
-        explain_reason: false
-    };
+    @future_incompatible = edition_error(2024, "unsafe-op-in-unsafe-fn").dont_explain_reason();
     @edition Edition2024 => Warn;
 }
 
@@ -2690,9 +2649,7 @@ declare_lint! {
     pub CONST_EVALUATABLE_UNCHECKED,
     Warn,
     "detects a generic constant is used in a type without a emitting a warning",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #76200),
-    };
+    @future_incompatible = future_release_error(76200, ReportInDeps::No);
 }
 
 declare_lint! {
@@ -2748,10 +2705,7 @@ declare_lint! {
     pub UNINHABITED_STATIC,
     Deny,
     "uninhabited static",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #74840),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(74840, ReportInDeps::Yes);
 }
 
 declare_lint! {
@@ -2913,9 +2867,7 @@ declare_lint! {
     pub SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
     Warn,
     "detect unsupported use of `Self` from outer item",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #124186),
-    };
+    @future_incompatible = future_release_error(124186, ReportInDeps::No);
 }
 
 declare_lint! {
@@ -2958,10 +2910,7 @@ declare_lint! {
     pub SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
     Deny,
     "trailing semicolon in macro body used as expression",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #79813),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(79813, ReportInDeps::Yes);
 }
 
 declare_lint! {
@@ -3022,10 +2971,7 @@ declare_lint! {
     pub SEMICOLON_IN_EXPRESSIONS_FROM_NON_LOCAL_MACROS,
     Warn,
     "trailing semicolon in macro body used as expression",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #79813),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(79813, ReportInDeps::Yes);
 }
 
 declare_lint! {
@@ -3069,10 +3015,7 @@ declare_lint! {
     pub LEGACY_DERIVE_HELPERS,
     Deny,
     "detects derive helper attributes that are used before they are introduced",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #79202),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(79202, ReportInDeps::Yes);
 }
 
 declare_lint! {
@@ -3232,9 +3175,7 @@ declare_lint! {
     pub UNSTABLE_SYNTAX_PRE_EXPANSION,
     Warn,
     "unstable syntax can change at any point in the future, causing a hard error!",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #154045),
-    };
+    @future_incompatible = future_release_error(154045, ReportInDeps::No);
 }
 
 declare_lint! {
@@ -3473,10 +3414,7 @@ declare_lint! {
     pub RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
     Allow,
     "detects closures affected by Rust 2021 changes",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionSemanticsChange 2021 "disjoint-capture-in-closures"),
-        explain_reason: false,
-    };
+    @future_incompatible = edition_semantics_change(2021, "disjoint-capture-in-closures").dont_explain_reason();
 }
 
 declare_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);
@@ -3568,9 +3506,7 @@ declare_lint! {
     pub RUST_2021_INCOMPATIBLE_OR_PATTERNS,
     Allow,
     "detects usage of old versions of or-patterns",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2021 "or-patterns-macro-rules"),
-    };
+    @future_incompatible = edition_error(2021, "or-patterns-macro-rules");
 }
 
 declare_lint! {
@@ -3616,9 +3552,7 @@ declare_lint! {
     Allow,
     "detects the usage of trait methods which are ambiguous with traits added to the \
         prelude in future editions",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2021 "prelude"),
-    };
+    @future_incompatible = edition_error(2021, "prelude");
 }
 
 declare_lint! {
@@ -3655,9 +3589,7 @@ declare_lint! {
     Allow,
     "detects the usage of trait methods which are ambiguous with traits added to the \
         prelude in future editions",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2024 "prelude"),
-    };
+    @future_incompatible = edition_error(2024, "prelude");
 }
 
 declare_lint! {
@@ -3691,9 +3623,7 @@ declare_lint! {
     pub RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
     Allow,
     "identifiers that will be parsed as a prefix in Rust 2021",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionSemanticsChange 2021 "reserving-syntax"),
-    };
+    @future_incompatible = edition_semantics_change(2021, "reserving-syntax");
     crate_level_only
 }
 
@@ -3738,10 +3668,7 @@ declare_lint! {
     pub UNSUPPORTED_CALLING_CONVENTIONS,
     Warn,
     "use of unsupported calling convention",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #137018),
-        report_in_deps: false,
-    };
+    @future_incompatible = future_release_error(137018, ReportInDeps::No);
 }
 
 declare_lint! {
@@ -3782,10 +3709,7 @@ declare_lint! {
     pub UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS,
     Warn,
     "use of unsupported calling convention for function pointer",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #130260),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(130260, ReportInDeps::Yes);
 }
 
 declare_lint! {
@@ -4289,10 +4213,7 @@ declare_lint! {
     pub INVALID_MACRO_EXPORT_ARGUMENTS,
     Deny,
     "\"invalid_parameter\" isn't a valid argument for `#[macro_export]`",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #57571),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(57571, ReportInDeps::Yes);
 }
 
 declare_lint! {
@@ -4359,9 +4280,7 @@ declare_lint! {
     pub AMBIGUOUS_DERIVE_HELPERS,
     Warn,
     "detects derive helper attributes that are ambiguous with built-in attributes",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #151276),
-    };
+    @future_incompatible = future_release_error(151276, ReportInDeps::No);
 }
 
 declare_lint! {
@@ -4615,10 +4534,7 @@ declare_lint! {
     pub AMBIGUOUS_GLOB_IMPORTS,
     Deny,
     "detects certain glob imports that require reporting an ambiguity error",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #114095),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(114095, ReportInDeps::Yes);
 }
 
 declare_lint! {
@@ -4688,10 +4604,7 @@ declare_lint! {
     pub AMBIGUOUS_GLOB_IMPORTED_TRAITS,
     Warn,
     "detects uses of ambiguously glob imported traits",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #152822),
-        report_in_deps: false,
-    };
+    @future_incompatible = future_release_error(152822, ReportInDeps::No);
 }
 
 declare_lint! {
@@ -4724,10 +4637,7 @@ declare_lint! {
     pub AMBIGUOUS_PANIC_IMPORTS,
     Warn,
     "detects ambiguous core and std panic imports",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #147319),
-        report_in_deps: false,
-    };
+    @future_incompatible = future_release_error(147319, ReportInDeps::No);
 }
 
 declare_lint! {
@@ -4774,9 +4684,7 @@ declare_lint! {
     pub AMBIGUOUS_IMPORT_VISIBILITIES,
     Warn,
     "detects certain glob imports that require reporting an ambiguity error",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #149145),
-    };
+    @future_incompatible = future_release_error(149145, ReportInDeps::No);
 }
 
 declare_lint! {
@@ -4932,10 +4840,7 @@ declare_lint! {
     pub PRIVATE_MACRO_USE,
     Deny,
     "detects certain macro bindings that should not be re-exported",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #120192),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(120192, ReportInDeps::Yes);
 }
 
 declare_lint! {
@@ -4997,9 +4902,7 @@ declare_lint! {
     pub UNCOVERED_PARAM_IN_PROJECTION,
     Warn,
     "impl contains type parameters that are not covered",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #124559),
-    };
+    @future_incompatible = future_release_error(124559, ReportInDeps::No);
 }
 
 declare_lint! {
@@ -5044,9 +4947,7 @@ declare_lint! {
     pub DEPRECATED_SAFE_2024,
     Allow,
     "detects unsafe functions being used as safe functions",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2024 "newly-unsafe-functions"),
-    };
+    @future_incompatible = edition_error(2024, "newly-unsafe-functions");
 }
 
 declare_lint! {
@@ -5079,9 +4980,7 @@ declare_lint! {
     pub MISSING_UNSAFE_ON_EXTERN,
     Allow,
     "detects missing unsafe keyword on extern declarations",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2024 "unsafe-extern"),
-    };
+    @future_incompatible = edition_error(2024, "unsafe-extern");
 }
 
 declare_lint! {
@@ -5119,9 +5018,7 @@ declare_lint! {
     pub UNSAFE_ATTR_OUTSIDE_UNSAFE,
     Allow,
     "detects unsafe attributes outside of unsafe",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2024 "unsafe-attributes"),
-    };
+    @future_incompatible = edition_error(2024, "unsafe-attributes");
 }
 
 declare_lint! {
@@ -5157,10 +5054,7 @@ declare_lint! {
     pub OUT_OF_SCOPE_MACRO_CALLS,
     Deny,
     "detects out of scope calls to `macro_rules` in key-value attributes",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #124535),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(124535, ReportInDeps::Yes);
 }
 
 declare_lint! {
@@ -5315,9 +5209,7 @@ declare_lint! {
     pub TAIL_EXPR_DROP_ORDER,
     Allow,
     "Detect and warn on significant change in drop order in tail expression location",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionSemanticsChange 2024 "temporary-tail-expr-scope"),
-    };
+    @future_incompatible = edition_semantics_change(2024, "temporary-tail-expr-scope");
 }
 
 declare_lint! {
@@ -5353,9 +5245,7 @@ declare_lint! {
     pub RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
     Allow,
     "will be parsed as a guarded string in Rust 2024",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2024 "reserved-syntax"),
-    };
+    @future_incompatible = edition_error(2024, "reserved-syntax");
     crate_level_only
 }
 
@@ -5394,10 +5284,7 @@ declare_lint! {
     pub AARCH64_SOFTFLOAT_NEON,
     Deny,
     "detects code that could be affected by ABI issues on aarch64 softfloat targets",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #134375),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(134375, ReportInDeps::Yes);
 }
 
 declare_lint! {
@@ -5433,10 +5320,7 @@ declare_lint! {
     pub X86_SOFTFLOAT_SSE,
     Deny,
     "detects code that could be affected by LLVM backend issues on x86 softfloat targets",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #117938),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(117938, ReportInDeps::Yes);
 }
 
 declare_lint! {
@@ -5513,10 +5397,7 @@ declare_lint! {
     pub REPR_C_ENUMS_LARGER_THAN_INT,
     Warn,
     "repr(C) enums with discriminant values that do not fit into a C int",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #124403),
-        report_in_deps: false,
-    };
+    @future_incompatible = future_release_error(124403, ReportInDeps::No);
 }
 
 declare_lint! {
@@ -5559,10 +5440,7 @@ declare_lint! {
     pub VARARGS_WITHOUT_PATTERN,
     Deny,
     "detects usage of `...` arguments without a pattern in non-foreign items",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #145544),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(145544, ReportInDeps::Yes);
 }
 
 declare_lint! {
@@ -5659,10 +5537,7 @@ declare_lint! {
     pub FLOAT_LITERAL_F32_FALLBACK,
     Warn,
     "detects unsuffixed floating point literals whose type fallback to `f32`",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #154024),
-        report_in_deps: false,
-    };
+    @future_incompatible = future_release_error(154024, ReportInDeps::No);
 }
 
 declare_lint! {
@@ -5741,10 +5616,7 @@ declare_lint! {
     pub METHOD_CALL_ON_DIVERGING_INFER_VAR,
     Warn,
     "detects method calls on a result of never-to-any coercion",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #156047),
-        report_in_deps: true,
-    };
+    @future_incompatible = future_release_error(156047, ReportInDeps::Yes);
 }
 
 declare_lint! {
@@ -5798,10 +5670,7 @@ declare_lint! {
     pub RECURSION_DEPTH_EXCEEDING_LIMIT,
     Warn,
     "detects trait solving overflow that only happens with the next solver",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #159228),
-        report_in_deps: false,
-    };
+    @future_incompatible = future_release_error(159228, ReportInDeps::No);
 }
 
 declare_lint! {
