@@ -1,0 +1,15 @@
+error[E0271]: type mismatch resolving `first_trait::{opaque#0} == _`
+  --> $DIR/unawaited-async-fn-in-impl-trait.rs:9:27
+   |
+LL | async fn first_trait() -> impl Trait {
+   |                           ^^^^^^^^^^ types differ
+
+error[E0271]: type mismatch resolving `first_iter::{opaque#0} == _`
+  --> $DIR/unawaited-async-fn-in-impl-trait.rs:20:26
+   |
+LL | async fn first_iter() -> impl Iterator<Item = ()> {
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.
