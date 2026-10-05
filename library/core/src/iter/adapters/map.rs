@@ -112,6 +112,7 @@ where
         self.iter.size_hint()
     }
 
+    #[inline]
     fn try_fold<Acc, G, R>(&mut self, init: Acc, g: G) -> R
     where
         Self: Sized,
@@ -121,6 +122,7 @@ where
         self.iter.try_fold(init, map_try_fold(&mut self.f, g))
     }
 
+    #[inline]
     fn fold<Acc, G>(self, init: Acc, g: G) -> Acc
     where
         G: FnMut(Acc, Self::Item) -> Acc,

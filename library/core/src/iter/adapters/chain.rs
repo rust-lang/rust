@@ -96,6 +96,7 @@ where
         a_count + b_count
     }
 
+    #[inline]
     fn try_fold<Acc, F, R>(&mut self, mut acc: Acc, mut f: F) -> R
     where
         Self: Sized,
@@ -113,6 +114,7 @@ where
         try { acc }
     }
 
+    #[inline]
     fn fold<Acc, F>(self, mut acc: Acc, mut f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
