@@ -1101,7 +1101,7 @@ fn f() {}
 #[cfg($0)]
 "#,
             r#"
-#[cfg(opt_level = $0)]
+#[cfg(opt_level = "$1")]
 "#,
         );
     }
