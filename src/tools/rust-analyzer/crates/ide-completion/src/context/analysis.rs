@@ -25,9 +25,9 @@ use crate::{
     completions::postfix::{is_in_condition, is_in_value},
     context::{
         AttrCtx, BreakableKind, COMPLETION_MARKER, CompletionAnalysis, DotAccess, DotAccessExprCtx,
-        DotAccessKind, ItemListKind, LifetimeContext, LifetimeKind, NameContext, NameKind,
-        NameRefContext, NameRefKind, ParamContext, ParamKind, PathCompletionCtx, PathExprCtx,
-        PathKind, PatternContext, PatternRefutability, Qualified, QualifierCtx,
+        DotAccessKind, ExpectedInfo, ItemListKind, LifetimeContext, LifetimeKind, NameContext,
+        NameKind, NameRefContext, NameRefKind, ParamContext, ParamKind, PathCompletionCtx,
+        PathExprCtx, PathKind, PatternContext, PatternRefutability, Qualified, QualifierCtx,
         TypeAscriptionTarget, TypeLocation,
     },
 };
@@ -43,8 +43,6 @@ struct ExpansionResult {
     fake_ident_token: SyntaxToken,
     derive_ctx: Option<(SyntaxNode, SyntaxNode, TextSize, ast::Attr)>,
 }
-
-type ExpectedInfo<'db> = (Option<Type<'db>>, Option<NameOrNameRef>, Option<hir::Callable<'db>>);
 
 pub(super) struct AnalysisResult<'db> {
     pub(super) analysis: CompletionAnalysis<'db>,
@@ -488,7 +486,7 @@ fn analyze<'db>(
             }
             return Some((
                 CompletionAnalysis::NameRef(nameref_ctx),
-                (None, None, None),
+                ExpectedInfo::default(),
                 QualifierCtx::default(),
             ));
         }
@@ -544,7 +542,7 @@ fn analyze<'db>(
                 return None;
             }
         };
-        return Some((analysis, (None, None, None), QualifierCtx::default()));
+        return Some((analysis, ExpectedInfo::default(), QualifierCtx::default()));
     };
 
     let expected = expected_type_and_name(sema, self_token, &name_like);
@@ -597,7 +595,7 @@ fn expected_type_and_name<'db>(
     let token = prev_special_biased_token_at_trivia(self_token.clone());
     let mut node = match token.parent() {
         Some(it) => it,
-        None => return (None, None, None),
+        None => return ExpectedInfo::default(),
     };
 
     let strip_refs = |mut ty: Type<'db>| match name_like {
@@ -894,7 +892,7 @@ fn expected_type_and_name<'db>(
             == Some(node);
         is_direct_arg.then_some(()).and_then(|()| ty.as_callable(sema.db))
     });
-    (ty.map(strip_refs), name, expected_func)
+    ExpectedInfo { expected_type: ty.map(strip_refs), expected_name: name, expected_func }
 }
 
 fn classify_lifetime(

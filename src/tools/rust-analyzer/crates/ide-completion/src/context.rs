@@ -521,6 +521,13 @@ pub(crate) struct CompletionContext<'a, 'db> {
     pub(crate) complete_semicolon: CompleteSemicolon,
 }
 
+#[derive(Debug, Default)]
+pub(crate) struct ExpectedInfo<'db> {
+    expected_type: Option<Type<'db>>,
+    expected_name: Option<NameOrNameRef>,
+    expected_func: Option<hir::Callable<'db>>,
+}
+
 #[derive(Debug)]
 pub(crate) enum CompleteSemicolon {
     DoNotComplete,
@@ -795,7 +802,7 @@ impl<'a, 'db> CompletionContext<'a, 'db> {
 
         let AnalysisResult {
             analysis,
-            expected: (expected_type, expected_name, expected_func),
+            expected: ExpectedInfo { expected_type, expected_name, expected_func },
             qualifier_ctx,
             token,
             original_offset,
