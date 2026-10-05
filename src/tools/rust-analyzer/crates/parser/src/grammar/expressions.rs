@@ -69,13 +69,12 @@ pub(super) fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
     };
 
     if !p.at_ts(EXPR_FIRST) {
+        // FIXME: Trees are not ideal, but like #23477 will break things like MACRO_STMTS
+
         // test_err attr_end_of_stmt_list
         // fn f() {#[attr]}
-        if !p.at(T!['}']) {
-            p.err_and_bump("expected expression, item or let statement");
-        } else {
-            p.error("expected expression, item or let statement");
-        }
+        // fn f() {}
+        p.err_and_bump("expected expression, item or let statement");
         m.abandon(p);
         return;
     }
