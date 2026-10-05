@@ -509,6 +509,9 @@ pub(crate) struct LinkerNotFound {
     #[note(
         "please ensure that Visual Studio 2017 or later, or Build Tools for Visual Studio were installed with the Visual C++ option"
     )]
+    #[help(
+        "you can obtain \"Build Tools for Visual Studio\" from <https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2026>"
+    )]
     #[note("VS Code is a different product, and is not sufficient")]
     pub msvc: bool,
 }
