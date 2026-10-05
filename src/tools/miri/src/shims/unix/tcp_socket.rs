@@ -198,13 +198,20 @@ impl FileDescription for TcpSocket {
         false
     }
 
-    fn as_unix<'tcx>(
-        self: FileDescriptionRef<Self>,
-        _ecx: &MiriInterpCx<'tcx>,
-    ) -> FileDescriptionRef<dyn UnixFileDescription> {
+    fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
         self
     }
 
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        Some(&self.watched)
+    }
+
+    fn readiness(&self) -> Readiness {
+        *self.io_readiness.borrow()
+    }
+}
+
+impl UnixFileDescription for TcpSocket {
     fn get_flags<'tcx>(&self, ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Scalar> {
         let mut flags = ecx.eval_libc_i32("O_RDWR");
 
@@ -238,16 +245,6 @@ impl FileDescription for TcpSocket {
         interp_ok(Scalar::from_i32(0))
     }
 
-    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
-        Some(&self.watched)
-    }
-
-    fn readiness(&self) -> Readiness {
-        *self.io_readiness.borrow()
-    }
-}
-
-impl UnixFileDescription for TcpSocket {
     fn ioctl<'tcx>(
         &self,
         op: Scalar,
@@ -283,9 +280,8 @@ impl UnixFileDescription for TcpSocket {
         throw_unsup_format!("ioctl: unsupported operation {op:#x} on socket");
     }
 
-    fn as_socket<'tcx>(
+    fn as_socket(
         self: FileDescriptionRef<Self>,
-        _ecx: &MiriInterpCx<'tcx>,
     ) -> Option<FileDescriptionRef<dyn UnixSocketFileDescription>> {
         Some(self)
     }

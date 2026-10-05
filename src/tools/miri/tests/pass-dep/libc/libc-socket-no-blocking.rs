@@ -678,9 +678,14 @@ fn test_getsockname_ipv4_connect_nonblock() {
     let addr = net::sock_addr_ipv4([192, 0, 2, 1], 12321);
 
     let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
+    if err.kind() == ErrorKind::NetworkUnreachable {
+        // Since blackhole addresses are not part of the local address range
+        // they might not be reachable without internet connectivity.
+        return;
+    }
     // Since we're connecting to a blackhole address, the `connect` can
     // never succeed immediately and thus it always "fails" with EINPROGRESS.
-    assert!(err.kind() == ErrorKind::InProgress);
+    assert_eq!(err.kind(), ErrorKind::InProgress);
 
     let (_, sock_addr) = net::sockname_ipv4(|storage, len| unsafe {
         libc::getsockname(client_sockfd, storage, len)
@@ -782,9 +787,14 @@ fn test_getpeername_ipv4_nonblock_no_peer() {
     let addr = net::sock_addr_ipv4([192, 0, 2, 1], 12321);
 
     let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
+    if err.kind() == ErrorKind::NetworkUnreachable {
+        // Since blackhole addresses are not part of the local address range
+        // they might not be reachable without internet connectivity.
+        return;
+    }
     // Since we're connecting to a blackhole address, the `connect` can
     // never succeed immediately and thus it always "fails" with EINPROGRESS.
-    assert!(err.kind() == ErrorKind::InProgress);
+    assert_eq!(err.kind(), ErrorKind::InProgress);
 
     // There should be no error during async connection.
     let so_error =
@@ -823,8 +833,14 @@ fn test_listen_connecting() {
     // a zero port.
     let addr = net::sock_addr_ipv4([192, 0, 2, 1], 12321);
 
-    // Non-blocking connect should fail with EINPROGRESS.
     let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
+    if err.kind() == ErrorKind::NetworkUnreachable {
+        // Since blackhole addresses are not part of the local address range
+        // they might not be reachable without internet connectivity.
+        return;
+    }
+    // Since we're connecting to a blackhole address, the `connect` can
+    // never succeed immediately and thus it always "fails" with EINPROGRESS.
     assert_eq!(err.kind(), ErrorKind::InProgress);
 
     // There should be no error during async connection.
@@ -861,8 +877,14 @@ fn test_connect_connecting() {
     // a zero port.
     let addr = net::sock_addr_ipv4([192, 0, 2, 1], 12321);
 
-    // Non-blocking connect should fail with EINPROGRESS.
     let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
+    if err.kind() == ErrorKind::NetworkUnreachable {
+        // Since blackhole addresses are not part of the local address range
+        // they might not be reachable without internet connectivity.
+        return;
+    }
+    // Since we're connecting to a blackhole address, the `connect` can
+    // never succeed immediately and thus it always "fails" with EINPROGRESS.
     assert_eq!(err.kind(), ErrorKind::InProgress);
 
     // There should be no error during async connection.

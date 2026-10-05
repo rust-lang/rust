@@ -150,9 +150,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let buf_ptr = this.read_pointer(buf)?;
                 let bufsize = this.deref_pointer_as(bufsize, this.machine.layouts.u32)?;
 
-                // Using the host current_exe is a bit off, but consistent with Linux
-                // (where stdlib reads /proc/self/exe).
-                let path = std::env::current_exe().unwrap();
+                let Some(path) = this.machine.current_exe.clone() else {
+                    throw_unsup_format!(
+                        "_NSGetExecutablePath only works when Miri is run on a file"
+                    )
+                };
                 let (written, size_needed) = this.write_path_to_c_str(
                     &path,
                     buf_ptr,

@@ -1,6 +1,6 @@
 use std::ffi::{CStr, OsString};
 use std::path::PathBuf;
-use std::{fs, io};
+use std::{env, fs, io};
 
 use super::{into_c_string, miri_extern};
 
@@ -51,4 +51,39 @@ pub fn prepare_dir(dirname: &str) -> PathBuf {
     // Clean the directory for robustness.
     fs::remove_dir_all(&path).ok();
     path
+}
+
+/// Windows makes things difficult by refusing create symlinks per default. GHA is configured to
+/// allow them, but when people run the tests on their systems we'd prefer them to pass without
+/// special setup. So we try to detect whether symlinks are working. To make things extra fun, this
+/// can happen even if we *think* we are on Unix since the host could still be Windows.
+pub fn have_symlink_permission() -> bool {
+    use std::sync::LazyLock;
+
+    static HAVE_SYMLINK_PERMISSION: LazyLock<bool> = LazyLock::new(|| {
+        // Never skip any tests on CI.
+        if env::var_os("CI").is_some() {
+            return true;
+        }
+
+        #[cfg(unix)]
+        use std::os::unix::fs::symlink as symlink_file;
+        #[cfg(windows)]
+        use std::os::windows::fs::symlink_file;
+
+        let link = prepare("miri_have_symlink_permission_check_file");
+        if symlink_file(r"nonexisting_target", &link).is_ok() {
+            // Looking pretty good.
+            fs::remove_file(link).unwrap();
+            return true;
+        }
+        // Looking bad. But just to confirm, could we create a normal file?
+        if fs::write(&link, &[]).is_ok() {
+            // Normal file works, symlink did not -- looks like the Windows issue.
+            fs::remove_file(link).unwrap();
+            return false;
+        }
+        panic!("unable to create files in tempdir");
+    });
+    *HAVE_SYMLINK_PERMISSION
 }
