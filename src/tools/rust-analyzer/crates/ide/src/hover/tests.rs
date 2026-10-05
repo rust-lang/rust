@@ -12270,3 +12270,34 @@ fn generic_tn<T, const N: usize>(_: [T; N], _: impl Sized) {}
         "#]],
     );
 }
+
+#[test]
+fn hover_with_enum_closure_capture() {
+    check(
+        r#"
+enum Request {
+    Resolve { url: () },
+}
+
+fn main() {
+    let event = Request::Resolve { url: () };
+    let _handler = move || {
+        let Request::Resolve { url: _url } = event;
+    };
+}
+
+const FOO$0: () = main();
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            const FOO: () = ()
+            ```
+        "#]],
+    );
+}

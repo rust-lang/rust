@@ -2,9 +2,10 @@
 
 use std::{fmt::Write, iter, mem};
 
+use arrayvec::ArrayVec;
 use base_db::Crate;
 use hir_def::{
-    DefWithBodyId, EnumVariantId, ExpressionStoreOwnerId, GenericParamId, HasModule,
+    AdtId, DefWithBodyId, EnumVariantId, ExpressionStoreOwnerId, GenericParamId, HasModule,
     ItemContainerId, LocalFieldId, Lookup, TraitId,
     expr_store::{Body, ExpressionStore, HygieneId, body::Param, path::Path},
     hir::{
@@ -2062,20 +2063,31 @@ fn convert_closure_capture_projections(
     _db: &dyn HirDatabase,
     place: &HirPlace,
 ) -> impl Iterator<Item = PlaceElem> {
-    place.projections.iter().enumerate().map(|(i, proj)| match proj.kind {
-        HirProjectionKind::Deref => ProjectionElem::Deref,
-        HirProjectionKind::Field { field_idx, variant_idx: _ } => {
-            let ty = place.ty_before_projection(i);
-            match ty.kind() {
-                TyKind::Tuple(_) => ProjectionElem::Field(FieldIndex(field_idx)),
-                TyKind::Adt(_, _) => {
-                    let local_field_id = LocalFieldId::from_raw(RawIdx::from_u32(field_idx));
-                    ProjectionElem::Field(local_field_id.into())
+    place.projections.iter().enumerate().flat_map(|(i, proj)| {
+        let mut projections = ArrayVec::<PlaceElem, 2>::new();
+        match proj.kind {
+            HirProjectionKind::Deref => projections.push(ProjectionElem::Deref),
+            HirProjectionKind::Field { field_idx, variant_idx } => {
+                let ty = place.ty_before_projection(i);
+                match ty.kind() {
+                    TyKind::Tuple(_) => {
+                        projections.push(ProjectionElem::Field(FieldIndex(field_idx)))
+                    }
+                    TyKind::Adt(adt_def, _) => {
+                        if let AdtId::EnumId(enum_id) = adt_def.def_id() {
+                            let variant =
+                                enum_id.enum_variants(_db).variants[variant_idx as usize].0.into();
+                            projections.push(ProjectionElem::Downcast(variant));
+                        }
+                        let local_field_id = LocalFieldId::from_raw(RawIdx::from_u32(field_idx));
+                        projections.push(ProjectionElem::Field(local_field_id.into()));
+                    }
+                    _ => panic!("unexpected type"),
                 }
-                _ => panic!("unexpected type"),
             }
+            _ => panic!("unexpected projection"),
         }
-        _ => panic!("unexpected projection"),
+        projections.into_iter()
     })
 }
 
