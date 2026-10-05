@@ -278,7 +278,21 @@ pub(crate) fn check_with_base_items(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
     expect: Expect,
 ) {
-    check(&format!("{BASE_ITEMS_FIXTURE}{ra_fixture}"), expect)
+    fn concat_fixture(prefix: &str, #[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {
+        let mut buf = String::with_capacity(prefix.len() + ra_fixture.len());
+        for line in ra_fixture.split_inclusive('\n') {
+            if line.trim().is_empty() || line.starts_with("//-") {
+                buf.push_str(line);
+                continue;
+            }
+            let rest = &ra_fixture[buf.len()..];
+            buf.push_str(prefix);
+            buf.push_str(rest);
+            break;
+        }
+        buf
+    }
+    check(&concat_fixture(BASE_ITEMS_FIXTURE, ra_fixture), expect)
 }
 
 pub(crate) fn check_no_kw(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
