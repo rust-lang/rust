@@ -2721,6 +2721,7 @@ rustc_queries! {
     }
 
     query limits(key: ()) -> Limits {
+        feedable
         desc { "looking up limits" }
     }
 
