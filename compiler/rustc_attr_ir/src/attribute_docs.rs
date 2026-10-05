@@ -283,3 +283,45 @@ const _: () = ();
 /// [#156920]:https://github.com/rust-lang/rust/issues/156920 "`dyn Allocator` together with `Allocator + Clone` requirements is unsound, leading to UB with `Arc`"
 /// [#160045]:https://github.com/rust-lang/rust/issues/160045 "`iter::Rev`'s `TrustedLen` impl is unsound with trait objects"
 const _: () = ();
+
+#[doc(attribute = "rustc_comptime")]
+/// Marks a function as only callable at compile time.
+///
+/// Unlike `const fn`, which *can* be called from a [const context], comptime functions *must* be
+/// called from a const context. It is an error to call a comptime function outside a const context.
+///
+/// # Example
+///
+#[doc = include_example!("rustc_comptime")]
+///
+/// There are many things which only have meaning at compile time and can make use of such
+/// functions:
+/// - the [`type_info`] feature, for compile time type reflection.
+/// - the const heap intrinsics [`const_allocate`] and [`const_deallocate`], at runtime, return a null
+/// pointer and do nothing respectively.
+/// - intrinsics such as [`size_of`] and friends cause an ICE when they are called at runtime. The
+/// stabilized versions of these functions forward to these intrinsics via associated constants on
+/// the `SizedTypeProperties` trait.
+///
+/// At this time,
+// < October of 2026 >
+/// the primary motivation for comptime functions is the [`type_info`] feature. The constructs
+/// in [`mem::type_info`] only makes sense at compile time as during compile time we can simply
+/// ask the compiler for whatever information we need. At runtime, though, that cannot be done - to
+/// support runtime reflection we would have to create some global table with all the information
+/// we might possibly need. This is unfeasible and any (third party wrappers for) "runtime
+/// reflection" based on `type_info` would be limited to retrieving information queried in advance
+/// at compile time.
+///
+/// See the [reflection and comptime project goal] for more information about reflection and
+/// comptime.
+///
+/// See [`AttributeKind::RustcComptime`] for the internal representation of this attribute.
+///
+/// [const context]: https://doc.rust-lang.org/nightly/reference/const_eval.html#const-context
+/// [`type_info`]: https://github.com/rust-lang/rust/issues/146922
+/// [`const_allocate`]: std::intrinsics::const_allocate
+/// [`const_deallocate`]: std::intrinsics::const_deallocate
+/// [`mem::type_info`]: std::mem::type_info
+/// [reflection and comptime project goal]: https://goals.rust-lang.org/2026/reflection-and-comptime.html
+const _: () = ();
