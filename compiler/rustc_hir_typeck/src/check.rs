@@ -65,7 +65,6 @@ pub(super) fn check_fn<'a, 'tcx>(
     });
 
     // Add formal parameters.
-    let inputs_hir = tcx.hir_fn_decl_by_hir_id(fn_id).map(|decl| &decl.inputs);
     let inputs_fn = fn_sig.inputs().iter().copied();
     for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(body.params).enumerate() {
         // We checked the root's signature during wfcheck, but not the child.
@@ -81,7 +80,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         }
 
         // Check the pattern.
-        let ty: Option<&hir::Ty<'_>> = inputs_hir.and_then(|h| h.get(idx));
+        let ty: Option<&hir::Ty<'_>> = decl.inputs.get(idx);
         let ty_span = ty.map(|ty| ty.span);
         fcx.check_pat_top(param.pat, param_ty, ty_span, None, None);
         if param.pat.is_never_pattern() {
