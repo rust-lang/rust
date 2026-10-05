@@ -2207,12 +2207,12 @@ unsafe extern "C" {
         Builder: &DIBuilder<'a>,
         Lang: c_uint,
         File: &'a DIFile,
-        Producer: *const c_char,
+        Producer: *const c_uchar, // See "PTR_LEN_STR".
         ProducerLen: size_t,
         isOptimized: bool,
         Flags: *const c_char,
         RuntimeVer: c_uint,
-        SplitName: *const c_char,
+        SplitName: *const c_uchar, // See "PTR_LEN_STR".
         SplitNameLen: size_t,
         kind: DebugEmissionKind,
         DWOId: u64,
@@ -2224,14 +2224,14 @@ unsafe extern "C" {
     /// _requires_ a checksum, but we sometimes don't provide one.
     pub(crate) fn LLVMRustDIBuilderCreateFile<'a>(
         Builder: &DIBuilder<'a>,
-        Filename: *const c_char,
+        Filename: *const c_uchar, // See "PTR_LEN_STR".
         FilenameLen: size_t,
-        Directory: *const c_char,
+        Directory: *const c_uchar, // See "PTR_LEN_STR".
         DirectoryLen: size_t,
         CSKind: ChecksumKind,
-        Checksum: *const c_char,
+        Checksum: *const c_uchar, // See "PTR_LEN_STR".
         ChecksumLen: size_t,
-        Source: *const c_char,
+        Source: *const c_uchar, // See "PTR_LEN_STR".
         SourceLen: size_t,
     ) -> &'a DIFile;
 
@@ -2240,9 +2240,9 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustDIBuilderCreateFunction<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIDescriptor,
-        Name: *const c_char,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
-        LinkageName: *const c_char,
+        LinkageName: *const c_uchar, // See "PTR_LEN_STR".
         LinkageNameLen: size_t,
         File: &'a DIFile,
         LineNo: c_uint,
@@ -2259,9 +2259,9 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustDIBuilderCreateMethod<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIDescriptor,
-        Name: *const c_char,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
-        LinkageName: *const c_char,
+        LinkageName: *const c_uchar, // See "PTR_LEN_STR".
         LinkageNameLen: size_t,
         File: &'a DIFile,
         LineNo: c_uint,
@@ -2275,7 +2275,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustDIBuilderCreateVariantMemberType<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,
-        Name: *const c_char,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
         File: &'a DIFile,
         LineNumber: c_uint,
@@ -2291,7 +2291,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustDIBuilderCreateEnumerationType<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,
-        Name: *const c_char,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
         File: &'a DIFile,
         LineNumber: c_uint,
@@ -2306,7 +2306,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustDIBuilderCreateVariantPart<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,
-        Name: *const c_char,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
         File: &'a DIFile,
         LineNo: c_uint,
@@ -2315,7 +2315,7 @@ unsafe extern "C" {
         Flags: DIFlags,
         Discriminator: Option<&'a DIDerivedType>,
         Elements: &'a DIArray,
-        UniqueId: *const c_char,
+        UniqueId: *const c_uchar, // See "PTR_LEN_STR".
         UniqueIdLen: size_t,
     ) -> &'a DIDerivedType;
 
@@ -2323,7 +2323,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustDIBuilderCreateTemplateTypeParameter<'a>(
         Builder: &DIBuilder<'a>,
         Scope: Option<&'a DIScope>,
-        Name: *const c_char,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
         Ty: &'a DIType,
     ) -> &'a DITemplateTypeParameter;
