@@ -393,6 +393,7 @@ impl Segment {
 }
 
 impl<'a> From<ast::PathSegmentRef<'a>> for Segment {
+    #[inline]
     fn from(seg: ast::PathSegmentRef<'a>) -> Segment {
         let has_generic_args = seg.args.is_some();
         let (args_span, has_lifetime_args) = if let Some(args) = seg.args {
