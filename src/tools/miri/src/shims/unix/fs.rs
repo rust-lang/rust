@@ -1313,7 +1313,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // We just use the pointee type here since determining the right pointee type
                 // independently is highly non-trivial: it depends on which exact alias of the
-                // function was invoked (e.g. `fstat` vs `fstat64`), and then on FreeBSD it also
+                // function was invoked (e.g. `readdir` vs `readdir64`), and then on FreeBSD it also
                 // depends on the ABI level which can be different between the libc used by std and
                 // the libc used by everyone else.
                 let dirent_ty = dest.layout.ty.builtin_deref(true).unwrap();

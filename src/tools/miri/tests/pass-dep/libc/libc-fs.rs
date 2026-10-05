@@ -969,6 +969,18 @@ fn test_fstat() {
     assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
     assert_eq!(stat.st_size, 5);
 
+    // Ensure fstat64 also works.
+    #[cfg(target_os = "linux")]
+    {
+        let mut stat = MaybeUninit::<libc::stat64>::uninit();
+        errno_check(unsafe { libc::fstat64(fd, stat.as_mut_ptr()) });
+        let stat = unsafe { stat.assume_init_ref() };
+
+        assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
+        assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+        assert_eq!(stat.st_size, 5);
+    }
+
     // Check that all fields are initialized.
     check_stat_fields(stat);
 

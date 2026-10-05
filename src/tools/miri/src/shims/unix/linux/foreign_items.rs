@@ -83,16 +83,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let whence = this.read_scalar(whence)?.to_i32()?;
                 this.lseek(fd, offset, whence, dest)?;
             }
-            "ftruncate64" => {
-                let [fd, length] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, libc::off64_t) -> i32),
-                    (link_name, abi, args),
-                )?;
-                let fd = this.read_scalar(fd)?.to_i32()?;
-                let length = this.read_scalar(length)?.to_int(length.layout.size)?;
-                let result = this.ftruncate64(fd, length)?;
-                this.write_scalar(result, dest)?;
-            }
             "posix_fallocate64" => {
                 let [fd, offset, len] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off64_t, libc::off64_t) -> i32),
@@ -123,7 +113,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.linux_fallocate(fd, mode, offset, len)?;
                 this.write_scalar(result, dest)?;
             }
-
             "fallocate64" => {
                 let [fd, mode, offset, len] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32, libc::off64_t, libc::off64_t) -> i32),
@@ -136,6 +125,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let len = this.read_scalar(len)?.to_i64()?;
 
                 let result = this.linux_fallocate(fd, mode, offset, len)?;
+                this.write_scalar(result, dest)?;
+            }
+            "ftruncate64" => {
+                let [fd, length] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, libc::off64_t) -> i32),
+                    (link_name, abi, args),
+                )?;
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                let length = this.read_scalar(length)?.to_int(length.layout.size)?;
+                let result = this.ftruncate64(fd, length)?;
                 this.write_scalar(result, dest)?;
             }
 
@@ -153,6 +152,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [dirfd, pathname, flags, mask, statxbuf] =
                     this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 let result = this.linux_statx(dirfd, pathname, flags, mask, statxbuf)?;
+                this.write_scalar(result, dest)?;
+            }
+            "fstat64" => {
+                let [fd, buf] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
+                // `fstat` works for both `stat` and `stat64`.
+                let result = this.fstat(fd, buf)?;
                 this.write_scalar(result, dest)?;
             }
             // epoll, eventfd
