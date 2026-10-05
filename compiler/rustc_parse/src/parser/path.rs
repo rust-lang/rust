@@ -212,8 +212,23 @@ impl<'a> Parser<'a> {
             segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
         }
         self.parse_path_segments(&mut segments, style, ty_generics)?;
-        let span = lo.to(self.prev_token.span);
-        Ok(Path::from_segments(segments, span))
+        // Fast-paths to avoid redundant span construction in `Path::from_segments`, and to avoid
+        // the cost of combining spans too early.
+        let hi = self.prev_token.span;
+        if let [segment] = segments.as_slice()
+            && segment.args.is_none()
+            && segment.ident.span == lo
+            && lo == hi
+        {
+            return Ok(Path::Ident { ident: segment.ident, id: segment.id });
+        }
+        let first_span = segments[0].ident.span;
+        let last = segments.last().unwrap();
+        let last_span = last.args.as_deref().map(|a| a.span()).unwrap_or(last.ident.span);
+        if first_span == lo && last_span == hi {
+            return Ok(Path::NoSpan { segments });
+        }
+        Ok(Path::from_segments(segments, lo.to(hi)))
     }
 
     pub(super) fn parse_path_segments(
