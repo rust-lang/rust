@@ -1,12 +1,12 @@
 error[E0053]: method `foo` has an incompatible type for trait
-  --> $DIR/default-type-parameter.rs:8:17
+  --> $DIR/default-type-parameter.rs:9:17
    |
 LL | impl Trait for S {
 LL |     fn foo() -> u32 { 0 }
    |                 ^^^ expected `()`, found `u32`
    |
 note: type in trait
-  --> $DIR/default-type-parameter.rs:2:17
+  --> $DIR/default-type-parameter.rs:3:17
    |
 LL | trait Trait<T = ()> {
    |             ------ expected to match the default of type parameter `T`
@@ -21,14 +21,14 @@ LL +     fn foo() -> () { 0 }
    |
 
 error[E0053]: method `foo` has an incompatible type for trait
-  --> $DIR/default-type-parameter.rs:11:17
+  --> $DIR/default-type-parameter.rs:12:17
    |
 LL | impl Trait<i32> for () {
 LL |     fn foo() -> u32 { 0 }
    |                 ^^^ expected `i32`, found `u32`
    |
 note: type in trait
-  --> $DIR/default-type-parameter.rs:2:17
+  --> $DIR/default-type-parameter.rs:3:17
    |
 LL | trait Trait<T = ()> {
    |             ------ expected to match type parameter `T`

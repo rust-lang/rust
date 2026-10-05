@@ -1,3 +1,4 @@
+// Regression test for https://github.com/rust-lang/rust/issues/67991
 trait Trait<T = ()> {
     fn foo() -> T;
 }
