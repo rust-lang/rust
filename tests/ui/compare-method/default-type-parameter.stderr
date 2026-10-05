@@ -9,15 +9,11 @@ note: type in trait
   --> $DIR/default-type-parameter.rs:2:17
    |
 LL | trait Trait<T = ()> {
+   |             ------ expected to match the default of type parameter `T`
 LL |     fn foo() -> T;
    |                 ^
    = note: expected signature `fn() -> ()`
               found signature `fn() -> u32`
-note: expected to match the default of type parameter `T`
-  --> $DIR/default-type-parameter.rs:1:13
-   |
-LL | trait Trait<T = ()> {
-   |             ^^^^^^
 help: change the output type to match the trait
    |
 LL -     fn foo() -> u32 { 0 }
@@ -35,15 +31,11 @@ note: type in trait
   --> $DIR/default-type-parameter.rs:2:17
    |
 LL | trait Trait<T = ()> {
+   |             ------ expected to match type parameter `T`
 LL |     fn foo() -> T;
    |                 ^
    = note: expected signature `fn() -> i32`
               found signature `fn() -> u32`
-note: expected to match type parameter `T`
-  --> $DIR/default-type-parameter.rs:1:13
-   |
-LL | trait Trait<T = ()> {
-   |             ^^^^^^
 help: change the output type to match the trait
    |
 LL -     fn foo() -> u32 { 0 }
