@@ -493,6 +493,7 @@ pub(crate) struct CompletionContext<'a, 'db> {
     pub(crate) expected_name: Option<NameOrNameRef>,
     /// The expected type of what we are completing.
     pub(crate) expected_type: Option<Type<'db>>,
+    pub(crate) expected_func: Option<hir::Callable<'db>>,
 
     pub(crate) qualifier_ctx: QualifierCtx,
 
@@ -519,6 +520,13 @@ pub(crate) struct CompletionContext<'a, 'db> {
 
     /// Whether and how to complete semicolon for unit-returning functions.
     pub(crate) complete_semicolon: CompleteSemicolon,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct ExpectedInfo<'db> {
+    expected_type: Option<Type<'db>>,
+    expected_name: Option<NameOrNameRef>,
+    expected_func: Option<hir::Callable<'db>>,
 }
 
 #[derive(Debug)]
@@ -795,7 +803,7 @@ impl<'a, 'db> CompletionContext<'a, 'db> {
 
         let AnalysisResult {
             analysis,
-            expected: (expected_type, expected_name),
+            expected: ExpectedInfo { expected_type, expected_name, expected_func },
             qualifier_ctx,
             token,
             original_offset,
@@ -936,6 +944,7 @@ impl<'a, 'db> CompletionContext<'a, 'db> {
             edition,
             expected_name,
             expected_type,
+            expected_func,
             qualifier_ctx,
             locals,
             depth_from_crate_root,

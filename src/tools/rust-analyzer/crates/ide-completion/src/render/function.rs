@@ -101,9 +101,9 @@ fn render(
         }
         _ => (false, false, None),
     };
-    let complete_call_parens = cap
-        .filter(|_| !has_call_parens)
-        .and_then(|cap| Some((cap, params(ctx.completion, func, &func_kind, has_dot_receiver)?)));
+    let complete_call_parens = cap.filter(|_| !has_call_parens).and_then(|cap| {
+        Some((cap, params(ctx.completion, func, &func_kind, has_dot_receiver, &ret_type)?))
+    });
 
     let function = assoc_item
         .and_then(|assoc_item| assoc_item.implementing_ty(db))
@@ -376,6 +376,7 @@ fn params<'db>(
     func: hir::Function,
     func_kind: &FuncKind<'_>,
     has_dot_receiver: bool,
+    ret_type: &hir::Type<'_>,
 ) -> Option<(Option<hir::SelfParam>, Vec<hir::Param<'db>>)> {
     ctx.config.callable.as_ref()?;
 
@@ -386,6 +387,17 @@ fn params<'db>(
         && expected.sig() == completed.sig()
     {
         cov_mark::hit!(no_call_parens_if_fn_ptr_needed);
+        return None;
+    }
+    // Handle generic signature, do not use FnSig::eq
+    if ctx.expected_type.as_ref().is_none_or(|it| it.is_unknown()) // only process generic expected
+        && let Some(expected) = &ctx.expected_func
+        && let Some(completed) = func.ty(ctx.db).as_callable(ctx.db)
+        && expected.n_params() == completed.n_params()
+        && ctx.rebase_ty(&expected.return_type()).could_unify_with(ctx.db, ret_type)
+        && !completed.return_type().impls_fnonce(ctx.db)
+    {
+        cov_mark::hit!(no_call_parens_if_ty_with_fn_bounds);
         return None;
     }
 

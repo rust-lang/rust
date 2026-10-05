@@ -2502,6 +2502,215 @@ fn main() -> RawIdentTable {
     }
 
     #[test]
+    fn no_call_parens_if_param_with_fn_bounds() {
+        cov_mark::check!(no_call_parens_if_ty_with_fn_bounds);
+        check_edit(
+            "foo",
+            r#"
+//- minicore: fn
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(f$0)
+}
+"#,
+            r#"
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(foo)
+}
+"#,
+        );
+        check_edit(
+            "foo",
+            r#"
+//- minicore: fn
+fn needs_fn<F: FnOnce(u8, u8)>(f: F) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(f$0)
+}
+"#,
+            r#"
+fn needs_fn<F: FnOnce(u8, u8)>(f: F) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(foo)
+}
+"#,
+        );
+        check_edit(
+            "foo",
+            r#"
+//- minicore: fn
+fn needs_fn<F>(f: F) where F: FnOnce(u8, u8) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(f$0)
+}
+"#,
+            r#"
+fn needs_fn<F>(f: F) where F: FnOnce(u8, u8) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(foo)
+}
+"#,
+        );
+        check_edit(
+            "unmap",
+            r#"
+//- minicore: fn
+trait Trait {
+    fn unmap(self) -> i32 { 0 }
+}
+mod module {
+    pub struct Ty;
+    impl super::Trait for Ty {}
+}
+fn needs_fn<T>(f: impl FnOnce(T) -> i32) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(module::Ty::u$0)
+}
+"#,
+            r#"
+trait Trait {
+    fn unmap(self) -> i32 { 0 }
+}
+mod module {
+    pub struct Ty;
+    impl super::Trait for Ty {}
+}
+fn needs_fn<T>(f: impl FnOnce(T) -> i32) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(module::Ty::unmap)
+}
+"#,
+        );
+        check_edit(
+            "neg",
+            r#"
+//- minicore: iterator, iterators, unary_ops, builtin_impls
+fn foo(iter: impl Iterator<Item = u32>) {
+    iter.map(core::ops::Neg::n$0)
+}
+"#,
+            r#"
+fn foo(iter: impl Iterator<Item = u32>) {
+    iter.map(core::ops::Neg::neg)
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn call_parens_in_non_direct_expr() {
+        check_edit(
+            "foo",
+            r#"
+//- minicore: fn
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(&f$0)
+}
+"#,
+            r#"
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(&foo(${1:a}, ${2:b})$0)
+}
+"#,
+        );
+        check_edit(
+            "method",
+            r#"
+//- minicore: fn
+struct Foo;
+impl Foo { fn method(&self, a: u8, b: u8) {} }
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(Foo.m$0)
+}
+"#,
+            r#"
+struct Foo;
+impl Foo { fn method(&self, a: u8, b: u8) {} }
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(Foo.method(${1:a}, ${2:b})$0)
+}
+"#,
+        );
+        check_edit(
+            "method",
+            r#"
+//- minicore: fn
+struct Foo;
+impl Foo { fn method(&self, a: u8, b: u8) {} }
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(Foo.$0)
+}
+"#,
+            r#"
+struct Foo;
+impl Foo { fn method(&self, a: u8, b: u8) {} }
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(Foo.method(${1:a}, ${2:b})$0)
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn call_parens_in_bad_case() {
+        check_edit(
+            "foo",
+            r#"
+//- minicore: fn
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8) {
+    needs_fn(f$0);
+}
+"#,
+            r#"
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8) {
+    needs_fn(foo(${1:a})$0);
+}
+"#,
+        );
+        check_edit(
+            "foo",
+            r#"
+//- minicore: fn
+fn needs_fn<T>(f: impl FnOnce(u8, u8) -> T) {}
+fn foo(a: u8, b: u8) -> impl FnOnce(u8, u8) {
+    needs_fn(f$0);
+}
+"#,
+            r#"
+fn needs_fn<T>(f: impl FnOnce(u8, u8) -> T) {}
+fn foo(a: u8, b: u8) -> impl FnOnce(u8, u8) {
+    needs_fn(foo(${1:a}, ${2:b})$0);
+}
+"#,
+        );
+        check_edit(
+            "foo",
+            r#"
+//- minicore: fn
+fn needs_fn(f: impl FnOnce(u8, u8) -> u8) {}
+fn foo(a: u8, b: u8) -> u16 {
+    needs_fn(f$0);
+}
+"#,
+            r#"
+fn needs_fn(f: impl FnOnce(u8, u8) -> u8) {}
+fn foo(a: u8, b: u8) -> u16 {
+    needs_fn(foo(${1:a}, ${2:b})$0);
+}
+"#,
+        );
+    }
+
+    #[test]
     fn no_parens_in_use_item() {
         check_edit(
             "foo",
