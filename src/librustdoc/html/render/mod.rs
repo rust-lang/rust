@@ -3185,11 +3185,11 @@ fn repr_attribute<'tcx>(
 pub(crate) fn compute_if_deref_target_implements_copy(tcx: TyCtxt<'_>, impl_def_id: DefId) -> bool {
     if let Some(impl_def_id) = impl_def_id.as_local()
         && let item = tcx.hir_expect_item(impl_def_id)
-        && let hir::ItemKind::Impl(impl_item) = item.kind
+        && let rustc_hir::ItemKind::Impl(impl_item) = item.kind
     {
         for item in impl_item.items {
             let item = tcx.hir_impl_item(*item);
-            if matches!(item.kind, hir::ImplItemKind::Type(_)) {
+            if matches!(item.kind, rustc_hir::ImplItemKind::Type(_)) {
                 let item_def_id = item.owner_id.to_def_id();
                 let ty = tcx.type_of(item_def_id).instantiate_identity().skip_norm_wip();
                 let typing_env = ty::TypingEnv::non_body_analysis(tcx, item_def_id);
