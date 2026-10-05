@@ -490,9 +490,7 @@ pub struct DocAttribute {
 
     pub aliases: FxIndexMap<Symbol, Span>,
     pub hidden: Option<Span>,
-    // Because we need to emit the error if there is more than one `inline` attribute on an item
-    // at the same time as the other doc attributes, we store a list instead of using `Option`.
-    pub inline: ThinVec<(DocInline, Span)>,
+    pub inline: Option<(DocInline, Span)>,
 
     // unstable
     pub cfg: ThinVec<CfgEntry>,
@@ -555,8 +553,7 @@ impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute 
         // FIXME: The `doc(inline)` attribute is never encoded, but is it actually the right thing
         // to do? I suspect the condition was broken, should maybe instead not encode anything if we
         // have `doc(no_inline)`.
-        let inline: ThinVec<_> =
-            inline.iter().filter(|(i, _)| *i != DocInline::Inline).cloned().collect();
+        let inline = inline.filter(|(i, _)| *i != DocInline::Inline);
         rustc_serialize::Encodable::<E>::encode(&inline, encoder);
 
         rustc_serialize::Encodable::<E>::encode(cfg, encoder);

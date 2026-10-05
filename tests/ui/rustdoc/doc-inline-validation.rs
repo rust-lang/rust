@@ -29,7 +29,7 @@ pub use std::panic;
 #[doc(inline)]
 //~^ ERROR conflicting doc inlining attributes
 //~| HELP remove one of the conflicting attributes
-#[doc(no_inline)]
+#[doc(no_inline, inline, no_inline)]
 pub use std::fmt;
 
 #[doc(no_inline)]

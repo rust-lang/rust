@@ -4,7 +4,7 @@ error: conflicting doc inlining attributes
 LL | #[doc(inline)]
    |       ^^^^^^ this attribute...
 ...
-LL | #[doc(no_inline)]
+LL | #[doc(no_inline, inline, no_inline)]
    |       ^^^^^^^^^ ...conflicts with this attribute
    |
    = help: remove one of the conflicting attributes

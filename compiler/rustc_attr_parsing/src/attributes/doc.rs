@@ -2,7 +2,7 @@ use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
 use rustc_attr_ir::target::Target;
 use rustc_attr_ir::{
     AttributeKind, CfgEntry, CfgHideShow, DocAttribute, DocCfgHideShow, DocCfgHideShowValue,
-    DocInline, HideOrShow, find_attr,
+    DocInline, HideOrShow,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
 use rustc_errors::{Applicability, MultiSpan, msg};
@@ -135,6 +135,7 @@ fn parse_keyword_and_attribute(
 pub(crate) struct DocParser {
     attribute: DocAttribute,
     nb_doc_attrs: usize,
+    inline_conflict: bool,
 }
 
 impl DocParser {
@@ -263,7 +264,22 @@ impl DocParser {
             return;
         }
 
-        self.attribute.inline.push((inline, path.span()));
+        if self.inline_conflict {
+            return;
+        }
+
+        if let Some((previous_inline, previous_span)) = self.attribute.inline {
+            if previous_inline != inline {
+                let span = path.span();
+                let mut spans = MultiSpan::from_spans(vec![previous_span, span]);
+                spans.push_span_label(previous_span, msg!("this attribute..."));
+                spans.push_span_label(span, msg!("{\".\"}..conflicts with this attribute"));
+                cx.emit_err(DocInlineConflict { spans });
+                self.inline_conflict = true;
+            }
+        } else {
+            self.attribute.inline = Some((inline, path.span()));
+        }
     }
 
     fn parse_cfg(&mut self, cx: &mut AcceptContext<'_, '_>, args: &ArgParser) {
@@ -742,31 +758,7 @@ impl DocParser {
         }
     }
 
-    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, _attr_span: Span) {
-        let Some(doc) = find_attr!(cx.parsed_attrs, Doc(doc) => doc) else {
-            return;
-        };
-
-        let span = match doc.inline.as_slice() {
-            [] => return,
-            [(_, span)] => *span,
-            [(inline, span), rest @ ..] => {
-                for (inline2, span2) in rest {
-                    if inline2 != inline {
-                        let mut spans = MultiSpan::from_spans(vec![*span, *span2]);
-                        spans.push_span_label(*span, msg!("this attribute..."));
-                        spans.push_span_label(
-                            *span2,
-                            msg!("{\".\"}..conflicts with this attribute"),
-                        );
-                        cx.emit_err(DocInlineConflict { spans });
-                        return;
-                    }
-                }
-                *span
-            }
-        };
-
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, span: Span) {
         match cx.target {
             Target::Use | Target::ExternCrate => {}
             _ => {
@@ -856,7 +848,10 @@ impl AttributeParser for DocParser {
     }
 
     fn deferred_finalize_check(&self) -> Option<(FinalizeCheckFn, Span)> {
-        let &(_, span) = self.attribute.inline.first()?;
+        if self.inline_conflict {
+            return None;
+        }
+        let (_, span) = self.attribute.inline?;
         Some((Self::finalize_check, span))
     }
 }
