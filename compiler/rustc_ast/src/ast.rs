@@ -291,7 +291,12 @@ impl Path {
 
 #[inline]
 fn segments_span(segments: &[PathSegment]) -> Span {
-    segments[0].ident.span.to(segments.last().unwrap().span())
+    let last = segments.last().unwrap();
+    let last_span = match last.args.as_deref() {
+        Some(last_args) => last_args.span(),
+        None => last.ident.span,
+    };
+    segments[0].ident.span.to(last_span)
 }
 
 /// Joins multiple symbols with "::" into a path, e.g. "a::b::c". If the first
@@ -383,6 +388,7 @@ impl PathSegment {
         PathSegment::from_ident(Ident::new(kw::PathRoot, span))
     }
 
+    #[inline]
     pub fn span(&self) -> Span {
         match &self.args {
             Some(args) => self.ident.span.to(args.span()),
@@ -403,6 +409,7 @@ pub struct PathSegmentRef<'a> {
 }
 
 impl PathSegmentRef<'_> {
+    #[inline]
     pub fn span(&self) -> Span {
         match self.args {
             Some(args) => self.ident.span.to(args.span()),
