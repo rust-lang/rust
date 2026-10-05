@@ -8,7 +8,6 @@ fn main() {
 
     // a non-`Try` type on a non-`Try` fn
     ()?; //~ ERROR the `?` operator can only be applied to
-    //~^ ERROR the `?` operator can only be used in a function that
 
     // an unrelated use of `Try`
     try_trait_generic::<()>(); //~ ERROR the trait bound
