@@ -5,7 +5,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::Symbol;
 
-use crate::spec::{Arch, RelocModel, Target};
+use crate::spec::{Arch, LlvmAbi, RelocModel, Target};
 
 pub struct ModifierInfo {
     pub modifier: char,
@@ -1018,6 +1018,7 @@ pub enum InlineAsmClobberAbi {
     Arm64EC,
     Avr,
     RiscV,
+    RiscVD,
     RiscVE,
     LoongArch,
     PowerPC,
@@ -1071,11 +1072,15 @@ impl InlineAsmClobberAbi {
                 _ => Err(&["C", "system"]),
             },
             InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => match name {
-                "C" | "system" | "efiapi" => Ok(if riscv::is_e(target_features) {
-                    InlineAsmClobberAbi::RiscVE
-                } else {
-                    InlineAsmClobberAbi::RiscV
-                }),
+                "C" | "system" | "efiapi" => {
+                    Ok(match target.llvm_abiname {
+                        LlvmAbi::Ilp32e | LlvmAbi::Lp64e => InlineAsmClobberAbi::RiscVE,
+                        // FIXME: Once LLVM adds support for the `q` extension, `d` will no longer
+                        // be the largest supported FLEN, so change this to Lp64q => RiscVQ.
+                        LlvmAbi::Ilp32d | LlvmAbi::Lp64d => InlineAsmClobberAbi::RiscVD,
+                        _ => InlineAsmClobberAbi::RiscV,
+                    })
+                }
                 _ => Err(&["C", "system", "efiapi"]),
             },
             InlineAsmArch::Avr => match name {
@@ -1268,6 +1273,46 @@ impl InlineAsmClobberAbi {
                     x10, x11, x12, x13, x14, x15, x16, x17,
                     // t3-t6
                     x28, x29, x30, x31,
+
+                    // Only ABI_FLEN bits of the callee-saved floating point registers are
+                    // preserved. As LLVM doesn't have partial clobbers, this means we have to
+                    // clobber the callee-saved floating point registers as well as the temporary
+                    // registers.
+                    // ft0-ft7
+                    f0, f1, f2, f3, f4, f5, f6, f7,
+                    // fs0-fs1 (callee-saved)
+                    f8, f9,
+                    // fa0-fa7
+                    f10, f11, f12, f13, f14, f15, f16, f17,
+                    // fs2-fs11 (callee-saved)
+                    f18, f19, f20, f21, f22, f23, f24, f25,
+                    f26, f27,
+                    // ft8-ft11
+                    f28, f29, f30, f31,
+
+                    // v0-v31
+                    v0, v1, v2, v3, v4, v5, v6, v7,
+                    v8, v9, v10, v11, v12, v13, v14, v15,
+                    v16, v17, v18, v19, v20, v21, v22, v23,
+                    v24, v25, v26, v27, v28, v29, v30, v31,
+                }
+            },
+            InlineAsmClobberAbi::RiscVD => clobbered_regs! {
+                RiscV RiscVInlineAsmReg {
+                    // ra
+                    x1,
+                    // t0-t2
+                    x5, x6, x7,
+                    // a0-a7
+                    x10, x11, x12, x13, x14, x15, x16, x17,
+                    // t3-t6
+                    x28, x29, x30, x31,
+
+                    // Only ABI_FLEN bits of the callee-saved floating point registers are
+                    // preserved. As `d` (FLEN == 64) is the largest floating point register LLVM
+                    // currently supports (`q` is currently assembly only), and ABI_FLEN == 64,
+                    // ABI_FLEN must equal FLEN and therefore there is no need to clobber the
+                    // callee-saved registers.
                     // ft0-ft7
                     f0, f1, f2, f3, f4, f5, f6, f7,
                     // fa0-fa7
@@ -1275,6 +1320,7 @@ impl InlineAsmClobberAbi {
                     // ft8-ft11
                     f28, f29, f30, f31,
 
+                    // v0-v31
                     v0, v1, v2, v3, v4, v5, v6, v7,
                     v8, v9, v10, v11, v12, v13, v14, v15,
                     v16, v17, v18, v19, v20, v21, v22, v23,
@@ -1293,13 +1339,17 @@ impl InlineAsmClobberAbi {
                     x5, x6, x7,
                     // a0-a5
                     x10, x11, x12, x13, x14, x15,
-                    // ft0-ft7
-                    f0, f1, f2, f3, f4, f5, f6, f7,
-                    // fa0-fa7
-                    f10, f11, f12, f13, f14, f15, f16, f17,
-                    // ft8-ft11
-                    f28, f29, f30, f31,
+                    // x16-x31
+                    x16, x17, x18, x19, x20, x21, x22, x23,
+                    x24, x25, x26, x27, x28, x29, x30, x31,
 
+                    // f0-f31
+                    f0, f1, f2, f3, f4, f5, f6, f7,
+                    f8, f9, f10, f11, f12, f13, f14, f15,
+                    f16, f17, f18, f19, f20, f21, f22, f23,
+                    f24, f25, f26, f27, f28, f29, f30, f31,
+
+                    // v0-v31
                     v0, v1, v2, v3, v4, v5, v6, v7,
                     v8, v9, v10, v11, v12, v13, v14, v15,
                     v16, v17, v18, v19, v20, v21, v22, v23,
