@@ -29,6 +29,8 @@ pub use std::panic;
 #[doc(inline)]
 //~^ ERROR conflicting doc inlining attributes
 //~| HELP remove one of the conflicting attributes
+//~| ERROR conflicting doc inlining attributes
+//~| HELP remove one of the conflicting attributes
 #[doc(no_inline, inline, no_inline)]
 pub use std::fmt;
 
@@ -59,12 +61,14 @@ pub fn fn_allowed() {}
 //~^ ERROR this attribute can only be applied to a `use` item
 pub struct StructWithNoInline;
 
-// Conflict on an invalid target, preserving diagnostic precedence
+// Conflict on an invalid target
 #[deny(invalid_doc_attributes)]
 #[doc(inline)]
 //~^ ERROR conflicting doc inlining attributes
 //~| HELP remove one of the conflicting attributes
+//~| ERROR this attribute can only be applied to a `use` item
 #[doc(no_inline)]
+//~^ ERROR this attribute can only be applied to a `use` item
 pub struct ConflictOnStruct;
 
 // Malformed arguments without extra validation diagnostics

@@ -11,8 +11,8 @@ use rustc_lint_defs::builtin::{INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES};
 use rustc_span::{Span, Symbol, edition, sym};
 
 use super::prelude::{ALL_TARGETS, AllowedTargets};
-use super::{AcceptMapping, AttributeParser, FinalizeCheckFn, template};
-use crate::context::{AcceptContext, FinalizeCheckContext, FinalizeContext};
+use super::{AcceptMapping, AttributeParser, template};
+use crate::context::{AcceptContext, FinalizeContext};
 use crate::diagnostics::{
     AttrCrateLevelOnly, DocAliasBadChar, DocAliasDuplicated, DocAliasEmpty, DocAliasMalformed,
     DocAliasStartEnd, DocAttrNotCrateLevel, DocAttributeNotAttribute, DocAutoCfgExpectsHideOrShow,
@@ -135,7 +135,6 @@ fn parse_keyword_and_attribute(
 pub(crate) struct DocParser {
     attribute: DocAttribute,
     nb_doc_attrs: usize,
-    inline_conflict: bool,
 }
 
 impl DocParser {
@@ -264,21 +263,28 @@ impl DocParser {
             return;
         }
 
-        if self.inline_conflict {
-            return;
-        }
-
+        let span = path.span();
         if let Some((previous_inline, previous_span)) = self.attribute.inline {
             if previous_inline != inline {
-                let span = path.span();
                 let mut spans = MultiSpan::from_spans(vec![previous_span, span]);
                 spans.push_span_label(previous_span, msg!("this attribute..."));
                 spans.push_span_label(span, msg!("{\".\"}..conflicts with this attribute"));
                 cx.emit_err(DocInlineConflict { spans });
-                self.inline_conflict = true;
             }
         } else {
-            self.attribute.inline = Some((inline, path.span()));
+            self.attribute.inline = Some((inline, span));
+        }
+
+        match cx.target {
+            Target::Use | Target::ExternCrate => {}
+            _ => {
+                let item_span = cx.target_span;
+                cx.emit_lint(
+                    INVALID_DOC_ATTRIBUTES,
+                    DocInlineOnlyUse { attr_span: span, item_span },
+                    span,
+                );
+            }
         }
     }
 
@@ -757,20 +763,6 @@ impl DocParser {
             }
         }
     }
-
-    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, span: Span) {
-        match cx.target {
-            Target::Use | Target::ExternCrate => {}
-            _ => {
-                let item_span = cx.target_span;
-                cx.emit_lint(
-                    INVALID_DOC_ATTRIBUTES,
-                    DocInlineOnlyUse { attr_span: span, item_span },
-                    span,
-                );
-            }
-        }
-    }
 }
 
 impl AttributeParser for DocParser {
@@ -845,13 +837,5 @@ impl AttributeParser for DocParser {
         } else {
             None
         }
-    }
-
-    fn deferred_finalize_check(&self) -> Option<(FinalizeCheckFn, Span)> {
-        if self.inline_conflict {
-            return None;
-        }
-        let (_, span) = self.attribute.inline?;
-        Some((Self::finalize_check, span))
     }
 }
