@@ -1127,7 +1127,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMDeleteFunction(Fn: &Value);
     pub(crate) fn LLVMGetOrInsertFunction<'a>(
         M: &'a Module,
-        Name: *const c_char,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
         FunctionTy: &'a Type,
     ) -> &'a Value;
@@ -1992,20 +1992,20 @@ unsafe extern "C" {
     // Operations on global variables
     pub(crate) fn LLVMRustGetOrInsertGlobal<'a>(
         M: &'a Module,
-        Name: *const c_char,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
         T: &'a Type,
     ) -> &'a Value;
     pub(crate) fn LLVMRustGetOrInsertGlobalInAddrspace<'a>(
         M: &'a Module,
-        Name: *const c_char,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
         T: &'a Type,
         AddressSpace: c_uint,
     ) -> &'a Value;
     pub(crate) fn LLVMRustGetNamedValue(
         M: &Module,
-        Name: *const c_char,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
     ) -> Option<&Value>;
 
