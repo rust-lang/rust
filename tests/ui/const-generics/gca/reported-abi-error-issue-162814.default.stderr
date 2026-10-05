@@ -4,7 +4,7 @@ error[E0080]: values of the type `[u8; usize::MAX]` are too big for the target a
    = note: evaluation of `<[u8; usize::MAX] as std::mem::SizedTypeProperties>::SIZE` failed here
 
 note: the above error was encountered while instantiating `fn trigger::<[u8; usize::MAX]>`
-  --> $DIR/issue-162814.rs:26:5
+  --> $DIR/reported-abi-error-issue-162814.rs:26:5
    |
 LL |     trigger::<[u8; usize::MAX]>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
