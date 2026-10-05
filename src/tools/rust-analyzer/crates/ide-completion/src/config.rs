@@ -22,6 +22,7 @@ pub struct CompletionConfig<'a> {
     pub enable_auto_await: bool,
     pub enable_private_editable: bool,
     pub enable_term_search: bool,
+    pub enable_turbofish: bool,
     pub term_search_fuel: u64,
     pub full_function_signatures: bool,
     pub callable: Option<CallableSnippets>,
