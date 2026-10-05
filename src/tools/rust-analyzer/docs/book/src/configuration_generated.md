@@ -589,7 +589,7 @@ Term search fuel in "units of work" for autocompletion (Defaults to 1000).
 
 Default: `true`
 
-Complete turbofish (`::<>`) at the call site (if needs).
+Complete turbofish (`::<>`) at the call site (if needed).
 
 
 ## rust-analyzer.diagnostics.disabled {#diagnostics.disabled}

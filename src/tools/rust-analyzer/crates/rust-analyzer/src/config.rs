@@ -712,7 +712,7 @@ config_data! {
         /// Term search fuel in "units of work" for autocompletion (Defaults to 1000).
         completion_termSearch_fuel: usize = 1000,
 
-        /// Complete turbofish (`::<>`) at the call site (if needs).
+        /// Complete turbofish (`::<>`) at the call site (if needed).
         completion_turbofish_enable: bool = true,
 
         /// List of rust-analyzer diagnostics to disable.

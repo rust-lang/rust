@@ -1574,7 +1574,7 @@
                 "title": "Completion",
                 "properties": {
                     "rust-analyzer.completion.turbofish.enable": {
-                        "markdownDescription": "Complete turbofish (`::<>`) at the call site (if needs).",
+                        "markdownDescription": "Complete turbofish (`::<>`) at the call site (if needed).",
                         "default": true,
                         "type": "boolean"
                     }
