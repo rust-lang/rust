@@ -1899,6 +1899,7 @@ symbols! {
         rustc_peek_maybe_uninit,
         rustc_preserve_ub_checks,
         rustc_pretty_live_locals,
+        rustc_pretty_precise_liveness,
         rustc_pretty_transitive_live_locals,
         rustc_private,
         rustc_proc_macro_decls,

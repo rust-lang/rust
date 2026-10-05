@@ -1,0 +1,14 @@
+// MIR for `dereference` 0 dataflow
+
+fn dereference(_1: *mut u32) -> () {
+    let mut _0: ();
+
+    bb0: {
+        // early: [_1]
+        // late: []
+        (*_1) = const 1_u32;
+        // early: []
+        // late: []
+        return;
+    }
+}

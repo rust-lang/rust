@@ -630,6 +630,10 @@ impl CombineAttributeParser for RustcMirParser {
                             cx.expect_no_args(mi.args())?;
                             Some(RustcMirKind::PrettyLiveLocals)
                         }
+                        sym::rustc_pretty_precise_liveness => {
+                            cx.expect_no_args(mi.args())?;
+                            Some(RustcMirKind::PrettyPreciseLiveness)
+                        }
                         sym::rustc_pretty_transitive_live_locals => {
                             cx.expect_no_args(mi.args())?;
                             Some(RustcMirKind::PrettyTransitiveLiveLocals)
