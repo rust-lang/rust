@@ -18,7 +18,6 @@ LL | |     })
    |
 note: `'static` lifetime requirement from `spawn` introduced here
   --> $SRC_DIR/std/src/thread/functions.rs:LL:COL
-  ::: $SRC_DIR/std/src/thread/functions.rs:LL:COL
    |
    = note: lifetime requirement introduced here
   ::: $SRC_DIR/std/src/thread/functions.rs:LL:COL
