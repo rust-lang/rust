@@ -212,6 +212,7 @@ impl Path {
     pub fn is_empty(&self) -> bool {
         match self {
             Path::General((segments, _)) => segments.is_empty(),
+            // Path::NoSpan always has non-empty segments. Path::Ident is non-empty by definition.
             _ => false,
         }
     }
