@@ -16,6 +16,7 @@ pub(crate) mod feature_docs;
 mod grammar;
 mod lints;
 mod parser_inline_tests;
+mod target_features;
 
 impl flags::Codegen {
     pub(crate) fn run(self, _sh: &Shell) -> anyhow::Result<()> {
@@ -26,8 +27,10 @@ impl flags::Codegen {
                 parser_inline_tests::generate(self.check);
                 feature_docs::generate(self.check);
                 diagnostics_docs::generate(self.check);
-                // lints::generate(self.check) Updating clones the rust repo, so don't run it unless
+                // Updating clones the rust repo, so don't run these unless
                 // explicitly asked for
+                // lints::generate(self.check);
+                // target_features::generate(self.check);
             }
             flags::CodegenType::Grammar => grammar::generate(self.check),
             flags::CodegenType::AssistsDocTests => assists_doc_tests::generate(self.check),
@@ -35,6 +38,7 @@ impl flags::Codegen {
             flags::CodegenType::LintDefinitions => lints::generate(self.check),
             flags::CodegenType::ParserTests => parser_inline_tests::generate(self.check),
             flags::CodegenType::FeatureDocs => feature_docs::generate(self.check),
+            flags::CodegenType::TargetFeatures => target_features::generate(self.check),
         }
         Ok(())
     }
@@ -217,4 +221,25 @@ fn ensure_file_contents(cg: CodegenType, file: &Path, contents: &str, check: boo
 
 fn normalize_newlines(s: &str) -> String {
     s.replace("\r\n", "\n")
+}
+
+/// Performs a shallow clone of rust-lang/rust and returns the path to the cloned repository root
+fn clone_rust(sh: &Shell) -> PathBuf {
+    let rust_repo = project_root().join("./target/rust");
+    if rust_repo.exists() {
+        cmd!(sh, "git -C {rust_repo} pull --rebase").run().unwrap();
+    } else {
+        cmd!(sh, "git clone --depth=1 https://github.com/rust-lang/rust {rust_repo}")
+            .run()
+            .unwrap();
+    }
+    // need submodules for Cargo to parse the workspace correctly
+    cmd!(
+        sh,
+        "git -C {rust_repo} submodule update --init --recursive --depth=1 --
+         compiler library src/tools src/doc/book"
+    )
+    .run()
+    .unwrap();
+    rust_repo
 }
