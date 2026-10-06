@@ -15,7 +15,8 @@ where
     let outer_size = layout.layout.size();
 
     loop {
-        layout = layout.peel_transparent_wrappers(cx);
+        // We're only looking for scalar types that are non-ZST.
+        layout = layout.peel_transparent_wrappers_from_non_1zst(cx);
 
         return match layout.backend_repr {
             BackendRepr::Scalar(scalar) => match scalar.primitive() {
