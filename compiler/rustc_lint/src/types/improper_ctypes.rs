@@ -142,7 +142,7 @@ declare_lint_pass!(ImproperCTypesLint => [
 /// This may or may not be supported in the logic behind the `Unnormalized` wrapper,
 /// (FIXME?)
 /// but it should be enough for non-wrapped types to be as normalised as this lint needs them to be.
-fn maybe_normalize_erasing_regions<'tcx>(
+pub(super) fn maybe_normalize_erasing_regions<'tcx>(
     cx: &LateContext<'tcx>,
     value: Unnormalized<'tcx, Ty<'tcx>>,
 ) -> Ty<'tcx> {

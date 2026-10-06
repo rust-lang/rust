@@ -296,6 +296,19 @@ enum ComparisonOp {
     Other,
 }
 
+/// Whether the unsized type `ty` is known to carry no pointer metadata, i.e. a
+/// pointer to it is thin. This is the case for `extern type`s and for structs
+/// whose last field is one.
+fn pointee_has_no_metadata<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    match ty.ptr_metadata_ty_or_tail(cx.tcx, |t| {
+        improper_ctypes::maybe_normalize_erasing_regions(cx, t)
+    }) {
+        Ok(metadata) => metadata.is_unit(),
+        // The tail is a type parameter or a projection, so it may be wide.
+        Err(_) => false,
+    }
+}
+
 fn lint_wide_pointer<'tcx>(
     cx: &LateContext<'tcx>,
     e: &'tcx hir::Expr<'tcx>,
@@ -327,7 +340,7 @@ fn lint_wide_pointer<'tcx>(
             _ => return None,
         };
 
-        (!ty.is_sized(cx.tcx, cx.typing_env()))
+        (!ty.is_sized(cx.tcx, cx.typing_env()) && !pointee_has_no_metadata(cx, ty))
             .then(|| (refs, modifiers, matches!(ty.kind(), ty::Dynamic(_, _))))
     };
 
