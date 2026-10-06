@@ -1,10 +1,10 @@
 //@ revisions: old next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
+//@[next] check-pass
 //@[old] failure-status: 101
 //@[old] dont-check-compiler-stderr
 //@[old] known-bug: #125553
-//@[next] check-pass
 //@ edition:2021
 
 #![feature(type_alias_impl_trait)]

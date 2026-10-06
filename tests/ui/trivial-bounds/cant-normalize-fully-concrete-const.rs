@@ -6,7 +6,7 @@
 //@[old] known-bug: #135617
 
 // The bound `for<'a> (): Project` prevents us from normalizing the
-// array length. This caused and ICE with the new solver. The actual
+// array length. This caused an ICE with the new solver. The actual
 // behavior doesn't really matter here as long as it doesn't ICE.
 
 trait Project {
