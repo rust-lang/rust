@@ -28,9 +28,9 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::{self, AtomicOrdering, Instance, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
-use rustc_span::{Span, Symbol, bug};
+use rustc_span::{Span, bug};
 use rustc_target::callconv::FnAbi;
-use rustc_target::spec::{Arch, HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
+use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
 
 use crate::abi::FnAbiGccExt;
 use crate::builder;
@@ -196,165 +196,6 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             compare_exchange,
             &[dst, expected, src, weak, order, failure_order],
         )
-    }
-
-    /// GCC turns every 16-byte `__atomic_*` builtin into a libatomic call, even where LLVM inlines a
-    /// lock-free sequence. The always-SeqCst `__sync_*` builtins are still inlined there.
-    fn use_sync_atomics(&self, size: u64) -> bool {
-        let sess = self.sess();
-        size == 16
-            && self.supports_128bit_integers
-            && match sess.target.arch {
-                Arch::AArch64 => true,
-                Arch::X86_64 => {
-                    sess.internal_target_features.contains(&Symbol::intern("cmpxchg16b"))
-                }
-                _ => false,
-            }
-    }
-
-    /// Returns the value `dst` held before the operation.
-    fn sync_compare_and_swap(
-        &mut self,
-        dst: RValue<'gcc>,
-        expected: RValue<'gcc>,
-        desired: RValue<'gcc>,
-        size: u64,
-    ) -> RValue<'gcc> {
-        let compare_and_swap =
-            self.context.get_builtin_function(format!("__sync_val_compare_and_swap_{}", size));
-        let pointer_type = compare_and_swap.get_param(0).to_rvalue().get_type();
-        let dst = self.context.new_cast(self.location, dst, pointer_type);
-        let int_type = compare_and_swap.get_param(1).to_rvalue().get_type();
-        let expected = self.context.new_bitcast(self.location, expected, int_type);
-        let desired = self.context.new_bitcast(self.location, desired, int_type);
-        // A temporary keeps the call from being evaluated again wherever the result is used.
-        let previous = self.new_temp(self.current_func(), self.location, int_type);
-        let call =
-            self.context.new_call(self.location, compare_and_swap, &[dst, expected, desired]);
-        self.llbb().add_assignment(self.location, previous, call);
-        previous.to_rvalue()
-    }
-
-    /// Stores `new_value(current)` with a compare-and-swap loop and returns the replaced value.
-    fn sync_compare_and_swap_loop(
-        &mut self,
-        dst: RValue<'gcc>,
-        typ: Type<'gcc>,
-        size: u64,
-        new_value: impl FnOnce(&mut Self, RValue<'gcc>) -> RValue<'gcc>,
-    ) -> RValue<'gcc> {
-        let func = self.current_func();
-        let int_type = self.type_ix(size * 8);
-        let current = self.new_temp(func, self.location, int_type);
-        // Any guess is correct since the swap only succeeds when the guess was right.
-        self.llbb().add_assignment(self.location, current, self.context.new_rvalue_zero(int_type));
-
-        let loop_block = func.new_block("sync_compare_and_swap_loop");
-        let after_block = func.new_block("after_sync_compare_and_swap_loop");
-        self.llbb().end_with_jump(self.location, loop_block);
-        self.switch_to_block(loop_block);
-
-        let desired = new_value(self, current.to_rvalue());
-        let previous = self.sync_compare_and_swap(dst, current.to_rvalue(), desired, size);
-        let previous = self.context.new_bitcast(self.location, previous, int_type);
-        let swapped = self.new_temp(func, self.location, self.bool_type);
-        let comparison = self.context.new_comparison(
-            self.location,
-            ComparisonOp::Equals,
-            previous,
-            current.to_rvalue(),
-        );
-        self.llbb().add_assignment(self.location, swapped, comparison);
-        self.llbb().add_assignment(self.location, current, previous);
-        self.llbb().end_with_conditional(
-            self.location,
-            swapped.to_rvalue(),
-            after_block,
-            loop_block,
-        );
-        self.switch_to_block(after_block);
-
-        self.context.new_bitcast(self.location, current.to_rvalue(), typ)
-    }
-
-    fn sync_atomic_rmw(
-        &mut self,
-        op: AtomicRmwBinOp,
-        dst: RValue<'gcc>,
-        src: RValue<'gcc>,
-        size: u64,
-    ) -> RValue<'gcc> {
-        let src_type = src.get_type();
-        let name = match op {
-            AtomicRmwBinOp::AtomicAdd => "add",
-            AtomicRmwBinOp::AtomicSub => "sub",
-            AtomicRmwBinOp::AtomicAnd => "and",
-            AtomicRmwBinOp::AtomicOr => "or",
-            AtomicRmwBinOp::AtomicXor => "xor",
-            AtomicRmwBinOp::AtomicXchg => {
-                return self.sync_compare_and_swap_loop(dst, src_type, size, |builder, current| {
-                    builder.context.new_bitcast(builder.location, src, current.get_type())
-                });
-            }
-            // `__sync_fetch_and_nand` emits a note that crashes libgccjit's diagnostic printer.
-            AtomicRmwBinOp::AtomicNand => {
-                return self.sync_compare_and_swap_loop(dst, src_type, size, |builder, current| {
-                    let int_type = current.get_type();
-                    let src = builder.context.new_bitcast(builder.location, src, int_type);
-                    let and = builder.context.new_binary_op(
-                        builder.location,
-                        BinaryOp::BitwiseAnd,
-                        int_type,
-                        current,
-                        src,
-                    );
-                    builder.context.new_unary_op(
-                        builder.location,
-                        UnaryOp::BitwiseNegate,
-                        int_type,
-                        and,
-                    )
-                });
-            }
-            AtomicRmwBinOp::AtomicMax
-            | AtomicRmwBinOp::AtomicMin
-            | AtomicRmwBinOp::AtomicUMax
-            | AtomicRmwBinOp::AtomicUMin => {
-                let (comparison_type, keep_current_operator) = match op {
-                    AtomicRmwBinOp::AtomicMax => {
-                        (src_type.to_signed(self), ComparisonOp::GreaterThanEquals)
-                    }
-                    AtomicRmwBinOp::AtomicMin => {
-                        (src_type.to_signed(self), ComparisonOp::LessThanEquals)
-                    }
-                    AtomicRmwBinOp::AtomicUMax => {
-                        (src_type.to_unsigned(self), ComparisonOp::GreaterThanEquals)
-                    }
-                    _ => (src_type.to_unsigned(self), ComparisonOp::LessThanEquals),
-                };
-                return self.sync_compare_and_swap_loop(dst, src_type, size, |builder, current| {
-                    let keep_current = builder.context.new_comparison(
-                        builder.location,
-                        keep_current_operator,
-                        builder.context.new_bitcast(builder.location, current, comparison_type),
-                        builder.context.new_bitcast(builder.location, src, comparison_type),
-                    );
-                    let src =
-                        builder.context.new_bitcast(builder.location, src, current.get_type());
-                    builder.select(keep_current, current, src)
-                });
-            }
-        };
-
-        let fetch_and_op =
-            self.context.get_builtin_function(format!("__sync_fetch_and_{}_{}", name, size));
-        let pointer_type = fetch_and_op.get_param(0).to_rvalue().get_type();
-        let dst = self.context.new_cast(self.location, dst, pointer_type);
-        let int_type = fetch_and_op.get_param(1).to_rvalue().get_type();
-        let src = self.context.new_bitcast(self.location, src, int_type);
-        let result = self.context.new_call(self.location, fetch_and_op, &[dst, src]);
-        self.context.new_bitcast(self.location, result, src_type)
     }
 
     pub fn assign(&self, lvalue: LValue<'gcc>, value: RValue<'gcc>) {
@@ -1295,9 +1136,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         size: Size,
     ) -> RValue<'gcc> {
         if self.use_sync_atomics(size.bytes()) {
-            let zero = self.context.new_rvalue_zero(self.type_ix(size.bits()));
-            let value = self.sync_compare_and_swap(ptr, zero, zero, size.bytes());
-            return self.context.new_bitcast(self.location, value, ty);
+            return self.sync_atomic_load(ty, ptr, size);
         }
 
         // FIXME(antoyo): use ty.
@@ -1471,11 +1310,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         size: Size,
     ) {
         if self.use_sync_atomics(size.bytes()) {
-            let typ = value.get_type();
-            self.sync_compare_and_swap_loop(ptr, typ, size.bytes(), |builder, current| {
-                builder.context.new_bitcast(builder.location, value, current.get_type())
-            });
-            return;
+            return self.sync_atomic_store(value, ptr, size);
         }
 
         // FIXME(antoyo): handle alignment.
@@ -1974,22 +1809,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         failure_order: AtomicOrdering,
         weak: bool,
     ) -> (RValue<'gcc>, RValue<'gcc>) {
-        let expected = self.current_func().new_local(None, cmp.get_type(), "expected");
-        self.llbb().add_assignment(None, expected, cmp);
         let size = get_maybe_pointer_size(src) as u64;
         if self.use_sync_atomics(size) {
-            let previous = self.sync_compare_and_swap(dst, expected.to_rvalue(), src, size);
-            let previous = self.context.new_bitcast(self.location, previous, cmp.get_type());
-            let success = self.new_temp(self.current_func(), self.location, self.bool_type);
-            let comparison = self.context.new_comparison(
-                self.location,
-                ComparisonOp::Equals,
-                previous,
-                expected.to_rvalue(),
-            );
-            self.llbb().add_assignment(self.location, success, comparison);
-            return (previous, success.to_rvalue());
+            return self.sync_atomic_cmpxchg(dst, cmp, src, size);
         }
+        let expected = self.current_func().new_local(None, cmp.get_type(), "expected");
+        self.llbb().add_assignment(None, expected, cmp);
         // NOTE: gcc doesn't support a failure memory model that is stronger than the success
         // memory model.
         let order = if failure_order as i32 > order as i32 { failure_order } else { order };
@@ -2013,7 +1838,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     ) -> RValue<'gcc> {
         let size = get_maybe_pointer_size(src);
         if self.use_sync_atomics(size as u64) {
-            return self.sync_atomic_rmw(op, dst, src, size as u64);
+            return self.sync_atomic_rmw(op, dst, src, Size::from_bytes(size));
         }
         let name = match op {
             AtomicRmwBinOp::AtomicXchg => format!("__atomic_exchange_{}", size),

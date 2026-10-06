@@ -49,6 +49,7 @@ extern crate rustc_driver;
 mod abi;
 mod allocator;
 mod asm;
+mod atomics;
 mod attributes;
 mod back;
 mod base;
