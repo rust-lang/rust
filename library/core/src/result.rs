@@ -2168,7 +2168,7 @@ pub struct TryResult(());
 const impl<T, E> ops::Try for Result<T, E> {
     type Kind = TryResult;
     type Output = T;
-    type Residual = E;
+    type Break = E;
 
     #[inline]
     fn from_output(output: Self::Output) -> Self {
@@ -2176,7 +2176,7 @@ const impl<T, E> ops::Try for Result<T, E> {
     }
 
     #[inline]
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+    fn branch(self) -> ControlFlow<Self::Break, Self::Output> {
         match self {
             Ok(v) => ControlFlow::Continue(v),
             Err(e) => ControlFlow::Break(e),
@@ -2186,10 +2186,10 @@ const impl<T, E> ops::Try for Result<T, E> {
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-const impl<T, E, F: [const] From<E>> ops::FromResidual<E> for Result<T, F> {
+const impl<T, E, F: [const] From<E>> ops::TryFromBreak<E> for Result<T, F> {
     #[inline]
     #[track_caller]
-    fn from_residual(e: E) -> Self {
+    fn from_break(e: E) -> Self {
         Err(From::from(e))
     }
 }

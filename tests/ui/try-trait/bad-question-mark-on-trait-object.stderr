@@ -32,8 +32,8 @@ note: `X` needs to implement `From<E>`
 LL | struct X;
    | ^^^^^^^^
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-help: the trait `FromResidual<E, TryResult>` is not implemented for `Result<(), X>`
-      but trait `FromResidual<X, TryResult>` is implemented for it
+help: the trait `TryFromBreak<E, TryResult>` is not implemented for `Result<(), X>`
+      but trait `TryFromBreak<X, TryResult>` is implemented for it
   --> $SRC_DIR/core/src/result.rs:LL:COL
    = help: for that trait implementation, expected `X`, found `E`
 

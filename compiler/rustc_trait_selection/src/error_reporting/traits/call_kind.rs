@@ -23,7 +23,7 @@ pub enum CallDesugaringKind {
     ForLoopNext,
     /// x? calls x.branch()
     QuestionBranch,
-    /// x? calls type_of(x)::from_residual()
+    /// x? calls type_of(x)::from_break()
     QuestionFromResidual,
     /// try { ..; x } calls type_of(x)::from_output(x)
     TryBlockFromOutput,
@@ -52,7 +52,7 @@ impl CallDesugaringKind {
             Self::QuestionBranch | Self::TryBlockFromOutput => {
                 tcx.require_lang_item(LangItem::Try, DUMMY_SP)
             }
-            Self::QuestionFromResidual => tcx.get_diagnostic_item(sym::FromResidual).unwrap(),
+            Self::QuestionFromResidual => tcx.get_diagnostic_item(sym::TryFromBreak).unwrap(),
             Self::Await => tcx.get_diagnostic_item(sym::IntoFuture).unwrap(),
         }
     }

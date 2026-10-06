@@ -954,21 +954,28 @@ impl<'tcx, T> ops::Try for InterpResult<'tcx, T> {
     #[cfg(bootstrap)]
     type Residual = InterpResult<'tcx, convert::Infallible>;
     #[cfg(not(bootstrap))]
-    type Residual = InterpErrorInfo<'tcx>;
+    type Break = InterpErrorInfo<'tcx>;
 
     #[inline]
     fn from_output(output: Self::Output) -> Self {
         InterpResult::new(Ok(output))
     }
 
+    #[cfg(not(bootstrap))]
+    #[inline]
+    fn branch(self) -> ops::ControlFlow<Self::Break, Self::Output> {
+        match self.disarm() {
+            Ok(v) => ops::ControlFlow::Continue(v),
+            Err(e) => ops::ControlFlow::Break(e),
+        }
+    }
+
+    #[cfg(bootstrap)]
     #[inline]
     fn branch(self) -> ops::ControlFlow<Self::Residual, Self::Output> {
         match self.disarm() {
             Ok(v) => ops::ControlFlow::Continue(v),
-            #[cfg(bootstrap)]
             Err(e) => ops::ControlFlow::Break(InterpResult::new(Err(e))),
-            #[cfg(not(bootstrap))]
-            Err(e) => ops::ControlFlow::Break(e),
         }
     }
 }
@@ -995,10 +1002,10 @@ impl<'tcx, T> ops::FromResidual for InterpResult<'tcx, T> {
 }
 
 #[cfg(not(bootstrap))]
-impl<'tcx, T, E: Into<InterpErrorInfo<'tcx>>> ops::FromResidual<E> for InterpResult<'tcx, T> {
+impl<'tcx, T, E: Into<InterpErrorInfo<'tcx>>> ops::TryFromBreak<E> for InterpResult<'tcx, T> {
     #[inline]
     #[track_caller]
-    fn from_residual(e: E) -> Self {
+    fn from_break(e: E) -> Self {
         Self::new(Err(e.into()))
     }
 }

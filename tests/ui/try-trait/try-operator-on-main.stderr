@@ -1,4 +1,4 @@
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `TryFromBreak`)
   --> $DIR/try-operator-on-main.rs:7:31
    |
 LL | fn main() {

@@ -10,14 +10,14 @@
 #![feature(const_trait_impl)]
 #![feature(const_try)]
 
-use std::ops::{ControlFlow, FromResidual, Try};
+use std::ops::{ControlFlow, TryFromBreak, Try};
 use std::result::TryResult;
 
 struct TryMe;
 struct Error;
 
-const impl FromResidual<Error> for TryMe {
-    fn from_residual(residual: Error) -> Self {
+const impl TryFromBreak<Error> for TryMe {
+    fn from_break(residual: Error) -> Self {
         TryMe
     }
 }
@@ -25,11 +25,11 @@ const impl FromResidual<Error> for TryMe {
 const impl Try for TryMe {
     type Kind = TryResult;
     type Output = ();
-    type Residual = Error;
+    type Break = Error;
     fn from_output(output: Self::Output) -> Self {
         TryMe
     }
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+    fn branch(self) -> ControlFlow<Self::Break, Self::Output> {
         ControlFlow::Break(Error)
     }
 }

@@ -8,7 +8,7 @@
 #![feature(try_trait_v2)]
 #![stable(feature = "foo", since = "1.0")]
 
-use std::ops::{ControlFlow, FromResidual, Try, TryAs};
+use std::ops::{ControlFlow, TryFromBreak, Try, TryAs};
 
 #[stable(feature = "foo", since = "1.0")]
 pub struct T;
@@ -17,7 +17,7 @@ pub struct T;
 #[rustc_const_unstable(feature = "const_t_try", issue = "none")]
 const impl Try for T {
     type Output = T;
-    type Residual = T;
+    type Break = T;
 
     fn from_output(t: T) -> T {
         t
@@ -36,8 +36,8 @@ const impl TryAs<T> for T {
 
 #[stable(feature = "foo", since = "1.0")]
 #[rustc_const_unstable(feature = "const_t_try", issue = "none")]
-const impl FromResidual for T {
-    fn from_residual(t: T) -> T {
+const impl TryFromBreak for T {
+    fn from_break(t: T) -> T {
         t
     }
 }

@@ -2868,7 +2868,7 @@ pub struct TryOption(());
 const impl<T> ops::Try for Option<T> {
     type Kind = TryOption;
     type Output = T;
-    type Residual = ();
+    type Break = ();
 
     #[inline]
     fn from_output(output: Self::Output) -> Self {
@@ -2876,7 +2876,7 @@ const impl<T> ops::Try for Option<T> {
     }
 
     #[inline]
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+    fn branch(self) -> ControlFlow<Self::Break, Self::Output> {
         match self {
             Some(v) => ControlFlow::Continue(v),
             None => ControlFlow::Break(()),
@@ -2888,9 +2888,9 @@ const impl<T> ops::Try for Option<T> {
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 // Note: manually specifying the residual type instead of using the default to work around
 // https://github.com/rust-lang/rust/issues/99940
-const impl<T> ops::FromResidual for Option<T> {
+const impl<T> ops::TryFromBreak for Option<T> {
     #[inline]
-    fn from_residual(_: ()) -> Self {
+    fn from_break(_: ()) -> Self {
         None
     }
 }

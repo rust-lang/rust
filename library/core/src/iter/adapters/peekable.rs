@@ -144,7 +144,7 @@ where
                 ControlFlow::Continue(acc) => f(acc, v),
                 ControlFlow::Break(r) => {
                     self.peeked = Some(Some(v));
-                    R::from_residual(r)
+                    R::from_break(r)
                 }
             },
             None => self.iter.try_rfold(init, f),

@@ -15,7 +15,7 @@
       scope 1 {
           debug residual => _6;
           scope 2 {
-              scope 8 (inlined #[track_caller] <Result<i32, i32> as FromResidual<Result<!, i32>>>::from_residual) {
+              scope 8 (inlined #[track_caller] <Result<i32, i32> as TryFromBreak<Result<!, i32>>>::from_break) {
                   let mut _14: isize;
                   let _15: i32;
                   let mut _16: i32;
@@ -140,4 +140,3 @@
 +         goto -> bb2;
       }
   }
-  

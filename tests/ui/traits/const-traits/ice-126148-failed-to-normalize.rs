@@ -1,17 +1,17 @@
 #![allow(incomplete_features)]
 #![feature(const_trait_impl, try_trait_v2, const_try)]
-use std::ops::{FromResidual, Residual, Try};
+use std::ops::{TryFromBreak, Try};
 
 struct TryMe;
 struct Error;
 
-const impl FromResidual<Error> for TryMe {}
+const impl TryFromBreak<Error> for TryMe {}
 //~^ ERROR not all trait items implemented
 
 const impl Try for TryMe {
     //~^ ERROR not all trait items implemented
     type Output = ();
-    type Residual = Error;
+    type Break = Error;
 }
 
 const impl TryAs<()> for Error {

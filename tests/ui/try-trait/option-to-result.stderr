@@ -7,8 +7,8 @@ LL |     let a:Option<()> = Some(());
 LL |     a?;
    |      ^ use `.ok_or(...)?` to provide an error compatible with `Result<(), ()>`
    |
-help: the trait `FromResidual<(), TryOption>` is not implemented for `Result<(), ()>`
-      but trait `FromResidual<(), TryResult>` is implemented for it
+help: the trait `TryFromBreak<(), TryOption>` is not implemented for `Result<(), ()>`
+      but trait `TryFromBreak<(), TryResult>` is implemented for it
   --> $SRC_DIR/core/src/result.rs:LL:COL
    = help: for that trait implementation, expected `TryResult`, found `TryOption`
 
@@ -21,8 +21,8 @@ LL |     let a:Result<i32, i32> = Ok(5);
 LL |     a?;
    |      ^ use `.ok()?` if you want to discard the `i32` error information
    |
-help: the trait `FromResidual<i32, TryResult>` is not implemented for `Option<i32>`
-      but trait `FromResidual<(), TryOption>` is implemented for it
+help: the trait `TryFromBreak<i32, TryResult>` is not implemented for `Option<i32>`
+      but trait `TryFromBreak<(), TryOption>` is implemented for it
   --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error: aborting due to 2 previous errors

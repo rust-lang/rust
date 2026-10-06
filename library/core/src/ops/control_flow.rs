@@ -110,7 +110,7 @@ pub struct TryControlFlow(());
 const impl<B, C> ops::Try for ControlFlow<B, C> {
     type Kind = TryControlFlow;
     type Output = C;
-    type Residual = B;
+    type Break = B;
 
     #[inline]
     fn from_output(output: Self::Output) -> Self {
@@ -118,21 +118,16 @@ const impl<B, C> ops::Try for ControlFlow<B, C> {
     }
 
     #[inline]
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
-        match self {
-            ControlFlow::Continue(c) => ControlFlow::Continue(c),
-            ControlFlow::Break(b) => ControlFlow::Break(b),
-        }
+    fn branch(self) -> Self {
+        self
     }
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-// Note: manually specifying the residual type instead of using the default to work around
-// https://github.com/rust-lang/rust/issues/99940
-const impl<B, C> ops::FromResidual for ControlFlow<B, C> {
+const impl<B, C> ops::TryFromBreak for ControlFlow<B, C> {
     #[inline]
-    fn from_residual(b: B) -> Self {
+    fn from_break(b: B) -> Self {
         ControlFlow::Break(b)
     }
 }
@@ -438,7 +433,7 @@ impl<R: ops::Try> ControlFlow<R, R::Output> {
     {
         match R::branch(r) {
             ControlFlow::Continue(v) => ControlFlow::Continue(v),
-            ControlFlow::Break(v) => ControlFlow::Break(R::from_residual(v)),
+            ControlFlow::Break(v) => ControlFlow::Break(R::from_break(v)),
         }
     }
 

@@ -48,8 +48,8 @@ LL | fn result_to_option() -> Option<u16> {
 LL |     Some(Err("hello")?)
    |                      ^ use `.ok()?` if you want to discard the `&str` error information
    |
-help: the trait `FromResidual<&str, TryResult>` is not implemented for `Option<u16>`
-      but trait `FromResidual<(), TryOption>` is implemented for it
+help: the trait `TryFromBreak<&str, TryResult>` is not implemented for `Option<u16>`
+      but trait `TryFromBreak<(), TryOption>` is implemented for it
   --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error[E0277]: the `?` operator can only be used on `Option`s in a function that returns `Option`
@@ -60,8 +60,8 @@ LL | fn control_flow_to_option() -> Option<u64> {
 LL |     Some(ControlFlow::Break(123)?)
    |                                 ^ this `?` produces `{integer}`, which is incompatible with `Option<u64>`
    |
-help: the trait `FromResidual<{integer}, ops::control_flow::TryControlFlow>` is not implemented for `Option<u64>`
-      but trait `FromResidual<(), TryOption>` is implemented for it
+help: the trait `TryFromBreak<{integer}, ops::control_flow::TryControlFlow>` is not implemented for `Option<u64>`
+      but trait `TryFromBreak<(), TryOption>` is implemented for it
   --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error[E0277]: the `?` operator can only be used on `ControlFlow`s in a function that returns `ControlFlow`
@@ -72,8 +72,8 @@ LL | fn result_to_control_flow() -> ControlFlow<String> {
 LL |     ControlFlow::Continue(Err("hello")?)
    |                                       ^ this `?` produces `&str`, which is incompatible with `ControlFlow<String>`
    |
-help: the trait `FromResidual<&str, TryResult>` is not implemented for `ControlFlow<String>`
-      but trait `FromResidual<String, ops::control_flow::TryControlFlow>` is implemented for it
+help: the trait `TryFromBreak<&str, TryResult>` is not implemented for `ControlFlow<String>`
+      but trait `TryFromBreak<String, ops::control_flow::TryControlFlow>` is implemented for it
   --> $SRC_DIR/core/src/ops/control_flow.rs:LL:COL
 
 error[E0277]: the `?` operator can only be used on `ControlFlow`s in a function that returns `ControlFlow`
@@ -84,8 +84,8 @@ LL | fn option_to_control_flow() -> ControlFlow<u64> {
 LL |     Some(3)?;
    |            ^ this `?` produces `()`, which is incompatible with `ControlFlow<u64>`
    |
-help: the trait `FromResidual<(), TryOption>` is not implemented for `ControlFlow<u64>`
-      but trait `FromResidual<u64, ops::control_flow::TryControlFlow>` is implemented for it
+help: the trait `TryFromBreak<(), TryOption>` is not implemented for `ControlFlow<u64>`
+      but trait `TryFromBreak<u64, ops::control_flow::TryControlFlow>` is implemented for it
   --> $SRC_DIR/core/src/ops/control_flow.rs:LL:COL
 
 error[E0277]: the `?` operator in a function that returns `ControlFlow<B, _>` can only be used on other `ControlFlow<B, _>`s (with the same Break type)
@@ -97,8 +97,8 @@ LL |     ControlFlow::Break(4_u8)?;
    |                             ^ this `?` produces `u8`, which is incompatible with `ControlFlow<i64>`
    |
    = note: unlike `Result`, there's no `From`-conversion performed for `ControlFlow`
-help: the trait `FromResidual<u8, TryControlFlow>` is not implemented for `ControlFlow<i64>`
-      but trait `FromResidual<i64, TryControlFlow>` is implemented for it
+help: the trait `TryFromBreak<u8, TryControlFlow>` is not implemented for `ControlFlow<i64>`
+      but trait `TryFromBreak<i64, TryControlFlow>` is implemented for it
   --> $SRC_DIR/core/src/ops/control_flow.rs:LL:COL
    = help: for that trait implementation, expected `i64`, found `u8`
 

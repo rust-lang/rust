@@ -234,7 +234,7 @@ const impl<T> From<T> for Poll<T> {
 impl<T, E> ops::Try for Poll<Result<T, E>> {
     type Kind = TryResult;
     type Output = Poll<T>;
-    type Residual = E;
+    type Break = E;
 
     #[inline]
     fn from_output(c: Self::Output) -> Self {
@@ -242,7 +242,7 @@ impl<T, E> ops::Try for Poll<Result<T, E>> {
     }
 
     #[inline]
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+    fn branch(self) -> ControlFlow<Self::Break, Self::Output> {
         match self {
             Poll::Ready(Ok(x)) => ControlFlow::Continue(Poll::Ready(x)),
             Poll::Ready(Err(e)) => ControlFlow::Break(e),
@@ -252,9 +252,9 @@ impl<T, E> ops::Try for Poll<Result<T, E>> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-impl<T, E, F: From<E>> ops::FromResidual<E, TryResult> for Poll<Result<T, F>> {
+impl<T, E, F: From<E>> ops::TryFromBreak<E, TryResult> for Poll<Result<T, F>> {
     #[inline]
-    fn from_residual(e: E) -> Self {
+    fn from_break(e: E) -> Self {
         Poll::Ready(Err(From::from(e)))
     }
 }
@@ -263,7 +263,7 @@ impl<T, E, F: From<E>> ops::FromResidual<E, TryResult> for Poll<Result<T, F>> {
 impl<T, E> ops::Try for Poll<Option<Result<T, E>>> {
     type Kind = TryResult;
     type Output = Poll<Option<T>>;
-    type Residual = E;
+    type Break = E;
 
     #[inline]
     fn from_output(c: Self::Output) -> Self {
@@ -271,7 +271,7 @@ impl<T, E> ops::Try for Poll<Option<Result<T, E>>> {
     }
 
     #[inline]
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+    fn branch(self) -> ControlFlow<Self::Break, Self::Output> {
         match self {
             Poll::Ready(Some(Ok(x))) => ControlFlow::Continue(Poll::Ready(Some(x))),
             Poll::Ready(Some(Err(e))) => ControlFlow::Break(e),
@@ -282,9 +282,9 @@ impl<T, E> ops::Try for Poll<Option<Result<T, E>>> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-impl<T, E, F: From<E>> ops::FromResidual<E, TryResult> for Poll<Option<Result<T, F>>> {
+impl<T, E, F: From<E>> ops::TryFromBreak<E, TryResult> for Poll<Option<Result<T, F>>> {
     #[inline]
-    fn from_residual(e: E) -> Self {
+    fn from_break(e: E) -> Self {
         Poll::Ready(Some(Err(From::from(e))))
     }
 }

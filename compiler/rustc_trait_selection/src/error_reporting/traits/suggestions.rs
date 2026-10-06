@@ -4609,11 +4609,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let mut parent_trait_pred =
                     self.deeply_resolve_ignoring_regions(data.derived.parent_trait_pred);
                 let parent_def_id = parent_trait_pred.def_id();
-                if tcx.is_diagnostic_item(sym::FromResidual, parent_def_id)
+                if tcx.is_diagnostic_item(sym::TryFromBreak, parent_def_id)
                     && !tcx.features().enabled(sym::try_trait_v2)
                 {
                     // If `#![feature(try_trait_v2)]` is not enabled, then there's no point on
-                    // talking about `FromResidual<Result<A, B>>`, as the end user has nothing they
+                    // talking about `TryFromBreak<Result<A, B>>`, as the end user has nothing they
                     // can do about it. As far as they are concerned, `?` is compiler magic.
                     return;
                 }
@@ -6504,8 +6504,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let node = self.tcx.hir_node_by_def_id(obligation.cause.body_def_id);
         if let Some((fn_decl, body_id)) = choose_suggest_items(self.tcx, node)
             && let hir::FnRetTy::DefaultReturn(ret_span) = fn_decl.output
-            // () as FromResidual<_, TryResult>
-            && self.tcx.is_diagnostic_item(sym::FromResidual, trait_pred.def_id())
+            // () as TryFromBreak<_, TryResult>
+            && self.tcx.is_diagnostic_item(sym::TryFromBreak, trait_pred.def_id())
             && trait_pred.skip_binder().trait_ref.args.type_at(0).is_unit()
             && let ty::Adt(def, _) = trait_pred.skip_binder().trait_ref.args.type_at(2).kind()
             && self.tcx.is_diagnostic_item(sym::TryResult, def.did())

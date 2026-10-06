@@ -66,7 +66,7 @@ fn test() -> Option<Vec<u32>> {
         _8 = copy ((_5 as Break).0: std::option::Option<!>);
         StorageLive(_10);
         _10 = copy _8;
-        _0 = <Option<Vec<u32>> as FromResidual<Option<!>>>::from_residual(move _10) -> [return: bb6, unwind: bb13];
+        _0 = <Option<Vec<u32>> as TryFromBreak<Option<!>>>::from_break(move _10) -> [return: bb6, unwind: bb13];
     }
 
     bb6: {

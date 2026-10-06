@@ -9,7 +9,7 @@ use crate::array;
 use crate::cmp::{self, KeyAndValue, Ordering};
 use crate::marker::Destruct;
 use crate::num::NonZero;
-use crate::ops::{ControlFlow, FromResidual, Try, TryAs};
+use crate::ops::{ControlFlow, Try, TryAs, TryFromBreak};
 
 fn _assert_is_dyn_compatible(_: &dyn Iterator<Item = ()>) {}
 
@@ -2793,7 +2793,7 @@ pub const trait Iterator {
         };
 
         match self.try_fold(first, f).branch() {
-            ControlFlow::Break(r) => FromResidual::from_residual(r),
+            ControlFlow::Break(r) => TryFromBreak::from_break(r),
             ControlFlow::Continue(i) => Try::from_output(Some(i)),
         }
     }
@@ -3077,7 +3077,7 @@ pub const trait Iterator {
             move |(), x| match f(&x).branch() {
                 ControlFlow::Continue(false) => ControlFlow::Continue(()),
                 ControlFlow::Continue(true) => ControlFlow::Break(Try::from_output(Some(x))),
-                ControlFlow::Break(r) => ControlFlow::Break(FromResidual::from_residual(r)),
+                ControlFlow::Break(r) => ControlFlow::Break(TryFromBreak::from_break(r)),
             }
         }
 

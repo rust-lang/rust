@@ -6,7 +6,7 @@ LL |     test()?;
    |
    = help: the nightly-only, unstable trait `Try` is not implemented for `impl Future<Output = ()>`
 
-error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `TryFromBreak`)
   --> $DIR/issue-84841.rs:9:11
    |
 LL |   async fn foo() {

@@ -1,4 +1,4 @@
-error[E0277]: the `?` operator can only be used in an async block that returns `Result` or `Option` (or another type that implements `FromResidual`)
+error[E0277]: the `?` operator can only be used in an async block that returns `Result` or `Option` (or another type that implements `TryFromBreak`)
   --> $DIR/try-on-option-in-async.rs:7:10
    |
 LL |     async {
@@ -7,7 +7,7 @@ LL |         let x: Option<u32> = None;
 LL |         x?;
    |          ^ cannot use the `?` operator in an async block that returns `{integer}`
 
-error[E0277]: the `?` operator can only be used in an async closure that returns `Result` or `Option` (or another type that implements `FromResidual`)
+error[E0277]: the `?` operator can only be used in an async closure that returns `Result` or `Option` (or another type that implements `TryFromBreak`)
   --> $DIR/try-on-option-in-async.rs:16:10
    |
 LL |       let async_closure = async || {
@@ -19,7 +19,7 @@ LL | |         22_u32
 LL | |     };
    | |_____- this function should return `Result` or `Option` to accept `?`
 
-error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `TryFromBreak`)
   --> $DIR/try-on-option-in-async.rs:25:6
    |
 LL |   async fn an_async_function() -> u32 {

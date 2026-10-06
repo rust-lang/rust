@@ -13,7 +13,7 @@ use crate::intrinsics::transmute_unchecked;
 use crate::iter::{TrustedLen, repeat_n};
 use crate::marker::Destruct;
 use crate::mem::{self, ManuallyDrop, MaybeUninit};
-use crate::ops::{ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Try, TryAs};
+use crate::ops::{ControlFlow, Index, IndexMut, NeverShortCircuit, Try, TryAs, TryFromBreak};
 use crate::ptr::{null, null_mut};
 use crate::slice::{Iter, IterMut};
 use crate::{fmt, ptr};
@@ -150,7 +150,7 @@ where
 {
     let mut array = [const { MaybeUninit::uninit() }; N];
     match try_from_fn_erased(&mut array, cb) {
-        ControlFlow::Break(r) => FromResidual::from_residual(r),
+        ControlFlow::Break(r) => TryFromBreak::from_break(r),
         ControlFlow::Continue(()) => {
             // SAFETY: All elements of the array were populated.
             try { unsafe { MaybeUninit::array_assume_init(array) } }
@@ -921,7 +921,7 @@ impl<T, const N: usize> [T; N] {
 const fn try_from_fn_erased<R: [const] Try<Output: [const] Destruct>>(
     buffer: &mut [MaybeUninit<R::Output>],
     mut generator: impl [const] FnMut(usize) -> R + [const] Destruct,
-) -> ControlFlow<R::Residual> {
+) -> ControlFlow<R::Break> {
     let mut guard = Guard { array_mut: buffer, initialized: 0 };
 
     while guard.initialized < guard.array_mut.len() {

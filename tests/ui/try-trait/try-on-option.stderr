@@ -7,12 +7,12 @@ LL |     let x: Option<u32> = None;
 LL |     x?;
    |      ^ use `.ok_or(...)?` to provide an error compatible with `Result<u32, ()>`
    |
-help: the trait `FromResidual<(), TryOption>` is not implemented for `Result<u32, ()>`
-      but trait `FromResidual<(), TryResult>` is implemented for it
+help: the trait `TryFromBreak<(), TryOption>` is not implemented for `Result<u32, ()>`
+      but trait `TryFromBreak<(), TryResult>` is implemented for it
   --> $SRC_DIR/core/src/result.rs:LL:COL
    = help: for that trait implementation, expected `TryResult`, found `TryOption`
 
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `TryFromBreak`)
   --> $DIR/try-on-option.rs:11:6
    |
 LL | fn bar() -> u32 {
