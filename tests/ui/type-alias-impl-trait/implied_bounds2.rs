@@ -1,4 +1,10 @@
-//@ check-pass
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] failure-status: 101
+//@[next] dont-check-compiler-stderr
+//@[next] known-bug: trait-system-refactor-initiative#293
+//@[old] check-pass
 
 #![feature(type_alias_impl_trait)]
 
