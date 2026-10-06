@@ -364,6 +364,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             ReturnSlot::Direct => (Cow::Borrowed(args), ReturnSlot::Direct),
             ReturnSlot::Indirect(sret_ptr) => {
                 let mut args = args.to_vec();
+                // Prepend the indirect return pointer
                 args.insert(0, sret_ptr);
                 (Cow::Owned(args), ReturnSlot::Direct)
             }
@@ -624,9 +625,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn ret_void(&mut self) {
-        if let Some(&Some(return_value)) =
+        if let Some(&return_value) =
             self.functions_with_indirect_return.borrow().get(&self.current_func())
         {
+            // cg_ssa returns nothing for an indirect return, but the GCC function returns the
+            // value itself: GCC copies it to the caller's slot and returns the hidden pointer.
             self.llbb().end_with_return(self.location, return_value.to_rvalue());
             return;
         }

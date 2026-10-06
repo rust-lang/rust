@@ -26,7 +26,6 @@ impl AbiBuilderMethods for Builder<'_, '_, '_> {
             // cg_ssa sees the return pointer as the first parameter, but in GCC it is a hidden
             // parameter: hand out the address of the local holding the return value instead.
             if index == 0 {
-                let return_value = return_value.expect("indirect return of a declared function");
                 return return_value.get_address(self.location);
             }
             index -= 1;
