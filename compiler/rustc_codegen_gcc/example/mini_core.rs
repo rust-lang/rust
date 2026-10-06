@@ -488,7 +488,7 @@ pub enum Option<T> {
 pub use Option::*;
 
 #[lang = "phantom_data"]
-pub struct PhantomData<T: PointeeSized>;
+pub struct PhantomData<#[rustc_force_variance(covariant)] T: PointeeSized>;
 
 #[lang = "fn_once"]
 #[rustc_paren_sugar]
