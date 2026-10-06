@@ -308,7 +308,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
     let va_list_addr = list.immediate();
 
     // Peel off any newtype wrappers.
-    let layout = layout.peel_transparent_wrappers(bx.cx);
+    let layout = layout.peel_transparent_wrappers_from_non_1zst(bx.cx);
 
     // Rust does not currently support any powerpc softfloat targets.
     let target = &bx.cx.tcx.sess.target;
@@ -561,7 +561,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
     // #[repr(C)]
     // struct Foo([Empty; 8], i32);
     // ```
-    let layout = layout.peel_transparent_wrappers(bx.cx);
+    let layout = layout.peel_transparent_wrappers_from_non_1zst(bx.cx);
 
     // AMD64-ABI 3.5.7p5: Step 1. Determine whether type may be passed
     // in the registers. If not go to step 7.
