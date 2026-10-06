@@ -1,0 +1,138 @@
+error[E0277]: `&u8` cannot be safely transmuted into `&u8`
+  --> $DIR/accept_assume_lifetime_extension.rs:24:18
+   |
+LL |         unsafe { transmute(src) }
+   |                  ^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+   = help: the nightly-only, unstable trait `std::mem::TransmuteFrom<&u8, std::mem::Assume { alignment: false, lifetimes: true, safety: true, validity: false }>` is not implemented for `&u8`
+note: required by a bound in `transmute`
+  --> $DIR/accept_assume_lifetime_extension.rs:15:10
+   |
+LL | unsafe fn transmute<Src, Dst>(src: Src) -> Dst
+LL | where
+LL |     Dst: TransmuteFrom<Src, { Assume::SAFETY.and(Assume::LIFETIMES) }>,
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `transmute`
+
+error[E0277]: `&&u8` cannot be safely transmuted into `&&u8`
+  --> $DIR/accept_assume_lifetime_extension.rs:32:18
+   |
+LL |         unsafe { transmute(src) }
+   |                  ^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+   = help: the nightly-only, unstable trait `std::mem::TransmuteFrom<&&u8, std::mem::Assume { alignment: false, lifetimes: true, safety: true, validity: false }>` is not implemented for `&&u8`
+note: required by a bound in `transmute`
+  --> $DIR/accept_assume_lifetime_extension.rs:15:10
+   |
+LL | unsafe fn transmute<Src, Dst>(src: Src) -> Dst
+LL | where
+LL |     Dst: TransmuteFrom<Src, { Assume::SAFETY.and(Assume::LIFETIMES) }>,
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `transmute`
+
+error[E0277]: `(&u8,)` cannot be safely transmuted into `(&u8,)`
+  --> $DIR/accept_assume_lifetime_extension.rs:40:18
+   |
+LL |         unsafe { transmute(src) }
+   |                  ^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+   = help: the nightly-only, unstable trait `std::mem::TransmuteFrom<(&u8,), std::mem::Assume { alignment: false, lifetimes: true, safety: true, validity: false }>` is not implemented for `(&u8,)`
+note: required by a bound in `transmute`
+  --> $DIR/accept_assume_lifetime_extension.rs:15:10
+   |
+LL | unsafe fn transmute<Src, Dst>(src: Src) -> Dst
+LL | where
+LL |     Dst: TransmuteFrom<Src, { Assume::SAFETY.and(Assume::LIFETIMES) }>,
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `transmute`
+
+error[E0277]: `(&u8, u8)` cannot be safely transmuted into `(&u8, u8)`
+  --> $DIR/accept_assume_lifetime_extension.rs:44:18
+   |
+LL |         unsafe { transmute(src) }
+   |                  ^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+   = help: the nightly-only, unstable trait `std::mem::TransmuteFrom<(&u8, u8), std::mem::Assume { alignment: false, lifetimes: true, safety: true, validity: false }>` is not implemented for `(&u8, u8)`
+note: required by a bound in `transmute`
+  --> $DIR/accept_assume_lifetime_extension.rs:15:10
+   |
+LL | unsafe fn transmute<Src, Dst>(src: Src) -> Dst
+LL | where
+LL |     Dst: TransmuteFrom<Src, { Assume::SAFETY.and(Assume::LIFETIMES) }>,
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `transmute`
+
+error[E0277]: `r#struct::Struct<'_>` cannot be safely transmuted into `r#struct::Struct<'_>`
+  --> $DIR/accept_assume_lifetime_extension.rs:54:18
+   |
+LL |         unsafe { transmute(src) }
+   |                  ^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the nightly-only, unstable trait `std::mem::TransmuteFrom<r#struct::Struct<'_>, std::mem::Assume { alignment: false, lifetimes: true, safety: true, validity: false }>` is not implemented for `r#struct::Struct<'_>`
+  --> $DIR/accept_assume_lifetime_extension.rs:51:5
+   |
+LL |     struct Struct<'a>(&'a u8);
+   |     ^^^^^^^^^^^^^^^^^
+note: required by a bound in `transmute`
+  --> $DIR/accept_assume_lifetime_extension.rs:15:10
+   |
+LL | unsafe fn transmute<Src, Dst>(src: Src) -> Dst
+LL | where
+LL |     Dst: TransmuteFrom<Src, { Assume::SAFETY.and(Assume::LIFETIMES) }>,
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `transmute`
+
+error[E0277]: `Single<'_>` cannot be safely transmuted into `Single<'_>`
+  --> $DIR/accept_assume_lifetime_extension.rs:66:18
+   |
+LL |         unsafe { transmute(src) }
+   |                  ^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the nightly-only, unstable trait `std::mem::TransmuteFrom<Single<'_>, std::mem::Assume { alignment: false, lifetimes: true, safety: true, validity: false }>` is not implemented for `Single<'_>`
+  --> $DIR/accept_assume_lifetime_extension.rs:61:5
+   |
+LL |     enum Single<'a> {
+   |     ^^^^^^^^^^^^^^^
+note: required by a bound in `transmute`
+  --> $DIR/accept_assume_lifetime_extension.rs:15:10
+   |
+LL | unsafe fn transmute<Src, Dst>(src: Src) -> Dst
+LL | where
+LL |     Dst: TransmuteFrom<Src, { Assume::SAFETY.and(Assume::LIFETIMES) }>,
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `transmute`
+
+error[E0277]: `Multi<'_>` cannot be safely transmuted into `Multi<'_>`
+  --> $DIR/accept_assume_lifetime_extension.rs:76:18
+   |
+LL |         unsafe { transmute(src) }
+   |                  ^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the nightly-only, unstable trait `std::mem::TransmuteFrom<Multi<'_>, std::mem::Assume { alignment: false, lifetimes: true, safety: true, validity: false }>` is not implemented for `Multi<'_>`
+  --> $DIR/accept_assume_lifetime_extension.rs:69:5
+   |
+LL |     enum Multi<'a> {
+   |     ^^^^^^^^^^^^^^
+note: required by a bound in `transmute`
+  --> $DIR/accept_assume_lifetime_extension.rs:15:10
+   |
+LL | unsafe fn transmute<Src, Dst>(src: Src) -> Dst
+LL | where
+LL |     Dst: TransmuteFrom<Src, { Assume::SAFETY.and(Assume::LIFETIMES) }>,
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `transmute`
+
+error[E0277]: `&u8` cannot be safely transmuted into `&u8`
+  --> $DIR/accept_assume_lifetime_extension.rs:84:18
+   |
+LL |         unsafe { extend_hrtb(src) }
+   |                  ^^^^^^^^^^^^---^
+   |                  |           |
+   |                  |           `&u8` doesn't satisfy the trait bound
+   |                  unsatisfied trait bound
+   |
+   = help: the nightly-only, unstable trait `for<'b> std::mem::TransmuteFrom<&u8, std::mem::Assume { alignment: false, lifetimes: true, safety: false, validity: false }>` is not implemented for `&'b u8`
+note: required by a bound in `extend_hrtb`
+  --> $DIR/accept_assume_lifetime_extension.rs:89:25
+   |
+LL |     unsafe fn extend_hrtb<'a>(src: &'a u8) -> &'static u8
+LL |     where
+LL |         for<'b> &'b u8: TransmuteFrom<&'a u8, { Assume::LIFETIMES }>,
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `extend_hrtb`
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
