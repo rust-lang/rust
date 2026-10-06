@@ -104,6 +104,10 @@ pub(crate) mod guard {
         target_os = "windows" => {
             mod windows;
             pub(crate) use windows::enable;
+            #[cfg(not(target_thread_local))]
+            mod retained;
+            #[cfg(not(target_thread_local))]
+            pub(crate) use retained::{KEEP_LAST_NEEDS_DTOR, cleanup_pending};
         }
         any(
             all(target_family = "wasm", not(target_env = "p3")),
@@ -130,6 +134,10 @@ pub(crate) mod guard {
             // `std` is the only runtime, so it just calls the destructor functions
             // itself when the time comes.
             pub(crate) fn enable() {}
+            #[cfg(not(target_thread_local))]
+            mod retained;
+            #[cfg(not(target_thread_local))]
+            pub(crate) use retained::{KEEP_LAST_NEEDS_DTOR, cleanup_pending};
         }
         target_os = "solid_asp3" => {
             mod solid;
@@ -138,6 +146,8 @@ pub(crate) mod guard {
         _ => {
             mod key;
             pub(crate) use key::enable;
+            #[cfg(not(target_thread_local))]
+            pub(crate) use key::{KEEP_LAST_NEEDS_DTOR, cleanup_pending};
         }
     }
 }

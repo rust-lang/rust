@@ -133,6 +133,11 @@ pub(crate) macro local_pointer {
         $vis static $name: $crate::sys::thread_local::LocalPointer = $crate::sys::thread_local::LocalPointer::__new();
         $crate::sys::thread_local::local_pointer! { $($rest)* }
     },
+    // Without threads, there is no TLS destruction, so `#[keep_last]` needs
+    // nothing extra.
+    (#[keep_last] $vis:vis static $name:ident; $($rest:tt)*) => {
+        $crate::sys::thread_local::local_pointer! { $vis static $name; $($rest)* }
+    },
 }
 
 pub(crate) struct LocalPointer {

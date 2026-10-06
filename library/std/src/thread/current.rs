@@ -10,28 +10,12 @@ const NONE: *mut () = ptr::null_mut();
 const BUSY: *mut () = ptr::without_provenance_mut(1);
 const DESTROYED: *mut () = ptr::without_provenance_mut(2);
 
-#[cfg(not(target_os = "espidf"))]
 local_pointer! {
+    // The destructors of other TLS values might call `Thread::current()`,
+    // so this value should be dropped last - after all others are gone.
+    #[keep_last]
     static CURRENT;
 }
-
-// The deferred `crate::rt::thread_cleanup` relies on the values of TLS keys
-// without a destructor surviving until the last round of TLS destruction,
-// which POSIX does not guarantee. ESP-IDF frees them in the same pass in which
-// it runs the destructors of the other keys, so `drop_current` would find no
-// handle to drop. Hence, give `CURRENT` a destructor which stores the handle
-// again, keeping it alive until `drop_current` replaces it with `DESTROYED`.
-#[cfg(target_os = "espidf")]
-static CURRENT: crate::sys::thread_local::LocalPointer = {
-    unsafe extern "C" fn keep_current(current: *mut u8) {
-        let current = current.cast::<()>();
-        if current > DESTROYED {
-            CURRENT.set(current);
-        }
-    }
-
-    crate::sys::thread_local::LocalPointer::__new_with_dtor(Some(keep_current))
-};
 
 /// Persistent storage for the thread ID.
 ///
