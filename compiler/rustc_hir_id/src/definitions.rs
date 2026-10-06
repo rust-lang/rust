@@ -18,6 +18,7 @@ pub use rustc_span::def_id::DefPathHash;
 use rustc_span::def_id::{
     CRATE_DEF_INDEX, CrateNum, DefIndex, LOCAL_CRATE, LocalDefId, LocalDefIdMap, StableCrateId,
 };
+use rustc_span::hygiene::{HygieneEntityRemapper, LocalExpansionRemapper, SyntaxContextRemapper};
 use rustc_span::{SpanEncoder, Symbol, kw, sym};
 use tracing::{debug, instrument};
 
@@ -308,7 +309,10 @@ impl Definitions {
         assert!(
             self.def_path_hash_to_index.after_parallel_alloc.replace(Default::default()).is_none(),
             "this function should be called only once"
-        )
+        );
+
+        SyntaxContextRemapper::with(|mut r| r.commit_end_of_determinism());
+        LocalExpansionRemapper::with(|mut r| r.commit_end_of_determinism());
     }
 
     #[inline(always)]
