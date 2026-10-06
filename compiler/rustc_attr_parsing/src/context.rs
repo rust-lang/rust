@@ -244,6 +244,7 @@ attribute_parsers!(
         Single<RustcDumpDefPathParser>,
         Single<RustcDumpSymbolNameParser>,
         Single<RustcForceInlineParser>,
+        Single<RustcForceVarianceParser>,
         Single<RustcIfThisChangedParser>,
         Single<RustcLegacyConstGenericsParser>,
         Single<RustcLintOptDenyFieldAccessParser>,

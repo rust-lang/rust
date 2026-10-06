@@ -728,7 +728,7 @@ impl fmt::Display for AutoDiffItem {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[derive(StableHash, Encodable, Decodable, PrintAttribute)]
-pub enum RustcAssertVarianceKind {
+pub enum RustcVarianceKind {
     Covariant,
     Invariant,
     Contravariant,
@@ -1170,7 +1170,7 @@ pub enum AttributeKind {
     /// Represents `#[rustc_assert_variance]`.
     RustcAssertVariance {
         span: Span,
-        kind: RustcAssertVarianceKind,
+        kind: RustcVarianceKind,
     },
 
     /// Represents `#[rustc_autodiff]`.
@@ -1305,6 +1305,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_evaluate_where_clauses]`
     RustcEvaluateWhereClauses,
+
+    /// Overrides the inferred variance of a type or lifetime parameter.
+    RustcForceVariance(RustcVarianceKind),
 
     RustcHasIncoherentInherentImpls,
 

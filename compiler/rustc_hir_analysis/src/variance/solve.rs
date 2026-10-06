@@ -48,13 +48,10 @@ pub(crate) fn solve_constraints<'tcx>(
 
     let mut overridden_inferreds = FxHashSet::default();
     let mut solutions = vec![ty::Bivariant; terms_cx.inferred_terms.len()];
-    // prime the solutions for certain lang items which have hard-coded variance
-    for (id, variances) in &terms_cx.lang_items {
-        let InferredIndex(start) = terms_cx.inferred_starts[id];
-        for (i, &variance) in variances.iter().enumerate() {
-            solutions[start + i] = variance;
-            overridden_inferreds.insert(start + i);
-        }
+    // Prime the solutions with the explicit variance overrides.
+    for &(InferredIndex(index), variance) in &terms_cx.explicit_variances {
+        solutions[index] = variance;
+        overridden_inferreds.insert(index);
     }
 
     // ensure the solutions for overridden inferreds are never constrained by anything else
