@@ -252,6 +252,17 @@ impl TypeLocation {
     pub(crate) fn complete_self_type(&self) -> bool {
         self.complete_types() && !matches!(self, TypeLocation::ImplTarget | TypeLocation::ImplTrait)
     }
+
+    pub(crate) fn complete_dyn(&self) -> bool {
+        self.complete_types()
+            && !matches!(
+                self,
+                TypeLocation::ImplTarget
+                    | TypeLocation::ImplTrait
+                    | TypeLocation::TypeBound
+                    | TypeLocation::TypeAscription(_)
+            )
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

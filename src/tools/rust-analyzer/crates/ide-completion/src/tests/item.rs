@@ -122,6 +122,7 @@ fn completes_where() {
             st Record (adds ->)      Record
             st Tuple (adds ->)        Tuple
             st Unit (adds ->)          Unit
+            tt Trait (adds ->)
             un Union (adds ->)        Union
             bt u32 (adds ->)            u32
             kw crate:: (adds ->)

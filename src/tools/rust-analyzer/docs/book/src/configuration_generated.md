@@ -402,6 +402,13 @@ Show method calls and field accesses completions with `await` prefixed to them w
 completing on a future.
 
 
+## rust-analyzer.completion.autoDyn.enable {#completion.autoDyn.enable}
+
+Default: `true`
+
+Show traits completions with `dyn` prefixed to them when completing on a type location.
+
+
 ## rust-analyzer.completion.autoIter.enable {#completion.autoIter.enable}
 
 Default: `true`

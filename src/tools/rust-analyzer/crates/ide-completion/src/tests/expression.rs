@@ -17,7 +17,7 @@ fn check_with_config(
 ) {
     let actual = completion_list_with_config(
         config,
-        &format!("{BASE_ITEMS_FIXTURE}{ra_fixture}"),
+        &super::concat_fixture(BASE_ITEMS_FIXTURE, ra_fixture),
         true,
         None,
     );

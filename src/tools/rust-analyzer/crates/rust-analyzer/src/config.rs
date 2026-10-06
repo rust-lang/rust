@@ -640,6 +640,9 @@ config_data! {
         /// completing on a future.
         completion_autoAwait_enable: bool = true,
 
+        /// Show traits completions with `dyn` prefixed to them when completing on a type location.
+        completion_autoDyn_enable: bool = true,
+
         /// Show method call completions with `iter()` or `into_iter()` prefixed to them when
         /// completing on a type that has them.
         completion_autoIter_enable: bool = true,
@@ -1911,6 +1914,7 @@ impl Config {
             enable_self_on_the_fly: self.completion_autoself_enable(source_root).to_owned(),
             enable_auto_iter: *self.completion_autoIter_enable(source_root),
             enable_auto_await: *self.completion_autoAwait_enable(source_root),
+            enable_auto_dyn: *self.completion_autoDyn_enable(source_root),
             enable_private_editable: self.completion_privateEditable_enable(source_root).to_owned(),
             full_function_signatures: self
                 .completion_fullFunctionSignatures_enable(source_root)

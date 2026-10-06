@@ -1336,6 +1336,16 @@
             {
                 "title": "Completion",
                 "properties": {
+                    "rust-analyzer.completion.autoDyn.enable": {
+                        "markdownDescription": "Show traits completions with `dyn` prefixed to them when completing on a type location.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "Completion",
+                "properties": {
                     "rust-analyzer.completion.autoIter.enable": {
                         "markdownDescription": "Show method call completions with `iter()` or `into_iter()` prefixed to them when\ncompleting on a type that has them.",
                         "default": true,

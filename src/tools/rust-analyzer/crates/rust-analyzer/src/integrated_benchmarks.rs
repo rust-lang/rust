@@ -344,6 +344,7 @@ fn completion_config() -> CompletionConfig<'static> {
         exclude_traits: &[],
         enable_auto_await: true,
         enable_auto_iter: true,
+        enable_auto_dyn: true,
         ra_fixture: RaFixtureConfig::default(),
     }
 }
