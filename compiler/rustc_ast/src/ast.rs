@@ -124,6 +124,11 @@ impl StableHash for Path {
         self.segments.len().stable_hash(hcx, hasher);
         for segment in &self.segments {
             segment.ident.stable_hash(hcx, hasher);
+            if segment.args.is_some() {
+                // This should never happen, because Path::stable_hash is only used for attributes,
+                // which never have generic args. Check that to make sure, though.
+                panic!("Paths with generic args should not appear in incremental state");
+            }
         }
     }
 }
