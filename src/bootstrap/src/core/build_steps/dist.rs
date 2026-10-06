@@ -775,9 +775,7 @@ impl Step for DebuggerScripts {
         cp_debugger_script("gdb_load_rust_pretty_printers.py");
         cp_debugger_script("gdb_lookup.py");
         cp_debugger_script("gdb_providers.py");
-        if builder.sess.unstable_features() {
-            cp_debugger_script("gdb_trim_paths.py");
-        }
+        cp_debugger_script("gdb_trim_paths.py");
 
         // lldb debugger scripts
         builder.install(
@@ -788,9 +786,7 @@ impl Step for DebuggerScripts {
 
         cp_debugger_script("lldb_lookup.py");
         cp_debugger_script("lldb_providers.py");
-        if builder.sess.unstable_features() {
-            cp_debugger_script("lldb_trim_paths.py");
-        }
+        cp_debugger_script("lldb_trim_paths.py");
     }
 }
 
