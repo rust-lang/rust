@@ -5,10 +5,11 @@
 //! Here is also where we bake in the support to spawn the QEMU emulator as
 //! well.
 
+use std::borrow::Cow;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufWriter};
-use std::net::TcpStream;
+use std::net::{SocketAddr, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
@@ -68,6 +69,40 @@ fn connect_timeout() -> Duration {
             )
         }),
         None => DEFAULT_CONNECT_TIMEOUT,
+    }
+}
+
+fn connect_client_with_timeout() -> TcpStream {
+    let device_address = t!(env::var(REMOTE_ADDR_ENV)
+        .map_or(Cow::Borrowed(DEFAULT_ADDR), Cow::Owned)
+        .parse::<SocketAddr>());
+    let timeout = connect_timeout();
+    let start = Instant::now();
+
+    // `TcpStream::connect_timeout` may fail earlier than the specified timeout,
+    // especially under Linux, so loop to extend it to the overall timeout.
+    // Also handle connection refusals for maximum reliability.
+    loop {
+        let remaining = timeout.saturating_sub(start.elapsed());
+
+        match TcpStream::connect_timeout(&device_address, remaining) {
+            Ok(client) => return client,
+            Err(err)
+                if !remaining.is_zero()
+                    && matches!(
+                        err.kind(),
+                        io::ErrorKind::TimedOut | io::ErrorKind::ConnectionRefused
+                    ) =>
+            {
+                thread::sleep(Duration::from_millis(50));
+            }
+            Err(err) => {
+                panic!(
+                    "Connecting to {device_address} timed out after {:?}: {err}",
+                    start.elapsed()
+                );
+            }
+        }
     }
 }
 
@@ -262,9 +297,7 @@ fn start_qemu_emulator(target: &str, rootfs: &Path, server: &Path, tmpdir: &Path
 }
 
 fn push(path: &Path) {
-    let device_address = env::var(REMOTE_ADDR_ENV).unwrap_or(DEFAULT_ADDR.to_string());
-    let client = t!(TcpStream::connect(device_address));
-    let mut client = BufWriter::new(client);
+    let mut client = BufWriter::new(connect_client_with_timeout());
     t!(client.write_all(b"push"));
     send(path, &mut client);
     t!(client.flush());
@@ -279,9 +312,7 @@ fn push(path: &Path) {
 }
 
 fn run(support_lib_count: usize, exe: String, all_args: Vec<String>) {
-    let device_address = env::var(REMOTE_ADDR_ENV).unwrap_or(DEFAULT_ADDR.to_string());
-    let client = t!(TcpStream::connect(device_address));
-    let mut client = BufWriter::new(client);
+    let mut client = BufWriter::new(connect_client_with_timeout());
     t!(client.write_all(b"run "));
 
     let (support_libs, args) = all_args.split_at(support_lib_count);
@@ -405,9 +436,15 @@ First the target emulator/adb session is connected to as for pushing files. Next
 the <file> and any specified support libs are pushed to the target. Finally, the
 <file> is executed in the emulator, preserving the current environment.
 That command's status code is returned.
+
+The {3} environment variable can be used in
+order to specify the connection timeout in seconds used for all attempted
+connections to the device. If unset, {4} is used as a default.
 ",
         env::args().next().unwrap(),
         REMOTE_ADDR_ENV,
-        DEFAULT_ADDR
+        DEFAULT_ADDR,
+        CONNECT_TIMEOUT_ENV,
+        DEFAULT_CONNECT_TIMEOUT.as_secs(),
     );
 }
