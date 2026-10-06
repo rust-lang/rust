@@ -239,7 +239,7 @@ late_lint_methods!(
             ImplTraitOvercaptures: ImplTraitOvercaptures,
             ImplicitAutorefs: ImplicitAutorefs,
             ImplicitProvenanceCasts: ImplicitProvenanceCasts,
-            ImproperCTypesLint: ImproperCTypesLint,
+            ImproperCTypesLint: ImproperCTypesLint::default(),
             ImproperGpuKernelLint: ImproperGpuKernelLint,
             InteriorMutableConsts: InteriorMutableConsts,
             InternalEqTraitMethodImpls: InternalEqTraitMethodImpls,
