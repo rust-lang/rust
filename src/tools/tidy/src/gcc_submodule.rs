@@ -17,7 +17,7 @@ pub fn check(root_path: &Path, compiler_path: &Path, tidy_ctx: TidyCtx) {
         .trim()
         .to_string();
 
-    let git_output = Command::new("git")
+    let git_output = match Command::new("git")
         .current_dir(root_path)
         .arg("submodule")
         .arg("status")
@@ -26,9 +26,16 @@ pub fn check(root_path: &Path, compiler_path: &Path, tidy_ctx: TidyCtx) {
         .arg("--cached")
         .arg("src/gcc")
         .output()
-        .expect("Cannot determine git SHA of the src/gcc checkout");
+    {
+        Ok(output) => output,
+        Err(err) => {
+            // Git is not available (e.g. we are in a tarball without git installed)
+            check.message(format!("Cannot figure out the SHA of the GCC submodule: {err}"));
+            return;
+        }
+    };
 
-    // Git is not available or we are in a tarball
+    // Git ran but reported failure (e.g. we are in a tarball without the submodule checked out)
     if !git_output.status.success() {
         check.message("Cannot figure out the SHA of the GCC submodule");
         return;
