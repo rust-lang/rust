@@ -286,13 +286,14 @@ impl<T, const N: usize, A: Allocator> TryFrom<Vec<T, A>> for Box<[T; N], A> {
 
     /// Attempts to convert a `Vec<T>` into a `Box<[T; N]>`.
     ///
-    /// Like [`Vec::into_boxed_slice`], this is in-place if `vec.capacity() == N`,
-    /// but will require a reallocation otherwise.
+    /// Like [`Vec::into_boxed_slice`], this is in-place if `vec.capacity() == N`
+    /// and `vec.len() == N`. If the `vec.len() == N` but there is spare capacity,
+    /// the allocation will be either shrunk or reallocated.
     ///
     /// # Errors
     ///
     /// Returns the original `Vec<T>` in the `Err` variant if
-    /// `boxed_slice.len()` does not equal `N`.
+    /// `vec.len()` does not equal `N`.
     ///
     /// # Examples
     ///
