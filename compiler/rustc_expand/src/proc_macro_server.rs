@@ -726,8 +726,7 @@ impl server::Server for Rustc<'_, '_> {
     fn span_file(&mut self, span: Self::Span) -> String {
         self.psess()
             .source_map()
-            .lookup_char_pos(span.lo())
-            .file
+            .lookup_source_file(span.lo())
             .name
             .prefer_remapped_unconditionally()
             .to_string()
@@ -736,8 +735,7 @@ impl server::Server for Rustc<'_, '_> {
     fn span_local_file(&mut self, span: Self::Span) -> Option<String> {
         self.psess()
             .source_map()
-            .lookup_char_pos(span.lo())
-            .file
+            .lookup_source_file(span.lo())
             .name
             .clone()
             .into_local_path()
