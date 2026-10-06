@@ -134,7 +134,7 @@ pub mod arch {
 }
 
 #[lang = "phantom_data"]
-pub struct PhantomData<T: PointeeSized>;
+pub struct PhantomData<#[rustc_force_variance(covariant)] T: PointeeSized>;
 impl<T: PointeeSized> Copy for PhantomData<T> {}
 
 pub enum Option<T> {
@@ -220,7 +220,7 @@ pub struct Unique<T: ?Sized> {
 
 #[lang = "unsafe_cell"]
 #[repr(transparent)]
-pub struct UnsafeCell<T: PointeeSized> {
+pub struct UnsafeCell<#[rustc_force_variance(invariant)] T: PointeeSized> {
     value: T,
 }
 impl<T: PointeeSized> !Freeze for UnsafeCell<T> {}

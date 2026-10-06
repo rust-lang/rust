@@ -1849,6 +1849,7 @@ symbols! {
         rustc_evaluate_where_clauses,
         rustc_expected_cgu_reuse,
         rustc_force_inline,
+        rustc_force_variance,
         rustc_has_incoherent_inherent_impls,
         rustc_if_this_changed,
         rustc_inherit_overflow_checks,
