@@ -134,8 +134,6 @@ impl ArgAttributes {
     /// at function entry (for arguments) or return (for return values).
     ///
     /// This alone does not guarantee dereferenceability for the duration of the call.
-    /// rustc only emits LLVM's `dereferenceable` or `dereferenceable_or_null` attributes
-    /// when [`ArgAttributeFlags::no_free`] is set.
     pub fn pointee_size(&self) -> Size {
         self.pointee_size
     }

@@ -207,7 +207,7 @@ fn test_pointer_attributes() -> ControlFlow<()> {
                     non_null: true,
                     read_only: false,
                     no_free: false,
-                    pointee_size: 4,
+                    pointee_size: 0,
                 },
             ),
             (
