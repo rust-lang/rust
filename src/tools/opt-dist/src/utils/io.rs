@@ -2,14 +2,14 @@ use std::fs::File;
 use std::path::Path;
 
 use anyhow::Context;
+use build_helper::fs::remove_and_create_dir_all;
 use camino::{Utf8Path, Utf8PathBuf};
 use fs_extra::dir::CopyOptions;
 
 /// Delete and re-create the directory.
 pub fn reset_directory(path: &Utf8Path) -> anyhow::Result<()> {
     log::info!("Resetting directory {path}");
-    let _ = std::fs::remove_dir_all(path);
-    std::fs::create_dir_all(path)?;
+    remove_and_create_dir_all(path)?;
     Ok(())
 }
 
