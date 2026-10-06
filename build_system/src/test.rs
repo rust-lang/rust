@@ -611,7 +611,7 @@ cargo = "{cargo}"
 local-rebuild = true
 rustc = "{rustc}"
 
-[target.x86_64-unknown-linux-gnu]
+[target.{host_triple}]
 llvm-filecheck = "{llvm_filecheck}"
 
 [llvm]
@@ -619,6 +619,7 @@ download-ci-llvm = false
 "#,
             cargo = cargo,
             rustc = rustc,
+            host_triple = args.config_info.host_triple,
             llvm_filecheck = llvm_filecheck.trim(),
         ),
     )
