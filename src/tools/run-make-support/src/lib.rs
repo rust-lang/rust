@@ -44,6 +44,8 @@ pub use serde_json;
 pub use similar;
 pub use tempfile;
 pub use wasmparser;
+#[cfg(windows)]
+pub use windows;
 
 // Helpers for building names of output artifacts that are potentially target-specific.
 pub use crate::artifact_names::{

@@ -26,5 +26,12 @@ build_helper = { path = "../../build_helper" }
 # Shared with rustdoc
 rustdoc-json-types = { path = "../../rustdoc-json-types" }
 
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.62"
+features = [
+    "Win32_Foundation",
+]
+
+
 [lib]
 crate-type = ["lib", "dylib"]
