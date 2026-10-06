@@ -301,7 +301,6 @@ late_lint_methods!(
             MissingGenericTypeVisitableDerive: MissingGenericTypeVisitableDerive,
             QueryStability: QueryStability,
             RustcMustMatchExhaustively: RustcMustMatchExhaustively,
-            SpanUseEqCtxt: SpanUseEqCtxt,
             SymbolInternStringLiteral: SymbolInternStringLiteral,
             TyTyKind: TyTyKind,
             TypeIr: TypeIr,
@@ -759,8 +758,6 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(BAD_OPT_ACCESS),
             // Late pass: DisallowedPassByRef
             LintId::of(DISALLOWED_PASS_BY_REF),
-            // Late pass: SpanUseEqCtxt
-            LintId::of(SPAN_USE_EQ_CTXT),
             // Late pass: SymbolInternStringLiteral
             // Note: this one is not included in rustc::internal because rustc_driver crates
             // outside the compiler can't/shouldn't add preinterned symbols. For rustc itself,

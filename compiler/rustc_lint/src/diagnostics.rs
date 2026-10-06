@@ -1232,10 +1232,6 @@ pub(crate) struct QueryUntracked {
 }
 
 #[derive(Diagnostic)]
-#[diag("use `.eq_ctxt()` instead of `.ctxt() == .ctxt()`")]
-pub(crate) struct SpanUseEqCtxtDiag;
-
-#[derive(Diagnostic)]
 #[diag("using `{$fn_name}` on a string literal")]
 #[help("consider adding the symbol to `compiler/rustc_span/src/symbol.rs`")]
 pub(crate) struct SymbolInternStringLiteralDiag {
