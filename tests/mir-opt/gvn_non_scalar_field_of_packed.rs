@@ -23,6 +23,6 @@ const C: Outer = Outer { x: 7, p: Packed { a: 1, b: (2, 3) } };
 // EMIT_MIR gvn_non_scalar_field_of_packed.non_scalar_field_of_packed.GVN.diff
 pub fn non_scalar_field_of_packed() -> (u32, u32) {
     // CHECK-LABEL: fn non_scalar_field_of_packed(
-    // CHECK: _0 = const ConstValue(Indirect { alloc_id: {{.*}}, offset: Size(5 bytes) }: (u32, u32));
+    // CHECK: _0 = const ConstValue(Indirect { alloc_id: {{.*}}, offset: Size(0 bytes) }: (u32, u32));
     C.p.b
 }
