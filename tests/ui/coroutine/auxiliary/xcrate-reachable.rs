@@ -6,7 +6,7 @@ fn msg() -> u32 {
     0
 }
 
-pub fn foo() -> impl Coroutine<(), Yield = (), Return = u32> {
+pub fn foo() -> impl for<'y> Coroutine<(), Yield<'y> = (), Return = u32> {
     #[coroutine]
     || {
         yield;

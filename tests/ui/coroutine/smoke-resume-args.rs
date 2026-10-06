@@ -13,7 +13,7 @@ use std::ops::{
 use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-fn drain<G: Coroutine<R, Yield = Y> + Unpin, R, Y>(
+fn drain<G: for<'y> Coroutine<R, Yield<'y> = Y> + Unpin, R, Y>(
     gen: &mut G,
     inout: Vec<(R, CoroutineState<Y, G::Return>)>,
 ) where

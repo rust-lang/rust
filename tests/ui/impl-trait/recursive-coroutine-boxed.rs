@@ -6,7 +6,7 @@
 
 use std::ops::{Coroutine, CoroutineState};
 
-fn foo() -> impl Coroutine<Yield = (), Return = ()> {
+fn foo() -> impl for<'y> Coroutine<Yield<'y> = (), Return = ()> {
     #[coroutine] || {
         let mut gen = Box::pin(foo());
         let mut r = gen.as_mut().resume(());

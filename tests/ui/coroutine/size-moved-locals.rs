@@ -23,7 +23,7 @@ impl Drop for Foo {
     fn drop(&mut self) {}
 }
 
-fn move_before_yield() -> impl Coroutine<Yield = (), Return = ()> {
+fn move_before_yield() -> impl for<'y> Coroutine<Yield<'y> = (), Return = ()> {
     #[coroutine]
     static || {
         let first = Foo([0; FOO_SIZE]);
@@ -35,7 +35,7 @@ fn move_before_yield() -> impl Coroutine<Yield = (), Return = ()> {
 
 fn noop() {}
 
-fn move_before_yield_with_noop() -> impl Coroutine<Yield = (), Return = ()> {
+fn move_before_yield_with_noop() -> impl for<'y> Coroutine<Yield<'y> = (), Return = ()> {
     #[coroutine]
     static || {
         let first = Foo([0; FOO_SIZE]);
@@ -48,7 +48,7 @@ fn move_before_yield_with_noop() -> impl Coroutine<Yield = (), Return = ()> {
 
 // Today we don't have NRVO (we allocate space for both `first` and `second`,)
 // but we can overlap `first` with `_third`.
-fn overlap_move_points() -> impl Coroutine<Yield = (), Return = ()> {
+fn overlap_move_points() -> impl for <'y> Coroutine<Yield<'y> = (), Return = ()> {
     #[coroutine]
     static || {
         let first = Foo([0; FOO_SIZE]);
@@ -60,7 +60,7 @@ fn overlap_move_points() -> impl Coroutine<Yield = (), Return = ()> {
     }
 }
 
-fn overlap_x_and_y() -> impl Coroutine<Yield = (), Return = ()> {
+fn overlap_x_and_y() -> impl for<'y> Coroutine<Yield<'y> = (), Return = ()> {
     #[coroutine]
     static || {
         let x = Foo([0; FOO_SIZE]);
