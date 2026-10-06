@@ -236,6 +236,8 @@ pub struct VecCache<K: Idx, V, I> {
     // In the compiler's current usage these are only *read* during incremental and self-profiling.
     // They are an optimization over iterating the full buckets array.
     present: [AtomicPtr<Slot<()>>; BUCKETS],
+    // Whether we are in a mode where we need to track `present`; if not, we leave it empty
+    track_present: bool,
     len: AtomicUsize,
 
     key: PhantomData<(K, I)>,
@@ -248,7 +250,16 @@ impl<K: Idx, V, I> Default for VecCache<K, V, I> {
             key: PhantomData,
             len: Default::default(),
             present: Default::default(),
+            track_present: true,
         }
+    }
+}
+
+impl<K: Idx, V, I> VecCache<K, V, I> {
+    pub fn without_track_present() -> Self {
+        let mut this = VecCache::default();
+        this.track_present = false;
+        this
     }
 }
 
@@ -307,7 +318,7 @@ where
     pub fn complete(&self, key: K, value: V, index: I) {
         let key = u32::try_from(key.index()).unwrap();
         let slot_idx = SlotIndex::from_index(key);
-        if slot_idx.put(&self.buckets, value, index.index() as u32) {
+        if slot_idx.put(&self.buckets, value, index.index() as u32) && self.track_present {
             let present_idx = self.len.fetch_add(1, Ordering::Relaxed);
             let slot = SlotIndex::from_index(u32::try_from(present_idx).unwrap());
             // SAFETY: We should always be uniquely putting due to `len` fetch_add returning unique values.
@@ -318,6 +329,7 @@ where
     }
 
     pub fn for_each(&self, f: &mut dyn FnMut(&K, &V, I)) {
+        assert!(self.track_present, "VecCache::for_each without track_present");
         for idx in 0..self.len.load(Ordering::Acquire) {
             let key = SlotIndex::from_index(idx as u32);
             match unsafe { key.get(&self.present) } {
@@ -337,6 +349,7 @@ where
     }
 
     pub fn len(&self) -> usize {
+        assert!(self.track_present, "VecCache::len without track_present");
         self.len.load(Ordering::Acquire)
     }
 }

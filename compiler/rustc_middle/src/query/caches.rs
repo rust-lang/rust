@@ -18,6 +18,17 @@ pub trait QueryCache: Sized {
     type Key: QueryKey;
     type Value: Copy;
 
+    /// Create the query cache for the case where we don't need to track present entries.
+    ///
+    /// The default implementation ignores this; override this method for a cache that can use it
+    /// for optimization.
+    fn without_track_present() -> Self
+    where
+        Self: Default,
+    {
+        Default::default()
+    }
+
     /// Returns the cached value (and other information) associated with the
     /// given key, if it is present in the cache.
     fn lookup(&self, key: &Self::Key) -> Option<(Self::Value, DepNodeIndex)>;
@@ -145,6 +156,10 @@ where
     type Key = DefId;
     type Value = V;
 
+    fn without_track_present() -> Self {
+        DefIdCache { local: VecCache::without_track_present(), foreign: Default::default() }
+    }
+
     #[inline(always)]
     fn lookup(&self, key: &DefId) -> Option<(V, DepNodeIndex)> {
         if key.krate == LOCAL_CRATE {
@@ -182,6 +197,10 @@ where
 {
     type Key = K;
     type Value = V;
+
+    fn without_track_present() -> Self {
+        VecCache::without_track_present()
+    }
 
     #[inline(always)]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
