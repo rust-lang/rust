@@ -786,7 +786,14 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         } else {
             let trap = self.context.get_builtin_function("__builtin_trap");
             self.block.add_eval(self.location, self.context.new_call(self.location, trap, &[]));
-            let return_value = self.new_temp(self.current_func(), self.location, return_type);
+            // Reuse the local of an indirect return: a new temporary per unreachable block would
+            // add the whole return value to the stack frame each time.
+            let indirect_return_value =
+                self.functions_with_indirect_return.borrow().get(&self.current_func()).copied();
+            let return_value = match indirect_return_value {
+                Some(return_value) => return_value,
+                None => self.new_temp(self.current_func(), self.location, return_type),
+            };
             self.block.end_with_return(self.location, return_value)
         }
     }
