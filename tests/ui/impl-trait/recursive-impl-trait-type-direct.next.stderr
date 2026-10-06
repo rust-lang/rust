@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/recursive-impl-trait-type-direct.rs:8:14
+  --> $DIR/recursive-impl-trait-type-direct.rs:13:14
    |
 LL | fn test() -> impl Sized {
    |              ^^^^^^^^^^ cannot infer type
