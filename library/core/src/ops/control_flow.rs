@@ -125,7 +125,9 @@ const impl<B, C> ops::Try for ControlFlow<B, C> {
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-const impl<B, C> ops::TryFromBreak for ControlFlow<B, C> {
+// Note: manually specifying the break type instead of using the default to work around
+// https://github.com/rust-lang/rust/issues/99940
+const impl<B, C> ops::TryFromBreak<B, TryControlFlow> for ControlFlow<B, C> {
     #[inline]
     fn from_break(b: B) -> Self {
         ControlFlow::Break(b)

@@ -2886,9 +2886,9 @@ const impl<T> ops::Try for Option<T> {
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-// Note: manually specifying the residual type instead of using the default to work around
+// Note: manually specifying the break type instead of using the default to work around
 // https://github.com/rust-lang/rust/issues/99940
-const impl<T> ops::TryFromBreak for Option<T> {
+const impl<T> ops::TryFromBreak<(), TryOption> for Option<T> {
     #[inline]
     fn from_break(_: ()) -> Self {
         None

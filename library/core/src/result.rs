@@ -2186,7 +2186,7 @@ const impl<T, E> ops::Try for Result<T, E> {
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-const impl<T, E, F: [const] From<E>> ops::TryFromBreak<E> for Result<T, F> {
+const impl<T, E, F: [const] From<E>> ops::TryFromBreak<E, TryResult> for Result<T, F> {
     #[inline]
     #[track_caller]
     fn from_break(e: E) -> Self {
