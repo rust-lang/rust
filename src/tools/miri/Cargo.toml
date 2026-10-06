@@ -78,6 +78,9 @@ tracing = ["serde_json"]
 native-lib = ["dep:libffi", "dep:libffi-sys", "dep:libloading", "dep:capstone", "dep:ipc-channel", "dep:nix", "dep:serde"]
 check_only = ["libffi?/check_only", "capstone?/check_only", "genmc-sys?/check_only"]
 
+[lints.cargo]
+unused_dependencies = "allow"
+
 [lints.rust.unexpected_cfgs]
 level = "warn"
 check-cfg = ['cfg(bootstrap)', 'cfg(target_has_reliable_f16_math)']
