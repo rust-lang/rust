@@ -88,9 +88,12 @@ impl fmt::Display for Lifetime {
 
 /// A "Path" is essentially Rust's notion of a name.
 ///
-/// We separate the common case a single identifier (e.g. `x`) from the general case of a sequence
-/// of identifiers that might also have generics attached (e.g. `std::cmp::PartialEq`,
+/// We separate the common case of a single identifier (e.g. `x`) from the general case of a
+/// sequence of identifiers that might also have generics attached (e.g. `std::cmp::PartialEq`,
 /// `Vec::<T>::new`).
+///
+/// Canonical form is desirable but not mandatory. Single idents may use General if their span
+/// differs from the ident's span, or occasionally simply because they didn't get canonicalized.
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub enum Path {
     /// The common case of a single identifier (e.g. `x`)
