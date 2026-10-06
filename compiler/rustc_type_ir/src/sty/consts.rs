@@ -4,7 +4,6 @@ use derive_where::derive_where;
 use rustc_ast_ir::visit::VisitorResult;
 #[cfg(feature = "nightly")]
 use rustc_macros::StableHash_NoContext;
-use rustc_span::bug;
 use rustc_type_ir_macros::{GenericTypeVisitable, Lift_Generic};
 
 use crate::inherent::*;
@@ -163,7 +162,7 @@ impl<I: Interner> Const<I> {
     pub fn to_value(self) -> I::ValueConst {
         match self.kind() {
             ConstKind::Value(cv) => cv,
-            _ => bug!("expected ConstKind::Value, got {:?}", self.kind()),
+            _ => panic!("expected ConstKind::Value, got {:?}", self.kind()),
         }
     }
 
