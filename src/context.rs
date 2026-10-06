@@ -117,6 +117,10 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// Mapping from function to indexes of on stack parameters.
     pub on_stack_function_params: RefCell<FxHashMap<Function<'gcc>, FxHashSet<usize>>>,
 
+    /// Functions returning their value in memory, with the local holding the return value for
+    /// the ones defined in this module.
+    pub functions_with_indirect_return: RefCell<FxHashMap<Function<'gcc>, Option<LValue<'gcc>>>>,
+
     /// Cache of emitted const globals (value -> global)
     pub const_globals: RefCell<FxHashMap<RValue<'gcc>, RValue<'gcc>>>,
 
@@ -308,6 +312,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             function_instances: Default::default(),
             intrinsic_instances: Default::default(),
             on_stack_function_params: Default::default(),
+            functions_with_indirect_return: Default::default(),
             vtables: Default::default(),
             const_globals: Default::default(),
             global_lvalues: Default::default(),

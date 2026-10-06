@@ -132,6 +132,18 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         );
         self.on_stack_function_params.borrow_mut().insert(func, fn_abi_gcc.on_stack_param_indices);
         #[cfg(feature = "master")]
+        if fn_abi_gcc.has_indirect_return {
+            // Return in memory even where the target ABI would use registers, as cg_llvm does for
+            // `PassMode::Indirect`.
+            func.set_indirect_return();
+            // `get_param(0)` hands out this local's address and `ret_void` returns it. Only the
+            // first declaration counts: it decided whether `declare_raw_fn` imported the function.
+            self.functions_with_indirect_return.borrow_mut().entry(func).or_insert_with(|| {
+                (self.linkage.get() != FunctionType::Extern)
+                    .then(|| func.new_local(None, fn_abi_gcc.return_type, "indirectReturn"))
+            });
+        }
+        #[cfg(feature = "master")]
         for fn_attr in fn_abi_gcc.fn_attributes {
             func.add_attribute(fn_attr);
         }

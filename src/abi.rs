@@ -20,8 +20,17 @@ use crate::context::CodegenCx;
 use crate::type_of::LayoutGccExt;
 
 impl AbiBuilderMethods for Builder<'_, '_, '_> {
-    fn get_param(&mut self, index: usize) -> Self::Value {
+    fn get_param(&mut self, mut index: usize) -> Self::Value {
         let func = self.current_func();
+        if let Some(&return_value) = self.functions_with_indirect_return.borrow().get(&func) {
+            // cg_ssa sees the return pointer as the first parameter, but in GCC it is a hidden
+            // parameter: hand out the address of the local holding the return value instead.
+            if index == 0 {
+                let return_value = return_value.expect("indirect return of a declared function");
+                return return_value.get_address(self.location);
+            }
+            index -= 1;
+        }
         let param = func.get_param(index as i32);
         let on_stack = if let Some(on_stack_param_indices) =
             self.on_stack_function_params.borrow().get(&func)
@@ -104,6 +113,10 @@ pub struct FnAbiGcc<'gcc> {
     pub on_stack_param_indices: FxHashSet<usize>,
     #[cfg(feature = "master")]
     pub fn_attributes: Vec<FnAttribute<'gcc>>,
+    /// Whether the value is returned in memory, through a pointer that GCC passes as a hidden
+    /// parameter.
+    #[cfg(feature = "master")]
+    pub has_indirect_return: bool,
 }
 
 pub trait FnAbiGccExt<'gcc, 'tcx> {
@@ -117,6 +130,7 @@ pub trait FnAbiGccExt<'gcc, 'tcx> {
 impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> FnAbiGcc<'gcc> {
         let mut on_stack_param_indices = FxHashSet::default();
+        let has_indirect_return = cfg!(feature = "master") && self.ret.is_indirect();
 
         // This capacity calculation is approximate.
         let mut argument_tys = Vec::with_capacity(
@@ -127,6 +141,10 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             PassMode::Ignore => cx.type_void(),
             PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_gcc_type(cx),
             PassMode::Cast { ref cast, .. } => cast.gcc_type(cx),
+            // Returned by value: the function (or function pointer type) is flagged as returning
+            // in memory, so GCC does the sret lowering itself, with the hidden pointer in the
+            // register the target ABI reserves for it.
+            PassMode::Indirect { .. } if has_indirect_return => self.ret.layout.gcc_type(cx),
             PassMode::Indirect { .. } => {
                 argument_tys.push(cx.type_ptr_to(self.ret.layout.gcc_type(cx)));
                 cx.type_void()
@@ -277,13 +295,30 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             on_stack_param_indices,
             #[cfg(feature = "master")]
             fn_attributes: fn_attrs,
+            #[cfg(feature = "master")]
+            has_indirect_return,
         }
     }
 
     fn ptr_to_gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc> {
         // FIXME(antoyo): Should we do something with `FnAbiGcc::fn_attributes`?
-        let FnAbiGcc { return_type, arguments_type, is_c_variadic, .. } = self.gcc_type(cx);
-        cx.context.new_function_pointer_type(None, return_type, &arguments_type, is_c_variadic)
+        let fn_abi_gcc = self.gcc_type(cx);
+        let pointer_type = cx.context.new_function_pointer_type(
+            None,
+            fn_abi_gcc.return_type,
+            &fn_abi_gcc.arguments_type,
+            fn_abi_gcc.is_c_variadic,
+        );
+        #[cfg(feature = "master")]
+        if fn_abi_gcc.has_indirect_return {
+            // Calls through this pointer must use the same convention as direct calls to a
+            // function declared with an indirect return.
+            pointer_type
+                .dyncast_function_ptr_type()
+                .expect("function pointer type")
+                .set_indirect_return();
+        }
+        pointer_type
     }
 
     #[cfg(feature = "master")]
