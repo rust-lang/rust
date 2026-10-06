@@ -1273,7 +1273,10 @@ impl CommandLineStep for StdarchGenCheck {
         // against the committed files itself, driven by STDARCH_GEN_MODE.
         let run_gen = |selector: &str, pkg: &str, args: &[&OsStr]| {
             let mut cmd = command(&builder.initial_cargo);
-            cmd.current_dir(&stdarch_root);
+            // Note: it is important to run this command from this directory, so that Cargo doesn't
+            // pick up library/.cargo/config.toml, which may point to vendored sources (which
+            // currently do not contain dependencies from stdarch).
+            cmd.current_dir(&builder.src);
             cmd.arg("run")
                 .arg("--manifest-path")
                 .arg(&manifest)
