@@ -33,6 +33,7 @@ pub(crate) mod unify;
 
 use std::{
     cell::{OnceCell, RefCell},
+    cmp,
     convert::identity,
     fmt,
     hash::Hash,
@@ -1060,16 +1061,32 @@ pub struct CaptureInfo {
 /// during `typeck`, specifically by `regionck`.
 #[derive(Eq, PartialEq, Clone, Debug, Copy, Hash)]
 pub enum UpvarCapture {
-    /// Upvar is captured by value. This is always true when the
-    /// closure is labeled `move`, but can also be true in other cases
-    /// depending on inference.
-    ByValue,
+    /// Upvar is captured by reference.
+    ByRef(BorrowKind),
 
     /// Upvar is captured by use. This is true when the closure is labeled `use`.
     ByUse,
 
-    /// Upvar is captured by reference.
-    ByRef(BorrowKind),
+    /// Upvar is captured by value. This is always true when the
+    /// closure is labeled `move`, but can also be true in other cases
+    /// depending on inference.
+    ByValue,
+}
+
+// Used in closure::analysis::determine_capture_info
+impl PartialOrd for UpvarCapture {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        match (self, other) {
+            (Self::ByValue, Self::ByValue) | (Self::ByUse, Self::ByUse) => {
+                Some(cmp::Ordering::Equal)
+            }
+            (Self::ByValue | Self::ByUse, Self::ByRef(_)) => Some(cmp::Ordering::Greater),
+            (Self::ByRef(_), Self::ByValue | Self::ByUse) => Some(cmp::Ordering::Less),
+            (Self::ByRef(left), Self::ByRef(right)) => Some(left.cmp(right)),
+            (Self::ByUse, Self::ByValue) | (Self::ByValue, Self::ByUse) => None,
+        }
+    }
 }
 
 #[salsa::tracked]
