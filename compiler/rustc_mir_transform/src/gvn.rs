@@ -890,6 +890,16 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 {
                     return Some((projection_ty, fields[f.as_usize()]));
                 }
+                // We cannot track reads of uninitialized/inactive union fields or fields of
+                // untracked runtime unions, as all fields share storage and may alias each other.
+                // If the union is a compile-time constant, projection can be evaluated by const-eval.
+                _ if place_ty.ty.is_union() => {
+                    if self.eval_to_const(value).is_some() {
+                        ProjectionElem::Field(f, ())
+                    } else {
+                        return None;
+                    }
+                }
                 _ => ProjectionElem::Field(f, ()),
             },
             ProjectionElem::Index(idx) => {

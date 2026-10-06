@@ -1,0 +1,38 @@
+- // MIR for `no_intervening_write` before GVN
++ // MIR for `no_intervening_write` after GVN
+  
+  fn no_intervening_write(_1: &u8) -> (u8, u8) {
+      debug r => _1;
+      let mut _0: (u8, u8);
+      let _2: u8;
+      let mut _4: u8;
+      let mut _5: u8;
+      scope 1 {
+          debug a => _2;
+          let _3: u8;
+          scope 2 {
+              debug b => _3;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = copy (*_1);
+          StorageLive(_3);
+-         _3 = copy (*_1);
++         _3 = copy _2;
+          StorageLive(_4);
+          _4 = copy _2;
+          StorageLive(_5);
+-         _5 = copy _3;
+-         _0 = (move _4, move _5);
++         _5 = copy _2;
++         _0 = (copy _2, copy _2);
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageDead(_2);
+          return;
+      }
+  }
+  
