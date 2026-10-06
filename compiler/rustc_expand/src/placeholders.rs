@@ -5,7 +5,6 @@ use rustc_ast::{self as ast};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::{DUMMY_SP, Ident};
 use smallvec::{SmallVec, smallvec};
-use thin_vec::ThinVec;
 
 use crate::expand::{AstFragment, AstFragmentKind};
 
@@ -16,7 +15,7 @@ pub(crate) fn placeholder(
 ) -> AstFragment {
     fn mac_placeholder() -> Box<ast::MacCall> {
         Box::new(ast::MacCall {
-            path: ast::Path { span: DUMMY_SP, segments: ThinVec::new() },
+            path: ast::Path::from_ident(Ident::dummy()),
             args: Box::new(ast::DelimArgs {
                 dspan: ast::tokenstream::DelimSpan::dummy(),
                 delim: Delimiter::Parenthesis,

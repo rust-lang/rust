@@ -276,7 +276,7 @@ struct PairList<'a, 'b, T: Rewrite> {
 
 fn is_ident_or_bool_lit(expr: &ast::Expr) -> bool {
     match &expr.kind {
-        ast::ExprKind::Path(None, path) if path.segments.len() == 1 => true,
+        ast::ExprKind::Path(None, path) => path.num_segments() == 1,
         ast::ExprKind::Lit(token::Lit {
             kind: token::LitKind::Bool,
             ..

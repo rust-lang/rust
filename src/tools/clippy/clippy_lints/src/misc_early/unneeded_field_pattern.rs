@@ -9,12 +9,7 @@ use super::UNNEEDED_FIELD_PATTERN;
 pub(super) fn check(cx: &EarlyContext<'_>, pat: &Pat) {
     if let PatKind::Struct(_, ref npat, ref pfields, _) = pat.kind {
         let mut wilds = 0;
-        let type_name = npat
-            .segments
-            .last()
-            .expect("A path must have at least one segment")
-            .ident
-            .name;
+        let type_name = npat.last_ident().expect("A path must have at least one segment").name;
 
         for field in pfields {
             if let PatKind::Wild = field.pat.kind {

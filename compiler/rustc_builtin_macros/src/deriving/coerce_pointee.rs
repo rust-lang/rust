@@ -304,7 +304,7 @@ fn contains_maybe_sized_bound(bounds: &[GenericBound]) -> bool {
 fn is_sized_marker(path: &ast::Path) -> bool {
     const CORE_UNSIZE: [Symbol; 3] = [sym::core, sym::marker, sym::Sized];
     const STD_UNSIZE: [Symbol; 3] = [sym::std, sym::marker, sym::Sized];
-    let segments = || path.segments.iter().map(|segment| segment.ident.name);
+    let segments = || path.iter_idents().map(|i| i.name);
     if path.is_global() {
         segments().skip(1).eq(CORE_UNSIZE) || segments().skip(1).eq(STD_UNSIZE)
     } else {

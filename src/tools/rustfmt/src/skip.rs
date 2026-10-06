@@ -87,18 +87,15 @@ static RUSTFMT: &str = "rustfmt";
 static SKIP: &str = "skip";
 
 /// Say if you're playing with `rustfmt`'s skip attribute
-pub(crate) fn is_skip_attr(segments: &[ast::PathSegment]) -> bool {
-    if segments.len() < 2 || segments[0].ident.to_string() != RUSTFMT {
-        return false;
-    }
-    match segments.len() {
-        2 => segments[1].ident.to_string() == SKIP,
-        3 => {
-            segments[1].ident.to_string() == SKIP
-                && ["macros", "attributes"]
-                    .iter()
-                    .any(|&n| n == pprust::path_segment_to_string(&segments[2]))
-        }
+pub(crate) fn is_skip_attr(path: &ast::Path) -> bool {
+    let mut idents = path.iter_idents().map(|i| i.as_str());
+    match std::array::from_fn(|_| idents.next()) {
+        [
+            Some("rustfmt"),
+            Some("skip"),
+            None | Some("macros" | "attributes"),
+            None,
+        ] => true,
         _ => false,
     }
 }

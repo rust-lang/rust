@@ -7,6 +7,7 @@ edition = "2024"
 doctest = false
 
 [dependencies]
+itertools = "0.15.0"
 # tidy-alphabetical-start
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }

@@ -1,5 +1,6 @@
 use std::mem;
 
+use itertools::Itertools;
 use rustc_ast::token::{self, MetaVarKind, Token, TokenKind};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocItemConstraint,
@@ -81,14 +82,15 @@ impl<'a> Parser<'a> {
         // if any (e.g., `U` in the `<T as U>::*` examples
         // above). `path_span` has the span of that path, or an empty
         // span in the case of something like `<T>::Bar`.
-        let (mut path, path_span);
+        let (mut path, segments, span);
         if self.eat_keyword(exp!(As)) {
             let path_lo = self.token.span;
             path = self.parse_path(PathStyle::Type)?;
-            path_span = path_lo.to(self.prev_token.span);
+            (segments, span) = path.force_general_mut();
+            *span = path_lo.to(self.prev_token.span);
         } else {
-            path_span = self.token.span.to(self.token.span);
-            path = ast::Path { segments: ThinVec::new(), span: path_span };
+            path = ast::Path::from_segments(ThinVec::new(), self.token.span);
+            (segments, span) = path.force_general_mut();
         }
 
         // See doc comment for `unmatched_angle_bracket_count`.
@@ -103,12 +105,13 @@ impl<'a> Parser<'a> {
             self.expect(exp!(PathSep))?;
         }
 
-        let qself = Box::new(QSelf { ty, path_span, position: path.segments.len() });
+        let qself = Box::new(QSelf { ty, path_span: *span, position: segments.len() });
         if !is_import_coupler {
-            self.parse_path_segments(&mut path.segments, style, None)?;
+            self.parse_path_segments(segments, style, None)?;
         }
 
-        Ok((qself, Path { segments: path.segments, span: lo.to(self.prev_token.span) }))
+        *span = lo.to(self.prev_token.span);
+        Ok((qself, path))
     }
 
     /// Recover from an invalid single colon, when the user likely meant a qualified path.
@@ -163,7 +166,7 @@ impl<'a> Parser<'a> {
         style: PathStyle,
         ty_generics: Option<&Generics>,
     ) -> PResult<'a, Path> {
-        let reject_generics_if_mod_style = |parser: &Parser<'_>, path: Path| {
+        let reject_generics_if_mod_style = |parser: &Parser<'_>, mut path: Path| {
             // Ensure generic arguments don't end up in attribute paths, such as:
             //
             //     macro_rules! m {
@@ -172,25 +175,20 @@ impl<'a> Parser<'a> {
             //
             //     m!(inline<u8>); //~ ERROR: unexpected generic arguments in path
             //
-            if style == PathStyle::Mod && path.segments.iter().any(|segment| segment.args.is_some())
-            {
-                let span = path
-                    .segments
+            if style == PathStyle::Mod && path.iter_segments().any(|s| s.args.is_some()) {
+                let segments = path.force_general_mut().0;
+                let span = segments
                     .iter()
                     .filter_map(|segment| segment.args.as_ref())
                     .map(|arg| arg.span())
                     .collect::<Vec<_>>();
                 parser.dcx().emit_err(diagnostics::GenericsInPath { span });
                 // Ignore these arguments to prevent unexpected behaviors.
-                let segments = path
-                    .segments
-                    .iter()
-                    .map(|segment| PathSegment { ident: segment.ident, id: segment.id, args: None })
-                    .collect();
-                Path { segments, ..path }
-            } else {
-                path
+                for segment in segments {
+                    segment.args = None;
+                }
             }
+            path
         };
 
         if let Some(path) =
@@ -214,7 +212,23 @@ impl<'a> Parser<'a> {
             segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
         }
         self.parse_path_segments(&mut segments, style, ty_generics)?;
-        Ok(Path { segments, span: lo.to(self.prev_token.span) })
+        // Fast-paths to avoid redundant span construction in `Path::from_segments`, and to avoid
+        // the cost of combining spans too early.
+        let hi = self.prev_token.span;
+        if let [segment] = segments.as_slice()
+            && segment.args.is_none()
+            && segment.ident.span == lo
+            && lo == hi
+        {
+            return Ok(Path::Ident { ident: segment.ident, id: segment.id });
+        }
+        let first_span = segments[0].ident.span;
+        let last = segments.last().unwrap();
+        let last_span = last.args.as_deref().map(|a| a.span()).unwrap_or(last.ident.span);
+        if first_span == lo && last_span == hi {
+            return Ok(Path::NoSpan { segments });
+        }
+        Ok(Path::from_segments(segments, lo.to(hi)))
     }
 
     pub(super) fn parse_path_segments(
@@ -242,7 +256,7 @@ impl<'a> Parser<'a> {
                 // `PathStyle::Expr` is only provided at the root invocation and never in
                 // `parse_path_segment` to recurse and therefore can be checked to maintain
                 // this invariant.
-                self.check_trailing_angle_brackets(&segment, &[exp!(PathSep)]);
+                self.check_trailing_angle_brackets(segment.as_ref(), &[exp!(PathSep)]);
             }
             segments.push(segment);
 
@@ -856,12 +870,7 @@ impl<'a> Parser<'a> {
             }
             // We can only resolve single-segment paths at the moment, because multi-segment paths
             // require type-checking: see `visit_generic_arg` in `src/librustc_resolve/late.rs`.
-            ast::ExprKind::Path(None, path)
-                if let [segment] = path.segments.as_slice()
-                    && segment.args.is_none() =>
-            {
-                true
-            }
+            ast::ExprKind::Path(None, path) if path.is_single_argless_ident() => true,
             ast::ExprKind::ConstBlock(_) => {
                 self.psess.gated_spans.gate(sym::gca_min_const_items, expr.span);
                 true
@@ -985,15 +994,15 @@ impl<'a> Parser<'a> {
         if let GenericArg::Type(ty) = gen_arg {
             if let ast::TyKind::Path(qself, path) = &ty.kind
                 && qself.is_none()
-                && let [seg] = path.segments.as_slice()
+                && let Ok(seg) = path.iter_segments().exactly_one()
             {
-                return Ok((false, seg.ident, seg.args.as_deref().cloned()));
+                return Ok((false, *seg.ident, seg.args.cloned()));
             } else if let ast::TyKind::TraitObject(bounds, ast::TraitObjectSyntax::None) = &ty.kind
                 && let [ast::GenericBound::Trait(trait_ref)] = bounds.as_slice()
                 && trait_ref.modifiers == ast::TraitBoundModifiers::NONE
-                && let [seg] = trait_ref.trait_ref.path.segments.as_slice()
+                && let Ok(seg) = trait_ref.trait_ref.path.iter_segments().exactly_one()
             {
-                return Ok((true, seg.ident, seg.args.as_deref().cloned()));
+                return Ok((true, *seg.ident, seg.args.cloned()));
             }
         }
         Err(())

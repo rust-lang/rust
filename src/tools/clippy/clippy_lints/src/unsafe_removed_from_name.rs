@@ -42,12 +42,7 @@ fn check_use_tree(use_tree: &UseTree, cx: &EarlyContext<'_>, span: Span) {
             if new_name.as_str() == "_" {
                 return;
             }
-            let old_name = use_tree
-                .prefix
-                .segments
-                .last()
-                .expect("use paths cannot be empty")
-                .ident;
+            let old_name = use_tree.prefix.last_ident().expect("use paths cannot be empty");
             unsafe_to_safe_check(old_name, new_name, cx, span);
         },
         UseTreeKind::Simple(None) | UseTreeKind::Glob(_) => {},

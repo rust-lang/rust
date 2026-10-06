@@ -615,11 +615,11 @@ impl<'a> Parser<'a> {
             Err(mut err) => {
                 // Maybe the user misspelled `macro_rules` (issue #91227)
                 if self.token.is_ident()
-                    && let [segment] = path.segments.as_slice()
-                    && edit_distance("macro_rules", &segment.ident.to_string(), 2).is_some()
+                    && let Some(ident) = path.as_single_argless_ident()
+                    && edit_distance("macro_rules", &ident.to_string(), 2).is_some()
                 {
                     err.span_suggestion_verbose(
-                        path.span,
+                        path.span(),
                         "perhaps you meant to define a macro",
                         "macro_rules",
                         Applicability::MachineApplicable,
@@ -943,7 +943,7 @@ impl<'a> Parser<'a> {
             }))
         } else {
             let rename = rename(self)?;
-            let ident = rename.unwrap_or_else(|| path.segments.last().unwrap().ident);
+            let ident = rename.unwrap_or_else(|| path.last_ident().unwrap());
 
             ItemKind::Delegation(Box::new(Delegation {
                 id: DUMMY_NODE_ID,
@@ -1341,16 +1341,16 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, UseTree> {
         let lo = self.token.span;
 
-        let mut prefix = ast::Path { segments: ThinVec::new(), span: lo.shrink_to_lo() };
+        let mut prefix;
         let kind =
             if self.check(exp!(OpenBrace)) || self.check(exp!(Star)) || self.is_import_coupler() {
                 // `use *;` or `use ::*;` or `use {...};` or `use ::{...};`
                 let mod_sep_ctxt = self.token.span.ctxt();
-                if self.eat_path_sep() {
-                    prefix
-                        .segments
-                        .push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
-                }
+                prefix = if self.eat_path_sep() {
+                    ast::Path::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt))
+                } else {
+                    ast::Path::from_segments(ThinVec::new(), lo.shrink_to_lo())
+                };
 
                 self.parse_use_tree_glob_or_nested(use_token_span, use_path)?
             } else {
@@ -1358,7 +1358,8 @@ impl<'a> Parser<'a> {
                 prefix = self.parse_path(PathStyle::Mod)?;
 
                 if self.eat_path_sep() {
-                    let use_path = UsePathList { elements: &prefix.segments, prev: use_path };
+                    let (segments, _) = prefix.force_general_mut();
+                    let use_path = UsePathList { elements: &*segments, prev: use_path };
                     self.parse_use_tree_glob_or_nested(use_token_span, Some(&use_path))?
                 } else {
                     // Recover from using a colon as path separator.
@@ -1368,8 +1369,9 @@ impl<'a> Parser<'a> {
                         });
 
                         // We parse the rest of the path and append it to the original prefix.
-                        self.parse_path_segments(&mut prefix.segments, PathStyle::Mod, None)?;
-                        prefix.span = lo.to(self.prev_token.span);
+                        let (segments, span) = prefix.force_general_mut();
+                        self.parse_path_segments(segments, PathStyle::Mod, None)?;
+                        *span = lo.to(self.prev_token.span);
                     }
 
                     UseTreeKind::Simple(self.parse_rename()?)
@@ -2379,8 +2381,8 @@ impl<'a> Parser<'a> {
                     format!("expected `,`, or `}}`, found {}", super::token_descr(&self.token));
 
                 // Try to recover extra trailing angle brackets
-                if let TyKind::Path(_, Path { segments, .. }) = &a_var.ty.kind
-                    && let Some(last_segment) = segments.last()
+                if let TyKind::Path(_, path) = &a_var.ty.kind
+                    && let Some(last_segment) = path.last_segment()
                 {
                     let guar = self.check_trailing_angle_brackets(
                         last_segment,
@@ -2872,11 +2874,11 @@ impl<'a> Parser<'a> {
             // Check if this looks like `macro_rules!(name) { ... }`
             // a common mistake when trying to define a macro.
             if let Some(path) = path
-                && path.segments.first().is_some_and(|seg| seg.ident.name == sym::macro_rules)
+                && path.iter_idents().next().is_some_and(|i| i.name == sym::macro_rules)
                 && args.delim == Delimiter::Parenthesis
             {
                 let replace =
-                    if path.span.hi() + rustc_span::BytePos(1) < open.lo() { "" } else { " " };
+                    if path.span().hi() + rustc_span::BytePos(1) < open.lo() { "" } else { " " };
                 err.multipart_suggestion(
                     "to define a macro, remove the parentheses around the macro name",
                     vec![(open, replace.to_string()), (close, String::new())],

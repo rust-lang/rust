@@ -541,7 +541,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_path_simple_eii(&mut self, id: NodeId, path: &Path) -> Option<DefId> {
         let res = self.get_partial_res(id)?;
         let Some(did) = res.expect_full_res().opt_def_id() else {
-            self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
+            self.dcx().span_delayed_bug(path.span(), "should have errored in resolve");
             return None;
         };
 
@@ -556,27 +556,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
         vis_span: Span,
         attrs: &'hir [rustc_attr_ir::Attribute],
     ) -> hir::UseTree<'hir> {
-        let path = &tree.prefix;
-        let segments = path.segments.iter().cloned().collect();
-
         match tree.kind {
             UseTreeKind::Simple(rename) => {
                 let mut ident = tree.ident();
 
-                // First, apply the prefix to the path.
-                let mut path = Path { segments, span: path.span };
-
                 // Correctly resolve `self` imports.
-                if path.segments.len() > 1
-                    && path.segments.last().unwrap().ident.name == kw::SelfLower
-                {
-                    let _ = path.segments.pop();
+                let mut path = tree.prefix.clone();
+                if path.num_segments() > 1 && path.last_ident().unwrap().name == kw::SelfLower {
+                    let segments = path.force_general_mut().0;
+                    let _ = segments.pop();
                     if rename.is_none() {
-                        ident = path.segments.last().unwrap().ident;
+                        ident = segments.last().unwrap().ident;
                     }
                 }
 
-                let res = self.lower_import_res(id, path.span);
+                let res = self.lower_import_res(id, &path);
                 let path = self.lower_use_path(res, &path, ParamMode::Explicit);
                 let ident = self.lower_ident(ident);
                 hir::UseTree { prefix: path, kind: hir::UseKind::Single(ident) }
@@ -586,8 +580,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let res = self.lower_res(res);
                 // Put the result in the appropriate namespace.
                 let res = res.in_namespace();
-                let path = Path { segments, span: path.span };
-                let path = self.lower_use_path(res, &path, ParamMode::Explicit);
+                let path = self.lower_use_path(res, &tree.prefix, ParamMode::Explicit);
                 hir::UseTree { prefix: path, kind: hir::UseKind::Glob }
             }
             UseTreeKind::Nested { items: ref trees, .. } => {
@@ -595,7 +588,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let res = self.lower_res(res);
                 // Put the result in the appropriate namespace.
                 let res = res.in_namespace();
-                let prefix = self.lower_use_path(res, &path, ParamMode::Explicit);
+                let prefix = self.lower_use_path(res, &tree.prefix, ParamMode::Explicit);
                 let items = self.arena.alloc_from_iter(trees.iter().map(|use_tree| {
                     let id = use_tree.id;
                     let hir_id = self.lower_node_id(id);
@@ -1707,22 +1700,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
             RestrictionKind::Restricted { path, id, shorthand: _ } => {
                 let res = self.get_partial_res(*id);
                 let parent_module = self.tcx.parent_module(hir_id);
+                let span = path.span();
                 if let Some(did) = res.and_then(|res| res.expect_full_res().opt_def_id()) {
                     if !self.tcx.is_descendant_of(parent_module, did) {
                         // If the restriction path is not an ancestor of the item,
                         // emit an error and recover by lowering the restriction to `Unrestricted`.
-                        self.dcx().emit_err(RestrictionAncestorOnly {
-                            span: path.span,
-                            kind: resolving_kind,
-                        });
+                        self.dcx().emit_err(RestrictionAncestorOnly { span, kind: resolving_kind });
                         hir::RestrictionKind::Unrestricted
                     } else {
                         hir::RestrictionKind::Restricted(self.arena.alloc(hir::Path {
                             res: did,
-                            segments: self.arena.alloc_from_iter(path.segments.iter().map(
+                            segments: self.arena.alloc_from_iter(path.iter_segments().map(
                                 |segment| {
                                     self.lower_path_segment(
-                                        path.span,
+                                        span,
                                         segment,
                                         ParamMode::Explicit,
                                         GenericArgsMode::Err,
@@ -1731,11 +1722,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                     )
                                 },
                             )),
-                            span: self.lower_span(path.span),
+                            span: self.lower_span(span),
                         }))
                     }
                 } else {
-                    self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
+                    self.dcx().span_delayed_bug(span, "should have errored in resolve");
                     hir::RestrictionKind::Unrestricted
                 }
             }
@@ -1845,17 +1836,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let define_opaque = define_opaque.iter().filter_map(|(id, path)| {
             let res = self.get_partial_res(*id);
             let Some(did) = res.and_then(|res| res.expect_full_res().opt_def_id()) else {
-                self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
+                self.dcx().span_delayed_bug(path.span(), "should have errored in resolve");
                 return None;
             };
             let Some(did) = did.as_local() else {
                 self.dcx().span_err(
-                    path.span,
+                    path.span(),
                     "only opaque types defined in the local crate can be defined",
                 );
                 return None;
             };
-            Some((self.lower_span(path.span), did))
+            Some((self.lower_span(path.span()), did))
         });
         let define_opaque = self.arena.alloc_from_iter(define_opaque);
         self.curr_owner.define_opaque = Some(define_opaque);

@@ -45,6 +45,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let partial_res = self.get_partial_res(id).unwrap_or_else(|| PartialRes::new(Res::Err));
         let base_res = partial_res.base_res();
         let unresolved_segments = partial_res.unresolved_segments();
+        let span = p.span();
+        let p_num_segments = p.num_segments();
 
         let mut res = self.lower_res(base_res);
 
@@ -55,7 +57,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     if let Some(async_def_id) = self.map_trait_to_async_trait(def_id) {
                         res = Res::Def(DefKind::Trait, async_def_id);
                     } else {
-                        self.dcx().emit_err(AsyncBoundOnlyForFnTraits { span: p.span });
+                        self.dcx().emit_err(AsyncBoundOnlyForFnTraits { span });
                     }
                 }
                 Res::Err => {
@@ -65,7 +67,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // This error isn't actually emitted AFAICT, but it's best to keep
                     // it around in case the resolver doesn't always check the defkind
                     // of an item or something.
-                    self.dcx().emit_err(AsyncBoundNotOnTrait { span: p.span, descr: res.descr() });
+                    self.dcx().emit_err(AsyncBoundNotOnTrait { span, descr: res.descr() });
                 }
             }
         }
@@ -83,70 +85,70 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Only permit `impl Trait` in the final segment. E.g., we permit `Option<impl Trait>`,
         // `option::Option<T>::Xyz<impl Trait>` and reject `option::Option<impl Trait>::Xyz`.
         let itctx = |i| {
-            if i + 1 == p.segments.len() {
+            if i + 1 == p_num_segments {
                 itctx
             } else {
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path)
             }
         };
 
-        let path_span_lo = p.span.shrink_to_lo();
-        let proj_start = p.segments.len() - unresolved_segments;
-        let path = self.arena.alloc(hir::Path {
-            res,
-            segments: self.arena.alloc_from_iter(p.segments[..proj_start].iter().enumerate().map(
-                |(i, segment)| {
-                    let param_mode = match (qself_position, param_mode) {
-                        (Some(j), ParamMode::Optional) if i < j => {
-                            // This segment is part of the trait path in a
-                            // qualified path - one of `a`, `b` or `Trait`
-                            // in `<X as a::b::Trait>::T::U::method`.
-                            ParamMode::Explicit
-                        }
-                        _ => param_mode,
-                    };
+        let path_span_lo = span.shrink_to_lo();
+        let proj_start = p_num_segments - unresolved_segments;
+        let mut last_prefix_span = path_span_lo;
+        let mut segment_iter = p.iter_segments().enumerate();
+        let segments = self.arena.alloc_from_iter(segment_iter.by_ref().take(proj_start).map(
+            |(i, segment)| {
+                let param_mode = match (qself_position, param_mode) {
+                    (Some(j), ParamMode::Optional) if i < j => {
+                        // This segment is part of the trait path in a
+                        // qualified path - one of `a`, `b` or `Trait`
+                        // in `<X as a::b::Trait>::T::U::method`.
+                        ParamMode::Explicit
+                    }
+                    _ => param_mode,
+                };
 
-                    let generic_args_mode = match base_res {
-                        // `a::b::Trait(Args)`
-                        Res::Def(DefKind::Trait, _) if i + 1 == proj_start => {
-                            GenericArgsMode::ParenSugar
+                let generic_args_mode = match base_res {
+                    // `a::b::Trait(Args)`
+                    Res::Def(DefKind::Trait, _) if i + 1 == proj_start => {
+                        GenericArgsMode::ParenSugar
+                    }
+                    // `a::b::Trait(Args)::TraitItem`
+                    Res::Def(DefKind::AssocFn, _)
+                    | Res::Def(DefKind::AssocConst, _)
+                    | Res::Def(DefKind::AssocTy, _)
+                        if i + 2 == proj_start =>
+                    {
+                        GenericArgsMode::ParenSugar
+                    }
+                    Res::Def(DefKind::AssocFn, _) if i + 1 == proj_start => {
+                        match allow_return_type_notation {
+                            AllowReturnTypeNotation::Yes => GenericArgsMode::ReturnTypeNotation,
+                            AllowReturnTypeNotation::No => GenericArgsMode::Err,
                         }
-                        // `a::b::Trait(Args)::TraitItem`
-                        Res::Def(DefKind::AssocFn, _)
-                        | Res::Def(DefKind::AssocConst, _)
-                        | Res::Def(DefKind::AssocTy, _)
-                            if i + 2 == proj_start =>
-                        {
-                            GenericArgsMode::ParenSugar
-                        }
-                        Res::Def(DefKind::AssocFn, _) if i + 1 == proj_start => {
-                            match allow_return_type_notation {
-                                AllowReturnTypeNotation::Yes => GenericArgsMode::ReturnTypeNotation,
-                                AllowReturnTypeNotation::No => GenericArgsMode::Err,
-                            }
-                        }
-                        // Avoid duplicated errors.
-                        Res::Err => GenericArgsMode::Silence,
-                        // An error
-                        _ => GenericArgsMode::Err,
-                    };
+                    }
+                    // Avoid duplicated errors.
+                    Res::Err => GenericArgsMode::Silence,
+                    // An error
+                    _ => GenericArgsMode::Err,
+                };
 
-                    self.lower_path_segment(
-                        p.span,
-                        segment,
-                        param_mode,
-                        generic_args_mode,
-                        itctx(i),
-                        bound_modifier_allowed_features.clone(),
-                    )
-                },
-            )),
-            span: self.lower_span(
-                p.segments[..proj_start]
-                    .last()
-                    .map_or(path_span_lo, |segment| path_span_lo.to(segment.span())),
-            ),
-        });
+                if i + 1 == proj_start {
+                    last_prefix_span = path_span_lo.to(segment.span());
+                }
+
+                self.lower_path_segment(
+                    span,
+                    segment,
+                    param_mode,
+                    generic_args_mode,
+                    itctx(i),
+                    bound_modifier_allowed_features.clone(),
+                )
+            },
+        ));
+        let path =
+            self.arena.alloc(hir::Path { res, segments, span: self.lower_span(last_prefix_span) });
 
         if let Some(bound_modifier_allowed_features) = bound_modifier_allowed_features {
             path.span = self.mark_span_with_reason(
@@ -185,9 +187,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         //   2. `<std::vec::Vec<T>>::IntoIter`
         //   3. `<<std::vec::Vec<T>>::IntoIter>::Item`
         // * final path is `<<<std::vec::Vec<T>>::IntoIter>::Item>::clone`
-        for (i, segment) in p.segments.iter().enumerate().skip(proj_start) {
+        //
+        // We've already consumed the prefix from `segment_iter`, so we can resume it here.
+        for (i, segment) in segment_iter {
             // If this is a type-dependent `T::method(..)`.
-            let generic_args_mode = if i + 1 == p.segments.len()
+            let generic_args_mode = if i + 1 == p_num_segments
                 && matches!(allow_return_type_notation, AllowReturnTypeNotation::Yes)
             {
                 GenericArgsMode::ReturnTypeNotation
@@ -196,7 +200,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             };
 
             let hir_segment = self.arena.alloc(self.lower_path_segment(
-                p.span,
+                span,
                 segment,
                 param_mode,
                 generic_args_mode,
@@ -206,7 +210,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let qpath = hir::QPath::TypeRelative(ty, hir_segment);
 
             // It's finished, return the extension of the right node type.
-            if i == p.segments.len() - 1 {
+            if i == p_num_segments - 1 {
                 return qpath;
             }
 
@@ -218,11 +222,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // We should've returned in the for loop above.
 
         self.dcx().span_bug(
-            p.span,
+            span,
             format!(
                 "lower_qpath: no final extension segment in {}..{}",
-                proj_start,
-                p.segments.len()
+                proj_start, p_num_segments
             ),
         );
     }
@@ -234,11 +237,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         param_mode: ParamMode,
     ) -> &'hir hir::UsePath<'hir> {
         assert!(!res.is_empty());
+        let path_span = p.span();
         self.arena.alloc(hir::UsePath {
             res,
-            segments: self.arena.alloc_from_iter(p.segments.iter().map(|segment| {
+            segments: self.arena.alloc_from_iter(p.iter_segments().map(|segment| {
                 self.lower_path_segment(
-                    p.span,
+                    path_span,
                     segment,
                     param_mode,
                     GenericArgsMode::Err,
@@ -246,14 +250,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     None,
                 )
             })),
-            span: self.lower_span(p.span),
+            span: self.lower_span(path_span),
         })
     }
 
     pub(crate) fn lower_path_segment(
         &mut self,
         path_span: Span,
-        segment: &PathSegment,
+        segment: PathSegmentRef<'_>,
         param_mode: ParamMode,
         generic_args_mode: GenericArgsMode,
         itctx: ImplTraitContext,
@@ -263,7 +267,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         bound_modifier_allowed_features: Option<Arc<[Symbol]>>,
     ) -> hir::PathSegment<'hir> {
         debug!("path_span: {:?}, lower_path_segment(segment: {:?})", path_span, segment);
-        let (mut generic_args, infer_args) = if let Some(generic_args) = segment.args.as_deref() {
+        let (mut generic_args, infer_args) = if let Some(generic_args) = segment.args {
             match generic_args {
                 GenericArgs::AngleBracketed(data) => {
                     self.lower_angle_bracketed_parameter_data(data, param_mode, itctx)
@@ -406,7 +410,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
 
         hir::PathSegment {
-            ident: self.lower_ident(segment.ident),
+            ident: self.lower_ident(*segment.ident),
             hir_id,
             res: self.lower_res(res),
             infer_args,

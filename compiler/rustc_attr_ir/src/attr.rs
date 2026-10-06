@@ -42,13 +42,8 @@ impl IntoDiagArg for AttrPath {
 impl AttrPath {
     pub fn from_ast(path: &ast::Path, lower_span: impl Copy + Fn(Span) -> Span) -> Self {
         AttrPath {
-            segments: path
-                .segments
-                .iter()
-                .map(|i| i.ident.name)
-                .collect::<Vec<_>>()
-                .into_boxed_slice(),
-            span: lower_span(path.span),
+            segments: path.iter_idents().map(|i| i.name).collect(),
+            span: lower_span(path.span()),
         }
     }
 }

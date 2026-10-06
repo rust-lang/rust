@@ -54,9 +54,7 @@ mod llvm_enzyme {
             }
         }
 
-        let segments = &x.meta_item().unwrap().path.segments;
-        assert!(segments.len() == 1);
-        segments[0].ident
+        x.ident().unwrap()
     }
 
     fn name(x: &MetaItemInner) -> String {
@@ -372,7 +370,7 @@ mod llvm_enzyme {
                 (ast::AttrKind::Normal(a), ast::AttrKind::Normal(b)) => {
                     let a = &a.item.path;
                     let b = &b.item.path;
-                    a.segments.iter().eq_by(&b.segments, |a, b| a.ident == b.ident)
+                    a.iter_idents().eq(b.iter_idents())
                 }
                 _ => false,
             }

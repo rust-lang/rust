@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use rustc_ast::YieldKind;
 use rustc_ast::ast::{
     self, Attribute, ImplRestriction, MetaItem, MetaItemInner, MetaItemKind, MutRestriction,
-    NodeId, Path, RestrictionKind, Visibility, VisibilityKind,
+    NodeId, RestrictionKind, Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_feature::is_builtin_attr_name;
@@ -59,8 +59,7 @@ pub(crate) fn format_visibility(
         VisibilityKind::Public => Cow::from("pub "),
         VisibilityKind::Inherited => Cow::from(""),
         VisibilityKind::Restricted { ref path, .. } => {
-            let Path { ref segments, .. } = **path;
-            let mut segments_iter = segments.iter().map(|seg| rewrite_ident(context, seg.ident));
+            let mut segments_iter = path.iter_idents().map(|&i| rewrite_ident(context, i));
             if path.is_global() {
                 segments_iter
                     .next()
@@ -101,8 +100,7 @@ fn format_restriction(
             id: _,
             shorthand,
         } => {
-            let Path { ref segments, .. } = **path;
-            let mut segments_iter = segments.iter().map(|seg| rewrite_ident(context, seg.ident));
+            let mut segments_iter = path.iter_idents().map(|&i| rewrite_ident(context, i));
             if path.is_global() && segments_iter.next().is_none() {
                 panic!("non-global path in {kw}(restricted)?");
             }

@@ -422,7 +422,7 @@ impl Invocation {
         match &self.kind {
             InvocationKind::Bang { span, .. } => *span,
             InvocationKind::Attr { attr, .. } => attr.span,
-            InvocationKind::Derive { path, .. } => path.span,
+            InvocationKind::Derive { path, .. } => path.span(),
             InvocationKind::GlobDelegation { item, .. } => item.span,
         }
     }
@@ -431,7 +431,7 @@ impl Invocation {
         match &mut self.kind {
             InvocationKind::Bang { span, .. } => span,
             InvocationKind::Attr { attr, .. } => &mut attr.span,
-            InvocationKind::Derive { path, .. } => &mut path.span,
+            InvocationKind::Derive { path, .. } => path.force_general_mut().1,
             InvocationKind::GlobDelegation { item, .. } => &mut item.span,
         }
     }
@@ -2056,7 +2056,8 @@ fn build_single_delegations<'a, Node: InvocationCollectorNode>(
 
     suffixes.iter().map(move |&(ident, rename)| {
         let mut path = deleg.prefix.clone();
-        path.segments.push(ast::PathSegment { ident, id: ast::DUMMY_NODE_ID, args: None });
+        let (segments, _) = path.force_general_mut();
+        segments.push(ast::PathSegment::from_ident(ident));
 
         ast::Item {
             attrs: item.attrs.clone(),
@@ -2291,7 +2292,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         crate::diagnostics::UnusedBuiltinAttribute {
                             attr_name,
                             macro_name: pprust::path_to_string(&call.path),
-                            invoc_span: call.path.span,
+                            invoc_span: call.path.span(),
                             attr_span: attr.span,
                         },
                     );

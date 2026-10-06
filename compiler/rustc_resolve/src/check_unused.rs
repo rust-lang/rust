@@ -359,7 +359,7 @@ fn calc_unused_spans(
                     } else {
                         // Delete everything until the next import, to delete the trailing commas
                         let inner = &nested[pos + 1].inner;
-                        use_tree.inner.prefix.span.to(inner.prefix.span.shrink_to_lo())
+                        use_tree.inner.prefix.span().to(inner.prefix.span().shrink_to_lo())
                     };
 
                     // Try to collapse adjacent spans into a single one. This prevents all cases of
@@ -400,7 +400,7 @@ fn calc_unused_spans(
                             .unwrap()
                             .inner
                             .prefix
-                            .span
+                            .span()
                             .shrink_to_lo()),
                     );
                     // Right brace, from the end of the last item to the end of the nested group.

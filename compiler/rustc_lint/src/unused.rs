@@ -1016,10 +1016,9 @@ impl EarlyLintPass for UnusedParens {
                     let is_last = i == bounds.len() - 1;
 
                     if let ast::GenericBound::Trait(poly_trait_ref) = &bounds[i] {
-                        let fn_with_explicit_ret_ty = if let [.., segment] =
-                            &*poly_trait_ref.trait_ref.path.segments
-                            && let Some(args) = segment.args.as_ref()
-                            && let ast::GenericArgs::Parenthesized(paren_args) = &**args
+                        let fn_with_explicit_ret_ty = if let Some(segment) =
+                            poly_trait_ref.trait_ref.path.last_segment()
+                            && let Some(ast::GenericArgs::Parenthesized(paren_args)) = segment.args
                             && let ast::FnRetTy::Ty(ret_ty) = &paren_args.output
                         {
                             self.in_no_bounds_pos.insert(
@@ -1043,13 +1042,7 @@ impl EarlyLintPass for UnusedParens {
                         let dyn2015_exception = cx.sess().psess.edition == Edition2015
                             && matches!(ty.kind, ast::TyKind::TraitObject(..))
                             && i == 0
-                            && poly_trait_ref
-                                .trait_ref
-                                .path
-                                .segments
-                                .first()
-                                .map(|s| s.ident.name == kw::PathRoot)
-                                .unwrap_or(false);
+                            && poly_trait_ref.trait_ref.path.is_global();
 
                         if let ast::Parens::Yes = poly_trait_ref.parens
                             && (is_last || !fn_with_explicit_ret_ty)
@@ -1340,7 +1333,7 @@ impl UnusedImportBraces {
             // Trigger the lint if the nested item is a non-self single item
             let node_name = match tree.inner.kind {
                 ast::UseTreeKind::Simple(rename) => {
-                    let orig_ident = tree.inner.prefix.segments.last().unwrap().ident;
+                    let orig_ident = tree.inner.prefix.last_ident().unwrap();
                     if orig_ident.name == kw::SelfLower {
                         return;
                     }

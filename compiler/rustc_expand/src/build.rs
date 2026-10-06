@@ -24,7 +24,12 @@ impl<'a> ExtCtxt<'a> {
         self.path_all(span, false, strs, vec![])
     }
     pub fn path_ident(&self, span: Span, id: Ident) -> ast::Path {
-        self.path(span, vec![id])
+        let ident = id.with_span_pos(span);
+        if ident.span == span {
+            ast::Path::from_ident(ident)
+        } else {
+            ast::Path::General(Box::new((thin_vec![ast::PathSegment::from_ident(ident)], span)))
+        }
     }
     pub fn path_global(&self, span: Span, strs: Vec<Ident>) -> ast::Path {
         self.path_all(span, true, strs, vec![])
@@ -38,6 +43,12 @@ impl<'a> ExtCtxt<'a> {
     ) -> ast::Path {
         assert!(!idents.is_empty());
         let add_root = global && !idents[0].is_path_segment_keyword();
+        if !add_root
+            && args.is_empty()
+            && let &[ident] = idents.as_slice()
+        {
+            return self.path_ident(span, ident);
+        }
         let mut segments = ThinVec::with_capacity(idents.len() + add_root as usize);
         if add_root {
             segments.push(ast::PathSegment::path_root(span));
@@ -57,7 +68,7 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             args,
         });
-        ast::Path { span, segments }
+        ast::Path::from_segments(segments, span)
     }
 
     pub fn macro_call(
@@ -86,7 +97,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn ty_path(&self, path: ast::Path) -> Box<ast::Ty> {
-        self.ty(path.span, ast::TyKind::Path(None, path))
+        self.ty(path.span(), ast::TyKind::Path(None, path))
     }
 
     // Might need to take bounds as an argument in the future, if you ever want
@@ -211,7 +222,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn trait_bound(&self, path: ast::Path, is_const: bool) -> ast::GenericBound {
-        ast::GenericBound::Trait(self.poly_trait_ref(path.span, path, is_const))
+        ast::GenericBound::Trait(self.poly_trait_ref(path.span(), path, is_const))
     }
 
     pub fn lifetime(&self, span: Span, ident: Ident) -> ast::Lifetime {
@@ -306,7 +317,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn expr_path(&self, path: ast::Path) -> Box<ast::Expr> {
-        self.expr(path.span, ast::ExprKind::Path(None, path))
+        self.expr(path.span(), ast::ExprKind::Path(None, path))
     }
 
     pub fn expr_ident(&self, span: Span, id: Ident) -> Box<ast::Expr> {

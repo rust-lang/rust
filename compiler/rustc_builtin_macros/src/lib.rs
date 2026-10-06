@@ -5,7 +5,6 @@
 #![allow(internal_features)]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
-#![feature(iter_order_by)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![feature(try_blocks)]

@@ -1447,7 +1447,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             VisResolutionError::Relative2018(span, path) => {
                 self.dcx().create_err(diagnostics::Relative2018 {
                     span,
-                    path_span: path.span,
+                    path_span: path.span(),
                     // intentionally converting to String, as the text would also be used as
                     // in suggestion context
                     path_str: pprust::path_to_string(&path),
@@ -1756,7 +1756,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     segms.append(&mut path_segments.clone());
 
                     segms.push(ast::PathSegment::from_ident(ident.orig(orig_ident_span)));
-                    let path = Path { span: name_binding.span, segments: segms };
+                    let path = Path::from_segments(segms, name_binding.span);
 
                     if child_accessible
                         // Remove invisible match if exists
@@ -1769,7 +1769,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                     let is_stable = if is_stable
                         && let Some(did) = did
-                        && this.is_stable(did, path.span)
+                        && this.is_stable(did, path.span())
                     {
                         true
                     } else {
@@ -2564,11 +2564,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // doesn't start with `Crate`, prepend it (edition 2015 paths are relative
         // to the crate root without an explicit `crate::` prefix).
         let candidate_names = {
-            let filtered_segments: Vec<_> =
-                path.segments.iter().filter(|segment| segment.ident.name != kw::PathRoot).collect();
-
             let mut candidate_names: Vec<Symbol> =
-                filtered_segments.iter().map(|segment| segment.ident.name).collect();
+                path.iter_idents().map(|i| i.name).filter(|&n| n != kw::PathRoot).collect();
             if candidate_names.first() != Some(&kw::Crate) {
                 candidate_names.insert(0, kw::Crate);
             }
@@ -2614,11 +2611,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Only apply if the result is strictly shorter than the original path.
-        if new_segments.len() >= path.segments.len() {
+        if new_segments.len() >= path.num_segments() {
             return;
         }
 
-        *path = Path { span: path.span, segments: new_segments };
+        *path = Path::from_segments(new_segments, path.span());
     }
 
     fn report_privacy_error(&mut self, privacy_error: &PrivacyError<'ra>) {
@@ -2816,18 +2813,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         module_path.map(|module_path| {
                             // `import.module_path` is relative to the import's module, not to the
                             // failing use site.
-                            let mut path = Path {
-                                span: ident.span,
-                                segments: module_path
+                            let mut path = Path::from_segments(
+                                module_path
                                     .into_iter()
                                     .chain(std::iter::once(ident.name))
                                     .map(|name| {
                                         ast::PathSegment::from_ident(Ident::with_dummy_span(name))
                                     })
                                     .collect(),
-                            };
+                                ident.span,
+                            );
                             self.shorten_import_path(res_def_id, &mut path, parent_scope.module);
-                            path.segments.iter().map(|seg| seg.ident).collect()
+                            path.iter_idents().copied().collect()
                         })
                     } else {
                         // Don't include `{{root}}` in suggestions - it's an internal symbol
@@ -2939,7 +2936,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let ast::ExprKind::Struct(struct_expr) = &expr.kind else { return };
         // We don't have to handle type-relative paths because they're forbidden in ADT
         // expressions, but that would change with `#[feature(more_qualified_paths)]`.
-        let Some(segment) = struct_expr.path.segments.last() else { return };
+        let Some(segment) = struct_expr.path.last_segment() else { return };
         let Some(partial_res) = self.partial_res_map.get(&segment.id) else { return };
         let Some(Res::Def(_, def_id)) = partial_res.full_res() else {
             return;
@@ -3101,23 +3098,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let is_mod = |res| matches!(res, Res::Def(DefKind::Mod, _));
             let mut candidates = self.lookup_import_candidates(ident, TypeNS, parent_scope, is_mod);
             candidates
-                .sort_by_cached_key(|c| (c.path.segments.len(), pprust::path_to_string(&c.path)));
-            if let Some(candidate) = candidates.get(0) {
-                let path = {
-                    // remove the possible common prefix of the path
-                    let len = candidate.path.segments.len();
-                    let start_index = (0..=failed_segment_idx.min(len - 1))
-                        .find(|&i| path[i].ident.name != candidate.path.segments[i].ident.name)
-                        .unwrap_or_default();
-                    let segments =
-                        (start_index..len).map(|s| candidate.path.segments[s].clone()).collect();
-                    Path { segments, span: Span::default() }
-                };
+                .sort_by_cached_key(|c| (c.path.num_segments(), pprust::path_to_string(&c.path)));
+            if let Some(candidate) = candidates.first_mut() {
+                // remove the possible common prefix of the path
+                let (segments, span) = candidate.path.force_general_mut();
+                *span = Span::default();
+                let len = segments.len();
+                let start_index = (0..=failed_segment_idx.min(len - 1))
+                    .find(|&i| path[i].ident.name != segments[i].ident.name)
+                    .unwrap_or_default();
+                segments.drain(..start_index);
                 (
                     message,
                     String::from("unresolved import"),
                     Some((
-                        vec![(ident.span, pprust::path_to_string(&path))],
+                        vec![(ident.span, pprust::path_to_string(&candidate.path))],
                         String::from("a similar path exists"),
                         Applicability::MaybeIncorrect,
                     )),

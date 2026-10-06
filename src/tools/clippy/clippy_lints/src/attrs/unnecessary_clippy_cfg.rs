@@ -22,8 +22,8 @@ pub(super) fn check(
         let mut clippy_lints = Vec::with_capacity(items.len());
         for item in items {
             if let Some(meta_item) = item.meta_item()
-                && let [part1, _] = meta_item.path.segments.as_slice()
-                && part1.ident.name == sym::clippy
+                && let Some((part1_ident, _)) = meta_item.path.iter_idents().collect_tuple()
+                && part1_ident.name == sym::clippy
             {
                 clippy_lints.push(item.span());
             }

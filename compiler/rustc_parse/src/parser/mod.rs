@@ -1535,7 +1535,7 @@ impl<'a> Parser<'a> {
 
         let path_str = pprust::path_to_string(&path);
         self.dcx()
-            .emit_err(IncorrectVisibilityRestriction { span: path.span, inner_str: path_str });
+            .emit_err(IncorrectVisibilityRestriction { span: path.span(), inner_str: path_str });
 
         Ok(())
     }
@@ -1611,13 +1611,15 @@ impl<'a> Parser<'a> {
             match restriction_kind {
                 ParsingRestrictionKind::Impl => {
                     self.dcx().emit_err(IncorrectImplRestriction {
-                        span: path.span,
+                        span: path.span(),
                         inner_str: path_str,
                     });
                 }
                 ParsingRestrictionKind::Mut => {
-                    self.dcx()
-                        .emit_err(IncorrectMutRestriction { span: path.span, inner_str: path_str });
+                    self.dcx().emit_err(IncorrectMutRestriction {
+                        span: path.span(),
+                        inner_str: path_str,
+                    });
                 }
             }
             Ok((RestrictionKind::Unrestricted, self.token.span.shrink_to_lo(), lo.to(end)))

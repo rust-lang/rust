@@ -65,6 +65,8 @@ enum Mode {
 
 impl EarlyLintPass for NeedlessArbitrarySelfType {
     fn check_param(&mut self, cx: &EarlyContext<'_>, p: &Param) {
+        use itertools::Itertools;
+
         // Bail out if the parameter it's not a receiver or was not written by the user
         if !p.is_self() || p.span.from_expansion() {
             return;
@@ -84,8 +86,8 @@ impl EarlyLintPass for NeedlessArbitrarySelfType {
         };
 
         let span = p.span.to(p.ty.span);
-        if let [segment] = &path.segments[..]
-            && segment.ident.name == kw::SelfUpper
+        if let Ok(ident) = path.iter_idents().exactly_one()
+            && ident.name == kw::SelfUpper
         {
             span_lint_and_then(
                 cx,

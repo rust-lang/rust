@@ -898,14 +898,14 @@ impl<'a> State<'a> {
                 }
             }
             ast::UseTreeKind::Glob(_) => {
-                if !tree.prefix.segments.is_empty() {
+                if !tree.prefix.is_empty() {
                     self.print_path(&tree.prefix, false, 0);
                     self.word("::");
                 }
                 self.word("*");
             }
             ast::UseTreeKind::Nested { items, .. } => {
-                if !tree.prefix.segments.is_empty() {
+                if !tree.prefix.is_empty() {
                     self.print_path(&tree.prefix, false, 0);
                     self.word("::");
                 }
@@ -915,9 +915,9 @@ impl<'a> State<'a> {
                     && !item
                         .inner
                         .prefix
-                        .segments
-                        .first()
-                        .is_some_and(|seg| seg.ident.name == rustc_span::symbol::kw::SelfLower)
+                        .iter_idents()
+                        .next()
+                        .is_some_and(|i| i.name == rustc_span::symbol::kw::SelfLower)
                 {
                     self.print_use_tree(&item.inner);
                 } else {

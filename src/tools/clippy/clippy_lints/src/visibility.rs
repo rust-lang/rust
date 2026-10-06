@@ -106,7 +106,7 @@ impl EarlyLintPass for Visibility {
 
             if (**path == kw::Super || **path == kw::SelfLower || **path == kw::Crate)
                 && !*shorthand
-                && let [.., last] = &*path.segments
+                && let Some(last) = path.last_ident()
                 && !is_from_proc_macro(cx, item.vis.span)
             {
                 #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
@@ -119,7 +119,7 @@ impl EarlyLintPass for Visibility {
                         diag.span_suggestion(
                             item.vis.span,
                             "remove it",
-                            format!("pub({})", last.ident),
+                            format!("pub({last})"),
                             Applicability::MachineApplicable,
                         );
                     },
@@ -127,7 +127,7 @@ impl EarlyLintPass for Visibility {
             }
 
             if *shorthand
-                && let [.., last] = &*path.segments
+                && let Some(last) = path.last_ident()
                 && !is_from_proc_macro(cx, item.vis.span)
             {
                 #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
@@ -140,7 +140,7 @@ impl EarlyLintPass for Visibility {
                         diag.span_suggestion(
                             item.vis.span,
                             "add it",
-                            format!("pub(in {})", last.ident),
+                            format!("pub(in {last})"),
                             Applicability::MachineApplicable,
                         );
                     },

@@ -84,9 +84,7 @@ impl<'a> HeaderPart<'a> {
             ast::VisibilityKind::Public => Cow::from("pub"),
             ast::VisibilityKind::Inherited => Cow::from(""),
             ast::VisibilityKind::Restricted { ref path, .. } => {
-                let ast::Path { ref segments, .. } = **path;
-                let mut segments_iter =
-                    segments.iter().map(|seg| rewrite_ident(context, seg.ident));
+                let mut segments_iter = path.iter_idents().map(|&i| rewrite_ident(context, i));
                 if path.is_global() {
                     segments_iter
                         .next()

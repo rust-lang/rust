@@ -10,8 +10,8 @@ use std::vec;
 
 use rustc_abi::ExternAbi;
 use rustc_ast as ast;
+use rustc_ast::DelimArgs;
 use rustc_ast::util::parser::{self, ExprPrecedence, Fixity};
-use rustc_ast::{DUMMY_NODE_ID, DelimArgs};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, BoxMarker, Breaks};
 use rustc_ast_pretty::pprust::state::MacHeader;
@@ -24,7 +24,7 @@ use rustc_hir::{
     PreciseCapturingArg, RangeEnd, Term, TyFieldPath, TyPatKind,
 };
 use rustc_span::source_map::SourceMap;
-use rustc_span::{DUMMY_SP, FileName, Ident, Span, Spanned, Symbol, kw, sym};
+use rustc_span::{FileName, Ident, Span, Spanned, Symbol, kw, sym};
 
 pub fn id_to_string(cx: &dyn rustc_hir::intravisit::HirTyCtxt<'_>, hir_id: HirId) -> String {
     to_string(&cx, |s| s.print_node(cx.hir_node(hir_id)))
@@ -131,19 +131,14 @@ impl<'a> State<'a> {
 
     fn print_attr_item(&mut self, item: &AttrItem, span: Span) {
         let ib = self.ibox(0);
-        let path = ast::Path {
-            span,
-            segments: item
-                .path
+        let path = ast::Path::from_segments(
+            item.path
                 .segments
                 .iter()
-                .map(|i| ast::PathSegment {
-                    ident: Ident { name: *i, span: DUMMY_SP },
-                    args: None,
-                    id: DUMMY_NODE_ID,
-                })
+                .map(|&s| ast::PathSegment::from_ident(Ident::with_dummy_span(s)))
                 .collect(),
-        };
+            span,
+        );
 
         match &item.args {
             AttrArgs::Delimited(DelimArgs { dspan: _, delim, tokens }) => self.print_mac_common(

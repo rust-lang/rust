@@ -1557,7 +1557,7 @@ pub(crate) fn rewrite_call(
 pub(crate) fn is_simple_expr(expr: &ast::Expr) -> bool {
     match expr.kind {
         ast::ExprKind::Lit(..) => true,
-        ast::ExprKind::Path(ref qself, ref path) => qself.is_none() && path.segments.len() <= 1,
+        ast::ExprKind::Path(ref qself, ref path) => qself.is_none() && path.num_segments() <= 1,
         ast::ExprKind::AddrOf(_, _, ref expr)
         | ast::ExprKind::Cast(ref expr, _)
         | ast::ExprKind::Field(ref expr, _)

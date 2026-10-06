@@ -10,7 +10,6 @@ ast-stats - Impl                     144 (NN.N%)             1
 ast-stats - Trait                    144 (NN.N%)             1
 ast-stats - Fn                       288 (NN.N%)             2
 ast-stats - Use                      576 (NN.N%)             4
-ast-stats PathSegment              840 (NN.N%)            35            24
 ast-stats Ty                       784 (NN.N%)            14            56
 ast-stats - Ptr                       56 (NN.N%)             1
 ast-stats - Ref                       56 (NN.N%)             1
@@ -27,6 +26,7 @@ ast-stats Pat                      448 (NN.N%)             7            64
 ast-stats - Struct                    64 (NN.N%)             1
 ast-stats - Wild                      64 (NN.N%)             1
 ast-stats - Ident                    320 (NN.N%)             5
+ast-stats PathSegment              432 (NN.N%)            18            24
 ast-stats GenericParam             400 (NN.N%)             5            80
 ast-stats GenericBound             320 (NN.N%)             4            80
 ast-stats - Trait                    320 (NN.N%)             4
@@ -58,7 +58,9 @@ ast-stats GenericArgs               40 (NN.N%)             1            40
 ast-stats - AngleBracketed            40 (NN.N%)             1
 ast-stats Crate                     40 (NN.N%)             1            40
 ast-stats ----------------------------------------------------------------
-ast-stats Total                  6_872                   126
+ast-stats Total                  6_464                   109
+ast-stats ----------------------------------------------------------------
+ast-stats - Path Ident: 17  Other segs 0: 0  1: 1  2: 2  3: 3  4+: 1  NoSpan: 7
 ast-stats ================================================================
 hir-stats ================================================================
 hir-stats HIR STATS: input_stats
@@ -121,4 +123,6 @@ hir-stats ImplItemId                 8 (NN.N%)             2             4
 hir-stats ForeignItemId              4 (NN.N%)             1             4
 hir-stats ----------------------------------------------------------------
 hir-stats Total                  8_592                   172
+hir-stats ----------------------------------------------------------------
+hir-stats - Path segments 0: 0  1: 20  2: 2  3: 3  4+: 1
 hir-stats ================================================================

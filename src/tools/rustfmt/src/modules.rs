@@ -607,8 +607,8 @@ fn find_path_value(attrs: &[ast::Attribute]) -> Option<Symbol> {
 fn is_cfg_if(item: &ast::Item) -> bool {
     match item.kind {
         ast::ItemKind::MacCall(ref mac) => {
-            if let Some(first_segment) = mac.path.segments.first() {
-                if first_segment.ident.name == Symbol::intern("cfg_if") {
+            if let Some(first_ident) = mac.path.iter_idents().next() {
+                if first_ident.name == Symbol::intern("cfg_if") {
                     return true;
                 }
             }
@@ -621,8 +621,8 @@ fn is_cfg_if(item: &ast::Item) -> bool {
 fn is_cfg_select(item: &ast::Item) -> bool {
     match item.kind {
         ast::ItemKind::MacCall(ref mac) => {
-            if let Some(last_segment) = mac.path.segments.last() {
-                if last_segment.ident.name == Symbol::intern("cfg_select") {
+            if let Some(last_ident) = mac.path.last_ident() {
+                if last_ident.name == Symbol::intern("cfg_select") {
                     return true;
                 }
             }

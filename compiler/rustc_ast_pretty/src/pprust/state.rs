@@ -932,9 +932,9 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn print_path(&mut self, path: &ast::Path, colons_before_params: bool, depth: usize) {
-        self.maybe_print_comment(path.span.lo());
+        self.maybe_print_comment(path.span().lo());
 
-        for (i, segment) in path.segments[..path.segments.len() - depth].iter().enumerate() {
+        for (i, segment) in path.iter_segments().take(path.num_segments() - depth).enumerate() {
             if i > 0 {
                 self.word("::")
             }
@@ -942,10 +942,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
     }
 
-    fn print_path_segment(&mut self, segment: &ast::PathSegment, colons_before_params: bool) {
+    fn print_path_segment(&mut self, segment: ast::PathSegmentRef<'_>, colons_before_params: bool) {
         if segment.ident.name != kw::PathRoot {
-            self.print_ident(segment.ident);
-            if let Some(args) = &segment.args {
+            self.print_ident(*segment.ident);
+            if let Some(args) = segment.args {
                 self.print_generic_args(args, colons_before_params);
             }
         }
@@ -1164,7 +1164,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn attr_item_to_string(&self, ai: &ast::AttrItem) -> String {
-        Self::to_string(|s| s.print_attr_item(ai, ai.path.span))
+        Self::to_string(|s| s.print_attr_item(ai, ai.path.span()))
     }
 
     fn tts_to_string(&self, tokens: &TokenStream) -> String {
@@ -1883,14 +1883,14 @@ impl<'a> State<'a> {
         if qself.position > 0 {
             self.space();
             self.word_space("as");
-            let depth = path.segments.len() - qself.position;
+            let depth = path.num_segments() - qself.position;
             self.print_path(path, false, depth);
         }
         self.word(">");
-        for item_segment in &path.segments[qself.position..] {
+        for item_segment in path.iter_segments().skip(qself.position) {
             self.word("::");
-            self.print_ident(item_segment.ident);
-            if let Some(args) = &item_segment.args {
+            self.print_ident(*item_segment.ident);
+            if let Some(args) = item_segment.args {
                 self.print_generic_args(args, colons_before_params)
             }
         }
@@ -2411,7 +2411,7 @@ impl<'a> State<'a> {
     }
 
     pub(crate) fn path_segment_to_string(&self, p: &ast::PathSegment) -> String {
-        Self::to_string(|s| s.print_path_segment(p, false))
+        Self::to_string(|s| s.print_path_segment(p.as_ref(), false))
     }
 
     pub(crate) fn meta_list_item_to_string(&self, li: &ast::MetaItemInner) -> String {

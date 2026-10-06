@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use rustc_ast::ast::{self, FnRetTy, Mutability, Term};
 use rustc_span::{BytePos, Pos, Span, symbol::kw};
 use tracing::debug;
@@ -51,7 +49,7 @@ pub(crate) fn rewrite_path(
         result.push_str("::");
     }
 
-    let mut span_lo = path.span.lo();
+    let mut span_lo = path.span().lo();
 
     if let Some(qself) = qself {
         result.push('<');
@@ -66,14 +64,14 @@ pub(crate) fn rewrite_path(
             }
 
             // 3 = ">::".len()
-            let shape = shape.sub_width(3, path.span)?;
+            let shape = shape.sub_width(3, path.span())?;
 
             result = rewrite_path_segments(
                 PathContext::Type,
                 result,
-                path.segments.iter().take(skip_count),
+                path.iter_segments().take(skip_count),
                 span_lo,
-                path.span.hi(),
+                path.span().hi(),
                 context,
                 shape,
             )?;
@@ -86,9 +84,9 @@ pub(crate) fn rewrite_path(
     rewrite_path_segments(
         path_context,
         result,
-        path.segments.iter().skip(skip_count),
+        path.iter_segments().skip(skip_count),
         span_lo,
-        path.span.hi(),
+        path.span().hi(),
         context,
         shape,
     )
@@ -104,7 +102,7 @@ fn rewrite_path_segments<'a, I>(
     shape: Shape,
 ) -> RewriteResult
 where
-    I: Iterator<Item = &'a ast::PathSegment>,
+    I: Iterator<Item = ast::PathSegmentRef<'a>>,
 {
     let mut first = true;
     let shape = shape.visual_indent(0);
@@ -264,14 +262,14 @@ impl Rewrite for ast::AssocItemConstraintKind {
 // so that invariants described above will hold for the next segment.
 fn rewrite_segment(
     path_context: PathContext,
-    segment: &ast::PathSegment,
+    segment: ast::PathSegmentRef<'_>,
     span_lo: &mut BytePos,
     span_hi: BytePos,
     context: &RewriteContext<'_>,
     shape: Shape,
 ) -> RewriteResult {
     let mut result = String::with_capacity(128);
-    result.push_str(rewrite_ident(context, segment.ident));
+    result.push_str(rewrite_ident(context, *segment.ident));
 
     let ident_len = result.len();
     let span = mk_sp(*span_lo, span_hi);
@@ -1169,6 +1167,7 @@ fn join_bounds_inner(
     need_indent: bool,
     force_newline: bool,
 ) -> RewriteResult {
+    use itertools::Itertools;
     debug_assert!(!items.is_empty());
 
     let generic_bounds_in_order = is_generic_bounds_in_order(items);
@@ -1182,19 +1181,17 @@ fn join_bounds_inner(
     // that contains more than one item
     let is_item_with_multi_items_array = |item: &ast::GenericBound| match item {
         ast::GenericBound::Trait(ref poly_trait_ref, ..) => {
-            let segments = &poly_trait_ref.trait_ref.path.segments;
-            if segments.len() > 1 {
-                true
+            let Ok(segment) = poly_trait_ref.trait_ref.path.iter_segments().exactly_one() else {
+                return true;
+            };
+            if let Some(args_in) = segment.args {
+                matches!(
+                    args_in,
+                    ast::GenericArgs::AngleBracketed(bracket_args)
+                        if bracket_args.args.len() > 1
+                )
             } else {
-                if let Some(args_in) = &segments[0].args {
-                    matches!(
-                        args_in.deref(),
-                        ast::GenericArgs::AngleBracketed(bracket_args)
-                            if bracket_args.args.len() > 1
-                    )
-                } else {
-                    false
-                }
+                false
             }
         }
         ast::GenericBound::Use(args, _) => args.len() > 1,

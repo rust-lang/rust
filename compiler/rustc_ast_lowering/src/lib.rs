@@ -418,7 +418,7 @@ impl<'tcx> ResolverAstLowering<'tcx> {
 
         // Don't perform legacy const generics rewriting if the path already
         // has generic arguments.
-        if path.segments.last().unwrap().args.is_some() {
+        if path.last_segment().unwrap().args.is_some() {
             return None;
         }
 
@@ -644,7 +644,7 @@ fn index_ast<'tcx>(
                 // Lacking a better choice, we replace the contents with a macro call.
                 // Unexpanded macros should never reach lowering, so this is not confusing.
                 kind: dummy(Box::new(MacCall {
-                    path: Path { span, segments: thin_vec![] },
+                    path: Path::from_segments(thin_vec![], span),
                     args: Box::new(DelimArgs {
                         dspan: DelimSpan::from_single(span),
                         delim: Delimiter::Parenthesis,
@@ -951,7 +951,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.get_partial_res(id).map_or(Res::Err, |pr| pr.expect_full_res())
     }
 
-    fn lower_import_res(&self, id: NodeId, span: Span) -> PerNS<Option<Res>> {
+    fn lower_import_res(&self, id: NodeId, path: &ast::Path) -> PerNS<Option<Res>> {
         let per_ns = self
             .curr_owner
             .owner
@@ -970,7 +970,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         if per_ns.is_empty() {
             // Propagate the error to all namespaces, just to be sure.
-            self.dcx().span_delayed_bug(span, "no resolution for an import");
+            self.dcx().span_delayed_bug(path.span(), "no resolution for an import");
             let err = Some(Res::Err);
             return PerNS { type_ns: err, value_ns: err, macro_ns: err };
         }
@@ -1883,15 +1883,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_lifetime(lt, LifetimeSource::PreciseCapturing, lt.ident.into()),
             ),
             PreciseCapturingArg::Arg(path, id) => {
-                let [segment] = path.segments.as_slice() else {
-                    panic!();
-                };
+                let ident = path.as_single_argless_ident().unwrap();
                 let res = self.get_partial_res(*id).map_or(Res::Err, |partial_res| {
                     partial_res.full_res().expect("no partial res expected for precise capture arg")
                 });
                 hir::PreciseCapturingArg::Param(hir::PreciseCapturingNonLifetimeArg {
                     hir_id: self.lower_node_id(*id),
-                    ident: self.lower_ident(segment.ident),
+                    ident: self.lower_ident(ident),
                     res: self.lower_res(res),
                 })
             }

@@ -253,13 +253,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // paths" right now, so on 2018 edition we only allow module-relative paths for now.
                 // On 2015 edition visibilities are resolved as crate-relative by default,
                 // so we are prepending a root segment if necessary.
-                let ident = path.segments.get(0).expect("empty path in visibility").ident;
+                let ident = path.iter_idents().next().expect("empty path in visibility");
                 let crate_root = if ident.is_path_segment_keyword() {
                     None
                 } else if ident.span.is_rust_2015() {
                     Some(Segment::from_ident(Ident::new(
                         kw::PathRoot,
-                        path.span.shrink_to_lo().with_ctxt(ident.span.ctxt()),
+                        path.span().shrink_to_lo().with_ctxt(ident.span.ctxt()),
                     )))
                 } else {
                     return Err(VisResolutionError::Relative2018(
@@ -269,11 +269,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 };
                 let segments = crate_root
                     .into_iter()
-                    .chain(path.segments.iter().map(|seg| seg.into()))
+                    .chain(path.iter_segments().map(|seg| seg.into()))
                     .collect::<Vec<_>>();
                 let expected_found_error = |res| {
                     Err(VisResolutionError::ExpectedFound(
-                        path.span,
+                        path.span(),
                         Segment::names_to_string(&segments),
                         res,
                     ))
@@ -282,7 +282,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     &segments,
                     None,
                     parent_scope,
-                    finalize.then(|| Finalize::new(id, path.span)),
+                    finalize.then(|| Finalize::new(id, path.span())),
                     None,
                     None,
                 ) {
@@ -305,7 +305,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         }
                                         Ok(vis.expect_local())
                                     } else {
-                                        Err(VisResolutionError::AncestorOnly(path.span))
+                                        Err(VisResolutionError::AncestorOnly(path.span()))
                                     }
                                 }
                             }
@@ -313,7 +313,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             expected_found_error(res)
                         }
                     }
-                    PathResult::Module(..) => Err(VisResolutionError::ModuleOnly(path.span)),
+                    PathResult::Module(..) => Err(VisResolutionError::ModuleOnly(path.span())),
                     PathResult::NonModule(partial_res) => {
                         expected_found_error(partial_res.expect_full_res())
                     }
@@ -327,7 +327,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             message,
                         })
                     }
-                    PathResult::Indeterminate => Err(VisResolutionError::Indeterminate(path.span)),
+                    PathResult::Indeterminate => {
+                        Err(VisResolutionError::Indeterminate(path.span()))
+                    }
                 }
             }
         }
@@ -615,7 +617,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         let mut prefix_iter = parent_prefix
             .iter()
             .cloned()
-            .chain(use_tree.prefix.segments.iter().map(|seg| seg.into()))
+            .chain(use_tree.prefix.iter_segments().map(|seg| seg.into()))
             .peekable();
 
         // On 2015 edition imports are resolved as crate-relative by default,
@@ -636,7 +638,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         .map(|ctxt| {
             Segment::from_ident(Ident::new(
                 kw::PathRoot,
-                use_tree.prefix.span.shrink_to_lo().with_ctxt(ctxt),
+                use_tree.prefix.span().shrink_to_lo().with_ctxt(ctxt),
             ))
         });
 
@@ -757,9 +759,10 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 }
             }
             ast::UseTreeKind::Nested { ref items, .. } => {
+                let use_tree_span = use_tree.span();
                 for tree in items {
                     let id = tree.id;
-                    let feed = self.create_def(id, None, DefKind::Use, use_tree.span());
+                    let feed = self.create_def(id, None, DefKind::Use, use_tree_span);
                     self.build_reduced_graph_for_use_tree(
                         item,
                         &tree.inner,

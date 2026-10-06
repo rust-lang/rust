@@ -30,7 +30,7 @@ use crate::visitor::FmtVisitor;
 /// Returns a name imported by a `use` declaration.
 /// E.g., returns `Ordering` for `std::cmp::Ordering` and `self` for `std::cmp::self`.
 pub(crate) fn path_to_imported_ident(path: &ast::Path) -> symbol::Ident {
-    path.segments.last().unwrap().ident
+    path.last_ident().unwrap()
 }
 
 /// Returns all but the last portion of the module path, except in the case of
@@ -185,12 +185,12 @@ impl UseSegment {
         }
     }
 
-    fn from_path_segment(
+    fn from_ident(
         context: &RewriteContext<'_>,
-        path_seg: &ast::PathSegment,
+        ident: symbol::Ident,
         modsep: bool,
     ) -> Option<UseSegment> {
-        let name = rewrite_ident(context, path_seg.ident);
+        let name = rewrite_ident(context, ident);
         if name.is_empty() {
             return None;
         }
@@ -446,8 +446,8 @@ impl UseTree {
 
         let mut modsep = leading_modsep;
 
-        for p in &a.prefix.segments {
-            if let Some(use_segment) = UseSegment::from_path_segment(context, p, modsep) {
+        for &ident in a.prefix.iter_idents() {
+            if let Some(use_segment) = UseSegment::from_ident(context, ident, modsep) {
                 result.path.push(use_segment);
                 modsep = false;
             }
@@ -458,7 +458,7 @@ impl UseTree {
         match a.kind {
             UseTreeKind::Glob(_) => {
                 // in case of a global path and the glob starts at the root, e.g., "::*"
-                if a.prefix.segments.len() == 1 && leading_modsep {
+                if a.prefix.num_segments() == 1 && leading_modsep {
                     let kind = UseSegmentKind::Ident("".to_owned(), None);
                     result.path.push(UseSegment {
                         kind,
@@ -480,7 +480,7 @@ impl UseTree {
                     list.iter().map(|tree| &tree.inner),
                     "}",
                     ",",
-                    |tree| tree.prefix.span.lo(),
+                    |tree| tree.prefix.span().lo(),
                     |tree| tree.hi_span().hi(),
                     |_| Ok("".to_owned()), // We only need comments for now.
                     context.snippet_provider.span_after(a.span(), "{"),
@@ -490,7 +490,7 @@ impl UseTree {
 
                 // in case of a global path and the nested list starts at the root,
                 // e.g., "::{foo, bar}"
-                if a.prefix.segments.len() == 1 && leading_modsep {
+                if a.prefix.num_segments() == 1 && leading_modsep {
                     let kind = UseSegmentKind::Ident("".to_owned(), None);
                     result.path.push(UseSegment {
                         kind,
@@ -515,8 +515,8 @@ impl UseTree {
                 // bypass the call to path_to_imported_ident which would get only the ident and
                 // lose the path root, e.g., `that` in `::that`.
                 // The span of `a.prefix` contains the leading colons.
-                let name = if a.prefix.segments.len() == 2 && leading_modsep {
-                    context.snippet(a.prefix.span).to_owned()
+                let name = if a.prefix.num_segments() == 2 && leading_modsep {
+                    context.snippet(a.prefix.span()).to_owned()
                 } else {
                     rewrite_ident(context, path_to_imported_ident(&a.prefix)).to_owned()
                 };

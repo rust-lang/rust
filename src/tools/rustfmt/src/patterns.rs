@@ -68,7 +68,7 @@ fn is_short_pattern_inner(context: &RewriteContext<'_>, pat: &ast::Pat) -> bool 
         | ast::PatKind::Guard(..) => false,
         ast::PatKind::Tuple(ref subpats) => subpats.len() <= 1,
         ast::PatKind::TupleStruct(_, ref path, ref subpats) => {
-            path.segments.len() <= 1 && subpats.len() <= 1
+            path.num_segments() <= 1 && subpats.len() <= 1
         }
         PatKind::Deref(ref p) | ast::PatKind::Ref(ref p, _, _) | ast::PatKind::Paren(ref p) => {
             is_short_pattern_inner(context, &*p)

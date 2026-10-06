@@ -1379,7 +1379,7 @@ impl<'a> Parser<'a> {
                         if let TyKind::Path(_, path) = &ty.peel_refs().kind =>
                     {
                         (
-                            ty.span.until(path.span),
+                            ty.span.until(path.span()),
                             "consider removing the indirection",
                             "",
                             path,
@@ -1454,9 +1454,8 @@ impl<'a> Parser<'a> {
         match self.parse_fn_decl(&mode, AllowPlus::No, RecoverReturnSign::OnlyFatArrow) {
             Ok(decl) => {
                 self.dcx().emit_err(ExpectedFnPathFoundFnKeyword { fn_token_span });
-                Some(ast::Path {
-                    span: fn_token_span.to(self.prev_token.span),
-                    segments: thin_vec![ast::PathSegment {
+                Some(ast::Path::from_segments(
+                    thin_vec![ast::PathSegment {
                         ident: Ident::new(sym::Fn, fn_token_span),
                         id: DUMMY_NODE_ID,
                         args: Some(Box::new(ast::GenericArgs::Parenthesized(
@@ -1468,7 +1467,8 @@ impl<'a> Parser<'a> {
                             }
                         ))),
                     }],
-                })
+                    fn_token_span.to(self.prev_token.span),
+                ))
             }
             Err(diag) => {
                 diag.cancel();
@@ -1507,7 +1507,8 @@ impl<'a> Parser<'a> {
         fn_path: &mut ast::Path,
         lifetime_defs: &mut ThinVec<GenericParam>,
     ) -> PResult<'a, ()> {
-        let fn_path_segment = fn_path.segments.last_mut().unwrap();
+        let (fn_path_segments, _) = fn_path.force_general_mut();
+        let fn_path_segment = fn_path_segments.last_mut().unwrap();
         let generic_args = if let Some(p_args) = &fn_path_segment.args {
             *p_args.clone()
         } else {
@@ -1619,7 +1620,7 @@ impl<'a> Parser<'a> {
             "for<{}> ",
             lifetimes.iter().map(|lt| lt.ident.as_str()).intersperse(", ").collect::<String>(),
         );
-        let before_fn_path = fn_path.span.shrink_to_lo();
+        let before_fn_path = fn_path.span().shrink_to_lo();
         self.dcx()
             .struct_span_err(generic_args_span, "`Fn` traits cannot take lifetime parameters")
             .with_multipart_suggestion(

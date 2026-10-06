@@ -19,14 +19,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, attr: &Attribute, msrv: &MsrvStack) {
             // check for `rustfmt_skip` and `rustfmt::skip`
             && let Some(skip_item) = &items[1].meta_item()
             && (skip_item.has_name(sym::rustfmt_skip)
-                || skip_item
-                    .path
-                    .segments
-                    .last()
-                    .expect("empty path in attribute")
-                    .ident
-                    .name
-                    == sym::skip)
+                || skip_item.path.last_ident().expect("empty path in attribute").name == sym::skip)
             // Only lint outer attributes, because custom inner attributes are unstable
             // Tracking issue: https://github.com/rust-lang/rust/issues/54726
             && attr.style == AttrStyle::Outer

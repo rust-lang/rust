@@ -20,13 +20,7 @@ impl From<&AttrKind> for SimpleAttrKind {
     fn from(value: &AttrKind) -> Self {
         match value {
             AttrKind::Normal(attr) => {
-                let path_symbols = attr
-                    .item
-                    .path
-                    .segments
-                    .iter()
-                    .map(|seg| seg.ident.name)
-                    .collect::<Vec<_>>();
+                let path_symbols = attr.item.path.iter_idents().map(|i| i.name).collect::<Vec<_>>();
                 Self::Normal(path_symbols)
             },
             AttrKind::Synthetic(synthetic) => match &**synthetic {

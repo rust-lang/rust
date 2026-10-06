@@ -1449,7 +1449,7 @@ impl Visitor<'_> for AstValidator<'_> {
                 }
                 if let (&Safety::Unsafe(span), &ImplPolarity::Negative(sp)) = (safety, polarity) {
                     self.dcx().emit_err(diagnostics::UnsafeNegativeImpl {
-                        span: sp.to(t.path.span),
+                        span: sp.to(t.path.span()),
                         negative: sp,
                         r#unsafe: span,
                     });
@@ -1465,7 +1465,7 @@ impl Visitor<'_> for AstValidator<'_> {
                     Some(TraitOrImpl::TraitImpl {
                         constness: *constness,
                         polarity: *polarity,
-                        trait_ref_span: t.path.span,
+                        trait_ref_span: t.path.span(),
                     }),
                     |this| {
                         walk_list!(
@@ -1897,9 +1897,9 @@ impl Visitor<'_> for AstValidator<'_> {
 
                 // Negative trait bounds are not allowed to have associated constraints
                 if let BoundPolarity::Negative(_) = trait_ref.modifiers.polarity
-                    && let Some(segment) = trait_ref.trait_ref.path.segments.last()
+                    && let Some(segment) = trait_ref.trait_ref.path.last_segment()
                 {
-                    match segment.args.as_deref() {
+                    match segment.args {
                         Some(ast::GenericArgs::AngleBracketed(args)) => {
                             for arg in &args.args {
                                 if let ast::AngleBracketedArg::Constraint(constraint) = arg {

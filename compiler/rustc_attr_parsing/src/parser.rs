@@ -15,9 +15,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_ast::token::{self, Delimiter, MetaVarKind};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{
-    AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, Path, PathSegment, StmtKind, UnOp,
-};
+use rustc_ast::{AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, Path, StmtKind, UnOp};
 use rustc_ast_pretty::pprust;
 use rustc_attr_ir::AttrPath;
 use rustc_errors::{Applicability, Diag, PResult};
@@ -42,30 +40,27 @@ pub type RefPathParser<'p> = PathParser<&'p Path>;
 
 impl<P: Borrow<Path>> PathParser<P> {
     pub fn get_attribute_path(&self) -> AttrPath {
-        AttrPath {
-            segments: self.segments().map(|s| s.name).collect::<Vec<_>>().into_boxed_slice(),
-            span: self.span(),
-        }
+        AttrPath { segments: self.segments().map(|s| s.name).collect(), span: self.span() }
     }
 
-    pub fn segments(&self) -> impl Iterator<Item = &Ident> {
-        self.0.borrow().segments.iter().map(|seg| &seg.ident)
+    pub fn segments(&self) -> impl DoubleEndedIterator<Item = &Ident> + ExactSizeIterator {
+        self.0.borrow().iter_idents()
     }
 
     pub fn span(&self) -> Span {
-        self.0.borrow().span
+        self.0.borrow().span()
     }
 
     pub fn len(&self) -> usize {
-        self.0.borrow().segments.len()
+        self.0.borrow().num_segments()
     }
 
     pub fn segments_is(&self, segments: &[Symbol]) -> bool {
-        self.segments().map(|segment| &segment.name).eq(segments)
+        *self.0.borrow() == segments
     }
 
     pub fn word(&self) -> Option<Ident> {
-        (self.len() == 1).then(|| **self.segments().next().as_ref().unwrap())
+        self.0.borrow().as_single_argless_ident()
     }
 
     pub fn word_sym(&self) -> Option<Symbol> {
@@ -329,7 +324,7 @@ pub struct MetaItemParser {
 impl MetaItemParser {
     /// For a single-segment meta item, returns its name; otherwise, returns `None`.
     pub fn ident(&self) -> Option<Ident> {
-        if let [PathSegment { ident, .. }] = self.path.0.segments[..] { Some(ident) } else { None }
+        self.path.0.as_single_argless_ident()
     }
 
     pub fn span(&self) -> Span {
@@ -455,7 +450,7 @@ fn expr_to_lit<'sess>(
 
         // Suggest adding quotation marks to turn an identifier into a string literal
         if let ExprKind::Path(None, ref path) = expr.kind
-            && let [_] = path.segments.as_slice()
+            && path.is_single_argless_ident()
         {
             err.multipart_suggestion(
                 "you might have meant to write a string literal",
@@ -657,8 +652,8 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
                         negative_sign: expr.span.until(val.span),
                     });
                 } else if let StmtKind::Expr(expr) = &stmt.kind
-                    && let ExprKind::Path(None, Path { segments, .. }) = &expr.kind
-                    && segments.len() == 1
+                    && let ExprKind::Path(None, path) = &expr.kind
+                    && path.num_segments() == 1
                 {
                     while let token::Ident(..) | token::Literal(_) | token::Dot =
                         self.parser.token.kind

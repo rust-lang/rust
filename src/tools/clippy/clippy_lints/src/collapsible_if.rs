@@ -231,6 +231,7 @@ impl CollapsibleIf {
         inner_if_expr: &Expr<'_>,
         expected_lint_name: Symbol,
     ) -> bool {
+        use itertools::Itertools;
         match cx.tcx.hir_attrs(inner_if_expr.hir_id) {
             [] => {
                 // There aren't any attributes, so just check for significant tokens
@@ -242,9 +243,9 @@ impl CollapsibleIf {
                 if matches!(Level::from_opt_symbol(attr.name()), Some(Level::Expect))
                     && let Some(metas) = attr.meta_item_list()
                     && let Some(MetaItemInner::MetaItem(meta_item)) = metas.first()
-                    && let [tool, lint_name] = meta_item.path.segments.as_slice()
-                    && tool.ident.name == sym::clippy
-                    && [expected_lint_name, sym::style, sym::all].contains(&lint_name.ident.name) =>
+                    && let Some((tool, lint_name)) = meta_item.path.iter_idents().collect_tuple()
+                    && tool.name == sym::clippy
+                    && [expected_lint_name, sym::style, sym::all].contains(&lint_name.name) =>
             {
                 // There is an `expect` attribute -- check that there is no _other_ significant text
                 let span_before_attr = inner_if.span.split_at(1).1.until(attr.span());

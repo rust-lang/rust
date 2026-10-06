@@ -882,7 +882,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             } else {
                 match &attr.kind {
                     ast::AttrKind::Normal(ref normal)
-                        if self.is_unknown_rustfmt_attr(&normal.item.path.segments) =>
+                        if self.is_unknown_rustfmt_attr(&normal.item.path) =>
                     {
                         let file_name = self.psess.span_to_filename(attr.span);
                         self.report.append(
@@ -918,11 +918,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         false
     }
 
-    fn is_unknown_rustfmt_attr(&self, segments: &[ast::PathSegment]) -> bool {
-        if segments[0].ident.to_string() != "rustfmt" {
-            return false;
+    fn is_unknown_rustfmt_attr(&self, path: &ast::Path) -> bool {
+        match path.iter_idents().next() {
+            None => false,
+            Some(ident) if ident.as_str() != "rustfmt" => false,
+            _ => !is_skip_attr(path),
         }
-        !is_skip_attr(segments)
     }
 
     fn walk_mod_items(&mut self, items: &[Box<ast::Item>]) {

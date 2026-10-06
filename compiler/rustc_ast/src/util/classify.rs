@@ -321,9 +321,7 @@ fn type_trailing_braced_mac_call(mut ty: &ast::Ty) -> Option<&ast::MacCall> {
 ///                             ^^^^^^^^^^^^^^^^^^^^^
 /// ```
 fn path_return_type(path: &ast::Path) -> Option<&ast::Ty> {
-    let last_segment = path.segments.last()?;
-    let args = last_segment.args.as_ref()?;
-    match &**args {
+    match path.last_segment()?.args? {
         ast::GenericArgs::Parenthesized(args) => match &args.output {
             ast::FnRetTy::Default(_) => None,
             ast::FnRetTy::Ty(ret) => Some(ret),

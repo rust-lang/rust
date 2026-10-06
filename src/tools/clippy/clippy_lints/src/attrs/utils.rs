@@ -53,9 +53,12 @@ pub(super) fn extract_clippy_lint(lint: &MetaItemInner) -> Option<Symbol> {
 /// Returns the lint namespace, if any, as well as the lint name. (`None`, `None`) means
 /// the lint had less than 1 or more than 2 segments.
 pub(super) fn namespace_and_lint(lint: &MetaItemInner) -> (Option<Symbol>, Option<Symbol>) {
-    match lint.meta_item().map_or_default(|m| m.path.segments.as_slice()) {
-        [name] => (None, Some(name.ident.name)),
-        [namespace, name] => (Some(namespace.ident.name), Some(name.ident.name)),
+    let Some(mut idents) = lint.meta_item().map(|m| m.path.iter_idents()) else {
+        return (None, None);
+    };
+    match (idents.next(), idents.next(), idents.next()) {
+        (Some(name), None, None) => (None, Some(name.name)),
+        (Some(namespace), Some(name), None) => (Some(namespace.name), Some(name.name)),
         _ => (None, None),
     }
 }
