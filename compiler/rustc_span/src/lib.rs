@@ -25,6 +25,7 @@
 #![feature(negative_impls)]
 #![feature(read_buf)]
 #![feature(rustc_attrs)]
+#![feature(temporary_niche_types)]
 // tidy-alphabetical-end
 
 // The code produced by the `Encodable`/`Decodable` derive macros refer to
