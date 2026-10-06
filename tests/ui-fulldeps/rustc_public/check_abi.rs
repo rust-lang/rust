@@ -41,7 +41,8 @@ fn test_stable_mir() -> ControlFlow<()> {
     let items = rustc_public::all_local_items();
 
     // Test fn_abi
-    let target_fn = *get_item(&items, (ItemKind::Fn, "input::fn_abi")).expect("Expected fn_abi function");
+    let target_fn =
+        *get_item(&items, (ItemKind::Fn, "input::fn_abi")).expect("Expected fn_abi function");
     let instance = Instance::try_from(target_fn).expect("Expected fn_abi instance");
     let fn_abi = instance.fn_abi().expect("Expected function ABI");
     assert_eq!(fn_abi.conv, CallConvention::Rust, "Expected Rust calling convention for fn_abi");
@@ -267,7 +268,10 @@ fn test_pointer_attributes() -> ControlFlow<()> {
     assert!(!regular.no_free, "Expected no_free to be unset for return value");
     assert!(!regular.captures_none, "Expected captures_none to be unset for return value");
     assert!(!regular.captures_address, "Expected captures_address to be unset for return value");
-    assert!(!regular.captures_read_only, "Expected captures_read_only to be unset for return value");
+    assert!(
+        !regular.captures_read_only,
+        "Expected captures_read_only to be unset for return value"
+    );
     assert_eq!(attrs.pointee_size().bytes(), 4, "Expected pointee_size for return value");
     ControlFlow::Continue(())
 }
@@ -364,7 +368,11 @@ fn check_niche(abi: &ArgAbi) {
         "Expected u8 scalar for NonZero<u8>",
     );
     assert_eq!(valid_range.start, 1, "Expected valid range to start at one for NonZero<u8>");
-    assert_eq!(valid_range.end, u8::MAX.into(), "Expected valid range to end at u8::MAX for NonZero<u8>");
+    assert_eq!(
+        valid_range.end,
+        u8::MAX.into(),
+        "Expected valid range to end at u8::MAX for NonZero<u8>"
+    );
     assert!(!valid_range.contains(0), "Expected zero outside valid range for NonZero<u8>");
     assert!(!valid_range.wraps_around(), "Expected non-wrapping valid range for NonZero<u8>");
 }
