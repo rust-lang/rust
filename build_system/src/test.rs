@@ -938,7 +938,7 @@ fn test_libcore_doctests(env: &Env, args: &TestArg) -> Result<(), String> {
         // FIXME: one test (mem::transmutability::Assume::alignment in core/src/mem/transmutability.rs)
         // cannot compile due to an upstream bug in the new trait solver.
         // See: https://github.com/rust-lang/rust/issues/161251
-        // &"-Znext-solver=coherence",
+        &"-Znext-solver=coherence",
     ];
     for flag in &rustflags {
         command.push(flag);
