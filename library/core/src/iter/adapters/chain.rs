@@ -297,6 +297,8 @@ where
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// SAFETY: If we trust one length, and we trust the other length,
+// then their powers combined are trustworthy.
 unsafe impl<A, B> TrustedLen for Chain<A, B>
 where
     A: TrustedLen,

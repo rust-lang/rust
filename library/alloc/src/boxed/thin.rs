@@ -42,12 +42,12 @@ pub struct ThinBox<T: ?Sized> {
     _marker: PhantomData<T>,
 }
 
-/// `ThinBox<T>` is `Send` if `T` is `Send` because the data is owned.
 #[unstable(feature = "thin_box", issue = "92791")]
+// SAFETY: `ThinBox<T>` is `Send` if `T` is `Send` because the data is owned.
 unsafe impl<T: ?Sized + Send> Send for ThinBox<T> {}
 
-/// `ThinBox<T>` is `Sync` if `T` is `Sync` because the data is owned.
 #[unstable(feature = "thin_box", issue = "92791")]
+// SAFETY: `ThinBox<T>` is `Sync` if `T` is `Sync` because the data is owned.
 unsafe impl<T: ?Sized + Sync> Sync for ThinBox<T> {}
 
 #[unstable(feature = "thin_box", issue = "92791")]

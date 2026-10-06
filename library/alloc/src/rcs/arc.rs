@@ -288,8 +288,8 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Arc<U, A>> fo
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Arc<U>> for Arc<T> {}
 
-// SAFETY: `Arc::clone` doesn't access any `Cell`s which could contain the `Arc` being cloned.
 #[unstable(feature = "cell_get_cloned", issue = "145329")]
+// SAFETY: `Arc::clone` doesn't access any `Cell`s which could contain the `Arc` being cloned.
 unsafe impl<T: ?Sized> CloneFromCell for Arc<T> {}
 
 impl<T: ?Sized> Arc<T> {
@@ -371,8 +371,8 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Weak<U, A>> f
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
 
-// SAFETY: `Weak::clone` doesn't access any `Cell`s which could contain the `Weak` being cloned.
 #[unstable(feature = "cell_get_cloned", issue = "145329")]
+// SAFETY: `Weak::clone` doesn't access any `Cell`s which could contain the `Weak` being cloned.
 unsafe impl<T: ?Sized> CloneFromCell for Weak<T> {}
 
 #[stable(feature = "arc_weak", since = "1.4.0")]

@@ -359,12 +359,15 @@ impl<B: ?Sized + ToOwned> Deref for Cow<'_, B>
 // `str` (`String as Borrow<str>` is trusted) and `[T]` (`Vec<T> as Borrow<[T]>` is trusted).
 // In the future, a `BorrowPure<T>` trait analogous to `DerefPure` might generalize this.
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// SAFETY: This falls back to the `&T as Borrow<T>` implementation, which we can trust to be stable.
 unsafe impl<T: Clone> DerefPure for Cow<'_, T> {}
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// SAFETY: This falls back to the `&String as Borrow<str>` implementation, which we can trust to be stable.
 unsafe impl DerefPure for Cow<'_, str> {}
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// SAFETY: This falls back to the `&Vec<T> as Borrow<[T]>` implementation, which we can trust to be stable.
 unsafe impl<T: Clone> DerefPure for Cow<'_, [T]> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]

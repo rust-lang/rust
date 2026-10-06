@@ -149,6 +149,7 @@ impl_is_zero_option_of_nonzero_int!(u8, u16, u32, u64, u128, usize, i8, i16, i32
 
 macro_rules! impl_is_zero_option_of_int {
     ($($t:ty),+ $(,)?) => {$(
+        // SAFETY: All-zeroes is a valid bitpattern for these primitives, and we explicitly verify that `None` uses a zero discriminant.
         unsafe impl IsZero for Option<$t> {
             #[inline]
             fn is_zero(&self) -> bool {
@@ -165,6 +166,7 @@ macro_rules! impl_is_zero_option_of_int {
 
 impl_is_zero_option_of_int!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, usize, isize);
 
+// SAFETY: This is a transparent wrapper.
 unsafe impl<T: IsZero> IsZero for Wrapping<T> {
     #[inline]
     fn is_zero(&self) -> bool {
@@ -172,6 +174,7 @@ unsafe impl<T: IsZero> IsZero for Wrapping<T> {
     }
 }
 
+// SAFETY: This is a transparent wrapper.
 unsafe impl<T: IsZero> IsZero for Saturating<T> {
     #[inline]
     fn is_zero(&self) -> bool {
@@ -181,9 +184,13 @@ unsafe impl<T: IsZero> IsZero for Saturating<T> {
 
 macro_rules! impl_is_zero_option_of_bool {
     ($($t:ty),+ $(,)?) => {$(
+        // SAFETY: Due to the abundant niche space, zero is always `Some(false)`.
         unsafe impl IsZero for $t {
             #[inline]
             fn is_zero(&self) -> bool {
+                const {
+                    assert!(size_of::<$t>() == 1);
+                }
                 // SAFETY: This is *not* a stable layout guarantee, but
                 // inside `core` we're allowed to rely on the current rustc
                 // behavior that options of bools will be one byte with

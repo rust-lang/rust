@@ -282,4 +282,5 @@ const impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 }
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// SAFETY: `ManuallyDrop` has a trivial, and thus pure, `Deref` impl.
 unsafe impl<T: ?Sized> DerefPure for ManuallyDrop<T> {}

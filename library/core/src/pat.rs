@@ -86,6 +86,8 @@ impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<pattern_type!(U is !null)> for pa
 
 impl<T: PointeeSized> Unpin for pattern_type!(*const T is !null) {}
 
+// SAFETY: Restricting the value of a pointer does not give it mutability powers.
 unsafe impl<T: PointeeSized> Freeze for pattern_type!(*const T is !null) {}
 
+// SAFETY: Restricting the value of a pointer does not give it mutability powers.
 unsafe impl<T: PointeeSized> Freeze for pattern_type!(*mut T is !null) {}

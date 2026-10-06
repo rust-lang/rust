@@ -101,6 +101,7 @@ impl DerefMut for ByteString {
 }
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// SAFETY: This type just wraps `Vec`, whose `Deref` implementation is stable.
 unsafe impl DerefPure for ByteString {}
 
 #[unstable(feature = "bstr", issue = "134915")]

@@ -2904,6 +2904,7 @@ impl ops::Deref for String {
 }
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// SAFETY: We return a stable index for deref.
 unsafe impl ops::DerefPure for String {}
 
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]

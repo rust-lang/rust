@@ -102,8 +102,8 @@ pub struct SyncView<T: ?Sized> {
     inner: T,
 }
 
-// See `SyncView`'s docs for justification.
 #[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
+// SAFETY: See `SyncView`'s docs for justification.
 unsafe impl<T: ?Sized> Sync for SyncView<T> {}
 
 #[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
