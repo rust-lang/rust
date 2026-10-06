@@ -707,7 +707,7 @@ impl<T> Vec<T> {
     /// unsafe {
     ///     // Overwrite memory with 4, 5, 6
     ///     for i in 0..len {
-    ///         p.add(i).write(4 + i);
+    ///         p.add(i).write(3 + i);
     ///     }
     ///
     ///     // Put everything back together into a Vec
