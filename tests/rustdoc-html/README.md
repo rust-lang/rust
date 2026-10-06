@@ -48,6 +48,11 @@ conflicts, in particular for simpler crate names).
 
 Contains tests to check the display of items implementing the `Deref` and/or `DerefMut` traits.
 
+## `tests/rustdoc-html/display`
+
+Contains tests checking how items are displayed in the docs. Ensuring that methods with a lot
+of arguments or with a lot of generics are correctly split between multiple lines for example.
+
 ## `tests/rustdoc-html/doc-cfg`
 
 Contains tests to check the rustdoc `doc_cfg` feature.
