@@ -4,6 +4,7 @@
 //@[next] failure-status: 101
 //@[next] dont-check-compiler-stderr
 //@[next] known-bug: trait-system-refactor-initiative#293
+//@[next] needs-rustc-debug-assertions
 #![feature(type_alias_impl_trait)]
 
 mod test_lifetime_param {
