@@ -109,7 +109,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &l.attrs,
             l.span,
             Target::Statement,
-            rustc_attr_ir::target::AstTarget::Local(l),
+            rustc_attr_ir::target::AstTarget::None,
         );
         self.arena.alloc(hir::LetStmt { hir_id, super_, ty, pat, init, els, span, source })
     }
