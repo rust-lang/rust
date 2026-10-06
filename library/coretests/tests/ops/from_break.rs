@@ -6,20 +6,21 @@
 use core::ops::{ControlFlow, TryFromBreak};
 
 struct Local;
+struct TryLocal;
 
-impl<T> TryFromBreak<Local> for Option<T> {
+impl<T> TryFromBreak<Local, TryLocal> for Option<T> {
     fn from_break(_: Local) -> Option<T> {
         unimplemented!()
     }
 }
 
-impl<B, C> TryFromBreak<Local> for ControlFlow<B, C> {
+impl<B, C> TryFromBreak<Local, TryLocal> for ControlFlow<B, C> {
     fn from_break(_: Local) -> ControlFlow<B, C> {
         unimplemented!()
     }
 }
 
-impl<T, E> TryFromBreak<Local> for Result<T, E> {
+impl<T, E> TryFromBreak<Local, TryLocal> for Result<T, E> {
     fn from_break(_: Local) -> Result<T, E> {
         unimplemented!()
     }
