@@ -105,7 +105,8 @@ pub enum Path {
         /// `kw::PathRoot`.
         segments: ThinVec<PathSegment>,
     },
-    /// A fully general path where the path's span differs. Boxed to avoid making `Path` larger.
+    /// A fully general path where the path's span differs (e.g. from recovery). Boxed to avoid
+    /// making `Path` larger.
     General(Box<(ThinVec<PathSegment>, Span)>),
 }
 
