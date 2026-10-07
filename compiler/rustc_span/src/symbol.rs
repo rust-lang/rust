@@ -427,6 +427,7 @@ symbols! {
         altivec,
         alu32,
         always,
+        ambiguity,
         amdgpu,
         amdgpu_dispatch_ptr,
         analysis,
