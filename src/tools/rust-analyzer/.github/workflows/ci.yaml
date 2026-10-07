@@ -117,7 +117,9 @@ jobs:
       #       ./crates/proc-macro-srv/proc-macro-test/imp -> target
 
       - name: Install nextest
-        uses: taiki-e/install-action@nextest
+        uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+        with:
+          tool: nextest
 
       - name: Codegen checks (rust-analyzer)
         if: matrix.os == 'ubuntu-latest'
@@ -127,7 +129,9 @@ jobs:
         run: cargo nextest run --no-fail-fast --hide-progress-bar
 
       - name: Install cargo-machete
-        uses: taiki-e/install-action@cargo-machete
+        uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+        with:
+          tool: cargo-machete
 
       - name: Run cargo-machete
         run: cargo machete
