@@ -32,7 +32,7 @@ jobs:
 
       - name: Cache binaries
         id: mdbook-cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             ~/.cargo/bin
@@ -41,7 +41,7 @@ jobs:
       - name: Restore cached Linkcheck
         if: github.event_name == 'schedule'
         id: cache-linkcheck-restore
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: book/linkcheck/cache.json
           key: linkcheck--${{ env.MDBOOK_LINKCHECK2_VERSION }}--${{ github.run_id }}
@@ -73,7 +73,7 @@ jobs:
       - name: Save cached Linkcheck
         id: cache-linkcheck-save
         if: ${{ !cancelled() && github.event_name == 'schedule' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: book/linkcheck/cache.json
           key: linkcheck--${{ env.MDBOOK_LINKCHECK2_VERSION }}--${{ github.run_id }}
