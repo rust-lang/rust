@@ -44,9 +44,11 @@ jobs:
 
     # FIXME: remove when we have binutils version 2.43 in the repo.
     - name: Install more recent binutils
+      # Without a limit, an unreachable mirror hangs the job until GitHub's 6-hour timeout.
+      timeout-minutes: 10
       run: |
-        echo "deb http://archive.ubuntu.com/ubuntu plucky main universe" | sudo tee /etc/apt/sources.list.d/plucky-copies.list
-        sudo apt-get update -o Acquire::Retries=3
+        echo "deb http://azure.archive.ubuntu.com/ubuntu plucky main universe" | sudo tee /etc/apt/sources.list.d/plucky-copies.list
+        sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30
         sudo apt-get install binutils
         installed="$(dpkg-query --showformat='${Version}' --show binutils)"
         echo "Installed binutils: $installed"
