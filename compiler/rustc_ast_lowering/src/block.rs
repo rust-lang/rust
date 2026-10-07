@@ -1,5 +1,5 @@
 use rustc_ast::{Block, BlockCheckMode, Local, LocalKind, Stmt, StmtKind};
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_hir as hir;
 use rustc_span::sym;
 use smallvec::SmallVec;
@@ -104,13 +104,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         let span = self.lower_span(l.span);
         let source = hir::LocalSource::Normal;
-        self.lower_attrs(
-            hir_id,
-            &l.attrs,
-            l.span,
-            Target::Statement,
-            rustc_attr_ir::target::AstTarget::Statement(s),
-        );
+        self.lower_attrs(hir_id, &l.attrs, l.span, Target::Statement, AstTarget::Statement(s));
         self.arena.alloc(hir::LetStmt { hir_id, super_, ty, pat, init, els, span, source })
     }
 

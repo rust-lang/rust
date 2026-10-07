@@ -266,14 +266,14 @@ impl CombineAttributeParser for LinkParser {
         };
 
         let abi = fm.abi.map_or(ExternAbi::FALLBACK, |abi| {
-                abi.symbol_unescaped.as_str().parse().unwrap_or_else(|_| {
-                    cx.dcx().span_delayed_bug(
-                        abi.span,
-                        "LinkParser::finalize_check was unable to pre-detect the ABI, so it continues to use the recovery value solely to check for unused_attributes in the lint; a user error E0703 will be reported later in lower_abi",
-                    );
-                    ExternAbi::Rust
-                    })
-                });
+            abi.symbol_unescaped.as_str().parse().unwrap_or_else(|_| {
+                cx.dcx().span_delayed_bug(
+                    abi.span,
+                    "LinkParser::finalize_check was unable to pre-detect the ABI, so it continues to use the recovery value solely to check for unused_attributes in the lint; a user error E0703 will be reported later in lower_abi",
+                );
+                ExternAbi::Rust
+                })
+            });
         if matches!(abi, ExternAbi::Rust) {
             cx.emit_lint(UNUSED_ATTRIBUTES, Link, attr_span);
         }

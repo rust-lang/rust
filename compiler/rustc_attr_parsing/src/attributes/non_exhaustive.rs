@@ -1,4 +1,5 @@
 use rustc_ast::VariantData;
+use rustc_attr_ir::target::AstTarget;
 use rustc_feature::AttributeStability;
 
 use super::prelude::*;
@@ -22,7 +23,7 @@ impl NoArgsAttributeParser for NonExhaustiveParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NonExhaustive;
 
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
-        let rustc_attr_ir::target::AstTarget::Struct(_, _, data) = cx.ast_target else {
+        let AstTarget::Struct(_, _, data) = cx.ast_target else {
             return;
         };
 

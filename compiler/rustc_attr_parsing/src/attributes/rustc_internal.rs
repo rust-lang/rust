@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use rustc_ast::{GenericParamKind, LitIntType, LitKind, MetaItemLit};
 use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::target::AstTarget;
 use rustc_attr_ir::{
     BorrowckGraphvizFormatKind, CguFields, CguKind, RustcCleanAttribute, RustcCleanQueries,
     RustcMirKind,
@@ -171,7 +172,7 @@ impl SingleAttributeParser for RustcLegacyConstGenericsParser {
     }
 
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
-        let rustc_attr_ir::target::AstTarget::Fn(function) = cx.ast_target else {
+        let AstTarget::Fn(function) = cx.ast_target else {
             return;
         };
 

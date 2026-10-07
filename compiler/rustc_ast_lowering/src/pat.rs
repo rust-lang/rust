@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use rustc_ast::*;
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_span::{DesugaringKind, Ident, Span, Spanned, respan, span_bug};
@@ -97,7 +97,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             &f.attrs,
                             f.span,
                             Target::PatField,
-                            rustc_attr_ir::target::AstTarget::Pat(pattern),
+                            AstTarget::Pat(pattern),
                         );
 
                         hir::PatField {
