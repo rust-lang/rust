@@ -34,6 +34,7 @@ cfg_select! {
         };
     }
     target_os = "qurt" => {
+        // QuRT doesn't have lstat - use stat instead
         use libc::{
             dirent as dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
             off_t as off64_t, open as open64, stat as stat64, stat as lstat64,
@@ -849,7 +850,6 @@ impl Iterator for ReadDir {
                     any(
                         target_os = "espidf", // readdir truly isn't thread-safe.
                         target_os = "lynxos178",
-                        target_os = "qurt",
                         target_os = "rtems",
                         target_os = "vxworks",
                     ) => {
