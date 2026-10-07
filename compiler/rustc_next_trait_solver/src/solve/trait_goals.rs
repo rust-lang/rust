@@ -136,6 +136,7 @@ where
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
+        goal_lang_item: Option<SolverTraitLangItem>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
         fn trait_def_id_matches<I: Interner>(
@@ -143,6 +144,7 @@ where
             clause_def_id: I::TraitId,
             goal_def_id: I::TraitId,
             polarity: ClausePolarity,
+            goal_lang_item: Option<SolverTraitLangItem>,
         ) -> bool {
             clause_def_id == goal_def_id
             // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
@@ -150,8 +152,8 @@ where
             //
             // `PointeeSized` bounds are syntactic sugar for a lack of bounds so don't need this.
                 || (polarity == ClausePolarity::Positive
-                    && cx.is_trait_lang_item(clause_def_id, SolverTraitLangItem::Sized)
-                    && cx.is_trait_lang_item(goal_def_id, SolverTraitLangItem::MetaSized))
+                    && goal_lang_item == Some(SolverTraitLangItem::MetaSized)
+                    && cx.is_trait_lang_item(clause_def_id, SolverTraitLangItem::Sized))
         }
 
         if let Some(trait_clause) = assumption.as_trait_clause()
@@ -161,6 +163,7 @@ where
                 trait_clause.def_id(),
                 goal.predicate.def_id(),
                 goal.predicate.polarity,
+                goal_lang_item,
             )
             && DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                 goal.predicate.trait_ref.args,
