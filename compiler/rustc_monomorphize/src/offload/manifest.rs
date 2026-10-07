@@ -290,6 +290,10 @@ impl<'a, 'tcx> BlobDecoder for OffloadManifestDecoder<'a, 'tcx> {
         let v = self.read_u32();
         rustc_span::def_id::DefIndex::from_u32(v)
     }
+
+    fn decode_local_def_id(&mut self) -> rustc_hir::def_id::LocalDefId {
+        self.decode_def_id().expect_local()
+    }
 }
 
 impl<'a, 'tcx> SpanDecoder for OffloadManifestDecoder<'a, 'tcx> {

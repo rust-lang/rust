@@ -1354,6 +1354,20 @@ pub trait SpanEncoder: Encoder {
     fn encode_crate_num(&mut self, crate_num: CrateNum);
     fn encode_def_index(&mut self, def_index: DefIndex);
     fn encode_def_id(&mut self, def_id: DefId);
+
+    fn encode_local_def_id(&mut self, def_id: LocalDefId) {
+        self.encode_def_id(def_id.to_def_id());
+    }
+
+    // `rustc_span` does not reference `rustc_hir_id` (`rustc_hir_id` references `rustc_span` instead),
+    // so we can't use `DefKey` or `DisambiguatedDefPathData` here.
+    fn encode_def_key(&mut self, parent: Option<DefIndex>, disambiguated_data: impl Encodable<Self>)
+    where
+        Self: Sized,
+    {
+        parent.encode(self);
+        disambiguated_data.encode(self);
+    }
 }
 
 impl SpanEncoder for FileEncoder<'_> {
@@ -1409,11 +1423,11 @@ impl SpanEncoder for MemEncoder {
     }
 
     fn encode_expn_id(&mut self, _expn_id: ExpnId) {
-        panic!("cannot encode `ExpnId` with `FileEncoder`");
+        panic!("cannot encode `ExpnId` with `MemEncoder`");
     }
 
     fn encode_syntax_context(&mut self, _syntax_context: SyntaxContext) {
-        panic!("cannot encode `SyntaxContext` with `FileEncoder`");
+        panic!("cannot encode `SyntaxContext` with `MemEncoder`");
     }
 
     fn encode_crate_num(&mut self, crate_num: CrateNum) {
@@ -1421,7 +1435,7 @@ impl SpanEncoder for MemEncoder {
     }
 
     fn encode_def_index(&mut self, _def_index: DefIndex) {
-        panic!("cannot encode `DefIndex` with `FileEncoder`");
+        panic!("cannot encode `DefIndex` with `MemEncoder`");
     }
 
     fn encode_def_id(&mut self, def_id: DefId) {
@@ -1488,6 +1502,12 @@ pub trait BlobDecoder: Decoder {
     fn decode_symbol(&mut self) -> Symbol;
     fn decode_byte_symbol(&mut self) -> ByteSymbol;
     fn decode_def_index(&mut self) -> DefIndex;
+
+    // This function is placed here (not in a `SpanDecoder`),
+    // as during metadata decoding `LocalDefId` is just a wrapper
+    // around `DefIndex`, so it can be decoded without extra knowledge
+    // like crate remapping.
+    fn decode_local_def_id(&mut self) -> LocalDefId;
 }
 
 /// This trait is used to allow decoder specific encodings of certain types.
@@ -1526,6 +1546,10 @@ impl BlobDecoder for MemDecoder<'_> {
 
     fn decode_def_index(&mut self) -> DefIndex {
         panic!("cannot decode `DefIndex` with `MemDecoder`");
+    }
+
+    fn decode_local_def_id(&mut self) -> LocalDefId {
+        self.decode_def_id().expect_local()
     }
 }
 
