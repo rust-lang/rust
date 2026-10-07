@@ -82,4 +82,12 @@ core::test_binder_constraints! {
     }
 }
 
+core::test_binder_constraints! {
+    impl<TParam: Trait> {
+        forall<'a> where TParam: 'a { },
+        forall<'a> where TParam::Assoc: 'a { },
+        forall<'a, T> where T: 'a { },
+    }
+}
+
 fn main() {}
