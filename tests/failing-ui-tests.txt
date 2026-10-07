@@ -21,4 +21,8 @@ tests/ui/explicit-tail-calls/indirect.rs
 tests/ui/abi/rust-tail-cc.rs
 tests/ui/abi/rust-preserve-none-cc.rs
 tests/ui/extern/extern-types-field-offset.rs
+tests/ui/scalable-vectors/debuginfo-does-not-spill.rs
+tests/ui/scalable-vectors/debuginfo-no-opt-llvm-ice.rs
+tests/ui/scalable-vectors/transmute.rs
+tests/ui/scalable-vectors/transparent-wrappers.rs
 
