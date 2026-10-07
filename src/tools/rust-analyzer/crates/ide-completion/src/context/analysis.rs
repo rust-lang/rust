@@ -883,7 +883,7 @@ fn expected_type_and_name<'db>(
     let expected_func = original_ty.flatten().and_then(|ty| {
         let is_direct_arg = token
             .parent()
-            .filter(|it| ast::NameLike::can_cast(it.kind()))
+            .filter(|it| ast::NameLike::can_cast(it.kind()) || token.kind() == T![::])
             .into_iter()
             .flat_map(|it| it.ancestors().skip(1))
             .find(|it| {
