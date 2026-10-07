@@ -4072,7 +4072,7 @@ pub struct TestBinderBody {
     pub exists: ThinVec<TestBinderExists>,
     pub constraints: Vec<TestBinderConstraint>,
     /// These are not where clauses, but rather predicates within the body to be proven
-    pub predicates: Vec<WhereClause>,
+    pub predicates: Vec<WherePredicate>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
