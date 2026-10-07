@@ -149,7 +149,6 @@ impl ArenaTokenStreamBuilder {
     }
 
     pub fn push_stream(&mut self, stream: ArenaTokenStream) {
-        self.tokens.reserve(stream.length());
         self.fill_stream(stream.iter_top_level_trees());
     }
 
