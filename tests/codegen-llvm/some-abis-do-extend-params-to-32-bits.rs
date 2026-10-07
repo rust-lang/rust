@@ -134,7 +134,7 @@ pub extern "C" fn c_arg_i32(_a: i32) {}
 #[no_mangle]
 pub extern "C" fn c_arg_i64(_a: i64) {}
 
-// x86_64-linux:                                    i1 @c_ret_bool()
+// x86_64-linux:    zeroext i1 @c_ret_bool()
 // x86_64-uefi:     zeroext i1 @c_ret_bool()
 // i686:            zeroext i1 @c_ret_bool()
 // aarch64-apple:   zeroext i1 @c_ret_bool()
