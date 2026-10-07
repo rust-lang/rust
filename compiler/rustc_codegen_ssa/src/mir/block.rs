@@ -7,7 +7,7 @@ use rustc_abi::{
 };
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
-use rustc_attr_ir::AttributeKind;
+use rustc_attr_ir::UnrollAttr;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::packed::Pu128;
 use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
@@ -140,7 +140,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         bx: &mut Bx,
         target: mir::BasicBlock,
         mergeable_succ: bool,
-        loop_hint_attrs: &[AttributeKind],
+        loop_hint_attrs: &[UnrollAttr],
     ) -> MergingSucc {
         let (needs_landing_pad, is_cleanupret) = self.llbb_characteristics(fx, target);
         if mergeable_succ && !needs_landing_pad && !is_cleanupret {

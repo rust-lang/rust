@@ -3,7 +3,7 @@
 use std::slice;
 
 use rustc_ast::InlineAsmOptions;
-use rustc_attr_ir::AttributeKind;
+use rustc_attr_ir::UnrollAttr;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::packed::Pu128;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
@@ -419,7 +419,7 @@ impl<O: fmt::Debug> fmt::Display for AssertKind<O> {
 pub struct Terminator<'tcx> {
     pub source_info: SourceInfo,
     pub kind: TerminatorKind<'tcx>,
-    pub loop_hint_attrs: ThinVec<AttributeKind>,
+    pub loop_hint_attrs: ThinVec<UnrollAttr>,
 }
 
 impl<'tcx> Terminator<'tcx> {
