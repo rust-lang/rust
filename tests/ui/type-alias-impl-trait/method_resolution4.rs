@@ -3,6 +3,7 @@
 //! type, registering the generic parameter as the hidden type of the opaque type.
 
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 #![feature(type_alias_impl_trait, arbitrary_self_types)]

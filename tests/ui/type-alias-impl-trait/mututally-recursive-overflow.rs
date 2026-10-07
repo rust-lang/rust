@@ -1,9 +1,10 @@
 //@ revisions: next old
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@ edition: 2021
 //@ build-fail
-//[old]~^^^^ ERROR overflow evaluating the requirement `<() as B>::Assoc == _`
-//[next]~^^^^^ ERROR: overflow evaluating the requirement `<() as A>::Assoc::{opaque#0} == _`
+//[old]~^^^^^ ERROR overflow evaluating the requirement `<() as B>::Assoc == _`
+//[next]~^^^^^^ ERROR: overflow evaluating the requirement `<() as A>::Assoc::{opaque#0} == _`
 
 #![feature(rustc_attrs)]
 #![feature(impl_trait_in_assoc_type)]

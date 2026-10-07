@@ -2121,13 +2121,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    pub(super) fn find_similar_impl_candidates(
+    pub(crate) fn find_similar_impl_candidates(
         &self,
-        trait_pred: ty::PolyTraitClause<'tcx>,
+        trait_def_id: DefId,
+        self_ty: Ty<'tcx>,
     ) -> Vec<ImplCandidate<'tcx>> {
         let mut candidates: Vec<_> = self
             .tcx
-            .all_impls(trait_pred.def_id())
+            .all_impls(trait_def_id)
             .filter_map(|def_id| {
                 let imp = self.tcx.impl_trait_header(def_id);
                 if imp.polarity != ty::ImplPolarity::Positive
@@ -2137,9 +2138,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 let imp = imp.trait_ref.skip_binder();
 
-                self.fuzzy_match_tys(trait_pred.skip_binder().self_ty(), imp.self_ty(), false).map(
-                    |similarity| ImplCandidate { trait_ref: imp, similarity, impl_def_id: def_id },
-                )
+                self.fuzzy_match_tys(self_ty, imp.self_ty(), false).map(|similarity| {
+                    ImplCandidate { trait_ref: imp, similarity, impl_def_id: def_id }
+                })
             })
             .collect();
         if candidates.iter().any(|c| matches!(c.similarity, CandidateSimilarity::Exact { .. })) {
@@ -2772,7 +2773,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // the user might expect to be presented with. Instead this is
         // useful for less general traits.
         if peeled && !self.tcx.trait_is_auto(def_id) && self.tcx.as_lang_item(def_id).is_none() {
-            let impl_candidates = self.find_similar_impl_candidates(trait_pred);
+            let impl_candidates = self.find_similar_impl_candidates(
+                trait_pred.def_id(),
+                trait_pred.self_ty().skip_binder(),
+            );
             self.report_similar_impl_candidates(
                 &impl_candidates,
                 obligation,
@@ -3475,7 +3479,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             );
         } else if !suggested && trait_predicate.polarity() == ty::ClausePolarity::Positive {
             // Can't show anything else useful, try to find similar impls.
-            let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
+            let impl_candidates = self.find_similar_impl_candidates(
+                trait_predicate.def_id(),
+                trait_predicate.self_ty().skip_binder(),
+            );
             if !self.report_similar_impl_candidates(
                 &impl_candidates,
                 obligation,

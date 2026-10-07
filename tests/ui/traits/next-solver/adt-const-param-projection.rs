@@ -1,4 +1,5 @@
 //@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@ build-pass
 //@ compile-flags: --crate-type=lib

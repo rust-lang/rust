@@ -3,12 +3,12 @@ use std::fmt;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, Diag, IntoDiagArg};
 use rustc_hir as hir;
-use rustc_hir::def::Namespace;
+use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHighlightMode};
 use rustc_middle::ty::{self, GenericArgsRef, IsSuggestable, RePlaceholder, Region, TyCtxt};
-use rustc_span::bug;
+use rustc_span::{Span, bug};
 use rustc_structures::Limit;
 use tracing::{debug, instrument};
 
@@ -279,25 +279,40 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 _ => break,
             }
         }
-        let (leading_ellipsis, satisfy_span, where_span, dup_span, def_id) =
+        let (mut satisfy_span, mut item_span, outer_span, dup_span, item_name) =
             if let ObligationCauseCode::WhereClause(def_id, span)
             | ObligationCauseCode::WhereClauseInExpr(def_id, span, ..) = *code
                 && def_id != CRATE_DEF_ID.to_def_id()
             {
+                let parent = self.tcx().parent(def_id);
                 (
-                    true,
                     Some(span),
                     Some(
                         self.tcx()
                             .opt_item_ident(def_id)
                             .map_or_else(|| self.tcx().def_span(def_id), |n| n.span),
                     ),
+                    if let DefKind::Trait | DefKind::Impl { .. } = self.tcx().def_kind(parent) {
+                        Some(self.tcx().def_span(parent).shrink_to_lo())
+                    } else {
+                        None
+                    },
                     None,
                     self.tcx().def_path_str(def_id),
                 )
             } else {
-                (false, None, None, Some(span), String::new())
+                (None, None, None, Some(span), String::new())
             };
+        if let Some(span) = satisfy_span
+            && span.is_dummy()
+        {
+            satisfy_span = None;
+        }
+        if let Some(span) = item_span
+            && span.is_dummy()
+        {
+            item_span = None;
+        }
 
         let expected_trait_ref = self.cx.deeply_resolve_ignoring_regions(
             ty::TraitRef::new_from_args(self.cx.tcx, trait_def_id, expected_args),
@@ -369,15 +384,15 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             expected_has_vid,
             actual_has_vid,
             any_self_ty_has_vid,
-            leading_ellipsis,
+            satisfy_span,
+            item_span,
+            outer_span,
+            item_name,
         );
 
         let mut err = self.tcx().dcx().create_err(TraitPlaceholderMismatch {
             span,
-            satisfy_span,
-            where_span,
             dup_span,
-            def_id,
             trait_def_id: self.tcx().def_path_str(trait_def_id),
             actual_impl_expl_notes,
         });
@@ -385,15 +400,21 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         let mut current_code = cause.code();
         let mut coroutine_def_id = None;
         if cause.body_def_id != CRATE_DEF_ID {
-            self.cx.note_obligation_cause_code(
-                cause.body_def_id,
-                &mut err,
-                actual_trait_ref,
-                self.tcx().param_env(cause.body_def_id),
-                cause.code(),
-                &mut vec![],
-                &mut Default::default(),
-            );
+            if let ObligationCauseCode::WhereClause(..)
+            | ObligationCauseCode::WhereClauseInExpr(..) = *code
+            {
+                // Do not point at the same bound twice.
+            } else {
+                self.cx.note_obligation_cause_code(
+                    cause.body_def_id,
+                    &mut err,
+                    actual_trait_ref,
+                    self.tcx().param_env(cause.body_def_id),
+                    cause.code(),
+                    &mut vec![],
+                    &mut Default::default(),
+                );
+            }
         }
 
         loop {
@@ -494,7 +515,10 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         expected_has_vid: Option<usize>,
         actual_has_vid: Option<usize>,
         any_self_ty_has_vid: bool,
-        leading_ellipsis: bool,
+        satisfy_span: Option<Span>,
+        item_span: Option<Span>,
+        outer_span: Option<Span>,
+        item_name: String,
     ) -> Vec<ActualImplExplNotes<'tcx>> {
         // The weird thing here with the `maybe_highlighting_region` calls and the
         // the match inside is meant to be like this:
@@ -592,11 +616,14 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         let note_1 = ActualImplExplNotes::new_expected(
             kind,
             lt_kind,
-            leading_ellipsis,
             ty_or_sig,
             trait_path,
             lifetime_1,
             lifetime_2,
+            satisfy_span,
+            item_span,
+            outer_span,
+            item_name,
         );
 
         let mut actual_trait_ref = highlight_trait_ref(actual_trait_ref);
@@ -613,7 +640,21 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         let lifetime = actual_has_vid.unwrap_or_default();
 
         let note_2 = if same_self_type {
-            ActualImplExplNotes::ButActuallyImplementsTrait { trait_path, has_lifetime, lifetime }
+            let impl_candidates = self.cx.find_similar_impl_candidates(
+                actual_trait_ref.value.def_id,
+                actual_trait_ref.value.self_ty(),
+            );
+            let span = if let [candidate] = impl_candidates {
+                Some(self.tcx().def_span(candidate.impl_def_id))
+            } else {
+                None
+            };
+            ActualImplExplNotes::ButActuallyImplementsTrait {
+                trait_path,
+                has_lifetime,
+                lifetime,
+                span,
+            }
         } else if passive_voice {
             ActualImplExplNotes::ButActuallyImplementedForTy {
                 trait_path,

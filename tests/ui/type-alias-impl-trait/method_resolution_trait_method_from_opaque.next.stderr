@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/method_resolution_trait_method_from_opaque.rs:28:18
+  --> $DIR/method_resolution_trait_method_from_opaque.rs:29:18
    |
 LL |         self.bar.next().unwrap();
    |                  ^^^^

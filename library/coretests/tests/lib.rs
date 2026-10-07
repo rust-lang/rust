@@ -47,7 +47,6 @@
 #![feature(core_io_borrowed_buf)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
-#![feature(cstr_display)]
 #![feature(debug_closure_helpers)]
 #![feature(dec2flt)]
 #![feature(duration_constants)]
@@ -111,6 +110,7 @@
 #![feature(slice_shift)]
 #![feature(slice_split_once)]
 #![feature(sliceindex_wrappers)]
+#![feature(splat)]
 #![feature(split_array)]
 #![feature(split_as_slice)]
 #![feature(std_internals)]
@@ -131,6 +131,7 @@
 #![feature(unicode_internals)]
 #![feature(unsize)]
 // tidy-alphabetical-end
+#![allow(incomplete_features)]
 #![allow(internal_features)]
 #![deny(implicit_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]

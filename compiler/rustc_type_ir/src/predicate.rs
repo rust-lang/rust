@@ -231,7 +231,7 @@ impl<I: Interner> ty::Binder<I, TraitClause<I>> {
     }
 
     pub fn self_ty(self) -> ty::Binder<I, I::Ty> {
-        self.map_bound(|trait_ref| trait_ref.self_ty())
+        self.map_bound_no_validate_bound_vars(|trait_ref| trait_ref.self_ty())
     }
 
     #[inline]
@@ -248,7 +248,10 @@ impl<I: Interner> UpcastFrom<I, TraitRef<I>> for TraitClause<I> {
 
 impl<I: Interner> UpcastFrom<I, ty::Binder<I, TraitRef<I>>> for ty::Binder<I, TraitClause<I>> {
     fn upcast_from(from: ty::Binder<I, TraitRef<I>>, _tcx: I) -> Self {
-        from.map_bound(|trait_ref| TraitClause { trait_ref, polarity: ClausePolarity::Positive })
+        from.map_bound_no_validate_bound_vars(|trait_ref| TraitClause {
+            trait_ref,
+            polarity: ClausePolarity::Positive,
+        })
     }
 }
 

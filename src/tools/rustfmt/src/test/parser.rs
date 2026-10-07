@@ -76,3 +76,15 @@ fn crate_parsing_stashed_diag2() {
     let filename = "tests/parser/stashed-diag2.rs";
     assert_parser_error(filename);
 }
+
+#[test]
+fn try_macro_cant_be_chain_child() {
+    let filename = "tests/parser/try_macro_cant_be_chain_child.rs";
+    assert_parser_error(filename);
+}
+
+#[test]
+fn try_macro_literal_cant_be_chain_child() {
+    let filename = "tests/parser/try_macro_literal_cant_be_chain_child.rs";
+    assert_parser_error(filename);
+}

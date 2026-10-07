@@ -36,7 +36,7 @@ use super::{
 };
 use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
 
-mod diagnostics;
+pub(super) mod diagnostics;
 
 #[derive(Debug)]
 pub(super) enum DestructuredFloat {
@@ -149,7 +149,7 @@ impl<'a> Parser<'a> {
         mut lhs: Box<Expr>,
     ) -> PResult<'a, (Box<Expr>, bool)> {
         let mut parsed_something = false;
-        if !self.should_continue_as_assoc_expr(&lhs) {
+        if self.expr_is_complete(&lhs) && !self.recover_from_bin_op_after_complete_stmt_expr(&lhs) {
             return Ok((lhs, parsed_something));
         }
 
@@ -224,52 +224,6 @@ impl<'a> Parser<'a> {
         }
 
         Ok((lhs, parsed_something))
-    }
-
-    fn should_continue_as_assoc_expr(&mut self, lhs: &Expr) -> bool {
-        match (self.expr_is_complete(lhs), AssocOp::from_token(&self.token)) {
-            // Semi-statement forms are odd:
-            // See https://github.com/rust-lang/rust/issues/29071
-            (true, None) => false,
-            (false, _) => true, // Continue parsing the expression.
-            // An exhaustive check is done in the following block, but these are checked first
-            // because they *are* ambiguous but also reasonable looking incorrect syntax, so we
-            // want to keep their span info to improve diagnostics in these cases in a later stage.
-            (true, Some(AssocOp::Binary(
-                BinOpKind::Mul | // `{ 42 } *foo = bar;` or `{ 42 } * 3`
-                BinOpKind::Sub | // `{ 42 } -5`
-                BinOpKind::Add | // `{ 42 } + 42` (unary plus)
-                BinOpKind::And | // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
-                BinOpKind::Or | // `{ 42 } || 42` ("logical or" or closure)
-                BinOpKind::BitOr // `{ 42 } | 42` or `{ 42 } |x| 42`
-            ))) => {
-                // These cases are ambiguous and can't be identified in the parser alone.
-                //
-                // Bitwise AND is left out because guessing intent is hard. We can make
-                // suggestions based on the assumption that double-refs are rarely intentional,
-                // and closures are distinct enough that they don't get mixed up with their
-                // return value.
-                let sp = self.psess.source_map().start_point(self.token.span);
-                self.psess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
-                false
-            }
-            (true, Some(op)) if !op.can_continue_expr_unambiguously() => false,
-            (true, Some(_)) => {
-                self.error_found_expr_would_be_stmt(lhs);
-                true
-            }
-        }
-    }
-
-    /// We've found an expression that would be parsed as a statement,
-    /// but the next token implies this should be parsed as an expression.
-    /// For example: `if let Some(x) = x { x } else { 0 } / 2`.
-    fn error_found_expr_would_be_stmt(&self, lhs: &Expr) {
-        self.dcx().emit_err(crate::diagnostics::FoundExprWouldBeStmt {
-            span: self.token.span,
-            token: pprust::token_to_string(&self.token),
-            suggestion: crate::diagnostics::ExprParenthesesNeeded::surrounding(lhs.span),
-        });
     }
 
     /// Possibly translate the current token to an associative operator.
@@ -425,7 +379,9 @@ impl<'a> Parser<'a> {
                 };
 
                 // a block on the LHS might have been intended to be an expression instead
-                if let Some(sp) = this.psess.ambiguous_block_expr_parse.borrow().get(&lo) {
+                if let Some(sp) =
+                    this.psess.complete_stmt_exprs_before_bin_op_lookalike.borrow().get(&lo)
+                {
                     err.add_parentheses =
                         Some(crate::diagnostics::ExprParenthesesNeeded::surrounding(*sp));
                 } else {
@@ -1364,7 +1320,9 @@ impl<'a> Parser<'a> {
                 this.parse_expr_closure().map_err(|mut err| {
                     // If the input is something like `if a { 1 } else { 2 } | if a { 3 } else { 4 }`
                     // then suggest parens around the lhs.
-                    if let Some(sp) = this.psess.ambiguous_block_expr_parse.borrow().get(&lo) {
+                    if let Some(sp) =
+                        this.psess.complete_stmt_exprs_before_bin_op_lookalike.borrow().get(&lo)
+                    {
                         err.subdiagnostic(crate::diagnostics::ExprParenthesesNeeded::surrounding(
                             *sp,
                         ));

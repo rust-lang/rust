@@ -1,5 +1,5 @@
 use anyhow::Context;
-use build_helper::{LLVM_PGO_CRATES, RUSTC_PGO_CRATES};
+use build_helper::{BACKEND_PGO_CRATES, RUSTC_PGO_CRATES};
 use camino::{Utf8Path, Utf8PathBuf};
 use humansize::BINARY;
 
@@ -108,7 +108,12 @@ fn log_profile_stats(
 }
 
 pub fn llvm_benchmarks(env: &Environment) -> CmdBuilder {
-    init_compiler_benchmarks(env, &["Debug", "Opt"], &["Full"], LLVM_PGO_CRATES)
+    init_compiler_benchmarks(env, &["Debug", "Opt"], &["Full"], BACKEND_PGO_CRATES)
+}
+
+fn cranelift_benchmarks(env: &Environment) -> CmdBuilder {
+    let cmd = init_compiler_benchmarks(env, &["Debug"], &["Full"], BACKEND_PGO_CRATES);
+    cmd.arg("--backends").arg("Cranelift")
 }
 
 // Here we're profiling the `rustc` frontend, so we also include `Check`.
@@ -179,6 +184,17 @@ pub fn gather_clippy_profiles(
 ) -> anyhow::Result<ClippyPGOProfile> {
     log::info!("Running benchmarks with PGO instrumented clippy");
     gather_pgo_profiles(env, profile_root, "clippy", clippy_benchmarks(env)).map(ClippyPGOProfile)
+}
+
+pub struct CraneliftPGOProfile(pub Utf8PathBuf);
+
+pub fn gather_cranelift_profiles(
+    env: &Environment,
+    profile_root: &Utf8Path,
+) -> anyhow::Result<CraneliftPGOProfile> {
+    log::info!("Running benchmarks with PGO instrumented cranelift codegen backend");
+    gather_pgo_profiles(env, profile_root, "cranelift", cranelift_benchmarks(env))
+        .map(CraneliftPGOProfile)
 }
 
 pub fn gather_pgo_profiles(

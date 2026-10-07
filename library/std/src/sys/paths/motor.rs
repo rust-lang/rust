@@ -15,6 +15,16 @@ pub fn split_paths(unparsed: &OsStr) -> SplitPaths<'_> {
     unparsed.as_str().split(PATH_SEPARATOR).map(into_pathbuf as fn(&str) -> PathBuf)
 }
 
+pub type SplitPathsRef<'a> = iter::Map<str::Split<'a, char>, fn(&str) -> &path::Path>;
+
+pub fn split_paths_ref(unparsed: &OsStr) -> Option<SplitPathsRef<'_>> {
+    fn as_path(part: &str) -> &path::Path {
+        part.as_ref()
+    }
+
+    Some(unparsed.as_str().split(PATH_SEPARATOR).map(as_path as fn(&str) -> &path::Path))
+}
+
 #[derive(Debug)]
 pub struct JoinPathsError;
 

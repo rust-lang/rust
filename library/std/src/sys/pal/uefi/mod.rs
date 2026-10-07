@@ -103,8 +103,8 @@ pub fn abort_internal() -> ! {
         };
     }
 
-    // In case SystemTable and ImageHandle cannot be reached, use `core::intrinsics::abort`
-    core::intrinsics::abort();
+    // In case SystemTable and ImageHandle cannot be reached, use `abort_immediate`
+    core::intrinsics::abort_immediate();
 }
 
 /// Disable access to BootServices if `EVT_SIGNAL_EXIT_BOOT_SERVICES` is signaled

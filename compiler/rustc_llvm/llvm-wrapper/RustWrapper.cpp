@@ -195,16 +195,6 @@ LLVMRustVerifyFunction(LLVMValueRef Fn, LLVMRustVerifierFailureAction Action) {
   return LLVMVerifyFunction(Fn, fromRust(Action));
 }
 
-extern "C" LLVMValueRef LLVMRustGetOrInsertFunction(LLVMModuleRef M,
-                                                    const char *Name,
-                                                    size_t NameLen,
-                                                    LLVMTypeRef FunctionTy) {
-  return wrap(unwrap(M)
-                  ->getOrInsertFunction(StringRef(Name, NameLen),
-                                        unwrap<FunctionType>(FunctionTy))
-                  .getCallee());
-}
-
 // Get the global variable with the given name if it exists or create a new
 // external global.
 extern "C" LLVMValueRef

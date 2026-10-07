@@ -1,5 +1,14 @@
-//@ known-bug: #148511
 //@ edition: 2021
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] check-pass
+//@[old] known-bug: #148511
+//@[old] failure-status: 101
+//@[old] dont-check-compiler-stderr
+
+// This test previously caused an ICE on `use_service(make_service())` and
+// has been fixed with the new solver.
 use std::any::Any;
 
 fn main() {

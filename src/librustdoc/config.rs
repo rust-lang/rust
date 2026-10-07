@@ -777,7 +777,9 @@ impl Options {
             }
         }
 
-        let edition = config::parse_crate_edition(early_dcx, matches);
+        // We don't want rustdoc invocations to complain about the lack of `--edition`.
+        let has_input = false;
+        let edition = config::parse_crate_edition(early_dcx, matches, has_input);
 
         let mut id_map = html::markdown::IdMap::new();
         let Some(external_html) = ExternalHtml::load(

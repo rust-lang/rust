@@ -2,6 +2,7 @@
 
 //@ check-pass
 //@ revisions: classic next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@ aux-crate:dep=trait-with-assoc-ty.rs
 //@ edition: 2021

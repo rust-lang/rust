@@ -18,5 +18,5 @@ use stdarch_test::assert_instr;
 #[inline]
 #[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn trap() -> ! {
-    crate::intrinsics::abort()
+    crate::intrinsics::abort_immediate()
 }
