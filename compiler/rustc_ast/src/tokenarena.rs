@@ -382,10 +382,54 @@ impl ArenaTokenStreamBuilder {
     }
 
     fn fill_stream(&mut self, iter: ArenaTokenTreeIter<'_>) {
-        let stream = iter.stream().clone();
+        if iter.length() == 0 {
+            return;
+        }
+
         self.tokens.reserve(iter.length());
-        for tt in iter {
-            self.push_token_tree(tt, &stream);
+        // Copy the tokens over
+        let start = self.tokens.len();
+        self.tokens
+            .extend_from_slice(&iter.stream.tokens[iter.index.as_usize()..iter.end.as_usize()]);
+
+        // And now fix-up the indices
+        let parent = self.current_delimited_sequence;
+
+        // Index of the next token tree that is at the top level of the original
+        let mut next_top_level_index = start;
+        for (index, tree) in self.tokens[start..].iter_mut().enumerate() {
+            let index = start + index;
+            match tree {
+                ArenaTokenTree::Token(_, _) => {
+                    if index == next_top_level_index {
+                        self.last_push_was_token = true;
+                        next_top_level_index += 1;
+                    }
+                }
+                ArenaTokenTree::DelimitedStart(bounds, _) => {
+                    bounds.start = AbsoluteTokenTreeIndex(index as u32);
+
+                    // If the tree was a top-level tree, potentially reparent it to the current
+                    // active parent
+                    if index == next_top_level_index {
+                        next_top_level_index += bounds.length.get() as usize;
+                        self.last_push_was_token = false;
+                        bounds.parent = parent;
+                    } else {
+                        // If not, fixup its index
+                        bounds.parent = Some(
+                            bounds
+                                .parent
+                                .map(|parent| {
+                                    AbsoluteTokenTreeIndex(
+                                        parent.as_u32() - iter.index.as_u32() + start as u32,
+                                    )
+                                })
+                                .unwrap(),
+                        );
+                    }
+                }
+            }
         }
     }
 }
@@ -985,7 +1029,7 @@ pub struct OpenDelimited {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
 pub struct DelimitedBounds {
     start: AbsoluteTokenTreeIndex,
-    /// The length includes both the start token.
+    /// The length includes the start token.
     /// So an empty delimited sequence has length 1.
     length: NonZeroU32,
     /// Index of the parent of the current delimited sequence.
