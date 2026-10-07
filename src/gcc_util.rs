@@ -157,23 +157,6 @@ pub fn target_cpu(sess: &EarlySession) -> Cow<'_, str> {
     }
 }
 
-/*pub fn add_baseline_flags<'gcc>(context: &Context<'gcc>, sess: &Session) {
-    if sess.target.features.is_empty() {
-        return;
-    }
-
-    for feature in sess.target.features.split(',') {
-        let flag = match feature {
-            "+v8a" => "-march=armv8-a",
-            "+outline-atomics" => "-moutline-atomics",
-            // FIXME: do not panic here.
-            _ => panic!("Feature: {feature}"),
-        };
-        context.add_command_line_option(flag);
-        context.add_driver_option(flag);
-    }
-}*/
-
 pub fn new_context<'gcc>(sess: &Session) -> Context<'gcc> {
     let context = Context::default();
     if matches!(sess.target.arch, Arch::X86 | Arch::X86_64) {
@@ -278,8 +261,6 @@ pub fn new_context<'gcc>(sess: &Session) -> Context<'gcc> {
     if target_cpu != "generic" {
         context.add_command_line_option(format!("-march={}", target_cpu));
     }
-
-    // add_baseline_flags(&context, sess);
 
     if sess.opts.unstable_opts.function_sections.unwrap_or(sess.target.function_sections) {
         context.add_command_line_option("-ffunction-sections");
