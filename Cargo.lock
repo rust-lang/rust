@@ -4582,6 +4582,8 @@ dependencies = [
  "rustc_data_structures",
  "rustc_index",
  "rustc_macros",
+ "rustc_middle",
+ "rustc_transmute",
  "rustc_type_ir",
  "rustc_type_ir_macros",
  "thin-vec",

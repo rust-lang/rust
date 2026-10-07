@@ -30,7 +30,7 @@ use rustc_abi::{
 };
 use rustc_ast::{self as ast};
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
-use rustc_attr_ir::lang_items::LangItem;
+pub use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{self as attr, find_attr};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::intern::Interned;

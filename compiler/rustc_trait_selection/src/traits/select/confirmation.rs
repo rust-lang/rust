@@ -14,8 +14,9 @@ use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
 use rustc_middle::ty::{
-    self, GenericArgsRef, Region, SizedTraitKind, Ty, TyCtxt, Unnormalized, Upcast,
+    self, GenericArgsRef, SizedTraitKind, Ty, Unnormalized, Upcast,
 };
+use rustc_next_trait_solver::solve::flatten_answer_tree;
 use rustc_span::def_id::DefId;
 use rustc_span::{bug, span_bug};
 use thin_vec::thin_vec;
@@ -285,69 +286,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
-        use rustc_transmute::{Answer, Assume, Condition};
-
-        /// Flatten the `Condition` tree into a conjunction of obligations.
-        #[instrument(level = "debug", skip(tcx, obligation))]
-        fn flatten_answer_tree<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            obligation: &PolyTraitObligation<'tcx>,
-            cond: Condition<Region<'tcx>, Ty<'tcx>>,
-            assume: Assume,
-        ) -> PredicateObligations<'tcx> {
-            match cond {
-                // FIXME(bryangarza): Add separate `IfAny` case, instead of treating as `IfAll`
-                // Not possible until the trait solver supports disjunctions of obligations
-                Condition::IfAll(conds) | Condition::IfAny(conds) => conds
-                    .into_iter()
-                    .flat_map(|cond| flatten_answer_tree(tcx, obligation, cond, assume))
-                    .collect(),
-                Condition::Immutable { ty } => {
-                    let trait_ref = ty::TraitRef::new(
-                        tcx,
-                        tcx.require_lang_item(LangItem::Freeze, obligation.cause.span),
-                        [ty::GenericArg::from(ty)],
-                    );
-                    thin_vec![Obligation::with_depth(
-                        tcx,
-                        obligation.cause.clone(),
-                        obligation.recursion_depth + 1,
-                        obligation.param_env,
-                        trait_ref,
-                    )]
-                }
-                Condition::Outlives { long, short } => {
-                    let outlives = ty::OutlivesClause(long, short);
-                    thin_vec![Obligation::with_depth(
-                        tcx,
-                        obligation.cause.clone(),
-                        obligation.recursion_depth + 1,
-                        obligation.param_env,
-                        outlives,
-                    )]
-                }
-                Condition::Transmutable { src, dst } => {
-                    let transmute_trait = obligation.predicate.def_id();
-                    let assume = obligation.predicate.skip_binder().trait_ref.args.const_at(2);
-                    let trait_ref = ty::TraitRef::new(
-                        tcx,
-                        transmute_trait,
-                        [
-                            ty::GenericArg::from(dst),
-                            ty::GenericArg::from(src),
-                            ty::GenericArg::from(assume),
-                        ],
-                    );
-                    thin_vec![Obligation::with_depth(
-                        tcx,
-                        obligation.cause.clone(),
-                        obligation.recursion_depth + 1,
-                        obligation.param_env,
-                        trait_ref,
-                    )]
-                }
-            }
-        }
+        use rustc_transmute::Answer;
 
         let predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
 
@@ -367,9 +306,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let maybe_transmutable = transmute_env.is_transmutable(src, dst, assume);
 
         let fully_flattened = match maybe_transmutable {
-            Answer::No(_) => Err(SelectionError::Unimplemented)?,
-            Answer::If(cond) => flatten_answer_tree(self.tcx(), obligation, cond, assume),
+            Answer::No(_) => return Err(SelectionError::Unimplemented),
             Answer::Yes => PredicateObligations::new(),
+            Answer::If(cond) => flatten_answer_tree(self.tcx(), obligation.predicate.skip_binder(), cond, assume)
+                    .into_iter()
+                    .map(|predicate| Obligation::new(self.infcx.tcx, obligation.cause.clone(), obligation.param_env, predicate))
+                    .collect(),
         };
 
         debug!(?fully_flattened);

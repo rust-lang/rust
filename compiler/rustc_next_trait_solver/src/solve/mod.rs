@@ -21,10 +21,13 @@ mod search_graph;
 mod trait_goals;
 
 use derive_where::derive_where;
-use rustc_type_ir::inherent::*;
+use rustc_transmute::{Assume, Condition};
+use rustc_type_ir::{Upcast, inherent::*};
+use thin_vec::{ThinVec, thin_vec};
 pub use rustc_type_ir::solve::*;
 use rustc_type_ir::{self as ty, Const, Interner, Region, TypeVisitableExt};
 use tracing::instrument;
+use rustc_middle::ty::{self as mty, TyCtxt, Ty as MiddleTy, LangItem};
 
 pub use self::eval_ctxt::{
     EvalCtxt, GenerateProofTree, SolverDelegateEvalExt,
@@ -490,4 +493,48 @@ pub struct GoalEvaluation<I: Interner> {
     /// If the [`Certainty`] was `Maybe`, then keep track of whether the goal has changed
     /// before rerunning it.
     pub stalled_on: Option<GoalStalledOn<I>>,
+}
+
+/// Flatten the `Condition` tree into a conjunction of predicates.
+#[instrument(level = "debug", skip(tcx, predicate))]
+pub fn flatten_answer_tree<'tcx>(
+    tcx: TyCtxt<'tcx> ,
+    predicate: mty::TraitClause<'tcx>,
+    cond: Condition<mty::Region<'tcx>, MiddleTy<'tcx>>,
+    assume: Assume,
+) -> ThinVec<mty::Predicate<'tcx>> {
+    match cond {
+        // FIXME(bryangarza): Add separate `IfAny` case, instead of treating as `IfAll`
+        // Not possible until the trait solver supports disjunctions of obligations
+        Condition::IfAll(conds) | Condition::IfAny(conds) => conds
+            .into_iter()
+            .flat_map(|cond| flatten_answer_tree(tcx, predicate, cond, assume))
+            .collect(),
+        Condition::Immutable { ty } => {
+            let trait_ref = ty::TraitRef::new(
+                tcx,
+                tcx.require_lang_item(LangItem::Freeze, Span::dummy()),
+                [mty::GenericArg::from(ty)],
+            );
+            thin_vec![trait_ref.upcast(tcx)]
+        }
+        Condition::Outlives { long, short } => {
+            let outlives = ty::OutlivesClause(long, short);
+            thin_vec![outlives.upcast(tcx)]
+        }
+        Condition::Transmutable { src, dst } => {
+            let transmute_trait = predicate.def_id();
+            let assume = predicate.trait_ref.args.const_at(2);
+            let trait_ref = ty::TraitRef::new(
+                tcx,
+                transmute_trait,
+                [
+                    mty::GenericArg::from(dst),
+                    mty::GenericArg::from(src),
+                    mty::GenericArg::from(assume),
+                ],
+            );
+            thin_vec![trait_ref.upcast(tcx)]
+        }
+    }
 }
