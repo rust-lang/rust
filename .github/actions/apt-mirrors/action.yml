@@ -15,6 +15,10 @@ runs:
             https://mirrors.mit.edu/ubuntu/ 5 \
             https://mirrors.ocf.berkeley.edu/ubuntu/ 6 \
             | sudo tee -a /etc/apt/apt-mirrors.txt
+          # Tried last: apt never leaves a mirror that is slow but not stalled, which azure.archive
+          # often is (actions/runner-images#14823).
+          sudo sed -i 's#^\(http://azure\.archive\.ubuntu\.com/ubuntu/\s\+priority:\)[0-9]\+#\17#' \
+            /etc/apt/apt-mirrors.txt
         else
           # The Arm64 runners use ports.ubuntu.com directly, without a mirror list.
           printf '%s\tpriority:%s\n' \
