@@ -1303,6 +1303,7 @@ rustc_index::newtype_index! {
 }
 
 impl BasicBlock {
+    #[inline]
     pub fn start_location(self) -> Location {
         Location { block: self, statement_index: 0 }
     }

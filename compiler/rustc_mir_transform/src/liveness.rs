@@ -434,7 +434,7 @@ fn find_self_assignments<'tcx>(
                             statement_index: bb_data.statements.len(),
                         });
                         // Target block
-                        self_assign.insert(Location { block: *target, statement_index: 0 });
+                        self_assign.insert(target.start_location());
                     }
                 }
                 // Straight self-assignment.

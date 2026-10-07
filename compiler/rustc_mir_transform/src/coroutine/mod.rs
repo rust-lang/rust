@@ -394,7 +394,7 @@ impl<'tcx> TransformVisitor<'tcx> {
         visitor.visit_body(body);
         for suspension in &mut self.suspension_points {
             let ctxt = PlaceContext::MutatingUse(MutatingUseContext::Yield);
-            let location = Location { block: START_BLOCK, statement_index: 0 };
+            let location = Location::START;
             visitor.visit_place(&mut suspension.resume_arg, ctxt, location);
         }
     }

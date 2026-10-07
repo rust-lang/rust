@@ -443,7 +443,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
             {
                 assert!(!self.patch.is_term_patched(bb));
 
-                let loc = Location { block: tgt, statement_index: 0 };
+                let loc = tgt.start_location();
                 let path = self.move_data().rev_lookup.find(destination.as_ref());
                 on_lookup_result_bits(self.move_data(), path, |child| {
                     self.set_drop_flag(loc, child, DropFlagState::Present)
