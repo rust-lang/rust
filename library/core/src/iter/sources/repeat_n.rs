@@ -210,4 +210,5 @@ impl<A: Clone> DoubleEndedIterator for RepeatN<A> {
 impl<A: Clone> FusedIterator for RepeatN<A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A: Clone> TrustedLen for RepeatN<A> {}

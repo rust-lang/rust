@@ -576,6 +576,7 @@ pub unsafe trait StaticAllocator: Allocator {}
 
 #[stable(feature = "allocator_api", since = "1.100.0")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl<A> Allocator for &A
 where
     A: [const] Allocator + ?Sized,
@@ -632,6 +633,7 @@ where
 
 #[stable(feature = "allocator_api", since = "1.100.0")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl<A> Allocator for &mut A
 where
     A: [const] Allocator + ?Sized,
@@ -689,6 +691,7 @@ where
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 #[unstable_feature_bound(allocator_ext)]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl<P> Allocator for core::pin::Pin<P>
 where
     P: [const] core::ops::Deref<Target: [const] Allocator> + core::pin::PinSafePointer,
@@ -751,14 +754,17 @@ impl<P> AllocatorNightly for core::pin::Pin<P> where
 }
 
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A: Allocator + ?Sized> AllocatorClone for &A {}
 
 // If an allocator is `StaticAllocator` all equivalent allocators must also uphold
 // its semantics, and references are equivalent to the allocator they reference.
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A: StaticAllocator + ?Sized> StaticAllocator for &A {}
 
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A: StaticAllocator + ?Sized> StaticAllocator for &mut A {}
 
 /// Allocator marker trait that is only implemented stably for `Global`.

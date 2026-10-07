@@ -147,6 +147,7 @@ impl<T> Drop for Dropper<'_, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for VecDeque<T, A> {
     fn drop(&mut self) {
         let (front, back) = self.as_mut_slices();

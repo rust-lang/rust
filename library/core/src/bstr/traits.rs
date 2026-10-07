@@ -169,6 +169,7 @@ where
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl SliceIndex<ByteStr> for ops::RangeFull {
     type Output = ByteStr;
     #[inline]
@@ -198,6 +199,7 @@ unsafe impl SliceIndex<ByteStr> for ops::RangeFull {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl SliceIndex<ByteStr> for usize {
     type Output = u8;
     #[inline]
@@ -231,6 +233,7 @@ unsafe impl SliceIndex<ByteStr> for usize {
 macro_rules! impl_slice_index {
     ($index:ty) => {
         #[unstable(feature = "bstr", issue = "134915")]
+        // ignore-tidy-undocumented-unsafe
         unsafe impl SliceIndex<ByteStr> for $index {
             type Output = ByteStr;
             #[inline]

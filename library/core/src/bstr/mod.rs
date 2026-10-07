@@ -151,6 +151,7 @@ const impl DerefMut for ByteStr {
 }
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl DerefPure for ByteStr {}
 
 #[unstable(feature = "bstr", issue = "134915")]

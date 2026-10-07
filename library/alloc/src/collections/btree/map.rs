@@ -203,6 +203,7 @@ pub struct BTreeMap<
 }
 
 #[stable(feature = "btree_drop", since = "1.7.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<#[may_dangle] K, #[may_dangle] V, A: AllocatorClone> Drop for BTreeMap<K, V, A> {
     fn drop(&mut self) {
         // Skip `into_iter` for an empty map: `dying_next` is too costly to inline, so the
@@ -1799,6 +1800,7 @@ impl<K, V> ExactSizeIterator for Iter<'_, K, V> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<K, V> TrustedLen for Iter<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1876,6 +1878,7 @@ impl<K, V> ExactSizeIterator for IterMut<'_, K, V> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<K, V> TrustedLen for IterMut<'_, K, V> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -2004,6 +2007,7 @@ impl<K, V, A: AllocatorClone> ExactSizeIterator for IntoIter<K, V, A> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<K, V, A: AllocatorClone> TrustedLen for IntoIter<K, V, A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -2055,6 +2059,7 @@ impl<K, V> ExactSizeIterator for Keys<'_, K, V> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<K, V> TrustedLen for Keys<'_, K, V> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -2113,6 +2118,7 @@ impl<K, V> ExactSizeIterator for Values<'_, K, V> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<K, V> TrustedLen for Values<'_, K, V> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -2358,6 +2364,7 @@ impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<K, V> TrustedLen for ValuesMut<'_, K, V> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -2423,6 +2430,7 @@ impl<K, V, A: AllocatorClone> ExactSizeIterator for IntoKeys<K, V, A> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<K, V, A: AllocatorClone> TrustedLen for IntoKeys<K, V, A> {}
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
@@ -2477,6 +2485,7 @@ impl<K, V, A: AllocatorClone> ExactSizeIterator for IntoValues<K, V, A> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<K, V, A: AllocatorClone> TrustedLen for IntoValues<K, V, A> {}
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]

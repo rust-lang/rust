@@ -301,14 +301,19 @@ const impl<A: [const] Ord> SliceOrd for A {
 const unsafe trait UnsignedBytewiseOrd: [const] Ord {}
 
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl UnsignedBytewiseOrd for bool {}
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl UnsignedBytewiseOrd for u8 {}
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl UnsignedBytewiseOrd for NonZero<u8> {}
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl UnsignedBytewiseOrd for Option<NonZero<u8>> {}
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl UnsignedBytewiseOrd for ascii::Char {}
 
 // `compare_bytes` compares a sequence of unsigned bytes lexicographically, so

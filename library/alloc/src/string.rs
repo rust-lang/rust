@@ -3585,8 +3585,10 @@ impl fmt::Debug for Drain<'_> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl Sync for Drain<'_> {}
 #[stable(feature = "drain", since = "1.6.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl Send for Drain<'_> {}
 
 #[stable(feature = "drain", since = "1.6.0")]

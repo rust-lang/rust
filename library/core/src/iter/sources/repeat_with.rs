@@ -120,4 +120,5 @@ impl<A, F: FnMut() -> A> Iterator for RepeatWith<F> {
 impl<A, F: FnMut() -> A> FusedIterator for RepeatWith<F> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A, F: FnMut() -> A> TrustedLen for RepeatWith<F> {}

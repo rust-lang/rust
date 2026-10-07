@@ -459,9 +459,11 @@ impl<I: Iterator> Peekable<I> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> TrustedLen for Peekable<I> where I: TrustedLen {}
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: Iterator> SourceIter for Peekable<I>
 where
     I: SourceIter,

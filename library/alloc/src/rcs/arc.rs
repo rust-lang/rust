@@ -272,8 +272,10 @@ pub struct Arc<
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Send + Sync> Send for Arc<T, A> {}
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Send + Sync> Sync for Arc<T, A> {}
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
@@ -362,8 +364,10 @@ pub struct Weak<
 }
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Send + Sync> Send for Weak<T, A> {}
 #[stable(feature = "arc_weak", since = "1.4.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Send + Sync> Sync for Weak<T, A> {}
 
 #[unstable(feature = "coerce_unsized", issue = "18598")]
@@ -416,7 +420,9 @@ fn arcinner_layout_for_value_layout(layout: Layout) -> Layout {
         .pad_to_align()
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized + Sync + Send> Send for ArcInner<T> {}
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized + Sync + Send> Sync for ArcInner<T> {}
 
 impl<T> Arc<T> {
@@ -2571,9 +2577,11 @@ impl<T: ?Sized, A: Allocator> Deref for Arc<T, A> {
 // crates cannot provide malicious implementations of any of the traits relevant
 // for `Pin`.
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized, A: StaticAllocator> PinSafePointer for Arc<T, A> {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized, A: Allocator> DerefPure for Arc<T, A> {}
 
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
@@ -2943,6 +2951,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Arc<T, A> {
     /// Drops the `Arc`.
     ///
@@ -3619,6 +3628,7 @@ impl<T> Default for Weak<T> {
 }
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Weak<T, A> {
     /// Drops the `Weak` pointer.
     ///
@@ -4544,9 +4554,11 @@ pub struct UniqueArc<
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Send + Sync> Send for UniqueArc<T, A> {}
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Send + Sync> Sync for UniqueArc<T, A> {}
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
@@ -5118,6 +5130,7 @@ impl<T: ?Sized, A: Allocator> Deref for UniqueArc<T, A> {
 
 // #[unstable(feature = "unique_rc_arc", issue = "112566")]
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized, A: StaticAllocator> PinSafePointer for UniqueArc<T, A> {}
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
@@ -5135,9 +5148,11 @@ impl<T: ?Sized, A: Allocator> DerefMut for UniqueArc<T, A> {
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 // #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized, A: Allocator> DerefPure for UniqueArc<T, A> {}
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for UniqueArc<T, A> {
     fn drop(&mut self) {
         // See `Arc::drop_slow` which drops an `Arc` with a strong count of 0.
@@ -5150,6 +5165,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for UniqueArc<T, A> {
 }
 
 #[stable(feature = "allocator_api", since = "1.100.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Arc<T, A> {
     #[inline]
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
@@ -5205,4 +5221,5 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Arc<T, A> {
 impl<T: ?Sized + Allocator, A: Allocator> AllocatorNightly for Arc<T, A> {}
 
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Allocator + ?Sized, A: AllocatorClone> AllocatorClone for Arc<T, A> {}

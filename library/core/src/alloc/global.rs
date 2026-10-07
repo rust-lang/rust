@@ -349,6 +349,7 @@ pub unsafe trait GlobalAlloc {
 
 /// Allows all [`GlobalAllocator`]s to be used with the legacy [`GlobalAlloc`] interface.
 #[stable(feature = "global_alloc", since = "1.28.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A> GlobalAlloc for A
 where
     A: GlobalAllocator + ?Sized,

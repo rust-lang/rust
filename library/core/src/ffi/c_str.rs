@@ -799,9 +799,11 @@ pub struct Bytes<'a> {
 }
 
 #[unstable(feature = "cstr_bytes", issue = "112115")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl Send for Bytes<'_> {}
 
 #[unstable(feature = "cstr_bytes", issue = "112115")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl Sync for Bytes<'_> {}
 
 impl<'a> Bytes<'a> {

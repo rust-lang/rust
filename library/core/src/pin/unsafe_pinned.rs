@@ -30,6 +30,7 @@ pub struct UnsafePinned<T: ?Sized> {
 
 // Override the manual `!Sync` in `UnsafeCell`.
 #[unstable(feature = "unsafe_pinned", issue = "125735")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized + Sync> Sync for UnsafePinned<T> {}
 
 /// When this type is used, that almost certainly means safe APIs need to use pinning to avoid the

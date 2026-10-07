@@ -35,6 +35,7 @@ impl<I> Fuse<I> {
 impl<I> FusedIterator for Fuse<I> where I: Iterator {}
 
 #[unstable(issue = "none", feature = "trusted_fused")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> TrustedFused for Fuse<I> where I: TrustedFused {}
 
 // Any specialized implementation here is made internal
@@ -247,6 +248,7 @@ unsafe impl<I> TrustedRandomAccess for Fuse<I> where I: TrustedRandomAccess {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> TrustedRandomAccessNoCoerce for Fuse<I>
 where
     I: TrustedRandomAccessNoCoerce,
@@ -482,6 +484,7 @@ where
 
 // This is used by Flatten's SourceIter impl
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> SourceIter for Fuse<I>
 where
     I: SourceIter + TrustedFused,

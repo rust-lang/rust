@@ -409,6 +409,7 @@ where
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A, B> TrustedRandomAccess for Zip<A, B>
 where
     A: TrustedRandomAccess,
@@ -418,6 +419,7 @@ where
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A, B> TrustedRandomAccessNoCoerce for Zip<A, B>
 where
     A: TrustedRandomAccessNoCoerce,
@@ -435,6 +437,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "trusted_fused")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A, B> TrustedFused for Zip<A, B>
 where
     A: TrustedFused,
@@ -443,6 +446,7 @@ where
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A, B> TrustedLen for Zip<A, B>
 where
     A: TrustedLen,
@@ -453,6 +457,7 @@ where
 // Arbitrarily selects the left side of the zip iteration as extractable "source"
 // it would require negative trait bounds to be able to try both
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A, B> SourceIter for Zip<A, B>
 where
     A: SourceIter,
@@ -468,6 +473,7 @@ where
 
 // Since SourceIter forwards the left hand side we do the same here
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A: InPlaceIterable, B> InPlaceIterable for Zip<A, B> {
     const EXPAND_BY: Option<NonZero<usize>> = A::EXPAND_BY;
     const MERGE_BY: Option<NonZero<usize>> = A::MERGE_BY;
@@ -605,12 +611,14 @@ unsafe trait SpecTrustedRandomAccess: Iterator {
     unsafe fn try_get_unchecked(&mut self, index: usize) -> Self::Item;
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: Iterator> SpecTrustedRandomAccess for I {
     default unsafe fn try_get_unchecked(&mut self, _: usize) -> Self::Item {
         panic!("Should only be called on TrustedRandomAccess iterators");
     }
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: Iterator + TrustedRandomAccessNoCoerce> SpecTrustedRandomAccess for I {
     #[inline]
     unsafe fn try_get_unchecked(&mut self, index: usize) -> Self::Item {

@@ -219,14 +219,17 @@ impl<T> ExactSizeIterator for Iter<'_, T> {
 impl<T> FusedIterator for Iter<'_, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedLen for Iter<'_, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedRandomAccess for Iter<'_, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedRandomAccessNoCoerce for Iter<'_, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
