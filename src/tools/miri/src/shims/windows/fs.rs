@@ -174,7 +174,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         // Attribute validation.
-        if attributes.contains(FileAttributes::OPEN_REPARSE) != (creation_disposition == CreateNew) {
+        if attributes.contains(FileAttributes::OPEN_REPARSE) != (creation_disposition == CreateNew)
+        {
             // For CreateNew, the effect of OPEN_REPARSE is to avoid creating a file wherever
             // a dangling symlink points to. That's always how `OpenOptions::create_new` behaves
             // so we cannot even support anything else.
