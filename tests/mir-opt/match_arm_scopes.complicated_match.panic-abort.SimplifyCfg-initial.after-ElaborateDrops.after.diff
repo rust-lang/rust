@@ -135,7 +135,6 @@
           StorageDead(_10);
           StorageDead(_9);
 -         FakeRead(ForMatchGuard, _3);
--         FakeRead(ForMatchGuard, _4);
 -         FakeRead(ForGuardBinding, _6);
 -         FakeRead(ForGuardBinding, _8);
           StorageLive(_5);
@@ -178,7 +177,6 @@
 +     bb14: {
           StorageDead(_13);
           StorageDead(_12);
--         FakeRead(ForMatchGuard, _3);
 -         FakeRead(ForMatchGuard, _4);
 -         FakeRead(ForGuardBinding, _6);
 -         FakeRead(ForGuardBinding, _8);

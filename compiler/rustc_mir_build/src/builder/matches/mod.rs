@@ -2464,15 +2464,44 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let guard_frame = self.guard_context.pop().unwrap();
             debug!("Exiting guard building context with locals: {:?}", guard_frame);
 
-            for &(_, temp, _) in fake_borrows {
-                // We put fake reads of fake borrows on the guard's failure path to make sure
-                // they're reachable if we continue matching (#161578) and we put them on the
-                // success path to make sure we can create by-value bindings. This won't keep fake
-                // borrows live on paths where the guard diverges unconditionally, but that should
-                // be sound since we can't continue matching or make bindings after diverging.
+            let by_value_bindings = sub_branch
+                .bindings
+                .iter()
+                .filter(|binding| matches!(binding.binding_mode.0, ByRef::No));
+
+            for &(fake_borrowed_place, temp, _) in fake_borrows {
                 let cause = FakeReadCause::ForMatchGuard;
-                self.cfg.push_fake_read(guard_true_block, guard_end, cause, Place::from(temp));
+                // We put fake reads of fake borrows on the guard's failure path to make sure
+                // they're reachable if we continue matching (#161578). This includes all matched-on
+                // subplaces of the scrutinee place and all references they're under, so that we can
+                // assume in match lowering that discriminants haven't been modified.
                 self.cfg.push_fake_read(guard_false_block, guard_end, cause, Place::from(temp));
+                // We put fake reads on the success path to make sure we can create by-value
+                // bindings. For that, we only need to keep fake borrows alive that are prefixes of
+                // a place we move or copy from to make a by-value binding.
+                if by_value_bindings.clone().any(|binding| {
+                    // We don't make fake borrows relative to deref pattern temporaries. If the
+                    // binding is under deref patterns, we find the place matched on by the
+                    // outermost deref pattern and add fake borrows for it and its prefixes.
+                    let mut matched_place = binding.source;
+                    while matched_place.local != fake_borrowed_place.local {
+                        let &LocalInfo::PatternTemp { matched_place: deref_pat_place } =
+                            self.local_decls[matched_place.local].local_info()
+                        else {
+                            bug!(
+                                "binding created relative to non-matched-on local {:?}",
+                                matched_place.local
+                            );
+                        };
+                        matched_place = deref_pat_place;
+                    }
+                    matched_place.projection.starts_with(fake_borrowed_place.projection)
+                }) {
+                    self.cfg.push_fake_read(guard_true_block, guard_end, cause, Place::from(temp));
+                }
+                // This won't keep fake borrows live on paths where the guard diverges
+                // unconditionally, but that should be sound since we can't continue matching or
+                // make bindings after diverging.
             }
 
             self.cfg.goto(guard_false_block, source_info, sub_branch.otherwise_block);
@@ -2503,10 +2532,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // ```
             //
             // and that is clearly not correct.
-            let by_value_bindings = sub_branch
-                .bindings
-                .iter()
-                .filter(|binding| matches!(binding.binding_mode.0, ByRef::No));
+
             // Read all of the by reference bindings to ensure that the
             // place they refer to can't be modified by the guard.
             for binding in by_value_bindings.clone() {

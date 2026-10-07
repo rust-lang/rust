@@ -4,12 +4,13 @@
 fn main() {
     let mut x: Option<Box<u64>> = Some(Box::new(7));
     match x {
+        // These guards can fail after `x = None`, so we can't do that.
         Some(_) if { x = None; false } && return => {}
         //~^ ERROR: cannot assign `x` in match guard
-        Some(_) if { x = None; false } || return => {}
+        Some(_) if false || ({ x = None; false } && return) => {}
         //~^ ERROR: cannot assign `x` in match guard
-        Some(_) if false && ({ x = None; false } || return) => {}
-        //~^ ERROR: cannot assign `x` in match guard
+
+        // If an above guard failed after mutating `x`, this would surface the unsoundness.
         Some(b) => println!("{b}"),
         None => println!("none"),
     }

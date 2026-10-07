@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use rustc_abi::FieldIdx;
-use rustc_middle::mir::{Pinnedness, Place, PlaceElem, ProjectionElem};
+use rustc_middle::mir::{
+    ClearCrossCrate, LocalDecl, LocalInfo, Pinnedness, Place, PlaceElem, ProjectionElem,
+};
 use rustc_middle::thir::{Ascription, DerefPatBorrowMode, FieldPat, Pat, PatKind};
 use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
@@ -442,10 +444,14 @@ impl<'tcx> InterPat<'tcx> {
             } => {
                 // Create a new temporary for each deref pattern.
                 // FIXME(deref_patterns): dedup temporaries to avoid multiple `deref()` calls?
-                let temp = cx.temp(
+                let mut temp_decl = LocalDecl::new(
                     Ty::new_ref(cx.tcx, cx.tcx.lifetimes.re_erased, subpattern.ty, mutability),
                     pattern.span,
                 );
+                temp_decl.local_info = ClearCrossCrate::Set(Box::new(LocalInfo::PatternTemp {
+                    matched_place: unwrap_place(),
+                }));
+                let temp = Place::from(cx.local_decls.push(temp_decl));
                 let subpat =
                     InterPat::lower_thir_pat(cx, PlaceBuilder::from(temp).deref(), subpattern);
                 InterPatKind::Refutable {
