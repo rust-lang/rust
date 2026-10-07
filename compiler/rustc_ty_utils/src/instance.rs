@@ -99,10 +99,22 @@ fn resolve_instance_raw<'tcx>(
                 )
             };
 
-            // Forward to the shim, using the callee's generic arguments.
             let callee_args = callee_args.no_bound_vars().unwrap();
-            let def = ty::InstanceKind::Shim(ty::ShimKind::TailCall(callee));
-            return Ok(Some(Instance { def, args: callee_args }));
+            match Instance::try_resolve(tcx, typing_env, callee, callee_args)? {
+                Some(Instance { def: ty::InstanceKind::Item(def_id), args })
+                    if tcx.contains_tail_call(def_id) =>
+                {
+                    // Forward to the shim of the resolved function.
+                    let def = ty::InstanceKind::Shim(ty::ShimKind::TailCall(def_id));
+                    return Ok(Some(Instance { def, args }));
+                }
+                Some(_) => {
+                    // FIXME: handle calls to trait methods that are only resolved after
+                    // monomorphization.
+                    bug!("tail call to a function without a shim is unimplemented")
+                }
+                None => return Ok(None),
+            }
         } else if tcx.def_kind(def_id) == DefKind::Fn
             && let Some(name) = tcx.codegen_fn_attrs(def_id).symbol_name
             && name.as_str().starts_with("llvm.")

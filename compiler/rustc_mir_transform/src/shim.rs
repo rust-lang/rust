@@ -1419,6 +1419,18 @@ fn build_tail_call_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Body<'tcx> {
         }
     }
 
+    let typing_env = body.typing_env(tcx);
+    let emit_tail_call =
+        |callee, callee_args| match ty::Instance::try_resolve(tcx, typing_env, callee, callee_args)
+        {
+            Ok(Some(ty::Instance { def: ty::InstanceKind::Item(def_id), .. })) => {
+                tcx.contains_tail_call(def_id)
+            }
+            Ok(Some(_)) => false,
+            Ok(None) => true, // too generic, defer till after monomorphization
+            Err(_) => false,
+        };
+
     for (bb, rewrite) in rewrites {
         match rewrite {
             Rewrite::Done => {
@@ -1430,8 +1442,15 @@ fn build_tail_call_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Body<'tcx> {
                     StatementKind::Assign(Box::new((Place::return_place(), rvalue))),
                 ));
             }
-            Rewrite::Call { callee, callee_args, arg_ops } if tcx.contains_tail_call(callee) => {
-                // The callee itself also uses `become`, return TailNext::Call calling its shim.
+            Rewrite::Call { callee, callee_args, arg_ops }
+                if emit_tail_call(callee, callee_args) =>
+            {
+                // Return TailNext::Call calling the callee's shim.
+                //
+                // We do that when:
+                //
+                // - the callee itself also uses `become`
+                // - the callee is still unresolved (e.g. a trait method) and might use `become`
 
                 // Get the shim.
                 let (shim_ptr_local, shim_stmt) = crate::tail_call::reify_tail_call_shim(
