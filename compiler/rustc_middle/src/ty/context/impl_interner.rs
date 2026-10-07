@@ -118,6 +118,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type ScalarInt = ty::ScalarInt;
     type InternedRegionKind = Interned<'tcx, ty::RegionKind<'tcx>>;
     type InternedConstKind = Interned<'tcx, WithCachedTypeInfo<ty::ConstKind<'tcx>>>;
+    type InternedPredicateKind =
+        Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, ty::PredicateKind<'tcx>>>>;
     type EarlyParamRegion = ty::EarlyParamRegion;
     type LateParamRegionKind = ty::LateParamRegionKind;
 
@@ -128,6 +130,13 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     type Clause = Clause<'tcx>;
     type Clauses = ty::Clauses<'tcx>;
+
+    fn intern_predicate(
+        self,
+        predicate: ty::Binder<'tcx, ty::PredicateKind<'tcx>>,
+    ) -> rustc_type_ir::sty::predicates::Predicate<Self> {
+        rustc_type_ir::sty::predicates::Predicate(self.interners.intern_predicate(predicate).0)
+    }
 
     type Tracked<T: fmt::Debug + Clone> = WithDepNode<T>;
     fn mk_tracked<T: fmt::Debug + Clone>(

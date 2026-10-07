@@ -242,6 +242,7 @@ pub trait Interner:
 
     type InternedRegionKind: Interned<Self, Value = RegionKind<Self>>;
     type InternedConstKind: Interned<Self, Value = WithCachedTypeInfo<ConstKind<Self>>>;
+    type InternedPredicateKind: Interned<Self, Value = WithCachedTypeInfo<ty::Binder<Self, ty::PredicateKind<Self>>>>;
 
     type RegionAssumptions: Copy
         + Debug
@@ -255,6 +256,11 @@ pub trait Interner:
     type Predicate: Predicate<Self>;
     type Clause: Clause<Self>;
     type Clauses: Clauses<Self>;
+
+    fn intern_predicate(
+        self,
+        predicate: ty::Binder<Self, ty::PredicateKind<Self>>,
+    ) -> crate::sty::predicates::Predicate<Self>;
 
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R;
 
