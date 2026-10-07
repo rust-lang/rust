@@ -1798,6 +1798,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let result = if self_exe.is_some() && pathname.to_str() == self_exe {
             this.machine.current_exe.clone().ok_or(ErrorKind::NotFound.into())
+        } else if matches!(
+            this.tcx.sess.target.os,
+            Os::Linux | Os::Android | Os::Illumos | Os::Solaris
+        ) && path::absolute(pathname).is_ok_and(|path| path.starts_with("/proc"))
+        {
+            // Trying to read a symlink inside `/proc` is likely going to be nonsense, e.g.
+            // `/proc/self/fd/N` doesn't use the same FD numbering. So we pretend nothing exists.
+            this.set_last_error(ErrorKind::NotFound)?;
+            return interp_ok(-1);
         } else {
             // We read `pathname` as `OsStr` above so we could do the /proc/self/exe check.
             // But now we need a (host) path.
