@@ -667,8 +667,14 @@ fn transcribe_metavar_expr<'tx>(
 ) -> PResult<'tx, ()> {
     let dcx = tscx.psess.dcx();
     match *expr {
-        MetaVarExpr::ConcatIdent(ref elements) => metavar_expr_concat_ident(tscx, dspan, elements)?,
-        MetaVarExpr::ConcatStr(ref elements) => metavar_expr_concat_str(tscx, dspan, elements)?,
+        MetaVarExpr::ConcatIdent(ref elements) => {
+            let (token, spacing) = metavar_expr_concat_ident(tscx, dspan, elements)?;
+            tscx.result.push_token(token, spacing);
+        }
+        MetaVarExpr::ConcatStr(ref elements) => {
+            let (token, spacing) = metavar_expr_concat_str(tscx, dspan, elements)?;
+            tscx.result.push_token(token, spacing);
+        }
         MetaVarExpr::Count(original_ident, depth) => {
             let matched = matched_from_ident(dcx, original_ident, tscx.interp)?;
             let count = count_repetitions(dcx, depth, matched, &tscx.repeats, &dspan)?;
@@ -716,7 +722,7 @@ fn metavar_expr_concat_ident<'tx>(
     tscx: &mut TranscrCtx<'tx, '_>,
     dspan: DelimSpan,
     elements: &[MetaVarExprConcatElem],
-) -> PResult<'tx, TokenTree> {
+) -> PResult<'tx, (Token, Spacing)> {
     let (symbol, concatenated_span) = metavar_expr_concat(tscx, dspan, elements)?;
     if !rustc_lexer::is_ident(symbol.as_str()) {
         return Err(tscx.psess.dcx().create_err(ConcatInvalidIdent {
@@ -729,10 +735,7 @@ fn metavar_expr_concat_ident<'tx>(
     // The current implementation marks the span as coming from the macro regardless of
     // contexts of the concatenated identifiers but this behavior may change in the
     // future.
-    Ok(TokenTree::Token(
-        Token::from_ast_ident(Ident::new(symbol, concatenated_span)),
-        Spacing::Alone,
-    ))
+    Ok((Token::from_ast_ident(Ident::new(symbol, concatenated_span)), Spacing::Alone))
 }
 
 /// Handle the `${concat_str(...)}` metavariable expression.
@@ -740,16 +743,13 @@ fn metavar_expr_concat_str<'tx>(
     tscx: &mut TranscrCtx<'tx, '_>,
     dspan: DelimSpan,
     elements: &[MetaVarExprConcatElem],
-) -> PResult<'tx, TokenTree> {
+) -> PResult<'tx, (Token, Spacing)> {
     let (symbol, concatenated_span) = metavar_expr_concat(tscx, dspan, elements)?;
 
     // The current implementation marks the span as coming from the macro regardless of
     // contexts of the concatenated identifiers but this behavior may change in the
     // future.
-    Ok(TokenTree::Token(
-        Token::new(TokenKind::lit(LitKind::Str, symbol, None), concatenated_span),
-        Spacing::Alone,
-    ))
+    Ok((Token::new(TokenKind::lit(LitKind::Str, symbol, None), concatenated_span), Spacing::Alone))
 }
 
 /// Shared logic for concat/concat_str metavariable expressions
