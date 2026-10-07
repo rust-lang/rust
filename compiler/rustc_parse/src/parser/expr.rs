@@ -410,12 +410,6 @@ impl<'a> Parser<'a> {
                     pre_span,
                 ));
             }
-            token::Ident(..)
-                if this.token.is_keyword(kw::Move)
-                    && this.look_ahead(1, |t| *t == token::OpenParen) =>
-            {
-                make_it!(this, attrs, |this, _| this.parse_expr_move(lo))
-            }
             token::Ident(..) if this.may_recover() && this.is_mistaken_not_ident_negation() => {
                 make_it!(this, attrs, |this, _| this.recover_not_expr(lo))
             }
@@ -445,16 +439,6 @@ impl<'a> Parser<'a> {
         self.dcx().emit_err(crate::diagnostics::TildeAsUnaryOperator(lo));
 
         self.parse_expr_unary(lo, UnOp::Not)
-    }
-
-    fn parse_expr_move(&mut self, move_kw: Span) -> PResult<'a, (Span, ExprKind)> {
-        self.bump();
-        self.psess.gated_spans.gate(sym::move_expr, move_kw);
-        self.expect(exp!(OpenParen))?;
-        let expr = self.parse_expr()?;
-        self.expect(exp!(CloseParen))?;
-        let span = move_kw.to(self.prev_token.span);
-        Ok((span, ExprKind::Move(expr, move_kw)))
     }
 
     fn is_mistaken_not_ident_negation(&self) -> bool {
@@ -1335,6 +1319,10 @@ impl<'a> Parser<'a> {
                 this.parse_expr_builtin()
             } else if this.check_path() {
                 this.parse_expr_path_start()
+            } else if this.token.is_keyword(kw::Move)
+                && this.look_ahead(1, |t| *t == token::OpenParen)
+            {
+                this.parse_expr_move()
             } else if this.check_keyword(exp!(Move))
                 || this.check_keyword(exp!(Use))
                 || this.check_keyword(exp!(Static))
@@ -2214,6 +2202,17 @@ impl<'a> Parser<'a> {
     fn parse_simple_block(&mut self) -> PResult<'a, Box<Expr>> {
         let blk = self.parse_block()?;
         Ok(self.mk_expr(blk.span, ExprKind::Block(blk, None)))
+    }
+
+    fn parse_expr_move(&mut self) -> PResult<'a, Box<Expr>> {
+        let move_kw = self.token.span;
+        self.expect_keyword(exp!(Move))?;
+        self.expect(exp!(OpenParen))?;
+        let expr = self.parse_expr()?;
+        self.expect(exp!(CloseParen))?;
+        let span = move_kw.to(self.prev_token.span);
+        self.psess.gated_spans.gate(sym::move_expr, span);
+        Ok(self.mk_expr(span, ExprKind::Move(expr, move_kw)))
     }
 
     /// Parses a closure expression (e.g., `move |args| expr`).
