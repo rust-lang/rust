@@ -1,4 +1,13 @@
-//@ known-bug: #131373
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] build-pass
+//@[old] failure-status: 101
+//@[old] dont-check-compiler-stderr
+//@[old] known-bug: #131373
+
+// Regression test for #131373. The old solver didn't fully normalize
+// aliases with escaping bound vars, resulting in an ICE in MIR borrowck.
 
 trait LockReference: 'static {
     type Ref<'a>;
