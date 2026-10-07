@@ -91,7 +91,7 @@ jobs:
           apt-get install -y curl gcc gcc-8-arm-linux-gnueabihf
 
       - name: Install Node.js toolchain
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 22
 
@@ -255,7 +255,7 @@ jobs:
           - cmd: ovsx
     steps:
       - name: Install Nodejs
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 22
 
