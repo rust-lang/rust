@@ -587,7 +587,7 @@ enum TryBlockScope {
 fn index_ast<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
-) -> &'tcx IndexSlice<LocalDefId, Steal<(Arc<ResolverAstLowering<'tcx>>, AstOwner)>> {
+) -> &'tcx IndexSlice<LocalDefId, Option<Steal<(Arc<ResolverAstLowering<'tcx>>, AstOwner)>>> {
     // Queries that borrow `resolver_for_lowering`.
     tcx.ensure_done().output_filenames(());
     tcx.ensure_done().early_lint_checks(());
@@ -610,20 +610,19 @@ fn index_ast<'tcx>(
     let index = indexer.index;
     let resolver = Arc::new(resolver);
     return tcx.arena.alloc_index_slice_from_iter::<LocalDefId, _, _>(
-        index.into_iter().map(|owner| Steal::new((Arc::clone(&resolver), owner))),
+        index.into_iter().map(|owner| owner.map(|o| Steal::new((Arc::clone(&resolver), o)))),
     );
 
     struct Indexer<'s, 'hir> {
         owners: &'s NodeMap<PerOwnerResolverData<'hir>>,
-        index: IndexVec<LocalDefId, AstOwner>,
+        index: IndexVec<LocalDefId, Option<AstOwner>>,
         next_node_id: NodeId,
     }
 
     impl Indexer<'_, '_> {
         fn insert(&mut self, id: NodeId, node: AstOwner) {
             let def_id = self.owners[&id].def_id;
-            self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner);
-            self.index[def_id] = node;
+            self.index.insert(def_id, node);
         }
 
         fn make_dummy<K>(
@@ -705,7 +704,7 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
     tcx.ensure_done().resolve_type_relative_delegations(());
 
     let ast_index = tcx.index_ast(());
-    let resolver_and_node = ast_index.get(def_id).map(Steal::steal);
+    let resolver_and_node = ast_index.get(def_id);
 
     let fallback_to_ancestor = || {
         // The item did not exist in the AST, it was created while lowering another item.
@@ -732,10 +731,13 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         })
     };
 
-    let Some((resolver, node)) = resolver_and_node else {
+    let Some(Some(r_and_node)) = resolver_and_node else {
         // `ast_index` does not contain all definitions, only up-to the highest
         // `LocalDefId` which has a non-trivial `AstOwner`. Gracefully handle
         // other definitions, in particular those nested inside this highest definition.
+        // OR
+        // The item existed in the AST, but is not a HIR owner.
+        // Fetch the correct information from its parent.
         return fallback_to_ancestor();
     };
 
@@ -749,6 +751,8 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         let item = f(&mut lctx);
         hir::MaybeOwner::Owner(lctx.curr_owner.into_owner_info(tcx, item))
     }
+
+    let (resolver, node) = r_and_node.steal();
 
     let item = match &node {
         // The item existed in the AST.
@@ -770,9 +774,6 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         AstOwner::ForeignItem(item) => with_lctx(tcx, &*resolver, item.id, |lctx| {
             hir::OwnerNode::ForeignItem(lctx.lower_foreign_item(item))
         }),
-        // The item existed in the AST, but is not a HIR owner.
-        // Fetch the correct information from its parent.
-        AstOwner::NonOwner => fallback_to_ancestor(),
     };
 
     tcx.sess.time("drop_ast", || mem::drop(node));
