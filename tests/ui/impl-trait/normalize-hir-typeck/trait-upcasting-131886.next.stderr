@@ -1,0 +1,20 @@
+error[E0391]: cycle detected when computing type of `Tait::{opaque#0}`
+  --> $DIR/trait-upcasting-131886.rs:15:13
+   |
+LL | type Tait = impl Sized;
+   |             ^^^^^^^^^^
+   |
+   = note: ...which requires computing type of opaque `Tait::{opaque#0}`...
+note: ...which requires borrow-checking `test_correct3`...
+  --> $DIR/trait-upcasting-131886.rs:21:1
+   |
+LL | fn test_correct3(x: &dyn Foo) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which requires promoting constants in MIR for `test_correct3`...
+   = note: ...which again requires computing type of `Tait::{opaque#0}`, completing the cycle
+   = note: cycle used when checking that `Tait::{opaque#0}` is well-formed
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

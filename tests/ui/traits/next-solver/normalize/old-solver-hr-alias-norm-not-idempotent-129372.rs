@@ -1,6 +1,18 @@
-//@ known-bug: #129372
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] build-pass
+//@[old] failure-status: 101
+//@[old] dont-check-compiler-stderr
+//@[old] build-fail
+//@[old] known-bug: #129372
 //@ compile-flags: -Cdebuginfo=2 -Copt-level=0
 //@ ignore-backends: gcc
+
+// Regression test for #129372. With the old solver normalizing
+// the output of `v.method()` ended up not fully normalizing some
+// higher-ranked associated type. This then resulted in some mismatch
+// later on. Fixed by the new trait solver.
 
 pub struct Wrapper<T>(T);
 struct Struct;

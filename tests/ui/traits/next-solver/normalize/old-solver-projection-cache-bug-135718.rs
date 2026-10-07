@@ -1,4 +1,13 @@
-//@ known-bug: #135718
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] check-pass
+//@[old] build-fail
+//@[old] failure-status: 101
+//@[old] dont-check-compiler-stderr
+//@[old] known-bug:: #135718
+
+// A regression test for a caching bug with the old trait solver.
 
 struct Equal;
 
