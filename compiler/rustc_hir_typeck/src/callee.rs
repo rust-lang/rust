@@ -11,7 +11,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId};
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
-use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
+use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode, WellFormedLoc};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
@@ -177,7 +177,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.register_wf_obligation(
             output.into(),
             call_expr.span,
-            ObligationCauseCode::WellFormed(None),
+            ObligationCauseCode::WellFormed(WellFormedLoc::HirId(call_expr.hir_id)),
         );
 
         output
@@ -728,7 +728,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // now we have to unify it with signature input in order to resolve
                 // all inference variables. After that we update input signature for
                 // adjustments search for mapped arguments.
-                let cause = self.cause(call_expr.span, ObligationCauseCode::Misc);
+                let cause = self.cause(
+                    call_expr.span,
+                    ObligationCauseCode::WellFormed(WellFormedLoc::HirId(call_expr.hir_id)),
+                );
                 if self
                     .at(&cause, self.param_env)
                     .sup(DefineOpaqueTypes::Yes, formal_input_tys[0], adjusted_arg_type)
