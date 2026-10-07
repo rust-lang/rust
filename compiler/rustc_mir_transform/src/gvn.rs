@@ -1950,6 +1950,8 @@ fn op_to_prop_const<'tcx>(
             // Transmuting a constant is just an offset in the allocation. If the alignment of the
             // allocation is not enough, fallback to copying into a properly aligned value.
             && alloc.inner().align >= op.layout.align.abi
+            // If this is a packed field the offset must also be sufficiently aligned.
+            && offset.bytes().is_multiple_of(op.layout.align.abi.bytes())
         {
             return Some(ConstValue::Indirect { alloc_id, offset });
         }
