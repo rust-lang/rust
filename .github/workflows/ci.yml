@@ -48,6 +48,10 @@ jobs:
         include:
           - commands: "--extended-rand-tests"
             run_checks: true
+        # No need to run the tests without 128-bit integers on more than one platform.
+        exclude:
+          - os: { image: ubuntu-24.04-arm, asset_name_suffix: "-aarch64" }
+            libgccjit_version: { gcc: "gcc-15-without-int128" }
 
     steps:
     - uses: actions/checkout@v4
