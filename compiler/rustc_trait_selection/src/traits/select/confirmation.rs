@@ -13,9 +13,7 @@ use rustc_attr_ir::lang_items::LangItem;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
-use rustc_middle::ty::{
-    self, GenericArgsRef, SizedTraitKind, Ty, Unnormalized, Upcast,
-};
+use rustc_middle::ty::{self, GenericArgsRef, SizedTraitKind, Ty, Unnormalized, Upcast};
 use rustc_next_trait_solver::solve::flatten_answer_tree;
 use rustc_span::def_id::DefId;
 use rustc_span::{bug, span_bug};
@@ -308,10 +306,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let fully_flattened = match maybe_transmutable {
             Answer::No(_) => return Err(SelectionError::Unimplemented),
             Answer::Yes => PredicateObligations::new(),
-            Answer::If(cond) => flatten_answer_tree(self.tcx(), obligation.predicate.skip_binder(), cond, assume)
+            Answer::If(cond) => {
+                flatten_answer_tree(self.tcx(), obligation.predicate.skip_binder(), cond, assume)
                     .into_iter()
-                    .map(|predicate| Obligation::new(self.infcx.tcx, obligation.cause.clone(), obligation.param_env, predicate))
-                    .collect(),
+                    .map(|predicate| {
+                        Obligation::new(
+                            self.infcx.tcx,
+                            obligation.cause.clone(),
+                            obligation.param_env,
+                            predicate,
+                        )
+                    })
+                    .collect()
+            }
         };
 
         debug!(?fully_flattened);

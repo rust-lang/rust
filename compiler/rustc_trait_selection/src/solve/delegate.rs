@@ -22,9 +22,12 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{Certainty, MaybeInfo};
 use rustc_middle::ty::print::{FmtPrinter, Print};
 use rustc_middle::ty::{
-    self, CanonicalizerState, MayBeErased, TraitClause, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    self, CanonicalizerState, MayBeErased, TraitClause, Ty, TyCtxt, TypeFlags, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
 };
-use rustc_next_trait_solver::solve::{GoalStalledOn, GoalStalledOnOpaques, TyOrConstInferVar, flatten_answer_tree};
+use rustc_next_trait_solver::solve::{
+    GoalStalledOn, GoalStalledOnOpaques, TyOrConstInferVar, flatten_answer_tree,
+};
 use rustc_span::{DUMMY_SP, Span};
 use rustc_structures::Limit;
 use thin_vec::{ThinVec, thin_vec};

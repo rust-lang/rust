@@ -21,13 +21,13 @@ mod search_graph;
 mod trait_goals;
 
 use derive_where::derive_where;
+use rustc_middle::ty::{self as mty, LangItem, Ty as MiddleTy, TyCtxt};
 use rustc_transmute::{Assume, Condition};
-use rustc_type_ir::{Upcast, inherent::*};
-use thin_vec::{ThinVec, thin_vec};
+use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, Const, Interner, Region, TypeVisitableExt};
+use rustc_type_ir::{self as ty, Const, Interner, Region, TypeVisitableExt, Upcast};
+use thin_vec::{ThinVec, thin_vec};
 use tracing::instrument;
-use rustc_middle::ty::{self as mty, TyCtxt, Ty as MiddleTy, LangItem};
 
 pub use self::eval_ctxt::{
     EvalCtxt, GenerateProofTree, SolverDelegateEvalExt,
@@ -498,7 +498,7 @@ pub struct GoalEvaluation<I: Interner> {
 /// Flatten the `Condition` tree into a conjunction of predicates.
 #[instrument(level = "debug", skip(tcx, predicate))]
 pub fn flatten_answer_tree<'tcx>(
-    tcx: TyCtxt<'tcx> ,
+    tcx: TyCtxt<'tcx>,
     predicate: mty::TraitClause<'tcx>,
     cond: Condition<mty::Region<'tcx>, MiddleTy<'tcx>>,
     assume: Assume,

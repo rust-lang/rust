@@ -5,7 +5,9 @@ use rustc_type_ir::solve::{
     Certainty, ComputeGoalFastPathOutcome, FetchEligibleAssocItemResponse, Goal, NoSolution,
     VisibleForLeakCheck,
 };
-use rustc_type_ir::{self as ty, CanonicalizerState, Const, InferCtxtLike, Interner, TraitClause, TypeFoldable};
+use rustc_type_ir::{
+    self as ty, CanonicalizerState, Const, InferCtxtLike, Interner, TraitClause, TypeFoldable,
+};
 use thin_vec::ThinVec;
 
 /// `SolverDelegate` is one of the two traits in the `rustc_type_ir` shared abstraction layer

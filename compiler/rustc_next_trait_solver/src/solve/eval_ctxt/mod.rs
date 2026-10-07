@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 #[cfg(feature = "nightly")]
 use rustc_macros::StableHash;
 use rustc_type_ir::data_structures::HashSet;
-use rustc_type_ir::{TraitClause, inherent::*};
+use rustc_type_ir::inherent::*;
 use rustc_type_ir::region_constraint::RegionConstraint;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
@@ -18,8 +18,8 @@ use rustc_type_ir::solve::{
 };
 use rustc_type_ir::{
     self as ty, ClauseKind, Const, InferCtxtLike, Interner, MayBeErased, OpaqueTypeKey,
-    PredicateKind, PredicateProxy, Region, RegionVid, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, max_universe,
+    PredicateKind, PredicateProxy, Region, RegionVid, TraitClause, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, max_universe,
 };
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
