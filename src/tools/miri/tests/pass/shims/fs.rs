@@ -17,6 +17,12 @@ use std::io::{
 };
 use std::path::Path;
 
+#[rustfmt::skip]
+#[cfg(unix)]
+use std::os::unix::fs::symlink as symlink_file;
+#[cfg(windows)]
+use std::os::windows::fs::symlink_file;
+
 #[path = "../../utils/mod.rs"]
 mod utils;
 use utils::check_nondet;
@@ -43,12 +49,14 @@ fn main() {
         target_os = "freebsd",
         target_os = "solaris",
         target_os = "illumos",
-        target_os = "android"
+        target_os = "android",
+        not(miri)
     )) {
         test_file_set_times();
     }
     // Windows file handling is very incomplete.
-    if cfg!(not(windows)) {
+    if cfg!(not(windows)) || cfg!(not(miri)) {
+        test_create_new_dangling_symlink();
         test_directory();
         test_canonicalize();
         #[cfg(not(target_os = "solaris"))] // does not have flock
@@ -180,15 +188,27 @@ fn test_file_create_new() {
     // Creating a new file that doesn't yet exist should succeed.
     OpenOptions::new().write(true).create_new(true).open(&path).unwrap();
     // Creating a new file that already exists should fail.
-    assert_eq!(
-        ErrorKind::AlreadyExists,
-        OpenOptions::new().write(true).create_new(true).open(&path).unwrap_err().kind()
-    );
+    let err = OpenOptions::new().write(true).create_new(true).open(&path).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::AlreadyExists);
     // Optionally creating a new file that already exists should succeed.
     OpenOptions::new().write(true).create(true).open(&path).unwrap();
 
     // Clean up
     remove_file(&path).unwrap();
+}
+
+// Merge this into the test above once it works on Windows.
+fn test_create_new_dangling_symlink() {
+    if !utils::have_symlink_permission() {
+        return;
+    }
+
+    let path = utils::prepare("miri_test_fs_file_create_new_dangling_symlink.txt");
+    // Create dangling symlink
+    symlink_file("does-not-exist", &path).unwrap();
+    // That's enough to make `create_new` fail.
+    let err = OpenOptions::new().write(true).create_new(true).open(&path).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::AlreadyExists);
 }
 
 fn test_seek() {
@@ -594,10 +614,7 @@ fn test_symlink() {
     let symlink_path = utils::prepare("miri_test_fs_symlink.txt");
 
     // Creating a symbolic link should succeed.
-    #[cfg(unix)]
-    std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
-    #[cfg(windows)]
-    std::os::windows::fs::symlink_file(&path, &symlink_path).unwrap();
+    symlink_file(&path, &symlink_path).unwrap();
     // Test that the symbolic link has the same contents as the file.
     let mut symlink_file = File::open(&symlink_path).unwrap();
     let mut contents = Vec::new();
@@ -655,10 +672,18 @@ fn test_directory_handle() {
     let stat = dir.metadata(filename.file_name().unwrap()).unwrap();
     assert!(stat.is_file());
     assert!(stat.len() == 5);
-    let stat = dir.metadata(&filename).unwrap(); // absolute path
-    assert!(stat.is_file());
-    assert!(stat.len() == 5);
+    if cfg!(unix) {
+        // Windows does not seem to support opening an absolute path relative to a `Dir`.
+        // FIXME: is that intentional? <https://github.com/rust-lang/rust/issues/163923>
+        let stat = dir.metadata(&filename).unwrap(); // absolute path
+        assert!(stat.is_file());
+        assert!(stat.len() == 5);
+    }
 
-    let err = fs::Dir::open(filename).unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::NotADirectory);
+    if cfg!(unix) {
+        // Windows actually succeeds when opening a file as a directory.
+        // FIXME: is that intentional? <https://github.com/rust-lang/rust/issues/163926>
+        let err = fs::Dir::open(filename).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::NotADirectory);
+    }
 }
