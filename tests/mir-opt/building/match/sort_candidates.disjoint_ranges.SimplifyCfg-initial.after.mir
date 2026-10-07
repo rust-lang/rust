@@ -72,7 +72,6 @@ fn disjoint_ranges(_1: i32, _2: bool) -> u32 {
 
     bb12: {
         StorageDead(_8);
-        FakeRead(ForMatchGuard, _3);
         _0 = const 0_u32;
         goto -> bb14;
     }
