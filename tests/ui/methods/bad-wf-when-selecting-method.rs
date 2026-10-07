@@ -11,7 +11,6 @@ trait Trait {
 fn test<T>(t: T) {
     Wrapper(t).needs_sized();
     //~^ ERROR the trait bound `T: Wf` is not satisfied
-    //~| ERROR the trait bound `T: Wf` is not satisfied
     //~| ERROR the method `needs_sized` exists for struct `Wrapper<T, _>`, but its trait bounds were not satisfied
 }
 

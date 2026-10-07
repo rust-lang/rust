@@ -9,5 +9,4 @@ fn foo() -> dyn T {
 fn main() {
     let x = foo();
     //~^ ERROR: the size for values of type `dyn T` cannot be known at compilation time
-    //~| ERROR: the size for values of type `(dyn T + 'static)` cannot be known at compilation time
 }
