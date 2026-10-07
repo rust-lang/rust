@@ -1594,62 +1594,27 @@ class StdRcSyntheticProvider:
     struct NonZero<T>(T)
     struct Header<C> { strong: C, weak: C }
 
-    struct Arc<T> { ptr: NonNull<ArcInner<T>>, ... }
-    struct ArcInner<T> { strong: atomic::Atomic<usize>, weak: atomic::Atomic<usize>, data: T }
+    struct Arc<T> { ptr: RcValuePointer<T>, ... }
     """
 
-    def __init__(self, valobj: SBValue, _dict: LLDBOpaque, is_atomic: bool = False):
+    def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
 
-        if is_atomic:
-            self.ptr = unwrap_unique_or_non_null(
-                self.valobj.GetChildMemberWithName("ptr")
-            )
+        ptr = (
+            self.valobj.GetChildMemberWithName("ptr")
+            .GetChildMemberWithName("ptr")
+            .GetChildMemberWithName("pointer")
+        )
 
-            self.value = self.ptr.GetChildMemberWithName("data")
+        self.value = ptr.deref.Clone("value")
 
-            # infallibly gets an unsigned integer type of at least 64 bits. We don't need to worry
-            # about whether or not `usize` is actually smaller than that since we don't ever display
-            # the underlying type to the user anyway
-            usize_type = valobj.GetTarget().GetBasicType(eBasicTypeUnsignedLongLong)
+        target = ptr.GetTarget()
+        weak_address = ptr.GetValueAsUnsigned() - target.addr_size
+        strong_address = weak_address - target.addr_size
+        usize_type = _get_usize_type(target)
 
-            self.strong = self.ptr.GetChildMemberWithName("strong").Cast(usize_type)
-            self.weak = self.ptr.GetChildMemberWithName("weak").Cast(usize_type)
-
-            # If the usize type isn't valid due to llvm/llvm-project#196812, not even the type's
-            # fields will populate. Luckily, `RcInner` is `#[repr(C)]`, so we can infallibly find
-            # the strong and weak values in memory
-            if not self.strong.IsValid() or not self.weak.IsValid():
-                raw_ptr = self.ptr.Cast(usize_type.GetPointerType())
-                addr = raw_ptr.GetValueAsAddress()
-
-                self.strong = self.valobj.CreateValueFromAddress(
-                    "strong", addr, usize_type
-                )
-
-                self.weak = self.valobj.CreateValueFromAddress(
-                    "weak", addr + usize_type.GetByteSize(), usize_type
-                )
-        else:
-            ptr = (
-                self.valobj.GetChildMemberWithName("ptr")
-                .GetChildMemberWithName("ptr")
-                .GetChildMemberWithName("pointer")
-            )
-
-            self.value = ptr.deref.Clone("value")
-
-            target = ptr.GetTarget()
-            weak_address = ptr.GetValueAsUnsigned() - target.addr_size
-            strong_address = weak_address - target.addr_size
-            usize_type = _get_usize_type(target)
-
-            self.strong = ptr.CreateValueFromAddress(
-                "strong", strong_address, usize_type
-            )
-
-            self.weak = ptr.CreateValueFromAddress("weak", weak_address, usize_type)
-
+        self.strong = ptr.CreateValueFromAddress("strong", strong_address, usize_type)
+        self.weak = ptr.CreateValueFromAddress("weak", weak_address, usize_type)
         self.value_builder = ValueBuilder(valobj)
 
         self.update()
