@@ -84,6 +84,7 @@ fn compute_assumptions<'tcx>(
                 region_obligations,
                 &region_constraints,
                 region_assumptions,
+                None,
             )
             .constraints,
         );
