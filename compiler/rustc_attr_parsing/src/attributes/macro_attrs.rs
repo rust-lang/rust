@@ -1,4 +1,3 @@
-use rustc_ast::ItemKind;
 use rustc_attr_ir::target::AstTarget;
 use rustc_attr_ir::{MacroUseArgs, find_attr};
 use rustc_feature::AttributeStability;
@@ -182,13 +181,11 @@ impl SingleAttributeParser for MacroExportParser {
     }
 
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
-        let AstTarget::MacroDef(item_kind) = cx.ast_target else {
+        let AstTarget::MacroDef(_, macro_def) = cx.ast_target else {
             return;
         };
 
-        if let ItemKind::MacroDef(_, macro_def) = item_kind
-            && !macro_def.macro_rules
-        {
+        if !macro_def.macro_rules {
             cx.emit_lint(UNUSED_ATTRIBUTES, MacroExport::OnDeclMacro, attr_span);
         }
     }

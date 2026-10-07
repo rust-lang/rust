@@ -1,5 +1,4 @@
 use rustc_abi::ExternAbi;
-use rustc_ast::ItemKind;
 use rustc_attr_ir::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
 use rustc_attr_ir::*;
 use rustc_errors::msg;
@@ -262,12 +261,8 @@ impl CombineAttributeParser for LinkParser {
     }
 
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
-        let rustc_attr_ir::target::AstTarget::ForeignMod(ast_item) = cx.ast_target else {
+        let rustc_attr_ir::target::AstTarget::ForeignMod(fm) = cx.ast_target else {
             return;
-        };
-
-        let ItemKind::ForeignMod(fm) = &ast_item else {
-            panic!("expected field ForeignMod for AstTarget::ForeignMod");
         };
 
         let abi = fm.abi.map_or(ExternAbi::FALLBACK, |abi| {
