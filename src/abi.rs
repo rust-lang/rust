@@ -96,6 +96,7 @@ impl GccType for Reg {
             RegKind::Float => match self.size.bits() {
                 32 => cx.type_f32(),
                 64 => cx.type_f64(),
+                128 => cx.type_f128(),
                 _ => bug!("unsupported float: {:?}", self),
             },
             RegKind::Vector { hint_vector_elem: _ } => {
