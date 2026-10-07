@@ -178,11 +178,6 @@ where
         goal: Goal<I, Self>,
         assumption: I::Clause,
     ) -> Result<Result<Candidate<I>, CandidateHeadUsages>, RerunNonErased> {
-        match Self::fast_reject_assumption(ecx, goal, assumption) {
-            Ok(()) => {}
-            Err(NoSolution) => return Ok(Err(CandidateHeadUsages::default())),
-        }
-
         // Dealing with `ParamEnv` candidates is a bit of a mess as we need to lazily
         // check whether the candidate is global while considering normalization.
         //
@@ -741,11 +736,16 @@ where
         failed_candidate_info: &mut FailedCandidateInfo,
     ) -> Result<(), RerunNonErased> {
         for assumption in goal.param_env.caller_bounds() {
-            match G::probe_and_consider_param_env_candidate(self, goal, assumption)? {
-                Ok(candidate) => candidates.push(candidate),
-                Err(head_usages) => {
-                    failed_candidate_info.param_env_head_usages.merge_usages(head_usages)
+            match G::fast_reject_assumption(self, goal, assumption) {
+                Ok(()) => {
+                    match G::probe_and_consider_param_env_candidate(self, goal, assumption)? {
+                        Ok(candidate) => candidates.push(candidate),
+                        Err(head_usages) => {
+                            failed_candidate_info.param_env_head_usages.merge_usages(head_usages)
+                        }
+                    }
                 }
+                Err(NoSolution) => {}
             }
         }
 
