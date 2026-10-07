@@ -382,11 +382,11 @@ regexes! {
     // Windows file paths
     r"\\"                           => "/",
     // erase Rust stdlib path
-    "[^ \n`]*/(rust[^/]*|checkout)/library/" => "RUSTLIB/",
+    "[^ \n`\"\']*/library/(core|alloc|std|panic_(unwind|abort))/src" => "RUSTLIB/$1/src",
     // erase platform file paths
-    r"\bsys/([a-z_]+)/[a-z]+\b"     => "sys/$1/PLATFORM",
+    r"/sys/([a-z_]+)/[a-z]+\b"      => "/sys/$1/PLATFORM",
     // erase paths into the crate registry
-    r"[^ ]*/\.?cargo/registry/.*/(.*\.rs)"  => "CARGO_REGISTRY/.../$1",
+    "[^ \n`\"\']*/\\.?cargo/registry/.*/(.*\\.rs)" => "CARGO_REGISTRY/.../$1",
     // remove time print from GenMC estimation mode output.
     "\nExpected verification time: .* ± .*" => "\nExpected verification time: [MEAN] ± [SD]",
 }
