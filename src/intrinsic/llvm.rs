@@ -2,6 +2,8 @@ use std::borrow::Cow;
 
 use gccjit::{CType, Context, Field, Function, FunctionPtrType, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::BuilderMethods;
+#[cfg(feature = "master")]
+use rustc_target::spec::Arch;
 
 use crate::builder::Builder;
 use crate::context::{CodegenCx, new_array_type};
@@ -1114,6 +1116,8 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
 
         "llvm.x86.xgetbv" => "__builtin_ia32_xgetbv",
         // NOTE: this doc specifies the equivalent GCC builtins: http://huonw.github.io/llvmint/llvmint/x86/index.html
+        "llvm.sqrt.v2f64" if cx.sess().target.arch == Arch::AArch64 => "__builtin_aarch64_sqrtv2df",
+        "llvm.sqrt.v4f32" if cx.sess().target.arch == Arch::AArch64 => "__builtin_aarch64_sqrtv4sf",
         // FIXME: Should handle other targets than `ia32`.
         "llvm.sqrt.v2f64" => "__builtin_ia32_sqrtpd",
         // FIXME: Should handle other targets than `ia32`.
