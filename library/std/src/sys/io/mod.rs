@@ -43,11 +43,11 @@ pub use error::errno_location;
         not(any(
             target_os = "espidf",
             target_os = "lynxos178",
-            target_os = "qurt",
             target_os = "rtems",
             target_os = "vxworks",
         ))
     ),
+    target_os = "qurt",
     target_os = "wasi",
 ))]
 pub use error::set_errno;
