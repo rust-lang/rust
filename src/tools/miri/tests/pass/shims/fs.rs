@@ -86,6 +86,7 @@ fn test_file() {
 
     // Test creating, writing and closing a file (closing is tested when `file` is dropped).
     let mut file = File::create(&path).unwrap();
+    let _dbg = format!("{file:?}"); // ensure we have the shims for this
     assert!(!file.metadata().unwrap().permissions().readonly()); // new file shouldn't be read-only
     // Writing 0 bytes should not change the file contents.
     file.write(&mut []).unwrap();
@@ -672,6 +673,7 @@ fn test_directory_handle() {
 
     let dir = fs::Dir::open(&dirname).unwrap();
     assert!(dir.self_metadata().unwrap().is_dir());
+    let _dbg = format!("{dir:?}"); // ensure we have the shims for this
 
     let stat = dir.metadata("file.txt").unwrap();
     assert!(stat.is_file());
