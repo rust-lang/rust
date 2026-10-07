@@ -14,8 +14,8 @@ use rustc_macros::StableHash;
 #[derive(Clone, Copy, Debug)]
 pub enum AstTarget<'a> {
     // Target types that may correspond to different kinds of items.
-    Delegation { target: DelegationAstTarget<'a>, mac: bool },
-    MacroCall(MacroCallAstTarget<'a>),
+    Delegation,
+    MacroCall,
 
     // Target types that correspond exclusively to `AssocItem` kind. Mapping is obtained from `Target::from_assoc_item_kind`.
     AssocConst(&'a AssocItemKind),
@@ -71,19 +71,6 @@ pub enum AstTarget<'a> {
 
     // Only reserved for cases when it is not possible to obtain detailed Ast Target
     None,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum DelegationAstTarget<'a> {
-    AssocItem(&'a AssocItemKind),
-    Item(&'a ItemKind),
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum MacroCallAstTarget<'a> {
-    AssocItem(&'a AssocItemKind),
-    ForeignItem(&'a ForeignItemKind),
-    Item(&'a ItemKind),
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, Eq, StableHash)]
@@ -177,9 +164,7 @@ impl<'a> AstTarget<'a> {
             ForeignItemKind::Static(_) => AstTarget::ForeignStatic(kind),
             ForeignItemKind::Fn(_) => AstTarget::ForeignFn(kind),
             ForeignItemKind::TyAlias(_) => AstTarget::ForeignTy(kind),
-            ForeignItemKind::MacCall(_) => {
-                AstTarget::MacroCall(MacroCallAstTarget::ForeignItem(kind))
-            }
+            ForeignItemKind::MacCall(_) => AstTarget::MacroCall,
         }
     }
 
@@ -188,13 +173,9 @@ impl<'a> AstTarget<'a> {
             AssocItemKind::Const(_) => AstTarget::AssocConst(kind),
             AssocItemKind::Fn(_) => AstTarget::Method(kind),
             AssocItemKind::Type(_) => AstTarget::AssocTy(kind),
-            AssocItemKind::Delegation(_) => {
-                AstTarget::Delegation { target: DelegationAstTarget::AssocItem(kind), mac: false }
-            }
-            AssocItemKind::DelegationMac(_) => {
-                AstTarget::Delegation { target: DelegationAstTarget::AssocItem(kind), mac: true }
-            }
-            AssocItemKind::MacCall(_) => AstTarget::MacroCall(MacroCallAstTarget::AssocItem(kind)),
+            AssocItemKind::Delegation(_) => AstTarget::Delegation,
+            AssocItemKind::DelegationMac(_) => AstTarget::Delegation,
+            AssocItemKind::MacCall(_) => AstTarget::MacroCall,
         }
     }
 
@@ -218,17 +199,11 @@ impl<'a> AstTarget<'a> {
             ast::ItemKind::Impl(i) => {
                 AstTarget::Impl { item: kind, of_trait: i.of_trait.is_some() }
             }
-            ast::ItemKind::MacCall(..) => AstTarget::MacroCall(MacroCallAstTarget::Item(kind)),
+            ast::ItemKind::MacCall(..) => AstTarget::MacroCall,
             ast::ItemKind::MacroDef(..) => AstTarget::MacroDef(kind),
-            ast::ItemKind::Delegation(..) => {
-                AstTarget::Delegation { target: DelegationAstTarget::Item(kind), mac: false }
-            }
-            ast::ItemKind::DelegationMac(..) => {
-                AstTarget::Delegation { target: DelegationAstTarget::Item(kind), mac: true }
-            }
-            ast::ItemKind::TestBinderConstraints(..) => {
-                AstTarget::MacroCall(MacroCallAstTarget::Item(kind))
-            }
+            ast::ItemKind::Delegation(..) => AstTarget::Delegation,
+            ast::ItemKind::DelegationMac(..) => AstTarget::Delegation,
+            ast::ItemKind::TestBinderConstraints(..) => AstTarget::MacroCall,
         }
     }
 }
