@@ -445,6 +445,46 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.machine.emit_diagnostic(NonHaltingDiagnostic::FileInProcOpened);
         }
 
+        // Helper for those flags that read the `mode` parameter.
+        let read_mode = |this: &MiriInterpCx<'tcx>,
+                         options: &mut OpenOptions,
+                         fn_name: &str|
+         -> InterpResult<'tcx> {
+            let ([mode], _) = this.check_varargs(
+                if this.libc_ty_layout("mode_t").size.bytes() >= 4 {
+                    // `mode_t` is big enough, no C integer promotion.
+                    shim_varargs![libc::mode_t]
+                } else {
+                    // Types smaller than int get promoted to int
+                    // (see https://github.com/rust-lang/rust/issues/71915).
+                    shim_varargs![i32]
+                },
+                varargs,
+                fn_name,
+            )?;
+            let mode = this.read_scalar(mode)?.to_u32()?;
+
+            cfg_select! {
+                unix => {
+                    // Support all modes on UNIX host
+                    options.mode(mode);
+                }
+                _ => {
+                    let _unused = options;
+
+                    // Only support default mode for non-UNIX (i.e. Windows) host
+                    if mode != 0o666 {
+                        throw_unsup_format!(
+                            "non-default mode 0o{:o} is not supported on non-Unix hosts",
+                            mode
+                        );
+                    }
+                }
+            }
+
+            interp_ok(())
+        };
+
         // We will "subtract" supported flags from this and at the end check that no bits are left.
         let mut flag = flag;
 
@@ -464,7 +504,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut readable = true;
 
         // Now we check the access mode
-        let access_mode = flag & 0b11;
+        let access_mode = flag & this.eval_libc_i32("O_ACCMODE");
         flag &= !access_mode;
 
         if access_mode == o_rdonly {
@@ -486,9 +526,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // `fs::File` always opens in largefile mode so this is a NOP.
             }
             let o_tmpfile = this.eval_libc_i32("O_TMPFILE");
-            // Note that this overaps with O_DIRECTORY!
+            // Note that this overaps with O_DIRECTORY! So we have to check O_TMPFILE first.
             if flag & o_tmpfile == o_tmpfile {
-                // if the flag contains `O_TMPFILE` then we return a graceful error
+                // This flag requires a mode.
+                read_mode(
+                    this,
+                    &mut options,
+                    if dirfd.is_some() {
+                        "openat(dirfd, pathname, O_TMPFILE, ...)"
+                    } else {
+                        "open(pathname, O_TMPFILE, ...)"
+                    },
+                )?;
+
+                // We don't currently support this, error gracefully.
                 return this.set_errno_and_return_neg1_i32(LibcError("EOPNOTSUPP"));
             }
         }
@@ -519,46 +570,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let o_creat = this.eval_libc_i32("O_CREAT");
         if flag & o_creat == o_creat {
             flag &= !o_creat;
-            if want_directory {
-                // O_CREAT + O_DIRECTORY is invalid.
-                return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
-            }
             // Get the mode.
-            let ([mode], _) = this.check_varargs(
-                if this.libc_ty_layout("mode_t").size.bytes() >= 4 {
-                    // `mode_t` is big enough, no C integer promotion.
-                    shim_varargs![libc::mode_t]
-                } else {
-                    // Types smaller than int get promoted to int
-                    // (see https://github.com/rust-lang/rust/issues/71915).
-                    shim_varargs![i32]
-                },
-                varargs,
+            read_mode(
+                this,
+                &mut options,
                 if dirfd.is_some() {
                     "openat(dirfd, pathname, O_CREAT, ...)"
                 } else {
                     "open(pathname, O_CREAT, ...)"
                 },
             )?;
-            let mode = this.read_scalar(mode)?.to_u32()?;
 
-            cfg_select! {
-                unix => {
-                    // Support all modes on UNIX host
-                    use std::os::unix::fs::OpenOptionsExt;
-                    options.mode(mode);
-                }
-                _ => {
-                    // Only support default mode for non-UNIX (i.e. Windows) host
-                    if mode != 0o666 {
-                        throw_unsup_format!(
-                            "non-default mode 0o{:o} is not supported on non-Unix hosts",
-                            mode
-                        );
-                    }
-                }
+            if want_directory {
+                // O_CREAT + O_DIRECTORY is invalid.
+                return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
             }
 
+            // O_EXCL is only allowed if O_CREAT is set.
             let o_excl = this.eval_libc_i32("O_EXCL");
             if flag & o_excl == o_excl {
                 flag &= !o_excl;

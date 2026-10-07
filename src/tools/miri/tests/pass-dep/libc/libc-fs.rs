@@ -415,17 +415,24 @@ fn test_open_directory() {
     errno_check(unsafe { libc::close(fd) });
 
     // Ensure it errors on non-directories when we add the flag.
-    let path = utils::prepare_with_content("miri_test_fs_not_a_dir", &[]);
+    let path = utils::prepare_with_content("miri_test_fs_not_a_dir.txt", &[]);
     let err = errno_result(unsafe {
         libc::open(utils::into_c_string(path).as_ptr(), libc::O_RDONLY | libc::O_DIRECTORY)
     })
     .unwrap_err();
     assert_eq!(err.raw_os_error().unwrap(), libc::ENOTDIR);
+    // Error on non-existing name.
     let err = errno_result(unsafe {
         libc::open(c"doesnotexist".as_ptr(), libc::O_RDONLY | libc::O_DIRECTORY)
     })
     .unwrap_err();
     assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
+    // Error with O_CREAT. Error code differs on FreeBSD.
+    let err = errno_result(unsafe {
+        libc::open(c"doesnotexist".as_ptr(), libc::O_CREAT | libc::O_DIRECTORY, 0o666)
+    })
+    .unwrap_err();
+    assert!([libc::EINVAL, libc::ENOENT].contains(&err.raw_os_error().unwrap()));
 
     if utils::have_symlink_permission() {
         // Also check symlink behavior.
