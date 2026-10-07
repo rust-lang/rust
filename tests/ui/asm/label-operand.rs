@@ -1,5 +1,5 @@
 //@ run-pass
-//@ reference: asm.operand-type.supported-operands.label
+//@ reference: asm.operand-type.supported-operands-label
 //@ revisions: aarch64 arm arm64ec riscv32 riscv64 x86 x86_64
 //@ needs-asm-support
 //@[aarch64] only-aarch64
