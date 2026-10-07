@@ -2791,6 +2791,11 @@ impl<'a> Parser<'a> {
                     .0;
                 Ok(TestBinderConstraint::Or { items })
             }
+            Some((Ident { name: sym::ambiguity, .. }, IdentKind::Normal)) => {
+                let span = self.token.span;
+                self.bump();
+                Ok(TestBinderConstraint::Ambiguity { span })
+            }
             _ if self.check_keyword(exp!(For)) => {
                 let bound_type_constraint = self.parse_test_binder_bound_type_constraint()?;
                 Ok(TestBinderConstraint::AliasOutlives { bound_type_constraint })

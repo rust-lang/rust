@@ -4100,6 +4100,9 @@ pub enum TestBinderConstraint {
     Or {
         items: ThinVec<TestBinderConstraint>,
     },
+    Ambiguity {
+        span: Span,
+    },
     Lifetime {
         #[visitable(extra = LifetimeCtxt::Bound)]
         lhs: Lifetime,
