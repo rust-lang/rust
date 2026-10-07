@@ -343,7 +343,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             crate::PrintOnPanic(|| format!("terminator {:?}", bb_data.terminator().kind));
 
         match &bb_data.terminator().kind {
-            TerminatorKind::Goto { target } => {
+            TerminatorKind::Goto { target, loop_hint_attrs: _ } => {
                 if let TerminatorKind::Return = fx.mir[*target].terminator().kind {
                     let mut can_immediately_return = true;
                     for stmt in &fx.mir[*target].statements {
