@@ -2013,7 +2013,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     &param.attrs,
                     param.span,
                     Target::Param,
-                    AstTarget::None,
+                    AstTarget::Param(param),
                 );
             }
             let itctx = match kind {
@@ -2956,7 +2956,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         &f.attrs,
                         f.span,
                         Target::ExprField,
-                        AstTarget::Expression(expr),
+                        AstTarget::ExprField(f),
                     );
                     let expr = self.lower_expr_to_const_arg_direct(&f.expr, None);
 
