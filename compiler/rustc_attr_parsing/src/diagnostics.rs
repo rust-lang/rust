@@ -2132,3 +2132,11 @@ pub(crate) enum MacroExport {
     #[note("declarative macros follow the same exporting rules as regular items")]
     OnDeclMacro,
 }
+
+#[derive(Diagnostic)]
+#[diag("the `lint::{$unknown}` attribute is not recognized")]
+pub(crate) struct UnknownLintHelper {
+    #[primary_span]
+    pub span: Span,
+    pub unknown: Symbol,
+}

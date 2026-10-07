@@ -149,6 +149,7 @@
 #![feature(pattern_types)]
 #![feature(pin_macro_internals)]
 #![feature(prelude_import)]
+#![feature(register_tool)]
 #![feature(repr_simd)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
@@ -183,6 +184,10 @@
 #![feature(s390x_target_feature)]
 #![feature(wasm_target_feature)]
 #![feature(x86_amx_intrinsics)]
+// tidy-alphabetical-end
+
+// tidy-alphabetical-start
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 // tidy-alphabetical-start

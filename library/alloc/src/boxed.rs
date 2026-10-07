@@ -1764,9 +1764,9 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [`as_non_null`]: Self::as_non_null
     #[must_use]
     #[stable(feature = "box_as_ptr", since = "1.98.0")]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_as_ptr]
     #[inline]
+    #[lint::as_ptr]
+    #[lint::never_returns_null_ptr]
     pub fn as_mut_ptr(b: &mut Self) -> *mut T {
         // This is a primitive deref, not going through `DerefMut`, and therefore not materializing
         // any references.
@@ -1813,9 +1813,10 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [`as_non_null`]: Self::as_non_null
     #[must_use]
     #[stable(feature = "box_as_ptr", since = "1.98.0")]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_as_ptr]
     #[inline]
+    #[lint::as_ptr]
+    #[lint::never_returns_null_ptr]
+
     pub fn as_ptr(b: &Self) -> *const T {
         // This is a primitive deref, not going through `DerefMut`, and therefore not materializing
         // any references.
@@ -1857,7 +1858,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [`as_non_null`]: Self::as_non_null
     #[must_use]
     #[unstable(feature = "box_as_non_null", issue = "157345")]
-    #[rustc_as_ptr]
+    #[lint::as_ptr]
     #[inline]
     pub fn as_non_null(b: &mut Self) -> NonNull<T> {
         // SAFETY: `Box` is guaranteed to be non-null.
