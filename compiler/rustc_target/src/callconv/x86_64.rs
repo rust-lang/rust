@@ -244,7 +244,11 @@ where
                 if arg.layout.is_aggregate() {
                     let size = arg.layout.size;
                     arg.cast_to(cast_target(cls, size));
-                } else if is_arg || cx.target_spec().is_like_darwin {
+                } else if is_arg || cx.target_spec().is_like_darwin
+                    // Always extend bool returns, x86_64 psABI requires that on the ABI the top 7 bits are zero
+                    // https://github.com/llvm/llvm-project/issues/12579#issuecomment-2718032943
+                    || arg.layout.backend_repr.is_bool()
+                {
                     arg.extend_integer_width_to(32);
                 }
             }
