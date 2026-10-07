@@ -678,11 +678,17 @@ where
                     goal.predicate.trait_ref.args.const_at(2),
                 )?;
 
-                let certainty = ecx.is_transmutable(
+                let (certainty, predicates) = ecx.is_transmutable(
                     goal.predicate.trait_ref.args.type_at(0),
                     goal.predicate.trait_ref.args.type_at(1),
+                    goal.predicate,
                     assume,
                 )?;
+
+                ecx.add_goals(GoalSource::Misc, predicates.into_iter().map(|predicate| {
+                    Goal::new(ecx.cx(), goal.param_env, predicate)
+                }).collect::<thin_vec::ThinVec<_>>())?;
+
                 ecx.evaluate_added_goals_and_make_canonical_response(certainty)
             },
         )

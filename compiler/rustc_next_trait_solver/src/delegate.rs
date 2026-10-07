@@ -5,7 +5,8 @@ use rustc_type_ir::solve::{
     Certainty, ComputeGoalFastPathOutcome, FetchEligibleAssocItemResponse, Goal, NoSolution,
     VisibleForLeakCheck,
 };
-use rustc_type_ir::{self as ty, CanonicalizerState, Const, InferCtxtLike, Interner, TypeFoldable};
+use rustc_type_ir::{self as ty, CanonicalizerState, Const, InferCtxtLike, Interner, TraitClause, TypeFoldable};
+use thin_vec::ThinVec;
 
 /// `SolverDelegate` is one of the two traits in the `rustc_type_ir` shared abstraction layer
 /// between rustc and rust-analyzer abstracting over the [InferCtxt][inferctxt-doc], which had to be
@@ -112,8 +113,9 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         &self,
         src: <Self::Interner as Interner>::Ty,
         dst: <Self::Interner as Interner>::Ty,
+        predicate: TraitClause<Self::Interner>,
         assume: Const<Self::Interner>,
-    ) -> Result<Certainty, NoSolution>;
+    ) -> Result<(Certainty, ThinVec<<Self::Interner as Interner>::Predicate>), NoSolution>;
 
     /// Obtain canonicalizer state, either by allocating it afresh (the default) or by reusing
     /// previously allocated state.

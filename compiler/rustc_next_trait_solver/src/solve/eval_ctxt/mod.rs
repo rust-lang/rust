@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 #[cfg(feature = "nightly")]
 use rustc_macros::StableHash;
 use rustc_type_ir::data_structures::HashSet;
-use rustc_type_ir::inherent::*;
+use rustc_type_ir::{TraitClause, inherent::*};
 use rustc_type_ir::region_constraint::RegionConstraint;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
@@ -1564,9 +1564,10 @@ where
         &mut self,
         src: I::Ty,
         dst: I::Ty,
+        predicate: TraitClause<I>,
         assume: Const<I>,
-    ) -> Result<Certainty, NoSolution> {
-        self.delegate.is_transmutable(dst, src, assume)
+    ) -> Result<(Certainty, ThinVec<I::Predicate>), NoSolution> {
+        self.delegate.is_transmutable(dst, src, predicate, assume)
     }
 
     pub(super) fn replace_bound_vars<T: TypeFoldable<I>>(
