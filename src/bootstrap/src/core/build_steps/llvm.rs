@@ -1504,7 +1504,6 @@ impl CommandLineStep for Lld {
         if builder.config.rpath_enabled(target)
             && helpers::use_host_linker(target)
             && builder.config.llvm_link_shared()
-            && target.contains("linux")
         {
             // So we inform LLD where it can find LLVM's libraries by adding an rpath entry to the
             // expected parent `lib` directory.
@@ -1512,7 +1511,12 @@ impl CommandLineStep for Lld {
             // Be careful when changing this path, we need to ensure it's quoted or escaped:
             // `$ORIGIN` would otherwise be expanded when the `LdFlags` are passed verbatim to
             // cmake.
-            ldflags.push_all("-Wl,-rpath,'$ORIGIN/../../../'");
+            if target.contains("linux") {
+                ldflags.push_all("-Wl,-rpath,'$ORIGIN/../../../'");
+            }
+            if target.contains("apple-darwin") {
+                ldflags.push_all("-Wl,-rpath,'@loader_path/../../../'");
+            }
         }
 
         configure_cmake(builder, target, &mut cfg, true, ldflags, CcFlags::default(), &[]);
