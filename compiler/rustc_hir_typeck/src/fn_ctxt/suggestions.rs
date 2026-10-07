@@ -6,7 +6,6 @@ use hir::def_id::LocalDefId;
 use itertools::Itertools;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diag, MultiSpan, listify, msg};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::intravisit::Visitor;
@@ -1887,8 +1886,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 let (_, suffix) = snippet.split_at(snippet.len() - 3);
                 let value = match suffix {
-                    "f32" => (lit.get() - 0xf32) / (16 * 16 * 16),
-                    "f64" => (lit.get() - 0xf64) / (16 * 16 * 16),
+                    "f32" => (lit.as_u128() - 0xf32) / (16 * 16 * 16),
+                    "f64" => (lit.as_u128() - 0xf64) / (16 * 16 * 16),
                     _ => return false,
                 };
                 err.span_suggestions(
@@ -1918,10 +1917,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Provided expression needs to be a literal `0`.
-        let ExprKind::Lit(Spanned { node: rustc_ast::LitKind::Int(Pu128(0), _), span }) = expr.kind
+        let ExprKind::Lit(Spanned { node: rustc_ast::LitKind::Int(int, _), span }) = expr.kind
         else {
             return false;
         };
+        if int.as_u128() != 0 {
+            return false;
+        }
 
         // We need to find a null pointer symbol to suggest
         let null_sym = match mutbl {

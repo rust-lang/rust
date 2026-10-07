@@ -9,6 +9,7 @@ use rustc_literal_escaper::{
 use rustc_span::{ByteSymbol, Span, Symbol, kw, sym};
 use tracing::debug;
 
+use crate::IntLiteral;
 use crate::ast::{self, LitKind, MetaItemLit, StrStyle};
 use crate::token::{self, Token};
 
@@ -363,6 +364,6 @@ fn integer_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitErr
 
     let s = &s[if base != 10 { 2 } else { 0 }..];
     u128::from_str_radix(s, base)
-        .map(|i| LitKind::Int(i.into(), ty))
+        .map(|_| LitKind::Int(IntLiteral::from_symbol(symbol), ty))
         .map_err(|_| LitError::IntTooLarge(base))
 }
