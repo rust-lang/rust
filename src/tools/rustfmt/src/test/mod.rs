@@ -1050,6 +1050,11 @@ fn read_significant_comments(file_name: &Path) -> Result<HashMap<String, String>
     let file = fs::File::open(file_name)
         .unwrap_or_else(|_| panic!("couldn't read file {}", file_name.display()));
     let reader = BufReader::new(file);
+
+    // Matches `// rustfmt-{name}: {value}`
+    let old_pattern = r"^\s*//\s+rustfmt-(?P<name>[A-Za-z_]+)\s?:\s*(?P<value>\S+)$";
+    let old_regex = regex::Regex::new(old_pattern).expect("failed creating old pattern");
+
     // Matches `//@ rustfmt-{name}: {value}`
     let pattern = r"^//@ rustfmt-(?P<name>[A-Za-z_]+): (?P<value>\S+)$";
     let regex = regex::Regex::new(pattern).expect("failed creating pattern 1");
@@ -1057,8 +1062,24 @@ fn read_significant_comments(file_name: &Path) -> Result<HashMap<String, String>
     reader
         .lines()
         .map(|line| line.expect("failed getting line"))
-        .filter(|l| l.trim_start().starts_with("//@"))
+        .filter(|l| l.trim_start().starts_with("//"))
         .filter_map(|line| {
+            if let Some(c) = old_regex.captures(&line) {
+                // Don't let old syntax silently slip through.
+                // Guide test authors on how to fix issues with the old syntax.
+                return Some(Err(format!(
+                    "`{}` uses old directive syntax. Should be //@ rustfmt-{}: {}",
+                    &file_name.display(),
+                    &c["name"],
+                    &c["value"],
+                )));
+            }
+
+            if !line.trim_start().starts_with("//@") {
+                // This is just a normal comment line
+                return None;
+            }
+
             let value = match regex.captures(&line) {
                 Some(c) => Ok((c["name"].to_owned(), c["value"].to_owned())),
                 None => Err(format!(
