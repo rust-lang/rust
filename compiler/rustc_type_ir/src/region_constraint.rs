@@ -861,6 +861,7 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
     RegionConstraint::new_from_or(Or::build_and(and_constraint, or_constraint))
 }
 
+#[instrument(level = "debug", skip(infcx), ret)]
 fn rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder_handling<
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
@@ -903,6 +904,7 @@ fn rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder
     Or::new(candidates.into_iter().map(|c| And::new([c])))
 }
 
+#[instrument(level = "debug", skip(infcx), ret)]
 fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handling<
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
@@ -913,6 +915,10 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
     assumptions: &Assumptions<I>,
 ) -> Or<I> {
     use LeafRegionConstraint::*;
+
+    if max_universe(infcx, bound_outlives) != u {
+        return Or::new_leaf(AliasTyOutlivesViaEnv(bound_outlives, ()));
+    }
 
     let mut candidates = Vec::new();
 
@@ -931,7 +937,7 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
     // handle.
     //
     // we don't care about this when rewriting in the root universe as we know the complete set of assumptions
-    if max_universe(infcx, bound_outlives) == u {
+    {
         let mut replacer = PlaceholderReplacer {
             cx: infcx.cx(),
             existing_var_count: bound_outlives.bound_vars().len(),
@@ -950,6 +956,7 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
             I::BoundVarKinds::from_vars(infcx.cx(), bound_vars),
         );
         let candidate = Or::new_leaf(AliasTyOutlivesViaEnv(bound_outlives, ()));
+        debug!("fully higher ranked candidate: {candidate:?}");
         if max_universe(infcx, candidate.clone()) < u {
             candidates.push(candidate);
         } else {
@@ -968,41 +975,47 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
     // given a list of regions which outlive `'u2`
     //
     // we don't care about this when rewriting in the root universe as we know the complete set of assumptions
-    let (escaping_alias, escaping_r) = bound_outlives.skip_binder();
-    if max_universe(infcx, escaping_r) == u {
-        let mut replacer = PlaceholderReplacer {
-            cx: infcx.cx(),
-            existing_var_count: bound_outlives.bound_vars().len(),
-            bound_vars: IndexMap::default(),
-            universe: u,
-            current_index: DebruijnIndex::ZERO,
-        };
-        let escaping_alias = escaping_alias.fold_with(&mut replacer);
-        let bound_vars = bound_outlives.bound_vars().iter().chain(
-            core::mem::take(&mut replacer.bound_vars)
-                .into_iter()
-                .map(|(_, bound_region)| BoundVariableKind::Region(bound_region.kind)),
-        );
-        let bound_alias = Binder::bind_with_vars(
-            escaping_alias,
-            I::BoundVarKinds::from_vars(infcx.cx(), bound_vars),
-        );
+    {
+        let (escaping_alias, escaping_r) = bound_outlives.skip_binder();
+        let max_u = max_universe(infcx, escaping_r);
+        debug!(?max_u);
+        if max_u == u {
+            let mut replacer = PlaceholderReplacer {
+                cx: infcx.cx(),
+                existing_var_count: bound_outlives.bound_vars().len(),
+                bound_vars: IndexMap::default(),
+                universe: u,
+                current_index: DebruijnIndex::ZERO,
+            };
+            let escaping_alias = escaping_alias.fold_with(&mut replacer);
+            let bound_vars = bound_outlives.bound_vars().iter().chain(
+                core::mem::take(&mut replacer.bound_vars)
+                    .into_iter()
+                    .map(|(_, bound_region)| BoundVariableKind::Region(bound_region.kind)),
+            );
+            let bound_alias = Binder::bind_with_vars(
+                escaping_alias,
+                I::BoundVarKinds::from_vars(infcx.cx(), bound_vars),
+            );
 
-        // while we did skip the binder, bound vars aren't in any universe so
-        // this can't be an escaping bound var
-        candidates.push(Or::new(
-            regions_outliving(escaping_r, assumptions, infcx.cx())
-                .filter(|r2| max_universe(infcx, *r2) < u)
-                .map(|r2| {
-                    let candidate =
-                        AliasTyOutlivesViaEnv(bound_alias.map_bound(|alias| (alias, r2)), ());
-                    if max_universe(infcx, candidate.clone()) < u {
-                        And::new([candidate])
-                    } else {
-                        And::new([Ambiguity(())])
-                    }
-                }),
-        ));
+            // while we did skip the binder, bound vars aren't in any universe so
+            // this can't be an escaping bound var
+            let candidate = Or::new(
+                regions_outliving(escaping_r, assumptions, infcx.cx())
+                    .filter(|r2| max_universe(infcx, *r2) < u)
+                    .map(|r2| {
+                        let candidate =
+                            AliasTyOutlivesViaEnv(bound_alias.map_bound(|alias| (alias, r2)), ());
+                        if max_universe(infcx, candidate.clone()) < u {
+                            And::new([candidate])
+                        } else {
+                            And::new([Ambiguity(())])
+                        }
+                    }),
+            );
+            debug!("transitive outlived region candidate: {candidate:?}");
+            candidates.push(candidate);
+        }
     }
 
     // I'm not convinced our handling here is *complete* so for now
