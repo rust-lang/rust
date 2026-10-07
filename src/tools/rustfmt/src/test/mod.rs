@@ -1021,32 +1021,24 @@ fn read_significant_comments(file_name: &Path) -> HashMap<String, String> {
     let file = fs::File::open(file_name)
         .unwrap_or_else(|_| panic!("couldn't read file {}", file_name.display()));
     let reader = BufReader::new(file);
-    let pattern = r"^\s*//\s*rustfmt-([^:]+):\s*(\S+)";
+    // Matches `//@ rustfmt-{name}: {value}`
+    let pattern = r"^//@ rustfmt-(?P<name>[A-Za-z_]+): (?P<value>\S+)$";
     let regex = regex::Regex::new(pattern).expect("failed creating pattern 1");
-
-    // Matches lines containing significant comments or whitespace.
-    let line_regex = regex::Regex::new(r"(^\s*$)|(^\s*//\s*rustfmt-[^:]+:\s*\S+)")
-        .expect("failed creating pattern 2");
 
     reader
         .lines()
         .map(|line| line.expect("failed getting line"))
-        .filter(|line| line_regex.is_match(line))
+        .filter(|l| l.trim_start().starts_with("//@"))
         .filter_map(|line| {
-            regex.captures_iter(&line).next().map(|capture| {
-                (
-                    capture
-                        .get(1)
-                        .expect("couldn't unwrap capture")
-                        .as_str()
-                        .to_owned(),
-                    capture
-                        .get(2)
-                        .expect("couldn't unwrap capture")
-                        .as_str()
-                        .to_owned(),
-                )
-            })
+            match regex.captures(&line) {
+                Some(c) => Some((c["name"].to_owned(), c["value"].to_owned())),
+                None => panic!(
+                    "`{}` has a malformed config directive. Use this syntax: `//@ rustfmt-{}: {}`",
+                    &file_name.display(),
+                    "{name}",
+                    "{value}",
+                ),
+            }
         })
         .collect()
 }
