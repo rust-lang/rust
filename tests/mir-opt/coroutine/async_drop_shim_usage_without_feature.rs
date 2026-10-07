@@ -12,7 +12,7 @@
 // of this file, not auxiliary file.
 
 // NOTE: This file below is hand-written! This may produces incorrect result.
-// `tests/mir-opt/coroutine/async_drop_shim_usage_without_feature.core.future-async_drop-async_drop_in_place-{closure#0}.HasHasDrop.coroutine_before.0.mir`
+// `tests/mir-opt/coroutine/async_drop_shim_usage_without_feature.*.HasHasDrop.*.mir`
 
 // WARNING: If you would ever want to modify this test,
 // please consider modifying rustc's async drop test at
