@@ -25,4 +25,4 @@ tests/ui/scalable-vectors/debuginfo-does-not-spill.rs
 tests/ui/scalable-vectors/debuginfo-no-opt-llvm-ice.rs
 tests/ui/scalable-vectors/transmute.rs
 tests/ui/scalable-vectors/transparent-wrappers.rs
-
+tests/ui/asm/aarch64/may_unwind.rs
