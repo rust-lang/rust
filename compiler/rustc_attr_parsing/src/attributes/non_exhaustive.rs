@@ -22,24 +22,21 @@ impl NoArgsAttributeParser for NonExhaustiveParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NonExhaustive;
 
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
-        if cx.target != Target::Struct {
+        let rustc_attr_ir::target::AstTarget::Struct(ast_item) = cx.ast_target else {
             return;
-        }
+        };
 
-        match cx.ast_target {
-            rustc_attr_ir::target::AstTarget::Struct(ast_item)
-                if let ItemKind::Struct(_, _, data) = &ast_item =>
-            {
-                if let VariantData::Struct { fields, .. } = data
-                    && fields.iter().any(|f| f.default_value().is_some())
-                {
-                    cx.emit_err(NonExhaustiveWithDefaultFieldValues {
-                        attr_span,
-                        defn_span: cx.target_span,
-                    });
-                }
-            }
-            _ => {}
+        let ItemKind::Struct(_, _, data) = ast_item else {
+            panic!("expected struct AST target item for AstTarget::Struct");
+        };
+
+        if let VariantData::Struct { fields, .. } = data
+            && fields.iter().any(|f| f.default_value().is_some())
+        {
+            cx.emit_err(NonExhaustiveWithDefaultFieldValues {
+                attr_span,
+                defn_span: cx.target_span,
+            });
         }
     }
 }

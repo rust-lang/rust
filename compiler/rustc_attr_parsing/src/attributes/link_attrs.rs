@@ -262,11 +262,15 @@ impl CombineAttributeParser for LinkParser {
     }
 
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
-        match cx.ast_target {
-            rustc_attr_ir::target::AstTarget::ForeignMod(ast_item)
-                if let ItemKind::ForeignMod(fm) = &ast_item =>
-            {
-                let abi = fm.abi.map_or(ExternAbi::FALLBACK, |abi| {
+        let rustc_attr_ir::target::AstTarget::ForeignMod(ast_item) = cx.ast_target else {
+            return;
+        };
+
+        let ItemKind::ForeignMod(fm) = &ast_item else {
+            panic!("expected field ForeignMod for AstTarget::ForeignMod");
+        };
+
+        let abi = fm.abi.map_or(ExternAbi::FALLBACK, |abi| {
                 abi.symbol_unescaped.as_str().parse().unwrap_or_else(|_| {
                     cx.dcx().span_delayed_bug(
                         abi.span,
@@ -275,11 +279,8 @@ impl CombineAttributeParser for LinkParser {
                     ExternAbi::Rust
                     })
                 });
-                if matches!(abi, ExternAbi::Rust) {
-                    cx.emit_lint(UNUSED_ATTRIBUTES, Link, attr_span);
-                }
-            }
-            _ => {}
+        if matches!(abi, ExternAbi::Rust) {
+            cx.emit_lint(UNUSED_ATTRIBUTES, Link, attr_span);
         }
     }
 }
