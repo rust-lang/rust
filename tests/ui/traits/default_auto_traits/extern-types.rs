@@ -3,7 +3,7 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@ [next] compile-flags: -Znext-solver
 
-#![feature(auto_traits, extern_types, lang_items, negative_impls, no_core, rustc_attrs)]
+#![feature(auto_traits, extern_types, lang_items, move_trait, negative_impls, no_core, rustc_attrs)]
 #![allow(incomplete_features)]
 #![no_std]
 #![no_core]
@@ -19,6 +19,9 @@ trait Sized: MetaSized {}
 
 #[lang = "copy"]
 pub trait Copy {}
+
+#[lang = "move_trait"]
+unsafe auto trait Move {}
 
 #[lang = "default_trait1"]
 auto trait Leak {}
