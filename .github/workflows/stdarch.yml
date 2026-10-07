@@ -45,13 +45,13 @@ jobs:
       uses: ./.github/actions/apt-mirrors
 
     - name: Install packages
-      timeout-minutes: 10
+      timeout-minutes: 20
       run: sudo apt-get install ninja-build ripgrep
 
     # FIXME: remove when we have binutils version 2.43 in the repo.
     - name: Install more recent binutils
       # Without a limit, an unreachable mirror hangs the job until GitHub's 6-hour timeout.
-      timeout-minutes: 10
+      timeout-minutes: 20
       run: |
         echo "deb mirror+file:/etc/apt/apt-mirrors.txt plucky main universe" | sudo tee /etc/apt/sources.list.d/plucky-copies.list
         sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30

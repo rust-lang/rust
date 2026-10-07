@@ -50,7 +50,7 @@ jobs:
       uses: ./.github/actions/apt-mirrors
 
     - name: Install packages
-      timeout-minutes: 10
+      timeout-minutes: 20
       run: |
         sudo apt-get update
         sudo apt-get install qemu-system qemu-user-static

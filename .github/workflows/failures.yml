@@ -49,12 +49,12 @@ jobs:
       uses: ./.github/actions/apt-mirrors
 
     - name: Install packages
-      timeout-minutes: 10
+      timeout-minutes: 20
       run: sudo apt-get install ninja-build ripgrep
 
     - name: Install libgccjit12
       if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
-      timeout-minutes: 10
+      timeout-minutes: 20
       run: |
         sudo apt-get update
         sudo apt-get install libgccjit-12-dev
