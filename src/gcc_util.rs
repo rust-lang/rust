@@ -261,7 +261,12 @@ pub fn new_context<'gcc>(sess: &Session) -> Context<'gcc> {
     match sess.target.stack_probes {
         StackProbeType::None => (),
         StackProbeType::Inline | StackProbeType::InlineOrCall { .. } => {
-            context.add_command_line_option("-fstack-clash-protection")
+            context.add_command_line_option("-fstack-clash-protection");
+            // GCC assumes a 64 KiB guard on AArch64, so frames up to 63 KiB would skip the
+            // single-page guard of Rust threads.
+            if sess.target.arch == Arch::AArch64 {
+                context.add_command_line_option("--param=stack-clash-protection-guard-size=12");
+            }
         }
         // FIXME(antoyo): We should define the stack probe symbol to be __rust_probestack, but it seems GCC cannot do that.
         StackProbeType::Call => (),
