@@ -879,7 +879,13 @@ where
                     }
                     ecx.add_goal(
                         GoalSource::Misc,
-                        goal.with(cx, ty::OutlivesClause(ty_lifetime, lifetime)),
+                        goal.with(
+                            cx,
+                            ty::ClauseKind::RegionOutlives(ty::OutlivesClause(
+                                ty_lifetime,
+                                lifetime,
+                            )),
+                        ),
                     )?;
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
@@ -1067,7 +1073,10 @@ where
             )?;
 
             // The type must outlive the lifetime of the `dyn` we're unsizing into.
-            ecx.add_goal(GoalSource::Misc, goal.with(cx, ty::OutlivesClause(a_ty, b_region)))?;
+            ecx.add_goal(
+                GoalSource::Misc,
+                goal.with(cx, ty::ClauseKind::TypeOutlives(ty::OutlivesClause(a_ty, b_region))),
+            )?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -1197,7 +1206,11 @@ where
             // Also require that a_ty's lifetime outlives b_ty's lifetime.
             ecx.add_goal(
                 GoalSource::ImplWhereBound,
-                Goal::new(ecx.cx(), param_env, ty::OutlivesClause(a_region, b_region)),
+                Goal::new(
+                    ecx.cx(),
+                    param_env,
+                    ty::ClauseKind::RegionOutlives(ty::OutlivesClause(a_region, b_region)),
+                ),
             )?;
 
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
