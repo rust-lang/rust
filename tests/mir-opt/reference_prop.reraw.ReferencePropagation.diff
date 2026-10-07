@@ -1,5 +1,5 @@
-- // MIR for `reraw` before CopyProp
-+ // MIR for `reraw` after CopyProp
+- // MIR for `reraw` before ReferencePropagation
++ // MIR for `reraw` after ReferencePropagation
   
   fn reraw(_1: u8) -> () {
       debug x => _1;
@@ -13,39 +13,41 @@
           debug a => _2;
           let _3: *mut u8;
           scope 2 {
-              debug b => _3;
+-             debug b => _3;
++             debug b => _2;
               let _4: &mut u8;
               scope 3 {
 -                 debug c => _4;
-+                 debug c => _5;
++                 debug c => _2;
               }
           }
       }
   
       bb0: {
-          StorageLive(_2);
+-         StorageLive(_2);
           _2 = &mut _1;
-          StorageLive(_3);
-          _3 = &raw mut (*_2);
+-         StorageLive(_3);
+-         _3 = &raw mut (*_2);
 -         StorageLive(_4);
-          _5 = &mut (*_2);
+-         _5 = &mut (*_2);
 -         _4 = move _5;
           StorageLive(_6);
--         StorageLive(_7);
+          StorageLive(_7);
 -         _8 = &mut (*_4);
 -         _7 = move _8;
 -         _6 = opaque::<&mut u8>(move _7) -> [return: bb1, unwind continue];
-+         _8 = &mut (*_5);
-+         _6 = opaque::<&mut u8>(copy _8) -> [return: bb1, unwind continue];
++         _8 = &mut _1;
++         _7 = copy _8;
++         _6 = opaque::<&mut u8>(copy _7) -> [return: bb1, unwind continue];
       }
   
       bb1: {
--         StorageDead(_7);
+          StorageDead(_7);
           StorageDead(_6);
           _0 = const ();
 -         StorageDead(_4);
-          StorageDead(_3);
-          StorageDead(_2);
+-         StorageDead(_3);
+-         StorageDead(_2);
           return;
       }
   }
