@@ -358,6 +358,7 @@ fn make_win_llvm_dist(plat_root: &Path, target: TargetSelection, builder: &Build
         "libdbghelp.a",
         "libkernel32.a",
         "libntdll.a",
+        "libsynchronization.a",
         "libuser32.a",
         "libuserenv.a",
         "libws2_32.a",
