@@ -65,3 +65,6 @@ unmangled-names = []
 # This makes certain traits and function specializations public that
 # are not normally public but are required by the `builtins-test`
 unstable-public-internals = []
+
+# Choose algorithms that are optimized for binary size instead of runtime performance
+optimize_for_size = []
