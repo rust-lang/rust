@@ -318,6 +318,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 this.ffullsync_fd(fd_num)
             }
+            cmd if this.tcx.sess.target.os == Os::MacOs
+                && this.frame_in_std()
+                && cmd == this.eval_libc_i32("F_GETPATH") =>
+            {
+                // Std uses this when debug-printing `File`. We stub it out by returning an error.
+                this.set_errno_and_return_neg1_i32(LibcError("EOPNOTSUPP"))
+            }
+            cmd if this.tcx.sess.target.os == Os::FreeBsd
+                && this.frame_in_std()
+                && cmd == this.eval_libc_i32("F_KINFO") =>
+            {
+                // Std uses this when debug-printing `File`. We stub it out by returning an error.
+                this.set_errno_and_return_neg1_i32(LibcError("EOPNOTSUPP"))
+            }
             cmd => {
                 throw_unsup_format!("fcntl: unsupported command {cmd:#x}");
             }
