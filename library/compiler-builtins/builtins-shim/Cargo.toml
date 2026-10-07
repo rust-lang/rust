@@ -68,3 +68,7 @@ unstable-public-internals = []
 
 # Choose algorithms that are optimized for binary size instead of runtime performance
 optimize_for_size = []
+
+# A more aggressive version of optimize_for_size. Replaces algorithms with
+# potentially much slower versions in order to save even more binary size.
+optimize_for_size_aggressive = ["optimize_for_size"]
