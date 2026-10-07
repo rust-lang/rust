@@ -464,7 +464,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let def_id = instance.def_id();
 
         assert!(!with_caller_location || callee_receives_caller_location);
-        let caller_location = callee_receives_caller_location.then(|| self.caller_location());
+        let caller_location =
+            if callee_receives_caller_location { Some(self.caller_location()?) } else { None };
 
         // The first order of business is to figure out the callee signature.
         // However, that requires the list of variadic arguments.

@@ -2184,7 +2184,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> OperandRef<'tcx, Bx::Value> {
         let caller_location = self.mir.caller_location_span(
             source_info,
-            self.caller_location,
+            || self.caller_location,
             bx.tcx(),
             |span: Span| {
                 let const_loc = bx.tcx().span_as_caller_location(span);

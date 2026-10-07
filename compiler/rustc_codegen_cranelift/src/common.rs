@@ -421,10 +421,16 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     }
 
     pub(crate) fn get_caller_location(&mut self, source_info: mir::SourceInfo) -> CValue<'tcx> {
-        self.mir.caller_location_span(source_info, self.caller_location, self.tcx, |span| {
-            let const_loc = self.tcx.span_as_caller_location(span);
-            crate::constant::codegen_const_value(self, const_loc, self.tcx.caller_location_ty())
-        })
+        let caller_location = self.caller_location;
+        self.mir.caller_location_span(
+            source_info,
+            || caller_location,
+            self.tcx,
+            |span| {
+                let const_loc = self.tcx.span_as_caller_location(span);
+                crate::constant::codegen_const_value(self, const_loc, self.tcx.caller_location_ty())
+            },
+        )
     }
 }
 

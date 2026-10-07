@@ -703,7 +703,7 @@ impl<'tcx> Body<'tcx> {
     pub fn caller_location_span<T>(
         &self,
         mut source_info: SourceInfo,
-        caller_location: Option<T>,
+        caller_location: impl FnOnce() -> Option<T>,
         tcx: TyCtxt<'tcx>,
         from_span: impl FnOnce(Span) -> T,
     ) -> T {
@@ -727,7 +727,7 @@ impl<'tcx> Body<'tcx> {
         }
 
         // No inlined `SourceScope`s, or all of them were `#[track_caller]`.
-        caller_location.unwrap_or_else(|| from_span(source_info.span))
+        caller_location().unwrap_or_else(|| from_span(source_info.span))
     }
 
     #[track_caller]

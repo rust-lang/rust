@@ -286,18 +286,18 @@ fn main() {
     assert_eq!(LINE.load(Relaxed), 59);
 
     #[cfg(any(afn, afn_cls))]
-    assert_panicked_at(|| block_on(foo_track_caller()), 74);
+    assert_panicked_at(|| block_on(foo_track_caller()), 78);
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(LINE.load(Relaxed), 72);
+    assert_eq!(LINE.load(Relaxed), 78);
     #[cfg(any(cls, nofeat))]
     assert_panicked_at(|| block_on(foo_track_caller()), 74);
     #[cfg(any(cls, nofeat))]
     assert_eq!(LINE.load(Relaxed), 72);
 
     #[cfg(any(afn, afn_cls))]
-    assert_panicked_at(|| block_on(foo_assoc()), 90);
+    assert_panicked_at(|| block_on(foo_assoc()), 95);
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(LINE.load(Relaxed), 88);
+    assert_eq!(LINE.load(Relaxed), 95);
     #[cfg(any(cls, nofeat))]
     assert_panicked_at(|| block_on(foo_assoc()), 90);
     #[cfg(any(cls, nofeat))]
@@ -326,9 +326,9 @@ fn main() {
     assert_eq!(LINE.load(Relaxed), 123);
 
     #[cfg(any(afn, afn_cls))]
-    assert_panicked_at(|| foo_manual_poll(), 131);
+    assert_panicked_at(|| foo_manual_poll(), 135);
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(LINE.load(Relaxed), 129);
+    assert_eq!(LINE.load(Relaxed), 135);
     #[cfg(any(cls, nofeat))]
     assert_panicked_at(|| foo_manual_poll(), 131);
     #[cfg(any(cls, nofeat))]
@@ -338,38 +338,50 @@ fn main() {
     assert_eq!(LINE.load(Relaxed), 157);
 
     // FIXME(async_fn_track_caller): This case just currently doesn't work.
+    #[cfg(any(afn, afn_cls))]
+    assert_panicked_at(|| block_on(foo_trait_attr_in_trait()), 200);
+    #[cfg(any(afn, afn_cls))]
+    assert_eq!(LINE.load(Relaxed), 200);
+    #[cfg(any(cls, nofeat))]
     assert_panicked_at(|| block_on(foo_trait_attr_in_trait()), 164);
+    #[cfg(any(cls, nofeat))]
     assert_eq!(LINE.load(Relaxed), 162);
 
     #[cfg(any(afn, afn_cls))]
-    assert_panicked_at(|| block_on(foo_trait_attr_in_impl()), 171);
+    assert_panicked_at(|| block_on(foo_trait_attr_in_impl()), 204);
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(LINE.load(Relaxed), 169);
+    assert_eq!(LINE.load(Relaxed), 204);
     #[cfg(any(cls, nofeat))]
     assert_panicked_at(|| block_on(foo_trait_attr_in_impl()), 171);
     #[cfg(any(cls, nofeat))]
     assert_eq!(LINE.load(Relaxed), 169);
 
     #[cfg(any(afn, afn_cls))]
-    assert_panicked_at(|| block_on(foo_trait_attr_in_both()), 178);
+    assert_panicked_at(|| block_on(foo_trait_attr_in_both()), 208);
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(LINE.load(Relaxed), 176);
+    assert_eq!(LINE.load(Relaxed), 208);
     #[cfg(any(cls, nofeat))]
     assert_panicked_at(|| block_on(foo_trait_attr_in_both()), 178);
     #[cfg(any(cls, nofeat))]
     assert_eq!(LINE.load(Relaxed), 176);
 
-    // FIXME(async_fn_track_caller): This case just currently doesn't work.
+    #[cfg(any(afn, afn_cls))]
+    assert_panicked_at(|| block_on(foo_rpit_in_trait()), 213);
+    #[cfg(any(afn, afn_cls))]
+    assert_eq!(LINE.load(Relaxed), 213);
+    #[cfg(any(cls, nofeat))]
     assert_panicked_at(|| block_on(foo_rpit_in_trait()), 184);
+    #[cfg(any(cls, nofeat))]
     assert_eq!(LINE.load(Relaxed), 182);
 
     assert_panicked_at(|| block_on(foo_rpit_in_impl()), 190);
     assert_eq!(LINE.load(Relaxed), 188);
 
+    // FIXME(gen_blocks): Decide if this behavior is correct.
     #[cfg(any(afn, afn_cls))]
-    assert_panicked_at(|| foo_gen_fn(), 225);
+    assert_panicked_at(|| foo_gen_fn(), 229);
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(LINE.load(Relaxed), 223);
+    assert_eq!(LINE.load(Relaxed), 229);
     #[cfg(any(cls, nofeat))]
     assert_panicked_at(|| foo_gen_fn(), 225);
     #[cfg(any(cls, nofeat))]
@@ -380,6 +392,7 @@ fn main() {
     #[cfg(any(cls, afn_cls))]
     assert_eq!(LINE.load(Relaxed), 244);
 
+    // FIXME(coroutines): This behavior is inconsistent with async blocks.
     #[cfg(any(cls, afn_cls))]
     assert_panicked_at(|| foo_coroutine(), 260);
     #[cfg(any(cls, afn_cls))]

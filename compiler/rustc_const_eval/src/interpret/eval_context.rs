@@ -1,9 +1,9 @@
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
-use std::convert::identity;
 
 use either::{Left, Right};
-use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
+use rustc_abi::{Align, FieldIdx, HasDataLayout, Size, TargetDataLayout};
+use rustc_ast::ast::Movability;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir;
@@ -22,9 +22,9 @@ use rustc_target::callconv::FnAbi;
 use tracing::trace;
 
 use super::{
-    Frame, FrameInfo, GlobalId, InterpErrorKind, InterpResult, MPlaceTy, Machine, MemPlaceMeta,
-    Memory, OpTy, Place, PlaceTy, PointerArithmetic, Projectable, Provenance, err_inval, interp_ok,
-    throw_inval, throw_ub, throw_ub_format,
+    CallerLocation, Frame, FrameInfo, GlobalId, InterpErrorKind, InterpResult, MPlaceTy, Machine,
+    MemPlaceMeta, Memory, OpTy, Place, PlaceTy, PointerArithmetic, Projectable, Provenance,
+    err_inval, interp_ok, throw_inval, throw_ub, throw_ub_format,
 };
 use crate::{enter_trace_span, util};
 
@@ -380,7 +380,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Grabs the implicit caller location argument, if there is one,
     /// or falls back to the "current" span. This matches the `caller_location` intrinsic,
     /// and is primarily intended for the panic machinery.
-    pub(crate) fn caller_location(&self) -> Span {
+    pub(crate) fn caller_location(
+        &self,
+    ) -> InterpResult<'tcx, CallerLocation<'tcx, M::Provenance>> {
         let frame = self.frame();
 
         // Assert that the frame we look at is actually executing code currently
@@ -404,7 +406,61 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             source_info.span = fn_span;
         }
 
-        frame.body.caller_location_span(source_info, frame.track_caller_arg, *self.tcx, identity)
+        // The caller location of the top-level function, among the functions inlined
+        // into this frame.
+        // We need to compute this lazily, as this computation can cause UB for
+        // `#[track_caller] async fn`. Computing it eagerly would cause detection of UB
+        // in the case where a non-`#[track_caller]` function is inlined into a
+        // `#[track_caller] async fn`, the coroutine contains a dangling `&Location`,
+        // and the `&Location` was not used before inlining.
+        // (Note that it's fine to not use the `&Location` after inlining even if it's
+        // used before inlining. This just means that optimization causes us to miss UB.)
+        // Importantly, we don't actually dereference the `&Location` here,
+        // as this is not required to propagate it further as an implicit
+        // caller location argument.
+        let top_level_caller_location = || {
+            if let Some(coroutine) = &frame.body.coroutine
+                && let Some(field_idx) = coroutine.captured_caller_location
+            {
+                assert!(
+                    !frame.instance.def.requires_caller_location(*self.tcx),
+                    "should have only one source of truth for caller_location"
+                );
+
+                let is_pinned = coroutine.coroutine_kind.movability() == Movability::Static;
+
+                Some(try {
+                    // `Pin<&mut Self>` or `&mut Self`
+                    let base_op = self.local_to_op(mir::Local::arg(0), None)?;
+                    // `&mut Self`
+                    let coro_ref_op = if is_pinned {
+                        self.project_field(&base_op, FieldIdx::from_usize(0))?
+                    } else {
+                        base_op
+                    };
+                    // `Self`
+                    let coro_place = self.deref_pointer(&coro_ref_op)?;
+                    // `&Location`
+                    let location_ref_place = self.project_field(&coro_place, field_idx)?;
+                    // `Location`
+                    let location_place = self.deref_pointer(&location_ref_place)?;
+                    CallerLocation::Memory(location_place)
+                })
+            } else if frame.instance.def.requires_caller_location(*self.tcx) {
+                Some(interp_ok(
+                    frame
+                        .track_caller_arg
+                        .clone()
+                        .expect("should have received track_caller argument"),
+                ))
+            } else {
+                None
+            }
+        };
+
+        frame.body.caller_location_span(source_info, top_level_caller_location, *self.tcx, |span| {
+            interp_ok(CallerLocation::Direct(span))
+        })
     }
 
     /// Returns the actual dynamic size and alignment of the place at the given type.
