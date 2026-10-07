@@ -6,7 +6,7 @@ LL | extern "gpu-kernel" fn arg_zst(_: ()) { }
    |
    = help: consider using a struct instead
    = note: tuples have unspecified layout
-   = note: `#[warn(improper_ctypes_definitions)]` on by default
+   = note: `#[warn(improper_ctypes_definitions)]` (part of `#[warn(improper_c_boundaries)]`) on by default
 
 warning: passing type `()` to a function with "gpu-kernel" ABI may have unexpected behavior
   --> $DIR/lint-gpu-kernel.rs:36:35
@@ -40,7 +40,7 @@ LL | extern "gpu-kernel" fn arg_struct(_: S) { }
    |                                      ^ not FFI-safe
    |
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = note: `S` has unspecified layout
 note: the type is defined here
   --> $DIR/lint-gpu-kernel.rs:47:1
    |
