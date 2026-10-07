@@ -78,6 +78,57 @@ error: bound type test binder constraint must be alias (it's a AliasTyOutlivesVi
 LL |         for<> T: 'a
    |               ^
 
-error: aborting due to 9 previous errors
+error: forall expect clause failed
+  --> $DIR/test-infra-fails-properly.rs:81:13
+   |
+LL |             ambiguity
+   |             ^^^^^^^^^
+   |
+   = note: expected: And(
+               [
+                   Ambiguity(
+                       $DIR/test-infra-fails-properly.rs:81:13: 81:22 (#0),
+                   ),
+               ],
+           )
+   = note: actual: And(
+               [],
+           )
+
+error: forall expect clause failed
+  --> $DIR/test-infra-fails-properly.rs:89:9
+   |
+LL |         forall<'a> where 'a: 'static {
+   |         ^^^^^^
+   |
+note: constraint from here
+  --> $DIR/test-infra-fails-properly.rs:89:9
+   |
+LL |         forall<'a> where 'a: 'static {
+   |         ^^^^^^
+   = note: expected: And(
+               [],
+           )
+   = note: actual: And(
+               [
+                   Ambiguity(
+                       $DIR/test-infra-fails-properly.rs:89:9: 89:15 (#0),
+                   ),
+               ],
+           )
+
+error: unable to satisfy constraints involving placeholders due to unknown implied bounds
+  --> $DIR/test-infra-fails-properly.rs:89:9
+   |
+LL |         forall<'a> where 'a: 'static {
+   |         ^^^^^^
+
+error: unable to satisfy constraints involving placeholders due to unknown implied bounds
+  --> $DIR/test-infra-fails-properly.rs:100:9
+   |
+LL |         forall<'a> where 'a: 'static {
+   |         ^^^^^^
+
+error: aborting due to 13 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
