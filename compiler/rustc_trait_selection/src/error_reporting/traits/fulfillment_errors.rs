@@ -2680,11 +2680,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             types.dedup();
             let all_types_equal = types.len() == 1;
 
-            let end = if candidates.len() <= 9 || self.tcx.sess.opts.verbose {
-                candidates.len()
-            } else {
-                8
-            };
             if candidates.len() < 5 {
                 let spans: Vec<_> =
                     candidates.iter().map(|&(_, def_id)| self.tcx.def_span(def_id)).collect();
@@ -2728,7 +2723,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let mut tuple_min_arity = usize::MAX;
                 let mut tuple_max_arity = 0_usize;
                 let mut last_arity = None;
-                let mut all_types_tuples_cont_arity = true;
+                let mut all_tuples_cont_arity = true;
                 candidates.sort_by(|(c1, _), (c2, _)| {
                     if let ty::Tuple(tys1) = c1.self_ty().kind()
                         && let ty::Tuple(tys2) = c2.self_ty().kind()
@@ -2738,24 +2733,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         std::cmp::Ordering::Equal
                     }
                 });
-                let candidate_names: Vec<String> = candidates
+
+                let mut candidate_names: Vec<String> = candidates
                     .iter()
                     .map(|(c, _)| {
                         if all_traits_equal {
-                            if all_types_tuples_cont_arity
-                                && let ty::Tuple(tys) = c.self_ty().kind()
-                                && last_arity.map_or(1, |a: usize| a.abs_diff(tys.len())) == 1
-                            {
-                                last_arity = Some(tys.len());
-                                if tys.len() > tuple_max_arity {
-                                    tuple_max_arity = tys.len();
-                                }
-                                if tys.len() < tuple_min_arity {
-                                    tuple_min_arity = tys.len();
-                                }
-                            } else {
-                                all_types_tuples_cont_arity = false;
-                            }
                             format!(
                                 "\n  {}",
                                 self.tcx.short_string(c.self_ty(), err.long_ty_path())
@@ -2777,28 +2759,97 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     })
                     .collect();
 
-                let details = if all_traits_equal && all_types_tuples_cont_arity {
-                    if tuple_min_arity == 0 {
+                let mut all_tuples_impl_the_same_trait = true;
+                let mut last_tuple_trait_ref = None;
+
+                fn have_same_trait_path(a: &TraitRef<'_>, b: &TraitRef<'_>) -> bool {
+                    a.print_only_trait_path().to_string() == b.print_only_trait_path().to_string()
+                }
+                // `candidates` can contain only tuples or a variety of other types that include tuples.
+                // Find and locates tuples in `candidates` and computes some metrics: checks if they
+                // are continuous by arity, if so compute the min and the max arity of these tuples and
+                // check if they implement all the same trait or not.
+                let (tuples_candidates, tuples_range) = {
+                    let tuples_indexes: Vec<usize> = candidates
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(idx, (c, _))| {
+                            if let ty::Tuple(tys) = c.self_ty().kind() {
+                                if all_tuples_cont_arity
+                                    && last_arity.map_or(1, |a: usize| a.abs_diff(tys.len())) == 1
+                                {
+                                    last_arity = Some(tys.len());
+                                    if tys.len() > tuple_max_arity {
+                                        tuple_max_arity = tys.len();
+                                    }
+                                    if tys.len() < tuple_min_arity {
+                                        tuple_min_arity = tys.len();
+                                    }
+                                    if all_tuples_impl_the_same_trait
+                                        && have_same_trait_path(
+                                            last_tuple_trait_ref.map_or(c, |e: &TraitRef<'_>| e),
+                                            c,
+                                        )
+                                    {
+                                        last_tuple_trait_ref = Some(c);
+                                    } else {
+                                        all_tuples_impl_the_same_trait = false;
+                                    }
+                                } else {
+                                    all_tuples_cont_arity = false;
+                                }
+                                Some(idx)
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    let (start, end) = (
+                        tuples_indexes.first().map_or_default(|idx| *idx),
+                        tuples_indexes.last().map_or_default(|idx| *idx + 1),
+                    );
+                    (&candidates[start..end], start..end)
+                };
+
+                // When all the types contained in `candidates` are tuples that are contiguous by arity
+                // and implement the same trait, or when there exists a subset of tuples in `candidates`
+                // that are contiguous by arity and implement the same trait, then the list of tuples can
+                // be factorized from `candidates_names`.
+                if !tuples_candidates.is_empty()
+                    && all_tuples_cont_arity
+                    && (all_traits_equal || all_tuples_impl_the_same_trait)
+                {
+                    let details = if tuple_min_arity == 0 {
                         format!("up to tuples of arity {tuple_max_arity}")
+                    } else if !all_traits_equal {
+                        format!("for tuples of arity {tuple_min_arity} to {tuple_max_arity}")
                     } else {
                         format!(
                             "for tuples of arity {tuple_min_arity} up to and including {tuple_max_arity}"
                         )
-                    }
+                    };
+                    let impl_trait = if all_traits_equal {
+                        String::new()
+                    } else {
+                        let c = tuples_candidates[0].0;
+                        format!(
+                            " implements `{}`",
+                            self.tcx.short_string(c.print_only_trait_path(), err.long_ty_path())
+                        )
+                    };
+                    let simplified_output = [
+                        // (T₁, T₂, …, Tₙ)
+                        format!("\n  `(T\u{2081}, T\u{2082}, …, T\u{2099})` {details}{impl_trait}"),
+                    ];
+                    candidate_names.splice(tuples_range, simplified_output);
+                }
+
+                let end = if candidate_names.len() <= 9 || self.tcx.sess.opts.verbose {
+                    candidate_names.len()
                 } else {
-                    String::new()
+                    8
                 };
-                let (candidate_names, end) = if all_traits_equal && all_types_tuples_cont_arity {
-                    (
-                        vec![
-                            // (T₁, T₂, …, Tₙ)
-                            format!("\n  (T\u{2081}, T\u{2082}, …, T\u{2099}) {details}"),
-                        ],
-                        1,
-                    )
-                } else {
-                    (candidate_names, end)
-                };
+
                 let msg = if all_types_equal {
                     format!(
                         "`{}` implements trait `{}`",
