@@ -207,9 +207,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             ty::AliasConstKind::Anon { .. } => None,
         }
     }
-    fn anon_const_kind(self, def_id: DefId) -> ty::AnonConstKind {
-        self.anon_const_kind(def_id)
-    }
 
     fn def_span(self, def_id: DefId) -> Span {
         self.def_span(def_id)
@@ -494,10 +491,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.is_lang_item(def_id, solver_trait_lang_item_to_lang_item(lang_item))
     }
 
-    fn is_adt_lang_item(self, def_id: DefId, lang_item: SolverAdtLangItem) -> bool {
-        self.is_lang_item(def_id, solver_adt_lang_item_to_lang_item(lang_item))
-    }
-
     fn is_default_trait(self, def_id: DefId) -> bool {
         self.is_default_trait(def_id)
     }
@@ -604,10 +597,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.trait_def(trait_def_id).safety.is_unsafe()
     }
 
-    fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {
-        self.is_impl_trait_in_trait(def_id)
-    }
-
     fn delay_bug(self, msg: impl ToString) -> ErrorGuaranteed {
         self.dcx().span_delayed_bug(DUMMY_SP, msg.to_string())
     }
@@ -681,18 +670,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.opt_item_name(id).unwrap_or_else(|| {
             bug!("item_name: no name for {:?}", self.def_path(id));
         })
-    }
-
-    fn get_anon_re_bounds_lifetime(self, idx: usize, var_idx: usize) -> Option<Region<'tcx>> {
-        if let Some(inner) = self.lifetimes.anon_re_bounds.get(idx) {
-            inner.get(var_idx).copied()
-        } else {
-            None
-        }
-    }
-
-    fn get_anon_re_canonical_bounds_lifetime(self, idx: usize) -> Option<Region<'tcx>> {
-        self.lifetimes.anon_re_canonical_bounds.get(idx).copied()
     }
 
     fn get_re_static_lifetime(self) -> Region<'tcx> {
