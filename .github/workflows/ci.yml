@@ -52,6 +52,9 @@ jobs:
         exclude:
           - os: { image: ubuntu-24.04-arm, asset_name_suffix: "-aarch64" }
             libgccjit_version: { gcc: "gcc-15-without-int128" }
+          # FIXME: re-enable when the AES, SHA, RDMA and CRC intrinsics are supported on Aarch64.
+          - os: { image: ubuntu-24.04-arm, asset_name_suffix: "-aarch64" }
+            commands: "--librsvg-tests"
 
     steps:
     - uses: actions/checkout@v4
