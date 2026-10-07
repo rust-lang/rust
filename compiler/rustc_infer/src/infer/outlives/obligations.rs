@@ -241,11 +241,13 @@ impl<'tcx> InferCtxt<'tcx> {
             region_outlives.freeze(),
             ty::UniverseIndex::ROOT,
         );
-        self.destructure_solver_region_constraints(assumptions, self);
+        let constraint = self.get_solver_region_constraint();
+        self.destructure_solver_region_constraints(constraint, assumptions, self);
     }
 
     pub fn destructure_solver_region_constraints_for_borrowck(
         &self,
+        constraint: SolverRegionConstraint<'tcx>,
         // this is always ConstraintConversion but lol
         conversion: impl TypeOutlivesDelegate<'tcx>,
         known_type_outlives: &[PolyTypeOutlivesClause<'tcx>],
@@ -258,12 +260,13 @@ impl<'tcx> InferCtxt<'tcx> {
             region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
             ty::UniverseIndex::ROOT,
         );
-        self.destructure_solver_region_constraints(assumptions, conversion);
+        self.destructure_solver_region_constraints(constraint, assumptions, conversion);
     }
 
     #[instrument(level = "debug", skip(self, conversion))]
     pub fn destructure_solver_region_constraints(
         &self,
+        constraint: SolverRegionConstraint<'tcx>,
         assumptions: rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>,
         mut conversion: impl TypeOutlivesDelegate<'tcx>,
     ) {
@@ -271,12 +274,11 @@ impl<'tcx> InferCtxt<'tcx> {
         assert!(self.next_trait_solver());
         use LeafRegionConstraint::*;
 
-        let solver_constraint = self.get_solver_region_constraint();
-        debug!(?solver_constraint);
+        debug!(?constraint);
         let region_constraint::RootDestructuredConstraints { constraint, failing_leafs } =
             region_constraint::destructure_type_outlives_constraints_in_root(
                 self,
-                solver_constraint,
+                constraint,
                 &assumptions,
             );
         debug!(?constraint);
