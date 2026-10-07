@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use rustc_ast::{GenericParamKind, ItemKind, LitIntType, LitKind, MetaItemLit};
+use rustc_ast::{GenericParamKind, LitIntType, LitKind, MetaItemLit};
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{
     BorrowckGraphvizFormatKind, CguFields, CguKind, RustcCleanAttribute, RustcCleanQueries,
@@ -171,13 +171,10 @@ impl SingleAttributeParser for RustcLegacyConstGenericsParser {
     }
 
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
-        let rustc_attr_ir::target::AstTarget::Fn(item_kind) = cx.ast_target else {
+        let rustc_attr_ir::target::AstTarget::Fn(function) = cx.ast_target else {
             return;
         };
 
-        let ItemKind::Fn(function) = item_kind else {
-            panic!("expected fn AST target item for Target::Fn");
-        };
         let index_list = rustc_attr_ir::find_attr!(cx.parsed_attrs, RustcLegacyConstGenerics { fn_indexes, .. } => fn_indexes)
             .expect("missing parsed RustcLegacyConstGenerics attribute in finalize_check");
         let generics = &function.generics;
