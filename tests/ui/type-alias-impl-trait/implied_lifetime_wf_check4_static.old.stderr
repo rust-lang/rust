@@ -1,5 +1,5 @@
 error[E0310]: the parameter type `A` may not live long enough
-  --> $DIR/implied_lifetime_wf_check4_static.rs:6:5
+  --> $DIR/implied_lifetime_wf_check4_static.rs:13:5
    |
 LL |     s
    |     ^
@@ -8,7 +8,7 @@ LL |     s
    |     ...so that the type `A` will meet its required lifetime bounds...
    |
 note: ...that is required by this bound
-  --> $DIR/implied_lifetime_wf_check4_static.rs:3:31
+  --> $DIR/implied_lifetime_wf_check4_static.rs:10:31
    |
 LL | pub type Ty<A> = impl Sized + 'static;
    |                               ^^^^^^^
@@ -18,7 +18,7 @@ LL | pub type Ty<A: 'static> = impl Sized + 'static;
    |              +++++++++
 
 error[E0310]: the parameter type `A` may not live long enough
-  --> $DIR/implied_lifetime_wf_check4_static.rs:15:5
+  --> $DIR/implied_lifetime_wf_check4_static.rs:22:5
    |
 LL |     assert_static::<A>()
    |     ^^^^^^^^^^^^^^^^^^
