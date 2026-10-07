@@ -141,7 +141,10 @@ jobs:
         ./y.sh build --sysroot
         ./y.sh test --cargo-tests
         CARGO_TEST_FLAGS="-Zmir-preserve-ub" ./y.sh test --cargo-tests -- mir_preserve_ub_empty_switch
-        CARGO_TEST_FLAGS="-Ctarget-feature=+cmpxchg16b" ./y.sh test --cargo-tests -- atomic_u128
+        # The lock-free 128-bit atomics need native 128-bit integers.
+        if [ "${{ matrix.libgccjit_version.gcc }}" != "gcc-15-without-int128" ]; then
+          CARGO_TEST_FLAGS="-Ctarget-feature=+cmpxchg16b" ./y.sh test --cargo-tests -- atomic_u128
+        fi
 
     - name: Run y.sh cargo build
       if: ${{ matrix.run_checks }}
