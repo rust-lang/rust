@@ -61,6 +61,7 @@ rustfmt-config_proc_macro = { version = "0.3", path = "config_proc_macro" }
 semver = "1.0.21"
 
 [dev-dependencies]
+indoc = "2"
 tempfile = "3.23.0"
 insta = { version = "1.48.0", features = ["filters"] }
 

@@ -550,6 +550,7 @@ fn config_path(options: &dyn CliOptions) -> Result<Option<PathBuf>, Error> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use indoc::formatdoc;
     use std::str;
 
     use crate::config::macro_names::{MacroName, MacroSelectors};
@@ -726,7 +727,10 @@ mod test {
         let toml = used_options.to_toml().unwrap();
         assert_eq!(
             toml,
-            format!("merge_derives = {merge_derives}\nskip_children = {skip_children}\n",)
+            formatdoc! {"
+                merge_derives = {merge_derives}
+                skip_children = {skip_children}
+            "}
         );
     }
 
