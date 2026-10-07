@@ -23,7 +23,7 @@ jobs:
           rustup component add --toolchain beta rust-src
 
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: Cache cargo
         uses: actions/cache@v4
@@ -66,7 +66,7 @@ jobs:
           rustup component add --toolchain beta rust-src
 
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: Restore target cache
         uses: actions/cache@v4
@@ -89,7 +89,7 @@ jobs:
     needs: [build_metrics, other_metrics]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: Download metrics
         uses: actions/download-artifact@v8
