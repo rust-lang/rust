@@ -18,6 +18,8 @@ env:
 jobs:
   build:
     runs-on: ${{ matrix.os.image }}
+    # Above 3 times the longest job, so that a hang cannot run until GitHub's 6-hour limit.
+    timeout-minutes: 90
 
     strategy:
       fail-fast: false
@@ -66,14 +68,19 @@ jobs:
     - name: Setup rust cache
       uses: Swatinem/rust-cache@v2
 
+    - name: Add apt mirrors
+      uses: ./.github/actions/apt-mirrors
+
     - name: Install packages
       # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
+      timeout-minutes: 10
       run: |
         sudo apt-get update
         sudo apt-get install ninja-build ripgrep llvm-14-tools llvm
 
     - name: Install the libraries needed to build librsvg
       if: ${{ contains(matrix.commands, '--librsvg-tests') }}
+      timeout-minutes: 10
       run: sudo apt-get install libcairo2-dev libpango1.0-dev libfontconfig1-dev libfreetype-dev libharfbuzz-dev libxml2-dev libglib2.0-dev
 
     - name: Download artifact

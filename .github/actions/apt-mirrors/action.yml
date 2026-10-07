@@ -1,0 +1,29 @@
+name: Add apt mirrors
+description: >
+  Lets apt fail over to mirrors run by other organizations, since the Ubuntu ones can stall
+  (actions/runner-images#14594, #14823).
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        if [ "$(dpkg --print-architecture)" = amd64 ]; then
+          # Appended after the runner's azure.archive, archive and security mirrors.
+          printf '%s\tpriority:%s\n' \
+            https://mirrors.edge.kernel.org/ubuntu/ 4 \
+            https://mirrors.mit.edu/ubuntu/ 5 \
+            https://mirrors.ocf.berkeley.edu/ubuntu/ 6 \
+            | sudo tee -a /etc/apt/apt-mirrors.txt
+        else
+          # The Arm64 runners use ports.ubuntu.com directly, without a mirror list.
+          printf '%s\tpriority:%s\n' \
+            https://ports.ubuntu.com/ubuntu-ports/ 1 \
+            https://mirrors.mit.edu/ubuntu-ports/ 2 \
+            https://mirrors.ocf.berkeley.edu/ubuntu-ports/ 3 \
+            | sudo tee /etc/apt/apt-mirrors.txt
+          # The package lists must be downloaded again (`apt-get update`) after this.
+          grep -rlE 'https?://ports\.ubuntu\.com' /etc/apt/sources.list /etc/apt/sources.list.d/ \
+            | xargs --no-run-if-empty sudo sed -E -i \
+              's#https?://ports\.ubuntu\.com/ubuntu-ports/?#mirror+file:/etc/apt/apt-mirrors.txt#'
+        fi
