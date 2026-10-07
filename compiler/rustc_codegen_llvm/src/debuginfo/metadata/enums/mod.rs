@@ -13,7 +13,7 @@ use rustc_span::{Span, Symbol, bug};
 
 use super::type_map::{DINodeCreationResult, UniqueTypeId};
 use super::{SmallVec, size_and_align_of};
-use crate::common::{AsCCharPtr, CodegenCx};
+use crate::common::CodegenCx;
 use crate::debuginfo::metadata::type_map::{self, Stub};
 use crate::debuginfo::metadata::{
     UNKNOWN_LINE_NUMBER, build_field_di_node, build_generic_type_param_di_nodes,
@@ -141,7 +141,7 @@ fn build_enumeration_type_di_node<'ll, 'tcx>(
         llvm::LLVMRustDIBuilderCreateEnumerationType(
             DIB(cx),
             containing_scope,
-            type_name.as_c_char_ptr(),
+            type_name.as_ptr(),
             type_name.len(),
             file_metadata,
             line_number,

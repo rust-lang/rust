@@ -33,7 +33,6 @@ use crate::back::profiling::{
 };
 use crate::builder::SBuilder;
 use crate::builder::gpu_offload::scalar_width;
-use crate::common::AsCCharPtr;
 use crate::context::SimpleCx;
 use crate::diagnostics::{
     CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, ParseTargetMachineConfig,
@@ -548,9 +547,7 @@ pub(crate) unsafe fn llvm_optimize(
     } else {
         None
     };
-    let passes_after_enzyme_ptr =
-        passes_after_enzyme.map_or(std::ptr::null(), |s| s.as_c_char_ptr());
-    let passes_after_enzyme_len = passes_after_enzyme.map_or(0, |s| s.len());
+
     let merge_functions;
     let unroll_loops;
     let vectorize_slp;
@@ -788,11 +785,11 @@ pub(crate) unsafe fn llvm_optimize(
             llvm_selfprofiler,
             selfprofile_before_pass_callback,
             selfprofile_after_pass_callback,
-            passes_after_enzyme_ptr,
-            passes_after_enzyme_len,
-            extra_passes.as_c_char_ptr(),
+            passes_after_enzyme.map(|s| s.as_ptr()).unwrap_or(std::ptr::null()),
+            passes_after_enzyme.map(|s| s.len()).unwrap_or(0),
+            extra_passes.as_ptr(),
             extra_passes.len(),
-            llvm_plugins.as_c_char_ptr(),
+            llvm_plugins.as_ptr(),
             llvm_plugins.len(),
         )
     };
