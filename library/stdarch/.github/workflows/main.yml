@@ -8,7 +8,7 @@ jobs:
     name: Check Style
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - name: Install Rust
         run: rustup update nightly --no-self-update && rustup default nightly
       - run: ci/style.sh
@@ -18,7 +18,7 @@ jobs:
     needs: [ style ]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - name: Install Rust
         run: rustup update nightly --no-self-update && rustup default nightly
       - run: ci/dox.sh
@@ -30,7 +30,7 @@ jobs:
     needs: [ style ]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - name: Install Rust
         run: rustup update nightly --no-self-update && rustup default nightly
       - run: cargo test --manifest-path crates/stdarch-verify/Cargo.toml
@@ -218,7 +218,7 @@ jobs:
         #   build_std: true
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - name: Install Rust
         run: |
           rustup update nightly --no-self-update
@@ -298,7 +298,7 @@ jobs:
           - target: armv7-unknown-linux-gnueabihf
             cc: gcc
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - name: Install Rust
         run: |
           rustup update nightly --no-self-update
@@ -326,7 +326,7 @@ jobs:
     env:
       STDARCH_GEN_MODE: check
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - name: Install Rust
         run: rustup update nightly && rustup default nightly && rustup component add rustfmt
       - name: Check arm spec
@@ -352,7 +352,7 @@ jobs:
     name: Run some tests with miri
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - name: Install Rust
         run: rustup update nightly && rustup default nightly && rustup component add miri
       - name: Run miri tests
