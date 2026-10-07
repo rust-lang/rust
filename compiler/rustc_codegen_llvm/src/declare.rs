@@ -25,7 +25,6 @@ use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
-use crate::common::AsCCharPtr;
 use crate::context::{CodegenCx, GenericCx, SCx, SimpleCx};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, FromGeneric, Type, Value, Visibility};
@@ -43,8 +42,7 @@ pub(crate) fn declare_simple_fn<'ll>(
     ty: &'ll Type,
 ) -> &'ll Value {
     debug!("declare_simple_fn(name={:?}, ty={:?})", name, ty);
-    let llfn =
-        unsafe { llvm::LLVMGetOrInsertFunction(cx.llmod, name.as_c_char_ptr(), name.len(), ty) };
+    let llfn = unsafe { llvm::LLVMGetOrInsertFunction(cx.llmod, name.as_ptr(), name.len(), ty) };
 
     llvm::SetFunctionCallConv(llfn, callconv);
     llvm::set_unnamed_address(llfn, unnamed);
@@ -96,12 +94,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     pub(crate) fn declare_global(&self, name: &str, ty: &'ll Type) -> &'ll Value {
         debug!("declare_global(name={:?})", name);
         unsafe {
-            llvm::LLVMRustGetOrInsertGlobal(
-                (**self).borrow().llmod,
-                name.as_c_char_ptr(),
-                name.len(),
-                ty,
-            )
+            llvm::LLVMRustGetOrInsertGlobal((**self).borrow().llmod, name.as_ptr(), name.len(), ty)
         }
     }
 
@@ -119,7 +112,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe {
             llvm::LLVMRustGetOrInsertGlobalInAddrspace(
                 (**self).borrow().llmod,
-                name.as_c_char_ptr(),
+                name.as_ptr(),
                 name.len(),
                 ty,
                 addr_space.0,
@@ -261,7 +254,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     /// Gets declared value by name.
     pub(crate) fn get_declared_value(&self, name: &str) -> Option<&'ll Value> {
         debug!("get_declared_value(name={:?})", name);
-        unsafe { llvm::LLVMRustGetNamedValue(self.llmod(), name.as_c_char_ptr(), name.len()) }
+        unsafe { llvm::LLVMRustGetNamedValue(self.llmod(), name.as_ptr(), name.len()) }
     }
 
     /// Gets defined or externally defined (AvailableExternally linkage) value by

@@ -18,19 +18,32 @@ extern crate minicore;
 use minicore::simd::*;
 use minicore::*;
 
+// A singleton homogeneous float aggregate.
+#[repr(C)]
+pub struct Hfa1 {
+    pub a: f32,
+}
+
+// NOTE: on powerpc64 `[1 x float]` is not abi-compatible with a bare `float`.
+// CHECK: define void @test_hfa1(float %0)
+#[unsafe(no_mangle)]
+pub extern "C" fn test_hfa1(a: Hfa1) {
+    hint::black_box(a);
+}
+
 // A homogeneous float aggregate.
 #[repr(C)]
-pub struct Hfa {
+pub struct Hfa2 {
     pub a: f32,
     pub b: f32,
 }
-impl Copy for Hfa {}
+impl Copy for Hfa2 {}
 
-// ppc64: define void @test_hfa(i64 %0)
-// ppc64_vsx: define void @test_hfa(i64 %0)
-// ppc64le: define void @test_hfa([2 x float] %0)
+// ppc64: define void @test_hfa2(i64 %0)
+// ppc64_vsx: define void @test_hfa2(i64 %0)
+// ppc64le: define void @test_hfa2([2 x float] %0)
 #[unsafe(no_mangle)]
-pub extern "C" fn test_hfa(a: Hfa) {
+pub extern "C" fn test_hfa2(a: Hfa2) {
     hint::black_box(a);
 }
 

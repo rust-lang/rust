@@ -1,4 +1,4 @@
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(not(all(target_family = "wasm", target_os = "unknown")))]
 
 use core::num::imp::flt2dec;
 use std::mem::MaybeUninit;
