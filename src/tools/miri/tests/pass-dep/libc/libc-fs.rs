@@ -30,11 +30,12 @@ fn main() {
     test_ftruncate::<libc::off64_t>(libc::ftruncate64);
     test_create_read_write();
     test_read_and_uninit();
-    test_file_open_args();
-    test_file_open_nofollow();
-    test_file_open_dangling_symlink();
-    test_file_open_directory();
-    test_file_open_exclusive();
+    test_open_args();
+    test_open_nofollow();
+    test_open_dangling_symlink();
+    test_open_directory();
+    test_open_exclusive();
+    test_openat();
     #[cfg(target_os = "linux")]
     test_o_tmpfile_flag();
     test_posix_mkstemp();
@@ -312,8 +313,8 @@ fn test_statx_on_empty_path() {
     }
 }
 
-fn test_file_open_args() {
-    let path = utils::prepare_with_content("miri_test_file_open_args.txt", &[]);
+fn test_open_args() {
+    let path = utils::prepare_with_content("miri_test_open_args.txt", &[]);
     let name = utils::into_c_string(path);
 
     // Works with 2 or 3 arguments.
@@ -321,7 +322,7 @@ fn test_file_open_args() {
     let _fd = errno_result(unsafe { libc::open(name.as_ptr(), libc::O_RDONLY, 42) }).unwrap();
 }
 
-fn test_file_open_nofollow() {
+fn test_open_nofollow() {
     // Regular files work like normal.
     let bytes = b"Hello, World!\n";
     let path = utils::prepare_with_content("miri_test_nofollow_not_symlink.txt", bytes);
@@ -371,7 +372,7 @@ fn test_file_open_nofollow() {
     }
 }
 
-fn test_file_open_dangling_symlink() {
+fn test_open_dangling_symlink() {
     if !utils::have_symlink_permission() {
         return;
     }
@@ -394,8 +395,8 @@ fn test_file_open_dangling_symlink() {
     assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT, "unexpected errno: {err}");
 }
 
-fn test_file_open_directory() {
-    let dir_path = utils::prepare_dir("miri_test_file_open_directory");
+fn test_open_directory() {
+    let dir_path = utils::prepare("miri_test_open_directory");
     create_dir(&dir_path).unwrap();
     let dir_name = utils::into_c_string(dir_path);
 
@@ -438,8 +439,8 @@ fn test_file_open_directory() {
     }
 }
 
-fn test_file_open_exclusive() {
-    let path = utils::prepare("miri_test_file_open_exclusive.txt");
+fn test_open_exclusive() {
+    let path = utils::prepare("miri_test_open_exclusive.txt");
     let cpath = utils::into_c_string(path);
 
     let fd = errno_result(unsafe {
@@ -453,6 +454,31 @@ fn test_file_open_exclusive() {
     })
     .unwrap_err();
     assert_eq!(exist_err.raw_os_error().unwrap(), libc::EEXIST, "unexpected errno: {exist_err}");
+}
+
+fn test_openat() {
+    let path = utils::prepare("miri_test_openat");
+    fs::create_dir(&path).unwrap();
+    fs::write(path.join("file.txt"), b"data").unwrap();
+    let cpath = utils::into_c_string(&path);
+
+    // Absolute path, can use garbage dirfd.
+    let dirfd =
+        errno_result(unsafe { libc::openat(999, cpath.as_ptr(), libc::O_DIRECTORY) }).unwrap();
+    // Open file relative to dirfd.
+    let fd =
+        errno_result(unsafe { libc::openat(dirfd, c"file.txt".as_ptr(), libc::O_RDWR) }).unwrap();
+    let data = libc_utils::read_exact_array::<4>(fd).unwrap();
+    assert_eq!(&data, b"data");
+
+    // Open dir itself relative to dirfd.
+    fs::create_dir(path.join("dir")).unwrap();
+    let dirfd2 =
+        errno_result(unsafe { libc::openat(dirfd, c"dir".as_ptr(), libc::O_DIRECTORY) }).unwrap();
+
+    errno_check(unsafe { libc::close(dirfd) });
+    errno_check(unsafe { libc::close(dirfd2) });
+    errno_check(unsafe { libc::close(fd) });
 }
 
 fn test_create_read_write() {
@@ -610,7 +636,7 @@ fn test_o_tmpfile_flag() {
 
     use std::fs::{OpenOptions, create_dir};
     use std::os::unix::fs::OpenOptionsExt;
-    let dir_path = utils::prepare_dir("miri_test_fs_dir");
+    let dir_path = utils::prepare("miri_test_fs_dir");
     create_dir(&dir_path).unwrap();
     // test that the `O_TMPFILE` custom flag gracefully errors instead of stopping execution
     assert_eq!(
@@ -633,7 +659,7 @@ fn test_posix_mkstemp() {
 
     // We want to test `mkstemp` on a relative name, so we cd to a tempdir and later cd back.
     let old_cwd = env::current_dir().unwrap();
-    let dir_path = utils::prepare_dir("miri_test_libc_readdir");
+    let dir_path = utils::prepare("miri_test_libc_readdir");
     create_dir(&dir_path).expect("create_dir failed");
     env::set_current_dir(&dir_path).unwrap();
 
@@ -1011,7 +1037,7 @@ fn test_fstat() {
 }
 
 fn test_fstatat() {
-    let testdir = utils::prepare_dir("miri_test_fstatat");
+    let testdir = utils::prepare("miri_test_fstatat");
     fs::create_dir(&testdir).unwrap();
     let filename = "file.txt";
     let cfilename = c"file.txt";
@@ -1313,7 +1339,7 @@ fn test_ioctl() {
 
 fn test_opendir_closedir() {
     // dir should exist
-    let path = utils::prepare_dir("miri_test_libc_opendir_closedir");
+    let path = utils::prepare("miri_test_libc_opendir_closedir");
     create_dir(&path).expect("create_dir failed");
     let cpath = utils::into_c_string(&path);
     let dir: *mut libc::DIR = unsafe { libc::opendir(cpath.as_ptr()) };
@@ -1342,7 +1368,7 @@ fn test_opendir_closedir() {
 fn test_readdir() {
     use std::fs::{create_dir, remove_dir, write};
 
-    let dir_path = utils::prepare_dir("miri_test_libc_readdir");
+    let dir_path = utils::prepare("miri_test_libc_readdir");
     create_dir(&dir_path).ok();
 
     // Create test files
@@ -1401,7 +1427,7 @@ fn test_readdir() {
 }
 
 fn test_dirfd() {
-    let path = utils::prepare_dir("miri_test_libc_opendir_closedir");
+    let path = utils::prepare("miri_test_libc_opendir_closedir");
     create_dir(&path).expect("create_dir failed");
     let cpath = utils::into_c_string(path);
     let dir: *mut libc::DIR = unsafe { libc::opendir(cpath.as_ptr()) };

@@ -384,7 +384,7 @@ fn test_rename() {
 }
 
 fn test_canonicalize() {
-    let dir_path = utils::prepare_dir("miri_test_fs_dir");
+    let dir_path = utils::prepare("miri_test_fs_dir");
     create_dir(&dir_path).unwrap();
     let path = dir_path.join("test_file");
     drop(File::create(&path).unwrap());
@@ -396,7 +396,7 @@ fn test_canonicalize() {
 }
 
 fn test_directory() {
-    let dir_path = utils::prepare_dir("miri_test_fs_dir");
+    let dir_path = utils::prepare("miri_test_fs_dir");
     // Creating a directory should succeed.
     create_dir(&dir_path).unwrap();
     // Test that the metadata of a directory is correct.
@@ -664,12 +664,16 @@ fn test_hard_link() {
 }
 
 fn test_directory_handle() {
-    let filename = utils::prepare_with_content("miri_test_directory_handle.txt", b"hello");
-    assert!(filename.is_absolute());
-    let dir = fs::Dir::open(filename.parent().unwrap()).unwrap();
+    let dirname = utils::prepare("miri_test_directory_handle");
+    assert!(dirname.is_absolute());
+    fs::create_dir(&dirname).unwrap();
+    let filename = dirname.join("file.txt");
+    fs::write(&filename, b"hello").unwrap();
+
+    let dir = fs::Dir::open(&dirname).unwrap();
     assert!(dir.self_metadata().unwrap().is_dir());
 
-    let stat = dir.metadata(filename.file_name().unwrap()).unwrap();
+    let stat = dir.metadata("file.txt").unwrap();
     assert!(stat.is_file());
     assert!(stat.len() == 5);
     if cfg!(unix) {
@@ -683,7 +687,20 @@ fn test_directory_handle() {
     if cfg!(unix) {
         // Windows actually succeeds when opening a file as a directory.
         // FIXME: is that intentional? <https://github.com/rust-lang/rust/issues/163926>
-        let err = fs::Dir::open(filename).unwrap_err();
+        let err = fs::Dir::open(&filename).unwrap_err();
         assert_eq!(err.kind(), ErrorKind::NotADirectory);
     }
+
+    let mut file = dir.open_file("file.txt").unwrap();
+    let mut data = Vec::new();
+    file.read_to_end(&mut data).unwrap();
+    assert_eq!(&data, b"hello");
+
+    let err = dir
+        .open_file_with("file.txt", OpenOptions::new().write(true).create_new(true))
+        .unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::AlreadyExists);
+
+    fs::create_dir(dirname.join("subdir")).unwrap();
+    let _subdir = dir.open_dir("subdir").unwrap();
 }

@@ -418,12 +418,22 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn open(
         &mut self,
+        dirfd: Option<&OpTy<'tcx>>,
         path_raw: &OpTy<'tcx>,
         flag: &OpTy<'tcx>,
         varargs: Varargs<'tcx, '_>,
     ) -> InterpResult<'tcx, Scalar> {
+        #[cfg(unix)]
+        use std::os::unix::fs::OpenOptionsExt;
+        #[cfg(windows)]
+        use std::os::windows::fs::OpenOptionsExt;
+
         let this = self.eval_context_mut();
 
+        let dirfd = match dirfd {
+            Some(dirfd) => Some(this.read_scalar(dirfd)?.to_i32()?),
+            None => None,
+        };
         let path_raw = this.read_pointer(path_raw)?;
         let flag = this.read_scalar(flag)?.to_i32()?;
 
@@ -470,6 +480,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         if this.tcx.sess.target.os == Os::Linux {
+            let o_largefile = this.eval_libc_i32("O_LARGEFILE");
+            if flag & o_largefile == o_largefile {
+                flag &= !o_largefile;
+                // `fs::File` always opens in largefile mode so this is a NOP.
+            }
             let o_tmpfile = this.eval_libc_i32("O_TMPFILE");
             // Note that this overaps with O_DIRECTORY!
             if flag & o_tmpfile == o_tmpfile {
@@ -519,7 +534,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_varargs![i32]
                 },
                 varargs,
-                "open(pathname, O_CREAT, ...)",
+                if dirfd.is_some() {
+                    "openat(dirfd, pathname, O_CREAT, ...)"
+                } else {
+                    "open(pathname, O_CREAT, ...)"
+                },
             )?;
             let mode = this.read_scalar(mode)?.to_u32()?;
 
@@ -581,8 +600,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
+        let dirfd = match dirfd {
+            Some(dirfd) => {
+                if path.is_absolute() || dirfd == this.eval_libc_i32("AT_FDCWD") {
+                    None
+                } else {
+                    // relative to dirfd, which must be a directory handle
+                    let Some(fd) = this.machine.fds.get(dirfd) else {
+                        return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+                    };
+                    let Some(dir) = fd.downcast::<DirHandle>() else {
+                        return this.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
+                    };
+                    Some(dir)
+                }
+            }
+            None => None,
+        };
+
         // Let's see what we get when we open this!
-        match open_file_or_dir(&path, options, custom_flags) {
+        options.custom_flags(custom_flags);
+        match open_file_or_dir(dirfd.as_ref().map(|d| &d.dir), &path, &options) {
             Err(err) => this.set_errno_and_return_neg1_i32(err),
             Ok(Either::Right(dir)) => {
                 // This means it cannot be a symlink, so `nofollow` is fine.
@@ -591,6 +629,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // But here we want it to always fail.
                     return this.set_errno_and_return_neg1_i32(LibcError("EISDIR"));
                 }
+
+                #[cfg(bootstrap)]
+                let path = match &dirfd {
+                    Some(dir) => dir.fallback.join(&path),
+                    None => path.into(),
+                };
 
                 let fd = this.machine.fds.insert_new(DirHandle::new(dir, &path));
                 interp_ok(Scalar::from_i32(fd))

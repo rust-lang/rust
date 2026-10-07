@@ -353,7 +353,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(*_, i32, ...) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.open(path_raw, flag, varargs)?;
+                let result = this.open(None, path_raw, flag, varargs)?;
+                this.write_scalar(result, dest)?;
+            }
+            "openat" => {
+                let ([dirfd, path_raw, flag], varargs) = this.check_shim_sig_variadic(
+                    shim_sig!(extern "C" fn(i32, *_, i32, ...) -> i32),
+                    (link_name, abi, args),
+                )?;
+                let result = this.open(Some(dirfd), path_raw, flag, varargs)?;
                 this.write_scalar(result, dest)?;
             }
             "unlink" => {
