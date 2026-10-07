@@ -2718,11 +2718,12 @@ impl<'a> Parser<'a> {
         let mut constraints = Vec::new();
         let mut predicates = Vec::new();
         self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {
-            if this.check_keyword(exp!(Where)) {
-                predicates.push(this.parse_where_clause()?);
-                return Ok(());
-            }
             match this.token.ident() {
+                Some((Ident { name: sym::predicates, .. }, IdentKind::Normal)) => {
+                    let span = this.token.span;
+                    this.bump();
+                    predicates.extend(this.parse_where_clause_predicates(None, span)?.0);
+                }
                 Some((Ident { name: sym::forall, .. }, IdentKind::Normal)) => {
                     foralls.push(this.parse_test_binder_forall()?)
                 }

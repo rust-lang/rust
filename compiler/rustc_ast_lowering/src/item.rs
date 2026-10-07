@@ -2003,7 +2003,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let predicates = self.arena.alloc_from_iter(
             body.predicates
                 .iter()
-                .flat_map(|w| &w.predicates)
                 .map(|predicate| self.lower_where_predicate(predicate, &[], &mut dedup_map)),
         );
         hir::TestBinderBody { foralls, exists, constraints, predicates }

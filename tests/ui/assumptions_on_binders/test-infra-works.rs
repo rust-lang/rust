@@ -67,11 +67,11 @@ core::test_binder_constraints! {
 // `impl` should fail because the constraints asserted in `expect` should fail to prove true. Might
 // be https://github.com/rust-lang/project-assumptions-on-binders/issues/26
 //
-// `where` syntax goes through the full clause destructuring and register_obligation pipeline
+// `predicates` syntax goes through the full clause destructuring and register_obligation pipeline
 core::test_binder_constraints! {
     impl<T: Trait> {
         forall<'a> {
-            where T::Assoc: 'a
+            predicates T::Assoc: 'a
         } expect {
             or {
                 for<'b> T::Assoc: 'b,
