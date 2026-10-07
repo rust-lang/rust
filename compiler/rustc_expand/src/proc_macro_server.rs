@@ -733,17 +733,13 @@ impl server::Server for Rustc<'_, '_> {
     }
 
     fn span_local_file(&mut self, span: Self::Span) -> Option<String> {
-        self.psess()
-            .source_map()
-            .lookup_source_file(span.lo())
-            .name
-            .clone()
-            .into_local_path()
-            .map(|p| {
+        self.psess().source_map().lookup_source_file(span.lo()).name.clone().into_local_path().map(
+            |p| {
                 p.to_str()
                     .expect("non-UTF8 file path in `proc_macro::SourceFile::path`")
                     .to_string()
-            })
+            },
+        )
     }
 
     fn span_parent(&mut self, span: Self::Span) -> Option<Self::Span> {
