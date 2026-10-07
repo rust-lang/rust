@@ -129,8 +129,10 @@ pub(crate) struct Options {
     pub(crate) no_run: bool,
     /// What sources are being mapped.
     pub(crate) remap_path_prefix: Vec<(PathBuf, PathBuf)>,
+    pub(crate) remap_path_prefix_strs: Vec<String>,
     /// Which scope(s) to use with `--remap-path-prefix`
     pub(crate) remap_path_scope: RemapPathScopeComponents,
+    pub(crate) remap_path_scope_str: Option<String>,
 
     /// The path to a rustc-like binary to build tests with. If not set, we
     /// default to loading from `$sysroot/bin/rustc`.
@@ -859,6 +861,8 @@ impl Options {
         let unstable_opts_strs = matches.opt_strs("Z");
         let lib_strs = matches.opt_strs("L");
         let extern_strs = matches.opt_strs("extern");
+        let remap_path_prefix_strs = matches.opt_strs("remap-path-prefix");
+        let remap_path_scope_str = matches.opt_str("remap-path-scope");
         let test_runtool = matches.opt_str("test-runtool");
         let test_runtool_args = matches.opt_strs("test-runtool-arg");
         let document_private = matches.opt_present("document-private-items");
@@ -934,7 +938,9 @@ impl Options {
             no_run,
             test_builder_wrappers,
             remap_path_prefix,
+            remap_path_prefix_strs,
             remap_path_scope,
+            remap_path_scope_str,
             no_capture,
             crate_name,
             output_format,
