@@ -2083,6 +2083,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     items.iter().map(|item| self.lower_test_binder_constraint(item)),
                 ),
             },
+            TestBinderConstraint::Ambiguity { span } => {
+                hir::TestBinderConstraint::Ambiguity { span: self.lower_span(*span) }
+            }
             TestBinderConstraint::Lifetime { lhs, rhs } => {
                 let lhs = self.lower_lifetime(lhs, LifetimeSource::Other, lhs.ident.into());
                 let rhs = self.lower_lifetime(rhs, LifetimeSource::OutlivesBound, rhs.ident.into());
