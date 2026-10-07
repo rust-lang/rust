@@ -74,7 +74,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             SelectionError::Unimplemented => {
                 // If this obligation was generated as a result of well-formedness checking, see if we
                 // can get a better error message by performing HIR-based well-formedness checking.
-                if let ObligationCauseCode::WellFormed(Some(wf_loc)) =
+                if let ObligationCauseCode::WellFormed(wf_loc) =
                     root_obligation.cause.code().peel_derives()
                     && !obligation.predicate.has_non_region_infer()
                 {
