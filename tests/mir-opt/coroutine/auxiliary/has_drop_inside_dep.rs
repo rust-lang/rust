@@ -2,7 +2,7 @@
 
 // WARNING: If you would ever want to modify this test,
 // please consider modifying rustc's async drop test at
-// `tests/mir-opt/coroutine/auxiliary/has_drop_inside_dep.rs`.
+// `tests/ui/async-await/async-drop/auxiliary/has-drop-inside-dep.rs`.
 
 #![feature(async_drop)]
 #![allow(incomplete_features)]
@@ -13,7 +13,6 @@ impl Drop for IsDrop {
         // this is stub. no-op.
     }
 }
-
 pub struct HasDrop {
     _is_drop: IsDrop,
 }

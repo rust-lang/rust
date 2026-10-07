@@ -1,0 +1,21 @@
+// MIR for `std::future::async_drop_in_place::{closure#0}` 0 coroutine_before
+
+fn async_drop_in_place::{closure#0}(_1: {async fn body of async_drop_in_place<HasDrop>()}, _2: std::future::ResumeTy) -> ()
+yields ()
+ {
+    let mut _0: ();
+    let mut _3: &mut HasDrop;
+
+    bb0: {
+        _3 = move (_1.0: &mut HasDrop);
+        drop(((*_3).0: IsDrop)) -> [return: bb1, unwind: bb2];
+    }
+
+    bb1: {
+        return;
+    }
+
+    bb2 (cleanup): {
+        resume;
+    }
+}

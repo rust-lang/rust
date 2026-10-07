@@ -4,6 +4,11 @@
 //@ revisions: with_feature without_feature
 //@ aux-build: has-drop-inside-dep.rs
 
+// WARNING: If you would ever want to modify this test,
+// please consider modifying rustc's async drop test at
+// `tests/mir-opt/coroutine/async_drop_shim_usage_with_feature.rs` and
+// `tests/mir-opt/coroutine/async_drop_shim_usage_without_feature.rs`.
+
 #![cfg_attr(with_feature, feature(async_drop))]
 
 #![allow(incomplete_features)]
