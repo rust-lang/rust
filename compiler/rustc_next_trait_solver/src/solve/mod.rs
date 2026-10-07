@@ -21,9 +21,10 @@ mod search_graph;
 mod trait_goals;
 
 use derive_where::derive_where;
-use rustc_middle::ty::{self as mty, LangItem, Ty as MiddleTy, TyCtxt};
+use rustc_middle::ty::{self as mty, Ty as MiddleTy, TyCtxt};
 use rustc_transmute::{Assume, Condition};
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::lang_items::SolverTraitLangItem;
 pub use rustc_type_ir::solve::*;
 use rustc_type_ir::{self as ty, Const, Interner, Region, TypeVisitableExt, Upcast};
 use thin_vec::{ThinVec, thin_vec};
@@ -513,7 +514,7 @@ pub fn flatten_answer_tree<'tcx>(
         Condition::Immutable { ty } => {
             let trait_ref = ty::TraitRef::new(
                 tcx,
-                tcx.require_lang_item(LangItem::Freeze, Span::dummy()),
+                tcx.require_trait_lang_item(SolverTraitLangItem::Freeze),
                 [mty::GenericArg::from(ty)],
             );
             thin_vec![trait_ref.upcast(tcx)]
