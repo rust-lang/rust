@@ -268,7 +268,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             // Let's see what we get when we open this!
-            return match open_file_or_dir(&file_name, options, /* custom_flags */ 0) {
+            return match open_file_or_dir(None, &file_name, &options) {
                 Err(err) => {
                     let kind = err.kind();
                     if exists_already && kind == io::ErrorKind::NotFound {

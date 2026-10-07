@@ -418,12 +418,22 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn open(
         &mut self,
+        dirfd: Option<&OpTy<'tcx>>,
         path_raw: &OpTy<'tcx>,
         flag: &OpTy<'tcx>,
         varargs: Varargs<'tcx, '_>,
     ) -> InterpResult<'tcx, Scalar> {
+        #[cfg(unix)]
+        use std::os::unix::fs::OpenOptionsExt;
+        #[cfg(windows)]
+        use std::os::windows::fs::OpenOptionsExt;
+
         let this = self.eval_context_mut();
 
+        let dirfd = match dirfd {
+            Some(dirfd) => Some(this.read_scalar(dirfd)?.to_i32()?),
+            None => None,
+        };
         let path_raw = this.read_pointer(path_raw)?;
         let flag = this.read_scalar(flag)?.to_i32()?;
 
@@ -434,6 +444,46 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         {
             this.machine.emit_diagnostic(NonHaltingDiagnostic::FileInProcOpened);
         }
+
+        // Helper for those flags that read the `mode` parameter.
+        let read_mode = |this: &MiriInterpCx<'tcx>,
+                         options: &mut OpenOptions,
+                         fn_name: &str|
+         -> InterpResult<'tcx> {
+            let ([mode], _) = this.check_varargs(
+                if this.libc_ty_layout("mode_t").size.bytes() >= 4 {
+                    // `mode_t` is big enough, no C integer promotion.
+                    shim_varargs![libc::mode_t]
+                } else {
+                    // Types smaller than int get promoted to int
+                    // (see https://github.com/rust-lang/rust/issues/71915).
+                    shim_varargs![i32]
+                },
+                varargs,
+                fn_name,
+            )?;
+            let mode = this.read_scalar(mode)?.to_u32()?;
+
+            cfg_select! {
+                unix => {
+                    // Support all modes on UNIX host
+                    options.mode(mode);
+                }
+                _ => {
+                    let _unused = options;
+
+                    // Only support default mode for non-UNIX (i.e. Windows) host
+                    if mode != 0o666 {
+                        throw_unsup_format!(
+                            "non-default mode 0o{:o} is not supported on non-Unix hosts",
+                            mode
+                        );
+                    }
+                }
+            }
+
+            interp_ok(())
+        };
 
         // We will "subtract" supported flags from this and at the end check that no bits are left.
         let mut flag = flag;
@@ -454,7 +504,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut readable = true;
 
         // Now we check the access mode
-        let access_mode = flag & 0b11;
+        let access_mode = flag & this.eval_libc_i32("O_ACCMODE");
         flag &= !access_mode;
 
         if access_mode == o_rdonly {
@@ -470,10 +520,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         if this.tcx.sess.target.os == Os::Linux {
+            let o_largefile = this.eval_libc_i32("O_LARGEFILE");
+            if flag & o_largefile == o_largefile {
+                flag &= !o_largefile;
+                // `fs::File` always opens in largefile mode so this is a NOP.
+            }
             let o_tmpfile = this.eval_libc_i32("O_TMPFILE");
-            // Note that this overaps with O_DIRECTORY!
+            // Note that this overaps with O_DIRECTORY! So we have to check O_TMPFILE first.
             if flag & o_tmpfile == o_tmpfile {
-                // if the flag contains `O_TMPFILE` then we return a graceful error
+                // This flag requires a mode.
+                read_mode(
+                    this,
+                    &mut options,
+                    if dirfd.is_some() {
+                        "openat(dirfd, pathname, O_TMPFILE, ...)"
+                    } else {
+                        "open(pathname, O_TMPFILE, ...)"
+                    },
+                )?;
+
+                // We don't currently support this, error gracefully.
                 return this.set_errno_and_return_neg1_i32(LibcError("EOPNOTSUPP"));
             }
         }
@@ -504,42 +570,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let o_creat = this.eval_libc_i32("O_CREAT");
         if flag & o_creat == o_creat {
             flag &= !o_creat;
+            // Get the mode.
+            read_mode(
+                this,
+                &mut options,
+                if dirfd.is_some() {
+                    "openat(dirfd, pathname, O_CREAT, ...)"
+                } else {
+                    "open(pathname, O_CREAT, ...)"
+                },
+            )?;
+
             if want_directory {
                 // O_CREAT + O_DIRECTORY is invalid.
                 return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
             }
-            // Get the mode.
-            let ([mode], _) = this.check_varargs(
-                if this.libc_ty_layout("mode_t").size.bytes() >= 4 {
-                    // `mode_t` is big enough, no C integer promotion.
-                    shim_varargs![libc::mode_t]
-                } else {
-                    // Types smaller than int get promoted to int
-                    // (see https://github.com/rust-lang/rust/issues/71915).
-                    shim_varargs![i32]
-                },
-                varargs,
-                "open(pathname, O_CREAT, ...)",
-            )?;
-            let mode = this.read_scalar(mode)?.to_u32()?;
 
-            cfg_select! {
-                unix => {
-                    // Support all modes on UNIX host
-                    use std::os::unix::fs::OpenOptionsExt;
-                    options.mode(mode);
-                }
-                _ => {
-                    // Only support default mode for non-UNIX (i.e. Windows) host
-                    if mode != 0o666 {
-                        throw_unsup_format!(
-                            "non-default mode 0o{:o} is not supported on non-Unix hosts",
-                            mode
-                        );
-                    }
-                }
-            }
-
+            // O_EXCL is only allowed if O_CREAT is set.
             let o_excl = this.eval_libc_i32("O_EXCL");
             if flag & o_excl == o_excl {
                 flag &= !o_excl;
@@ -581,8 +628,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
+        let dirfd = match dirfd {
+            Some(dirfd) => {
+                if path.is_absolute() || dirfd == this.eval_libc_i32("AT_FDCWD") {
+                    None
+                } else {
+                    // relative to dirfd, which must be a directory handle
+                    let Some(fd) = this.machine.fds.get(dirfd) else {
+                        return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+                    };
+                    let Some(dir) = fd.downcast::<DirHandle>() else {
+                        return this.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
+                    };
+                    Some(dir)
+                }
+            }
+            None => None,
+        };
+
         // Let's see what we get when we open this!
-        match open_file_or_dir(&path, options, custom_flags) {
+        options.custom_flags(custom_flags);
+        match open_file_or_dir(dirfd.as_ref().map(|d| &d.dir), &path, &options) {
             Err(err) => this.set_errno_and_return_neg1_i32(err),
             Ok(Either::Right(dir)) => {
                 // This means it cannot be a symlink, so `nofollow` is fine.
@@ -591,6 +657,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // But here we want it to always fail.
                     return this.set_errno_and_return_neg1_i32(LibcError("EISDIR"));
                 }
+
+                #[cfg(bootstrap)]
+                let path = match &dirfd {
+                    Some(dir) => dir.fallback.join(&path),
+                    None => path.into(),
+                };
 
                 let fd = this.machine.fds.insert_new(DirHandle::new(dir, &path));
                 interp_ok(Scalar::from_i32(fd))

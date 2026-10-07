@@ -26,13 +26,18 @@ pub fn tmp() -> PathBuf {
     host_to_target_path(path)
 }
 
-/// Prepare: compute filename and make sure the file does not exist.
+/// Prepare: compute path and make sure the file does not exist.
 pub fn prepare(filename: &str) -> PathBuf {
     assert!(filename.starts_with("miri"));
 
     let path = tmp().join(filename);
-    // Clean the paths for robustness.
+    // Clean the paths for robustness. Might have been a file or a directory before, who knows.
     fs::remove_file(&path).ok();
+    if cfg!(unix) {
+        // would not work on Windows
+        fs::remove_dir_all(&path).ok();
+    }
+    assert!(!path.exists());
     path
 }
 
@@ -40,16 +45,6 @@ pub fn prepare(filename: &str) -> PathBuf {
 pub fn prepare_with_content(filename: &str, content: &[u8]) -> PathBuf {
     let path = prepare(filename);
     fs::write(&path, content).unwrap();
-    path
-}
-
-/// Prepare directory: compute directory name and make sure it does not exist.
-pub fn prepare_dir(dirname: &str) -> PathBuf {
-    assert!(dirname.starts_with("miri"));
-
-    let path = tmp().join(&dirname);
-    // Clean the directory for robustness.
-    fs::remove_dir_all(&path).ok();
     path
 }
 

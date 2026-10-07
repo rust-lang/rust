@@ -39,13 +39,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // File related shims
             "open64" => {
                 // FIXME: This does not have a direct test (#3179).
-                // `open64` is variadic, the third argument is only present when the second argument
-                // has O_CREAT (or on linux O_TMPFILE, but miri doesn't support that) set
+                // "open64" means that the file is opened with O_LARGEFILE, which we always do.
                 let ([path_raw, flag], varargs) = this.check_shim_sig_variadic(
                     shim_sig!(extern "C" fn(*_, i32, ...) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.open(path_raw, flag, varargs)?;
+                let result = this.open(None, path_raw, flag, varargs)?;
+                this.write_scalar(result, dest)?;
+            }
+            "openat64" => {
+                // FIXME: This does not have a direct test (#3179).
+                // "openat64" means that the file is opened with O_LARGEFILE, which we always do.
+                let ([dirfd, path_raw, flag], varargs) = this.check_shim_sig_variadic(
+                    shim_sig!(extern "C" fn(i32, *_, i32, ...) -> i32),
+                    (link_name, abi, args),
+                )?;
+                let result = this.open(Some(dirfd), path_raw, flag, varargs)?;
                 this.write_scalar(result, dest)?;
             }
             "pread64" => {
