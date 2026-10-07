@@ -1,4 +1,4 @@
-#![allow(unused_imports, unused_attributes)]
+#![allow(unused_imports, harmful_unused_attributes)]
 
 // Regression test for https://github.com/rust-lang/rust/issues/86261:
 // `#[no_mangle]` on a `use` item.

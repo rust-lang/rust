@@ -6,7 +6,7 @@ pub(crate) struct PathParser;
 
 impl SingleAttributeParser for PathParser {
     const PATH: &[Symbol] = &[sym::path];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnAndFutureError;
     const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Mod), Error(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(

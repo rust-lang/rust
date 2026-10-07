@@ -6,7 +6,7 @@
 #![warn(unused_attributes)]
 
 #[link(name = "first")]
-//~^ WARN
+//~^ ERROR
 //~| WARN
 #[link(name = "second")]
 extern "invalid" {}
