@@ -32,10 +32,11 @@ where
                 match float {
                     // C does not have the f16 type
                     Float::F16 => None,
-                    Float::F16B => unreachable!("`f16b` unsupported on mips64"),
                     Float::F32 => Some(Reg::f32()),
                     Float::F64 => Some(Reg::f64()),
                     Float::F128 => Some(Reg::f128()),
+                    Float::F16B => unreachable!("`f16b` unsupported on mips64"),
+                    Float::PpcF128 => unreachable!("`ppcf128` unsupported on mips64"),
                 }
             }
             _ => None,
@@ -125,10 +126,7 @@ where
         // However, this implementation is consistent with GCC, which means we
         // are compatible with the de-facto ABI on the platform.
         if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
-            let kind = match scalar.primitive() {
-                Primitive::Int(_, _) | Primitive::Pointer(_) => RegKind::Integer,
-                Primitive::Float(_) => RegKind::Float,
-            };
+            let kind = RegKind::from_primitive(scalar.primitive());
             arg.cast_to_and_pad_i32(CastTarget::from(Reg { kind, size }), pad_i32);
         }
     } else if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
@@ -144,6 +142,7 @@ where
         match component {
             Numeric::Float(Float::F16B) => unreachable!("Complex<f16b> is not C-compatible"),
             Numeric::Float(Float::F16) => unreachable!("not supported on mips64"),
+            Numeric::Float(Float::PpcF128) => unreachable!("not supported on mips64"),
             Numeric::Float(Float::F32 | Float::F64) => {
                 // Only pass a Complex<f32>/Complex<f64> in FPRs when two argument slots are free.
                 if curr_offset.bytes() / slot.bytes() + 2 <= NUM_ARG_SLOTS {
