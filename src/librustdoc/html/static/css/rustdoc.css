@@ -61,6 +61,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	--hamburger-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
 		viewBox="0 0 22 22" fill="none" stroke="black">\
 		<path d="M3,5h16M3,11h16M3,17h16" stroke-width="2.75"/></svg>');
+	--sticky-offset: 0;
 }
 
 :root.sans-serif-fonts {
@@ -2205,10 +2206,10 @@ button#toggle-all-docs:hover, button#toggle-all-docs:focus-visible {
 	/* Magnifying glass */
 	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
 		width="18" height="18" viewBox="0 0 16 16">\
-	    <circle r="5" cy="7" cx="7" style="fill:none;stroke:black;stroke-width:3"/><path \
-	    d="M14.5,14.5 12,12" style="fill:none;stroke:black;stroke-width:3;stroke-linecap:round">\
-	    </path><desc>Search</desc>\
-	    </svg>');
+		<circle r="5" cy="7" cx="7" style="fill:none;stroke:black;stroke-width:3"/><path \
+		d="M14.5,14.5 12,12" style="fill:none;stroke:black;stroke-width:3;stroke-linecap:round">\
+		</path><desc>Search</desc>\
+		</svg>');
 	width: 18px;
 	height: 18px;
 	filter: var(--settings-menu-filter);
@@ -2403,6 +2404,14 @@ details.toggle {
 	position: relative;
 }
 
+h2.section-header + div > details.implementors-toggle > summary,
+details.toggle.big-toggle > summary {
+	position: sticky;
+	top: 0;
+	background: var(--main-background-color);
+	z-index: 1;
+}
+
 details.big-toggle {
 	/* This makes [-] on the same line as <summary>. */
 	contain: inline-size;
@@ -2431,18 +2440,41 @@ details.toggle > summary.hideme > span {
 }
 
 details.toggle > summary::before {
-	/* arrow pointing left */
-	background: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 12 12" \
-	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
-	<path d="M4,2l4,4l-4,4" stroke="black" fill="none" stroke-width="1px"/></svg>');
+	/* arrow pointing right */
+	background-image: var(--collapse-toggle-closed-semi-opaque);
+	background-color: var(--main-background-color);
+	background-repeat: no-repeat;
+	background-position: left 4px;
 	content: "";
 	cursor: pointer;
-	width: 16px;
-	height: 16px;
+	width: 24px;
+	height: 100%;
 	display: inline-block;
 	vertical-align: middle;
-	opacity: .5;
-	filter: var(--toggle-filter);
+}
+
+details.toggle > summary:focus::before,
+details.toggle > summary:hover::before {
+	background-image: var(--collapse-toggle-closed-opaque);
+}
+
+details.toggle[open] > summary::before {
+	/* arrow pointing down */
+	background-image: var(--collapse-toggle-open-semi-opaque);
+}
+
+details.toggle[open] > summary:focus::before,
+details.toggle[open] > summary:hover::before {
+	background-image: var(--collapse-toggle-open-opaque);
+}
+
+details.toggle[open] > summary::after {
+	content: "Collapse";
+}
+
+details.toggle [id] {
+	/* This is used to prevent anchors from going below the sticky `details`. */
+	scroll-margin-top: var(--sticky-offset);
 }
 
 details.toggle > summary.hideme > span,
@@ -2465,11 +2497,6 @@ details.toggle > summary.hideme::after {
 	content: "";
 }
 
-details.toggle > summary:focus::before,
-details.toggle > summary:hover::before {
-	opacity: 1;
-}
-
 details.toggle > summary:focus-visible::before {
 	/* The SVG is black, and gets turned white using a filter in the dark themes.
 	   Do the same with the outline.
@@ -2490,7 +2517,7 @@ details.toggle > summary.hideme::before {
 details.toggle > summary:not(.hideme)::before {
 	position: absolute;
 	left: -24px;
-	top: 4px;
+	top: 0;
 }
 
 .impl-items > details.toggle > summary:not(.hideme)::before,
@@ -2515,7 +2542,9 @@ details.toggle > summary:not(.hideme)::before {
 
 details.big-toggle > summary:not(.hideme)::before {
 	left: -34px;
-	top: 9px;
+	width: 34px;
+	height: 100%;
+	background-position: left 9px;
 }
 
 /* When a "hideme" summary is open and the "Expand description" or "Show
@@ -2529,17 +2558,6 @@ details.toggle[open] > summary.hideme {
 
 details.toggle[open] > summary.hideme > span {
 	display: none;
-}
-
-details.toggle[open] > summary::before {
-	/* arrow pointing down */
-	background: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 12 12" \
-	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
-	<path d="M2,4l4,4l4,-4" stroke="black" fill="none" stroke-width="1px"/></svg>');
-}
-
-details.toggle[open] > summary::after {
-	content: "Collapse";
 }
 
 details.toggle:not([open]) > summary .docblock {
@@ -2906,7 +2924,8 @@ in src-script.js and main.js
 
 	#main-content > details.toggle > summary::before,
 	#main-content > div > details.toggle > summary::before {
-		left: -11px;
+		left: -24px;
+		width: 24px;
 	}
 
 	/* sidebar button becomes topbar button */
@@ -2966,6 +2985,7 @@ in src-script.js and main.js
 	.impl-items > details.toggle > summary:not(.hideme)::before,
 	#main-content > .methods > details.toggle > summary:not(.hideme)::before {
 		left: -20px;
+		width: 20px;
 	}
 
 	/* Align summary-nested and unnested item-info gizmos. */
@@ -2987,6 +3007,12 @@ in src-script.js and main.js
 	html:not(.src-sidebar-expanded) .src #sidebar-button > a:hover,
 	html:not(.src-sidebar-expanded) .src #sidebar-button > a:focus-visible {
 		background-color: var(--sidebar-background-color);
+	}
+
+	h2.section-header + div > details.implementors-toggle > summary,
+	details.toggle.big-toggle > summary {
+		top: var(--topbar-height);
+		margin-left: 10px;
 	}
 }
 
@@ -3316,6 +3342,18 @@ by default.
 	--notable-badge-green: oklch(0.88 0.21 150);
 	--notable-badge-blue: oklch(0.88 0.21 240);
 	--notable-badge-violet: oklch(0.88 0.21 300);
+	--collapse-toggle-closed-semi-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+		viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M4,2l4,4l-4,4" \
+		stroke="black" stroke-opacity="0.5" fill="none" stroke-width="1px"/></svg>');
+	--collapse-toggle-closed-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+		viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M4,2l4,4l-4,4" \
+		stroke="black" fill="none" stroke-width="1px"/></svg>');
+	--collapse-toggle-open-semi-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+		viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M2,4l4,4l4,-4" \
+		stroke="black" stroke-opacity="0.5" fill="none" stroke-width="1px"/></svg>');
+	--collapse-toggle-open-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+		viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M2,4l4,4l4,-4" \
+		stroke="black" fill="none" stroke-width="1px"/></svg>');
 }
 /* End theme: light */
 
@@ -3432,6 +3470,18 @@ by default.
 	--notable-badge-green: oklch(0.55 0.21 150);
 	--notable-badge-blue: oklch(0.55 0.21 240);
 	--notable-badge-violet: oklch(0.55 0.21 300);
+	--collapse-toggle-closed-semi-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+		viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M4,2l4,4l-4,4" \
+		stroke="white" stroke-opacity="0.5" fill="none" stroke-width="1px"/></svg>');
+	--collapse-toggle-closed-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+		viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M4,2l4,4l-4,4" \
+		stroke="white" fill="none" stroke-width="1px"/></svg>');
+	--collapse-toggle-open-semi-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+		viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M2,4l4,4l4,-4" \
+		stroke="white" stroke-opacity="0.5" fill="none" stroke-width="1px"/></svg>');
+	--collapse-toggle-open-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+		viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M2,4l4,4l4,-4" \
+		stroke="white" fill="none" stroke-width="1px"/></svg>');
 }
 /* End theme: dark */
 
@@ -3552,6 +3602,18 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--notable-badge-green: oklch(0.49 0.21 150);
 	--notable-badge-blue: oklch(0.49 0.21 240);
 	--notable-badge-violet: oklch(0.49 0.21 300);
+	--collapse-toggle-closed-semi-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+		viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M4,2l4,4l-4,4" \
+		stroke="white" stroke-opacity="0.5" fill="none" stroke-width="1px"/></svg>');
+	--collapse-toggle-closed-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+		viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M4,2l4,4l-4,4" \
+		stroke="white" fill="none" stroke-width="1px"/></svg>');
+	--collapse-toggle-open-semi-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+		viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M2,4l4,4l4,-4" \
+		stroke="white" stroke-opacity="0.5" fill="none" stroke-width="1px"/></svg>');
+	--collapse-toggle-open-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+		viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M2,4l4,4l4,-4" \
+		stroke="white" fill="none" stroke-width="1px"/></svg>');
 }
 
 :root[data-theme="ayu"] h1,
