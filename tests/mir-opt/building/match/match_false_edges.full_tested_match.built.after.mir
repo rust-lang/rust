@@ -105,6 +105,7 @@ fn full_tested_match() -> () {
 
     bb13: {
         StorageDead(_7);
+        FakeRead(ForMatchGuard, _3);
         StorageDead(_6);
         goto -> bb9;
     }
@@ -123,6 +124,7 @@ fn full_tested_match() -> () {
     }
 
     bb16 (cleanup): {
+        FakeRead(ForMatchGuard, _3);
         resume;
     }
 }
