@@ -1427,6 +1427,10 @@ pub enum Float {
     F32,
     F64,
     F128,
+    /// `ppcf128`. This is not a builtin type in Rust (it is exposed as a lang item),
+    /// but it is a builtin type in LLVM so needs to be explicitly represented
+    /// in the backend.
+    PpcF128,
 }
 
 impl Float {
@@ -1439,6 +1443,7 @@ impl Float {
             F32 => Size::from_bits(32),
             F64 => Size::from_bits(64),
             F128 => Size::from_bits(128),
+            PpcF128 => Size::from_bits(128),
         }
     }
 
@@ -1451,6 +1456,7 @@ impl Float {
             F32 => dl.f32_align,
             F64 => dl.f64_align,
             F128 => dl.f128_align,
+            PpcF128 => dl.f128_align,
         })
     }
 
@@ -1463,6 +1469,7 @@ impl Float {
             F32 => "f32",
             F64 => "f64",
             F128 => "f128",
+            PpcF128 => "ppcf128",
         }
     }
 }
@@ -1487,7 +1494,10 @@ impl Numeric {
     pub fn reg_kind(self) -> RegKind {
         match self {
             Numeric::Int(_, _) => RegKind::Integer,
-            Numeric::Float(_) => RegKind::Float,
+            Numeric::Float(Float::PpcF128) => RegKind::PpcF128,
+            Numeric::Float(Float::F16 | Float::F16B | Float::F32 | Float::F64 | Float::F128) => {
+                RegKind::Float
+            }
         }
     }
 }

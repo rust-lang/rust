@@ -1,6 +1,6 @@
 //@ needs-asm-support
 //@ check-pass
-//@ reference: asm.options.supported-options.noreturn
+//@ reference: asm.options.supported-options-noreturn
 
 #![crate_type = "rlib"]
 

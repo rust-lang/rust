@@ -1,5 +1,4 @@
 //@ run-pass
-//@ reference: layout.aggregate.struct-size-align
 //@ edition: 2018
 
 #[repr(align(64))]

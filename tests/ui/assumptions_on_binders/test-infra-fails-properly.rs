@@ -74,4 +74,36 @@ core::test_binder_constraints! {
     }
 }
 
+core::test_binder_constraints! {
+    impl {
+        forall<'a> where 'a: 'static {
+        } expect {
+            ambiguity
+            //~^ ERROR forall expect clause failed
+        }
+    }
+}
+
+core::test_binder_constraints! {
+    impl {
+        forall<'a> where 'a: 'static {
+            //~^ ERROR forall expect clause failed
+            //~| ERROR unable to satisfy constraints involving placeholders due to unknown implied bounds
+            ambiguity
+        } expect {
+        }
+    }
+}
+
+core::test_binder_constraints! {
+    impl {
+        forall<'a> where 'a: 'static {
+            //~^ ERROR unable to satisfy constraints involving placeholders due to unknown implied bounds
+            ambiguity
+        } expect {
+            ambiguity
+        }
+    }
+}
+
 fn main() {}
