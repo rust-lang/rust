@@ -831,8 +831,11 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
         idx: &mut usize,
         dst: PlaceRef<'tcx, RValue<'gcc>>,
     ) {
+        let func = bx.current_func();
+        // The return pointer counted by cg_ssa is a hidden parameter in GCC.
+        let hidden_params = bx.functions_with_indirect_return.borrow().contains_key(&func) as usize;
         let mut next = || {
-            let val = bx.current_func().get_param(*idx as i32);
+            let val = func.get_param((*idx - hidden_params) as i32);
             *idx += 1;
             val.to_rvalue()
         };

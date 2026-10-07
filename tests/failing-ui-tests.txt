@@ -16,6 +16,9 @@ tests/ui/thir-print/offset_of.rs
 tests/ui/asm/x86_64/global_asm_escape.rs
 tests/ui/lto/all-crates.rs
 tests/ui/explicit-tail-calls/tailcc-no-signature-restriction.rs
+tests/ui/explicit-tail-calls/become-indirect-return.rs
+tests/ui/explicit-tail-calls/indirect.rs
 tests/ui/abi/rust-tail-cc.rs
 tests/ui/abi/rust-preserve-none-cc.rs
 tests/ui/extern/extern-types-field-offset.rs
+

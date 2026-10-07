@@ -935,7 +935,9 @@ fn test_libcore_doctests(env: &Env, args: &TestArg) -> Result<(), String> {
         // `core::io::ErrorKind`'s `Display` impl declares `#![feature(core_io)]` upstream: without
         // it, that doctest fails to compile with `E0658` on any backend.
         &"-Zforce-unstable-if-unmarked",
-        // FIXME: one test cannot compile due to an upstream bug in the new trait solver.
+        // FIXME: one test (mem::transmutability::Assume::alignment in core/src/mem/transmutability.rs)
+        // cannot compile due to an upstream bug in the new trait solver.
+        // See: https://github.com/rust-lang/rust/issues/161251
         &"-Znext-solver=coherence",
     ];
     for flag in &rustflags {
