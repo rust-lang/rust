@@ -21,12 +21,12 @@ mod search_graph;
 mod trait_goals;
 
 use derive_where::derive_where;
-use rustc_middle::ty::{self as mty, Ty as MiddleTy, TyCtxt};
+use rustc_middle::ty::{self as mty, Ty as MiddleTy};
 use rustc_transmute::{Assume, Condition};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, Const, Interner, Region, TypeVisitableExt, Upcast};
+use rustc_type_ir::{self as ty, Const, Interner, Region, TraitClause, TypeVisitableExt, Upcast};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::instrument;
 
@@ -497,45 +497,41 @@ pub struct GoalEvaluation<I: Interner> {
 }
 
 /// Flatten the `Condition` tree into a conjunction of predicates.
-#[instrument(level = "debug", skip(tcx, predicate))]
-pub fn flatten_answer_tree<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    predicate: mty::TraitClause<'tcx>,
-    cond: Condition<mty::Region<'tcx>, MiddleTy<'tcx>>,
+#[instrument(level = "debug", skip(interner, predicate))]
+pub fn flatten_answer_tree<I: Interner>(
+    interner: I,
+    predicate: TraitClause<I>,
+    cond: Condition<Region<I>, I::Ty>,
     assume: Assume,
-) -> ThinVec<mty::Predicate<'tcx>> {
+) -> ThinVec<I::Predicate> {
     match cond {
         // FIXME(bryangarza): Add separate `IfAny` case, instead of treating as `IfAll`
         // Not possible until the trait solver supports disjunctions of obligations
         Condition::IfAll(conds) | Condition::IfAny(conds) => conds
             .into_iter()
-            .flat_map(|cond| flatten_answer_tree(tcx, predicate, cond, assume))
+            .flat_map(|cond| flatten_answer_tree(interner, predicate, cond, assume))
             .collect(),
         Condition::Immutable { ty } => {
             let trait_ref = ty::TraitRef::new(
-                tcx,
-                tcx.require_trait_lang_item(SolverTraitLangItem::Freeze),
-                [mty::GenericArg::from(ty)],
+                interner,
+                interner.require_trait_lang_item(SolverTraitLangItem::Freeze),
+                [I::GenericArg::from(ty)],
             );
-            thin_vec![trait_ref.upcast(tcx)]
+            thin_vec![trait_ref.upcast(interner)]
         }
         Condition::Outlives { long, short } => {
             let outlives = ty::OutlivesClause(long, short);
-            thin_vec![outlives.upcast(tcx)]
+            thin_vec![outlives.upcast(interner)]
         }
         Condition::Transmutable { src, dst } => {
             let transmute_trait = predicate.def_id();
             let assume = predicate.trait_ref.args.const_at(2);
             let trait_ref = ty::TraitRef::new(
-                tcx,
+                interner,
                 transmute_trait,
-                [
-                    mty::GenericArg::from(dst),
-                    mty::GenericArg::from(src),
-                    mty::GenericArg::from(assume),
-                ],
+                [I::GenericArg::from(dst), I::GenericArg::from(src), I::GenericArg::from(assume)],
             );
-            thin_vec![trait_ref.upcast(tcx)]
+            thin_vec![trait_ref.upcast(interner)]
         }
     }
 }
