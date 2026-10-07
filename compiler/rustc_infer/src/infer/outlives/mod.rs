@@ -146,6 +146,13 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().unwrap_region_constraints().take_and_reset_data()
     }
 
+    /// Drain completed query constraints without allocating an empty constraint.
+    pub fn take_solver_region_constraints(
+        &self,
+    ) -> Option<Box<rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>>> {
+        todo!("remove this")
+    }
+
     /// Gives temporary access to the region constraint data.
     pub fn with_region_constraints<R>(
         &self,

@@ -252,6 +252,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn destructure_solver_region_constraints_for_borrowck(
         &self,
+        constraint: SolverRegionConstraint<'tcx>,
         // this is always ConstraintConversion but lol
         mut conversion: impl TypeOutlivesDelegate<'tcx>,
         known_type_outlives: &[PolyTypeOutlivesClause<'tcx>],
