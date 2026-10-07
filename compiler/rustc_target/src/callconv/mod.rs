@@ -565,7 +565,9 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         // Only integers have signedness
         if let BackendRepr::Scalar(scalar) = self.layout.backend_repr
             && let Primitive::Int(i, signed) = scalar.primitive()
-            && i.size().bits() < bits
+            // bools are i1 but their primitive is i8. Unlike other types,
+            // bools can be extended to their primitive size.
+            && (i.size().bits() < bits || self.layout.backend_repr.is_bool())
             && let PassMode::Direct(ref mut attrs) = self.mode
         {
             if signed {
