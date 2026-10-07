@@ -1,6 +1,8 @@
 #!/bin/bash
 # For mingw builds use a vendored mingw.
 
+set -x
+
 set -euo pipefail
 IFS=$'\n\t'
 
@@ -82,7 +84,46 @@ if isWindows && isKnownToBeMingwBuild; then
                 ;;
         esac
 
-        ciCommandAddPath "$(cygpath -m "$(pwd)/${mingw_dir}/bin")"
+        bindir="$(pwd)/${mingw_dir}/bin"
+        ciCommandAddPath "$(cygpath -m "$bindir")"
+
+        # FIXME(gcc16): We test with GCC15, which has f16 symbols incompatible with the
+        # ABI used by LLVM and GCC16+. Hack around this by deleting the symbols from
+        # `libgcc`, meaning our symbols from `compiler-builtins` will always be picked.
+        if [[ "${toolchain}" = *"x86_64"* ]]; then
+            tmp="$(mktemp -d)"
+            trap 'rm -rf "$tmp"' EXIT
+            cd "$tmp"
+
+            libgcc="$("$bindir/gcc" -print-libgcc-file-name)"
+            ar -x "$libgcc"
+
+            for f in *.o; do
+                echo "$f"
+                "$bindir/objcopy" \
+                    --strip-unneeded-symbol=__extendhfsf2 \
+                    --strip-unneeded-symbol=__extendhfdf2 \
+                    --strip-unneeded-symbol=__extendhftf2 \
+                    --strip-unneeded-symbol=__truncsfhf2 \
+                    --strip-unneeded-symbol=__truncdfhf2 \
+                    --strip-unneeded-symbol=__trunctfhf2 \
+                    --strip-unneeded-symbol=__fixhfsi \
+                    --strip-unneeded-symbol=__fixhfdi \
+                    --strip-unneeded-symbol=__fixhfti \
+                    --strip-unneeded-symbol=__fixunshfsi \
+                    --strip-unneeded-symbol=__fixunshfdi \
+                    --strip-unneeded-symbol=__fixunshfti \
+                    --strip-unneeded-symbol=__floatsihf \
+                    --strip-unneeded-symbol=__floatdihf \
+                    --strip-unneeded-symbol=__floattihf \
+                    --strip-unneeded-symbol=__floatunsihf \
+                    --strip-unneeded-symbol=__floatundihf \
+                    --strip-unneeded-symbol=__floatuntihf \
+                    "$f"
+            done
+
+            ar -r "$libgcc" *
+        fi
 
         # Initialize mingw for the user.
         # This should be done by github but isn't for some reason.
