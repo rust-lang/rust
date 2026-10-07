@@ -499,6 +499,10 @@ fn unify_query_var_values<D, I>(
     assert_eq!(original_values.len(), var_values.len());
 
     for (&orig, response) in iter::zip(original_values, var_values.var_values.iter()) {
+        if orig == response {
+            continue;
+        }
+
         let mut must_eq = ResponseRelating::new(&**delegate, span);
         must_eq.relate(orig, response).unwrap();
     }
