@@ -520,7 +520,8 @@ pub enum FileName {
     CliCrateAttr(Hash64),
     /// Custom sources for explicit parser calls from plugins and drivers.
     Custom(String),
-    DocTest(PathBuf, isize),
+    /// Custom path for doctests
+    DocTest(RealFileName, isize),
     /// Post-substitution inline assembly from LLVM.
     InlineAsm(Hash64),
 }
@@ -543,7 +544,7 @@ impl fmt::Display for FileNameDisplay<'_> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use FileName::*;
         match *self.inner {
-            Real(ref name) => {
+            Real(ref name) | DocTest(ref name, _) => {
                 write!(fmt, "{}", name.to_string_lossy(self.display_pref))
             }
             CfgSpec(_) => write!(fmt, "<cfgspec>"),
@@ -552,7 +553,6 @@ impl fmt::Display for FileNameDisplay<'_> {
             ProcMacroSourceCode(_) => write!(fmt, "<proc-macro source code>"),
             CliCrateAttr(_) => write!(fmt, "<crate attribute>"),
             Custom(ref s) => write!(fmt, "<{s}>"),
-            DocTest(ref path, _) => write!(fmt, "{}", path.display()),
             InlineAsm(_) => write!(fmt, "<inline asm>"),
         }
     }
@@ -643,7 +643,7 @@ impl FileName {
         FileName::CliCrateAttr(hasher.finish())
     }
 
-    pub fn doc_test_source_code(path: PathBuf, line: isize) -> FileName {
+    pub fn doc_test_source_code(path: RealFileName, line: isize) -> FileName {
         FileName::DocTest(path, line)
     }
 
@@ -660,7 +660,7 @@ impl FileName {
     pub fn into_local_path(self) -> Option<PathBuf> {
         match self {
             FileName::Real(path) => path.into_local_path(),
-            FileName::DocTest(path, _) => Some(path),
+            FileName::DocTest(path, _) => path.into_local_path(),
             _ => None,
         }
     }
