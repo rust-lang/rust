@@ -199,7 +199,7 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
         }
     }
 
-    if n >= WORD_COPY_THRESHOLD {
+    if !cfg!(feature = "optimize_for_size") && n >= WORD_COPY_THRESHOLD {
         // Align dest
         // Because of n >= 2 * WORD_SIZE, dst_misalignment < n
         let dest_misalignment = (dest as usize).wrapping_neg() & WORD_MASK;
@@ -318,7 +318,7 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
     let mut dest = dest.wrapping_add(n);
     let mut src = src.wrapping_add(n);
 
-    if n >= WORD_COPY_THRESHOLD {
+    if !cfg!(feature = "optimize_for_size") && n >= WORD_COPY_THRESHOLD {
         // Align dest
         // Because of n >= 2 * WORD_SIZE, dst_misalignment < n
         let dest_misalignment = dest as usize & WORD_MASK;
@@ -371,20 +371,22 @@ pub unsafe fn set_bytes(mut s: *mut u8, c: u8, mut n: usize) {
         }
     }
 
-    if n >= WORD_COPY_THRESHOLD {
-        // Align s
-        // Because of n >= 2 * WORD_SIZE, dst_misalignment < n
-        let misalignment = (s as usize).wrapping_neg() & WORD_MASK;
-        set_bytes_bytes(s, c, misalignment);
-        s = s.wrapping_add(misalignment);
-        n -= misalignment;
+    if !cfg!(feature = "optimize_for_size") {
+        if n >= WORD_COPY_THRESHOLD {
+            // Align s
+            // Because of n >= 2 * WORD_SIZE, dst_misalignment < n
+            let misalignment = (s as usize).wrapping_neg() & WORD_MASK;
+            set_bytes_bytes(s, c, misalignment);
+            s = s.wrapping_add(misalignment);
+            n -= misalignment;
 
-        let n_words = n & !WORD_MASK;
-        set_bytes_words(s, c, n_words);
-        s = s.wrapping_add(n_words);
-        n -= n_words;
-    } else {
-        cold_path();
+            let n_words = n & !WORD_MASK;
+            set_bytes_words(s, c, n_words);
+            s = s.wrapping_add(n_words);
+            n -= n_words;
+        } else {
+            cold_path();
+        }
     }
     set_bytes_bytes(s, c, n);
 }
