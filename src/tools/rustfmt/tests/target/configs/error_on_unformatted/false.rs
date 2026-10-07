@@ -1,4 +1,4 @@
-// rustfmt-error_on_unformatted: false
+//@ rustfmt-error_on_unformatted: false
 // Error on line overflow comment or string literals.
 
 // aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

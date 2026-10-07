@@ -1,4 +1,4 @@
-// rustfmt-use_field_init_shorthand: true
+//@ rustfmt-use_field_init_shorthand: true
 
 struct MyStruct(u32);
 struct AnotherStruct {

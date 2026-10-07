@@ -1,5 +1,5 @@
-// rustfmt-wrap_comments: true
-// rustfmt-comment_width: 100
+//@ rustfmt-wrap_comments: true
+//@ rustfmt-comment_width: 100
 
 fn f() {
     // Note: off-by-one bug: the 100 width wide line should not be formatted

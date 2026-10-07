@@ -1,4 +1,4 @@
-// rustfmt-wrap_comments: true
+//@ rustfmt-wrap_comments: true
 
 // https://github.com/rust-lang/rustfmt/issues/4909
 pub enum E {

@@ -1,5 +1,5 @@
-// rustfmt-edition: 2021
-// rustfmt-max_width: 125
+//@ rustfmt-edition: 2021
+//@ rustfmt-max_width: 125
 pub use crate::r#_StructuredEncryptionUtil_Compile::CanonCryptoItem;
 pub use crate::r#_StructuredEncryptionUtil_Compile::MessageID;
 pub use crate::r#_Wrappers_Compile::Outcome;

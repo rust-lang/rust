@@ -128,7 +128,7 @@ fn verify_config_used(path: &Path, config_name: &str) {
         let entry = entry.expect("couldn't get directory entry");
         let path = entry.path();
         if path.extension().map_or(false, |f| f == "rs") {
-            // check if "// rustfmt-<config_name>:" appears in the file.
+            // check if "//@ rustfmt-<config_name>:" appears in the file.
             let filebuf = BufReader::new(
                 fs::File::open(&path)
                     .unwrap_or_else(|_| panic!("couldn't read file {}", path.display())),
@@ -138,7 +138,7 @@ fn verify_config_used(path: &Path, config_name: &str) {
                     .lines()
                     .map(Result::unwrap)
                     .take_while(|l| l.starts_with("//"))
-                    .any(|l| l.starts_with(&format!("// rustfmt-{}", config_name))),
+                    .any(|l| l.starts_with(&format!("//@ rustfmt-{}", config_name))),
                 "config option file {} does not contain expected config name",
                 path.display()
             );
@@ -1016,7 +1016,7 @@ fn get_config(
     .expect("invalid TOML")
 }
 
-// Reads significant comments of the form: `// rustfmt-key: value` into a hash map.
+// Reads significant comments of the form: `//@ rustfmt-key: value` into a hash map.
 fn read_significant_comments(file_name: &Path) -> HashMap<String, String> {
     let file = fs::File::open(file_name)
         .unwrap_or_else(|_| panic!("couldn't read file {}", file_name.display()));

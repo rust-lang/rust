@@ -1,4 +1,4 @@
-// rustfmt-reorder_impl_items: false
+//@ rustfmt-reorder_impl_items: false
 
 struct Dummy;
 

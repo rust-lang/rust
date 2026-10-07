@@ -1,5 +1,5 @@
-// rustfmt-style_edition: 2021
-// rustfmt-max_width: 100
+//@ rustfmt-style_edition: 2021
+//@ rustfmt-max_width: 100
 
 impl<T: CapnpWrite>
     IntoMessage<

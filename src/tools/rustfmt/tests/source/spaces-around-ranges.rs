@@ -1,4 +1,4 @@
-// rustfmt-spaces_around_ranges: true
+//@ rustfmt-spaces_around_ranges: true
 
 fn bar(v: &[u8]) {}
 

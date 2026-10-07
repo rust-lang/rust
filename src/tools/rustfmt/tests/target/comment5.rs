@@ -1,5 +1,5 @@
-// rustfmt-normalize_comments: true
-// rustfmt-wrap_comments: true
+//@ rustfmt-normalize_comments: true
+//@ rustfmt-wrap_comments: true
 
 //@ special comment
 //@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec adiam lectus.
