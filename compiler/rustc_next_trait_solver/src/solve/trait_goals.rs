@@ -685,12 +685,12 @@ where
                     assume,
                 )?;
 
+                let tcx = ecx.cx();
                 ecx.add_goals(
                     GoalSource::Misc,
                     predicates
                         .into_iter()
-                        .map(|predicate| Goal::new(ecx.cx(), goal.param_env, predicate))
-                        .collect::<thin_vec::ThinVec<_>>(),
+                        .map(|predicate| Goal::new(tcx, goal.param_env, predicate)),
                 )?;
 
                 ecx.evaluate_added_goals_and_make_canonical_response(certainty)
