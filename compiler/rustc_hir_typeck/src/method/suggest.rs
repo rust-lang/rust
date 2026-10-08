@@ -2330,8 +2330,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     // We found a method but either the expression is not a method call or
                     // the argument count didn't match.
+                    let mut span: MultiSpan = tcx.def_span(similar_candidate.def_id).into();
+                    span.push_span_context(
+                        tcx.def_span(similar_candidate.container_id(tcx)).shrink_to_lo(),
+                    );
                     err.span_help(
-                        tcx.def_span(similar_candidate.def_id),
+                        span,
                         format!(
                             "{msg}{}",
                             if let None = args { "" } else { ", but with different arguments" },
@@ -2365,7 +2369,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             // The expression is a function or method call, but the item we found is an
             // associated const or type.
-            err.span_help(tcx.def_span(similar_candidate.def_id), msg);
+            let mut span: MultiSpan = tcx.def_span(similar_candidate.def_id).into();
+            span.push_span_context(
+                tcx.def_span(similar_candidate.container_id(tcx)).shrink_to_lo(),
+            );
+            err.span_help(span, msg);
         }
     }
 
