@@ -733,7 +733,7 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
     ) -> Self::T {
         use crate::mir::TerminatorKind;
         match self {
-            mir::TerminatorKind::Goto { target } => {
+            mir::TerminatorKind::Goto { target, .. } => {
                 TerminatorKind::Goto { target: target.as_usize() }
             }
             mir::TerminatorKind::SwitchInt { discr, targets } => TerminatorKind::SwitchInt {

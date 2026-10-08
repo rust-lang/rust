@@ -7,7 +7,7 @@ use rustc_abi::{
 };
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
-use rustc_attr_ir::AttributeKind;
+use rustc_attr_ir::UnrollAttr;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::packed::Pu128;
 use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
@@ -140,7 +140,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         bx: &mut Bx,
         target: mir::BasicBlock,
         mergeable_succ: bool,
-        loop_hint_attrs: &[AttributeKind],
+        loop_hint_attrs: &[UnrollAttr],
     ) -> MergingSucc {
         let (needs_landing_pad, is_cleanupret) = self.llbb_characteristics(fx, target);
         if mergeable_succ && !needs_landing_pad && !is_cleanupret {
@@ -644,6 +644,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 load_cast(bx, cast_ty, llslot, self.fn_abi.ret.layout.align.abi)
             }
+            PassMode::IndirectUnsized { .. } => bug!("unsized returns are not supported"),
         };
         bx.ret(llval);
     }
@@ -1285,6 +1286,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // Copy the arguments that use `PassMode::Indirect { mode: IndirectMode::Pointer , ..}`
             // to temporary stack allocations. See the comment above.
             for (i, arg) in first_args.iter().enumerate() {
+                if matches!(fn_abi.args[i].mode, PassMode::IndirectUnsized { .. }) {
+                    bug!("extern \"tail\" arguments must not be unsized");
+                }
+
                 if !matches!(
                     fn_abi.args[i].mode,
                     PassMode::Indirect { mode: IndirectMode::Pointer, .. }
@@ -1676,8 +1681,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 MergingSucc::False
             }
 
-            mir::TerminatorKind::Goto { target } => {
-                helper.funclet_br(self, bx, target, mergeable_succ(), &terminator.loop_hint_attrs)
+            mir::TerminatorKind::Goto { target, ref loop_hint_attrs } => {
+                helper.funclet_br(self, bx, target, mergeable_succ(), loop_hint_attrs)
             }
 
             mir::TerminatorKind::SwitchInt { ref discr, ref targets } => {
@@ -1981,16 +1986,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 _ => bug!("codegen_argument: {:?} invalid for pair argument", op),
             },
-            PassMode::Indirect { attrs: _, meta_attrs: Some(_), address_space: _, mode: _ } => {
-                match op.val {
-                    Ref(PlaceValue { llval: a, llextra: Some(b), .. }) => {
-                        llargs.push(a);
-                        llargs.push(b);
-                        return;
-                    }
-                    _ => bug!("codegen_argument: {:?} invalid for unsized indirect argument", op),
+            PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => match op.val {
+                Ref(PlaceValue { llval: a, llextra: Some(b), .. }) => {
+                    llargs.push(a);
+                    llargs.push(b);
+                    return;
                 }
-            }
+                _ => bug!("codegen_argument: {:?} invalid for unsized indirect argument", op),
+            },
             _ => {}
         }
 
@@ -2017,7 +2020,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     (scratch.val.llval, scratch.val.align, true)
                 }
                 PassMode::Direct(_) => (op.immediate(), arg.layout.align.abi, false),
-                PassMode::Ignore | PassMode::Pair(..) => unreachable!("handled above"),
+                PassMode::Ignore | PassMode::Pair(..) | PassMode::IndirectUnsized { .. } => {
+                    unreachable!("handled above")
+                }
             },
             Ref(op_place_val) => match arg.mode {
                 PassMode::Indirect { attrs, mode, .. } => {
@@ -2044,6 +2049,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         (op_place_val.llval, op_place_val.align, true)
                     }
                 }
+                PassMode::IndirectUnsized { .. } => unreachable!("handled above"),
                 _ => (op_place_val.llval, op_place_val.align, true),
             },
             ZeroSized => match arg.mode {

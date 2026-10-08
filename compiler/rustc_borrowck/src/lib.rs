@@ -978,7 +978,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
                 }
             }
 
-            TerminatorKind::Goto { target: _ }
+            TerminatorKind::Goto { target: _, loop_hint_attrs: _ }
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Unreachable
             | TerminatorKind::UnwindResume

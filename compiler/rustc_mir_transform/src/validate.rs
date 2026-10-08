@@ -209,7 +209,7 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
                     }
                     Some(e) if *e == s => (),
                     Some(e) => self.fail(
-                        Location { block: bb, statement_index: 0 },
+                        bb.start_location(),
                         format!(
                             "Cleanup control flow violation: The blocks dominated by {:?} have edges to both {:?} and {:?}",
                             bb,
@@ -231,7 +231,7 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
                 let no_cycle = stack.insert(parent);
                 if !no_cycle {
                     self.fail(
-                        Location { block: bb, statement_index: 0 },
+                        bb.start_location(),
                         format!(
                             "Cleanup control flow violation: Cycle involving edge {bb:?} -> {parent:?}",
                         ),
@@ -339,7 +339,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         match &terminator.kind {
-            TerminatorKind::Goto { target } => {
+            TerminatorKind::Goto { target, .. } => {
                 self.check_edge(location, *target, EdgeKind::Normal);
             }
             TerminatorKind::SwitchInt { targets, discr: _ } => {

@@ -29,7 +29,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUnneededDrops {
                 continue;
             }
             debug!("SUCCESS: replacing `drop` with goto({:?})", target);
-            terminator.kind = TerminatorKind::Goto { target };
+            terminator.kind = TerminatorKind::goto(target);
             should_simplify = true;
         }
 

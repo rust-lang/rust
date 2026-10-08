@@ -17,7 +17,7 @@ use rustc_attr_ir::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, MacroKinds};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, ModId};
 use rustc_metadata::creader::CStore;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypingMode};
 use rustc_span::symbol::kw;
@@ -436,7 +436,6 @@ fn transitive_reexport_path_inner(
     def_id: DefId,
     callers: &mut Vec<DefId>,
 ) -> Option<Vec<Symbol>> {
-    use rustc_hir::def_id::ModId;
     use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 
     if let Some(cnum) = def_id.as_crate_root() {
@@ -644,7 +643,12 @@ fn url_parts(
     relative_to: &[Symbol],
     jump_to_def_path_depth: Option<usize>,
 ) -> Result<(UrlPartsBuilder, bool), HrefError> {
-    match cache.extern_locations[&def_id.krate] {
+    let location = if def_id.krate == LOCAL_CRATE {
+        &ExternalLocation::Local
+    } else {
+        &cache.extern_locations[&def_id.krate]
+    };
+    match *location {
         ExternalLocation::Remote { ref url, is_absolute } => {
             let depth = jump_to_def_path_depth.unwrap_or(relative_to.len());
             let mut builder = remote_url_prefix(url, is_absolute, depth);

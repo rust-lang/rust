@@ -120,7 +120,7 @@ pub(crate) fn check_liveness<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Den
                 if let TerminatorKind::Return | TerminatorKind::UnwindResume =
                     bbdata.terminator().kind
                 {
-                    bbdata.terminator_mut().kind = TerminatorKind::Goto { target: START_BLOCK };
+                    bbdata.terminator_mut().kind = TerminatorKind::goto(START_BLOCK);
                 }
             }
             body = &body_mem;
@@ -434,7 +434,7 @@ fn find_self_assignments<'tcx>(
                             statement_index: bb_data.statements.len(),
                         });
                         // Target block
-                        self_assign.insert(Location { block: *target, statement_index: 0 });
+                        self_assign.insert(target.start_location());
                     }
                 }
                 // Straight self-assignment.
@@ -1418,7 +1418,7 @@ impl<'tcx> Visitor<'tcx> for TransferFunction<'_, 'tcx> {
         match terminator.kind {
             TerminatorKind::Return
             | TerminatorKind::Yield { .. }
-            | TerminatorKind::Goto { target: START_BLOCK } // Inserted for the `FnMut` case.
+            | TerminatorKind::Goto { target: START_BLOCK, .. } // Inserted for the `FnMut` case.
             | TerminatorKind::Call { target: None, .. } // unwinding could be caught
                 if self.capture_kind != CaptureKind::None =>
             {
