@@ -366,9 +366,7 @@ pub trait HygieneEntityRemapper<TIdx: From<u32> + Copy> {
         let start = self.first_non_det_index();
         let range = start..self.len() as u32;
 
-        let start = range.start;
-
-        let mut indices_to_remap = range.collect::<Vec<u32>>();
+        let mut indices_to_remap = range.collect::<Vec<_>>();
         indices_to_remap.sort_by_key(|&idx| self.hash(From::from(idx)));
 
         let mut remapping = FxHashMap::<u32, u32>::default();
