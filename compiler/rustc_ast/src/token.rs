@@ -101,8 +101,8 @@ impl fmt::Display for MetaVarKind {
             MetaVarKind::Item => sym::item,
             MetaVarKind::Block => sym::block,
             MetaVarKind::Stmt => sym::stmt,
-            MetaVarKind::Pat(PatParam { inferred: true } | PatWithOr) => sym::pat,
-            MetaVarKind::Pat(PatParam { inferred: false }) => sym::pat_param,
+            MetaVarKind::Pat(Pat2018 | PatWithOr) => sym::pat,
+            MetaVarKind::Pat(PatParam) => sym::pat_param,
             MetaVarKind::Expr { kind: Expr2021 { inferred: true } | Expr, .. } => sym::expr,
             MetaVarKind::Expr { kind: Expr2021 { inferred: false }, .. } => sym::expr_2021,
             MetaVarKind::Ty { .. } => sym::ty,
@@ -1119,10 +1119,10 @@ pub fn ident_of_kind_is_reserved(id: sp::Ident, kind: IdentKind) -> bool {
 pub enum NtPatKind {
     // Matches or-patterns. Was written using `pat` in edition 2021 or later.
     PatWithOr,
-    // Doesn't match or-patterns.
-    // - `inferred`: was written using `pat` in edition 2015 or 2018.
-    // - `!inferred`: was written using `pat_param`.
-    PatParam { inferred: bool },
+    // Doesn't match or-patterns. Was written using `pat_param`.
+    PatParam,
+    // Doesn't match or-patterns. Was written using `pat` in edition 2015 or 2018.
+    Pat2018,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, StableHash)]
@@ -1170,10 +1170,10 @@ impl NonterminalKind {
                 if edition().at_least_rust_2021() {
                     NonterminalKind::Pat(PatWithOr)
                 } else {
-                    NonterminalKind::Pat(PatParam { inferred: true })
+                    NonterminalKind::Pat(Pat2018)
                 }
             }
-            sym::pat_param => NonterminalKind::Pat(PatParam { inferred: false }),
+            sym::pat_param => NonterminalKind::Pat(PatParam),
             sym::expr => {
                 if edition().at_least_rust_2024() {
                     NonterminalKind::Expr(Expr)
@@ -1200,8 +1200,8 @@ impl NonterminalKind {
             NonterminalKind::Item => sym::item,
             NonterminalKind::Block => sym::block,
             NonterminalKind::Stmt => sym::stmt,
-            NonterminalKind::Pat(PatParam { inferred: true } | PatWithOr) => sym::pat,
-            NonterminalKind::Pat(PatParam { inferred: false }) => sym::pat_param,
+            NonterminalKind::Pat(Pat2018 | PatWithOr) => sym::pat,
+            NonterminalKind::Pat(PatParam) => sym::pat_param,
             NonterminalKind::Expr(Expr2021 { inferred: true } | Expr) => sym::expr,
             NonterminalKind::Expr(Expr2021 { inferred: false }) => sym::expr_2021,
             NonterminalKind::Ty => sym::ty,
