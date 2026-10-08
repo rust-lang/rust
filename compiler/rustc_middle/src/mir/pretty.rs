@@ -793,7 +793,7 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
         writeln!(w, "{INDENT}{block:?}{cleanup_text}: {{")?;
 
         // List of statements in the middle.
-        let mut current_location = Location { block, statement_index: 0 };
+        let mut current_location = block.start_location();
         for statement in &data.statements {
             (self.extra_data)(PassWhere::BeforeLocation(current_location), w)?;
 
