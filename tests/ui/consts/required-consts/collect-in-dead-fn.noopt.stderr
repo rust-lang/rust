@@ -1,6 +1,7 @@
 error[E0080]: evaluation panicked: explicit panic
   --> $DIR/collect-in-dead-fn.rs:9:19
    |
+LL | impl<T> Fail<T> {
 LL |     const C: () = panic!();
    |                   ^^^^^^^^ evaluation of `Fail::<i32>::C` failed here
 

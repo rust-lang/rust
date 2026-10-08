@@ -1,6 +1,7 @@
 error[E0080]: index out of bounds: the length is 0 but the index is 0
   --> $DIR/index-out-of-bounds-never-type.rs:9:61
    |
+LL | impl<T> PrintName<T> {
 LL |     const VOID: ! = { let x = 0 * std::mem::size_of::<T>(); [][x] };
    |                                                             ^^^^^ evaluation of `PrintName::<()>::VOID` failed here
 
