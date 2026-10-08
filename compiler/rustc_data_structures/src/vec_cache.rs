@@ -286,12 +286,15 @@ unsafe impl<K: Idx, #[may_dangle] V, I> Drop for VecCache<K, V, I> {
             }
         }
 
-        for (idx, bucket) in BucketIndex::enumerate_buckets(&self.present) {
-            let bucket = bucket.load(Ordering::Acquire);
-            if !bucket.is_null() {
-                let layout = std::alloc::Layout::array::<Slot<()>>(ENTRIES_BY_BUCKET[idx]).unwrap();
-                unsafe {
-                    std::alloc::dealloc(bucket.cast(), layout);
+        if self.track_present {
+            for (idx, bucket) in BucketIndex::enumerate_buckets(&self.present) {
+                let bucket = bucket.load(Ordering::Acquire);
+                if !bucket.is_null() {
+                    let layout =
+                        std::alloc::Layout::array::<Slot<()>>(ENTRIES_BY_BUCKET[idx]).unwrap();
+                    unsafe {
+                        std::alloc::dealloc(bucket.cast(), layout);
+                    }
                 }
             }
         }
