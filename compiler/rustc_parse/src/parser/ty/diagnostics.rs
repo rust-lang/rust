@@ -1,4 +1,4 @@
-use rustc_ast::{self as ast, Path, TyKind};
+use rustc_ast::{self as ast, Path, TyKind, token};
 use rustc_errors::{Applicability, PResult};
 use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -69,5 +69,39 @@ impl<'a> Parser<'a> {
             kw::Impl => TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds),
             _ => unreachable!(),
         }))
+    }
+
+    /// Recover from a C-style pointer type like `const* Type` or `mut* Type`.
+    pub(super) fn recover_from_c_style_ptr_ty(&mut self) -> PResult<'a, Option<TyKind>> {
+        let mutbl = match () {
+            () if self.token.is_keyword(kw::Const) => ast::Mutability::Not,
+            () if self.token.is_keyword(kw::Mut) => ast::Mutability::Mut,
+            () => return Ok(None),
+        };
+        if !self.look_ahead(1, |t| *t == token::Star) {
+            return Ok(None);
+        }
+
+        let kw_span = self.token.span;
+        self.bump();
+        let star_span = self.token.span;
+        self.bump();
+
+        let ty = self.parse_ty_no_question_mark_recover()?;
+
+        let mutbl_str = mutbl.ptr_str();
+        self.dcx()
+            .struct_span_err(
+                kw_span,
+                format!("raw pointer types must be written as `*{mutbl_str} T`"),
+            )
+            .with_multipart_suggestion(
+                format!("put the `*` before `{mutbl_str}`"),
+                vec![(star_span, String::new()), (kw_span.shrink_to_lo(), "*".to_string())],
+                Applicability::MachineApplicable,
+            )
+            .emit();
+
+        Ok(Some(TyKind::Ptr(ty, mutbl)))
     }
 }
