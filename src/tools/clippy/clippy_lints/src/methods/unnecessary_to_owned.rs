@@ -74,8 +74,20 @@ fn check_addr_of_expr(
 ) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr)
         && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, _) = parent.kind
-        && let adjustments = cx.typeck_results().expr_adjustments(parent).iter().collect::<Vec<_>>()
-        && let
+        && let adjustments = cx.typeck_results().expr_adjustments(parent)
+        && let (referent_ty, target_ty) = match *adjustments {
+            [] if let target_ty = cx.typeck_results().expr_ty_adjusted(parent) &&
+                  let &ty::Ref(_, referent_ty, Mutability::Not) = target_ty.kind() => {
+                (referent_ty, target_ty)
+            }
+            [
+                Adjustment {
+                    kind: Adjust::Pointer(_),
+                    target: target_ty,
+                },
+            ] if let &ty::Ref(_, referent_ty, Mutability::Not) = cx.typeck_results().expr_ty(parent).kind() => {
+                (referent_ty, target_ty)
+            }
             // For matching uses of `Cow::from`
             [
                 Adjustment {
@@ -116,9 +128,11 @@ fn check_addr_of_expr(
                     kind: Adjust::Borrow(_),
                     target: target_ty,
                 },
-            ] = adjustments[..]
+            ] => (referent_ty, target_ty),
+            _ => return false,
+        }
         && let receiver_ty = cx.typeck_results().expr_ty(receiver)
-        && let (target_ty, n_target_refs, _) = peel_and_count_ty_refs(*target_ty)
+        && let (target_ty, n_target_refs, _) = peel_and_count_ty_refs(target_ty)
         && let (receiver_ty, n_receiver_refs, _) = peel_and_count_ty_refs(receiver_ty)
         // Only flag cases satisfying at least one of the following three conditions:
         // * the referent and receiver types are distinct
@@ -129,8 +143,8 @@ fn check_addr_of_expr(
         //  https://github.com/rust-lang/rust-clippy/issues/8759
         //   Arrays are a bit of a corner case. Non-copyable arrays are handled by
         // `redundant_clone`, but copyable arrays are not.
-        && (*referent_ty != receiver_ty
-            || (matches!(referent_ty.kind(), ty::Array(..)) && is_copy(cx, *referent_ty))
+        && (referent_ty != receiver_ty
+            || (matches!(referent_ty.kind(), ty::Array(..)) && is_copy(cx, referent_ty))
             || is_cow_into_owned(cx, method_name, method_parent_id))
     {
         let mut applicability = Applicability::MachineApplicable;
