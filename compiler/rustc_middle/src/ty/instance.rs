@@ -1018,6 +1018,7 @@ impl<'tcx> Instance<'tcx> {
         if tcx.opt_item_name(def_id).map_or(false, |n| n.as_str().contains("atomic_")) {
             return *self;
         }
+        // FIXME: exclude all functions with non-Rust reprs anywhere in signature (including theirs)
 
         let generics = tcx.generics_of(def_id);
         let clauses: Vec<_> = tcx
