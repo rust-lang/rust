@@ -1819,7 +1819,7 @@ fn render_impl(
             let item_type = item.type_();
             let name = item.name.as_ref().unwrap();
 
-            let render_method_item = rendering_params.show_non_assoc_items
+            let render_assoc_fn = rendering_params.show_non_assoc_items
                 && match render_mode {
                     RenderMode::Normal => true,
                     RenderMode::ForDeref { mut_: deref_mut_, is_deref_target_copy } => {
@@ -1834,7 +1834,7 @@ fn render_impl(
             let mut short_documented = true;
 
             let mut trait_item_deprecated = false;
-            if render_method_item {
+            if render_assoc_fn {
                 if !is_default_item {
                     if let Some(t) = trait_ {
                         // The trait item may have been stripped so we might not
@@ -1897,99 +1897,96 @@ fn render_impl(
                 deprecation_class = "";
             }
             match &item.kind {
-                ItemKind::AssocFn(..) => {
-                    // Only render when the method is not static or we allow static methods
-                    if render_method_item {
-                        let id = cx.derive_id(format!("{item_type}.{name}"));
-                        let source_id = trait_
-                            .and_then(|trait_| {
-                                trait_
-                                    .items
-                                    .iter()
-                                    .find(|item| item.name.map(|n| n == *name).unwrap_or(false))
-                            })
-                            .map(|item| format!("{}.{name}", item.type_()));
-                        write!(
-                            w,
-                            "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
-                                {}",
-                            render_rightside(cx, item, render_mode)
-                        )?;
-                        if trait_.is_some() {
-                            // Anchors are only used on trait impls.
-                            write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>")?;
-                        }
-                        write!(
-                            w,
-                            "<h4 class=\"code-header\">{}</h4></section>",
-                            render_assoc_item(
-                                item,
-                                link.anchor(source_id.as_ref().unwrap_or(&id)),
-                                ItemType::Impl,
-                                0,
-                                Ending::Newline,
-                                render_mode,
-                                cx,
-                            ),
-                        )?;
+                ItemKind::AssocFn(_) if !render_assoc_fn => {}
+                ItemKind::AssocConst(_) | ItemKind::AssocTy(_)
+                    if let RenderMode::ForDeref { .. } = render_mode => {}
+
+                ItemKind::AssocFn(_) => {
+                    let id = cx.derive_id(format!("{item_type}.{name}"));
+                    let source_id = trait_
+                        .and_then(|trait_| {
+                            trait_
+                                .items
+                                .iter()
+                                .find(|item| item.name.map(|n| n == *name).unwrap_or(false))
+                        })
+                        .map(|item| format!("{}.{name}", item.type_()));
+                    write!(
+                        w,
+                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
+                        {}",
+                        render_rightside(cx, item, render_mode)
+                    )?;
+                    if trait_.is_some() {
+                        // Anchors are only used on trait impls.
+                        write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>")?;
                     }
+                    write!(
+                        w,
+                        "<h4 class=\"code-header\">{}</h4></section>",
+                        render_assoc_item(
+                            item,
+                            link.anchor(source_id.as_ref().unwrap_or(&id)),
+                            ItemType::Impl,
+                            0,
+                            Ending::Newline,
+                            render_mode,
+                            cx,
+                        ),
+                    )?;
                 }
                 ItemKind::AssocConst(ct) => {
-                    if !matches!(render_mode, RenderMode::ForDeref { .. }) {
-                        let source_id = format!("{item_type}.{name}");
-                        let id = cx.derive_id(&source_id);
-                        write!(
-                            w,
-                            "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
-                            {}",
-                            render_rightside(cx, item, render_mode),
-                        )?;
-                        if trait_.is_some() {
-                            // Anchors are only used on trait impls.
-                            write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>")?;
-                        }
-                        write!(
-                            w,
-                            "<h4 class=\"code-header\">{}</h4></section>",
-                            assoc_const(
-                                item,
-                                ct,
-                                ItemType::Impl,
-                                link.anchor(if trait_.is_some() { &source_id } else { &id }),
-                                0,
-                                Ending::Newline,
-                                cx,
-                            ),
-                        )?;
+                    let source_id = format!("{item_type}.{name}");
+                    let id = cx.derive_id(&source_id);
+                    write!(
+                        w,
+                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
+                        {}",
+                        render_rightside(cx, item, render_mode),
+                    )?;
+                    if trait_.is_some() {
+                        // Anchors are only used on trait impls.
+                        write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>")?;
                     }
+                    write!(
+                        w,
+                        "<h4 class=\"code-header\">{}</h4></section>",
+                        assoc_const(
+                            item,
+                            ct,
+                            ItemType::Impl,
+                            link.anchor(if trait_.is_some() { &source_id } else { &id }),
+                            0,
+                            Ending::Newline,
+                            cx,
+                        ),
+                    )?;
                 }
                 ItemKind::AssocTy(ty) => {
-                    if !matches!(render_mode, RenderMode::ForDeref { .. }) {
-                        let source_id = format!("{item_type}.{name}");
-                        let id = cx.derive_id(&source_id);
-                        write!(
-                            w,
-                            "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
+                    let source_id = format!("{item_type}.{name}");
+                    let id = cx.derive_id(&source_id);
+                    write!(
+                        w,
+                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
                             {}",
-                            render_rightside(cx, item, render_mode),
-                        )?;
-                        if trait_.is_some() {
-                            // Anchors are only used on trait impls.
-                            write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>")?;
-                        }
-                        write!(
-                            w,
-                            "<h4 class=\"code-header\">{}</h4></section>",
-                            assoc_ty(
-                                item,
-                                ty,
-                                link.anchor(if trait_.is_some() { &source_id } else { &id }),
-                                0,
-                                Ending::Newline,
-                                cx,
-                            ),
-                        )?;
+                        render_rightside(cx, item, render_mode),
+                    )?;
+                    if trait_.is_some() {
+                        // Anchors are only used on trait impls.
+                        write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>")?;
                     }
+                    write!(
+                        w,
+                        "<h4 class=\"code-header\">{}</h4></section>",
+                        assoc_ty(
+                            item,
+                            ty,
+                            link.anchor(if trait_.is_some() { &source_id } else { &id }),
+                            0,
+                            Ending::Newline,
+                            cx,
+                        ),
+                    )?;
                 }
                 ItemKind::Stripped(..) => return Ok(()),
                 _ => panic!("can't make docs for trait item with name {:?}", item.name),
