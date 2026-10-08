@@ -22,7 +22,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
-use rustc_infer::traits::TraitErrors;
+use rustc_infer::traits::{TraitErrors, WellFormedLoc};
 use rustc_lint_defs::builtin::{SELF_CONSTRUCTOR_FROM_OUTER_ITEM, UNREACHABLE_CODE};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
@@ -543,7 +543,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn lower_ty(&self, hir_ty: &hir::Ty<'_>) -> LoweredTy<'tcx> {
         let ty = self.lowerer().lower_ty(hir_ty);
-        self.register_wf_obligation(ty.into(), hir_ty.span, ObligationCauseCode::WellFormed(None));
+        self.register_wf_obligation(
+            ty.into(),
+            hir_ty.span,
+            ObligationCauseCode::WellFormed(WellFormedLoc::HirId(hir_ty.hir_id)),
+        );
         LoweredTy::from_raw(self, hir_ty.span, ty)
     }
 
@@ -608,7 +612,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.register_wf_obligation(
             ct.into(),
             self.tcx.hir_span(const_arg.hir_id),
-            ObligationCauseCode::WellFormed(None),
+            ObligationCauseCode::WellFormed(WellFormedLoc::HirId(const_arg.hir_id)),
         );
         ct
     }
@@ -664,9 +668,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Registers obligations that all `args` are well-formed.
-    pub(crate) fn add_wf_bounds(&self, args: GenericArgsRef<'tcx>, span: Span) {
+    pub(crate) fn add_wf_bounds(&self, args: GenericArgsRef<'tcx>, span: Span, hir_id: HirId) {
         for term in args.iter().filter_map(ty::GenericArg::as_term) {
-            self.register_wf_obligation(term, span, ObligationCauseCode::WellFormed(None));
+            self.register_wf_obligation(
+                term,
+                span,
+                ObligationCauseCode::WellFormed(WellFormedLoc::HirId(hir_id)),
+            );
         }
     }
 
@@ -810,7 +818,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.register_wf_obligation(
             ty.raw.into(),
             qself.span,
-            ObligationCauseCode::WellFormed(None),
+            ObligationCauseCode::WellFormed(WellFormedLoc::HirId(hir_id)),
         );
         self.select_obligations_where_possible(|_| {});
 

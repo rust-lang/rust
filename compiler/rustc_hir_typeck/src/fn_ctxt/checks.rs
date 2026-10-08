@@ -19,6 +19,7 @@ use rustc_index::IndexVec;
 use rustc_infer::infer::{
     BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TypeTrace, relate,
 };
+use rustc_infer::traits::WellFormedLoc;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_forced_trimmed_paths;
@@ -230,7 +231,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.register_wf_obligation(
                 fn_input_ty.into(),
                 arg_expr.span,
-                ObligationCauseCode::WellFormed(None),
+                ObligationCauseCode::WellFormed(WellFormedLoc::HirId(arg_expr.hir_id)),
             );
 
             self.check_place_expr_if_unsized(fn_input_ty, arg_expr);
@@ -1197,7 +1198,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.register_wf_obligation(
                 decl_ty.into(),
                 decl.pat.span,
-                ObligationCauseCode::WellFormed(None),
+                ObligationCauseCode::WellFormed(WellFormedLoc::HirId(decl.pat.hir_id)),
             );
         }
         self.overwrite_local_ty_if_err(decl.hir_id, decl.pat, pat_ty);

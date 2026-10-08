@@ -35,8 +35,6 @@ fn opaque() -> impl Sized {
     (|_| ())(RequiresWf(opaque));
     //[current]~^ ERROR the trait bound `impl Sized: Trait` is not satisfied
     //[current]~| ERROR the trait bound `impl Sized: Trait` is not satisfied
-    //[current]~| ERROR the trait bound `impl Sized: Trait` is not satisfied
-    //[current]~| ERROR the trait bound `impl Sized: Trait` is not satisfied
 }
 
 fn main() {}

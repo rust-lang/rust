@@ -21,7 +21,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, Node, expr_needs_parens};
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_infer::traits::solve::Goal;
-use rustc_infer::traits::{ImplSource, TraitErrors};
+use rustc_infer::traits::{ImplSource, TraitErrors, WellFormedLoc};
 use rustc_middle::traits::SignatureMismatchData;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
@@ -74,9 +74,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             SelectionError::Unimplemented => {
                 // If this obligation was generated as a result of well-formedness checking, see if we
                 // can get a better error message by performing HIR-based well-formedness checking.
-                if let ObligationCauseCode::WellFormed(Some(wf_loc)) =
+                if let ObligationCauseCode::WellFormed(wf_loc) =
                     root_obligation.cause.code().peel_derives()
                     && !obligation.predicate.has_non_region_infer()
+                    && !matches!(wf_loc, WellFormedLoc::None)
                 {
                     if let Some(cause) = self.tcx.diagnostic_hir_wf_check((
                         tcx.erase_and_anonymize_regions(obligation.predicate),
@@ -831,6 +832,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         self.note_obligation_cause(&mut err, &obligation);
+        self.silence_redundant_cause(&mut err, &obligation, &root_obligation);
         err.emit_err()
     }
 }
@@ -3080,6 +3082,61 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // Use the whole argument so `suggest_change_mut` can replace the shared borrow.
             obligation.cause.span = arg.span;
             self.suggest_change_mut(&obligation, err, root_trait_pred);
+        }
+    }
+
+    /// Register when multiple obligations come from the same statement and only emit one.
+    ///
+    /// This can significantly reduce the number of `_: Sized` failures on method chains.
+    fn silence_redundant_cause(
+        &self,
+        err: &mut Diag<'_>,
+        obligation: &PredicateObligation<'tcx>,
+        root_obligation: &PredicateObligation<'tcx>,
+    ) {
+        let hir_id = match root_obligation.cause.code() {
+            ObligationCauseCode::WellFormed(WellFormedLoc::HirId(hir_id))
+            | ObligationCauseCode::VariableType(hir_id)
+            | ObligationCauseCode::WhereClauseInExpr(_, _, hir_id, _)
+            | ObligationCauseCode::SizedCallReturnType(hir_id) => *hir_id,
+            ObligationCauseCode::WellFormed(WellFormedLoc::Param { function, .. }) => {
+                self.tcx.local_def_id_to_hir_id(*function)
+            }
+            _ => return,
+        };
+
+        // The lifetimes for different sub-expressions would be different inference variables.
+        let pred = self.tcx.erase_and_anonymize_regions(obligation.predicate);
+
+        // Registering the expression itself is necessary to catch tail expressions and literals.
+        if let Some(preds) = self.reported_hir_errors.borrow().get(&hir_id)
+            && preds.contains(&pred)
+        {
+            err.downgrade_to_delayed_bug();
+        } else {
+            self.reported_hir_errors.borrow_mut().entry(hir_id).or_default().insert(pred);
+        }
+
+        // Look for the expression's parent statement, bail otherwise. We'll register the predicate
+        // against the statement's HirId.
+        for (_, node) in self.tcx.hir_parent_iter(hir_id) {
+            let hir_id = match node {
+                hir::Node::LetStmt(stmt) => stmt.hir_id,
+                hir::Node::Stmt(stmt) => stmt.hir_id,
+                hir::Node::Crate(_)
+                | hir::Node::Item(_)
+                | hir::Node::ImplItem(_)
+                | hir::Node::TraitItem(_) => break,
+                _ => continue,
+            };
+            if let Some(preds) = self.reported_hir_errors.borrow().get(&hir_id)
+                && preds.contains(&pred)
+            {
+                err.downgrade_to_delayed_bug();
+            } else {
+                self.reported_hir_errors.borrow_mut().entry(hir_id).or_default().insert(pred);
+            }
+            break;
         }
     }
 
