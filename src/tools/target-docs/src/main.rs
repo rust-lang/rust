@@ -99,7 +99,7 @@ fn main() -> Result<()> {
                 doc = std::fs::read_to_string(old_path)?;
                 //eprintln!("WARN: {}: using legacy target info", info.name);
             } /*else {
-                eprintln!("WARN: {}: no target info", info.name);
+            eprintln!("WARN: {}: no target info", info.name);
             }*/
         }
 
@@ -135,6 +135,12 @@ fn main() -> Result<()> {
 
     eprintln!("Finished generating target docs");
     Ok(())
+}
+
+impl TargetInfo {
+    fn doc_path(&self) -> Option<String> {
+        Some(format!("platform-support/targets/{}.md", self.name))
+    }
 }
 
 struct TargetPatternEntry {

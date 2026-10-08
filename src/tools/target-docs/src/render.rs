@@ -101,8 +101,10 @@ fn replace_section(prev_content: &str, section_name: &str, replacement: &str) ->
         .split_once(&magic_summary_end)
         .ok_or_else(|| eyre!("{magic_summary_end} not found"))?;
 
-    //let new = format!("{pre_target}{magic_summary_start}\n<!-- See `src/tools/target-docs` -->\n{replacement}\n{magic_summary_end}{post_target}");
-    let new = format!("{pre_target}{replacement}{post_target}");
+    let new = format!(
+        "{pre_target}{magic_summary_start}\n<!-- See `src/tools/target-docs` -->\n{replacement}\n{magic_summary_end}{post_target}"
+    );
+    //let new = format!("{pre_target}{replacement}{post_target}");
     Ok(new)
 }
 
@@ -276,7 +278,11 @@ fn render_table(targets: &[TargetInfo], table: TierTable) -> Result<String> {
         count += 1;
         let meta = &target.metadata;
 
-        write!(out, "\n[`{0}`](platform-support/targets/{0}.md)", target.name)?;
+        if let Some(doc_path) = target.doc_path() {
+            write!(out, "\n[`{}`]({})", target.name, doc_path)?;
+        } else {
+            write!(out, "\n`{}`", target.name)?;
+        }
 
         if table.include_std {
             write!(out, " | {}", render_table_option_bool(meta.std))?;
