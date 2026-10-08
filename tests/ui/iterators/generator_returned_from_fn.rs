@@ -22,7 +22,7 @@ fn arg() -> impl Fn(u32) -> impl Iterator<Item = u32> {
 }
 
 fn capture<'a>(a: &'a u32) -> impl Fn() -> (impl Iterator<Item = u32> + 'a) {
-    iter! { || { //~ ERROR cannot return reference to function parameter `a`
+    iter! { || {
         yield *a;
         for x in 5..10 {
             yield x * 2;
@@ -31,7 +31,9 @@ fn capture<'a>(a: &'a u32) -> impl Fn() -> (impl Iterator<Item = u32> + 'a) {
 }
 
 fn capture_move(a: &u32) -> impl Fn() -> impl Iterator<Item = u32> {
-    iter! { move || { //~ ERROR does not implement `Fn` because it captures
+    iter! { move || {
+        //~^ ERROR hidden type for `impl Fn() -> impl Iterator<Item = u32>` captures lifetime that does not appear in bounds
+        //~| ERROR hidden type for `impl Iterator<Item = u32>` captures lifetime that does not appear in bounds
         yield *a;
         for x in 5..10 {
             yield x * 2;

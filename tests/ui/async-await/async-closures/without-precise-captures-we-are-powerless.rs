@@ -11,12 +11,12 @@ async fn call_once(f: impl AsyncFnOnce()) {
 }
 
 fn simple<'a>(x: &'a i32) {
-    let c = async || { println!("{}", *x); }; //~ ERROR `x` does not live long enough
+    let c = async || { println!("{}", *x); };
     outlives::<'a>(c());
     outlives::<'a>(call_once(c));
 
     let c = async move || { println!("{}", *x); };
-    outlives::<'a>(c()); //~ ERROR `c` does not live long enough
+    outlives::<'a>(c());
     outlives::<'a>(call_once(c));
 }
 
@@ -33,14 +33,14 @@ fn through_field<'a>(x: S<'a>) {
 }
 
 fn through_field_and_ref<'a>(x: &S<'a>) {
-    let c = async || { println!("{}", *x.0); }; //~ ERROR `x` does not live long enough
+    let c = async || { println!("{}", *x.0); };
     outlives::<'a>(c());
     outlives::<'a>(call_once(c)); //~ ERROR explicit lifetime required in the type of `x`
 }
 
 fn through_field_and_ref_move<'a>(x: &S<'a>) {
     let c = async move || { println!("{}", *x.0); };
-    outlives::<'a>(c()); //~ ERROR `c` does not live long enough
+    outlives::<'a>(c());
     outlives::<'a>(call_once(c)); //~ ERROR explicit lifetime required in the type of `x`
 }
 
@@ -49,12 +49,12 @@ impl T {
     fn outlives<'a>(&'a self, _: impl Sized + 'a) {}
 }
 fn through_method<'a>(x: &'a i32) {
-    let c = async || { println!("{}", *x); }; //~ ERROR `x` does not live long enough
+    let c = async || { println!("{}", *x); };
     T.outlives::<'a>(c());
     T.outlives::<'a>(call_once(c));
 
     let c = async move || { println!("{}", *x); };
-    T.outlives::<'a>(c()); //~ ERROR `c` does not live long enough
+    T.outlives::<'a>(c());
     T.outlives::<'a>(call_once(c));
 }
 

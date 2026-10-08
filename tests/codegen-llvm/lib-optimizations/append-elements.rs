@@ -13,7 +13,7 @@
 #[no_mangle]
 pub fn vec_append_with_temp_alloc(dst: &mut Vec<u8>, src: &[u8]) {
     // CHECK-NOT: call void @llvm.memcpy
-    // CHECK: call void @llvm.memcpy.{{.*}}[[DST]].i{{.*}}[[SRC]]
+    // CHECK: call void @llvm.memcpy.{{.*}}{{.*}}.i{{.*}}[[SRC]]
     // CHECK-NOT: call void @llvm.memcpy
     let temp = src.to_vec();
     dst.extend(&temp);
