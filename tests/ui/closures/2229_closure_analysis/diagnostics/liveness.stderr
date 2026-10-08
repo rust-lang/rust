@@ -81,12 +81,12 @@ warning: value assigned to `e.x` is never read
    |
 LL |             e.x = Some("e1");
    |             ^^^^^^^^^^^^^^^^ this value is reassigned later and never used
-LL |
+...
 LL |             e.x = Some("e2");
    |             ---------------- `e.x` is overwritten here before the previous value is read
 
 warning: value assigned to `e.x` is never read
-  --> $DIR/liveness.rs:76:13
+  --> $DIR/liveness.rs:77:13
    |
 LL |             e.x = Some("e2");
    |             ^^^^^^^^^^^^^^^^
@@ -94,7 +94,7 @@ LL |             e.x = Some("e2");
    = help: maybe it is overwritten before being read?
 
 warning: value captured by `b` is never read
-  --> $DIR/liveness.rs:77:13
+  --> $DIR/liveness.rs:78:13
    |
 LL |             b = Some("e1");
    |             ^
@@ -102,16 +102,16 @@ LL |             b = Some("e1");
    = help: did you mean to capture by reference instead?
 
 warning: value assigned to `b` is never read
-  --> $DIR/liveness.rs:77:13
+  --> $DIR/liveness.rs:78:13
    |
 LL |             b = Some("e1");
    |             ^^^^^^^^^^^^^^ this value is reassigned later and never used
-LL |
+...
 LL |             b = Some("e2");
    |             -------------- `b` is overwritten here before the previous value is read
 
 warning: value assigned to `b` is never read
-  --> $DIR/liveness.rs:79:13
+  --> $DIR/liveness.rs:81:13
    |
 LL |             b = Some("e2");
    |             ^^^^^^^^^^^^^^
@@ -134,5 +134,46 @@ LL |             a = Some("d1");
 LL |             a = Some("d2");
    |             -------------- `a` is overwritten here before the previous value is read
 
-warning: 16 warnings emitted
+warning: value captured by `e.x` is never read
+  --> $DIR/liveness.rs:74:13
+   |
+LL |             e.x = Some("e1");
+   |             ^^^
+   |
+   = help: did you mean to capture by reference instead?
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: value captured by `b` is never read
+  --> $DIR/liveness.rs:78:13
+   |
+LL |             b = Some("e1");
+   |             ^
+   |
+   = help: did you mean to capture by reference instead?
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: variable `b` is assigned to, but never used
+  --> $DIR/liveness.rs:62:9
+   |
+LL |     let mut b: Option<&str>;
+   |         ^^^^^
+   |
+   = note: consider using `_b` instead
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
+warning: unused variable: `e`
+  --> $DIR/liveness.rs:65:9
+   |
+LL |     let mut e = MyStruct { x: None, y: 1 };
+   |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_e`
+
+warning: value assigned to `b` is never read
+  --> $DIR/liveness.rs:63:5
+   |
+LL |     b = None;
+   |     ^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: 21 warnings emitted
 

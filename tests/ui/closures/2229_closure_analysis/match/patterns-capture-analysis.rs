@@ -64,8 +64,8 @@ fn test_6_should_capture_single_variant() {
     //~^ ERROR First Pass analysis includes:
     //~| ERROR Min Capture analysis includes:
         match variant {
-            //~^ NOTE: Capturing variant[(0, 0)] -> Immutable
-            //~| NOTE: Min Capture variant[(0, 0)] -> Immutable
+            //~^ NOTE: Capturing variant[(0, 0)] -> ByCopy
+            //~| NOTE: Min Capture variant[(0, 0)] -> ByCopy
             SingleVariant::Points(a) => {
                 println!("{:?}", a);
             }

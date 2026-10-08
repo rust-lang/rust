@@ -960,10 +960,10 @@ fn foo() {
             r#"
 fn foo() {
     let a = 1;
-    fn closure(a: &i32) -> i32 {
-        *a
+    fn closure(a: i32) -> i32 {
+        a
     }
-    closure(&a);
+    closure(a);
 }
 "#,
         );
@@ -1144,11 +1144,11 @@ fn foo() {
             r#"
 fn foo() {
     let (mut a, b) = (0.1, "abc");
-    fn closure(p1: i32, p2: &mut bool, a: &mut f64, b: &&str) {
+    fn closure(p1: i32, p2: &mut bool, a: &mut f64, b: &str) {
         *a = 1.2;
-        let c = *b;
+        let c = b;
     }
-    closure(0, &mut false, &mut a, &b);
+    closure(0, &mut false, &mut a, b);
 }
 "#,
         );
@@ -1176,16 +1176,16 @@ fn foo() {
             r#"
 fn foo() {
     let (mut a, b) = (0.1, "abc");
-    fn closure(p1: i32, p2: &mut bool, a: &mut f64, b: &&str) {
+    fn closure(p1: i32, p2: &mut bool, a: &mut f64, b: &str) {
         let _: &mut bool = p2;
         *a = 1.2;
-        let c = *b;
+        let c = b;
     }
     closure(
         0,
         &mut false,
         &mut a,
-        &b
+        b
     );
 }
 "#,
@@ -1214,16 +1214,16 @@ fn foo() {
             r#"
 fn foo() {
     let (mut a, b) = (0.1, "abc");
-    fn closure(p1: i32, p2: &mut bool, a: &mut f64, b: &&str) {
+    fn closure(p1: i32, p2: &mut bool, a: &mut f64, b: &str) {
         let _: &mut bool = p2;
         *a = 1.2;
-        let c = *b;
+        let c = b;
     }
     closure(
         0,
         &mut false,
         &mut a,
-        &b,
+        b,
     );
 }
 "#,
@@ -1282,8 +1282,8 @@ fn foo() {
 fn bar(_: impl FnOnce() -> i32) {}
 fn foo() {
     let a = 123;
-    fn fun_name(a: &i32) -> i32 {
-        *a
+    fn fun_name(a: i32) -> i32 {
+        a
     }
     bar(fun_name);
 }

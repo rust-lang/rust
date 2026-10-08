@@ -23,7 +23,7 @@ LL |     let c = || {
    |             ^^ `variant` used here but it isn't initialized
 LL |
 LL |         match variant {
-   |               ------- borrow occurs due to use in closure
+   |               ------- use occurs due to use in closure
 
 error[E0381]: used binding `variant` isn't initialized
   --> $DIR/pattern-matching-should-fail.rs:37:13
@@ -33,7 +33,7 @@ LL |     let variant: !;
 LL |     let c = || {
    |             ^^ `variant` used here but it isn't initialized
 LL |         match variant {
-   |               ------- borrow occurs due to use in closure
+   |               ------- use occurs due to use in closure
 
 error[E0381]: used binding `g` isn't initialized
   --> $DIR/pattern-matching-should-fail.rs:52:15
