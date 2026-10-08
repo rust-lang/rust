@@ -1,22 +1,17 @@
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, GenericArg, GenericArgKind, Ty, TyCtxt};
 use rustc_span::Span;
 use tracing::debug;
 
-use super::explicit::ExplicitClausesMap;
+use super::explicit::GlobalExplicitOutlivesClauses;
 use super::utils::*;
 
 /// Infer outlives-clauses for the items in the local crate.
-pub(super) fn infer_clauses(
-    tcx: TyCtxt<'_>,
-) -> FxIndexMap<DefId, ty::EarlyBinder<'_, RequiredClauses<'_>>> {
-    debug!("infer_clauses");
-
-    let mut explicit_map = ExplicitClausesMap::new();
-
-    let mut global_inferred_outlives = FxIndexMap::default();
+#[tracing::instrument(level = "debug", skip_all)]
+pub(super) fn infer_outlives_clauses(tcx: TyCtxt<'_>) -> GlobalOutlivesClauses<'_> {
+    let mut global_explicit_clauses = GlobalExplicitOutlivesClauses::default();
+    let mut global_inferred_clauses = GlobalOutlivesClauses::default();
 
     // If new clauses were added then we need to re-calculate
     // all crates since there could be new implied clauses.
@@ -29,7 +24,7 @@ pub(super) fn infer_clauses(
 
             debug!("InferVisitor::visit_item(item={:?})", item_did);
 
-            let mut item_required_clauses = RequiredClauses::default();
+            let mut item_required_clauses = OutlivesClauses::default();
             match tcx.def_kind(item_did) {
                 DefKind::Union | DefKind::Enum | DefKind::Struct => {
                     let adt_def = tcx.adt_def(item_did.to_def_id());
@@ -45,25 +40,25 @@ pub(super) fn infer_clauses(
                         let field_ty =
                             tcx.type_of(field_def.did).instantiate_identity().skip_norm_wip();
                         let field_span = tcx.def_span(field_def.did);
-                        insert_required_clauses_to_be_wf(
+                        insert_required_outlives_clauses_to_be_wf(
                             tcx,
                             field_ty,
                             field_span,
-                            &global_inferred_outlives,
                             &mut item_required_clauses,
-                            &mut explicit_map,
+                            &global_inferred_clauses,
+                            &mut global_explicit_clauses,
                         );
                     }
                 }
 
                 DefKind::TyAlias if tcx.type_alias_is_checked(item_did) => {
-                    insert_required_clauses_to_be_wf(
+                    insert_required_outlives_clauses_to_be_wf(
                         tcx,
                         tcx.type_of(item_did).instantiate_identity().skip_norm_wip(),
                         tcx.def_span(item_did),
-                        &global_inferred_outlives,
                         &mut item_required_clauses,
-                        &mut explicit_map,
+                        &global_inferred_clauses,
+                        &mut global_explicit_clauses,
                     );
                 }
 
@@ -76,12 +71,12 @@ pub(super) fn infer_clauses(
             // Therefore mark `clauses_added` as true and which will ensure
             // we walk the crates again and re-calculate clauses for all
             // items.
-            let item_clauses_len: usize = global_inferred_outlives
+            let item_clauses_len: usize = global_inferred_clauses
                 .get(&item_did.to_def_id())
                 .map_or(0, |c| c.as_ref().skip_binder().len());
             if item_required_clauses.len() > item_clauses_len {
                 clauses_added.push(item_did);
-                global_inferred_outlives.insert(
+                global_inferred_clauses.insert(
                     item_did.to_def_id(),
                     ty::EarlyBinder::bind_iter(item_required_clauses),
                 );
@@ -104,16 +99,16 @@ pub(super) fn infer_clauses(
         }
     }
 
-    global_inferred_outlives
+    global_inferred_clauses
 }
 
-fn insert_required_clauses_to_be_wf<'tcx>(
+fn insert_required_outlives_clauses_to_be_wf<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     span: Span,
-    global_inferred_outlives: &FxIndexMap<DefId, ty::EarlyBinder<'tcx, RequiredClauses<'tcx>>>,
-    required_clauses: &mut RequiredClauses<'tcx>,
-    explicit_map: &mut ExplicitClausesMap<'tcx>,
+    required_clauses: &mut OutlivesClauses<'tcx>,
+    global_inferred_clauses: &GlobalOutlivesClauses<'tcx>,
+    global_explicit_clauses: &mut GlobalExplicitOutlivesClauses<'tcx>,
 ) {
     for arg in ty.walk() {
         let leaf_ty = match arg.kind() {
@@ -141,7 +136,7 @@ fn insert_required_clauses_to_be_wf<'tcx>(
                     tcx,
                     def.did(),
                     args,
-                    global_inferred_outlives,
+                    global_inferred_clauses,
                     required_clauses,
                 );
                 check_explicit_clauses(
@@ -149,7 +144,7 @@ fn insert_required_clauses_to_be_wf<'tcx>(
                     def.did(),
                     args,
                     required_clauses,
-                    explicit_map,
+                    global_explicit_clauses,
                     IgnoreClausesReferencingSelf::No,
                 );
             }
@@ -162,7 +157,7 @@ fn insert_required_clauses_to_be_wf<'tcx>(
                     tcx,
                     def_id,
                     args,
-                    global_inferred_outlives,
+                    global_inferred_clauses,
                     required_clauses,
                 );
                 check_explicit_clauses(
@@ -170,7 +165,7 @@ fn insert_required_clauses_to_be_wf<'tcx>(
                     def_id,
                     args,
                     required_clauses,
-                    explicit_map,
+                    global_explicit_clauses,
                     IgnoreClausesReferencingSelf::No,
                 );
             }
@@ -198,7 +193,7 @@ fn insert_required_clauses_to_be_wf<'tcx>(
                         trait_ref.def_id(),
                         args,
                         required_clauses,
-                        explicit_map,
+                        global_explicit_clauses,
                         IgnoreClausesReferencingSelf::Yes,
                     );
                 }
@@ -214,7 +209,7 @@ fn insert_required_clauses_to_be_wf<'tcx>(
                     tcx.parent(def_id),
                     args,
                     required_clauses,
-                    explicit_map,
+                    global_explicit_clauses,
                     IgnoreClausesReferencingSelf::No,
                 );
             }
@@ -249,11 +244,11 @@ fn check_explicit_clauses<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     args: &[GenericArg<'tcx>],
-    required_clauses: &mut RequiredClauses<'tcx>,
-    explicit_map: &mut ExplicitClausesMap<'tcx>,
+    required_clauses: &mut OutlivesClauses<'tcx>,
+    global_explicit_clauses: &mut GlobalExplicitOutlivesClauses<'tcx>,
     ignore_clauses_refing_self: IgnoreClausesReferencingSelf,
 ) {
-    let explicit_clauses = explicit_map.explicit_clauses_of(tcx, def_id);
+    let explicit_clauses = global_explicit_clauses.explicit_outlives_clauses_of(tcx, def_id);
 
     for (&clause @ ty::OutlivesClause(arg, _), &span) in explicit_clauses.as_ref().skip_binder() {
         debug!(?clause);
@@ -302,13 +297,13 @@ fn check_inferred_clauses<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     args: ty::GenericArgsRef<'tcx>,
-    global_inferred_outlives: &FxIndexMap<DefId, ty::EarlyBinder<'tcx, RequiredClauses<'tcx>>>,
-    required_clauses: &mut RequiredClauses<'tcx>,
+    global_inferred_clauses: &GlobalOutlivesClauses<'tcx>,
+    required_clauses: &mut OutlivesClauses<'tcx>,
 ) {
     // Load the current set of inferred and explicit clauses from `global_inferred_outlives`
     // and filter the ones that are `TypeOutlives`.
 
-    let Some(clauses) = global_inferred_outlives.get(&def_id) else {
+    let Some(clauses) = global_inferred_clauses.get(&def_id) else {
         return;
     };
 

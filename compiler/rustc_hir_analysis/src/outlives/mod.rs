@@ -55,7 +55,7 @@ pub(super) fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CrateClausesMa
     // for the type.
 
     // Compute the inferred clauses
-    let global_inferred_outlives = implicit_infer::infer_clauses(tcx);
+    let global_inferred_outlives = implicit_infer::infer_outlives_clauses(tcx);
 
     // Convert the inferred clauses into the "collected" form the
     // global data structure expects.
