@@ -64,7 +64,7 @@ impl<F, T> WrapA<F>
 
 fn main() {
     let mut w = WrapA::new().set(|x: usize, y: usize| {
-        WrapB::new().set(|t: bool| if t { x } else { y }) // (separate errors for `x` vs `y`)
+        WrapB::new().set(|t: bool| if t { *&x } else { *&y }) // (separate errors for `x` vs `y`)
             //~^ ERROR closure may outlive the current function
             //~| ERROR closure may outlive the current function
     });

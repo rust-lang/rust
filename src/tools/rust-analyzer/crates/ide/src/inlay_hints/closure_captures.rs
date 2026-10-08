@@ -148,7 +148,7 @@ fn main() {
     let mut baz = NonCopy;
     let qux = &mut NonCopy;
     || {
- // ^ move(&foo, bar, baz, qux)
+ // ^ move(foo, bar, baz, qux)
         foo;
         bar;
         baz;
@@ -193,7 +193,7 @@ fn main() {
     let mut baz = NonCopy;
     let qux = &mut NonCopy;
     async || {
-       // ^ move(&foo, bar, baz, qux)
+       // ^ move(foo, bar, baz, qux)
         foo;
         bar;
         baz;
@@ -239,7 +239,7 @@ fn main() {
     let mut baz = NonCopy;
     let qux = &mut NonCopy;
     async {
-       // ^ move(&foo, bar, baz, qux)
+       // ^ move(foo, bar, baz, qux)
         foo;
         bar;
         baz;
@@ -276,7 +276,7 @@ fn main() {
     async {
         let foo = 1;
         async {
-           // ^ move(&foo)
+           // ^ move(foo)
             foo;
         }
     };
@@ -294,12 +294,12 @@ fn main() {
 fn main() {
     let foo = 0;
     gen {
-     // ^ move(&foo)
+     // ^ move(foo)
         foo;
         yield ();
     };
     async gen {
-           // ^ move(&foo)
+           // ^ move(foo)
         foo;
         yield ();
     };
@@ -317,7 +317,7 @@ fn main() {
 fn main() {
     let foo = 0;
     let coroutine = #[coroutine] || {
-                              // ^ move(&foo)
+                              // ^ move(foo)
         foo;
         yield ();
     };

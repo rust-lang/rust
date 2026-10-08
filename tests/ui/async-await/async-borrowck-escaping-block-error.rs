@@ -3,16 +3,21 @@
 
 fn test_boxed() -> Box<impl std::future::Future<Output = u32>> {
     let x = 0u32;
-    Box::new(async { x } )
+    Box::new(async { *&x })
     //~^ ERROR E0373
+}
+
+fn test_boxed_works() -> Box<impl std::future::Future<Output = u32>> {
+    let x = 0u32;
+    Box::new(async { x })
 }
 
 fn test_ref(x: &u32) -> impl std::future::Future<Output = u32> + '_ {
     async { *x }
-    //~^ ERROR E0373
 }
 
 fn main() {
     let _ = test_boxed();
+    let _ = test_boxed_works();
     let _ = test_ref(&0u32);
 }
