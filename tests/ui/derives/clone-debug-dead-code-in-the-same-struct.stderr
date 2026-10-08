@@ -13,7 +13,11 @@ LL |     field3: (),
 LL |     field4: (),
    |     ^^^^^^
    |
-   = note: `Whatever` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+note: `field1` is used in this derive macro, but this is intentionally ignored during dead code analysis
+  --> $DIR/clone-debug-dead-code-in-the-same-struct.rs:3:10
+   |
+LL | #[derive(Debug)]
+   |          ^^^^^
 note: the lint level is defined here
   --> $DIR/clone-debug-dead-code-in-the-same-struct.rs:1:11
    |
