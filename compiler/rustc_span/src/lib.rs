@@ -1148,9 +1148,7 @@ impl Span {
         // the original macro-produced span as the result.
         // Otherwise we just fall back to returning the first span.
         // Combining locations typically doesn't make sense in case of context mismatches.
-        // `is_root` here is a fast path optimization.
-        let a_is_callsite = a.ctxt.is_root() || a.ctxt == b.span().source_callsite().ctxt();
-        Err(if a_is_callsite { b_orig } else { a_orig })
+        Err(if a.ctxt.is_root() { b_orig } else { a_orig })
     }
 
     /// This span, but in a larger context, may switch to the metavariable span if suitable.
