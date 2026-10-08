@@ -405,6 +405,15 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for [u8] {
     }
 }
 
+impl<'a, 'tcx> rustc_middle::ty::PredicateEncoder<TyCtxt<'tcx>> for EncodeContext<'a, 'tcx> {
+    fn encode_predicate(
+        &mut self,
+        predicate: rustc_middle::ty::predicates::Predicate<TyCtxt<'tcx>>,
+    ) {
+        rustc_middle::ty::codec::encode_shared_predicate(self, predicate);
+    }
+}
+
 impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 

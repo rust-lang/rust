@@ -131,6 +131,12 @@ impl<'a, 'tcx> SpanEncoder for OffloadManifestEncoder<'a, 'tcx> {
     }
 }
 
+impl<'a, 'tcx> ty::PredicateEncoder<TyCtxt<'tcx>> for OffloadManifestEncoder<'a, 'tcx> {
+    fn encode_predicate(&mut self, predicate: ty::predicates::Predicate<TyCtxt<'tcx>>) {
+        ty::codec::encode_shared_predicate(self, predicate);
+    }
+}
+
 impl<'a, 'tcx> TyEncoder<'tcx> for OffloadManifestEncoder<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 
@@ -329,6 +335,12 @@ impl<'a, 'tcx> SpanDecoder for OffloadManifestDecoder<'a, 'tcx> {
 
     fn decode_attr_id(&mut self) -> rustc_ast::AttrId {
         self.tcx.dcx().fatal("AttrIds are not expected in offload manifests");
+    }
+}
+
+impl<'a, 'tcx> ty::PredicateDecoder<TyCtxt<'tcx>> for OffloadManifestDecoder<'a, 'tcx> {
+    fn decode_predicate(&mut self) -> ty::predicates::Predicate<TyCtxt<'tcx>> {
+        ty::codec::decode_shared_predicate(self)
     }
 }
 

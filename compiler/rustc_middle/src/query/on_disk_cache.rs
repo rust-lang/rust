@@ -484,6 +484,12 @@ where
     value
 }
 
+impl<'a, 'tcx> rustc_type_ir::PredicateDecoder<TyCtxt<'tcx>> for CacheDecoder<'a, 'tcx> {
+    fn decode_predicate(&mut self) -> rustc_type_ir::predicates::Predicate<TyCtxt<'tcx>> {
+        ty::codec::decode_shared_predicate(self)
+    }
+}
+
 impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = false;
 
@@ -913,6 +919,12 @@ impl<'tcx> SpanEncoder for CacheEncoder<'tcx> {
 
     fn encode_def_index(&mut self, _def_index: DefIndex) {
         bug!("encoding `DefIndex` without context");
+    }
+}
+
+impl<'tcx> rustc_type_ir::PredicateEncoder<TyCtxt<'tcx>> for CacheEncoder<'tcx> {
+    fn encode_predicate(&mut self, predicate: rustc_type_ir::predicates::Predicate<TyCtxt<'tcx>>) {
+        ty::codec::encode_shared_predicate(self, predicate);
     }
 }
 
