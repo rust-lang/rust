@@ -93,15 +93,6 @@ help: consider extending the `where` clause, but there might be an alternative b
 LL |     Quantity<Self::Output>:, f32: Mul<S>
    |                            +++++++++++++
 
-error[E0277]: cannot multiply `f32` by `S`
-   |
-   = help: the trait `Mul<S>` is not implemented for `f32`
-help: consider extending the `where` clause, but there might be an alternative better way to express this requirement
-  --> $DIR/incorrect-old-solver-caching-ice-148095.rs:27:28
-   |
-LL |     Quantity<Self::Output>:, f32: Mul<S>
-   |                            +++++++++++++
-
 error: the type `Quantity<<f32 as Mul<S>>::Output>` is not well-formed
   --> $DIR/incorrect-old-solver-caching-ice-148095.rs:30:21
    |
@@ -120,7 +111,7 @@ help: consider extending the `where` clause, but there might be an alternative b
 LL |     Quantity<Self::Output>:, f32: Mul<S>
    |                            +++++++++++++
 
-error: aborting due to 11 previous errors
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0207, E0276, E0277.
 For more information about an error, try `rustc --explain E0207`.
