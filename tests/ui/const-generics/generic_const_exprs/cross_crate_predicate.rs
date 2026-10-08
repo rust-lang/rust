@@ -7,8 +7,6 @@ fn user<T>() {
     let _ = const_evaluatable_lib::test1::<T>();
     //~^ ERROR unconstrained generic constant
     //~| ERROR unconstrained generic constant
-    //~| ERROR unconstrained generic constant
-    //~| ERROR unconstrained generic constant
 }
 
 fn main() {}
