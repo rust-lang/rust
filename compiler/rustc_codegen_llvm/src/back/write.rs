@@ -206,7 +206,7 @@ pub(crate) fn target_machine_factory(
     let emit_stack_size_section = sess.opts.unstable_opts.emit_stack_sizes;
 
     let verbose_asm = sess.opts.unstable_opts.verbose_asm;
-    let relax_elf_relocations =
+    let relax_x86_elf_relocations =
         sess.opts.unstable_opts.relax_elf_relocations.unwrap_or(sess.target.relax_elf_relocations);
 
     let use_init_array =
@@ -275,7 +275,7 @@ pub(crate) fn target_machine_factory(
             singlethread,
             verbose_asm,
             emit_stack_size_section,
-            relax_elf_relocations,
+            relax_x86_elf_relocations,
             use_init_array,
             &split_dwarf_file,
             &output_obj_file,
