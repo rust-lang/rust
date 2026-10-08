@@ -11,15 +11,14 @@
       let mut _9: bool;
       let mut _10: bool;
       let mut _11: &bool;
-      let _12: &bool;
+      let mut _12: bool;
       let mut _13: bool;
       let mut _14: bool;
-      let mut _15: bool;
-      let mut _16: !;
+      let mut _15: !;
       scope 1 {
           debug c => _1;
           let mut _2: &bool;
-          let mut _17: &bool;
+          let mut _16: &bool;
           scope 2 {
               debug p => _2;
               let _6: bool;
@@ -36,8 +35,8 @@
       bb0: {
           StorageLive(_1);
           StorageLive(_2);
-          _17 = const borrow_in_loop::promoted[0];
-          _2 = &(*_17);
+          _16 = const borrow_in_loop::promoted[0];
+          _2 = &(*_16);
 -         StorageLive(_4);
           goto -> bb1;
       }
@@ -59,27 +58,24 @@
 -         StorageDead(_10);
 +         _1 = copy _6;
           StorageLive(_11);
-          StorageLive(_12);
-          _12 = &_1;
-          _11 = &(*_12);
+          _11 = &_1;
           _2 = move _11;
           StorageDead(_11);
-          StorageDead(_12);
-          StorageLive(_13);
+          StorageLive(_12);
+-         StorageLive(_13);
+-         _13 = copy _6;
 -         StorageLive(_14);
--         _14 = copy _6;
--         StorageLive(_15);
--         _15 = copy _8;
--         _13 = Ne(move _14, move _15);
-+         _13 = Ne(copy _6, copy _8);
-          switchInt(move _13) -> [0: bb3, otherwise: bb2];
+-         _14 = copy _8;
+-         _12 = Ne(move _13, move _14);
++         _12 = Ne(copy _6, copy _8);
+          switchInt(move _12) -> [0: bb3, otherwise: bb2];
       }
   
       bb2: {
--         StorageDead(_15);
 -         StorageDead(_14);
+-         StorageDead(_13);
           _0 = const ();
-          StorageDead(_13);
+          StorageDead(_12);
           StorageDead(_8);
           StorageDead(_6);
 -         StorageDead(_4);
@@ -89,10 +85,10 @@
       }
   
       bb3: {
--         StorageDead(_15);
 -         StorageDead(_14);
+-         StorageDead(_13);
 -         _5 = const ();
-          StorageDead(_13);
+          StorageDead(_12);
           StorageDead(_8);
           StorageDead(_6);
           goto -> bb1;
