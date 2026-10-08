@@ -16,7 +16,7 @@ fn main() {
     let y = String::new();
     let x: Result<&String, &String> = Ok(&y);
     let y: &str = x.map_or_else(|err| err, |n| n);
-    // This should lint with a smarter check
+    //~^ unnecessary_result_map_or_else
 
     // Temporary variable.
     let x: Result<(), ()> = Ok(());

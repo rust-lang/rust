@@ -6,7 +6,7 @@
 use core::future::Future;
 
 fn f() -> impl Future<Output = Option<String>> {
-    async { Some("nope".into()) }
+    async { Some((*&"nope").into()) }
 }
 
 fn main() {}
