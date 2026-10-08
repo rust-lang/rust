@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::StableHash_NoContext;
-use rustc_type_ir_macros::TypeVisitable_Generic;
+use rustc_type_ir_macros::{GenericTypeVisitable, TypeVisitable_Generic};
 
 use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
 use crate::inherent::*;
@@ -30,7 +30,7 @@ use crate::{
 /// [here]: https://rust-lang.zulipchat.com/#narrow/channel/364551-t-types.2Ftrait-system-refactor/topic/Eager.20normalization.2C.20ahoy.21/with/582996293
 #[derive_where(Clone, Copy, PartialOrd, PartialEq, Eq, Hash, Debug; T)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
-#[derive(TypeVisitable_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable)]
 pub struct Unnormalized<I: Interner, T> {
     value: T,
     #[type_visitable(ignore)]
