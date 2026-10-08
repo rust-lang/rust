@@ -712,12 +712,12 @@ impl SpanData {
     /// Avoid if possible, `Span::map_ctxt` should be preferred.
     #[inline]
     fn with_ctxt(&self, ctxt: SyntaxContext) -> Span {
-        Span::new(self.lo, self.hi, ctxt, self.parent)
+        Span::new_ordered(self.lo, self.hi, ctxt, self.parent)
     }
     /// Avoid if possible, `Span::with_parent` should be preferred.
     #[inline]
     fn with_parent(&self, parent: Option<LocalDefId>) -> Span {
-        Span::new(self.lo, self.hi, self.ctxt, parent)
+        Span::new_ordered(self.lo, self.hi, self.ctxt, parent)
     }
     /// Returns `true` if this is a dummy span with any hygienic context.
     #[inline]
@@ -1171,9 +1171,12 @@ impl Span {
     /// ```
     pub fn to(self, end: Span) -> Span {
         match Span::prepare_to_combine(self, end) {
-            Ok((from, to, parent)) => {
-                Span::new(cmp::min(from.lo, to.lo), cmp::max(from.hi, to.hi), from.ctxt, parent)
-            }
+            Ok((from, to, parent)) => Span::new_ordered(
+                cmp::min(from.lo, to.lo),
+                cmp::max(from.hi, to.hi),
+                from.ctxt,
+                parent,
+            ),
             Err(fallback) => fallback,
         }
     }
@@ -1243,7 +1246,7 @@ impl Span {
             return None;
         }
 
-        Some(Span::new(self_.lo, self_.hi, self_.ctxt, parent))
+        Some(Span::new_ordered(self_.lo, self_.hi, self_.ctxt, parent))
     }
 
     pub fn from_inner(self, inner: InnerSpan) -> Span {
@@ -1532,7 +1535,7 @@ impl SpanDecoder for MemDecoder<'_> {
         let lo = Decodable::decode(self);
         let hi = Decodable::decode(self);
 
-        Span::new(lo, hi, SyntaxContext::root(), None)
+        Span::new_ordered(lo, hi, SyntaxContext::root(), None)
     }
 
     fn decode_expn_id(&mut self) -> ExpnId {

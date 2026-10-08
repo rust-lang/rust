@@ -370,6 +370,19 @@ impl Span {
         ctxt: SyntaxContext,
         parent: Option<LocalDefId>,
     ) -> Self {
+        if lo > hi {
+            std::mem::swap(&mut lo, &mut hi);
+        }
+        Span::new_ordered(lo, hi, ctxt, parent)
+    }
+
+    #[inline]
+    pub fn new_ordered(
+        lo: BytePos,
+        hi: BytePos,
+        ctxt: SyntaxContext,
+        parent: Option<LocalDefId>,
+    ) -> Self {
         #[cold]
         #[inline(never)]
         fn interned(lo: BytePos, hi: BytePos, ctxt: u32, parent: Option<LocalDefId>) -> Span {
@@ -378,10 +391,6 @@ impl Span {
             let index =
                 with_span_interner(|interner| interner.intern(&SpanDataNoCtxt { lo, hi, parent }));
             Interned::new_span(ctxt, index)
-        }
-
-        if lo > hi {
-            std::mem::swap(&mut lo, &mut hi);
         }
 
         let lo32 = lo.0;
