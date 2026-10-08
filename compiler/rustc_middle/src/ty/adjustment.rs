@@ -107,9 +107,10 @@ pub enum Adjust {
     /// Take a user-type T implementing the Reborrow trait (for Mut) or the CoerceShared trait (for
     /// Not) and reborrow as `T` or `CoreceShared<U>`.
     ///
-    /// This produces an [`ExprKind::Reborrow`].
+    /// Thu Not form produces an [`ExprKind::CoerceShared`]; the Mut one produces no THIR,
+    /// and exists only for closure capture inference.
     ///
-    /// [`ExprKind::Reborrow`]: crate::thir::ExprKind::Reborrow
+    /// [`ExprKind::CoerceShared`]: crate::thir::ExprKind::CoerceShared
     GenericReborrow(hir::Mutability),
 }
 
