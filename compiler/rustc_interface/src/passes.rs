@@ -1202,8 +1202,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 fn analysis(tcx: TyCtxt<'_>, (): ()) {
     run_required_analyses(tcx);
 
-    if !tcx.sess.target_stage.should_analyse() {
-        // We're complete here.
+    if !tcx.sess.opts.output_types.requires_full_analysis() {
         return;
     }
 

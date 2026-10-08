@@ -4,13 +4,15 @@ error: Argument to option 'emit' missing
                                Comma separated list of types of output for the
                                compiler to emit.
                                Each TYPE has the default FILE name:
-                               * asm - CRATE_NAME.s
-                               * llvm-bc - CRATE_NAME.bc
+                               * validation - libCRATE_NAME.rmeta
                                * dep-info - CRATE_NAME.d
-                               * link - (platform and crate-type dependent)
-                               * llvm-ir - CRATE_NAME.ll
-                               * metadata - libCRATE_NAME.rmeta
+                               * full-analysis - libCRATE_NAME.rmeta
                                * mir - CRATE_NAME.mir
-                               * obj - CRATE_NAME.o
+                               * metadata - libCRATE_NAME.rmeta
                                * thin-link-bitcode - CRATE_NAME.indexing.o
+                               * llvm-ir - CRATE_NAME.ll
+                               * llvm-bc - CRATE_NAME.bc
+                               * asm - CRATE_NAME.s
+                               * obj - CRATE_NAME.o
+                               * link - (platform and crate-type dependent)
 

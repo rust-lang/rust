@@ -39,7 +39,6 @@ use crate::config::{
     self, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions, DebugInfo,
     ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, LtoCli,
     NATIVE_CPU, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
-    TargetStage,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -556,8 +555,6 @@ pub struct Session {
 
     /// Config specifying targets' pointer authentication preference.
     pub pointer_auth_config: Option<PointerAuthConfig>,
-
-    pub target_stage: TargetStage,
 
     /// Cached sanitizer set. Cached because it is accessed frequently.
     sanitizers: SanitizerSet,
@@ -1478,8 +1475,6 @@ pub fn build_session(
         None
     };
 
-    let target_stage = sopts.unstable_opts.go_to_stage;
-
     let timings = TimingSectionHandler::new(sopts.json_timings);
 
     let pointer_auth_config: Option<PointerAuthConfig> =
@@ -1529,7 +1524,6 @@ pub fn build_session(
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
         removed_rustc_main_attr: AtomicBool::new(false),
         pointer_auth_config,
-        target_stage,
         sanitizers,
     };
 

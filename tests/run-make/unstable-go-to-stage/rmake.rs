@@ -21,13 +21,12 @@ fn path_not_exists<const N: usize>(paths: [&str; N]) {
 }
 
 fn main() {
-    rustc().input("aux.rs").crate_type("rlib").emit("link,metadata").arg("-Zgo-to-stage=end").run();
+    rustc().input("aux.rs").crate_type("rlib").emit("full-analysis").run();
     rustc()
         .input("lib.rs")
         .crate_type("rlib")
-        .emit("dep-info")
+        .emit("dep-info,full-analysis")
         .arg("-Zbinary-dep-depinfo")
-        .arg("-Zgo-to-stage=end")
         .run();
 
     invalid_utf8_contains("lib.d", "libaux.rmeta");
@@ -38,13 +37,12 @@ fn main() {
     rfs::remove_file("lib.d");
     rfs::remove_file("libaux.rmeta");
 
-    rustc().input("aux.rs").crate_type("rlib").emit("dep-info").arg("-Zgo-to-stage=analysis").run();
+    rustc().input("aux.rs").crate_type("rlib").emit("full-analysis").run();
     rustc()
         .input("lib.rs")
         .crate_type("rlib")
-        .emit("dep-info")
+        .emit("full-analysis")
         .arg("-Zbinary-dep-depinfo")
-        .arg("-Zgo-to-stage=analysis") // These implies metadata
         .run();
 
     path_exists(["liblib.rmeta"]);
@@ -55,8 +53,7 @@ fn main() {
     let output = rustc()
         .input("nameres.rs")
         .crate_type("rlib")
-        .emit("dep-info,link")
-        .arg("-Zgo-to-stage=nameres")
+        .emit("dep-info,validation")
         .arg("-Dwarnings")
         .run()
         .stderr_utf8();
@@ -71,8 +68,7 @@ fn main() {
     let output = rustc()
         .input("nameres.rs")
         .crate_type("rlib")
-        .emit("dep-info,link")
-        .arg("-Zgo-to-stage=analysis")
+        .emit("full-analysis")
         .arg("-Dwarnings")
         .run_fail()
         .stderr_utf8();

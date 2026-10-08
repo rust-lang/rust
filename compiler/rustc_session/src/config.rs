@@ -59,6 +59,9 @@ pub const DEFAULT_STACK_SIZE: usize = 17 * 1024 * 1024;
 /// Special CPU name requesting the CPU of the current host.
 pub const NATIVE_CPU: &str = "native";
 
+const NIGHTLY_ONLY_OUTTYPES: [OutputType; 3] =
+    [OutputType::ThinLinkBitcode, OutputType::FullAnalysis, OutputType::Validation];
+
 /// The different settings that the `-C strip` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum Strip {
@@ -588,25 +591,6 @@ impl FmtDebug {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Hash, Debug)]
-pub enum TargetStage {
-    End,
-    Analysis,
-    NameResolution,
-}
-
-impl TargetStage {
-    /// Whether this target stage should use the `analysis` query for more
-    /// than just compiling information about the crate. If it returns `true`,
-    // the `analysis` query will also lint and do a bunch of side-analysis
-    pub fn should_analyse(&self) -> bool {
-        match self {
-            Self::End | Self::Analysis => true,
-            Self::NameResolution => false,
-        }
-    }
-}
-
 #[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum SwitchWithOptPath {
     Enabled(Option<PathBuf>),
@@ -796,11 +780,60 @@ macro_rules! define_output_types {
 }
 
 define_output_types! {
-    Assembly => {
-        shorthand: "asm",
-        extension: "s",
-        description: "Generates a file with the crate's assembly code",
-        default_filename: "CRATE_NAME.s",
+    Validation => {
+        shorthand: "validation",
+        extension: "rmeta",
+        description: "Generates metadata and exits after doing only validation and required analysis",
+        default_filename: "libCRATE_NAME.rmeta",
+        is_text: false,
+        compatible_with_cgus_and_single_output: true
+    },
+    DepInfo => {
+        shorthand: "dep-info",
+        extension: "d",
+        description: "Generates a file with Makefile syntax that indicates all the source files that were loaded to generate the crate",
+        default_filename: "CRATE_NAME.d",
+        is_text: true,
+        compatible_with_cgus_and_single_output: true
+    },
+    FullAnalysis => {
+        shorthand: "full-analysis",
+        extension: "rmeta",
+        description: "Generates metadata and exits after doing all analysis",
+        default_filename: "libCRATE_NAME.rmeta",
+        is_text: false,
+        compatible_with_cgus_and_single_output: true
+    },
+    Mir => {
+        shorthand: "mir",
+        extension: "mir",
+        description: "Generates a file containing rustc's mid-level intermediate representation",
+        default_filename: "CRATE_NAME.mir",
+        is_text: true,
+        compatible_with_cgus_and_single_output: false
+    },
+    Metadata => {
+        shorthand: "metadata",
+        extension: "rmeta",
+        description: "Generates a file containing metadata about the crate",
+        default_filename: "libCRATE_NAME.rmeta",
+        is_text: false,
+        compatible_with_cgus_and_single_output: true
+    },
+    #[doc = "This is the summary or index data part of the ThinLTO bitcode."]
+    ThinLinkBitcode => {
+        shorthand: "thin-link-bitcode",
+        extension: "indexing.o",
+        description: "Generates the ThinLTO summary as bitcode",
+        default_filename: "CRATE_NAME.indexing.o",
+        is_text: false,
+        compatible_with_cgus_and_single_output: false
+    },
+    LlvmAssembly => {
+        shorthand: "llvm-ir",
+        extension: "ll",
+        description: "Generates a file containing LLVM IR",
+        default_filename: "CRATE_NAME.ll",
         is_text: true,
         compatible_with_cgus_and_single_output: false
     },
@@ -814,43 +847,11 @@ define_output_types! {
         is_text: false,
         compatible_with_cgus_and_single_output: false
     },
-    DepInfo => {
-        shorthand: "dep-info",
-        extension: "d",
-        description: "Generates a file with Makefile syntax that indicates all the source files that were loaded to generate the crate",
-        default_filename: "CRATE_NAME.d",
-        is_text: true,
-        compatible_with_cgus_and_single_output: true
-    },
-    Exe => {
-        shorthand: "link",
-        extension: "",
-        description: "Generates the crates specified by --crate-type. This is the default if --emit is not specified",
-        default_filename: "(platform and crate-type dependent)",
-        is_text: false,
-        compatible_with_cgus_and_single_output: true
-    },
-    LlvmAssembly => {
-        shorthand: "llvm-ir",
-        extension: "ll",
-        description: "Generates a file containing LLVM IR",
-        default_filename: "CRATE_NAME.ll",
-        is_text: true,
-        compatible_with_cgus_and_single_output: false
-    },
-    Metadata => {
-        shorthand: "metadata",
-        extension: "rmeta",
-        description: "Generates a file containing metadata about the crate",
-        default_filename: "libCRATE_NAME.rmeta",
-        is_text: false,
-        compatible_with_cgus_and_single_output: true
-    },
-    Mir => {
-        shorthand: "mir",
-        extension: "mir",
-        description: "Generates a file containing rustc's mid-level intermediate representation",
-        default_filename: "CRATE_NAME.mir",
+    Assembly => {
+        shorthand: "asm",
+        extension: "s",
+        description: "Generates a file with the crate's assembly code",
+        default_filename: "CRATE_NAME.s",
         is_text: true,
         compatible_with_cgus_and_single_output: false
     },
@@ -862,14 +863,13 @@ define_output_types! {
         is_text: false,
         compatible_with_cgus_and_single_output: false
     },
-    #[doc = "This is the summary or index data part of the ThinLTO bitcode."]
-    ThinLinkBitcode => {
-        shorthand: "thin-link-bitcode",
-        extension: "indexing.o",
-        description: "Generates the ThinLTO summary as bitcode",
-        default_filename: "CRATE_NAME.indexing.o",
+    Exe => {
+        shorthand: "link",
+        extension: "",
+        description: "Generates the crates specified by --crate-type. This is the default if --emit is not specified",
+        default_filename: "(platform and crate-type dependent)",
         is_text: false,
-        compatible_with_cgus_and_single_output: false
+        compatible_with_cgus_and_single_output: true
     },
 }
 
@@ -956,7 +956,10 @@ impl OutputTypes {
             | OutputType::Mir
             | OutputType::Object
             | OutputType::Exe => true,
-            OutputType::Metadata | OutputType::DepInfo => false,
+            OutputType::Metadata
+            | OutputType::DepInfo
+            | OutputType::Validation
+            | OutputType::FullAnalysis => false,
         })
     }
 
@@ -970,9 +973,32 @@ impl OutputTypes {
             | OutputType::Mir
             | OutputType::Metadata
             | OutputType::Object
+            | OutputType::Validation
+            | OutputType::FullAnalysis
             | OutputType::DepInfo => false,
             OutputType::Exe => true,
         })
+    }
+
+    pub fn requires_full_analysis(&self) -> bool {
+        self.0.keys().any(|k| match *k {
+            OutputType::Validation | OutputType::DepInfo => false,
+            OutputType::Exe
+            | OutputType::Bitcode
+            | OutputType::Object
+            | OutputType::Mir
+            | OutputType::Assembly
+            | OutputType::ThinLinkBitcode
+            | OutputType::LlvmAssembly
+            // FIXME: Metadata does not technically need it,
+            // this is just to keep behaviour
+            | OutputType::Metadata
+            | OutputType::FullAnalysis => true,
+        })
+    }
+
+    pub fn all<F: Fn(&OutputType) -> bool>(&self, f: F) -> bool {
+        self.iter().map(|e| e.0).all(f)
     }
 }
 
@@ -2463,7 +2489,7 @@ fn parse_output_types(
                         display = OutputType::shorthands_display(),
                     ))
                 });
-                if output_type == OutputType::ThinLinkBitcode && !unstable_opts.unstable_options {
+                if NIGHTLY_ONLY_OUTTYPES.contains(&output_type) && !unstable_opts.unstable_options {
                     early_dcx.early_fatal(format!(
                         "{} requested but -Zunstable-options not specified",
                         OutputType::ThinLinkBitcode.shorthand()

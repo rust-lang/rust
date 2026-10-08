@@ -884,7 +884,6 @@ mod desc {
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or the path to the linker plugin";
     pub(crate) const parse_location_detail: &str = "either `none`, or a comma separated list of location details to track: `file`, `line`, or `column`";
     pub(crate) const parse_fmt_debug: &str = "either `full`, `shallow`, or `none`";
-    pub(crate) const parse_target_stage: &str = "either `analysis` or `end`";
     pub(crate) const parse_switch_with_opt_path: &str =
         "an optional path to the profiling data output directory";
     pub(crate) const parse_merge_functions: &str =
@@ -1146,17 +1145,6 @@ pub mod parse {
             Some("none") => FmtDebug::None,
             _ => return false,
         };
-        true
-    }
-
-    pub(crate) fn parse_target_stage(opt: &mut TargetStage, v: Option<&str>) -> bool {
-        *opt = match v {
-            Some("end") => TargetStage::End,
-            Some("analysis") => TargetStage::Analysis,
-            Some("nameres") => TargetStage::NameResolution,
-            _ => return false,
-        };
-
         true
     }
 
@@ -2565,9 +2553,6 @@ options! {
         "whether each function should go in its own section"),
     future_incompat_test: bool = (false, parse_bool, [UNTRACKED],
         "forces all lints to be future incompatible, used for internal testing (default: no)"),
-    go_to_stage: TargetStage = (TargetStage::End, parse_target_stage, [UNTRACKED],
-        "Indicates the compiler to go to, forces metadata generation (default=end)"
-    ),
     graphviz_dark_mode: bool = (false, parse_bool, [UNTRACKED],
         "use dark-themed colors in graphviz output (default: no)"),
     graphviz_font: String = ("Courier, monospace".to_string(), parse_string, [UNTRACKED],

@@ -64,8 +64,6 @@ use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTuple};
 use tracing::trace;
 
-use crate::config::TargetStage;
-
 #[allow(unused_macros)]
 macro do_not_use_print($($t:tt)*) {
     std::compile_error!(
@@ -315,17 +313,9 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
 
             passes::write_interface(tcx);
 
-            if sess.target_stage == TargetStage::NameResolution {
-                debug_assert!(rustc_metadata::fs::encode_and_write_metadata(tcx, true).is_ok());
-                return None;
-            }
-
-            if sess.opts.output_types.contains_key(&OutputType::DepInfo)
-                && sess.opts.output_types.len() == 1
-            {
-                if sess.target_stage == TargetStage::Analysis {
-                    debug_assert!(rustc_metadata::fs::encode_and_write_metadata(tcx, true).is_ok());
-                }
+            if sess.opts.output_types.all(|out| out <= &OutputType::DepInfo) {
+                let _metadata = rustc_metadata::fs::encode_and_write_metadata(tcx, true);
+                debug_assert!(_metadata.is_ok());
                 return None;
             }
 
@@ -339,8 +329,17 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
                 return None;
             }
 
-            if sess.target_stage == TargetStage::Analysis {
-                debug_assert!(rustc_metadata::fs::encode_and_write_metadata(tcx, true).is_ok());
+            if sess
+                .opts
+                .output_types
+                .contains_key(&OutputType::FullAnalysis)
+                .then(|| {
+                    let _metadata = rustc_metadata::fs::encode_and_write_metadata(tcx, true);
+                    debug_assert!(_metadata.is_ok());
+                    Some(0)
+                })
+                .is_some_and(|_| sess.opts.output_types.all(|out| out <= &OutputType::FullAnalysis))
+            {
                 return None;
             }
 
