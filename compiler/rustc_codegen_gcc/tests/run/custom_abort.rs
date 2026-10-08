@@ -5,7 +5,7 @@
 
 // Check that a program can define its own `abort`.
 
-#![feature(no_core)]
+#![feature(no_core, rustc_private)]
 #![no_std]
 #![no_core]
 #![no_main]
