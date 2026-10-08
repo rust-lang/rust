@@ -13,7 +13,7 @@ note: closure is returned here
 LL | /     || {
 LL | |
 LL | |         match x {
-LL | |             Enum::A(a, b) => {
+LL | |             Enum::A(ref a, b) => {
 ...  |
 LL | |     }
    | |_____^
@@ -37,7 +37,7 @@ note: closure is returned here
 LL | /     || {
 LL | |
 LL | |         match x {
-LL | |             Enum::A(a, b) => {
+LL | |             Enum::A(ref a, b) => {
 ...  |
 LL | |     }
    | |_____^
@@ -61,7 +61,7 @@ note: closure is returned here
 LL | /     || {
 LL | |
 LL | |         match x {
-LL | |             Struct(a, b) => {
+LL | |             Struct(ref a, b) => {
 ...  |
 LL | |     }
    | |_____^
