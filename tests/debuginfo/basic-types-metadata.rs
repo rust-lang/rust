@@ -77,8 +77,8 @@ fn main() {
     let f128: f128 = 4.5;
     let fnptr : fn() = _zzz;
     let closure_0 = || {};
-    let closure_1 = || { b; };
-    let closure_2 = || { if b { i } else { i }; };
+    let closure_1 = || { *&b; };
+    let closure_2 = || { if *&b { *&i } else { *&i }; };
     _zzz(); // #break
     if 1 == 1 { _yyy(); }
 }
