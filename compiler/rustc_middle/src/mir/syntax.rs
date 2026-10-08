@@ -5,6 +5,7 @@
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece, Mutability};
+use rustc_attr_ir::UnrollAttr;
 use rustc_data_structures::packed::Pu128;
 use rustc_hir::CoroutineKind;
 use rustc_hir::def_id::DefId;
@@ -14,6 +15,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, Spanned, Symbol};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use smallvec::SmallVec;
+use thin_vec::ThinVec;
 
 use super::{BasicBlock, Const, Local, UserTypeProjection};
 use crate::mir::coverage::CoverageKind;
@@ -683,7 +685,7 @@ pub enum InlineAsmMacro {
 #[derive(Clone, TyEncodable, TyDecodable, StableHash, PartialEq, TypeFoldable, TypeVisitable)]
 pub enum TerminatorKind<'tcx> {
     /// Block has one successor; we continue execution there.
-    Goto { target: BasicBlock },
+    Goto { target: BasicBlock, loop_hint_attrs: ThinVec<UnrollAttr> },
 
     /// Switches based on the computed value.
     ///

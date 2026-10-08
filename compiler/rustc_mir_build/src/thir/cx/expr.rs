@@ -2,7 +2,7 @@ use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::UnsafeBinderCastKind;
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_attr_ir::{AttributeKind, HasAttrs, find_attr};
+use rustc_attr_ir::{AttributeKind, HasAttrs, UnrollAttr, find_attr};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::HirId;
@@ -57,13 +57,11 @@ impl<'tcx> SplattedFunc<'tcx> {
     }
 }
 
-fn filter_loop_hint_attrs(id: HirId, tcx: TyCtxt<'_>) -> ThinVec<AttributeKind> {
+fn filter_loop_hint_attrs(id: HirId, tcx: TyCtxt<'_>) -> ThinVec<UnrollAttr> {
     HasAttrs::get_attrs(id, &tcx)
         .into_iter()
         .filter_map(|attr| match attr {
-            rustc_attr_ir::Attribute::Parsed(attrkind @ AttributeKind::Unroll(_)) => {
-                Some(attrkind.clone())
-            }
+            rustc_attr_ir::Attribute::Parsed(AttributeKind::Unroll(unroll)) => Some(unroll.clone()),
             _ => None,
         })
         .collect()
