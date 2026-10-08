@@ -534,17 +534,8 @@ impl<'tcx> rustc_type_ir::Flags for Ty<'tcx> {
     }
 }
 
-/// The crate outlives map is computed during typeck and contains the
-/// outlives of every item in the local crate. You should not use it
-/// directly, because to do so will make your pass dependent on the
-/// HIR of every item in the local crate. Instead, use
-/// `tcx.inferred_outlives_of()` to get the outlives for a *particular*
-/// item.
 #[derive(StableHash, Debug)]
-pub struct CrateClausesMap<'tcx> {
-    /// For each struct with outlive bounds, maps to a vector of the
-    /// clause of its outlive bounds. If an item has no outlives
-    /// bounds, it will have no entry.
+pub struct CrateInferredOutlivesClausesMap<'tcx> {
     pub clauses: DefIdMap<&'tcx [(Clause<'tcx>, Span)]>,
 }
 
