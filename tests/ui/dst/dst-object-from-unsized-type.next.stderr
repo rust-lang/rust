@@ -32,14 +32,14 @@ LL - fn test2<T: ?Sized + Foo>(t: &T) {
 LL + fn test2<T: Foo>(t: &T) {
    |
 
-error[E0277]: the trait bound `&str: CoerceUnsized<&dyn Foo>` is not satisfied in `str`
+error[E0277]: the trait bound `&'static str: CoerceUnsized<&dyn Foo>` is not satisfied in `str`
   --> $DIR/dst-object-from-unsized-type.rs:23:28
    |
 LL |     let _: &[&dyn Foo] = &["hi"];
    |                            ^^^^ within `str`, the trait `Sized` is not implemented for `str`
    |
    = note: `str` is considered to contain a `[u8]` slice for auto trait purposes
-   = note: required for `&str` to implement `CoerceUnsized<&dyn Foo>`
+   = note: required for `&'static str` to implement `CoerceUnsized<&dyn Foo>`
    = note: required for the cast from `&'static str` to `&dyn Foo`
 
 error[E0277]: the trait bound `&[u8]: CoerceUnsized<&dyn Foo>` is not satisfied in `[u8]`
