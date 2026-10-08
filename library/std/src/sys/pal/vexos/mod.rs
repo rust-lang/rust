@@ -21,7 +21,7 @@ global_asm!(
 
         @ Clear the .bss (uninitialized statics) section by filling it with zeroes.
         @ This is required, since the compiler assumes it will be zeroed on first access.
-        movs r0, #0
+        mov r0, #0
         ldr r1, =__bss_start
         ldr r2, =__bss_end
     .Lclear_bss:
