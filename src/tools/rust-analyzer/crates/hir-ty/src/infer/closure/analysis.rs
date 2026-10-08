@@ -30,7 +30,7 @@
 //! then mean that all later passes would have to check for these figments
 //! and report an error, and it just seems like more mess in the end.)
 
-use std::{iter, mem};
+use std::{cmp, iter, mem};
 
 use hir_def::{
     expr_store::ExpressionStore,
@@ -88,7 +88,7 @@ impl<'db> UpvarArgs<'db> {
     }
 }
 
-#[derive(Eq, Clone, PartialEq, Debug, Copy, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Immutable,
@@ -602,9 +602,9 @@ impl<'db> InferenceContext<'db> {
             .cloned()
             .map(|(place, mut capture_info)| {
                 // Apply rules for safety before inferring closure kind
-                let place = restrict_capture_precision(place, &mut capture_info);
+                let place = restrict_capture_precision(self, place, &mut capture_info);
 
-                let place = truncate_capture_for_optimization(place, &mut capture_info);
+                let place = truncate_capture_for_optimization(self, place, &mut capture_info);
 
                 let updated = match capture_info.capture_kind {
                     UpvarCapture::ByValue => match closure_kind {
@@ -632,8 +632,8 @@ impl<'db> InferenceContext<'db> {
                 origin = updated.1;
 
                 let place = match capture_clause {
-                    CaptureBy::Value => adjust_for_move_closure(place, &mut capture_info),
-                    CaptureBy::Ref => adjust_for_non_move_closure(place, &mut capture_info),
+                    CaptureBy::Value => adjust_for_move_closure(self, place, &mut capture_info),
+                    CaptureBy::Ref => adjust_for_non_move_closure(self, place, &mut capture_info),
                 };
 
                 // This restriction needs to be applied after we have handled adjustments for `move`
@@ -771,6 +771,7 @@ impl<'db> InferenceContext<'db> {
                         // Truncate the descendant (already in min_captures) to be same as the ancestor to handle any
                         // possible change in capture mode.
                         truncate_place_to_len_and_update_capture_kind(
+                            self,
                             &mut possible_descendant.place,
                             &mut possible_descendant.info,
                             place.projections.len(),
@@ -822,6 +823,7 @@ impl<'db> InferenceContext<'db> {
                             // Truncate the descendant (current place) to be same as the ancestor to handle any
                             // possible change in capture mode.
                             truncate_place_to_len_and_update_capture_kind(
+                                self,
                                 &mut place,
                                 &mut updated_capture_info,
                                 possible_ancestor.place.projections.len(),
@@ -993,8 +995,16 @@ impl<'db> InferenceContext<'db> {
             // Otherwise you'd get an error in 2021 immediately because you'd be trying to take
             // ownership of the (borrowed) String or else you'd take ownership of b, as in 2018 and
             // before, which is also an error.
-            CaptureBy::Value if !place.deref_tys().any(Ty::is_ref) => UpvarCapture::ByValue,
-            CaptureBy::Value | CaptureBy::Ref => UpvarCapture::ByRef(BorrowKind::Immutable),
+            CaptureBy::Value | CaptureBy::Ref if place.deref_tys().any(Ty::is_ref) => {
+                UpvarCapture::ByRef(BorrowKind::Immutable)
+            }
+            CaptureBy::Ref
+                if !self.infcx().type_is_copy_modulo_regions(self.table.param_env, place.ty()) =>
+            {
+                UpvarCapture::ByRef(BorrowKind::Immutable)
+            }
+            CaptureBy::Value => UpvarCapture::ByValue,
+            CaptureBy::Ref => UpvarCapture::ByCopy,
         }
     }
 
@@ -1118,31 +1128,29 @@ fn should_reborrow_from_env_of_parent_coroutine_closure(
 
 /// Truncate the capture so that the place being borrowed is in accordance with RFC 1240,
 /// which states that it's unsafe to take a reference into a struct marked `repr(packed)`.
-fn restrict_repr_packed_field_ref_capture(
+fn restrict_repr_packed_field_ref_capture<'db>(
+    fcx: &InferenceContext<'db>,
     mut place: Place,
     capture_info: &mut CaptureInfo,
 ) -> Place {
-    let pos = place.projections.iter().enumerate().position(|(i, p)| {
-        let ty = place.ty_before_projection(i);
+    // We only want repr packed restriction to be applied to reading references into a packed
+    // struct, and not when the data is being moved.
+    let UpvarCapture::ByRef(_) = capture_info.capture_kind else {
+        return place;
+    };
 
-        // Return true for fields of packed structs.
-        match p.kind {
-            ProjectionKind::Field { .. } => match ty.kind() {
-                TyKind::Adt(def, _) if def.is_packed() => {
-                    // We stop here regardless of field alignment. Field alignment can change as
-                    // types change, including the types of private fields in other crates, and that
-                    // shouldn't affect how we compute our captures.
-                    true
-                }
-
-                _ => false,
-            },
-            _ => false,
+    for p_idx in (0..place.projections.len()).rev() {
+        let p = place.projections[p_idx].kind;
+        match p {
+            ProjectionKind::Deref => break,
+            ProjectionKind::Field { .. }
+                if let TyKind::Adt(def, _) = place.ty_before_projection(p_idx).kind()
+                    && def.repr(fcx.db).packed() =>
+            {
+                truncate_place_to_len_and_update_capture_kind(fcx, &mut place, capture_info, p_idx);
+            }
+            _ => {}
         }
-    });
-
-    if let Some(pos) = pos {
-        truncate_place_to_len_and_update_capture_kind(&mut place, capture_info, pos);
     }
 
     place
@@ -1156,7 +1164,7 @@ fn apply_capture_kind_on_capture_ty<'db>(
     region: Region<'db>,
 ) -> Ty<'db> {
     match capture_kind {
-        UpvarCapture::ByValue | UpvarCapture::ByUse => ty,
+        UpvarCapture::ByValue | UpvarCapture::ByUse | UpvarCapture::ByCopy => ty,
         UpvarCapture::ByRef(kind) => Ty::new_ref(interner, region, ty, kind.to_mutbl_lossy()),
     }
 }
@@ -1213,10 +1221,9 @@ impl<'db> euv::Delegate<'db> for InferBorrowKind {
 
         let place = ctx.normalize_capture_place(place_with_id.span(), place_with_id.place.clone());
 
-        let place = restrict_capture_precision(place, &mut dummy_capture_info);
+        let place = restrict_capture_precision(ctx, place, &mut dummy_capture_info);
 
         dummy_capture_info.capture_kind = dummy_capture_kind;
-        let place = restrict_repr_packed_field_ref_capture(place, &mut dummy_capture_info);
         self.fake_reads.push((place, cause, place_with_id.origins));
     }
 
@@ -1269,17 +1276,33 @@ impl<'db> euv::Delegate<'db> for InferBorrowKind {
 
         let place = ctx.normalize_capture_place(place_with_id.span(), place_with_id.place.clone());
 
-        // We only want repr packed restriction to be applied to reading references into a packed
-        // struct, and not when the data is being moved. Therefore we call this method here instead
-        // of in `restrict_capture_precision`.
-        let place = restrict_repr_packed_field_ref_capture(place, &mut capture_info);
-
         // Raw pointers don't inherit mutability
         if place.deref_tys().any(Ty::is_raw_ptr) {
             capture_info.capture_kind = UpvarCapture::ByRef(BorrowKind::Immutable);
         }
 
         self.capture_information.push((place, capture_info));
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    fn copy(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'db>) {
+        let PlaceBase::Upvar { closure: upvar_closure, .. } = place_with_id.place.base else {
+            return;
+        };
+        assert_eq!(self.closure_def_id, upvar_closure);
+
+        let place = ctx.normalize_capture_place(place_with_id.span(), place_with_id.place.clone());
+
+        if place.projections.iter().any(|p| p.kind == ProjectionKind::Deref)
+            && !matches!(place.ty().kind(), TyKind::Ref(_, _, Mutability::Not))
+        {
+            self.borrow(place_with_id, BorrowKind::Immutable, ctx);
+        } else {
+            self.capture_information.push((
+                place,
+                CaptureInfo { sources: place_with_id.origins, capture_kind: UpvarCapture::ByCopy },
+            ));
+        }
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -1301,7 +1324,7 @@ fn restrict_precision_for_drop_types<'db>(
         for i in 0..place.projections.len() {
             match place.ty_before_projection(i).kind() {
                 TyKind::Adt(def, _) if def.destructor(fcx.interner()).is_some() => {
-                    truncate_place_to_len_and_update_capture_kind(&mut place, capture_info, i);
+                    truncate_place_to_len_and_update_capture_kind(fcx, &mut place, capture_info, i);
                     break;
                 }
                 _ => {}
@@ -1316,30 +1339,34 @@ fn restrict_precision_for_drop_types<'db>(
 /// - No projections are applied to raw pointers, since these require unsafe blocks. We capture
 ///   them completely.
 /// - No projections are applied on top of Union ADTs, since these require unsafe blocks.
-fn restrict_precision_for_unsafe(mut place: Place, capture_info: &mut CaptureInfo) -> Place {
+fn restrict_precision_for_unsafe<'db>(
+    fcx: &InferenceContext<'db>,
+    mut place: Place,
+    capture_info: &mut CaptureInfo,
+) -> Place {
     if place.base_ty.as_ref().is_raw_ptr() {
-        truncate_place_to_len_and_update_capture_kind(&mut place, capture_info, 0);
+        truncate_place_to_len_and_update_capture_kind(fcx, &mut place, capture_info, 0);
     }
 
     if place.base_ty.as_ref().is_union() {
-        truncate_place_to_len_and_update_capture_kind(&mut place, capture_info, 0);
+        truncate_place_to_len_and_update_capture_kind(fcx, &mut place, capture_info, 0);
     }
 
     for (i, proj) in place.projections.iter().enumerate() {
         if proj.ty.as_ref().is_raw_ptr() {
             // Don't apply any projections on top of a raw ptr.
-            truncate_place_to_len_and_update_capture_kind(&mut place, capture_info, i + 1);
+            truncate_place_to_len_and_update_capture_kind(fcx, &mut place, capture_info, i + 1);
             break;
         }
 
         if proj.ty.as_ref().is_union() {
             // Don't capture precise fields of a union.
-            truncate_place_to_len_and_update_capture_kind(&mut place, capture_info, i + 1);
+            truncate_place_to_len_and_update_capture_kind(fcx, &mut place, capture_info, i + 1);
             break;
         }
     }
 
-    place
+    restrict_repr_packed_field_ref_capture(fcx, place, capture_info)
 }
 
 /// Truncate projections so that the following rules are obeyed by the captured `place`:
@@ -1348,9 +1375,11 @@ fn restrict_precision_for_unsafe(mut place: Place, capture_info: &mut CaptureInf
 ///
 /// Returns the truncated place and updated capture mode.
 #[instrument(ret, level = "debug")]
-fn restrict_capture_precision(place: Place, capture_info: &mut CaptureInfo) -> Place {
-    let mut place = restrict_precision_for_unsafe(place, capture_info);
-
+fn restrict_capture_precision<'db>(
+    fcx: &InferenceContext<'db>,
+    mut place: Place,
+    capture_info: &mut CaptureInfo,
+) -> Place {
     if place.projections.is_empty() {
         // Nothing to do here
         return place;
@@ -1360,7 +1389,7 @@ fn restrict_capture_precision(place: Place, capture_info: &mut CaptureInfo) -> P
         match proj.kind {
             ProjectionKind::Index | ProjectionKind::Subslice => {
                 // Arrays are completely captured, so we drop Index and Subslice projections
-                truncate_place_to_len_and_update_capture_kind(&mut place, capture_info, i);
+                truncate_place_to_len_and_update_capture_kind(fcx, &mut place, capture_info, i);
                 return place;
             }
             ProjectionKind::Deref => {}
@@ -1369,16 +1398,20 @@ fn restrict_capture_precision(place: Place, capture_info: &mut CaptureInfo) -> P
         }
     }
 
-    place
+    restrict_precision_for_unsafe(fcx, place, capture_info)
 }
 
 /// Truncate deref of any reference.
 #[instrument(ret, level = "debug")]
-fn adjust_for_move_closure(mut place: Place, capture_info: &mut CaptureInfo) -> Place {
+fn adjust_for_move_closure<'db>(
+    fcx: &InferenceContext<'db>,
+    mut place: Place,
+    capture_info: &mut CaptureInfo,
+) -> Place {
     let first_deref = place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref);
 
     if let Some(idx) = first_deref {
-        truncate_place_to_len_and_update_capture_kind(&mut place, capture_info, idx);
+        truncate_place_to_len_and_update_capture_kind(fcx, &mut place, capture_info, idx);
     }
 
     capture_info.capture_kind = UpvarCapture::ByValue;
@@ -1388,14 +1421,18 @@ fn adjust_for_move_closure(mut place: Place, capture_info: &mut CaptureInfo) -> 
 /// Adjust closure capture just that if taking ownership of data, only move data
 /// from enclosing stack frame.
 #[instrument(ret, level = "debug")]
-fn adjust_for_non_move_closure(mut place: Place, capture_info: &mut CaptureInfo) -> Place {
+fn adjust_for_non_move_closure<'db>(
+    fcx: &InferenceContext<'db>,
+    mut place: Place,
+    capture_info: &mut CaptureInfo,
+) -> Place {
     let contains_deref =
         place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref);
 
     match capture_info.capture_kind {
-        UpvarCapture::ByValue | UpvarCapture::ByUse => {
+        UpvarCapture::ByValue | UpvarCapture::ByUse | UpvarCapture::ByCopy => {
             if let Some(idx) = contains_deref {
-                truncate_place_to_len_and_update_capture_kind(&mut place, capture_info, idx);
+                truncate_place_to_len_and_update_capture_kind(fcx, &mut place, capture_info, idx);
             }
         }
 
@@ -1407,53 +1444,12 @@ fn adjust_for_non_move_closure(mut place: Place, capture_info: &mut CaptureInfo)
 
 /// At the end, `capture_info_a` will contain the selected info.
 fn determine_capture_info(capture_info_a: &mut CaptureInfo, capture_info_b: &mut CaptureInfo) {
-    // If the capture kind is equivalent then, we don't need to escalate and can compare the
-    // expressions.
-    let eq_capture_kind = match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
-        (UpvarCapture::ByValue, UpvarCapture::ByValue) => true,
-        (UpvarCapture::ByUse, UpvarCapture::ByUse) => true,
-        (UpvarCapture::ByRef(ref_a), UpvarCapture::ByRef(ref_b)) => ref_a == ref_b,
-        (UpvarCapture::ByValue, _) | (UpvarCapture::ByUse, _) | (UpvarCapture::ByRef(_), _) => {
-            false
-        }
-    };
-
-    let swap = if eq_capture_kind {
-        false
-    } else {
-        // We select the CaptureKind which ranks higher based the following priority order:
-        // (ByUse | ByValue) > MutBorrow > UniqueImmBorrow > ImmBorrow
-        match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
-            (UpvarCapture::ByUse, UpvarCapture::ByValue)
-            | (UpvarCapture::ByValue, UpvarCapture::ByUse) => {
-                panic!("Same capture can't be ByUse and ByValue at the same time")
-            }
-            (UpvarCapture::ByValue, UpvarCapture::ByValue)
-            | (UpvarCapture::ByUse, UpvarCapture::ByUse)
-            | (UpvarCapture::ByValue | UpvarCapture::ByUse, UpvarCapture::ByRef(_)) => false,
-            (UpvarCapture::ByRef(_), UpvarCapture::ByValue | UpvarCapture::ByUse) => true,
-            (UpvarCapture::ByRef(ref_a), UpvarCapture::ByRef(ref_b)) => {
-                match (ref_a, ref_b) {
-                    // Take LHS:
-                    (BorrowKind::UniqueImmutable | BorrowKind::Mutable, BorrowKind::Immutable)
-                    | (BorrowKind::Mutable, BorrowKind::UniqueImmutable) => false,
-
-                    // Take RHS:
-                    (BorrowKind::Immutable, BorrowKind::UniqueImmutable | BorrowKind::Mutable)
-                    | (BorrowKind::UniqueImmutable, BorrowKind::Mutable) => true,
-
-                    (BorrowKind::Immutable, BorrowKind::Immutable)
-                    | (BorrowKind::UniqueImmutable, BorrowKind::UniqueImmutable)
-                    | (BorrowKind::Mutable, BorrowKind::Mutable) => {
-                        panic!("Expected unequal capture kinds");
-                    }
-                }
-            }
-        }
-    };
-
-    if swap {
-        mem::swap(capture_info_a, capture_info_b);
+    // We select the CaptureKind which ranks higher based the following priority order:
+    // (ByUse | ByValue) > MutBorrow > UniqueImmBorrow > ImmBorrow > ByCopy
+    match capture_info_a.capture_kind.partial_cmp(&capture_info_b.capture_kind) {
+        Some(cmp::Ordering::Equal) | Some(cmp::Ordering::Greater) => {}
+        Some(cmp::Ordering::Less) => mem::swap(capture_info_a, capture_info_b),
+        None => panic!("Same capture can't be ByUse and ByValue at the same time"),
     }
 }
 
@@ -1482,7 +1478,8 @@ fn determine_capture_sources(
 ///
 /// Note: Capture kind changes from `MutBorrow` to `UniqueImmBorrow` if the truncated part of the `place`
 /// contained `Deref` of `&mut`.
-fn truncate_place_to_len_and_update_capture_kind(
+fn truncate_place_to_len_and_update_capture_kind<'db>(
+    fcx: &InferenceContext<'db>,
     place: &mut Place,
     info: &mut CaptureInfo,
     len: usize,
@@ -1494,6 +1491,23 @@ fn truncate_place_to_len_and_update_capture_kind(
     // Note that if the place contained Deref of a raw pointer it would've not been MutBorrow, so
     // we don't need to worry about that case here.
     match info.capture_kind {
+        UpvarCapture::ByCopy => {
+            if !fcx
+                .infcx()
+                .type_is_copy_modulo_regions(fcx.table.param_env, place.ty_before_projection(len))
+            {
+                info.capture_kind = UpvarCapture::ByRef(BorrowKind::Immutable);
+            }
+        }
+        UpvarCapture::ByRef(BorrowKind::Immutable)
+            if place.projections[len..].iter().any(|p| p.kind == ProjectionKind::Deref)
+                && fcx.infcx().type_is_copy_modulo_regions(
+                    fcx.table.param_env,
+                    place.ty_before_projection(len),
+                ) =>
+        {
+            info.capture_kind = UpvarCapture::ByCopy;
+        }
         UpvarCapture::ByRef(BorrowKind::Mutable) => {
             for i in len..place.projections.len() {
                 if place.projections[i].kind == ProjectionKind::Deref
@@ -1505,8 +1519,7 @@ fn truncate_place_to_len_and_update_capture_kind(
             }
         }
 
-        UpvarCapture::ByRef(..) => {}
-        UpvarCapture::ByValue | UpvarCapture::ByUse => {}
+        UpvarCapture::ByRef(..) | UpvarCapture::ByValue | UpvarCapture::ByUse => {}
     }
 
     // Now fix the sources, to point at the smaller place.
@@ -1582,7 +1595,15 @@ fn determine_place_ancestry_relation(place_a: &Place, place_b: &Place) -> PlaceA
 /// }
 /// ```
 #[instrument(ret, level = "debug")]
-fn truncate_capture_for_optimization(mut place: Place, info: &mut CaptureInfo) -> Place {
+fn truncate_capture_for_optimization<'db>(
+    fcx: &InferenceContext<'db>,
+    mut place: Place,
+    info: &mut CaptureInfo,
+) -> Place {
+    let UpvarCapture::ByRef(_) = info.capture_kind else {
+        return place;
+    };
+
     let is_shared_ref = |ty: Ty<'_>| matches!(ty.kind(), TyKind::Ref(.., Mutability::Not));
 
     // Find the rightmost deref (if any). All the projections that come after this
@@ -1593,7 +1614,7 @@ fn truncate_capture_for_optimization(mut place: Place, info: &mut CaptureInfo) -
     match idx {
         // If that pointer is a shared reference, then we don't need those fields.
         Some(idx) if is_shared_ref(place.ty_before_projection(idx)) => {
-            truncate_place_to_len_and_update_capture_kind(&mut place, info, idx + 1)
+            truncate_place_to_len_and_update_capture_kind(fcx, &mut place, info, idx + 1)
         }
         None | Some(_) => {}
     }
