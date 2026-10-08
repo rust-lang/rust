@@ -18,6 +18,7 @@ use crate::formats::item_type::ItemType;
 use crate::html::render::{IndexItem, IndexItemInfo};
 use crate::visit_lib::RustdocEffectiveVisibilities;
 
+#[derive(Debug)]
 pub(crate) struct PathInfo {
     /// Parts of the fully qualified path. So in `foo::bar::bib`, it will
     /// be `["foo", "bar", "bib"]`.
