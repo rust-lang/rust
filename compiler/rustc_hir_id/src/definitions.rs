@@ -13,11 +13,12 @@ use rustc_data_structures::stable_hash::StableHasher;
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, extension};
+use rustc_serialize::Encodable;
 pub use rustc_span::def_id::DefPathHash;
 use rustc_span::def_id::{
     CRATE_DEF_INDEX, CrateNum, DefIndex, LOCAL_CRATE, LocalDefId, LocalDefIdMap, StableCrateId,
 };
-use rustc_span::{Symbol, kw, sym};
+use rustc_span::{SpanEncoder, Symbol, kw, sym};
 use tracing::{debug, instrument};
 
 use crate::def_path_hash_map::DefPathHashMap;
@@ -59,15 +60,17 @@ pub struct DefPathToIndexMap {
     /// hash (which does not change between compiler invocations) mapping. We use it for relatively small number
     /// of definitions, so the majority of them would be stored in `DefPathHashMap`, which makes insertion
     /// and serialization costs of `SortedMap` acceptable.
-    pub after_parallel_alloc: Option<SortedMap<Hash64, DefIndex>>,
+    pub after_parallel_alloc: Option<SortedMap<Hash64, LocalDefId>>,
 }
 
 impl DefPathToIndexMap {
     #[inline]
     pub fn get(&self, hash: Hash64) -> Option<DefIndex> {
-        self.before_parallel_alloc
-            .get(&hash)
-            .or_else(|| self.after_parallel_alloc.as_ref().and_then(|map| map.get(&hash).copied()))
+        self.before_parallel_alloc.get(&hash).or_else(|| {
+            self.after_parallel_alloc
+                .as_ref()
+                .and_then(|map| map.get(&hash).map(|id| id.local_def_index))
+        })
     }
 
     /// This insert function does not behave like regular `insert` of a `HashMap`,
@@ -83,7 +86,7 @@ impl DefPathToIndexMap {
                     return Some(existing);
                 }
 
-                map.insert(hash, index)
+                map.insert(hash, LocalDefId { local_def_index: index }).map(|id| id.local_def_index)
             }
         }
     }
@@ -101,13 +104,20 @@ pub struct Definitions {
 /// A unique identifier that we can use to lookup a definition
 /// precisely. It combines the index of the definition's parent (if
 /// any) with a `DisambiguatedDefPathData`.
-#[derive(Copy, Clone, PartialEq, Debug, Encodable, BlobDecodable)]
+#[derive(Copy, Clone, PartialEq, Debug, BlobDecodable)]
 pub struct DefKey {
     /// The parent path.
     pub parent: Option<DefIndex>,
 
     /// The identifier of this node.
     pub disambiguated_data: DisambiguatedDefPathData,
+}
+
+impl<E: SpanEncoder> Encodable<E> for DefKey {
+    #[inline]
+    fn encode(&self, e: &mut E) {
+        e.encode_def_key(self.parent, self.disambiguated_data);
+    }
 }
 
 impl DefKey {

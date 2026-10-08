@@ -1,12 +1,11 @@
 use std::hash::Hash;
 
 use rustc_data_structures::unord::UnordMap;
-use rustc_hir::def_id::DefIndex;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::ty::{Binder, EarlyBinder, GenericArg, Region};
 use rustc_span::Symbol;
 
-use crate::rmeta::{LazyArray, LazyValue};
+use crate::rmeta::{LazyArray, LazyValue, LocalDefId};
 
 pub(crate) trait ParameterizedOverTcx: 'static {
     type Value<'tcx>;
@@ -80,6 +79,7 @@ trivially_parameterized_over_tcx! {
     crate::rmeta::CrateRoot,
     crate::rmeta::CrateRootUnhashed,
     crate::rmeta::IncoherentImpls,
+    crate::rmeta::LocalDefId,
     crate::rmeta::ProcMacroKind,
     crate::rmeta::RawDefId,
     crate::rmeta::TraitImpls,
@@ -93,7 +93,7 @@ trivially_parameterized_over_tcx! {
     rustc_attr_ir::EiiDecl,
     rustc_attr_ir::EiiImpl,
     rustc_attr_ir::Stability,
-    rustc_attr_ir::StrippedCfgItem<rustc_hir::def_id::DefIndex>,
+    rustc_attr_ir::StrippedCfgItem<LocalDefId>,
     rustc_attr_ir::lang_items::LangItem,
     rustc_crate_store::ForeignModule,
     rustc_crate_store::LinkagePreference,
@@ -131,7 +131,7 @@ trivially_parameterized_over_tcx! {
     rustc_middle::ty::RestrictionKind,
     rustc_middle::ty::TraitDef,
     rustc_middle::ty::Variance,
-    rustc_middle::ty::Visibility<DefIndex>,
+    rustc_middle::ty::Visibility<LocalDefId>,
     rustc_middle::ty::adjustment::CoerceUnsizedInfo,
     rustc_middle::ty::fast_reject::SimplifiedType,
     rustc_session::config::TargetModifier,
