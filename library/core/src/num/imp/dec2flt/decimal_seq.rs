@@ -248,7 +248,12 @@ pub fn parse_decimal_seq(mut s: &[u8]) -> DecimalSeq {
             s = &s[8..];
         }
         s = s.parse_digits(|digit| d.try_add_digit(digit));
-        d.decimal_point = s.len() as i32 - first.len() as i32;
+        // A valid decimal may contain more fractional digits than fit in `i32`.
+        // Saturate the offset because values this far from the decimal point are
+        // already outside the range where the conversion algorithm can distinguish
+        // anything other than zero/infinity.
+        let fractional_digits = first.len() - s.len();
+        d.decimal_point = -(fractional_digits.min(DecimalSeq::DECIMAL_POINT_RANGE as usize) as i32);
     }
 
     if d.num_digits != 0 {
