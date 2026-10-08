@@ -120,7 +120,6 @@ impl Place {
     /// Returns the type of this `Place` immediately before `projection_index`th projection
     /// is applied.
     pub fn ty_before_projection<'db>(&self, projection_index: usize) -> Ty<'db> {
-        assert!(projection_index < self.projections.len());
         if projection_index == 0 {
             self.base_ty.as_ref()
         } else {
@@ -664,8 +663,13 @@ impl<'a, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'db, D> {
                 self.consume_expr(base)?;
             }
 
-            Expr::BinaryOp { lhs, rhs, op: None | Some(BinaryOp::Assignment { .. }) } => {
+            Expr::BinaryOp { lhs, rhs, op: None | Some(BinaryOp::Assignment { op: None }) } => {
                 self.consume_expr(lhs)?;
+                self.consume_expr(rhs)?;
+            }
+
+            Expr::BinaryOp { lhs, rhs, op: Some(BinaryOp::Assignment { op: Some(_) }) } => {
+                self.mutate_expr(lhs)?;
                 self.consume_expr(rhs)?;
             }
 
@@ -1125,6 +1129,9 @@ impl<'a, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'db, D> {
                         }
                         UpvarCapture::ByRef(upvar_borrow) => {
                             self.delegate.borrow(place_with_id, upvar_borrow, self.cx);
+                        }
+                        UpvarCapture::ByCopy => {
+                            self.delegate.copy(place_with_id, self.cx);
                         }
                     }
                 }

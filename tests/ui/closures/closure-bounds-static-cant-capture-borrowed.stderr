@@ -8,7 +8,7 @@ LL |   fn foo(x: &()) {
 LL | /     bar(|| {
 LL | |
 LL | |
-LL | |         let _ = x;
+LL | |         let _ = *&x;
 LL | |     })
    | |      ^
    | |      |
@@ -27,8 +27,8 @@ error[E0373]: closure may outlive the current function, but it borrows `x`, whic
 LL |     bar(|| {
    |         ^^ may outlive borrowed value `x`
 ...
-LL |         let _ = x;
-   |                 - `x` is borrowed here
+LL |         let _ = *&x;
+   |                   - `x` is borrowed here
    |
 note: function requires argument type to outlive `'static`
   --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:6:5
@@ -36,7 +36,7 @@ note: function requires argument type to outlive `'static`
 LL | /     bar(|| {
 LL | |
 LL | |
-LL | |         let _ = x;
+LL | |         let _ = *&x;
 LL | |     })
    | |______^
 help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword

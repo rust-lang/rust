@@ -181,7 +181,7 @@ fn returned_closure_owns_copy_type_data() -> impl Fn() -> i32 {
 
     let c = #[rustc_capture_analysis] move || x;
     //~^ ERROR First Pass analysis includes:
-    //~| NOTE: Capturing x[] -> Immutable
+    //~| NOTE: Capturing x[] -> ByCopy
     //~| ERROR Min Capture analysis includes:
     //~| NOTE: Min Capture x[] -> ByValue
 

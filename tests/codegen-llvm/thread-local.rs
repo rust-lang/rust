@@ -32,7 +32,7 @@ fn get() -> u32 {
 #[no_mangle]
 fn set(v: u32) {
     // CHECK: [[PTR:%.+]] = tail call {{.*}} ptr @llvm.threadlocal.address.p0(ptr [[TLS]])
-    // CHECK-NEXT: store i32 %0, ptr [[PTR]]
+    // CHECK-NEXT: store i32 %v, ptr [[PTR]]
     // CHECK-NEXT: ret void
     A.with(|a| a.set(v))
 }
@@ -50,7 +50,7 @@ fn get_aux() -> u64 {
 #[no_mangle]
 fn set_aux(v: u64) {
     // CHECK: [[PTR:%.+]] = tail call {{.*}} ptr @llvm.threadlocal.address.p0(ptr [[TLS_AUX]])
-    // CHECK-NEXT: store i64 %0, ptr [[PTR]]
+    // CHECK-NEXT: store i64 %v, ptr [[PTR]]
     // CHECK-NEXT: ret void
     aux::A.with(|a| a.set(v))
 }

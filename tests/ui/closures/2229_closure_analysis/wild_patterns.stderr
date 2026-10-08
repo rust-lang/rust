@@ -6,7 +6,7 @@ LL | /     || {
 LL | |     };
    | |_____^
    |
-note: Capturing p[(0, 0)] -> Immutable
+note: Capturing p[(0, 0)] -> ByCopy
   --> $DIR/wild_patterns.rs:27:37
    |
 LL |         let Point { x: _x, y: _ } = p;
@@ -20,7 +20,7 @@ LL | /     || {
 LL | |     };
    | |_____^
    |
-note: Min Capture p[(0, 0)] -> Immutable
+note: Min Capture p[(0, 0)] -> ByCopy
   --> $DIR/wild_patterns.rs:27:37
    |
 LL |         let Point { x: _x, y: _ } = p;

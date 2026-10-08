@@ -5,19 +5,19 @@ LL |   fn bar(src: &crate::Foo) -> impl Iterator<Item = i32> {
    |                               ------------------------- opaque type defined here
 LL | /     [0].into_iter()
 LL | |
-LL | |         .filter_map(|_| foo(src))
-   | |_________________________________^
+LL | |         .filter_map(|_| foo(*&src))
+   | |___________________________________^
    |
    = note: hidden type `FilterMap<Iter<'_, i32>, {closure@...}>` captures lifetime `'_`
 
 error[E0597]: `src` does not live long enough
-  --> $DIR/explicit-lifetime-suggestion-in-proper-span-issue-121267.rs:10:29
+  --> $DIR/explicit-lifetime-suggestion-in-proper-span-issue-121267.rs:10:31
    |
 LL | fn bar(src: &crate::Foo) -> impl Iterator<Item = i32> {
    |        --- binding `src` declared here
 ...
-LL |         .filter_map(|_| foo(src))
-   |                     ---     ^^^ borrowed value does not live long enough
+LL |         .filter_map(|_| foo(*&src))
+   |                     ---       ^^^ borrowed value does not live long enough
    |                     |
    |                     value captured here
 LL |

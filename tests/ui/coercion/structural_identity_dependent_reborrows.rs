@@ -4,18 +4,18 @@
 // not result in a different lifetime on the borrow. This can effect
 // capture analysis resulting in borrow checking errors.
 
-fn foo<'a>(b: &'a ()) -> impl Fn() {
+fn foo<'a>(b: &'a mut ()) -> impl FnMut() {
     || {
-        expected::<&()>(b);
+        expected::<&mut ()>(b);
     }
 }
 
 // No reborrow of `b` is emitted which means our closure captures
-// `b` by ref resulting in an upvar of `&&'a ()`
-fn bar<'a>(b: &'a ()) -> impl Fn() {
+// `b` by ref resulting in an upvar of `&mut &'a mut ()`
+fn bar<'a>(b: &'a mut ()) -> impl FnMut() {
     || {
-        //~^ ERROR: closure may outlive the current function
-        expected::<&'a ()>(b);
+        expected::<&'a mut ()>(b);
+        //~^ ERROR: lifetime may not live long enough
     }
 }
 

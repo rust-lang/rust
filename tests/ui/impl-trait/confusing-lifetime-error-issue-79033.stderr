@@ -4,8 +4,8 @@ error[E0373]: closure may outlive the current function, but it borrows `self.sta
 LL |         lines.enumerate().filter_map(|(i, line)| {
    |                                      ^^^^^^^^^^^ may outlive borrowed value `self.start.line`
 ...
-LL |             if self.start.line as usize <= i && i <= self.end.line as usize {
-   |                --------------- `self.start.line` is borrowed here
+LL |             if *&self.start.line as usize <= i && i <= *&self.end.line as usize {
+   |                  --------------- `self.start.line` is borrowed here
    |
 note: function requires argument type to outlive `'static`
   --> $DIR/confusing-lifetime-error-issue-79033.rs:24:9
@@ -13,7 +13,7 @@ note: function requires argument type to outlive `'static`
 LL | /         lines.enumerate().filter_map(|(i, line)| {
 LL | |
 LL | |
-LL | |             if self.start.line as usize <= i && i <= self.end.line as usize {
+LL | |             if *&self.start.line as usize <= i && i <= *&self.end.line as usize {
 ...  |
 LL | |         })
    | |__________^
@@ -28,8 +28,8 @@ error[E0373]: closure may outlive the current function, but it borrows `self.end
 LL |         lines.enumerate().filter_map(|(i, line)| {
    |                                      ^^^^^^^^^^^ may outlive borrowed value `self.end.line`
 ...
-LL |             if self.start.line as usize <= i && i <= self.end.line as usize {
-   |                                                      ------------- `self.end.line` is borrowed here
+LL |             if *&self.start.line as usize <= i && i <= *&self.end.line as usize {
+   |                                                          ------------- `self.end.line` is borrowed here
    |
 note: function requires argument type to outlive `'static`
   --> $DIR/confusing-lifetime-error-issue-79033.rs:24:9
@@ -37,7 +37,7 @@ note: function requires argument type to outlive `'static`
 LL | /         lines.enumerate().filter_map(|(i, line)| {
 LL | |
 LL | |
-LL | |             if self.start.line as usize <= i && i <= self.end.line as usize {
+LL | |             if *&self.start.line as usize <= i && i <= *&self.end.line as usize {
 ...  |
 LL | |         })
    | |__________^

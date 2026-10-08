@@ -18,7 +18,7 @@ pub fn foo3<'a>(
     bar: &'a X,
 ) -> impl Iterator<Item = ()> + 'a {
     Some(()).iter().flat_map(move |()| {
-        Some(()).iter().map(|()| { bar; }) //~ ERROR captured variable cannot escape
+        Some(()).iter().map(|()| { let _ = *&bar; }) //~ ERROR captured variable cannot escape
         //~^ HELP consider adding 'move' keyword before the nested closure
     })
 }

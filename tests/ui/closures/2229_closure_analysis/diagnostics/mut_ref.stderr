@@ -12,15 +12,21 @@ help: consider changing this to be a mutable reference
 LL |     let ref_mref_x = &mut mref_x;
    |                       +++
 
-error[E0596]: cannot borrow `**mref_ref_x` as mutable, as it is behind a `&` reference
-  --> $DIR/mut_ref.rs:26:13
+error[E0594]: cannot assign to `**mref_ref_x`, which is behind a `&` reference
+  --> $DIR/mut_ref.rs:27:9
    |
-LL |     let c = || {
-   |             ^^ cannot borrow as mutable
-LL |
 LL |         **mref_ref_x = y;
-   |         ------------ mutable borrow occurs due to use of `**mref_ref_x` in closure
+   |         ^^^^^^^^^^^^ cannot assign
 
-error: aborting due to 2 previous errors
+error[E0594]: cannot assign to `**mref_ref_x`, which is behind a `&` reference
+  --> $DIR/mut_ref.rs:27:9
+   |
+LL |         **mref_ref_x = y;
+   |         ^^^^^^^^^^^^ cannot assign
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-For more information about this error, try `rustc --explain E0596`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0594, E0596.
+For more information about an error, try `rustc --explain E0594`.

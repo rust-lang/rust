@@ -278,7 +278,6 @@ pub fn fragment(fragment_v1: Foo, mut fragment_v2: Foo) -> Foo {
     // CHECK: #dbg_declare(ptr [[ARG_fragment_v1]]
     // CHECK-NEXT: #dbg_declare(ptr [[ARG_fragment_v2]]
     // CHECK-NEXT: #dbg_value(ptr [[ARG_fragment_v2]], [[VAR_fragment_f:![0-9]+]], !DIExpression(DW_OP_LLVM_fragment, 0, 64)
-    // CHECK-NEXT: #dbg_value(ptr [[ARG_fragment_v1]], [[VAR_fragment_f:![0-9]+]], !DIExpression(DW_OP_LLVM_fragment, 64, 64)
     let fragment_f = || {
         fragment_v2 = fragment_v1;
     };

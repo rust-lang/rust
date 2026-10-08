@@ -15,7 +15,7 @@ fn test(a: &[&[u8]]) -> u32 {
             b.iter()
                 .enumerate()
                 .filter(|(_, c)| **c == b'A')
-                .map(|(x, _)| a[y][x] as u32)
+                .map(|(x, _)| (&a)[y][x] as u32)
                 .sum::<u32>()
         })
         .sum()

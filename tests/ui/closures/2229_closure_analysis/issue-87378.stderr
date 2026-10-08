@@ -9,7 +9,7 @@ LL | |        unsafe { u.value }
 LL | |     };
    | |_____^
    |
-note: Capturing u[(0, 0)] -> Immutable
+note: Capturing u[(0, 0)] -> ByCopy
   --> $DIR/issue-87378.rs:18:17
    |
 LL |        unsafe { u.value }
