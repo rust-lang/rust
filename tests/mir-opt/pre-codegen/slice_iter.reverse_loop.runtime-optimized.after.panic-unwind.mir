@@ -22,7 +22,7 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                 let mut _15: *const T;
                 let mut _20: bool;
                 let mut _21: *const T;
-                let _34: &T;
+                let mut _34: &T;
                 scope 20 {
                     let _16: std::ptr::NonNull<T>;
                     let _22: usize;
