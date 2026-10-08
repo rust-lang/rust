@@ -3,26 +3,22 @@
 fn d(_1: &Box<T>) -> &T {
     debug x => _1;
     let mut _0: &T;
-    let _2: &T;
-    let mut _3: &std::boxed::Box<T>;
+    let mut _2: &std::boxed::Box<T>;
     scope 1 (inlined <Box<T> as AsRef<T>>::as_ref) {
-        debug self => _3;
-        let mut _4: *const T;
-        let mut _5: std::ptr::Unique<T>;
+        debug self => _2;
+        let mut _3: *const T;
+        let mut _4: std::ptr::Unique<T>;
     }
 
     bb0: {
         StorageLive(_2);
+        _2 = copy _1;
         StorageLive(_3);
-        _3 = copy _1;
         StorageLive(_4);
-        StorageLive(_5);
-        _5 = no_retag copy ((*_3).0: std::ptr::Unique<T>);
-        _4 = copy _5 as *const T (BoxDerefTransmute);
-        _2 = &(*_4);
-        StorageDead(_5);
+        _4 = no_retag copy ((*_2).0: std::ptr::Unique<T>);
+        _3 = copy _4 as *const T (BoxDerefTransmute);
+        _0 = &(*_3);
         StorageDead(_4);
-        _0 = copy _2;
         StorageDead(_3);
         StorageDead(_2);
         return;
