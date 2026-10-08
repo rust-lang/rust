@@ -812,7 +812,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
         sym::caller_location => {
             intrinsic_args!(fx, args => (); intrinsic);
 
-            let caller_location = fx.get_caller_location(source_info);
+            let caller_location = fx.codegen_caller_location(source_info);
             ret.write_cvalue(fx, caller_location);
         }
 
