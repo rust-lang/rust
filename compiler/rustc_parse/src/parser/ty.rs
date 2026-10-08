@@ -13,9 +13,8 @@ use thin_vec::{ThinVec, thin_vec};
 use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
 use crate::diagnostics::{
     self, DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
-    FnPtrWithGenerics, FnPtrWithGenericsSugg, HelpUseLatestEdition, InvalidCVariadicType,
-    InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime, NestedCVariadicType,
-    ReturnTypesUseThinArrow,
+    FnPtrWithGenerics, FnPtrWithGenericsSugg, HelpUseLatestEdition, InvalidDynKeyword,
+    LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime, ReturnTypesUseThinArrow,
 };
 use crate::parser::{FnContext, FnParseMode, FrontMatterParsingMode};
 use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
@@ -105,15 +104,6 @@ fn can_begin_dyn_bound_in_rust_2015(t: Token) -> bool {
 impl<'a> Parser<'a> {
     /// Parses a type.
     pub fn parse_ty(&mut self) -> PResult<'a, Box<Ty>> {
-        if self.token == token::DotDotDot {
-            // We special case this so that we don't talk about "nested C-variadics" in types.
-            // We still pass in `AllowCVariadic::No` so that `parse_ty_common` can complain about
-            // things like `Vec<...>`.
-            let span = self.token.span;
-            self.bump();
-            let kind = TyKind::Err(self.dcx().emit_err(InvalidCVariadicType { span }));
-            return Ok(self.mk_ty(span, kind));
-        }
         self.parse_ty_common(
             AllowPlus::Yes,
             AllowCVariadic::No,
@@ -391,15 +381,14 @@ impl<'a> Parser<'a> {
         } else if self.can_begin_bound() {
             self.parse_bare_trait_object_ty(lo, allow_plus)?
         } else if self.eat(exp!(DotDotDot)) {
+            // FIXME(c_variadic): Should we just allow `...` syntactically anywhere in a type and
+            // use semantic restrictions instead? NOTE: This would regress certain MBE calls on
+            // stable if done incorrectly.
             match allow_c_variadic {
                 AllowCVariadic::Yes => TyKind::CVarArgs,
-                AllowCVariadic::No => {
-                    // FIXME(c_variadic): Should we just allow `...` syntactically
-                    // anywhere in a type and use semantic restrictions instead?
-                    // NOTE: This may regress certain MBE calls if done incorrectly.
-                    let guar = self.dcx().emit_err(NestedCVariadicType { span: lo });
-                    TyKind::Err(guar)
-                }
+                AllowCVariadic::No => TyKind::Err(
+                    self.dcx().emit_err(crate::diagnostics::InvalidCVariadicType { span: lo }),
+                ),
             }
         } else if self.check_keyword(exp!(Unsafe))
             && self.look_ahead(1, |tok| tok.kind == token::Lt)
