@@ -171,6 +171,7 @@ static ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
         },
         &[],
     ),
+    ("bf16", Unstable(sym::arm_target_feature), &["neon"]),
     ("crc", Unstable(sym::arm_target_feature), &[]),
     ("d32", Unstable(sym::arm_target_feature), &[]),
     ("dotprod", Unstable(sym::arm_target_feature), &["neon"]),
