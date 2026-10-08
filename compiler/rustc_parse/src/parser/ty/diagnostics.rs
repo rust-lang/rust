@@ -1,13 +1,35 @@
-use rustc_ast::{self as ast, TyKind};
-use rustc_errors::PResult;
-use rustc_span::{Span, kw};
+use rustc_ast::{self as ast, Path, TyKind};
+use rustc_errors::{Applicability, PResult};
+use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::AllowPlus;
 use crate::diagnostics;
-use crate::parser::{Parser, PathStyle};
+use crate::parser::{Parser, PathStyle, token_descr};
 
 impl<'a> Parser<'a> {
+    pub(super) fn report_unexpected_token_in_ty(&mut self, lo: Span) -> PResult<'a, TyKind> {
+        let msg = format!("expected type, found {}", token_descr(&self.token));
+        let mut err = self.dcx().struct_span_err(lo, msg);
+        err.span_label(lo, "expected type");
+
+        if self.may_recover()
+            && (self.eat_keyword_noexpect(kw::True) || self.eat_keyword_noexpect(kw::False))
+        {
+            err.span_suggestion(
+                self.prev_token.span,
+                "the type is called",
+                "bool",
+                Applicability::MachineApplicable,
+            );
+            err.emit();
+            let path = Path::from_ident(Ident { span: self.prev_token.span, name: sym::bool });
+            return Ok(TyKind::Path(None, path));
+        }
+
+        Err(err)
+    }
+
     /// Recover from `for<…> dyn Trait` or `for<…> impl Trait`.
     pub(super) fn recover_from_binder_before_dyn_or_impl_ty(
         &mut self,
