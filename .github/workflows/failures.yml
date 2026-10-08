@@ -17,6 +17,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    # Above 3 times the longest job, so that a hang cannot run until GitHub's 6-hour limit.
+    timeout-minutes: 90
 
     strategy:
       fail-fast: false
@@ -43,11 +45,16 @@ jobs:
     - name: Setup rust cache
       uses: Swatinem/rust-cache@v2
 
+    - name: Add apt mirrors
+      uses: ./.github/actions/apt-mirrors
+
     - name: Install packages
+      timeout-minutes: 20
       run: sudo apt-get install ninja-build ripgrep
 
     - name: Install libgccjit12
       if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
+      timeout-minutes: 20
       run: |
         sudo apt-get update
         sudo apt-get install libgccjit-12-dev

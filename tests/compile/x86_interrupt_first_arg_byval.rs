@@ -11,6 +11,8 @@ pub struct Frame {
     ip: u64,
 }
 
+#[cfg(target_arch = "x86_64")]
 pub extern "x86-interrupt" fn scalar(_a: i64) {}
 
+#[cfg(target_arch = "x86_64")]
 pub extern "x86-interrupt" fn aggregate(_frame: Frame) {}
