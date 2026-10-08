@@ -5,7 +5,6 @@ mod unsupported_common;
 pub use unsupported_common::{init, unsupported, unsupported_err};
 
 use crate::arch::global_asm;
-use crate::ptr;
 use crate::sys::stdio;
 use crate::time::{Duration, Instant};
 
@@ -27,7 +26,7 @@ global_asm!(
     .Lclear_bss:
         cmp r1, r2
         beq .Lbss_done
-        stm r1!, {{r0}}
+        str r0, [r1], #4
         b .Lclear_bss
     .Lbss_done:
         blx _start @ Jump to the Rust entrypoint.
