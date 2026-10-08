@@ -65,6 +65,15 @@ trait TrTwoDefaults {
     fn c(); //~ ERROR function doesn't have a default implementation
 }
 
+#[rustc_must_implement_one_of(a, b, C, D, missing)]
+//~^ ERROR function not found in this trait
+trait TrMixed {
+    fn a() {}
+    fn b(); //~ ERROR function doesn't have a default implementation
+    const C: u8 = 1; //~ ERROR not a function
+    type D; //~ ERROR not a function
+}
+
 #[rustc_must_implement_one_of(abc, abc)]
 //~^ ERROR the `rustc_must_implement_one_of` attribute cannot be used on functions
 fn function() {}
