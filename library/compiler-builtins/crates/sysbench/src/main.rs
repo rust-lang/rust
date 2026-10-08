@@ -39,7 +39,6 @@ fn main() {
     let oneshot_score = 50.0 / oneshot.as_secs_f64();
     let score = int_score + float_score + fma_score + oneshot_score;
     let thread_scale = 1.0 + 0.9 * (threads as f64 - 1.0);
-    dbg!(int_score, oneshot_score);
 
     println!("Single-core performance score: {score:.0}");
     println!("Multi-core performance score: {:.0}", score * thread_scale);
