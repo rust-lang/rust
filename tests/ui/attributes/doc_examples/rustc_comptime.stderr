@@ -1,14 +1,24 @@
-error: comptime fns can only be called at compile time
+error: comptime functions can only be called at compile time
   --> $DIR/rustc_comptime.rs:10:5
    |
 10 |     comptime(); // ERROR
    |     ^^^^^^^^^^
+   |
+help: wrap the call in a const block to force compile time evaluation
+   |
+10 |     const { comptime() }; // ERROR
+   |     +++++++            +
 
-error: comptime fns can only be called at compile time
+error: comptime functions can only be called at compile time
   --> $DIR/rustc_comptime.rs:18:5
    |
 18 |     comptime();
    |     ^^^^^^^^^^
+   |
+help: wrap the call in a const block to force compile time evaluation
+   |
+18 |     const { comptime() };
+   |     +++++++            +
 
 error: aborting due to 2 previous errors
 
