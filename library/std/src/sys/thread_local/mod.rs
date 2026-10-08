@@ -151,11 +151,7 @@ pub(crate) mod guard {
 pub(crate) mod key {
     cfg_select! {
         any(
-            all(
-                not(target_vendor = "apple"),
-                not(target_family = "wasm"),
-                target_family = "unix"
-            ),
+            all(not(target_vendor = "apple"), not(target_family = "wasm"), target_family = "unix"),
             all(not(target_thread_local), target_vendor = "apple"),
             target_os = "qurt",
             target_os = "teeos",

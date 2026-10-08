@@ -28,7 +28,8 @@ cfg_select! {
         mod unsupported;
         mod imp {
             pub use super::unix::{
-                JoinPathsError, SplitPaths, SplitPathsRef, getcwd, home_dir, join_paths, split_paths, split_paths_ref, temp_dir,
+                JoinPathsError, SplitPaths, SplitPathsRef, getcwd, home_dir, join_paths,
+                split_paths, split_paths_ref, temp_dir,
             };
             pub use super::unsupported::{chdir, current_exe};
         }

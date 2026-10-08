@@ -63,10 +63,10 @@ use crate::fmt::{self, Write as _};
 use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
-#[cfg(not(any(target_os = "qurt", target_os = "wasi")))]
-pub use crate::os::unix::fs::dirs::{ExtraHomeDirs, ExtraMediaDirs};
 #[cfg(target_os = "qurt")]
 use crate::os::qurt::prelude::*;
+#[cfg(not(any(target_os = "qurt", target_os = "wasi")))]
+pub use crate::os::unix::fs::dirs::{ExtraHomeDirs, ExtraMediaDirs};
 #[cfg(target_family = "unix")]
 use crate::os::unix::prelude::*;
 #[cfg(target_os = "wasi")]
