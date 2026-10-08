@@ -18,6 +18,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    # Above 3 times the longest job, so that a hang cannot run until GitHub's 6-hour limit.
+    timeout-minutes: 120
 
     strategy:
       fail-fast: false
@@ -37,8 +39,12 @@ jobs:
     - name: Setup rust cache
       uses: Swatinem/rust-cache@v2
 
+    - name: Add apt mirrors
+      uses: ./.github/actions/apt-mirrors
+
     - name: Install packages
       # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for run-make tests.
+      timeout-minutes: 20
       run: sudo apt-get install ninja-build ripgrep llvm-14-tools llvm
 
     - name: Download artifact

@@ -1129,12 +1129,16 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn atomic_load(
         &mut self,
-        _ty: Type<'gcc>,
+        ty: Type<'gcc>,
         ptr: RValue<'gcc>,
         order: AtomicOrdering,
         _volatile: bool, // FIXME we are always making the load volatile
         size: Size,
     ) -> RValue<'gcc> {
+        if self.use_sync_atomics(size.bytes()) {
+            return self.sync_atomic_load(ty, ptr, size);
+        }
+
         // FIXME(antoyo): use ty.
         // FIXME(antoyo): handle alignment.
         let atomic_load =
@@ -1305,6 +1309,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _volatile: bool, // FIXME we are always making the store volatile
         size: Size,
     ) {
+        if self.use_sync_atomics(size.bytes()) {
+            return self.sync_atomic_store(value, ptr, size);
+        }
+
         // FIXME(antoyo): handle alignment.
         let atomic_store =
             self.context.get_builtin_function(format!("__atomic_store_{}", size.bytes()));
@@ -1801,6 +1809,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         failure_order: AtomicOrdering,
         weak: bool,
     ) -> (RValue<'gcc>, RValue<'gcc>) {
+        let size = get_maybe_pointer_size(src) as u64;
+        if self.use_sync_atomics(size) {
+            return self.sync_atomic_cmpxchg(dst, cmp, src, size);
+        }
         let expected = self.current_func().new_local(None, cmp.get_type(), "expected");
         self.llbb().add_assignment(None, expected, cmp);
         // NOTE: gcc doesn't support a failure memory model that is stronger than the success
@@ -1825,6 +1837,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         ret_ptr: bool,
     ) -> RValue<'gcc> {
         let size = get_maybe_pointer_size(src);
+        if self.use_sync_atomics(size as u64) {
+            return self.sync_atomic_rmw(op, dst, src, Size::from_bytes(size));
+        }
         let name = match op {
             AtomicRmwBinOp::AtomicXchg => format!("__atomic_exchange_{}", size),
             AtomicRmwBinOp::AtomicAdd => format!("__atomic_fetch_add_{}", size),
