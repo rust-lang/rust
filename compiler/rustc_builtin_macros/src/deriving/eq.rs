@@ -70,7 +70,7 @@ fn cs_total_eq_assert(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'
         }
     };
 
-    match substr {
+    match substr.fields {
         StaticStruct(vdata, ..) => {
             process_variant(vdata);
         }

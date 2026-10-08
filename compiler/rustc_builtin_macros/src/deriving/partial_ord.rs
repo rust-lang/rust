@@ -204,7 +204,7 @@ pub(crate) fn cmp_body(
         }
     };
 
-    match substructure {
+    match substructure.fields {
         EnumMatching(.., all_fields) | Struct(_, all_fields) => {
             let op = |old, field: FieldInfo| {
                 // The basic case: a field expression for one or more selflike args. E.g.

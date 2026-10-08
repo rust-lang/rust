@@ -36,14 +36,10 @@ pub(crate) fn expand_deriving_default(
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: combine_substructure(|cx, trait_span, substr| {
-                match substr {
-                    StaticStruct(variant_data) => default_struct_substructure(
-                        cx,
-                        trait_span,
-                        variant_data,
-                        // We cannot use `Self` here, see https://github.com/rust-lang/rust/issues/163800
-                        item.kind.ident().unwrap(),
-                    ),
+                match substr.fields {
+                    StaticStruct(variant_data) => {
+                        default_struct_substructure(cx, trait_span, variant_data, substr.type_ident)
+                    }
                     StaticEnum(enum_def) => {
                         default_enum_substructure(cx, trait_span, enum_def, item.span)
                     }
