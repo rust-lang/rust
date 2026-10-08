@@ -14,7 +14,7 @@ jobs:
   pull:
     if: github.repository == 'rust-lang/compiler-builtins'
     # zizmor: ignore[unpinned-uses] We explicitly want to track the main branch.
-    uses: rust-lang/josh-sync/.github/workflows/rustc-pull.yml@main
+    uses: rust-lang/josh-sync/.github/workflows/rustc-pull.yml@b1da651cd99a7325cc242548db6d711639b0c30c # main
     with:
       github-app-id: ${{ vars.APP_CLIENT_ID }}
       pr-author: "workflows-compiler-builtins[bot]"

@@ -151,7 +151,7 @@ jobs:
     - name: Set up dependencies and Rust
       run: ./ci/install-test-deps.sh "$JOB_TARGET" "$JOB_HOST_TOOLCHAIN"
 
-    - uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026 # v2.85.11
+    - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
       continue-on-error: true
       with:
         tool: nextest@0.9.131
@@ -171,7 +171,7 @@ jobs:
         key: ${{ matrix.target }}-buildx-${{ github.sha }}
         restore-keys: ${{ matrix.target }}-buildx-
     # Configure buildx to use Docker layer caching
-    - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+    - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       if: ${{ env.RUN_IN_DOCKER == 'true' }}
 
     - name: Cache compiler-rt
@@ -307,7 +307,7 @@ jobs:
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with: { persist-credentials: false }
-    - uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026 # v2.85.11
+    - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
       with:
         tool: cargo-binstall@1.17.7
 
@@ -326,7 +326,7 @@ jobs:
       run: ./ci/bench-icount.sh "$JOB_TARGET"
 
     - name: Upload the benchmark baseline
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: ${{ env.BASELINE_NAME }}
         path: ${{ env.BASELINE_NAME }}.tar.xz
