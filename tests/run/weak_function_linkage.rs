@@ -7,7 +7,7 @@
 // weak symbols, by linking against `tests/c/weak_function_linkage.c`, which defines the same
 // symbols strongly.
 
-#![feature(linkage, no_core)]
+#![feature(linkage, no_core, rustc_private)]
 #![no_std]
 #![no_core]
 #![no_main]
