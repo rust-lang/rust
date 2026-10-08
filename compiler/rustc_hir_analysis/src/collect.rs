@@ -722,17 +722,22 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         let input_tys = decl
             .inputs
             .iter()
+            .filter(|param| !matches!(param.ty.kind, hir::TyKind::CVarArgs))
             .enumerate()
-            .map(|(i, a)| {
-                if let hir::TyKind::Infer(()) = a.kind
+            .map(|(i, param)| {
+                if let hir::TyKind::Infer(()) = param.ty.kind
                     && let Some(suggested_ty) =
                         self.lowerer().suggest_trait_fn_ty_for_impl_fn_infer(hir_id, Some(i))
                 {
-                    infer_replacements.push((a.span, suggested_ty.to_string()));
-                    return Ty::new_error_with_message(tcx, a.span, suggested_ty.to_string());
+                    infer_replacements.push((param.ty.span, suggested_ty.to_string()));
+                    return Ty::new_error_with_message(
+                        tcx,
+                        param.ty.span,
+                        suggested_ty.to_string(),
+                    );
                 }
 
-                self.lowerer().lower_ty(a)
+                self.lowerer().lower_ty(param.ty)
             })
             .collect();
 
@@ -1673,8 +1678,8 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
                     .emit_err(diagnostics::SIMDFFIHighlyExperimental { span: hir_ty.span, snip });
             }
         };
-        for (input, ty) in iter::zip(decl.inputs, fty.inputs().skip_binder()) {
-            check(input, *ty)
+        for (param, ty) in iter::zip(decl.inputs, fty.inputs().skip_binder()) {
+            check(param.ty, *ty)
         }
         if let hir::FnRetTy::Return(ty) = decl.output {
             check(ty, fty.output().skip_binder())

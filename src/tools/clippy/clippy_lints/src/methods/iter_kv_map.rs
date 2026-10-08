@@ -28,8 +28,8 @@ pub(super) fn check<'tcx>(
     }
     if !expr.span.from_expansion()
         && let ExprKind::Closure(c) = m_arg.kind
+        && let [p] = c.fn_decl.inputs
         && let Body {
-            params: [p],
             value: body_expr,
         } = cx.tcx.hir_body(c.body)
         && let PatKind::Tuple([key_pat, val_pat], _) = p.pat.kind

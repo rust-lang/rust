@@ -25,7 +25,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
                 || fn_def.opt_parent(cx).opt_impl_ty(cx).is_diag_item(cx, sym::Result))
                 && msrv.meets(cx, msrvs::OPTION_RESULT_INSPECT)))
         && let body = cx.tcx.hir_body(c.body)
-        && let [param] = body.params
+        && let [param] = c.fn_decl.inputs
         && let PatKind::Binding(BindingMode(ByRef::No, Mutability::Not), arg_id, _, None) = param.pat.kind
         && let arg_ty = typeck.node_type(arg_id)
         && let ExprKind::Block(block, _) = body.value.kind
@@ -164,7 +164,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
             && (!requires_deref || arg_ty.is_freeze(cx.tcx, cx.typing_env()))
         {
             if requires_deref {
-                edits.push((param.span.shrink_to_lo(), "&".into()));
+                edits.push((param.param_span.shrink_to_lo(), "&".into()));
             } else {
                 edits.extend(addr_of_edits);
             }

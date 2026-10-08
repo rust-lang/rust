@@ -220,16 +220,16 @@ LL | trait D {
    |       ^
 
 error: this identifier consists of only a single character
-  --> tests/ui/min_ident_chars.rs:151:10
-   |
-LL |     fn f(g: i32);
-   |          ^
-
-error: this identifier consists of only a single character
   --> tests/ui/min_ident_chars.rs:151:8
    |
 LL |     fn f(g: i32);
    |        ^
+
+error: this identifier consists of only a single character
+  --> tests/ui/min_ident_chars.rs:151:10
+   |
+LL |     fn f(g: i32);
+   |          ^
 
 error: this identifier consists of only a single character
   --> tests/ui/min_ident_chars.rs:156:8
@@ -280,16 +280,16 @@ LL |     trait A {
    |           ^
 
 error: this identifier consists of only a single character
-  --> tests/ui/min_ident_chars.rs:180:14
-   |
-LL |         fn f(h: [u32; 0]);
-   |              ^
-
-error: this identifier consists of only a single character
   --> tests/ui/min_ident_chars.rs:180:12
    |
 LL |         fn f(h: [u32; 0]);
    |            ^
+
+error: this identifier consists of only a single character
+  --> tests/ui/min_ident_chars.rs:180:14
+   |
+LL |         fn f(h: [u32; 0]);
+   |              ^
 
 error: this identifier consists of only a single character
   --> tests/ui/min_ident_chars.rs:192:41

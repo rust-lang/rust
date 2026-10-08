@@ -47,7 +47,7 @@ pub enum Nested {
     ImplItem(hir::ImplItemId),
     ForeignItem(hir::ForeignItemId),
     Body(hir::BodyId),
-    BodyParamPat(hir::BodyId, usize),
+    BodyParamPat(hir::HirId, usize),
 }
 
 pub trait PpAnn {
@@ -64,7 +64,7 @@ impl PpAnn for &dyn rustc_hir::intravisit::HirTyCtxt<'_> {
             Nested::ImplItem(id) => state.print_impl_item(self.hir_impl_item(id)),
             Nested::ForeignItem(id) => state.print_foreign_item(self.hir_foreign_item(id)),
             Nested::Body(id) => state.print_expr(self.hir_body(id).value),
-            Nested::BodyParamPat(id, i) => state.print_pat(self.hir_body(id).params[i].pat),
+            Nested::BodyParamPat(id, i) => state.print_pat(self.hir_fn_decl(id).inputs[i].pat),
         }
     }
 }
@@ -493,6 +493,7 @@ impl<'a> State<'a> {
                 }
                 self.word("})");
             }
+            hir::TyKind::CVarArgs => unreachable!("Filtered out before calling `print_type`"),
         }
         self.end(ib)
     }
@@ -652,7 +653,14 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::Fn { ident, sig, generics, body, .. } => {
                 let (cb, ib) = self.head("");
-                self.print_fn(sig.header, Some(ident.name), generics, sig.decl, &[], Some(body));
+                self.print_fn(
+                    sig.header,
+                    Some(ident.name),
+                    generics,
+                    sig.decl,
+                    &[],
+                    Some(item.hir_id()),
+                );
                 self.word(" ");
                 self.end(ib);
                 self.end(cb);
@@ -974,7 +982,7 @@ impl<'a> State<'a> {
         m: &hir::FnSig<'_>,
         generics: &hir::Generics<'_>,
         arg_idents: &[Option<Ident>],
-        body_id: Option<hir::BodyId>,
+        body_id: Option<hir::HirId>,
     ) {
         self.print_fn(m.header, Some(ident.name), generics, m.decl, arg_idents, body_id);
     }
@@ -994,7 +1002,7 @@ impl<'a> State<'a> {
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                 let (cb, ib) = self.head("");
-                self.print_method_sig(ti.ident, sig, ti.generics, &[], Some(body));
+                self.print_method_sig(ti.ident, sig, ti.generics, &[], Some(ti.hir_id()));
                 self.nbsp();
                 self.end(ib);
                 self.end(cb);
@@ -1019,7 +1027,7 @@ impl<'a> State<'a> {
             }
             hir::ImplItemKind::Fn(ref sig, body) => {
                 let (cb, ib) = self.head("");
-                self.print_method_sig(ii.ident, sig, ii.generics, &[], Some(body));
+                self.print_method_sig(ii.ident, sig, ii.generics, &[], Some(ii.hir_id()));
                 self.nbsp();
                 self.end(ib);
                 self.end(cb);
@@ -1685,7 +1693,7 @@ impl<'a> State<'a> {
                 self.print_constness(constness);
                 self.print_capture_clause(capture_clause);
 
-                self.print_closure_params(fn_decl, body);
+                self.print_closure_params(fn_decl, expr.hir_id);
                 self.space();
 
                 // This is a bare expression.
@@ -2273,7 +2281,7 @@ impl<'a> State<'a> {
         generics: &hir::Generics<'_>,
         decl: &hir::FnDecl<'_>,
         arg_idents: &[Option<Ident>],
-        body_id: Option<hir::BodyId>,
+        body_id: Option<hir::HirId>,
     ) {
         self.print_fn_header_info(header);
 
@@ -2311,13 +2319,17 @@ impl<'a> State<'a> {
             }
             i += 1;
         };
-        self.commasep(Inconsistent, decl.inputs, |s, ty| {
-            let ib = s.ibox(INDENT_UNIT);
-            print_arg(s, Some(ty));
-            s.end(ib);
-        });
+        self.commasep(
+            Inconsistent,
+            decl.inputs.iter().filter(|param| !matches!(param.ty.kind, hir::TyKind::CVarArgs)),
+            |s, param| {
+                let ib = s.ibox(INDENT_UNIT);
+                print_arg(s, Some(param.ty));
+                s.end(ib);
+            },
+        );
         if decl.c_variadic() {
-            if !decl.inputs.is_empty() {
+            if decl.inputs.len() != 1 {
                 self.word(", ");
             }
             print_arg(self, None);
@@ -2329,21 +2341,21 @@ impl<'a> State<'a> {
         self.print_where_clause(generics)
     }
 
-    fn print_closure_params(&mut self, decl: &hir::FnDecl<'_>, body_id: hir::BodyId) {
+    fn print_closure_params(&mut self, decl: &hir::FnDecl<'_>, body_id: hir::HirId) {
         self.word("|");
         let mut i = 0;
-        self.commasep(Inconsistent, decl.inputs, |s, ty| {
+        self.commasep(Inconsistent, decl.inputs, |s, param| {
             let ib = s.ibox(INDENT_UNIT);
 
             s.ann.nested(s, Nested::BodyParamPat(body_id, i));
             i += 1;
 
-            if let hir::TyKind::Infer(()) = ty.kind {
+            if let hir::TyKind::Infer(()) = param.ty.kind {
                 // Print nothing.
             } else {
                 s.word(":");
                 s.space();
-                s.print_type(ty);
+                s.print_type(param.ty);
             }
             s.end(ib);
         });

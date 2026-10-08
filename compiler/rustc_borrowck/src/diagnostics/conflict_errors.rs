@@ -512,13 +512,13 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                         && let node = self.infcx.tcx.hir_node_by_def_id(local_def_id)
                         && let Some(fn_decl) = node.fn_decl()
                         && let Some(ident) = node.ident()
-                        && let Some(arg) = fn_decl.inputs.get(pos + offset)
+                        && let Some(param) = fn_decl.inputs.get(pos + offset)
                     {
                         // If we can't suggest borrowing in the call, but the function definition
                         // is local, instead offer changing the function to borrow that argument.
-                        let mut span: MultiSpan = arg.span.into();
+                        let mut span: MultiSpan = param.ty.span.into();
                         span.push_span_label(
-                            arg.span,
+                            param.ty.span,
                             "this parameter takes ownership of the value".to_string(),
                         );
                         let descr = match node.fn_kind() {
@@ -2774,12 +2774,14 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let ty::Tuple(params) = tupled_params.kind() else { return };
 
         // Find the first argument with a matching type and get its identifier.
-        let Some(this_name) = params.iter().zip(tcx.hir_body_param_idents(closure.body)).find_map(
-            |(param_ty, ident)| {
+        let Some(this_name) = params
+            .iter()
+            .zip(tcx.hir_body_param_idents(closure.fn_decl))
+            .find_map(|(param_ty, ident)| {
                 // FIXME: also support deref for stuff like `Rc` arguments
                 if param_ty.peel_refs() == local_ty { ident } else { None }
-            },
-        ) else {
+            })
+        else {
             return;
         };
 
@@ -4599,7 +4601,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                         // Need to use the `rustc_middle::ty` types to compare against the
                         // `return_region`. Then use the `rustc_hir` type to get only
                         // the lifetime span.
-                        match &fn_decl.inputs[index].kind {
+                        match &fn_decl.inputs[index].ty.kind {
                             hir::TyKind::Ref(lifetime, ..) => {
                                 // With access to the lifetime, we can get
                                 // the span of it.
@@ -4652,7 +4654,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 // This is case 2 from above but only for closures, return type is anonymous
                 // reference so we select
                 // the first argument.
-                let argument_span = fn_decl.inputs.first()?.span;
+                let argument_span = fn_decl.inputs.first()?.ty.span;
                 let argument_ty = sig.inputs().skip_binder().first()?;
 
                 // Closure arguments are wrapped in a tuple, so we need to get the first
@@ -4672,7 +4674,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             ty::Ref(_, _, _) => {
                 // This is also case 2 from above but for functions, return type is still an
                 // anonymous reference so we select the first argument.
-                let argument_span = fn_decl.inputs.first()?.span;
+                let argument_span = fn_decl.inputs.first()?.ty.span;
                 let argument_ty = *sig.inputs().skip_binder().first()?;
 
                 let return_span = fn_decl.output.span();

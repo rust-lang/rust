@@ -483,7 +483,7 @@ fn virtual_call_violations_for_method<'tcx>(
                 ..
             })) = tcx.hir_get_if_local(method.def_id).as_ref()
             {
-                Some(sig.decl.inputs[i].span)
+                Some(sig.decl.inputs[i].ty.span)
             } else {
                 None
             };
@@ -525,7 +525,7 @@ fn virtual_call_violations_for_method<'tcx>(
             })) = tcx.hir_get_if_local(method.def_id).as_ref()
             {
                 // If we have `self: &'a Ty`, get `'a`, so that we can suggest `&'a self`.
-                let lt = match sig.decl.inputs[0].kind {
+                let lt = match sig.decl.inputs[0].ty.kind {
                     hir::TyKind::Ref(lt, ..) if lt.ident.name == kw::UnderscoreLifetime => {
                         sym::empty
                     }
@@ -535,16 +535,15 @@ fn virtual_call_violations_for_method<'tcx>(
                 // Get the `Span` for all of `self: Ty`, not just `Ty`.
                 match trait_fn {
                     hir::TraitFn::Required([Some(name), ..])
-                        if name.span.eq_ctxt(sig.decl.inputs[0].span) =>
+                        if name.span.eq_ctxt(sig.decl.inputs[0].ty.span) =>
                     {
-                        Some(name.span.to(sig.decl.inputs[0].span))
+                        Some(name.span.to(sig.decl.inputs[0].ty.span))
                     }
-                    hir::TraitFn::Provided(body_id)
-                        if let body = tcx.hir_body(*body_id)
-                            && let Some(p) = body.params.get(0)
-                            && p.span.eq_ctxt(p.ty_span) =>
+                    hir::TraitFn::Provided(_body_id)
+                        if let Some(p) = sig.decl.inputs.get(0)
+                            && p.param_span.eq_ctxt(p.ty_span) =>
                     {
-                        Some(p.span.to(p.ty_span))
+                        Some(p.param_span.to(p.ty_span))
                     }
                     _ => None,
                 }

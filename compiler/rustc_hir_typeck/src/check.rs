@@ -50,14 +50,14 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     let span = body.value.span;
 
-    for param in body.params {
+    for param in decl.inputs {
         GatherLocalsVisitor::gather_from_param(fcx, param);
     }
 
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
     // (as it's created inside the body itself, not passed in from outside).
     let maybe_va_list = fn_sig.c_variadic().then(|| {
-        let span = body.params.last().unwrap().span;
+        let span = decl.inputs.last().unwrap().ty.span;
         let va_list_did = tcx.require_lang_item(LangItem::VaList, span);
         let region = fcx.next_region_var(RegionVariableOrigin::Misc(span));
 
@@ -66,12 +66,12 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     // Add formal parameters.
     let inputs_fn = fn_sig.inputs().iter().copied();
-    for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(body.params).enumerate() {
+    for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(decl.inputs).enumerate() {
         // We checked the root's signature during wfcheck, but not the child.
         if fcx.tcx.is_typeck_child(fn_def_id.to_def_id()) {
             fcx.register_wf_obligation(
                 param_ty.into(),
-                param.span,
+                param.param_span,
                 ObligationCauseCode::WellFormed(WellFormedLoc::Param {
                     function: fn_def_id,
                     param_idx: idx,
@@ -80,9 +80,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         }
 
         // Check the pattern.
-        let ty: Option<&hir::Ty<'_>> = decl.inputs.get(idx);
-        let ty_span = ty.map(|ty| ty.span);
-        fcx.check_pat_top(param.pat, param_ty, ty_span, None, None);
+        fcx.check_pat_top(param.pat, param_ty, Some(param.ty.span), None, None);
         if param.pat.is_never_pattern() {
             fcx.function_diverges_because_of_empty_arguments.set(Diverges::Always {
                 span: param.pat.span,
@@ -98,10 +96,10 @@ pub(super) fn check_fn<'a, 'tcx>(
                 // ty.span == binding_span iff this is a closure parameter with no type ascription,
                 // or if it's an implicit `self` parameter
                 ObligationCauseCode::SizedArgumentType(
-                    if ty_span == Some(param.span) && tcx.is_closure_like(fn_def_id.into()) {
+                    if param.ty.span == param.param_span && tcx.is_closure_like(fn_def_id.into()) {
                         None
                     } else {
-                        ty.map(|ty| ty.hir_id)
+                        Some(param.ty.hir_id)
                     },
                 ),
             );

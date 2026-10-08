@@ -305,8 +305,12 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         }
     }
 
-    pub fn consume_body(&self, body: &hir::Body<'_>) -> Result<(), Cx::Error> {
-        for param in body.params {
+    pub fn consume_body(
+        &self,
+        decl: &hir::FnDecl<'_>,
+        body: &hir::Body<'_>,
+    ) -> Result<(), Cx::Error> {
+        for param in decl.inputs {
             let param_ty = self.pat_ty_adjusted(param.pat)?;
             debug!("consume_body: param_ty = {:?}", param_ty);
 

@@ -416,9 +416,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         let captured_place = self.upvars.get(upvar_index)?;
         let upvar_hir_id = captured_place.get_root_variable();
         let parent_local_def_id = parent_def_id.as_local()?;
-        let parent_body = tcx.hir_body_owned_by(parent_local_def_id);
+        let parent_sig =
+            tcx.hir_fn_sig_by_hir_id(tcx.local_def_id_to_hir_id(parent_local_def_id)).unwrap();
         let param_index =
-            parent_body.params.iter().position(|param| param.pat.hir_id == upvar_hir_id)?;
+            parent_sig.decl.inputs.iter().position(|param| param.pat.hir_id == upvar_hir_id)?;
 
         // Get the parent fn's signature with liberated late-bound regions,
         // so we have `ReLateParam` instead of `ReBound`.
@@ -536,7 +537,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     ) -> Option<&hir::Ty<'tcx>> {
         let fn_decl = self.infcx.tcx.hir_fn_decl_by_hir_id(self.mir_hir_id())?;
         // Closures don't have implicit self arguments in HIR, so use `user_arg_index` directly.
-        let argument_hir_ty: &hir::Ty<'_> = fn_decl.inputs.get(user_arg_index)?;
+        let argument_hir_ty: &hir::Ty<'_> = fn_decl.inputs.get(user_arg_index)?.ty;
         match argument_hir_ty.kind {
             // This indicates a variable with no type annotation, like
             // `|x|`... in that case, we can't highlight the type but

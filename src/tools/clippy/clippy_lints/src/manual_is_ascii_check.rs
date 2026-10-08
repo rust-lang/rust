@@ -136,9 +136,9 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
 
 fn get_ty_sugg<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'_>) -> Option<(Span, Ty<'tcx>)> {
     let local_hid = arg.res_local_id()?;
-    if let Node::Param(Param { ty_span, span, .. }) = cx.tcx.parent_hir_node(local_hid)
+    if let Node::Param(Param { ty_span, param_span, .. }) = cx.tcx.parent_hir_node(local_hid)
         // `ty_span` and `span` are the same for inferred type, thus a type suggestion must be given
-        && ty_span == span
+        && ty_span == param_span
     {
         let arg_type = cx.typeck_results().expr_ty(arg);
         return Some((*ty_span, arg_type));

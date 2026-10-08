@@ -39,9 +39,8 @@ pub(super) fn check<'tcx>(
         // suggest `any(|..| *..)` instead of `any(|..| **..)` for `find(|..| **..).is_some()`
         let mut applicability = Applicability::MachineApplicable;
         let any_search_snippet = if search_method == sym::find
-            && let ExprKind::Closure(&hir::Closure { body, .. }) = search_arg.kind
-            && let closure_body = cx.tcx.hir_body(body)
-            && let Some(closure_arg) = closure_body.params.first()
+            && let ExprKind::Closure(&hir::Closure { fn_decl, .. }) = search_arg.kind
+            && let Some(closure_arg) = fn_decl.inputs.first()
         {
             if let PatKind::Ref(..) = closure_arg.pat.kind {
                 Some(search_snippet.replacen('&', "", 1))

@@ -403,8 +403,8 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
             },
             match fn_ptr.decl.output {
                 FnRetTy::DefaultReturn(_) => {
-                    if let [.., ty] = fn_ptr.decl.inputs {
-                        ty_search_pat(ty).1
+                    if let [.., p] = fn_ptr.decl.inputs {
+                        ty_search_pat(p.ty).1
                     } else {
                         Pat::Str("(")
                     }

@@ -123,7 +123,7 @@ fn check_fold_with_op(
     op: hir::BinOpKind,
     replacement: Replacement,
 ) -> bool {
-    if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = acc.kind
+    if let hir::ExprKind::Closure(&hir::Closure { fn_decl, body, .. }) = acc.kind
         // Extract the body of the closure passed to fold
         && let closure_body = cx.tcx.hir_body(body)
         && let closure_expr = peel_blocks(closure_body.value)
@@ -133,7 +133,7 @@ fn check_fold_with_op(
         && bin_op.node == op
 
         // Extract the names of the two arguments to the closure
-        && let [param_a, param_b] = closure_body.params
+        && let [param_a, param_b] = fn_decl.inputs
         && let PatKind::Binding(_, first_arg_id, ..) = strip_pat_refs(param_a.pat).kind
         && let PatKind::Binding(_, second_arg_id, second_arg_ident, _) = strip_pat_refs(param_b.pat).kind
 
@@ -333,9 +333,9 @@ fn check_option_fold<'tcx>(
             _ => return,
         }
         && cx.typeck_results().expr_ty(option_expr).is_diag_item(cx, sym::Option)
-        && let hir::ExprKind::Closure(&hir::Closure { body, .. }) = acc.kind
+        && let hir::ExprKind::Closure(&hir::Closure { fn_decl, body, .. }) = acc.kind
         && let closure_body = cx.tcx.hir_body(body)
-        && let [param_acc, param_item] = closure_body.params
+        && let [param_acc, param_item] = fn_decl.inputs
         // The suggestion rewrites source spans, so bail out when any part
         // comes from a different syntax context.
         && recv.span.ctxt() == ctxt

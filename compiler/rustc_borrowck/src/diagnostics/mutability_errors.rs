@@ -7,7 +7,7 @@ use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, BindingMode, ByRef, Expr, Node};
+use rustc_hir::{self as hir, BindingMode, ByRef, Expr, Node, intravisit};
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::visit::PlaceContext;
 use rustc_middle::mir::{
@@ -926,11 +926,11 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 let f_in_trait = f_in_trait.as_local()?;
                 if let Node::TraitItem(ti) = self.infcx.tcx.hir_node_by_def_id(f_in_trait)
                     && let hir::TraitItemKind::Fn(sig, _) = ti.kind
-                    && let Some(ty) = sig.decl.inputs.get(local.index() - 1)
-                    && let hir::TyKind::Ref(_, _, hir::Mutability::Not) = ty.kind
+                    && let Some(param) = sig.decl.inputs.get(local.index() - 1)
+                    && let hir::TyKind::Ref(_, _, hir::Mutability::Not) = param.ty.kind
                     && sig.decl.implicit_self().has_implicit_self()
                 {
-                    Some(ty.span)
+                    Some(param.ty.span)
                 } else {
                     None
                 }
@@ -965,7 +965,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         let def_id = self.body.source.def_id();
         if let Some(local_def_id) = def_id.as_local()
             && let Some(body) = self.infcx.tcx.hir_maybe_body_owned_by(local_def_id)
-            && let Some(hir_id) = (BindingFinder { span: pat_span }).visit_body(&body).break_value()
+            && let Some(hir_id) = (BindingFinder { tcx: self.infcx.tcx, span: pat_span })
+                .visit_body(&body)
+                .break_value()
             && let node = self.infcx.tcx.hir_node(hir_id)
             && let hir::Node::LetStmt(hir::LetStmt {
                 pat: hir::Pat { kind: hir::PatKind::Ref(_, _, _), .. },
@@ -1309,7 +1311,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             arg_pos
                                 + if sig.decl.implicit_self().has_implicit_self() { 1 } else { 0 },
                         )
-                        .map(|arg| arg.span)
+                        .map(|param| param.ty.span)
                         .unwrap_or(ident.span),
                 ),
                 _ => None,
@@ -1614,7 +1616,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         let hir_id = if let Some(local_def_id) = def_id.as_local()
             && let Some(body) = self.infcx.tcx.hir_maybe_body_owned_by(local_def_id)
         {
-            BindingFinder { span: sugg_span }.visit_body(&body).break_value()
+            BindingFinder { tcx: self.infcx.tcx, span: sugg_span }.visit_body(&body).break_value()
         } else {
             None
         };
@@ -1789,21 +1791,13 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     }
 }
 
-struct BindingFinder {
+struct BindingFinder<'tcx> {
+    tcx: TyCtxt<'tcx>,
     span: Span,
 }
 
-impl<'tcx> Visitor<'tcx> for BindingFinder {
+impl<'tcx> Visitor<'tcx> for BindingFinder<'tcx> {
     type Result = ControlFlow<hir::HirId>;
-    fn visit_stmt(&mut self, s: &'tcx hir::Stmt<'tcx>) -> Self::Result {
-        if let hir::StmtKind::Let(local) = s.kind
-            && local.pat.span == self.span
-        {
-            ControlFlow::Break(local.hir_id)
-        } else {
-            hir::intravisit::walk_stmt(self, s)
-        }
-    }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) -> Self::Result {
         if let hir::Pat { kind: hir::PatKind::Ref(_, _, _), span, .. } = param.pat
@@ -1812,6 +1806,23 @@ impl<'tcx> Visitor<'tcx> for BindingFinder {
             ControlFlow::Break(param.hir_id)
         } else {
             ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_body(&mut self, b: &rustc_hir::Body<'tcx>) -> Self::Result {
+        if let Some(decl) = self.tcx.hir_fn_decl_by_hir_id(self.tcx.hir_body_owner(b.id())) {
+            intravisit::walk_fn_decl(self, decl)?;
+        }
+        hir::intravisit::walk_body(self, b)
+    }
+
+    fn visit_stmt(&mut self, s: &'tcx hir::Stmt<'tcx>) -> Self::Result {
+        if let hir::StmtKind::Let(local) = s.kind
+            && local.pat.span == self.span
+        {
+            ControlFlow::Break(local.hir_id)
+        } else {
+            hir::intravisit::walk_stmt(self, s)
         }
     }
 }

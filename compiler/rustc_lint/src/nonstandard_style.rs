@@ -7,7 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{FnKind, Visitor};
-use rustc_hir::{GenericParamKind, PatExprKind, PatKind};
+use rustc_hir::{GenericParamKind, Node, PatExprKind, PatKind};
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::hir::nested_filter::All;
 use rustc_middle::ty::AssocContainer;
@@ -417,28 +417,25 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         }
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &hir::Ty<'_, hir::AmbigArg>) {
-        if let hir::TyKind::FnPtr(hir::FnPtrTy { param_idents, .. }) = &ty.kind {
-            for param_ident in *param_idents {
-                if let Some(param_ident) = param_ident {
-                    self.check_snake_case(cx, "variable", param_ident);
-                }
-            }
-        }
-    }
-
     fn check_trait_item(&mut self, cx: &LateContext<'_>, item: &hir::TraitItem<'_>) {
-        if let hir::TraitItemKind::Fn(_, hir::TraitFn::Required(param_idents)) = item.kind {
+        if let hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_)) = item.kind {
             self.check_snake_case(cx, "trait method", &item.ident);
-            for param_ident in param_idents {
-                if let Some(param_ident) = param_ident {
-                    self.check_snake_case(cx, "variable", param_ident);
-                }
-            }
         }
     }
 
     fn check_pat(&mut self, cx: &LateContext<'_>, p: &hir::Pat<'_>) {
+        // Ignore patterns in foreign items for now
+        // FIXME(#33995) remove this check
+        if let Node::ForeignItem(_) = cx
+            .tcx
+            .hir_parent_iter(p.hir_id)
+            .find(|(_, n)| !matches!(n, Node::Pat(_) | Node::Param(_)))
+            .unwrap()
+            .1
+        {
+            return;
+        }
+
         if let PatKind::Binding(_, hid, ident, _) = p.kind {
             if let hir::Node::PatField(field) = cx.tcx.parent_hir_node(hid) {
                 if !field.is_shorthand {
