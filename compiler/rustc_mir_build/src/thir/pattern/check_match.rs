@@ -359,7 +359,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | VarRef { .. }
             | ZstLiteral { .. }
             | Yield { .. }
-            | Reborrow { .. } => true,
+            | CoerceShared { .. } => true,
         }
     }
 
