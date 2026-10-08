@@ -248,6 +248,8 @@ fn mini_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     }
     .to_string();
     let mut command = args.config_info.rustc_command_vec();
+    // Implicitly passed by rustc's build system
+    command.push(&"-Zforce-unstable-if-unmarked");
     command.extend_from_slice(&[
         &"example/mini_core.rs",
         &"--crate-name",
@@ -262,6 +264,8 @@ fn mini_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[BUILD] example");
     let mut command = args.config_info.rustc_command_vec();
+    // Implicitly passed by rustc's build system
+    command.push(&"-Zforce-unstable-if-unmarked");
     command.extend_from_slice(&[
         &"example/example.rs",
         &"--crate-type",
@@ -274,6 +278,8 @@ fn mini_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[AOT] mini_core_hello_world");
     let mut command = args.config_info.rustc_command_vec();
+    // Implicitly passed by rustc's build system
+    command.push(&"-Zforce-unstable-if-unmarked");
     command.extend_from_slice(&[
         &"example/mini_core_hello_world.rs",
         &"--crate-name",

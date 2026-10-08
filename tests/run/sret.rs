@@ -8,7 +8,7 @@
 //     10 11 12
 //     20 21 22
 
-#![feature(no_core)]
+#![feature(no_core, rustc_private)]
 #![no_std]
 #![no_core]
 #![no_main]
@@ -91,7 +91,7 @@ unsafe fn check_c_return_register() {
         || out.b != 41
         || out.c != 42
     {
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 }
 
@@ -123,12 +123,12 @@ extern "C" fn main(_argc: i32, _argv: *const *const u8) -> i32 {
         // cg_gcc as the caller, GCC as the callee.
         let from_c = c_make_big(30, 31, 32);
         if from_c.a != 30 || from_c.b != 31 || from_c.c != 32 {
-            intrinsics::abort();
+            intrinsics::abort_immediate();
         }
 
         // GCC as the caller, cg_gcc as the callee.
         if c_call_rust() != 0 {
-            intrinsics::abort();
+            intrinsics::abort_immediate();
         }
 
         #[cfg(target_arch = "x86_64")]

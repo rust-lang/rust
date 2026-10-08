@@ -3,7 +3,7 @@
 // Run-time:
 //   status: signal
 
-#![feature(no_core)]
+#![feature(no_core, rustc_private)]
 #![no_std]
 #![no_core]
 #![no_main]
@@ -12,7 +12,7 @@ extern crate mini_core;
 use mini_core::*;
 
 fn test_fail() -> ! {
-    unsafe { intrinsics::abort() };
+    unsafe { intrinsics::abort_immediate() };
 }
 
 #[no_mangle]
