@@ -6,6 +6,17 @@
     "helpers:pinGitHubActionDigestsToSemver"
   ],
   commitMessagePrefix: "deps:",
+  customManagers: [
+    {
+      customType: "regex",
+      managerFilePatterns: [".github/workflows/main.yaml"],
+      matchStrings: ["BENCHMARK_RUSTC:\\s*(?<currentValue>\\S+)"],
+      autoReplaceStringTemplate: "BENCHMARK_RUSTC: {{{newValue}}}",
+      depNameTemplate: "nightly",
+      datasourceTemplate: "rust-version",
+      versioningTemplate: "rust-release-channel",
+    },
+  ],
   packageRules: [
     {
       matchCategories: ["rust"],
@@ -21,16 +32,9 @@
       commitMessagePrefix: "ci:",
       groupName: "Github Actions",
     },
-  ],
-  "customManagers": [
     {
-      "customType": "regex",
-      "managerFilePatterns": [".github/workflows/main.yaml"],
-      "matchStrings": ["BENCHMARK_RUSTC:\\s*(?<currentValue>\\S+)"],
-      "autoReplaceStringTemplate": "BENCHMARK_RUSTC: {{{newValue}}}",
-      "depNameTemplate": "nightly",
-      "datasourceTemplate": "rust-version",
-      "versioningTemplate": "rust-release-channel",
+      matchManagers: ["custom.regex"],
+      commitMessage: "bench: Update pinned toolchain to {{{newVersion}}}",
     },
   ],
   // Receive any update that fixes security vulnerabilities.
