@@ -90,6 +90,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::{Hash64, Hash128};
 use sha1::Sha1;
 use sha2::Sha256;
+use span_encoding::InlineCtxt;
 
 #[cfg(test)]
 mod tests;
@@ -1181,6 +1182,24 @@ impl Span {
     ///     ^^^^^^^^^^^^^^^^^^^^
     /// ```
     pub fn to(self, end: Span) -> Span {
+        // Inline-only fast path
+        use rustc_serialize::int_overflow::{DebugStrictAdd, DebugStrictSub};
+        if let Some(from) = InlineCtxt::try_from_span(self)
+            && let Some(to) = InlineCtxt::try_from_span(end)
+            && from.ctxt == to.ctxt
+        {
+            let lo = cmp::min(from.lo, to.lo);
+            let len = cmp::max(from.lo.debug_strict_add(from.len), to.lo.debug_strict_add(to.len))
+                .debug_strict_sub(lo);
+            if let Some(span) = InlineCtxt::try_new_span(lo, len, from.ctxt) {
+                return span;
+            }
+        }
+        self.to_non_inline(end)
+    }
+
+    #[inline(never)]
+    fn to_non_inline(self, end: Span) -> Span {
         match Span::prepare_to_combine(self, end) {
             Ok((from, to, parent)) => Span::new_ordered(
                 cmp::min(from.lo, to.lo),

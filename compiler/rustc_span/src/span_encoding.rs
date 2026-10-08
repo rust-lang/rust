@@ -148,11 +148,12 @@ impl SpanField {
 }
 
 // Convenience structures for all span formats.
+// InlineCtxt is public to allow inline-only fast paths.
 #[derive(Clone, Copy)]
-struct InlineCtxt {
-    lo: u32,
-    len: u32,
-    ctxt: u32,
+pub(crate) struct InlineCtxt {
+    pub(crate) lo: u32,
+    pub(crate) len: u32,
+    pub(crate) ctxt: u32,
 }
 
 #[derive(Clone, Copy)]
@@ -184,7 +185,7 @@ impl InlineCtxt {
     const LO: SpanField = Self::CTXT.below(32);
 
     #[inline]
-    const fn try_new_span(lo: u32, len: u32, ctxt: u32) -> Option<Span> {
+    pub(crate) const fn try_new_span(lo: u32, len: u32, ctxt: u32) -> Option<Span> {
         if Self::LEN.too_big(len) | Self::CTXT.too_big(ctxt) == 0 {
             Some(Span(
                 Self::PREFIX.set(Self::PREFIX_VALUE)
@@ -211,6 +212,15 @@ impl InlineCtxt {
     fn from_span(span: Span) -> InlineCtxt {
         let u = span.0;
         Self { lo: Self::LO.get(u), len: Self::LEN.get(u), ctxt: Self::CTXT.get(u) }
+    }
+
+    #[inline]
+    pub(crate) fn try_from_span(span: Span) -> Option<InlineCtxt> {
+        if Self::PREFIX.get(span.0) == Self::PREFIX_VALUE {
+            Some(Self::from_span(span))
+        } else {
+            None
+        }
     }
 }
 const _: () = InlineCtxt::LO.assert_is_bottom();
