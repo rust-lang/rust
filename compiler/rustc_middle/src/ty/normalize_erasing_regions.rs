@@ -74,6 +74,10 @@ impl<'tcx> TyCtxt<'tcx> {
     ) {
         let value = self.erase_and_anonymize_regions(value);
         if value.has_aliases() {
+            // We want this check to also detect cases where an alias is incorrectly
+            // rigid in the current `TypingEnv`. This is the case if we use values
+            // which have been normalized in a different `TypingEnv` without
+            // renormalizing them. This was necessary to catch e.g. #163724.
             let normalized = ty::set_aliases_to_non_rigid(self, value.clone())
                 .skip_normalization()
                 .fold_with(&mut NormalizeAfterErasingRegionsFolder { tcx: self, typing_env });
