@@ -352,7 +352,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
                 .ty
                 .needs_drop(self.tcx, self.typing_env())
             {
-                self.patch.patch_terminator(bb, TerminatorKind::Goto { target });
+                self.patch.patch_terminator(bb, TerminatorKind::goto(target));
                 continue;
             }
 

@@ -26,7 +26,6 @@
 
 use itertools::Itertools;
 use rustc_data_structures::graph::{DirectedGraph, Successors};
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty;
@@ -73,7 +72,6 @@ impl<'tcx> MockBlocks<'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(Span::with_root_ctxt(next_lo, next_hi)),
                 kind,
-                loop_hint_attrs: ThinVec::new(),
             }),
             false,
         ))
@@ -86,7 +84,7 @@ impl<'tcx> MockBlocks<'tcx> {
             | TerminatorKind::Drop { ref mut target, .. }
             | TerminatorKind::FalseEdge { real_target: ref mut target, .. }
             | TerminatorKind::FalseUnwind { real_target: ref mut target, .. }
-            | TerminatorKind::Goto { ref mut target }
+            | TerminatorKind::Goto { ref mut target, .. }
             | TerminatorKind::Yield { resume: ref mut target, .. } => *target = to_block,
             ref invalid => bug!("Invalid from_block: {:?}", invalid),
         }
@@ -145,7 +143,7 @@ impl<'tcx> MockBlocks<'tcx> {
     }
 
     fn goto(&mut self, some_from_block: Option<BasicBlock>) -> BasicBlock {
-        self.add_block_from(some_from_block, TerminatorKind::Goto { target: TEMP_BLOCK })
+        self.add_block_from(some_from_block, TerminatorKind::goto(TEMP_BLOCK))
     }
 
     fn switchint(&mut self, some_from_block: Option<BasicBlock>) -> BasicBlock {
@@ -182,7 +180,7 @@ fn debug_basic_blocks(mir_body: &Body<'_>) -> String {
                     | TerminatorKind::Drop { target, .. }
                     | TerminatorKind::FalseEdge { real_target: target, .. }
                     | TerminatorKind::FalseUnwind { real_target: target, .. }
-                    | TerminatorKind::Goto { target }
+                    | TerminatorKind::Goto { target, .. }
                     | TerminatorKind::Yield { resume: target, .. } => {
                         format!("{}{:?}:{} -> {:?}", sp, bb, kind.name(), target)
                     }

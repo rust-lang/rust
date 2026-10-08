@@ -8,7 +8,7 @@ pub(crate) mod gpu_offload;
 
 use libc::{c_char, c_uint};
 use rustc_abi::{self as abi, Align, CanonAbi, Size, WrappingRange};
-use rustc_attr_ir::{AttributeKind, UnrollAttr};
+use rustc_attr_ir::UnrollAttr;
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -340,16 +340,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn br_with_attrs(&mut self, dest: &'ll BasicBlock, loop_hint_attrs: &[AttributeKind]) {
+    fn br_with_attrs(&mut self, dest: &'ll BasicBlock, loop_hint_attrs: &[UnrollAttr]) {
         unsafe {
             let val = llvm::LLVMBuildBr(self.llbuilder, dest);
 
             let mut nodes = Vec::new();
 
-            for loop_hint_attr in loop_hint_attrs {
-                let AttributeKind::Unroll(unroll) = loop_hint_attr else {
-                    continue;
-                };
+            for unroll in loop_hint_attrs {
                 // UnrollAttr::Count needs a second operand, the provided count, but the other
                 // unroll hints do not.
                 let md_node = if let UnrollAttr::Count(count) = unroll {
