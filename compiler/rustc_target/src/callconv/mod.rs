@@ -79,20 +79,16 @@ pub enum PassMode {
     Cast { pad_i32_count: u8, cast: Box<CastTarget> },
     /// Pass the argument indirectly via a hidden pointer.
     ///
-    /// The `meta_attrs` value, if any, is for the metadata (vtable or length) of an unsized
-    /// argument. (This is the only mode that supports unsized arguments.)
-    ///
     /// `address_space` specifies if the pointer is in a special address space or the default one.
     ///
     /// `mode` can be a special way to pass an argument indirectly.
-    /// `OnStack` and `AmdgpuKernelArg` cannot be used for unsized arguments, i.e., when
-    /// `meta_attrs` is `Some`.
-    Indirect {
-        attrs: ArgAttributes,
-        meta_attrs: Option<ArgAttributes>,
-        address_space: Option<AddressSpace>,
-        mode: IndirectMode,
-    },
+    Indirect { attrs: ArgAttributes, address_space: Option<AddressSpace>, mode: IndirectMode },
+
+    /// Like `Indirect`, but for unsized parameters.
+    ///
+    /// The `meta_attrs` value, is for the metadata (vtable or length) of an unsized argument.
+    /// (This is the only mode that supports unsized arguments.) `on_stack` is always false.
+    IndirectUnsized { attrs: ArgAttributes, meta_attrs: ArgAttributes },
 }
 
 impl PassMode {
@@ -109,23 +105,13 @@ impl PassMode {
                 PassMode::Cast { cast: c2, pad_i32_count: pad2 },
             ) => c1.eq_abi(c2) && pad1 == pad2,
             (
-                PassMode::Indirect { attrs: a1, meta_attrs: None, address_space: as1, mode: m1 },
-                PassMode::Indirect { attrs: a2, meta_attrs: None, address_space: as2, mode: m2 },
+                PassMode::Indirect { attrs: a1, address_space: as1, mode: m1 },
+                PassMode::Indirect { attrs: a2, address_space: as2, mode: m2 },
             ) => a1.eq_abi(a2) && as1 == as2 && m1 == m2,
             (
-                PassMode::Indirect {
-                    attrs: a1,
-                    meta_attrs: Some(e1),
-                    address_space: as1,
-                    mode: m1,
-                },
-                PassMode::Indirect {
-                    attrs: a2,
-                    meta_attrs: Some(e2),
-                    address_space: as2,
-                    mode: m2,
-                },
-            ) => a1.eq_abi(a2) && as1 == as2 && e1.eq_abi(e2) && m1 == m2,
+                PassMode::IndirectUnsized { attrs: a1, meta_attrs: e1 },
+                PassMode::IndirectUnsized { attrs: a2, meta_attrs: e2 },
+            ) => a1.eq_abi(a2) && e1.eq_abi(e2),
             _ => false,
         }
     }
@@ -452,9 +438,11 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         attrs.pointee_size = layout.size;
         attrs.pointee_align = Some(layout.align.abi);
 
-        let meta_attrs = layout.is_unsized().then_some(ArgAttributes::new());
-
-        PassMode::Indirect { attrs, meta_attrs, address_space: None, mode: IndirectMode::Pointer }
+        if layout.is_unsized() {
+            PassMode::IndirectUnsized { attrs, meta_attrs: ArgAttributes::new() }
+        } else {
+            PassMode::Indirect { attrs, address_space: None, mode: IndirectMode::Pointer }
+        }
     }
 
     /// Pass this argument indirectly, by passing a (thin or wide) pointer to the argument instead.
@@ -465,12 +453,8 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             PassMode::Direct(_) | PassMode::Pair(_, _) => {
                 self.mode = Self::indirect_pass_mode(&self.layout);
             }
-            PassMode::Indirect {
-                attrs: _,
-                meta_attrs: _,
-                address_space: _,
-                mode: IndirectMode::Pointer,
-            } => {
+            PassMode::Indirect { attrs: _, address_space: _, mode: IndirectMode::Pointer }
+            | PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => {
                 // already indirect
             }
             _ => panic!("Tried to make {:?} indirect", self.mode),
@@ -498,12 +482,8 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             PassMode::Ignore => {
                 self.mode = Self::indirect_pass_mode(&self.layout);
             }
-            PassMode::Indirect {
-                attrs: _,
-                meta_attrs: _,
-                address_space: _,
-                mode: IndirectMode::Pointer,
-            } => {
+            PassMode::Indirect { attrs: _, address_space: _, mode: IndirectMode::Pointer }
+            | PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => {
                 // already indirect
             }
             _ => panic!("Tried to make {:?} indirect (expected `PassMode::Ignore`)", self.mode),
@@ -530,7 +510,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         assert!(!self.layout.is_unsized(), "used byval ABI for unsized layout");
         self.make_indirect();
         match self.mode {
-            PassMode::Indirect { ref mut attrs, meta_attrs: _, address_space: _, ref mut mode } => {
+            PassMode::Indirect { ref mut attrs, address_space: _, ref mut mode } => {
                 *mode = IndirectMode::OnStack;
 
                 // Some platforms, like 32-bit x86, change the alignment of the type when passing
@@ -553,7 +533,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         assert!(!self.layout.is_unsized(), "used amdgpu kernel arg ABI for unsized layout");
         self.make_indirect();
         match self.mode {
-            PassMode::Indirect { attrs: _, meta_attrs: _, ref mut address_space, ref mut mode } => {
+            PassMode::Indirect { attrs: _, ref mut address_space, ref mut mode } => {
                 *mode = IndirectMode::AmdgpuKernelArg;
                 *address_space = addrspace;
             }
@@ -610,21 +590,15 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn is_indirect(&self) -> bool {
-        matches!(self.mode, PassMode::Indirect { .. })
+        matches!(self.mode, PassMode::Indirect { .. } | PassMode::IndirectUnsized { .. })
     }
 
     pub fn is_sized_indirect(&self) -> bool {
-        matches!(
-            self.mode,
-            PassMode::Indirect { attrs: _, meta_attrs: None, address_space: _, mode: _ }
-        )
+        matches!(self.mode, PassMode::Indirect { attrs: _, address_space: _, mode: _ })
     }
 
     pub fn is_unsized_indirect(&self) -> bool {
-        matches!(
-            self.mode,
-            PassMode::Indirect { attrs: _, meta_attrs: Some(_), address_space: _, mode: _ }
-        )
+        matches!(self.mode, PassMode::IndirectUnsized { attrs: _, meta_attrs: _ })
     }
 
     pub fn is_ignore(&self) -> bool {
@@ -925,8 +899,11 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 BackendRepr::Memory { .. } => {
                     // Compute `Aggregate` ABI.
 
-                    let is_indirect_not_on_stack =
-                        matches!(arg.mode, PassMode::Indirect { mode: IndirectMode::Pointer, .. });
+                    let is_indirect_not_on_stack = matches!(
+                        arg.mode,
+                        PassMode::Indirect { mode: IndirectMode::Pointer, .. }
+                            | PassMode::IndirectUnsized { .. }
+                    );
                     assert!(is_indirect_not_on_stack);
 
                     let size = arg.layout.size;
@@ -1037,7 +1014,7 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(ArgAbi<'_, usize>, 64);
-    static_assert_size!(FnAbi<'_, usize>, 88);
+    static_assert_size!(ArgAbi<'_, usize>, 56);
+    static_assert_size!(FnAbi<'_, usize>, 80);
     // tidy-alphabetical-end
 }
