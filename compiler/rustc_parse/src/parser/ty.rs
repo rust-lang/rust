@@ -12,12 +12,14 @@ use thin_vec::{ThinVec, thin_vec};
 
 use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
 use crate::diagnostics::{
-    self, DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
+    DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
     FnPtrWithGenerics, FnPtrWithGenericsSugg, HelpUseLatestEdition, InvalidDynKeyword,
     LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime, ReturnTypesUseThinArrow,
 };
 use crate::exp;
 use crate::parser::{FnContext, FnParseMode, FrontMatterParsingMode};
+
+mod diagnostics;
 
 /// Signals whether parsing a type should allow `+`.
 ///
@@ -310,8 +312,13 @@ impl<'a> Parser<'a> {
             // Function pointer type or bound list (trait object type) starting with a poly-trait.
             //   `for<'lt> [unsafe] [extern "ABI"] fn (&'lt S) -> T`
             //   `for<'lt> Trait1<'lt> + Trait2 + 'a`
-            let (bound_vars, _) = self.parse_higher_ranked_binder()?;
-            if self.check_fn_front_matter(false, Case::Sensitive) {
+            let (mut bound_vars, _) = self.parse_higher_ranked_binder()?;
+
+            if let Some(ty) =
+                self.recover_from_binder_before_dyn_or_impl_ty(&mut bound_vars, allow_plus, lo)?
+            {
+                ty
+            } else if self.check_fn_front_matter(false, Case::Sensitive) {
                 self.parse_ty_fn_ptr(
                     lo,
                     bound_vars,
@@ -319,50 +326,15 @@ impl<'a> Parser<'a> {
                     recover_return_sign,
                 )?
             } else {
-                // Try to recover `for<'a> dyn Trait` or `for<'a> impl Trait`.
-                if self.may_recover()
-                    && (self.token.is_keyword(kw::Impl) || self.can_begin_dyn_ty())
-                {
-                    self.bump();
-                    let (kw, _) = self.prev_token.ident().unwrap();
-                    let removal_span = kw.span.with_hi(self.token.span.lo());
-                    let path = self.parse_path(PathStyle::Type)?;
-                    let mut bounds = thin_vec![GenericBound::Trait(PolyTraitRef::new(
-                        bound_vars,
-                        path,
-                        TraitBoundModifiers::NONE,
-                        lo.to(self.prev_token.span),
-                        ast::Parens::No,
-                    ))];
-                    if allow_plus == AllowPlus::Yes && self.check_plus() {
-                        self.eat_plus();
-                        bounds.append(&mut self.parse_generic_bounds()?);
-                    }
-                    self.dcx().emit_err(diagnostics::TransposeDynOrImpl {
-                        span: kw.span,
-                        kw: kw.name.as_str(),
-                        sugg: diagnostics::TransposeDynOrImplSugg {
-                            removal_span,
-                            insertion_span: lo.shrink_to_lo(),
-                            kw: kw.name.as_str(),
-                        },
-                    });
-                    match kw.name {
-                        kw::Dyn => TyKind::TraitObject(bounds, TraitObjectSyntax::Dyn),
-                        kw::Impl => TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds),
-                        _ => unreachable!(),
-                    }
-                } else {
-                    let path = self.parse_path(PathStyle::Type)?;
-                    let parse_plus = allow_plus == AllowPlus::Yes && self.check_plus();
-                    self.finish_parsing_bare_trait_object_ty(
-                        bound_vars,
-                        path,
-                        lo,
-                        parse_plus,
-                        ast::Parens::No,
-                    )?
-                }
+                let path = self.parse_path(PathStyle::Type)?;
+                let parse_plus = allow_plus == AllowPlus::Yes && self.check_plus();
+                self.finish_parsing_bare_trait_object_ty(
+                    bound_vars,
+                    path,
+                    lo,
+                    parse_plus,
+                    ast::Parens::No,
+                )?
             }
         } else if self.eat_keyword(exp!(Impl)) {
             self.parse_impl_ty(&mut impl_dyn_multi)?
@@ -940,7 +912,7 @@ impl<'a> Parser<'a> {
         if self.token.is_lifetime()
             && let Some(ident) = self.look_ahead(1, |t| t.non_reserved_ident())
         {
-            self.dcx().emit_err(diagnostics::MissingPlusBounds {
+            self.dcx().emit_err(crate::diagnostics::MissingPlusBounds {
                 span: self.token.span,
                 hi: self.token.span.shrink_to_hi(),
                 sym: ident.name,
@@ -1172,7 +1144,7 @@ impl<'a> Parser<'a> {
         match constness {
             BoundConstness::Never => {}
             BoundConstness::Always(span) | BoundConstness::Maybe(span) => {
-                return self.dcx().emit_err(diagnostics::ModifierLifetime {
+                return self.dcx().emit_err(crate::diagnostics::ModifierLifetime {
                     span,
                     modifier: constness.as_str(),
                 });
@@ -1182,16 +1154,17 @@ impl<'a> Parser<'a> {
         match polarity {
             BoundPolarity::Positive => {}
             BoundPolarity::Negative(span) | BoundPolarity::Maybe(span) => {
-                return self
-                    .dcx()
-                    .emit_err(diagnostics::ModifierLifetime { span, modifier: polarity.as_str() });
+                return self.dcx().emit_err(crate::diagnostics::ModifierLifetime {
+                    span,
+                    modifier: polarity.as_str(),
+                });
             }
         }
 
         match asyncness {
             BoundAsyncness::Normal => {}
             BoundAsyncness::Async(span) => {
-                return self.dcx().emit_err(diagnostics::ModifierLifetime {
+                return self.dcx().emit_err(crate::diagnostics::ModifierLifetime {
                     span,
                     modifier: asyncness.as_str(),
                 });
@@ -1201,7 +1174,7 @@ impl<'a> Parser<'a> {
         if let Some(span) = binder_span {
             return self
                 .dcx()
-                .emit_err(diagnostics::ModifierLifetime { span, modifier: "for<...>" });
+                .emit_err(crate::diagnostics::ModifierLifetime { span, modifier: "for<...>" });
         }
 
         unreachable!("lifetime bound intercepted in `parse_generic_ty_bound` but no modifiers?")
@@ -1232,7 +1205,7 @@ impl<'a> Parser<'a> {
             && self.is_kw_followed_by_ident(kw::Async)
         {
             self.bump(); // eat `async`
-            self.dcx().emit_err(diagnostics::AsyncBoundModifierIn2015 {
+            self.dcx().emit_err(crate::diagnostics::AsyncBoundModifierIn2015 {
                 span: self.prev_token.span,
                 help: HelpUseLatestEdition::new(),
             });
@@ -1268,7 +1241,7 @@ impl<'a> Parser<'a> {
                         let glue =
                             if !constness.is_empty() && !asyncness.is_empty() { " " } else { "" };
                         let modifiers_concatenated = format!("{constness}{glue}{asyncness}");
-                        self.dcx().emit_err(diagnostics::PolarityAndModifiers {
+                        self.dcx().emit_err(crate::diagnostics::PolarityAndModifiers {
                             polarity_span,
                             polarity: polarity.as_str(),
                             modifiers_span: modifier_lo.to(modifier_hi),
@@ -1330,7 +1303,7 @@ impl<'a> Parser<'a> {
         if let Some(binder_span) = binder_span {
             match modifiers.polarity {
                 BoundPolarity::Negative(polarity_span) | BoundPolarity::Maybe(polarity_span) => {
-                    self.dcx().emit_err(diagnostics::BinderAndPolarity {
+                    self.dcx().emit_err(crate::diagnostics::BinderAndPolarity {
                         binder_span,
                         polarity_span,
                         polarity: modifiers.polarity.as_str(),
@@ -1349,7 +1322,10 @@ impl<'a> Parser<'a> {
 
         if let (more_bound_vars, Some(binder_span)) = self.parse_higher_ranked_binder()? {
             bound_vars.extend(more_bound_vars);
-            self.dcx().emit_err(diagnostics::BinderBeforeModifiers { binder_span, modifiers_span });
+            self.dcx().emit_err(crate::diagnostics::BinderBeforeModifiers {
+                binder_span,
+                modifiers_span,
+            });
         }
 
         let mut path = if self.token.is_keyword(kw::Fn)
@@ -1419,9 +1395,9 @@ impl<'a> Parser<'a> {
                 self.parse_generic_bounds()?;
                 self.expect(exp!(CloseParen))?;
 
-                self.dcx().emit_err(diagnostics::IncorrectParensTraitBounds {
+                self.dcx().emit_err(crate::diagnostics::IncorrectParensTraitBounds {
                     span: vec![lo, self.prev_token.span],
-                    sugg: diagnostics::IncorrectParensTraitBoundsSugg {
+                    sugg: crate::diagnostics::IncorrectParensTraitBoundsSugg {
                         wrong_span: leading_token.span.shrink_to_hi().to(lo),
                         new_span: leading_token.span.shrink_to_lo(),
                     },
@@ -1633,7 +1609,7 @@ impl<'a> Parser<'a> {
     pub(super) fn expect_lifetime(&mut self) -> Lifetime {
         if let Some((ident, kind)) = self.token.lifetime() {
             if kind == IdentKind::Normal && ident.without_first_quote().is_reserved_lifetime() {
-                self.dcx().emit_err(diagnostics::KeywordLifetime { span: ident.span });
+                self.dcx().emit_err(crate::diagnostics::KeywordLifetime { span: ident.span });
             }
 
             self.bump();
