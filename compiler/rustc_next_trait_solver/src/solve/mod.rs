@@ -21,7 +21,6 @@ mod search_graph;
 mod trait_goals;
 
 use derive_where::derive_where;
-use rustc_middle::ty::{self as mty, Ty as MiddleTy};
 use rustc_transmute::{Assume, Condition};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;

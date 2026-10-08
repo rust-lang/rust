@@ -9,7 +9,6 @@ derive-where = "1.2.7"
 rustc_data_structures = { path = "../rustc_data_structures", optional = true }
 rustc_index = { path = "../rustc_index", default-features = false }
 rustc_macros = { path = "../rustc_macros", optional = true }
-rustc_middle = { path = "../rustc_middle" }
 rustc_transmute = { path = "../rustc_transmute", features = ["rustc"] }
 rustc_type_ir = { path = "../rustc_type_ir", default-features = false }
 rustc_type_ir_macros = { path = "../rustc_type_ir_macros" }
