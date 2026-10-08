@@ -12,6 +12,8 @@ LL | const _X: &'static u8 = unsafe {
 error[E0080]: memory access failed: ALLOC$ID has been freed, so this pointer is dangling
   --> $DIR/dealloc_intrinsic_dangling.rs:23:5
    |
+LL | const _Y: u8 = unsafe {
+...
 LL |     *reference
    |     ^^^^^^^^^^ evaluation of `_Y` failed here
 

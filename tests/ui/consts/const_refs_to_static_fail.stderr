@@ -1,12 +1,14 @@
 error[E0080]: constant accesses mutable global memory
   --> $DIR/const_refs_to_static_fail.rs:14:13
    |
+LL | const C1_READ: () = unsafe {
 LL |     assert!(*C1.get() == 0);
    |             ^^^^^^^^^ evaluation of `C1_READ` failed here
 
 error[E0080]: constant accesses mutable global memory
   --> $DIR/const_refs_to_static_fail.rs:18:13
    |
+LL | const C2_READ: () = unsafe {
 LL |     assert!(*C2 == 0);
    |             ^^^ evaluation of `C2_READ` failed here
 

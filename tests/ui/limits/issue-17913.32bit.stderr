@@ -3,6 +3,7 @@ error: values of the type `[&usize; usize::MAX]` are too big for the target arch
 
 error[E0080]: values of the type `[&usize; usize::MAX]` are too big for the target architecture
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+  ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
    = note: evaluation of `<[&usize; usize::MAX] as std::mem::SizedTypeProperties>::SIZE` failed here
 

@@ -629,11 +629,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // is annoying. It is harmless enough to just not validate anything
         // in that case. We still check this after analysis as all opaque
         // types have been revealed at this point.
-        if pred.has_opaque_types() {
+        if !self.tcx.next_trait_solver_globally() && pred.has_opaque_types() {
             return true;
         }
 
-        let (infcx, param_env) = self.tcx.infer_ctxt().build_with_typing_env(self.typing_env);
+        let (infcx, param_env) =
+            self.tcx.infer_ctxt().ignoring_regions().build_with_typing_env(self.typing_env);
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_obligation(Obligation::new(
             self.tcx,
