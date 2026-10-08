@@ -21,16 +21,9 @@ pub(crate) fn expand_deriving_partial_ord(
         vec![ast::GenericArg::Type(ordering_ty)],
     ));
 
-    // Order in which to perform matching
-    let discr_then_data = discr_data_order(item);
-
     let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
     let has_derive_ord = cx.resolver.has_derive_ord(container_id);
-    let default_substructure =
-        combine_substructure(|cx, span, substr| cs_partial_cmp(cx, span, substr, discr_then_data));
-    let simple_substructure = combine_substructure(|cx, span, _| {
-        cs_partial_cmp_simple(cx, span, cx.expr_ident_sym(span, sym::other))
-    });
+    let default_substructure = cs_partial_cmp;
     let is_simple = match &item.kind {
         // For unit structs/zero-variant enums, the default generated code is better.
         ItemKind::Struct(.., ast::VariantData::Unit(..)) => false,
@@ -63,7 +56,11 @@ pub(crate) fn expand_deriving_partial_ord(
         ret_ty,
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-        combine_substructure: if is_simple { simple_substructure } else { default_substructure },
+        combine_substructure: if is_simple {
+            |cx, span, _| cs_partial_cmp_simple(cx, span, cx.expr_ident_sym(span, sym::other))
+        } else {
+            default_substructure
+        },
     };
 
     let trait_def = TraitDef {
@@ -112,12 +109,7 @@ fn cs_partial_cmp_simple(cx: &ExtCtxt<'_>, span: Span, other_expr: Box<ast::Expr
     BlockOrExpr::new_expr(cx.expr_some(span, cmp_expr))
 }
 
-fn cs_partial_cmp(
-    cx: &ExtCtxt<'_>,
-    span: Span,
-    substr: Substructure<'_>,
-    discr_then_data: bool,
-) -> BlockOrExpr {
+fn cs_partial_cmp(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     // Builds:
     //
     // match ::core::cmp::PartialOrd::partial_cmp(&self.x, &other.x) {
@@ -125,7 +117,7 @@ fn cs_partial_cmp(
     //         ::core::cmp::PartialOrd::partial_cmp(&self.y, &other.y),
     //     cmp => cmp,
     // }
-    let expr = cmp_body(cx, span, substr, discr_then_data, OrdlikeDerive::PartialOrd);
+    let expr = cmp_body(cx, span, substr, OrdlikeDerive::PartialOrd);
     BlockOrExpr::new_expr(expr)
 }
 
@@ -139,9 +131,10 @@ pub(crate) fn cmp_body(
     cx: &ExtCtxt<'_>,
     span: Span,
     substructure: Substructure<'_>,
-    discr_then_data: bool,
     derive: OrdlikeDerive,
 ) -> Box<Expr> {
+    // Order in which to perform matching
+    let discr_then_data = discr_data_order(substructure.item);
     let is_partial_ord = derive == OrdlikeDerive::PartialOrd;
     let method_path = if is_partial_ord {
         [sym::cmp, sym::PartialOrd, sym::partial_cmp]

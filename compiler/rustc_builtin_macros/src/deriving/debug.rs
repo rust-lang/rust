@@ -44,12 +44,7 @@ pub(crate) fn expand_deriving_debug(
             ret_ty: cx.ty_path(path_std!(cx, span, fmt::Result)),
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            combine_substructure: combine_substructure(|cx, span, substr| show_substructure(
-                cx,
-                span,
-                substr,
-                item.kind.ident().unwrap()
-            )),
+            combine_substructure: show_substructure,
         }],
         is_const,
         ..
@@ -57,16 +52,12 @@ pub(crate) fn expand_deriving_debug(
     trait_def.expand_ext(cx, item, push, all_fieldless);
 }
 
-fn show_substructure(
-    cx: &ExtCtxt<'_>,
-    span: Span,
-    substr: Substructure<'_>,
-    type_ident: Ident,
-) -> BlockOrExpr {
+fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     let fmt_detail = cx.sess.opts.unstable_opts.fmt_debug;
     if fmt_detail == FmtDebug::None {
         return BlockOrExpr::new_expr(cx.expr_ok(span, cx.expr_tuple(span, ThinVec::new())));
     }
+    let type_ident = substr.type_ident;
 
     let (ident, vdata, fields) = match substr.fields {
         Struct(vdata, fields) => (type_ident, vdata, fields),

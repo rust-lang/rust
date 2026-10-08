@@ -28,7 +28,7 @@ pub(crate) fn expand_deriving_clone(
     //   enough. Whether Clone is implemented for fields is irrelevant so we
     //   don't assert it.)
     let bounds;
-    let substructure;
+    let substructure: CombineSubstructureFunc;
     let is_simple;
     match &item.kind {
         ItemKind::Struct(_, Generics { params, .. }, _)
@@ -42,16 +42,16 @@ pub(crate) fn expand_deriving_clone(
                     .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
             {
                 is_simple = true;
-                substructure = combine_substructure(|c, s, sub| cs_clone_simple(c, s, sub, false));
+                substructure = |c, s, sub| cs_clone_simple(c, s, sub, false);
             } else {
                 is_simple = false;
-                substructure = combine_substructure(cs_clone);
+                substructure = cs_clone;
             }
         }
         ItemKind::Union(..) => {
             bounds = smallvec![path_std!(cx, span, marker::Copy)];
             is_simple = true;
-            substructure = combine_substructure(|c, s, sub| cs_clone_simple(c, s, sub, true));
+            substructure = |c, s, sub| cs_clone_simple(c, s, sub, true);
         }
         _ => cx.dcx().span_bug(span, "`derive(Clone)` on wrong item kind"),
     }

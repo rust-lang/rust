@@ -3,7 +3,7 @@ use rustc_span::{Span, sym};
 use thin_vec::thin_vec;
 
 use crate::deriving::generic::*;
-use crate::deriving::partial_ord::{OrdlikeDerive, cmp_body, discr_data_order};
+use crate::deriving::partial_ord::{OrdlikeDerive, cmp_body};
 use crate::util::path_std;
 
 pub(crate) fn expand_deriving_ord(
@@ -13,8 +13,6 @@ pub(crate) fn expand_deriving_ord(
     push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
-    let discr_then_data = discr_data_order(item);
-
     let trait_def = TraitDef {
         span,
         path: path_std!(cx, span, cmp::Ord),
@@ -30,12 +28,7 @@ pub(crate) fn expand_deriving_ord(
             ret_ty: cx.ty_path(path_std!(cx, span, cmp::Ordering)),
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-            combine_substructure: combine_substructure(|cx, span, substr| cs_cmp(
-                cx,
-                span,
-                substr,
-                discr_then_data
-            )),
+            combine_substructure: cs_cmp,
         }],
         is_const,
         ..
@@ -44,12 +37,7 @@ pub(crate) fn expand_deriving_ord(
     trait_def.expand(cx, item, push)
 }
 
-pub(crate) fn cs_cmp(
-    cx: &ExtCtxt<'_>,
-    span: Span,
-    substr: Substructure<'_>,
-    discr_then_data: bool,
-) -> BlockOrExpr {
+pub(crate) fn cs_cmp(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     // Builds:
     //
     // match ::core::cmp::Ord::cmp(&self.x, &other.x) {
@@ -57,6 +45,6 @@ pub(crate) fn cs_cmp(
     //         ::core::cmp::Ord::cmp(&self.y, &other.y),
     //     cmp => cmp,
     // }
-    let expr = cmp_body(cx, span, substr, discr_then_data, OrdlikeDerive::Ord);
+    let expr = cmp_body(cx, span, substr, OrdlikeDerive::Ord);
     BlockOrExpr::new_expr(expr)
 }
