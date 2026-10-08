@@ -1144,20 +1144,22 @@ impl Span {
             return Ok((a, b, if a.parent == b.parent { a.parent } else { None }));
         }
 
-        let (a_new, b_new) = Span::try_metavars(a.ctxt, b.ctxt, a_orig, b_orig);
-        let a = a_new.unwrap_or(a);
-        let b = b_new.unwrap_or(b);
-        if a.ctxt == b.ctxt {
-            return Ok((a, b, if a.parent == b.parent { a.parent } else { None }));
+        match Span::try_metavars(a.ctxt, b.ctxt, a_orig, b_orig) {
+            (None, None) => {
+                // Context mismatches usually happen when procedural macros combine spans copied from
+                // the macro input with spans produced by the macro (`Span::*_site`).
+                // In that case we consider the combined span to be produced by the macro and return
+                // the original macro-produced span as the result.
+                // Otherwise we just fall back to returning the first span.
+                // Combining locations typically doesn't make sense in case of context mismatches.
+                Err(if a.ctxt.is_root() { b_orig } else { a_orig })
+            }
+            (a_new, b_new) => {
+                let a = a_new.unwrap_or(a);
+                let b = b_new.unwrap_or(b);
+                Ok((a, b, if a.parent == b.parent { a.parent } else { None }))
+            }
         }
-
-        // Context mismatches usually happen when procedural macros combine spans copied from
-        // the macro input with spans produced by the macro (`Span::*_site`).
-        // In that case we consider the combined span to be produced by the macro and return
-        // the original macro-produced span as the result.
-        // Otherwise we just fall back to returning the first span.
-        // Combining locations typically doesn't make sense in case of context mismatches.
-        Err(if a.ctxt.is_root() { b_orig } else { a_orig })
     }
 
     /// This span, but in a larger context, may switch to the metavariable span if suitable.
