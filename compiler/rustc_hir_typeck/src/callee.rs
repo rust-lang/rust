@@ -1118,7 +1118,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match const_context {
                 Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => {}
                 Some(hir::ConstContext::ConstFn) | None => {
-                    self.dcx().span_err(span, "comptime fns can only be called at compile time");
+                    self.dcx().emit_err(diagnostics::ComptimeFnCalledOutsideConstContext {
+                        span,
+                        const_block: diagnostics::WrapConstBlock {
+                            left: span.shrink_to_lo(),
+                            right: span.shrink_to_hi(),
+                        },
+                    });
                 }
             }
         }
