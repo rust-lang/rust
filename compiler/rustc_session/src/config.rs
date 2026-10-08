@@ -2492,7 +2492,7 @@ fn parse_output_types(
                 if NIGHTLY_ONLY_OUTTYPES.contains(&output_type) && !unstable_opts.unstable_options {
                     early_dcx.early_fatal(format!(
                         "{} requested but -Zunstable-options not specified",
-                        OutputType::ThinLinkBitcode.shorthand()
+                        output_type.shorthand()
                     ));
                 }
                 output_types.insert(output_type, path);

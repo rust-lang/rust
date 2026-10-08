@@ -21,12 +21,18 @@ fn path_not_exists<const N: usize>(paths: [&str; N]) {
 }
 
 fn main() {
-    rustc().input("aux.rs").crate_type("rlib").emit("full-analysis").run();
+    rustc()
+        .input("aux.rs")
+        .crate_type("rlib")
+        .emit("full-analysis")
+        .arg("-Zunstable-options")
+        .run();
     rustc()
         .input("lib.rs")
         .crate_type("rlib")
         .emit("dep-info,full-analysis")
         .arg("-Zbinary-dep-depinfo")
+        .arg("-Zunstable-options")
         .run();
 
     invalid_utf8_contains("lib.d", "libaux.rmeta");
@@ -37,12 +43,18 @@ fn main() {
     rfs::remove_file("lib.d");
     rfs::remove_file("libaux.rmeta");
 
-    rustc().input("aux.rs").crate_type("rlib").emit("full-analysis").run();
+    rustc()
+        .input("aux.rs")
+        .crate_type("rlib")
+        .emit("full-analysis")
+        .arg("-Zunstable-options")
+        .run();
     rustc()
         .input("lib.rs")
         .crate_type("rlib")
         .emit("full-analysis")
         .arg("-Zbinary-dep-depinfo")
+        .arg("-Zunstable-options")
         .run();
 
     path_exists(["liblib.rmeta"]);
@@ -55,6 +67,7 @@ fn main() {
         .crate_type("rlib")
         .emit("dep-info,validation")
         .arg("-Dwarnings")
+        .arg("-Zunstable-options")
         .run()
         .stderr_utf8();
 
@@ -70,6 +83,7 @@ fn main() {
         .crate_type("rlib")
         .emit("full-analysis")
         .arg("-Dwarnings")
+        .arg("-Zunstable-options")
         .run_fail()
         .stderr_utf8();
 
