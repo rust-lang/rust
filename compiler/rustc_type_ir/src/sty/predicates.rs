@@ -7,8 +7,9 @@ use rustc_macros::StableHash_NoContext;
 use crate::inherent::*;
 use crate::intern::Interned as _;
 use crate::{
-    Binder, ClauseKind, DebruijnIndex, Flags, Interner, PredicateKind, TypeFlags, Upcast,
-    UpcastFrom,
+    Binder, ClauseKind, DebruijnIndex, FallibleTypeFolder, Flags, Interner, PredicateKind,
+    PredicateProxy, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitor, Upcast, UpcastFrom,
 };
 
 /// A statement that can be proven by a trait solver.
@@ -389,5 +390,147 @@ impl<I: Interner> UpcastFrom<I, Binder<I, crate::HostEffectClause<I>>> for Claus
 impl<I: Interner> UpcastFrom<I, crate::NormalizesTo<I>> for Predicate<I> {
     fn upcast_from(from: crate::NormalizesTo<I>, interner: I) -> Self {
         PredicateKind::NormalizesTo(from).upcast(interner)
+    }
+}
+
+impl<I: Interner> TypeFoldable<I> for Predicate<I> {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        folder.try_fold_predicate(self)
+    }
+
+    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
+        folder.fold_predicate(self)
+    }
+}
+
+impl<I: Interner> TypeVisitable<I> for Predicate<I> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        visitor.visit_predicate(*self)
+    }
+}
+
+impl<I: Interner> TypeSuperFoldable<I> for Predicate<I> {
+    fn try_super_fold_with<F: FallibleTypeFolder<I>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        let new = self.kind().try_fold_with(folder)?;
+
+        if new == self.kind() { Ok(self) } else { Ok(Self::new(folder.cx(), new)) }
+    }
+
+    fn super_fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
+        let new = self.kind().fold_with(folder);
+
+        if new == self.kind() { self } else { Self::new(folder.cx(), new) }
+    }
+}
+
+impl<I: Interner> TypeSuperVisitable<I> for Predicate<I> {
+    fn super_visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        self.kind().visit_with(visitor)
+    }
+}
+
+impl<I: Interner> PredicateProxy<I> for Predicate<I> {
+    fn allow_normalization(&self) -> bool {
+        (*self).allow_normalization()
+    }
+
+    fn clause_kind_unchecked(&self) -> Option<Binder<I, ClauseKind<I>>> {
+        self.as_clause().map(Clause::kind)
+    }
+
+    fn map_projection(
+        self,
+        cx: I,
+        f: impl FnOnce(Binder<I, crate::ProjectionClause<I>>) -> Binder<I, crate::ProjectionClause<I>>,
+    ) -> Option<Self> {
+        self.as_projection_clause().map(|projection| f(projection).upcast(cx))
+    }
+}
+
+impl<I: Interner> TypeFoldable<I> for Clause<I> {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        folder.try_fold_predicate(self)
+    }
+
+    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
+        folder.fold_predicate(self)
+    }
+}
+
+impl<I: Interner> TypeVisitable<I> for Clause<I> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        visitor.visit_predicate(*self)
+    }
+}
+
+impl<I: Interner> TypeSuperFoldable<I> for Clause<I> {
+    fn try_super_fold_with<F: FallibleTypeFolder<I>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        self.as_predicate().try_super_fold_with(folder).map(Predicate::expect_clause)
+    }
+
+    fn super_fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
+        self.as_predicate().super_fold_with(folder).expect_clause()
+    }
+}
+
+impl<I: Interner> TypeSuperVisitable<I> for Clause<I> {
+    fn super_visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        self.as_predicate().super_visit_with(visitor)
+    }
+}
+
+impl<I: Interner> PredicateProxy<I> for Clause<I> {
+    fn allow_normalization(&self) -> bool {
+        self.as_predicate().allow_normalization()
+    }
+
+    fn clause_kind_unchecked(&self) -> Option<Binder<I, ClauseKind<I>>> {
+        Some(self.kind())
+    }
+
+    fn map_projection(
+        self,
+        cx: I,
+        f: impl FnOnce(Binder<I, crate::ProjectionClause<I>>) -> Binder<I, crate::ProjectionClause<I>>,
+    ) -> Option<Self> {
+        self.as_projection_clause().map(|projection| f(projection).upcast(cx))
+    }
+}
+
+impl<I: Interner> Clause<I> {
+    /// Instantiate a supertrait clause using the arguments of `trait_ref`.
+    ///
+    /// Both binders' variables become bound by the resulting binder.
+    /// Shift the supertrait's bound-variable indices before substituting
+    /// the trait arguments, so the two sets of variables do not overlap.
+    pub fn instantiate_supertrait(self, cx: I, trait_ref: Binder<I, crate::TraitRef<I>>) -> Self {
+        let bound_pred = self.kind();
+        let pred_bound_vars = bound_pred.bound_vars();
+        let trait_bound_vars = trait_ref.bound_vars();
+
+        let shifted_pred =
+            crate::shift_bound_var_indices(cx, trait_bound_vars.len(), bound_pred.skip_binder());
+
+        let new = crate::EarlyBinder::bind(cx, shifted_pred)
+            .instantiate(cx, trait_ref.skip_binder().args)
+            .skip_norm_wip();
+
+        let bound_vars =
+            I::BoundVarKinds::from_vars(cx, trait_bound_vars.iter().chain(pred_bound_vars.iter()));
+
+        let new_kind = Binder::bind_with_vars(PredicateKind::Clause(new), bound_vars);
+        let old_predicate = self.as_predicate();
+
+        if old_predicate.kind() == new_kind {
+            self
+        } else {
+            Predicate::new(cx, new_kind).expect_clause()
+        }
     }
 }
