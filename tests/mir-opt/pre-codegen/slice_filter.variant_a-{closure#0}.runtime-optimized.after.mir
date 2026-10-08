@@ -77,7 +77,7 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
         // DBG: _19 = &((*_6).3: usize);
         StorageLive(_9);
         // DBG: _20 = &_16;
-        // DBG: _21 = &?;
+        // DBG: _21 = &_18;
         _7 = copy ((*_3).0: usize);
         _8 = copy ((*_5).2: usize);
         _9 = Le(copy _7, copy _8);
@@ -87,7 +87,7 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
     bb1: {
         StorageLive(_12);
         // DBG: _22 = &_19;
-        // DBG: _23 = &?;
+        // DBG: _23 = &_17;
         StorageLive(_10);
         _10 = copy ((*_6).3: usize);
         StorageLive(_11);
@@ -101,7 +101,7 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
     bb2: {
         StorageLive(_13);
         // DBG: _24 = &_18;
-        // DBG: _25 = &?;
+        // DBG: _25 = &_16;
         _13 = Le(copy _8, copy _7);
         switchInt(move _13) -> [0: bb3, otherwise: bb4];
     }
@@ -113,7 +113,7 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
 
     bb4: {
         // DBG: _26 = &_17;
-        // DBG: _27 = &?;
+        // DBG: _27 = &_19;
         StorageLive(_14);
         _14 = copy ((*_4).1: usize);
         StorageLive(_15);

@@ -24,8 +24,7 @@ fn main() {
     // Auto-deref
     let string = String::new();
     let option = Some(&string);
-    let _: &str = option.map_or_else(|| &string, |x| x);
-    // This should in theory lint with a smarter check
+    let _: &str = option.map_or_else(|| &string, |x| x); //~ unnecessary_option_map_or_else
 
     // Temporary variable
     let option = Some(());

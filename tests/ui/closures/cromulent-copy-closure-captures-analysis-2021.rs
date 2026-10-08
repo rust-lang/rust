@@ -53,7 +53,7 @@ fn main() {
             //~^ ERROR First Pass analysis includes:
             //~| ERROR Min Capture analysis includes:
             let _local: &_ = m_s;
-            //~^ NOTE Capturing m_s[Deref] -> Immutable
+            //~^ NOTE Capturing m_s[] -> ByCopy
             //~| NOTE Min Capture m_s[] -> ByCopy
         };
     }
