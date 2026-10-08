@@ -15,6 +15,7 @@
 #![feature(float_erf)]
 #![feature(map_try_insert)]
 #![feature(try_blocks)]
+#![feature(try_trait_v2)]
 #![feature(io_error_more)]
 #![feature(io_error_inprogress)]
 #![feature(io_error_input_output_error)]
@@ -45,6 +46,8 @@
     clippy::needless_lifetimes,
     clippy::too_long_first_doc_paragraph,
     clippy::len_zero,
+    // FIXME: desugaring `?`does not count as usage
+    unused_features,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
 )]

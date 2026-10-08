@@ -2,16 +2,15 @@ error[E0277]: `?` couldn't convert the error to `ApplicationError`
   --> $DIR/suggest-complex-bound-on-method.rs:18:16
    |
 LL |         t.run()?;
-   |           -----^ the trait `From<<T as Trait>::Error>` is not implemented for `ApplicationError`
-   |           |
-   |           this can't be annotated with `?` because it has type `Result<_, <T as Trait>::Error>`
+   |                ^ unsatisfied trait bound
    |
-note: `ApplicationError` needs to implement `From<<T as Trait>::Error>`
+help: the trait `From<<T as Trait>::Error>` is not implemented for `ApplicationError`
   --> $DIR/suggest-complex-bound-on-method.rs:12:1
    |
 LL | enum ApplicationError {
    | ^^^^^^^^^^^^^^^^^^^^^
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = note: required for `Result<(), ApplicationError>` to implement `ops::try_trait_old::FromResidual<Result<!, <T as Trait>::Error>>`
 help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
    |
 LL |     fn thing<T: Trait>(&self, t: T) -> Result<(), ApplicationError> where ApplicationError: From<<T as Trait>::Error> {

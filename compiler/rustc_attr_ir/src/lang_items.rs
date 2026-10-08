@@ -370,6 +370,8 @@ language_item_table! {
     Termination,             sym::termination,         termination,                Target::Trait,          GenericRequirement::None;
 
     Try,                     sym::Try,                 try_trait,                  Target::Trait,          GenericRequirement::None;
+    // FIXME: Is TryOld even needed?
+    TryOld,                  sym::Try_Old,             try_trait_old,              Target::Trait,          GenericRequirement::None;
 
     Tuple,                   sym::tuple_trait,         tuple_trait,                Target::Trait,          GenericRequirement::Exact(0);
 
@@ -379,6 +381,11 @@ language_item_table! {
     TryTraitFromResidual,    sym::from_residual,       from_residual_fn,           Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     TryTraitFromOutput,      sym::from_output,         from_output_fn,             Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     TryTraitBranch,          sym::branch,              branch_fn,                  Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+    // Only Try, FromResidual & Branch are needed for `?` outside `try` blocks
+    // FIXME: Update rust-analyzer src/tools/rust-analyzer/crates/hir-def/src/lang_item.rs
+    TryTraitFromResidualOld, sym::from_residual_old,   from_residual_fn_old,       Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+    TryTraitBranchOld,       sym::branch_old,          branch_fn_old,              Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+
     TryTraitFromYeet,        sym::from_yeet,           from_yeet_fn,               Target::Fn,             GenericRequirement::None;
     ResidualIntoTryType,     sym::into_try_type,       into_try_type_fn,           Target::Fn,             GenericRequirement::None;
 

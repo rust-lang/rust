@@ -1,6 +1,6 @@
 use crate::fmt;
 use crate::iter::{FusedIterator, TrustedLen};
-use crate::ops::Try;
+use crate::ops::{Try, qmark};
 
 /// Creates a new iterator that repeats elements of type `A` endlessly by
 /// applying the provided closure, the repeater, `F: FnMut() -> A`.
@@ -111,7 +111,7 @@ impl<A, F: FnMut() -> A> Iterator for RepeatWith<F> {
 
         loop {
             let item = (self.repeater)();
-            init = fold(init, item)?;
+            init = qmark!(fold(init, item));
         }
     }
 }

@@ -242,7 +242,7 @@ mod expressions {
         { return; from_output(()) }
         type_ascribe!({ from_output(()) }, Option<_>);
         type_ascribe!({
-                from_output(match branch(None) {
+                from_output(match branch_old(None) {
                         Break {  0: residual } => #[allow(unreachable_code)]
                             break from_residual(residual),
                         Continue {  0: val } => #[allow(unreachable_code)]
@@ -366,9 +366,9 @@ mod expressions {
     /// ExprKind::Try
     fn expr_try() {
         let expr;
-        match branch(expr) {
+        match branch_old(expr) {
             Break {  0: residual } => #[allow(unreachable_code)]
-                return from_residual(residual),
+                return from_residual_old(residual),
             Continue {  0: val } => #[allow(unreachable_code)]
                 val,
         };

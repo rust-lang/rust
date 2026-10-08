@@ -19,7 +19,7 @@ fn option_traits(_1: Option<u32>) -> Option<u32> {
     }
 
     bb0: {
-        _2 = <Option<u32> as Try>::branch(copy _1) -> [return: bb1, unwind continue];
+        _2 = <Option<u32> as ops::try_trait_old::Try>::branch(copy _1) -> [return: bb1, unwind continue];
     }
 
     bb1: {
