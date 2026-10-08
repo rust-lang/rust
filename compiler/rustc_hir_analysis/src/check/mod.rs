@@ -668,7 +668,7 @@ pub fn check_function_signature<'tcx>(
         let mut args = {
             let node = tcx.expect_hir_owner_node(fn_id);
             let decl = node.fn_decl().unwrap_or_else(|| bug!("expected fn decl, found {:?}", node));
-            decl.inputs.iter().map(|t| t.span).chain(std::iter::once(decl.output.span()))
+            decl.inputs.iter().map(|p| p.ty.span).chain(std::iter::once(decl.output.span()))
         };
 
         match err {

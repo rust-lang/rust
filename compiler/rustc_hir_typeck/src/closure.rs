@@ -792,12 +792,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // The liberated version of this signature should be a subtype
             // of the liberated form of the expectation.
-            for ((hir_ty, &supplied_ty), expected_ty) in iter::zip(
+            for ((hir_pram, &supplied_ty), expected_ty) in iter::zip(
                 iter::zip(decl.inputs, supplied_sig.inputs()),
                 expected_sigs.liberated_sig.inputs(), // `liberated_sig` is E'.
             ) {
                 // Check that E' = S'.
-                let cause = self.misc(hir_ty.span);
+                let cause = self.misc(hir_pram.ty.span);
                 let InferOk { value: (), obligations } = self.at(&cause, self.param_env).eq(
                     DefineOpaqueTypes::Yes,
                     *expected_ty,
@@ -851,7 +851,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let bound_vars = self.tcx.late_bound_vars(hir_id);
 
         // First, convert the types that the user supplied (if any).
-        let supplied_arguments = decl.inputs.iter().map(|a| lowerer.lower_ty(a));
+        let supplied_arguments = decl.inputs.iter().map(|p| lowerer.lower_ty(p.ty));
         let supplied_return = match decl.output {
             hir::FnRetTy::Return(ref output) => lowerer.lower_ty(output),
             hir::FnRetTy::DefaultReturn(_) => match closure_kind {
@@ -1047,9 +1047,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let lowerer = self.lowerer();
         let err_ty = Ty::new_error(self.tcx, guar);
 
-        let supplied_arguments = decl.inputs.iter().map(|a| {
+        let supplied_arguments = decl.inputs.iter().map(|p| {
             // Convert the types that the user supplied (if any), but ignore them.
-            lowerer.lower_ty(a);
+            lowerer.lower_ty(p.ty);
             err_ty
         });
 

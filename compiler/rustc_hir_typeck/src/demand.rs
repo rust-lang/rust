@@ -893,8 +893,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let Some(ty_ref) = fn_decl
                 .inputs
                 .iter()
-                .filter_map(|ty| match ty.kind {
-                    hir::TyKind::Ref(lt, inner_ty, mutbl) if ty.span == *ty_span => Some((lt, inner_ty, mutbl)),
+                .filter_map(|param| match param.ty.kind {
+                    hir::TyKind::Ref(lt, inner_ty, mutbl) if param.ty.span == *ty_span => Some((lt, inner_ty, mutbl)),
                     _ => None,
                 })
                 .next()

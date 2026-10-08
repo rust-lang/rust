@@ -722,7 +722,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir::FnDecl { inputs, output, .. } = fn_ptr_ty.decl;
 
         let inputs_str =
-            inputs.iter().map(|ty| rustc_hir_pretty::ty_to_string(self, ty)).join(", ");
+            inputs.iter().map(|param| rustc_hir_pretty::ty_to_string(self, param.ty)).join(", ");
 
         let output_str = match output {
             hir::FnRetTy::DefaultReturn(_) => String::new(),
@@ -1293,7 +1293,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let all_bounds_str = all_matching_bounds_strs.join(" + ");
 
         let ty_param_used_in_fn_params = fn_parameters.iter().any(|param| {
-                let ty = self.lowerer().lower_ty( param);
+                let ty = self.lowerer().lower_ty(param.ty);
                 matches!(ty.kind(), ty::Param(fn_param_ty_param) if expected_ty_as_param == fn_param_ty_param)
             });
 

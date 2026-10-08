@@ -1117,7 +1117,7 @@ impl<'tcx> ImproperCTypesLint {
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
             let state = VisitorState::fn_entry_point(fn_mode, FnPos::Arg);
-            self.check_type_for_external_abi_fnptr(cx, state, input_hir, *input_ty, fn_mode);
+            self.check_type_for_external_abi_fnptr(cx, state, input_hir.ty, *input_ty, fn_mode);
         }
 
         if let hir::FnRetTy::Return(ret_hir) = decl.output {
@@ -1165,7 +1165,7 @@ impl<'tcx> ImproperCTypesLint {
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
             let state = VisitorState::fn_entry_point(fn_mode, FnPos::Arg);
-            self.check_ffi_type(cx, *input_ty, state, input_hir.span, fn_mode, || {
+            self.check_ffi_type(cx, *input_ty, state, input_hir.ty.span, fn_mode, || {
                 let input_ty = Unnormalized::new_wip(*input_ty);
                 let mut visitor = ImproperCTypesVisitor::new(cx, input_ty, fn_mode);
                 visitor.check_type(state, input_ty)

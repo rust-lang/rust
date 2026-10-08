@@ -1551,8 +1551,8 @@ pub fn is_self_ty(slf: &hir::Ty<'_>) -> bool {
     false
 }
 
-pub fn iter_input_pats<'tcx>(decl: &FnDecl<'_>, body: &'tcx Body<'_>) -> impl Iterator<Item = &'tcx Param<'tcx>> {
-    (0..decl.inputs.len()).map(move |i| &body.params[i])
+pub fn iter_input_pats<'tcx>(decl: &FnDecl<'tcx>) -> impl Iterator<Item = &'tcx Param<'tcx>> {
+    decl.inputs.into_iter()
 }
 
 /// Checks if a given expression is a match expression expanded from the `?`
@@ -1814,8 +1814,8 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 /// * `|x| { let y = x; ...; let z = y; return z }`
 ///
 /// Consider calling [`is_expr_untyped_identity_function`] or [`is_expr_identity_function`] instead.
-fn is_body_identity_function<'hir>(cx: &LateContext<'_>, func: &Body<'hir>) -> bool {
-    let [param] = func.params else {
+fn is_body_identity_function<'hir>(cx: &LateContext<'_>, decl: &FnDecl<'hir>, func: &Body<'hir>) -> bool {
+    let [param] = decl.inputs else {
         return false;
     };
 
@@ -1973,9 +1973,9 @@ pub fn is_expr_identity_of_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<
 pub fn is_expr_untyped_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match expr.kind {
         ExprKind::Closure(&Closure { body, fn_decl, .. })
-            if fn_decl.inputs.iter().all(|ty| matches!(ty.kind, TyKind::Infer(()))) =>
+            if fn_decl.inputs.iter().all(|param| matches!(param.ty.kind, TyKind::Infer(()))) =>
         {
-            is_body_identity_function(cx, cx.tcx.hir_body(body))
+            is_body_identity_function(cx, fn_decl, cx.tcx.hir_body(body))
         },
         ExprKind::Path(QPath::Resolved(_, path))
             if path.segments.iter().all(|seg| seg.infer_args)
@@ -1997,7 +1997,7 @@ pub fn is_expr_untyped_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) 
 /// errors.
 pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match expr.kind {
-        ExprKind::Closure(&Closure { body, .. }) => is_body_identity_function(cx, cx.tcx.hir_body(body)),
+        ExprKind::Closure(&Closure { fn_decl, body, .. }) => is_body_identity_function(cx, fn_decl, cx.tcx.hir_body(body)),
         _ => expr.basic_res().is_diag_item(cx, sym::convert_identity),
     }
 }

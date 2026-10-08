@@ -313,7 +313,7 @@ fn could_use_elision<'tcx>(
 
     // extract lifetimes in input argument types
     for arg in func.inputs {
-        input_visitor.visit_ty_unambig(arg);
+        input_visitor.visit_ty_unambig(arg.ty);
     }
     // extract lifetimes in output type
     if let Return(ty) = func.output {
@@ -337,14 +337,13 @@ fn could_use_elision<'tcx>(
     }
 
     if let Some(body_id) = body {
-        let body = cx.tcx.hir_body(body_id);
-
-        let first_ident = body.params.first().and_then(|param| param.pat.simple_ident());
+        let first_ident = func.inputs.first().and_then(|param| param.pat.simple_ident());
         if non_elidable_self_type(cx, func, first_ident, msrv) {
             return None;
         }
 
         let mut checker = BodyLifetimeChecker::new(cx);
+        let body = cx.tcx.hir_body(body_id);
         if checker.visit_expr(body.value).is_break() {
             return None;
         }
@@ -418,11 +417,11 @@ fn non_elidable_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ide
     if let Some(ident) = ident
         && ident.name == kw::SelfLower
         && !func.implicit_self().has_implicit_self()
-        && let Some(self_ty) = func.inputs.first()
+        && let Some(self_param) = func.inputs.first()
         && !msrv.meets(cx, msrvs::EXPLICIT_SELF_TYPE_ELISION)
     {
         let mut visitor = RefVisitor::new(cx);
-        visitor.visit_ty_unambig(self_ty);
+        visitor.visit_ty_unambig(self_param.ty);
 
         !visitor.all_lts().is_empty()
     } else {
@@ -702,7 +701,7 @@ fn is_candidate_for_elision(fd: &FnDecl<'_>) -> bool {
         // The first encountered input lifetime will either be one on `self`, or will be the only lifetime.
         fd.inputs
             .iter()
-            .find_map(|ty| walk_unambig_ty(&mut V, ty).break_value())
+            .find_map(|param| walk_unambig_ty(&mut V, param.ty).break_value())
             .unwrap()
     } else {
         false

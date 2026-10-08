@@ -45,13 +45,13 @@ pub(super) fn check(
             .is_some_and(|fun_name| {
                 matches!(fun_name, sym::deref_method | sym::deref_mut_method) || deref_aliases.contains(&fun_name)
             }),
-        hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
+        hir::ExprKind::Closure(&hir::Closure { fn_decl, body, .. }) => {
             let closure_body = cx.tcx.hir_body(body);
             let closure_expr = peel_blocks(closure_body.value);
 
             match &closure_expr.kind {
                 hir::ExprKind::MethodCall(_, receiver, [], _) => {
-                    if receiver.res_local_id() == Some(closure_body.params[0].pat.hir_id)
+                    if receiver.res_local_id() == Some(fn_decl.inputs[0].pat.hir_id)
                         && let adj = cx
                             .typeck_results()
                             .expr_adjustments(receiver)
@@ -75,7 +75,7 @@ pub(super) fn check(
                     if let hir::ExprKind::Unary(hir::UnOp::Deref, inner1) = inner.kind
                         && let hir::ExprKind::Unary(hir::UnOp::Deref, inner2) = inner1.kind
                     {
-                        inner2.res_local_id() == Some(closure_body.params[0].pat.hir_id)
+                        inner2.res_local_id() == Some(fn_decl.inputs[0].pat.hir_id)
                     } else {
                         false
                     }

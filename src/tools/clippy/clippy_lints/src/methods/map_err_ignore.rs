@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeDef as _;
-use rustc_hir::{CaptureBy, Closure, Expr, ExprKind, PatKind};
+use rustc_hir::{CaptureBy, Closure, Expr, ExprKind, PatKind, FnDecl};
 use rustc_lint::LateContext;
 use rustc_span::sym;
 
@@ -17,12 +17,10 @@ pub(super) fn check(cx: &LateContext<'_>, e: &Expr<'_>, arg: &Expr<'_>) {
             .is_diag_item(cx, sym::Result)
         && let ExprKind::Closure(&Closure {
             capture_clause: CaptureBy::Ref,
-            body,
+            fn_decl: FnDecl { inputs: [param], .. },
             fn_decl_span,
             ..
         }) = arg.kind
-        && let closure_body = cx.tcx.hir_body(body)
-        && let [param] = closure_body.params
         && let PatKind::Wild = param.pat.kind
     {
         // span the area of the closure capture and warn that the

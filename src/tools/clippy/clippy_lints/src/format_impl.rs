@@ -256,7 +256,7 @@ impl FormatImplExpr<'_, '_> {
 
 fn is_format_trait_impl(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) -> Option<FormatTraitNames> {
     if impl_item.ident.name == sym::fmt
-        && let ImplItemKind::Fn(_, body_id) = impl_item.kind
+        && let ImplItemKind::Fn(sig, _) = impl_item.kind
         && let Some(Impl {
             of_trait: Some(of_trait),
             ..
@@ -265,9 +265,9 @@ fn is_format_trait_impl(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) -> Optio
         && let Some(name) = cx.tcx.get_diagnostic_name(did)
         && matches!(name, sym::Debug | sym::Display)
     {
-        let body = cx.tcx.hir_body(body_id);
-        let formatter_name = body
-            .params
+        let formatter_name = sig
+            .decl
+            .inputs
             .get(1)
             .and_then(|param| param.pat.simple_ident())
             .map(|ident| ident.name);

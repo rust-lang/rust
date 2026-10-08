@@ -559,8 +559,8 @@ impl Types {
             return;
         }
 
-        for input in decl.inputs {
-            self.check_ty(cx, input, context);
+        for param in decl.inputs {
+            self.check_ty(cx, param.ty, context);
         }
 
         if let FnRetTy::Return(ty) = decl.output {

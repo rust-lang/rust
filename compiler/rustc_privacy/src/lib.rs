@@ -24,7 +24,7 @@ use rustc_errors::{MultiSpan, listify};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModId};
 use rustc_hir::intravisit::{self, InferKind, Visitor};
-use rustc_hir::{self as hir, AmbigArg, ForeignItemId, ItemId, OwnerId, PatKind};
+use rustc_hir::{self as hir, AmbigArg, FnDecl, ForeignItemId, ItemId, OwnerId, PatKind};
 use rustc_lint_defs::builtin::{
     EXPORTED_PRIVATE_DEPENDENCIES, PRIVATE_BOUNDS, PRIVATE_INTERFACES, UNNAMEABLE_TYPES,
 };
@@ -1046,6 +1046,8 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
+    fn visit_fn_decl(&mut self, _fd: &'tcx FnDecl<'tcx>) -> Self::Result {}
+
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
         let new_typeck_results = self.tcx.typeck_body(body_id);
         // Do not try reporting privacy violations if we failed to infer types.
@@ -1171,9 +1173,18 @@ impl<'tcx> rustc_ty_walk::SpannedTypeVisitor<'tcx> for TypePrivacyVisitor<'tcx> 
 }
 
 impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
+    fn visit_fn_decl(&mut self, _fd: &'tcx FnDecl<'tcx>) -> Self::Result {
+        // Handled in `visit_nested_body`
+    }
+
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
         let old_maybe_typeck_results =
             self.maybe_typeck_results.replace(self.tcx.typeck_body(body_id));
+        if let Some(decl) = self.tcx.hir_fn_decl_by_hir_id(self.tcx.hir_body_owner(body_id)) {
+            for param in decl.inputs {
+                self.visit_pat(param.pat);
+            }
+        }
         self.visit_body(self.tcx.hir_body(body_id));
         self.maybe_typeck_results = old_maybe_typeck_results;
     }

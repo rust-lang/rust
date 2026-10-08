@@ -278,7 +278,7 @@ impl HirEqInterExpr<'_, '_, '_> {
     }
 
     fn eq_fn_decl(&mut self, left: &FnDecl<'_>, right: &FnDecl<'_>) -> bool {
-        over(left.inputs, right.inputs, |l, r| self.eq_ty(l, r))
+        over(left.inputs, right.inputs, |l, r| self.eq_ty(l.ty, r.ty))
             && (match (left.output, right.output) {
                 (FnRetTy::DefaultReturn(_), FnRetTy::DefaultReturn(_)) => true,
                 (FnRetTy::Return(l_ty), FnRetTy::Return(r_ty)) => self.eq_ty(l_ty, r_ty),
@@ -1630,7 +1630,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 fn_ptr.safety.hash(&mut self.s);
                 fn_ptr.abi.hash(&mut self.s);
                 for arg in fn_ptr.decl.inputs {
-                    self.hash_ty(arg);
+                    self.hash_ty(arg.ty);
                 }
                 mem::discriminant(&fn_ptr.decl.output).hash(&mut self.s);
                 match fn_ptr.decl.output {
@@ -1662,6 +1662,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             | TyKind::Never
             | TyKind::InferDelegation(..)
             | TyKind::OpaqueDef(_)
+            | TyKind::CVarArgs
             | TyKind::TraitAscription(_) => {},
         }
     }

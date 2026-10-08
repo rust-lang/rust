@@ -872,7 +872,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // The `async` desugaring takes a resume argument and maintains a `task_context`,
         // whereas a generator does not.
-        let (inputs, params, task_context): (&[_], &[_], _) = match desugaring_kind {
+        let (inputs, task_context): (&[_], _) = match desugaring_kind {
             hir::CoroutineDesugaring::Async | hir::CoroutineDesugaring::AsyncGen => {
                 // Resume argument type: `ResumeTy`
                 let unstable_span = self.mark_span_with_reason(
@@ -881,12 +881,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     Some(Arc::clone(self.allow_gen_future())),
                 );
                 let resume_ty = self.make_lang_item_qpath(LangItem::ResumeTy, unstable_span, None);
-                let input_ty = hir::Ty {
+                let input_ty = self.arena.alloc(hir::Ty {
                     hir_id: self.next_id(),
                     kind: hir::TyKind::Path(resume_ty),
                     span: unstable_span,
-                };
-                let inputs = arena_vec![self; input_ty];
+                });
 
                 // Lower the argument pattern/ident. The ident is used again in the `.await` lowering.
                 let (pat, task_context_hid) = self.pat_ident_binding_mode(
@@ -897,14 +896,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let param = hir::Param {
                     hir_id: self.next_id(),
                     pat,
+                    ty: input_ty,
                     ty_span: self.lower_span(span),
-                    span: self.lower_span(span),
+                    param_span: self.lower_span(span),
                 };
                 let params = arena_vec![self; param];
 
-                (inputs, params, Some(task_context_hid))
+                (params, Some(task_context_hid))
             }
-            hir::CoroutineDesugaring::Gen => (&[], &[], None),
+            hir::CoroutineDesugaring::Gen => (&[], None),
         };
 
         let output =
@@ -914,9 +914,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             inputs,
             output,
             fn_decl_kind: hir::FnDeclFlags::default(),
+            fn_has_body: true,
         });
 
-        let body = self.lower_body(move |this| {
+        let (_, body) = self.lower_body(move |this| {
             this.coroutine_kind = Some(coroutine_kind);
 
             let old_ctx = this.task_context;
@@ -926,7 +927,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let res = body(this);
             this.task_context = old_ctx;
 
-            (params, res)
+            (inputs, res)
         });
 
         let explicit_captures: &'hir [hir::ExplicitCapture] = match coroutine_source {

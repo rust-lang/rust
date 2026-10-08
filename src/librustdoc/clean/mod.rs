@@ -1087,7 +1087,6 @@ fn clean_fn_or_proc_macro<'tcx>(
     item: &hir::Item<'tcx>,
     sig: &hir::FnSig<'tcx>,
     generics: &hir::Generics<'tcx>,
-    body_id: hir::BodyId,
     name: &mut Symbol,
     cx: &mut DocContext<'tcx>,
 ) -> ItemKind {
@@ -1105,13 +1104,8 @@ fn clean_fn_or_proc_macro<'tcx>(
     match macro_kind {
         Some(kind) => clean_proc_macro(item, name, kind, cx.tcx),
         None => {
-            let mut func = clean_function(
-                cx,
-                sig,
-                generics,
-                ParamsSrc::Body(body_id),
-                item.owner_id.to_def_id(),
-            );
+            let mut func =
+                clean_function(cx, sig, generics, ParamsSrc::Body, item.owner_id.to_def_id());
             clean_fn_decl_legacy_const_generics(&mut func, attrs);
             FunctionItem(func)
         }
@@ -1141,7 +1135,7 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[rustc_attr_
 }
 
 enum ParamsSrc<'tcx> {
-    Body(hir::BodyId),
+    Body,
     Idents(&'tcx [Option<Ident>]),
 }
 
@@ -1166,7 +1160,7 @@ fn clean_function<'tcx>(
             clean_poly_fn_sig(cx, Some(def_id), sig)
         } else {
             let params = match params {
-                ParamsSrc::Body(body_id) => clean_params_via_body(cx, sig.decl, body_id),
+                ParamsSrc::Body => clean_params_via_body(cx, sig.decl),
                 // Let's not perpetuate anon params from Rust 2015; use `_` for them.
                 ParamsSrc::Idents(idents) => clean_params(cx, sig.decl, idents, |ident| {
                     Some(ident.map_or(kw::Underscore, |ident| ident.name))
@@ -1187,10 +1181,11 @@ fn clean_params<'tcx>(
 ) -> Vec<Parameter> {
     decl.inputs
         .iter()
+        .filter(|param| !matches!(param.ty.kind, hir::TyKind::CVarArgs))
         .enumerate()
-        .map(|(i, ty)| Parameter {
+        .map(|(i, param)| Parameter {
             name: postprocess(idents[i]),
-            type_: clean_ty(ty, cx),
+            type_: clean_ty(param.ty, cx),
             is_const: false,
             is_splat: decl.splatted().is_some_and(|j| j as usize == i),
         })
@@ -1200,15 +1195,13 @@ fn clean_params<'tcx>(
 fn clean_params_via_body<'tcx>(
     cx: &mut DocContext<'tcx>,
     decl: &hir::FnDecl<'tcx>,
-    body_id: hir::BodyId,
 ) -> Vec<Parameter> {
     decl.inputs
         .iter()
-        .zip(cx.tcx.hir_body(body_id).params)
         .enumerate()
-        .map(|(i, (ty, param))| Parameter {
+        .map(|(i, param)| Parameter {
             name: Some(name_from_pat(param.pat)),
-            type_: clean_ty(ty, cx),
+            type_: clean_ty(param.ty, cx),
             is_const: false,
             is_splat: decl.splatted().is_some_and(|j| j as usize == i),
         })
@@ -1309,9 +1302,8 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
                 RequiredAssocConstItem(generics, Box::new(clean_ty(ty, cx)))
             }
-            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                let m =
-                    clean_function(cx, sig, trait_item.generics, ParamsSrc::Body(body), local_did);
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(_)) => {
+                let m = clean_function(cx, sig, trait_item.generics, ParamsSrc::Body, local_did);
                 MethodItem(m, Defaultness::from_trait_item(trait_item.defaultness))
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(idents)) => {
@@ -1361,8 +1353,8 @@ pub(crate) fn clean_impl_item<'tcx>(
                 kind: clean_const_item_rhs(expr, local_did),
                 type_: clean_ty(ty, cx),
             })),
-            hir::ImplItemKind::Fn(ref sig, body) => {
-                let m = clean_function(cx, sig, impl_.generics, ParamsSrc::Body(body), local_did);
+            hir::ImplItemKind::Fn(ref sig, _) => {
+                let m = clean_function(cx, sig, impl_.generics, ParamsSrc::Body, local_did);
                 let defaultness = match impl_.impl_kind {
                     hir::ImplItemImplKind::Inherent { .. } => hir::Defaultness::Final,
                     hir::ImplItemImplKind::Trait { defaultness, .. } => defaultness,
@@ -2001,6 +1993,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Typ
             // FIXME(scrabsha): propagate view types to `rustdoc`.
             clean_ty(ty, cx)
         }
+        TyKind::CVarArgs => unreachable!("Var args should be filtered out before reaching this"),
         // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
         TyKind::Infer(())
         | TyKind::Err(_)
@@ -3032,8 +3025,8 @@ fn clean_maybe_renamed_item<'tcx>(
                 ),
             },
             // proc macros can have a name set by attributes
-            ItemKind::Fn { ref sig, generics, body: body_id, .. } => {
-                clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
+            ItemKind::Fn { ref sig, generics, .. } => {
+                clean_fn_or_proc_macro(item, sig, generics, &mut name, cx)
             }
             // FIXME: rustdoc will need to handle `impl` restrictions at some point
             ItemKind::Trait { generics, bounds, items: item_ids, .. } => {

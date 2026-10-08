@@ -69,22 +69,21 @@ impl NeedlessPassByRefMut<'_> {
 
 fn should_skip<'tcx>(
     cx: &LateContext<'tcx>,
-    input: rustc_hir::Ty<'tcx>,
+    input: &rustc_hir::Param<'tcx>,
     ty: Ty<'_>,
-    arg: &rustc_hir::Param<'_>,
 ) -> bool {
     // We check if this a `&mut`. `ref_mutability` returns `None` if it's not a reference.
     if !matches!(ty.ref_mutability(), Some(Mutability::Mut)) {
         return true;
     }
 
-    if is_self(arg) {
+    if is_self(input) {
         // Interestingly enough, `self` arguments make `is_from_proc_macro` return `true`, hence why
         // we return early here.
         return false;
     }
 
-    if let PatKind::Binding(.., name, _) = arg.pat.kind
+    if let PatKind::Binding(.., name, _) = input.pat.kind
         // If it's a potentially unused variable, we don't check it.
         && (name.name == kw::Underscore || name.as_str().starts_with('_'))
     {
@@ -92,7 +91,7 @@ fn should_skip<'tcx>(
     }
 
     // All spans generated from a proc-macro invocation are the same...
-    is_from_proc_macro(cx, &input)
+    is_from_proc_macro(cx, input.ty)
 }
 
 fn check_closures<'tcx>(
@@ -101,20 +100,18 @@ fn check_closures<'tcx>(
     checked_closures: &mut FxHashSet<LocalDefId>,
     closures: FxIndexSet<LocalDefId>,
 ) {
-    for closure in closures {
-        if !checked_closures.insert(closure) {
+    for id in closures {
+        if !checked_closures.insert(id) {
             continue;
         }
         ctx.prev_bind = None;
         ctx.prev_move_to_closure.clear();
-        if let Some(body) = cx
+        if let Node::Expr(Expr { kind: ExprKind::Closure(closure), .. }) = cx
             .tcx
-            .hir_node_by_def_id(closure)
-            .associated_body()
-            .map(|(_, body_id)| cx.tcx.hir_body(body_id))
+            .hir_node_by_def_id(id)
         {
-            euv::ExprUseVisitor::for_clippy(cx, closure, &mut *ctx)
-                .consume_body(body)
+            euv::ExprUseVisitor::for_clippy(cx, id, &mut *ctx)
+                .consume_body(closure.fn_decl, cx.tcx.hir_body(closure.body))
                 .into_ok();
         }
     }
@@ -179,8 +176,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             .inputs
             .iter()
             .zip(fn_sig.inputs())
-            .zip(body.params)
-            .filter(|&((&input, &ty), arg)| !should_skip(cx, input, ty, arg))
+            .filter(|&(input, &ty)| !should_skip(cx, &input, ty))
             .peekable();
         if it.peek().is_none() {
             return;
@@ -197,7 +193,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                 tcx: cx.tcx,
             };
             euv::ExprUseVisitor::for_clippy(cx, fn_def_id, &mut ctx)
-                .consume_body(body)
+                .consume_body(decl, body)
                 .into_ok();
 
             let mut checked_closures = FxHashSet::default();
@@ -222,15 +218,15 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             }
             ctx.generate_mutably_used_ids_from_aliases()
         };
-        for ((&input, &_), arg) in it {
+        for (input, &_) in it {
             // Only take `&mut` arguments.
-            if let PatKind::Binding(_, canonical_id, ..) = arg.pat.kind
+            if let PatKind::Binding(_, canonical_id, ..) = input.pat.kind
                 && !mutably_used_vars.contains(&canonical_id)
             {
                 self.fn_def_ids_to_maybe_unused_mut
                     .entry(fn_def_id)
                     .or_default()
-                    .push(input);
+                    .push(*input.ty);
             }
         }
     }

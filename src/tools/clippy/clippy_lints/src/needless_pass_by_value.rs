@@ -141,7 +141,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         let MovedVariablesCtxt { moved_vars } = {
             let mut ctx = MovedVariablesCtxt::default();
             euv::ExprUseVisitor::for_clippy(cx, fn_def_id, &mut ctx)
-                .consume_body(body)
+                .consume_body(decl, body)
                 .into_ok();
             ctx
         };
@@ -149,14 +149,14 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         let fn_sig = cx.tcx.fn_sig(fn_def_id).instantiate_identity().skip_norm_wip();
         let fn_sig = cx.tcx.liberate_late_bound_regions(fn_def_id.to_def_id(), fn_sig);
 
-        for (idx, ((input, &ty), arg)) in decl.inputs.iter().zip(fn_sig.inputs()).zip(body.params).enumerate() {
+        for (idx, (input, &ty)) in decl.inputs.iter().zip(fn_sig.inputs()).enumerate() {
             // All spans generated from a proc-macro invocation are the same...
-            if span == input.span {
+            if span == input.ty.span {
                 return;
             }
 
             // Ignore `self`s and params whose variable name starts with an underscore
-            if let PatKind::Binding(.., ident, _) = arg.pat.kind {
+            if let PatKind::Binding(.., ident, _) = input.pat.kind {
                 if idx == 0 && ident.name == kw::SelfLower {
                     continue;
                 }
@@ -184,7 +184,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 )
             };
 
-            if !is_self(arg)
+            if !is_self(input)
                 && !ty.is_mutable_ptr()
                 && !is_copy(cx, ty)
                 && ty.is_sized(cx.tcx, cx.typing_env())
@@ -200,7 +200,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 })
                 && !implements_borrow_trait
                 && !all_borrowable_trait
-                && let PatKind::Binding(BindingMode(_, Mutability::Not), canonical_id, ..) = arg.pat.kind
+                && let PatKind::Binding(BindingMode(_, Mutability::Not), canonical_id, ..) = input.pat.kind
                 && !moved_vars.contains(&canonical_id)
             {
                 // Dereference suggestion
@@ -220,8 +220,8 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                     }
 
                     if ty.is_diag_item(cx, sym::Vec)
-                        && let Some(clone_spans) = get_spans(cx, body, idx, &[(sym::clone, ".to_owned()")])
-                        && let TyKind::Path(QPath::Resolved(_, path)) = input.kind
+                        && let Some(clone_spans) = get_spans(cx, decl, body, idx, &[(sym::clone, ".to_owned()")])
+                        && let TyKind::Path(QPath::Resolved(_, path)) = input.ty.kind
                         && let Some(elem_ty) = path
                             .segments
                             .iter()
@@ -240,7 +240,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                     {
                         let slice_ty = format!("&[{}]", snippet(cx, elem_ty.span, "_"));
                         diag.span_suggestion(
-                            input.span,
+                            input.ty.span,
                             "consider changing the type to",
                             slice_ty,
                             Applicability::Unspecified,
@@ -264,10 +264,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
                     if ty.is_lang_item(cx, LangItem::String)
                         && let Some(clone_spans) =
-                            get_spans(cx, body, idx, &[(sym::clone, ".to_string()"), (sym::as_str, "")])
+                            get_spans(cx, decl, body, idx, &[(sym::clone, ".to_string()"), (sym::as_str, "")])
                     {
                         diag.span_suggestion(
-                            input.span,
+                            input.ty.span,
                             "consider changing the type to",
                             "&str",
                             Applicability::Unspecified,
@@ -289,7 +289,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                     }
 
                     diag.span_suggestion_verbose(
-                        peel_hir_ty_options(cx, input).span.shrink_to_lo(),
+                        peel_hir_ty_options(cx, input.ty).span.shrink_to_lo(),
                         "consider taking a reference instead",
                         '&',
                         Applicability::MaybeIncorrect,
@@ -299,8 +299,8 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 span_lint_hir_and_then(
                     cx,
                     NEEDLESS_PASS_BY_VALUE,
-                    arg.hir_id,
-                    input.span,
+                    input.ty.hir_id,
+                    input.ty.span,
                     "this argument is passed by value, but not consumed in the function body",
                     sugg,
                 );
@@ -343,11 +343,12 @@ impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
 
 fn get_spans<'tcx>(
     cx: &LateContext<'tcx>,
+    decl: &'tcx FnDecl<'_>,
     body: &'tcx Body<'_>,
     idx: usize,
     replacements: &[(Symbol, &'static str)],
 ) -> Option<Vec<(Span, Cow<'static, str>)>> {
-    if let PatKind::Binding(_, binding_id, _, _) = strip_pat_refs(body.params[idx].pat).kind {
+    if let PatKind::Binding(_, binding_id, _, _) = strip_pat_refs(decl.inputs[idx].pat).kind {
         extract_clone_suggestions(cx, binding_id, replacements, body)
     } else {
         Some(vec![])

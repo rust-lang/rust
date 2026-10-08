@@ -3435,6 +3435,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::TyKind::View(ty, fields) => {
                 self.lower_view(self.lower_ty(ty), fields, hir_ty.span)
             }
+            hir::TyKind::CVarArgs => Ty::new_error(
+                tcx,
+                self.dcx().delayed_bug("This is only reachable if errors previously occurred"),
+            ),
 
             hir::TyKind::Err(guar) => Ty::new_error(tcx, *guar),
         };

@@ -43,7 +43,7 @@ fn check_fn_sig<'a>(cx: &LateContext<'a>, decl: &FnDecl<'a>, span: Span, sig: ty
     let mut fixes = Vec::new();
     // Check function arguments' types
     for (param, param_ty) in decl.inputs.iter().zip(sig.inputs()) {
-        check_ty(cx, param, *param_ty, &mut fixes);
+        check_ty(cx, param.ty, *param_ty, &mut fixes);
     }
     // Check return type
     if let hir::FnRetTy::Return(ty) = &decl.output {
@@ -89,7 +89,7 @@ pub(crate) fn check_fn<'a>(
                 span.with_hi(out_ty.span.hi())
             }
         } else if let (Some(first), Some(last)) = (decl.inputs.first(), decl.inputs.last()) {
-            first.span.to(last.span)
+            first.ty.span.to(last.ty.span)
         } else {
             // No parameters - no point in checking
             return;

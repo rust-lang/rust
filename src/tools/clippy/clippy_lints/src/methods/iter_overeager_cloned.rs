@@ -5,7 +5,7 @@ use clippy_utils::visitors::for_each_expr_without_closures;
 use core::ops::ControlFlow;
 use rustc_ast::BindingMode;
 use rustc_errors::Applicability;
-use rustc_hir::{Body, CaptureBy, Closure, Expr, ExprKind, HirId, HirIdSet, Param, PatKind};
+use rustc_hir::{CaptureBy, Closure, Expr, ExprKind, HirId, HirIdSet, Param, PatKind};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::LateContext;
 use rustc_middle::mir::{FakeReadCause, Mutability};
@@ -63,9 +63,10 @@ pub(super) fn check<'tcx>(
             let ExprKind::Closure(closure) = expr.kind else {
                 return;
             };
-            let body @ Body { params: [p], .. } = cx.tcx.hir_body(closure.body) else {
+            let [p] = closure.fn_decl.inputs else {
                 return;
             };
+            let body = cx.tcx.hir_body(closure.body);
 
             if param_captured_by_move_block(cx, body.value, p) {
                 return;
@@ -76,7 +77,7 @@ pub(super) fn check<'tcx>(
             };
 
             ExprUseVisitor::for_clippy(cx, closure.def_id, &mut delegate)
-                .consume_body(body)
+                .consume_body(closure.fn_decl, body)
                 .into_ok();
 
             let mut to_be_discarded = false;

@@ -131,7 +131,7 @@ fn has_n_bools<'tcx>(iter: impl Iterator<Item = &'tcx Ty<'tcx>>, mut count: u64)
 }
 
 fn check_fn_decl(cx: &LateContext<'_>, decl: &FnDecl<'_>, sp: Span, max: u64) {
-    if has_n_bools(decl.inputs.iter(), max) && !sp.from_expansion() {
+    if has_n_bools(decl.inputs.iter().map(|p| p.ty), max) && !sp.from_expansion() {
         span_lint_and_help(
             cx,
             FN_PARAMS_EXCESSIVE_BOOLS,

@@ -483,10 +483,10 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 if let Some(def_id) = def_id.as_local()
                     && let owner = tcx.expect_hir_owner_node(def_id)
                     && let Some(decl) = owner.fn_decl()
-                    && let Some(ty) = decl.inputs.get(0)
+                    && let Some(param) = decl.inputs.get(0)
                 {
                     // Point at the `&'static self` receiver.
-                    bounds.push(ty.span);
+                    bounds.push(param.ty.span);
                 } else if !bounds.iter().any(|sp| sp.overlaps(def_span)) {
                     // The method is not defined on the local crate, point at the signature instead of
                     // just the receiver as an approximation. We don't add it if there are already

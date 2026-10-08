@@ -7,7 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
     Body, Expr, ExprKind, HirId, HirIdMap, ImplItem, ImplItemImplKind, ImplItemKind, Node, PatKind, TraitItem,
-    TraitItemKind,
+    TraitItemKind, Item, ItemKind,
 };
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::{self, ConstKind, GenericArgKind, GenericArgsRef};
@@ -311,8 +311,8 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
         }
         // `skip_params` is either `0` or `1` to skip the `self` parameter in trait functions.
         // It can't be renamed, and it can't be removed without removing it from multiple functions.
-        let (fn_id, fn_kind, skip_params) = match cx.tcx.parent_hir_node(body.value.hir_id) {
-            Node::Item(i) => (i.owner_id.to_def_id(), FnKind::Fn, 0),
+        let (fn_id, fn_kind, skip_params, decl) = match cx.tcx.parent_hir_node(body.value.hir_id) {
+            Node::Item(Item { owner_id, kind: ItemKind::Fn { sig, ..}, .. }) => (owner_id.to_def_id(), FnKind::Fn, 0, sig.decl),
             Node::TraitItem(&TraitItem {
                 kind: TraitItemKind::Fn(ref sig, _),
                 owner_id,
@@ -321,6 +321,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                 owner_id.to_def_id(),
                 FnKind::TraitFn,
                 usize::from(sig.decl.implicit_self().has_implicit_self()),
+                sig.decl
             ),
             Node::ImplItem(&ImplItem {
                 kind: ImplItemKind::Fn(ref sig, _),
@@ -339,14 +340,15 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                             std::ptr::from_ref(cx.tcx.erase_and_anonymize_regions(trait_ref.args)) as usize
                         ),
                         usize::from(sig.decl.implicit_self().has_implicit_self()),
+                        sig.decl,
                     )
                 } else {
-                    (owner_id.to_def_id(), FnKind::Fn, 0)
+                    (owner_id.to_def_id(), FnKind::Fn, 0, sig.decl)
                 }
             },
             _ => return,
         };
-        body.params
+        decl.inputs
             .iter()
             .enumerate()
             .skip(skip_params)

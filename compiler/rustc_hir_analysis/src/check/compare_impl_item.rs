@@ -1023,15 +1023,15 @@ fn report_trait_method_mismatch<'tcx>(
             // When the `impl` receiver is an arbitrary self type, like `self: Box<Self>`, the
             // span points only at the type `Box<Self`>, but we want to cover the whole
             // argument pattern and type.
-            let (sig, body) = tcx.hir_expect_impl_item(impl_m.def_id.expect_local()).expect_fn();
+            let (sig, _) = tcx.hir_expect_impl_item(impl_m.def_id.expect_local()).expect_fn();
             let span = tcx
-                .hir_body_param_idents(body)
+                .hir_body_param_idents(sig.decl)
                 .zip(sig.decl.inputs.iter())
-                .map(|(param_ident, ty)| {
+                .map(|(param_ident, param)| {
                     if let Some(param_ident) = param_ident {
-                        param_ident.span.to(ty.span)
+                        param_ident.span.to(param.ty.span)
                     } else {
-                        ty.span
+                        param.ty.span
                     }
                 })
                 .next()
@@ -1471,12 +1471,12 @@ fn extract_spans_for_error_reporting<'tcx>(
     let tcx = infcx.tcx;
     let mut impl_args = {
         let (sig, _) = tcx.hir_expect_impl_item(impl_m.def_id.expect_local()).expect_fn();
-        sig.decl.inputs.iter().map(|t| t.span).chain(iter::once(sig.decl.output.span()))
+        sig.decl.inputs.iter().map(|p| p.ty.span).chain(iter::once(sig.decl.output.span()))
     };
 
     let trait_args = trait_m.def_id.as_local().map(|def_id| {
         let (sig, _) = tcx.hir_expect_trait_item(def_id).expect_fn();
-        sig.decl.inputs.iter().map(|t| t.span).chain(iter::once(sig.decl.output.span()))
+        sig.decl.inputs.iter().map(|p| p.ty.span).chain(iter::once(sig.decl.output.span()))
     });
 
     match terr {
@@ -1745,11 +1745,11 @@ fn compare_number_of_method_arguments<'tcx>(
             .and_then(|def_id| {
                 let (trait_m_sig, _) = &tcx.hir_expect_trait_item(def_id).expect_fn();
                 let pos = trait_number_args.saturating_sub(1);
-                trait_m_sig.decl.inputs.get(pos).map(|arg| {
+                trait_m_sig.decl.inputs.get(pos).map(|param| {
                     if pos == 0 {
-                        arg.span
+                        param.ty.span
                     } else {
-                        arg.span.with_lo(trait_m_sig.decl.inputs[0].span.lo())
+                        param.ty.span.with_lo(trait_m_sig.decl.inputs[0].ty.span.lo())
                     }
                 })
             })
@@ -1761,11 +1761,11 @@ fn compare_number_of_method_arguments<'tcx>(
             .decl
             .inputs
             .get(pos)
-            .map(|arg| {
+            .map(|param| {
                 if pos == 0 {
-                    arg.span
+                    param.ty.span
                 } else {
-                    arg.span.with_lo(impl_m_sig.decl.inputs[0].span.lo())
+                    param.ty.span.with_lo(impl_m_sig.decl.inputs[0].ty.span.lo())
                 }
             })
             .unwrap_or_else(|| tcx.def_span(impl_m.def_id));
@@ -1820,8 +1820,8 @@ fn compare_number_of_method_arguments<'tcx>(
                 let first_lo = arg_idents
                     .get(0)
                     .and_then(|id| id.map(|id| id.span.lo()))
-                    .unwrap_or(first.span.lo());
-                Some(impl_m_sig.span.with_lo(first_lo).with_hi(last.span.hi()))
+                    .unwrap_or(first.ty.span.lo());
+                Some(impl_m_sig.span.with_lo(first_lo).with_hi(last.ty.span.hi()))
             } else {
                 // We have no inputs; construct the span to the left of the last parenthesis
                 // fn foo( ) {}
@@ -1882,7 +1882,7 @@ fn compare_number_of_method_arguments<'tcx>(
                             .decl
                             .inputs
                             .get(trait_number_args - 1)
-                            .map(|arg| arg.span.hi())?
+                            .map(|param| param.ty.span.hi())?
                     };
                     let span = full.with_lo(lo);
                     Some((
@@ -2008,9 +2008,9 @@ fn compare_synthetic_generics<'tcx>(
                         }
                     }
 
-                    let span = input_tys
-                        .iter()
-                        .find_map(|ty| Visitor(impl_def_id).visit_ty_unambig(ty).break_value())?;
+                    let span = input_tys.iter().find_map(|param| {
+                        Visitor(impl_def_id).visit_ty_unambig(param.ty).break_value()
+                    })?;
 
                     let bounds = impl_m.generics.bounds_for_param(impl_def_id).next()?.bounds;
                     let bounds = bounds.first()?.span().to(bounds.last()?.span());

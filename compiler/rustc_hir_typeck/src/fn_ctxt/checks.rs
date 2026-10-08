@@ -769,9 +769,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let spans = if let SplatLoweringInfo::FnDef(def_id) = fn_id
                         && let Some(hir_node) = self.tcx.hir_get_if_local(def_id)
                         && let Some(fn_decl) = hir_node.fn_decl()
-                        && let Some(arg_ty) = fn_decl.inputs.get(first_tupled_arg_index_usz)
+                        && let Some(param) = fn_decl.inputs.get(first_tupled_arg_index_usz)
                     {
-                        let arg_def_span = arg_ty.span;
+                        let arg_def_span = param.ty.span;
                         vec![call_span, arg_def_span]
                     } else {
                         vec![call_span]
@@ -1923,10 +1923,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
         } else if let Some(hir::Node::Expr(e)) = self.tcx.hir_get_if_local(def_id)
-            && let hir::ExprKind::Closure(hir::Closure { body, .. }) = &e.kind
+            && let hir::ExprKind::Closure(hir::Closure { fn_decl, .. }) = &e.kind
         {
-            let param = expected_idx
-                .and_then(|expected_idx| self.tcx.hir_body(*body).params.get(expected_idx));
+            let param = expected_idx.and_then(|expected_idx| fn_decl.inputs.get(expected_idx));
             let (kind, span) = if let Some(param) = param {
                 // Try to find earlier invocations of this closure to find if the type mismatch
                 // is because of inference. If we find one, point at them.
@@ -1967,7 +1966,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                ("closure parameter", param.span)
+                ("closure parameter", param.param_span)
             } else {
                 ("closure", self.tcx.def_span(def_id))
             };
@@ -2093,25 +2092,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Make sure to remove both the receiver and variadic argument. Both are removed
         // when matching parameter types.
-        let fn_inputs = sig.decl.inputs.get(is_method as usize..)?.iter().map(|param| {
-            if let hir::TyKind::Path(QPath::Resolved(
-                _,
-                &hir::Path { res: Res::Def(_, res_def_id), .. },
-            )) = param.kind
-            {
-                generics
-                    .params
-                    .iter()
-                    .position(|param| param.def_id.to_def_id() == res_def_id)
-                    .map(GenericIdx::from_usize)
-            } else {
-                None
-            }
-        });
+        let fn_inputs = sig
+            .decl
+            .inputs
+            .get(is_method as usize..(sig.decl.inputs.len() - sig.decl.c_variadic() as usize))?
+            .iter()
+            .map(|param| {
+                if let hir::TyKind::Path(QPath::Resolved(
+                    _,
+                    &hir::Path { res: Res::Def(_, res_def_id), .. },
+                )) = param.ty.kind
+                {
+                    generics
+                        .params
+                        .iter()
+                        .position(|param| param.def_id.to_def_id() == res_def_id)
+                        .map(GenericIdx::from_usize)
+                } else {
+                    None
+                }
+            });
         match (body_id, params) {
             (Some(_), Some(_)) | (None, None) => unreachable!(),
-            (Some(body), None) => {
-                let params = self.tcx.hir_body(body).params;
+            (Some(_body), None) => {
+                let params = sig.decl.inputs;
                 let params = params
                     .get(is_method as usize..params.len() - sig.decl.c_variadic() as usize)?;
                 debug_assert_eq!(params.len(), fn_inputs.len());
@@ -2159,7 +2163,7 @@ enum FnParam<'hir> {
 impl FnParam<'_> {
     fn span(&self) -> Span {
         match self {
-            Self::Param(param) => param.span,
+            Self::Param(param) => param.param_span,
             Self::Ident(ident) => {
                 if let Some(ident) = ident {
                     ident.span

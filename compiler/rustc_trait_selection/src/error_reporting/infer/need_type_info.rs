@@ -8,7 +8,7 @@ use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, Body, Closure, Expr, ExprKind, FnRetTy, HirId, LetStmt, LocalSource, PatKind,
+    self as hir, Closure, Expr, ExprKind, FnDecl, FnRetTy, HirId, LetStmt, LocalSource, PatKind,
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, DerefAdjustKind};
@@ -1380,11 +1380,11 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
 
     /// For closures, we first visit the parameters and then the content,
     /// as we prefer those.
-    fn visit_body(&mut self, body: &Body<'tcx>) {
-        for param in body.params {
+    fn visit_fn_decl(&mut self, decl: &'tcx FnDecl<'tcx>) {
+        for param in decl.inputs {
             debug!(
                 "param: span {:?}, ty_span {:?}, pat.span {:?}",
-                param.span, param.ty_span, param.pat.span
+                param.param_span, param.ty_span, param.pat.span
             );
             if param.ty_span != param.pat.span {
                 debug!("skipping param: has explicit type");
@@ -1404,7 +1404,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 })
             }
         }
-        intravisit::walk_body(self, body);
+        intravisit::walk_fn_decl(self, decl);
     }
 
     #[instrument(level = "debug", skip(self))]
