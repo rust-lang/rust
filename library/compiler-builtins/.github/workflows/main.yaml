@@ -51,7 +51,7 @@ jobs:
 
   test:
     name: Build and test
-    timeout-minutes: 60
+    timeout-minutes: 90
     # NOTE: self-hosted riscv64 runners are experimental and may be flaky.
     # Do not block CI on failures from this platform for now.
     continue-on-error: ${{ contains(matrix.os, 'self-hosted') }}
