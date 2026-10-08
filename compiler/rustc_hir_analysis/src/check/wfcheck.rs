@@ -2434,15 +2434,10 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                 self.infcx.universe()
             };
 
-            let mut builder = TransitiveRelationBuilder::default();
-            for &(r1, r2) in &body.region_outlives {
-                builder.add(r1, r2);
-            }
-            // Deliberately unelaborated: the assumptions of a `forall` are exactly the ones
-            // written down in the test, no extra ones hidden behind the scenes.
-            let assumptions = ty::region_constraint::Assumptions::new_unelaborated(
+            let assumptions = self.build_test_binder_assumptions(
+                forall.span,
                 body.type_outlives,
-                builder.freeze(),
+                body.region_outlives,
             );
             self.infcx.insert_placeholder_assumptions(u, assumptions);
             self.check_test_binder_body(body.value);
@@ -2458,6 +2453,52 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             }
             self.infcx.overwrite_solver_region_constraint(constraint);
         });
+    }
+
+    fn build_test_binder_assumptions(
+        &self,
+        span: Span,
+        type_outlives: Vec<ty::PolyTypeOutlivesClause<'tcx>>,
+        region_outlives: Vec<ty::RegionOutlivesClause<'tcx>>,
+    ) -> ty::region_constraint::Assumptions<TyCtxt<'tcx>> {
+        for clause in &type_outlives {
+            if !matches!(
+                clause.skip_binder().0.kind(),
+                ty::Alias(..) | ty::Param(..) | ty::Placeholder(..)
+            ) {
+                let mut err = self.tcx().dcx().struct_span_err(
+                    span,
+                    "the lhs of a forall where clause must be \
+                         an alias, placeholder, or lifetime",
+                );
+                err.note(format!("the bad clause is {clause}"));
+                err.emit();
+            }
+        }
+        let ty = type_outlives.iter().map(|c| c.map_bound(ty::ClauseKind::TypeOutlives));
+        let reg =
+            region_outlives.iter().map(|&c| ty::Binder::dummy(ty::ClauseKind::RegionOutlives(c)));
+        let explicit_clauses: Vec<ty::Clause<'tcx>> =
+            ty.chain(reg).map(|c| c.upcast(self.tcx())).collect();
+        for elaborated in ty::elaborate::elaborate(self.tcx(), explicit_clauses.iter().copied()) {
+            if !explicit_clauses.contains(&elaborated) {
+                let mut err = self.tcx().dcx().struct_span_err(
+                    span,
+                    "all implied bounds of clauses must themselves be \
+                     included in the where clause of a forall",
+                );
+                err.note(format!("missing clause is {elaborated}"));
+                err.emit();
+            }
+        }
+
+        let mut builder = TransitiveRelationBuilder::default();
+        for &ty::OutlivesClause(r1, r2) in &region_outlives {
+            builder.add(r1, r2);
+        }
+        // Deliberately unelaborated: the assumptions of a `forall` are exactly the ones
+        // written down in the test, no extra ones hidden behind the scenes.
+        ty::region_constraint::Assumptions::new_unelaborated(type_outlives, builder.freeze())
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -2753,6 +2794,6 @@ pub(crate) struct WithWhereClauses<'tcx, T> {
 
     // The where clauses on the forall. These eventually will probably get stored inside
     // `ty::Binder` but they're here for now.
-    pub type_outlives: Vec<ty::Binder<'tcx, ty::OutlivesClause<'tcx, Ty<'tcx>>>>,
-    pub region_outlives: Vec<(ty::Region<'tcx>, ty::Region<'tcx>)>,
+    pub type_outlives: Vec<ty::PolyTypeOutlivesClause<'tcx>>,
+    pub region_outlives: Vec<ty::RegionOutlivesClause<'tcx>>,
 }
