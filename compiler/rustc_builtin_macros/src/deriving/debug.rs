@@ -307,7 +307,7 @@ fn show_fieldless_enum_concat_str(
     }
 
     // Create the constant concatenated string
-    let names_ident = Ident::from_str_and_span("__NAMES", span);
+    let names_ident = Ident::new(sym::__NAMES, span);
     let str_ty = cx.ty(
         span,
         TyKind::Ref(
@@ -326,7 +326,7 @@ fn show_fieldless_enum_concat_str(
         names_str_body,
     );
 
-    let variant_index_ident = Ident::from_str_and_span("__d", span);
+    let variant_index_ident = Ident::new(sym::__d, span);
     let arms = def
         .variants
         .iter()
