@@ -25,6 +25,18 @@ LL +     x.unwrap_or_else(|err: ()| err);
    |
 
 error: unused "map closure" when calling `Result::map_or_else` value
+  --> tests/ui/unnecessary_result_map_or_else.rs:18:19
+   |
+LL |     let y: &str = x.map_or_else(|err| err, |n| n);
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `unwrap_or_else`
+   |
+LL -     let y: &str = x.map_or_else(|err| err, |n| n);
+LL +     let y: &str = x.unwrap_or_else(|err| err);
+   |
+
+error: unused "map closure" when calling `Result::map_or_else` value
   --> tests/ui/unnecessary_result_map_or_else.rs:23:5
    |
 LL | /     x.map_or_else(
@@ -140,5 +152,5 @@ LL -     );
 LL +     x.unwrap_or_else(|err| err);
    |
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 
