@@ -428,6 +428,8 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
     + UpcastFrom<I, ty::TraitClause<I>>
     + UpcastFrom<I, ty::ProjectionClause<I>>
+    + UpcastFrom<I, ty::OutlivesClause<I, I::Ty>>
+    + UpcastFrom<I, ty::OutlivesClause<I, Region<I>>>
     + IntoKind<Kind = ty::Binder<I, ty::PredicateKind<I>>>
     + Elaboratable<I>
 {

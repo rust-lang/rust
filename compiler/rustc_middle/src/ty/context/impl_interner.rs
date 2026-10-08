@@ -135,7 +135,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         predicate: ty::Binder<'tcx, ty::PredicateKind<'tcx>>,
     ) -> rustc_type_ir::sty::predicates::Predicate<Self> {
-        rustc_type_ir::sty::predicates::Predicate(self.interners.intern_predicate(predicate).0)
+        self.interners.intern_predicate(predicate)
     }
 
     type Tracked<T: fmt::Debug + Clone> = WithDepNode<T>;
