@@ -3,6 +3,7 @@
 //@ add-minicore
 //@ edition:future
 //@ revisions: default deny
+//@ compile-flags: -D future-incompatible
 //@[default] compile-flags: -Z unstable-options -Z stack-protector=all
 //@[deny] compile-flags: -Z deny-partial-mitigations=stack-protector -Z unstable-options -Z stack-protector=all
 
