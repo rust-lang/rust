@@ -289,13 +289,14 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 debug!(?kind);
                 kind
             }
-            Adjust::GenericReborrow(mutability) => {
+            Adjust::GenericReborrow(ty::Mutability::Not) => {
                 let expr = self.thir.exprs.push(expr);
-                let kind =
-                    ExprKind::Reborrow { source: expr, mutability, target: adjustment.target };
+                let kind = ExprKind::CoerceShared { source: expr, target: adjustment.target };
 
                 kind
             }
+            // These get inserted in MIR building `consume_by_copy_reborrow_or_move`
+            Adjust::GenericReborrow(ty::Mutability::Mut) => return expr,
         };
 
         Expr { temp_scope_id, ty: adjustment.target, span, kind }
