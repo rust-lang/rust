@@ -25,7 +25,7 @@ const EXCEPTIONS: &[&str] = &[
 ];
 
 pub fn check(root_path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check("target_policy");
+    let check = tidy_ctx.start_check("target_policy");
 
     let mut targets_to_find = HashSet::new();
 
