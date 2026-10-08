@@ -10,6 +10,8 @@ LL | };
 error[E0080]: calling non-const function `<NotConstDestruct as Drop>::drop`
   --> $DIR/qualif-indirect-mutation-fail.rs:24:1
    |
+LL | pub const A1: () = {
+...
 LL | };
    | ^ evaluation of `A1` failed inside this call
    |
@@ -29,6 +31,8 @@ LL | };
 error[E0080]: calling non-const function `<NotConstDestruct as Drop>::drop`
   --> $DIR/qualif-indirect-mutation-fail.rs:35:1
    |
+LL | pub const A2: () = {
+...
 LL | };
    | ^ evaluation of `A2` failed inside this call
    |

@@ -1,6 +1,7 @@
 error[E0080]: reading memory at ALLOC$ID[0x0..0x8], but memory is uninitialized at [0x0..0x8], and this operation requires initialized memory
   --> $DIR/const-err-enum-discriminant.rs:10:21
    |
+LL | enum Bar {
 LL |     Boo = [unsafe { Foo { b: () }.a }; 4][3],
    |                     ^^^^^^^^^^^^^^^ evaluation of `Bar::Boo::{constant#0}` failed here
    |

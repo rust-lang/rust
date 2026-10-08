@@ -519,6 +519,9 @@ fn report_eval_error<'tcx>(
                 where_ = if num_frames == 0 { "here" } else { "inside this call" },
             ),
         );
+        for span in crate::util::context_spans(*ecx.tcx, span, cid.instance.def_id()) {
+            diag.span_context(span);
+        }
         for frame in frames {
             diag.subdiagnostic(frame);
         }
