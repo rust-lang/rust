@@ -170,6 +170,20 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
+    /// Create a `where 'left: 'right` predicate.
+    pub fn where_outlives(&self, left: ast::Lifetime, right: ast::Lifetime) -> ast::WherePredicate {
+        ast::WherePredicate {
+            attrs: Default::default(),
+            kind: ast::WherePredicateKind::RegionPredicate(ast::WhereRegionPredicate {
+                lifetime: left,
+                bounds: thin_vec![ast::GenericBound::Outlives(right)],
+            }),
+            id: ast::DUMMY_NODE_ID,
+            span: DUMMY_SP,
+            is_placeholder: false,
+        }
+    }
+
     pub fn const_param(
         &self,
         ident: Ident,

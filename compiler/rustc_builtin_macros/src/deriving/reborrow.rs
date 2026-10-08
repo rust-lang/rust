@@ -182,25 +182,8 @@ fn coerce_shared_target(
         // Create our lifetime, add it into the trait parameters and create a where-clause predicate
         // for it.
         let lt = rustc_ast::Lifetime { id: DUMMY_NODE_ID, ident: Ident::with_dummy_span(name) };
-        trait_params.push(GenericParam {
-            id: DUMMY_NODE_ID,
-            ident: lt.ident,
-            attrs: Default::default(),
-            bounds: Default::default(),
-            is_placeholder: false,
-            kind: GenericParamKind::Lifetime,
-            colon_span: None,
-        });
-        trait_where_clause.predicates.push(WherePredicate {
-            attrs: Default::default(),
-            kind: WherePredicateKind::RegionPredicate(WhereRegionPredicate {
-                lifetime: *arg,
-                bounds: thin_vec![GenericBound::Outlives(lt)],
-            }),
-            id: DUMMY_NODE_ID,
-            span: DUMMY_SP,
-            is_placeholder: false,
-        });
+        trait_params.push(cx.lifetime_param(lt.ident, Default::default()));
+        trait_where_clause.predicates.push(cx.where_outlives(*arg, lt));
         // Note: this mutates `target` from `Target<'a>` to `Target<'a_>`.
         *arg = lt;
     }
