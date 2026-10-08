@@ -361,7 +361,8 @@ pub fn dyn_compatibility_violations_for_assoc_item(
     let span = || item.ident(tcx).span;
 
     match item.kind {
-        ty::AssocKind::Const { name } => {
+        ty::AssocKind::Const { .. } => {
+            let name = item.name();
             // We will permit type associated consts if they are explicitly mentioned in the
             // trait object type. We can't check this here, as here we only check if it is
             // guaranteed to not be possible.
