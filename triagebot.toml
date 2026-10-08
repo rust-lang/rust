@@ -224,8 +224,9 @@ new_draft = true
 [autolabel."needs-triage"]
 new_issue = true
 exclude_labels = [
-    "C-tracking-issue",
     "A-diagnostics",
+    "C-tracking-issue",
+    "relnotes-tracking-issue",
 ]
 
 [autolabel."I-prioritize"]
