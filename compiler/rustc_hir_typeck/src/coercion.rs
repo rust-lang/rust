@@ -520,8 +520,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         };
 
-        let autoderef_step_count = autoderef.step_count();
-
         let InferOk { value: mut adjustments, obligations: o } =
             self.adjust_steps_as_infer_ok(&autoderef);
         obligations.extend(o);
@@ -538,33 +536,24 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // we started with. In that case, just skip it altogether.
 
         let can_skip_noop_reborrow = if mutbl_b.is_not() {
-            if self.tcx.is_closure_like(self.body_def_id.to_def_id()) {
-                // FIXME: Inside a closure, reborrows can affect capture inference.
-                // So we have to keep the existing elision behavior stable.
-                // Ideally we wouldn't have to do this, as it makes lifetime
-                // annotations affect codegen.
-                // See `tests/ui/coercion/structural_identity_dependent_reborrows.rs`
-                coerced_a == a && autoderef_step_count == 1
-            } else {
-                if matches!(
-                    adjustments.last(),
-                    Some(Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), .. })
-                ) {
-                    // Last adjustment is a builtin deref adjustment.
-                    // Check if that deref was applied to a shared reference
+            if matches!(
+                adjustments.last(),
+                Some(Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), .. })
+            ) {
+                // Last adjustment is a builtin deref adjustment.
+                // Check if that deref was applied to a shared reference
 
-                    let mutbl_before_deref = if adjustments.len() >= 2 {
-                        *&adjustments[adjustments.len() - 2].target.ref_mutability()
-                    } else {
-                        Some(mt_a.mutbl)
-                    };
-
-                    mutbl_before_deref == Some(ty::Mutability::Not)
+                let mutbl_before_deref = if adjustments.len() >= 2 {
+                    *&adjustments[adjustments.len() - 2].target.ref_mutability()
                 } else {
-                    // Last adjustment is not a builtin deref adjustment,
-                    // so this can't be a shared ref reborrow.
-                    false
-                }
+                    Some(mt_a.mutbl)
+                };
+
+                mutbl_before_deref == Some(ty::Mutability::Not)
+            } else {
+                // Last adjustment is not a builtin deref adjustment,
+                // so this can't be a shared ref reborrow.
+                false
             }
         } else {
             // FIXME: Ideally we would also skip `&mut` -> `&mut` reborrow,
@@ -673,15 +662,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // Handle reborrows before selecting `Source: CoerceUnsized<Target>`.
         let reborrow = match (source.kind(), target.kind()) {
             // Don't emit a no-op shared -> shared reborrow.
-            (&ty::Ref(_, _, ty::Mutability::Not), &ty::Ref(_, _, ty::Mutability::Not))
-                // FIXME: Inside a closure, reborrows can affect capture inference.
-                // So we have to emit them anyway.
-                // Ideally we wouldn't have to do this, it makes lifetime
-                // annotations affect codegen
-                if !self.tcx.is_closure_like(self.body_def_id.to_def_id()) =>
-            {
-                None
-            }
+            (&ty::Ref(_, _, ty::Mutability::Not), &ty::Ref(_, _, ty::Mutability::Not)) => None,
             (&ty::Ref(_, ty_a, mutbl_a), &ty::Ref(_, _, mutbl_b)) => {
                 coerce_mutbls(mutbl_a, mutbl_b)?;
 
