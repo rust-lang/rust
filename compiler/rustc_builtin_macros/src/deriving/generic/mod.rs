@@ -176,7 +176,7 @@
 
 use std::ops::Not;
 
-pub(crate) use SubstructureFields::*;
+pub(crate) use Substructure::*;
 pub(crate) use rustc_ast as ast;
 use rustc_ast::token::{IdentKind, LitKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenTree};
@@ -277,16 +277,8 @@ pub(crate) struct FieldInfo {
     pub maybe_scalar: bool,
 }
 
-pub(crate) struct Substructure<'a> {
-    pub fields: SubstructureFields<'a>,
-    // FIXME: this is currently required to avoid issues with attribute macros after derives,
-    // such as https://github.com/rust-lang/rust/issues/163800.
-    // Ideally we would just use `Self` instead.
-    pub type_ident: Ident,
-}
-
 /// A summary of the possible sets of fields.
-pub(crate) enum SubstructureFields<'a> {
+pub(crate) enum Substructure<'a> {
     /// A non-static method where `Self` is a struct.
     Struct(&'a ast::VariantData, Vec<FieldInfo>),
 
@@ -473,15 +465,9 @@ impl<'a> TraitDef<'a> {
                 let fields = struct_def.fields().iter();
                 let methods = self.methods.iter().filter_map(|method_def| {
                     let body = if from_scratch || method_def.is_static() {
-                        method_def.call_substructure_method(
-                            cx,
-                            span,
-                            StaticStruct(struct_def),
-                            *ident,
-                        )
+                        method_def.call_substructure_method(cx, span, StaticStruct(struct_def))
                     } else {
-                        method_def
-                            .expand_struct_method_body(cx, span, struct_def, is_packed, *ident)
+                        method_def.expand_struct_method_body(cx, span, struct_def, is_packed)
                     };
 
                     method_def.create_method(cx, span, body)
@@ -499,9 +485,9 @@ impl<'a> TraitDef<'a> {
                 let fields = enum_def.variants.iter().flat_map(|variant| variant.data.fields());
                 let methods = self.methods.iter().filter_map(|method_def| {
                     let body = if from_scratch || method_def.is_static() {
-                        method_def.call_substructure_method(cx, span, StaticEnum(enum_def), *ident)
+                        method_def.call_substructure_method(cx, span, StaticEnum(enum_def))
                     } else {
-                        method_def.expand_enum_method_body(cx, span, enum_def, *ident)
+                        method_def.expand_enum_method_body(cx, span, enum_def)
                     };
 
                     method_def.create_method(cx, span, body)
@@ -781,10 +767,9 @@ impl<'a> MethodDef<'a> {
         &self,
         cx: &ExtCtxt<'_>,
         span: Span,
-        fields: SubstructureFields<'_>,
-        type_ident: Ident,
+        fields: Substructure<'_>,
     ) -> BlockOrExpr {
-        (self.combine_substructure)(cx, span, Substructure { fields, type_ident })
+        (self.combine_substructure)(cx, span, fields)
     }
 
     fn is_static(&self) -> bool {
@@ -884,7 +869,6 @@ impl<'a> MethodDef<'a> {
         span: Span,
         struct_def: &'b VariantData,
         is_packed: bool,
-        type_ident: Ident,
     ) -> BlockOrExpr {
         let self_expr = cx.expr_self(span);
         let selflike_args = if self.has_other_selflike_arg {
@@ -895,7 +879,7 @@ impl<'a> MethodDef<'a> {
 
         let selflike_fields =
             create_struct_field_access_fields(span, cx, selflike_args, struct_def, is_packed);
-        self.call_substructure_method(cx, span, Struct(struct_def, selflike_fields), type_ident)
+        self.call_substructure_method(cx, span, Struct(struct_def, selflike_fields))
     }
 
     /// ```
@@ -938,7 +922,6 @@ impl<'a> MethodDef<'a> {
         cx: &ExtCtxt<'_>,
         span: Span,
         enum_def: &'b EnumDef,
-        type_ident: Ident,
     ) -> BlockOrExpr {
         let variants = &enum_def.variants;
 
@@ -962,24 +945,14 @@ impl<'a> MethodDef<'a> {
                         // If the type is fieldless and the trait uses the discriminant and
                         // there are multiple variants, we need just an operation on
                         // the discriminant(s).
-                        return self.call_substructure_method(
-                            cx,
-                            span,
-                            EnumDiscr(None),
-                            type_ident,
-                        );
+                        return self.call_substructure_method(cx, span, EnumDiscr(None));
                     }
                     FieldlessVariantsStrategy::Default => (),
                 }
             } else if let [variant] = variants.as_slice() {
                 // If there is a single variant, we don't need an operation on
                 // the discriminant(s). Just use the most degenerate result.
-                return self.call_substructure_method(
-                    cx,
-                    span,
-                    EnumMatching(variant, Vec::new()),
-                    type_ident,
-                );
+                return self.call_substructure_method(cx, span, EnumMatching(variant, Vec::new()));
             }
         }
 
@@ -1025,7 +998,7 @@ impl<'a> MethodDef<'a> {
                 // Self arg, assuming all are instances of VariantK.
                 // Build up code associated with such a case.
                 let arm_expr = self
-                    .call_substructure_method(cx, span, EnumMatching(variant, fields), type_ident)
+                    .call_substructure_method(cx, span, EnumMatching(variant, fields))
                     .into_expr(cx, span);
 
                 cx.arm(span, single_pat, arm_expr)
@@ -1038,13 +1011,8 @@ impl<'a> MethodDef<'a> {
             Some(v) if unify_fieldless_variants => {
                 // We need a default case that handles all the fieldless variants.
                 Some(
-                    self.call_substructure_method(
-                        cx,
-                        span,
-                        EnumMatching(v, Vec::new()),
-                        type_ident,
-                    )
-                    .into_expr(cx, span),
+                    self.call_substructure_method(cx, span, EnumMatching(v, Vec::new()))
+                        .into_expr(cx, span),
                 )
             }
             _ if variants.len() > 1 && self.has_other_selflike_arg => {
@@ -1084,7 +1052,7 @@ impl<'a> MethodDef<'a> {
         // is enough.
         if unify_fieldless_variants && variants.len() > 1 {
             // Combine a discriminant check with the match.
-            self.call_substructure_method(cx, span, EnumDiscr(Some(match_expr)), type_ident)
+            self.call_substructure_method(cx, span, EnumDiscr(Some(match_expr)))
         } else {
             BlockOrExpr(ThinVec::new(), Some(match_expr))
         }

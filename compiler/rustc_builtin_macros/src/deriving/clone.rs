@@ -1,7 +1,7 @@
 use rustc_ast::{self as ast, Generics, ItemKind, Safety, VariantData};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{DUMMY_SP, Span, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::deriving::generic::*;
@@ -45,7 +45,9 @@ pub(crate) fn expand_deriving_clone(
                 substructure = combine_substructure(|c, s, sub| cs_clone_simple(c, s, sub, false));
             } else {
                 is_simple = false;
-                substructure = combine_substructure(cs_clone);
+                substructure = combine_substructure(|c, s, sub| {
+                    cs_clone(c, s, sub, item.kind.ident().unwrap())
+                });
             }
         }
         ItemKind::Union(..) => {
@@ -145,7 +147,7 @@ fn cs_clone_simple(
             &[sym::clone, sym::AssertParamIsCopy],
         );
     } else {
-        match substr.fields {
+        match substr {
             StaticStruct(vdata, ..) => {
                 process_variant(vdata);
             }
@@ -160,7 +162,12 @@ fn cs_clone_simple(
     BlockOrExpr::new_mixed(stmts, Some(cx.expr_deref(trait_span, cx.expr_self(trait_span))))
 }
 
-fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {
+fn cs_clone(
+    cx: &ExtCtxt<'_>,
+    trait_span: Span,
+    substr: Substructure<'_>,
+    type_ident: Ident,
+) -> BlockOrExpr {
     let subcall = |field: FieldInfo| {
         let args = thin_vec![field.self_expr];
         cx.expr_call_global(field.span, path_std!(cx, field.span, clone::Clone::clone), args)
@@ -169,14 +176,16 @@ fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> Blo
     let ctor_path;
     let all_fields;
     let vdata;
-    match substr.fields {
+    // We need to use `type_ident` instead of `Self` here,
+    // see https://github.com/rust-lang/rust/issues/163800
+    match substr {
         Struct(vdata_, af) => {
-            ctor_path = cx.path(trait_span, &[substr.type_ident]);
+            ctor_path = cx.path(trait_span, &[type_ident]);
             all_fields = af;
             vdata = vdata_;
         }
         EnumMatching(.., variant, af) => {
-            ctor_path = cx.path(trait_span, &[substr.type_ident, variant.ident]);
+            ctor_path = cx.path(trait_span, &[type_ident, variant.ident]);
             all_fields = af;
             vdata = &variant.data;
         }
