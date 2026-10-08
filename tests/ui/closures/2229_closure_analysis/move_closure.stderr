@@ -4,7 +4,7 @@ error: First Pass analysis includes:
 LL |     let c = #[rustc_capture_analysis] move || x;
    |                                       ^^^^^^^^^
    |
-note: Capturing x[] -> Immutable
+note: Capturing x[] -> ByCopy
   --> $DIR/move_closure.rs:182:47
    |
 LL |     let c = #[rustc_capture_analysis] move || x;

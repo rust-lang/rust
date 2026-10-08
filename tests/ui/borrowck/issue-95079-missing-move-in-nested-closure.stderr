@@ -41,17 +41,17 @@ LL |     bar: &'a X,
 LL | ) -> impl Iterator<Item = ()> + 'a {
 LL |     Some(()).iter().flat_map(move |()| {
    |                                      - inferred to be a `FnMut` closure
-LL |         Some(()).iter().map(|()| { bar; })
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^---^^^^
-   |         |                          |
-   |         |                          variable captured here
+LL |         Some(()).iter().map(|()| { let _ = *&bar; })
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^^^^
+   |         |                                    |
+   |         |                                    variable captured here
    |         returns a closure that contains a reference to a captured variable, which then escapes the closure body
    |
    = note: `FnMut` closures only have access to their captured variables while they are executing...
    = note: ...therefore, they cannot allow references to captured variables to escape
 help: consider adding 'move' keyword before the nested closure
    |
-LL |         Some(()).iter().map(move |()| { bar; })
+LL |         Some(()).iter().map(move |()| { let _ = *&bar; })
    |                             ++++
 
 error: aborting due to 3 previous errors

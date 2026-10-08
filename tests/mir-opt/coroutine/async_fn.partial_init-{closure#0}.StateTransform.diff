@@ -9,20 +9,18 @@
 -     let mut _0: u32;
 + fn partial_init::{closure#0}(_1: Pin<&mut {async fn body of partial_init()}>, _2: &mut Context<'_>) -> Poll<u32> {
 +     coroutine layout {
-+         field _s0: u32;
-+         field _s1: String;
-+         field _s2: {async block@$DIR/async_fn.rs:80:50: 80:55};
++         field _s0: String;
++         field _s1: {async block@$DIR/async_fn.rs:80:50: 80:55};
 +         variant_fields = {
 +             Unresumed(0): [],
 +             Returned (1): [],
 +             Panicked (2): [],
-+             Suspend0 (3): [_s0, _s1, _s2],
++             Suspend0 (3): [_s0, _s1],
 +         }
-+         storage_conflicts = BitMatrix(3x3) {(_s0, _s0), (_s0, _s1), (_s0, _s2), (_s1, _s0), (_s1, _s1), (_s1, _s2), (_s2, _s0), (_s2, _s1), (_s2, _s2)}
++         storage_conflicts = BitMatrix(2x2) {(_s0, _s0), (_s0, _s1), (_s1, _s0), (_s1, _s1)}
 +     }
-+     debug _task_context => _29;
-+     debug x => ((*_28).0: u32);
-+     coroutine debug x => _s0;
++     debug _task_context => _28;
++     debug x => ((*_27).0: u32);
 +     let mut _0: std::task::Poll<u32>;
       let _3: u32;
       let mut _4: !;
@@ -30,41 +28,39 @@
       let mut _7: !;
       let mut _8: {async block@$DIR/async_fn.rs:80:50: 80:55};
       let mut _9: {async block@$DIR/async_fn.rs:80:50: 80:55};
-      let mut _10: &u32;
-      let mut _12: ();
-      let _13: ();
-      let mut _14: std::task::Poll<u32>;
-      let mut _15: std::pin::Pin<&mut {async block@$DIR/async_fn.rs:80:50: 80:55}>;
+      let mut _11: ();
+      let _12: ();
+      let mut _13: std::task::Poll<u32>;
+      let mut _14: std::pin::Pin<&mut {async block@$DIR/async_fn.rs:80:50: 80:55}>;
+      let mut _15: &mut {async block@$DIR/async_fn.rs:80:50: 80:55};
       let mut _16: &mut {async block@$DIR/async_fn.rs:80:50: 80:55};
-      let mut _17: &mut {async block@$DIR/async_fn.rs:80:50: 80:55};
+      let mut _17: &mut std::task::Context<'_>;
       let mut _18: &mut std::task::Context<'_>;
-      let mut _19: &mut std::task::Context<'_>;
-      let mut _20: std::future::ResumeTy;
-      let mut _21: isize;
-      let mut _23: !;
-      let mut _24: std::future::ResumeTy;
-      let mut _25: ();
+      let mut _19: std::future::ResumeTy;
+      let mut _20: isize;
+      let mut _22: !;
+      let mut _23: std::future::ResumeTy;
+      let mut _24: ();
++     let mut _25: u32;
 +     let mut _26: u32;
-+     let mut _27: u32;
-+     let mut _28: &mut {async fn body of partial_init()};
-+     let mut _29: std::future::ResumeTy;
-+     let mut _30: std::ptr::NonNull<std::task::Context<'_>>;
++     let mut _27: &mut {async fn body of partial_init()};
++     let mut _28: std::future::ResumeTy;
++     let mut _29: std::ptr::NonNull<std::task::Context<'_>>;
       scope 1 {
--         debug x => _3;
-+         debug x => (((*_28) as variant#3).0: u32);
+          debug x => _3;
           scope 2 {
               debug _x => _5;
           }
           scope 3 {
-+             coroutine debug __awaitee => _s2;
++             coroutine debug __awaitee => _s1;
               let _5: (std::string::String, !);
-              let mut _11: {async block@$DIR/async_fn.rs:80:50: 80:55};
+              let mut _10: {async block@$DIR/async_fn.rs:80:50: 80:55};
               scope 4 {
--                 debug __awaitee => _11;
-+                 debug __awaitee => (((*_28) as variant#3).2: {async block@$DIR/async_fn.rs:80:50: 80:55});
-                  let _22: u32;
+-                 debug __awaitee => _10;
++                 debug __awaitee => (((*_27) as variant#3).1: {async block@$DIR/async_fn.rs:80:50: 80:55});
+                  let _21: u32;
                   scope 5 {
-                      debug result => _22;
+                      debug result => _21;
                   }
               }
           }
@@ -77,21 +73,17 @@
 -         StorageLive(_5);
 -         StorageLive(_6);
 -         _6 = String::new() -> [return: bb1, unwind: bb30];
-+         _30 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
-+         _29 = std::future::ResumeTy(move _30);
-+         _28 = copy (_1.0: &mut {async fn body of partial_init()});
-+         _27 = discriminant((*_28));
-+         switchInt(move _27) -> [0: bb31, 1: bb30, 2: bb29, 3: bb28, otherwise: bb7];
++         _29 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
++         _28 = std::future::ResumeTy(move _29);
++         _27 = copy (_1.0: &mut {async fn body of partial_init()});
++         _26 = discriminant((*_27));
++         switchInt(move _26) -> [0: bb31, 1: bb30, 2: bb29, 3: bb28, otherwise: bb7];
       }
   
       bb1: {
           StorageLive(_8);
           StorageLive(_9);
-          StorageLive(_10);
--         _10 = &_3;
-+         _10 = &(((*_28) as variant#3).0: u32);
-          _9 = {coroutine@$DIR/async_fn.rs:80:50: 80:55 (#0)} { x: move _10 };
-          StorageDead(_10);
+          _9 = {coroutine@$DIR/async_fn.rs:80:50: 80:55 (#0)} { x: copy _3 };
 -         _8 = <{async block@$DIR/async_fn.rs:80:50: 80:55} as IntoFuture>::into_future(move _9) -> [return: bb2, unwind: bb26];
 +         _8 = <{async block@$DIR/async_fn.rs:80:50: 80:55} as IntoFuture>::into_future(move _9) -> [return: bb2, unwind: bb20];
       }
@@ -99,53 +91,53 @@
       bb2: {
           StorageDead(_9);
           PlaceMention(_8);
--         StorageLive(_11);
--         _11 = move _8;
+-         StorageLive(_10);
+-         _10 = move _8;
 +         nop;
-+         (((*_28) as variant#3).2: {async block@$DIR/async_fn.rs:80:50: 80:55}) = move _8;
++         (((*_27) as variant#3).1: {async block@$DIR/async_fn.rs:80:50: 80:55}) = move _8;
           goto -> bb3;
       }
   
       bb3: {
+          StorageLive(_12);
           StorageLive(_13);
           StorageLive(_14);
           StorageLive(_15);
           StorageLive(_16);
-          StorageLive(_17);
--         _17 = &mut _11;
-+         _17 = &mut (((*_28) as variant#3).2: {async block@$DIR/async_fn.rs:80:50: 80:55});
-          _16 = &mut (*_17);
--         _15 = Pin::<&mut {async block@$DIR/async_fn.rs:80:50: 80:55}>::new_unchecked(move _16) -> [return: bb4, unwind: bb22];
-+         _15 = Pin::<&mut {async block@$DIR/async_fn.rs:80:50: 80:55}>::new_unchecked(move _16) -> [return: bb4, unwind: bb16];
+-         _16 = &mut _10;
++         _16 = &mut (((*_27) as variant#3).1: {async block@$DIR/async_fn.rs:80:50: 80:55});
+          _15 = &mut (*_16);
+-         _14 = Pin::<&mut {async block@$DIR/async_fn.rs:80:50: 80:55}>::new_unchecked(move _15) -> [return: bb4, unwind: bb22];
++         _14 = Pin::<&mut {async block@$DIR/async_fn.rs:80:50: 80:55}>::new_unchecked(move _15) -> [return: bb4, unwind: bb16];
       }
   
       bb4: {
-          StorageDead(_16);
+          StorageDead(_15);
+          StorageLive(_17);
           StorageLive(_18);
           StorageLive(_19);
-          StorageLive(_20);
--         _20 = copy _2;
--         _19 = std::future::get_context::<'_, '_>(move _20) -> [return: bb5, unwind: bb20];
-+         _20 = copy _29;
-+         _19 = copy (_20.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
+-         _19 = copy _2;
+-         _18 = std::future::get_context::<'_, '_>(move _19) -> [return: bb5, unwind: bb20];
++         _19 = copy _28;
++         _18 = copy (_19.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb5;
       }
   
       bb5: {
-          _18 = &mut (*_19);
-          StorageDead(_20);
--         _14 = <{async block@$DIR/async_fn.rs:80:50: 80:55} as Future>::poll(move _15, move _18) -> [return: bb6, unwind: bb21];
-+         _14 = <{async block@$DIR/async_fn.rs:80:50: 80:55} as Future>::poll(move _15, move _18) -> [return: bb6, unwind: bb15];
+          _17 = &mut (*_18);
+          StorageDead(_19);
+-         _13 = <{async block@$DIR/async_fn.rs:80:50: 80:55} as Future>::poll(move _14, move _17) -> [return: bb6, unwind: bb21];
++         _13 = <{async block@$DIR/async_fn.rs:80:50: 80:55} as Future>::poll(move _14, move _17) -> [return: bb6, unwind: bb15];
       }
   
       bb6: {
-          StorageDead(_19);
           StorageDead(_18);
           StorageDead(_17);
-          StorageDead(_15);
-          PlaceMention(_14);
-          _21 = discriminant(_14);
-          switchInt(move _21) -> [0: bb9, 1: bb8, otherwise: bb7];
+          StorageDead(_16);
+          StorageDead(_14);
+          PlaceMention(_13);
+          _20 = discriminant(_13);
+          switchInt(move _20) -> [0: bb9, 1: bb8, otherwise: bb7];
       }
   
       bb7: {
@@ -153,49 +145,50 @@
       }
   
       bb8: {
-          _13 = const ();
-          StorageDead(_14);
+          _12 = const ();
           StorageDead(_13);
+          StorageDead(_12);
+          StorageLive(_23);
           StorageLive(_24);
-          StorageLive(_25);
-          _25 = ();
--         _24 = yield(move _25) -> [resume: bb10, drop: bb15];
+          _24 = ();
+-         _23 = yield(move _24) -> [resume: bb10, drop: bb15];
 +         _0 = Poll::<u32>::Pending;
++         StorageDead(_3);
 +         StorageDead(_4);
 +         StorageDead(_5);
 +         StorageDead(_8);
++         StorageDead(_23);
 +         StorageDead(_24);
-+         StorageDead(_25);
-+         discriminant((*_28)) = 3;
++         discriminant((*_27)) = 3;
 +         return;
       }
   
       bb9: {
-          StorageLive(_22);
-          _22 = copy ((_14 as Ready).0: u32);
--         _0 = copy _22;
-+         _26 = copy _22;
-          StorageDead(_22);
-          StorageDead(_14);
+          StorageLive(_21);
+          _21 = copy ((_13 as Ready).0: u32);
+-         _0 = copy _21;
++         _25 = copy _21;
+          StorageDead(_21);
           StorageDead(_13);
--         drop(_11) -> [return: bb11, unwind: bb24];
-+         drop((((*_28) as variant#3).2: {async block@$DIR/async_fn.rs:80:50: 80:55})) -> [return: bb11, unwind: bb18];
+          StorageDead(_12);
+-         drop(_10) -> [return: bb11, unwind: bb24];
++         drop((((*_27) as variant#3).1: {async block@$DIR/async_fn.rs:80:50: 80:55})) -> [return: bb11, unwind: bb18];
       }
   
       bb10: {
-          StorageDead(_25);
--         _2 = move _24;
-+         _29 = move _24;
           StorageDead(_24);
-          _12 = const ();
+-         _2 = move _23;
++         _28 = move _23;
+          StorageDead(_23);
+          _11 = const ();
           goto -> bb3;
       }
   
       bb11: {
--         StorageDead(_11);
+-         StorageDead(_10);
 -         drop(_6) -> [return: bb12, unwind: bb25];
 +         nop;
-+         drop((((*_28) as variant#3).1: std::string::String)) -> [return: bb12, unwind: bb19];
++         drop((((*_27) as variant#3).0: std::string::String)) -> [return: bb12, unwind: bb19];
       }
   
       bb12: {
@@ -208,33 +201,32 @@
           StorageDead(_8);
           StorageDead(_5);
           StorageDead(_4);
--         StorageDead(_3);
+          StorageDead(_3);
 -         drop(_1) -> [return: bb14, unwind: bb32];
-+         nop;
 +         goto -> bb14;
       }
   
       bb14: {
-+         _0 = Poll::<u32>::Ready(move _26);
-+         discriminant((*_28)) = 1;
++         _0 = Poll::<u32>::Ready(move _25);
++         discriminant((*_27)) = 1;
           return;
       }
   
 -     bb15: {
--         StorageDead(_25);
 -         StorageDead(_24);
--         drop(_11) -> [return: bb16, unwind: bb33];
+-         StorageDead(_23);
+-         drop(_10) -> [return: bb16, unwind: bb33];
 +     bb15 (cleanup): {
-+         StorageDead(_19);
 +         StorageDead(_18);
++         StorageDead(_17);
 +         goto -> bb17;
       }
   
 -     bb16: {
--         StorageDead(_11);
+-         StorageDead(_10);
 -         drop(_6) -> [return: bb17, unwind: bb34];
 +     bb16 (cleanup): {
-+         StorageDead(_16);
++         StorageDead(_15);
 +         goto -> bb17;
       }
   
@@ -242,11 +234,11 @@
 -         StorageDead(_6);
 -         goto -> bb18;
 +     bb17 (cleanup): {
-+         StorageDead(_17);
-+         StorageDead(_15);
++         StorageDead(_16);
 +         StorageDead(_14);
 +         StorageDead(_13);
-+         drop((((*_28) as variant#3).2: {async block@$DIR/async_fn.rs:80:50: 80:55})) -> [return: bb18, unwind terminate(cleanup)];
++         StorageDead(_12);
++         drop((((*_27) as variant#3).1: {async block@$DIR/async_fn.rs:80:50: 80:55})) -> [return: bb18, unwind terminate(cleanup)];
       }
   
 -     bb18: {
@@ -257,7 +249,7 @@
 -         drop(_1) -> [return: bb19, unwind: bb32];
 +     bb18 (cleanup): {
 +         nop;
-+         drop((((*_28) as variant#3).1: std::string::String)) -> [return: bb19, unwind terminate(cleanup)];
++         drop((((*_27) as variant#3).0: std::string::String)) -> [return: bb19, unwind terminate(cleanup)];
       }
   
 -     bb19: {
@@ -268,36 +260,36 @@
       }
   
       bb20 (cleanup): {
--         StorageDead(_20);
+-         StorageDead(_19);
           goto -> bb21;
       }
   
       bb21 (cleanup): {
--         StorageDead(_19);
 -         StorageDead(_18);
+-         StorageDead(_17);
 -         goto -> bb23;
 +         StorageDead(_9);
-+         drop((((*_28) as variant#3).1: std::string::String)) -> [return: bb22, unwind terminate(cleanup)];
++         drop((((*_27) as variant#3).0: std::string::String)) -> [return: bb22, unwind terminate(cleanup)];
       }
   
       bb22 (cleanup): {
--         StorageDead(_16);
+-         StorageDead(_15);
 +         nop;
           goto -> bb23;
       }
   
       bb23 (cleanup): {
--         StorageDead(_17);
--         StorageDead(_15);
+-         StorageDead(_16);
 -         StorageDead(_14);
 -         StorageDead(_13);
--         drop(_11) -> [return: bb24, unwind terminate(cleanup)];
+-         StorageDead(_12);
+-         drop(_10) -> [return: bb24, unwind terminate(cleanup)];
 +         StorageDead(_8);
 +         goto -> bb25;
       }
   
       bb24 (cleanup): {
--         StorageDead(_11);
+-         StorageDead(_10);
 -         drop(_6) -> [return: bb25, unwind terminate(cleanup)];
 +         nop;
 +         goto -> bb25;
@@ -308,7 +300,7 @@
 -         goto -> bb29;
 +         StorageDead(_5);
 +         StorageDead(_4);
-+         nop;
++         StorageDead(_3);
 +         goto -> bb26;
       }
   
@@ -319,7 +311,7 @@
       bb27 (cleanup): {
 -         StorageDead(_9);
 -         drop(_6) -> [return: bb28, unwind terminate(cleanup)];
-+         discriminant((*_28)) = 2;
++         discriminant((*_27)) = 2;
 +         resume;
       }
   
@@ -327,12 +319,13 @@
 -         StorageDead(_6);
 -         goto -> bb29;
 +     bb28: {
++         StorageLive(_3);
 +         StorageLive(_4);
 +         StorageLive(_5);
 +         StorageLive(_8);
++         StorageLive(_23);
 +         StorageLive(_24);
-+         StorageLive(_25);
-+         _24 = move _29;
++         _23 = move _28;
 +         goto -> bb10;
       }
   
@@ -362,7 +355,7 @@
 -     }
 - 
 -     bb33 (cleanup): {
--         StorageDead(_11);
+-         StorageDead(_10);
 -         drop(_6) -> [return: bb34, unwind terminate(cleanup)];
 -     }
 - 
@@ -378,12 +371,12 @@
 -         StorageDead(_3);
 -         drop(_1) -> [return: bb32, unwind terminate(cleanup)];
 +     bb31: {
-+         nop;
-+         (((*_28) as variant#3).0: u32) = copy ((*_28).0: u32);
++         StorageLive(_3);
++         _3 = copy ((*_27).0: u32);
 +         StorageLive(_4);
 +         StorageLive(_5);
 +         nop;
-+         (((*_28) as variant#3).1: std::string::String) = String::new() -> [return: bb1, unwind: bb24];
++         (((*_27) as variant#3).0: std::string::String) = String::new() -> [return: bb1, unwind: bb24];
       }
   }
   
