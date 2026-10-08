@@ -1,4 +1,4 @@
-use rustc_ast::{self as ast, EnumDef, Safety, ExprKind, TyKind, token};
+use rustc_ast::{self as ast, EnumDef, Safety, TyKind};
 use rustc_expand::base::ExtCtxt;
 use rustc_session::config::FmtDebug;
 use rustc_span::{Ident, Span, Symbol, sym};
@@ -71,7 +71,9 @@ fn show_substructure(
     let (ident, vdata, fields) = match substr.fields {
         Struct(vdata, fields) => (type_ident, vdata, fields),
         EnumMatching(v, fields) => (v.ident, &v.data, fields),
-        AllFieldlessEnum(enum_def) => return show_fieldless_enum(cx, &substr, span, enum_def, type_ident),
+        AllFieldlessEnum(enum_def) => {
+            return show_fieldless_enum(cx, &substr, span, enum_def, type_ident);
+        }
         _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Debug)`"),
     };
 
@@ -234,7 +236,8 @@ fn show_fieldless_enum(
     type_ident: Ident,
 ) -> BlockOrExpr {
     let fmt = formatter_ident(cx, span);
-    if let Some((stmts, expr)) = show_fieldless_enum_concat_str(cx, span, def, substr, fmt.clone()) {
+    if let Some((stmts, expr)) = show_fieldless_enum_concat_str(cx, span, def, substr, fmt.clone())
+    {
         return BlockOrExpr::new_mixed(stmts, Some(expr));
     }
     let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
@@ -293,14 +296,14 @@ fn show_fieldless_enum_concat_str(
         .map(|v| v.disr_expr.is_none().then_some(v.ident.name.as_str()))
         .collect::<Option<ThinVec<_>>>()?;
 
-    let total_bytes: usize = variant_names.iter().map(|n| n.len()).sum();
+    let total_bytes: usize = variant_names.iter().map(|n| n.len() + 1).sum();
     let mut concatenated_names = String::with_capacity(total_bytes);
-    let mut offset_indices = Vec::with_capacity(variant_names.len() + 1);
-    offset_indices.push(0);
+    let mut offsets = Vec::with_capacity(variant_names.len() + 1);
 
     for name in variant_names.iter() {
+        offsets.push(concatenated_names.len());
         concatenated_names.push_str(name);
-        offset_indices.push(concatenated_names.len());
+        concatenated_names.push_str(" ");
     }
 
     // Create the constant concatenated string
@@ -309,39 +312,18 @@ fn show_fieldless_enum_concat_str(
         span,
         TyKind::Ref(
             None,
-            cx.ty(
-                span,
-                TyKind::Path(None, ast::Path::from_ident(Ident::new(sym::str, span))),
-            ),
+            cx.ty(span, TyKind::Path(None, ast::Path::from_ident(Ident::new(sym::str, span)))),
             ast::Mutability::Not,
         ),
     );
     let names_str_body = cx.expr_str(span, Symbol::intern(&concatenated_names));
-    let names_static_item =
-        cx.item_static(span, ThinVec::new(), names_ident, str_ty, ast::Mutability::Not, names_str_body);
-
-    // Create the constant offset array
-    let offset_ident = Ident::from_str_and_span("__OFFSET", span);
-    let offset_index_exprs =
-        offset_indices.iter().map(|s| cx.expr_usize(span, *s)).collect::<ThinVec<_>>();
-    let starts_array_body = cx.expr_array(span, offset_index_exprs);
-    let usize_ty =
-        cx.ty(span, TyKind::Path(None, ast::Path::from_ident(Ident::new(sym::usize, span))));
-    let offset_array_len_expr = cx.anon_const(
-        span,
-        ExprKind::Lit(token::Lit::new(
-            token::LitKind::Integer,
-            Symbol::intern(&(variants_count + 1).to_string()),
-            None,
-        )),
-    );
-    let offset_static_item = cx.item_static(
+    let names_static_item = cx.item_static(
         span,
         ThinVec::new(),
-        offset_ident,
-        cx.ty(span, TyKind::Array(usize_ty, offset_array_len_expr)),
+        names_ident,
+        str_ty,
         ast::Mutability::Not,
-        starts_array_body,
+        names_str_body,
     );
 
     let variant_index_ident = Ident::from_str_and_span("__d", span);
@@ -362,14 +344,14 @@ fn show_fieldless_enum_concat_str(
                 }
                 ast::VariantData::Unit(_) => cx.pat_path(span, variant_path),
             };
-            cx.arm(span, pat, cx.expr_usize(span, i))
+            let name_offset = offsets[i];
+            cx.arm(span, pat, cx.expr_usize(span, name_offset))
         })
         .collect::<ThinVec<_>>();
 
     let variant_index_expr = cx.expr_match(span, cx.expr_self(span), arms);
 
-    let discriminant_let_stmt =
-        cx.stmt_let(span, false, variant_index_ident, variant_index_expr);
+    let discriminant_let_stmt = cx.stmt_let(span, false, variant_index_ident, variant_index_expr);
 
     // __d expression
     let discriminant_expr = cx.expr_ident(span, variant_index_ident);
@@ -377,23 +359,10 @@ fn show_fieldless_enum_concat_str(
     // __NAMES expression
     let names_expr = cx.expr_ident(span, names_ident);
 
-    // &__OFFSET expression
-    let offset_ref_expr = cx.expr_addr_of(span, cx.expr_ident(span, offset_ident));
-
     // ::core::fmt::Formatter::debug_c_like_enum_write_str(f, __NAMES, &__OFFSET, __d)
     let fn_path = cx.std_path(&[sym::fmt, sym::Formatter, sym::debug_c_like_enum_write_str]);
-    let call_expr = cx.expr_call_global(
-        span,
-        fn_path,
-        thin_vec![fmt, names_expr, offset_ref_expr, discriminant_expr],
-    );
+    let call_expr =
+        cx.expr_call_global(span, fn_path, thin_vec![fmt, names_expr, discriminant_expr]);
 
-    Some((
-        thin_vec![
-            cx.stmt_item(span, names_static_item),
-            cx.stmt_item(span, offset_static_item),
-            discriminant_let_stmt,
-        ],
-        call_expr,
-    ))
+    Some((thin_vec![cx.stmt_item(span, names_static_item), discriminant_let_stmt,], call_expr))
 }

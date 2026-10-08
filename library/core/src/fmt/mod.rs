@@ -2584,12 +2584,9 @@ impl<'a> Formatter<'a> {
     pub fn debug_c_like_enum_write_str<'b>(
         &'b mut self,
         names: &str,
-        offset: &[usize],
-        discr: usize,
+        start_index: usize,
     ) -> Result {
-        let start = offset[discr];
-        let end = offset[discr + 1];
-        self.write_str(&names[start..end])
+        self.write_str(&names[start_index..].split(' ').next().unwrap())
     }
 
     /// Creates a `DebugTuple` builder designed to assist with creation of
