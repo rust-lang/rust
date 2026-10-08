@@ -615,6 +615,7 @@ declare_lift_into! {
     InherentAssocConstId,
     InherentAssocTyId,
     InternedConstKind,
+    InternedPredicateKind,
     InternedRegionKind,
     OpaqueTyId,
     ParamEnv,

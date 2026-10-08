@@ -3,6 +3,7 @@ use std::fmt;
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::StableHash_NoContext;
+use rustc_type_ir_macros::Lift_Generic;
 
 use crate::inherent::*;
 use crate::intern::Interned as _;
@@ -18,7 +19,12 @@ use crate::{
 /// representation also stores cached type flags and binder information.
 #[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
-#[cfg_attr(feature = "nightly", rustc_pass_by_value)]
+#[cfg_attr(
+    feature = "nightly",
+    cfg_attr(bootstrap, rustc_pass_by_value),
+    cfg_attr(not(bootstrap), lint::pass_by_value)
+)]
+#[derive(Lift_Generic)]
 pub struct Predicate<I: Interner>(pub I::InternedPredicateKind);
 
 impl<I: Interner> Predicate<I> {
@@ -150,7 +156,12 @@ impl<I: Interner> IntoKind for Predicate<I> {
 /// `PredicateKind::Clause`.
 #[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
-#[cfg_attr(feature = "nightly", rustc_pass_by_value)]
+#[cfg_attr(
+    feature = "nightly",
+    cfg_attr(bootstrap, rustc_pass_by_value),
+    cfg_attr(not(bootstrap), lint::pass_by_value)
+)]
+#[derive(Lift_Generic)]
 pub struct Clause<I: Interner>(Predicate<I>);
 
 impl<I: Interner> Clause<I> {
