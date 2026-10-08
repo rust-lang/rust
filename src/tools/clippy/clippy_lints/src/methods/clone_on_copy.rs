@@ -36,7 +36,7 @@ fn check_parent_is_suffix_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> ParentI
                 if matches!(
                     hir_callee.kind,
                     ExprKind::Path(qpath)
-                    if cx.tcx.qpath_is_lang_item(qpath, LangItem::TryTraitBranch)
+                    if cx.tcx.qpath_is_lang_item(qpath, LangItem::TryOperatorBranch)
                 ) {
                     ParentIsSuffixExpr::Yes
                 } else {

@@ -157,7 +157,7 @@
           _9 = copy ((_4 as Break).0: std::result::Result<!, ()>);
           StorageLive(_11);
           _11 = copy _9;
-          _0 = <Result<Big, ()> as FromResidual<Result<!, ()>>>::from_residual(move _11) -> [return: bb6, unwind: bb90];
+          _0 = <Result<Big, ()> as TryFromBreak<Result<!, ()>>>::from_break(move _11) -> [return: bb6, unwind: bb90];
       }
   
       bb6: {
@@ -207,7 +207,7 @@
           _19 = copy ((_14 as Break).0: std::result::Result<!, ()>);
           StorageLive(_21);
           _21 = copy _19;
-          _0 = <Result<Big, ()> as FromResidual<Result<!, ()>>>::from_residual(move _21) -> [return: bb12, unwind: bb86];
+          _0 = <Result<Big, ()> as TryFromBreak<Result<!, ()>>>::from_break(move _21) -> [return: bb12, unwind: bb86];
       }
   
       bb12: {
@@ -256,7 +256,7 @@
           _29 = copy ((_24 as Break).0: std::result::Result<!, ()>);
           StorageLive(_31);
           _31 = copy _29;
-          _0 = <Result<Big, ()> as FromResidual<Result<!, ()>>>::from_residual(move _31) -> [return: bb18, unwind: bb81];
+          _0 = <Result<Big, ()> as TryFromBreak<Result<!, ()>>>::from_break(move _31) -> [return: bb18, unwind: bb81];
       }
   
       bb18: {
@@ -305,7 +305,7 @@
           _39 = copy ((_34 as Break).0: std::result::Result<!, ()>);
           StorageLive(_41);
           _41 = copy _39;
-          _0 = <Result<Big, ()> as FromResidual<Result<!, ()>>>::from_residual(move _41) -> [return: bb24, unwind: bb75];
+          _0 = <Result<Big, ()> as TryFromBreak<Result<!, ()>>>::from_break(move _41) -> [return: bb24, unwind: bb75];
       }
   
       bb24: {
@@ -353,7 +353,7 @@
           _49 = copy ((_44 as Break).0: std::result::Result<!, ()>);
           StorageLive(_51);
           _51 = copy _49;
-          _0 = <Result<Big, ()> as FromResidual<Result<!, ()>>>::from_residual(move _51) -> [return: bb30, unwind: bb68];
+          _0 = <Result<Big, ()> as TryFromBreak<Result<!, ()>>>::from_break(move _51) -> [return: bb30, unwind: bb68];
       }
   
       bb30: {
@@ -683,4 +683,3 @@
           resume;
       }
   }
-  

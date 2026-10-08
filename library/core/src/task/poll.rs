@@ -1,6 +1,7 @@
 #![stable(feature = "futures_api", since = "1.36.0")]
 
 use crate::ops::{self, ControlFlow};
+use crate::result::TryResult;
 
 /// Indicates whether a value is available or if the current task has been
 /// scheduled to receive a wakeup instead.
@@ -231,8 +232,9 @@ const impl<T> From<T> for Poll<T> {
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 impl<T, E> ops::Try for Poll<Result<T, E>> {
+    type Kind = TryResult;
     type Output = Poll<T>;
-    type Residual = Result<!, E>;
+    type Break = E;
 
     #[inline]
     fn from_output(c: Self::Output) -> Self {
@@ -240,29 +242,28 @@ impl<T, E> ops::Try for Poll<Result<T, E>> {
     }
 
     #[inline]
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+    fn branch(self) -> ControlFlow<Self::Break, Self::Output> {
         match self {
             Poll::Ready(Ok(x)) => ControlFlow::Continue(Poll::Ready(x)),
-            Poll::Ready(Err(e)) => ControlFlow::Break(Err(e)),
+            Poll::Ready(Err(e)) => ControlFlow::Break(e),
             Poll::Pending => ControlFlow::Continue(Poll::Pending),
         }
     }
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-impl<T, E, F: From<E>> ops::FromResidual<Result<!, E>> for Poll<Result<T, F>> {
+impl<T, E, F: From<E>> ops::TryFromBreak<E, TryResult> for Poll<Result<T, F>> {
     #[inline]
-    fn from_residual(x: Result<!, E>) -> Self {
-        match x {
-            Err(e) => Poll::Ready(Err(From::from(e))),
-        }
+    fn from_break(e: E) -> Self {
+        Poll::Ready(Err(From::from(e)))
     }
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 impl<T, E> ops::Try for Poll<Option<Result<T, E>>> {
+    type Kind = TryResult;
     type Output = Poll<Option<T>>;
-    type Residual = Result<!, E>;
+    type Break = E;
 
     #[inline]
     fn from_output(c: Self::Output) -> Self {
@@ -270,10 +271,10 @@ impl<T, E> ops::Try for Poll<Option<Result<T, E>>> {
     }
 
     #[inline]
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+    fn branch(self) -> ControlFlow<Self::Break, Self::Output> {
         match self {
             Poll::Ready(Some(Ok(x))) => ControlFlow::Continue(Poll::Ready(Some(x))),
-            Poll::Ready(Some(Err(e))) => ControlFlow::Break(Err(e)),
+            Poll::Ready(Some(Err(e))) => ControlFlow::Break(e),
             Poll::Ready(None) => ControlFlow::Continue(Poll::Ready(None)),
             Poll::Pending => ControlFlow::Continue(Poll::Pending),
         }
@@ -281,11 +282,9 @@ impl<T, E> ops::Try for Poll<Option<Result<T, E>>> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-impl<T, E, F: From<E>> ops::FromResidual<Result<!, E>> for Poll<Option<Result<T, F>>> {
+impl<T, E, F: From<E>> ops::TryFromBreak<E, TryResult> for Poll<Option<Result<T, F>>> {
     #[inline]
-    fn from_residual(x: Result<!, E>) -> Self {
-        match x {
-            Err(e) => Poll::Ready(Some(Err(From::from(e)))),
-        }
+    fn from_break(e: E) -> Self {
+        Poll::Ready(Some(Err(From::from(e))))
     }
 }

@@ -19,7 +19,7 @@ use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::{MaybeStorageLive, always_storage_live_locals};
-use rustc_span::{Span, Symbol, span_bug, sym};
+use rustc_span::{DesugaringKind, Span, Symbol, span_bug, sym};
 use rustc_trait_selection::traits::{
     Obligation, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
@@ -500,6 +500,10 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                         feature_enabled,
                         safe_to_expose_on_stable: callee_safe_to_expose_on_stable,
                         is_function_call: self.tcx.def_kind(def_id) != DefKind::Trait,
+                        is_try: (self.tcx.is_lang_item(def_id, LangItem::IntoTryHeterogeneous)
+                            || self.tcx.is_lang_item(def_id, LangItem::IntoTryHomogeneous)
+                            || self.tcx.is_lang_item(def_id, LangItem::TryOperatorBranch))
+                            && self.span.is_desugaring(DesugaringKind::QuestionMark),
                     });
                 }
             }

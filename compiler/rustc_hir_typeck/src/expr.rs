@@ -579,7 +579,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // FIXME it's a try block, not a question mark
                     Some(ObligationCauseCode::QuestionMark)
                 }
-                LangItem::TryTraitBranch | LangItem::TryTraitFromResidual
+                LangItem::IntoTryHeterogeneous
+                    if expr.span.is_desugaring(DesugaringKind::QuestionMark) =>
+                {
+                    Some(ObligationCauseCode::QuestionMarkIntoTry)
+                }
+                LangItem::TryOperatorBranch
                     if expr.span.is_desugaring(DesugaringKind::QuestionMark) =>
                 {
                     Some(ObligationCauseCode::QuestionMark)

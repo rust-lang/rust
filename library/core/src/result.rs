@@ -2156,11 +2156,19 @@ impl<T, E, V: FromIterator<T>> FromIterator<Result<T, E>> for Result<V, E> {
     }
 }
 
+/// The Try Kind for testing whether an error is present.
+/// The canonical type with this kind is `Result`.
+#[expect(missing_debug_implementations)]
+#[rustc_diagnostic_item = "TryResult"]
+#[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+pub struct TryResult(());
+
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 const impl<T, E> ops::Try for Result<T, E> {
+    type Kind = TryResult;
     type Output = T;
-    type Residual = Result<!, E>;
+    type Break = E;
 
     #[inline]
     fn from_output(output: Self::Output) -> Self {
@@ -2168,37 +2176,26 @@ const impl<T, E> ops::Try for Result<T, E> {
     }
 
     #[inline]
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+    fn branch(self) -> ControlFlow<Self::Break, Self::Output> {
         match self {
             Ok(v) => ControlFlow::Continue(v),
-            Err(e) => ControlFlow::Break(Err(e)),
+            Err(e) => ControlFlow::Break(e),
         }
     }
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-const impl<T, E, F: [const] From<E>> ops::FromResidual<Result<!, E>> for Result<T, F> {
+const impl<T, E, F: [const] From<E>> ops::TryFromBreak<E, TryResult> for Result<T, F> {
     #[inline]
     #[track_caller]
-    fn from_residual(residual: Result<!, E>) -> Self {
-        match residual {
-            Err(e) => Err(From::from(e)),
-        }
-    }
-}
-#[diagnostic::do_not_recommend]
-#[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
-const impl<T, E, F: [const] From<E>> ops::FromResidual<ops::Yeet<E>> for Result<T, F> {
-    #[inline]
-    fn from_residual(ops::Yeet(e): ops::Yeet<E>) -> Self {
+    fn from_break(e: E) -> Self {
         Err(From::from(e))
     }
 }
 
-#[unstable(feature = "try_trait_v2_residual", issue = "91285")]
+#[unstable(feature = "try_trait_v3", issue = "none")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-const impl<T, E> ops::Residual<T> for Result<!, E> {
-    type TryType = Result<T, E>;
+const impl<T, E, U> ops::TryAs<U> for Result<T, E> {
+    type Try = Result<U, E>;
 }

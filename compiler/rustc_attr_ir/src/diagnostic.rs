@@ -184,12 +184,12 @@ impl FormatString {
 ///     on(all(from_desugaring = "QuestionMark"),
 ///         message = "the `?` operator can only be used in {ItemContext} \
 ///                     that returns `Result` or `Option` \
-///                     (or another type that implements `{FromResidual}`)",
+///                     (or another type that implements `{TryFromBreak}`)",
 ///         label = "cannot use the `?` operator in {ItemContext} that returns `{Self}`",
 ///         parent_label = "this function should return `Result` or `Option` to accept `?`"
 ///     ),
 /// )]
-/// pub trait FromResidual<R = <Self as Try>::Residual> {
+/// pub trait TryFromBreak<R = <Self as Try>::Break> {
 ///    ...
 /// }
 ///
@@ -203,8 +203,8 @@ impl FormatString {
 ///
 /// ```rust,ignore (just an example)
 /// FormatArgs {
-///     this: "FromResidual",
-///     this_resolved: "FromResidual<Option<!>>",
+///     this: "TryFromBreak",
+///     this_resolved: "TryFromBreak<Option<!>>",
 ///     item_context: "an async function",
 ///     generic_args: [("Self", "u32"), ("R", "Option<!>")],
 /// }
@@ -419,12 +419,12 @@ pub enum LitOrArg {
 ///     on(all(from_desugaring = "QuestionMark"),
 ///         message = "the `?` operator can only be used in {ItemContext} \
 ///                     that returns `Result` or `Option` \
-///                     (or another type that implements `{FromResidual}`)",
+///                     (or another type that implements `{TryFromBreak}`)",
 ///         label = "cannot use the `?` operator in {ItemContext} that returns `{Self}`",
 ///         parent_label = "this function should return `Result` or `Option` to accept `?`"
 ///     ),
 /// )]
-/// pub trait FromResidual<R = <Self as Try>::Residual> {
+/// pub trait TryFromBreak<R = <Self as Try>::Break> {
 ///    ...
 /// }
 ///

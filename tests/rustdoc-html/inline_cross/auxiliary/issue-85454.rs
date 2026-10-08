@@ -1,14 +1,14 @@
-//@ has issue_85454/trait.FromResidual.html
-//@ has - '//pre[@class="rust item-decl"]' 'pub trait FromResidual<R = <Self as Try>::Residual> { fn from_residual(residual: R) -> Self; }'
-pub trait FromResidual<R = <Self as Try>::Residual> {
-    fn from_residual(residual: R) -> Self;
+//@ has issue_85454/trait.TryFromBreak.html
+//@ has - '//pre[@class="rust item-decl"]' 'pub trait TryFromBreak<R = <Self as Try>::Break> { fn from_break(residual: R) -> Self; }'
+pub trait TryFromBreak<R = <Self as Try>::Break> {
+    fn from_break(residual: R) -> Self;
 }
 
-pub trait Try: FromResidual {
+pub trait Try: TryFromBreak {
     type Output;
-    type Residual;
+    type Break;
     fn from_output(output: Self::Output) -> Self;
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
+    fn branch(self) -> ControlFlow<Self::Break, Self::Output>;
 }
 
 pub enum ControlFlow<B, C = ()> {

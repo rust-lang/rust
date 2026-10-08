@@ -179,6 +179,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         if let Err(guar) = self.fn_arg_obligation(&obligation) {
                             return guar;
                         }
+
+                        // todo what if return type is not Try?
+                        if matches!(
+                            root_obligation.cause.code().peel_derives(),
+                            ObligationCauseCode::QuestionMarkIntoTry,
+                        ) && self.tcx.is_lang_item(main_trait_predicate.def_id(), LangItem::Try)
+                        {
+                            // Silence Try error on `TryOperatorBreak` since it is already enforced
+                            // on `Try::branch`.
+                            return self.dcx().span_delayed_bug(span, "redundant Try error");
+                        };
+
                         let (post_message, pre_message, type_def) = self
                             .get_parent_trait_ref(obligation.cause.code())
                             .map(|(t, s)| {
@@ -210,12 +222,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         });
                         let is_try_conversion =
                             self.is_try_conversion(span, main_trait_predicate.def_id());
-                        let is_question_mark = matches!(
+                        let is_question_mark_into_try = matches!(
                             root_obligation.cause.code().peel_derives(),
-                            ObligationCauseCode::QuestionMark,
+                            ObligationCauseCode::QuestionMarkIntoTry,
                         ) && !(self
                             .tcx
-                            .is_diagnostic_item(sym::FromResidual, main_trait_predicate.def_id())
+                            .is_diagnostic_item(sym::TryFromBreak, main_trait_predicate.def_id())
                             || self.tcx.is_lang_item(main_trait_predicate.def_id(), LangItem::Try));
                         let is_unsize =
                             self.tcx.is_lang_item(leaf_trait_predicate.def_id(), LangItem::Unsize);
@@ -232,7 +244,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 format!("`?` couldn't convert the error to `{ty}`"),
                                 vec![question_mark_message.to_owned()],
                             )
-                        } else if is_question_mark {
+                        } else if is_question_mark_into_try {
                             let main_trait_predicate =
                                 self.tcx.short_string(main_trait_predicate, &mut long_ty_file);
                             // Similar to the case above, but in this case the conversion is for a
@@ -310,7 +322,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                         let mut suggested = false;
                         let mut noted_missing_impl = false;
-                        if is_try_conversion || is_question_mark {
+                        if is_try_conversion || is_question_mark_into_try {
                             (suggested, noted_missing_impl) = self.try_conversion_context(
                                 &obligation,
                                 main_trait_predicate,
@@ -334,7 +346,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     ret_span,
                                     format!("expected `{ty}` because of this"),
                                 );
-                            } else if is_question_mark {
+                            } else if is_question_mark_into_try {
                                 let main_trait_predicate =
                                     self.tcx.short_string(main_trait_predicate, err.long_ty_path());
                                 err.span_label(
@@ -398,8 +410,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 // When the self type is a type param We don't need to "the trait
                                 // `std::marker::Sized` is not implemented for `T`" as we will point
                                 // at the type param with a label to suggest constraining it.
-                                && !self.tcx.is_diagnostic_item(sym::FromResidual, leaf_trait_predicate.def_id())
-                            // Don't say "the trait `FromResidual<Option<!>>` is
+                                && !self.tcx.is_diagnostic_item(sym::TryFromBreak, leaf_trait_predicate.def_id())
+                            // Don't say "the trait `TryFromBreak<Option<!>>` is
                             // not implemented for `Result<T, E>`".
                             {
                                 // We do this just so that the JSON output's `help` position is the
@@ -1198,7 +1210,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let Some(typeck) = &self.typeck_results else {
             return (false, false);
         };
-        let ObligationCauseCode::QuestionMark = obligation.cause.code().peel_derives() else {
+        let ObligationCauseCode::QuestionMarkIntoTry = obligation.cause.code().peel_derives()
+        else {
             return (false, false);
         };
         let self_ty = trait_pred.skip_binder().self_ty();
@@ -2418,7 +2431,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 candidates = specific_candidates;
             }
             if let &[(cand, def_id)] = &candidates[..] {
-                if self.tcx.is_diagnostic_item(sym::FromResidual, cand.def_id)
+                if self.tcx.is_diagnostic_item(sym::TryFromBreak, cand.def_id)
                     && !self.tcx.features().enabled(sym::try_trait_v2)
                 {
                     return false;

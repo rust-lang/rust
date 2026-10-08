@@ -23,7 +23,7 @@ pub enum CallDesugaringKind {
     ForLoopNext,
     /// x? calls x.branch()
     QuestionBranch,
-    /// x? calls type_of(x)::from_residual()
+    /// x? calls type_of(x)::from_break()
     QuestionFromResidual,
     /// try { ..; x } calls type_of(x)::from_output(x)
     TryBlockFromOutput,
@@ -52,7 +52,7 @@ impl CallDesugaringKind {
             Self::QuestionBranch | Self::TryBlockFromOutput => {
                 tcx.require_lang_item(LangItem::Try, DUMMY_SP)
             }
-            Self::QuestionFromResidual => tcx.get_diagnostic_item(sym::FromResidual).unwrap(),
+            Self::QuestionFromResidual => tcx.get_diagnostic_item(sym::TryFromBreak).unwrap(),
             Self::Await => tcx.get_diagnostic_item(sym::IntoFuture).unwrap(),
         }
     }
@@ -160,10 +160,10 @@ pub fn call_kind<'tcx>(
     {
         Some((CallDesugaringKind::ForLoopNext, method_args.type_at(0)))
     } else if fn_call_span.desugaring_kind() == Some(DesugaringKind::QuestionMark) {
-        if tcx.is_lang_item(method_did, LangItem::TryTraitBranch) {
+        if tcx.is_lang_item(method_did, LangItem::TryOperatorBranch) {
             Some((CallDesugaringKind::QuestionBranch, method_args.type_at(0)))
-        } else if tcx.is_lang_item(method_did, LangItem::TryTraitFromResidual) {
-            Some((CallDesugaringKind::QuestionFromResidual, method_args.type_at(0)))
+        } else if tcx.is_lang_item(method_did, LangItem::IntoTryHeterogeneous) {
+            Some((CallDesugaringKind::QuestionFromResidual, method_args.type_at(1)))
         } else {
             None
         }

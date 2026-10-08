@@ -8,7 +8,7 @@ fn monad_unit<T: Try>(x: <T as Try>::Output) -> T {
     T::from_output(x)
 }
 
-fn monad_bind<T1: Try<Residual = R>, T2: Try<Residual = R>, R>(
+fn monad_bind<K, T1: Try<Kind=K, Break=B>, T2: Try<Kind=K, Break=B>, B>(
     mx: T1,
     f: impl FnOnce(<T1 as Try>::Output) -> T2)
 -> T2 {

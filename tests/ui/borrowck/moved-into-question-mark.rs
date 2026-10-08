@@ -7,10 +7,12 @@ fn main() -> io::Result<()> {
     //~^ NOTE move occurs because `entry` has type `Result
         let file_type = entry?.file_type()?;
         //~^ NOTE `entry` moved due to the question mark operator
+        //~| NOTE in this expansion of desugaring of operator `?`
+        //~| NOTE in this expansion of desugaring of operator `?`
         if file_type.is_dir() {
             dbg!(entry?.file_name()); //~ ERROR use of moved value
             //~^ NOTE value used here after move
-            //~| NOTE the question mark operator is desugared into a call to `std::ops::Try::branch`
+            //~| NOTE in this expansion of desugaring of operator `?`
         }
     }
     Ok(())

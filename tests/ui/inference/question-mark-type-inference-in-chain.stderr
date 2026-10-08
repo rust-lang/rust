@@ -26,8 +26,8 @@ note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 help: consider specifying the generic argument
    |
-LL |     let mut tags: Vec<Version> = lines.iter().map(|e| parse(e)).collect::<Result<_, _>>()?;
-   |                                                                        ++++++++++++++++
+LL |     let mut tags: Vec<Version> = lines.iter().map(|e| parse(e)).collect::<Vec<_>>()?;
+   |                                                                        ++++++++++
 
 error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/question-mark-type-inference-in-chain.rs:60:20

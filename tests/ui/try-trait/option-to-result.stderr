@@ -6,6 +6,11 @@ LL | fn test_result() -> Result<(),()> {
 LL |     let a:Option<()> = Some(());
 LL |     a?;
    |      ^ use `.ok_or(...)?` to provide an error compatible with `Result<(), ()>`
+   |
+help: the trait `TryFromBreak<(), TryOption>` is not implemented for `Result<(), ()>`
+      but trait `TryFromBreak<(), TryResult>` is implemented for it
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   = help: for that trait implementation, expected `TryResult`, found `TryOption`
 
 error[E0277]: the `?` operator can only be used on `Option`s, not `Result`s, in a function that returns `Option`
   --> $DIR/option-to-result.rs:11:6
@@ -14,7 +19,11 @@ LL | fn test_option() -> Option<i32>{
    | ------------------------------- this function returns an `Option`
 LL |     let a:Result<i32, i32> = Ok(5);
 LL |     a?;
-   |      ^ use `.ok()?` if you want to discard the `Result<!, i32>` error information
+   |      ^ use `.ok()?` if you want to discard the `i32` error information
+   |
+help: the trait `TryFromBreak<i32, TryResult>` is not implemented for `Option<i32>`
+      but trait `TryFromBreak<(), TryOption>` is implemented for it
+  --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error: aborting due to 2 previous errors
 

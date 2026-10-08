@@ -21,6 +21,8 @@ fn bat() -> Result<(), X> { //~ NOTE expected `X` because of this
     //~| NOTE the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
     //~| NOTE in this expansion
     //~| NOTE in this expansion
+    //~| NOTE in this expansion
+    //~| NOTE in this expansion
 }
 fn bar() -> Result<(), E> {
     Err(E)

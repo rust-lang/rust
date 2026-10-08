@@ -1939,7 +1939,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ///         // If there is an enclosing `try {...}`:
     ///         break 'catch_target Residual::into_try_type(residual),
     ///         // Otherwise:
-    ///         return Try::from_residual(residual),
+    ///         return TryFromBreak::from_break(residual),
     /// }
     /// ```
     fn lower_expr_try(&mut self, span: Span, sub_expr: &Expr) -> hir::ExprKind<'hir> {
@@ -1962,7 +1962,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             self.expr_call_lang_item_fn(
                 unstable_span,
-                LangItem::TryTraitBranch,
+                LangItem::TryOperatorBranch,
                 arena_vec![self; sub_expr],
             )
         };
@@ -1981,22 +1981,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // `ControlFlow::Break(residual) =>
         //     #[allow(unreachable_code)]
-        //     return Try::from_residual(residual),`
+        //     return TryFromBreak::from_break(residual),`
         let break_arm = {
             let residual_ident = Ident::with_dummy_span(sym::residual);
             let (residual_local, residual_local_nid) = self.pat_ident(try_span, residual_ident);
             let residual_expr = self.expr_ident_mut(try_span, residual_ident, residual_local_nid);
 
-            let (constructor_item, target_id) = match self.try_block_scope {
-                TryBlockScope::Function => {
-                    (LangItem::TryTraitFromResidual, Err(hir::LoopIdError::OutsideLoopScope))
+            let constructor_item = match self.try_block_scope {
+                TryBlockScope::Function | TryBlockScope::Heterogeneous(_) => {
+                    LangItem::IntoTryHeterogeneous
                 }
-                TryBlockScope::Homogeneous(block_id) => {
-                    (LangItem::ResidualIntoTryType, Ok(block_id))
-                }
-                TryBlockScope::Heterogeneous(block_id) => {
-                    (LangItem::TryTraitFromResidual, Ok(block_id))
-                }
+                TryBlockScope::Homogeneous(_) => LangItem::IntoTryHomogeneous,
             };
             let from_residual_expr = self.wrap_in_try_constructor(
                 constructor_item,
@@ -2004,17 +1999,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.arena.alloc(residual_expr),
                 unstable_span,
             );
-            let ret_expr = if target_id.is_ok() {
-                self.arena.alloc(self.expr(
-                    try_span,
-                    hir::ExprKind::Break(
-                        hir::Destination { label: None, target_id },
-                        Some(from_residual_expr),
-                    ),
-                ))
-            } else {
-                let ret_expr = self.checked_return(Some(from_residual_expr));
-                self.arena.alloc(self.expr(try_span, ret_expr))
+            let ret_expr = match self.try_block_scope {
+                TryBlockScope::Function => {
+                    let ret_expr = self.checked_return(Some(from_residual_expr));
+                    self.arena.alloc(self.expr(try_span, ret_expr))
+                }
+                TryBlockScope::Homogeneous(block_id) | TryBlockScope::Heterogeneous(block_id) => {
+                    self.arena.alloc(self.expr(
+                        try_span,
+                        hir::ExprKind::Break(
+                            hir::Destination { label: None, target_id: Ok(block_id) },
+                            Some(from_residual_expr),
+                        ),
+                    ))
+                }
             };
             self.lower_attrs(ret_expr.hir_id, &attrs, span, Target::Expression);
 
@@ -2032,12 +2030,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// Desugar `ExprKind::Yeet` from: `do yeet <expr>` into:
     /// ```ignore(illustrative)
     /// // If there is an enclosing `try {...}`:
-    /// break 'catch_target FromResidual::from_residual(Yeet(residual));
+    /// break 'catch_target TryFromBreak::from_break(Yeet(residual));
     /// // Otherwise:
-    /// return FromResidual::from_residual(Yeet(residual));
+    /// return TryFromBreak::from_break(Yeet(residual));
     /// ```
     /// But to simplify this, there's a `from_yeet` lang item function which
-    /// handles the combined `FromResidual::from_residual(Yeet(residual))`.
+    /// handles the combined `TryFromBreak::from_break(Yeet(residual))`.
     fn lower_expr_yeet(&mut self, span: Span, sub_expr: Option<&Expr>) -> hir::ExprKind<'hir> {
         // The expression (if present) or `()` otherwise.
         let (yeeted_span, yeeted_expr) = if let Some(sub_expr) = sub_expr {

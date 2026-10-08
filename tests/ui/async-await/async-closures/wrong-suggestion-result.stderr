@@ -1,4 +1,4 @@
-error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `TryFromBreak`)
   --> $DIR/wrong-suggestion-result.rs:4:21
    |
 LL |   async fn once<O, F: AsyncFnOnce() -> O>(f: F) -> O {
@@ -9,9 +9,9 @@ LL | |     Ok::<(), ()>(())?;
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-help: consider restricting type parameter `O` with unstable trait `FromResidual`
+help: consider restricting type parameter `O` with unstable trait `TryFromBreak`
    |
-LL | async fn once<O: std::ops::FromResidual<std::result::Result<!, ()>>, F: AsyncFnOnce() -> O>(f: F) -> O {
+LL | async fn once<O: std::ops::TryFromBreak<(), std::result::TryResult>, F: AsyncFnOnce() -> O>(f: F) -> O {
    |                ++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0308]: mismatched types
@@ -28,7 +28,7 @@ LL |     f()
    = help: you may have forgotten to await an async function
    = note: it is currently not possible to add bounds constraining the future returned from an async function (`CallOnceFuture`)
 
-error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `TryFromBreak`)
   --> $DIR/wrong-suggestion-result.rs:12:21
    |
 LL |   async fn fnref<O, F: AsyncFn() -> O>(f: F) -> O {
@@ -39,9 +39,9 @@ LL | |     Ok::<(), ()>(())?;
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-help: consider restricting type parameter `O` with unstable trait `FromResidual`
+help: consider restricting type parameter `O` with unstable trait `TryFromBreak`
    |
-LL | async fn fnref<O: std::ops::FromResidual<std::result::Result<!, ()>>, F: AsyncFn() -> O>(f: F) -> O {
+LL | async fn fnref<O: std::ops::TryFromBreak<(), std::result::TryResult>, F: AsyncFn() -> O>(f: F) -> O {
    |                 ++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0308]: mismatched types
@@ -58,7 +58,7 @@ LL |     f()
    = help: you may have forgotten to await an async function
    = note: it is currently not possible to add bounds constraining the future returned from an async function (`CallRefFuture`)
 
-error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `TryFromBreak`)
   --> $DIR/wrong-suggestion-result.rs:21:21
    |
 LL |   async fn fnmut<O, F: AsyncFnMut() -> O>(f: F) -> O {
@@ -69,9 +69,9 @@ LL | |     Ok::<(), ()>(())?;
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-help: consider restricting type parameter `O` with unstable trait `FromResidual`
+help: consider restricting type parameter `O` with unstable trait `TryFromBreak`
    |
-LL | async fn fnmut<O: std::ops::FromResidual<std::result::Result<!, ()>>, F: AsyncFnMut() -> O>(f: F) -> O {
+LL | async fn fnmut<O: std::ops::TryFromBreak<(), std::result::TryResult>, F: AsyncFnMut() -> O>(f: F) -> O {
    |                 ++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0308]: mismatched types

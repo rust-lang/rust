@@ -244,7 +244,7 @@ mod expressions {
         type_ascribe!({
                 from_output(match branch(None) {
                         Break {  0: residual } => #[allow(unreachable_code)]
-                            break from_residual(residual),
+                            break from_break(residual),
                         Continue {  0: val } => #[allow(unreachable_code)]
                             val,
                     })
@@ -368,7 +368,7 @@ mod expressions {
         let expr;
         match branch(expr) {
             Break {  0: residual } => #[allow(unreachable_code)]
-                return from_residual(residual),
+                return from_break(residual),
             Continue {  0: val } => #[allow(unreachable_code)]
                 val,
         };

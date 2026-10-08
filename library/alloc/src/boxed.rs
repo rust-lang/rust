@@ -199,7 +199,7 @@ use core::ops::{
     DerefPure, DispatchFromDyn, LegacyReceiver,
 };
 #[cfg(not(no_global_oom_handling))]
-use core::ops::{Residual, Try};
+use core::ops::{Try, TryAs};
 use core::pin::{Pin, PinSafePointer};
 use core::ptr::{self, NonNull, Unique};
 use core::task::{Context, Poll};
@@ -746,10 +746,9 @@ impl<T, A: Allocator> Box<T, A> {
     pub fn try_map<R>(
         this: Self,
         f: impl FnOnce(T) -> R,
-    ) -> <R::Residual as Residual<Box<R::Output, A>>>::TryType
+    ) -> <R as TryAs<Box<<R as Try>::Output, A>>>::Try
     where
-        R: Try,
-        R::Residual: Residual<Box<R::Output, A>>,
+        R: TryAs<Box<<R as Try>::Output, A>>,
     {
         let (value, allocation) = Box::take(this);
         let (raw, alloc) = Box::into_non_null_with_allocator(allocation);

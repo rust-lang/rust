@@ -9,8 +9,8 @@ note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 help: consider specifying the generic argument
    |
-LL |     l.iter().map(f).collect::<Result<_, _>>()?
-   |                            ++++++++++++++++
+LL |     l.iter().map(f).collect::<Vec<_>>()?
+   |                            ++++++++++
 
 error[E0283]: type annotations needed
   --> $DIR/question-mark-type-infer.rs:16:29
@@ -23,8 +23,8 @@ note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 help: consider specifying the generic argument
    |
-LL |     let x = l.iter().map(f).collect::<Result<_, _>>()?;
-   |                                    ++++++++++++++++
+LL |     let x = l.iter().map(f).collect::<Vec<_>>()?;
+   |                                    ++++++++++
 
 error[E0283]: type annotations needed
   --> $DIR/question-mark-type-infer.rs:23:39
@@ -37,8 +37,8 @@ note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 help: consider specifying the generic argument
    |
-LL |     let x: Vec<i32> = l.iter().map(f).collect::<Result<_, _>>()?;
-   |                                              ++++++++++++++++
+LL |     let x: Vec<i32> = l.iter().map(f).collect::<Vec<_>>()?;
+   |                                              ++++++++++
 
 error: aborting due to 3 previous errors
 

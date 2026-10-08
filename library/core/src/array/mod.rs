@@ -13,9 +13,7 @@ use crate::intrinsics::transmute_unchecked;
 use crate::iter::{TrustedLen, repeat_n};
 use crate::marker::Destruct;
 use crate::mem::{self, ManuallyDrop, MaybeUninit};
-use crate::ops::{
-    ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
-};
+use crate::ops::{ControlFlow, Index, IndexMut, NeverShortCircuit, Try, TryAs, TryFromBreak};
 use crate::ptr::{null, null_mut};
 use crate::slice::{Iter, IterMut};
 use crate::{fmt, ptr};
@@ -145,14 +143,14 @@ where
 #[inline]
 #[unstable(feature = "array_try_from_fn", issue = "89379")]
 #[rustc_const_unstable(feature = "array_try_from_fn", issue = "89379")]
-pub const fn try_from_fn<R, const N: usize, F>(cb: F) -> ChangeOutputType<R, [R::Output; N]>
+pub const fn try_from_fn<R, const N: usize, F>(cb: F) -> <R as TryAs<[<R as Try>::Output; N]>>::Try
 where
-    R: [const] Try<Residual: [const] Residual<[R::Output; N]>, Output: [const] Destruct>,
+    R: [const] Try<Output: [const] Destruct> + [const] TryAs<[<R as Try>::Output; N]>,
     F: [const] FnMut(usize) -> R + [const] Destruct,
 {
     let mut array = [const { MaybeUninit::uninit() }; N];
     match try_from_fn_erased(&mut array, cb) {
-        ControlFlow::Break(r) => FromResidual::from_residual(r),
+        ControlFlow::Break(r) => TryFromBreak::from_break(r),
         ControlFlow::Continue(()) => {
             // SAFETY: All elements of the array were populated.
             try { unsafe { MaybeUninit::array_assume_init(array) } }
@@ -650,10 +648,10 @@ impl<T, const N: usize> [T; N] {
     pub const fn try_map<R>(
         self,
         mut f: impl [const] FnMut(T) -> R + [const] Destruct,
-    ) -> ChangeOutputType<R, [R::Output; N]>
+    ) -> <R as TryAs<[<R as Try>::Output; N]>>::Try
     where
-        R: [const] Try<Residual: [const] Residual<[R::Output; N]>, Output: [const] Destruct>,
         T: [const] Destruct,
+        R: [const] Try<Output: [const] Destruct> + [const] TryAs<[<R as Try>::Output; N]>,
     {
         let mut me = ManuallyDrop::new(self);
         // SAFETY: try_from_fn calls `f` N times.
@@ -923,7 +921,7 @@ impl<T, const N: usize> [T; N] {
 const fn try_from_fn_erased<R: [const] Try<Output: [const] Destruct>>(
     buffer: &mut [MaybeUninit<R::Output>],
     mut generator: impl [const] FnMut(usize) -> R + [const] Destruct,
-) -> ControlFlow<R::Residual> {
+) -> ControlFlow<R::Break> {
     let mut guard = Guard { array_mut: buffer, initialized: 0 };
 
     while guard.initialized < guard.array_mut.len() {

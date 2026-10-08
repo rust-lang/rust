@@ -7,34 +7,31 @@
 
 #![crate_type = "lib"]
 #![feature(try_trait_v2)]
-#![feature(try_trait_v2_residual)]
 #![feature(const_trait_impl)]
 #![feature(const_try)]
 
-use std::ops::{ControlFlow, FromResidual, Residual, Try};
+use std::ops::{ControlFlow, TryFromBreak, Try};
+use std::result::TryResult;
 
 struct TryMe;
 struct Error;
 
-const impl FromResidual<Error> for TryMe {
-    fn from_residual(residual: Error) -> Self {
+const impl TryFromBreak<Error> for TryMe {
+    fn from_break(residual: Error) -> Self {
         TryMe
     }
 }
 
 const impl Try for TryMe {
+    type Kind = TryResult;
     type Output = ();
-    type Residual = Error;
+    type Break = Error;
     fn from_output(output: Self::Output) -> Self {
         TryMe
     }
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+    fn branch(self) -> ControlFlow<Self::Break, Self::Output> {
         ControlFlow::Break(Error)
     }
-}
-
-impl Residual<()> for Error {
-    type TryType = TryMe;
 }
 
 const fn t() -> TryMe {

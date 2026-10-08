@@ -763,7 +763,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             }
             UseSpans::PatUse(span)
             | UseSpans::OtherUse(span)
-            | UseSpans::FnSelfUse { var_span: span, .. } => {
+            | UseSpans::FnSelfUse { var_span: span, .. }
+            | UseSpans::QuestionMarkUse(span) => {
                 let block = &self.body.basic_blocks[location.block];
 
                 let kind = if let Some(&Statement {

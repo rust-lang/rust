@@ -12,7 +12,7 @@ use core::mem::{self, Alignment, ManuallyDrop};
 use core::num::NonZeroUsize;
 use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
 #[cfg(not(no_global_oom_handling))]
-use core::ops::{Residual, Try};
+use core::ops::{Try, TryAs};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 use core::pin::{Pin, PinSafePointer};
 use core::ptr::{self, NonNull};
@@ -1264,10 +1264,9 @@ impl<T, A: Allocator> Arc<T, A> {
     pub fn try_map<R>(
         this: Self,
         f: impl FnOnce(&T) -> R,
-    ) -> <R::Residual as Residual<Arc<R::Output, A>>>::TryType
+    ) -> <R as TryAs<Arc<<R as Try>::Output, A>>>::Try
     where
-        R: Try,
-        R::Residual: Residual<Arc<R::Output, A>>,
+        R: TryAs<Arc<<R as Try>::Output, A>>,
     {
         if size_of::<T>() == size_of::<R::Output>()
             && align_of::<T>() == align_of::<R::Output>()
@@ -4936,10 +4935,9 @@ impl<T, A: Allocator> UniqueArc<T, A> {
     pub fn try_map<R>(
         this: Self,
         f: impl FnOnce(T) -> R,
-    ) -> <R::Residual as Residual<UniqueArc<R::Output, A>>>::TryType
+    ) -> <R as TryAs<UniqueArc<R::Output, A>>>::Try
     where
-        R: Try,
-        R::Residual: Residual<UniqueArc<R::Output, A>>,
+        R: TryAs<UniqueArc<<R as Try>::Output, A>>,
     {
         if size_of::<T>() == size_of::<R::Output>()
             && align_of::<T>() == align_of::<R::Output>()

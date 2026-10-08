@@ -255,7 +255,7 @@ use core::mem::{self, Alignment, ManuallyDrop};
 use core::num::NonZeroUsize;
 use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
 #[cfg(not(no_global_oom_handling))]
-use core::ops::{Residual, Try};
+use core::ops::{Try, TryAs};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 #[cfg(not(no_global_oom_handling))]
 use core::pin::Pin;
@@ -1107,13 +1107,9 @@ impl<T, A: Allocator> Rc<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
-    pub fn try_map<R>(
-        this: Self,
-        f: impl FnOnce(&T) -> R,
-    ) -> <R::Residual as Residual<Rc<R::Output, A>>>::TryType
+    pub fn try_map<R, U>(this: Self, f: impl FnOnce(&T) -> R) -> <R as TryAs<Rc<U, A>>>::Try
     where
-        R: Try,
-        R::Residual: Residual<Rc<R::Output, A>>,
+        R: Try<Output = U> + TryAs<Rc<U, A>>,
     {
         if size_of::<T>() == size_of::<R::Output>()
             && align_of::<T>() == align_of::<R::Output>()
@@ -4515,10 +4511,9 @@ impl<T, A: Allocator> UniqueRc<T, A> {
     pub fn try_map<R>(
         this: Self,
         f: impl FnOnce(T) -> R,
-    ) -> <R::Residual as Residual<UniqueRc<R::Output, A>>>::TryType
+    ) -> <R as TryAs<UniqueRc<<R as Try>::Output, A>>>::Try
     where
-        R: Try,
-        R::Residual: Residual<UniqueRc<R::Output, A>>,
+        R: TryAs<UniqueRc<<R as Try>::Output, A>>,
     {
         if size_of::<T>() == size_of::<R::Output>()
             && align_of::<T>() == align_of::<R::Output>()

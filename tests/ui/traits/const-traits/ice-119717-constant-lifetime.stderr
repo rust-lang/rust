@@ -1,7 +1,7 @@
 error[E0210]: type parameter `T` must be used as an argument to some local type (e.g., `MyStruct<T>`)
   --> $DIR/ice-119717-constant-lifetime.rs:6:12
    |
-LL | const impl<T> FromResidual for T {
+LL | const impl<T> TryFromBreak for T {
    |            ^ uncovered type parameter
    |
    = note: implementing a foreign trait is only possible if at least one of the types for which it is implemented is local
@@ -10,13 +10,13 @@ LL | const impl<T> FromResidual for T {
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated functions
   --> $DIR/ice-119717-constant-lifetime.rs:8:31
    |
-LL |     fn from_residual(t: T) -> _ {
+LL |     fn from_break(t: T) -> _ {
    |                               ^ not allowed in type signatures
    |
 help: try replacing `_` with the type in the corresponding trait method signature
    |
-LL -     fn from_residual(t: T) -> _ {
-LL +     fn from_residual(t: T) -> T {
+LL -     fn from_break(t: T) -> _ {
+LL +     fn from_break(t: T) -> T {
    |
 
 error: aborting due to 2 previous errors

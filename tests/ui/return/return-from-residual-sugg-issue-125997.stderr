@@ -1,4 +1,4 @@
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `TryFromBreak`)
   --> $DIR/return-from-residual-sugg-issue-125997.rs:10:44
    |
 LL | fn test1() {
@@ -14,7 +14,7 @@ LL |
 LL +     Ok(())
    |
 
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `TryFromBreak`)
   --> $DIR/return-from-residual-sugg-issue-125997.rs:15:44
    |
 LL | fn test2() {
@@ -31,7 +31,7 @@ LL |     println!();
 LL +     Ok(())
    |
 
-error[E0277]: the `?` operator can only be used in a method that returns `Result` or `Option` (or another type that implements `FromResidual`)
+error[E0277]: the `?` operator can only be used in a method that returns `Result` or `Option` (or another type that implements `TryFromBreak`)
   --> $DIR/return-from-residual-sugg-issue-125997.rs:34:48
    |
 LL |     fn test4(&self) {
@@ -48,7 +48,7 @@ LL ~         Ok(())
 LL ~     }
    |
 
-error[E0277]: the `?` operator can only be used in a method that returns `Result` or `Option` (or another type that implements `FromResidual`)
+error[E0277]: the `?` operator can only be used in a method that returns `Result` or `Option` (or another type that implements `TryFromBreak`)
   --> $DIR/return-from-residual-sugg-issue-125997.rs:39:48
    |
 LL |     fn test5(&self) {
@@ -66,7 +66,7 @@ LL ~         Ok(())
 LL ~     }
    |
 
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `TryFromBreak`)
   --> $DIR/return-from-residual-sugg-issue-125997.rs:46:44
    |
 LL | fn main() {
@@ -83,7 +83,7 @@ LL |     mac!();
 LL +     Ok(())
    |
 
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `TryFromBreak`)
   --> $DIR/return-from-residual-sugg-issue-125997.rs:23:52
    |
 LL | macro_rules! mac {

@@ -73,7 +73,7 @@ use crate::ops::ControlFlow;
 /// }
 /// ```
 ///
-/// We'll also need [`FromResidual::from_residual`] to turn the residual back
+/// We'll also need [`TryFromBreak::from_break`] to turn the residual back
 /// into the original type.  But because it's a supertrait of `Try`, we don't
 /// need to mention it in the bounds.  All types which implement `Try` can be
 /// recreated from their corresponding residual, so we'll just call it:
@@ -89,7 +89,7 @@ use crate::ops::ControlFlow;
 ///         let cf = f(accum, x).branch();
 ///         match cf {
 ///             ControlFlow::Continue(a) => accum = a,
-///             ControlFlow::Break(r) => return R::from_residual(r),
+///             ControlFlow::Break(r) => return R::from_break(r),
 ///         }
 ///     }
 ///     R::from_output(accum)
@@ -130,12 +130,19 @@ use crate::ops::ControlFlow;
 #[doc(alias = "?")]
 #[lang = "Try"]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-pub const trait Try: [const] FromResidual {
+pub const trait Try: [const] TryFromBreak<Self::Break, Self::Kind> {
+    /// A marker type to signify the general meaning of the `?` operation on this type.
+    /// For example, `<Result as Try>::Kind = TryResult`, and `TryResult` should be used for
+    /// custom "result-like" types which may contain an error.
+    /// When using `?` within a function, the return type of the function must implement
+    /// `TryFromBreak<T, <T as Try>::Kind>` where `T` is the type of the target of `?`.
+    type Kind;
+
     /// The type of the value produced by `?` when *not* short-circuiting.
     #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
     type Output;
 
-    /// The type of the value passed to [`FromResidual::from_residual`]
+    /// The type of the value passed to [`TryFromBreak::from_break`]
     /// as part of `?` when short-circuiting.
     ///
     /// This represents the possible values of the `Self` type which are *not*
@@ -148,8 +155,8 @@ pub const trait Try: [const] FromResidual {
     /// this type is typically a newtype of some sort to "color" the type
     /// so that it's distinguishable from the residuals of other types.
     ///
-    /// This is why `Result<T, E>::Residual` is not `E`, but `Result<!, E>`.
-    /// That way it's distinct from `ControlFlow<E>::Residual`, for example,
+    /// This is why `Result<T, E>::Break` is not `E`, but `Result<!, E>`.
+    /// That way it's distinct from `ControlFlow<E>::Break`, for example,
     /// and thus `?` on `ControlFlow` cannot be used in a method returning `Result`.
     ///
     /// If you're making a generic type `Foo<T>` that implements `Try<Output = T>`,
@@ -157,7 +164,7 @@ pub const trait Try: [const] FromResidual {
     /// type: that type will have a "hole" in the correct place, and will maintain the
     /// "foo-ness" of the residual so other types need to opt-in to interconversion.
     #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-    type Residual: Residual<Self::Output>;
+    type Break;
 
     /// Constructs the type from its `Output` type.
     ///
@@ -214,22 +221,21 @@ pub const trait Try: [const] FromResidual {
     ///     ControlFlow::Break(ControlFlow::Break(3)),
     /// );
     /// ```
-    #[lang = "branch"]
     #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
+    fn branch(self) -> ControlFlow<Self::Break, Self::Output>;
 }
 
 /// Used to specify which residuals can be converted into which [`crate::ops::Try`] types.
 ///
 /// Every `Try` type needs to be recreatable from its own associated
-/// `Residual` type, but can also have additional `FromResidual` implementations
+/// `Residual` type, but can also have additional `TryFromBreak` implementations
 /// to support interconversion with other `Try` types.
 #[rustc_on_unimplemented(
     on(
         all(
             from_desugaring = "QuestionMark",
             Self = "core::result::Result<T, E>",
-            R = "core::option::Option<!>",
+            Kind = "core::option::TryOption",
         ),
         message = "the `?` operator can only be used on `Result`s, not `Option`s, \
             in {ItemContext} that returns `Result`",
@@ -246,18 +252,18 @@ pub const trait Try: [const] FromResidual {
         // and thus it can be phrased more strongly than `ControlFlow`'s.
         message = "the `?` operator can only be used on `Result`s \
             in {ItemContext} that returns `Result`",
-        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        label = "this `?` produces `{B}`, which is incompatible with `{Self}`",
         parent_label = "this function returns a `Result`"
     ),
     on(
         all(
             from_desugaring = "QuestionMark",
             Self = "core::option::Option<T>",
-            R = "core::result::Result<T, E>",
+            Kind = "core::result::TryResult",
         ),
         message = "the `?` operator can only be used on `Option`s, not `Result`s, \
             in {ItemContext} that returns `Option`",
-        label = "use `.ok()?` if you want to discard the `{R}` error information",
+        label = "use `.ok()?` if you want to discard the `{B}` error information",
         parent_label = "this function returns an `Option`"
     ),
     on(
@@ -269,18 +275,18 @@ pub const trait Try: [const] FromResidual {
         // residual, so this can also be phrased strongly.
         message = "the `?` operator can only be used on `Option`s \
             in {ItemContext} that returns `Option`",
-        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        label = "this `?` produces `{B}`, which is incompatible with `{Self}`",
         parent_label = "this function returns an `Option`"
     ),
     on(
         all(
             from_desugaring = "QuestionMark",
             Self = "core::ops::control_flow::ControlFlow<B, C>",
-            R = "core::ops::control_flow::ControlFlow<B, C>",
+            Kind = "core::ops::control_flow::TryControlFlow",
         ),
         message = "the `?` operator in {ItemContext} that returns `ControlFlow<B, _>` \
             can only be used on other `ControlFlow<B, _>`s (with the same Break type)",
-        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        label = "this `?` produces `{B}`, which is incompatible with `{Self}`",
         parent_label = "this function returns a `ControlFlow`",
         note = "unlike `Result`, there's no `From`-conversion performed for `ControlFlow`"
     ),
@@ -292,7 +298,7 @@ pub const trait Try: [const] FromResidual {
         ),
         message = "the `?` operator can only be used on `ControlFlow`s \
             in {ItemContext} that returns `ControlFlow`",
-        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        label = "this `?` produces `{B}`, which is incompatible with `{Self}`",
         parent_label = "this function returns a `ControlFlow`",
     ),
     on(
@@ -304,33 +310,41 @@ pub const trait Try: [const] FromResidual {
         parent_label = "this function should return `Result` or `Option` to accept `?`"
     ),
 )]
-#[rustc_diagnostic_item = "FromResidual"]
+#[rustc_diagnostic_item = "TryFromBreak"]
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-pub const trait FromResidual<R = <Self as Try>::Residual> {
+pub const trait TryFromBreak<B = <Self as Try>::Break, Kind = <Self as Try>::Kind> {
     /// Constructs the type from a compatible `Residual` type.
     ///
     /// This should be implemented consistently with the `branch` method such
-    /// that applying the `?` operator will get back an equivalent residual:
-    /// `FromResidual::from_residual(r).branch() --> ControlFlow::Break(r)`.
-    /// (The residual is not mandated to be *identical* when interconversion is involved.)
+    /// that applying the `?` operator will get back an equivalent break value:
+    /// `TryFromBreak::from_break(r).branch() --> ControlFlow::Break(r)`.
+    /// (The break value is not mandated to be *identical* when interconversion is involved.)
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(try_trait_v2)]
-    /// use std::ops::{ControlFlow, FromResidual};
+    /// use std::ops::{ControlFlow, TryFromBreak};
     ///
-    /// assert_eq!(Result::<String, i64>::from_residual(Err(3_u8)), Err(3));
-    /// assert_eq!(Option::<String>::from_residual(None), None);
+    /// assert_eq!(Result::<String, i64>::from_break(Err(3_u8)), Err(3));
+    /// assert_eq!(Option::<String>::from_break(None), None);
     /// assert_eq!(
-    ///     ControlFlow::<_, String>::from_residual(ControlFlow::Break(5)),
+    ///     ControlFlow::<_, String>::from_break(ControlFlow::Break(5)),
     ///     ControlFlow::Break(5),
     /// );
     /// ```
-    #[lang = "from_residual"]
     #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-    fn from_residual(residual: R) -> Self;
+    fn from_break(b: B) -> Self;
+}
+
+/// The `TryAs` trait is used to derive a type that is equivalent but with
+/// `Try::Output` changed to `T`.
+#[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+pub const trait TryAs<T>: Try {
+    /// The Try type that is similar to Self, but with `Output` changed to `T`
+    type Try: [const] Try<Kind = Self::Kind, Output = T, Break = Self::Break>;
 }
 
 #[unstable(
@@ -339,55 +353,64 @@ pub const trait FromResidual<R = <Self as Try>::Residual> {
     reason = "just here to simplify the desugaring; will never be stabilized"
 )]
 #[inline]
-#[track_caller] // because `Result::from_residual` has it
+#[track_caller] // because `Result::from_break` has it
 #[lang = "from_yeet"]
 #[allow(unreachable_pub)] // not-exposed but still used via lang-item
 pub fn from_yeet<T, Y>(yeeted: Y) -> T
 where
-    T: FromResidual<Yeet<Y>>,
+    T: Try<Break: From<Y>>,
 {
-    FromResidual::from_residual(Yeet(yeeted))
+    T::from_break(yeeted.into())
 }
 
-/// Allows retrieving the canonical type implementing [`Try`] that has this type
-/// as its residual and allows it to hold an `O` as its output.
-///
-/// If you think of the `Try` trait as splitting a type into its [`Try::Output`]
-/// and [`Try::Residual`] components, this allows putting them back together.
-///
-/// For example,
-/// `Result<T, E>: Try<Output = T, Residual = Result<!, E>>`,
-/// and in the other direction,
-/// `<Result<!, E> as Residual<T>>::TryType = Result<T, E>`.
-#[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-#[rustc_const_unstable(feature = "const_try_residual", issue = "91285")]
-pub const trait Residual<O>: Sized {
-    /// The "return" type of this meta-function.
-    #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-    // FIXME: ought to be implied
-    type TryType: [const] Try<Output = O, Residual = Self>;
-}
-
-/// Used in `try {}` blocks so the type produced in the `?` desugaring
-/// depends on the residual type `R` and the output type of the block `O`,
-/// but importantly not on the contextual type the way it would be if
-/// we called `<_ as FromResidual>::from_residual(r)` directly.
-#[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-#[rustc_const_unstable(feature = "const_try_residual", issue = "91285")]
-// needs to be `pub` to avoid `private type` errors
-#[expect(unreachable_pub)]
+/// Used by `?` desugaring to call `Try::branch` and wrap the `Break` with `TryOperatorBreak`.
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[expect(unreachable_pub)] // only reachable via lang items
 #[inline] // FIXME: force would be nice, but fails -- see #148915
-#[lang = "into_try_type"]
-pub const fn residual_into_try_type<R: [const] Residual<O>, O>(
-    r: R,
-) -> <R as Residual<O>>::TryType {
-    FromResidual::from_residual(r)
+#[lang = "try_operator_branch"]
+pub const fn try_operator_branch<T: [const] Try>(
+    v: T,
+) -> ControlFlow<TryOperatorBreak<T>, T::Output> {
+    v.branch().map_break(TryOperatorBreak)
 }
 
-#[unstable(feature = "pub_crate_should_not_need_unstable_attr", issue = "none")]
-#[allow(type_alias_bounds)]
-pub(crate) type ChangeOutputType<T: Try<Residual: Residual<V>>, V> =
-    <T::Residual as Residual<V>>::TryType;
+/// Used by `?` desugaring to wrap the `Break` value and reference the target
+/// `Try` type in a type parameter, purely for type checking.
+#[unstable(feature = "try_internals", issue = "none")]
+#[rustc_diagnostic_item = "TryOperatorBreak"]
+#[expect(unreachable_pub)] // only reachable via lang items
+#[repr(transparent)]
+pub struct TryOperatorBreak<T: Try>(T::Break)
+// hack
+where
+    T::Break: Sized;
+
+impl<T: Try> TryOperatorBreak<T> {
+    #[unstable(feature = "try_internals", issue = "none")]
+    #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+    #[expect(unreachable_pub)] // only reachable via lang items
+    #[lang = "into_try_heterogeneous"]
+    #[inline]
+    pub const fn into_try_heterogeneous<U>(self) -> U
+    where
+        U: [const] TryFromBreak<T::Break, T::Kind>,
+    {
+        TryFromBreak::from_break(self.0)
+    }
+
+    #[unstable(feature = "try_internals", issue = "none")]
+    #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+    #[expect(unreachable_pub)] // only reachable via lang items
+    #[lang = "into_try_homogeneous"]
+    #[inline]
+    pub const fn into_try_homogeneous<U>(self) -> <T as TryAs<U>>::Try
+    where
+        T: [const] TryAs<U>,
+    {
+        TryFromBreak::from_break(self.0)
+    }
+}
 
 /// An adapter for implementing non-try methods via the `Try` implementation.
 ///
@@ -427,15 +450,21 @@ impl<T> NeverShortCircuit<T> {
     }
 }
 
-pub(crate) enum NeverShortCircuitResidual {}
+#[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
+const impl<T, U> TryAs<U> for NeverShortCircuit<T> {
+    type Try = NeverShortCircuit<U>;
+}
+
+pub(crate) struct TryNeverShortCircuit(());
 
 #[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
 const impl<T> Try for NeverShortCircuit<T> {
+    type Kind = TryNeverShortCircuit;
     type Output = T;
-    type Residual = NeverShortCircuitResidual;
+    type Break = !;
 
     #[inline]
-    fn branch(self) -> ControlFlow<NeverShortCircuitResidual, T> {
+    fn branch(self) -> ControlFlow<!, T> {
         ControlFlow::Continue(self.0)
     }
 
@@ -444,19 +473,16 @@ const impl<T> Try for NeverShortCircuit<T> {
         NeverShortCircuit(x)
     }
 }
+
 #[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
-const impl<T> FromResidual for NeverShortCircuit<T> {
+const impl<T> TryFromBreak for NeverShortCircuit<T> {
     #[inline]
-    fn from_residual(never: NeverShortCircuitResidual) -> Self {
+    fn from_break(never: !) -> Self {
         match never {}
     }
 }
-#[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
-const impl<T: [const] Destruct> Residual<T> for NeverShortCircuitResidual {
-    type TryType = NeverShortCircuit<T>;
-}
 
-/// Implement `FromResidual<Yeet<T>>` on your type to enable
+/// Implement `TryFromBreak<Yeet<T>>` on your type to enable
 /// `do yeet expr` syntax in functions returning your type.
 #[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
 #[derive(Debug)]

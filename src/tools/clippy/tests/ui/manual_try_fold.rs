@@ -2,7 +2,6 @@
 #![warn(clippy::manual_try_fold)]
 #![expect(clippy::unnecessary_fold)]
 #![feature(try_trait_v2)]
-#![feature(try_trait_v2_residual)]
 //@no-rustfix
 use std::ops::{ControlFlow, FromResidual, Residual, Try};
 

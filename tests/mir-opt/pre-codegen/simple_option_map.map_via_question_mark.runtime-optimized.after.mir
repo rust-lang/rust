@@ -10,7 +10,7 @@ fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
     scope 1 {
         debug residual => const Option::<!>::None;
         scope 2 {
-            scope 7 (inlined <Option<i32> as FromResidual<Option<!>>>::from_residual) {
+            scope 7 (inlined <Option<i32> as TryFromBreak<Option<!>>>::from_break) {
                 let mut _3: isize;
                 let mut _5: bool;
             }

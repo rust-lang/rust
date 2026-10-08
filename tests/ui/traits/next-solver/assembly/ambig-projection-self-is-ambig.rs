@@ -8,7 +8,7 @@ trait Reader: Default {
 
     fn read_u8(&self) -> Result<u8, ()> {
         let a: [u8; 1] = self.read_u8_array::<_>()?;
-        // This results in a nested `<Result<?0, ()> as Try>::Residual: Sized` goal.
+        // This results in a nested `<Result<?0, ()> as Try>::Break: Sized` goal.
         // The self type normalizes to `?0`. We previously did not force that to be
         // ambiguous but instead incompletely applied the `Self: Sized` candidate
         // from the `ParamEnv`, resulting in a type error.

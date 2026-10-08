@@ -57,20 +57,20 @@ const fn bar() {
 }
 
 #[lang = "Try"]
-pub const trait Try: FromResidual<Self::Residual> {
+pub const trait Try: TryFromBreak<Self::Break> {
     type Output;
-    type Residual;
+    type Break;
 
     #[lang = "from_output"]
     fn from_output(output: Self::Output) -> Self;
 
     #[lang = "branch"]
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
+    fn branch(self) -> ControlFlow<Self::Break, Self::Output>;
 }
 
-pub const trait FromResidual<R = <Self as Try>::Residual> {
-    #[lang = "from_residual"]
-    fn from_residual(residual: R) -> Self;
+pub const trait TryFromBreak<R = <Self as Try>::Break> {
+    #[lang = "from_break"]
+    fn from_break(residual: R) -> Self;
 }
 
 enum ControlFlow<B, C = ()> {
@@ -133,7 +133,7 @@ pub const trait Drop {
 }
 
 pub const trait Residual<O> {
-    type TryType: [const] Try<Output = O, Residual = Self> + Try<Output = O, Residual = Self>;
+    type TryType: [const] Try<Output = O, Break = Self> + Try<Output = O, Break = Self>;
 }
 
 const fn size_of<T>() -> usize {

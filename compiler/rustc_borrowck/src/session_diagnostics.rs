@@ -400,7 +400,7 @@ pub(crate) enum CaptureReasonLabel<'a> {
     )]
     QuestionMark {
         #[primary_span]
-        fn_call_span: Span,
+        span: Span,
         place_name: &'a str,
         is_partial: bool,
         is_loop_message: bool,

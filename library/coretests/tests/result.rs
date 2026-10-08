@@ -414,12 +414,12 @@ fn result_try_trait_v2_branch() {
     use core::ops::Try;
 
     assert_eq!(Ok::<i32, i32>(4).branch(), Continue(4));
-    assert_eq!(Err::<i32, i32>(4).branch(), Break(Err(4)));
+    assert_eq!(Err::<i32, i32>(4).branch(), Break(4));
     let one = NonZero::new(1).unwrap();
     assert_eq!(Ok::<(), NonZero<u32>>(()).branch(), Continue(()));
-    assert_eq!(Err::<(), NonZero<u32>>(one).branch(), Break(Err(one)));
+    assert_eq!(Err::<(), NonZero<u32>>(one).branch(), Break(one));
     assert_eq!(Ok::<NonZero<u32>, ()>(one).branch(), Continue(one));
-    assert_eq!(Err::<NonZero<u32>, ()>(()).branch(), Break(Err(())));
+    assert_eq!(Err::<NonZero<u32>, ()>(()).branch(), Break(()));
 }
 
 // helper functions for const contexts

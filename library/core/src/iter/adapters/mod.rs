@@ -1,6 +1,6 @@
 use crate::iter::InPlaceIterable;
 use crate::num::NonZero;
-use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
+use crate::ops::{ControlFlow, Try, TryAs, TryFromBreak};
 
 mod array_chunks;
 mod by_ref_sized;
@@ -147,13 +147,12 @@ pub(crate) struct GenericShunt<'a, I, R> {
 }
 
 /// Process the given iterator as if it yielded the item's `Try::Output`
-/// type instead. Any `Try::Residual`s encountered will stop the inner iterator
+/// type instead. Any `Try::Break`s encountered will stop the inner iterator
 /// and be propagated back to the overall result.
-pub(crate) fn try_process<I, T, R, F, U>(iter: I, mut f: F) -> ChangeOutputType<I::Item, U>
+pub(crate) fn try_process<I, T, B, F, U>(iter: I, mut f: F) -> <I::Item as TryAs<U>>::Try
 where
-    I: Iterator<Item: Try<Output = T, Residual = R>>,
-    for<'a> F: FnMut(GenericShunt<'a, I, R>) -> U,
-    R: Residual<U>,
+    I: Iterator<Item: Try<Output = T, Break = B> + TryAs<U>>,
+    for<'a> F: FnMut(GenericShunt<'a, I, B>) -> U,
 {
     // FIXME(#11084): we might be able to get rid of GenericShunt in favor of
     // Iterator::scan, as performance should be comparable
@@ -162,14 +161,14 @@ where
     let shunt = GenericShunt { iter, residual: &mut residual };
     let value = f(shunt);
     match residual {
-        Some(r) => FromResidual::from_residual(r),
+        Some(r) => TryFromBreak::from_break(r),
         None => Try::from_output(value),
     }
 }
 
-impl<I, R> Iterator for GenericShunt<'_, I, R>
+impl<I, B> Iterator for GenericShunt<'_, I, B>
 where
-    I: Iterator<Item: Try<Residual = R>>,
+    I: Iterator<Item: Try<Break = B>>,
 {
     type Item = <I::Item as Try>::Output;
 
@@ -186,10 +185,10 @@ where
         }
     }
 
-    fn try_fold<B, F, T>(&mut self, init: B, mut f: F) -> T
+    fn try_fold<S, F, T>(&mut self, init: S, mut f: F) -> T
     where
-        F: FnMut(B, Self::Item) -> T,
-        T: Try<Output = B>,
+        F: FnMut(S, Self::Item) -> T,
+        T: Try<Output = S>,
     {
         self.iter
             .try_fold(init, |acc, x| match Try::branch(x) {
