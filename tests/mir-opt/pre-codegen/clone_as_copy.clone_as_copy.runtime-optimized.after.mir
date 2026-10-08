@@ -5,7 +5,7 @@ fn clone_as_copy(_1: &NestCopy) -> NestCopy {
     let mut _0: NestCopy;
     scope 1 (inlined <NestCopy as Clone>::clone) {
         debug self => _1;
-        let _2: &AllCopy;
+        let mut _2: &AllCopy;
         scope 2 (inlined <AllCopy as Clone>::clone) {
             debug self => _2;
         }
