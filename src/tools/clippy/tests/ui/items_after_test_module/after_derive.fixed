@@ -1,0 +1,82 @@
+//@aux-build:../auxiliary/proc_macro_derive.rs
+#![warn(clippy::items_after_test_module)]
+
+extern crate proc_macro_derive;
+
+fn main() {}
+
+mod derive_after {
+    fn should_not_lint() {}
+
+    #[derive(Debug, Clone, PartialEq)]
+    struct ShouldLint;
+
+    #[cfg(test)]
+    mod tests {
+        //~^ items_after_test_module
+        #[test]
+        fn f() {}
+    }
+}
+
+mod derive_and_fn_after {
+    fn should_not_lint() {}
+
+    #[derive(Debug)]
+    struct ShouldLint;
+
+    fn should_also_lint() {}
+
+    #[cfg(test)]
+    mod tests {
+        //~^ items_after_test_module
+        #[test]
+        fn f() {}
+    }
+}
+
+mod proc_macro_derive_after {
+    fn should_not_lint() {}
+
+    #[derive(proc_macro_derive::DeriveSomething)]
+    struct ShouldLint;
+
+    #[cfg(test)]
+    mod tests {
+        //~^ items_after_test_module
+        #[test]
+        fn f() {}
+    }
+}
+
+mod derive_before {
+    #[derive(Debug, Clone)]
+    struct ShouldNotLint;
+
+    #[cfg(test)]
+    mod tests {
+        #[test]
+        fn f() {}
+    }
+}
+
+mod derive_and_macro_after {
+    macro_rules! item {
+        () => {
+            fn generated() {}
+        };
+    }
+
+    fn should_not_lint() {}
+
+    #[cfg(test)]
+    mod tests {
+        #[test]
+        fn f() {}
+    }
+
+    #[derive(Debug)]
+    struct ShouldNotLint;
+
+    item!();
+}

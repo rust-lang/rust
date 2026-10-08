@@ -14,7 +14,6 @@
 #![feature(float_gamma)]
 #![feature(float_erf)]
 #![feature(map_try_insert)]
-#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(try_blocks)]
 #![feature(io_error_more)]
 #![feature(io_error_inprogress)]

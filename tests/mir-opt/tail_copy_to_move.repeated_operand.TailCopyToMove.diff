@@ -1,0 +1,13 @@
+- // MIR for `repeated_operand` before TailCopyToMove
++ // MIR for `repeated_operand` after TailCopyToMove
+  
+  fn repeated_operand(_1: u32) -> (u32, u32) {
+      let mut _0: (u32, u32);
+  
+      bb0: {
+-         _0 = (copy _1, copy _1);
++         _0 = (copy _1, move _1);
+          return;
+      }
+  }
+  

@@ -35,7 +35,7 @@ def cargo_miri(cmd, quiet = True, targets = None):
 
     return args
 
-def normalize_stdout(str):
+def normalize_output(str):
     str = str.replace("src\\", "src/") # normalize paths across platforms
     str = re.sub("\\b\\d+\\.\\d+s\\b", "$TIME", str) # the time keeps changing, obviously
     return str
@@ -71,8 +71,8 @@ def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env=None):
         env=p_env,
     )
     (stdout, stderr) = p.communicate(input=stdin)
-    stdout = normalize_stdout(stdout.decode("UTF-8"))
-    stderr = stderr.decode("UTF-8")
+    stdout = normalize_output(stdout.decode("UTF-8"))
+    stderr = normalize_output(stderr.decode("UTF-8"))
 
     stdout_matches = check_output(stdout, stdout_ref, "stdout")
     stderr_matches = check_output(stderr, stderr_ref, "stderr")

@@ -167,3 +167,7 @@ check-cfg = [
     'cfg(target_has_reliable_f128)',
     'cfg(target_has_reliable_f128_math)',
 ]
+
+[lints.cargo]
+# panic_abort is not directly used but must be linked in
+unused_dependencies = "allow"

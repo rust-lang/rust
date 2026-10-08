@@ -265,7 +265,6 @@ impl AttributeKind {
             Linkage(linkage, _) => match *linkage {
                 crate::Linkage::Internal => false,
                 crate::Linkage::AvailableExternally
-                | crate::Linkage::Common
                 | crate::Linkage::External
                 | crate::Linkage::ExternalWeak
                 | crate::Linkage::LinkOnceAny

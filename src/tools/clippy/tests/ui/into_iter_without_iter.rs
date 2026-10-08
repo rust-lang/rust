@@ -1,6 +1,7 @@
 //@no-rustfix: suggestions reference out of scope lifetimes/types
 //@aux-build:proc_macros.rs
 #![warn(clippy::into_iter_without_iter)]
+#![expect(clippy::unnecessary_as_slice)]
 extern crate proc_macros;
 
 use std::iter::IntoIterator;

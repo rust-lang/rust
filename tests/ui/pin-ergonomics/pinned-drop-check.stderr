@@ -1,24 +1,28 @@
 error[E0201]: duplicate definitions with name `pin_drop`:
   --> $DIR/pinned-drop-check.rs:196:9
    |
+LL |     impl Drop for Foo {
 LL |         fn drop(&pin mut self) {}
    |         ------------------------- previous definition here
 LL |         fn pin_drop(&pin mut self) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ duplicate definition
    |
   --> $SRC_DIR/core/src/ops/drop.rs:LL:COL
+  ::: $SRC_DIR/core/src/ops/drop.rs:LL:COL
    |
    = note: item in trait
 
 error[E0201]: duplicate definitions with name `pin_drop`:
   --> $DIR/pinned-drop-check.rs:201:9
    |
+LL |     impl Drop for Bar {
 LL |         fn drop(&pin mut self) {}
    |         ------------------------- previous definition here
 LL |         fn pin_drop(&pin mut self) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ duplicate definition
    |
   --> $SRC_DIR/core/src/ops/drop.rs:LL:COL
+  ::: $SRC_DIR/core/src/ops/drop.rs:LL:COL
    |
    = note: item in trait
 

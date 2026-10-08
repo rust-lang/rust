@@ -535,6 +535,10 @@ pub(crate) struct TraitImplDuplicate {
     pub(crate) old_span: Span,
     #[label("item in trait")]
     pub(crate) trait_item_span: Span,
+    #[context]
+    pub(crate) trait_span: Span,
+    #[context]
+    pub(crate) impl_span: Span,
     pub(crate) name: Ident,
 }
 
@@ -1410,6 +1414,10 @@ pub(crate) struct TraitImplMismatch {
     pub(crate) trait_path: String,
     #[label("item in trait")]
     pub(crate) trait_item_span: Span,
+    #[context]
+    pub(crate) trait_span: Span,
+    #[context]
+    pub(crate) impl_span: Span,
 }
 
 #[derive(Diagnostic)]

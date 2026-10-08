@@ -8,7 +8,8 @@
 //@ compile-flags: --check-cfg=cfg(target_has_reliable_f16b) -Copt-level=3
 //@ run-pass
 
-#![feature(f16b, cfg_target_has_reliable_f16b)]
+#![feature(f16b, const_trait_impl, cfg_target_has_reliable_f16b)]
+#![cfg_attr(target_has_reliable_f16b, feature(const_cmp))]
 
 extern crate core;
 
@@ -21,6 +22,20 @@ const ONE: f16b = f16b::from_bits(0x3f80);
 
 #[cfg(target_has_reliable_f16b)]
 const ONE_BITS: u16 = ONE.to_bits();
+
+#[cfg(target_has_reliable_f16b)]
+const _: () = {
+    let one = f16b::from_bits(0x3f80);
+    let two = f16b::from_bits(0x4000);
+    let positive_zero = f16b::from_bits(0x0000);
+    let negative_zero = f16b::from_bits(0x8000);
+    let nan = f16b::from_bits(0x7fc0);
+
+    assert!(one == one);
+    assert!(one != two);
+    assert!(positive_zero == negative_zero);
+    assert!(nan != nan);
+};
 
 #[cfg(target_has_reliable_f16b)]
 fn assert_traits<T>()

@@ -448,6 +448,9 @@ impl<'tcx> ItemCtxt<'tcx> {
                 .map(|item| self.lower_test_binder_constraint(item))
                 .reduce(SolverRegionConstraint::build_or)
                 .unwrap_or(SolverRegionConstraint::new_false()),
+            rustc_hir::TestBinderConstraint::Ambiguity { span } => {
+                SolverRegionConstraint::new_ambig(*span)
+            }
             hir::TestBinderConstraint::Lifetime { lhs, rhs } => {
                 let span = lhs.ident.span.to(rhs.ident.span);
                 let lhs = self.lowerer().lower_lifetime(lhs, RegionInferReason::RegionPredicate);

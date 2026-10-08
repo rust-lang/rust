@@ -906,6 +906,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     rustc_borrowck::provide(&mut providers.queries);
     rustc_incremental::provide(providers);
     rustc_mir_build::provide(providers);
+    rustc_mir_dataflow::provide(providers);
     rustc_mir_transform::provide(providers);
     rustc_monomorphize::provide(providers);
     rustc_privacy::provide(&mut providers.queries);

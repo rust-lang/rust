@@ -49,6 +49,13 @@ use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, fs as fs_imp};
 use crate::time::SystemTime;
 use crate::{error, fmt};
 
+pub(crate) mod dirs;
+
+#[unstable(feature = "fs_home_dirs", issue = "162082")]
+pub use self::dirs::HomeDirs;
+#[unstable(feature = "fs_media_dirs", issue = "162083")]
+pub use self::dirs::MediaDirs;
+
 /// An object providing access to an open file on the filesystem.
 ///
 /// An instance of a `File` can be read and/or written depending on what options
@@ -3695,7 +3702,7 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
 /// This function currently corresponds to the following underlying operations:
 /// * Android: returns [`Unsupported`] on all files.
 /// * Linux, BSD-based platforms, QNX, NTO: `fchmodat` with `AT_SYMLINK_NOFOLLOW`.
-/// If that is not supported, we fall back to:
+///   If that is not supported, we fall back to:
 ///   * Unix-based platforms with symlinks: `open` with `O_NOFOLLOW` followed by
 ///   [`fs::set_permissions`].
 ///   * Unix-based platforms without symlinks: `open` followed by [`fs::set_permissions`].

@@ -102,8 +102,14 @@ use crate::{hint, mem, ptr};
 /// }
 /// ```
 ///
+/// Note that this does *not* mean you can deallocate allocations from [`Global`]
+/// with [`System`] (or vice-versa), as the [`Global`] allocator is special in
+/// the compiler. For more details, see the relevant docs about
+/// [`#[global_allocator]`][global_allocator].
+///
 /// You can also define your own wrapper around `System` if you'd like, such as
-/// keeping track of the number of all bytes allocated:
+/// keeping track of the number of all bytes allocated (note that due to
+/// optimizations, this may not be accurate):
 ///
 /// ```rust
 /// use std::alloc::{System, GlobalAlloc, Layout};
@@ -140,6 +146,8 @@ use crate::{hint, mem, ptr};
 /// global allocator has been selected for a Rust program. For example if a Rust
 /// program opts in to using jemalloc as the global allocator, `System` will
 /// still allocate memory using `malloc` and `HeapAlloc`.
+///
+/// [global_allocator]: GlobalAlloc#the-global_allocator-attribute
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
 #[derive(Copy, Debug)]
 #[derive_const(Clone, Default)]
@@ -216,7 +224,7 @@ impl System {
 
 // The Allocator impl checks the layout size to be non-zero and forwards to the
 // platform functions in `std::sys::*::alloc`.
-#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "allocator_api", since = "1.100.0")]
 unsafe impl Allocator for System {
     #[inline]
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
@@ -504,3 +512,7 @@ pub mod __default_lib_allocator {
         }
     }
 }
+
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+#[unstable_feature_bound(allocator_ext)]
+impl AllocatorNightly for System {}

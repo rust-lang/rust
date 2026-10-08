@@ -2,10 +2,19 @@ error: implementation of `Foo` is not general enough
   --> $DIR/hrtb-just-for-static.rs:24:5
    |
 LL |     want_hrtb::<StaticInt>()
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `StaticInt` must implement `Foo<&'0 isize>`, for any lifetime `'0`...
-   = note: ...but it actually implements `Foo<&'static isize>`
+note: `StaticInt` must implement `Foo<&'0 isize>`, for any lifetime `'0`...
+  --> $DIR/hrtb-just-for-static.rs:9:15
+   |
+LL | fn want_hrtb<T>()
+LL |     where T : for<'a> Foo<&'a isize>
+   |               ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `want_hrtb`
+note: ...but it actually implements `Foo<&'static isize>`
+  --> $DIR/hrtb-just-for-static.rs:22:1
+   |
+LL | impl Foo<&'static isize> for StaticInt { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: lifetime may not live long enough
   --> $DIR/hrtb-just-for-static.rs:30:5

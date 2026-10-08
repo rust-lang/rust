@@ -1,0 +1,41 @@
+error[E0275]: overflow evaluating the requirement `<T as TraitAssoc>::Assoc == _`
+  --> $DIR/projection-cache-rematch-impl-141124.rs:22:18
+   |
+LL |     type Assoc = <(T,) as TraitAssoc>::Assoc;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`projection_cache_rematch_impl_141124`)
+
+error[E0275]: overflow evaluating the requirement `<S as TraitAssoc>::Assoc == _`
+  --> $DIR/projection-cache-rematch-impl-141124.rs:27:6
+   |
+LL | impl SimpleTrait for <S as TraitAssoc>::Assoc {}
+   |      ^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `<S as TraitAssoc>::Assoc: SimpleTrait`
+  --> $DIR/projection-cache-rematch-impl-141124.rs:27:22
+   |
+LL | impl SimpleTrait for <S as TraitAssoc>::Assoc {}
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating whether `<S as TraitAssoc>::Assoc` is well-formed
+  --> $DIR/projection-cache-rematch-impl-141124.rs:27:22
+   |
+LL | impl SimpleTrait for <S as TraitAssoc>::Assoc {}
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `<(T,) as TraitAssoc>::Assoc == _`
+  --> $DIR/projection-cache-rematch-impl-141124.rs:22:5
+   |
+LL |     type Assoc = <(T,) as TraitAssoc>::Assoc;
+   |     ^^^^^^^^^^
+
+error[E0275]: overflow evaluating whether `<(T,) as TraitAssoc>::Assoc` is well-formed
+  --> $DIR/projection-cache-rematch-impl-141124.rs:22:5
+   |
+LL |     type Assoc = <(T,) as TraitAssoc>::Assoc;
+   |     ^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

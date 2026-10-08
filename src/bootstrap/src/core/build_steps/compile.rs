@@ -1251,31 +1251,7 @@ pub fn rustc_cargo(
         cargo.rustflag("-Zdefault-visibility=protected");
     }
 
-    if is_lto_stage(build_compiler) {
-        match builder.config.rust_lto {
-            RustcLto::Thin | RustcLto::Fat => {
-                // Since using LTO for optimizing dylibs is currently experimental,
-                // we need to pass -Zdylib-lto.
-                cargo.rustflag("-Zdylib-lto");
-                // Cargo by default passes `-Cembed-bitcode=no` and doesn't pass `-Clto` when
-                // compiling dylibs (and their dependencies), even when LTO is enabled for the
-                // crate. Therefore, we need to override `-Clto` and `-Cembed-bitcode` here.
-                let lto_type = match builder.config.rust_lto {
-                    RustcLto::Thin => "thin",
-                    RustcLto::Fat => "fat",
-                    _ => unreachable!(),
-                };
-                cargo.rustflag(&format!("-Clto={lto_type}"));
-                cargo.rustflag("-Cembed-bitcode=yes");
-            }
-            RustcLto::ThinLocal => { /* Do nothing, this is the default */ }
-            RustcLto::Off => {
-                cargo.rustflag("-Clto=off");
-            }
-        }
-    } else if builder.config.rust_lto == RustcLto::Off {
-        cargo.rustflag("-Clto=off");
-    }
+    apply_dylib_lto(builder, build_compiler, cargo);
 
     // With LLD, we can use ICF (identical code folding) to reduce the executable size
     // of librustc_driver/rustc and to improve i-cache utilization.
@@ -1306,6 +1282,34 @@ pub fn rustc_cargo(
     }
 
     rustc_cargo_env(builder, cargo, target);
+}
+
+fn apply_dylib_lto(builder: &Builder<'_>, build_compiler: &Compiler, cargo: &mut Cargo) {
+    if is_lto_stage(build_compiler) {
+        match builder.config.rust_lto {
+            RustcLto::Thin | RustcLto::Fat => {
+                // Since using LTO for optimizing dylibs is currently experimental,
+                // we need to pass -Zdylib-lto.
+                cargo.rustflag("-Zdylib-lto");
+                // Cargo by default passes `-Cembed-bitcode=no` and doesn't pass `-Clto` when
+                // compiling dylibs (and their dependencies), even when LTO is enabled for the
+                // crate. Therefore, we need to override `-Clto` and `-Cembed-bitcode` here.
+                let lto_type = match builder.config.rust_lto {
+                    RustcLto::Thin => "thin",
+                    RustcLto::Fat => "fat",
+                    _ => unreachable!(),
+                };
+                cargo.rustflag(&format!("-Clto={lto_type}"));
+                cargo.rustflag("-Cembed-bitcode=yes");
+            }
+            RustcLto::ThinLocal => { /* Do nothing, this is the default */ }
+            RustcLto::Off => {
+                cargo.rustflag("-Clto=off");
+            }
+        }
+    } else if builder.config.rust_lto == RustcLto::Off {
+        cargo.rustflag("-Clto=off");
+    }
 }
 
 fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
@@ -1720,6 +1724,7 @@ impl CommandLineStep for GccCodegenBackend {
             Kind::Build,
         );
         cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
+        apply_dylib_lto(builder, &build_compiler, &mut cargo);
 
         let _guard =
             builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, host);
@@ -1790,6 +1795,8 @@ impl CommandLineStep for CraneliftCodegenBackend {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join("compiler/rustc_codegen_cranelift/Cargo.toml"));
+        apply_dylib_lto(builder, &build_compiler, &mut cargo);
+        apply_pgo(builder, &mut cargo, build_compiler, &builder.config.cranelift_pgo);
 
         let _guard = builder.msg(
             Kind::Build,
@@ -2669,7 +2676,7 @@ pub fn run_cargo(
         let (filenames_vec, crate_types) = match msg {
             CargoMessage::CompilerArtifact {
                 filenames,
-                target: CargoTarget { crate_types },
+                target: CargoTarget { crate_types, .. },
                 ..
             } => {
                 let mut f: Vec<String> = filenames.into_iter().map(|s| s.into_owned()).collect();
@@ -2876,12 +2883,14 @@ pub fn stream_cargo(
     status.success()
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct CargoTarget<'a> {
-    crate_types: Vec<Cow<'a, str>>,
+    pub crate_types: Vec<Cow<'a, str>>,
+    #[serde(default)]
+    pub doc: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(tag = "reason", rename_all = "kebab-case")]
 pub enum CargoMessage<'a> {
     CompilerArtifact { filenames: Vec<Cow<'a, str>>, target: CargoTarget<'a> },

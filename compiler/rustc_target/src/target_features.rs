@@ -496,6 +496,8 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("lahfsahf", Unstable(sym::lahfsahf_target_feature), &[]),
     ("lzcnt", Stable, &[]),
     ("movbe", Stable, &[]),
+    ("movdir64b", Unstable(sym::movdir64b_target_feature), &[]),
+    ("movdiri", Unstable(sym::movdiri_target_feature), &[]),
     ("movrs", Unstable(sym::movrs_target_feature), &[]),
     ("pclmulqdq", Stable, &["sse2"]),
     ("popcnt", Stable, &[]),
@@ -1062,26 +1064,28 @@ const XTENSA_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 ///
 /// IMPORTANT: If you're adding another feature list above, make sure to add it to this iterator!
 pub fn all_rust_features() -> impl Iterator<Item = (&'static str, Stability)> {
-    std::iter::empty()
-        .chain(ARM_FEATURES)
-        .chain(AARCH64_FEATURES)
-        .chain(X86_FEATURES)
-        .chain(HEXAGON_FEATURES)
-        .chain(POWERPC_FEATURES)
-        .chain(MIPS_FEATURES)
-        .chain(NVPTX_FEATURES)
-        .chain(RISCV_FEATURES)
-        .chain(WASM_FEATURES)
-        .chain(BPF_FEATURES)
-        .chain(XTENSA_FEATURES)
-        .chain(CSKY_FEATURES)
-        .chain(LOONGARCH_FEATURES)
-        .chain(IBMZ_FEATURES)
-        .chain(SPARC_FEATURES)
-        .chain(M68K_FEATURES)
-        .chain(AVR_FEATURES)
-        .cloned()
-        .map(|(f, s, _)| (f, s))
+    [
+        ARM_FEATURES,
+        AARCH64_FEATURES,
+        X86_FEATURES,
+        HEXAGON_FEATURES,
+        POWERPC_FEATURES,
+        MIPS_FEATURES,
+        NVPTX_FEATURES,
+        RISCV_FEATURES,
+        WASM_FEATURES,
+        BPF_FEATURES,
+        XTENSA_FEATURES,
+        CSKY_FEATURES,
+        LOONGARCH_FEATURES,
+        IBMZ_FEATURES,
+        SPARC_FEATURES,
+        M68K_FEATURES,
+        AVR_FEATURES,
+    ]
+    .into_iter()
+    .flatten()
+    .map(|(f, s, _)| (*f, *s))
 }
 
 /// Find which target architectures a feature belongs to.

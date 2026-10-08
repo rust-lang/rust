@@ -114,7 +114,6 @@
 //!
 //! ```rust
 //! # #![feature(exhaustive_patterns)]
-#![cfg_attr(feature = "rustc", cfg_attr(bootstrap, doc = "#![feature(never_type)]"))]
 //! # let x = None::<!>;
 //! match x {
 //!   None => {}

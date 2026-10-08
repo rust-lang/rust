@@ -954,6 +954,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
         debug_assert!(value_type.dyncast_array().is_some());
         let name_suffix = match self.type_kind(dest_typ) {
+            TypeKind::Half if dest_typ.is_compatible_with(self.type_f16()) => {
+                let value = self.int_to_float_cast(signed, value, self.float_type);
+                return self.context.new_cast(None, value, dest_typ);
+            }
             // cSpell:disable
             TypeKind::Float => "tisf",
             TypeKind::Double => "tidf",

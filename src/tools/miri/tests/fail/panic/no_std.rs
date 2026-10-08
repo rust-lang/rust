@@ -16,5 +16,5 @@ fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
 #[panic_handler]
 fn panic_handler(panic_info: &core::panic::PanicInfo) -> ! {
     writeln!(utils::MiriStderr, "{panic_info}").ok();
-    core::intrinsics::abort(); //~ ERROR: the program aborted execution
+    core::intrinsics::abort_immediate(); //~ ERROR: the program aborted execution
 }

@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 use std::ffi::OsString;
-use std::fs::{self, Dir, DirBuilder, File, FileTimes, FileType, OpenOptions, TryLockError};
+use std::fs::{self, DirBuilder, File, FileTimes, FileType, OpenOptions, TryLockError};
 use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{self, Path};
 use std::time::SystemTime;
@@ -14,20 +14,20 @@ use rustc_target::spec::Os;
 
 use self::shims::time::system_time_to_duration;
 use crate::shims::FdId;
-use crate::shims::files::{DirHandle, FdNum, FileHandle};
-use crate::shims::os_str::bytes_to_os_str;
+use crate::shims::files::{DirHandle, FdNum, FileHandle, open_file_or_dir};
+use crate::shims::os_str::{PathConversion, bytes_to_os_str};
 use crate::shims::sig::Varargs;
 use crate::shims::unix::fd::{EvalContextExt as _, FlockOp, UnixFileDescription};
 use crate::*;
 
-/// An open directory stream, tracked by DirTable.
+/// An open directory stream (`DIR`), tracked by DirTable.
 #[derive(Debug)]
 struct DirStream {
-    /// The directory reader on the host.
+    /// The directory stream on the host.
     read_dir: fs::ReadDir,
-    /// An FD number for the same handle. Unix directory streams have an "underlying FD" that
-    /// can be exposed; this is that FD. We also store the FD ID to catch cases where
-    /// the FD was closed and a different one re-opened.
+    /// Unix directory streams have an "underlying FD" that can be exposed; this is that FD. This is
+    /// not a reference; it *can* be separately closed, leading to UB if the DIR is used again. We
+    /// also store the FD ID to catch cases where the FD was closed and a different one re-opened.
     fd_num: FdNum,
     fd_id: FdId,
     /// The "special" entries that must still be yielded by the iterator.
@@ -167,6 +167,22 @@ impl UnixFileDescription for FileHandle {
                     throw_unsup_format!("blocking `flock` is not currently supported");
                 },
         }
+    }
+
+    fn get_flags<'tcx>(&self, ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Scalar> {
+        interp_ok(match (self.readable, self.writable) {
+            (true, true) => ecx.eval_libc("O_RDWR"),
+            (true, false) => ecx.eval_libc("O_RDONLY"),
+            (false, true) => ecx.eval_libc("O_WRONLY"),
+            _ => unreachable!(),
+        })
+    }
+}
+
+impl UnixFileDescription for DirHandle {
+    fn get_flags<'tcx>(&self, ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Scalar> {
+        // Directories are always readonly on Unix.
+        interp_ok(ecx.eval_libc("O_RDONLY"))
     }
 }
 
@@ -387,15 +403,17 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         })
     }
 
-    #[cfg(unix)]
     fn host_permissions_from_mode(&self, mode: u32) -> InterpResult<'tcx, fs::Permissions> {
-        use std::os::unix::fs::PermissionsExt;
-        interp_ok(fs::Permissions::from_mode(mode))
-    }
-
-    #[cfg(not(unix))]
-    fn host_permissions_from_mode(&self, _mode: u32) -> InterpResult<'tcx, fs::Permissions> {
-        throw_unsup_format!("setting file permissions is only supported on Unix hosts")
+        cfg_select! {
+            unix => {
+                use std::os::unix::fs::PermissionsExt;
+                interp_ok(fs::Permissions::from_mode(mode))
+            }
+            _ => {
+                let _ = mode;
+                throw_unsup_format!("setting file permissions is only supported on Unix hosts")
+            }
+        }
     }
 }
 
@@ -424,6 +442,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut flag = flag;
 
         let mut options = OpenOptions::new();
+        let mut custom_flags = 0;
 
         let o_rdonly = this.eval_libc_i32("O_RDONLY");
         let o_wronly = this.eval_libc_i32("O_WRONLY");
@@ -453,6 +472,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("unsupported access mode {:#x}", access_mode);
         }
 
+        if this.tcx.sess.target.os == Os::Linux {
+            let o_tmpfile = this.eval_libc_i32("O_TMPFILE");
+            // Note that this overaps with O_DIRECTORY!
+            if flag & o_tmpfile == o_tmpfile {
+                // if the flag contains `O_TMPFILE` then we return a graceful error
+                return this.set_errno_and_return_neg1_i32(LibcError("EOPNOTSUPP"));
+            }
+        }
+        let o_directory = this.eval_libc_i32("O_DIRECTORY");
+        let mut want_directory = false;
+        if flag & o_directory == o_directory {
+            flag &= !o_directory;
+            want_directory = true;
+            // On Unix we can ask the host to only open directories. That's helpful especially in
+            // combination with O_NOFOLLOW as it affects which error we get when the final component
+            // is a symlink. Fixing the error up ourselves is non-trivial so we make the host
+            // generate the right error.
+            #[cfg(unix)]
+            {
+                custom_flags |= libc::O_DIRECTORY;
+            }
+        }
         let o_append = this.eval_libc_i32("O_APPEND");
         if flag & o_append == o_append {
             flag &= !o_append;
@@ -466,6 +507,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let o_creat = this.eval_libc_i32("O_CREAT");
         if flag & o_creat == o_creat {
             flag &= !o_creat;
+            if want_directory {
+                // O_CREAT + O_DIRECTORY is invalid.
+                return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+            }
             // Get the mode.
             let ([mode], _) = this.check_varargs(
                 if this.libc_ty_layout("mode_t").size.bytes() >= 4 {
@@ -481,20 +526,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             )?;
             let mode = this.read_scalar(mode)?.to_u32()?;
 
-            #[cfg(unix)]
-            {
-                // Support all modes on UNIX host
-                use std::os::unix::fs::OpenOptionsExt;
-                options.mode(mode);
-            }
-            #[cfg(not(unix))]
-            {
-                // Only support default mode for non-UNIX (i.e. Windows) host
-                if mode != 0o666 {
-                    throw_unsup_format!(
-                        "non-default mode 0o{:o} is not supported on non-Unix hosts",
-                        mode
-                    );
+            cfg_select! {
+                unix => {
+                    // Support all modes on UNIX host
+                    use std::os::unix::fs::OpenOptionsExt;
+                    options.mode(mode);
+                }
+                _ => {
+                    // Only support default mode for non-UNIX (i.e. Windows) host
+                    if mode != 0o666 {
+                        throw_unsup_format!(
+                            "non-default mode 0o{:o} is not supported on non-Unix hosts",
+                            mode
+                        );
+                    }
                 }
             }
 
@@ -512,31 +557,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // We do not need to do anything for this flag because `std` already sets it.
             // (Technically we do not support *not* setting this flag, but we ignore that.)
         }
-        if this.tcx.sess.target.os == Os::Linux {
-            let o_tmpfile = this.eval_libc_i32("O_TMPFILE");
-            if flag & o_tmpfile == o_tmpfile {
-                // if the flag contains `O_TMPFILE` then we return a graceful error
-                return this.set_errno_and_return_neg1_i32(LibcError("EOPNOTSUPP"));
-            }
-        }
-
         let o_nofollow = this.eval_libc_i32("O_NOFOLLOW");
+        let mut nofollow = false;
         if flag & o_nofollow == o_nofollow {
             flag &= !o_nofollow;
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::OpenOptionsExt;
-                options.custom_flags(libc::O_NOFOLLOW);
-            }
-            // Strictly speaking, this emulation is not equivalent to the O_NOFOLLOW flag behavior:
-            // the path could change between us checking it here and the later call to `open`.
-            // But it's good enough for Miri purposes.
-            #[cfg(not(unix))]
-            {
-                // O_NOFOLLOW only fails when the trailing component is a symlink;
-                // the entire rest of the path can still contain symlinks.
-                if path.is_symlink() {
-                    return this.set_errno_and_return_neg1_i32(LibcError("ELOOP"));
+            nofollow = true;
+            cfg_select! {
+                unix => {
+                    custom_flags |= libc::O_NOFOLLOW;
+                }
+                windows => {
+                    custom_flags |=
+                        windows_sys::Win32::Storage::FileSystem::FILE_FLAG_OPEN_REPARSE_POINT;
                 }
             }
         }
@@ -552,11 +584,37 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        let fd = options
-            .open(path)
-            .map(|file| this.machine.fds.insert_new(FileHandle { file, writable, readable }));
+        // Let's see what we get when we open this!
+        match open_file_or_dir(&path, options, custom_flags) {
+            Err(err) => this.set_errno_and_return_neg1_i32(err),
+            Ok(Either::Right(dir)) => {
+                // This means it cannot be a symlink, so `nofollow` is fine.
+                if writable {
+                    // On Windows, opening a folder writable can succeed.
+                    // But here we want it to always fail.
+                    return this.set_errno_and_return_neg1_i32(LibcError("EISDIR"));
+                }
 
-        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(fd)?))
+                let fd = this.machine.fds.insert_new(DirHandle::new(dir, &path));
+                interp_ok(Scalar::from_i32(fd))
+            }
+            Ok(Either::Left(file)) => {
+                if want_directory {
+                    return this.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
+                }
+                if file.metadata().unwrap().is_symlink() {
+                    if nofollow {
+                        // On Windows, FILE_FLAG_OPEN_REPARSE_POINT makes opening still succeed, it
+                        // just opens the symlink rather than the target. Turn that into an error.
+                        return this.set_errno_and_return_neg1_i32(LibcError("ELOOP"));
+                    }
+                    panic!("we should not get a symlink here");
+                }
+
+                let fd = this.machine.fds.insert_new(FileHandle { file, writable, readable });
+                interp_ok(Scalar::from_i32(fd))
+            }
+        }
     }
 
     fn lseek(
@@ -618,15 +676,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         target_op: &OpTy<'tcx>,
         linkpath_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        #[cfg(unix)]
         fn create_link(src: &Path, dst: &Path) -> std::io::Result<()> {
-            std::os::unix::fs::symlink(src, dst)
-        }
-
-        #[cfg(windows)]
-        fn create_link(src: &Path, dst: &Path) -> std::io::Result<()> {
-            use std::os::windows::fs;
-            if src.is_dir() { fs::symlink_dir(src, dst) } else { fs::symlink_file(src, dst) }
+            cfg_select! {
+                unix => std::os::unix::fs::symlink(src, dst),
+                windows => {
+                    use std::os::windows::fs;
+                    // This is racy, but not much we can do about that.
+                    // FIXME: maybe we can retry based on the error code?
+                    if src.is_dir() {
+                        fs::symlink_dir(src, dst)
+                    } else {
+                        fs::symlink_file(src, dst)
+                    }
+                }
+            }
         }
 
         let this = self.eval_context_mut();
@@ -766,11 +829,65 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`fstat`", reject_with)?;
-            // Set error code as "EBADF" (bad fd)
+            // Set error code as "EBADF" (bad fd); "EACCESS" does not make much sense here.
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         }
 
         let metadata = match FileMetadata::from_fd_num(this, fd)? {
+            Ok(metadata) => metadata,
+            Err(err) => return this.set_errno_and_return_neg1_i32(err),
+        };
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
+    }
+
+    fn fstatat(
+        &mut self,
+        dirfd_op: &OpTy<'tcx>,
+        path_op: &OpTy<'tcx>,
+        buf_op: &OpTy<'tcx>,
+        flags_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        if !matches!(
+            &this.tcx.sess.target.os,
+            Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos | Os::Linux | Os::Android
+        ) {
+            panic!("`fstatat` should not be called on {}", this.tcx.sess.target.os);
+        }
+
+        let dirfd = this.read_scalar(dirfd_op)?.to_i32()?;
+        let path = this.read_pointer(path_op)?;
+        let flags = this.read_scalar(flags_op)?.to_i32()?;
+
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`fstatat`", reject_with)?;
+            return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
+        }
+
+        // Parse flags.
+        let mut flags = flags;
+        // AT_SYMLINK_NOFOLLOW
+        let at_symlink_nofollow = this.eval_libc_i32("AT_SYMLINK_NOFOLLOW");
+        let symlink_nofollow_flag = flags & at_symlink_nofollow == at_symlink_nofollow;
+        flags &= !at_symlink_nofollow;
+        // Complain about unknown flags.
+        if flags != 0 {
+            throw_unsup_format!("unsupported flags for `fstatat`: {flags:#x}")
+        }
+
+        let path = this.read_path_from_c_str(path)?.into_owned();
+        // Resolve dirfd + path to metadata.
+        let metadata = FileMetadata::at(
+            this,
+            dirfd,
+            &path,
+            symlink_nofollow_flag,
+            /* empty_path_flag */ false,
+        )?;
+
+        let metadata = match metadata {
             Ok(metadata) => metadata,
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
@@ -824,31 +941,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
         }
 
-        // If the path is empty, and the AT_EMPTY_PATH flag is set, we query the open file
-        // represented by dirfd, whether it's a directory or otherwise.
-        let metadata = if path.is_empty() {
-            // no path: invalid by default, load metadata about dirfd with flag
-            if !empty_path_flag {
-                return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
-            }
-            FileMetadata::from_fd_num(this, dirfd)?
-        } else if path.is_absolute() || dirfd == this.eval_libc_i32("AT_FDCWD") {
-            // Either absolute path (dirfd is ignored) or relative to working directory.
-            FileMetadata::from_host(
-                this,
-                if symlink_nofollow_flag { fs::symlink_metadata(path) } else { fs::metadata(path) },
-            )?
-        } else {
-            // relative to dirfd, which must be a directory handle
-            let Some(fd) = this.machine.fds.get(dirfd) else {
-                return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-            };
-            let Some(_dir) = fd.downcast::<DirHandle>() else {
-                return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-            };
-
-            throw_unsup_format!("statx relative to a directory handle is not supported");
-        };
+        // Resolve dirfd + path to metadata.
+        let metadata =
+            FileMetadata::at(this, dirfd, &path, symlink_nofollow_flag, empty_path_flag)?;
 
         let metadata = match metadata {
             Ok(metadata) => metadata,
@@ -1117,12 +1212,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // in between above and here. One day, the standard library will support converting
                 // between `Dir` and `ReadDir` (one of the two directions would suffice for our
                 // needs), then we'll use that.
-                let Ok(dir) = Dir::open(name) else {
+                let Ok(dir) = fs::Dir::open(&name) else {
                     throw_unsup_format!(
                         "cannot `opendir` this directory: failed to create directory handle"
                     );
                 };
-                let dir = this.machine.fds.new_ref(DirHandle { dir });
+                let dir = this.machine.fds.new_ref(DirHandle::new(dir, &name));
                 let dir_fd_id = dir.id();
                 let dir_fd_num = this.machine.fds.insert(dir);
 
@@ -1606,7 +1701,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, i64> {
         let this = self.eval_context_mut();
 
-        let pathname = this.read_path_from_c_str(this.read_pointer(pathname_op)?)?;
+        let pathname = this.read_os_str_from_c_str(this.read_pointer(pathname_op)?)?;
         let buf = this.read_pointer(buf_op)?;
         let bufsize = this.read_target_usize(bufsize_op)?;
 
@@ -1617,16 +1712,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(-1);
         }
 
-        let result = std::fs::read_link(pathname);
+        // Special case the procfs link to the current executable so that
+        // `std::env::current_exe` works in cross-execution.
+        let self_exe = match this.tcx.sess.target.os {
+            Os::Linux | Os::Android => Some("/proc/self/exe"),
+            Os::Solaris | Os::Illumos => Some("/proc/self/path/a.out"),
+            _ => None,
+        };
+        let result = if self_exe.is_some() && pathname.to_str() == self_exe {
+            this.machine.current_exe.clone().ok_or(ErrorKind::NotFound.into())
+        } else {
+            // We read `pathname` as `OsStr` above so we could do the /proc/self/exe check.
+            // But now we need a (host) path.
+            let pathname = this.convert_path(Cow::Borrowed(pathname), PathConversion::TargetToHost);
+            std::fs::read_link(pathname)
+        };
+
         match result {
             Ok(resolved) => {
                 // 'readlink' truncates the resolved path if the provided buffer is not large
                 // enough, and does *not* add a null terminator. That means we cannot use the usual
                 // `write_path_to_c_str` and have to re-implement parts of it ourselves.
-                let resolved = this.convert_path(
-                    Cow::Borrowed(resolved.as_ref()),
-                    crate::shims::os_str::PathConversion::HostToTarget,
-                );
+                let resolved = this
+                    .convert_path(Cow::Borrowed(resolved.as_ref()), PathConversion::HostToTarget);
                 let mut path_bytes = resolved.as_encoded_bytes();
                 let bufsize: usize = bufsize.try_into().unwrap();
                 if path_bytes.len() > bufsize {
@@ -1859,9 +1967,6 @@ fn extract_sec_and_nsec<'tcx>(
 }
 
 fn file_type_to_mode_name(file_type: std::fs::FileType) -> &'static str {
-    #[cfg(unix)]
-    use std::os::unix::fs::FileTypeExt;
-
     if file_type.is_file() {
         "S_IFREG"
     } else if file_type.is_dir() {
@@ -1872,6 +1977,7 @@ fn file_type_to_mode_name(file_type: std::fs::FileType) -> &'static str {
         // Certain file types are only available when the host is a Unix system.
         #[cfg(unix)]
         {
+            use std::os::unix::fs::FileTypeExt;
             if file_type.is_socket() {
                 return "S_IFSOCK";
             } else if file_type.is_fifo() {
@@ -1910,9 +2016,61 @@ struct FileMetadata {
 }
 
 impl FileMetadata {
+    /// Implements the shared "metadata at" semantics of `fstatat` and `statx`.
+    fn at<'tcx>(
+        ecx: &mut MiriInterpCx<'tcx>,
+        dirfd: FdNum,
+        path: &Path,
+        symlink_nofollow_flag: bool,
+        empty_path_flag: bool,
+    ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
+        // If the path is empty, and the AT_EMPTY_PATH flag is set, we query the open file
+        // represented by dirfd, whether it's a directory or otherwise.
+        if path.is_empty() {
+            // no path: invalid by default, load metadata about dirfd with flag
+            if !empty_path_flag {
+                return interp_ok(Err(LibcError("ENOENT")));
+            }
+            FileMetadata::from_fd_num(ecx, dirfd)
+        } else if path.is_absolute() || dirfd == ecx.eval_libc_i32("AT_FDCWD") {
+            // Either absolute path (dirfd is ignored) or relative to working directory.
+            FileMetadata::from_host(
+                ecx,
+                if symlink_nofollow_flag { path.symlink_metadata() } else { path.metadata() },
+            )
+        } else {
+            // relative to dirfd, which must be a directory handle
+            let Some(fd) = ecx.machine.fds.get(dirfd) else {
+                return interp_ok(Err(LibcError("EBADF")));
+            };
+            let Some(dir) = fd.downcast::<DirHandle>() else {
+                return interp_ok(Err(LibcError("ENOTDIR")));
+            };
+
+            // Windows does not by itself treat `.` correctly so we do that by hand.
+            #[cfg(not(bootstrap))]
+            let metadata = if cfg!(windows) && path.to_str() == Some(".") {
+                dir.dir.self_metadata()
+            } else if symlink_nofollow_flag {
+                dir.dir.symlink_metadata(path)
+            } else {
+                dir.dir.metadata(path)
+            };
+            #[cfg(bootstrap)]
+            let metadata = if cfg!(windows) && path.to_str() == Some(".") {
+                dir.dir.metadata()
+            } else if symlink_nofollow_flag {
+                dir.fallback.join(path).symlink_metadata()
+            } else {
+                dir.fallback.join(path).metadata()
+            };
+            FileMetadata::from_host(ecx, metadata)
+        }
+    }
+
     fn from_fd_num<'tcx>(
         ecx: &mut MiriInterpCx<'tcx>,
-        fd_num: i32,
+        fd_num: FdNum,
     ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
         let Some(fd) = ecx.machine.fds.get(fd_num) else {
             return interp_ok(Err(LibcError("EBADF")));

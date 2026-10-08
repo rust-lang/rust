@@ -1,4 +1,5 @@
 //@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@ [next] compile-flags: -Znext-solver
 #![feature(field_projections, freeze)]
 #![expect(incomplete_features, dead_code)]

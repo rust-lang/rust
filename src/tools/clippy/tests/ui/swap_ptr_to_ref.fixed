@@ -24,3 +24,30 @@ fn main() {
 
     core::mem::swap(y, z);
 }
+
+mod pr17777 {
+    #[clippy::msrv = "1.5.0"]
+    fn before_core_msrv(y: *mut u32, z: *mut u32) {
+        unsafe {
+            std::ptr::swap(y, z);
+            //~^ swap_ptr_to_ref
+        }
+    }
+
+    #[clippy::msrv = "1.6.0"]
+    fn after_core_msrv(y: *mut u32, z: *mut u32) {
+        unsafe {
+            core::ptr::swap(y, z);
+            //~^ swap_ptr_to_ref
+        }
+    }
+
+    // before const is in .._unfixable since there is no suggestion to be made but this still needs to warn
+    #[clippy::msrv = "1.85.0"]
+    const fn after_const_msrv(y: *mut u32, z: *mut u32) {
+        unsafe {
+            core::ptr::swap(y, z);
+            //~^ swap_ptr_to_ref
+        }
+    }
+}

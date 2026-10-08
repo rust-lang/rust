@@ -199,7 +199,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                     "compiler_builtins call to diverging function {:?} replaced with abort",
                     instance.def_id()
                 );
-                bx.abort();
+                bx.abort_immediate();
                 bx.unreachable();
                 return MergingSucc::False;
             }
@@ -587,7 +587,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // so we should make sure that we never actually do.
             // We play it safe by using a well-defined `abort`, but we could go for immediate UB
             // if that turns out to be helpful.
-            bx.abort();
+            bx.abort_immediate();
             // `abort` does not terminate the block, so we still need to generate
             // an `unreachable` terminator after it.
             bx.unreachable();
@@ -1099,7 +1099,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 }
                                 // Also we need to terminate the block to avoid an LLVM assertion,
                                 // even though we're not going to actually use the IR.
-                                bx.abort();
+                                bx.abort_immediate();
                                 return MergingSucc::False;
                             }
                             IntrinsicResult::Fallback(instance) => {
@@ -2398,7 +2398,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (fn_abi, fn_ptr, instance) =
             common::build_langcall(&bx, self.mir.span, reason.lang_item());
         if is_call_from_compiler_builtins_to_upstream_monomorphization(bx.tcx(), instance) {
-            bx.abort();
+            bx.abort_immediate();
         } else {
             let fn_ty = bx.fn_decl_backend_type(fn_abi);
 

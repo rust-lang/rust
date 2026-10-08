@@ -19,8 +19,8 @@ use super::diagnostics::{
 };
 use super::stability::{enabled_names, gate_unstable_abi};
 use super::{
-    FnDeclKind, GenericArgsMode, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
-    RelaxedBoundForbiddenReason, RelaxedBoundPolicy,
+    DiscardParams, FnDeclKind, GenericArgsMode, ImplTraitContext, ImplTraitPosition,
+    LoweringContext, ParamMode, RelaxedBoundForbiddenReason, RelaxedBoundPolicy,
 };
 use crate::diagnostics::{ConstComptimeFn, ResolvingRestrictionKind, RestrictionAncestorOnly};
 
@@ -278,7 +278,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     let itctx = ImplTraitContext::Universal;
                     let (generics, decl) = this.lower_generics(generics, itctx, |this| {
-                        this.lower_fn_decl(decl, id, FnDeclKind::Fn, coroutine_marker)
+                        this.lower_fn_decl(
+                            decl,
+                            id,
+                            hir_id,
+                            FnDeclKind::Fn,
+                            coroutine_marker,
+                            if body.is_none() { DiscardParams::Yes } else { DiscardParams::No },
+                        )
                     });
                     let sig = hir::FnSig {
                         decl,
@@ -616,7 +623,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, (decl, fn_args)) = self.lower_generics(generics, itctx, |this| {
                     (
                         // Disallow `impl Trait` in foreign items.
-                        this.lower_fn_decl(fdec, i.id, FnDeclKind::ExternFn, None),
+                        // Parameters are discarded because foreign functions don't have a body
+                        this.lower_fn_decl(
+                            fdec,
+                            i.id,
+                            hir_id,
+                            FnDeclKind::ExternFn,
+                            None,
+                            DiscardParams::Yes,
+                        ),
                         this.lower_fn_params_to_idents(fdec),
                     )
                 });
@@ -838,9 +853,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     generics,
                     sig,
                     i.id,
+                    hir_id,
                     FnDeclKind::Trait,
                     sig.header.coroutine_marker,
                     attrs,
+                    // Parameters are discarded for functions without a body
+                    DiscardParams::Yes,
                 );
                 if define_opaque.is_some() {
                     self.dcx().span_err(
@@ -878,9 +896,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     generics,
                     sig,
                     i.id,
+                    hir_id,
                     FnDeclKind::Trait,
                     sig.header.coroutine_marker,
                     attrs,
+                    DiscardParams::No,
                 );
                 self.lower_define_opaque(hir_id, &define_opaque);
                 (
@@ -1088,9 +1108,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     generics,
                     sig,
                     i.id,
+                    hir_id,
                     if is_in_trait_impl { FnDeclKind::Impl } else { FnDeclKind::Inherent },
                     sig.header.coroutine_marker,
                     attrs,
+                    if body.is_none() { DiscardParams::Yes } else { DiscardParams::No },
                 );
                 self.lower_define_opaque(hir_id, &define_opaque);
 
@@ -1533,15 +1555,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         generics: &Generics,
         sig: &FnSig,
-        id: NodeId,
+        node_id: NodeId,
+        hir_id: HirId,
         kind: FnDeclKind,
         coroutine_marker: Option<CoroutineMarker>,
         attrs: &[rustc_attr_ir::Attribute],
+        discard_params: DiscardParams,
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header, hir::Safety::Safe, attrs);
         let itctx = ImplTraitContext::Universal;
         let (generics, decl) = self.lower_generics(generics, itctx, |this| {
-            this.lower_fn_decl(&sig.decl, id, kind, coroutine_marker)
+            this.lower_fn_decl(&sig.decl, node_id, hir_id, kind, coroutine_marker, discard_params)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }
@@ -1979,7 +2003,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let predicates = self.arena.alloc_from_iter(
             body.predicates
                 .iter()
-                .flat_map(|w| &w.predicates)
                 .map(|predicate| self.lower_where_predicate(predicate, &[], &mut dedup_map)),
         );
         hir::TestBinderBody { foralls, exists, constraints, predicates }
@@ -2059,6 +2082,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     items.iter().map(|item| self.lower_test_binder_constraint(item)),
                 ),
             },
+            TestBinderConstraint::Ambiguity { span } => {
+                hir::TestBinderConstraint::Ambiguity { span: self.lower_span(*span) }
+            }
             TestBinderConstraint::Lifetime { lhs, rhs } => {
                 let lhs = self.lower_lifetime(lhs, LifetimeSource::Other, lhs.ident.into());
                 let rhs = self.lower_lifetime(rhs, LifetimeSource::OutlivesBound, rhs.ident.into());
@@ -2098,7 +2124,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
 
         hir::TestBinderBoundTypeConstraint {
-            span: *span,
+            span: self.lower_span(*span),
             hir_id: self.lower_node_id(*node_id),
             params: generics.params,
             lhs,

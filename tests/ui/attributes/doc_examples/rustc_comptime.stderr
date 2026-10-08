@@ -1,0 +1,14 @@
+error: comptime fns can only be called at compile time
+  --> $DIR/rustc_comptime.rs:10:5
+   |
+10 |     comptime(); // ERROR
+   |     ^^^^^^^^^^
+
+error: comptime fns can only be called at compile time
+  --> $DIR/rustc_comptime.rs:18:5
+   |
+18 |     comptime();
+   |     ^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,4 +1,8 @@
-//@ check-pass
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] known-bug: trait-system-refactor-initiative#304
+//@[old] check-pass
 //@ edition:2018
 //@ aux-crate:fn_header_aux=fn-header-aux.rs
 //@ ignore-backends: gcc

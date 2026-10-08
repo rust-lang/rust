@@ -394,8 +394,31 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             (ident.span, None, assoc_tag, assoc_item.tag())
         };
 
+        let def_kind = tcx.def_kind(self.item_def_id());
+        let item_span = tcx.def_span(self.item_def_id()).shrink_to_lo();
+        let (item_span, enclosing_span) = match def_kind {
+            DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy => (
+                item_span,
+                Some(tcx.def_span(tcx.parent(self.item_def_id().into())).shrink_to_lo()),
+            ),
+            DefKind::OpaqueTy => {
+                let item_span = tcx.def_span(tcx.parent(self.item_def_id().into())).shrink_to_lo();
+                let enclosing_span =
+                    if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy =
+                        tcx.def_kind(tcx.parent(self.item_def_id().into()))
+                    {
+                        Some(tcx.def_span(tcx.parent(self.item_def_id().into())).shrink_to_lo())
+                    } else {
+                        None
+                    };
+                (item_span, enclosing_span)
+            }
+            _ => (item_span, None),
+        };
         self.dcx().emit_err(diagnostics::AssocKindMismatch {
             span,
+            item_span,
+            enclosing_span,
             expected: assoc_tag_str(expected),
             got: assoc_tag_str(got),
             expected_because_label,

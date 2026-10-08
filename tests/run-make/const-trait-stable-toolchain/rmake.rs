@@ -8,6 +8,7 @@ use run_make_support::{diff, rustc, stable_bare_rustc};
 
 fn main() {
     let out = stable_bare_rustc()
+        .edition("2015")
         .input("const-super-trait.rs")
         .cfg("feature_enabled")
         .run_fail()
@@ -22,6 +23,7 @@ fn main() {
         .actual_text("(rustc)", &out)
         .run();
     let out = rustc()
+        .edition("2015")
         .input("const-super-trait.rs")
         .cfg("feature_enabled")
         .ui_testing()
@@ -34,6 +36,7 @@ fn main() {
         .actual_text("(rustc)", &out)
         .run();
     let out = stable_bare_rustc()
+        .edition("2015")
         .input("const-super-trait.rs")
         .run_fail()
         .assert_stderr_not_contains("enable `#![feature(const_trait_impl)]` in your crate and mark")
@@ -44,6 +47,7 @@ fn main() {
         .actual_text("(rustc)", &out)
         .run();
     let out = rustc()
+        .edition("2015")
         .input("const-super-trait.rs")
         .ui_testing()
         .run_fail()

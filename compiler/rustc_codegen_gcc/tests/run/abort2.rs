@@ -12,7 +12,7 @@ extern crate mini_core;
 use mini_core::*;
 
 fn fail() -> i32 {
-    unsafe { intrinsics::abort() };
+    unsafe { intrinsics::abort_immediate() };
     0
 }
 

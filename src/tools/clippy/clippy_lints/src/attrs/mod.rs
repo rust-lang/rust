@@ -83,7 +83,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `warn`/`deny`/`forbid` attributes targeting the whole clippy::restriction category.
+    /// Checks for `warn`/`deny`/`forbid` attributes targeting the whole `clippy::restriction` category.
     ///
     /// ### Why is this bad?
     /// Restriction lints sometimes are in contrast with other lints or even go against idiomatic rust.
@@ -110,12 +110,12 @@ declare_clippy_lint! {
     /// with `#[rustfmt::skip]`.
     ///
     /// ### Why is this bad?
-    /// Since tool_attributes ([rust-lang/rust#44690](https://github.com/rust-lang/rust/issues/44690))
+    /// Since `tool_attributes` ([rust-lang/rust#44690](https://github.com/rust-lang/rust/issues/44690))
     /// are stable now, they should be used instead of the old `cfg_attr(rustfmt)` attributes.
     ///
     /// ### Known problems
     /// This lint doesn't detect crate level inner attributes, because they get
-    /// processed before the PreExpansionPass lints get executed. See
+    /// processed before the pre-expansion pass lints get executed. See
     /// [#3123](https://github.com/rust-lang/rust-clippy/pull/3123#issuecomment-422321765)
     ///
     /// ### Example
@@ -432,22 +432,22 @@ declare_clippy_lint! {
     ///
     /// This lint permits lint attributes for lints emitted on the items themself.
     /// For `use` items these lints are:
-    /// * ambiguous_glob_reexports
-    /// * dead_code
-    /// * deprecated
-    /// * hidden_glob_reexports
-    /// * unreachable_pub
-    /// * unused
-    /// * unused_braces
-    /// * unused_import_braces
-    /// * clippy::disallowed_types
-    /// * clippy::enum_glob_use
-    /// * clippy::macro_use_imports
-    /// * clippy::module_name_repetitions
-    /// * clippy::redundant_pub_crate
-    /// * clippy::single_component_path_imports
-    /// * clippy::unsafe_removed_from_name
-    /// * clippy::wildcard_imports
+    /// * `ambiguous_glob_reexports`
+    /// * `dead_code`
+    /// * `deprecated`
+    /// * `hidden_glob_reexports`
+    /// * `unreachable_pub`
+    /// * `unused`
+    /// * `unused_braces`
+    /// * `unused_import_braces`
+    /// * `clippy::disallowed_types`
+    /// * `clippy::enum_glob_use`
+    /// * `clippy::macro_use_imports`
+    /// * `clippy::module_name_repetitions`
+    /// * `clippy::redundant_pub_crate`
+    /// * `clippy::single_component_path_imports`
+    /// * `clippy::unsafe_removed_from_name`
+    /// * `clippy::wildcard_imports`
     ///
     /// For `extern crate` items these lints are:
     /// * `unused_imports` on items with `#[macro_use]`

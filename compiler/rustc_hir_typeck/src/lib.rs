@@ -1,6 +1,4 @@
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(never_type))]
-#![cfg_attr(bootstrap, feature(trim_prefix_suffix))]
 #![feature(deref_patterns)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]

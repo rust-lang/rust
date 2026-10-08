@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/invariant.rs:16:5
+  --> $DIR/invariant.rs:17:5
    |
 LL | fn assert_invariant<'a, 'b>(x: field_of!(Struct<'a>, field), y: field_of!(Struct<'b>, field)) {
    |                     --  -- lifetime `'b` defined here
@@ -15,7 +15,7 @@ LL |     consume(x, y);
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/invariant.rs:16:5
+  --> $DIR/invariant.rs:17:5
    |
 LL | fn assert_invariant<'a, 'b>(x: field_of!(Struct<'a>, field), y: field_of!(Struct<'b>, field)) {
    |                     --  -- lifetime `'b` defined here
@@ -31,7 +31,7 @@ LL |     consume(x, y);
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: one or more lifetime errors were found in this item
-  --> $DIR/invariant.rs:14:4
+  --> $DIR/invariant.rs:15:4
    |
 LL | fn assert_invariant<'a, 'b>(x: field_of!(Struct<'a>, field), y: field_of!(Struct<'b>, field)) {
    |    ^^^^^^^^^^^^^^^^

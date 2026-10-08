@@ -14,9 +14,10 @@ use rustc_middle::mir::{Rvalue, WithRetag};
 use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 
-use crate::mir::FunctionCx;
+use crate::common::IntPredicate;
 use crate::mir::operand::{OperandRef, OperandRefBuilder, OperandValue};
 use crate::mir::place::PlaceRef;
+use crate::mir::{FunctionCx, bug};
 use crate::traits::{
     BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods, StaticCodegenMethods,
 };
@@ -35,9 +36,20 @@ enum RetagPlan<V> {
     /// Indicates that one or more fields or variants of this type
     /// contain pointers that need to be retagged.
     Recurse {
-        field_plans: FxIndexMap<FieldIdx, RetagPlan<V>>,
+        field_plans: Option<RetagFields<V>>,
         variant_plans: FxIndexMap<VariantIdx, RetagPlan<V>>,
     },
+}
+
+/// The layout of the fields that need to be retagged.
+///
+/// This mirrors [`FieldsShape`] but excludes unions,
+/// which are never retagged, and primitives, which fall
+/// into [`RetagPlan::EmitRetag`].
+#[derive(Debug)]
+enum RetagFields<V> {
+    Arbitrary(FxIndexMap<FieldIdx, RetagPlan<V>>),
+    Array(Box<RetagPlan<V>>),
 }
 
 impl<V> RetagPlan<V> {
@@ -45,7 +57,10 @@ impl<V> RetagPlan<V> {
     fn for_field(self, ix: FieldIdx) -> Self {
         let mut field_plans = FxIndexMap::default();
         field_plans.insert(ix, self);
-        RetagPlan::Recurse { field_plans, variant_plans: FxIndexMap::default() }
+        RetagPlan::Recurse {
+            field_plans: Some(RetagFields::Arbitrary(field_plans)),
+            variant_plans: FxIndexMap::default(),
+        }
     }
 }
 
@@ -84,21 +99,27 @@ impl<'a, 'tcx, V> RetagPlan<V> {
         layout: TyAndLayout<'tcx>,
         is_fn_entry: bool,
     ) -> Option<RetagPlan<Bx::Value>> {
-        let mut field_plans = FxIndexMap::default();
-        let mut variant_plans = FxIndexMap::default();
-
-        match &layout.fields {
-            FieldsShape::Union(_) | FieldsShape::Primitive => {}
-            _ => {
+        let field_plans = match &layout.fields {
+            FieldsShape::Union(_) | FieldsShape::Primitive => None,
+            FieldsShape::Arbitrary { .. } => {
+                let mut field_plans = FxIndexMap::default();
                 for ix in layout.fields.index_by_increasing_offset() {
                     let field_layout = layout.field(bx, ix);
                     if let Some(plan) = Self::build(bx, field_layout, is_fn_entry) {
                         field_plans.insert(FieldIdx::from_usize(ix), plan);
                     }
                 }
+                (!field_plans.is_empty()).then_some(RetagFields::Arbitrary(field_plans))
             }
-        }
+            FieldsShape::Array { count, .. } if *count > 0 => {
+                let field_layout = layout.field(bx, 0);
+                Self::build(bx, field_layout, is_fn_entry)
+                    .map(|plan| RetagFields::Array(Box::new(plan)))
+            }
+            FieldsShape::Array { .. } => None,
+        };
 
+        let mut variant_plans = FxIndexMap::default();
         match &layout.variants {
             Variants::Single { .. } | Variants::Empty => {}
             Variants::Multiple { variants, .. } => {
@@ -111,7 +132,7 @@ impl<'a, 'tcx, V> RetagPlan<V> {
             }
         }
 
-        (!field_plans.is_empty() || !variant_plans.is_empty())
+        (field_plans.is_some() || !variant_plans.is_empty())
             .then(|| RetagPlan::Recurse { field_plans, variant_plans })
     }
 
@@ -157,8 +178,10 @@ impl<'a, 'tcx, V> RetagPlan<V> {
             field_plans.insert(FieldIdx::ONE, plan);
         }
 
-        (!field_plans.is_empty())
-            .then(|| RetagPlan::Recurse { field_plans, variant_plans: FxIndexMap::default() })
+        (!field_plans.is_empty()).then(|| RetagPlan::Recurse {
+            field_plans: Some(RetagFields::Arbitrary(field_plans)),
+            variant_plans: FxIndexMap::default(),
+        })
     }
 
     /// Determines if a pointer needs to be retagged, when it points to
@@ -418,21 +441,38 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             RetagPlan::Recurse { field_plans, variant_plans } => {
                 let layout = curr_operand.layout;
-                for (ix, plan) in field_plans {
-                    let inner_offset = layout.fields.offset(ix.as_usize());
-                    let field_offset = offset + inner_offset;
+                if let Some(plans) = field_plans {
+                    let mut retag_field = |ix: FieldIdx, plan: &RetagPlan<Bx::Value>| {
+                        let inner_offset = layout.fields.offset(ix.as_usize());
+                        let field_offset = offset + inner_offset;
+                        let field_layout = curr_operand.layout.field(bx, ix.index());
+                        if curr_operand.layout.is_ssa_standalone()
+                            && !field_layout.is_ssa_standalone()
+                        {
+                            // FIXME: Nothing should be looking at the *array* inside a `repr(simd)` type,
+                            // as that array doesn't really exist. Perhaps this should be a `bug!`,
+                            // with simd types handled before getting here?
+                        } else {
+                            let field_operand = curr_operand.extract_field(self, bx, ix.as_usize());
+                            self.retag_operand(bx, plan, field_operand, builder, field_offset);
+                        }
+                    };
 
-                    let field_layout = curr_operand.layout.field(bx, ix.index());
-                    // Part of https://github.com/rust-lang/compiler-team/issues/838
-                    if curr_operand.layout.is_ssa_standalone() && !field_layout.is_ssa_standalone()
-                    {
-                        // FIXME: support vector types, requires insert_element as part of cg-ssa
-                        // FIXME: Nothing should be looking at the *array* inside a `repr(simd)` type,
-                        // as that array doesn't really exist. Perhaps this should be a `bug!`,
-                        // with simd types handled before getting here?
-                    } else {
-                        let field_operand = curr_operand.extract_field(self, bx, ix.as_usize());
-                        self.retag_operand(bx, &plan, field_operand, builder, field_offset);
+                    match plans {
+                        RetagFields::Arbitrary(field_plans) => {
+                            for (ix, plan) in field_plans {
+                                retag_field(*ix, plan);
+                            }
+                        }
+                        RetagFields::Array(plan) => {
+                            let FieldsShape::Array { count, .. } = layout.fields else {
+                                bug!("Expected `FieldsShape::Array` but found {:?}", layout.fields);
+                            };
+                            for idx in 0..count {
+                                let idx = FieldIdx::from_usize(idx as usize);
+                                retag_field(idx, plan)
+                            }
+                        }
                     }
                 }
 
@@ -449,8 +489,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             self.retag_operand(bx, plan, variant_op, builder, offset);
                         }
                     } else {
-                        // We create a temporary place to store the operand, because its value will differ
-                        // depending on the variant that we have.
+                        // We create a temporary place to store the operand, because its
+                        // value will differ depending on the variant that we have.
                         let scratch = PlaceRef::alloca(bx, curr_operand.layout);
                         scratch.storage_live(bx);
                         curr_operand.store_with_annotation(bx, scratch);
@@ -487,9 +527,33 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.retag_mem(place.val.llval, info);
             }
             RetagPlan::Recurse { field_plans, variant_plans } => {
-                for (ix, plan) in field_plans {
-                    let field_place = place.project_field(bx, ix.as_usize());
-                    self.retag_place(bx, &plan, field_place);
+                if let Some(field_plans) = field_plans {
+                    let mut retag_field = |ix: FieldIdx, plan: &RetagPlan<Bx::Value>| {
+                        let field_place = place.project_field(bx, ix.as_usize());
+                        self.retag_place(bx, plan, field_place);
+                    };
+                    match field_plans {
+                        RetagFields::Arbitrary(fields) => {
+                            for (ix, plan) in fields {
+                                retag_field(*ix, plan);
+                            }
+                        }
+                        RetagFields::Array(plan) => {
+                            let FieldsShape::Array { count, .. } = place.layout.fields else {
+                                bug!(
+                                    "Expected `FieldsShape::Array` but found {:?}",
+                                    place.layout.fields
+                                );
+                            };
+                            // When an array of N references needs to be retagged (e.g. `[&T; N]`),
+                            // it is more efficient to emit a loop for large values of N than
+                            // to emit N retags in succession.
+                            within_loop(bx, count, |bx: &mut Bx, ix: Bx::Value| {
+                                let field_place = place.project_index(bx, ix);
+                                self.retag_place(bx, plan, field_place);
+                            });
+                        }
+                    }
                 }
                 if !variant_plans.is_empty() {
                     let operand = bx.load_operand(place);
@@ -533,4 +597,46 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx.switch(discr, join_block, variant_blocks.into_iter());
         bx.switch_to_block(join_block);
     }
+}
+
+/// Creates a simple loop, iterating the specified number of times.
+/// The dynamic value of the loop counter is passed as an argument
+/// to the closure.
+fn within_loop<'a, 'tcx, F, Bx: BuilderMethods<'a, 'tcx>>(bx: &mut Bx, max_iter: u64, mut op: F)
+where
+    F: FnMut(&mut Bx, Bx::Value),
+{
+    // Avoid emitting a no-op loop
+    if max_iter == 0 {
+        return;
+    }
+
+    // Initialize the loop counter to zero.
+    let counter_layout = bx.layout_of(bx.tcx().types.usize);
+    let counter_alloca = PlaceRef::alloca(bx, counter_layout);
+    counter_alloca.storage_live(bx);
+    bx.store_to_place(bx.const_usize(0), counter_alloca.val);
+
+    // Jump to a new block for the body of the loop.
+    let loop_body = bx.append_sibling_block("retag_loop");
+    bx.br(loop_body);
+
+    bx.switch_to_block(loop_body);
+
+    // Load the value of the counter, and pass it to the closure.
+    let curr_count = bx.load_from_place(bx.type_isize(), counter_alloca.val);
+    op(bx, curr_count);
+
+    let next_count = bx.unchecked_uadd(curr_count, bx.const_usize(1));
+    bx.store_to_place(next_count, counter_alloca.val);
+
+    // If the next count is equal to the maximum number of
+    // iterations, then exit the loop.
+    let max_count = bx.const_usize(max_iter);
+    let loop_exit = bx.append_sibling_block("retag_loop_exit");
+    let should_exit_loop = bx.icmp(IntPredicate::IntEQ, next_count, max_count);
+    bx.cond_br(should_exit_loop, loop_exit, loop_body);
+
+    bx.switch_to_block(loop_exit);
+    counter_alloca.storage_dead(bx);
 }

@@ -13,7 +13,7 @@ use std::borrow::Cow;
 use std::ops::ControlFlow;
 
 /// Collects the possible borrowers of each local.
-/// For example, `b = &a; c = &a;` will make `b` and (transitively) `c`
+/// For example, `b = &a; c = &b;` will make `b` and (transitively) `c`
 /// possible borrowers of `a`.
 struct PossibleBorrowerVisitor<'a, 'b, 'tcx> {
     possible_borrower: TransitiveRelation,
@@ -170,7 +170,7 @@ pub struct PossibleBorrowerMap<'b, 'tcx> {
     /// Mapping `Local -> its possible borrowers`
     pub map: FxHashMap<mir::Local, DenseBitSet<mir::Local>>,
     maybe_live: ResultsCursor<'b, 'tcx, MaybeStorageLive<'tcx>>,
-    // Caches to avoid allocation of `DenseBitSet` on every query
+    /// Caches to avoid allocation of `DenseBitSet` on every query
     pub bitset: (DenseBitSet<mir::Local>, DenseBitSet<mir::Local>),
 }
 
@@ -232,6 +232,7 @@ impl<'b, 'tcx> PossibleBorrowerMap<'b, 'tcx> {
         self.bitset.0.is_empty()
     }
 
+    /// Returns `true` if the storage for `local` may be live at `at`
     pub fn local_is_alive_at(&mut self, local: mir::Local, at: mir::Location) -> bool {
         self.maybe_live.seek_after_primary_effect(at);
         self.maybe_live.get().contains(local)

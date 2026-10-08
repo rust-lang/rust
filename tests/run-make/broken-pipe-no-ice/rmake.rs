@@ -68,7 +68,7 @@ fn check_broken_pipe_handled_gracefully(bin: Binary, mut cmd: Command) {
 
 fn main() {
     let mut rustc = bare_rustc();
-    rustc.arg("--print=sysroot");
+    rustc.arg("--print=sysroot").edition("2015");
     let rustc = rustc.into_raw_command();
     check_broken_pipe_handled_gracefully(Binary::Rustc, rustc);
 

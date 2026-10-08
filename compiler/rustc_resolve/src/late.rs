@@ -2861,12 +2861,14 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     fn resolve_item(&mut self, item: &'ast Item) {
+        let mut mod_inner_attrs_start = None;
         match item.kind {
             ItemKind::Mod(..) => {
                 // We only handle outer doc comments for modules here.
                 let attrs = if let Some(pos) = item.attrs.iter().position(|a| {
                     a.doc_resolution_scope().is_some_and(|style| style == AttrStyle::Inner)
                 }) {
+                    mod_inner_attrs_start = Some(pos);
                     &item.attrs[..pos]
                 } else {
                     &item.attrs
@@ -2972,9 +2974,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     this.with_rib(TypeNS, RibKind::Module(module.expect_local()), |this| {
                         // Outer doc comments were already handled above, now we handle
                         // inner doc comments.
-                        let attrs = if let Some(pos) = item.attrs.iter().position(|a| {
-                            a.doc_resolution_scope().is_some_and(|style| style == AttrStyle::Inner)
-                        }) {
+                        let attrs = if let Some(pos) = mod_inner_attrs_start {
                             &item.attrs[pos..]
                         } else {
                             &[]
@@ -3902,12 +3902,16 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
         match seen_trait_items.entry(id_in_trait) {
             Entry::Occupied(entry) => {
+                let trait_span = decl.parent_module.unwrap().span.shrink_to_lo();
+                let impl_span = self.current_trait_ref.as_ref().unwrap().1.path.span;
                 self.report_error(
                     span,
                     ResolutionError::TraitImplDuplicate {
                         name: ident,
                         old_span: *entry.get(),
                         trait_item_span: decl.span,
+                        trait_span,
+                        impl_span,
                     },
                 );
                 return;
@@ -3940,6 +3944,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
         };
         let trait_path = path_names_to_string(path);
+        let trait_span = decl.parent_module.unwrap().span.shrink_to_lo();
+        let impl_span = self.current_trait_ref.as_ref().unwrap().1.path.span;
         self.report_error(
             span,
             ResolutionError::TraitImplMismatch {
@@ -3948,6 +3954,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 code,
                 trait_path,
                 trait_item_span: decl.span,
+                trait_span,
+                impl_span,
             },
         );
     }
@@ -4097,7 +4105,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// `Result<T, &!>` could look like:
     /// ```rust
     /// # #![feature(never_patterns)]
-    #[cfg_attr(bootstrap, doc = "#![feature(never_type)]")]
     /// # fn bar(_x: u32) {}
     /// let foo: Result<u32, &!> = Ok(0);
     /// match foo {
@@ -4163,7 +4170,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// `Result<T, &!>` could look like:
     /// ```rust
     /// # #![feature(never_patterns)]
-    #[cfg_attr(bootstrap, doc = "#![feature(never_type)]")]
     /// # fn foo() -> Result<bool, &'static !> { Ok(true) }
     /// let (Ok(x) | Err(&!)) = foo();
     /// # let _ = x;

@@ -5,7 +5,8 @@ Backports in Clippy are rare and should be approved by the Clippy team. For
 example, a backport is done, if a crucial ICE was fixed or a lint is broken to a
 point, that it has to be disabled, before landing on stable.
 
-> Note: If you think a PR should be backported you can label it with
+> [!NOTE]
+> If you think a PR should be backported you can label it with
 > `beta-nominated`. This has to be done before the Thursday the week before the
 > release.
 
@@ -45,7 +46,8 @@ some explanation and are quite subjective. Good judgement is required.
 
 ## Preparation
 
-> Note: All commands in this chapter will be run in the Rust clone.
+> [!NOTE]
+> All commands in this chapter will be run in the Rust clone.
 
 Follow the instructions in [defining remotes] to define the `clippy-upstream`
 remote in the Rust repository.

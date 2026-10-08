@@ -73,6 +73,11 @@ fn test_connect_with_timeout_error() {
 
     let before = Instant::now();
     let err = TcpStream::connect_timeout(&address, timeout).unwrap_err();
+    if err.kind() == ErrorKind::NetworkUnreachable {
+        // Since blackhole addresses are not part of the local address range
+        // they might not be reachable without internet connectivity.
+        return;
+    }
     assert_eq!(err.kind(), ErrorKind::TimedOut);
     assert!(before.elapsed() >= timeout);
 }

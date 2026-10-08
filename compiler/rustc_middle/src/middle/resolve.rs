@@ -332,8 +332,6 @@ pub type DocLinkResMap = FxIndexMap<(Symbol, Namespace), Option<Res<NodeId>>>;
 /// is as good a place as any for it.
 #[derive(Debug)]
 pub enum AstOwner {
-    /// This definition does not correspond to a HIR owner.
-    NonOwner,
     Crate(Box<ast::Crate>),
     Item(Box<ast::Item>),
     TraitItem(Box<ast::AssocItem>),

@@ -16,7 +16,6 @@ use tracing::debug;
 use crate::inherent::*;
 use crate::lang_items::SolverTraitLangItem;
 use crate::region_constraint::RegionConstraint;
-use crate::search_graph::PathKind;
 use crate::{
     self as ty, Canonical, CanonicalVarValues, CantBeErased, Const, ConstVid, FloatVid,
     GenericArgKind, InferConst, IntVid, Interner, TermKind, TyVid, TypingMode, Upcast,
@@ -411,22 +410,15 @@ impl<I: Interner, P> Goal<I, P> {
 
 /// Why a specific goal has to be proven.
 ///
-/// This is necessary as we treat nested goals different depending on
-/// their source. This is used to decide whether a cycle is coinductive.
-/// See the documentation of `EvalCtxt::step_kind_for_source` for more details
-/// about this.
+/// This is used by proof tree visitors, especially for diagnostics purposes.
 ///
-/// It is also used by proof tree visitors, e.g. for diagnostics purposes.
+/// FIXME(-Znext-solver=coinductive): This will also matter in the future when
+/// deciding whether a step in a cycle is coinductive. We're currently still
+/// matching the old solver behavior here for now, so the `GoalSource` is ignored.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum GoalSource {
     Misc,
-    /// A nested goal required to prove that types are equal/subtypes.
-    /// This is always an unproductive step.
-    ///
-    /// This is also used for all `NormalizesTo` goals as we they are used
-    /// to relate types in `AliasRelate`.
-    TypeRelating,
     /// We're proving a where-bound of an impl.
     ImplWhereBound,
     /// Const conditions that need to hold for `[const]` alias bounds to hold.
@@ -438,12 +430,8 @@ pub enum GoalSource {
     /// 2. for rigid projections's trait goal,
     /// 3. for GAT where clauses.
     AliasWellFormed,
-    /// In case normalizing aliases in nested goals cycles, eagerly normalizing these
-    /// aliases in the context of the parent may incorrectly change the cycle kind.
-    /// Normalizing aliases in goals therefore tracks the original path kind for this
-    /// nested goal. See the comment of the `ReplaceAliasWithInfer` visitor for more
-    /// details.
-    NormalizeGoal(PathKind),
+    /// Normalizing happens in the current context and is unproductive by itself.
+    Normalization,
 }
 
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, Goal<I, P>)]

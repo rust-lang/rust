@@ -69,12 +69,14 @@ fn main() {
     let multisplat_arg_bad_: fn(
         #[rustc_splat]
         #[rustc_splat]
+        //~^ ERROR multiple `rustc_splat` attributes
         (u32, i8),
     ) = multisplat_arg_bad;
     let multisplat_arg_fn_bad_: fn(
         #[rustc_splat]
         //~^ ERROR multiple `#[rustc_splat]`s are not allowed in the same function argument list
         #[rustc_splat]
+        //~^ ERROR multiple `rustc_splat` attributes
         (u32, i8),
         #[rustc_splat] (u32, i8),
     ) = multisplat_arg_fn_bad;

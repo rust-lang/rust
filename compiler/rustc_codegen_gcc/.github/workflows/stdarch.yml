@@ -32,6 +32,10 @@ jobs:
     - name: Setup rust toolchain
       run: rustup show
 
+    # The stdarch-gen-common tests run rustfmt.
+    - name: Install rustfmt
+      run: rustup component add rustfmt
+
     - name: Setup rust cache
       uses: Swatinem/rust-cache@v2
 

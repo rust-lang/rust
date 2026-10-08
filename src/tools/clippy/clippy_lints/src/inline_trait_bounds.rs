@@ -19,7 +19,7 @@ declare_clippy_lint! {
     /// Avoid complex inline bounds, which could make a function declaration more difficult to read.
     ///
     /// ### Known limitations
-    /// Only lints functions and method declararions. Bounds on structs, enums,
+    /// Only lints functions and method declarations. Bounds on structs, enums,
     /// and impl blocks are not yet covered.
     ///
     /// ### Example

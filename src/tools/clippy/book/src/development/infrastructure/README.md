@@ -15,5 +15,6 @@ Version](release.md) section. During a release cycle a changelog entry for the
 next release has to be written. The format of that and how to do that is
 documented in the [Changelog Update](changelog_update.md) section.
 
-> _Note:_ The Clippy CI should also be described in this chapter, but for now is
+> [!NOTE]
+> The Clippy CI should also be described in this chapter, but for now is
 > left as a TODO.

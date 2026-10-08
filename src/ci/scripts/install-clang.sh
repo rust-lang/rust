@@ -11,7 +11,7 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 # Update Windows's tarballs when bumping the version here.
 # Try to keep this in sync with src/ci/docker/scripts/build-clang.sh
-LLVM_VERSION="20.1.3"
+LLVM_VERSION="22.1.8"
 
 if isWindows && ! isKnownToBeMingwBuild; then
     # If we're compiling for MSVC then we, like most other distribution builders,

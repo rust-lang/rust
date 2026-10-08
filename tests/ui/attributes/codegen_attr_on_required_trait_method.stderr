@@ -1,7 +1,7 @@
 error: the `linkage` attribute cannot be used on required trait methods
   --> $DIR/codegen_attr_on_required_trait_method.rs:14:7
    |
-LL |     #[linkage = "common"]
+LL |     #[linkage = "weak"]
    |       ^^^^^^^
    |
    = help: the `linkage` attribute can be applied to foreign functions, foreign statics, functions with a body, and statics

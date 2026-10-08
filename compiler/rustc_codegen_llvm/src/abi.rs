@@ -80,9 +80,11 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
     // Only apply remaining attributes when optimizing
     if cx.sess().opts.optimize != config::OptLevel::No {
         let deref = this.pointee_size.bytes();
-        // dereferenceable in LLVM currently implies nofree, so only emit dereferenceable if nofree
+        // Prior to <https://github.com/llvm/llvm-project/pull/204795> dereferenceable in LLVM
+        // implied nofree, so only emit dereferenceable on older versions of LLVM if nofree
         // is also set.
-        if deref != 0 && regular.contains(ArgAttribute::NoFree) {
+        let llvm_version = crate::llvm_util::get_version();
+        if deref != 0 && (llvm_version >= (23, 0, 0) || regular.contains(ArgAttribute::NoFree)) {
             if regular.contains(ArgAttribute::NonNull) {
                 attrs.push(llvm::CreateDereferenceableAttr(cx.llcx, deref));
             } else {
@@ -145,6 +147,7 @@ impl LlvmType for Reg {
                 128 => cx.type_f128(),
                 _ => bug!("unsupported float: {:?}", self),
             },
+            RegKind::PpcF128 => cx.type_ppcf128(),
             RegKind::Vector { hint_vector_elem } => {
                 // NOTE: it is valid to ignore the element type hint (and always pick i8).
                 // But providing a more accurate type means fewer casts in LLVM IR,
@@ -163,6 +166,7 @@ impl LlvmType for Reg {
                         Float::F32 => cx.type_f32(),
                         Float::F64 => cx.type_f64(),
                         Float::F128 => cx.type_f128(),
+                        Float::PpcF128 => bug!("ppcf128 is not a valid vector element type"),
                     },
                     Primitive::Pointer(_) => cx.type_ptr(),
                 };

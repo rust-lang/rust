@@ -1399,6 +1399,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 code,
                 trait_item_span,
                 trait_path,
+                trait_span,
+                impl_span,
             } => self
                 .dcx()
                 .create_err(diagnostics::TraitImplMismatch {
@@ -1407,16 +1409,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     kind,
                     trait_path,
                     trait_item_span,
+                    trait_span,
+                    impl_span,
                 })
                 .with_code(code),
-            ResolutionError::TraitImplDuplicate { name, trait_item_span, old_span } => {
-                self.dcx().create_err(diagnostics::TraitImplDuplicate {
-                    span,
-                    name,
-                    trait_item_span,
-                    old_span,
-                })
-            }
+            ResolutionError::TraitImplDuplicate {
+                name,
+                trait_item_span,
+                old_span,
+                trait_span,
+                impl_span,
+            } => self.dcx().create_err(diagnostics::TraitImplDuplicate {
+                span,
+                name,
+                trait_item_span,
+                trait_span,
+                impl_span,
+                old_span,
+            }),
             ResolutionError::InvalidAsmSym => {
                 self.dcx().create_err(diagnostics::InvalidAsmSym { span })
             }

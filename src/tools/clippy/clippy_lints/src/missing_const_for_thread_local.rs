@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// need to be dropped, this can enable an even more efficient implementation that
     /// does not need to track any additional state.
     ///
-    /// https://doc.rust-lang.org/std/macro.thread_local.html
+    /// <https://doc.rust-lang.org/std/macro.thread_local.html>
     ///
     /// ### Example
     /// ```no_run

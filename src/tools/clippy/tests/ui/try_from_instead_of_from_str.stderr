@@ -1,0 +1,117 @@
+error: `TryFrom<str>` could be `FromStr`
+  --> tests/ui/try_from_instead_of_from_str.rs:6:1
+   |
+LL | / impl TryFrom<&str> for MyType {
+LL | |
+LL | |
+LL | |     type Error = ();
+...  |
+LL | | }
+   | |_^
+   |
+   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
+   = note: `-D clippy::try-from-instead-of-from-str` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::try_from_instead_of_from_str)]`
+help: replace with
+   |
+LL + impl core::str::FromStr for MyType {
+LL +     type Err = ();
+LL + 
+LL +     fn from_str(value: &str) -> Result<Self, Self::Err> {
+LL +         Ok(MyType)
+LL +     }
+LL + }
+   |
+
+error: `TryFrom<str>` could be `FromStr`
+  --> tests/ui/try_from_instead_of_from_str.rs:17:1
+   |
+LL | / impl TryFrom<&str> for Bar {
+LL | |
+LL | |
+LL | |     type Error = &'static str;
+...  |
+LL | | }
+   | |_^
+   |
+   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
+help: replace with
+   |
+LL + impl core::str::FromStr for Bar {
+LL +     type Err = &'static str;
+LL + 
+LL +     fn from_str(value: &str) -> Result<Self, Self::Err> {
+LL +         Ok(Bar)
+LL +     }
+LL + }
+   |
+
+error: `TryFrom<str>` could be `FromStr`
+  --> tests/ui/try_from_instead_of_from_str.rs:30:1
+   |
+LL | / impl<'a> TryFrom<&str> for Tarte<'a> {
+LL | |
+LL | |
+LL | |     type Error = &'static str;
+...  |
+LL | | }
+   | |_^
+   |
+   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
+help: replace with
+   |
+LL + impl<'a> core::str::FromStr for Tarte<'a> {
+LL +     type Err = &'static str;
+LL + 
+LL +     fn from_str(value: &str) -> Result<Self, Self::Err> {
+LL +         Ok(Tarte(&()))
+LL +     }
+LL + }
+   |
+
+error: `TryFrom<str>` could be `FromStr`
+  --> tests/ui/try_from_instead_of_from_str.rs:89:1
+   |
+LL | / impl TryFrom<&str> for Lifetime3 {
+LL | |
+LL | |     type Error = LifetimeErr2<for<'b> fn(&'b u32)>;
+...  |
+LL | | }
+   | |_^
+   |
+   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
+help: replace with
+   |
+LL + impl core::str::FromStr for Lifetime3 {
+LL +     type Err = LifetimeErr2<for<'b> fn(&'b u32)>;
+LL + 
+LL +     fn from_str(value: &str) -> Result<Self, Self::Err> {
+LL +         Ok(Lifetime3)
+LL +     }
+LL + }
+   |
+
+error: `TryFrom<str>` could be `FromStr`
+  --> tests/ui/try_from_instead_of_from_str.rs:101:1
+   |
+LL | / impl<'a> TryFrom<&str> for Lifetime4<&'a ()> {
+LL | |
+LL | |     type Error = LifetimeErr2<&'a ()>;
+...  |
+LL | | }
+   | |_^
+   |
+   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
+help: replace with
+   |
+LL + impl<'a> core::str::FromStr for Lifetime4<&'a ()> {
+LL +     type Err = LifetimeErr2<&'a ()>;
+LL + 
+LL +     fn from_str(value: &str) -> Result<Self, Self::Err> {
+LL +         Ok(Lifetime4(&()))
+LL +     }
+LL + }
+   |
+
+error: aborting due to 5 previous errors
+

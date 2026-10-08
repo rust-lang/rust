@@ -1644,6 +1644,7 @@ pub fn walk_test_binder_constraint<'v, V: Visitor<'v>>(
         TestBinderConstraint::Or { items } => {
             walk_list!(visitor, visit_test_binder_constraint, *items)
         }
+        TestBinderConstraint::Ambiguity { span: _ } => {}
         TestBinderConstraint::Lifetime { lhs, rhs } => {
             try_visit!(visitor.visit_lifetime(lhs));
             try_visit!(visitor.visit_lifetime(rhs));

@@ -1,9 +1,11 @@
 error: `impl` item signature doesn't match `trait` item signature
   --> $DIR/param-without-lifetime-constraint.rs:14:5
    |
+LL | pub trait HaveRelationship<To> {
 LL |     fn get_relation(&self) -> To;
    |     ----------------------------- expected `fn(&'1 Article) -> &'2 ProofReader`
 ...
+LL | impl HaveRelationship<&ProofReader> for Article {
 LL |     fn get_relation(&self) -> &ProofReader {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&'1 Article) -> &'1 ProofReader`
    |

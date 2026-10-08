@@ -268,7 +268,7 @@ mod private {
     pub struct Internal;
 }
 
-#[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "never_type", since = "1.100.0")]
 impl Error for ! {}
 
 // Copied from `any.rs`.

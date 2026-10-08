@@ -1,15 +1,30 @@
-//@ revisions: aarch64 x86_64
+//! Verify that the breakpoint operation emits the instructions we guarantee.
+
+//@ add-minicore
 //@ assembly-output: emit-asm
-//@[aarch64] only-aarch64
-//@[x86_64] only-x86_64
+//@ revisions: AARCH64 I686 X86_64
+//@ [AARCH64] compile-flags: --target aarch64-unknown-linux-gnu
+//@ [AARCH64] needs-llvm-components: aarch64
+//@ [I686] compile-flags: --target i686-unknown-linux-gnu
+//@ [I686] needs-llvm-components: x86
+//@ [X86_64] compile-flags: --target x86_64-unknown-linux-gnu
+//@ [X86_64] needs-llvm-components: x86
 
-#![feature(breakpoint)]
 #![crate_type = "lib"]
+#![feature(no_core, lang_items, intrinsics, rustc_attrs)]
+#![no_core]
 
-// CHECK-LABEL: use_bp
-// aarch64: brk #0xf000
-// x86_64: int3
-#[inline(never)]
-pub fn use_bp() {
-    core::arch::breakpoint();
+extern crate minicore;
+
+#[rustc_intrinsic]
+#[rustc_nounwind]
+fn breakpoint();
+
+// CHECK-LABEL: call_breakpoint
+// AARCH64: brk #0xf000
+// I686: int3
+// X86_64: int3
+#[unsafe(no_mangle)]
+pub fn call_breakpoint() {
+    breakpoint();
 }

@@ -469,7 +469,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
     let usize_layout = fx.layout_of(fx.tcx.types.usize);
 
     match intrinsic {
-        sym::abort => {
+        sym::abort_immediate => {
             fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
             fx.bcx.ins().trap(TrapCode::user(2).unwrap());
             return Ok(());

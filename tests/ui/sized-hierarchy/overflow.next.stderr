@@ -1,0 +1,29 @@
+error[E0275]: overflow evaluating the requirement `<Box<Box<Element>> as ParseTokens>::Output == _`
+  --> $DIR/overflow.rs:15:16
+   |
+LL | struct Element(<Box<Box<Element>> as ParseTokens>::Output);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating whether `<Box<Box<Element>> as ParseTokens>::Output` is well-formed
+  --> $DIR/overflow.rs:15:16
+   |
+LL | struct Element(<Box<Box<Element>> as ParseTokens>::Output);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `Element: MetaSized`
+  --> $DIR/overflow.rs:18:22
+   |
+LL | impl ParseTokens for Element {
+   |                      ^^^^^^^
+   |
+note: required by a bound in `ParseTokens`
+  --> $DIR/overflow.rs:8:1
+   |
+LL | / trait ParseTokens {
+LL | |     type Output;
+LL | | }
+   | |_^ required by this bound in `ParseTokens`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0275`.
