@@ -2736,7 +2736,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     }
 }
 
-/// Creates remapping of non determinsitic local def ids
+/// Creates remapping of non deterministic local def ids
 /// (i.e., ids that start from `Definitions::last_deterministic_index + 1`).
 fn create_local_def_ids_remapping(tcx: TyCtxt<'_>) -> FxHashMap<DefIndex, DefIndex> {
     let defs = tcx.untracked().definitions.read();
@@ -2764,7 +2764,7 @@ fn create_local_def_ids_remapping(tcx: TyCtxt<'_>) -> FxHashMap<DefIndex, DefInd
     remapping
 }
 
-/// Creates stably sorted list of non determinsitic local def ids
+/// Creates stably sorted list of non deterministic local def ids
 /// (i.e., ids that start from `Definitions::last_deterministic_index + 1`).
 fn create_sorted_non_det_local_ids(
     tcx: TyCtxt<'_>,
