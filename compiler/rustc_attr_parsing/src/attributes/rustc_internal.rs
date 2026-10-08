@@ -442,6 +442,7 @@ impl NoArgsAttributeParser for RustcTrivialFieldReadsParser {
     const PATH: &[Symbol] = &[sym::rustc_trivial_field_reads];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Fn),
     ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
