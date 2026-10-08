@@ -1095,39 +1095,46 @@ impl Span {
     }
 
     /// Check if you can select metavar spans for the given spans to get matching contexts.
-    fn try_metavars(a: SpanData, b: SpanData, a_orig: Span, b_orig: Span) -> (SpanData, SpanData) {
+    #[cold]
+    fn try_metavars(
+        a_ctxt: SyntaxContext,
+        b_ctxt: SyntaxContext,
+        a_orig: Span,
+        b_orig: Span,
+    ) -> (Option<SpanData>, Option<SpanData>) {
         match with_metavar_spans(|mspans| (mspans.get(a_orig), mspans.get(b_orig))) {
             (None, None) => {}
             (Some(meta_a), None) => {
                 let meta_a = meta_a.data();
-                if meta_a.ctxt == b.ctxt {
-                    return (meta_a, b);
+                if meta_a.ctxt == b_ctxt {
+                    return (Some(meta_a), None);
                 }
             }
             (None, Some(meta_b)) => {
                 let meta_b = meta_b.data();
-                if a.ctxt == meta_b.ctxt {
-                    return (a, meta_b);
+                if a_ctxt == meta_b.ctxt {
+                    return (None, Some(meta_b));
                 }
             }
             (Some(meta_a), Some(meta_b)) => {
                 let meta_b = meta_b.data();
-                if a.ctxt == meta_b.ctxt {
-                    return (a, meta_b);
+                if a_ctxt == meta_b.ctxt {
+                    return (None, Some(meta_b));
                 }
                 let meta_a = meta_a.data();
-                if meta_a.ctxt == b.ctxt {
-                    return (meta_a, b);
+                if meta_a.ctxt == b_ctxt {
+                    return (Some(meta_a), None);
                 } else if meta_a.ctxt == meta_b.ctxt {
-                    return (meta_a, meta_b);
+                    return (Some(meta_a), Some(meta_b));
                 }
             }
         }
 
-        (a, b)
+        (None, None)
     }
 
     /// Prepare two spans to a combine operation like `to` or `between`.
+    #[inline(always)]
     fn prepare_to_combine(
         a_orig: Span,
         b_orig: Span,
@@ -1137,7 +1144,9 @@ impl Span {
             return Ok((a, b, if a.parent == b.parent { a.parent } else { None }));
         }
 
-        let (a, b) = Span::try_metavars(a, b, a_orig, b_orig);
+        let (a_new, b_new) = Span::try_metavars(a.ctxt, b.ctxt, a_orig, b_orig);
+        let a = a_new.unwrap_or(a);
+        let b = b_new.unwrap_or(b);
         if a.ctxt == b.ctxt {
             return Ok((a, b, if a.parent == b.parent { a.parent } else { None }));
         }
