@@ -28,7 +28,7 @@ cfg_select! {
         mod unsupported;
         mod imp {
             pub use super::unix::{
-                JoinPathsError, SplitPaths, getcwd, home_dir, join_paths, split_paths, temp_dir,
+                JoinPathsError, SplitPaths, SplitPathsRef, getcwd, home_dir, join_paths, split_paths, split_paths_ref, temp_dir,
             };
             pub use super::unsupported::{chdir, current_exe};
         }
@@ -49,7 +49,7 @@ cfg_select! {
         mod uefi;
         use uefi as imp;
     }
-    any(target_family = "unix", target_os = "qurt") => {
+    target_family = "unix" => {
         mod unix;
         use unix as imp;
     }
