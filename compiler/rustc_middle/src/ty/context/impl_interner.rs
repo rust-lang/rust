@@ -696,7 +696,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     ) -> Region<'tcx> {
         // Use a pre-interned one when possible.
         if let ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon } = bound_region
-            && let Some(inner) = self.lifetimes.anon_re_bounds.get(debruijn.as_usize())
+            && let Some(inner) = self.lifetimes.re_bound_bound_anons.get(debruijn.as_usize())
             && let Some(re) = inner.get(var.as_usize()).copied()
         {
             re
@@ -707,7 +707,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn intern_canonical_bound(self, var: BoundVar) -> Region<'tcx> {
         // Use a pre-interned one when possible.
-        if let Some(re) = self.lifetimes.anon_re_canonical_bounds.get(var.as_usize()).copied() {
+        if let Some(re) = self.lifetimes.re_bound_canonical_anons.get(var.as_usize()).copied() {
             re
         } else {
             self.intern_region(ty::ReBound(
