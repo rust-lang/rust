@@ -566,8 +566,6 @@ pub trait Interner:
     fn mk_canonical_input(self, data: CanonicalInputData<Self>) -> Self::CanonicalInput;
 
     fn const_zst(self) -> Self::ValTree;
-
-    fn const_from_bits(self, bits: u128, typing_env: Self::TypingEnv, ty: Self::Ty) -> Const<Self>;
 }
 
 macro_rules! declare_lift_into {

@@ -750,21 +750,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn const_zst(self) -> ty::ValTree<'tcx> {
         self.consts.valtree_zst
     }
-
-    fn const_from_bits(
-        self,
-        bits: u128,
-        typing_env: ty::TypingEnv<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> ty::Const<'tcx> {
-        let size = self
-            .layout_of(typing_env.as_query_input(ty))
-            .unwrap_or_else(|e| panic!("could not compute layout for {ty:?}: {e:?}"))
-            .size;
-        let scalar_int = ty::ScalarInt::try_from_uint(bits, size).unwrap();
-        let valtree = self.intern_valtree(ty::ValTreeKind::Leaf(scalar_int));
-        ty::Const::new_value(self, valtree, ty)
-    }
 }
 
 impl<'tcx, T: Clone + Copy> rustc_type_ir::intern::Interned<TyCtxt<'tcx>> for Interned<'tcx, T> {

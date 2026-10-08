@@ -758,4 +758,5 @@ pub trait ScalarInt<I: Interner>: Copy + Debug + Hash + Eq {
 
 pub trait TypingEnv<I: Interner>: Copy + Clone + Debug + PartialEq + Eq + Hash {
     fn fully_monomorphized() -> Self;
+    fn layout_size(self, interner: I, ty: I::Ty) -> Size;
 }

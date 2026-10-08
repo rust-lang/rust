@@ -14,6 +14,7 @@ use crate::{
     AliasConst, BoundConst, BoundVar, BoundVarIndexKind, ConstKind, ConstVid, DebruijnIndex,
     FallibleTypeFolder, Flags, InferConst, Interner, IsRigid, PlaceholderConst, TypeFlags,
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    ValTreeKind,
 };
 
 #[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
@@ -217,7 +218,10 @@ impl<I: Interner> Const<I> {
     /// Creates a constant with the given integer value and interns it.
     #[inline]
     pub fn from_bits(interner: I, bits: u128, typing_env: I::TypingEnv, ty: I::Ty) -> Self {
-        interner.const_from_bits(bits, typing_env, ty)
+        let size = typing_env.layout_size(interner, ty);
+        let scalar_int = I::ScalarInt::try_from_uint(bits, size).unwrap();
+        let valtree = interner.intern_valtree(ValTreeKind::Leaf(scalar_int));
+        Self::new_value(interner, valtree, ty)
     }
 
     #[inline]
