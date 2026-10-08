@@ -16,8 +16,21 @@ global_asm!(
 
     .arm
     _boot:
-        ldr sp, =__stack_top @ Set up the user stack.
-        blx _start           @ Jump to the Rust entrypoint.
+        @ Set up the user stack.
+        ldr sp, =__stack_top
+
+        @ Clear the .bss (uninitialized statics) section by filling it with zeroes.
+        @ This is required, since the compiler assumes it will be zeroed on first access.
+        movs r0, #0
+        ldr r1, =__bss_start
+        ldr r2, =__bss_end
+    .Lclear_bss:
+        cmp r1, r2
+        beq .Lbss_done
+        stm r1!, {{r0}}
+        b .Lclear_bss
+    .Lbss_done:
+        blx _start @ Jump to the Rust entrypoint.
     "#
 );
 
@@ -25,19 +38,8 @@ global_asm!(
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn _start() -> ! {
     unsafe extern "C" {
-        static mut __bss_start: u8;
-        static mut __bss_end: u8;
-
         fn main() -> i32;
     }
-
-    // Clear the .bss (uninitialized statics) section by filling it with zeroes.
-    // This is required, since the compiler assumes it will be zeroed on first access.
-    ptr::write_bytes(
-        &raw mut __bss_start,
-        0,
-        (&raw mut __bss_end).offset_from_unsigned(&raw mut __bss_start),
-    );
 
     main();
 

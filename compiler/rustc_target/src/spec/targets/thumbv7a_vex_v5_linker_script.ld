@@ -118,7 +118,7 @@ SECTIONS {
 
     /* -- End of loadable sections - anything beyond this point shouldn't go in the binary uploaded to the device. -- */
 
-    .bss (NOLOAD) : {
+    .bss (NOLOAD) : ALIGN(4) {
         __bss_start = .;
         *(.sbss*)
         *(.bss .bss.*)
