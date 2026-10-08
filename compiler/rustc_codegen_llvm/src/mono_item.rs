@@ -222,6 +222,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 PassMode::Direct(_) | PassMode::Pair { .. } | PassMode::Cast { .. } => {
                     start_bx.ret(call)
                 }
+                PassMode::IndirectUnsized { .. } => bug!("unsized returns are not supported"),
             }
         }
     }
