@@ -1,4 +1,4 @@
-use rustc_ast::{self as ast, EnumDef, Safety};
+use rustc_ast::{self as ast, EnumDef, Safety, ExprKind, TyKind, token};
 use rustc_expand::base::ExtCtxt;
 use rustc_session::config::FmtDebug;
 use rustc_span::{Ident, Span, Symbol, sym};
@@ -71,7 +71,7 @@ fn show_substructure(
     let (ident, vdata, fields) = match substr.fields {
         Struct(vdata, fields) => (type_ident, vdata, fields),
         EnumMatching(v, fields) => (v.ident, &v.data, fields),
-        AllFieldlessEnum(enum_def) => return show_fieldless_enum(cx, span, enum_def, type_ident),
+        AllFieldlessEnum(enum_def) => return show_fieldless_enum(cx, &substr, span, enum_def, type_ident),
         _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Debug)`"),
     };
 
@@ -228,6 +228,7 @@ fn show_substructure(
 /// ```
 fn show_fieldless_enum(
     cx: &ExtCtxt<'_>,
+    substr: &Substructure<'_>,
     span: Span,
     def: &EnumDef,
     type_ident: Ident,
@@ -308,18 +309,16 @@ fn show_fieldless_enum_concat_str(
         span,
         TyKind::Ref(
             None,
-            ast::MutTy {
-                ty: cx.ty(
-                    span,
-                    TyKind::Path(None, ast::Path::from_ident(Ident::new(sym::str, span))),
-                ),
-                mutbl: ast::Mutability::Not,
-            },
+            cx.ty(
+                span,
+                TyKind::Path(None, ast::Path::from_ident(Ident::new(sym::str, span))),
+            ),
+            ast::Mutability::Not,
         ),
     );
     let names_str_body = cx.expr_str(span, Symbol::intern(&concatenated_names));
     let names_static_item =
-        cx.item_static(span, names_ident, str_ty, ast::Mutability::Not, names_str_body);
+        cx.item_static(span, ThinVec::new(), names_ident, str_ty, ast::Mutability::Not, names_str_body);
 
     // Create the constant offset array
     let offset_ident = Ident::from_str_and_span("__OFFSET", span);
@@ -338,6 +337,7 @@ fn show_fieldless_enum_concat_str(
     );
     let offset_static_item = cx.item_static(
         span,
+        ThinVec::new(),
         offset_ident,
         cx.ty(span, TyKind::Array(usize_ty, offset_array_len_expr)),
         ast::Mutability::Not,
