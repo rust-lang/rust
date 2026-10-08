@@ -72,7 +72,7 @@ impl Category {
             // A reborrow expression produces a value represented in MIR as
             // `Rvalue::Reborrow`. Its source may be a place, but the reborrow
             // expression itself does not denote an assignable place.
-            | ExprKind::Reborrow { .. }
+            | ExprKind::CoerceShared { .. }
             | ExprKind::ThreadLocalRef(_)
             | ExprKind::WrapUnsafeBinder { .. } => Some(Category::Rvalue(RvalueFunc::AsRvalue)),
 
