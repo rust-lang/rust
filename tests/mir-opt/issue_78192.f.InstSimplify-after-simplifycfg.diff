@@ -5,8 +5,7 @@
       debug a => _1;
       let mut _0: *const T;
       let _2: &*const T;
-      let _3: &*const T;
-      let _4: *const T;
+      let _3: *const T;
       scope 1 {
           debug b => _2;
       }
@@ -14,13 +13,10 @@
       bb0: {
           StorageLive(_2);
           StorageLive(_3);
-          StorageLive(_4);
-          _4 = &raw const (*_1);
-          _3 = &_4;
-          _2 = copy _3;
-          StorageDead(_3);
+          _3 = &raw const (*_1);
+          _2 = &_3;
           _0 = copy (*_2);
-          StorageDead(_4);
+          StorageDead(_3);
           StorageDead(_2);
           return;
       }

@@ -9,7 +9,7 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
         let mut _7: bool;
         let mut _9: std::ptr::NonNull<T>;
         let mut _11: usize;
-        let _13: &T;
+        let mut _13: &T;
         scope 2 {
             let _3: *const T;
             scope 3 {

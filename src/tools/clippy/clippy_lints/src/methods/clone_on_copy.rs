@@ -6,9 +6,9 @@ use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability;
 use rustc_hir::{BindingMode, ByRef, Expr, ExprKind, MatchSource, Node, PatKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_middle::ty::adjustment::Adjust;
+use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::print::with_forced_trimmed_paths;
+use rustc_middle::ty::{self};
 
 use super::CLONE_ON_COPY;
 
@@ -141,11 +141,23 @@ pub(super) fn check_function(cx: &LateContext<'_>, expr: &Expr<'_>) {
         let snip = snippet_with_context(cx, peeled_arg.span, func.span.ctxt(), "_", &mut app).0;
 
         let arg_adjustments = cx.typeck_results().expr_adjustments(arg);
-        let deref_count = arg_adjustments
-            .iter()
+
+        let adjustments_iter = &mut arg_adjustments.iter();
+        let mut deref_count = adjustments_iter
             .take_while(|adj| matches!(adj.kind, Adjust::Deref(_)))
-            .count()
-            - ref_count;
+            .count();
+
+        if !matches!(
+            adjustments_iter.next(),
+            Some(Adjustment {
+                kind: Adjust::Borrow(_),
+                ..
+            })
+        ) {
+            deref_count += 1;
+        }
+
+        deref_count -= ref_count;
 
         let (help, sugg) = if deref_count == 0 {
             if check_res == ParentIsSuffixExpr::Yes && snip.starts_with('*') {

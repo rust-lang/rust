@@ -166,7 +166,7 @@ LL | |             let _local: &_ = m_s;
 LL | |         };
    | |_________^
    |
-note: Capturing m_s[Deref] -> Immutable
+note: Capturing m_s[] -> ByCopy
   --> $DIR/cromulent-copy-closure-captures-analysis-2021.rs:55:30
    |
 LL |             let _local: &_ = m_s;
@@ -184,7 +184,7 @@ LL | |             let _local: &_ = m_s;
 LL | |         };
    | |_________^
    |
-note: Min Capture m_s[Deref] -> Immutable
+note: Min Capture m_s[] -> ByCopy
   --> $DIR/cromulent-copy-closure-captures-analysis-2021.rs:55:30
    |
 LL |             let _local: &_ = m_s;

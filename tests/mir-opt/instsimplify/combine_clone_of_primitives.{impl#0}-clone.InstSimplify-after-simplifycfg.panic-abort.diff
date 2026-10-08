@@ -6,57 +6,42 @@
       let mut _0: MyThing<T>;
       let mut _2: T;
       let mut _3: &T;
-      let _4: &T;
-      let mut _5: u64;
-      let mut _6: &u64;
-      let _7: &u64;
-      let mut _8: [f32; 3];
-      let mut _9: &[f32; 3];
-      let _10: &[f32; 3];
+      let mut _4: u64;
+      let mut _5: &u64;
+      let mut _6: [f32; 3];
+      let mut _7: &[f32; 3];
   
       bb0: {
           StorageLive(_2);
           StorageLive(_3);
-          StorageLive(_4);
-          _4 = &((*_1).0: T);
--         _3 = &(*_4);
-+         _3 = copy _4;
+          _3 = &((*_1).0: T);
           _2 = <T as Clone>::clone(move _3) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
           StorageDead(_3);
+          StorageLive(_4);
           StorageLive(_5);
-          StorageLive(_6);
-          StorageLive(_7);
-          _7 = &((*_1).1: u64);
--         _6 = &(*_7);
--         _5 = <u64 as Clone>::clone(move _6) -> [return: bb2, unwind unreachable];
-+         _6 = copy _7;
-+         _5 = copy (*_6);
+          _5 = &((*_1).1: u64);
+-         _4 = <u64 as Clone>::clone(move _5) -> [return: bb2, unwind unreachable];
++         _4 = copy (*_5);
 +         goto -> bb2;
       }
   
       bb2: {
-          StorageDead(_6);
-          StorageLive(_8);
-          StorageLive(_9);
-          StorageLive(_10);
-          _10 = &((*_1).2: [f32; 3]);
--         _9 = &(*_10);
--         _8 = <[f32; 3] as Clone>::clone(move _9) -> [return: bb3, unwind unreachable];
-+         _9 = copy _10;
-+         _8 = copy (*_9);
+          StorageDead(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = &((*_1).2: [f32; 3]);
+-         _6 = <[f32; 3] as Clone>::clone(move _7) -> [return: bb3, unwind unreachable];
++         _6 = copy (*_7);
 +         goto -> bb3;
       }
   
       bb3: {
-          StorageDead(_9);
-          _0 = MyThing::<T> { v: move _2, i: move _5, a: move _8 };
-          StorageDead(_10);
-          StorageDead(_8);
           StorageDead(_7);
-          StorageDead(_5);
+          _0 = MyThing::<T> { v: move _2, i: move _4, a: move _6 };
+          StorageDead(_6);
           StorageDead(_4);
           StorageDead(_2);
           return;

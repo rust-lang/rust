@@ -45,9 +45,9 @@
           let mut _28: &str;
           scope 5 (inlined <String as PartialEq<str>>::eq) {
               scope 6 (inlined #[track_caller] <String as Index<RangeFull>>::index) {
-                  let _29: &str;
+                  let mut _29: &str;
                   scope 7 (inlined String::as_str) {
-                      let _30: &[u8];
+                      let mut _30: &[u8];
                       scope 8 (inlined Vec::<u8>::as_slice) {
                           let _31: *const [u8];
                           let mut _32: *const u8;
@@ -117,9 +117,9 @@
           let mut _48: &str;
           scope 31 (inlined <String as PartialEq<str>>::eq) {
               scope 32 (inlined #[track_caller] <String as Index<RangeFull>>::index) {
-                  let _49: &str;
+                  let mut _49: &str;
                   scope 33 (inlined String::as_str) {
-                      let _50: &[u8];
+                      let mut _50: &[u8];
                       scope 34 (inlined Vec::<u8>::as_slice) {
                           let _51: *const [u8];
                           let mut _52: *const u8;
@@ -222,9 +222,9 @@
           _21 = const chained_conditions::promoted[1];
           _10 = &(*_21);
           StorageLive(_27);
+          _27 = copy (*_8);
           StorageLive(_28);
-          _27 = no_retag copy (*_8);
-          _28 = no_retag copy (*_10);
+          _28 = copy (*_10);
           StorageLive(_29);
           StorageLive(_30);
           StorageLive(_31);
@@ -284,9 +284,9 @@
           _20 = const chained_conditions::promoted[0];
           _17 = &(*_20);
           StorageLive(_47);
+          _47 = copy (*_15);
           StorageLive(_48);
-          _47 = no_retag copy (*_15);
-          _48 = no_retag copy (*_17);
+          _48 = copy (*_17);
           StorageLive(_49);
           StorageLive(_50);
           StorageLive(_51);
