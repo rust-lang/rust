@@ -3,7 +3,6 @@
 use std::slice;
 
 use rustc_ast::InlineAsmOptions;
-use rustc_attr_ir::AttributeKind;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::packed::Pu128;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
@@ -419,7 +418,6 @@ impl<O: fmt::Debug> fmt::Display for AssertKind<O> {
 pub struct Terminator<'tcx> {
     pub source_info: SourceInfo,
     pub kind: TerminatorKind<'tcx>,
-    pub loop_hint_attrs: ThinVec<AttributeKind>,
 }
 
 impl<'tcx> Terminator<'tcx> {
@@ -479,6 +477,11 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn if_(cond: Operand<'tcx>, t: BasicBlock, f: BasicBlock) -> TerminatorKind<'tcx> {
         TerminatorKind::SwitchInt { discr: cond, targets: SwitchTargets::static_if(0, f, t) }
     }
+
+    #[inline]
+    pub fn goto(target: BasicBlock) -> TerminatorKind<'tcx> {
+        TerminatorKind::Goto { target, loop_hint_attrs: ThinVec::new() }
+    }
 }
 
 pub use helper::*;
@@ -527,7 +530,7 @@ mod helper {
                     mk_successors(slice::from_ref(t), Some(u), None)
                 }
                 // single successor
-                Goto { target: ref t }
+                Goto { target: ref t, .. }
                 | Call { target: None, unwind: UnwindAction::Cleanup(ref t), .. }
                 | Call { target: Some(ref t), unwind: _, .. }
                 | Yield { resume: ref t, drop: None, .. }
@@ -590,7 +593,7 @@ mod helper {
                         f(u)
                     }
                 }
-                Goto { target } => {
+                Goto { target, .. } => {
                     f(target);
                 }
                 UnwindResume
@@ -675,7 +678,7 @@ impl<'tcx> TerminatorKind<'tcx> {
     #[inline]
     pub fn as_goto(&self) -> Option<BasicBlock> {
         match self {
-            TerminatorKind::Goto { target } => Some(*target),
+            TerminatorKind::Goto { target, loop_hint_attrs: _ } => Some(*target),
             _ => None,
         }
     }
@@ -745,7 +748,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | CoroutineDrop
             | Unreachable => TerminatorEdges::None,
 
-            Goto { target } => TerminatorEdges::Single(target),
+            Goto { target, loop_hint_attrs: _ } => TerminatorEdges::Single(target),
 
             // FIXME: Maybe we need also TerminatorEdges::Trio for async drop
             // (target + unwind + dropline)
