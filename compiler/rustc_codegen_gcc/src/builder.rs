@@ -358,25 +358,28 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         funclet: Option<&Funclet>,
         must_tail: bool,
     ) -> RValue<'gcc> {
-        // FIXME: change this in the `rustc_codegen_gcc` repo after the sync, to use the `libgccjit` indirect return suppport.
-        let args = match return_slot {
-            ReturnSlot::Direct => Cow::Borrowed(args),
+        // Without libgccjit's indirect return support, the return pointer is an explicit parameter.
+        #[cfg(not(feature = "master"))]
+        let (args, return_slot) = match return_slot {
+            ReturnSlot::Direct => (Cow::Borrowed(args), ReturnSlot::Direct),
             ReturnSlot::Indirect(sret_ptr) => {
                 let mut args = args.to_vec();
                 // Prepend the indirect return pointer
                 args.insert(0, sret_ptr);
-                Cow::Owned(args)
+                (Cow::Owned(args), ReturnSlot::Direct)
             }
         };
+        #[cfg(not(feature = "master"))]
+        let args: &[RValue<'gcc>] = &args;
         // FIXME(antoyo): remove when having a proper API.
         let gcc_func = unsafe { std::mem::transmute::<RValue<'gcc>, Function<'gcc>>(func) };
         let call = if self.functions.borrow().values().any(|value| *value == gcc_func) {
             // FIXME(antoyo): remove when the API supports a different type for functions.
             let func: Function<'gcc> = self.cx.rvalue_as_function(func);
-            self.function_call(func, &args, funclet, must_tail)
+            self.function_call(func, return_slot, args, funclet, must_tail)
         } else {
             // If it's a not function that was defined, it's a function pointer.
-            self.function_ptr_call(typ, fn_abi, func, &args, funclet, must_tail)
+            self.function_ptr_call(typ, fn_abi, func, return_slot, args, funclet, must_tail)
         };
         if let Some(_fn_abi) = fn_abi {
             // FIXME(bjorn3): Apply function attributes
@@ -387,6 +390,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     pub fn function_call(
         &mut self,
         func: Function<'gcc>,
+        return_slot: ReturnSlot<RValue<'gcc>>,
         args: &[RValue<'gcc>],
         _funclet: Option<&Funclet>,
         must_tail: bool,
@@ -403,11 +407,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // That's why we assign the result to a local or call add_eval().
         let return_type = func.get_return_type();
         let void_type = self.context.new_type::<()>();
-        let current_func = self.block.get_function();
         if return_type != void_type {
-            let result = self.new_temp(current_func, self.location, return_type);
-            self.block.add_assignment(self.location, result, call);
-            result.to_rvalue()
+            self.store_call_result(return_slot, call)
         } else {
             self.block.add_eval(self.location, call);
             // Return dummy value when not having return value.
@@ -415,11 +416,13 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn function_ptr_call(
         &mut self,
         typ: Type<'gcc>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         mut func_ptr: RValue<'gcc>,
+        return_slot: ReturnSlot<RValue<'gcc>>,
         args: &[RValue<'gcc>],
         _funclet: Option<&Funclet>,
         must_tail: bool,
@@ -434,6 +437,16 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             }
         };
         let gcc_func = func_ptr_type.dyncast_function_ptr_type().expect("function ptr");
+        // A function pointer type built without `ptr_to_gcc_type` would lack the indirect-return
+        // flag: GCC would then expect the result in registers while the callee returns in memory.
+        #[cfg(feature = "master")]
+        if let Some(fn_abi) = fn_abi {
+            assert_eq!(
+                gcc_func.is_indirect_return(),
+                fn_abi.ret.is_indirect(),
+                "function pointer type with a wrong indirect-return flag: {func_ptr:?}",
+            );
+        }
         let on_stack_param_indices = fn_abi
             .map(|fn_abi| fn_abi.gcc_type(self.cx).on_stack_param_indices)
             .unwrap_or_default();
@@ -457,7 +470,6 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // That's why we assign the result to a local or call add_eval().
         let return_type = gcc_func.get_return_type();
         let void_type = self.context.new_type::<()>();
-        let current_func = self.block.get_function();
 
         if return_type != void_type {
             let return_value = self.cx.context.new_call_through_ptr(self.location, func_ptr, &args);
@@ -469,9 +481,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 args_adjusted,
                 orig_args,
             );
-            let result = self.new_temp(current_func, self.location, return_value.get_type());
-            self.block.add_assignment(self.location, result, return_value);
-            result.to_rvalue()
+            self.store_call_result(return_slot, return_value)
         } else {
             #[cfg(not(feature = "master"))]
             if gcc_func.get_param_count() == 0 {
@@ -615,6 +625,14 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn ret_void(&mut self) {
+        if let Some(&return_value) =
+            self.functions_with_indirect_return.borrow().get(&self.current_func())
+        {
+            // cg_ssa returns nothing for an indirect return, but the GCC function returns the
+            // value itself: GCC copies it to the caller's slot and returns the hidden pointer.
+            self.llbb().end_with_return(self.location, return_value.to_rvalue());
+            return;
+        }
         self.llbb().end_with_void_return(self.location)
     }
 
@@ -768,7 +786,14 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         } else {
             let trap = self.context.get_builtin_function("__builtin_trap");
             self.block.add_eval(self.location, self.context.new_call(self.location, trap, &[]));
-            let return_value = self.new_temp(self.current_func(), self.location, return_type);
+            // Reuse the local of an indirect return: a new temporary per unreachable block would
+            // add the whole return value to the stack frame each time.
+            let indirect_return_value =
+                self.functions_with_indirect_return.borrow().get(&self.current_func()).copied();
+            let return_value = match indirect_return_value {
+                Some(return_value) => return_value,
+                None => self.new_temp(self.current_func(), self.location, return_type),
+            };
             self.block.end_with_return(self.location, return_value)
         }
     }
@@ -1104,12 +1129,16 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn atomic_load(
         &mut self,
-        _ty: Type<'gcc>,
+        ty: Type<'gcc>,
         ptr: RValue<'gcc>,
         order: AtomicOrdering,
         _volatile: bool, // FIXME we are always making the load volatile
         size: Size,
     ) -> RValue<'gcc> {
+        if self.use_sync_atomics(size.bytes()) {
+            return self.sync_atomic_load(ty, ptr, size);
+        }
+
         // FIXME(antoyo): use ty.
         // FIXME(antoyo): handle alignment.
         let atomic_load =
@@ -1280,6 +1309,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _volatile: bool, // FIXME we are always making the store volatile
         size: Size,
     ) {
+        if self.use_sync_atomics(size.bytes()) {
+            return self.sync_atomic_store(value, ptr, size);
+        }
+
         // FIXME(antoyo): handle alignment.
         let atomic_store =
             self.context.get_builtin_function(format!("__atomic_store_{}", size.bytes()));
@@ -1776,6 +1809,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         failure_order: AtomicOrdering,
         weak: bool,
     ) -> (RValue<'gcc>, RValue<'gcc>) {
+        let size = get_maybe_pointer_size(src) as u64;
+        if self.use_sync_atomics(size) {
+            return self.sync_atomic_cmpxchg(dst, cmp, src, size);
+        }
         let expected = self.current_func().new_local(None, cmp.get_type(), "expected");
         self.llbb().add_assignment(None, expected, cmp);
         // NOTE: gcc doesn't support a failure memory model that is stronger than the success
@@ -1800,6 +1837,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         ret_ptr: bool,
     ) -> RValue<'gcc> {
         let size = get_maybe_pointer_size(src);
+        if self.use_sync_atomics(size as u64) {
+            return self.sync_atomic_rmw(op, dst, src, Size::from_bytes(size));
+        }
         let name = match op {
             AtomicRmwBinOp::AtomicXchg => format!("__atomic_exchange_{}", size),
             AtomicRmwBinOp::AtomicAdd => format!("__atomic_fetch_add_{}", size),
@@ -2515,6 +2555,31 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let var = self.new_temp(self.current_func(), self.location, value.get_type());
         self.llbb().add_assignment(self.location, var, value);
         var.to_rvalue()
+    }
+
+    /// Anchor a call in a statement, since an rvalue is evaluated at each use. An indirect result
+    /// goes to the caller-provided return slot and a dummy value is returned to cg_ssa.
+    fn store_call_result(
+        &self,
+        return_slot: ReturnSlot<RValue<'gcc>>,
+        call: RValue<'gcc>,
+    ) -> RValue<'gcc> {
+        match return_slot {
+            ReturnSlot::Direct => self.assign_to_var(call),
+            ReturnSlot::Indirect(sret_ptr) => {
+                // Cast the opaque return slot to the exact return type, so that GCC stores the
+                // result there directly, without a conversion or an intermediate copy.
+                let return_type = call.get_type();
+                let sret_ptr =
+                    self.context.new_cast(self.location, sret_ptr, return_type.make_pointer());
+                self.llbb().add_assignment(
+                    self.location,
+                    sret_ptr.dereference(self.location),
+                    call,
+                );
+                self.context.new_rvalue_zero(self.cx.type_u32())
+            }
+        }
     }
 }
 

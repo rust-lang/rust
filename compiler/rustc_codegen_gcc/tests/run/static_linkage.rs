@@ -9,7 +9,7 @@
 // If `predefine_static` were to ignore its `linkage` argument outright, every static would come out as
 // an ordinary global symbol: the overridable ones would clash with the C definitions at link time.
 
-#![feature(linkage, no_core)]
+#![feature(linkage, no_core, rustc_private)]
 #![no_std]
 #![no_core]
 #![no_main]
