@@ -415,13 +415,17 @@ impl<'tcx> Body<'tcx> {
     pub fn typing_env(&self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
         if tcx.use_typing_mode_post_typeck_until_borrowck() {
             match self.phase {
-                MirPhase::Built if let Some(def_id) = self.source.def_id().as_local() => {
+                MirPhase::Built | MirPhase::Analysis(AnalysisPhase::Initial)
+                    if let Some(def_id) = self.source.def_id().as_local() =>
+                {
                     TypingEnv::new(
                         tcx.param_env(self.source.def_id()),
                         ty::TypingMode::borrowck(tcx, def_id),
                     )
                 }
-                MirPhase::Analysis(_) if let Some(def_id) = self.source.def_id().as_local() => {
+                MirPhase::Analysis(AnalysisPhase::PostCleanup)
+                    if let Some(def_id) = self.source.def_id().as_local() =>
+                {
                     TypingEnv::new(
                         tcx.param_env(self.source.def_id()),
                         ty::TypingMode::post_borrowck_analysis(tcx, def_id),

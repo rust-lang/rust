@@ -1,7 +1,7 @@
 //@ revisions: old next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
-//@[next] known-bug: trait-system-refactor-initiative#303
+//@[next] check-pass
 //@[old] failure-status: 101
 //@[old] dont-check-compiler-stderr
 //@[old] known-bug: #126680
