@@ -1578,6 +1578,25 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    /// If the next tokens are ill-formed `$ty::` recover them as `<$ty>::`.
+    pub(super) fn maybe_recover_from_bad_interpolated_ty_qpath<T: RecoverQPath>(
+        &mut self,
+    ) -> Option<PResult<'a, T>> {
+        if self.may_recover()
+            && let Some(mv_kind @ token::MetaVarKind::Ty { .. }) = self.token.is_metavar_seq()
+            && self.check_noexpect_past_close_delim(&token::PathSep)
+        {
+            // Reparse the type, then move to recovery.
+            let ty = self
+                .eat_metavar_seq(mv_kind, |this| this.parse_ty_no_question_mark_recover())
+                .expect("metavar seq ty");
+
+            return Some(self.maybe_recover_from_bad_qpath_stage_2(self.prev_token.span, ty));
+        }
+
+        None
+    }
+
     /// Tries to recover from associated item paths like `[T]::AssocItem` / `(T, U)::AssocItem`.
     /// Attempts to convert the base expression/pattern/type into a type, parses the `::AssocItem`
     /// tail, and combines them into a `<Ty>::AssocItem` expression/pattern/type.

@@ -16,8 +16,8 @@ use crate::diagnostics::{
     FnPtrWithGenerics, FnPtrWithGenericsSugg, HelpUseLatestEdition, InvalidDynKeyword,
     LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime, ReturnTypesUseThinArrow,
 };
+use crate::exp;
 use crate::parser::{FnContext, FnParseMode, FrontMatterParsingMode};
-use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
 
 /// Signals whether parsing a type should allow `+`.
 ///
@@ -269,14 +269,14 @@ impl<'a> Parser<'a> {
         ty_generics: Option<&Generics>,
         recover_question_mark: RecoverQuestionMark,
     ) -> PResult<'a, Box<Ty>> {
-        let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
-        maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
-
         if let Some(ty) = self.eat_metavar_seq_with_matcher(
             |mv_kind| matches!(mv_kind, MetaVarKind::Ty { .. }),
             |this| this.parse_ty_no_question_mark_recover(),
         ) {
-            return Ok(ty);
+            return match recover_qpath {
+                RecoverQPath::Yes => self.maybe_recover_from_bad_qpath(ty),
+                RecoverQPath::No => Ok(ty),
+            };
         }
 
         self.recover_from_outer_attributes("types")?;
@@ -428,7 +428,11 @@ impl<'a> Parser<'a> {
         if let RecoverQuestionMark::Yes = recover_question_mark {
             ty = self.maybe_recover_from_question_mark(ty);
         }
-        if allow_qpath_recovery { self.maybe_recover_from_bad_qpath(ty) } else { Ok(ty) }
+        if recover_qpath == RecoverQPath::Yes {
+            self.maybe_recover_from_bad_qpath(ty)
+        } else {
+            Ok(ty)
+        }
     }
 
     fn parse_unsafe_binder_ty(&mut self) -> PResult<'a, TyKind> {
