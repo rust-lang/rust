@@ -369,16 +369,20 @@ impl<'a> Parser<'a> {
         };
 
         let span = lo.to(self.prev_token.span);
-        let mut ty = self.mk_ty(span, kind);
+        let ty = self.mk_ty(span, kind);
 
         // Try to recover from use of `+` with incorrect priority.
         match allow_plus {
             AllowPlus::Yes => self.maybe_recover_from_bad_type_plus(&ty)?,
             AllowPlus::No => self.maybe_report_ambiguous_plus(impl_dyn_multi, &ty),
         }
-        if let RecoverQuestionMark::Yes = recover_question_mark {
-            ty = self.maybe_recover_from_question_mark(ty);
+
+        if let RecoverQuestionMark::Yes = recover_question_mark
+            && let Some(ty) = self.recover_from_question_mark_after_ty(ty.span)
+        {
+            return Ok(ty);
         }
+
         if recover_qpath == RecoverQPath::Yes {
             self.maybe_recover_from_bad_qpath(ty)
         } else {

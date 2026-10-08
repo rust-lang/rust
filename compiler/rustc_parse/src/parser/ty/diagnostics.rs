@@ -1,4 +1,4 @@
-use rustc_ast::{self as ast, Path, TyKind, token};
+use rustc_ast::{self as ast, Path, Ty, TyKind, token};
 use rustc_errors::{Applicability, PResult};
 use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -103,5 +103,20 @@ impl<'a> Parser<'a> {
             .emit();
 
         Ok(Some(TyKind::Ptr(ty, mutbl)))
+    }
+
+    /// Recover from `Type?` meaning `Option<Type>` as found in e.g., Swift.
+    pub(super) fn recover_from_question_mark_after_ty(&mut self, ty_span: Span) -> Option<Box<Ty>> {
+        if !self.eat_noexpect(&token::Question) {
+            return None;
+        }
+        let guar = self.dcx().emit_err(diagnostics::QuestionMarkInType {
+            span: self.prev_token.span,
+            sugg: diagnostics::QuestionMarkInTypeSugg {
+                left: ty_span.shrink_to_lo(),
+                right: self.prev_token.span,
+            },
+        });
+        Some(self.mk_ty(ty_span.to(self.prev_token.span), TyKind::Err(guar)))
     }
 }

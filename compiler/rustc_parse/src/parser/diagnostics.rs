@@ -33,12 +33,11 @@ use crate::diagnostics::{
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
     HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
     IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, MisspelledKw,
-    PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
-    StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt,
-    SuggEscapeIdentifier, SuggRemoveComma, SuggestBindTypeParameter, SuggestIntroduceTypeParameter,
-    TernaryOperator, TernaryOperatorSuggestion, UnexpectedConstInGenericParam,
-    UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
-    UseEqInstead, WrapType,
+    PatternMethodParamWithoutBody, SelfParamNotFirst, StructLiteralBodyWithoutPath,
+    StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma,
+    SuggestBindTypeParameter, SuggestIntroduceTypeParameter, TernaryOperator,
+    TernaryOperatorSuggestion, UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
 };
 use crate::exp;
 use crate::parser::attr::InnerAttrPolicy;
@@ -1481,23 +1480,6 @@ impl<'a> Parser<'a> {
                 span: ty.span,
                 suggestion: AddParen { lo: ty.span.shrink_to_lo(), hi: ty.span.shrink_to_hi() },
             });
-        }
-    }
-
-    /// Swift lets users write `Ty?` to mean `Option<Ty>`. Parse the construct and recover from it.
-    pub(super) fn maybe_recover_from_question_mark(&mut self, ty: Box<Ty>) -> Box<Ty> {
-        if self.token == token::Question {
-            self.bump();
-            let guar = self.dcx().emit_err(QuestionMarkInType {
-                span: self.prev_token.span,
-                sugg: QuestionMarkInTypeSugg {
-                    left: ty.span.shrink_to_lo(),
-                    right: self.prev_token.span,
-                },
-            });
-            self.mk_ty(ty.span.to(self.prev_token.span), TyKind::Err(guar))
-        } else {
-            ty
         }
     }
 
