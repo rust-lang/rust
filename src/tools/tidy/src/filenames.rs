@@ -13,7 +13,7 @@ use std::process::Command;
 use crate::diagnostics::TidyCtx;
 
 pub fn check(root_path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check("filenames");
+    let check = tidy_ctx.start_check("filenames");
     let stat_output = Command::new("git")
         .arg("-C")
         .arg(root_path)

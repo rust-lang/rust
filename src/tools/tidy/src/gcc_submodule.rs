@@ -7,7 +7,7 @@ use std::process::Command;
 use crate::diagnostics::TidyCtx;
 
 pub fn check(root_path: &Path, compiler_path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check("gcc_submodule");
+    let check = tidy_ctx.start_check("gcc_submodule");
 
     let cg_gcc_version_path = compiler_path.join("rustc_codegen_gcc/libgccjit.version");
     let cg_gcc_version = std::fs::read_to_string(&cg_gcc_version_path)
