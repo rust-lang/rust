@@ -500,7 +500,7 @@ fn fn_abi_sanity_check<'tcx>(
                 // `Cast` means "transmute to `CastType`"; that only makes sense for sized types.
                 assert!(arg.layout.is_sized());
             }
-            PassMode::Indirect { meta_attrs: None, attrs, .. } => {
+            PassMode::Indirect { attrs, .. } => {
                 // No metadata, must be sized.
                 // Conceptually, unsized arguments must be copied around, which requires dynamically
                 // determining their size, which we cannot do without metadata. Consult
@@ -509,9 +509,11 @@ fn fn_abi_sanity_check<'tcx>(
                 // Indirect returns are arguments from an ABI perspective.
                 fn_arg_attrs_sanity_check(attrs, false);
             }
-            PassMode::Indirect { meta_attrs: Some(meta_attrs), attrs, address_space: _, mode } => {
-                // With metadata. Must be unsized and not on the stack.
-                assert!(arg.layout.is_unsized() && *mode == IndirectMode::Pointer);
+            PassMode::IndirectUnsized { attrs, meta_attrs } => {
+                // With metadata. Must be unsized.
+                assert!(arg.layout.is_unsized());
+                // And must not be a return value
+                assert!(!is_ret);
                 // Also, must not be `extern` type.
                 let tail = tcx.struct_tail_for_codegen(arg.layout.ty, cx.typing_env);
                 if matches!(tail.kind(), ty::Foreign(..)) {
