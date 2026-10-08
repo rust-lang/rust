@@ -244,6 +244,7 @@ late_lint_methods!(
             InteriorMutableConsts: InteriorMutableConsts,
             InternalEqTraitMethodImpls: InternalEqTraitMethodImpls,
             InvalidAtomicOrdering: InvalidAtomicOrdering,
+            InvalidCVariadicArguments: InvalidCVariadicArguments,
             InvalidFromUtf8: InvalidFromUtf8,
             InvalidNoMangleItems: InvalidNoMangleItems,
             InvalidReferenceCasting: InvalidReferenceCasting,

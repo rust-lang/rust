@@ -1,3 +1,4 @@
+#![expect(invalid_c_variadic_arguments)]
 // While 1-ZST are currently ignored on most ABIs, we don't guarantee that, and it's UB to
 // rely on it.
 
