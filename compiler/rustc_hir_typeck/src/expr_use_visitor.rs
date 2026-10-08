@@ -1099,6 +1099,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                                 upvar_borrow,
                             );
                         }
+                        ty::UpvarCapture::ByCopy => {
+                            self.delegate.borrow_mut().copy(&place_with_id, place_with_id.hir_id);
+                        }
                     }
                 }
             }

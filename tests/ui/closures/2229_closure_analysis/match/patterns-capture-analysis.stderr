@@ -65,7 +65,7 @@ LL | |         match variant {
 LL | |     };
    | |_____^
    |
-note: Capturing variant[(0, 0)] -> Immutable
+note: Capturing variant[(0, 0)] -> ByCopy
   --> $DIR/patterns-capture-analysis.rs:66:15
    |
 LL |         match variant {
@@ -82,7 +82,7 @@ LL | |         match variant {
 LL | |     };
    | |_____^
    |
-note: Min Capture variant[(0, 0)] -> Immutable
+note: Min Capture variant[(0, 0)] -> ByCopy
   --> $DIR/patterns-capture-analysis.rs:66:15
    |
 LL |         match variant {
@@ -183,7 +183,7 @@ LL | |         match slice {
 LL | |     };
    | |_____^
    |
-note: Min Capture slice[Deref] -> Immutable
+note: Min Capture slice[] -> ByCopy
   --> $DIR/patterns-capture-analysis.rs:150:15
    |
 LL |         match slice {
@@ -217,7 +217,7 @@ LL | |         match slice {
 LL | |     };
    | |_____^
    |
-note: Min Capture slice[Deref] -> Immutable
+note: Min Capture slice[] -> ByCopy
   --> $DIR/patterns-capture-analysis.rs:162:15
    |
 LL |         match slice {
@@ -251,7 +251,7 @@ LL | |         match slice {
 LL | |     };
    | |_____^
    |
-note: Min Capture slice[Deref] -> Immutable
+note: Min Capture slice[] -> ByCopy
   --> $DIR/patterns-capture-analysis.rs:174:15
    |
 LL |         match slice {

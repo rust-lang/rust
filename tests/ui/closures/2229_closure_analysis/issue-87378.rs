@@ -16,7 +16,7 @@ fn main() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
        unsafe { u.value }
-        //~^ NOTE: Capturing u[(0, 0)] -> Immutable
+        //~^ NOTE: Capturing u[(0, 0)] -> ByCopy
         //~| NOTE: Min Capture u[] -> Immutable
     };
 

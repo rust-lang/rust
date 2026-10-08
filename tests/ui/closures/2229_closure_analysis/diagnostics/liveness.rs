@@ -59,10 +59,10 @@ struct MyStruct<'a> {
 pub fn nested() {
     let mut a: Option<&str>;
     a = None;
-    let mut b: Option<&str>;
-    b = None;
+    let mut b: Option<&str>; //~ WARN variable `b` is assigned to, but never used
+    b = None; //~ WARN value assigned to `b` is never read
     let mut d = MyStruct { x: None, y: 1 };
-    let mut e = MyStruct { x: None, y: 1 };
+    let mut e = MyStruct { x: None, y: 1 }; //~ WARN unused variable: `e`
     (|| {
         (|| {
             d.x = Some("d1"); //~ WARN value assigned to `d.x` is never read
@@ -72,9 +72,11 @@ pub fn nested() {
         })();
         (move || {
             e.x = Some("e1"); //~  WARN value captured by `e.x` is never read
+                              //~| WARN value captured by `e.x` is never read
                               //~| WARN value assigned to `e.x` is never read
             e.x = Some("e2"); //~  WARN value assigned to `e.x` is never read
             b = Some("e1"); //~  WARN value captured by `b` is never read
+                            //~|  WARN value captured by `b` is never read
                             //~| WARN value assigned to `b` is never read
             b = Some("e2"); //~  WARN value assigned to `b` is never read
         })();

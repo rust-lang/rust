@@ -47,6 +47,9 @@ impl UpvarId {
 #[derive(Eq, PartialEq, Clone, Debug, Copy, TyEncodable, TyDecodable, StableHash, Hash)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum UpvarCapture {
+    /// Like `ByValue`, but dominated by all the other modes instead of dominating them.
+    ByCopy,
+
     /// Upvar is captured by reference.
     ByRef(BorrowKind),
 
@@ -64,11 +67,15 @@ impl PartialOrd for UpvarCapture {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         match (self, other) {
-            (Self::ByValue, Self::ByValue) | (Self::ByUse, Self::ByUse) => {
-                Some(cmp::Ordering::Equal)
+            (Self::ByCopy, Self::ByCopy)
+            | (Self::ByValue, Self::ByValue)
+            | (Self::ByUse, Self::ByUse) => Some(cmp::Ordering::Equal),
+            (_, Self::ByCopy) | (Self::ByValue | Self::ByUse, Self::ByRef(_)) => {
+                Some(cmp::Ordering::Greater)
             }
-            (Self::ByValue | Self::ByUse, Self::ByRef(_)) => Some(cmp::Ordering::Greater),
-            (Self::ByRef(_), Self::ByValue | Self::ByUse) => Some(cmp::Ordering::Less),
+            (Self::ByCopy, _) | (Self::ByRef(_), Self::ByValue | Self::ByUse) => {
+                Some(cmp::Ordering::Less)
+            }
             (Self::ByRef(left), Self::ByRef(right)) => Some(left.cmp(&right)),
             (Self::ByUse, Self::ByValue) | (Self::ByValue, Self::ByUse) => None,
         }
@@ -202,7 +209,7 @@ impl<'tcx> CapturedPlace<'tcx> {
 
     pub fn is_by_ref(&self) -> bool {
         match self.info.capture_kind {
-            ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => false,
+            ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse | ty::UpvarCapture::ByCopy => false,
             ty::UpvarCapture::ByRef(..) => true,
         }
     }
