@@ -3,7 +3,6 @@ use std::ops::ControlFlow;
 
 #[cfg(feature = "nightly")]
 use rustc_macros::StableHash;
-use rustc_transmute::Answer;
 use rustc_type_ir::data_structures::HashSet;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::region_constraint::RegionConstraint;
@@ -17,6 +16,7 @@ use rustc_type_ir::solve::{
     NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunCondition,
     RerunNonErased, RerunReason, RerunResultExt, SmallCopySet, TyOrConstInferVar,
 };
+use rustc_type_ir::transmute::Answer;
 use rustc_type_ir::{
     self as ty, ClauseKind, Const, InferCtxtLike, Interner, MayBeErased, OpaqueTypeKey,
     PredicateKind, PredicateProxy, Region, RegionVid, TypeFoldable, TypeSuperVisitable,

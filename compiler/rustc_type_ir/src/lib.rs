@@ -61,6 +61,7 @@ pub mod relate;
 pub mod search_graph;
 pub mod solve;
 pub mod sty;
+pub mod transmute;
 pub mod walk;
 
 // These modules are not `pub` since they are glob-imported.

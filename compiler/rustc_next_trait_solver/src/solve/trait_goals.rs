@@ -656,6 +656,8 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+        use rustc_type_ir::transmute::Answer;
+
         if goal.predicate.polarity != ty::ClausePolarity::Positive {
             return Err(NoSolution.into());
         }
@@ -685,9 +687,9 @@ where
                 )?;
 
                 let certainty = match answer {
-                    rustc_transmute::Answer::No(_) => return Err(NoSolution.into()),
-                    rustc_transmute::Answer::Yes => Certainty::Yes,
-                    rustc_transmute::Answer::If(cond) => {
+                    Answer::No(_) => return Err(NoSolution.into()),
+                    Answer::Yes => Certainty::Yes,
+                    Answer::If(cond) => {
                         let tcx = ecx.cx();
                         ecx.add_goals(
                             GoalSource::Misc,

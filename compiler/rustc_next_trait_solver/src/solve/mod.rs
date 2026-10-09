@@ -21,10 +21,10 @@ mod search_graph;
 mod trait_goals;
 
 use derive_where::derive_where;
-use rustc_transmute::Condition;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 pub use rustc_type_ir::solve::*;
+use rustc_type_ir::transmute::Condition;
 use rustc_type_ir::{self as ty, Const, Interner, Region, TraitClause, TypeVisitableExt, Upcast};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::instrument;

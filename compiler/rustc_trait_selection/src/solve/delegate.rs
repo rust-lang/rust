@@ -21,6 +21,7 @@ use rustc_lint_defs::builtin::RECURSION_DEPTH_EXCEEDING_LIMIT;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::MaybeInfo;
 use rustc_middle::ty::print::{FmtPrinter, Print};
+use rustc_middle::ty::transmute::Answer;
 use rustc_middle::ty::{
     self, CanonicalizerState, MayBeErased, Region, Ty, TyCtxt, TypeFlags, TypeFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
@@ -28,7 +29,7 @@ use rustc_middle::ty::{
 use rustc_next_trait_solver::solve::{GoalStalledOn, GoalStalledOnOpaques, TyOrConstInferVar};
 use rustc_span::{DUMMY_SP, Span};
 use rustc_structures::Limit;
-use rustc_transmute::{Answer, TransmuteTypeEnv};
+use rustc_transmute::TransmuteTypeEnv;
 use thin_vec::{ThinVec, thin_vec};
 
 use super::inspect::InferCtxtProofTreeExt;

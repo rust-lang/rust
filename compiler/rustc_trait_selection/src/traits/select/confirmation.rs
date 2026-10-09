@@ -284,7 +284,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
-        use rustc_transmute::Answer;
+        use rustc_middle::ty::transmute::Answer;
 
         let predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
 

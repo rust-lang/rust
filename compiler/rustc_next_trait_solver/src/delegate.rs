@@ -1,11 +1,11 @@
 use std::fmt::Debug;
 use std::ops::Deref;
 
-use rustc_transmute::Answer;
 use rustc_type_ir::solve::{
     ComputeGoalFastPathOutcome, FetchEligibleAssocItemResponse, Goal, NoSolution,
     VisibleForLeakCheck,
 };
+use rustc_type_ir::transmute::Answer;
 use rustc_type_ir::{
     self as ty, CanonicalizerState, Const, InferCtxtLike, Interner, Region, TypeFoldable,
 };
