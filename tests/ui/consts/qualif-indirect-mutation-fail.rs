@@ -13,26 +13,30 @@ pub const fn f() {
     let _ = &mut a.1;
 }
 
-// Mutable borrow of a type with drop impl.
-pub const A1: () = {
-    let mut x = None; //~ ERROR destructor of
-    let mut y = Some(NotConstDestruct);
-    let a = &mut x;
-    let b = &mut y;
-    std::mem::swap(a, b);
-    std::mem::forget(y);
-}; //~ ERROR calling non-const function `<NotConstDestruct as Drop>::drop`
+// FIXME: we make these associated consts to work around
+// <https://github.com/rust-lang/rust/issues/163973>.
+impl NotConstDestruct {
+    // Mutable borrow of a type with drop impl.
+    pub const A1: () = {
+        let mut x = None; //~ ERROR destructor of
+        let mut y = Some(NotConstDestruct);
+        let a = &mut x;
+        let b = &mut y;
+        std::mem::swap(a, b);
+        std::mem::forget(y);
+    };
 
-// Mutable borrow of a type with drop impl.
-pub const A2: () = {
-    let mut x = None;
-    let mut y = Some(NotConstDestruct);
-    let a = &mut x;
-    let b = &mut y;
-    std::mem::swap(a, b);
-    std::mem::forget(y);
-    let _z = x; //~ ERROR destructor of
-}; //~ ERROR calling non-const function `<NotConstDestruct as Drop>::drop`
+    // Mutable borrow of a type with drop impl.
+    pub const A2: () = {
+        let mut x = None;
+        let mut y = Some(NotConstDestruct);
+        let a = &mut x;
+        let b = &mut y;
+        std::mem::swap(a, b);
+        std::mem::forget(y);
+        let _z = x; //~ ERROR destructor of
+    };
+}
 
 // Shared borrow of a type that might be !Freeze and Drop.
 pub const fn g1<T>() {
