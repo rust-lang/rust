@@ -409,6 +409,8 @@ impl Span {
             Interned::new_span(ctxt, index)
         }
 
+        debug_assert!(lo <= hi);
+
         let lo32 = lo.0;
         let (len, ctxt32) = (hi.0 - lo32, ctxt.as_u32());
         if let Some(parent) = parent {
