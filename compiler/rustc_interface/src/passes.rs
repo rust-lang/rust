@@ -985,6 +985,10 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     }
 
     let incremental = dep_graph.is_fully_enabled();
+    let track_present = incremental
+        || sess.opts.unstable_opts.incremental_verify_ich
+        || sess.prof.enabled()
+        || cfg!(debug_assertions);
 
     // Note: this function body is the origin point of the widely-used 'tcx lifetime.
     //
@@ -1017,6 +1021,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
             providers.extern_queries,
             query_result_on_disk_cache,
             incremental,
+            track_present,
         ),
         providers.hooks,
         compiler.current_gcx.clone(),
