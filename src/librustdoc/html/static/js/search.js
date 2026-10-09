@@ -2176,7 +2176,11 @@ class DocSearch {
              * @returns {string}
              */
             const normalizeType = type => {
-                if (type === "struct" || type === "enum" || type === "union") {
+                if (type === "struct" ||
+                    type === "union" ||
+                    type === "enum" ||
+                    type === "foreigntype"
+                ) {
                     return "type";
                 }
                 return type;

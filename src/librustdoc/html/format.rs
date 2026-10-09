@@ -693,7 +693,7 @@ fn make_href(
             url_parts.push("index.html");
         }
         // <https://gist.github.com/notriddle/08752eb42289c82a69638d65553571c4>
-        ItemType::Enum | ItemType::Struct | ItemType::Union => {
+        ItemType::Struct | ItemType::Union | ItemType::Enum | ItemType::ForeignType => {
             let last = fqp.last().unwrap();
             url_parts.push_fmt(format_args!("type.{last}.html"));
         }

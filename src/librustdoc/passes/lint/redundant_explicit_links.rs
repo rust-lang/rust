@@ -481,7 +481,7 @@ fn local_href_for_res(cx: &DocContext<'_>, module_id: DefId, res: Res<NodeId>) -
     match item_type {
         ItemType::Module => url_parts.push("index.html"),
         // <https://gist.github.com/notriddle/08752eb42289c82a69638d65553571c4>
-        ItemType::Enum | ItemType::Struct | ItemType::Union => {
+        ItemType::Struct | ItemType::Union | ItemType::Enum | ItemType::ForeignType => {
             url_parts.push_fmt(format_args!("type.{last}.html", last = fqp.last()?))
         }
         _ => url_parts.push_fmt(format_args!(

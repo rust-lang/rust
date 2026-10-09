@@ -787,7 +787,7 @@ impl Item {
     /// Generates the HTML file name based on the item kind.
     pub(crate) fn html_filename(&self) -> String {
         let type_ = match self.type_() {
-            ItemType::Struct | ItemType::Union | ItemType::Enum => "type",
+            ItemType::Struct | ItemType::Union | ItemType::Enum | ItemType::ForeignType => "type",
             type_ => type_.as_str(),
         };
         format!("{type_}.{name}.html", name = self.name.unwrap())
@@ -800,6 +800,7 @@ impl Item {
             ItemType::Struct => "struct",
             ItemType::Union => "union",
             ItemType::Enum => "enum",
+            ItemType::ForeignType => "foreigntype",
             _ => return None,
         };
         Some(format!("{redirect_type}.{name}.html", name = self.name.unwrap()))

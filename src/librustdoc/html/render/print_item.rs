@@ -2327,7 +2327,9 @@ pub(super) fn print_ty_path(ty: ItemType, name: &str) -> impl Display {
     fmt::from_fn(move |f| match ty {
         ItemType::Module => write!(f, "{}index.html", ensure_trailing_slash(name)),
         // <https://gist.github.com/notriddle/08752eb42289c82a69638d65553571c4>
-        ItemType::Struct | ItemType::Enum | ItemType::Union => write!(f, "type.{name}.html"),
+        ItemType::Struct | ItemType::Union | ItemType::Enum | ItemType::ForeignType => {
+            write!(f, "type.{name}.html")
+        }
         _ => write!(f, "{ty}.{name}.html"),
     })
 }
