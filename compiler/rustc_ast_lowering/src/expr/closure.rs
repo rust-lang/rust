@@ -304,7 +304,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (parameters, body) = self.with_new_scopes(fn_decl_span, |this| {
             // Transform `async |x: u8| -> X { ... }` into
             // `|x: u8| || -> X { ... }`.
-            let body_id = this.lower_body(|this| {
+            let body_id = this.lower_body_with_params(|this| {
                 let (parameters, expr) = this.lower_coroutine_body_with_moved_arguments(
                     &decl,
                     |this| this.with_new_scopes(fn_decl_span, |this| this.lower_expr_mut(body)),
