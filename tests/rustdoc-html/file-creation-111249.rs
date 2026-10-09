@@ -25,7 +25,7 @@ pub trait Sized: MetaSized {}
 //@ !has 'foo/hidden/inner/index.html'
 // FIXME: Should be `@!has`: https://github.com/rust-lang/rust/issues/111249
 //@ has 'foo/hidden/inner/trait.Foo.html'
-//@ matchesraw - '<meta http-equiv="refresh" content="0;URL=../../../foo/visible/trait.Foo.html">'
+//@ matchesraw - '<meta http-equiv="refresh" content="0;URL=../../visible/trait.Foo.html">'
 //@ !has 'foo/hidden/inner/inner_hidden/index.html'
 //@ !has 'foo/hidden/inner/inner_hidden/trait.HiddenFoo.html'
 #[doc(hidden)]

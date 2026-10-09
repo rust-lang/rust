@@ -12,7 +12,7 @@ pub trait Foo {}
 //@ has - '//a[@href="../reexp_stripped/hidden/type.Bar.html"]' 'Bar'
 // FIXME: Should be `@!has`: https://github.com/rust-lang/rust/issues/111249
 //@ has reexp_stripped/hidden/type.Bar.html
-//@ matchesraw - '<meta http-equiv="refresh" content="0;URL=../../reexp_stripped/type.Bar.html">'
+//@ matchesraw - '<meta http-equiv="refresh" content="0;URL=../type.Bar.html">'
 //@ has 'reexp_stripped/type.Bar.html'
 //@ has - '//a[@href="type.Bar.html"]' 'Bar'
 #[doc(no_inline)]
@@ -23,7 +23,8 @@ impl Foo for Bar {}
 //@ has - '//code' 'pub use reexp_stripped::Quz'
 //@ has - '//code/a' 'Quz'
 //@ has reexp_stripped/private/type.Quz.html
-//@ has - '//p/a' '../../reexp_stripped/type.Quz.html'
+//@ has - '//p/a' '../type.Quz.html'
+//@ !has - '//p/a' '../../type.Quz.html'
 //@ has 'reexp_stripped/type.Quz.html'
 #[doc(no_inline)]
 pub use reexp_stripped::Quz;

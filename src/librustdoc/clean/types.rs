@@ -801,6 +801,9 @@ impl Item {
             ItemType::Union => "union",
             ItemType::Enum => "enum",
             ItemType::ForeignType => "foreigntype",
+            ItemType::Macro => {
+                return Some(format!("macro.{name}!.html", name = self.name.unwrap()));
+            }
             _ => return None,
         };
         Some(format!("{redirect_type}.{name}.html", name = self.name.unwrap()))

@@ -2,7 +2,8 @@
 
 mod hidden {
     //@ has foo/hidden/type.Foo.html
-    //@ has - '//p/a' '../../foo/type.FooBar.html'
+    //@ has - '//p/a' '../type.FooBar.html'
+    //@ !has - '//p/a' '../../type.FooBar.html'
     pub struct Foo {}
     pub union U { a: usize }
     pub enum Empty {}
@@ -10,10 +11,12 @@ mod hidden {
     pub static S: usize = 1;
 
     //@ has foo/hidden/bar/index.html
-    //@ has - '//p/a' '../../foo/baz/index.html'
+    //@ has - '//p/a' '../../baz/index.html'
+    //@ !has - '//p/a' '../../../baz/index.html'
     pub mod bar {
         //@ has foo/hidden/bar/type.Thing.html
-        //@ has - '//p/a' '../../foo/baz/type.Thing.html'
+        //@ has - '//p/a' '../../baz/type.Thing.html'
+        //@ !has - '//p/a' '../../../baz/type.Thing.html'
         pub struct Thing {}
     }
 }

@@ -7,7 +7,7 @@ const EXPECTED = [
                 'name': 'Struct',
                 'desc': 'Doc for <code>Struct</code>',
                 'alias': 'StructItem',
-                'href': '../doc_alias/struct.Struct.html',
+                'href': '../doc_alias/type.Struct.html',
                 'is_alias': true
             },
         ],
@@ -20,7 +20,7 @@ const EXPECTED = [
                 'name': 'field',
                 'desc': 'Doc for <code>Struct</code>’s <code>field</code>',
                 'alias': 'StructFieldItem',
-                'href': '../doc_alias/struct.Struct.html#structfield.field',
+                'href': '../doc_alias/type.Struct.html#structfield.field',
                 'is_alias': true
             },
         ],
@@ -33,7 +33,7 @@ const EXPECTED = [
                 'name': 'method',
                 'desc': 'Doc for <code>Struct::method</code>',
                 'alias': 'StructMethodItem',
-                'href': '../doc_alias/struct.Struct.html#method.method',
+                'href': '../doc_alias/type.Struct.html#method.method',
                 'is_alias': true
             },
         ],
@@ -50,7 +50,7 @@ const EXPECTED = [
                 'name': 'ImplConstItem',
                 'desc': 'Doc for <code>Struct::ImplConstItem</code>',
                 'alias': 'StructImplConstItem',
-                'href': '../doc_alias/struct.Struct.html#associatedconstant.ImplConstItem',
+                'href': '../doc_alias/type.Struct.html#associatedconstant.ImplConstItem',
                 'is_alias': true
             },
         ],
@@ -63,7 +63,7 @@ const EXPECTED = [
                 'name': 'function',
                 'desc': 'Doc for <code>Trait::function</code> implemented for Struct',
                 'alias': 'ImplTraitFunction',
-                'href': '../doc_alias/struct.Struct.html#method.function',
+                'href': '../doc_alias/type.Struct.html#method.function',
                 'is_alias': true
             },
         ],
@@ -76,7 +76,7 @@ const EXPECTED = [
                 'name': 'Enum',
                 'desc': 'Doc for <code>Enum</code>',
                 'alias': 'EnumItem',
-                'href': '../doc_alias/enum.Enum.html',
+                'href': '../doc_alias/type.Enum.html',
                 'is_alias': true
             },
         ],
@@ -89,7 +89,7 @@ const EXPECTED = [
                 'name': 'Variant',
                 'desc': 'Doc for <code>Enum::Variant</code>',
                 'alias': 'VariantItem',
-                'href': '../doc_alias/enum.Enum.html#variant.Variant',
+                'href': '../doc_alias/type.Enum.html#variant.Variant',
                 'is_alias': true
             },
         ],
@@ -102,7 +102,7 @@ const EXPECTED = [
                 'name': 'method',
                 'desc': 'Doc for <code>Enum::method</code>',
                 'alias': 'EnumMethodItem',
-                'href': '../doc_alias/enum.Enum.html#method.method',
+                'href': '../doc_alias/type.Enum.html#method.method',
                 'is_alias': true
             },
         ],
@@ -235,14 +235,14 @@ const EXPECTED = [
                 'path': 'doc_alias::Union',
                 'name': 'union_item',
                 'desc': 'Doc for <code>Union::union_item</code>',
-                'href': '../doc_alias/union.Union.html#structfield.union_item'
+                'href': '../doc_alias/type.Union.html#structfield.union_item'
             },
             {
                 'path': 'doc_alias',
                 'name': 'Union',
                 'desc': 'Doc for <code>Union</code>',
                 'alias': 'UnionItem',
-                'href': '../doc_alias/union.Union.html',
+                'href': '../doc_alias/type.Union.html',
                 'is_alias': true
             },
         ],
@@ -255,7 +255,7 @@ const EXPECTED = [
                 'name': 'union_item',
                 'desc': 'Doc for <code>Union::union_item</code>',
                 'alias': 'UnionFieldItem',
-                'href': '../doc_alias/union.Union.html#structfield.union_item',
+                'href': '../doc_alias/type.Union.html#structfield.union_item',
                 'is_alias': true
             },
         ],
@@ -268,7 +268,7 @@ const EXPECTED = [
                 'name': 'method',
                 'desc': 'Doc for <code>Union::method</code>',
                 'alias': 'UnionMethodItem',
-                'href': '../doc_alias/union.Union.html#method.method',
+                'href': '../doc_alias/type.Union.html#method.method',
                 'is_alias': true
             },
         ],
