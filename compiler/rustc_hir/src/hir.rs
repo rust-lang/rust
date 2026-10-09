@@ -3733,6 +3733,24 @@ pub struct Param<'hir> {
     pub param_span: Span,
 }
 
+impl<'hir> Param<'hir> {
+    pub fn display(&self, idx: usize) -> impl '_ + fmt::Display {
+        struct D<'a>(&'a Param<'a>, usize);
+        impl fmt::Display for D<'_> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                // A "unique" param name is one that (a) exists, and (b) is guaranteed to be unique
+                // among the parameters, i.e. `_` does not count.
+                if let PatKind::Binding(_, _, ident, _) = self.0.pat.kind {
+                    write!(f, "`{ident}`")
+                } else {
+                    write!(f, "parameter #{}", self.1 + 1)
+                }
+            }
+        }
+        D(self, idx)
+    }
+}
+
 /// Error type for splatted argument index errors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SplattedArgIndexError {

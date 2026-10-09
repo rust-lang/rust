@@ -58,7 +58,7 @@ note: method defined here
   --> $DIR/self-mapping-arguments-errors.rs:5:12
    |
 LL |         fn add(self, other: Self) -> Self;
-   |            ^^^       -----
+   |            ^^^       -----------
 help: provide the argument
    |
 LL ~     }({
@@ -110,7 +110,7 @@ note: method defined here
   --> $DIR/self-mapping-arguments-errors.rs:34:12
    |
 LL |         fn add(self, other: Box<Self>) -> Self;
-   |            ^^^       -----
+   |            ^^^       ----------------
 help: store this in the heap by calling `Box::new`
    |
 LL |     reuse impl MyAdd for W { Box::new(self.0) }
