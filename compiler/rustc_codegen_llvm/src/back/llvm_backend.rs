@@ -6,6 +6,7 @@ use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 use std::path::PathBuf;
+use std::ptr;
 use std::sync::OnceLock;
 
 use rustc_ast::expand::allocator::AllocatorMethod;
@@ -424,7 +425,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 }
 
 pub struct ModuleLlvm {
-    llcx: &'static mut llvm::Context,
+    llcx_raw: ptr::NonNull<llvm::Context>,
     llmod_raw: *const llvm::Module,
 
     // This field is `ManuallyDrop` because it is important that the `TargetMachine`
@@ -441,15 +442,24 @@ pub struct ModuleLlvm {
 unsafe impl Send for ModuleLlvm {}
 unsafe impl Sync for ModuleLlvm {}
 
+/// Shared helper to call [`llvm::LLVMContextCreate`] and then configure
+/// [`llvm::LLVMContextSetDiscardValueNames`].
+fn create_context_and_set_fewer_names(fewer_names: bool) -> ptr::NonNull<llvm::Context> {
+    unsafe {
+        let llcx_raw = llvm::LLVMContextCreate();
+        llvm::LLVMContextSetDiscardValueNames(llcx_raw.as_ref(), fewer_names.to_llvm_bool());
+        llcx_raw
+    }
+}
+
 impl ModuleLlvm {
     pub(crate) fn new(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
-            let llcx = llvm::LLVMContextCreate();
-            llvm::LLVMContextSetDiscardValueNames(llcx, tcx.sess.fewer_names().to_llvm_bool());
-            let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
+            let llcx_raw = create_context_and_set_fewer_names(tcx.sess.fewer_names());
+            let llmod_raw = context::create_module(tcx, llcx_raw.as_ref(), mod_name);
             ModuleLlvm {
                 llmod_raw,
-                llcx,
+                llcx_raw,
                 tm: ManuallyDrop::new(create_target_machine(tcx, mod_name)),
                 thin_lto_buffer: OnceLock::new(),
             }
@@ -458,12 +468,11 @@ impl ModuleLlvm {
 
     pub(crate) fn new_metadata(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
-            let llcx = llvm::LLVMContextCreate();
-            llvm::LLVMContextSetDiscardValueNames(llcx, tcx.sess.fewer_names().to_llvm_bool());
-            let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
+            let llcx_raw = create_context_and_set_fewer_names(tcx.sess.fewer_names());
+            let llmod_raw = context::create_module(tcx, llcx_raw.as_ref(), mod_name);
             ModuleLlvm {
                 llmod_raw,
-                llcx,
+                llcx_raw,
                 tm: ManuallyDrop::new(create_informational_target_machine(tcx.sess)),
                 thin_lto_buffer: OnceLock::new(),
             }
@@ -478,14 +487,13 @@ impl ModuleLlvm {
         dcx: DiagCtxtHandle<'_>,
     ) -> Self {
         unsafe {
-            let llcx = llvm::LLVMContextCreate();
-            llvm::LLVMContextSetDiscardValueNames(llcx, cgcx.fewer_names.to_llvm_bool());
-            let llmod_raw = back::lto::parse_module(llcx, name, buffer, dcx);
+            let llcx_raw = create_context_and_set_fewer_names(cgcx.fewer_names);
+            let llmod_raw = back::lto::parse_module(llcx_raw.as_ref(), name, buffer, dcx);
             let tm = tm_factory(dcx, TargetMachineFactoryConfig::new(cgcx, name.to_str().unwrap()));
 
             ModuleLlvm {
                 llmod_raw,
-                llcx,
+                llcx_raw,
                 tm: ManuallyDrop::new(tm),
                 thin_lto_buffer: OnceLock::new(),
             }
@@ -502,7 +510,7 @@ impl ModuleLlvm {
         inner_fn: impl for<'ll> FnOnce(ModuleRefs<'ll>) -> R,
     ) -> R {
         inner_fn(ModuleRefs {
-            llcx: self.llcx,
+            llcx: unsafe { self.llcx_raw.as_ref() },
             llmod: unsafe { &*self.llmod_raw },
             tm: self.tm.raw(),
             _ph: PhantomData,
@@ -514,7 +522,7 @@ impl Drop for ModuleLlvm {
     fn drop(&mut self) {
         unsafe {
             ManuallyDrop::drop(&mut self.tm);
-            llvm::LLVMContextDispose(&mut *(self.llcx as *mut _));
+            llvm::LLVMContextDispose(self.llcx_raw);
         }
     }
 }
