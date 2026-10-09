@@ -1,6 +1,8 @@
 use rustc_feature::AttributeStability;
+use rustc_lint_defs::builtin::NO_LINK_ATTR_USED;
 
 use super::prelude::*;
+use crate::diagnostics::NoLinkAttrUsed;
 
 pub(crate) struct NoLinkParser;
 impl NoArgsAttributeParser for NoLinkParser {
@@ -14,4 +16,8 @@ impl NoArgsAttributeParser for NoLinkParser {
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoLink;
+
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        cx.emit_lint(NO_LINK_ATTR_USED, NoLinkAttrUsed, attr_span);
+    }
 }

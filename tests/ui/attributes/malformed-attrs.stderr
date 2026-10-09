@@ -23,7 +23,7 @@ LL | #[cfg_attr(predicate, attr1, attr2, ...)]
    |           ++++++++++++++++++++++++++++++
 
 error[E0463]: can't find crate for `wloop`
-  --> $DIR/malformed-attrs.rs:212:1
+  --> $DIR/malformed-attrs.rs:214:1
    |
 LL | extern crate wloop;
    | ^^^^^^^^^^^^^^^^^^^ can't find crate
@@ -783,7 +783,7 @@ LL + #[no_link]
    |
 
 error[E0539]: malformed `macro_use` attribute input
-  --> $DIR/malformed-attrs.rs:210:3
+  --> $DIR/malformed-attrs.rs:212:3
    |
 LL | #[macro_use = 1]
    |   ^^^^^^^^^^---
@@ -801,7 +801,7 @@ LL + #[macro_use(name1, name2, ...)]
    |
 
 error[E0539]: malformed `macro_export` attribute input
-  --> $DIR/malformed-attrs.rs:215:3
+  --> $DIR/malformed-attrs.rs:217:3
    |
 LL | #[macro_export = 18]
    |   ^^^^^^^^^^^^^----
@@ -818,7 +818,7 @@ LL + #[macro_export(local_inner_macros)]
    |
 
 error[E0658]: the `allow_internal_unsafe` attribute side-steps the `unsafe_code` lint
-  --> $DIR/malformed-attrs.rs:217:3
+  --> $DIR/malformed-attrs.rs:219:3
    |
 LL | #[allow_internal_unsafe = 1]
    |   ^^^^^^^^^^^^^^^^^^^^^
@@ -827,7 +827,7 @@ LL | #[allow_internal_unsafe = 1]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0565]: malformed `allow_internal_unsafe` attribute input
-  --> $DIR/malformed-attrs.rs:217:3
+  --> $DIR/malformed-attrs.rs:219:3
    |
 LL | #[allow_internal_unsafe = 1]
    |   ^^^^^^^^^^^^^^^^^^^^^^---
@@ -964,8 +964,18 @@ LL | #[automatically_derived = 18]
    = help: the `automatically_derived` attribute can only be applied to trait impl blocks
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
+warning: use of deprecated `no_link` attribute
+  --> $DIR/malformed-attrs.rs:208:1
+   |
+LL | #[no_link()]
+   | ^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #164032 <https://github.com/rust-lang/rust/issues/164032>
+   = note: `#[warn(no_link_attr_used)]` (part of `#[warn(future_incompatible)]`) on by default
+
 error: valid forms for the attribute are `ignore` and `ignore = "reason"`
-  --> $DIR/malformed-attrs.rs:224:3
+  --> $DIR/malformed-attrs.rs:226:3
    |
 LL | #[ignore = 1]
    |   ^^^^^^^^^^
@@ -984,7 +994,7 @@ LL |     #[coroutine = 63] || {}
    = note: expected unit type `()`
               found coroutine `{coroutine@$DIR/malformed-attrs.rs:117:23: 117:25}`
 
-error: aborting due to 74 previous errors; 8 warnings emitted
+error: aborting due to 74 previous errors; 9 warnings emitted
 
 Some errors have detailed explanations: E0308, E0463, E0539, E0565, E0658, E0805.
 For more information about an error, try `rustc --explain E0308`.
@@ -1012,7 +1022,7 @@ LL | #[ignore()]
 
 Future breakage diagnostic:
 error: valid forms for the attribute are `ignore` and `ignore = "reason"`
-  --> $DIR/malformed-attrs.rs:224:3
+  --> $DIR/malformed-attrs.rs:226:3
    |
 LL | #[ignore = 1]
    |   ^^^^^^^^^^

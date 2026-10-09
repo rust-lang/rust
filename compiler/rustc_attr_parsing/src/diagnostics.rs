@@ -2132,3 +2132,7 @@ pub(crate) enum MacroExport {
     #[note("declarative macros follow the same exporting rules as regular items")]
     OnDeclMacro,
 }
+
+#[derive(Diagnostic)]
+#[diag("use of deprecated `no_link` attribute")]
+pub(crate) struct NoLinkAttrUsed;
