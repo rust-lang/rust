@@ -163,6 +163,7 @@ pub(crate) fn placeholder(
             span,
             ty: ty(),
             is_placeholder: true,
+            has_const_keyword: false,
         }]),
         AstFragmentKind::FieldDefs => AstFragment::FieldDefs(smallvec![ast::FieldDef {
             attrs: Default::default(),

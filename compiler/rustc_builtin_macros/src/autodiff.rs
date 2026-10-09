@@ -529,6 +529,7 @@ mod llvm_enzyme {
                     id: ast::DUMMY_NODE_ID,
                     span,
                     is_placeholder: false,
+                    has_const_keyword: false,
                 }
             })
             .collect();

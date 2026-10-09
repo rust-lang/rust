@@ -886,8 +886,10 @@ impl<'a> Parser<'a> {
             req_name: |_, _| false,
             context: FnContext::FunctionPtrType,
             req_body: false,
+            allow_const: false,
         };
         let decl = self.parse_fn_decl(&mode, AllowPlus::No, recover_return_sign)?;
+        let decl = Box::new(decl);
 
         let decl_span = span_start.to(self.prev_token.span);
         Ok(TyKind::FnPtr(Box::new(FnPtrTy {
@@ -1449,8 +1451,12 @@ impl<'a> Parser<'a> {
         self.bump();
         let args_lo = self.token.span;
         let snapshot = self.create_snapshot_for_diagnostic();
-        let mode =
-            FnParseMode { req_name: |_, _| false, context: FnContext::Free, req_body: false };
+        let mode = FnParseMode {
+            req_name: |_, _| false,
+            context: FnContext::Free,
+            req_body: false,
+            allow_const: false,
+        };
         match self.parse_fn_decl(&mode, AllowPlus::No, RecoverReturnSign::OnlyFatArrow) {
             Ok(decl) => {
                 self.dcx().emit_err(ExpectedFnPathFoundFnKeyword { fn_token_span });
@@ -1547,8 +1553,12 @@ impl<'a> Parser<'a> {
         };
         // Parse `(T, U) -> R`.
         let inputs_lo = self.token.span;
-        let mode =
-            FnParseMode { req_name: |_, _| false, context: FnContext::Free, req_body: false };
+        let mode = FnParseMode {
+            req_name: |_, _| false,
+            context: FnContext::Free,
+            req_body: false,
+            allow_const: false,
+        };
         let inputs = match self.parse_fn_params(&mode) {
             Ok(params) => params,
             Err(err) => {
