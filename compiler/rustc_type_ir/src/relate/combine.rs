@@ -23,13 +23,16 @@ where
     fn param_env(&self) -> I::ParamEnv;
 
     /// Register obligations that must hold in order for this relation to hold
-    fn register_goals(&mut self, obligations: impl IntoIterator<Item = Goal<I, I::Predicate>>);
+    fn register_goals(
+        &mut self,
+        obligations: impl IntoIterator<Item = Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>>,
+    );
 
     /// Register predicates that must hold in order for this relation to hold.
     /// This uses the default `param_env` of the obligation.
     fn register_predicates(
         &mut self,
-        obligations: impl IntoIterator<Item: Upcast<I, I::Predicate>>,
+        obligations: impl IntoIterator<Item: Upcast<I, rustc_type_ir::sty::predicates::Predicate<I>>>,
     );
 }
 

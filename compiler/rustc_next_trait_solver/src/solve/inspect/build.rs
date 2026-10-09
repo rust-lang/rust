@@ -146,10 +146,17 @@ impl<I: Interner> WipProbe<I> {
 
 #[derive_where(PartialEq, Debug; I: Interner)]
 enum WipProbeStep<I: Interner> {
-    AddGoal(GoalSource, inspect::CanonicalState<I, Goal<I, I::Predicate>>),
+    AddGoal(
+        GoalSource,
+        inspect::CanonicalState<I, Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>>,
+    ),
     NestedProbe(WipProbe<I>),
-    MakeCanonicalResponse { shallow_certainty: Certainty },
-    RecordImplArgs { impl_args: inspect::CanonicalState<I, I::GenericArgs> },
+    MakeCanonicalResponse {
+        shallow_certainty: Certainty,
+    },
+    RecordImplArgs {
+        impl_args: inspect::CanonicalState<I, I::GenericArgs>,
+    },
 }
 
 impl<I: Interner> Eq for WipProbeStep<I> {}
@@ -232,7 +239,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> EvaluationStepBuilder<D> {
         delegate: &D,
         max_input_universe: ty::UniverseIndex,
         source: GoalSource,
-        goal: Goal<I, I::Predicate>,
+        goal: Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>,
     ) {
         if let Some(this) = self.as_mut() {
             let goal = canonical::make_canonical_state(

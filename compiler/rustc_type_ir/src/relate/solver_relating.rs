@@ -16,7 +16,7 @@ pub trait RelateExt: InferCtxtLike {
         rhs: T,
         span: <Self::Interner as Interner>::Span,
     ) -> Result<
-        Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
+        Vec<Goal<Self::Interner, rustc_type_ir::sty::predicates::Predicate<Self::Interner>>>,
         TypeError<Self::Interner>,
     >;
 }
@@ -30,7 +30,7 @@ impl<Infcx: InferCtxtLike> RelateExt for Infcx {
         rhs: T,
         span: <Self::Interner as Interner>::Span,
     ) -> Result<
-        Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
+        Vec<Goal<Self::Interner, rustc_type_ir::sty::predicates::Predicate<Self::Interner>>>,
         TypeError<Self::Interner>,
     > {
         let mut relate = SolverRelating::new(self, variance, param_env, span);
@@ -47,7 +47,7 @@ pub struct SolverRelating<'infcx, Infcx, I: Interner> {
     span: I::Span,
     // Mutable fields.
     ambient_variance: ty::Variance,
-    goals: Vec<Goal<I, I::Predicate>>,
+    goals: Vec<Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>>,
     /// The cache only tracks the `ambient_variance` as it's the
     /// only field which is mutable and which meaningfully changes
     /// the result when relating types.
@@ -353,14 +353,19 @@ where
 
     fn register_predicates(
         &mut self,
-        obligations: impl IntoIterator<Item: ty::Upcast<I, I::Predicate>>,
+        obligations: impl IntoIterator<
+            Item: ty::Upcast<I, rustc_type_ir::sty::predicates::Predicate<I>>,
+        >,
     ) {
         self.goals.extend(
             obligations.into_iter().map(|pred| Goal::new(self.infcx.cx(), self.param_env, pred)),
         );
     }
 
-    fn register_goals(&mut self, obligations: impl IntoIterator<Item = Goal<I, I::Predicate>>) {
+    fn register_goals(
+        &mut self,
+        obligations: impl IntoIterator<Item = Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>>,
+    ) {
         self.goals.extend(obligations);
     }
 }
