@@ -100,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for LifetimeSyntax {
     #[instrument(skip_all)]
     fn check_foreign_item(&mut self, cx: &LateContext<'tcx>, fi: &'tcx hir::ForeignItem<'tcx>) {
         match fi.kind {
-            hir::ForeignItemKind::Fn(fn_sig, _idents, _generics) => check_fn_like(cx, fn_sig.decl),
+            hir::ForeignItemKind::Fn(fn_sig, _generics) => check_fn_like(cx, fn_sig.decl),
             hir::ForeignItemKind::Static(..) => {}
             hir::ForeignItemKind::Type => {}
         }

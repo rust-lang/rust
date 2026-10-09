@@ -122,7 +122,7 @@ impl<'tcx> LateLintPass<'tcx> for RuntimeSymbols {
                     let symbol_name = cx.tcx.symbol_name(instance);
 
                     match item.kind {
-                        ForeignItemKind::Fn(fn_sig, _idents, _generics) => {
+                        ForeignItemKind::Fn(fn_sig, _generics) => {
                             check_fn(cx, &symbol_name.name, fn_sig, did);
                         }
                         ForeignItemKind::Static(..) => {

@@ -214,7 +214,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         Node::OpaqueTy(..) => tcx.type_of_opaque(def_id).instantiate_identity().skip_norm_wip(),
 
         Node::ForeignItem(foreign_item) => match foreign_item.kind {
-            ForeignItemKind::Fn(_, _, _generics) => {
+            ForeignItemKind::Fn(_, _generics) => {
                 new_bound_fn_def(foreign_item.hir_id(), def_id.to_def_id())
             }
             ForeignItemKind::Static(ty, _, _) => {

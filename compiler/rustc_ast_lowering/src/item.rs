@@ -620,21 +620,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ForeignItemKind::Fn(Fn { sig, ident, generics, define_opaque, .. }) => {
                 let fdec = &sig.decl;
                 let itctx = ImplTraitContext::Universal;
-                let (generics, (decl, fn_args)) = self.lower_generics(generics, itctx, |this| {
+                let (generics, decl) = self.lower_generics(generics, itctx, |this| {
                     let params =
                         this.arena.alloc_from_iter(fdec.inputs.iter().map(|x| this.lower_param(x)));
-                    (
-                        // Disallow `impl Trait` in foreign items.
-                        // Parameters are discarded because foreign functions don't have a body
-                        this.lower_fn_decl(
-                            fdec,
-                            i.id,
-                            FnDeclKind::ExternFn,
-                            None,
-                            DiscardParams::Yes,
-                            params,
-                        ),
-                        this.lower_fn_params_to_idents(fdec),
+                    // Disallow `impl Trait` in foreign items.
+                    this.lower_fn_decl(
+                        fdec,
+                        i.id,
+                        FnDeclKind::ExternFn,
+                        None,
+                        DiscardParams::Yes,
+                        params,
                     )
                 });
 
@@ -649,7 +645,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ident,
                     hir::ForeignItemKind::Fn(
                         hir::FnSig { header, decl, span: self.lower_span(sig.span) },
-                        fn_args,
                         generics,
                     ),
                 )

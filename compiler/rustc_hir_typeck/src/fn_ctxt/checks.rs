@@ -2078,7 +2078,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 kind: hir::ItemKind::Fn { sig, generics, .. }, ..
             })
             | hir::Node::ForeignItem(&hir::ForeignItem {
-                kind: hir::ForeignItemKind::Fn(sig, _, generics),
+                kind: hir::ForeignItemKind::Fn(sig, generics),
                 ..
             }) => (sig, generics),
             _ => return None,

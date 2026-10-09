@@ -510,7 +510,7 @@ impl<'a> State<'a> {
         self.maybe_print_comment(item.span.lo());
         self.print_attrs(self.attrs(item.hir_id()));
         match item.kind {
-            hir::ForeignItemKind::Fn(sig, _, generics) => {
+            hir::ForeignItemKind::Fn(sig, generics) => {
                 let (cb, ib) = self.head("");
                 self.print_fn(sig.header, Some(item.ident.name), generics, sig.decl);
                 self.end(ib);

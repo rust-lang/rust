@@ -3855,7 +3855,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 kind: hir::TraitItemKind::Fn(ref sig, _), ..
             })
             | Node::ForeignItem(&hir::ForeignItem {
-                kind: hir::ForeignItemKind::Fn(ref sig, _, _),
+                kind: hir::ForeignItemKind::Fn(ref sig, _),
                 ..
             }) => (
                 sig.span,
