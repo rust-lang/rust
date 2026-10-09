@@ -6,7 +6,11 @@ LL |     S.call(|| "hello");
    |       |
    |       required by a bound introduced by this call
    |
-   = help: the trait `std::fmt::Display` is not implemented for closure `{closure@$DIR/use-parentheses-to-call-closure-issue-145404.rs:12:12: 12:14}`
+help: the trait `std::fmt::Display` is not implemented for closure `{closure@$DIR/use-parentheses-to-call-closure-issue-145404.rs:12:12: 12:14}`
+  --> $DIR/use-parentheses-to-call-closure-issue-145404.rs:12:12
+   |
+LL |     S.call(|| "hello");
+   |            ^^
 note: required by a bound in `S::call`
   --> $DIR/use-parentheses-to-call-closure-issue-145404.rs:8:28
    |
