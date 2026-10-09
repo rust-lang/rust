@@ -827,6 +827,13 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         proj: ProjectionElem<VnIndex, Ty<'tcx>>,
     ) -> Option<(PlaceTy<'tcx>, VnIndex)> {
         let projection_ty = place_ty.projection_ty(self.tcx, proj);
+        // References that we load from a union field or MaybeDangling cannot be unified.
+        // See https://github.com/rust-lang/rust/issues/163825
+        if self.ty_may_have_ref(projection_ty.ty)
+            && (place_ty.ty.is_union() || place_ty.ty.is_like_maybe_dangling())
+        {
+            return None;
+        }
         let proj = match proj {
             ProjectionElem::Deref => {
                 if let Some(Mutability::Not) = place_ty.ty.ref_mutability()
@@ -1585,6 +1592,11 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             return Some(self.new_opaque(to));
         }
 
+        if matches!(kind, CastKind::Transmute) && self.ty_may_have_ref(to) {
+            //rustc_middle::ty::print::with_no_trimmed_paths!(eprintln!("Transmute from {:?} to {:?}", from, to));
+            return Some(self.new_opaque(to));
+        }
+
         let mut was_ever_updated = false;
         loop {
             let mut was_updated_this_iteration = false;
@@ -1723,6 +1735,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 | ty::Never
                 | ty::FnDef(..)
                 | ty::Error(_)
+                | ty::RawPtr(_, _)
                 | ty::FnPtr(..) => false,
                 ty::Tuple(fields) => {
                     fields.iter().any(|field| ty_may_have_ref_inner(tcx, field, depth))
@@ -1742,7 +1755,6 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                         })
                 }
                 ty::Ref(..)
-                | ty::RawPtr(_, _)
                 | ty::Bound(..)
                 | ty::Closure(..)
                 | ty::CoroutineClosure(..)
