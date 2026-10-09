@@ -1,14 +1,16 @@
-use std::ops::ControlFlow;
+use std::ops::{ControlFlow, Deref, DerefMut};
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
+use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{Span, Symbol, bug, kw};
 use rustc_type_ir::{TypeSuperVisitable as _, TypeVisitable, TypeVisitor};
 use tracing::instrument;
 
 use super::{Clause, InstantiatedClauses, ParamConst, ParamTy, Ty, TyCtxt, Unnormalized};
+use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::{self, ClauseKind, EarlyBinder, GenericArgsRef, Region, RegionKind, TyKind};
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash)]
@@ -124,7 +126,7 @@ pub struct Generics {
 
     /// Reverse map to the `index` field of each `GenericParamDef`.
     #[stable_hash(ignore)]
-    pub param_def_id_to_index: FxHashMap<DefId, u32>,
+    pub param_def_id_to_index: ParamDefIdToIndex,
 
     pub has_self: bool,
     pub has_late_bound_regions: Option<Span>,
@@ -619,5 +621,39 @@ impl<'tcx> ConstConditions<'tcx> {
                 .copied()
                 .map(|(trait_ref, span)| (Unnormalized::new(trait_ref), span)),
         );
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct ParamDefIdToIndex(FxHashMap<DefId, u32>);
+
+impl Deref for ParamDefIdToIndex {
+    type Target = FxHashMap<DefId, u32>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for ParamDefIdToIndex {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl FromIterator<(DefId, u32)> for ParamDefIdToIndex {
+    fn from_iter<I: IntoIterator<Item = (DefId, u32)>>(iter: I) -> Self {
+        Self(iter.into_iter().collect())
+    }
+}
+
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ParamDefIdToIndex {
+    fn encode(&self, e: &mut E) {
+        e.encode_def_id_map(&self.0);
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ParamDefIdToIndex {
+    fn decode(d: &mut D) -> Self {
+        Self(Decodable::decode(d))
     }
 }

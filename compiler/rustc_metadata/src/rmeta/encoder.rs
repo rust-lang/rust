@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 
 use rustc_attr_ir::{AttributeKind, EncodeCrossCrate, find_attr};
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::owned_slice::slice_owned;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
@@ -18,7 +18,7 @@ use rustc_data_structures::sync::{par_for_each_in, par_join};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir_pretty::id_to_string;
 use rustc_index::IndexVec;
@@ -424,6 +424,18 @@ impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
         let (index, _) = self.interpret_allocs.insert_full(*alloc_id);
 
         index.encode(self);
+    }
+
+    fn encode_def_id_map<V: Encodable<Self>>(&mut self, map: &FxHashMap<DefId, V>) {
+        #[allow(rustc::potential_query_instability)]
+        let mut entries: Vec<(DefId, &V)> = map.iter().map(|(&k, v)| (k, v)).collect();
+        entries.sort_unstable_by_key(|&(def_id, _)| self.tcx.def_path_hash(def_id));
+
+        self.emit_usize(entries.len());
+        for (def_id, value) in entries {
+            def_id.encode(self);
+            value.encode(self);
+        }
     }
 }
 

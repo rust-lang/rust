@@ -14,6 +14,17 @@ fn main() {
     const TESTS: &[(&str, &[&str])] = &[
         ("static-muts-issue-140413", &["-Zthreads=50"]),
         ("derives-issue-129094", &["-Zthreads=16", "-Copt-level=3"]),
+        (
+            "generics-of-issue-163878",
+            &[
+                "-Zthreads=30",
+                "--crate-type=lib",
+                "--crate-name=test",
+                "-Ccodegen-units=1",
+                "-Zremap-cwd-prefix=reproducible_dir",
+                "--edition=2024",
+            ],
+        ),
     ];
 
     for (file, args) in TESTS {
