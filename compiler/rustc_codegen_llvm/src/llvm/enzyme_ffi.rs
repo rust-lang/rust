@@ -329,10 +329,7 @@ pub(crate) mod Enzyme_AD {
             let c_fun_name = std::ffi::CString::new(fun_name)
                 .unwrap_or_else(|err| bug!("failed to set_print_type_fun: {err}"));
             unsafe {
-                (self.EnzymeSetCLString)(
-                    self.EnzymeFunctionToAnalyze,
-                    c_fun_name.as_ptr() as *const c_char,
-                );
+                (self.EnzymeSetCLString)(self.EnzymeFunctionToAnalyze, c_fun_name.as_ptr());
             }
         }
 
