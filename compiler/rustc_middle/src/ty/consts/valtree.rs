@@ -116,7 +116,7 @@ impl<'tcx> Value<'tcx> {
             return None;
         };
         let scalar = self.try_to_leaf()?;
-        let input = typing_env.with_post_analysis_normalized(tcx).as_query_input(self.ty);
+        let input = typing_env.as_query_input(self.ty);
         let size = tcx.layout_of(input).ok()?.size;
         Some(scalar.to_bits(size))
     }
