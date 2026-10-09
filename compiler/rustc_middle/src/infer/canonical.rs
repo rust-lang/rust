@@ -30,7 +30,7 @@ pub use rustc_type_ir as ir;
 use smallvec::SmallVec;
 
 use crate::mir::ConstraintCategory;
-use crate::ty::{self, GenericArg, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
+use crate::ty::{self, GenericArg, GenericArgsRef, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
 
 pub type CanonicalQueryInput<'tcx, V> = ir::CanonicalQueryInput<TyCtxt<'tcx>, V>;
 pub type Canonical<'tcx, V> = ir::Canonical<TyCtxt<'tcx>, V>;
@@ -69,7 +69,7 @@ impl<'tcx> Default for OriginalQueryValues<'tcx> {
 /// `instantiate_query_result` to access the data in this result.
 #[derive(Clone, Debug, StableHash, TypeFoldable, TypeVisitable)]
 pub struct QueryResponse<'tcx, R> {
-    pub var_values: CanonicalVarValues<'tcx>,
+    pub var_values: GenericArgsRef<'tcx>,
     pub region_constraints: QueryRegionConstraints<'tcx>,
     pub certainty: Certainty,
     pub opaque_types: Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
