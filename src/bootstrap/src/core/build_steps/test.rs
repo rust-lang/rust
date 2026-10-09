@@ -4587,14 +4587,6 @@ impl CommandLineStep for CodegenGCC {
             return;
         }
 
-        let triple = run.target.triple;
-        let target_supported =
-            if triple.contains("linux") { triple.contains("x86_64") } else { false };
-        if !target_supported {
-            builder.info("target not supported by rustc_codegen_gcc. skipping");
-            return;
-        }
-
         if builder.remote_tested(run.target) {
             builder.info("remote testing is not supported by rustc_codegen_gcc. skipping");
             return;
@@ -4976,7 +4968,7 @@ impl CommandLineStep for StdSemverCheck {
                         res.stdout()
                     );
                     if builder.fail_fast {
-                        eprintln!("{error}",);
+                        eprintln!("{error}");
                         helpers::exit_process(1);
                     } else {
                         builder.config.exec_ctx().add_to_delay_failure(error);
