@@ -1,5 +1,6 @@
 //! Integration tests for rustfmt.
 
+use indoc::panicdoc;
 use std::env;
 use std::fs::{File, remove_file};
 use std::path::Path;
@@ -45,16 +46,16 @@ macro_rules! assert_that {
     ($args:expr, $($check:ident $check_args:tt)&&+) => {
         let (stdout, stderr) = rustfmt($args);
         if $(!stdout.$check$check_args && !stderr.$check$check_args)||* {
-            panic!(
-                "Output not expected for rustfmt {:?}\n\
-                 expected: {}\n\
-                 actual stdout:\n{}\n\
-                 actual stderr:\n{}",
-                $args,
-                stringify!($( $check$check_args )&&*),
-                stdout,
-                stderr
-            );
+            let args = $args;
+            let expected = stringify!($( $check$check_args )&&*);
+            panicdoc! {"
+                Output not expected for rustfmt {args:?}
+                expected: {expected}
+                actual stdout:
+                {stdout}
+                actual stderr:
+                {stderr}",
+            };
         }
     };
 }
