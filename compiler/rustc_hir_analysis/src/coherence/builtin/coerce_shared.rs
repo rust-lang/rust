@@ -749,6 +749,12 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
         return false;
     }
 
+    // impl<'a: 'b, 'b> CoerceShared<Target<'b>> for Source<'a> {}
+    //
+    // We expect all fields of `Source<'a>` to be one of:
+    // 1. `CoreceShared<TargetField<'b>>`: this is handled separately
+    // 2. assignable to target field: this is checked with a covariant .relate() call.
+    // 3. `&'a mut T` assigned to `&'b T`: this is checked below with .sub_regions() and .sup().
     match relation {
         FieldRelation::Equal => {
             if infcx
@@ -767,8 +773,11 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
             else {
                 return false;
             };
+            // Here we're effectively checking assignability of `&'source_region mut T` to
+            // `&'target_region T`, so we require `'source_region: 'target_region` using
+            // `.sub_regions()` and the `T`'s to be unifiable with `.sup()`.
             infcx.sub_regions(
-                SubregionOrigin::RelateObjectBound(span),
+                SubregionOrigin::Reborrow(span),
                 target_region,
                 source_region,
                 ty::VisibleForLeakCheck::Yes,
