@@ -524,6 +524,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             self.visit_macro_invoc(p.id);
             self.visit_invoc(p.id);
         } else {
+            if let Some(ident) = p.const_param_ident() {
+                self.create_def(p.id, Some(ident.name), DefKind::ConstParam, ident.span);
+            }
             self.with_impl_trait(ImplTraitContext::Universal, |this| visit::walk_param(this, p))
         }
     }
