@@ -1,8 +1,7 @@
 //@ revisions: old next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
-//@[next] known-bug: trait-system-refactor-initiative#304
-//@[old] check-pass
+//@ check-pass
 
 #![feature(fn_delegation)]
 
