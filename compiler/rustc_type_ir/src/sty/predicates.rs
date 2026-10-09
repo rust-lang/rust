@@ -118,6 +118,7 @@ impl<I: Interner> Predicate<I> {
             | PredicateKind::ConstEquate(_, _)
             | PredicateKind::NormalizesTo(..)
             | PredicateKind::Ambiguous => true,
+            PredicateKind::Clause(ClauseKind::CompressedTrait(_)) => unreachable!(),
         }
     }
 }

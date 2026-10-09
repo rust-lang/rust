@@ -5,6 +5,7 @@
 //! 2. equate the self type, and
 //! 3. instantiate and register where clauses.
 
+use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{NoSolutionOrRerunNonErased, QueryResultOrRerunNonErased};
 use rustc_type_ir::{self as ty, Interner, Unnormalized};
 
@@ -39,7 +40,7 @@ where
             cx.clauses_of(def_id.into())
                 .iter_instantiated(cx, inherent_args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|clause| goal.with(cx, clause)),
+                .map(|clause| goal.with(cx, clause.as_predicate())),
         )?;
 
         let normalized: I::Term = match inherent_kind {

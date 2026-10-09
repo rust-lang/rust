@@ -39,12 +39,6 @@ pub type Predicate<'tcx> = ir::predicates::Predicate<TyCtxt<'tcx>>;
 /// An interned predicate that can be assumed by the solver.
 pub type Clause<'tcx> = ir::predicates::Clause<TyCtxt<'tcx>>;
 
-impl<'tcx> rustc_type_ir::inherent::Predicate<TyCtxt<'tcx>> for Predicate<'tcx> {
-    fn as_clause(self) -> Option<ty::Clause<'tcx>> {
-        self.as_clause()
-    }
-}
-
 impl<'tcx> rustc_type_ir::inherent::Clause<TyCtxt<'tcx>> for Clause<'tcx> {
     fn as_predicate(self) -> Predicate<'tcx> {
         self.as_predicate()
