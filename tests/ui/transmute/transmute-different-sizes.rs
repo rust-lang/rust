@@ -1,5 +1,5 @@
 //@ normalize-stderr: "\d+ bits" -> "N bits"
-
+//@ compile-flags: -Znext-solver=globally
 // Tests that `transmute` cannot be called on types of different size.
 
 #![allow(warnings)]

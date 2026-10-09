@@ -1,7 +1,7 @@
 //! Verify transmuting from a single-element array to a scalar is allowed.
 //!
 //! Regression test: <https://github.com/rust-lang/rust/issues/7988>
-
+//@ compile-flags: -Znext-solver=globally
 //@ run-pass
 
 pub fn main() {

@@ -1,5 +1,5 @@
 //@ check-pass
-
+//@ compile-flags: -Znext-solver=globally
 use std::ptr::NonNull;
 
 struct Foo<'a, T: ?Sized>(&'a (), NonNull<T>);

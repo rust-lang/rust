@@ -1,4 +1,5 @@
 //! regression test for <https://github.com/rust-lang/rust/issues/25746>
+//@ compile-flags: -Znext-solver=globally
 //@ build-pass
 #![allow(unnecessary_transmutes)]
 use std::mem::transmute;

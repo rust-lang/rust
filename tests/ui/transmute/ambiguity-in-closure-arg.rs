@@ -1,5 +1,5 @@
 // Minimized test for <https://github.com/rust-lang/rust/issues/123461>.
-
+//@ compile-flags: -Znext-solver=globally
 struct Unconstrained<T>(T);
 
 fn main() {

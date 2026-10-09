@@ -3,7 +3,7 @@
 // through a normalizing type alias used to recurse without bound and
 // blow the stack. We now bail out via the recursion limit and emit a
 // regular error instead of ICE-ing.
-
+//@ compile-flags: -Znext-solver=globally
 use std::mem::transmute;
 
 trait Trait {

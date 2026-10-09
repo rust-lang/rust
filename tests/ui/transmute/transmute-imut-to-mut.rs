@@ -1,5 +1,5 @@
 // Tests that transmuting from &T to &mut T is Undefined Behavior.
-
+//@ compile-flags: -Znext-solver=globally
 use std::mem::transmute;
 
 fn main() {

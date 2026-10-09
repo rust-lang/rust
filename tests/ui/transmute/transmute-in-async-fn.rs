@@ -1,4 +1,5 @@
-//@compile-flags: -Zmir-enable-passes=+DataflowConstProp --crate-type lib
+//@ compile-flags: -Zmir-enable-passes=+DataflowConstProp --crate-type lib
+//@ compile-flags: -Znext-solver=globally
 //@ edition:2021
 pub async fn a() -> u32 {
     unsafe { std::mem::transmute(1u64) }

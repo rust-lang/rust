@@ -1,5 +1,5 @@
 // Tests that `transmute` cannot be called on type parameters.
-
+//@ compile-flags: -Znext-solver=globally
 use std::mem::transmute;
 
 unsafe fn f<T>(x: T) {

@@ -1,5 +1,5 @@
 //@ run-pass
-
+//@ compile-flags: -Znext-solver=globally
 // Transmuting to/from ZSTs that contain generics.
 
 #![feature(transmute_generic_consts)]

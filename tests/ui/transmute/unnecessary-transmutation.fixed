@@ -1,4 +1,5 @@
 //@ run-rustfix
+//@ compile-flags: -Znext-solver=globally
 #![deny(unnecessary_transmutes)]
 #![allow(unused_unsafe, unused_imports, unused_variables, unused_parens)]
 use std::mem::transmute;
