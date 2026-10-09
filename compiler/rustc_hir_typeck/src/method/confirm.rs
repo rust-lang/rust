@@ -40,6 +40,7 @@ pub(crate) struct ConfirmContext<'a, 'tcx> {
     self_expr: &'tcx hir::Expr<'tcx>,
     call_expr: &'tcx hir::Expr<'tcx>,
     skip_record_for_diagnostics: bool,
+    call_args: Option<&'tcx [hir::Expr<'tcx>]>,
 }
 
 impl<'a, 'tcx> Deref for ConfirmContext<'a, 'tcx> {
@@ -64,6 +65,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unadjusted_self_ty: Ty<'tcx>,
         pick: &probe::Pick<'tcx>,
         segment: &'tcx hir::PathSegment<'tcx>,
+        args: Option<&'tcx [hir::Expr<'tcx>]>,
     ) -> ConfirmResult<'tcx> {
         debug!(
             "confirm(unadjusted_self_ty={:?}, pick={:?}, generic_args={:?})",
@@ -71,6 +73,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let mut confirm_cx = ConfirmContext::new(self, span, self_expr, call_expr);
+        confirm_cx.call_args = args;
         confirm_cx.confirm(unadjusted_self_ty, pick, segment)
     }
 
@@ -96,7 +99,14 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         self_expr: &'tcx hir::Expr<'tcx>,
         call_expr: &'tcx hir::Expr<'tcx>,
     ) -> ConfirmContext<'a, 'tcx> {
-        ConfirmContext { fcx, span, self_expr, call_expr, skip_record_for_diagnostics: false }
+        ConfirmContext {
+            fcx,
+            span,
+            self_expr,
+            call_expr,
+            skip_record_for_diagnostics: false,
+            call_args: None,
+        }
     }
 
     fn confirm(
@@ -489,10 +499,19 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
             fn inferred_kind(
                 &mut self,
-                _preceding_args: &[ty::GenericArg<'tcx>],
+                preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 _infer_args: bool,
             ) -> ty::GenericArg<'tcx> {
+                if let Some(pos) = param.kind.arg_pos()
+                    && let Some(args) = self.cfcx.call_args
+                    && let Some(arg) = pos.checked_sub(1).and_then(|index| args.get(index as usize))
+                {
+                    let tcx = self.cfcx.tcx;
+                    let ty =
+                        tcx.type_of(param.def_id).instantiate(tcx, preceding_args).skip_norm_wip();
+                    return self.cfcx.lower_const_arg_expr(arg, ty).into();
+                }
                 self.cfcx.var_for_def(self.cfcx.span, param)
             }
         }
