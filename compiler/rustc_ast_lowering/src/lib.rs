@@ -1902,23 +1902,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }))
     }
 
-    fn lower_fn_params_to_idents(&mut self, decl: &FnDecl) -> &'hir [Option<Ident>] {
-        self.arena.alloc_from_iter(decl.inputs.iter().filter(|param| !param.is_const_param()).map(
-            |param| match param.pat.kind {
-                PatKind::Missing => None,
-                PatKind::Ident(_, ident, _) => Some(self.lower_ident(ident)),
-                PatKind::Wild => Some(Ident::new(kw::Underscore, self.lower_span(param.pat.span))),
-                _ => {
-                    self.dcx().span_delayed_bug(
-                        param.pat.span,
-                        "non-missing/ident/wild param pat must trigger an error",
-                    );
-                    None
-                }
-            },
-        ))
-    }
-
     /// Lowers a function declaration.
     ///
     /// `decl`: the unlowered (AST) function declaration.

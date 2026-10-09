@@ -1219,7 +1219,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
             None,
         ),
 
-        ForeignItem(&hir::ForeignItem { kind: ForeignItemKind::Fn(sig, _, _), .. }) => {
+        ForeignItem(&hir::ForeignItem { kind: ForeignItemKind::Fn(sig, _), .. }) => {
             let abi = tcx.hir_get_foreign_abi(hir_id);
             compute_sig_of_foreign_fn_decl(tcx, def_id, sig.decl, abi, sig.header.safety())
         }
