@@ -40,9 +40,7 @@ pub trait TyEncoder<'tcx>: SpanEncoder + rustc_type_ir::PredicateEncoder<TyCtxt<
 }
 
 pub trait TyDecoder<'tcx>:
-    SpanDecoder
-    + rustc_type_ir::InternerDecoder<Interner = TyCtxt<'tcx>>
-    + rustc_type_ir::PredicateDecoder<TyCtxt<'tcx>>
+    SpanDecoder + rustc_type_ir::InternerDecoder<Interner = TyCtxt<'tcx>>
 {
     const CLEAR_CROSS_CRATE: bool;
 
