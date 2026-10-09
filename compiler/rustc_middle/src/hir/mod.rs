@@ -479,16 +479,6 @@ pub fn provide(providers: &mut Providers) {
         let node = tcx.hir_node_by_def_id(def_id);
         if let Some(decl) = node.fn_decl() {
             tcx.arena.alloc_from_iter(tcx.hir_body_param_idents(decl))
-        } else if let Node::TraitItem(&TraitItem {
-            kind: TraitItemKind::Fn(_, TraitFn::Required(idents)),
-            ..
-        })
-        | Node::ForeignItem(&ForeignItem {
-            kind: ForeignItemKind::Fn(_, idents, _),
-            ..
-        }) = node
-        {
-            idents
         } else {
             span_bug!(
                 tcx.hir_span(tcx.local_def_id_to_hir_id(def_id)),
