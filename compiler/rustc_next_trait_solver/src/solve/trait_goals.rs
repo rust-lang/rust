@@ -24,7 +24,7 @@ use crate::solve::assembly::{
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
-    MergeCandidateInfo, NoSolution, ParamEnvSource, StalledOnCoroutines,
+    MergeCandidateInfo, NoSolution, ParamEnvSource, StalledOnCoroutines, flatten_answer_tree,
     has_only_region_constraints,
 };
 
@@ -678,20 +678,27 @@ where
                     goal.predicate.trait_ref.args.const_at(2),
                 )?;
 
-                let (certainty, predicates) = ecx.is_transmutable(
+                let answer = ecx.is_transmutable(
                     goal.predicate.trait_ref.args.type_at(0),
                     goal.predicate.trait_ref.args.type_at(1),
-                    goal.predicate,
                     assume,
                 )?;
 
-                let tcx = ecx.cx();
-                ecx.add_goals(
-                    GoalSource::Misc,
-                    predicates
-                        .into_iter()
-                        .map(|predicate| Goal::new(tcx, goal.param_env, predicate)),
-                )?;
+                let certainty = match answer {
+                    rustc_transmute::Answer::No(_) => return Err(NoSolution.into()),
+                    rustc_transmute::Answer::Yes => Certainty::Yes,
+                    rustc_transmute::Answer::If(cond) => {
+                        let tcx = ecx.cx();
+                        ecx.add_goals(
+                            GoalSource::Misc,
+                            flatten_answer_tree(tcx, goal.predicate, cond)
+                                .into_iter()
+                                .map(|predicate| Goal::new(tcx, goal.param_env, predicate)),
+                        )?;
+
+                        Certainty::Yes
+                    }
+                };
 
                 ecx.evaluate_added_goals_and_make_canonical_response(certainty)
             },

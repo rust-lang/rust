@@ -3,6 +3,7 @@ use std::ops::ControlFlow;
 
 #[cfg(feature = "nightly")]
 use rustc_macros::StableHash;
+use rustc_transmute::Answer;
 use rustc_type_ir::data_structures::HashSet;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::region_constraint::RegionConstraint;
@@ -18,8 +19,8 @@ use rustc_type_ir::solve::{
 };
 use rustc_type_ir::{
     self as ty, ClauseKind, Const, InferCtxtLike, Interner, MayBeErased, OpaqueTypeKey,
-    PredicateKind, PredicateProxy, Region, RegionVid, TraitClause, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, max_universe,
+    PredicateKind, PredicateProxy, Region, RegionVid, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, max_universe,
 };
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
@@ -1564,10 +1565,9 @@ where
         &mut self,
         src: I::Ty,
         dst: I::Ty,
-        predicate: TraitClause<I>,
         assume: Const<I>,
-    ) -> Result<(Certainty, ThinVec<I::Predicate>), NoSolution> {
-        self.delegate.is_transmutable(dst, src, predicate, assume)
+    ) -> Result<Answer<Region<I>, I::Ty>, NoSolution> {
+        self.delegate.is_transmutable(dst, src, assume)
     }
 
     pub(super) fn replace_bound_vars<T: TypeFoldable<I>>(
