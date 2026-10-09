@@ -3798,7 +3798,7 @@ impl<T: PartialEq, A: Allocator> Vec<T, A> {
 
 #[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "liballoc_internals", issue = "none")]
 #[rustc_diagnostic_item = "vec_from_elem"]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
     <T as SpecFromElem>::from_elem(elem, n, Global)
