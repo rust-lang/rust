@@ -3,6 +3,7 @@
 
 use std::any::Any;
 use std::ffi::CStr;
+use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -60,11 +61,10 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         methods: &[AllocatorMethod],
     ) -> ModuleLlvm {
         let module_llvm = ModuleLlvm::new_metadata(tcx, module_name);
-        let cx =
-            SimpleCx::new(module_llvm.llmod(), &module_llvm.llcx, tcx.data_layout.pointer_size());
-        unsafe {
-            allocator::codegen(tcx, cx, module_name, methods);
-        }
+        module_llvm.with_module_refs(|ModuleRefs { llcx, llmod, .. }| {
+            let cx = SimpleCx::new(llmod, llcx, tcx.data_layout.pointer_size());
+            unsafe { allocator::codegen(tcx, cx, module_name, methods) };
+        });
         module_llvm
     }
     fn compile_codegen_unit(
@@ -142,7 +142,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         module: &mut ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) {
-        back::write::optimize(cgcx, prof, shared_emitter, module, config)
+        back::write::optimize(cgcx, prof, shared_emitter, module, config);
     }
     fn optimize_and_codegen_thin(
         cgcx: &CodegenContext,
@@ -163,7 +163,9 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         back::write::codegen(cgcx, prof, shared_emitter, module, config)
     }
     fn serialize_module(module: Self::Module, is_thin: bool) -> Self::ModuleBuffer {
-        back::lto::ModuleBuffer::new(module.llmod(), is_thin)
+        module.with_module_refs(|ModuleRefs { llmod, .. }| {
+            back::lto::ModuleBuffer::new(llmod, is_thin)
+        })
     }
 }
 
@@ -422,12 +424,12 @@ impl CodegenBackend for LlvmCodegenBackend {
 }
 
 pub struct ModuleLlvm {
-    pub(crate) llcx: &'static mut llvm::Context,
+    llcx: &'static mut llvm::Context,
     llmod_raw: *const llvm::Module,
 
     // This field is `ManuallyDrop` because it is important that the `TargetMachine`
     // is disposed prior to the `Context` being disposed otherwise UAFs can occur.
-    pub(crate) tm: ManuallyDrop<OwnedTargetMachine>,
+    tm: ManuallyDrop<OwnedTargetMachine>,
 
     /// Saved ThinLTO buffer for embedding in the object file.
     ///
@@ -490,8 +492,21 @@ impl ModuleLlvm {
         }
     }
 
-    pub(crate) fn llmod(&self) -> &llvm::Module {
-        unsafe { &*self.llmod_raw }
+    /// Passes a [`ModuleRefs`] struct to a callback function, giving it scoped
+    /// access to the resources owned by this module.
+    ///
+    /// Passing the references to a callback ensures that they have coherent
+    /// `'ll` lifetimes, and that they can't escape the callback.
+    pub(crate) fn with_module_refs<R>(
+        &self,
+        inner_fn: impl for<'ll> FnOnce(ModuleRefs<'ll>) -> R,
+    ) -> R {
+        inner_fn(ModuleRefs {
+            llcx: self.llcx,
+            llmod: unsafe { &*self.llmod_raw },
+            tm: self.tm.raw(),
+            _ph: PhantomData,
+        })
     }
 }
 
@@ -502,4 +517,17 @@ impl Drop for ModuleLlvm {
             llvm::LLVMContextDispose(&mut *(self.llcx as *mut _));
         }
     }
+}
+
+/// Bundle of references provided by [`ModuleLlvm::with_module_refs`].
+#[derive(Clone, Copy)]
+pub(crate) struct ModuleRefs<'ll> {
+    pub(crate) llcx: &'ll llvm::Context,
+    pub(crate) llmod: &'ll llvm::Module,
+    pub(crate) tm: &'ll llvm::TargetMachine,
+    /// Make sure `'ll` is invariant, even if no fields happen to require that.
+    ///
+    /// FIXME(Zalathar): Consider using `PhantomInvariantLifetime` when the API
+    /// for that is settled.
+    _ph: PhantomData<fn(&'ll ()) -> &'ll ()>,
 }

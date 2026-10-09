@@ -34,6 +34,7 @@ use rustc_target::spec::{
 use smallvec::SmallVec;
 
 use crate::abi::to_llvm_calling_convention;
+use crate::back::llvm_backend::ModuleRefs;
 use crate::back::write::to_llvm_code_model;
 use crate::builder::gpu_offload::{OffloadGlobals, OffloadKernelGlobals};
 use crate::callee::get_fn;
@@ -600,7 +601,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
         codegen_unit: &'tcx CodegenUnit<'tcx>,
-        llvm_module: &'ll crate::ModuleLlvm,
+        module_refs: ModuleRefs<'ll>,
         bitcode_needed: bool,
     ) -> Self {
         // An interesting part of Windows which MSVC forces our hand on (and
@@ -659,7 +660,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         let tls_model = to_llvm_tls_model(tcx.sess.tls_model());
 
-        let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
+        let ModuleRefs { llcx, llmod, .. } = module_refs;
 
         let coverage_cx =
             tcx.sess.instrument_coverage().then(coverageinfo::CguCoverageContext::new);
