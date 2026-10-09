@@ -38,14 +38,14 @@
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "vec_macro"]
-#[allow_internal_unstable(rustc_attrs, liballoc_internals)]
+#[allow_internal_unstable(rustc_attrs, liballoc_internals, vec_repeat)]
 #[rustc_diagnostic_opaque]
 macro_rules! vec {
     () => (
         $crate::vec::Vec::new()
     );
     ($elem:expr; $n:expr) => (
-        $crate::vec::from_elem_global($elem, $n)
+        $crate::vec::Vec::repeat($elem, $n)
     );
     ($($x:expr),+ $(,)?) => (
         // Using `write_box_via_move` produces a dramatic improvement in stack usage for unoptimized
