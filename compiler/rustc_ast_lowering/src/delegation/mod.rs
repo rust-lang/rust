@@ -278,7 +278,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut call_expr_id = HirId::INVALID;
         let mut unused_target_expr = false;
 
-        let (params, block_id) = self.lower_body(|this| {
+        let (params, block_id) = self.lower_body_with_params(|this| {
             let &DelegationResolution { param_info, span, is_method, .. } = res;
             let ParamInfo { param_count, c_variadic, .. } = param_info;
             let param_count = param_count - c_variadic as usize;
@@ -597,7 +597,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let ident = self.lower_ident(delegation.ident);
 
-        let (_params, body_id) = self.lower_body(|this| {
+        let body_id = self.lower_body(|this| {
             let path = this.lower_qpath(
                 delegation.id,
                 &delegation.qself,
@@ -626,7 +626,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 targeted_by_break: false,
             });
 
-            (&[], this.mk_expr(hir::ExprKind::Block(block, None), span))
+            this.mk_expr(hir::ExprKind::Block(block, None), span)
         });
 
         let generics = hir::Generics::empty();

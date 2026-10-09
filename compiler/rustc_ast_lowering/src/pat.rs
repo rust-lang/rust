@@ -488,7 +488,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let anon_const = self.with_new_scopes(span, |this| {
             let def_id = this.local_def_id(e.id);
             let hir_id = this.lower_node_id(e.id);
-            let (_, body) = this.lower_body(|this| {
+            let body = this.lower_body(|this| {
                 // Need to use a custom function as we can't just subtract `1` from a `char`.
                 let kind = hir::ExprKind::Path(this.make_lang_item_qpath(
                     LangItem::RangeSub,
@@ -497,14 +497,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ));
                 let fn_def = this.arena.alloc(hir::Expr { hir_id: this.next_id(), kind, span });
                 let args = this.arena.alloc([this.lower_expr_mut(&e.value)]);
-                (
-                    &[],
-                    hir::Expr {
-                        hir_id: this.next_id(),
-                        kind: hir::ExprKind::Call(fn_def, args),
-                        span,
-                    },
-                )
+                hir::Expr { hir_id: this.next_id(), kind: hir::ExprKind::Call(fn_def, args), span }
             });
             hir::AnonConst { def_id, hir_id, body, span }
         });
@@ -550,7 +543,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.arena.alloc(hir::AnonConst {
                 def_id,
                 hir_id,
-                body: this.lower_body(|_this| (&[], path_expr)).1,
+                body: this.lower_body(|_this| path_expr),
                 span,
             })
         });
