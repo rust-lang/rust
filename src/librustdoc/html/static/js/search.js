@@ -502,6 +502,8 @@ function getItemsBefore(query, parserState, elems, endChar) {
             continue;
         } else if (c === ":" && isPathStart(parserState)) {
             throw ["Unexpected ", "::", ": paths cannot start with ", "::"];
+        } else if (c === ".") {
+            throw ["Unexpected ", ".", ": paths cannot start with ", "."];
         } else if (isEndCharacter(c)) {
             throw ["Unexpected ", c, " after ", extra];
         }
@@ -747,15 +749,14 @@ function getNextElem(query, parserState, elems, isInGenerics) {
             const name = parserState.userQuery.slice(start, end).trim();
             if (name === "!") {
                 throw ["Type parameter ", "=", " key cannot be ", "!", " never type"];
-            }
-            if (name.includes("!")) {
+            } else if (name.includes("!")) {
                 throw ["Type parameter ", "=", " key cannot be ", "!", " macro"];
-            }
-            if (name.includes("::")) {
+            } else if (name.includes("::")) {
                 throw ["Type parameter ", "=", " key cannot contain ", "::", " path"];
-            }
-            if (name.includes(":")) {
+            } else if (name.includes(":")) {
                 throw ["Type parameter ", "=", " key cannot contain ", ":", " type"];
+            } else if (name.includes(".")) {
+                throw ["Type parameter ", "=", " key cannot contain ", ".", " type"];
             }
             parserState.isInBinding = { name, generics };
         } else {
@@ -834,13 +835,17 @@ function createQueryElement(query, parserState, name, generics, isInGenerics) {
         parserState.isInBinding = null;
         return makePrimitiveElement("never", { bindingName });
     }
-    const quadcolon = /::\s*::/.exec(path);
-    if (path.startsWith("::")) {
-        throw ["Paths cannot start with ", "::"];
-    } else if (quadcolon !== null) {
-        throw ["Unexpected ", quadcolon[0]];
+
+    const doubleSep = /(?:::|\.)\s*(?:::|\.)/.exec(path);
+    const leadingSep = /^(?:::|\.)/.exec(path);
+    if (leadingSep !== null) {
+        throw ["Paths cannot start with ", leadingSep[0]];
+    } else if (doubleSep !== null) {
+        throw ["Unexpected ", doubleSep[0]];
     }
-    const pathSegments = path.split(/(?:::\s*)|(?:\s+(?:::\s*)?)/).map(x => x.toLowerCase());
+    // We split for both `::` and `.`
+    const pathSegments = path.split(/(?:(?:::|\.)\s*)|(?:\s+(?:(?:::|\.)\s*)?)/)
+        .map(x => x.toLowerCase());
     // In case we only have something like `<p>`, there is no name.
     if (pathSegments.length === 0
         || (pathSegments.length === 1 && pathSegments[0] === "")) {
@@ -988,6 +993,12 @@ function getIdentEndPosition(parserState) {
                 // Skip current ":".
                 parserState.pos += 1;
             } else {
+                if (c === "." &&
+                    parserState.pos + 1 < parserState.length &&
+                    parserState.userQuery[parserState.pos + 1] === "."
+                ) {
+                    throw ["Unexpected ", ".."];
+                }
                 while (parserState.pos + 1 < parserState.length) {
                     const next_c = parserState.userQuery[parserState.pos + 1];
                     if (next_c !== " ") {
@@ -1080,7 +1091,7 @@ function consumeIdent(parserState) {
  * @return {boolean}
  */
 function isPathSeparator(c) {
-    return c === ":" || c === " ";
+    return c === ":" || c === " " || c === ".";
 }
 
 /**
@@ -3578,7 +3589,7 @@ class DocSearch {
                 const queryElemPathLength = queryElem.pathWithoutLast.length;
                 if (queryElemPathLength > 0) {
                     const fnTypePath = fnType.path !== undefined && fnType.path !== null ?
-                        fnType.path.split("::") : [];
+                        fnType.path.split(/::|\./) : [];
                     // If the path provided in the query element is longer than this type,
                     // no need to check it since it won't match in any case.
                     if (queryElemPathLength > fnTypePath.length) {
@@ -3907,7 +3918,7 @@ class DocSearch {
                 return 0;
             }
 
-            const path = row.modulePath.split("::");
+            const path = row.modulePath.split(/::|\./);
 
             if (row.parent && row.parent.name) {
                 path.push(row.parent.name.toLowerCase());
@@ -4292,7 +4303,7 @@ class DocSearch {
                             (elem.pathWithoutLast.length === 0 ||
                                 checkPath(
                                     elem.pathWithoutLast,
-                                    path.modulePath.split("::"),
+                                    path.modulePath.split(/::|\./),
                                 ) === 0),
                             );
                     if (types.length === 0) {
@@ -4337,7 +4348,7 @@ class DocSearch {
                                         if (elem.pathWithoutLast.length !== 0) {
                                             const pathDist = checkPath(
                                                 elem.pathWithoutLast,
-                                                path.modulePath.split("::"),
+                                                path.modulePath.split(/::|\./),
                                             );
                                             // guaranteed to be higher than the path limit
                                             dist += pathDist === null ?
