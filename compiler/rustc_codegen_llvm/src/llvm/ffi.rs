@@ -890,7 +890,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMContextSetDiscardValueNames(C: &Context, Discard: Bool);
     pub(crate) fn LLVMGetMDKindIDInContext(
         C: &Context,
-        Name: *const c_char,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         SLen: c_uint,
     ) -> MetadataKindId;
 
@@ -1009,7 +1009,7 @@ unsafe extern "C" {
     // Operations on metadata
     pub(crate) fn LLVMMDStringInContext2(
         C: &Context,
-        Str: *const c_char,
+        Str: *const c_uchar, // See "PTR_LEN_STR".
         SLen: size_t,
     ) -> &Metadata;
     pub(crate) fn LLVMMDNodeInContext2<'a>(
@@ -1042,7 +1042,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMArrayType2(ElementType: &Type, ElementCount: u64) -> &Type;
     pub(crate) fn LLVMConstStringInContext2(
         C: &Context,
-        Str: *const c_char,
+        Str: *const c_uchar, // See "PTR_LEN_STR".
         Length: size_t,
         DontNullTerminate: Bool,
     ) -> &Value;
@@ -2561,7 +2561,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustLinkerNew(M: &Module) -> &mut Linker<'_>;
     pub(crate) fn LLVMRustLinkerAdd(
         linker: &Linker<'_>,
-        bytecode: *const c_char,
+        bytecode: *const c_uchar, // See "PTR_LEN_STR".
         bytecode_len: usize,
     ) -> bool;
     pub(crate) fn LLVMRustLinkerFree<'a>(linker: &'a mut Linker<'a>);

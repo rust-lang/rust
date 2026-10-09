@@ -312,11 +312,7 @@ fn fat_lto(
             let data = bc_decoded.data();
 
             unsafe {
-                if !llvm::LLVMRustLinkerAdd(
-                    linker,
-                    data.as_ptr() as *const libc::c_char,
-                    data.len(),
-                ) {
+                if !llvm::LLVMRustLinkerAdd(linker, data.as_ptr(), data.len()) {
                     llvm::LLVMRustLinkerFree(linker);
                     write::llvm_err(dcx, LlvmError::LoadBitcode { name })
                 }
