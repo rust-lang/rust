@@ -16,6 +16,8 @@ pub trait InternerDecoder: Decoder {
     type Interner: Interner;
 
     fn interner(&self) -> Self::Interner;
+
+    fn decode_predicate(&mut self) -> Predicate<Self::Interner>;
 }
 
 macro_rules! impl_binder_encode_decode {
@@ -144,18 +146,13 @@ pub trait PredicateEncoder<I: Interner>: Encoder {
     fn encode_predicate(&mut self, predicate: Predicate<I>);
 }
 
-/// Decodes and interns a shared predicate using the frontend's codec.
-pub trait PredicateDecoder<I: Interner>: InternerDecoder<Interner = I> {
-    fn decode_predicate(&mut self) -> Predicate<I>;
-}
-
 impl<I: Interner, E: PredicateEncoder<I>> Encodable<E> for Predicate<I> {
     fn encode(&self, encoder: &mut E) {
         encoder.encode_predicate(*self);
     }
 }
 
-impl<I: Interner, D: PredicateDecoder<I>> Decodable<D> for Predicate<I> {
+impl<I: Interner, D: InternerDecoder<Interner = I>> Decodable<D> for Predicate<I> {
     fn decode(decoder: &mut D) -> Self {
         decoder.decode_predicate()
     }
@@ -167,7 +164,7 @@ impl<I: Interner, E: PredicateEncoder<I>> Encodable<E> for Clause<I> {
     }
 }
 
-impl<I: Interner, D: PredicateDecoder<I>> Decodable<D> for Clause<I> {
+impl<I: Interner, D: InternerDecoder<Interner = I>> Decodable<D> for Clause<I> {
     fn decode(decoder: &mut D) -> Self {
         Predicate::decode(decoder).expect_clause()
     }

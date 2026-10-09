@@ -19,6 +19,7 @@ use crate::search_graph::RequiredDepth;
 use crate::solve::{
     AccessedOpaques, CanonicalInputData, Certainty, ExternalConstraintsData, QueryResult, inspect,
 };
+use crate::sty::predicates::Predicate as InternedPredicate;
 use crate::visit::{Flags, TypeVisitable};
 use crate::{
     self as ty, AliasTermKind, BoundRegion, BoundVar, CanonicalParamEnvCache, Const, ConstKind,
@@ -260,7 +261,7 @@ pub trait Interner:
     fn intern_predicate(
         self,
         predicate: ty::Binder<Self, ty::PredicateKind<Self>>,
-    ) -> crate::sty::predicates::Predicate<Self>;
+    ) -> InternedPredicate<Self>;
 
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R;
 

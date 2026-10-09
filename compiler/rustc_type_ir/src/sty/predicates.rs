@@ -8,9 +8,10 @@ use rustc_type_ir_macros::Lift_Generic;
 use crate::inherent::*;
 use crate::intern::Interned as _;
 use crate::{
-    Binder, ClauseKind, DebruijnIndex, FallibleTypeFolder, Flags, Interner, PredicateKind,
-    PredicateProxy, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitor, Upcast, UpcastFrom,
+    Binder, ClauseKind, DebruijnIndex, EarlyBinder, FallibleTypeFolder, Flags, HostEffectClause,
+    Interner, NormalizesTo, OutlivesClause, PredicateKind, PredicateProxy, ProjectionClause,
+    Region, TraitClause, TraitRef, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitor, Upcast, UpcastFrom, shift_bound_var_indices,
 };
 
 /// A statement that can be proven by a trait solver.
@@ -59,13 +60,12 @@ impl<I: Interner> Predicate<I> {
         let kind = self
             .kind()
             .map_bound(|kind| match kind {
-                PredicateKind::Clause(ClauseKind::Trait(crate::TraitClause {
-                    trait_ref,
-                    polarity,
-                })) => Some(PredicateKind::Clause(ClauseKind::Trait(crate::TraitClause {
-                    trait_ref,
-                    polarity: polarity.flip(),
-                }))),
+                PredicateKind::Clause(ClauseKind::Trait(TraitClause { trait_ref, polarity })) => {
+                    Some(PredicateKind::Clause(ClauseKind::Trait(TraitClause {
+                        trait_ref,
+                        polarity: polarity.flip(),
+                    })))
+                }
 
                 _ => None,
             })
@@ -74,7 +74,7 @@ impl<I: Interner> Predicate<I> {
         Some(Self::new(interner, kind))
     }
 
-    pub fn as_trait_clause(self) -> Option<Binder<I, crate::TraitClause<I>>> {
+    pub fn as_trait_clause(self) -> Option<Binder<I, TraitClause<I>>> {
         let predicate = self.kind();
         match predicate.skip_binder() {
             PredicateKind::Clause(ClauseKind::Trait(trait_clause)) => {
@@ -84,7 +84,7 @@ impl<I: Interner> Predicate<I> {
         }
     }
 
-    pub fn as_projection_clause(self) -> Option<Binder<I, crate::ProjectionClause<I>>> {
+    pub fn as_projection_clause(self) -> Option<Binder<I, ProjectionClause<I>>> {
         let predicate = self.kind();
         match predicate.skip_binder() {
             PredicateKind::Clause(ClauseKind::Projection(projection_clause)) => {
@@ -176,7 +176,7 @@ impl<I: Interner> Clause<I> {
         })
     }
 
-    pub fn as_trait_clause(self) -> Option<Binder<I, crate::TraitClause<I>>> {
+    pub fn as_trait_clause(self) -> Option<Binder<I, TraitClause<I>>> {
         let clause = self.kind();
         if let ClauseKind::Trait(trait_clause) = clause.skip_binder() {
             Some(clause.rebind(trait_clause))
@@ -185,7 +185,7 @@ impl<I: Interner> Clause<I> {
         }
     }
 
-    pub fn as_projection_clause(self) -> Option<Binder<I, crate::ProjectionClause<I>>> {
+    pub fn as_projection_clause(self) -> Option<Binder<I, ProjectionClause<I>>> {
         let clause = self.kind();
         if let ClauseKind::Projection(projection_clause) = clause.skip_binder() {
             Some(clause.rebind(projection_clause))
@@ -194,7 +194,7 @@ impl<I: Interner> Clause<I> {
         }
     }
 
-    pub fn as_type_outlives_clause(self) -> Option<Binder<I, crate::OutlivesClause<I, I::Ty>>> {
+    pub fn as_type_outlives_clause(self) -> Option<Binder<I, OutlivesClause<I, I::Ty>>> {
         let clause = self.kind();
         if let ClauseKind::TypeOutlives(outlives) = clause.skip_binder() {
             Some(clause.rebind(outlives))
@@ -203,9 +203,7 @@ impl<I: Interner> Clause<I> {
         }
     }
 
-    pub fn as_region_outlives_clause(
-        self,
-    ) -> Option<Binder<I, crate::OutlivesClause<I, crate::Region<I>>>> {
+    pub fn as_region_outlives_clause(self) -> Option<Binder<I, OutlivesClause<I, Region<I>>>> {
         let clause = self.kind();
         if let ClauseKind::RegionOutlives(outlives) = clause.skip_binder() {
             Some(clause.rebind(outlives))
@@ -214,7 +212,7 @@ impl<I: Interner> Clause<I> {
         }
     }
 
-    pub fn as_host_effect_clause(self) -> Option<Binder<I, crate::HostEffectClause<I>>> {
+    pub fn as_host_effect_clause(self) -> Option<Binder<I, HostEffectClause<I>>> {
         let clause = self.kind();
         if let ClauseKind::HostEffect(host_effect) = clause.skip_binder() {
             Some(clause.rebind(host_effect))
@@ -293,42 +291,42 @@ impl<I: Interner> UpcastFrom<I, Binder<I, ClauseKind<I>>> for Clause<I> {
     }
 }
 
-impl<I: Interner> UpcastFrom<I, crate::TraitRef<I>> for Predicate<I> {
-    fn upcast_from(from: crate::TraitRef<I>, interner: I) -> Self {
-        let trait_clause: crate::TraitClause<I> = from.upcast(interner);
+impl<I: Interner> UpcastFrom<I, TraitRef<I>> for Predicate<I> {
+    fn upcast_from(from: TraitRef<I>, interner: I) -> Self {
+        let trait_clause: TraitClause<I> = from.upcast(interner);
         PredicateKind::Clause(ClauseKind::Trait(trait_clause)).upcast(interner)
     }
 }
 
-impl<I: Interner> UpcastFrom<I, crate::TraitRef<I>> for Clause<I> {
-    fn upcast_from(from: crate::TraitRef<I>, interner: I) -> Self {
+impl<I: Interner> UpcastFrom<I, TraitRef<I>> for Clause<I> {
+    fn upcast_from(from: TraitRef<I>, interner: I) -> Self {
         let predicate: Predicate<I> = from.upcast(interner);
         predicate.expect_clause()
     }
 }
 
-impl<I: Interner> UpcastFrom<I, Binder<I, crate::TraitRef<I>>> for Predicate<I> {
-    fn upcast_from(from: Binder<I, crate::TraitRef<I>>, interner: I) -> Self {
-        let trait_clause: Binder<I, crate::TraitClause<I>> = from.upcast(interner);
+impl<I: Interner> UpcastFrom<I, Binder<I, TraitRef<I>>> for Predicate<I> {
+    fn upcast_from(from: Binder<I, TraitRef<I>>, interner: I) -> Self {
+        let trait_clause: Binder<I, TraitClause<I>> = from.upcast(interner);
         trait_clause.upcast(interner)
     }
 }
 
-impl<I: Interner> UpcastFrom<I, Binder<I, crate::TraitRef<I>>> for Clause<I> {
-    fn upcast_from(from: Binder<I, crate::TraitRef<I>>, interner: I) -> Self {
+impl<I: Interner> UpcastFrom<I, Binder<I, TraitRef<I>>> for Clause<I> {
+    fn upcast_from(from: Binder<I, TraitRef<I>>, interner: I) -> Self {
         let predicate: Predicate<I> = from.upcast(interner);
         predicate.expect_clause()
     }
 }
 
-impl<I: Interner> UpcastFrom<I, crate::TraitClause<I>> for Predicate<I> {
-    fn upcast_from(from: crate::TraitClause<I>, interner: I) -> Self {
+impl<I: Interner> UpcastFrom<I, TraitClause<I>> for Predicate<I> {
+    fn upcast_from(from: TraitClause<I>, interner: I) -> Self {
         PredicateKind::Clause(ClauseKind::Trait(from)).upcast(interner)
     }
 }
 
-impl<I: Interner> UpcastFrom<I, Binder<I, crate::TraitClause<I>>> for Predicate<I> {
-    fn upcast_from(from: Binder<I, crate::TraitClause<I>>, interner: I) -> Self {
+impl<I: Interner> UpcastFrom<I, Binder<I, TraitClause<I>>> for Predicate<I> {
+    fn upcast_from(from: Binder<I, TraitClause<I>>, interner: I) -> Self {
         from.map_bound_no_validate_bound_vars(|trait_clause| {
             PredicateKind::Clause(ClauseKind::Trait(trait_clause))
         })
@@ -336,62 +334,62 @@ impl<I: Interner> UpcastFrom<I, Binder<I, crate::TraitClause<I>>> for Predicate<
     }
 }
 
-impl<I: Interner> UpcastFrom<I, crate::TraitClause<I>> for Clause<I> {
-    fn upcast_from(from: crate::TraitClause<I>, interner: I) -> Self {
+impl<I: Interner> UpcastFrom<I, TraitClause<I>> for Clause<I> {
+    fn upcast_from(from: TraitClause<I>, interner: I) -> Self {
         let predicate: Predicate<I> = from.upcast(interner);
         predicate.expect_clause()
     }
 }
 
-impl<I: Interner> UpcastFrom<I, Binder<I, crate::TraitClause<I>>> for Clause<I> {
-    fn upcast_from(from: Binder<I, crate::TraitClause<I>>, interner: I) -> Self {
+impl<I: Interner> UpcastFrom<I, Binder<I, TraitClause<I>>> for Clause<I> {
+    fn upcast_from(from: Binder<I, TraitClause<I>>, interner: I) -> Self {
         let predicate: Predicate<I> = from.upcast(interner);
         predicate.expect_clause()
     }
 }
 
-impl<I: Interner> UpcastFrom<I, crate::ProjectionClause<I>> for Predicate<I> {
-    fn upcast_from(from: crate::ProjectionClause<I>, interner: I) -> Self {
+impl<I: Interner> UpcastFrom<I, ProjectionClause<I>> for Predicate<I> {
+    fn upcast_from(from: ProjectionClause<I>, interner: I) -> Self {
         PredicateKind::Clause(ClauseKind::Projection(from)).upcast(interner)
     }
 }
 
-impl<I: Interner> UpcastFrom<I, Binder<I, crate::ProjectionClause<I>>> for Predicate<I> {
-    fn upcast_from(from: Binder<I, crate::ProjectionClause<I>>, interner: I) -> Self {
+impl<I: Interner> UpcastFrom<I, Binder<I, ProjectionClause<I>>> for Predicate<I> {
+    fn upcast_from(from: Binder<I, ProjectionClause<I>>, interner: I) -> Self {
         from.map_bound(|projection| PredicateKind::Clause(ClauseKind::Projection(projection)))
             .upcast(interner)
     }
 }
 
-impl<I: Interner> UpcastFrom<I, crate::ProjectionClause<I>> for Clause<I> {
-    fn upcast_from(from: crate::ProjectionClause<I>, interner: I) -> Self {
+impl<I: Interner> UpcastFrom<I, ProjectionClause<I>> for Clause<I> {
+    fn upcast_from(from: ProjectionClause<I>, interner: I) -> Self {
         let predicate: Predicate<I> = from.upcast(interner);
         predicate.expect_clause()
     }
 }
 
-impl<I: Interner> UpcastFrom<I, Binder<I, crate::ProjectionClause<I>>> for Clause<I> {
-    fn upcast_from(from: Binder<I, crate::ProjectionClause<I>>, interner: I) -> Self {
+impl<I: Interner> UpcastFrom<I, Binder<I, ProjectionClause<I>>> for Clause<I> {
+    fn upcast_from(from: Binder<I, ProjectionClause<I>>, interner: I) -> Self {
         let predicate: Predicate<I> = from.upcast(interner);
         predicate.expect_clause()
     }
 }
 
-impl<I: Interner> UpcastFrom<I, Binder<I, crate::HostEffectClause<I>>> for Predicate<I> {
-    fn upcast_from(from: Binder<I, crate::HostEffectClause<I>>, interner: I) -> Self {
+impl<I: Interner> UpcastFrom<I, Binder<I, HostEffectClause<I>>> for Predicate<I> {
+    fn upcast_from(from: Binder<I, HostEffectClause<I>>, interner: I) -> Self {
         from.map_bound(ClauseKind::HostEffect).upcast(interner)
     }
 }
 
-impl<I: Interner> UpcastFrom<I, Binder<I, crate::HostEffectClause<I>>> for Clause<I> {
-    fn upcast_from(from: Binder<I, crate::HostEffectClause<I>>, interner: I) -> Self {
+impl<I: Interner> UpcastFrom<I, Binder<I, HostEffectClause<I>>> for Clause<I> {
+    fn upcast_from(from: Binder<I, HostEffectClause<I>>, interner: I) -> Self {
         let predicate: Predicate<I> = from.map_bound(ClauseKind::HostEffect).upcast(interner);
         predicate.expect_clause()
     }
 }
 
-impl<I: Interner> UpcastFrom<I, crate::NormalizesTo<I>> for Predicate<I> {
-    fn upcast_from(from: crate::NormalizesTo<I>, interner: I) -> Self {
+impl<I: Interner> UpcastFrom<I, NormalizesTo<I>> for Predicate<I> {
+    fn upcast_from(from: NormalizesTo<I>, interner: I) -> Self {
         PredicateKind::NormalizesTo(from).upcast(interner)
     }
 }
@@ -447,7 +445,7 @@ impl<I: Interner> PredicateProxy<I> for Predicate<I> {
     fn map_projection(
         self,
         cx: I,
-        f: impl FnOnce(Binder<I, crate::ProjectionClause<I>>) -> Binder<I, crate::ProjectionClause<I>>,
+        f: impl FnOnce(Binder<I, ProjectionClause<I>>) -> Binder<I, ProjectionClause<I>>,
     ) -> Option<Self> {
         self.as_projection_clause().map(|projection| f(projection).upcast(cx))
     }
@@ -500,7 +498,7 @@ impl<I: Interner> PredicateProxy<I> for Clause<I> {
     fn map_projection(
         self,
         cx: I,
-        f: impl FnOnce(Binder<I, crate::ProjectionClause<I>>) -> Binder<I, crate::ProjectionClause<I>>,
+        f: impl FnOnce(Binder<I, ProjectionClause<I>>) -> Binder<I, ProjectionClause<I>>,
     ) -> Option<Self> {
         self.as_projection_clause().map(|projection| f(projection).upcast(cx))
     }
@@ -512,15 +510,15 @@ impl<I: Interner> Clause<I> {
     /// Both binders' variables become bound by the resulting binder.
     /// Shift the supertrait's bound-variable indices before substituting
     /// the trait arguments, so the two sets of variables do not overlap.
-    pub fn instantiate_supertrait(self, cx: I, trait_ref: Binder<I, crate::TraitRef<I>>) -> Self {
+    pub fn instantiate_supertrait(self, cx: I, trait_ref: Binder<I, TraitRef<I>>) -> Self {
         let bound_pred = self.kind();
         let pred_bound_vars = bound_pred.bound_vars();
         let trait_bound_vars = trait_ref.bound_vars();
 
         let shifted_pred =
-            crate::shift_bound_var_indices(cx, trait_bound_vars.len(), bound_pred.skip_binder());
+            shift_bound_var_indices(cx, trait_bound_vars.len(), bound_pred.skip_binder());
 
-        let new = crate::EarlyBinder::bind(cx, shifted_pred)
+        let new = EarlyBinder::bind(cx, shifted_pred)
             .instantiate(cx, trait_ref.skip_binder().args)
             .skip_norm_wip();
 

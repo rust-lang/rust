@@ -392,14 +392,6 @@ impl<'a> BlobDecodeContext<'a> {
     }
 }
 
-impl<'a, 'tcx> rustc_middle::ty::PredicateDecoder<TyCtxt<'tcx>>
-    for MetadataDecodeContext<'a, 'tcx>
-{
-    fn decode_predicate(&mut self) -> rustc_middle::ty::predicates::Predicate<TyCtxt<'tcx>> {
-        rustc_middle::ty::codec::decode_shared_predicate(self)
-    }
-}
-
 impl<'a, 'tcx> TyDecoder<'tcx> for MetadataDecodeContext<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 
@@ -445,6 +437,10 @@ impl<'a, 'tcx> rustc_middle::ty::InternerDecoder for MetadataDecodeContext<'a, '
     #[inline]
     fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+
+    fn decode_predicate(&mut self) -> rustc_middle::ty::predicates::Predicate<Self::Interner> {
+        rustc_middle::ty::codec::decode_shared_predicate(self)
     }
 }
 
