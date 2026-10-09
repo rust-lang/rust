@@ -338,12 +338,6 @@ impl<'a, 'tcx> SpanDecoder for OffloadManifestDecoder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> ty::PredicateDecoder<TyCtxt<'tcx>> for OffloadManifestDecoder<'a, 'tcx> {
-    fn decode_predicate(&mut self) -> ty::predicates::Predicate<TyCtxt<'tcx>> {
-        ty::codec::decode_shared_predicate(self)
-    }
-}
-
 impl<'a, 'tcx> TyDecoder<'tcx> for OffloadManifestDecoder<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 
@@ -381,6 +375,10 @@ impl<'a, 'tcx> rustc_middle::ty::InternerDecoder for OffloadManifestDecoder<'a, 
     #[inline]
     fn interner(&self) -> Self::Interner {
         self.tcx
+    }
+
+    fn decode_predicate(&mut self) -> ty::predicates::Predicate<Self::Interner> {
+        ty::codec::decode_shared_predicate(self)
     }
 }
 

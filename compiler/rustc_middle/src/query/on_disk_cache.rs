@@ -484,12 +484,6 @@ where
     value
 }
 
-impl<'a, 'tcx> rustc_type_ir::PredicateDecoder<TyCtxt<'tcx>> for CacheDecoder<'a, 'tcx> {
-    fn decode_predicate(&mut self) -> rustc_type_ir::predicates::Predicate<TyCtxt<'tcx>> {
-        ty::codec::decode_shared_predicate(self)
-    }
-}
-
 impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = false;
 
@@ -536,6 +530,10 @@ impl<'a, 'tcx> rustc_type_ir::InternerDecoder for CacheDecoder<'a, 'tcx> {
     #[inline]
     fn interner(&self) -> Self::Interner {
         self.tcx
+    }
+
+    fn decode_predicate(&mut self) -> rustc_type_ir::predicates::Predicate<Self::Interner> {
+        ty::codec::decode_shared_predicate(self)
     }
 }
 
