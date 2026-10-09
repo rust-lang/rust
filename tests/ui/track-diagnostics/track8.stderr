@@ -1,0 +1,55 @@
+warning: unreachable configuration predicate
+  --> $DIR/track8.rs:LL:CC
+   |
+LL |     _ => {},
+   |     - always matches
+LL |     _ => {},
+   |     ^ this configuration predicate is never reached
+   |
+   = note: -Ztrack-diagnostics: created at compiler/rustc_attr_parsing/src/attributes/cfg_select.rs:LL:CC
+note: the lint level is defined here
+  --> $DIR/track8.rs:LL:CC
+   |
+LL | #![warn(unreachable_cfg_select_predicates)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unknown `doc` attribute `ferris`
+  --> $DIR/track8.rs:LL:CC
+   |
+LL |     #[doc(ferris)]
+   |           ^^^^^^
+   |
+   = note: -Ztrack-diagnostics: created at compiler/rustc_attr_parsing/src/attributes/doc.rs:LL:CC
+   = note: `#[warn(invalid_doc_attributes)]` on by default
+
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/track8.rs:LL:CC
+   |
+LL | #[repr(ferris)]
+   |   ^^^^^------^
+   |        |
+   |        valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
+   |
+   = note: -Ztrack-diagnostics: created at compiler/rustc_attr_parsing/src/attributes/repr.rs:LL:CC
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
+
+warning: unknown diagnostic attribute
+  --> $DIR/track8.rs:LL:CC
+   |
+LL | #[diagnostic::ferris]
+   |               ^^^^^^
+   |
+   = note: -Ztrack-diagnostics: created at compiler/rustc_attr_parsing/src/attributes/diagnostic/mod.rs:LL:CC
+   = note: `#[warn(unknown_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: unknown `doc` attribute `ferris`
+  --> $DIR/track8.rs:LL:CC
+   |
+LL | #[doc(ferris)]
+   |       ^^^^^^
+   |
+   = note: -Ztrack-diagnostics: created at compiler/rustc_attr_parsing/src/attributes/doc.rs:LL:CC
+
+error: aborting due to 1 previous error; 4 warnings emitted
+
+For more information about this error, try `rustc --explain E0539`.

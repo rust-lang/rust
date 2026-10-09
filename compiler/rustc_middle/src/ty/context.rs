@@ -40,6 +40,7 @@ use rustc_index::IndexVec;
 use rustc_lint_defs::Lint;
 use rustc_lint_defs::builtin::UNUSED_FEATURES;
 use rustc_macros::Diagnostic;
+use rustc_session::config::NextSolverConfig;
 use rustc_session::{IncrCompSession, Session};
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, sym};
@@ -2816,11 +2817,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn next_trait_solver_globally(self) -> bool {
-        self.sess.opts.unstable_opts.next_solver.globally && !self.features().generic_const_exprs()
-    }
-
-    pub fn next_trait_solver_in_coherence(self) -> bool {
-        self.sess.opts.unstable_opts.next_solver.coherence
+        self.sess.opts.unstable_opts.next_solver == NextSolverConfig::Globally
+            && !self.sess.opts.unstable_opts.higher_ranked_assumptions
+            && !self.features().generic_const_exprs()
     }
 
     pub fn disable_trait_solver_fast_paths(self) -> bool {

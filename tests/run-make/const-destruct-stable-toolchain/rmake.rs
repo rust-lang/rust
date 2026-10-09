@@ -10,12 +10,14 @@ use run_make_support::{diff, rustc, stable_bare_rustc};
 fn main() {
     let out = stable_bare_rustc()
         .input("const-drop.rs")
+        .edition("2015")
         .run_fail()
         .assert_stderr_not_contains("consider restricting type parameter `T`")
         .stderr_utf8();
     diff().expected_file("const-drop-stable.stderr").actual_text("(rustc)", &out).run();
     let out = rustc()
         .input("const-drop.rs")
+        .edition("2015")
         .ui_testing()
         .run_fail()
         .assert_stderr_contains(

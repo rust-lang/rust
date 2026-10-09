@@ -86,14 +86,17 @@ pub enum PassMode {
     Cast { pad_i32_count: u8, cast: CastTarget },
     /// Pass the argument indirectly via a pointer.
     ///
+    /// The caller places the value in memory and depending on mode passes a
+    /// pointer to it, stores it at a fixed stack offset or stores it at a
+    /// fixed location in a different address space.
+    Indirect { attrs: ArgAttributes, address_space: Option<AddressSpace>, mode: IndirectMode },
+    /// Pass the unsized argument indirectly via a hidden pointer.
+    ///
     /// The caller places the value in memory and passes a pointer to it.
-    Indirect {
+    IndirectUnsized {
         attrs: ArgAttributes,
         /// Attributes for the metadata pointer (vtable or length) of unsized arguments.
-        /// Only present for unsized types (e.g., `dyn Trait`, `[T]`).
-        meta_attrs: Option<ArgAttributes>,
-        address_space: Option<AddressSpace>,
-        mode: IndirectMode,
+        meta_attrs: ArgAttributes,
     },
 }
 
@@ -512,6 +515,7 @@ pub enum FloatLength {
     F32,
     F64,
     F128,
+    PpcF128,
 }
 
 impl IntegerLength {
@@ -533,6 +537,7 @@ impl FloatLength {
             FloatLength::F32 => 32,
             FloatLength::F64 => 64,
             FloatLength::F128 => 128,
+            FloatLength::PpcF128 => 128,
         }
     }
 }

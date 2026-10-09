@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `<(RustaceansAreAwesome,) as HasAssoc>::Assoc: Clone` is not satisfied
+  --> $DIR/dispatchability-placeholder-does-not-satisfy-bounds.rs:21:5
+   |
+LL |     fn f(&self);
+   |     ^^^^^^^^^^^^ the trait `Clone` is not implemented for `<(RustaceansAreAwesome,) as HasAssoc>::Assoc`
+   |
+   = note: required for `<(RustaceansAreAwesome,) as HasAssoc>::Assoc` to implement `ToOwned`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

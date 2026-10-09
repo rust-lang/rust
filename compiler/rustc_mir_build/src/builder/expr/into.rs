@@ -4,6 +4,7 @@ use rustc_abi::FieldIdx;
 use rustc_ast::{AsmMacro, InlineAsmOptions};
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
@@ -237,10 +238,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Execute the body, branching back to the test.
                     let body_block_end = this.expr_into_dest(tmp, body_block, body).into_block();
 
-                    let goto = this.cfg.goto(body_block_end, source_info, loop_block);
-                    if let Some(attrs) = this.thir.loop_hint_attrs.get(&expr_id) {
-                        goto.loop_hint_attrs = attrs.clone();
-                    }
+                    let loop_hint_attrs = this
+                        .thir
+                        .loop_hint_attrs
+                        .get(&expr_id)
+                        .map(|attrs| attrs.clone())
+                        .unwrap_or_else(|| ThinVec::new());
+                    this.cfg.goto_with_hints(
+                        body_block_end,
+                        source_info,
+                        loop_block,
+                        loop_hint_attrs,
+                    );
 
                     // Loops are only exited by `break` expressions.
                     None
@@ -772,7 +781,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             this.cfg.terminate(
                                 target,
                                 source_info,
-                                TerminatorKind::Goto { target: destination_block },
+                                TerminatorKind::goto(destination_block),
                             );
 
                             mir::InlineAsmOperand::Label { target_index }

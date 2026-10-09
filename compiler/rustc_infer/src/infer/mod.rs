@@ -307,6 +307,11 @@ pub struct InferCtxt<'tcx> {
     pub reported_trait_errors:
         RefCell<FxIndexMap<Span, (Vec<Goal<'tcx, ty::Predicate<'tcx>>>, ErrorGuaranteed)>>,
 
+    /// A set of predicates *on a specific* HIR node (the originating expression and its enclosing
+    /// statement), to avoid reporting multiple errors pointing at different sub-expressions in the
+    /// same method chain.
+    pub reported_hir_errors: RefCell<FxIndexMap<HirId, FxHashSet<ty::Predicate<'tcx>>>>,
+
     pub reported_signature_mismatch: RefCell<FxHashSet<(Span, Option<Span>)>>,
 
     /// When an error occurs, we want to avoid reporting "derived"
@@ -689,6 +694,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
             reported_trait_errors: Default::default(),
+            reported_hir_errors: Default::default(),
             reported_signature_mismatch: Default::default(),
             tainted_by_errors: Cell::new(None),
             universe: Cell::new(ty::UniverseIndex::ROOT),

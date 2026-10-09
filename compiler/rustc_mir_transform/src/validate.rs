@@ -209,7 +209,7 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
                     }
                     Some(e) if *e == s => (),
                     Some(e) => self.fail(
-                        Location { block: bb, statement_index: 0 },
+                        bb.start_location(),
                         format!(
                             "Cleanup control flow violation: The blocks dominated by {:?} have edges to both {:?} and {:?}",
                             bb,
@@ -231,7 +231,7 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
                 let no_cycle = stack.insert(parent);
                 if !no_cycle {
                     self.fail(
-                        Location { block: bb, statement_index: 0 },
+                        bb.start_location(),
                         format!(
                             "Cleanup control flow violation: Cycle involving edge {bb:?} -> {parent:?}",
                         ),
@@ -339,7 +339,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         match &terminator.kind {
-            TerminatorKind::Goto { target } => {
+            TerminatorKind::Goto { target, .. } => {
                 self.check_edge(location, *target, EdgeKind::Normal);
             }
             TerminatorKind::SwitchInt { targets, discr: _ } => {
@@ -629,11 +629,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // is annoying. It is harmless enough to just not validate anything
         // in that case. We still check this after analysis as all opaque
         // types have been revealed at this point.
-        if pred.has_opaque_types() {
+        if !self.tcx.next_trait_solver_globally() && pred.has_opaque_types() {
             return true;
         }
 
-        let (infcx, param_env) = self.tcx.infer_ctxt().build_with_typing_env(self.typing_env);
+        let (infcx, param_env) =
+            self.tcx.infer_ctxt().ignoring_regions().build_with_typing_env(self.typing_env);
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_obligation(Obligation::new(
             self.tcx,

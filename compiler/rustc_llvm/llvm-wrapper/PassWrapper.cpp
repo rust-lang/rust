@@ -350,7 +350,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     LLVMRustCodeGenOptLevel RustOptLevel, LLVMRustFloatABI RustFloatABIType,
     bool FunctionSections, bool DataSections, bool UniqueSectionNames,
     bool TrapUnreachable, bool Singlethread, bool VerboseAsm,
-    bool EmitStackSizeSection, bool RelaxELFRelocations, bool UseInitArray,
+    bool EmitStackSizeSection, bool X86RelaxRelocations, bool UseInitArray,
     const char *SplitDwarfFile, const char *OutputObjFile,
     LLVMRustCompressionKind DebugInfoCompression, bool UseEmulatedTls,
     bool UseWasmEH, uint64_t LargeDataThreshold) {
@@ -390,7 +390,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   // compression kind that is known to be supported by this build of LLVM, via
   // `LLVMRustLLVMHasZlibCompression` and `LLVMRustLLVMHasZstdCompression`.
   Options.MCOptions.CompressDebugSections = fromRust(DebugInfoCompression);
-  Options.MCOptions.X86RelaxRelocations = RelaxELFRelocations;
+  Options.MCOptions.X86RelaxRelocations = X86RelaxRelocations;
   Options.UseInitArray = UseInitArray;
   Options.EmulatedTLS = UseEmulatedTls;
 

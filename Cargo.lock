@@ -4295,6 +4295,7 @@ dependencies = [
  "rustc_metadata",
  "rustc_middle",
  "rustc_mir_build",
+ "rustc_mir_dataflow",
  "rustc_mir_transform",
  "rustc_monomorphize",
  "rustc_parse",
@@ -4338,6 +4339,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
+ "rustc_hashes",
  "rustc_hir",
  "rustc_index",
  "rustc_infer",
@@ -5702,9 +5704,9 @@ dependencies = [
 
 [[package]]
 name = "thin-vec"
-version = "0.2.19"
+version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79def32ffcd477db1ff26f76dab9e3a91f0bd42a85ca96577089b24623056f9d"
+checksum = "d6a4b9ba8738cb4a4f399d37e266becfd475e75eb73425b87a05a2f2039ba63e"
 
 [[package]]
 name = "thiserror"

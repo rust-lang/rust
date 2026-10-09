@@ -29,13 +29,12 @@ stdenv.mkDerivation (self: {
   dontUnpack = true;
 
   nativeBuildInputs = [
-    rustc
     makeBinaryWrapper
   ];
 
   env.PYTHON = python3.interpreter;
   buildPhase = ''
-    rustc -Copt-level=3 --crate-name x $src --out-dir $unwrapped/bin
+    ${rustc}/bin/rustc -Copt-level=3 --crate-name x $src --out-dir $unwrapped/bin
   '';
 
   installPhase =

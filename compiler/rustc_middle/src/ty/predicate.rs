@@ -171,9 +171,17 @@ impl<'tcx> Clause<'tcx> {
     }
 
     pub fn kind(self) -> ty::Binder<'tcx, ClauseKind<'tcx>> {
+        // Outline the unreachable! call to make the happy path faster.
+        // see: https://github.com/rust-lang/rust/pull/163657#issuecomment-5956974964
+        #[cold]
+        #[inline(never)]
+        fn unreachable_inner() -> ! {
+            unreachable!()
+        }
+
         self.0.internee.map_bound_no_validate_bound_vars(|kind| match kind {
             PredicateKind::Clause(clause) => clause,
-            _ => unreachable!(),
+            _ => unreachable_inner(),
         })
     }
 

@@ -1345,3 +1345,28 @@ impl ExprParenthesesNeeded {
         ExprParenthesesNeeded { left: s.shrink_to_lo(), right: s.shrink_to_hi() }
     }
 }
+
+#[derive(Diagnostic)]
+#[diag("`#[panic_handler]` functions can't be `unsafe`")]
+pub(crate) struct UnsafePanicHandlers;
+
+#[derive(Diagnostic)]
+#[diag("comptime functions can only be called at compile time")]
+pub(crate) struct ComptimeFnCalledOutsideConstContext {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub const_block: WrapConstBlock,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "wrap the call in a const block to force compile time evaluation",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct WrapConstBlock {
+    #[suggestion_part(code = "const {{ ")]
+    pub left: Span,
+    #[suggestion_part(code = " }}")]
+    pub right: Span,
+}

@@ -17,14 +17,19 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.os.image }}
+    # Above 3 times the longest job, so that a hang cannot run until GitHub's 6-hour limit.
+    timeout-minutes: 90
 
     strategy:
       fail-fast: false
       matrix:
+        os:
+          - { image: ubuntu-24.04, asset_name_suffix: "" }
+          - { image: ubuntu-24.04-arm, asset_name_suffix: "-aarch64" }
         libgccjit_version:
-          - { gcc: "gcc-15.deb" }
-          - { gcc: "gcc-15-without-int128.deb" }
+          - { gcc: "gcc-15" }
+          - { gcc: "gcc-15-without-int128" }
         commands: [
           "--std-tests --alloc-tests",
           # FIXME: re-enable asm tests when GCC can emit in the right syntax.
@@ -35,10 +40,23 @@ jobs:
           "--extended-regex-tests",
           "--test-successful-rustc --nb-parts 2 --current-part 0",
           "--test-successful-rustc --nb-parts 2 --current-part 1",
-          "--projects --nb-parts 2 --current-part 0",
-          "--projects --nb-parts 2 --current-part 1",
+          "--librsvg-tests",
+          "--projects --nb-parts 3 --current-part 0",
+          "--projects --nb-parts 3 --current-part 1",
+          "--projects --nb-parts 3 --current-part 2",
           "--gcc-asm-tests --test-release-libcore",
         ]
+        # The checks that don't depend on the test command only run in the fastest job.
+        include:
+          - commands: "--extended-rand-tests"
+            run_checks: true
+        # No need to run the tests without 128-bit integers on more than one platform.
+        exclude:
+          - os: { image: ubuntu-24.04-arm, asset_name_suffix: "-aarch64" }
+            libgccjit_version: { gcc: "gcc-15-without-int128" }
+          # FIXME: re-enable when the AES, SHA, RDMA and CRC intrinsics are supported on Aarch64.
+          - os: { image: ubuntu-24.04-arm, asset_name_suffix: "-aarch64" }
+            commands: "--librsvg-tests"
 
     steps:
     - uses: actions/checkout@v4
@@ -50,29 +68,53 @@ jobs:
     - name: Setup rust cache
       uses: Swatinem/rust-cache@v2
 
+    - name: Add apt mirrors
+      uses: ./.github/actions/apt-mirrors
+
     - name: Install packages
       # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
+      timeout-minutes: 20
       run: |
         sudo apt-get update
         sudo apt-get install ninja-build ripgrep llvm-14-tools llvm
 
     - name: Install the libraries needed to build librsvg
-      if: ${{ contains(matrix.commands, '--projects') }}
+      if: ${{ contains(matrix.commands, '--librsvg-tests') }}
+      timeout-minutes: 20
       run: sudo apt-get install libcairo2-dev libpango1.0-dev libfontconfig1-dev libfreetype-dev libharfbuzz-dev libxml2-dev libglib2.0-dev
 
     - name: Download artifact
-      run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/${{ matrix.libgccjit_version.gcc }}
+      run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/${{ matrix.libgccjit_version.gcc }}${{ matrix.os.asset_name_suffix }}.deb
 
     - name: Setup path to libgccjit
       run: |
-          sudo dpkg --force-overwrite -i ${{ matrix.libgccjit_version.gcc }}
+          sudo dpkg --force-overwrite -i ${{ matrix.libgccjit_version.gcc }}${{ matrix.os.asset_name_suffix }}.deb
           echo 'gcc-path = "/usr/lib/"' > config.toml
 
     # Some run-make tests fail if we use our forked GCC because it doesn't
     # bundle libstdc++, so we switch to gcc-14 to have a GCC that has
     # libstdc++.
+    #
+    # We cannot do this on Aarch64: on x86-64, rustc links with rust-lld, which
+    # ignores the LTO bytecode that our GCC puts in the object files, while on
+    # Aarch64, it links via `cc`. Since LTO requires the same GCC version for
+    # the whole compilation, gcc-14 would run its own lto1 on that bytecode and
+    # fail with:
+    # lto1: fatal error: bytecode stream in file '...rcgu.o' generated with LTO
+    # version 17.0 instead of the expected 14.0
     - name: Set default GCC to gcc-14
+      if: ${{ matrix.os.image == 'ubuntu-24.04' }}
       run: sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-14 30
+
+    # Since we keep our GCC as the linker on Aarch64 (see above) and it is
+    # built without C++ support, it ships neither libubsan (needed by the tests
+    # compiled with `-Cllvm-args=sanitize-undefined`) nor libstdc++ (needed by
+    # some run-make tests). Take those from gcc-14 instead: LIBRARY_PATH is
+    # only used to resolve `-l` options, so the startup files still come from
+    # our GCC.
+    - name: Use the libraries from gcc-14 that our GCC doesn't bundle
+      if: ${{ matrix.os.image == 'ubuntu-24.04-arm' }}
+      run: echo "LIBRARY_PATH=$(dirname "$(gcc-14 -print-file-name=libubsan.so)")" >> $GITHUB_ENV
 
     - name: Set env
       run: |
@@ -88,28 +130,39 @@ jobs:
         #key: ${{ runner.os }}-packages-${{ hashFiles('rust/.git/HEAD') }}
 
     - name: Prepare
+      if: ${{ matrix.run_checks }}
       run: ./y.sh prepare --only-libcore
 
     - name: Check formatting
+      if: ${{ matrix.run_checks }}
       run: ./y.sh fmt --check
 
     - name: Check todo
+      if: ${{ matrix.run_checks }}
       run: ./y.sh check-todo
 
     - name: Check lints
+      if: ${{ matrix.run_checks }}
       run: ./y.sh clippy
 
     - name: Build
+      if: ${{ matrix.run_checks }}
       run: |
         ./y.sh build --sysroot
         ./y.sh test --cargo-tests
         CARGO_TEST_FLAGS="-Zmir-preserve-ub" ./y.sh test --cargo-tests -- mir_preserve_ub_empty_switch
+        # The lock-free 128-bit atomics need native 128-bit integers.
+        if [ "${{ matrix.libgccjit_version.gcc }}" != "gcc-15-without-int128" ]; then
+          CARGO_TEST_FLAGS="-Ctarget-feature=+cmpxchg16b" ./y.sh test --cargo-tests -- atomic_u128
+        fi
 
     - name: Run y.sh cargo build
+      if: ${{ matrix.run_checks }}
       run: |
         CARGO_PROFILE_DEV_LTO=no ./y.sh cargo build --manifest-path tests/hello-world/Cargo.toml
 
     - name: Clean
+      if: ${{ matrix.run_checks }}
       run: |
         ./y.sh clean all
 
@@ -120,7 +173,7 @@ jobs:
         ./y.sh prepare
 
     - name: Add more failing tests for GCC without 128-bit integers support
-      if: ${{ matrix.libgccjit_version.gcc == 'gcc-15-without-int128.deb' }}
+      if: ${{ matrix.libgccjit_version.gcc == 'gcc-15-without-int128' }}
       run: cat tests/failing-ui-tests-without-128bit-integers.txt >> tests/failing-ui-tests.txt
 
     - name: Run tests

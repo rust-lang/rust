@@ -324,6 +324,9 @@ fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
 
 pub struct Rc<
     T: ?Sized,
+    // FIXME: When stabilizing this parameter, the `AllocatorNightly`
+    // bound on the `From<Box>` impl *must* be weaked to `Allocator`,
+    // as `Box` is fundamental!
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     ptr: NonNull<RcInner<T>>,
@@ -1676,6 +1679,7 @@ impl<T: ?Sized> Rc<T> {
     /// }
     /// ```
     #[inline]
+    #[must_use]
     #[unstable(feature = "arc_raw_get_strong", issue = "157021")]
     pub unsafe fn strong_count_from_raw(ptr: *const T) -> usize {
         // SAFETY: Upheld by caller.
@@ -1876,6 +1880,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// assert_eq!(1, Rc::weak_count(&five));
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "rc_counts", since = "1.15.0")]
     pub fn weak_count(this: &Self) -> usize {
         this.inner().weak() - 1
@@ -1894,6 +1899,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// assert_eq!(2, Rc::strong_count(&five));
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "rc_counts", since = "1.15.0")]
     pub fn strong_count(this: &Self) -> usize {
         this.inner().strong()

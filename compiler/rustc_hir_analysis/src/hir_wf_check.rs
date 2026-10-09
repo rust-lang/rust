@@ -19,7 +19,8 @@ pub(super) fn diagnostic_hir_wf_check<'tcx>(
 ) -> Option<ObligationCause<'tcx>> {
     let def_id = match loc {
         WellFormedLoc::Ty(def_id) => def_id,
-        WellFormedLoc::Param { function, param_idx: _ } => function,
+        WellFormedLoc::Param { function, .. } => function,
+        WellFormedLoc::HirId(_) | WellFormedLoc::None => return None,
     };
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
@@ -85,7 +86,7 @@ pub(super) fn diagnostic_hir_wf_check<'tcx>(
             let cause = traits::ObligationCause::new(
                 ty.span,
                 self.def_id,
-                traits::ObligationCauseCode::WellFormed(None),
+                traits::ObligationCauseCode::WellFormed(WellFormedLoc::HirId(ty.hir_id)),
             );
 
             ocx.register_obligation(traits::Obligation::new(
@@ -191,7 +192,7 @@ pub(super) fn diagnostic_hir_wf_check<'tcx>(
             }
             ref node => bug!("Unexpected node {:?}", node),
         },
-        WellFormedLoc::Param { function: _, param_idx } => {
+        WellFormedLoc::Param { param_idx, .. } => {
             let fn_decl = tcx.hir_fn_decl_by_hir_id(hir_id).unwrap();
             // Get return type
             if param_idx as usize == fn_decl.inputs.len() {
@@ -204,6 +205,7 @@ pub(super) fn diagnostic_hir_wf_check<'tcx>(
                 vec![&fn_decl.inputs[param_idx as usize]]
             }
         }
+        WellFormedLoc::HirId(_) | WellFormedLoc::None => return None,
     };
     for ty in tys {
         visitor.visit_ty_unambig(ty);

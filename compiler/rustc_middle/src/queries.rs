@@ -206,13 +206,11 @@ rustc_queries! {
         desc { "getting the resolver for lowering" }
     }
 
-    query index_ast(_: ()) -> &'tcx IndexSlice<LocalDefId, Steal<(
-        // There is only a single `ResolverAstLowering` for all owners.
-        // We want to drop it once the whole HIR has been lowered.
-        // We rely on reference counting to know when all definitions have been stolen.
-        Arc<ResolverAstLowering<'tcx>>,
-        AstOwner,
-    )>> {
+    // There is only a single `ResolverAstLowering` for all owners.
+    // We want to drop it once the whole HIR has been lowered.
+    // We rely on reference counting to know when all definitions have been stolen.
+    // None if the `LocalDefId` is not an owner.
+    query index_ast(_: ()) -> &'tcx IndexSlice<LocalDefId, Option<Steal<(Arc<ResolverAstLowering<'tcx>>, AstOwner)>>>  {
         eval_always
         no_hash
         desc { "getting the AST for lowering" }

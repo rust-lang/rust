@@ -239,7 +239,7 @@ late_lint_methods!(
             ImplTraitOvercaptures: ImplTraitOvercaptures,
             ImplicitAutorefs: ImplicitAutorefs,
             ImplicitProvenanceCasts: ImplicitProvenanceCasts,
-            ImproperCTypesLint: ImproperCTypesLint,
+            ImproperCTypesLint: ImproperCTypesLint::default(),
             ImproperGpuKernelLint: ImproperGpuKernelLint,
             InteriorMutableConsts: InteriorMutableConsts,
             InternalEqTraitMethodImpls: InternalEqTraitMethodImpls,
@@ -298,6 +298,7 @@ late_lint_methods!(
             BadOptAccess: BadOptAccess,
             DefaultHashTypes: DefaultHashTypes,
             DisallowedPassByRef: DisallowedPassByRef,
+            MissingGenericTypeVisitableDerive: MissingGenericTypeVisitableDerive,
             QueryStability: QueryStability,
             RustcMustMatchExhaustively: RustcMustMatchExhaustively,
             SpanUseEqCtxt: SpanUseEqCtxt,
@@ -769,6 +770,11 @@ fn register_internals(store: &mut LintStore) {
             //
             // Late pass: RustcMustMatchExhaustively
             LintId::of(RUSTC_MUST_MATCH_EXHAUSTIVELY),
+            // Late pass: MissingGenericTypeVisitableDerive
+            // Note: this one is not included so that it doesn't become effectively warn-by-default
+            // (since `rustc::internal` is warn-by-default). Instead, it's enabled manually in
+            // each relevant crate.
+            // LintId::of(MISSING_GENERIC_TYPE_VISITABLE_DERIVE),
         ],
     );
 }

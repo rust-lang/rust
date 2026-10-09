@@ -3121,8 +3121,13 @@ fn rewrite_where_keyword(
 
     let (span_before, span_after) =
         missing_span_before_after_where(span_end_before_where, predicates, where_span);
-    let (comment_before, comment_after) =
-        rewrite_comments_before_after_where(context, span_before, span_after, shape)?;
+    let (comment_before, comment_after) = rewrite_comments_before_after_where(
+        context,
+        span_before,
+        span_after,
+        block_shape,
+        clause_shape,
+    )?;
 
     let starting_newline = match where_clause_option.snuggle {
         WhereClauseSpace::Space if comment_before.is_empty() => Cow::from(" "),
@@ -3316,14 +3321,11 @@ fn rewrite_comments_before_after_where(
     context: &RewriteContext<'_>,
     span_before_where: Span,
     span_after_where: Span,
-    shape: Shape,
+    before_shape: Shape,
+    after_shape: Shape,
 ) -> Result<(String, String), RewriteError> {
-    let before_comment = rewrite_missing_comment(span_before_where, shape, context)?;
-    let after_comment = rewrite_missing_comment(
-        span_after_where,
-        shape.block_indent(context.config.tab_spaces()),
-        context,
-    )?;
+    let before_comment = rewrite_missing_comment(span_before_where, before_shape, context)?;
+    let after_comment = rewrite_missing_comment(span_after_where, after_shape, context)?;
     Ok((before_comment, after_comment))
 }
 

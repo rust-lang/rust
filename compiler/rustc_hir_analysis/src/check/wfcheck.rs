@@ -68,12 +68,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
     // Convenience function to normalize during wfcheck. This performs
     // `ObligationCtxt::normalize`, but provides a nice `ObligationCauseCode`.
-    fn normalize<T>(
-        &self,
-        span: Span,
-        loc: Option<WellFormedLoc>,
-        value: Unnormalized<'tcx, T>,
-    ) -> T
+    fn normalize<T>(&self, span: Span, loc: WellFormedLoc, value: Unnormalized<'tcx, T>) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -96,7 +91,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     pub(super) fn deeply_normalize<T>(
         &self,
         span: Span,
-        loc: Option<WellFormedLoc>,
+        loc: WellFormedLoc,
         value: Unnormalized<'tcx, T>,
     ) -> T
     where
@@ -122,7 +117,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     pub(super) fn register_wf_obligation(
         &self,
         span: Span,
-        loc: Option<WellFormedLoc>,
+        loc: WellFormedLoc,
         term: ty::Term<'tcx>,
     ) {
         let cause = traits::ObligationCause::new(
@@ -802,7 +797,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), Er
 
             if tcx.features().const_param_ty_unchecked() {
                 enter_wf_checking_ctxt(tcx, tcx.local_parent(def_id), |wfcx| {
-                    wfcx.register_wf_obligation(span, None, ty.into());
+                    wfcx.register_wf_obligation(span, WellFormedLoc::None, ty.into());
                     Ok(())
                 })
             } else if tcx.features().adt_const_params() || tcx.features().min_adt_const_params() {
@@ -916,7 +911,7 @@ pub(crate) fn check_associated_item(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    let loc = Some(WellFormedLoc::Ty(def_id));
+    let loc = WellFormedLoc::Ty(def_id);
     enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
         let item = tcx.associated_item(def_id);
 
@@ -936,7 +931,7 @@ pub(crate) fn check_associated_item(
         match item.kind {
             ty::AssocKind::Const { .. } => {
                 let ty = tcx.type_of(def_id).instantiate_identity();
-                let ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(def_id)), ty);
+                let ty = wfcx.deeply_normalize(span, WellFormedLoc::Ty(def_id), ty);
                 wfcx.register_wf_obligation(span, loc, ty.into());
 
                 if item.defaultness(tcx).has_value() {
@@ -964,7 +959,7 @@ pub(crate) fn check_associated_item(
                 }
                 if item.defaultness(tcx).has_value() {
                     let ty = tcx.type_of(def_id).instantiate_identity();
-                    let ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(def_id)), ty);
+                    let ty = wfcx.deeply_normalize(span, WellFormedLoc::Ty(def_id), ty);
                     wfcx.register_wf_obligation(span, loc, ty.into());
                 }
                 Ok(())
@@ -1013,10 +1008,10 @@ pub(crate) fn check_type_defn<'tcx>(
                 let span = tcx.ty_span(field_id);
                 let ty = wfcx.deeply_normalize(
                     span,
-                    None,
+                    WellFormedLoc::None,
                     tcx.type_of(field.did).instantiate_identity(),
                 );
-                wfcx.register_wf_obligation(span, Some(WellFormedLoc::Ty(field_id)), ty.into());
+                wfcx.register_wf_obligation(span, WellFormedLoc::Ty(field_id), ty.into());
 
                 if matches!(ty.kind(), ty::Adt(def, _) if def.repr().scalable())
                     && !matches!(adt_def.repr().scalable, Some(ScalableElt::Container))
@@ -1051,7 +1046,11 @@ pub(crate) fn check_type_defn<'tcx>(
             {
                 let last = idx == variant.fields.len() - 1;
                 let span = tcx.ty_span(field.did.expect_local());
-                let ty = wfcx.normalize(span, None, tcx.type_of(field.did).instantiate_identity());
+                let ty = wfcx.normalize(
+                    span,
+                    WellFormedLoc::None,
+                    tcx.type_of(field.did).instantiate_identity(),
+                );
                 wfcx.register_bound(
                     traits::ObligationCause::new(
                         span,
@@ -1215,7 +1214,7 @@ pub(crate) fn check_static_item<'tcx>(
         }
 
         let span = tcx.ty_span(item_id);
-        let loc = Some(WellFormedLoc::Ty(item_id));
+        let loc = WellFormedLoc::Ty(item_id);
         let item_ty = wfcx.deeply_normalize(span, loc, Unnormalized::new_wip(ty));
 
         let is_foreign_item = tcx.is_foreign_item(item_id);
@@ -1231,7 +1230,7 @@ pub(crate) fn check_static_item<'tcx>(
         };
         let forbid_unsized = !(is_foreign_item && is_structurally_foreign_item());
 
-        wfcx.register_wf_obligation(span, Some(WellFormedLoc::Ty(item_id)), item_ty.into());
+        wfcx.register_wf_obligation(span, WellFormedLoc::Ty(item_id), item_ty.into());
         if forbid_unsized {
             let span = tcx.def_span(item_id);
             wfcx.register_bound(
@@ -1300,12 +1299,16 @@ pub(super) fn check_const_item<'tcx>(
 
     if let Some(direct_rhs) = tcx.const_of_item(def_id) {
         let raw_ct = direct_rhs.instantiate_identity();
-        let norm_ct = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(def_id)), raw_ct);
-        wfcx.register_wf_obligation(span, Some(WellFormedLoc::Ty(def_id)), norm_ct.into());
+        let norm_ct = wfcx.deeply_normalize(span, WellFormedLoc::Ty(def_id), raw_ct);
+        wfcx.register_wf_obligation(span, WellFormedLoc::Ty(def_id), norm_ct.into());
 
         wfcx.register_obligation(Obligation::new(
             tcx,
-            ObligationCause::new(span, def_id, ObligationCauseCode::WellFormed(None)),
+            ObligationCause::new(
+                span,
+                def_id,
+                ObligationCauseCode::WellFormed(WellFormedLoc::Ty(def_id)),
+            ),
             wfcx.param_env,
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(norm_ct, item_ty)),
         ));
@@ -1330,7 +1333,7 @@ fn check_impl<'tcx>(
                 let trait_span = of_trait.trait_ref.path.span;
                 let trait_ref = wfcx.deeply_normalize(
                     trait_span,
-                    Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
+                    WellFormedLoc::Ty(item.hir_id().expect_owner().def_id),
                     trait_ref,
                 );
                 let trait_pred =
@@ -1367,7 +1370,7 @@ fn check_impl<'tcx>(
                     {
                         let bound = wfcx.normalize(
                             item.span,
-                            Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
+                            WellFormedLoc::Ty(item.hir_id().expect_owner().def_id),
                             bound,
                         );
                         wfcx.register_obligation(Obligation::new(
@@ -1375,7 +1378,9 @@ fn check_impl<'tcx>(
                             ObligationCause::new(
                                 impl_.self_ty.span,
                                 wfcx.body_def_id,
-                                ObligationCauseCode::WellFormed(None),
+                                ObligationCauseCode::WellFormed(WellFormedLoc::HirId(
+                                    of_trait.trait_ref.hir_ref_id,
+                                )),
                             ),
                             wfcx.param_env,
                             bound.to_host_effect_clause(tcx, ty::BoundConstness::Maybe),
@@ -1390,12 +1395,12 @@ fn check_impl<'tcx>(
                 let self_ty = tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip();
                 let self_ty = wfcx.deeply_normalize(
                     item.span,
-                    Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
+                    WellFormedLoc::Ty(item.hir_id().expect_owner().def_id),
                     Unnormalized::new_wip(self_ty),
                 );
                 wfcx.register_wf_obligation(
                     impl_.self_ty.span,
-                    Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
+                    WellFormedLoc::Ty(item.hir_id().expect_owner().def_id),
                     self_ty.into(),
                 );
             }
@@ -1437,7 +1442,8 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
                 wfcx.register_wf_obligation(
                     tcx.def_span(param.def_id),
                     matches!(param.kind, GenericParamDefKind::Type { .. })
-                        .then(|| WellFormedLoc::Ty(param.def_id.expect_local())),
+                        .then(|| WellFormedLoc::Ty(param.def_id.expect_local()))
+                        .unwrap_or(WellFormedLoc::None),
                     default.as_term().unwrap(),
                 );
             } else {
@@ -1466,7 +1472,7 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
                     let cause = traits::ObligationCause::new(
                         tcx.def_span(param.def_id),
                         wfcx.body_def_id,
-                        ObligationCauseCode::WellFormed(None),
+                        ObligationCauseCode::WellFormed(WellFormedLoc::Ty(def_id)),
                     );
                     wfcx.register_obligation(Obligation::new(
                         tcx,
@@ -1560,7 +1566,7 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
             // Note the subtle difference from how we handle `gen_clauses`
             // below: there, we are not trying to prove those clauses
             // to be *true* but merely *well-formed*.
-            let clause = wfcx.normalize(sp, None, clause);
+            let clause = wfcx.normalize(sp, WellFormedLoc::None, clause);
             let cause = traits::ObligationCause::new(
                 sp,
                 wfcx.body_def_id,
@@ -1636,12 +1642,12 @@ fn check_fn_or_method<'tcx>(
         tcx.mk_type_list_from_iter(sig.inputs_and_output.iter().enumerate().map(|(idx, ty)| {
             wfcx.deeply_normalize(
                 arg_span(idx),
-                Some(WellFormedLoc::Param {
+                WellFormedLoc::Param {
                     function: def_id,
                     // Note that the `param_idx` of the output type is
                     // one greater than the index of the last input type.
                     param_idx: idx,
-                }),
+                },
                 Unnormalized::new_wip(ty),
             )
         }));
@@ -1649,7 +1655,7 @@ fn check_fn_or_method<'tcx>(
     for (idx, ty) in sig.inputs_and_output.iter().enumerate() {
         wfcx.register_wf_obligation(
             arg_span(idx),
-            Some(WellFormedLoc::Param { function: def_id, param_idx: idx }),
+            WellFormedLoc::Param { function: def_id, param_idx: idx },
             ty.into(),
         );
     }
@@ -1726,7 +1732,7 @@ fn check_method_receiver<'tcx>(
     }
 
     let span = fn_sig.decl.inputs[0].span;
-    let loc = Some(WellFormedLoc::Param { function: method.def_id.expect_local(), param_idx: 0 });
+    let loc = WellFormedLoc::Param { function: method.def_id.expect_local(), param_idx: 0 };
 
     let sig = tcx.fn_sig(method.def_id).instantiate_identity().skip_norm_wip();
     let sig = tcx.liberate_late_bound_regions(method.def_id, sig);
@@ -2319,7 +2325,8 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
             // Match the existing behavior.
             if clause.is_global() && !clause.has_type_flags(TypeFlags::HAS_BINDER_VARS) {
-                let clause = self.normalize(span, None, Unnormalized::new_wip(clause));
+                let clause =
+                    self.normalize(span, WellFormedLoc::None, Unnormalized::new_wip(clause));
 
                 // only use the span of the predicate clause (#90869)
                 let hir_node = tcx.hir_node_by_def_id(self.body_def_id);
@@ -2421,17 +2428,23 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn check_test_binder_forall(&self, forall: TestBinderForall<'tcx>) {
+        let prev_u = self.infcx.universe();
         self.infcx.enter_forall(forall.binder, |body| {
-            let u = self.infcx.universe();
-            let mut builder = TransitiveRelationBuilder::default();
-            for &(r1, r2) in &body.region_outlives {
-                builder.add(r1, r2);
-            }
-            // Deliberately unelaborated: the assumptions of a `forall` are exactly the ones
-            // written down in the test, no extra ones hidden behind the scenes.
-            let assumptions = ty::region_constraint::Assumptions::new_unelaborated(
+            let u = if prev_u == self.infcx.universe() {
+                // `enter_forall` has some special cases to avoid creating universes
+                // in some cases for perf reasons. Not creating the universe unconditionally
+                // breaks calling `eagerly_handle_placeholders` later on in this function.
+                //
+                // See `test_infra_empty_forall.rs`.
+                self.infcx.create_next_universe()
+            } else {
+                self.infcx.universe()
+            };
+
+            let assumptions = self.build_test_binder_assumptions(
+                forall.span,
                 body.type_outlives,
-                builder.freeze(),
+                body.region_outlives,
             );
             self.infcx.insert_placeholder_assumptions(u, assumptions);
             self.check_test_binder_body(body.value);
@@ -2447,6 +2460,52 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             }
             self.infcx.overwrite_solver_region_constraint(constraint);
         });
+    }
+
+    fn build_test_binder_assumptions(
+        &self,
+        span: Span,
+        type_outlives: Vec<ty::PolyTypeOutlivesClause<'tcx>>,
+        region_outlives: Vec<ty::RegionOutlivesClause<'tcx>>,
+    ) -> ty::region_constraint::Assumptions<TyCtxt<'tcx>> {
+        for clause in &type_outlives {
+            if !matches!(
+                clause.skip_binder().0.kind(),
+                ty::Alias(..) | ty::Param(..) | ty::Placeholder(..)
+            ) {
+                let mut err = self.tcx().dcx().struct_span_err(
+                    span,
+                    "the lhs of a forall where clause must be \
+                         an alias, placeholder, or lifetime",
+                );
+                err.note(format!("the bad clause is {clause}"));
+                err.emit();
+            }
+        }
+        let ty = type_outlives.iter().map(|c| c.map_bound(ty::ClauseKind::TypeOutlives));
+        let reg =
+            region_outlives.iter().map(|&c| ty::Binder::dummy(ty::ClauseKind::RegionOutlives(c)));
+        let explicit_clauses: Vec<ty::Clause<'tcx>> =
+            ty.chain(reg).map(|c| c.upcast(self.tcx())).collect();
+        for elaborated in ty::elaborate::elaborate(self.tcx(), explicit_clauses.iter().copied()) {
+            if !explicit_clauses.contains(&elaborated) {
+                let mut err = self.tcx().dcx().struct_span_err(
+                    span,
+                    "all implied bounds of clauses must themselves be \
+                     included in the where clause of a forall",
+                );
+                err.note(format!("missing clause is {elaborated}"));
+                err.emit();
+            }
+        }
+
+        let mut builder = TransitiveRelationBuilder::default();
+        for &ty::OutlivesClause(r1, r2) in &region_outlives {
+            builder.add(r1, r2);
+        }
+        // Deliberately unelaborated: the assumptions of a `forall` are exactly the ones
+        // written down in the test, no extra ones hidden behind the scenes.
+        ty::region_constraint::Assumptions::new_unelaborated(type_outlives, builder.freeze())
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -2742,6 +2801,6 @@ pub(crate) struct WithWhereClauses<'tcx, T> {
 
     // The where clauses on the forall. These eventually will probably get stored inside
     // `ty::Binder` but they're here for now.
-    pub type_outlives: Vec<ty::Binder<'tcx, ty::OutlivesClause<'tcx, Ty<'tcx>>>>,
-    pub region_outlives: Vec<(ty::Region<'tcx>, ty::Region<'tcx>)>,
+    pub type_outlives: Vec<ty::PolyTypeOutlivesClause<'tcx>>,
+    pub region_outlives: Vec<ty::RegionOutlivesClause<'tcx>>,
 }

@@ -1,6 +1,5 @@
 //! Tests where the `#[coverage(..)]` attribute can and cannot be used.
 
-//@ reference: attributes.coverage.allowed-positions
 
 #![feature(coverage_attribute)]
 #![feature(extern_types)]

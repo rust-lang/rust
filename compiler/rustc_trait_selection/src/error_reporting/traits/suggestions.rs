@@ -1245,7 +1245,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         main_trait_predicate: ty::PolyTraitClause<'tcx>,
         span: Span,
     ) -> bool {
-        let &[candidate] = &self.find_similar_impl_candidates(leaf_trait_predicate)[..] else {
+        let &[candidate] = &self.find_similar_impl_candidates(
+            leaf_trait_predicate.def_id(),
+            leaf_trait_predicate.self_ty().skip_binder(),
+        )[..] else {
             return false;
         };
         let candidate = candidate.trait_ref;
@@ -4322,7 +4325,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     err.help("unsized fn params are gated as an unstable feature");
                 }
             }
-            ObligationCauseCode::SizedReturnType | ObligationCauseCode::SizedCallReturnType => {
+            ObligationCauseCode::SizedReturnType | ObligationCauseCode::SizedCallReturnType(_) => {
                 err.note("the return type of a function must have a statically known size");
             }
             ObligationCauseCode::SizedYieldType => {

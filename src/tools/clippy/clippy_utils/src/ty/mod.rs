@@ -794,7 +794,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
             cx.tcx
                 .item_self_bounds(def_id)
                 .iter_instantiated(cx.tcx, args)
-                .map(Unnormalized::skip_norm_wip),
+                .map(|clause| cx.tcx.normalize_erasing_regions(cx.typing_env(), clause)),
             cx.tcx.opt_parent(def_id),
         ),
         ty::FnPtr(sig_tys, hdr) => Some(ExprFnSig::Sig(sig_tys.with(hdr), None)),

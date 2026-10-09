@@ -35,6 +35,7 @@ pub(super) struct DelegationGenerics<T> {
     data: T,
     pos: GenericsPosition,
     trait_impl: bool,
+    has_implicit_self: bool,
 }
 
 type TyGenerics<'hir> = Vec<GenericArgSlot<&'hir ty::GenericParamDef>>;
@@ -44,11 +45,13 @@ impl<'hir> DelegationGenerics<TyGenerics<'hir>> {
         params: &'hir [ty::GenericParamDef],
         pos: GenericsPosition,
         trait_impl: bool,
+        has_implicit_self: bool,
     ) -> Self {
         DelegationGenerics {
             data: params.iter().map(|p| GenericArgSlot::Generate(p, None)).collect(),
             pos,
             trait_impl,
+            has_implicit_self,
         }
     }
 }
@@ -92,6 +95,7 @@ pub(super) struct GenericsGenerationResults<'hir> {
 pub(super) struct DelegationGenericArgsIterator<'hir> {
     index: usize = Default::default(),
     params: &'hir [hir::GenericParam<'hir>],
+    has_implicit_self: bool,
 }
 
 /// During generic args propagation we need to create generic args
@@ -112,10 +116,10 @@ impl<'hir> DelegationGenericArgsIterator<'hir> {
             }
 
             let p = self.params[self.index];
+            let is_implicit_self = self.has_implicit_self && self.index == 0;
             self.index += 1;
 
-            // Skip self generic arg, we do not need to propagate it.
-            if p.name.ident().name == kw::SelfUpper || p.is_impl_trait() {
+            if is_implicit_self || p.is_impl_trait() {
                 continue;
             }
 
@@ -173,6 +177,7 @@ impl<'hir> HirOrTyGenerics<'hir> {
                 data: params,
                 pos: ty.pos,
                 trait_impl: ty.trait_impl,
+                has_implicit_self: ty.has_implicit_self,
             });
         }
     }
@@ -189,9 +194,11 @@ impl<'hir> HirOrTyGenerics<'hir> {
             HirOrTyGenerics::Ty(_) => {
                 bug!("attempting to get generic args before uplifting to HIR")
             }
-            HirOrTyGenerics::Hir(hir) => {
-                DelegationGenericArgsIterator { params: hir.data.params, .. }
-            }
+            HirOrTyGenerics::Hir(hir) => DelegationGenericArgsIterator {
+                params: hir.data.params,
+                has_implicit_self: hir.has_implicit_self,
+                ..
+            },
         }
     }
 
@@ -380,13 +387,21 @@ impl<'hir> DelegationResolver<'_, 'hir> {
         if trait_impl {
             // Considering parent generics, during signature inheritance
             // we will take those args that are in trait impl header trait ref.
-            let parent =
-                DelegationGenerics { data: vec![], pos: GenericsPosition::Child, trait_impl: true };
+            let parent = DelegationGenerics {
+                data: vec![],
+                pos: GenericsPosition::Child,
+                trait_impl: true,
+                has_implicit_self: false,
+            };
 
             let parent = GenericsGenerationResult::new(parent);
 
-            let child =
-                DelegationGenerics::generate_all(sig_child_params, GenericsPosition::Child, true);
+            let child = DelegationGenerics::generate_all(
+                sig_child_params,
+                GenericsPosition::Child,
+                true,
+                false,
+            );
 
             let child = GenericsGenerationResult::new(child);
 
@@ -411,15 +426,20 @@ impl<'hir> DelegationResolver<'_, 'hir> {
                 ),
                 pos: GenericsPosition::Parent,
                 trait_impl,
+                has_implicit_self: generate_free_to_trait_self,
             },
             ParentSegmentArgs::NotSpecified => DelegationGenerics::generate_all(
                 &sig_parent_params[usize::from(skip_self)..],
                 GenericsPosition::Parent,
                 trait_impl,
+                generate_free_to_trait_self,
             ),
-            ParentSegmentArgs::Invalid => {
-                DelegationGenerics { data: vec![], pos: GenericsPosition::Parent, trait_impl }
-            }
+            ParentSegmentArgs::Invalid => DelegationGenerics {
+                data: vec![],
+                pos: GenericsPosition::Parent,
+                trait_impl,
+                has_implicit_self: false,
+            },
         };
 
         let child_generics = if let Some(args) = res.child_args {
@@ -439,9 +459,19 @@ impl<'hir> DelegationResolver<'_, 'hir> {
                 slots.push(GenericArgSlot::Generate(synth_param, None));
             }
 
-            DelegationGenerics { data: slots, pos: GenericsPosition::Child, trait_impl }
+            DelegationGenerics {
+                data: slots,
+                pos: GenericsPosition::Child,
+                trait_impl,
+                has_implicit_self: false,
+            }
         } else {
-            DelegationGenerics::generate_all(sig_child_params, GenericsPosition::Child, trait_impl)
+            DelegationGenerics::generate_all(
+                sig_child_params,
+                GenericsPosition::Child,
+                trait_impl,
+                false,
+            )
         };
 
         Ok(GenericsGenerationResults {

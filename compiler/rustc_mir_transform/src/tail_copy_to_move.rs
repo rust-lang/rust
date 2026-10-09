@@ -86,7 +86,7 @@ impl<'tcx> crate::MirPass<'tcx> for TailCopyToMove {
             let mut first = None;
             for pred in predecessors[state.block].iter().copied() {
                 let terminator = body.basic_blocks[pred].terminator();
-                if let TerminatorKind::Goto { target } = terminator.kind {
+                if let TerminatorKind::Goto { target, .. } = terminator.kind {
                     debug_assert_eq!(target, state.block);
                     if first.is_none() {
                         first = Some(pred);
