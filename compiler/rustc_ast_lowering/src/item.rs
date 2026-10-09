@@ -320,8 +320,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             },
             ItemKind::GlobalAsm(asm) => {
                 let asm = self.lower_inline_asm(span, asm);
-                let (_, fake_body) =
-                    self.lower_body(|this| (&[], this.expr(span, hir::ExprKind::InlineAsm(asm))));
+                let fake_body =
+                    self.lower_body(|this| this.expr(span, hir::ExprKind::InlineAsm(asm)));
                 hir::ItemKind::GlobalAsm { asm, fake_body }
             }
             ItemKind::TyAlias(TyAlias { ident, generics, after_where_clause, ty, .. }) => {
@@ -1207,6 +1207,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn lower_body(
         &mut self,
+        f: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
+    ) -> hir::BodyId {
+        self.lower_body_with_params(|c| (&[], f(c))).1
+    }
+
+    pub(super) fn lower_body_with_params(
+        &mut self,
         f: impl FnOnce(&mut Self) -> (&'hir [hir::Param<'hir>], hir::Expr<'hir>),
     ) -> (&'hir [hir::Param<'hir>], hir::BodyId) {
         let prev_coroutine_kind = self.coroutine_kind.take();
@@ -1241,7 +1248,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         contract: Option<&FnContract>,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> (&'hir [hir::Param<'hir>], hir::BodyId) {
-        self.lower_body(|this| {
+        self.lower_body_with_params(|this| {
             let params =
                 this.arena.alloc_from_iter(decl.inputs.iter().map(|x| this.lower_param(x)));
 
@@ -1264,16 +1271,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     pub(super) fn lower_const_body(&mut self, span: Span, expr: Option<&Expr>) -> hir::BodyId {
-        self.lower_body(|this| {
-            (
-                &[],
-                match expr {
-                    Some(expr) => this.lower_expr_mut(expr),
-                    None => this.expr_err(span, this.dcx().span_delayed_bug(span, "no block")),
-                },
-            )
+        self.lower_body(|this| match expr {
+            Some(expr) => this.lower_expr_mut(expr),
+            None => this.expr_err(span, this.dcx().span_delayed_bug(span, "no block")),
         })
-        .1
     }
 
     /// Takes what may be the body of an `async fn` or a `gen fn` and wraps it in an `async {}` or
@@ -1321,7 +1322,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             return self.lower_fn_body_block(decl, body, contract);
         };
         // FIXME(contracts): Support contracts on async fn.
-        self.lower_body(|this| {
+        self.lower_body_with_params(|this| {
             let (parameters, expr) = this.lower_coroutine_body_with_moved_arguments(
                 decl,
                 |this| this.lower_block_expr(body),

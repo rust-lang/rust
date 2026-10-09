@@ -915,7 +915,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             fn_decl_kind: hir::FnDeclFlags::default().set_has_body(true),
         });
 
-        let (_, body) = self.lower_body(move |this| {
+        let body = self.lower_body(move |this| {
             this.coroutine_kind = Some(coroutine_kind);
 
             let old_ctx = this.task_context;
@@ -925,7 +925,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let res = body(this);
             this.task_context = old_ctx;
 
-            (inputs, res)
+            res
         });
 
         let explicit_captures: &'hir [hir::ExplicitCapture] = match coroutine_source {
