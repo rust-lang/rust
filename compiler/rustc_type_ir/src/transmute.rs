@@ -1,4 +1,4 @@
-/// The result of a transmutability query under the supplied [`Assume`] options.
+/// The result of a transmutability query under the supplied `Assume` options.
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 pub enum Answer<R, T> {
     /// The analysis requires no further conditions.

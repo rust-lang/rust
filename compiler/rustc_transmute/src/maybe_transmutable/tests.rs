@@ -1,9 +1,10 @@
 extern crate test;
 
 use itertools::Itertools;
+use rustc_middle::ty::transmute::{Answer, Condition, Reason};
 
 use super::query_context::test::{Def, UltraMinimal};
-use crate::{Answer, Assume, Condition, Reason, layout};
+use crate::{Assume, layout};
 
 type Tree = layout::Tree<Def, !, !>;
 type Dfa = layout::Dfa<!, !>;
@@ -40,17 +41,18 @@ fn is_transmutable<R: Representation + Clone>(
     src: &R,
     dst: &R,
     assume: Assume,
-) -> crate::Answer<!, !> {
+) -> rustc_middle::ty::transmute::Answer<!, !> {
     let src = src.clone();
     let dst = dst.clone();
     R::is_transmutable(src, dst, assume)
 }
 
 mod answers {
-    use crate::maybe_transmutable::Quantifier;
-    use crate::{Condition, Reason};
+    use rustc_middle::ty::transmute::{Condition, Reason};
 
-    type Answer = crate::Answer<usize, ()>;
+    use crate::maybe_transmutable::Quantifier;
+
+    type Answer = rustc_middle::ty::transmute::Answer<usize, ()>;
 
     const OUTLIVES: Condition<usize, ()> = Condition::Outlives { long: 1, short: 0 };
     const IMMUTABLE: Condition<usize, ()> = Condition::Immutable { ty: () };
@@ -141,11 +143,11 @@ mod answers {
 }
 
 mod safety {
-    use super::*;
-    use crate::Answer;
+    use rustc_middle::ty::transmute::{Answer, Reason};
 
-    const DST_HAS_SAFETY_INVARIANTS: Answer<!, !> =
-        Answer::No(crate::Reason::DstMayHaveSafetyInvariants);
+    use super::*;
+
+    const DST_HAS_SAFETY_INVARIANTS: Answer<!, !> = Answer::No(Reason::DstMayHaveSafetyInvariants);
 
     #[test]
     fn src_safe_dst_safe() {
@@ -353,8 +355,9 @@ mod uninit {
 }
 
 mod alt {
+    use rustc_middle::ty::transmute::Answer;
+
     use super::*;
-    use crate::Answer;
 
     #[test]
     fn should_permit_identity_transmutation() {
@@ -405,6 +408,8 @@ mod union {
 }
 
 mod char {
+    use rustc_middle::ty::transmute::Answer;
+
     use super::*;
     use crate::layout::tree::Endian;
 
@@ -444,8 +449,9 @@ mod char {
 }
 
 mod nonzero {
+    use rustc_middle::ty::transmute::{Answer, Reason};
+
     use super::*;
-    use crate::{Answer, Reason};
 
     const NONZERO_BYTE_WIDTHS: [u64; 5] = [1, 2, 4, 8, 16];
 
