@@ -1,5 +1,4 @@
 use std::fmt;
-use std::ops::Index;
 
 use arrayvec::ArrayVec;
 use derive_where::derive_where;
@@ -265,23 +264,6 @@ impl<I: Interner> CanonicalVarValues<I> {
     #[inline]
     pub fn len(&self) -> usize {
         self.var_values.len()
-    }
-}
-
-impl<'a, I: Interner> IntoIterator for &'a CanonicalVarValues<I> {
-    type Item = I::GenericArg;
-    type IntoIter = <I::GenericArgs as SliceLike>::IntoIter;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.var_values.iter()
-    }
-}
-
-impl<I: Interner> Index<ty::BoundVar> for CanonicalVarValues<I> {
-    type Output = I::GenericArg;
-
-    fn index(&self, value: ty::BoundVar) -> &I::GenericArg {
-        &self.var_values.as_slice()[value.as_usize()]
     }
 }
 
