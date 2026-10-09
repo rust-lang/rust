@@ -497,10 +497,33 @@ fn unify_query_var_values<D, I>(
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
+    // Canonical bound vars are very common here. `CanonicalInstantiator::fold_{ty,region,const}`'s
+    // handling of them is simple, and we replicate that handling here to avoid the cost of the
+    // surrounding machinery.
+    fn canonical_bound_var<I: Interner>(arg: I::GenericArg) -> Option<ty::BoundVar> {
+        match arg.kind() {
+            ty::GenericArgKind::Type(t) => match t.kind() {
+                ty::Bound(ty::BoundVarIndexKind::Canonical, bt) => Some(bt.var()),
+                _ => None,
+            },
+            ty::GenericArgKind::Lifetime(r) => match r.kind() {
+                ty::ReBound(ty::BoundVarIndexKind::Canonical, br) => Some(br.var()),
+                _ => None,
+            },
+            ty::GenericArgKind::Const(c) => match c.kind() {
+                ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, bc) => Some(bc.var()),
+                _ => None,
+            },
+        }
+    }
+
     assert_eq!(original_values.len(), var_values.len());
 
     for (&orig, response) in iter::zip(original_values, var_values.iter()) {
-        let response = delegate.instantiate_value(response, instantiation);
+        let response = match canonical_bound_var::<I>(response) {
+            Some(var) => instantiation[var],
+            None => delegate.instantiate_value(response, instantiation),
+        };
         if orig == response {
             continue;
         }
