@@ -1,7 +1,7 @@
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicit revisions)
-//@ check-pass
+//@[current] check-pass
 
 // Regression test for #139409 and trait-system-refactor-initiative#27.
 
@@ -13,4 +13,5 @@ trait D<C, E>: B<C> + B<E> {
 impl<C, E> D<C, E> for () {}
 fn main() {
     (&() as &dyn D<&(), &()>).f()
+    //[next]~^ ERROR: type annotations needed: cannot satisfy `dyn D<&(), &()>: B<&()>`
 }
