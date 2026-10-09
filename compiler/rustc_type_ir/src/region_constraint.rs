@@ -60,7 +60,7 @@ use crate::{
     set_aliases_to_non_rigid,
 };
 
-#[derive_where(Clone, Debug; I: Interner)]
+#[derive_where(Clone; I: Interner)]
 pub struct Assumptions<I: Interner> {
     pub type_outlives: Vec<Binder<I, OutlivesClause<I, I::Ty>>>,
     /// Known `'a: 'b` assumptions, stored as an edge from the outliving region to the
@@ -69,6 +69,15 @@ pub struct Assumptions<I: Interner> {
     /// is consumed.
     pub region_outlives: TransitiveRelation<Region<I>>,
     pub inverse_region_outlives: TransitiveRelation<Region<I>>,
+}
+
+impl<I: Interner> std::fmt::Debug for Assumptions<I> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        f.debug_struct("Assumptions")
+            .field("type_outlives", &self.type_outlives)
+            .field("region_graph", &"elided")
+            .finish()
+    }
 }
 
 impl<I: Interner> Assumptions<I> {
@@ -157,10 +166,10 @@ impl<I: Interner> Assumptions<I> {
     }
 }
 
-#[derive_where(Clone, Hash, PartialEq, Eq, Debug; I: Interner, S)]
+#[derive_where(Clone, Hash, PartialEq, Eq; I: Interner, S)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
-pub enum LeafRegionConstraint<I: Interner, S: Clone + std::fmt::Debug = ()> {
+pub enum LeafRegionConstraint<I: Interner, S: Clone = ()> {
     Ambiguity(S),
     RegionOutlives(Region<I>, Region<I>, S),
     /// Requirement that a (potentially higher ranked) alias outlives some (potentially higher ranked)
@@ -183,6 +192,23 @@ pub enum LeafRegionConstraint<I: Interner, S: Clone + std::fmt::Debug = ()> {
     /// We cannot eagerly look at assumptions as we are usually working with an incomplete set of assumptions
     /// and there may wind up being assumptions we can use to prove this when we're in a smaller universe.
     PlaceholderTyOutlives(I::Ty, Region<I>, S),
+}
+
+impl<I: Interner, S: Clone> std::fmt::Debug for LeafRegionConstraint<I, S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            Self::Ambiguity(_span) => write!(f, "Ambiguity"),
+            Self::RegionOutlives(r1, r2, _span) => {
+                f.debug_tuple("RegionOutlives").field(r1).field(r2).finish()
+            }
+            Self::AliasTyOutlivesViaEnv(bound_outlives, _span) => {
+                f.debug_tuple("AliasTyOutlivesViaEnv").field(bound_outlives).finish()
+            }
+            Self::PlaceholderTyOutlives(ty, r, _span) => {
+                f.debug_tuple("PlaceholderTyOutlives").field(ty).field(r).finish()
+            }
+        }
+    }
 }
 
 impl<I: Interner> LeafRegionConstraint<I> {
