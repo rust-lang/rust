@@ -1,0 +1,23 @@
+#![crate_name = "issue162605"]
+
+//@ count 'issue162605/foo/index.html' '//*[@id="reexport.inlined_macro"]' 1
+
+pub mod foo {
+    // inlined_macro does not appear in foo module.
+    #[doc(no_inline)]
+    pub use super::bar::inlined_macro;
+}
+
+pub mod bar {
+    // inlined_macro appears in bar module.
+    #[doc(inline)]
+    pub use crate::hidden_macro as inlined_macro;
+
+    #[macro_export]
+    #[doc(hidden)]
+    macro_rules! hidden_macro {
+        () => {
+            "dummy"
+        };
+    }
+}
