@@ -1280,7 +1280,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
                     hir::TraitFn::Provided(_) => {
                         Some(Defaultness::from_trait_item(trait_item.defaultness))
                     }
-                    hir::TraitFn::Required(_) => None,
+                    hir::TraitFn::Required => None,
                 };
                 let (generics, decl) = clean_function(cx, sig, trait_item.generics, local_did);
                 ItemKind::AssocFunction(Box::new(AssocFunction { generics, decl, body }))
