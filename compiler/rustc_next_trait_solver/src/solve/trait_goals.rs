@@ -49,6 +49,10 @@ where
         self.def_id()
     }
 
+    fn as_normalizes_to(self) -> Option<ty::NormalizesTo<I>> {
+        None
+    }
+
     fn consider_additional_alias_assumptions(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
@@ -1317,6 +1321,7 @@ where
         let ExternalConstraintsData {
             region_constraints: _,
             ref opaque_types,
+            ref pseudo_rigid_due_to_opaques,
             ref normalization_nested_goals,
         } = *candidate.result.value.external_constraints;
         debug_assert!(normalization_nested_goals.is_empty());
@@ -1325,7 +1330,7 @@ where
         // inference state. This is safe after typeck, where hidden types are already
         // fixed and only regions are inferred, but not during typeck while hidden
         // types may still contain inference variables.
-        if !opaque_types.is_empty() {
+        if !(opaque_types.is_empty() && pseudo_rigid_due_to_opaques.is_empty()) {
             let typing_mode = self.typing_mode();
 
             match typing_mode {

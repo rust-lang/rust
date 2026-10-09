@@ -275,6 +275,23 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
             | TypingMode::Codegen => false,
         }
     }
+
+    /// This is `true` for `Typeck` and `false` otherwise as we take into account the
+    /// item self bounds for pseudo-rigids for that `TypingMode` only.
+    ///
+    /// See also the documentation on [`TypingMode`] about exhaustive matching.
+    pub fn should_register_pseudo_rigid_due_to_opaques(&self) -> bool {
+        match self {
+            TypingMode::Typeck { .. } => true,
+            TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::Coherence
+            | TypingMode::PostBorrowck { .. }
+            | TypingMode::Reflection
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen
+            | TypingMode::ErasedNotCoherence(_) => false,
+        }
+    }
 }
 
 impl<I: Interner> TypingMode<I, MayBeErased> {
@@ -546,20 +563,26 @@ pub trait InferCtxtLike: Sized {
 
     type OpaqueTypeStorageEntries: OpaqueTypeStorageEntries;
     fn opaque_types_storage_num_entries(&self) -> Self::OpaqueTypeStorageEntries;
+    fn num_pseudo_rigid_due_to_opaques(&self) -> usize;
     fn clone_opaque_types_lookup_table(
         &self,
     ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
-    fn clone_duplicate_opaque_types(
+    fn clone_pseudo_rigid_due_to_opaques(
         &self,
-    ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
+    ) -> Vec<(TyVid, ty::PseudoRigidDueToOpaquesBound<Self::Interner>)>;
     fn clone_opaque_types_added_since(
         &self,
         prev_entries: Self::OpaqueTypeStorageEntries,
     ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
-    fn opaques_with_sub_unified_hidden_type(
+    fn clone_pseudo_rigid_due_to_opaques_added_since(
         &self,
-        ty: TyVid,
-    ) -> Vec<ty::OpaqueAliasTy<Self::Interner>>;
+        prev_entries: Self::OpaqueTypeStorageEntries,
+    ) -> Vec<(TyVid, ty::PseudoRigidDueToOpaquesBound<Self::Interner>)>;
+    fn is_pseudo_rigid_due_to_opaques(&self, ty_vid: TyVid) -> bool;
+    fn pseudo_rigid_due_to_opaques(
+        &self,
+        ty_vid: TyVid,
+    ) -> Vec<ty::PseudoRigidDueToOpaquesBound<Self::Interner>>;
 
     fn register_hidden_type_in_storage(
         &self,
@@ -572,6 +595,18 @@ pub trait InferCtxtLike: Sized {
         opaque_type_key: ty::OpaqueTypeKey<Self::Interner>,
         hidden_ty: <Self::Interner as Interner>::Ty,
         span: <Self::Interner as Interner>::Span,
+    );
+    fn register_pseudo_rigid_due_to_opaques_in_storage(
+        &self,
+        hidden_ty: <Self::Interner as Interner>::Ty,
+        bounds: impl IntoIterator<Item = ty::PseudoRigidDueToOpaquesBound<Self::Interner>>,
+    );
+    fn register_pseudo_rigid_due_to_opaques_in_storage_with_flattened(
+        &self,
+        bounds: &[(
+            <Self::Interner as Interner>::Ty,
+            ty::PseudoRigidDueToOpaquesBound<Self::Interner>,
+        )],
     );
 
     fn reset_opaque_types(&self);

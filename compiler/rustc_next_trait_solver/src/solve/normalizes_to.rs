@@ -180,6 +180,10 @@ where
         self.trait_def_id(cx)
     }
 
+    fn as_normalizes_to(self) -> Option<NormalizesTo<I>> {
+        Some(self)
+    }
+
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,

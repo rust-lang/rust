@@ -6,7 +6,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::relate::combine::PredicateEmittingRelation;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Ty, TyCtxt, TyVid, TypeFoldable};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_type_ir::solve::TyOrConstInferVar;
 use rustc_type_ir::{TypeSuperFoldable, TypeVisitableExt};
@@ -81,7 +81,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.overwrite_solver_region_constraint(constraint.with_spans(span));
     }
 
-    fn universe_of_ty(&self, vid: ty::TyVid) -> Option<ty::UniverseIndex> {
+    fn universe_of_ty(&self, vid: TyVid) -> Option<ty::UniverseIndex> {
         match self.try_resolve_ty_var(vid) {
             Err(universe) => Some(universe),
             Ok(_) => None,
@@ -102,16 +102,16 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         }
     }
 
-    fn root_ty_var(&self, var: ty::TyVid) -> ty::TyVid {
+    fn root_ty_var(&self, var: TyVid) -> TyVid {
         self.root_var(var)
     }
 
-    fn sub_unification_table_root_var(&self, var: ty::TyVid) -> ty::TyVid {
+    fn sub_unification_table_root_var(&self, var: TyVid) -> TyVid {
         self.sub_unification_table_root_var(var)
     }
 
     #[inline]
-    fn is_sub_unification_table_root_var(&self, vid: ty::TyVid) -> bool {
+    fn is_sub_unification_table_root_var(&self, vid: TyVid) -> bool {
         self.inner
             .borrow()
             .type_variable_storage
@@ -124,7 +124,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.root_const_var(var)
     }
 
-    fn shallow_resolve_ty_var(&self, vid: ty::TyVid) -> Ty<'tcx> {
+    fn shallow_resolve_ty_var(&self, vid: TyVid) -> Ty<'tcx> {
         self.shallow_resolve_ty_var(vid)
     }
 
@@ -200,11 +200,11 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         })
     }
 
-    fn equate_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {
+    fn equate_ty_vids_raw(&self, a: TyVid, b: TyVid) {
         self.inner.borrow_mut().type_variables().equate(a, b);
     }
 
-    fn sub_unify_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {
+    fn sub_unify_ty_vids_raw(&self, a: TyVid, b: TyVid) {
         self.sub_unify_ty_vids_raw(a, b);
     }
 
@@ -220,7 +220,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.inner.borrow_mut().const_unification_table().union(a, b);
     }
 
-    fn instantiate_ty_var_raw(&self, vid: ty::TyVid, ty: Ty<'tcx>) {
+    fn instantiate_ty_var_raw(&self, vid: TyVid, ty: Ty<'tcx>) {
         let ty = lower_universe(self, self.try_resolve_ty_var(vid).unwrap_err(), ty);
 
         self.inner.borrow_mut().type_variables().instantiate(vid, ty);
@@ -239,7 +239,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         &self,
         relation: &mut R,
         target_is_expected: bool,
-        target_vid: ty::TyVid,
+        target_vid: TyVid,
         instantiation_variance: ty::Variance,
         source_ty: Ty<'tcx>,
     ) -> RelateResult<'tcx, ()> {
@@ -343,16 +343,16 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     fn opaque_types_storage_num_entries(&self) -> OpaqueTypeStorageEntries {
         self.inner.borrow_mut().opaque_types().num_entries()
     }
+    fn num_pseudo_rigid_due_to_opaques(&self) -> usize {
+        self.inner.borrow_mut().opaque_types().num_pseudo_rigid_due_to_opaques()
+    }
     fn clone_opaque_types_lookup_table(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
         self.inner.borrow_mut().opaque_types().iter_lookup_table().map(|(k, h)| (k, h.ty)).collect()
     }
-    fn clone_duplicate_opaque_types(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
-        self.inner
-            .borrow_mut()
-            .opaque_types()
-            .iter_duplicate_entries()
-            .map(|(k, h)| (k, h.ty))
-            .collect()
+    fn clone_pseudo_rigid_due_to_opaques(
+        &self,
+    ) -> Vec<(TyVid, ty::PseudoRigidDueToOpaquesBound<'tcx>)> {
+        self.inner.borrow_mut().opaque_types().iter_pseudo_rigid_due_to_opaques().collect()
     }
     fn clone_opaque_types_added_since(
         &self,
@@ -365,8 +365,24 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
             .map(|(k, h)| (k, h.ty))
             .collect()
     }
-    fn opaques_with_sub_unified_hidden_type(&self, ty: ty::TyVid) -> Vec<ty::OpaqueAliasTy<'tcx>> {
-        self.opaques_with_sub_unified_hidden_type(ty)
+    fn clone_pseudo_rigid_due_to_opaques_added_since(
+        &self,
+        prev_entries: OpaqueTypeStorageEntries,
+    ) -> Vec<(TyVid, ty::PseudoRigidDueToOpaquesBound<'tcx>)> {
+        self.inner
+            .borrow_mut()
+            .opaque_types()
+            .pseudo_rigid_due_to_opaques_added_since(prev_entries)
+            .collect()
+    }
+    fn is_pseudo_rigid_due_to_opaques(&self, ty_vid: TyVid) -> bool {
+        self.is_pseudo_rigid_due_to_opaques(ty_vid)
+    }
+    fn pseudo_rigid_due_to_opaques(
+        &self,
+        ty_vid: TyVid,
+    ) -> Vec<ty::PseudoRigidDueToOpaquesBound<'tcx>> {
+        self.pseudo_rigid_due_to_opaques(ty_vid)
     }
 
     fn register_hidden_type_in_storage(
@@ -390,6 +406,19 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
             .borrow_mut()
             .opaque_types()
             .add_duplicate(opaque_type_key, ty::ProvisionalHiddenType { span, ty: hidden_ty })
+    }
+    fn register_pseudo_rigid_due_to_opaques_in_storage(
+        &self,
+        pseudo_rigid: Ty<'tcx>,
+        bounds: impl IntoIterator<Item = ty::PseudoRigidDueToOpaquesBound<'tcx>>,
+    ) {
+        self.register_pseudo_rigid_due_to_opaques_in_storage(pseudo_rigid, bounds);
+    }
+    fn register_pseudo_rigid_due_to_opaques_in_storage_with_flattened(
+        &self,
+        bounds: &[(Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)],
+    ) {
+        self.register_pseudo_rigid_due_to_opaques_in_storage_with_flattened(bounds);
     }
 
     fn reset_opaque_types(&self) {

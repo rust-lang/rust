@@ -67,7 +67,7 @@ use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{
     CanonicalInput, CanonicalInputData, ExternalConstraints, ExternalConstraintsData,
-    PredefinedOpaques,
+    PredefinedOpaques, PseudoRigidDueToOpaques,
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
@@ -160,6 +160,8 @@ pub struct CtxtInterners<'tcx> {
     adt_def: InternedSet<'tcx, AdtDefData>,
     external_constraints: InternedSet<'tcx, ExternalConstraintsData<TyCtxt<'tcx>>>,
     predefined_opaques_in_body: InternedSet<'tcx, List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>>,
+    pseudo_rigid_due_to_opaques:
+        InternedSet<'tcx, List<(Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
     local_def_ids: InternedSet<'tcx, List<LocalDefId>>,
     captures: InternedSet<'tcx, List<&'tcx ty::CapturedPlace<'tcx>>>,
@@ -199,6 +201,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             adt_def: InternedSet::with_capacity(N),
             external_constraints: InternedSet::with_capacity(N),
             predefined_opaques_in_body: InternedSet::with_capacity(N),
+            pseudo_rigid_due_to_opaques: InternedSet::with_capacity(N * 2),
             fields: InternedSet::with_capacity(N * 4),
             local_def_ids: InternedSet::with_capacity(N),
             captures: InternedSet::with_capacity(N),
@@ -2057,6 +2060,7 @@ slice_interners!(
     patterns: pub mk_patterns(Pattern<'tcx>),
     outlives: pub mk_outlives(ty::ArgOutlivesClause<'tcx>),
     predefined_opaques_in_body: pub mk_predefined_opaques_in_body((ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)),
+    pseudo_rigid_due_to_opaques: pub mk_pseudo_rigid_due_to_opaques((Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -2550,6 +2554,17 @@ impl<'tcx> TyCtxt<'tcx> {
         T: CollectAndApply<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>), PredefinedOpaques<'tcx>>,
     {
         T::collect_and_apply(iter, |xs| self.mk_predefined_opaques_in_body(xs))
+    }
+
+    pub fn mk_pseudo_rigid_due_to_opaques_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<
+                (Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>),
+                PseudoRigidDueToOpaques<'tcx>,
+            >,
+    {
+        T::collect_and_apply(iter, |xs| self.mk_pseudo_rigid_due_to_opaques(xs))
     }
 
     pub fn mk_clauses_from_iter<I, T>(self, iter: I) -> T::Output

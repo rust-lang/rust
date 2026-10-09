@@ -129,6 +129,17 @@ pub trait Interner:
         data: &[(ty::OpaqueTypeKey<Self>, Self::Ty)],
     ) -> Self::PredefinedOpaques;
 
+    type PseudoRigidDueToOpaques: Copy
+        + Debug
+        + Hash
+        + Eq
+        + TypeFoldable<Self>
+        + SliceLike<Item = (Self::Ty, ty::PseudoRigidDueToOpaquesBound<Self>)>;
+    fn mk_pseudo_rigid_due_to_opaques(
+        self,
+        data: &[(Self::Ty, ty::PseudoRigidDueToOpaquesBound<Self>)],
+    ) -> Self::PseudoRigidDueToOpaques;
+
     type LocalDefIds: Copy
         + Debug
         + Hash

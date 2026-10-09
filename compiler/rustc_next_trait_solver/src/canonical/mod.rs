@@ -27,7 +27,7 @@ use tracing::instrument;
 use crate::delegate::SolverDelegate;
 use crate::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, ExternalRegionConstraints, Goal,
-    NestedNormalizationGoals, QueryInput, Response, VisibleForLeakCheck, inspect,
+    NestedNormalizationGoals, RawExternalConstraintsData, Response, VisibleForLeakCheck, inspect,
 };
 
 pub mod canonicalizer;
@@ -55,7 +55,8 @@ impl<I: Interner, T> ResponseT<I> for inspect::State<I, T> {
 pub(super) fn canonicalize_goal<D, I>(
     delegate: &D,
     goal: Goal<I, I::Predicate>,
-    opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
+    opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
+    pseudo_rigid_due_to_opaques: Vec<(I::Ty, ty::PseudoRigidDueToOpaquesBound<I>)>,
     typing_mode: TypingMode<I>,
 ) -> (ThinVec<I::GenericArg>, I::CanonicalInput)
 where
@@ -64,10 +65,9 @@ where
 {
     let (orig_values, canonical) = Canonicalizer::canonicalize_input(
         delegate,
-        QueryInput {
-            goal,
-            predefined_opaques_in_body: delegate.cx().mk_predefined_opaques_in_body(opaque_types),
-        },
+        goal,
+        opaque_types,
+        pseudo_rigid_due_to_opaques,
     );
 
     let query_input = delegate.cx().mk_canonical_input(ty::CanonicalQueryInput {
@@ -77,17 +77,24 @@ where
     (orig_values, query_input)
 }
 
-pub(super) fn canonicalize_response<D, I, T>(
+pub(super) fn canonicalize_response<D, I>(
     delegate: &D,
     max_input_universe: ty::UniverseIndex,
-    value: T,
-) -> ty::Canonical<I, T>
+    var_values: CanonicalVarValues<I>,
+    certainty: Certainty,
+    external_constraints: RawExternalConstraintsData<I>,
+) -> ty::Canonical<I, Response<I>>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
-    T: TypeFoldable<I>,
 {
-    Canonicalizer::canonicalize_response(delegate, max_input_universe, value)
+    Canonicalizer::canonicalize_query_response(
+        delegate,
+        max_input_universe,
+        var_values,
+        certainty,
+        external_constraints,
+    )
 }
 
 /// After calling a canonical query, we apply the constraints returned
@@ -116,8 +123,12 @@ where
 
     unify_query_var_values(delegate, &original_values, var_values, span);
 
-    let ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals } =
-        &*external_constraints;
+    let ExternalConstraintsData {
+        region_constraints,
+        opaque_types,
+        pseudo_rigid_due_to_opaques,
+        normalization_nested_goals,
+    } = &*external_constraints;
 
     match region_constraints {
         ExternalRegionConstraints::Old(r) => register_region_constraints(
@@ -137,7 +148,10 @@ where
             delegate.register_solver_region_constraint(r.clone(), span)
         }
     };
-    register_new_opaque_types(delegate, opaque_types, span);
+    register_new_opaque_types(delegate, opaque_types.as_slice(), span);
+    delegate.register_pseudo_rigid_due_to_opaques_in_storage_with_flattened(
+        pseudo_rigid_due_to_opaques.as_slice(),
+    );
 
     (normalization_nested_goals.clone(), certainty)
 }
@@ -567,7 +581,7 @@ where
     let var_values = CanonicalVarValues { var_values: delegate.cx().mk_args(var_values) };
     let state = inspect::State { var_values, data };
     let state = delegate.deeply_resolve_via_unification_table(state);
-    Canonicalizer::canonicalize_response(delegate, max_input_universe, state)
+    Canonicalizer::canonicalize_inspect_state(delegate, max_input_universe, state)
 }
 
 // FIXME: needs to be pub to be accessed by downstream

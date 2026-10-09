@@ -24,7 +24,9 @@ use rustc_type_ir::{
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
 
-use super::has_only_region_constraints;
+use super::{
+    RawExternalConstraintsData, has_only_region_constraints_or_pseudo_rigid_due_to_opaques,
+};
 use crate::canonical::{
     canonicalize_goal, canonicalize_response, instantiate_and_apply_query_response,
     response_no_constraints_raw,
@@ -41,10 +43,9 @@ use crate::solve::fast_path::compute_goal_fast_path_cold;
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
-    CanonicalResponse, Certainty, ExternalConstraintsData, FIXPOINT_STEP_LIMIT, Goal,
-    GoalEvaluation, GoalSource, GoalStalledOn, GoalStalledOnOpaques, HasChanged, MaybeCause,
-    NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, SucceededInErased,
-    VisibleForLeakCheck, inspect,
+    CanonicalResponse, Certainty, FIXPOINT_STEP_LIMIT, Goal, GoalEvaluation, GoalSource,
+    GoalStalledOn, GoalStalledOnOpaques, HasChanged, MaybeCause, NestedNormalizationGoals,
+    NoSolution, QueryInput, QueryResult, SucceededInErased, VisibleForLeakCheck, inspect,
 };
 
 pub mod fast_path;
@@ -531,6 +532,10 @@ where
             }
         }
 
+        delegate.register_pseudo_rigid_due_to_opaques_in_storage_with_flattened(
+            input.pseudo_rigid_due_to_opaques.as_slice(),
+        );
+
         let initial_opaque_types_storage_num_entries = delegate.opaque_types_storage_num_entries();
         if cfg!(debug_assertions) && delegate.typing_mode_raw().is_erased_not_coherence() {
             assert!(delegate.clone_opaque_types_lookup_table().is_empty());
@@ -753,7 +758,19 @@ where
         // so we only canonicalize the lookup table and ignore
         // duplicate entries.
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
-
+        let pseudo_rigid_due_to_opaques: Vec<_> = self
+            .delegate
+            .clone_pseudo_rigid_due_to_opaques()
+            .into_iter()
+            .filter_map(|(vid, bound)| {
+                let ty = self.delegate.shallow_resolve_ty_var(vid);
+                if ty.is_ty_var() {
+                    Some((ty, self.delegate.deeply_resolve_via_unification_table(bound)))
+                } else {
+                    None
+                }
+            })
+            .collect();
         let (goal, opaque_types) =
             self.delegate.deeply_resolve_via_unification_table((goal, opaque_types));
         let typing_mode = self.typing_mode();
@@ -762,9 +779,11 @@ where
         let tracing_span = tracing::span!(
             Level::DEBUG,
             "evaluate_goal_raw in typing mode",
-            "{:?} opaques={:?}",
+            "{:?} opaques={:?}, pseudo_rigid_due_to_opques_bounds={:?}, goal={:?}",
             typing_mode,
-            opaque_types
+            opaque_types,
+            pseudo_rigid_due_to_opaques,
+            goal,
         )
         .entered();
 
@@ -811,7 +830,8 @@ where
                 let (orig_values, canonical_goal) = canonicalize_goal(
                     self.delegate,
                     goal,
-                    &[],
+                    Vec::new(),
+                    Vec::new(),
                     TypingMode::ErasedNotCoherence(MayBeErased),
                 );
 
@@ -822,6 +842,7 @@ where
                     accessed_opaques,
                     self.typing_mode(),
                     &opaque_types,
+                    || !pseudo_rigid_due_to_opaques.is_empty(),
                 );
                 match should_rerun {
                     RerunDecision::Yes => debug!("rerunning in original typing mode"),
@@ -847,8 +868,13 @@ where
                 }
             }
 
-            let (orig_values, canonical_goal) =
-                canonicalize_goal(self.delegate, goal, &opaque_types, typing_mode);
+            let (orig_values, canonical_goal) = canonicalize_goal(
+                self.delegate,
+                goal,
+                opaque_types,
+                pseudo_rigid_due_to_opaques,
+                typing_mode,
+            );
 
             let (canonical_result, accessed_opaques) =
                 self.evaluate_in_search_graph(canonical_goal, step_kind);
@@ -874,8 +900,7 @@ where
 
         drop(tracing_span);
 
-        let has_changed =
-            if !has_only_region_constraints(response) { HasChanged::Yes } else { HasChanged::No };
+        let before_instantiate_response = self.delegate.num_pseudo_rigid_due_to_opaques();
 
         let (normalization_nested_goals, certainty) = instantiate_and_apply_query_response(
             self.delegate,
@@ -883,6 +908,19 @@ where
             response,
             self.origin_span,
         );
+
+        // `pseudo_rigid_due_to_opaques` may vary modulo regions which might be able to be unified in
+        // the caller in the end. So, instead of the response has any, check whether the storage
+        // entries actually changed.
+        //
+        // See `tests/ui/traits/next-solver/opaques/non-defining-use-stall-on-no-actual-change-in-the-caller.rs`
+        let has_changed = if !has_only_region_constraints_or_pseudo_rigid_due_to_opaques(response)
+            || self.delegate.num_pseudo_rigid_due_to_opaques() != before_instantiate_response
+        {
+            HasChanged::Yes
+        } else {
+            HasChanged::No
+        };
 
         // FIXME: We previously had an assert here that checked that recomputing
         // a goal after applying its constraints did not change its response.
@@ -951,16 +989,18 @@ where
             })
             .collect();
 
+        let num_opaques_in_storage =
+            canonical_goal.canonical.value.predefined_opaques_in_body.len();
+        let num_hidden_ty_bounds_in_storage =
+            canonical_goal.canonical.value.pseudo_rigid_due_to_opaques.len();
+
         GoalStalledOn {
             stalled_vars,
             sub_roots,
             stalled_maybe_info: maybe_info,
             opaques: GoalStalledOnOpaques::Yes {
-                num_opaques_in_storage: canonical_goal
-                    .canonical
-                    .value
-                    .predefined_opaques_in_body
-                    .len(),
+                num_opaques_in_storage,
+                num_hidden_ty_bounds_in_storage,
                 previously_succeeded_in_erased,
             },
         }
@@ -1473,6 +1513,14 @@ where
         self.delegate.register_hidden_type_in_storage(opaque_type_key, hidden_ty, self.origin_span)
     }
 
+    pub(super) fn register_pseudo_rigid_due_to_opaques_in_storage(
+        &self,
+        hidden_ty: I::Ty,
+        bounds: impl IntoIterator<Item = ty::PseudoRigidDueToOpaquesBound<I>>,
+    ) {
+        self.delegate.register_pseudo_rigid_due_to_opaques_in_storage(hidden_ty, bounds);
+    }
+
     pub(super) fn add_item_bounds_for_hidden_type(
         &mut self,
         opaque_def_id: I::OpaqueTyId,
@@ -1588,12 +1636,12 @@ where
         Ok(may_use_unstable_feature(&**self.delegate, param_env, symbol))
     }
 
-    pub(crate) fn opaques_with_sub_unified_hidden_type(
+    pub(crate) fn pseudo_rigid_due_to_opaques(
         &self,
         self_ty: I::Ty,
-    ) -> Vec<ty::OpaqueAliasTy<I>> {
+    ) -> Vec<ty::PseudoRigidDueToOpaquesBound<I>> {
         if let ty::Infer(ty::TyVar(vid)) = self_ty.kind() {
-            self.delegate.opaques_with_sub_unified_hidden_type(vid)
+            self.delegate.pseudo_rigid_due_to_opaques(vid)
         } else {
             vec![]
         }
@@ -1709,14 +1757,14 @@ where
 
         filter_irrelevant_region_constraints(self.delegate, &var_values, &mut external_constraints);
 
+        external_constraints.pseudo_rigid_due_to_opaques.retain(|(pr, _)| pr.is_ty_var());
+
         let canonical = canonicalize_response(
             self.delegate,
             self.max_input_universe,
-            Response {
-                var_values,
-                certainty,
-                external_constraints: self.cx().mk_external_constraints(external_constraints),
-            },
+            var_values,
+            certainty,
+            external_constraints,
         );
 
         Ok(canonical)
@@ -1750,7 +1798,7 @@ where
         &self,
         certainty: Certainty,
         normalization_nested_goals: NestedNormalizationGoals<I>,
-    ) -> ExternalConstraintsData<I> {
+    ) -> RawExternalConstraintsData<I> {
         // We only return region constraints once the certainty is `Yes`. This
         // is necessary as we may drop nested goals on ambiguity, which may result
         // in unconstrained inference variables in the region constraints. It also
@@ -1778,15 +1826,32 @@ where
         //
         // Constraints for any existing opaque types are already tracked by changes
         // to the `var_values`.
-        let opaque_types = self
+        let initial_entries = self.initial_opaque_types_storage_num_entries;
+        let opaque_types = self.delegate.clone_opaque_types_added_since(initial_entries);
+        let pseudo_rigid_due_to_opaques: Vec<_> = self
             .delegate
-            .clone_opaque_types_added_since(self.initial_opaque_types_storage_num_entries);
+            .clone_pseudo_rigid_due_to_opaques_added_since(initial_entries)
+            .into_iter()
+            .filter_map(|(vid, bound)| {
+                let ty = self.delegate.shallow_resolve_ty_var(vid);
+                if ty.is_ty_var() {
+                    Some((ty, self.delegate.deeply_resolve_via_unification_table(bound)))
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         if self.typing_mode().is_erased_not_coherence() {
-            assert!(opaque_types.is_empty());
+            assert!(opaque_types.is_empty() && pseudo_rigid_due_to_opaques.is_empty());
         }
 
-        ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals }
+        RawExternalConstraintsData {
+            region_constraints,
+            opaque_types,
+            pseudo_rigid_due_to_opaques,
+            normalization_nested_goals,
+        }
     }
 
     pub(super) fn normalize<T: TypeFoldable<I>>(
@@ -1827,7 +1892,7 @@ where
 fn filter_irrelevant_region_constraints<D, I>(
     delegate: &D,
     var_values: &CanonicalVarValues<I>,
-    external_constraints: &mut ExternalConstraintsData<I>,
+    external_constraints: &mut RawExternalConstraintsData<I>,
 ) where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -1863,8 +1928,12 @@ fn filter_irrelevant_region_constraints<D, I>(
         }
     }
 
-    let ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals } =
-        external_constraints;
+    let RawExternalConstraintsData {
+        region_constraints,
+        opaque_types,
+        pseudo_rigid_due_to_opaques,
+        normalization_nested_goals,
+    } = external_constraints;
 
     // If we have a constraint like `'re: '?1`, where '?1 can name 're and '?1 appears
     // only on the RHS of region constraints, then this kind of constraint is also trivial,
@@ -1879,6 +1948,7 @@ fn filter_irrelevant_region_constraints<D, I>(
         // because we skip the RHS of outlives constraints, and `TypeVisitor` doesn't
         // have a method we can easily override in order to do this.
         opaque_types.visit_with(&mut vis);
+        pseudo_rigid_due_to_opaques.visit_with(&mut vis);
         normalization_nested_goals.visit_with(&mut vis);
         for (constraint, _) in r.iter() {
             match constraint {
@@ -1913,11 +1983,12 @@ enum RerunDecision {
     EagerlyPropagateToParent,
 }
 
-#[tracing::instrument(ret)]
+#[tracing::instrument(level = "debug", skip(parent_has_pseudo_rigid_in_storage), ret)]
 fn should_rerun_after_erased_canonicalization<I: Interner>(
     AccessedOpaques { reason: _, rerun }: AccessedOpaques<I>,
     original_typing_mode: TypingMode<I>,
     parent_opaque_types: &[(OpaqueTypeKey<I>, I::Ty)],
+    parent_has_pseudo_rigid_in_storage: impl FnOnce() -> bool,
 ) -> RerunDecision {
     let parent_opaque_def_ids = parent_opaque_types.iter().map(|(key, _)| key.def_id.into());
     let opaque_in_storage = |opaques: I::LocalDefIds, def_ids: SmallCopySet<_>| {
@@ -1928,13 +1999,6 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
             .chain(parent_opaque_def_ids)
             .any(|opaque| def_ids.as_ref().contains(&opaque))
         {
-            RerunDecision::Yes
-        } else {
-            RerunDecision::No
-        }
-    };
-    let any_opaque_has_infer_as_hidden = || {
-        if parent_opaque_types.iter().any(|(_, ty)| ty.is_ty_var()) {
             RerunDecision::Yes
         } else {
             RerunDecision::No
@@ -1964,11 +2028,15 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
             | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
         ) => opaque_in_storage(opaques, defids),
         // =============================
-        (RerunCondition::AnyOpaqueHasInferAsHidden, TypingMode::Typeck { .. }) => {
-            any_opaque_has_infer_as_hidden()
+        (RerunCondition::PseudoRigidInStorage, TypingMode::Typeck { .. }) => {
+            if parent_has_pseudo_rigid_in_storage() {
+                RerunDecision::Yes
+            } else {
+                RerunDecision::No
+            }
         }
         (
-            RerunCondition::AnyOpaqueHasInferAsHidden,
+            RerunCondition::PseudoRigidInStorage,
             TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Codegen
@@ -1977,14 +2045,14 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
         ) => RerunDecision::No,
         // =============================
         (
-            RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(_),
+            RerunCondition::OpaqueInStorageOrPseudoRigidInStorage(_),
             TypingMode::PostAnalysis | TypingMode::Codegen | TypingMode::Reflection,
         ) => RerunDecision::Yes,
         (
-            RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
+            RerunCondition::OpaqueInStorageOrPseudoRigidInStorage(defids),
             TypingMode::Typeck { defining_opaque_types_and_generators: opaques },
         ) => {
-            if let RerunDecision::Yes = any_opaque_has_infer_as_hidden() {
+            if parent_has_pseudo_rigid_in_storage() {
                 RerunDecision::Yes
             } else if let RerunDecision::Yes = opaque_in_storage(opaques, defids) {
                 RerunDecision::Yes
@@ -1993,7 +2061,7 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
             }
         }
         (
-            RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
+            RerunCondition::OpaqueInStorageOrPseudoRigidInStorage(defids),
             TypingMode::PostBorrowck { defined_opaque_types: opaques }
             | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
         ) => opaque_in_storage(opaques, defids),
@@ -2034,11 +2102,28 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     root_depth: usize,
 ) -> (Result<NestedNormalizationGoals<I>, NoSolution>, inspect::GoalEvaluation<I>) {
     let opaque_types = delegate.clone_opaque_types_lookup_table();
+    let pseudo_rigid_due_to_opaques: Vec<_> = delegate
+        .clone_pseudo_rigid_due_to_opaques()
+        .into_iter()
+        .filter_map(|(vid, bound)| {
+            let ty = delegate.shallow_resolve_ty_var(vid);
+            if ty.is_ty_var() {
+                Some((ty, delegate.deeply_resolve_via_unification_table(bound)))
+            } else {
+                None
+            }
+        })
+        .collect();
     let (goal, opaque_types) = delegate.deeply_resolve_via_unification_table((goal, opaque_types));
     let typing_mode = delegate.typing_mode_raw().assert_not_erased();
 
-    let (orig_values, canonical_goal) =
-        canonicalize_goal(delegate, goal, &opaque_types, typing_mode.into());
+    let (orig_values, canonical_goal) = canonicalize_goal(
+        delegate,
+        goal,
+        opaque_types,
+        pseudo_rigid_due_to_opaques,
+        typing_mode.into(),
+    );
 
     let (canonical_result, final_revision, required_depth) =
         delegate.cx().evaluate_root_goal_for_proof_tree_raw(canonical_goal, root_depth);

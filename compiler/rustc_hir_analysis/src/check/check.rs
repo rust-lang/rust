@@ -430,7 +430,7 @@ fn check_opaque_meets_bounds<'tcx>(
         Ok(())
     } else {
         // Check that any hidden types found during wf checking match the hidden types that `type_of` sees.
-        for (mut key, mut ty) in infcx.take_opaque_types() {
+        for (mut key, mut ty) in infcx.take_opaque_types_old_solver() {
             ty.ty = infcx.deeply_resolve_ignoring_regions(ty.ty);
             key = infcx.deeply_resolve_ignoring_regions(key);
             sanity_check_found_hidden_type(tcx, key, ty)?;
@@ -2349,7 +2349,7 @@ pub(super) fn check_coroutine_obligations(
     if !tcx.next_trait_solver_globally() {
         // Check that any hidden types found when checking these stalled coroutine obligations
         // are valid.
-        for (key, ty) in infcx.take_opaque_types() {
+        for (key, ty) in infcx.take_opaque_types_old_solver() {
             let hidden_type = infcx.deeply_resolve_ignoring_regions(ty);
             let key = infcx.deeply_resolve_ignoring_regions(key);
             sanity_check_found_hidden_type(tcx, key, hidden_type)?;
