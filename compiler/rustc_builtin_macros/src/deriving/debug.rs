@@ -1,4 +1,4 @@
-use rustc_ast::{self as ast, EnumDef, Safety, TyKind};
+use rustc_ast::{self as ast, EnumDef, Safety};
 use rustc_expand::base::ExtCtxt;
 use rustc_session::config::FmtDebug;
 use rustc_span::{Ident, Span, Symbol, sym};
@@ -236,9 +236,8 @@ fn show_fieldless_enum(
     type_ident: Ident,
 ) -> BlockOrExpr {
     let fmt = formatter_ident(cx, span);
-    if let Some((stmts, expr)) = show_fieldless_enum_concat_str(cx, span, def, substr, fmt.clone())
-    {
-        return BlockOrExpr::new_mixed(stmts, Some(expr));
+    if let Some(expr) = show_fieldless_enum_concat_str(cx, span, def, substr, fmt.clone()) {
+        return BlockOrExpr::new_expr(expr);
     }
     let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
     let arms = def
@@ -281,7 +280,7 @@ fn show_fieldless_enum_concat_str(
     def: &EnumDef,
     substr: &Substructure<'_>,
     fmt: Box<ast::Expr>,
-) -> Option<(ThinVec<ast::Stmt>, Box<ast::Expr>)> {
+) -> Option<Box<ast::Expr>> {
     // Minimum variants count where this optimization starts to pay off.
     // See https://github.com/rust-lang/rust/pull/155452 for more details.
     const THRESHOLD: usize = 10;
@@ -307,11 +306,8 @@ fn show_fieldless_enum_concat_str(
     }
 
     // Create the constant concatenated string
-    let names_ident = Ident::new(sym::__NAMES, span);
     let names_str_body = cx.expr_str(span, Symbol::intern(&concatenated_names));
-    let names_static_item = cx.stmt_let(span, false, names_ident, names_str_body);
 
-    let variant_index_ident = Ident::new(sym::__d, span);
     let arms = def
         .variants
         .iter()
@@ -336,18 +332,10 @@ fn show_fieldless_enum_concat_str(
 
     let variant_index_expr = cx.expr_match(span, cx.expr_self(span), arms);
 
-    let discriminant_let_stmt = cx.stmt_let(span, false, variant_index_ident, variant_index_expr);
-
-    // __d expression
-    let discriminant_expr = cx.expr_ident(span, variant_index_ident);
-
-    // __NAMES expression
-    let names_expr = cx.expr_ident(span, names_ident);
-
     // ::core::fmt::Formatter::debug_c_like_enum_write_str(f, __NAMES, &__OFFSET, __d)
     let fn_path = cx.std_path(&[sym::fmt, sym::Formatter, sym::debug_c_like_enum_write_str]);
     let call_expr =
-        cx.expr_call_global(span, fn_path, thin_vec![fmt, names_expr, discriminant_expr]);
+        cx.expr_call_global(span, fn_path, thin_vec![fmt, names_str_body, variant_index_expr]);
 
-    Some((thin_vec![names_static_item, discriminant_let_stmt,], call_expr))
+    Some(call_expr)
 }

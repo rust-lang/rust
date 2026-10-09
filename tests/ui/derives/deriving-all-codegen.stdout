@@ -1251,9 +1251,8 @@ enum Fieldless10 {
 impl ::core::fmt::Debug for Fieldless10 {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        let __NAMES =
-            "AAAAA BBBB CC DDDDDDDD E FFFFFFFFFFFFF GGGGGG Hatsune IIIIIII JJJJJJJJJ ";
-        let __d =
+        ::core::fmt::Formatter::debug_c_like_enum_write_str(f,
+            "AAAAA BBBB CC DDDDDDDD E FFFFFFFFFFFFF GGGGGG Hatsune IIIIIII JJJJJJJJJ ",
             match self {
                 Fieldless10::AAAAA => 0usize,
                 Fieldless10::BBBB => 6usize,
@@ -1265,8 +1264,7 @@ impl ::core::fmt::Debug for Fieldless10 {
                 Fieldless10::Hatsune => 46usize,
                 Fieldless10::IIIIIII => 54usize,
                 Fieldless10::JJJJJJJJJ => 62usize,
-            };
-        ::core::fmt::Formatter::debug_c_like_enum_write_str(f, __NAMES, __d)
+            })
     }
 }
 
