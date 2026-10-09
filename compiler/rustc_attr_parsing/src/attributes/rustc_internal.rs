@@ -175,7 +175,6 @@ impl SingleAttributeParser for RustcLegacyConstGenericsParser {
         let AstTarget::Fn(function) = cx.ast_target else {
             return;
         };
-
         let index_list = rustc_attr_ir::find_attr!(cx.parsed_attrs, RustcLegacyConstGenerics { fn_indexes, .. } => fn_indexes)
             .expect("missing parsed RustcLegacyConstGenerics attribute in finalize_check");
         let generics = &function.generics;
