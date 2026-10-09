@@ -1,5 +1,17 @@
 //! Ensure that we refuse to run a do_not_const_check function, even if the body *would* const-check
 //! at the moment.
+
+//@ rustc-env:RUSTC_ICE=0
+//@ failure-status: 101
+//@ normalize-stderr: "note: compiler flags.*\n\n" -> ""
+//@ normalize-stderr: "note: rustc.*running on.*" -> "note: rustc {version} running on {platform}"
+//@ normalize-stderr: "thread 'rustc'.*panicked.*:\n.*\n" -> ""
+//@ normalize-stderr: " +\d{1,}: .*\n" -> ""
+//@ normalize-stderr: " + at .*\n" -> ""
+//@ normalize-stderr: " +.*omitted.*frames?.*\n" -> ""
+//@ normalize-stderr: ".*note: Some details are omitted.*\n" -> ""
+//@ normalize-stderr: "(internal compiler error: ).*(compiler/[^:]+):\d+:\d+: " -> "$1$2:LL:CC: "
+
 #![feature(rustc_attrs, intrinsics)]
 
 #[rustc_do_not_const_check]
