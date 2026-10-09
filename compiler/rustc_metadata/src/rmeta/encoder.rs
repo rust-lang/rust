@@ -2746,14 +2746,28 @@ fn create_local_def_ids_remapping(tcx: TyCtxt<'_>) -> Vec<DefIndex> {
     let start = tcx.definitions().first_non_det_index().as_usize();
 
     for idx in start..defs.num_definitions() {
+        let def_id_level = |mut id| {
+            let mut level = 0;
+            while let Some(parent) = tcx.opt_local_parent(id) {
+                level += 1;
+                id = parent;
+            }
+
+            level
+        };
+
         let def_id = LocalDefId { local_def_index: idx.into() };
-        non_det_ids.push((def_id, defs.def_path_hash(def_id).local_hash()));
+        non_det_ids.push((def_id, def_id_level(def_id), defs.def_path_hash(def_id).local_hash()));
     }
 
-    non_det_ids.sort_by_key(|(_, hash)| *hash);
+    // Sort by level first in order to satisfy the invariant that child def id
+    // always has a higher def index than its parent (see `def_id_partial_cmp`),
+    // in context of one level sort by stable hash. Ids from higher level will
+    // get higher remapped def index.
+    non_det_ids.sort_by_key(|(_, level, hash)| (*level, *hash));
 
     let mut remapping = vec![CRATE_DEF_INDEX; non_det_ids.len()];
-    for (idx, (id, _)) in non_det_ids.into_iter().enumerate() {
+    for (idx, (id, ..)) in non_det_ids.into_iter().enumerate() {
         remapping[id.local_def_index.as_usize() - start] = DefIndex::from_usize(start + idx);
     }
 
