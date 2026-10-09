@@ -111,8 +111,9 @@ where
     let instantiation =
         compute_query_response_instantiation_values(delegate, &original_values, &response, span);
 
-    let Response { var_values, external_constraints, certainty } =
-        delegate.instantiate_canonical(response, instantiation);
+    let Response { var_values, external_constraints, certainty } = response.value;
+    let external_constraints = delegate.instantiate_value(external_constraints, instantiation);
+    let var_values = delegate.instantiate_value(var_values, instantiation);
 
     unify_query_var_values(delegate, &original_values, var_values, span);
 
@@ -608,7 +609,9 @@ where
         prev_universe,
     );
 
-    let inspect::State { var_values, data } = delegate.instantiate_canonical(state, instantiation);
+    let inspect::State { var_values, data } = state.value;
+    let data = delegate.instantiate_value(data, instantiation);
+    let var_values = delegate.instantiate_value(var_values, instantiation);
 
     unify_query_var_values(delegate, orig_values, var_values, span);
     data
