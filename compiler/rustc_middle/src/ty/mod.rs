@@ -26,7 +26,7 @@ pub use generic_args::{GenericArgKind, TermKind, *};
 pub use generics::*;
 pub use intrinsic::IntrinsicDef;
 use rustc_abi::{
-    Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, ScalableElt, VariantIdx,
+    Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, ScalableElt, Size, VariantIdx,
 };
 use rustc_ast::{self as ast};
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
@@ -1107,6 +1107,18 @@ pub struct TypingEnv<'tcx> {
     #[type_visitable(ignore)]
     typing_mode: TypingModeEqWrapper<'tcx>,
     pub param_env: ParamEnv<'tcx>,
+}
+
+impl<'tcx> rustc_type_ir::inherent::TypingEnv<TyCtxt<'tcx>> for TypingEnv<'tcx> {
+    fn fully_monomorphized() -> Self {
+        Self::fully_monomorphized()
+    }
+
+    fn layout_size(self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Size {
+        tcx.layout_of(self.as_query_input(ty))
+            .unwrap_or_else(|e| panic!("could not compute layout for {ty:?}: {e:?}"))
+            .size
+    }
 }
 
 impl<'tcx> TypingEnv<'tcx> {

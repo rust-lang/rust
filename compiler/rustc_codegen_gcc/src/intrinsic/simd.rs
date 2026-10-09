@@ -15,7 +15,6 @@ use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods, LayoutTy
 #[cfg(feature = "master")]
 use rustc_hir as hir;
 use rustc_middle::mir::BinOp;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{ErrorGuaranteed, Span, Symbol, span_bug, sym};
