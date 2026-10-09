@@ -828,6 +828,11 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         proj: ProjectionElem<VnIndex, Ty<'tcx>>,
     ) -> Option<(PlaceTy<'tcx>, VnIndex)> {
         let projection_ty = place_ty.projection_ty(self.tcx, proj);
+        // References that we load from a union field cannot be unified.
+        // See https://github.com/rust-lang/rust/issues/163825
+        if place_ty.ty.is_union() && projection_ty.ty.is_ref() {
+            return None;
+        }
         let proj = match proj {
             ProjectionElem::Deref => {
                 if let Some(Mutability::Not) = place_ty.ty.ref_mutability()
