@@ -1572,7 +1572,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         DiscardParams::Yes,
                         params,
                     ),
-                    param_idents: self.lower_fn_params_to_idents(&f.decl),
                 }));
                 return hir::Ty { kind, span: self.lower_span(t.span), hir_id };
             }
