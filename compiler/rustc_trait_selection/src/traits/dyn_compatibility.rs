@@ -520,7 +520,7 @@ fn virtual_call_violations_for_method<'tcx>(
     if receiver_ty != tcx.types.self_param {
         if !receiver_is_dispatchable(tcx, method, receiver_ty) {
             let span_n_lt = if let Some(hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Fn(sig, trait_fn),
+                kind: hir::TraitItemKind::Fn(sig, _),
                 ..
             })) = tcx.hir_get_if_local(method.def_id).as_ref()
             {
@@ -533,21 +533,7 @@ fn virtual_call_violations_for_method<'tcx>(
                     _ => sym::empty,
                 };
                 // Get the `Span` for all of `self: Ty`, not just `Ty`.
-                match trait_fn {
-                    hir::TraitFn::Required([Some(name), ..])
-                        if name.span.eq_ctxt(sig.decl.inputs[0].ty.span) =>
-                    {
-                        Some(name.span.to(sig.decl.inputs[0].ty.span))
-                    }
-                    hir::TraitFn::Provided(_body_id)
-                        if let Some(p) = sig.decl.inputs.get(0)
-                            && p.param_span.eq_ctxt(p.ty.span) =>
-                    {
-                        Some(p.param_span.to(p.ty.span))
-                    }
-                    _ => None,
-                }
-                .map(|sp| (sp, lt))
+                sig.decl.inputs.get(0).map(|p| (p.param_span.to(p.ty.span), lt))
             } else {
                 None
             };
