@@ -1,9 +1,5 @@
 //@ edition: 2024
 
-// WARNING: If you would ever want to modify this test,
-// please consider modifying rustc's async drop test at
-// `tests/mir-opt/coroutine/auxiliary/has_drop_inside_dep.rs`.
-
 #![feature(async_drop)]
 #![allow(incomplete_features)]
 
