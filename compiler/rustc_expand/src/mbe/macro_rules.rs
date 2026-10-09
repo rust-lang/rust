@@ -13,7 +13,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr_ir::diagnostic::Directive;
 use rustc_attr_ir::{self as attrs, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, StringPart};
 use rustc_feature::Features;
 use rustc_hir::def::MacroKinds;
 use rustc_lint_defs::builtin::{
@@ -1643,21 +1643,32 @@ fn check_matcher_core<'tt>(
                                 );
                             }
 
-                            let msg = "allowed there are: ";
                             match possible {
                                 &[] => {}
                                 &[t] => {
-                                    err.note(format!(
-                                        "only {t} is allowed after `{kind}` fragments",
-                                    ));
+                                    err.highlighted_note(vec![
+                                        StringPart::normal("Only "),
+                                        StringPart::highlighted(t),
+                                        StringPart::normal(format!(
+                                            " is allowed after `{kind}` fragments"
+                                        )),
+                                    ]);
                                 }
                                 ts => {
-                                    err.note(format!(
-                                        "{}{} or {}",
-                                        msg,
-                                        ts[..ts.len() - 1].to_vec().join(", "),
-                                        ts[ts.len() - 1],
-                                    ));
+                                    let mut msg_parts =
+                                        vec![StringPart::normal("allowed there are: ")];
+
+                                    for (i, &t) in ts.iter().enumerate() {
+                                        if i == ts.len() - 1 {
+                                            msg_parts.push(StringPart::normal(" or "));
+                                        } else if i > 0 {
+                                            msg_parts.push(StringPart::normal(", "));
+                                        }
+
+                                        msg_parts.push(StringPart::highlighted(t));
+                                    }
+
+                                    err.highlighted_note(msg_parts);
                                 }
                             }
                             errored = Err(err.emit_err());
