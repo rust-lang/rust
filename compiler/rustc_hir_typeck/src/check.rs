@@ -92,7 +92,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         if !params_can_be_unsized || fn_sig.abi() == rustc_abi::ExternAbi::RustTail {
             fcx.require_type_is_sized(
                 param_ty,
-                param.ty_span,
+                param.ty.span,
                 // ty.span == binding_span iff this is a closure parameter with no type ascription,
                 // or if it's an implicit `self` parameter
                 ObligationCauseCode::SizedArgumentType(

@@ -771,7 +771,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 {
                     // If the expected region is late bound, the found region is not, and users are asking compiler
                     // to infer the type, we can suggest adding `: &_`.
-                    if param_hir.pat.span == param_hir.ty_span {
+                    if param_hir.pat.span == param_hir.ty.span {
                         // for `|x|`, `|_|`, `|x: impl Foo|`
                         let Ok(pat) =
                             self.tcx.sess.source_map().span_to_snippet(param_hir.pat.span)
@@ -786,7 +786,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         else {
                             return;
                         };
-                        let Ok(ty) = self.tcx.sess.source_map().span_to_snippet(param_hir.ty_span)
+                        let Ok(ty) = self.tcx.sess.source_map().span_to_snippet(param_hir.ty.span)
                         else {
                             return;
                         };
