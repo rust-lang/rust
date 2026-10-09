@@ -412,10 +412,24 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     let expr = self.method_callee(expr, segment.ident.span, None);
                     info!("Using method span: {:?}", expr.span);
 
+                    // Arg position const args are already part of the callee's generic args,
+                    // so we skip them when building runtime arguments.
+                    let generics = match *expr.ty.kind() {
+                        ty::FnDef(def_id, _) => Some(tcx.generics_of(def_id)),
+                        _ => None,
+                    };
+                    let is_const_arg = |idx: usize| {
+                        generics.is_some_and(|g| {
+                            g.own_arg_pos_consts().any(|(_, pos)| pos as usize == idx)
+                        })
+                    };
                     let args = std::iter::once(receiver)
                         .chain(args.iter())
-                        .map(|expr| self.mirror_expr(expr))
+                        .enumerate()
+                        .filter(|&(idx, _)| !is_const_arg(idx))
+                        .map(|(_, arg)| self.mirror_expr(arg))
                         .collect();
+
                     ExprKind::Call {
                         ty: expr.ty,
                         fun: self.thir.exprs.push(expr),
@@ -517,10 +531,28 @@ impl<'tcx> ThirBuildCx<'tcx> {
                             base: AdtExprBase::None,
                         }))
                     } else {
+                        // Arg position const args are already part of the callee's generic args,
+                        // so we skip them when building runtime arguments.
+                        let fn_ty = self.typeck_results.node_type(fun.hir_id);
+                        let generics = match *fn_ty.kind() {
+                            ty::FnDef(def_id, _) => Some(tcx.generics_of(def_id)),
+                            _ => None,
+                        };
+                        let is_const_arg = |idx: usize| {
+                            generics.is_some_and(|g| {
+                                g.own_arg_pos_consts().any(|(_, pos)| pos as usize == idx)
+                            })
+                        };
+                        let args = args
+                            .iter()
+                            .enumerate()
+                            .filter(|&(idx, _)| !is_const_arg(idx))
+                            .map(|(_, arg)| self.mirror_expr(arg))
+                            .collect();
                         ExprKind::Call {
-                            ty: self.typeck_results.node_type(fun.hir_id),
+                            ty: fn_ty,
                             fun: self.mirror_expr(fun),
-                            args: self.mirror_exprs(args),
+                            args,
                             from_hir_call: true,
                             fn_span: expr.span,
                         }
