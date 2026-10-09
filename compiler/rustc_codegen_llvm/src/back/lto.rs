@@ -323,10 +323,9 @@ fn fat_lto(
 
         // Internalize everything below threshold to help strip out more modules and such.
         unsafe {
-            let ptr = symbols_below_threshold.as_ptr();
             llvm::LLVMRustRunRestrictionPass(
                 llmod,
-                ptr as *const *const libc::c_char,
+                symbols_below_threshold.as_ptr(),
                 symbols_below_threshold.len() as libc::size_t,
             );
         }
