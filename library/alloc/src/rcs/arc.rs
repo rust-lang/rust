@@ -2864,8 +2864,12 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// Returns `true` if there are no other `Arc` or [`Weak`] pointers to the same allocation;
     /// returns `false` otherwise.
     ///
-    /// If this function returns `true`, then is guaranteed to be safe to call [`get_mut_unchecked`]
-    /// on this `Arc`, so long as no clones occur in between.
+    /// If this function returns `true`, then it is guaranteed to be safe to call [`get_mut_unchecked`]
+    /// on this `Arc`, as long as no clones occur in between.
+    ///
+    /// The result can become stale if another thread can call `clone` or
+    /// `downgrade` through a shared reference. Make sure you have exclusive
+    /// access to the `Arc`.
     ///
     /// # Examples
     ///
@@ -2889,7 +2893,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// This function will always return the same value as `Arc::get_mut(arc).is_some()`. However,
     /// unlike that operation it does not produce any mutable references to the underlying data,
     /// meaning no pointers to the data inside the `Arc` are invalidated by the call. Thus, the
-    /// following code is valid, even though it would be UB if it used `Arc::get_mut`:
+    /// following code is valid:
     ///
     /// ```
     /// use std::sync::Arc;
@@ -2899,6 +2903,12 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// assert!(Arc::is_unique(&arc));
     /// assert_eq!(unsafe { *pointer }, 5);
     /// ```
+    ///
+    /// The following changes would make the example unsound:
+    ///
+    /// - Using `Arc::get_mut` to create a mutable reference while also accessing the value
+    ///   through `pointer`.
+    /// - Dropping `arc` before dereferencing `pointer`, leaving it dangling.
     ///
     /// # Atomic orderings
     ///
