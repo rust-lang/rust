@@ -686,9 +686,11 @@ pub fn try_evaluate_const<'tcx, E: Debug>(
                                         tcx,
                                         alias_const.args,
                                     );
-                                    let typing_env = infcx
+                                    let ty::PseudoCanonicalInput { typing_env, value: args } = infcx
                                         .typing_env(tcx.erase_and_anonymize_regions(param_env))
-                                        .with_post_analysis_normalized(tcx);
+                                        .with_post_analysis_normalized_invalidating_rigid_aliases(
+                                            tcx, args,
+                                        );
                                     (args, typing_env)
                                 }
                             }
@@ -699,10 +701,13 @@ pub fn try_evaluate_const<'tcx, E: Debug>(
                             }
                         }
                     } else {
-                        let typing_env = infcx
+                        let ty::PseudoCanonicalInput { typing_env, value: args } = infcx
                             .typing_env(tcx.erase_and_anonymize_regions(param_env))
-                            .with_post_analysis_normalized(tcx);
-                        (alias_const.args, typing_env)
+                            .with_post_analysis_normalized_invalidating_rigid_aliases(
+                                tcx,
+                                alias_const.args,
+                            );
+                        (args, typing_env)
                     }
                 }
                 Some((def_id, ty::AnonConstKind::RepeatExprCount)) => {
