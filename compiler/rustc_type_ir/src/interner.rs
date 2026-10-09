@@ -254,7 +254,6 @@ pub trait Interner:
 
     // Predicates
     type ParamEnv: ParamEnv<Self>;
-    type Predicate: Predicate<Self>;
     type Clause: Clause<Self>;
     type Clauses: Clauses<Self>;
 

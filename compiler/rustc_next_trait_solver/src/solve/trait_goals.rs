@@ -106,7 +106,7 @@ where
                 .clauses_of(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|clause| goal.with(cx, clause));
+                .map(|clause| goal.with(cx, clause.as_predicate()));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds)?;
 
             // We currently elaborate all supertrait outlives obligations from impls.
@@ -117,7 +117,7 @@ where
                 cx.impl_super_outlives(impl_def_id)
                     .iter_instantiated(cx, impl_args)
                     .map(Unnormalized::skip_norm_wip)
-                    .map(|pred| goal.with(cx, pred)),
+                    .map(|pred| goal.with(cx, pred.as_predicate())),
             )?;
 
             then(ecx)
@@ -270,7 +270,7 @@ where
                 .clauses_of(goal.predicate.def_id().into())
                 .iter_instantiated(cx, goal.predicate.trait_ref.args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|c| goal.with(cx, c));
+                .map(|c| goal.with(cx, c.as_predicate()));
             // While you could think of trait aliases to have a single builtin impl
             // which uses its implied trait bounds as where-clauses, using
             // `GoalSource::ImplWhereClause` here would be incorrect, as we also
@@ -879,7 +879,13 @@ where
                     }
                     ecx.add_goal(
                         GoalSource::Misc,
-                        goal.with(cx, ty::OutlivesClause(ty_lifetime, lifetime)),
+                        goal.with(
+                            cx,
+                            ty::ClauseKind::RegionOutlives(ty::OutlivesClause(
+                                ty_lifetime,
+                                lifetime,
+                            )),
+                        ),
                     )?;
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
@@ -1050,7 +1056,7 @@ where
             // (i.e. the principal, all of the associated types match, and any auto traits)
             ecx.add_goals(
                 GoalSource::ImplWhereBound,
-                b_data.iter().map(|pred| goal.with(cx, pred.with_self_ty(cx, a_ty))),
+                b_data.iter().map(|pred| goal.with(cx, pred.with_self_ty(cx, a_ty).as_predicate())),
             )?;
 
             // The type must be `Sized` to be unsized.
@@ -1067,7 +1073,10 @@ where
             )?;
 
             // The type must outlive the lifetime of the `dyn` we're unsizing into.
-            ecx.add_goal(GoalSource::Misc, goal.with(cx, ty::OutlivesClause(a_ty, b_region)))?;
+            ecx.add_goal(
+                GoalSource::Misc,
+                goal.with(cx, ty::ClauseKind::TypeOutlives(ty::OutlivesClause(a_ty, b_region))),
+            )?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -1197,7 +1206,11 @@ where
             // Also require that a_ty's lifetime outlives b_ty's lifetime.
             ecx.add_goal(
                 GoalSource::ImplWhereBound,
-                Goal::new(ecx.cx(), param_env, ty::OutlivesClause(a_region, b_region)),
+                Goal::new(
+                    ecx.cx(),
+                    param_env,
+                    ty::ClauseKind::RegionOutlives(ty::OutlivesClause(a_region, b_region)),
+                ),
             )?;
 
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

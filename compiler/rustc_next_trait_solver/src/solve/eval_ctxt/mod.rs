@@ -82,7 +82,10 @@ enum CurrentGoalKind {
 }
 
 impl CurrentGoalKind {
-    fn from_query_input<I: Interner>(cx: I, input: QueryInput<I, I::Predicate>) -> CurrentGoalKind {
+    fn from_query_input<I: Interner>(
+        cx: I,
+        input: QueryInput<I, rustc_type_ir::sty::predicates::Predicate<I>>,
+    ) -> CurrentGoalKind {
         match input.goal.predicate.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
                 if cx.trait_is_coinductive(pred.trait_ref.def_id) {
@@ -148,7 +151,11 @@ where
 
     pub(super) search_graph: &'a mut SearchGraph<D>,
 
-    nested_goals: Vec<(GoalSource, Goal<I, I::Predicate>, Option<GoalStalledOn<I>>)>,
+    nested_goals: Vec<(
+        GoalSource,
+        Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>,
+        Option<GoalStalledOn<I>>,
+    )>,
 
     pub(super) origin_span: I::Span,
 
@@ -180,7 +187,7 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
     /// search graph which would break cycle detection.
     fn evaluate_root_goal(
         &self,
-        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+        goal: Goal<Self::Interner, rustc_type_ir::sty::predicates::Predicate<Self::Interner>>,
         span: <Self::Interner as Interner>::Span,
         stalled_on: Option<GoalStalledOn<Self::Interner>>,
     ) -> Result<GoalEvaluation<Self::Interner>, NoSolution>;
@@ -195,7 +202,7 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
     /// See the comment on [OpaqueTypesJank] for more details.
     fn root_goal_may_hold_opaque_types_jank(
         &self,
-        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+        goal: Goal<Self::Interner, rustc_type_ir::sty::predicates::Predicate<Self::Interner>>,
     ) -> bool;
 
     /// Check whether evaluating `goal` with a depth of `root_depth` may
@@ -208,14 +215,14 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
     fn root_goal_may_hold_with_depth(
         &self,
         root_depth: usize,
-        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+        goal: Goal<Self::Interner, rustc_type_ir::sty::predicates::Predicate<Self::Interner>>,
     ) -> bool;
 
     // FIXME: This is only exposed because we need to use it in `analyse.rs`
     // which is not yet uplifted. Once that's done, we should remove this.
     fn evaluate_root_goal_for_proof_tree(
         &self,
-        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+        goal: Goal<Self::Interner, rustc_type_ir::sty::predicates::Predicate<Self::Interner>>,
         span: <Self::Interner as Interner>::Span,
     ) -> (
         Result<NestedNormalizationGoals<Self::Interner>, NoSolution>,
@@ -231,7 +238,7 @@ where
     #[instrument(level = "debug", skip(self), ret)]
     fn evaluate_root_goal(
         &self,
-        goal: Goal<I, I::Predicate>,
+        goal: Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>,
         span: I::Span,
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolution> {
@@ -282,7 +289,7 @@ where
     #[instrument(level = "debug", skip(self), ret)]
     fn root_goal_may_hold_opaque_types_jank(
         &self,
-        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+        goal: Goal<Self::Interner, rustc_type_ir::sty::predicates::Predicate<Self::Interner>>,
     ) -> bool {
         self.probe(|| {
             self.evaluate_root_goal(goal, I::Span::dummy(), None).is_ok_and(|r| match r.certainty {
@@ -302,7 +309,7 @@ where
     fn root_goal_may_hold_with_depth(
         &self,
         root_depth: usize,
-        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+        goal: Goal<Self::Interner, rustc_type_ir::sty::predicates::Predicate<Self::Interner>>,
     ) -> bool {
         self.probe(|| {
             EvalCtxt::enter_root(self, root_depth, I::Span::dummy(), |ecx| {
@@ -315,7 +322,7 @@ where
     #[instrument(level = "debug", skip(self))]
     fn evaluate_root_goal_for_proof_tree(
         &self,
-        goal: Goal<I, I::Predicate>,
+        goal: Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>,
         span: I::Span,
     ) -> (Result<NestedNormalizationGoals<I>, NoSolution>, inspect::GoalEvaluation<I>) {
         let mut result =
@@ -337,7 +344,7 @@ where
 /// See the doc comment on `RECURSION_DEPTH_EXCEEDING_LIMIT` and #159228 for more details.
 fn maybe_evaluate_root_goal_with_higher_recursion_limit<D, I>(
     delegate: &D,
-    goal: Goal<I, I::Predicate>,
+    goal: Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>,
     span: I::Span,
     initial_result: &mut Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased>,
 ) where
@@ -379,7 +386,7 @@ fn maybe_evaluate_root_goal_with_higher_recursion_limit<D, I>(
 /// See the doc comment on `RECURSION_DEPTH_EXCEEDING_LIMIT` and #159228 for more details.
 fn maybe_evaluate_root_goal_for_proof_tree_with_higher_recursion_limit<D, I>(
     delegate: &D,
-    goal: Goal<I, I::Predicate>,
+    goal: Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>,
     span: I::Span,
     initial_result: &mut (
         Result<NestedNormalizationGoals<I>, NoSolution>,
@@ -415,7 +422,8 @@ fn maybe_evaluate_root_goal_for_proof_tree_with_higher_recursion_limit<D, I>(
         }
     });
     if let Ok(rerun_result) = rerun_result {
-        let predicate: I::Predicate = goal_evaluation.uncanonicalized_goal.predicate;
+        let predicate: rustc_type_ir::sty::predicates::Predicate<I> =
+            goal_evaluation.uncanonicalized_goal.predicate;
         delegate.emit_next_solver_overflow_fcw(goal.with(delegate.cx(), predicate), span);
         *initial_result = rerun_result;
     }
@@ -509,7 +517,7 @@ where
         proof_tree_builder: &mut inspect::ProofTreeBuilder<D>,
         f: impl FnOnce(
             &mut EvalCtxt<'_, D>,
-            Goal<I, I::Predicate>,
+            Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>,
         ) -> Result<T, NoSolutionOrRerunNonErased>,
     ) -> (Result<T, NoSolution>, AccessedOpaques<I>) {
         let (ref delegate, input, var_values) = D::build_with_canonical(cx, &canonical_input);
@@ -590,7 +598,7 @@ where
     fn evaluate_goal(
         &mut self,
         source: GoalSource,
-        goal: Goal<I, I::Predicate>,
+        goal: Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>,
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased> {
         if let RerunStalled::WontMakeProgress(stalled_maybe_info) =
@@ -622,7 +630,7 @@ where
     fn evaluate_goal_no_fast_paths(
         &mut self,
         source: GoalSource,
-        goal: Goal<I, I::Predicate>,
+        goal: Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased> {
         let (normalization_nested_goals, goal_evaluation) = self.evaluate_goal_raw(source, goal)?;
         assert!(normalization_nested_goals.is_empty());
@@ -747,7 +755,7 @@ where
     pub(super) fn evaluate_goal_raw(
         &mut self,
         source: GoalSource,
-        goal: Goal<I, I::Predicate>,
+        goal: Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>,
     ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolutionOrRerunNonErased> {
         // We only care about one entry per `OpaqueTypeKey` here,
         // so we only canonicalize the lookup table and ignore
@@ -968,7 +976,7 @@ where
 
     pub(super) fn compute_goal(
         &mut self,
-        goal: Goal<I, I::Predicate>,
+        goal: Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         let Goal { param_env, predicate } = goal;
         let kind = predicate.kind();
@@ -1093,7 +1101,7 @@ where
     pub(super) fn add_goal(
         &mut self,
         source: GoalSource,
-        mut goal: Goal<I, I::Predicate>,
+        mut goal: Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>,
     ) -> Result<(), NoSolutionOrRerunNonErased> {
         goal.predicate =
             self.normalize(goal.param_env, ty::Unnormalized::new_wip(goal.predicate))?;
@@ -1119,7 +1127,7 @@ where
     pub(super) fn add_goals(
         &mut self,
         source: GoalSource,
-        goals: impl IntoIterator<Item = Goal<I, I::Predicate>>,
+        goals: impl IntoIterator<Item = Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>>,
     ) -> Result<(), NoSolutionOrRerunNonErased> {
         for goal in goals {
             self.add_goal(source, goal)?;
@@ -1348,7 +1356,7 @@ where
         param_env: I::ParamEnv,
         lhs: T,
         rhs: T,
-    ) -> Result<Vec<Goal<I, I::Predicate>>, NoSolution> {
+    ) -> Result<Vec<Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>>, NoSolution> {
         Ok(self.delegate.relate(param_env, lhs, ty::Variance::Invariant, rhs, self.origin_span)?)
     }
 
@@ -1440,7 +1448,7 @@ where
         &self,
         param_env: I::ParamEnv,
         term: I::Term,
-    ) -> Option<Vec<Goal<I, I::Predicate>>> {
+    ) -> Option<Vec<Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>>> {
         self.delegate.well_formed_goals(param_env, term)
     }
 
@@ -2029,7 +2037,7 @@ pub fn evaluate_root_goal_for_proof_tree_raw_provider<
 /// [EvalCtxt] and uses a separate cache.
 pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>, I: Interner>(
     delegate: &D,
-    goal: Goal<I, I::Predicate>,
+    goal: Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>,
     origin_span: I::Span,
     root_depth: usize,
 ) -> (Result<NestedNormalizationGoals<I>, NoSolution>, inspect::GoalEvaluation<I>) {

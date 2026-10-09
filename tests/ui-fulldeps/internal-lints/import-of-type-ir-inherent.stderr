@@ -22,7 +22,7 @@ LL | use rustc_type_ir::inherent;
 error: do not use `rustc_type_ir::inherent` unless you're inside of the trait solver
   --> $DIR/import-of-type-ir-inherent.rs:12:20
    |
-LL | use rustc_type_ir::inherent::Predicate;
+LL | use rustc_type_ir::inherent::Clause;
    |                    ^^^^^^^^
    |
    = note: the method or struct you're looking for is likely defined somewhere else downstream in the compiler

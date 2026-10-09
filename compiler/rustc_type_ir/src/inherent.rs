@@ -13,10 +13,7 @@ use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::relate::Relate;
 use crate::solve::{AdtDestructorKind, SizedTraitKind};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{
-    self as ty, ClauseKind, CollectAndApply, Const, FieldInfo, Interner, PredicateKind, Region,
-    UpcastFrom,
-};
+use crate::{self as ty, CollectAndApply, Const, FieldInfo, Interner, Region, UpcastFrom};
 
 #[rust_analyzer::prefer_underscore_import]
 pub trait Ty<I: Interner<Ty = Self>>:
@@ -410,53 +407,6 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
 }
 
 #[rust_analyzer::prefer_underscore_import]
-pub trait Predicate<I: Interner<Predicate = Self>>:
-    Copy
-    + Debug
-    + Hash
-    + Eq
-    + TypeSuperVisitable<I>
-    + TypeSuperFoldable<I>
-    + Flags
-    + UpcastFrom<I, ty::PredicateKind<I>>
-    + UpcastFrom<I, ty::Binder<I, ty::PredicateKind<I>>>
-    + UpcastFrom<I, ty::ClauseKind<I>>
-    + UpcastFrom<I, ty::Binder<I, ty::ClauseKind<I>>>
-    + UpcastFrom<I, I::Clause>
-    + UpcastFrom<I, ty::NormalizesTo<I>>
-    + UpcastFrom<I, ty::TraitRef<I>>
-    + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
-    + UpcastFrom<I, ty::TraitClause<I>>
-    + UpcastFrom<I, ty::ProjectionClause<I>>
-    + UpcastFrom<I, ty::OutlivesClause<I, I::Ty>>
-    + UpcastFrom<I, ty::OutlivesClause<I, Region<I>>>
-    + IntoKind<Kind = ty::Binder<I, ty::PredicateKind<I>>>
-    + Elaboratable<I>
-{
-    fn as_clause(self) -> Option<I::Clause>;
-
-    fn allow_normalization(self) -> bool {
-        match self.kind().skip_binder() {
-            PredicateKind::Clause(ClauseKind::WellFormed(_)) => false,
-            PredicateKind::Clause(ClauseKind::Trait(_))
-            | PredicateKind::Clause(ClauseKind::HostEffect(..))
-            | PredicateKind::Clause(ClauseKind::RegionOutlives(_))
-            | PredicateKind::Clause(ClauseKind::TypeOutlives(_))
-            | PredicateKind::Clause(ClauseKind::Projection(_))
-            | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
-            | PredicateKind::Clause(ClauseKind::UnstableFeature(_))
-            | PredicateKind::DynCompatible(_)
-            | PredicateKind::Subtype(_)
-            | PredicateKind::Coerce(_)
-            | PredicateKind::Clause(ClauseKind::ConstEvaluatable(_))
-            | PredicateKind::ConstEquate(_, _)
-            | PredicateKind::NormalizesTo(..)
-            | PredicateKind::Ambiguous => true,
-        }
-    }
-}
-
-#[rust_analyzer::prefer_underscore_import]
 pub trait Clause<I: Interner<Clause = Self>>:
     Copy
     + Debug
@@ -474,7 +424,7 @@ pub trait Clause<I: Interner<Clause = Self>>:
     + IntoKind<Kind = ty::Binder<I, ty::ClauseKind<I>>>
     + Elaboratable<I>
 {
-    fn as_predicate(self) -> I::Predicate;
+    fn as_predicate(self) -> rustc_type_ir::sty::predicates::Predicate<I>;
 
     fn as_type_outlives_clause(self) -> Option<ty::Binder<I, ty::OutlivesClause<I, I::Ty>>> {
         self.kind()

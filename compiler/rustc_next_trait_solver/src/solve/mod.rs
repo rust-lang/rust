@@ -484,7 +484,7 @@ pub struct GoalEvaluation<I: Interner> {
     /// `Vec<?y>: Trait`. If this goal is still ambiguous and we later resolve `?y` to `u32`,
     /// then reevaluating this goal now only needs to resolve `?y` while it would otherwise
     /// have to resolve both `?x` and `?y`,
-    pub goal: Goal<I, I::Predicate>,
+    pub goal: Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>,
     pub certainty: Certainty,
     pub has_changed: HasChanged,
     /// If the [`Certainty`] was `Maybe`, then keep track of whether the goal has changed

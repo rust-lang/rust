@@ -120,7 +120,8 @@ where
                                     cx,
                                     trait_ref
                                         .to_host_effect_clause(cx, goal.predicate.constness)
-                                        .skip_norm_wip(),
+                                        .skip_norm_wip()
+                                        .as_predicate(),
                                 )
                             },
                         ),
@@ -175,7 +176,7 @@ where
                 .clauses_of(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|clause| goal.with(cx, clause));
+                .map(|clause| goal.with(cx, clause.as_predicate()));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds)?;
 
             // For this impl to be `const`, we need to check its `[const]` bounds too.
@@ -187,7 +188,8 @@ where
                         cx,
                         bound_trait_ref
                             .to_host_effect_clause(cx, goal.predicate.constness)
-                            .skip_norm_wip(),
+                            .skip_norm_wip()
+                            .as_predicate(),
                     )
                 });
             ecx.add_goals(GoalSource::ImplWhereBound, const_conditions)?;
@@ -224,7 +226,7 @@ where
                 .clauses_of(goal.predicate.def_id().into())
                 .iter_instantiated(cx, goal.predicate.trait_ref.args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|c| goal.with(cx, c));
+                .map(|c| goal.with(cx, c.as_predicate()));
 
             let const_conditions = cx
                 .const_conditions(goal.predicate.def_id().into())
@@ -234,7 +236,8 @@ where
                         cx,
                         bound_trait_ref
                             .to_host_effect_clause(cx, goal.predicate.constness)
-                            .skip_norm_wip(),
+                            .skip_norm_wip()
+                            .as_predicate(),
                     )
                 });
             // While you could think of trait aliases to have a single builtin impl
@@ -319,7 +322,8 @@ where
                         cx,
                         trait_ref
                             .to_host_effect_clause(cx, goal.predicate.constness)
-                            .skip_norm_wip(),
+                            .skip_norm_wip()
+                            .as_predicate(),
                     ),
                 )
             })
@@ -429,7 +433,8 @@ where
                     goal.with(
                         cx,
                         ty::Binder::dummy(trait_ref)
-                            .to_host_effect_clause(cx, goal.predicate.constness),
+                            .to_host_effect_clause(cx, goal.predicate.constness)
+                            .as_predicate(),
                     )
                 }),
             )?;
