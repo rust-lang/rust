@@ -1247,7 +1247,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
         let abi = cx.tcx.hir_get_foreign_abi(it.hir_id());
 
         match it.kind {
-            hir::ForeignItemKind::Fn(sig, _, _) => {
+            hir::ForeignItemKind::Fn(sig, _) => {
                 // fnptrs are a special case, they always need to be treated as
                 // "the element rendered unsafe" because their unsafety doesn't affect
                 // their surroundings, and their type is often declared inline

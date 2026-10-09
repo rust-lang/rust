@@ -4878,7 +4878,7 @@ pub enum ForeignItemKind<'hir> {
     /// `&[Option<Ident>]` is used because of code paths shared with `TraitFn`
     /// and `FnPtrTy`. The sharing is due to all of these cases not allowing
     /// arbitrary patterns for parameters.
-    Fn(FnSig<'hir>, &'hir [Option<Ident>], &'hir Generics<'hir>),
+    Fn(FnSig<'hir>, &'hir Generics<'hir>),
     /// A foreign static item (`static ext: u8`).
     Static(&'hir Ty<'hir>, Mutability, Safety),
     /// A foreign type.
@@ -4934,7 +4934,7 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
             | OwnerNode::Item(Item { kind: ItemKind::Fn { sig: fn_sig, .. }, .. })
             | OwnerNode::ForeignItem(ForeignItem {
-                kind: ForeignItemKind::Fn(fn_sig, _, _), ..
+                kind: ForeignItemKind::Fn(fn_sig, _), ..
             }) => Some(fn_sig),
             _ => None,
         }
@@ -4946,7 +4946,7 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
             | OwnerNode::Item(Item { kind: ItemKind::Fn { sig: fn_sig, .. }, .. })
             | OwnerNode::ForeignItem(ForeignItem {
-                kind: ForeignItemKind::Fn(fn_sig, _, _), ..
+                kind: ForeignItemKind::Fn(fn_sig, _), ..
             }) => Some(fn_sig.decl),
             _ => None,
         }
@@ -5154,7 +5154,7 @@ impl<'hir> Node<'hir> {
             Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
             | Node::Item(Item { kind: ItemKind::Fn { sig: fn_sig, .. }, .. })
-            | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_sig, _, _), .. }) => {
+            | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_sig, _), .. }) => {
                 Some(fn_sig.decl)
             }
             Node::Expr(Expr { kind: ExprKind::Closure(Closure { fn_decl, .. }), .. }) => {
@@ -5182,7 +5182,7 @@ impl<'hir> Node<'hir> {
             Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
             | Node::Item(Item { kind: ItemKind::Fn { sig: fn_sig, .. }, .. })
-            | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_sig, _, _), .. }) => {
+            | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_sig, _), .. }) => {
                 Some(fn_sig)
             }
             _ => None,
@@ -5275,9 +5275,7 @@ impl<'hir> Node<'hir> {
 
     pub fn generics(self) -> Option<&'hir Generics<'hir>> {
         match self {
-            Node::ForeignItem(ForeignItem {
-                kind: ForeignItemKind::Fn(_, _, generics), ..
-            })
+            Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(_, generics), .. })
             | Node::TraitItem(TraitItem { generics, .. })
             | Node::ImplItem(ImplItem { generics, .. }) => Some(generics),
             Node::Item(item) => item.kind.generics(),
@@ -5375,8 +5373,8 @@ mod size_asserts {
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 48);
     static_assert_size!(FnDecl<'_>, 40);
-    static_assert_size!(ForeignItem<'_>, 88);
-    static_assert_size!(ForeignItemKind<'_>, 56);
+    static_assert_size!(ForeignItem<'_>, 72);
+    static_assert_size!(ForeignItemKind<'_>, 40);
     static_assert_size!(GenericArg<'_>, 16);
     static_assert_size!(GenericBound<'_>, 64);
     static_assert_size!(Generics<'_>, 56);

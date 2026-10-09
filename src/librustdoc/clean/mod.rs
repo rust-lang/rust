@@ -3313,7 +3313,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     let def_id = item.owner_id.to_def_id();
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
-            hir::ForeignItemKind::Fn(sig, _, generics) => {
+            hir::ForeignItemKind::Fn(sig, generics) => {
                 let (generics, decl) = clean_function(cx, &sig, generics, def_id);
                 ItemKind::ForeignFunction(
                     Box::new(Function { generics, decl }),
