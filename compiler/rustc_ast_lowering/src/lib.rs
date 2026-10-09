@@ -1977,7 +1977,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir_id: hir_param.hir_id,
                     pat: hir_param.pat,
                     ty: self.arena.alloc(ty),
-                    ty_span: hir_param.ty_span,
                     param_span: hir_param.param_span,
                 }
             },

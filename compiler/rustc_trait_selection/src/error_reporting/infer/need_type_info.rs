@@ -1384,9 +1384,9 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
         for param in decl.inputs {
             debug!(
                 "param: span {:?}, ty_span {:?}, pat.span {:?}",
-                param.param_span, param.ty_span, param.pat.span
+                param.param_span, param.ty.span, param.pat.span
             );
-            if param.ty_span != param.pat.span {
+            if param.ty.span != param.pat.span {
                 debug!("skipping param: has explicit type");
                 continue;
             }

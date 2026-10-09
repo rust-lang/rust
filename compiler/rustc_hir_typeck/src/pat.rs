@@ -1425,8 +1425,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             match binding_parent {
-                hir::Node::Param(hir::Param { ty_span, pat, .. })
-                    if pat.span != *ty_span
+                hir::Node::Param(hir::Param { ty, pat, .. })
+                    if pat.span != ty.span
                         && pinned.is_pinned()
                         && !tcx.features().pin_ergonomics() =>
                 {
@@ -1435,12 +1435,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 // Check that there is explicit type (ie this is not a closure param with inferred type)
                 // so we don't suggest moving something to the type that does not exist
-                hir::Node::Param(hir::Param { ty_span, pat, .. }) if pat.span != *ty_span => {
+                hir::Node::Param(hir::Param { ty, pat, .. }) if pat.span != ty.span => {
                     err.multipart_suggestion(
                         format!("to take parameter `{binding}` by reference, move `&{pin_and_mut}` to the type"),
                         vec![
                             (pat.span.until(inner.span), "".to_owned()),
-                            (ty_span.shrink_to_lo(), format!("&{}", pinned.prefix_str(mutbl))),
+                            (ty.span.shrink_to_lo(), format!("&{}", pinned.prefix_str(mutbl))),
                         ],
                         Applicability::MachineApplicable
                     );

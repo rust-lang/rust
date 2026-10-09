@@ -4215,7 +4215,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                     Node::Param(param) => {
                         err.span_suggestion_verbose(
-                            param.ty_span.shrink_to_lo(),
+                            param.ty.span.shrink_to_lo(),
                             "function arguments must have a statically known size, borrowed types \
                             always have a known size",
                             "&",
@@ -5771,7 +5771,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     );
                     let assocs_in_this_method = self.probe_assoc_types_at_expr(
                         &type_diffs,
-                        param.ty_span,
+                        param.ty.span,
                         prev_ty,
                         param.hir_id,
                         param_env,

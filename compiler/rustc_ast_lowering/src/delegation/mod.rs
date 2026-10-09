@@ -130,7 +130,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         )),
                         span,
                     }),
-                    ty_span: param.ty_span,
                     param_span: param.param_span,
                 }
             }));
@@ -230,7 +229,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::Param {
                 hir_id,
                 pat,
-                ty_span: span,
                 param_span: span,
                 ty: self.arena.alloc(hir::Ty {
                     #[allow(deprecated)]

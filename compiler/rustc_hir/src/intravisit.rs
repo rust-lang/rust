@@ -546,7 +546,7 @@ pub trait Visitor<'v>: Sized {
 }
 
 pub fn walk_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Param<'v>) -> V::Result {
-    let Param { hir_id, pat, ty, ty_span: _, param_span: _ } = param;
+    let Param { hir_id, pat, ty, param_span: _ } = param;
     try_visit!(visitor.visit_ty_unambig(*ty));
     try_visit!(visitor.visit_id(*hir_id));
     visitor.visit_pat(pat)
