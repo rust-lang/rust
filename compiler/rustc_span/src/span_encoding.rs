@@ -373,6 +373,9 @@ macro_rules! match_span_kind {
 pub const DUMMY_SP: Span = InlineCtxt::try_new_span(0, 0, 0).unwrap();
 
 impl Span {
+    /// Create a new `Span`, handling the invalid case where `lo > hi` by swapping.
+    ///
+    /// If possible, ensure that `lo <= hi`, and call `Span::new_ordered` instead.
     #[inline]
     pub fn new(
         mut lo: BytePos,
@@ -386,6 +389,9 @@ impl Span {
         Span::new_ordered(lo, hi, ctxt, parent)
     }
 
+    /// Create a new `Span`.
+    ///
+    /// This requires that `lo <= hi`.
     #[inline]
     pub fn new_ordered(
         lo: BytePos,
