@@ -508,7 +508,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             rustc_transmute::Answer::No(_) => Err(NoSolution),
             rustc_transmute::Answer::Yes => Ok((Certainty::Yes, ThinVec::new())),
             rustc_transmute::Answer::If(cond) => {
-                let predicates = flatten_answer_tree(self.tcx, predicate, cond, assume);
+                let predicates = flatten_answer_tree(self.tcx, predicate, cond);
                 Ok((Certainty::Yes, predicates))
             }
         }

@@ -307,7 +307,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Answer::No(_) => return Err(SelectionError::Unimplemented),
             Answer::Yes => PredicateObligations::new(),
             Answer::If(cond) => {
-                flatten_answer_tree(self.tcx(), obligation.predicate.skip_binder(), cond, assume)
+                flatten_answer_tree(self.tcx(), obligation.predicate.skip_binder(), cond)
                     .into_iter()
                     .map(|predicate| {
                         Obligation::new(

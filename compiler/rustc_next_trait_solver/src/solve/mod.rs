@@ -21,7 +21,7 @@ mod search_graph;
 mod trait_goals;
 
 use derive_where::derive_where;
-use rustc_transmute::{Assume, Condition};
+use rustc_transmute::Condition;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 pub use rustc_type_ir::solve::*;
@@ -501,14 +501,13 @@ pub fn flatten_answer_tree<I: Interner>(
     interner: I,
     predicate: TraitClause<I>,
     cond: Condition<Region<I>, I::Ty>,
-    assume: Assume,
 ) -> ThinVec<I::Predicate> {
     match cond {
         // FIXME(bryangarza): Add separate `IfAny` case, instead of treating as `IfAll`
         // Not possible until the trait solver supports disjunctions of obligations
         Condition::IfAll(conds) | Condition::IfAny(conds) => conds
             .into_iter()
-            .flat_map(|cond| flatten_answer_tree(interner, predicate, cond, assume))
+            .flat_map(|cond| flatten_answer_tree(interner, predicate, cond))
             .collect(),
         Condition::Immutable { ty } => {
             let trait_ref = ty::TraitRef::new(
