@@ -1,0 +1,23 @@
+error: expected identifier, found `<eof>`
+  --> $DIR/meta-item-global-path-fail-issue-53048.rs:7:4
+   |
+LL | macro_rules! m { ($m:meta) => { #[derive($m)] pub struct S; }; }
+   |                   ------- while parsing argument for this `meta` macro fragment
+LL |
+LL | m!(::);
+   |    ^^ expected identifier
+
+error: expected unsuffixed literal, found `<eof>`
+  --> $DIR/meta-item-global-path-fail-issue-53048.rs:11:10
+   |
+LL | #[derive(::)] pub struct D;
+   |          ^^
+
+error: expected unsuffixed literal, found `::`
+  --> $DIR/meta-item-global-path-fail-issue-53048.rs:15:13
+   |
+LL | #[allow(a = ::b::c)]
+   |             ^^
+
+error: aborting due to 3 previous errors
+
