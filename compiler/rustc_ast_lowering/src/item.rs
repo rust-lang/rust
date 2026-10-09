@@ -19,8 +19,8 @@ use super::diagnostics::{
 };
 use super::stability::{enabled_names, gate_unstable_abi};
 use super::{
-    DiscardParams, FnDeclKind, GenericArgsMode, ImplTraitContext, ImplTraitPosition,
-    LoweringContext, ParamMode, RelaxedBoundForbiddenReason, RelaxedBoundPolicy,
+    FnDeclKind, GenericArgsMode, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
+    RelaxedBoundForbiddenReason, RelaxedBoundPolicy,
 };
 use crate::diagnostics::{ConstComptimeFn, ResolvingRestrictionKind, RestrictionAncestorOnly};
 
@@ -283,7 +283,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             id,
                             FnDeclKind::Fn,
                             coroutine_marker,
-                            if body.is_none() { DiscardParams::Yes } else { DiscardParams::No },
+                            body.is_some(),
                             params,
                         )
                     });
@@ -624,14 +624,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let params =
                         this.arena.alloc_from_iter(fdec.inputs.iter().map(|x| this.lower_param(x)));
                     // Disallow `impl Trait` in foreign items.
-                    this.lower_fn_decl(
-                        fdec,
-                        i.id,
-                        FnDeclKind::ExternFn,
-                        None,
-                        DiscardParams::Yes,
-                        params,
-                    )
+                    this.lower_fn_decl(fdec, i.id, FnDeclKind::ExternFn, None, false, params)
                 });
 
                 // Unmarked safety in unsafe block defaults to unsafe.
@@ -855,7 +848,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sig.header.coroutine_marker,
                     attrs,
                     // Parameters are discarded for functions without a body
-                    DiscardParams::Yes,
+                    false,
                     params,
                 );
                 if define_opaque.is_some() {
@@ -892,7 +885,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     FnDeclKind::Trait,
                     sig.header.coroutine_marker,
                     attrs,
-                    DiscardParams::No,
+                    true,
                     params,
                 );
                 self.lower_define_opaque(hir_id, &define_opaque);
@@ -1104,7 +1097,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     if is_in_trait_impl { FnDeclKind::Impl } else { FnDeclKind::Inherent },
                     sig.header.coroutine_marker,
                     attrs,
-                    if body.is_none() { DiscardParams::Yes } else { DiscardParams::No },
+                    body.is_some(),
                     params,
                 );
                 self.lower_define_opaque(hir_id, &define_opaque);
@@ -1555,13 +1548,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         kind: FnDeclKind,
         coroutine_marker: Option<CoroutineMarker>,
         attrs: &[rustc_attr_ir::Attribute],
-        discard_params: DiscardParams,
+        has_body: bool,
         inputs: &'hir [hir::Param<'hir>],
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header, hir::Safety::Safe, attrs);
         let itctx = ImplTraitContext::Universal;
         let (generics, decl) = self.lower_generics(generics, itctx, |this| {
-            this.lower_fn_decl(&sig.decl, node_id, kind, coroutine_marker, discard_params, inputs)
+            this.lower_fn_decl(&sig.decl, node_id, kind, coroutine_marker, has_body, inputs)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }

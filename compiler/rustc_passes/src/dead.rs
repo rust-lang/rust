@@ -692,7 +692,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     type Result = ControlFlow<ErrorGuaranteed>;
 
     fn visit_fn_decl(&mut self, decl: &'tcx FnDecl<'tcx>) -> Self::Result {
-        if !decl.fn_has_body {
+        if !decl.fn_decl_kind.has_body() {
             intravisit::walk_fn_decl(self, decl)?;
         }
         ControlFlow::Continue(())

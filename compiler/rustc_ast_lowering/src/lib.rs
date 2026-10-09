@@ -808,14 +808,6 @@ enum GenericArgsMode {
     Silence,
 }
 
-#[derive(Debug, Copy, Clone)]
-enum DiscardParams {
-    /// Should be used for functions without a body. Lowers the attributes on the parameter and then discards them.
-    Yes,
-    /// Should be used for functions with a body. Does not lower the attributes, as lowering of the parameters is done by `lower_body`.
-    No,
-}
-
 impl<'hir> LoweringContext<'_, 'hir> {
     fn create_def(
         &mut self,
@@ -1569,7 +1561,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         t.id,
                         FnDeclKind::Pointer,
                         None,
-                        DiscardParams::Yes,
+                        false,
                         params,
                     ),
                 }));
@@ -1916,7 +1908,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         fn_node_id: NodeId,
         kind: FnDeclKind,
         coro: Option<CoroutineMarker>,
-        discard_params: DiscardParams,
+        has_body: bool,
         hir_inputs: &'hir [hir::Param<'hir>],
     ) -> &'hir hir::FnDecl<'hir> {
         let c_variadic = decl.c_variadic();
@@ -2038,14 +2030,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             )
             .set_c_variadic(c_variadic)
             .set_splatted(splatted, inputs.len())
-            .unwrap();
+            .unwrap()
+            .set_has_body(has_body);
 
-        self.arena.alloc(hir::FnDecl {
-            inputs,
-            output,
-            fn_decl_kind,
-            fn_has_body: matches!(discard_params, DiscardParams::No),
-        })
+        self.arena.alloc(hir::FnDecl { inputs, output, fn_decl_kind })
     }
 
     // Transforms `-> T` for `async fn` into `-> OpaqueTy { .. }`

@@ -3809,6 +3809,9 @@ impl FnDeclFlags {
     /// Bitflag for lifetime elision.
     const LIFETIME_ELISION_ALLOWED_FLAG: u8 = 1 << 4;
 
+    /// Bitflag for whether there is a body associated with this function
+    const HAS_BODY: u8 = 1 << 5;
+
     /// Marker index for "no splatted argument".
     /// Must have the same value as `FnSigKind::NO_SPLATTED_ARG_INDEX` and `rustc_ast::FnDecl::NO_SPLATTED_ARG_INDEX`.
     const NO_SPLATTED_ARG_INDEX: u8 = u8::MAX;
@@ -3927,6 +3930,22 @@ impl FnDeclFlags {
     pub fn splatted(self) -> Option<u8> {
         if self.splatted == Self::NO_SPLATTED_ARG_INDEX { None } else { Some(self.splatted) }
     }
+
+    pub fn has_body(self) -> bool {
+        (self.flags & Self::HAS_BODY) != 0
+    }
+
+    /// Set whether this fn decl is associated with a body
+    #[must_use = "this method does not modify the receiver"]
+    pub fn set_has_body(mut self, allowed: bool) -> Self {
+        if allowed {
+            self.flags |= Self::HAS_BODY;
+        } else {
+            self.flags &= !Self::HAS_BODY;
+        }
+
+        self
+    }
 }
 
 /// Represents the header (not the body) of a function declaration.
@@ -3936,7 +3955,6 @@ pub struct FnDecl<'hir> {
     pub output: FnRetTy<'hir>,
     /// The packed function declaration attributes.
     pub fn_decl_kind: FnDeclFlags,
-    pub fn_has_body: bool,
 }
 
 impl<'hir> FnDecl<'hir> {
@@ -3981,7 +3999,6 @@ impl<'hir> FnDecl<'hir> {
             inputs: &[],
             output: FnRetTy::DefaultReturn(span),
             fn_decl_kind: FnDeclFlags::default().set_lifetime_elision_allowed(true),
-            fn_has_body: true,
         }
     }
 }
