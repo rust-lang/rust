@@ -17,8 +17,8 @@ use crate::inherent::*;
 use crate::lang_items::SolverTraitLangItem;
 use crate::region_constraint::RegionConstraint;
 use crate::{
-    self as ty, Canonical, CanonicalVarValues, CantBeErased, Const, ConstVid, FloatVid,
-    GenericArgKind, InferConst, IntVid, Interner, TermKind, TyVid, TypingMode, Upcast,
+    self as ty, Canonical, CantBeErased, Const, ConstVid, FloatVid, GenericArgKind, InferConst,
+    IntVid, Interner, TermKind, TyVid, TypingMode, Upcast,
 };
 
 pub type CanonicalInputData<I> =
@@ -587,9 +587,59 @@ pub enum FetchEligibleAssocItemResponse<I: Interner> {
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 pub struct Response<I: Interner> {
     pub certainty: Certainty,
-    pub var_values: CanonicalVarValues<I>,
+    pub var_values: I::GenericArgs,
     /// Additional constraints returned by this query.
     pub external_constraints: I::ExternalConstraints,
+}
+
+impl<I: Interner> Response<I> {
+    pub fn is_identity(&self) -> bool {
+        self.var_values.iter().enumerate().all(|(bv, arg)| match arg.kind() {
+            ty::GenericArgKind::Lifetime(r) => {
+                matches!(r.kind(), ty::ReBound(ty::BoundVarIndexKind::Canonical, br) if br.var().as_usize() == bv)
+            }
+            ty::GenericArgKind::Type(ty) => {
+                matches!(ty.kind(), ty::Bound(ty::BoundVarIndexKind::Canonical, bt) if bt.var().as_usize() == bv)
+            }
+            ty::GenericArgKind::Const(ct) => {
+                matches!(ct.kind(), ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, bc) if bc.var().as_usize() == bv)
+            }
+        })
+    }
+
+    pub fn is_identity_modulo_regions(&self) -> bool {
+        let mut var = ty::BoundVar::ZERO;
+        for arg in self.var_values.iter() {
+            match arg.kind() {
+                ty::GenericArgKind::Lifetime(r) => {
+                    if matches!(r.kind(), ty::ReBound(ty::BoundVarIndexKind::Canonical, br) if var == br.var())
+                    {
+                        var = var + 1;
+                    } else {
+                        // It's ok if this region var isn't an identity variable
+                    }
+                }
+                ty::GenericArgKind::Type(ty) => {
+                    if matches!(ty.kind(), ty::Bound(ty::BoundVarIndexKind::Canonical, bt) if var == bt.var())
+                    {
+                        var = var + 1;
+                    } else {
+                        return false;
+                    }
+                }
+                ty::GenericArgKind::Const(ct) => {
+                    if matches!(ct.kind(), ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, bc) if var == bc.var())
+                    {
+                        var = var + 1;
+                    } else {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        true
+    }
 }
 
 impl<I: Interner> Eq for Response<I> {}
