@@ -171,8 +171,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .set_lifetime_elision_allowed(true)
                 .set_c_variadic(c_variadic)
                 .set_splatted(splatted, inputs.len())
-                .unwrap(),
-            fn_has_body: true,
+                .unwrap()
+                .set_has_body(true),
         })
     }
 

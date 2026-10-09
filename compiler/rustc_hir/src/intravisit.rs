@@ -1235,7 +1235,7 @@ pub fn walk_fn_decl<'v, V: Visitor<'v>>(
     visitor: &mut V,
     function_declaration: &'v FnDecl<'v>,
 ) -> V::Result {
-    let FnDecl { inputs, output, fn_decl_kind: _, fn_has_body: _ } = function_declaration;
+    let FnDecl { inputs, output, fn_decl_kind: _ } = function_declaration;
     walk_list!(visitor, visit_param, *inputs);
     visitor.visit_fn_ret_ty(output)
 }

@@ -912,8 +912,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let fn_decl = self.arena.alloc(hir::FnDecl {
             inputs,
             output,
-            fn_decl_kind: hir::FnDeclFlags::default(),
-            fn_has_body: true,
+            fn_decl_kind: hir::FnDeclFlags::default().set_has_body(true),
         });
 
         let (_, body) = self.lower_body(move |this| {
