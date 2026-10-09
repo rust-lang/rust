@@ -182,6 +182,7 @@ struct PerOwnerLoweringState<'a, 'hir> {
     // -- Transient --
     impl_trait_defs: Vec<hir::GenericParam<'hir>>,
     impl_trait_bounds: Vec<hir::WherePredicate<'hir>>,
+    const_defs: Vec<hir::GenericParam<'hir>>,
 }
 
 impl<'a, 'hir> PerOwnerLoweringState<'a, 'hir> {
@@ -211,6 +212,7 @@ impl<'a, 'hir> PerOwnerLoweringState<'a, 'hir> {
             children: LocalDefIdMap::default(),
             impl_trait_defs: Vec::new(),
             impl_trait_bounds: Vec::new(),
+            const_defs: Vec::new(),
         }
     }
 
@@ -226,6 +228,7 @@ impl<'a, 'hir> PerOwnerLoweringState<'a, 'hir> {
         assert_eq!(self.owner_id(), node.def_id());
         assert!(self.impl_trait_defs.is_empty());
         assert!(self.impl_trait_bounds.is_empty());
+        assert!(self.const_defs.is_empty());
 
         let attrs = self.attrs;
         let mut bodies = self.bodies;
@@ -1900,18 +1903,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_fn_params_to_idents(&mut self, decl: &FnDecl) -> &'hir [Option<Ident>] {
-        self.arena.alloc_from_iter(decl.inputs.iter().map(|param| match param.pat.kind {
-            PatKind::Missing => None,
-            PatKind::Ident(_, ident, _) => Some(self.lower_ident(ident)),
-            PatKind::Wild => Some(Ident::new(kw::Underscore, self.lower_span(param.pat.span))),
-            _ => {
-                self.dcx().span_delayed_bug(
-                    param.pat.span,
-                    "non-missing/ident/wild param pat must trigger an error",
-                );
-                None
-            }
-        }))
+        self.arena.alloc_from_iter(decl.inputs.iter().filter(|param| !param.is_const_param()).map(
+            |param| match param.pat.kind {
+                PatKind::Missing => None,
+                PatKind::Ident(_, ident, _) => Some(self.lower_ident(ident)),
+                PatKind::Wild => Some(Ident::new(kw::Underscore, self.lower_span(param.pat.span))),
+                _ => {
+                    self.dcx().span_delayed_bug(
+                        param.pat.span,
+                        "non-missing/ident/wild param pat must trigger an error",
+                    );
+                    None
+                }
+            },
+        ))
     }
 
     /// Lowers a function declaration.
@@ -1945,13 +1950,50 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Skip the `...` (`CVarArgs`) trailing arguments from the AST,
         // as they are not explicit in HIR/Ty function signatures.
         // (instead, the `c_variadic` flag is set to `true`)
-        let mut inputs = &decl.inputs[..];
+        let mut inputs = decl.inputs.iter().enumerate().collect::<Vec<_>>();
         if decl.c_variadic() {
             // Splat + variadic errors in AST validation, so just ignore one of them here.
             splatted = None;
-            inputs = &inputs[..inputs.len() - 1];
+            inputs.pop();
         }
-        let inputs = self.arena.alloc_from_iter(inputs.iter().map(|param| {
+        // Function argument const params are moved from `inputs` into the function's
+        // generics. Their position is taken from the original `decl.inputs` (before
+        // removing `...`), so it matches the argument position at the call site.
+        let inputs = self.arena.alloc_from_iter(inputs.iter().filter_map(|(param_idx, param)| {
+            if let Some(ident) = param.const_param_ident() {
+                if !matches!(
+                    kind,
+                    FnDeclKind::Fn | FnDeclKind::Inherent | FnDeclKind::Impl | FnDeclKind::Trait
+                ) {
+                    self.dcx().span_delayed_bug(
+                        param.span,
+                        "Const args only allowed for Free/Inherent/Impl/Trait methods",
+                    );
+                    return None;
+                }
+                let ty = self.lower_ty_alloc(
+                    &param.ty,
+                    ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault),
+                );
+                let hir_id = self.lower_node_id(param.id);
+                let generic_param = hir::GenericParam {
+                    hir_id,
+                    def_id: self.local_def_id(param.id),
+                    name: ParamName::Plain(self.lower_ident(ident)),
+                    span: self.lower_span(param.span),
+                    pure_wrt_drop: false,
+                    kind: hir::GenericParamKind::Const {
+                        ty,
+                        default: None,
+                        arg_pos: Some(*param_idx as u32),
+                    },
+                    colon_span: None,
+                    source: hir::GenericParamSource::Generics,
+                };
+                self.lower_attrs(hir_id, &param.attrs, param.span, Target::from(&generic_param));
+                self.curr_owner.const_defs.push(generic_param);
+                return None;
+            }
             if let DiscardParams::Yes = discard_params {
                 // FIXME This uses `fn_hir_id`, which is not correct, it should use the parameter hir id instead
                 // The parameter is currently not lowered for functions without bodies, so there is no place to store the lowered hir id
@@ -1972,7 +2014,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplTraitContext::Disallowed(ImplTraitPosition::PointerParam)
                 }
             };
-            self.lower_ty(&param.ty, itctx)
+            Some(self.lower_ty(&param.ty, itctx))
         }));
 
         let output = match coro {
@@ -2368,7 +2410,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),
-                    hir::GenericParamKind::Const { ty, default },
+                    hir::GenericParamKind::Const { ty, default, arg_pos: None },
                 )
             }
         }
