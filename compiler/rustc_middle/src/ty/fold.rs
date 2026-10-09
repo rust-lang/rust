@@ -291,29 +291,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let shift_bv = |bv: ty::BoundVar| bv + bound_vars;
-        self.replace_escaping_bound_vars_uncached(
-            value,
-            FnMutDelegate {
-                regions: &mut |r: ty::BoundRegion<'tcx>| {
-                    ty::Region::new_bound(
-                        self,
-                        ty::INNERMOST,
-                        ty::BoundRegion { var: shift_bv(r.var), kind: r.kind },
-                    )
-                },
-                types: &mut |t: ty::BoundTy<'tcx>| {
-                    Ty::new_bound(
-                        self,
-                        ty::INNERMOST,
-                        ty::BoundTy { var: shift_bv(t.var), kind: t.kind },
-                    )
-                },
-                consts: &mut |c| {
-                    ty::Const::new_bound(self, ty::INNERMOST, ty::BoundConst::new(shift_bv(c.var)))
-                },
-            },
-        )
+        rustc_type_ir::shift_bound_var_indices(self, bound_vars, value)
     }
 
     /// Replaces any late-bound regions bound in `value` with `'erased`. Useful in codegen but also

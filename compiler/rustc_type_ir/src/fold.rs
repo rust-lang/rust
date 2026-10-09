@@ -491,6 +491,101 @@ where
 }
 
 ///////////////////////////////////////////////////////////////////////////
+// Bound variable index shifter
+//
+// When combining binders, shift the bound-variable indices to avoid
+// overlapping with the variables from the other binder.
+
+struct BoundVarIndexShifter<I: Interner> {
+    cx: I,
+    current_index: ty::DebruijnIndex,
+    amount: usize,
+}
+
+impl<I: Interner> BoundVarIndexShifter<I> {
+    fn new(cx: I, amount: usize) -> Self {
+        Self { cx, current_index: ty::INNERMOST, amount }
+    }
+}
+
+impl<I: Interner> TypeFolder<I> for BoundVarIndexShifter<I> {
+    fn cx(&self) -> I {
+        self.cx
+    }
+
+    fn fold_binder<T: TypeFoldable<I>>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T> {
+        self.current_index.shift_in(1);
+        let t = t.super_fold_with(self);
+        self.current_index.shift_out(1);
+        t
+    }
+
+    fn fold_region(&mut self, r: Region<I>) -> Region<I> {
+        match r.kind() {
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), br)
+                if debruijn == self.current_index =>
+            {
+                Region::new_bound(
+                    self.cx,
+                    debruijn,
+                    ty::BoundRegion { var: br.var + self.amount, kind: br.kind },
+                )
+            }
+            _ => r,
+        }
+    }
+
+    fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
+        match ty.kind() {
+            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ty)
+                if debruijn == self.current_index =>
+            {
+                Ty::new_bound(
+                    self.cx,
+                    debruijn,
+                    ty::BoundTy { var: bound_ty.var + self.amount, kind: bound_ty.kind },
+                )
+            }
+
+            _ if ty.has_vars_bound_at_or_above(self.current_index) => ty.super_fold_with(self),
+            _ => ty,
+        }
+    }
+
+    fn fold_const(&mut self, ct: Const<I>) -> Const<I> {
+        match ct.kind() {
+            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ct)
+                if debruijn == self.current_index =>
+            {
+                Const::new_bound(self.cx, debruijn, ty::BoundConst::new(bound_ct.var + self.amount))
+            }
+            _ => ct.super_fold_with(self),
+        }
+    }
+
+    fn fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> P {
+        if p.has_vars_bound_at_or_above(self.current_index) { p.super_fold_with(self) } else { p }
+    }
+
+    fn fold_clauses(&mut self, c: I::Clauses) -> I::Clauses {
+        if c.has_vars_bound_at_or_above(self.current_index) { c.super_fold_with(self) } else { c }
+    }
+}
+
+/// Shifts escaping bound-variable indices by `bound_vars` without changing
+/// their De Bruijn depth.
+pub fn shift_bound_var_indices<I: Interner, T>(cx: I, bound_vars: usize, value: T) -> T
+where
+    T: TypeFoldable<I>,
+{
+    if bound_vars == 0 || !value.has_escaping_bound_vars() {
+        value
+    } else {
+        value.fold_with(&mut BoundVarIndexShifter::new(cx, bound_vars))
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
 // Region folder
 
 pub fn fold_regions<I: Interner, T>(
