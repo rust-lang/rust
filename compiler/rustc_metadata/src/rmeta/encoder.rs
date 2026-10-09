@@ -18,7 +18,7 @@ use rustc_data_structures::sync::{par_for_each_in, par_join};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
+use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir_pretty::id_to_string;
 use rustc_index::IndexVec;
@@ -80,7 +80,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     symbol_index_table: FxHashMap<u32, usize>,
     // Remapping of non-deterministic local def ids for stable encoding
     // during parallel compilation.
-    local_def_ids_remapping: FxHashMap<DefIndex, DefIndex>,
+    local_def_ids_remapping: Vec<DefIndex>,
     // DefIndex of a last deterministically allocated local def id
     // (see `Definitions::commit_end_of_determinism`).
     last_deterministic_index: u32,
@@ -1509,7 +1509,8 @@ impl EncodeContext<'_, '_> {
         if index <= self.last_deterministic_index {
             def_index
         } else {
-            self.local_def_ids_remapping.get(&def_index).copied().unwrap_or(def_index)
+            let remapped_idx = index - self.last_deterministic_index - 1;
+            self.local_def_ids_remapping[remapped_idx as usize]
         }
     }
 
@@ -2738,7 +2739,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
 
 /// Creates remapping of non deterministic local def ids
 /// (i.e., ids that start from `Definitions::last_deterministic_index + 1`).
-fn create_local_def_ids_remapping(tcx: TyCtxt<'_>) -> FxHashMap<DefIndex, DefIndex> {
+fn create_local_def_ids_remapping(tcx: TyCtxt<'_>) -> Vec<DefIndex> {
     let defs = tcx.untracked().definitions.read();
 
     let mut non_det_ids = vec![];
@@ -2751,14 +2752,9 @@ fn create_local_def_ids_remapping(tcx: TyCtxt<'_>) -> FxHashMap<DefIndex, DefInd
 
     non_det_ids.sort_by_key(|(_, hash)| *hash);
 
-    let mut remapping = FxHashMap::default();
+    let mut remapping = vec![CRATE_DEF_INDEX; non_det_ids.len()];
     for (idx, (id, _)) in non_det_ids.into_iter().enumerate() {
-        let from = id.local_def_index;
-        let to = DefIndex::from_usize(start + idx);
-
-        if from != to {
-            remapping.insert(from, to);
-        }
+        remapping[id.local_def_index.as_usize() - start] = DefIndex::from_usize(start + idx);
     }
 
     remapping
@@ -2766,10 +2762,7 @@ fn create_local_def_ids_remapping(tcx: TyCtxt<'_>) -> FxHashMap<DefIndex, DefInd
 
 /// Creates stably sorted list of non deterministic local def ids
 /// (i.e., ids that start from `Definitions::last_deterministic_index + 1`).
-fn create_sorted_non_det_local_ids(
-    tcx: TyCtxt<'_>,
-    remapping: &FxHashMap<DefIndex, DefIndex>,
-) -> Vec<LocalDefId> {
+fn create_sorted_non_det_local_ids(tcx: TyCtxt<'_>, remapping: &[DefIndex]) -> Vec<LocalDefId> {
     let defs = tcx.untracked().definitions.read();
     let start = defs.last_deterministic_index().as_usize() + 1;
 
@@ -2778,10 +2771,7 @@ fn create_sorted_non_det_local_ids(
         .map(|idx| LocalDefId { local_def_index: DefIndex::from(idx) })
         .collect::<Vec<_>>();
 
-    sorted_def_ids.sort_by_key(|id| {
-        let def_index = id.local_def_index;
-        remapping.get(&def_index).copied().unwrap_or(def_index)
-    });
+    sorted_def_ids.sort_by_key(|id| remapping[id.local_def_index.as_usize() - start]);
 
     sorted_def_ids
 }
