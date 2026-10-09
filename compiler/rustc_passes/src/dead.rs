@@ -693,7 +693,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
 
     fn visit_fn_decl(&mut self, decl: &'tcx FnDecl<'tcx>) -> Self::Result {
         // Declarations of functions with a body are visited from `visit_nested_body`
-        if !decl.fn_has_body {
+        if !decl.fn_decl_kind.has_body() {
             intravisit::walk_fn_decl(self, decl)?;
         }
         ControlFlow::Continue(())
