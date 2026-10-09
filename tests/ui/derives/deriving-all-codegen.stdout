@@ -1024,9 +1024,7 @@ impl ::core::clone::Clone for Enum1 {
 impl ::core::fmt::Debug for Enum1 {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        match self {
-            Self::Single { x: __self_0 } => ::core::result::Result::Ok(()),
-        }
+        ::core::result::Result::Ok(())
     }
 }
 #[automatically_derived]
@@ -1230,13 +1228,7 @@ impl ::core::marker::Copy for Mixed { }
 impl ::core::fmt::Debug for Mixed {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        match self {
-            Self::P => ::core::result::Result::Ok(()),
-            Self::Q => ::core::result::Result::Ok(()),
-            Self::R(__self_0) => ::core::result::Result::Ok(()),
-            Self::S { d1: __self_0, d2: __self_1 } =>
-                ::core::result::Result::Ok(()),
-        }
+        ::core::result::Result::Ok(())
     }
 }
 #[automatically_derived]
@@ -1407,11 +1399,7 @@ impl ::core::clone::Clone for Fielded {
 impl ::core::fmt::Debug for Fielded {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        match self {
-            Self::X(__self_0) => ::core::result::Result::Ok(()),
-            Self::Y(__self_0) => ::core::result::Result::Ok(()),
-            Self::Z(__self_0) => ::core::result::Result::Ok(()),
-        }
+        ::core::result::Result::Ok(())
     }
 }
 #[automatically_derived]
@@ -1507,10 +1495,7 @@ impl<T: ::core::fmt::Debug, U: ::core::fmt::Debug> ::core::fmt::Debug for
     EnumGeneric<T, U> {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        match self {
-            Self::One(__self_0) => ::core::result::Result::Ok(()),
-            Self::Two(__self_0) => ::core::result::Result::Ok(()),
-        }
+        ::core::result::Result::Ok(())
     }
 }
 #[automatically_derived]
