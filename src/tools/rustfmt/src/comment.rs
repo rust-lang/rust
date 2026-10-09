@@ -883,7 +883,8 @@ impl<'a> CommentRewrite<'a> {
             self.fmt.shape = if self.is_prev_line_multi_line {
                 // 1 = " "
                 let offset = 1 + last_line_width(&self.result, self.fmt.config.tab_spaces())
-                    - self.comment_prefix.len();
+                    - self.comment_prefix.len()
+                    - self.fmt_indent.width();
                 Shape {
                     width: self.max_width.saturating_sub(offset),
                     indent: self.fmt_indent,
