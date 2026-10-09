@@ -1,7 +1,7 @@
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicit revisions)
-//@ check-pass
+//@[current]  check-pass
 
 // Regression test from trait-system-refactor-initiative#27.
 //
@@ -28,6 +28,7 @@ fn impls_trait<T: Trait<U>, U>(_: Inv<T>, _: Inv<U>) {}
 fn bar() {
     let (obj, t) = foo();
     impls_trait(obj, t);
+    //[next]~^ ERROR: type annotations needed: cannot satisfy `dyn Object<&(), &()>: Trait<&()>`
     let _: Inv<dyn Object<&(), &()>> = obj;
 }
 
