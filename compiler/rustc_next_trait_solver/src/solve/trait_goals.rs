@@ -1310,7 +1310,7 @@ where
 
         // Proving an auto trait for the hidden type must not constrain inference
         // variables, as that would leak the hidden type itself.
-        if !candidate.result.value.var_values.is_identity_modulo_regions() {
+        if !candidate.result.value.is_identity_modulo_regions() {
             return self.forced_ambiguity(MaybeInfo::AMBIGUOUS);
         }
 
