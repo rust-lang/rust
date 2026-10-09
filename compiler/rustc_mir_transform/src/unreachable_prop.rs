@@ -30,7 +30,7 @@ impl crate::MirPass<'_> for UnreachablePropagation {
                 TerminatorKind::Unreachable => true,
                 // This will unconditionally run into an unreachable and is therefore unreachable
                 // as well.
-                TerminatorKind::Goto { target } if unreachable_blocks.contains(target) => {
+                TerminatorKind::Goto { target, .. } if unreachable_blocks.contains(target) => {
                     patch.patch_terminator(bb, TerminatorKind::Unreachable);
                     true
                 }
@@ -132,12 +132,12 @@ pub(crate) fn remove_successors_from_switch<'tcx>(
     let terminator = match (num_targets, otherwise_unreachable) {
         // If all targets are unreachable, we can be unreachable as well.
         (1, true) => TerminatorKind::Unreachable,
-        (1, false) => TerminatorKind::Goto { target: otherwise },
+        (1, false) => TerminatorKind::goto(otherwise),
         (2, true) => {
             // All targets are unreachable except one. Record the equality, and make it a goto.
             let (value, target) = new_targets.iter().next().unwrap();
             add_assumption(BinOp::Eq, value);
-            TerminatorKind::Goto { target }
+            TerminatorKind::goto(target)
         }
         _ if num_targets == targets.all_targets().len() => {
             // Nothing has changed.

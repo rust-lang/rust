@@ -8,7 +8,7 @@ pub(crate) mod gpu_offload;
 
 use libc::{c_char, c_uint};
 use rustc_abi::{self as abi, Align, CanonAbi, Size, WrappingRange};
-use rustc_attr_ir::{AttributeKind, UnrollAttr};
+use rustc_attr_ir::UnrollAttr;
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -24,7 +24,7 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::config::OptLevel;
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 use rustc_target::callconv::{FnAbi, PassMode};
 use rustc_target::spec::{Arch, HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
@@ -340,16 +340,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn br_with_attrs(&mut self, dest: &'ll BasicBlock, loop_hint_attrs: &[AttributeKind]) {
+    fn br_with_attrs(&mut self, dest: &'ll BasicBlock, loop_hint_attrs: &[UnrollAttr]) {
         unsafe {
             let val = llvm::LLVMBuildBr(self.llbuilder, dest);
 
             let mut nodes = Vec::new();
 
-            for loop_hint_attr in loop_hint_attrs {
-                let AttributeKind::Unroll(unroll) = loop_hint_attr else {
-                    continue;
-                };
+            for unroll in loop_hint_attrs {
                 // UnrollAttr::Count needs a second operand, the provided count, but the other
                 // unroll hints do not.
                 let md_node = if let UnrollAttr::Count(count) = unroll {
@@ -1553,6 +1550,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         match &fn_abi.ret.mode {
             PassMode::Ignore | PassMode::Indirect { .. } => self.ret_void(),
             PassMode::Direct(_) | PassMode::Pair { .. } | PassMode::Cast { .. } => self.ret(call),
+            PassMode::IndirectUnsized { .. } => bug!("unsized returns are not supported"),
         }
     }
 
@@ -2187,9 +2185,8 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         llfn: &'ll Value,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
     ) -> Option<llvm::OperandBundleBox<'ll>> {
-        if self.sess().pointer_authentication_functions().is_none() {
-            return None;
-        }
+        let schema = self.sess().pointer_authentication_functions()?;
+
         // Pointer authentication support is currently limited to extern "C" calls; filter out other
         // ABIs.
         if fn_abi?.conv != CanonAbi::C {
@@ -2207,11 +2204,12 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         // bundles.
         // Once this is resolved, we should analyze each call and skip direct calls. See the
         // discussion in the rust-lang issue: <https://github.com/rust-lang/rust/issues/152532>
-        let key: u32 = 0;
-        let discriminator: u64 = 0;
         Some(llvm::OperandBundleBox::new(
             "ptrauth",
-            &[self.const_u32(key), self.const_u64(discriminator)],
+            &[
+                self.const_u32(schema.key as u32),
+                self.const_u64(schema.constant_discriminator as u64),
+            ],
         ))
     }
 

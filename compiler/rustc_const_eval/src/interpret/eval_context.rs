@@ -522,7 +522,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Jump to the given block.
     #[inline]
     pub fn go_to_block(&mut self, target: mir::BasicBlock) {
-        self.frame_mut().loc = Left(mir::Location { block: target, statement_index: 0 });
+        self.frame_mut().loc = Left(target.start_location());
     }
 
     /// *Return* to the given `target` basic block.
@@ -549,7 +549,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     #[cold] // usually we have normal returns, not unwinding
     pub fn unwind_to_block(&mut self, target: mir::UnwindAction) -> InterpResult<'tcx> {
         self.frame_mut().loc = match target {
-            mir::UnwindAction::Cleanup(block) => Left(mir::Location { block, statement_index: 0 }),
+            mir::UnwindAction::Cleanup(block) => Left(block.start_location()),
             mir::UnwindAction::Continue => Right(self.frame_mut().body.span),
             mir::UnwindAction::Unreachable => {
                 throw_ub_format!("unwinding past a stack frame that does not allow unwinding");

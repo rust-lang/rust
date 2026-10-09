@@ -1,8 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{
-    Arch, CodeModel, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions,
-};
+use crate::spec::{Arch, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     let options = TargetOptions {
@@ -12,7 +10,7 @@ pub(crate) fn target() -> Target {
         // LLD currently does not have support for M68k
         linker: Some("m68k-linux-gnu-ld".into()),
         panic_strategy: PanicStrategy::Abort,
-        code_model: Some(CodeModel::Medium),
+        code_model: None,
         has_rpath: false,
         // should be soft-float
         llvm_floatabi: None,

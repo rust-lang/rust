@@ -1,0 +1,13 @@
+error: expected identifier, found reserved keyword `yield`
+  --> $DIR/in-closure-capture-ice-119786-1.rs:17:18
+   |
+LL |             Some(yield) => (),
+   |                  ^^^^^ expected identifier, found reserved keyword
+   |
+help: escape `yield` to use it as an identifier
+   |
+LL |             Some(r#yield) => (),
+   |                  ++
+
+error: aborting due to 1 previous error
+

@@ -78,3 +78,12 @@ pub fn on_if_2(a: bool) -> bool {
         }
     }
 }
+
+// EMIT_MIR ssa_range.on_arith_overflow.SsaRangePropagation.diff
+pub fn on_arith_overflow(a: u32, b: u32) -> bool {
+    // CHECK-LABEL: fn on_arith_overflow(
+    // CHECK: assert(!copy ([[FLAG:.*]].1: bool)
+    // CHECK: _0 = copy ([[FLAG]].1: bool);
+    let _ = std::ops::Add::add(a, b);
+    a.overflowing_add(b).1
+}

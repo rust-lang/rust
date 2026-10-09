@@ -21,7 +21,7 @@
 // a target gives a by-value stack slot differs between targets, but the two sides of a call
 // agreeing on it does not. `overaligned_byval_arg.rs` is where the alignment itself is asserted.
 
-#![feature(no_core)]
+#![feature(no_core, rustc_private)]
 #![no_std]
 #![no_core]
 #![no_main]

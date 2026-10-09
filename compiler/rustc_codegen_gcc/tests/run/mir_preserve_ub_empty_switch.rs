@@ -10,7 +10,7 @@
 // through `CARGO_TEST_FLAGS` (see the `ignore-if` directive above). Run it with:
 //   CARGO_TEST_FLAGS="-Zmir-preserve-ub" ./y.sh test --cargo-tests -- mir_preserve_ub_empty_switch
 
-#![feature(no_core)]
+#![feature(no_core, rustc_private)]
 #![no_std]
 #![no_core]
 #![no_main]

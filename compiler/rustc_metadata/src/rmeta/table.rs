@@ -433,8 +433,6 @@ pub(super) struct TableBuilder<IdxEncode: Idx, IdxDecode: Idx, T: FixedSizeEncod
     _marker: PhantomData<(IdxDecode, T)>,
 }
 
-pub(super) type TableBuilderSingleIdx<TIdx, TValue> = TableBuilder<TIdx, TIdx, TValue>;
-
 impl<Ie: Idx, Id: Idx, T: FixedSizeEncoding> Default for TableBuilder<Ie, Id, T> {
     fn default() -> Self {
         TableBuilder { width: 0, blocks: Default::default(), _marker: PhantomData }

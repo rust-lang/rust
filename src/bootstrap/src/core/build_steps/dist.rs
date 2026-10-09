@@ -355,12 +355,13 @@ fn make_win_llvm_dist(plat_root: &Path, target: TargetSelection, builder: &Build
         "libmingwex.a",
         "libmsvcrt.a",
         // Windows import libs, remove them once std transitions to raw-dylib
+        "libdbghelp.a",
         "libkernel32.a",
-        "libuser32.a",
         "libntdll.a",
+        "libsynchronization.a",
+        "libuser32.a",
         "libuserenv.a",
         "libws2_32.a",
-        "libdbghelp.a",
     ];
 
     //Find mingw artifacts we want to bundle
@@ -1739,7 +1740,7 @@ impl CommandLineStep for GccCodegenBackend {
     fn is_default_step(builder: &Builder<'_>) -> bool {
         // We only want to build the gcc backend in `x dist` if the backend was enabled
         // in rust.codegen-backends.
-        // Sadly, we don't have access to the actual target for which we're disting clif here..
+        // Sadly, we don't have access to the actual target for which we're disting gcc here..
         // So we just use the host target.
         builder
             .config

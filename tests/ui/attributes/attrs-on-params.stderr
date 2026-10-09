@@ -12,5 +12,65 @@ LL | fn function(#[inline] param: u32) {
    |
    = help: the `inline` attribute can only be applied to functions
 
-error: aborting due to 2 previous errors
+error[E0658]: the `rustc_splat` attribute is an experimental feature
+  --> $DIR/attrs-on-params.rs:10:11
+   |
+LL |         #[rustc_splat] a1: u32,
+   |           ^^^^^^^^^^^
+   |
+   = note: see issue #153629 <https://github.com/rust-lang/rust/issues/153629> for more information
+   = help: add `#![feature(splat)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: the `rustc_splat` attribute is experimental
 
+error[E0658]: the `rustc_splat` attribute is an experimental feature
+  --> $DIR/attrs-on-params.rs:14:11
+   |
+LL |         #[rustc_splat(invalid)] a4: u32,
+   |           ^^^^^^^^^^^
+   |
+   = note: see issue #153629 <https://github.com/rust-lang/rust/issues/153629> for more information
+   = help: add `#![feature(splat)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: the `rustc_splat` attribute is experimental
+
+error[E0565]: malformed `rustc_splat` attribute input
+  --> $DIR/attrs-on-params.rs:14:11
+   |
+LL |         #[rustc_splat(invalid)] a4: u32,
+   |           ^^^^^^^^^^^---------
+   |                      |
+   |                      didn't expect any arguments here
+   |
+help: must be of the form
+   |
+LL -         #[rustc_splat(invalid)] a4: u32,
+LL +         #[rustc_splat] a4: u32,
+   |
+
+error[E0658]: the `rustc_splat` attribute is an experimental feature
+  --> $DIR/attrs-on-params.rs:21:7
+   |
+LL |     #[rustc_splat] a1: u32,
+   |       ^^^^^^^^^^^
+   |
+   = note: see issue #153629 <https://github.com/rust-lang/rust/issues/153629> for more information
+   = help: add `#![feature(splat)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: the `rustc_splat` attribute is experimental
+
+error[E0658]: the `rustc_splat` attribute is an experimental feature
+  --> $DIR/attrs-on-params.rs:27:11
+   |
+LL |         #[rustc_splat] a1: u32,
+   |           ^^^^^^^^^^^
+   |
+   = note: see issue #153629 <https://github.com/rust-lang/rust/issues/153629> for more information
+   = help: add `#![feature(splat)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: the `rustc_splat` attribute is experimental
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0565, E0658.
+For more information about an error, try `rustc --explain E0565`.

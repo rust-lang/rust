@@ -183,6 +183,21 @@ fn asm() {
     }
     assert_eq!(x, 42);
 
+    // check sym static used twice in the same template
+    let x: u64;
+    let y: u64;
+    unsafe {
+        asm!(
+            "mov {1}, qword ptr [rip + {0}]",
+            "mov {2}, qword ptr [rip + {0}]",
+            sym FOO,
+            lateout(reg) x,
+            lateout(reg) y,
+        );
+    }
+    assert_eq!(x, 42);
+    assert_eq!(y, 42);
+
     assert_eq!(unsafe { add_asm(40, 2) }, 42);
 
     let array1 = [1u8, 2, 3];

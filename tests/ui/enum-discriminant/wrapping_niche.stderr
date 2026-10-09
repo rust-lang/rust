@@ -61,6 +61,7 @@ error: layout_of(UnsignedAroundZero) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
+           repr_c: false,
            randomization_seed: 2648004449468912780,
        }
   --> $DIR/wrapping_niche.rs:8:1
@@ -131,6 +132,7 @@ error: layout_of(SignedAroundZero) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
+           repr_c: false,
            randomization_seed: 10738146848450213996,
        }
   --> $DIR/wrapping_niche.rs:17:1

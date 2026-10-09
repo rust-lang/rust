@@ -16,5 +16,4 @@ async fn is_async_fn(f: impl AsyncFn()) {
 fn main() {
     is_async_fn(foo());
     //~^ ERROR the size for values of type `dyn Future<Output = ()>` cannot be known at compilation time
-    //~| ERROR the size for values of type `dyn Future<Output = ()>` cannot be known at compilation time
 }

@@ -45,7 +45,7 @@ pub enum CandidateSimilarity {
 pub struct ImplCandidate<'tcx> {
     pub trait_ref: ty::TraitRef<'tcx>,
     pub similarity: CandidateSimilarity,
-    impl_def_id: DefId,
+    pub impl_def_id: DefId,
 }
 
 enum GetSafeTransmuteErrorAndReason {

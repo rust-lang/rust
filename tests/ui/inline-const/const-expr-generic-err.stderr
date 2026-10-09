@@ -1,6 +1,7 @@
 error[E0080]: evaluation panicked: assertion failed: std::mem::size_of::<T>() == 0
   --> $DIR/const-expr-generic-err.rs:4:13
    |
+LL | fn foo<T>() {
 LL |     const { assert!(std::mem::size_of::<T>() == 0); }
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `foo::<i32>::{constant#0}` failed here
 
@@ -19,6 +20,7 @@ LL |     foo::<i32>();
 error[E0080]: attempt to compute `0_usize - 1_usize`, which would overflow
   --> $DIR/const-expr-generic-err.rs:8:13
    |
+LL | fn bar<const N: usize>() -> usize {
 LL |     const { N - 1 }
    |             ^^^^^ evaluation of `bar::<0>::{constant#0}` failed here
 

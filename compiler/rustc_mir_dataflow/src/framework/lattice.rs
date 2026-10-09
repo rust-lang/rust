@@ -104,6 +104,17 @@ pub enum FlatSet<T> {
     Top,
 }
 
+impl<T> FlatSet<T> {
+    #[inline]
+    pub fn and_then<U>(self, f: impl FnOnce(T) -> FlatSet<U>) -> FlatSet<U> {
+        match self {
+            FlatSet::Elem(elem) => f(elem),
+            FlatSet::Bottom => FlatSet::Bottom,
+            FlatSet::Top => FlatSet::Top,
+        }
+    }
+}
+
 impl<T: Clone + Eq> JoinSemiLattice for FlatSet<T> {
     fn join(&mut self, other: &Self) -> bool {
         let result = match (&*self, other) {

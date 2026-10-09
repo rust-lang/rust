@@ -41,7 +41,7 @@ pub fn ensure_wf<'tcx>(
         traits::ObligationCause::new(
             span,
             def_id,
-            traits::ObligationCauseCode::WellFormed(Some(traits::WellFormedLoc::Ty(def_id))),
+            traits::ObligationCauseCode::WellFormed(traits::WellFormedLoc::Ty(def_id)),
         ),
         param_env,
         pred,

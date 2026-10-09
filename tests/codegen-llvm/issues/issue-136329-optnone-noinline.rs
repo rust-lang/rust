@@ -2,8 +2,6 @@
 
 //@ compile-flags: -Copt-level=3
 
-#![feature(optimize_attribute)]
-
 #[optimize(none)]
 pub fn foo() {
     let _x = 123;
