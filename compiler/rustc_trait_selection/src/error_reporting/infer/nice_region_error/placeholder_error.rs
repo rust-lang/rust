@@ -474,7 +474,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                         .zip(input_tys.iter())
                         .filter_map(|(param, ty)| {
                             // ty_span == pat.span means no explicit type annotation was written.
-                            if param.ty_span == param.pat.span
+                            if param.ty.span == param.pat.span
                                 && ty.is_suggestable(self.tcx(), false)
                             {
                                 Some((param.pat.span.shrink_to_hi(), format!(": {ty}")))

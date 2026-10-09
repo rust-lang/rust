@@ -131,7 +131,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         )),
                         span,
                     }),
-                    ty_span: param.ty_span,
                     param_span: param.param_span,
                 }
             }));
@@ -227,7 +226,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         let hir_id = self.next_id();
-        (PartialParam { hir_id, pat, ty_span: span, param_span: span }, pat_node_id)
+        (PartialParam {
+                hir_id,
+                pat,
+                param_span: span}, pat_node_id)
     }
 
     fn generate_arg(

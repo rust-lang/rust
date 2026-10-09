@@ -1262,7 +1262,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         PartialParam {
             hir_id,
             pat: self.lower_pat(&param.pat),
-            ty_span: self.lower_span(param.ty.span),
             param_span: self.lower_span(param.span),
         }
     }
@@ -1459,7 +1458,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let new_parameter = PartialParam {
                 hir_id: parameter.hir_id,
                 pat: new_parameter_pat,
-                ty_span: self.lower_span(parameter.ty_span),
                 param_span: self.lower_span(parameter.param_span),
             };
 
@@ -2179,5 +2177,4 @@ pub(crate) struct PartialParam<'hir> {
     pub hir_id: HirId,
     pub pat: &'hir rustc_hir::Pat<'hir>,
     pub param_span: Span,
-    pub ty_span: Span,
 }
