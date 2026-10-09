@@ -308,23 +308,8 @@ fn show_fieldless_enum_concat_str(
 
     // Create the constant concatenated string
     let names_ident = Ident::new(sym::__NAMES, span);
-    let str_ty = cx.ty(
-        span,
-        TyKind::Ref(
-            None,
-            cx.ty(span, TyKind::Path(None, ast::Path::from_ident(Ident::new(sym::str, span)))),
-            ast::Mutability::Not,
-        ),
-    );
     let names_str_body = cx.expr_str(span, Symbol::intern(&concatenated_names));
-    let names_static_item = cx.item_static(
-        span,
-        ThinVec::new(),
-        names_ident,
-        str_ty,
-        ast::Mutability::Not,
-        names_str_body,
-    );
+    let names_static_item = cx.stmt_let(span, false, names_ident, names_str_body);
 
     let variant_index_ident = Ident::new(sym::__d, span);
     let arms = def
@@ -364,5 +349,5 @@ fn show_fieldless_enum_concat_str(
     let call_expr =
         cx.expr_call_global(span, fn_path, thin_vec![fmt, names_expr, discriminant_expr]);
 
-    Some((thin_vec![cx.stmt_item(span, names_static_item), discriminant_let_stmt,], call_expr))
+    Some((thin_vec![names_static_item, discriminant_let_stmt,], call_expr))
 }

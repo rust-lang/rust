@@ -1251,7 +1251,7 @@ enum Fieldless10 {
 impl ::core::fmt::Debug for Fieldless10 {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        static __NAMES: &str =
+        let __NAMES =
             "AAAAA BBBB CC DDDDDDDD E FFFFFFFFFFFFF GGGGGG Hatsune IIIIIII JJJJJJJJJ ";
         let __d =
             match self {
