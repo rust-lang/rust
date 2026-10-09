@@ -1798,6 +1798,9 @@ impl<'test> TestCx<'test> {
                 compiler.arg("-Zwrite-long-types-to-disk=no");
                 // FIXME: use this for other modes too, for perf?
                 compiler.arg("-Cstrip=debuginfo");
+                if self.config.suite != TestSuite::UiFullDeps {
+                    compiler.arg("-Zshow-suggestions-with-unavailable-source");
+                }
 
                 if self.config.parallel_frontend_enabled() {
                     // Currently, we only use multiple threads for the UI test suite,
