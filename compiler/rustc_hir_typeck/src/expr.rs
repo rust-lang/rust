@@ -1723,7 +1723,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let def_id = block.def_id;
         let fcx = FnCtxt::new(self, self.param_env, def_id);
 
-        let ty = fcx.check_expr_with_expectation(body.value, expected);
+        let ty = fcx.check_expr_with_expectation(&body.value, expected);
         fcx.require_type_is_sized(ty, body.value.span, ObligationCauseCode::SizedConstOrStatic);
         fcx.write_ty(block.hir_id, ty);
         ty
@@ -3730,7 +3730,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let body = self.tcx.hir_body(anon_const.body);
 
                     let fcx = FnCtxt::new(self, self.param_env, anon_const.def_id);
-                    let ty = fcx.check_expr(body.value);
+                    let ty = fcx.check_expr(&body.value);
                     let target_ty = match self.structurally_resolve_type(body.value.span, ty).kind()
                     {
                         ty::FnDef(..) => {

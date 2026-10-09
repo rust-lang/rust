@@ -162,7 +162,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                         .owner_id
                         .def_id,
                 );
-                collector.visit_expr(body.value);
+                collector.visit_expr(&body.value);
             }
         }
     }

@@ -584,7 +584,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     }
                 }
                 hir::InlineAsmOperand::Const { anon_const } => {
-                    let ty = self.expr_ty(self.tcx().hir_body(anon_const.body).value);
+                    let ty = self.expr_ty(&self.tcx().hir_body(anon_const.body).value);
                     match ty.kind() {
                         ty::Error(_) => {}
                         _ if ty.is_integral() => {}

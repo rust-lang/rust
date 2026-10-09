@@ -408,7 +408,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         }
         let tcx = self.infcx.tcx;
         if let Some(body) = tcx.hir_maybe_body_owned_by(self.mir_def_id()) {
-            let expr = body.value;
+            let expr = &body.value;
             let place = &self.move_data.move_paths[mpi].place;
             let span = place.as_local().map(|local| self.body.local_decls[local].source_info.span);
             let mut finder = ExpressionFinder {
@@ -2134,7 +2134,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
 
         let mut expr_finder = FindUselessClone::new(tcx, self.mir_def_id());
 
-        let body = tcx.hir_body(body_id).value;
+        let body = &tcx.hir_body(body_id).value;
         expr_finder.visit_expr(body);
 
         struct Holds<'tcx> {
@@ -2323,7 +2323,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let tcx = self.infcx.tcx;
         let body_id = tcx.hir_node(self.mir_hir_id()).body_id()?;
         let mut expr_finder = FindExprBySpan::new(span, tcx);
-        expr_finder.visit_expr(tcx.hir_body(body_id).value);
+        expr_finder.visit_expr(&tcx.hir_body(body_id).value);
         expr_finder.result
     }
 
@@ -2554,7 +2554,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             }
         }
         let mut finder = ExprFinder { tcx, expr_span: span, issue_span, .. };
-        finder.visit_expr(tcx.hir_body(body_id).value);
+        finder.visit_expr(&tcx.hir_body(body_id).value);
 
         if let Some(body_expr) = finder.body_expr
             && let Some(loop_span) = finder.loop_span
@@ -2705,7 +2705,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         // Get the body the error happens in
         let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else { return };
 
-        let body_expr = tcx.hir_body(body_id).value;
+        let body_expr = &tcx.hir_body(body_id).value;
 
         struct ClosureFinder<'hir> {
             tcx: TyCtxt<'hir>,
@@ -2809,7 +2809,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             }
 
             let mut finder = VariableUseFinder { local_id, spans: Vec::new() };
-            finder.visit_expr(tcx.hir_body(closure.body).value);
+            finder.visit_expr(&tcx.hir_body(closure.body).value);
 
             spans = finder.spans;
         } else {
@@ -4747,7 +4747,7 @@ fn find_for_loop_span<'hir>(
         }
     }
     let mut finder = ExprFinder { tcx, issue_span, result: None };
-    finder.visit_expr(tcx.hir_body(body_id).value);
+    finder.visit_expr(&tcx.hir_body(body_id).value);
     finder.result
 }
 

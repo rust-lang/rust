@@ -101,7 +101,7 @@ fn check_expr(cx: &LateContext<'_>, expr: &Expr<'_>, outer_span: Span) {
         }
 
         let mut ret_collector = RetCollector::default();
-        ret_collector.visit_expr(body.value);
+        ret_collector.visit_expr(&body.value);
 
         // Skip the lint if `return` is used in `Loop` in order not to suggest using `'label`.
         if ret_collector.ret_in_loop {

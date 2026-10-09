@@ -4080,7 +4080,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         } else if let ty::AliasConstKind::Anon { def_id } = alias_const.kind
                             && let Some(local_def_id) = def_id.as_local()
                             && let Some(local_body) = self.tcx.hir_maybe_body_owned_by(local_def_id)
-                            && expr_needs_parens(local_body.value)
+                            && expr_needs_parens(&local_body.value)
                         {
                             format!("[(); ({snippet}) as usize]:")
                         } else {
