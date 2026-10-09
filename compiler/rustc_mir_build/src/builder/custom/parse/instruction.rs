@@ -396,7 +396,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
             | ExprKind::ConstParam { .. }
             | ExprKind::ConstBlock { .. } => {
                 Ok(Operand::Constant(Box::new(
-                    as_constant_inner(expr, |_| None, self.tcx)
+                    as_constant_inner(expr, |_| None, self.tcx, self.typing_env)
                 )))
             },
             _ => self.parse_place(expr_id).map(Operand::Copy),
@@ -481,7 +481,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
             | ExprKind::NamedConst { .. }
             | ExprKind::NonHirLiteral { .. }
             | ExprKind::ConstBlock { .. } => Ok({
-                let value = as_constant_inner(expr, |_| None, self.tcx);
+                let value = as_constant_inner(expr, |_| None, self.tcx, self.typing_env);
                 value.const_.eval_bits(self.tcx, self.typing_env)
             }),
         )

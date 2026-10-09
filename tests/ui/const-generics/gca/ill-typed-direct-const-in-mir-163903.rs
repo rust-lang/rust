@@ -1,6 +1,3 @@
-//@ known-bug: #163903
-//@ failure-status: 101
-//@ dont-check-compiler-stderr
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@ compile-flags: --emit=mir
@@ -17,9 +14,11 @@ struct NoDerive(i32);
 struct WrapInline(NoDerive);
 
 const WRAP_DIRECT_INLINE: WrapInline = WrapInline(NoDerive(NoDerive));
+//~^ ERROR the constant `NoDerive` is not of type `i32`
 
 impl WrapInline {
     const BAD: WrapInline = WrapInline(NoDerive(NoDerive));
+    //~^ ERROR the constant `NoDerive` is not of type `i32`
 }
 
 trait Tr {
@@ -29,6 +28,7 @@ trait Tr {
 
 impl Tr for () {
     const C: WrapInline = WrapInline(NoDerive(NoDerive));
+    //~^ ERROR the constant `NoDerive` is not of type `i32`
 }
 
 const COPIED: WrapInline = const { WRAP_DIRECT_INLINE };

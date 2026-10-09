@@ -1,0 +1,20 @@
+error: the constant `NoDerive` is not of type `i32`
+  --> $DIR/ill-typed-direct-const-in-mir-163903.rs:16:1
+   |
+LL | const WRAP_DIRECT_INLINE: WrapInline = WrapInline(NoDerive(NoDerive));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found struct constructor
+
+error: the constant `NoDerive` is not of type `i32`
+  --> $DIR/ill-typed-direct-const-in-mir-163903.rs:20:5
+   |
+LL |     const BAD: WrapInline = WrapInline(NoDerive(NoDerive));
+   |     ^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found struct constructor
+
+error: the constant `NoDerive` is not of type `i32`
+  --> $DIR/ill-typed-direct-const-in-mir-163903.rs:30:5
+   |
+LL |     const C: WrapInline = WrapInline(NoDerive(NoDerive));
+   |     ^^^^^^^^^^^^^^^^^^^ expected `i32`, found struct constructor
+
+error: aborting due to 3 previous errors
+
