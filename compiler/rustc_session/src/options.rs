@@ -2515,10 +2515,10 @@ options! {
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),
     fine_grained_generic_cgus: bool = (true, parse_bool, [TRACKED],
-        "split the volatile codegen unit of a large module into shards grouped by generic \
-        function (one shard per 256 instances, at most 16), so this means that \
-        editing one generic function only invalidates it's shard instead of the whole module \
-        (default: no)"),
+        "shard the volatile (generic) codegen units of large local buckets by generic \
+        function in incremental builds, so editing one generic function invalidates only \
+        its shard; skipped when the shards would not fit under the -C codegen-units limit \
+        (default: yes)"),
     fixed_x18: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: FixedX18 },
         "make the x18 register reserved on AArch64 (default: no)"),
     flatten_format_args: bool = (true, parse_bool, [TRACKED],

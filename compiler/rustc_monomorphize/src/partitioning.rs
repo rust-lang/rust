@@ -138,6 +138,9 @@ struct PlacedMonoItems<'tcx> {
     codegen_units: Vec<CodegenUnit<'tcx>>,
 
     internalization_candidates: UnordSet<MonoItem<'tcx>>,
+
+    /// The CGU count that `merge_codegen_units` merges down to.
+    cgu_limit: usize,
 }
 
 // The output CGUs are sorted by name.
@@ -155,7 +158,7 @@ where
 
     // Place all mono items into a codegen unit. `place_mono_items` is
     // responsible for initializing the CGU size estimates.
-    let PlacedMonoItems { mut codegen_units, internalization_candidates } = {
+    let PlacedMonoItems { mut codegen_units, internalization_candidates, cgu_limit } = {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_items");
         let placed = place_mono_items(cx, mono_items);
 
@@ -169,7 +172,7 @@ where
     // estimates.
     {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_merge_cgus");
-        merge_codegen_units(cx, &mut codegen_units);
+        merge_codegen_units(cx, &mut codegen_units, cgu_limit);
         debug_dump(tcx, "MERGE", &codegen_units);
     }
 
@@ -219,8 +222,16 @@ where
 
     let mono_items: Vec<_> = mono_items.collect();
 
+    let fine_grained =
+        is_incremental_build && cx.tcx.sess.opts.unstable_opts.fine_grained_generic_cgus;
     let mut volatile_bucket_sizes: UnordMap<Symbol, usize> = UnordMap::default();
-    if is_incremental_build {
+    let mut sharding_fits = false;
+    let mut cgu_limit = cx.tcx.sess.codegen_units().as_usize();
+    if fine_grained {
+        // The CGU names the crate gets without sharding. This must stay in sync with the
+        // naming in the main loop below.
+        let mut base_cgu_names: UnordSet<Symbol> = UnordSet::default();
+        let mut volatile_roots: Vec<(MonoItem<'tcx>, Symbol)> = Vec::new();
         for mono_item in mono_items.iter().copied() {
             if !matches!(
                 mono_item.instantiation_mode(cx.tcx),
@@ -228,19 +239,68 @@ where
             ) {
                 continue;
             }
-            if !mono_item.is_generic_fn() || shard_root_def_id(cx.tcx, mono_item).is_none() {
-                continue;
-            }
-            if let Some(def_id) = characteristic_def_id_of_mono_item(cx.tcx, mono_item) {
-                let cgu_name = compute_codegen_unit_name(
+            let is_volatile = mono_item.is_generic_fn();
+            let cgu_name = match characteristic_def_id_of_mono_item(cx.tcx, mono_item) {
+                Some(def_id) => compute_codegen_unit_name(
                     cx.tcx,
                     cgu_name_builder,
                     def_id,
-                    true,
+                    is_volatile,
                     cgu_name_cache,
-                );
+                ),
+                None => fallback_cgu_name(cgu_name_builder),
+            };
+            base_cgu_names.insert(cgu_name);
+            if is_volatile && shard_root_def_id(cx.tcx, mono_item).is_some() {
                 *volatile_bucket_sizes.entry(cgu_name).or_insert(0) += 1;
+                volatile_roots.push((mono_item, cgu_name));
             }
+        }
+
+        // Shards each copy the inlined items their roots use; in optimized builds that can be
+        // a large part of the bucket, so leave buckets with too much duplication unsharded.
+        let mut shards: FxIndexMap<Symbol, FxIndexMap<Symbol, FxIndexSet<MonoItem<'tcx>>>> =
+            FxIndexMap::default();
+        let mut root_sizes: FxIndexMap<Symbol, usize> = FxIndexMap::default();
+        for &(mono_item, base) in &volatile_roots {
+            let bucket_size = volatile_bucket_sizes.get(&base).copied().unwrap_or(1);
+            if shard_count_for(bucket_size) <= 1 {
+                continue;
+            }
+            let shard = fine_grained_cgu_name(cx.tcx, base, &mono_item, bucket_size);
+            let inlined = shards.entry(base).or_default().entry(shard).or_default();
+            get_reachable_inlined_items(cx.tcx, mono_item, cx.usage_map, inlined);
+            *root_sizes.entry(base).or_default() += mono_item.size_estimate(cx.tcx);
+        }
+        for (base, shards) in shards {
+            let mut unique = FxIndexSet::default();
+            let mut placed_size = 0;
+            for inlined in shards.values() {
+                for &item in inlined {
+                    placed_size += item.size_estimate(cx.tcx);
+                    unique.insert(item);
+                }
+            }
+            let unique_size: usize = unique.iter().map(|item| item.size_estimate(cx.tcx)).sum();
+            let duplicated = placed_size - unique_size;
+            let bucket_total = root_sizes[&base] + unique_size;
+            if duplicated * MAX_DUPLICATION_DIVISOR > bucket_total {
+                volatile_bucket_sizes.insert(base, 0);
+            }
+        }
+
+        // Only shard when the extra CGUs fit under the codegen-units limit. Otherwise
+        // `merge_codegen_units` would regroup the shards and undo the benefit.
+        let extra_cgus: usize =
+            volatile_bucket_sizes.items().map(|(_, &size)| shard_count_for(size) - 1).sum();
+        // Without an explicit `-C codegen-units`, the shards may use up to `ADAPTIVE_CGU_LIMIT`.
+        let allowed = match cx.tcx.sess.codegen_units() {
+            CodegenUnits::Default(limit) => limit.max(ADAPTIVE_CGU_LIMIT),
+            CodegenUnits::User(limit) => limit,
+        };
+        sharding_fits = extra_cgus > 0 && base_cgu_names.len() + extra_cgus <= allowed;
+        if sharding_fits {
+            cgu_limit = (cgu_limit + extra_cgus).min(allowed);
         }
     }
 
@@ -270,7 +330,7 @@ where
 
         // Each volatile CGU is sharded by generic function to reduce false
         // invalidation without unbounded fragmentation.
-        let cgu_name = if is_volatile && cx.tcx.sess.opts.unstable_opts.fine_grained_generic_cgus {
+        let cgu_name = if is_volatile && sharding_fits {
             let bucket_size = volatile_bucket_sizes.get(&cgu_name).copied().unwrap_or(1);
             fine_grained_cgu_name(cx.tcx, cgu_name, &mono_item, bucket_size)
         } else {
@@ -332,7 +392,7 @@ where
         cgu.compute_size_estimate();
     }
 
-    return PlacedMonoItems { codegen_units, internalization_candidates };
+    return PlacedMonoItems { codegen_units, internalization_candidates, cgu_limit };
 
     fn get_reachable_inlined_items<'tcx>(
         tcx: TyCtxt<'tcx>,
@@ -354,8 +414,9 @@ where
 fn merge_codegen_units<'tcx>(
     cx: &PartitioningCx<'_, 'tcx>,
     codegen_units: &mut Vec<CodegenUnit<'tcx>>,
+    max_codegen_units: usize,
 ) {
-    assert!(cx.tcx.sess.codegen_units().as_usize() >= 1);
+    assert!(max_codegen_units >= 1);
 
     // A sorted order here ensures merging is deterministic.
     assert!(codegen_units.is_sorted_by(|a, b| a.name().as_str() <= b.name().as_str()));
@@ -378,7 +439,6 @@ fn merge_codegen_units<'tcx>(
     // getting any bigger, if we can avoid it. When we have more than N CGUs
     // then at least one of the biggest N will have to grow. codegen_units[N-1]
     // is the smallest of those, and so has the most room to grow.
-    let max_codegen_units = cx.tcx.sess.codegen_units().as_usize();
     while codegen_units.len() > max_codegen_units {
         // Sort small CGUs to the back.
         codegen_units.sort_by_key(|cgu| cmp::Reverse(cgu.size_estimate()));
@@ -803,6 +863,16 @@ fn shard_root_def_id<'tcx>(tcx: TyCtxt<'tcx>, mono_item: MonoItem<'tcx>) -> Opti
     }
 }
 
+// A bucket is sharded only if its shards duplicate at most 1/50 of its code (referencing MAX_DUPLICATION_DIVISOR).
+const INSTANCES_PER_SHARD: usize = 256;
+const MAX_SHARDS: usize = 16;
+const ADAPTIVE_CGU_LIMIT: usize = 1024;
+const MAX_DUPLICATION_DIVISOR: usize = 50;
+
+fn shard_count_for(bucket_size: usize) -> usize {
+    bucket_size.div_ceil(INSTANCES_PER_SHARD).next_power_of_two().min(MAX_SHARDS)
+}
+
 // Assigns each generic function to a bounded shard within its volatile bucket, which cuts
 // false invalidation without the fragmentation of one CGU per function.
 fn fine_grained_cgu_name<'tcx>(
@@ -811,9 +881,7 @@ fn fine_grained_cgu_name<'tcx>(
     mono_item: &MonoItem<'tcx>,
     bucket_size: usize,
 ) -> Symbol {
-    const INSTANCES_PER_SHARD: usize = 256;
-    const MAX_SHARDS: usize = 16;
-    let shard_count = bucket_size.div_ceil(INSTANCES_PER_SHARD).next_power_of_two().min(MAX_SHARDS);
+    let shard_count = shard_count_for(bucket_size);
     if shard_count <= 1 {
         return base;
     }
