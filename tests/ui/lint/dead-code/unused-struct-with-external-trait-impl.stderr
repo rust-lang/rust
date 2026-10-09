@@ -1,0 +1,14 @@
+error: struct `Foo` is never constructed
+  --> $DIR/unused-struct-with-external-trait-impl.rs:14:8
+   |
+LL | struct Foo;
+   |        ^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-struct-with-external-trait-impl.rs:5:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
