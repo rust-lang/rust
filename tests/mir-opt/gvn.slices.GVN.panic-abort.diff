@@ -111,8 +111,10 @@
 +         nop;
           StorageLive(_10);
           StorageLive(_11);
-          _11 = &(*_1);
-          _10 = core::str::<impl str>::as_ptr(move _11) -> [return: bb3, unwind unreachable];
+-         _11 = copy _1;
+-         _10 = core::str::<impl str>::as_ptr(move _11) -> [return: bb3, unwind unreachable];
++         _11 = const "my favourite slice";
++         _10 = core::str::<impl str>::as_ptr(const "my favourite slice") -> [return: bb3, unwind unreachable];
       }
   
       bb3: {
@@ -122,9 +124,10 @@
 +         nop;
           StorageLive(_13);
           StorageLive(_14);
--         _14 = &(*_4);
-+         _14 = &(*_1);
-          _13 = core::str::<impl str>::as_ptr(move _14) -> [return: bb4, unwind unreachable];
+-         _14 = copy _4;
+-         _13 = core::str::<impl str>::as_ptr(move _14) -> [return: bb4, unwind unreachable];
++         _14 = const "my favourite slice";
++         _13 = core::str::<impl str>::as_ptr(const "my favourite slice") -> [return: bb4, unwind unreachable];
       }
   
       bb4: {
@@ -211,8 +214,10 @@
 +         nop;
           StorageLive(_34);
           StorageLive(_35);
-          _35 = &(*_1);
-          _34 = core::str::<impl str>::as_ptr(move _35) -> [return: bb8, unwind unreachable];
+-         _35 = copy _1;
+-         _34 = core::str::<impl str>::as_ptr(move _35) -> [return: bb8, unwind unreachable];
++         _35 = const "my favourite slice";
++         _34 = core::str::<impl str>::as_ptr(const "my favourite slice") -> [return: bb8, unwind unreachable];
       }
   
       bb8: {
@@ -222,8 +227,9 @@
 +         nop;
           StorageLive(_37);
           StorageLive(_38);
-          _38 = &(*_27);
-          _37 = core::slice::<impl [u8]>::as_ptr(move _38) -> [return: bb9, unwind unreachable];
+          _38 = copy _27;
+-         _37 = core::slice::<impl [u8]>::as_ptr(move _38) -> [return: bb9, unwind unreachable];
++         _37 = core::slice::<impl [u8]>::as_ptr(copy _27) -> [return: bb9, unwind unreachable];
       }
   
       bb9: {
