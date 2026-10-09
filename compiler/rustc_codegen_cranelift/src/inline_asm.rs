@@ -7,7 +7,7 @@ use rustc_abi::CanonAbi;
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar as ConstScalar};
-use rustc_middle::ty::layout::FnAbiOf;
+use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv as _};
 use rustc_span::sym;
 use rustc_target::asm::*;
 use rustc_target::spec::Arch;
@@ -175,7 +175,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
                 if let ty::FnDef(def_id, args) = *const_.ty().kind() {
                     let instance = ty::Instance::resolve_for_fn_ptr(
                         fx.tcx,
-                        ty::TypingEnv::fully_monomorphized(),
+                        fx.typing_env(),
                         def_id,
                         args.no_bound_vars().unwrap(),
                     )
