@@ -623,7 +623,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
     ) -> ty::Const<'tcx> {
         let ct = self.lowerer().lower_const_arg_expr(expr, ty);
-        self.register_wf_obligation(ct.into(), expr.span, ObligationCauseCode::WellFormed(None));
+        self.register_wf_obligation(
+            ct.into(),
+            expr.span,
+            ObligationCauseCode::WellFormed(WellFormedLoc::None),
+        );
         ct
     }
 
