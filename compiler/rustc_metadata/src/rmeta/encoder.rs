@@ -81,9 +81,9 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     // Remapping of non-deterministic local def ids for stable encoding
     // during parallel compilation.
     local_def_ids_remapping: Vec<DefIndex>,
-    // DefIndex of a last deterministically allocated local def id
+    // DefIndex of a first non-deterministically allocated local def id
     // (see `Definitions::commit_end_of_determinism`).
-    last_deterministic_index: u32,
+    first_non_det_index: u32,
     // Stably sorted non-deterministic local def ids that are used
     // when iterating over all local def ids.
     non_det_sorted_ids: Vec<LocalDefId>,
@@ -1506,20 +1506,20 @@ impl EncodeContext<'_, '_> {
     fn map_index(&self, def_index: DefIndex) -> DefIndex {
         let index = def_index.as_u32();
 
-        if index <= self.last_deterministic_index {
+        if index < self.first_non_det_index {
             def_index
         } else {
-            let remapped_idx = index - self.last_deterministic_index - 1;
+            let remapped_idx = index - self.first_non_det_index;
             self.local_def_ids_remapping[remapped_idx as usize]
         }
     }
 
     fn iter_sorted_local_ids(&self) -> impl Iterator<Item = LocalDefId> + use<> {
         let non_det_part = self.non_det_sorted_ids.clone();
-        let last_det_index = self.last_deterministic_index;
+        let first_non_det_index = self.first_non_det_index;
 
         gen move {
-            for i in 0..last_det_index + 1 {
+            for i in 0..first_non_det_index {
                 yield LocalDefId { local_def_index: DefIndex::from_u32(i) }
             }
 
@@ -2743,7 +2743,7 @@ fn create_local_def_ids_remapping(tcx: TyCtxt<'_>) -> Vec<DefIndex> {
     let defs = tcx.untracked().definitions.read();
 
     let mut non_det_ids = vec![];
-    let start = tcx.definitions().last_deterministic_index().as_usize() + 1;
+    let start = tcx.definitions().first_non_det_index().as_usize();
 
     for idx in start..defs.num_definitions() {
         let def_id = LocalDefId { local_def_index: idx.into() };
@@ -2764,7 +2764,7 @@ fn create_local_def_ids_remapping(tcx: TyCtxt<'_>) -> Vec<DefIndex> {
 /// (i.e., ids that start from `Definitions::last_deterministic_index + 1`).
 fn create_sorted_non_det_local_ids(tcx: TyCtxt<'_>, remapping: &[DefIndex]) -> Vec<LocalDefId> {
     let defs = tcx.untracked().definitions.read();
-    let start = defs.last_deterministic_index().as_usize() + 1;
+    let start = defs.first_non_det_index().as_usize();
 
     let mut sorted_def_ids = (start..defs.num_definitions())
         .into_iter()
@@ -2850,7 +2850,7 @@ fn with_encode_metadata_header(
         hygiene_ctxt: Default::default(),
         symbol_index_table: Default::default(),
         local_def_ids_remapping: Default::default(),
-        last_deterministic_index: tcx.definitions().last_deterministic_index().as_u32(),
+        first_non_det_index: tcx.definitions().first_non_det_index().as_u32(),
         non_det_sorted_ids: Default::default(),
     };
 

@@ -98,7 +98,7 @@ pub struct Definitions {
     def_id_to_key: IndexVec<LocalDefId, DefKey>,
     // We do only store the local hash, as all the definitions are from the current crate.
     def_path_hashes: IndexVec<LocalDefId, Hash64>,
-    last_deterministic_index: Option<DefIndex>,
+    first_non_det_index: Option<DefIndex>,
     def_path_hash_to_index: DefPathToIndexMap,
 }
 
@@ -313,12 +313,12 @@ impl Definitions {
 
         // `self.def_id_to_key.len()` can't be empty, at least crate root should
         // be present.
-        let def_index = DefIndex::from_usize(self.def_id_to_key.len() - 1);
-        self.last_deterministic_index.replace(def_index);
+        let def_index = DefIndex::from_usize(self.def_id_to_key.len());
+        self.first_non_det_index.replace(def_index);
     }
 
-    pub fn last_deterministic_index(&self) -> DefIndex {
-        self.last_deterministic_index.expect("must contain index")
+    pub fn first_non_det_index(&self) -> DefIndex {
+        self.first_non_det_index.expect("must contain index")
     }
 
     #[inline(always)]
@@ -372,7 +372,7 @@ impl Definitions {
             def_path_hashes: Default::default(),
             def_id_to_key: Default::default(),
             def_path_hash_to_index: Default::default(),
-            last_deterministic_index: Default::default(),
+            first_non_det_index: Default::default(),
         };
 
         // Create the root definition.
