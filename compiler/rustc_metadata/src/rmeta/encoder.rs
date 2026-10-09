@@ -51,22 +51,26 @@ use crate::diagnostics::{FailCreateFileEncoder, FailWriteFile};
 use crate::eii::EiiMapEncodedKeyValue;
 use crate::rmeta::*;
 
+#[derive(Default)]
 struct HygieneRemappingResults {
-    remapping: FxHashMap<u32, u32>,
+    remapping: Vec<u32>,
     first_non_det_index: u32,
+    last_idx: u32,
 }
 
 impl HygieneRemappingResults {
-    fn new((idx, remapping): (u32, FxHashMap<u32, u32>)) -> HygieneRemappingResults {
-        HygieneRemappingResults { remapping, first_non_det_index: idx }
+    fn new((idx, last_idx, remapping): (u32, u32, Vec<u32>)) -> HygieneRemappingResults {
+        HygieneRemappingResults { remapping, last_idx, first_non_det_index: idx }
     }
 
     #[inline]
     fn map_id(&self, idx: u32) -> u32 {
-        if idx < self.first_non_det_index {
+        // New hygiene entities can be created during metadata encoding,
+        // so we need both checks.
+        if idx < self.first_non_det_index || idx > self.last_idx {
             idx
         } else {
-            self.remapping.get(&idx).copied().unwrap_or(idx)
+            self.remapping[(idx - self.first_non_det_index) as usize]
         }
     }
 }
@@ -2668,6 +2672,12 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
             with_encode_metadata_header(tcx, path, |ecx| {
                 // Encode all the entries and extra information in the crate,
                 // culminating in the `CrateRoot` which points to all of it.
+                let s_ctxt_remapping = SyntaxContextRemapper::with(|r| r.create_remapping());
+                let l_expn_remapping = LocalExpansionRemapper::with(|r| r.create_remapping());
+
+                ecx.s_ctxt_remapping = HygieneRemappingResults::new(s_ctxt_remapping);
+                ecx.local_expn_remapping = HygieneRemappingResults::new(l_expn_remapping);
+
                 let (root, unhashed) = ecx.encode_crate_root();
 
                 // Flush buffer to ensure backing file has the correct size.
@@ -2758,9 +2768,6 @@ fn with_encode_metadata_header(
     let required_source_files = Some(FxIndexSet::default());
     drop(source_map_files);
 
-    let s_ctxt_remapping = SyntaxContextRemapper::with(|r| r.create_remapping());
-    let l_expn_remapping = LocalExpansionRemapper::with(|r| r.create_remapping());
-
     let mut ecx = EncodeContext {
         opaque: encoder,
         metadata_hasher: Arc::clone(&metadata_hasher),
@@ -2777,8 +2784,8 @@ fn with_encode_metadata_header(
         is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: Default::default(),
         symbol_index_table: Default::default(),
-        s_ctxt_remapping: HygieneRemappingResults::new(s_ctxt_remapping),
-        local_expn_remapping: HygieneRemappingResults::new(l_expn_remapping),
+        s_ctxt_remapping: Default::default(),
+        local_expn_remapping: Default::default(),
     };
 
     // Encode the rustc version string in a predictable location.

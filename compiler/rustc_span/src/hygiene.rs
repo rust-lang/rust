@@ -362,25 +362,20 @@ pub trait HygieneEntityRemapper<TIdx: From<u32> + Copy> {
         )
     }
 
-    fn create_remapping(&self) -> (u32, FxHashMap<u32, u32>) {
+    fn create_remapping(&self) -> (u32, u32, Vec<u32>) {
         let start = self.first_non_det_index();
-        let range = start..self.len() as u32;
+        let end = self.len() as u32;
 
-        let mut indices_to_remap = range.collect::<Vec<_>>();
+        let mut indices_to_remap = (start..end).collect::<Vec<_>>();
         indices_to_remap.sort_by_key(|&idx| self.hash(From::from(idx)));
 
-        let mut remapping = FxHashMap::<u32, u32>::default();
+        let mut remapping = vec![0; indices_to_remap.len()];
 
         for (idx, id) in indices_to_remap.into_iter().enumerate() {
-            let from = id;
-            let to = start + idx as u32;
-
-            if from != to {
-                remapping.insert(from, to);
-            }
+            remapping[(id - start) as usize] = start + idx as u32;
         }
 
-        (start, remapping)
+        (start, end - 1, remapping)
     }
 }
 
