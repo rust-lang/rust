@@ -2514,7 +2514,7 @@ options! {
     fewer_names: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),
-    fine_grained_generic_cgus: bool = (false, parse_bool, [TRACKED],
+    fine_grained_generic_cgus: bool = (true, parse_bool, [TRACKED],
         "split the volatile codegen unit of a large module into shards grouped by generic \
         function (one shard per 256 instances, at most 16), so this means that \
         editing one generic function only invalidates it's shard instead of the whole module \
