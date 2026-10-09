@@ -4,8 +4,8 @@ use rustc_abi::{Float, Integer, Primitive};
 use rustc_index::IndexVec;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::layout::{
-    self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
-    codegen_handle_fn_abi_err,
+    self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv as _, LayoutError,
+    LayoutOfHelpers, codegen_handle_fn_abi_err,
 };
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
@@ -351,7 +351,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     {
         self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.tcx,
-            ty::TypingEnv::fully_monomorphized(),
+            self.typing_env(),
             ty::EarlyBinder::bind(self.tcx, value),
         )
     }

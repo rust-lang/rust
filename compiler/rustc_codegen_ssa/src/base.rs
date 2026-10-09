@@ -451,7 +451,7 @@ where
                     let instance = match ty.kind() {
                         &ty::FnDef(def_id, args) => Instance::expect_resolve(
                             cx.tcx(),
-                            ty::TypingEnv::fully_monomorphized(),
+                            cx.typing_env(),
                             def_id,
                             args.no_bound_vars().unwrap(),
                             expr.span,
