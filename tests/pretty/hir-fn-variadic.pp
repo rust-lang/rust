@@ -15,8 +15,8 @@ unsafe extern "C" fn bar(_: i32, mut va2: ...)
 fn main() {
     fn g1(_: extern "C" fn(_: u8, va: ...)) { }
     fn g2(_: extern "C" fn(_: u8, _: ...)) { }
-    fn g3(_: extern "C" fn(u8, va: ...)) { }
-    fn g4(_: extern "C" fn(u8, _: ...)) { }
+    fn g3(_: extern "C" fn(_: u8, va: ...)) { }
+    fn g4(_: extern "C" fn(_: u8, _: ...)) { }
 
     fn g5(_: extern "C" fn(va: ...)) { }
     fn g6(_: extern "C" fn(_: ...)) { }
