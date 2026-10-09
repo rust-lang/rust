@@ -167,7 +167,7 @@ impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, trait_item: &'tcx TraitItem<'tcx>) {
         // functions with a body are already checked by `check_fn`
-        if let TraitItemKind::Fn(fn_sig, TraitFn::Required(_)) = &trait_item.kind
+        if let TraitItemKind::Fn(fn_sig, TraitFn::Required) = &trait_item.kind
             && fn_sig.header.abi == ExternAbi::Rust
             && fn_sig.decl.inputs.len() as u64 > self.max_fn_params_bools
         {

@@ -1280,7 +1280,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
                 let m = clean_function(cx, sig, trait_item.generics, local_did);
                 MethodItem(m, Defaultness::from_trait_item(trait_item.defaultness))
             }
-            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(_)) => {
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required) => {
                 let m = clean_function(cx, sig, trait_item.generics, local_did);
                 RequiredMethodItem(m, Defaultness::from_trait_item(trait_item.defaultness))
             }

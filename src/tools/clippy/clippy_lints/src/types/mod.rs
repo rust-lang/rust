@@ -519,7 +519,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
             TraitItemKind::Fn(ref sig, trait_method) => {
                 // Check only methods without body
                 // Methods with body are covered by check_fn.
-                if let TraitFn::Required(_) = trait_method {
+                if let TraitFn::Required = trait_method {
                     self.check_fn_decl(cx, sig.decl, context);
                 }
             },

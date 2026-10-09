@@ -973,7 +973,7 @@ impl<'a> State<'a> {
             hir::TraitItemKind::Const(ty, default) => {
                 self.print_associated_const(ti.ident, ti.generics, ty, default);
             }
-            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(_)) => {
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required) => {
                 self.print_method_sig(ti.ident, sig, ti.generics);
                 self.word(";");
             }

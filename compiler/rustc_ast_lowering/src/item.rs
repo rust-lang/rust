@@ -854,7 +854,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::Fn(Fn { sig, ident, generics, body: None, define_opaque, .. }) => {
                 // FIXME(contracts): Deny contract here since it won't apply to
                 // any impl method or callees.
-                let idents = self.lower_fn_params_to_idents(&sig.decl);
                 let params = self.arena.alloc_from_iter(
                     sig.decl
                         .inputs
@@ -879,12 +878,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         "only trait methods with default bodies can define opaque types",
                     );
                 }
-                (
-                    *ident,
-                    generics,
-                    hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(idents)),
-                    false,
-                )
+                (*ident, generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Required), false)
             }
             AssocItemKind::Fn(Fn {
                 sig,
