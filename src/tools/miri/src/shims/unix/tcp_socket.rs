@@ -855,10 +855,9 @@ impl UnixSocketFileDescription for TcpSocket {
                 let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.u32);
                 let ttl = ecx.read_scalar(&option_value)?.to_u32()?;
 
-                return match self.with_socket_ref(|s| s.set_ttl_v4(ttl)) {
-                    Ok(_) => interp_ok(Ok(())),
-                    Err(e) => interp_ok(Err(IoError::HostError(e))),
-                };
+                return interp_ok(
+                    self.with_socket_ref(|s| s.set_ttl_v4(ttl)).map_err(IoError::HostError),
+                );
             } else {
                 throw_unsup_format!(
                     "setsockopt: option {option:#x} is unsupported for level IPPROTO_IP",
@@ -875,10 +874,10 @@ impl UnixSocketFileDescription for TcpSocket {
                 let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.i32);
                 let nodelay = ecx.read_scalar(&option_value)?.to_i32()? != 0;
 
-                return match self.with_socket_ref(|s| s.set_tcp_nodelay(nodelay)) {
-                    Ok(_) => interp_ok(Ok(())),
-                    Err(e) => interp_ok(Err(IoError::HostError(e))),
-                };
+                return interp_ok(
+                    self.with_socket_ref(|s| s.set_tcp_nodelay(nodelay))
+                        .map_err(IoError::HostError),
+                );
             } else {
                 throw_unsup_format!(
                     "setsockopt: option {option:#x} is unsupported for level IPPROTO_TCP"
