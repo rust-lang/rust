@@ -449,7 +449,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[
         results,
         skip_count,
     };
-    v.visit_expr(body.value);
+    v.visit_expr(&body.value);
     v.results
 }
 
