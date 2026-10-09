@@ -1,0 +1,39 @@
+// MIR for `call` 0 dataflow
+
+fn call() -> u32 {
+    let mut _0: u32;
+    let mut _1: u32;
+    let mut _2: u32;
+    let mut _3: u32;
+    let mut _4: *const u32;
+
+    bb0: {
+        // early: []
+        // late: [_1]
+        _1 = const 1_u32;
+        // early: [_1]
+        // late: [_1, _2]
+        _2 = const 2_u32;
+        // early: [_1, _2]
+        // late: [_1, _3]
+        _3 = callee(move _1, copy _2) -> [return: bb1, unwind: bb2];
+    }
+
+    bb1: {
+        // early: [_3]
+        // late: [_3, _4]
+        _4 = &raw const _3;
+        // early: [_3]
+        // late: [_0]
+        _0 = move _3;
+        // early: [_0]
+        // late: []
+        return;
+    }
+
+    bb2 (cleanup): {
+        // early: [_3]
+        // late: [_3]
+        resume;
+    }
+}
