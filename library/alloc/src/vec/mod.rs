@@ -3564,7 +3564,61 @@ where
 {
 }
 
+impl<T: Clone> Vec<T, Global> {
+    /// Create a new `Vec` that contains `elem` `n` times.
+    ///
+    /// This method requires `T` to implement [`Clone`],
+    /// in order to be able to clone the passed value.
+    ///
+    /// If `n` is zero, the vector will not allocate.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `size_of::<T>() * n` exceeds `isize::MAX` bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_from_elem)]
+    /// let vec = Vec::from_elem(0, 3);
+    /// assert_eq!(vec, [0; 3]);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "vec_from_elem", issue = "none")]
+    #[inline]
+    pub fn from_elem(elem: T, n: usize) -> Self {
+        <T as SpecFromElem>::from_elem(elem, n, Global)
+    }
+}
+
 impl<T: Clone, A: Allocator> Vec<T, A> {
+    /// Create a new `Vec` with the provided allocator that contains `elem` `n` times.
+    ///
+    /// This method requires `T` to implement [`Clone`],
+    /// in order to be able to clone the passed value.
+    ///
+    /// If `n` is zero, the vector will not allocate.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `size_of::<T>() * n` exceeds `isize::MAX` bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_ext)]
+    /// use std::alloc::System;
+    ///
+    /// let vec = Vec::from_elem_in(0, 3, System);
+    /// assert_eq!(vec, [0; 3]);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    #[inline]
+    pub fn from_elem_in(elem: T, n: usize, alloc: A) -> Self {
+        <T as SpecFromElem>::from_elem(elem, n, alloc)
+    }
+
     /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
     ///
     /// If `new_len` is greater than `len`, the `Vec` is extended by the
@@ -3801,14 +3855,14 @@ impl<T: PartialEq, A: Allocator> Vec<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "vec_from_elem"]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
-    <T as SpecFromElem>::from_elem(elem, n, Global)
+    Vec::from_elem(elem, n)
 }
 
 #[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 pub fn from_elem_in<T: Clone, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
-    <T as SpecFromElem>::from_elem(elem, n, alloc)
+    Vec::from_elem_in(elem, n, alloc)
 }
 
 #[cfg(not(no_global_oom_handling))]
