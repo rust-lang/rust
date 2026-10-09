@@ -6,9 +6,9 @@ use rustc_abi::ExternAbi;
 pub use rustc_ast::visit::AssocCtxt;
 use rustc_ast::{
     Arm, AssocItemKind, Closure, ConstBlockItem, ConstItem, Crate, EnumDef, Expr, ExprField,
-    FieldDef, Fn, ForLoop, ForeignItemKind, ForeignMod, GenericParam, Generics, Impl, InlineAsm,
-    Local, MacroDef, ModKind, Param, Pat, PatField, Safety, StaticItem, Stmt, Trait, TraitAlias,
-    TyAlias, UseTree, Variant, VariantData, WherePredicate, ast,
+    FieldDef, Fn, ForeignItemKind, ForeignMod, GenericParam, Generics, Impl, InlineAsm, MacroDef,
+    ModKind, Param, Pat, Safety, StaticItem, Stmt, Trait, TraitAlias, TyAlias, UseTree, Variant,
+    VariantData, WherePredicate, ast,
 };
 use rustc_macros::StableHash;
 use rustc_span::{Ident, Symbol};
@@ -51,24 +51,15 @@ pub enum AstTarget<'a> {
     // Target types that correspond exclusively to `Expr` kind. Mapping is obtained from `Target::from_expr`.
     Closure(&'a Closure),
     Expression(&'a Expr),
-    ForLoop(&'a ForLoop),
-    Loop,
-    While,
-    Break,
 
     Arm(&'a Arm),
-    ConstParam(&'a GenericParam),
     Crate(&'a Crate),
     ExprField(&'a ExprField),
     Field(&'a FieldDef),
     GenericParam(&'a GenericParam),
-    LifetimeParam(&'a GenericParam),
-    Local(&'a Local),
     Param(&'a Param),
     Pat(&'a Pat),
-    PatField(&'a PatField),
     Statement(&'a Stmt),
-    TypeParam(&'a GenericParam),
     Variant(&'a Variant),
     WherePredicate(&'a WherePredicate),
 
