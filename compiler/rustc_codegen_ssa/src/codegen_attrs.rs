@@ -397,6 +397,8 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
     }
 
     // Foreign items by default use no mangling for their symbol name.
+    // Usually, `symbol_name` is controlled by `#[link_name]`/`#[export_name]`. Here we additionally
+    // set `symbol_name` on most foreign items so that their their symbol name does not get mangled.
     if tcx.is_foreign_item(did) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::FOREIGN_ITEM;
 
@@ -412,12 +414,13 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
             //   Implementing an EII does the appropriate name resolution to make sure the implementations
             //   get the same symbol name as the *mangled* foreign item they refer to so that's all good.
         } else if codegen_fn_attrs.symbol_name.is_some() {
-            // * This can be overridden with the `#[link_name]` attribute
+            // * If the name is already set by `#[link_name]`, we don't overwrite it.
         } else if codegen_fn_attrs.link_ordinal.is_some() {
             // * `#[link_ordinal]` and `#[link_name]` are incompatible with each other, so
-            //   disable the implicit `#[link_name]` for foreign items below to avoid a
+            //   disable the implicit `#[link_name]` for foreign items below to avoid an
             //   error.
         } else {
+            // This effectively adds an implicit `#[link_name = "<item name>"]`.
             // NOTE: there's one more exception that we cannot apply here. On wasm,
             // some items cannot be `no_mangle`.
             // However, we don't have enough information here to determine that.
