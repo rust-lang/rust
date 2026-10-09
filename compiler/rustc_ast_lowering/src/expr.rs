@@ -897,7 +897,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir_id: self.next_id(),
                     pat,
                     ty: input_ty,
-                    ty_span: self.lower_span(span),
                     param_span: self.lower_span(span),
                 };
                 let params = arena_vec![self; param];

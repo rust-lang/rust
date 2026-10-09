@@ -847,7 +847,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                         hir::Node::Param(param) => {
                             // Instead of pointing at the path where we access the value within a
                             // closure, we point at the type of the outer `fn` argument.
-                            param.ty_span
+                            param.ty.span
                         }
                         hir::Node::LetStmt(stmt) => match (stmt.ty, stmt.init) {
                             // We point at the type of the outer let-binding.

@@ -541,9 +541,9 @@ fn virtual_call_violations_for_method<'tcx>(
                     }
                     hir::TraitFn::Provided(_body_id)
                         if let Some(p) = sig.decl.inputs.get(0)
-                            && p.param_span.eq_ctxt(p.ty_span) =>
+                            && p.param_span.eq_ctxt(p.ty.span) =>
                     {
-                        Some(p.param_span.to(p.ty_span))
+                        Some(p.param_span.to(p.ty.span))
                     }
                     _ => None,
                 }

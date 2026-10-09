@@ -1258,7 +1258,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span: self.lower_span(param.ty.span),
                 hir_id,
             }),
-            ty_span: self.lower_span(param.ty.span),
             param_span: self.lower_span(param.span),
         }
     }
@@ -1456,7 +1455,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir_id: parameter.hir_id,
                 pat: new_parameter_pat,
                 ty: parameter.ty,
-                ty_span: self.lower_span(parameter.ty_span),
                 param_span: self.lower_span(parameter.param_span),
             };
 

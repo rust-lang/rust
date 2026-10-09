@@ -216,7 +216,7 @@ fn convert_to_from(
         (impl_item.ident.span, String::from("from")),
         // fn into([mut] self: U) -> T  ->  fn into([mut] val: T) -> T
         //               ~~~~~~~                          ~~~~~~
-        (self_ident.span.to(self_param.ty_span), format!("val: {from}")),
+        (self_ident.span.to(self_param.ty.span), format!("val: {from}")),
     ];
 
     if let FnRetTy::Return(_) = sig.decl.output {
