@@ -1,14 +1,12 @@
 use rustc_ast::{
-    self as ast, AngleBracketedArg, AttrArgs, DUMMY_NODE_ID, GenericArg, GenericBound,
-    GenericParam, GenericParamKind, Generics, ItemKind, WherePredicate, WherePredicateKind,
-    WhereRegionPredicate, token,
+    self as ast, AngleBracketedArg, AttrArgs, DUMMY_NODE_ID, GenericArg, Generics, ItemKind, token,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::E0802;
 use rustc_expand::base::ExtCtxt;
 use rustc_macros::Diagnostic;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
-use thin_vec::{ThinVec, thin_vec};
+use rustc_span::{Ident, Span, Symbol, sym};
+use thin_vec::ThinVec;
 
 use crate::deriving::generic::*;
 use crate::deriving::new_path;
