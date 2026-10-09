@@ -1062,6 +1062,15 @@ impl Default for NextSolverConfig {
 pub enum Input {
     /// Load source code from a file.
     File(PathBuf),
+    /// Load source code from a doctest string.
+    DocTestStr {
+        /// The file associated with this input.
+        file: PathBuf,
+        // Line associated with this input
+        line: isize,
+        /// An anonymous string containing the source code.
+        input: String,
+    },
     /// Load source code from a string.
     Str {
         /// A string that is shown in place of a filename.
@@ -1092,6 +1101,14 @@ impl Input {
                     .path_mapping()
                     .to_real_filename(session.psess.source_map().working_dir(), ifile.as_path()),
             ),
+            Input::DocTestStr { ref file, line, .. } => FileName::DocTest(
+                session
+                    .psess
+                    .source_map()
+                    .path_mapping()
+                    .to_real_filename(session.psess.source_map().working_dir(), file.as_path()),
+                line,
+            ),
             Input::Str { ref name, .. } => name.clone(),
         }
     }
@@ -1099,6 +1116,7 @@ impl Input {
     pub fn opt_path(&self) -> Option<&Path> {
         match self {
             Input::File(file) => Some(file),
+            Input::DocTestStr { file, .. } => Some(file),
             Input::Str { name, .. } => match name {
                 FileName::Real(real) => real.local_path(),
                 FileName::CfgSpec(_) => None,
@@ -1107,7 +1125,7 @@ impl Input {
                 FileName::ProcMacroSourceCode(_) => None,
                 FileName::CliCrateAttr(_) => None,
                 FileName::Custom(_) => None,
-                FileName::DocTest(path, _) => Some(path),
+                FileName::DocTest(path, _) => path.local_path(),
                 FileName::InlineAsm(_) => None,
             },
         }

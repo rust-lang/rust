@@ -61,12 +61,14 @@ pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
                     StripTokens::ShebangAndFrontmatter,
                     None,
                 ),
-                Input::Str { input, name } => new_parser_from_source_str(
-                    &sess.psess,
-                    name.clone(),
-                    input.clone(),
-                    StripTokens::ShebangAndFrontmatter,
-                ),
+                instr @ (Input::Str { input, .. } | Input::DocTestStr { input, .. }) => {
+                    new_parser_from_source_str(
+                        &sess.psess,
+                        instr.file_name(sess),
+                        input.clone(),
+                        StripTokens::ShebangAndFrontmatter,
+                    )
+                }
             });
             parser.parse_crate_mod()
         })
