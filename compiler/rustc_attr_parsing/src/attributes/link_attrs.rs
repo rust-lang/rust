@@ -1,5 +1,6 @@
 use rustc_abi::ExternAbi;
 use rustc_attr_ir::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
+use rustc_attr_ir::target::AstTarget;
 use rustc_attr_ir::*;
 use rustc_errors::msg;
 use rustc_feature::{AttributeStability, Features};
@@ -261,7 +262,7 @@ impl CombineAttributeParser for LinkParser {
     }
 
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
-        let rustc_attr_ir::target::AstTarget::ForeignMod(fm) = cx.ast_target else {
+        let AstTarget::ForeignMod(fm) = cx.ast_target else {
             return;
         };
 
@@ -272,8 +273,8 @@ impl CombineAttributeParser for LinkParser {
                     "LinkParser::finalize_check was unable to pre-detect the ABI, so it continues to use the recovery value solely to check for unused_attributes in the lint; a user error E0703 will be reported later in lower_abi",
                 );
                 ExternAbi::Rust
-                })
-            });
+            })
+        });
         if matches!(abi, ExternAbi::Rust) {
             cx.emit_lint(UNUSED_ATTRIBUTES, Link, attr_span);
         }

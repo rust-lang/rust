@@ -26,7 +26,6 @@ impl NoArgsAttributeParser for NonExhaustiveParser {
         let AstTarget::Struct(_, _, data) = cx.ast_target else {
             return;
         };
-
         if let VariantData::Struct { fields, .. } = data
             && fields.iter().any(|f| f.default_value().is_some())
         {
