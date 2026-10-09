@@ -43,7 +43,11 @@ error[E0277]: `{closure@$DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:33:1
 LL |     for _ in closure {}
    |              ^^^^^^^ `{closure@$DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:33:19: 33:21}` is not an iterator
    |
-   = help: the trait `Iterator` is not implemented for closure `{closure@$DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:33:19: 33:21}`
+help: the trait `Iterator` is not implemented for closure `{closure@$DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:33:19: 33:21}`
+  --> $DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:33:19
+   |
+LL |     let closure = || vec![1u8].into_iter();
+   |                   ^^
    = note: required for `{closure@$DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:33:19: 33:21}` to implement `IntoIterator`
 help: use parentheses to call this closure
    |
@@ -56,7 +60,11 @@ error[E0277]: `{closure@$DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:36:1
 LL |     for _ in || vec![1u8].into_iter() {}
    |              ^^^^^^^^^^^^^^^^^^^^^^^^ `{closure@$DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:36:14: 36:16}` is not an iterator
    |
-   = help: the trait `Iterator` is not implemented for closure `{closure@$DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:36:14: 36:16}`
+help: the trait `Iterator` is not implemented for closure `{closure@$DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:36:14: 36:16}`
+  --> $DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:36:14
+   |
+LL |     for _ in || vec![1u8].into_iter() {}
+   |              ^^
    = note: required for `{closure@$DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:36:14: 36:16}` to implement `IntoIterator`
 help: use parentheses to call this closure
    |

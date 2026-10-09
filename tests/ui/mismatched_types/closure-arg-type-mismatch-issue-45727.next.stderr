@@ -6,7 +6,11 @@ LL |     let _ = (-10..=10).find(|x: i32| x.signum() == 0);
    |                        |
    |                        required by a bound introduced by this call
    |
-   = help: the trait `for<'a> FnMut(&'a {integer})` is not implemented for closure `{closure@$DIR/closure-arg-type-mismatch-issue-45727.rs:6:29: 6:37}`
+help: the trait `for<'a> FnMut(&'a {integer})` is not implemented for closure `{closure@$DIR/closure-arg-type-mismatch-issue-45727.rs:6:29: 6:37}`
+  --> $DIR/closure-arg-type-mismatch-issue-45727.rs:6:29
+   |
+LL |     let _ = (-10..=10).find(|x: i32| x.signum() == 0);
+   |                             ^^^^^^^^
    = note: expected a closure with signature `for<'a> fn(&'a {integer})`
               found a closure with signature `fn(i32)`
 note: required by a bound in `find`
@@ -20,7 +24,11 @@ LL |     let _ = (-10..=10).find(|x: &&&i32| x.signum() == 0);
    |                        |
    |                        required by a bound introduced by this call
    |
-   = help: the trait `for<'a> FnMut(&'a {integer})` is not implemented for closure `{closure@$DIR/closure-arg-type-mismatch-issue-45727.rs:9:29: 9:40}`
+help: the trait `for<'a> FnMut(&'a {integer})` is not implemented for closure `{closure@$DIR/closure-arg-type-mismatch-issue-45727.rs:9:29: 9:40}`
+  --> $DIR/closure-arg-type-mismatch-issue-45727.rs:9:29
+   |
+LL |     let _ = (-10..=10).find(|x: &&&i32| x.signum() == 0);
+   |                             ^^^^^^^^^^^
    = note: expected a closure with signature `for<'a> fn(&'a {integer})`
               found a closure with signature `fn(&&&i32)`
 note: required by a bound in `find`
