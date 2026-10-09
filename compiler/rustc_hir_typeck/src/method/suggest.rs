@@ -4457,25 +4457,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     .as_local()
                                     .map(|def_id| self.tcx.hir_node_by_def_id(def_id));
                                 if let Some(hir::Node::TraitItem(hir::TraitItem {
-                                    kind: hir::TraitItemKind::Fn(fn_sig, method),
+                                    kind: hir::TraitItemKind::Fn(fn_sig, _),
                                     ..
                                 })) = id
                                 {
-                                    let self_first_arg = match method {
-                                        hir::TraitFn::Required([ident, ..]) => {
-                                            matches!(ident, Some(Ident { name: kw::SelfLower, .. }))
-                                        }
-                                        hir::TraitFn::Provided(_body_id) => {
-                                            fn_sig.decl.inputs.first().is_some_and(|param| {
-                                                matches!(
-                                                    param.pat.kind,
-                                                    hir::PatKind::Binding(_, _, ident, _)
-                                                        if ident.name == kw::SelfLower
-                                                )
-                                            })
-                                        }
-                                        _ => false,
-                                    };
+                                    let self_first_arg =
+                                        fn_sig.decl.inputs.first().is_some_and(|param| {
+                                            matches!(
+                                                param.pat.kind,
+                                                hir::PatKind::Binding(_, _, ident, _)
+                                                    if ident.name == kw::SelfLower
+                                            )
+                                        });
 
                                     if !fn_sig.decl.implicit_self().has_implicit_self()
                                         && self_first_arg

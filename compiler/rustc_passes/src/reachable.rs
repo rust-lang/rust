@@ -146,7 +146,7 @@ impl<'tcx> ReachableContext<'tcx> {
             Node::TraitItem(trait_method) => match trait_method.kind {
                 hir::TraitItemKind::Const(_, ref default) => default.is_some(),
                 hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => true,
-                hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_))
+                hir::TraitItemKind::Fn(_, hir::TraitFn::Required)
                 | hir::TraitItemKind::Type(..) => false,
             },
             Node::ImplItem(impl_item) => match impl_item.kind {
@@ -267,7 +267,7 @@ impl<'tcx> ReachableContext<'tcx> {
             Node::TraitItem(trait_method) => {
                 match trait_method.kind {
                     hir::TraitItemKind::Const(_, None)
-                    | hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_)) => {
+                    | hir::TraitItemKind::Fn(_, hir::TraitFn::Required) => {
                         // Keep going, nothing to get exported
                     }
                     hir::TraitItemKind::Const(_, Some(rhs)) => self.visit_const_item_rhs(rhs),

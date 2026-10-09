@@ -2978,7 +2978,7 @@ impl<'hir> TraitItem<'hir> {
         expect_const, (&'hir Ty<'hir>, Option<ConstItemRhs<'hir>>),
             TraitItemKind::Const(ty, rhs), (ty, *rhs);
 
-        expect_fn, (&FnSig<'hir>, &TraitFn<'hir>),
+        expect_fn, (&FnSig<'hir>, &TraitFn),
             TraitItemKind::Fn(ty, trfn), (ty, trfn);
 
         expect_type, (GenericBounds<'hir>, Option<&'hir Ty<'hir>>),
@@ -2988,9 +2988,9 @@ impl<'hir> TraitItem<'hir> {
 
 /// Represents a trait method's body (or just argument names).
 #[derive(Debug, Clone, Copy, StableHash)]
-pub enum TraitFn<'hir> {
+pub enum TraitFn {
     /// No default body in the trait, just a signature.
-    Required(&'hir [Option<Ident>]),
+    Required,
 
     /// Both signature and body are provided in the trait.
     Provided(BodyId),
@@ -3002,7 +3002,7 @@ pub enum TraitItemKind<'hir> {
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
     Const(&'hir Ty<'hir>, Option<ConstItemRhs<'hir>>),
     /// An associated function with an optional body.
-    Fn(FnSig<'hir>, TraitFn<'hir>),
+    Fn(FnSig<'hir>, TraitFn),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type.
     Type(GenericBounds<'hir>, Option<&'hir Ty<'hir>>),
@@ -5314,8 +5314,8 @@ mod size_asserts {
     static_assert_size!(Stmt<'_>, 32);
     static_assert_size!(StmtKind<'_>, 16);
     static_assert_size!(TraitImplHeader<'_>, 48);
-    static_assert_size!(TraitItem<'_>, 88);
-    static_assert_size!(TraitItemKind<'_>, 48);
+    static_assert_size!(TraitItem<'_>, 80);
+    static_assert_size!(TraitItemKind<'_>, 40);
     static_assert_size!(Ty<'_>, 48);
     static_assert_size!(TyKind<'_>, 32);
     // tidy-alphabetical-end

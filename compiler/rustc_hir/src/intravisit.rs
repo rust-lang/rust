@@ -1311,11 +1311,8 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(
             try_visit!(visitor.visit_ty_unambig(ty));
             visit_opt!(visitor, visit_const_item_rhs, default);
         }
-        TraitItemKind::Fn(ref sig, TraitFn::Required(param_idents)) => {
+        TraitItemKind::Fn(ref sig, TraitFn::Required) => {
             try_visit!(visitor.visit_fn_decl(sig.decl));
-            for ident in param_idents.iter().copied() {
-                visit_opt!(visitor, visit_ident, ident);
-            }
         }
         TraitItemKind::Fn(ref sig, TraitFn::Provided(body_id)) => {
             try_visit!(visitor.visit_fn(

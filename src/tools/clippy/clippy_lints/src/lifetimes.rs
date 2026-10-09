@@ -149,7 +149,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
             ..
         } = item.kind
         {
-            check_fn_inner(cx, sig, Some(id), None, generics, item.span, true, self.msrv, || {
+            check_fn_inner(cx, sig, Some(id), generics, item.span, true, self.msrv, || {
                 is_from_proc_macro(cx, item)
             });
         } else if let ItemKind::Impl(impl_) = &item.kind
@@ -173,7 +173,6 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
                 cx,
                 sig,
                 Some(id),
-                None,
                 item.generics,
                 item.span,
                 report_extra_lifetimes,
@@ -185,15 +184,14 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if let TraitItemKind::Fn(ref sig, ref body) = item.kind {
-            let (body, trait_sig) = match *body {
-                TraitFn::Required(sig) => (None, Some(sig)),
-                TraitFn::Provided(id) => (Some(id), None),
+            let body = match *body {
+                TraitFn::Required => None,
+                TraitFn::Provided(id) => Some(id),
             };
             check_fn_inner(
                 cx,
                 sig,
                 body,
-                trait_sig,
                 item.generics,
                 item.span,
                 true,
@@ -209,7 +207,6 @@ fn check_fn_inner<'tcx>(
     cx: &LateContext<'tcx>,
     sig: &'tcx FnSig<'_>,
     body: Option<BodyId>,
-    trait_sig: Option<&[Option<Ident>]>,
     generics: &'tcx Generics<'_>,
     span: Span,
     report_extra_lifetimes: bool,
@@ -266,7 +263,7 @@ fn check_fn_inner<'tcx>(
         }
     }
 
-    let elidable = could_use_elision(cx, sig.decl, body, trait_sig, generics.params, msrv);
+    let elidable = could_use_elision(cx, sig.decl, body, generics.params, msrv);
     let has_elidable_lts = elidable
         .as_ref()
         .is_some_and(|(_, usages)| !usages.iter().any(|usage| !usage.ident.span.eq_ctxt(span)));
@@ -294,7 +291,6 @@ fn could_use_elision<'tcx>(
     cx: &LateContext<'tcx>,
     func: &'tcx FnDecl<'_>,
     body: Option<BodyId>,
-    trait_sig: Option<&[Option<Ident>]>,
     named_generics: &'tcx [GenericParam<'_>],
     msrv: Msrv,
 ) -> Option<(Vec<LocalDefId>, Vec<Lifetime>)> {
@@ -330,18 +326,12 @@ fn could_use_elision<'tcx>(
     let input_lts = input_visitor.lts;
     let output_lts = output_visitor.lts;
 
-    if let Some(&[trait_sig]) = trait_sig
-        && non_elidable_self_type(cx, func, trait_sig, msrv)
-    {
+    let first_ident = func.inputs.first().and_then(|param| param.pat.simple_ident());
+    if non_elidable_self_type(cx, func, first_ident, msrv) {
         return None;
     }
 
     if let Some(body_id) = body {
-        let first_ident = func.inputs.first().and_then(|param| param.pat.simple_ident());
-        if non_elidable_self_type(cx, func, first_ident, msrv) {
-            return None;
-        }
-
         let mut checker = BodyLifetimeChecker::new(cx);
         let body = cx.tcx.hir_body(body_id);
         if checker.visit_expr(body.value).is_break() {

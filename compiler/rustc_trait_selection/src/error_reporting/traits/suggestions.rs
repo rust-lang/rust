@@ -7084,7 +7084,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceImplTraitFolder<'tcx> {
 pub fn suggest_desugaring_async_fn_to_impl_future_in_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
     sig: hir::FnSig<'tcx>,
-    body: hir::TraitFn<'tcx>,
+    body: hir::TraitFn,
     opaque_def_id: LocalDefId,
     add_bounds: &str,
 ) -> Option<Vec<(Span, String)>> {

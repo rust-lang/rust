@@ -1812,7 +1812,7 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
                     parent,
                     in_trait_or_impl: Some(hir::RpitContext::Trait),
                 } => match tcx.hir_node_by_def_id(parent).expect_trait_item().expect_fn().1 {
-                    hir::TraitFn::Required(_) => false,
+                    hir::TraitFn::Required => false,
                     hir::TraitFn::Provided(..) => true,
                 },
 
