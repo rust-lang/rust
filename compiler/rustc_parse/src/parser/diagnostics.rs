@@ -1474,6 +1474,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // XXX move
     pub(super) fn maybe_report_ambiguous_plus(&mut self, impl_dyn_multi: bool, ty: &Ty) {
         if impl_dyn_multi {
             self.dcx().emit_err(AmbiguousPlus {

@@ -493,6 +493,7 @@ impl<'a> Parser<'a> {
         ))
     }
 
+    // XXX FIXME: move
     pub(super) fn parse_ref_ty_no_leading_ampersand(&mut self) -> (Mutability, Option<Box<Ty>>) {
         let mutbl = self.parse_mutability();
         match self.parse_ty_no_plus() {
@@ -504,6 +505,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // XXX FIXME: move
     fn maybe_recover_ref_ty_no_leading_ampersand<'cx>(
         &mut self,
         lt: Lifetime,
@@ -597,6 +599,7 @@ impl<'a> Parser<'a> {
     /// - `[u8, 5]` → suggests using `;`, return a Array type
     /// - `[u8 5]` → suggests using `;`, return a Array type
     /// Consider to add more cases in the future.
+    // XXX FIXME: move
     fn maybe_recover_array_ty_without_semi(&mut self, elt_ty: Box<Ty>) -> PResult<'a, TyKind> {
         let span = self.token.span;
         let token_descr = super::token_descr(&self.token);
@@ -693,6 +696,7 @@ impl<'a> Parser<'a> {
     /// ```ebnf
     /// PinAndMut = "pin" MutOrConst | "mut"
     /// ```
+    // XXX FIXME: move to parser/mod.rs
     pub(crate) fn parse_pin_and_mut(&mut self) -> (Pinnedness, Mutability) {
         if self.token.is_keyword(kw::Pin) && self.look_ahead(1, Token::is_mutability) {
             self.psess.gated_spans.gate(sym::pin_ergonomics, self.token.span);
@@ -706,6 +710,7 @@ impl<'a> Parser<'a> {
 
     /// Parses the `typeof(EXPR)` for better diagnostics before returning
     /// an error type.
+    // XXX FIXME: move
     fn parse_typeof_ty(&mut self, lo: Span) -> PResult<'a, TyKind> {
         self.expect(exp!(OpenParen))?;
         let _expr = self.parse_expr_anon_const()?;
@@ -813,6 +818,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Recover from function pointer types with a generic parameter list (e.g. `fn<'a>(&'a str)`).
+    // XXX FIXME: move
     fn recover_fn_ptr_with_generics(
         &mut self,
         lo: Span,
@@ -1070,6 +1076,7 @@ impl<'a> Parser<'a> {
         Ok(GenericBound::Outlives(lt))
     }
 
+    // XXX FIXME
     fn report_parenthesized_bound(&self, lo: Span, hi: Span, kind: &str) -> ErrorGuaranteed {
         let mut diag =
             self.dcx().struct_span_err(lo.to(hi), format!("{kind} may not be parenthesized"));
@@ -1082,6 +1089,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Emits an error if any trait bound modifiers were present.
+    // XXX FIXME
     fn error_lt_bound_with_modifiers(
         &self,
         modifiers: TraitBoundModifiers,
@@ -1361,6 +1369,7 @@ impl<'a> Parser<'a> {
     }
 
     // recovers a `Fn(..)` parenthesized-style path from `fn(..)`
+    // XXX FIXME
     fn recover_path_from_fn(&mut self) -> Option<ast::Path> {
         let fn_token_span = self.token.span;
         self.bump();
@@ -1419,6 +1428,7 @@ impl<'a> Parser<'a> {
     /// Recover from `Fn`-family traits (Fn, FnMut, FnOnce) with lifetime arguments
     /// (e.g. `FnOnce<'a>(&'a str) -> bool`). Up to generic arguments have already
     /// been eaten.
+    // XXX FIXME: move
     fn recover_fn_trait_with_lifetime_params(
         &mut self,
         fn_path: &mut ast::Path,
