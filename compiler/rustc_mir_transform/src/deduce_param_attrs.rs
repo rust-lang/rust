@@ -149,19 +149,22 @@ impl<'tcx> Visitor<'tcx> for DeduceParamAttrs {
     }
 }
 
-/// Returns true if values of a given type will never be passed indirectly, regardless of ABI.
-fn type_will_always_be_passed_directly(ty: Ty<'_>) -> bool {
-    matches!(
-        ty.kind(),
+/// Returns true if a type could potentially benefit from deduction when passed at ABI level.
+fn type_could_benefit_from_deduction(ty: Ty<'_>) -> bool {
+    match ty.kind() {
+        // Passed directly
         ty::Bool
-            | ty::Char
-            | ty::Float(..)
-            | ty::Int(..)
-            | ty::RawPtr(..)
-            | ty::Ref(..)
-            | ty::Slice(..)
-            | ty::Uint(..)
-    )
+        | ty::Char
+        | ty::Float(..)
+        | ty::Int(..)
+        | ty::RawPtr(..)
+        | ty::Ref(..)
+        | ty::Slice(..)
+        | ty::Uint(..) => false,
+        // Ignored / ZST.
+        ty::Tuple(tys) if tys.is_empty() => false,
+        _ => true,
+    }
 }
 
 /// Returns the deduced parameter attributes for a function.
@@ -186,16 +189,16 @@ pub(super) fn deduced_param_attrs<'tcx>(
         return &[];
     }
 
-    // Codegen won't use this information for anything if all the function parameters are passed
-    // directly. Detect that and bail, for compilation speed.
+    // Based on a type of inputs and output, we can sometimes quickly identify that deduction
+    // will offers no benefit. Detect that and bail, for compilation speed.
     let fn_ty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
     if matches!(fn_ty.kind(), ty::FnDef(..))
-        && fn_ty
+        && !fn_ty
             .fn_sig(tcx)
             .inputs_and_output()
             .skip_binder()
             .iter()
-            .all(type_will_always_be_passed_directly)
+            .any(type_could_benefit_from_deduction)
     {
         return &[];
     }
