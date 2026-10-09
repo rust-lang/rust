@@ -1,6 +1,9 @@
 #![crate_name = "issue162605"]
 
 //@ count 'issue162605/foo/index.html' '//*[@id="reexport.inlined_macro"]' 1
+//@ has 'issue162605/bar/macro.inlined_macro.html'
+//@ !has 'issue162605/foo/macro.inlined_macro.html'
+//@ !has 'issue162605/macro.hidden_macro.html'
 
 pub mod foo {
     // inlined_macro does not appear in foo module.
