@@ -17,9 +17,9 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt, SmallCopySet, TyOrConstInferVar,
 };
 use rustc_type_ir::{
-    self as ty, CanonicalVarValues, ClauseKind, Const, InferCtxtLike, Interner, MayBeErased,
-    OpaqueTypeKey, PredicateKind, PredicateProxy, Region, RegionVid, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, max_universe,
+    self as ty, ClauseKind, Const, InferCtxtLike, Interner, MayBeErased, OpaqueTypeKey,
+    PredicateKind, PredicateProxy, Region, RegionVid, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, max_universe,
 };
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
@@ -129,7 +129,7 @@ where
     /// What kind of goal we're currently computing, see the enum definition
     /// for more info.
     current_goal_kind: CurrentGoalKind,
-    pub(super) var_values: CanonicalVarValues<I>,
+    pub(super) var_values: I::GenericArgs,
 
     /// The highest universe index nameable by the caller.
     ///
@@ -479,7 +479,7 @@ where
             max_input_universe: ty::UniverseIndex::ROOT,
             initial_opaque_types_storage_num_entries: Default::default(),
             var_kinds: Default::default(),
-            var_values: CanonicalVarValues::dummy(),
+            var_values: Default::default(),
             current_goal_kind: CurrentGoalKind::Misc,
             origin_span,
             tainted: Ok(()),
@@ -513,6 +513,7 @@ where
         ) -> Result<T, NoSolutionOrRerunNonErased>,
     ) -> (Result<T, NoSolution>, AccessedOpaques<I>) {
         let (ref delegate, input, var_values) = D::build_with_canonical(cx, &canonical_input);
+        let var_values = var_values.var_values;
         for (key, ty) in input.predefined_opaques_in_body.iter() {
             let prev = delegate.register_hidden_type_in_storage(key, ty, I::Span::dummy());
             // It may be possible that two entries in the opaque type storage end up
@@ -1707,7 +1708,7 @@ where
             r.retain(|(outlives, _)| !outlives.is_trivial() && unique.insert(*outlives));
         }
 
-        filter_irrelevant_region_constraints(self.delegate, &var_values, &mut external_constraints);
+        filter_irrelevant_region_constraints(self.delegate, var_values, &mut external_constraints);
 
         let canonical = canonicalize_response(
             self.delegate,
@@ -1826,7 +1827,7 @@ where
 
 fn filter_irrelevant_region_constraints<D, I>(
     delegate: &D,
-    var_values: &CanonicalVarValues<I>,
+    var_values: I::GenericArgs,
     external_constraints: &mut ExternalConstraintsData<I>,
 ) where
     D: SolverDelegate<Interner = I>,

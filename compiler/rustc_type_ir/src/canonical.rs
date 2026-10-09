@@ -1,5 +1,4 @@
 use std::fmt;
-use std::ops::Index;
 
 use arrayvec::ArrayVec;
 use derive_where::derive_where;
@@ -12,7 +11,7 @@ use thin_vec::ThinVec;
 
 use crate::data_structures::{DelayedMap, HashMap};
 use crate::inherent::*;
-use crate::{self as ty, Const, Interner, Region, TypingModeEqWrapper, UniverseIndex};
+use crate::{self as ty, Interner, TypingModeEqWrapper, UniverseIndex};
 
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, V)]
 #[derive_where(Copy; I: Interner, V: Copy)]
@@ -231,85 +230,6 @@ pub struct CanonicalVarValues<I: Interner> {
 impl<I: Interner> Eq for CanonicalVarValues<I> {}
 
 impl<I: Interner> CanonicalVarValues<I> {
-    pub fn is_identity(&self) -> bool {
-        self.var_values.iter().enumerate().all(|(bv, arg)| match arg.kind() {
-            ty::GenericArgKind::Lifetime(r) => {
-                matches!(r.kind(), ty::ReBound(ty::BoundVarIndexKind::Canonical, br) if br.var().as_usize() == bv)
-            }
-            ty::GenericArgKind::Type(ty) => {
-                matches!(ty.kind(), ty::Bound(ty::BoundVarIndexKind::Canonical, bt) if bt.var().as_usize() == bv)
-            }
-            ty::GenericArgKind::Const(ct) => {
-                matches!(ct.kind(), ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, bc) if bc.var().as_usize() == bv)
-            }
-        })
-    }
-
-    pub fn is_identity_modulo_regions(&self) -> bool {
-        let mut var = ty::BoundVar::ZERO;
-        for arg in self.var_values.iter() {
-            match arg.kind() {
-                ty::GenericArgKind::Lifetime(r) => {
-                    if matches!(r.kind(), ty::ReBound(ty::BoundVarIndexKind::Canonical, br) if var == br.var())
-                    {
-                        var = var + 1;
-                    } else {
-                        // It's ok if this region var isn't an identity variable
-                    }
-                }
-                ty::GenericArgKind::Type(ty) => {
-                    if matches!(ty.kind(), ty::Bound(ty::BoundVarIndexKind::Canonical, bt) if var == bt.var())
-                    {
-                        var = var + 1;
-                    } else {
-                        return false;
-                    }
-                }
-                ty::GenericArgKind::Const(ct) => {
-                    if matches!(ct.kind(), ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, bc) if var == bc.var())
-                    {
-                        var = var + 1;
-                    } else {
-                        return false;
-                    }
-                }
-            }
-        }
-
-        true
-    }
-
-    // Given a list of canonical variables, construct a set of values which are
-    // the identity response.
-    pub fn make_identity(cx: I, infos: I::CanonicalVarKinds) -> CanonicalVarValues<I> {
-        CanonicalVarValues {
-            var_values: cx.mk_args_from_iter(infos.iter().enumerate().map(
-                |(i, kind)| -> I::GenericArg {
-                    match kind {
-                        CanonicalVarKind::Ty { .. }
-                        | CanonicalVarKind::Int
-                        | CanonicalVarKind::Float
-                        | CanonicalVarKind::PlaceholderTy(_) => {
-                            Ty::new_canonical_bound(cx, ty::BoundVar::from_usize(i)).into()
-                        }
-                        CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => {
-                            Region::new_canonical_bound(cx, ty::BoundVar::from_usize(i)).into()
-                        }
-                        CanonicalVarKind::Const(_) | CanonicalVarKind::PlaceholderConst(_) => {
-                            Const::new_canonical_bound(cx, ty::BoundVar::from_usize(i)).into()
-                        }
-                    }
-                },
-            )),
-        }
-    }
-
-    /// Creates dummy var values which should not be used in a
-    /// canonical response.
-    pub fn dummy() -> CanonicalVarValues<I> {
-        CanonicalVarValues { var_values: Default::default() }
-    }
-
     pub fn instantiate(
         cx: I,
         var_kinds: I::CanonicalVarKinds,
@@ -344,23 +264,6 @@ impl<I: Interner> CanonicalVarValues<I> {
     #[inline]
     pub fn len(&self) -> usize {
         self.var_values.len()
-    }
-}
-
-impl<'a, I: Interner> IntoIterator for &'a CanonicalVarValues<I> {
-    type Item = I::GenericArg;
-    type IntoIter = <I::GenericArgs as SliceLike>::IntoIter;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.var_values.iter()
-    }
-}
-
-impl<I: Interner> Index<ty::BoundVar> for CanonicalVarValues<I> {
-    type Output = I::GenericArg;
-
-    fn index(&self, value: ty::BoundVar) -> &I::GenericArg {
-        &self.var_values.as_slice()[value.as_usize()]
     }
 }
 
