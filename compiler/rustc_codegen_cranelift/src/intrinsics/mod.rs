@@ -22,7 +22,7 @@ use cranelift_codegen::ir::{
 };
 use rustc_middle::ty;
 use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::layout::ValidityRequirement;
+use rustc_middle::ty::layout::{HasTypingEnv as _, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_span::{Spanned, Symbol, sym};
 use rustc_target::spec::PanicStrategy;
@@ -729,10 +729,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             if let Some(requirement) = requirement {
                 let do_panic = !fx
                     .tcx
-                    .check_validity_requirement((
-                        requirement,
-                        ty::TypingEnv::fully_monomorphized().as_query_input(ty),
-                    ))
+                    .check_validity_requirement((requirement, fx.typing_env().as_query_input(ty)))
                     .expect("expect to have layout during codegen");
 
                 if do_panic {
