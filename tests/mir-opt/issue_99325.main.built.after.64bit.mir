@@ -84,9 +84,9 @@ fn main() -> () {
         _9 = copy (_2.1: &&[u8; 4]);
         StorageLive(_10);
         StorageLive(_11);
-        _11 = &(*_8);
+        _11 = copy _8;
         StorageLive(_12);
-        _12 = &(*_9);
+        _12 = copy _9;
         _10 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _11, move _12) -> [return: bb3, unwind: bb23];
     }
 
@@ -182,9 +182,9 @@ fn main() -> () {
         _27 = copy (_21.1: &&[u8; 4]);
         StorageLive(_28);
         StorageLive(_29);
-        _29 = &(*_26);
+        _29 = copy _26;
         StorageLive(_30);
-        _30 = &(*_27);
+        _30 = copy _27;
         _28 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _29, move _30) -> [return: bb14, unwind: bb23];
     }
 
