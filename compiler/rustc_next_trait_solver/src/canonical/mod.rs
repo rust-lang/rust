@@ -113,9 +113,8 @@ where
 
     let Response { var_values, external_constraints, certainty } = response.value;
     let external_constraints = delegate.instantiate_value(external_constraints, instantiation);
-    let var_values = delegate.instantiate_value(var_values, instantiation);
 
-    unify_query_var_values(delegate, &original_values, var_values, span);
+    unify_query_var_values(delegate, &original_values, var_values, instantiation, span);
 
     let ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals } =
         &*external_constraints;
@@ -492,6 +491,7 @@ fn unify_query_var_values<D, I>(
     delegate: &D,
     original_values: &[I::GenericArg],
     var_values: I::GenericArgs,
+    instantiation: CanonicalVarValues<I>,
     span: I::Span,
 ) where
     D: SolverDelegate<Interner = I>,
@@ -500,6 +500,7 @@ fn unify_query_var_values<D, I>(
     assert_eq!(original_values.len(), var_values.len());
 
     for (&orig, response) in iter::zip(original_values, var_values.iter()) {
+        let response = delegate.instantiate_value(response, instantiation);
         if orig == response {
             continue;
         }
@@ -611,9 +612,8 @@ where
 
     let inspect::State { var_values, data } = state.value;
     let data = delegate.instantiate_value(data, instantiation);
-    let var_values = delegate.instantiate_value(var_values, instantiation);
 
-    unify_query_var_values(delegate, orig_values, var_values, span);
+    unify_query_var_values(delegate, orig_values, var_values, instantiation, span);
     data
 }
 
