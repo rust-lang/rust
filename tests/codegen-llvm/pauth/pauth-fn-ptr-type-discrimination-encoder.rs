@@ -68,8 +68,8 @@ static T_D: fn_d = f_d;
 // NO_DISC: @{{.*}}T_2D = constant ptr ptrauth (ptr @f_2d, i32 0), align 8
 #[used]
 static T_2D: fn_2d = f_2d;
-// discriminator: 51179 (0xC7EB), encoding: FggE
-// DISC: @{{.*}}T_LD = constant ptr ptrauth (ptr @f_ld, i32 0, i64 51179), align 8
+// discriminator: 25877 (0x6515), encoding: FeeE
+// DISC: @{{.*}}T_LD = constant ptr ptrauth (ptr @f_ld, i32 0, i64 25877), align 8
 // NO_DISC: @{{.*}}T_LD = constant ptr ptrauth (ptr @f_ld, i32 0), align 8
 #[used]
 static T_LD: fn_ld = f_ld;
@@ -265,7 +265,7 @@ pub fn main() {
         // DISC: %{{.*}} = call double ptrauth (ptr @f_2d, i32 0, i64 38695)(double {{.*}}, double {{.*}}) {{.*}} [ "ptrauth"(i32 0, i64 38695) ]
         // NO_DISC: %{{.*}} = call double ptrauth (ptr @f_2d, i32 0)(double {{.*}}, double {{.*}}) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
         let _ = T_2D(1.0, 2.0);
-        // DISC: %{{.*}} = call fp128 ptrauth (ptr @f_ld, i32 0, i64 51179)(fp128 {{.*}}) {{.*}} [ "ptrauth"(i32 0, i64 51179) ]
+        // DISC: %{{.*}} = call fp128 ptrauth (ptr @f_ld, i32 0, i64 25877)(fp128 {{.*}}) {{.*}} [ "ptrauth"(i32 0, i64 25877) ]
         // NO_DISC: %{{.*}} = call fp128 ptrauth (ptr @f_ld, i32 0)(fp128 {{.*}}) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
         let _ = T_LD(1.0f128);
         // DISC: call void ptrauth (ptr @f_v, i32 0, i64 18983)() {{.*}} [ "ptrauth"(i32 0, i64 18983) ]
