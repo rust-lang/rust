@@ -172,8 +172,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .set_lifetime_elision_allowed(true)
                 .set_c_variadic(c_variadic)
                 .set_splatted(splatted, inputs.len())
-                .unwrap(),
-            fn_has_body: true,
+                .unwrap()
+                .set_has_body(true),
         })
     }
 
@@ -581,7 +581,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         delegation: &Delegation,
     ) -> DelegationResults<'hir> {
-        let decl = self.arena.alloc(hir::FnDecl::dummy(span));
+        let decl = self.arena.alloc(hir::FnDecl::dummy(span, true));
 
         let header = self.generate_header_error();
         let sig = hir::FnSig { decl, header, span };

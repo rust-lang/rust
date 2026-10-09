@@ -380,7 +380,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_fn_decl(&mut self, fd: &'tcx FnDecl<'tcx>) -> Self::Result {
-        if fd.fn_has_body {
+        if fd.fn_decl_kind.has_body() {
             intravisit::walk_fn_decl(self, fd);
         }
     }
