@@ -249,10 +249,24 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     deref.span,
                 )
             }
-            Adjust::Borrow(AutoBorrow::Ref(m)) => ExprKind::Borrow {
-                borrow_kind: m.to_borrow_kind(),
-                arg: self.thir.exprs.push(expr),
-            },
+            Adjust::Borrow(AutoBorrow::Ref(m)) => {
+                // Don't emit no-op &T -> &T reborrows
+                if let AutoBorrowMutability::Not = m
+                    && let ExprKind::Deref { arg: derefed_expr } = expr.kind
+                    && self.thir.exprs[derefed_expr].ty.ref_mutability()
+                        == Some(ty::Mutability::Not)
+                    // FIXME: removing these reborrows may prevent closure upvars from resolving
+                    && !self.tcx.is_closure_like(self.body_owner)
+                {
+                    assert_eq!(self.thir.exprs.last_index(), Some(derefed_expr));
+                    return self.thir.exprs.pop().unwrap();
+                } else {
+                    ExprKind::Borrow {
+                        borrow_kind: m.to_borrow_kind(),
+                        arg: self.thir.exprs.push(expr),
+                    }
+                }
+            }
             Adjust::Borrow(AutoBorrow::RawPtr(mutability)) => {
                 ExprKind::RawBorrow { mutability, arg: self.thir.exprs.push(expr) }
             }

@@ -7,7 +7,6 @@
       let _2: &[u8];
       let mut _3: &[u8; N];
       let mut _5: &[u8];
-      let _6: &[u8];
       scope 1 {
           debug arr => _2;
           let _4: *const [u8];
@@ -25,9 +24,7 @@
           StorageLive(_4);
           _4 = &raw const (*_2);
           StorageLive(_5);
-          StorageLive(_6);
-          _6 = &(*_4);
-          _5 = &(*_6);
+          _5 = &(*_4);
 -         _0 = PtrMetadata(move _5);
 +         _0 = const N;
           goto -> bb1;
@@ -37,7 +34,6 @@
           StorageDead(_5);
           StorageDead(_4);
           StorageDead(_2);
-          StorageDead(_6);
           return;
       }
   }
