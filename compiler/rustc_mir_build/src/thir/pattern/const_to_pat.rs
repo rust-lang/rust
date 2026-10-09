@@ -103,11 +103,6 @@ impl<'tcx> ConstToPat<'tcx> {
         // not run yet. However, CTFE itself uses `TypingMode::PostAnalysis` unconditionally even
         // during typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821).
         // As a result we always use a revealed env when resolving the instance to evaluate.
-        //
-        // FIXME: `const_eval_resolve_for_typeck` should probably just modify the env itself
-        // instead of having this logic here
-        let typing_env =
-            self.tcx.erase_and_anonymize_regions(self.typing_env).with_codegen_normalized(self.tcx);
         let alias_const = self.tcx.erase_and_anonymize_regions(alias_const);
 
         let mk_too_generic_err = || {
@@ -164,47 +159,50 @@ impl<'tcx> ConstToPat<'tcx> {
         } else {
             // try to resolve e.g. associated constants to their definition on an impl, and then
             // evaluate the const.
-            let valtree =
-                match self.tcx.const_eval_resolve_for_typeck(typing_env, alias_const, self.span) {
-                    Ok(Ok(c)) => c,
-                    Err(ErrorHandled::Reported(_, _)) => {
-                        // Let's tell the use where this failing const occurs.
-                        let mut err =
-                            self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
-                        // We've emitted an error on the original const, it would be redundant to complain
-                        // on its use as well.
-                        if let ty::ConstKind::Alias(_, alias_const) = self.c.kind()
-                            && let ty::AliasConstKind::Projection { .. }
-                            | ty::AliasConstKind::InherentSelf { .. }
-                            | ty::AliasConstKind::InherentImpl { .. }
-                            | ty::AliasConstKind::Free { .. } = alias_const.kind
-                        {
-                            err.downgrade_to_delayed_bug();
+            let valtree = match self.tcx.const_eval_resolve_for_typeck(
+                self.typing_env,
+                alias_const,
+                self.span,
+            ) {
+                Ok(Ok(c)) => c,
+                Err(ErrorHandled::Reported(_, _)) => {
+                    // Let's tell the use where this failing const occurs.
+                    let mut err =
+                        self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
+                    // We've emitted an error on the original const, it would be redundant to complain
+                    // on its use as well.
+                    if let ty::ConstKind::Alias(_, alias_const) = self.c.kind()
+                        && let ty::AliasConstKind::Projection { .. }
+                        | ty::AliasConstKind::InherentSelf { .. }
+                        | ty::AliasConstKind::InherentImpl { .. }
+                        | ty::AliasConstKind::Free { .. } = alias_const.kind
+                    {
+                        err.downgrade_to_delayed_bug();
+                    }
+                    return self.mk_err(err, ty);
+                }
+                Err(ErrorHandled::TooGeneric(_)) => {
+                    return mk_too_generic_err();
+                }
+                Ok(Err(bad_ty)) => {
+                    // The pattern cannot be turned into a valtree.
+                    let e = match bad_ty.kind() {
+                        ty::Adt(def, ..) => {
+                            assert!(def.is_union());
+                            self.tcx.dcx().create_err(UnionPattern { span: self.span })
                         }
-                        return self.mk_err(err, ty);
-                    }
-                    Err(ErrorHandled::TooGeneric(_)) => {
-                        return mk_too_generic_err();
-                    }
-                    Ok(Err(bad_ty)) => {
-                        // The pattern cannot be turned into a valtree.
-                        let e = match bad_ty.kind() {
-                            ty::Adt(def, ..) => {
-                                assert!(def.is_union());
-                                self.tcx.dcx().create_err(UnionPattern { span: self.span })
-                            }
-                            ty::FnPtr(..) | ty::RawPtr(..) => {
-                                self.tcx.dcx().create_err(PointerPattern { span: self.span })
-                            }
-                            _ => self.tcx.dcx().create_err(InvalidPattern {
-                                span: self.span,
-                                non_sm_ty: bad_ty,
-                                prefix: bad_ty.prefix_string(self.tcx).to_string(),
-                            }),
-                        };
-                        return self.mk_err(e, ty);
-                    }
-                };
+                        ty::FnPtr(..) | ty::RawPtr(..) => {
+                            self.tcx.dcx().create_err(PointerPattern { span: self.span })
+                        }
+                        _ => self.tcx.dcx().create_err(InvalidPattern {
+                            span: self.span,
+                            non_sm_ty: bad_ty,
+                            prefix: bad_ty.prefix_string(self.tcx).to_string(),
+                        }),
+                    };
+                    return self.mk_err(e, ty);
+                }
+            };
 
             // Lower the valtree to a THIR pattern.
             ty::Value { ty, valtree }
@@ -216,9 +214,9 @@ impl<'tcx> ConstToPat<'tcx> {
 
         if !thir_pat.references_error() {
             // Always check for `PartialEq` if we had no other errors yet.
-            if !type_has_partial_eq_impl(self.tcx, typing_env, ty).has_impl {
+            if !type_has_partial_eq_impl(self.tcx, self.typing_env, ty).has_impl {
                 let mut err = self.tcx.dcx().create_err(TypeNotPartialEq { span: self.span, ty });
-                extend_type_not_partial_eq(self.tcx, typing_env, ty, &mut err);
+                extend_type_not_partial_eq(self.tcx, self.typing_env, ty, &mut err);
                 return self.mk_err(err, ty);
             }
         }

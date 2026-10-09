@@ -1176,7 +1176,20 @@ impl<'tcx> TypingEnv<'tcx> {
 
     /// Modify the `typing_mode` to `PostAnalysis` or `Codegen` and eagerly reveal all opaque types
     /// in the `param_env`.
-    pub fn with_post_analysis_normalized(self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
+    ///
+    /// We should also reveal opaque types outside `param_env`. They are marked as `rigid` if
+    /// they can't be revealed in the previous typing env.
+    /// All data that contains types/consts from the previous typing env and that will be used
+    /// in the new post analysis typing env should be folded by this method to remove their
+    /// rigidness markers.
+    pub fn with_post_analysis_normalized_invalidating_rigid_aliases<T>(
+        self,
+        tcx: TyCtxt<'tcx>,
+        value: T,
+    ) -> PseudoCanonicalInput<'tcx, T>
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
         let TypingEnv { typing_mode, param_env } = self;
         match typing_mode.0.assert_not_erased() {
             TypingMode::Coherence
@@ -1184,29 +1197,12 @@ impl<'tcx> TypingEnv<'tcx> {
             | TypingMode::Typeck { .. }
             | TypingMode::PostTypeckUntilBorrowck { .. }
             | TypingMode::PostBorrowck { .. } => {}
-            TypingMode::PostAnalysis | TypingMode::Codegen => return self,
+            TypingMode::PostAnalysis | TypingMode::Codegen => return self.as_query_input(value),
         }
 
         let param_env = param_env.with_normalized(tcx);
-        TypingEnv::new(param_env, TypingMode::PostAnalysis)
-    }
-
-    /// Modify the `typing_mode` to `PostAnalysis` or `Codegen` and eagerly reveal all opaque types
-    /// in the `param_env`.
-    pub fn with_codegen_normalized(self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
-        let TypingEnv { typing_mode, param_env } = self;
-        match typing_mode.0.assert_not_erased() {
-            TypingMode::Coherence
-            | TypingMode::Reflection
-            | TypingMode::Typeck { .. }
-            | TypingMode::PostTypeckUntilBorrowck { .. }
-            | TypingMode::PostBorrowck { .. }
-            | TypingMode::PostAnalysis => {}
-            TypingMode::Codegen => return self,
-        }
-
-        let param_env = param_env.with_normalized(tcx);
-        TypingEnv::new(param_env, TypingMode::Codegen)
+        let value = ty::set_aliases_to_non_rigid(tcx, value).skip_norm_wip();
+        TypingEnv::new(param_env, TypingMode::PostAnalysis).as_query_input(value)
     }
 
     /// Combine this typing environment with the given `value` to be used by
