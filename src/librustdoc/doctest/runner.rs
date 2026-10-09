@@ -2,6 +2,7 @@ use std::fmt::Write;
 use std::time::Duration;
 
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_span::RemapPathScopeComponents;
 use rustc_span::edition::Edition;
 
 use crate::doctest::{
@@ -264,7 +265,7 @@ test::StaticTestFn(
 ));
 }}",
         test_name = scraped_test.name,
-        file = scraped_test.path(),
+        file = scraped_test.path(RemapPathScopeComponents::MACRO),
         line = scraped_test.line,
         no_run = scraped_test.langstr.no_run,
         should_panic = !scraped_test.langstr.no_run && scraped_test.langstr.should_panic,
