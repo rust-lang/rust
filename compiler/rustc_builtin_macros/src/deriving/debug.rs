@@ -289,22 +289,19 @@ fn show_fieldless_enum_concat_str(
         return None;
     }
 
-    let variant_names = def.variants.iter().map(|v| v.ident.name.as_str()).collect::<Vec<_>>();
-
     let mut concatenated_names = String::new();
-    let mut offsets = Vec::with_capacity(variant_names.len() + 1);
-
-    for name in variant_names.iter() {
-        offsets.push(concatenated_names.len());
-        concatenated_names.push_str(name);
-        concatenated_names.push_str(" ");
-    }
 
     let arms = def
         .variants
         .iter()
         .enumerate()
         .map(|(i, v)| {
+            let name_offset = concatenated_names.len();
+
+            let name = v.ident.name.as_str();
+            concatenated_names.push_str(name);
+            concatenated_names.push_str(" ");
+
             let variant_path = cx.path(span, vec![substr.type_ident, v.ident]);
             let pat = match &v.data {
                 ast::VariantData::Tuple(fields, _) => {
@@ -317,7 +314,7 @@ fn show_fieldless_enum_concat_str(
                 }
                 ast::VariantData::Unit(_) => cx.pat_path(span, variant_path),
             };
-            let name_offset = offsets[i];
+
             cx.arm(span, pat, cx.expr_usize(span, name_offset))
         })
         .collect::<ThinVec<_>>();
