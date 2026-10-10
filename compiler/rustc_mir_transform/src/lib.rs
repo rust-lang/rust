@@ -594,6 +594,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
         _ => {}
     }
 
+    body.phase = MirPhase::Analysis(AnalysisPhase::PostBorrowck);
     run_analysis_to_runtime_passes(tcx, &mut body);
 
     tcx.alloc_steal_mir(body)
@@ -602,7 +603,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
 // Made public so that `mir_drops_elaborated_and_const_checked` can be overridden
 // by custom rustc drivers, running all the steps by themselves. See #114628.
 pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    assert!(body.phase == MirPhase::Analysis(AnalysisPhase::Initial));
+    assert!(body.phase == MirPhase::Analysis(AnalysisPhase::PostBorrowck));
     let did = body.source.def_id();
 
     debug!("analysis_mir_cleanup({:?})", did);
@@ -843,6 +844,7 @@ fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, Body<'_
     let mut promoted = tcx.mir_promoted(def).1.steal();
 
     for body in &mut promoted {
+        body.phase = MirPhase::Analysis(AnalysisPhase::PostBorrowck);
         run_analysis_to_runtime_passes(tcx, body);
     }
 

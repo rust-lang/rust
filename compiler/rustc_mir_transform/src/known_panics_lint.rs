@@ -182,9 +182,7 @@ impl<'tcx> ty::layout::HasTypingEnv<'tcx> for ConstPropagator<'_, 'tcx> {
 impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn new(body: &'mir Body<'tcx>, tcx: TyCtxt<'tcx>) -> ConstPropagator<'mir, 'tcx> {
         let def_id = body.source.def_id();
-        // FIXME(#132279): This is used during the phase transition from analysis
-        // to runtime, so we have to manually specify the correct typing mode.
-        let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
+        let typing_env = body.typing_env(tcx);
         let can_const_prop = CanConstProp::check(tcx, typing_env, body);
         let ecx = InterpCx::new(tcx, tcx.def_span(def_id), typing_env, DummyMachine);
 
