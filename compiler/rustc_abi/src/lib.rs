@@ -2264,6 +2264,13 @@ pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// alignment in some cases.
     pub unadjusted_abi_align: Align,
 
+    /// Whether this type is `repr(C)`, or a `repr(transparent)` wrapper around such,
+    /// or an array of such.
+    /// This matters because we must follow the C ABI for these types.
+    /// Some C ABIs pass `repr(C)` ZSTs by pointer, but `repr(Rust)` ZSTs should always
+    /// be ignored.
+    pub repr_c: bool,
+
     /// The randomization seed based on this type's own repr and its fields.
     ///
     /// Since randomization is toggled on a per-crate basis even crates that do not have randomization
@@ -2303,6 +2310,12 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             }
         }
     }
+
+    /// Returns `true` if this is a `repr(C)` type,
+    /// or an array of such, or a `repr(transparent)` wrapper around such
+    pub fn is_repr_c(&self) -> bool {
+        self.repr_c
+    }
 }
 
 impl<FieldIdx: Idx, VariantIdx: Idx> fmt::Debug for LayoutData<FieldIdx, VariantIdx>
@@ -2324,6 +2337,7 @@ where
             variants,
             max_repr_align,
             unadjusted_abi_align,
+            repr_c,
             randomization_seed,
         } = self;
         f.debug_struct("Layout")
@@ -2336,6 +2350,7 @@ where
             .field("variants", variants)
             .field("max_repr_align", max_repr_align)
             .field("unadjusted_abi_align", unadjusted_abi_align)
+            .field("repr_c", repr_c)
             .field("randomization_seed", randomization_seed)
             .finish()
     }
@@ -2441,8 +2456,8 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Checks if these two `Layout` are equal enough to be considered "the same for all function
     /// call ABIs". Note however that real ABIs depend on more details that are not reflected in the
     /// `Layout`; the `PassMode` need to be compared as well. Also note that we assume
-    /// aggregates are passed via `PassMode::Indirect` or `PassMode::Cast`; more strict
-    /// checks would otherwise be required.
+    /// aggregates are passed via `PassMode::Indirect`, `PassMode::IndirectUnsized` or
+    /// `PassMode::Cast`; more strict checks would otherwise be required.
     pub fn eq_abi(&self, other: &Self) -> bool {
         // The one thing that we are not capturing here is that for unsized types, the metadata must
         // also have the same ABI, and moreover that the same metadata leads to the same size. The

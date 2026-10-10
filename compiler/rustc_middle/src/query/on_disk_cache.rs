@@ -694,6 +694,10 @@ impl<'a, 'tcx> BlobDecoder for CacheDecoder<'a, 'tcx> {
     fn decode_def_index(&mut self) -> DefIndex {
         panic!("trying to decode `DefIndex` outside the context of a `DefId`")
     }
+
+    fn decode_local_def_id(&mut self) -> LocalDefId {
+        self.decode_def_id().expect_local()
+    }
 }
 
 /// Implements [`Decodable`] for `&'tcx T`, where [`T: RefDecodable`](RefDecodable).

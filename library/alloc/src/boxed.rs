@@ -248,6 +248,9 @@ pub struct Box<
 #[cfg(not(no_global_oom_handling))]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 const fn box_new_uninit(layout: Layout) -> *mut u8 {
+    if layout.size() == 0 {
+        return layout.dangling_ptr().as_ptr();
+    }
     match Global.allocate(layout) {
         Ok(ptr) => ptr.as_mut_ptr(),
         Err(_) => handle_alloc_error(layout),

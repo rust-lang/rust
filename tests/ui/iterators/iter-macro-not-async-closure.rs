@@ -30,10 +30,7 @@ fn main() {
 
     let x = pin!(call_async_once(f));
     //[current]~^ ERROR AsyncFnOnce()` is not satisfied
-    //[current]~^^ ERROR AsyncFnOnce()` is not satisfied
-    //[current]~^^^ ERROR AsyncFnOnce()` is not satisfied
-    //[current]~^^^^ ERROR AsyncFnOnce()` is not satisfied
-    //[current]~^^^^^ ERROR AsyncFnOnce()` is not satisfied
+    //[current]~| ERROR AsyncFnOnce()` is not satisfied
     x.poll(&mut Context::from_waker(Waker::noop()));
     //[current]~^ ERROR AsyncFnOnce()` is not satisfied
 }

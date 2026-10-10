@@ -61,12 +61,14 @@ pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
                     StripTokens::ShebangAndFrontmatter,
                     None,
                 ),
-                Input::Str { input, name } => new_parser_from_source_str(
-                    &sess.psess,
-                    name.clone(),
-                    input.clone(),
-                    StripTokens::ShebangAndFrontmatter,
-                ),
+                instr @ (Input::Str { input, .. } | Input::DocTestStr { input, .. }) => {
+                    new_parser_from_source_str(
+                        &sess.psess,
+                        instr.file_name(sess),
+                        input.clone(),
+                        StripTokens::ShebangAndFrontmatter,
+                    )
+                }
             });
             parser.parse_crate_mod()
         })
@@ -985,6 +987,10 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     }
 
     let incremental = dep_graph.is_fully_enabled();
+    let track_present = incremental
+        || sess.opts.unstable_opts.incremental_verify_ich
+        || sess.prof.enabled()
+        || cfg!(debug_assertions);
 
     // Note: this function body is the origin point of the widely-used 'tcx lifetime.
     //
@@ -1017,6 +1023,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
             providers.extern_queries,
             query_result_on_disk_cache,
             incremental,
+            track_present,
         ),
         providers.hooks,
         compiler.current_gcx.clone(),

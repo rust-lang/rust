@@ -1,5 +1,4 @@
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -117,7 +116,6 @@ pub(crate) fn check_pointers<'tcx, F>(
                         // worse UB when we start unwinding.
                         unwind: UnwindAction::Unreachable,
                     },
-                    loop_hint_attrs: ThinVec::new(),
                 });
             }
         }

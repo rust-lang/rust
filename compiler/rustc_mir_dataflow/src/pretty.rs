@@ -7,7 +7,11 @@ use rustc_middle::ty::TyCtxt;
 
 use crate::debuginfo::debuginfo_locals;
 use crate::framework::Analysis;
-use crate::impls::{MaybeLiveLocals, MaybeTransitiveLiveLocals, borrowed_locals};
+use crate::impls::{
+    MaybeLiveLocals, MaybeTransitiveLiveLocals, SplitPointEffect, SplitPointIndex, borrowed_locals,
+    liveness_matrix,
+};
+use crate::points::DenseLocationMap;
 use crate::{ResultsVisitor, visit_results};
 
 type ExtraDataFn = dyn Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>;
@@ -32,6 +36,29 @@ pub(crate) fn mir_pretty_extra_data<'tcx>(
                     &results,
                     &mut Annotator { annotations: &mut annotations },
                 );
+            }
+            RustcMirKind::PrettyPreciseLiveness => {
+                let points = DenseLocationMap::new(body);
+                let matrix = liveness_matrix(tcx, body, &points, None);
+                for (block, data) in body.basic_blocks.iter_enumerated() {
+                    for statement_index in 0..=data.statements.len() {
+                        let location = mir::Location { block, statement_index };
+                        let point = points.point_from_location(location);
+                        let locals_live_at = |effect| {
+                            let split_point = SplitPointIndex::new(point, effect);
+                            matrix
+                                .rows()
+                                .filter(|&r| matrix.contains(r, split_point))
+                                .collect::<Vec<_>>()
+                        };
+                        let early = locals_live_at(SplitPointEffect::Early);
+                        annotations
+                            .add(PassWhere::BeforeLocation(location), format!("early: {early:?}"));
+                        let late = locals_live_at(SplitPointEffect::Late);
+                        annotations
+                            .add(PassWhere::BeforeLocation(location), format!("late: {late:?}"));
+                    }
+                }
             }
             RustcMirKind::PrettyTransitiveLiveLocals => {
                 let borrowed_locals = borrowed_locals(body);

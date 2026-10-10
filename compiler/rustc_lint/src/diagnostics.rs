@@ -3261,3 +3261,14 @@ pub(crate) enum RawBorrowViaReferenceSuggestion<'a> {
     #[help("consider using `&raw {$mutbl}` for a safer and more explicit raw pointer")]
     Spanless { mutbl: &'a str },
 }
+
+#[derive(Diagnostic)]
+#[diag("missing `#[derive(GenericTypeVisitable)]` on a type which implements `TypeVisitable`")]
+#[note_once(
+    "`GenericTypeVisitable` is rust-analyzer's version of `TypeVisitable`; it should be implemented whenever the latter is"
+)]
+#[help("mark the type with `#[derive(GenericTypeVisitable)]`")]
+#[help(
+    "or, if `GenericTypeVisitable` is derived, check whether all fields implement `GenericTypeVisitable`"
+)]
+pub(crate) struct MissingGenericTypeVisitableDeriveDiag;

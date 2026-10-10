@@ -1,6 +1,7 @@
 error[E0080]: evaluation panicked: not yet implemented
   --> $DIR/ice-normalize-inherent-assoc-const.rs:10:28
    |
+LL | impl Foo {
 LL |     const ASSOC_C: usize = todo!();
    |                            ^^^^^^^ evaluation of `Foo::ASSOC_C` failed here
 

@@ -2,8 +2,6 @@
 //@[NO-OPT] compile-flags: -Copt-level=0
 //@[SPEED-OPT] compile-flags: -Copt-level=3 -Coverflow-checks=y
 
-#![feature(optimize_attribute)]
-
 #[optimize(none)]
 pub fn add_noopt() -> i32 {
     // CHECK-LABEL: fn add_noopt(

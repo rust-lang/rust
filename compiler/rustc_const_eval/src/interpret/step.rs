@@ -532,7 +532,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.return_from_current_stack_frame(/* unwinding */ false)?
             }
 
-            Goto { target } => self.go_to_block(target),
+            Goto { target, loop_hint_attrs: _ } => self.go_to_block(target),
 
             SwitchInt { ref discr, ref targets } => {
                 let discr = self.read_immediate(&self.eval_operand(discr, None)?)?;

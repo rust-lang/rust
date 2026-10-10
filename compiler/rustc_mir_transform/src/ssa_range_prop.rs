@@ -159,7 +159,7 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
                 if let Some(place) = cond.place()
                     && self.is_ssa(place) =>
             {
-                let successor = Location { block: *target, statement_index: 0 };
+                let successor = target.start_location();
                 if location.strictly_dominates(successor, &self.dominators)
                     // Don't propagate range information from built-in overflow checks,
                     // this MIR might be lowered without them!
@@ -186,7 +186,7 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
                         // FIXME: For multiple targets, the range can be the union of their values.
                         continue;
                     }
-                    let successor = Location { block: target, statement_index: 0 };
+                    let successor = target.start_location();
                     if self.unique_predecessors.contains(successor.block) {
                         assert_ne!(location.block, successor.block);
                         let range = WrappingRange { start: val, end: val };
@@ -196,7 +196,7 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
 
                 // FIXME: The range for the otherwise target be extend to more types.
                 // For instance, `val` is within the range [4, 1) at the otherwise target of `matches!(val, 1 | 2 | 3)`.
-                let otherwise = Location { block: targets.otherwise(), statement_index: 0 };
+                let otherwise = targets.otherwise().start_location();
                 if place.ty(self.local_decls, self.tcx).ty.is_bool()
                     && let [val] = targets.all_values()
                     && self.unique_predecessors.contains(otherwise.block)

@@ -497,6 +497,7 @@ fn wasm_type<'tcx>(signature: &mut String, arg_abi: &ArgAbi<'_, Ty<'tcx>>, ptr_t
             signature.push_str(wrapped_wasm_type);
         }
         PassMode::Indirect { .. } => signature.push_str(ptr_type),
+        PassMode::IndirectUnsized { .. } => bug!("unsized argument to naked asm"),
     }
 }
 

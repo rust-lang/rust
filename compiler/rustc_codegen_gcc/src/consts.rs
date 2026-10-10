@@ -16,8 +16,8 @@ use rustc_middle::mir::interpret::{
     self, ConstAllocation, CtfeProvenance, ErrorHandled, Scalar as InterpScalar, read_target_uint,
 };
 use rustc_middle::mono::MonoItem;
-use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, Instance};
+use rustc_middle::ty::Instance;
+use rustc_middle::ty::layout::{HasTypingEnv as _, LayoutOf};
 use rustc_span::def_id::DefId;
 use rustc_span::{bug, span_bug};
 
@@ -103,7 +103,7 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
         let is_thread_local = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
         let global = self.get_static_inner(def_id, val_llty);
 
-        debug_assert_eq!(
+        assert_eq!(
             global.to_rvalue().get_type(),
             val_llty,
             "`predefine_static` declared this global with a type its initializer does not have"
@@ -251,7 +251,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let gcc_type = if nested {
             self.type_i8()
         } else {
-            let ty = instance.ty(self.tcx, ty::TypingEnv::fully_monomorphized());
+            let ty = instance.ty(self.tcx, self.typing_env());
             self.layout_of(ty).gcc_type(self)
         };
 

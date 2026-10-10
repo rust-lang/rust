@@ -13,6 +13,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
 use rustc_infer::infer::{
     BoundRegionConversionTime, DefineOpaqueTypes, InferOk, RegionVariableOrigin,
 };
+use rustc_infer::traits::WellFormedLoc;
 use rustc_lint_defs::builtin::{
     AMBIGUOUS_GLOB_IMPORTED_TRAITS, RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS,
 };
@@ -648,7 +649,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         // this is a projection from a trait reference, so we have to
         // make sure that the trait reference inputs are well-formed.
-        self.add_wf_bounds(all_args, self.call_expr.span);
+        self.add_wf_bounds(all_args, self.call_expr.span, self.call_expr.hir_id);
 
         // the function type must also be well-formed (this is not
         // implied by the args being well-formed because of inherent
@@ -657,7 +658,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             self.register_wf_obligation(
                 ty.into(),
                 self.span,
-                ObligationCauseCode::WellFormed(None),
+                ObligationCauseCode::WellFormed(WellFormedLoc::HirId(self.call_expr.hir_id)),
             );
         }
     }

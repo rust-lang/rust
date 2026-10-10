@@ -1,6 +1,8 @@
 error[E0080]: unable to read parts of a pointer from memory at ALLOC$ID
   --> $DIR/read_partial_ptr.rs:10:13
    |
+LL | const PARTIAL_OVERWRITE: () = {
+...
 LL |     let x = *p;
    |             ^^ evaluation of `PARTIAL_OVERWRITE` failed here
    |
@@ -10,6 +12,8 @@ LL |     let x = *p;
 error[E0080]: unable to read parts of a pointer from memory at ALLOC$ID
   --> $DIR/read_partial_ptr.rs:23:13
    |
+LL | const PTR_BYTES_SWAP: () = {
+...
 LL |     let x = *p;
    |             ^^ evaluation of `PTR_BYTES_SWAP` failed here
    |
@@ -19,6 +23,8 @@ LL |     let x = *p;
 error[E0080]: unable to read parts of a pointer from memory at ALLOC$ID
   --> $DIR/read_partial_ptr.rs:34:13
    |
+LL | const PTR_BYTES_REPEAT: () = {
+...
 LL |     let x = *p;
    |             ^^ evaluation of `PTR_BYTES_REPEAT` failed here
    |
@@ -28,6 +34,8 @@ LL |     let x = *p;
 error[E0080]: unable to read parts of a pointer from memory at ALLOC$ID
   --> $DIR/read_partial_ptr.rs:46:13
    |
+LL | const PTR_BYTES_MIX: () = {
+...
 LL |     let x = *p;
    |             ^^ evaluation of `PTR_BYTES_MIX` failed here
    |

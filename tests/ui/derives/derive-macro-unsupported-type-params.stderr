@@ -1,6 +1,46 @@
 error[E0425]: cannot find type `T` in this scope
   --> $DIR/derive-macro-unsupported-type-params.rs:11:13
    |
+LL | #[derive(A)]
+   |          - in this derive macro
+...
+LL |     Variant(T),
+   |             ^ not found in this scope
+
+error[E0425]: cannot find type `T` in this scope
+  --> $DIR/derive-macro-unsupported-type-params.rs:16:10
+   |
+LL | #[derive(B)]
+   |          ^ not found in this scope
+   |
+   = note: this error originates in the derive macro `B` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find type `T` in this scope
+  --> $DIR/derive-macro-unsupported-type-params.rs:25:13
+   |
+LL | #[derive(C)]
+   |          - in this derive macro
+LL | enum C<T> {
+LL |     Variant(T),
+   |             ^ not found in this scope
+   |
+note: similarly named enum `A` defined here
+  --> $DIR/derive-macro-unsupported-type-params.rs:8:1
+   |
+LL | enum A<T> {
+   | ^^^^^^^^^
+help: an enum with a similar name exists
+   |
+LL -     Variant(T),
+LL +     Variant(A),
+   |
+
+error[E0425]: cannot find value `T` in this scope
+  --> $DIR/derive-macro-unsupported-type-params.rs:25:13
+   |
+LL | #[derive(C)]
+   |          - in this derive macro
+LL | enum C<T> {
 LL |     Variant(T),
    |             ^ not found in this scope
 
@@ -22,7 +62,25 @@ LL | enum A<T> {
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 3 previous errors
+error[E0107]: missing generics for enum `B`
+  --> $DIR/derive-macro-unsupported-type-params.rs:17:6
+   |
+LL | #[derive(B)]
+   |          - this derive macro might not support items with generic parameters
+LL | enum B<T> {
+   |      ^
+
+error[E0107]: missing generics for enum `B`
+  --> $DIR/derive-macro-unsupported-type-params.rs:17:6
+   |
+LL | #[derive(B)]
+   |          - this derive macro might not support items with generic parameters
+LL | enum B<T> {
+   |      ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0107, E0425.
 For more information about an error, try `rustc --explain E0107`.

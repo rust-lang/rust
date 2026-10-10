@@ -194,6 +194,42 @@ const _: () = ();
 /// [`if`]: ./keyword.if.html
 const _: () = ();
 
+#[doc(attribute = "crate_name")]
+//
+/// Specifies the name of the crate.
+///
+/// Written as an inner attribute at the top of the crate root, `crate_name` is used
+/// to specify the name of a crate.
+///
+/// ```
+/// #![crate_name = "my_crate"]
+/// ```
+///
+/// The crate name must not be empty, and must only contain [Unicode alphanumeric] or
+/// `_` (U+005F) characters.
+///
+/// Note that the specified name must match the name given by the `--crate-name` flag.
+///
+/// ```text
+/// error: `--crate-name` and `#[crate_name]` are required to match, but `cli_name` != `attr_name`
+///  --> main.rs:1:17
+///   |
+/// 1 | #![crate_name = "attr_name"]
+///   |                 ^^^^^^^^^^^
+/// ```
+///
+/// In a Cargo project the crate name is always passed as `--crate-name`, derived from the target
+/// name (`[lib] name` or `[[bin]] name` if set, otherwise `[package] name` for libraries and the
+/// primary binary, or the source file name for other binaries). The `crate_name` attribute is
+/// therefore redundant here: it adds nothing, and if it is present it must match Cargo's name,
+/// otherwise `rustc` reports an error.
+///
+/// For more information, see the Reference on [the `crate_name` attribute].
+///
+/// [Unicode alphanumeric]: ../std/primitive.char.html#method.is_alphanumeric
+/// [the `crate_name` attribute]: ../reference/crates-and-source-files.html#the-crate_name-attribute
+const _: () = ();
+
 #[doc(attribute = "deny")]
 //
 /// Emits an error, preventing the compilation from finishing, when a lint check has failed.

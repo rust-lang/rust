@@ -394,7 +394,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// use std::ptr::NonNull;
     ///
     /// let mut x = 0u32;
-    /// let ptr = NonNull::new(&mut x).expect("pointer should not be null");
+    /// let ptr = NonNull::from_mut(&mut x);
     ///
     /// let x_value = unsafe { *ptr.as_ptr() };
     /// assert_eq!(x_value, 0);
@@ -436,7 +436,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// use std::ptr::NonNull;
     ///
     /// let mut x = 0u32;
-    /// let ptr = NonNull::new(&mut x as *mut _).expect("pointer should not be null");
+    /// let ptr = NonNull::from_mut(&mut x);
     ///
     /// let ref_x = unsafe { ptr.as_ref() };
     /// println!("{ref_x}");
@@ -472,7 +472,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// use std::ptr::NonNull;
     ///
     /// let mut x = 0u32;
-    /// let mut ptr = NonNull::new(&mut x).expect("pointer should not be null");
+    /// let mut ptr = NonNull::from_mut(&mut x);
     ///
     /// let x_ref = unsafe { ptr.as_mut() };
     /// assert_eq!(*x_ref, 0);
@@ -499,7 +499,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// use std::ptr::NonNull;
     ///
     /// let mut x = 0u32;
-    /// let ptr = NonNull::new(&mut x as *mut _).expect("pointer should not be null");
+    /// let ptr = NonNull::from_mut(&mut x);
     ///
     /// let casted_ptr = ptr.cast::<i8>();
     /// let raw_ptr: *mut i8 = casted_ptr.as_ptr();
@@ -522,7 +522,6 @@ impl<T: PointeeSized> NonNull<T> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(pointer_try_cast_aligned)]
     /// use std::ptr::NonNull;
     ///
     /// let mut x = 0u64;
@@ -533,7 +532,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// assert!(aligned.try_cast_aligned::<u32>().is_some());
     /// assert!(unaligned.try_cast_aligned::<u32>().is_none());
     /// ```
-    #[unstable(feature = "pointer_try_cast_aligned", issue = "141221")]
+    #[stable(feature = "pointer_try_cast_aligned", since = "CURRENT_RUSTC_VERSION")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
@@ -948,7 +947,8 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    pub unsafe fn read_volatile(self) -> T
+    #[rustc_const_unstable(feature = "const_volatile", issue = "159094")]
+    pub const unsafe fn read_volatile(self) -> T
     where
         T: Sized,
     {
@@ -1122,7 +1122,8 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    pub unsafe fn write_volatile(self, val: T)
+    #[rustc_const_unstable(feature = "const_volatile", issue = "159094")]
+    pub const unsafe fn write_volatile(self, val: T)
     where
         T: Sized,
     {

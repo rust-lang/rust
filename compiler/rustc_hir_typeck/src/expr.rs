@@ -25,6 +25,7 @@ use rustc_hir::{ExprKind, HirId, QPath, is_range_literal};
 use rustc_hir_analysis::diagnostics::{NoFieldOnType, NoVariantNamed};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, RegionVariableOrigin};
+use rustc_infer::traits::WellFormedLoc;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::consts::ConstExt;
@@ -699,14 +700,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.require_type_is_sized_deferred(
                 output,
                 call_expr_and_args.map_or(expr.span, |(e, _)| e.span),
-                ObligationCauseCode::SizedCallReturnType,
+                ObligationCauseCode::SizedCallReturnType(expr.hir_id),
             );
         }
 
         // We always require that the type provided as the value for
         // a type parameter outlives the moment of instantiation.
         let args = self.typeck_results.borrow().node_args(expr.hir_id);
-        self.add_wf_bounds(args, expr.span);
+        self.add_wf_bounds(args, expr.span, expr.hir_id);
 
         ty
     }
@@ -1772,7 +1773,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.deferred_repeat_expr_checks.borrow_mut().push((element, element_ty, count));
 
         let ty = Ty::new_array_with_const_len(tcx, t, count);
-        self.register_wf_obligation(ty.into(), expr.span, ObligationCauseCode::WellFormed(None));
+        self.register_wf_obligation(
+            ty.into(),
+            expr.span,
+            ObligationCauseCode::WellFormed(WellFormedLoc::HirId(expr.hir_id)),
+        );
         ty
     }
 
@@ -1944,7 +1949,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.register_wf_obligation(
                 field_type.into(),
                 field.expr.span,
-                ObligationCauseCode::WellFormed(None),
+                ObligationCauseCode::WellFormed(WellFormedLoc::HirId(field.expr.hir_id)),
             );
 
             // Make sure to give a type to the field even if there's
@@ -3895,7 +3900,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.require_type_is_sized(
                                 field_ty,
                                 expr.span,
-                                ObligationCauseCode::Misc,
+                                ObligationCauseCode::WellFormed(WellFormedLoc::HirId(expr.hir_id)),
                             );
                         }
 
@@ -3924,7 +3929,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 self.require_type_is_sized(
                                     field_ty,
                                     expr.span,
-                                    ObligationCauseCode::Misc,
+                                    ObligationCauseCode::WellFormed(WellFormedLoc::HirId(
+                                        expr.hir_id,
+                                    )),
                                 );
                             }
 

@@ -20,7 +20,11 @@ LL |     wrapper.do_something_wrapper(|value| ());
    |             |
    |             required by a bound introduced by this call
    |
-   = help: the trait `for<'a> Output<'a>` is not implemented for closure `{closure@$DIR/filter-relevant-fn-bounds.rs:18:34: 18:41}`
+help: the trait `for<'a> Output<'a>` is not implemented for closure `{closure@$DIR/filter-relevant-fn-bounds.rs:18:34: 18:41}`
+  --> $DIR/filter-relevant-fn-bounds.rs:18:34
+   |
+LL |     wrapper.do_something_wrapper(|value| ());
+   |                                  ^^^^^^^
 help: this trait has no implementations, consider adding one
   --> $DIR/filter-relevant-fn-bounds.rs:1:1
    |

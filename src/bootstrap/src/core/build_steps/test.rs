@@ -1224,6 +1224,84 @@ impl CommandLineStep for IntrinsicTest {
     }
 }
 
+/// Runs stdarch's gen-checks (arm, loongarch, hexagon) to
+/// verify the committed `core_arch` files are up to date with their specs.
+/// With `--bless`, regenerates and writes them back instead.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct StdarchGenCheck {
+    host: TargetSelection,
+}
+
+impl CommandLineStep for StdarchGenCheck {
+    type Output = ();
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("stdarch-gen-check")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(StdarchGenCheck { host: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let stdarch_root = builder.src.join("library/stdarch");
+
+        // `--bless` regenerates and writes back into the tree otherwise just check.
+        let mode = if builder.config.cmd.bless() { "bless" } else { "check" };
+
+        // Generators shell out to `rustfmt`. Skip this step if bootstrap has none for this channel.
+        let Some(rustfmt_path) = builder.ensure(InternalRustfmt) else {
+            eprintln!(
+                "WARNING: stdarch-gen-check skipped because rustfmt is required but not available on this channel"
+            );
+            return;
+        };
+
+        // Keep cargo's build artifacts out of the (possibly read-only) source tree.
+        let cargo_target_dir = builder.out.join("stdarch-gen-check").join("target");
+
+        let manifest = stdarch_root.join("Cargo.toml");
+        let arm_spec = stdarch_root.join("crates/stdarch-gen-arm/spec");
+        let core_arch_src = stdarch_root.join("crates/core_arch/src");
+
+        // `stdarch-gen-common` runs each generator into a temp dir and diffs/blesses
+        // against the committed files itself, driven by STDARCH_GEN_MODE.
+        let run_gen = |selector: &str, pkg: &str, args: &[&OsStr]| {
+            let mut cmd = command(&builder.initial_cargo);
+            // Note: it is important to run this command from this directory, so that Cargo doesn't
+            // pick up library/.cargo/config.toml, which may point to vendored sources (which
+            // currently do not contain dependencies from stdarch).
+            cmd.current_dir(&builder.src);
+            cmd.arg("run")
+                .arg("--manifest-path")
+                .arg(&manifest)
+                .arg(selector)
+                .arg(pkg)
+                .arg("--release")
+                .arg("--")
+                .args(args)
+                .arg("--rustfmt-path")
+                .arg(&rustfmt_path);
+            // RUSTC_BOOTSTRAP=1 allow nightly features when building tools against stage0.
+            cmd.env("RUSTC_BOOTSTRAP", "1");
+            cmd.env("RUSTC", &builder.initial_rustc);
+            cmd.env("CARGO_TARGET_DIR", &cargo_target_dir);
+            cmd.env("STDARCH_GEN_MODE", mode);
+            cmd.run(builder);
+        };
+
+        run_gen("--bin", "stdarch-gen-arm", &[arm_spec.as_os_str(), core_arch_src.as_os_str()]);
+        run_gen("-p", "stdarch-gen-loongarch", &[OsStr::new("lsx")]);
+        run_gen("-p", "stdarch-gen-loongarch", &[OsStr::new("lasx")]);
+        run_gen("-p", "stdarch-gen-hexagon", &[]);
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Clippy {
     compilers: RustcPrivateCompilers,
@@ -1744,7 +1822,10 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
         }
 
         builder.info("tidy check");
-        cmd.delay_failure().run(builder);
+        let ctx = builder.as_ref();
+        let mut cmd = cmd.delay_failure();
+        // spawn child in background so we can do additional work in parallel
+        let tidy = cmd.start(ctx);
 
         builder.info("x.py completions check");
         let completion_paths = get_completion_paths(builder);
@@ -1759,6 +1840,9 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
             );
             helpers::exit_process(1);
         }
+
+        // now wait for the child to complete
+        tidy.wait_for_output(ctx);
 
         builder.info("x.py help check");
         if builder.config.cmd.bless() {
@@ -4503,14 +4587,6 @@ impl CommandLineStep for CodegenGCC {
             return;
         }
 
-        let triple = run.target.triple;
-        let target_supported =
-            if triple.contains("linux") { triple.contains("x86_64") } else { false };
-        if !target_supported {
-            builder.info("target not supported by rustc_codegen_gcc. skipping");
-            return;
-        }
-
         if builder.remote_tested(run.target) {
             builder.info("remote testing is not supported by rustc_codegen_gcc. skipping");
             return;
@@ -4892,7 +4968,7 @@ impl CommandLineStep for StdSemverCheck {
                         res.stdout()
                     );
                     if builder.fail_fast {
-                        eprintln!("{error}",);
+                        eprintln!("{error}");
                         helpers::exit_process(1);
                     } else {
                         builder.config.exec_ctx().add_to_delay_failure(error);

@@ -1,0 +1,31 @@
+// MIR for `dead_destinations` 0 dataflow
+
+fn dead_destinations() -> u32 {
+    let mut _0: u32;
+    let mut _1: u32;
+    let mut _2: u32;
+
+    bb0: {
+        // early: []
+        // late: [_1]
+        _1 = const 1_u32;
+        // early: []
+        // late: [_2]
+        _2 = callee(const 1_u32, const 2_u32) -> [return: bb1, unwind: bb2];
+    }
+
+    bb1: {
+        // early: []
+        // late: [_0]
+        _0 = const 0_u32;
+        // early: [_0]
+        // late: []
+        return;
+    }
+
+    bb2 (cleanup): {
+        // early: []
+        // late: []
+        resume;
+    }
+}
