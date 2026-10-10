@@ -23,6 +23,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn as_constant(&mut self, expr: &Expr<'tcx>) -> ConstOperand<'tcx> {
         let this = self; // See "LET_THIS_SELF".
         let tcx = this.tcx;
+        let typing_env = this.typing_env();
         let Expr { ty, temp_scope_id: _, span, ref kind } = *expr;
         match kind {
             ExprKind::Scope { region_scope: _, hir_id: _, value } => {
@@ -38,6 +39,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }))
                 },
                 tcx,
+                typing_env,
             ),
         }
     }
@@ -47,6 +49,7 @@ pub(crate) fn as_constant_inner<'tcx>(
     expr: &Expr<'tcx>,
     push_cuta: impl FnMut(&Box<CanonicalUserType<'tcx>>) -> Option<UserTypeAnnotationIndex>,
     tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
 ) -> ConstOperand<'tcx> {
     let Expr { ty, temp_scope_id: _, span, ref kind } = *expr;
 
@@ -110,7 +113,19 @@ pub(crate) fn as_constant_inner<'tcx>(
 
             if let Some(kind) = could_be_direct_const(def_id) {
                 let alias = ty::AliasConst::new(tcx, kind, args);
-                let ct = ty::Const::new_alias(tcx, ty::IsRigid::No, alias);
+                // Trait constants need to resolve to their impl before we can check the initializer.
+                // Propagate its WF error so MIR consumers don't evaluate an ill-typed valtree.
+                let ct = ty::Instance::try_resolve(tcx, typing_env, def_id, args)
+                    .and_then(|instance| {
+                        if let Some(instance) = instance
+                            && let Some(local_def_id) = instance.def_id().as_local()
+                            && tcx.is_direct_const(instance.def_id())
+                        {
+                            tcx.ensure_result().check_well_formed(local_def_id)?;
+                        }
+                        Ok(ty::Const::new_alias(tcx, ty::IsRigid::No, alias))
+                    })
+                    .unwrap_or_else(|guar| ty::Const::new_error(tcx, guar));
                 let const_ = Const::Ty(ty, ct);
                 return ConstOperand { span, user_ty, const_ };
             }
