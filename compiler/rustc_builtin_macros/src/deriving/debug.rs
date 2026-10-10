@@ -291,8 +291,7 @@ fn show_fieldless_enum_concat_str(
 
     let variant_names = def.variants.iter().map(|v| v.ident.name.as_str()).collect::<Vec<_>>();
 
-    let total_bytes: usize = variant_names.iter().map(|n| n.len() + 1).sum();
-    let mut concatenated_names = String::with_capacity(total_bytes);
+    let mut concatenated_names = String::new();
     let mut offsets = Vec::with_capacity(variant_names.len() + 1);
 
     for name in variant_names.iter() {
