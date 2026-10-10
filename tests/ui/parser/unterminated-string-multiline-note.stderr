@@ -1,0 +1,33 @@
+error: prefix `help` is unknown
+  --> $DIR/unterminated-string-multiline-note.rs:11:20
+   |
+LL |     env("FLAGS", "-help")
+   |                    ^^^^ unknown prefix
+   |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+help: consider inserting whitespace here
+   |
+LL |     env("FLAGS", "-help ")
+   |                        +
+
+error[E0765]: unterminated double quote string
+  --> $DIR/unterminated-string-multiline-note.rs:11:24
+   |
+LL |       env("FLAGS", "-help")
+   |  ________________________^
+...  |
+LL | | }
+   | |__^
+   |
+note: this string literal spans multiple lines; a missing closing `"` here could be the cause
+  --> $DIR/unterminated-string-multiline-note.rs:9:11
+   |
+LL |       hello("world);
+   |  ___________^
+LL | |     // a bunch of code was here
+LL | |     env("FLAGS", "-help")
+   | |_________^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0765`.
