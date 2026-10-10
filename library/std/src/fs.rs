@@ -3531,7 +3531,8 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// paths, *including* the root `path`. Consequently,
 ///
 /// - The directory you are deleting *must* exist, meaning that this function is *not idempotent*.
-/// - [`remove_dir_all`] will fail if the `path` is *not* a directory.
+/// - [`remove_dir_all`] will fail if the `path` is *not* a directory. (On Unix, it will however
+///   delete symlinks no matter where they point.)
 ///
 /// Consider ignoring the error if validating the removal is not required for your use case.
 ///
