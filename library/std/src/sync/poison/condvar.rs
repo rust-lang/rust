@@ -13,8 +13,6 @@ use crate::time::{Duration, Instant};
 /// determining that a thread must block.
 ///
 /// Functions in this module will block the current **thread** of execution.
-/// Note that any attempt to use multiple mutexes on the same condition
-/// variable may result in a runtime panic.
 ///
 /// # Examples
 ///
@@ -84,11 +82,6 @@ impl Condvar {
     /// This function will return an error if the mutex being waited on is
     /// poisoned when this thread re-acquires the lock. For more information,
     /// see information about [poisoning] on the [`Mutex`] type.
-    ///
-    /// # Panics
-    ///
-    /// This function may [`panic!`] if it is used with more than one mutex
-    /// over time.
     ///
     /// [`notify_one`]: Self::notify_one
     /// [`notify_all`]: Self::notify_all
