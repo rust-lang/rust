@@ -896,6 +896,23 @@ fn ttl() {
 
 #[test]
 #[cfg_attr(target_env = "sgx", ignore)]
+#[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
+fn hop_limit() {
+    let hlim = 100;
+
+    let listener = t!(TcpListener::bind(LOCALHOST_IP6));
+
+    t!(listener.set_hop_limit_v6(hlim));
+    assert_eq!(hlim, t!(listener.hop_limit_v6()));
+
+    let stream = t!(TcpStream::connect(t!(listener.local_addr())));
+
+    t!(stream.set_hop_limit_v6(hlim));
+    assert_eq!(hlim, t!(stream.hop_limit_v6()));
+}
+
+#[test]
+#[cfg_attr(target_env = "sgx", ignore)]
 fn set_nonblocking() {
     let listener = t!(TcpListener::bind(LOCALHOST_IP4));
 
