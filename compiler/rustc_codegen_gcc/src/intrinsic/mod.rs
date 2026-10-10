@@ -362,7 +362,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                         sym::cttz_nonzero => {
                             self.count_trailing_zeroes_nonzero(width, args[0].immediate())
                         }
-                        sym::ctpop => self.pop_count(args[0].immediate()),
+                        sym::ctpop => self.ctpop(args[0].immediate()),
                         sym::bswap => {
                             if width == 8 {
                                 args[0].immediate() // byte swap a u8/i8 is just a no-op
@@ -689,6 +689,10 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         cond
     }
 
+    fn ctpop(&mut self, val: Self::Value) -> Self::Value {
+        self.pop_count(val)
+    }
+
     fn type_checked_load(
         &mut self,
         _vtable: Self::Value,
@@ -831,8 +835,11 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
         idx: &mut usize,
         dst: PlaceRef<'tcx, RValue<'gcc>>,
     ) {
+        let func = bx.current_func();
+        // The return pointer counted by cg_ssa is a hidden parameter in GCC.
+        let hidden_params = bx.functions_with_indirect_return.borrow().contains_key(&func) as usize;
         let mut next = || {
-            let val = bx.current_func().get_param(*idx as i32);
+            let val = func.get_param((*idx - hidden_params) as i32);
             *idx += 1;
             val.to_rvalue()
         };
@@ -841,12 +848,10 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             PassMode::Pair(..) => {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
-            PassMode::Indirect { meta_attrs: Some(_), .. } => {
+            PassMode::IndirectUnsized { .. } => {
                 bug!("unsized `ArgAbi` cannot be stored");
             }
-            PassMode::Direct(_)
-            | PassMode::Indirect { meta_attrs: None, .. }
-            | PassMode::Cast { .. } => {
+            PassMode::Direct(_) | PassMode::Indirect { .. } | PassMode::Cast { .. } => {
                 let next_arg = next();
                 self.store(bx, next_arg, dst);
             }

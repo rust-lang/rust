@@ -6,7 +6,11 @@ LL |     wrapper.do_something_wrapper(|value| ());
    |             |
    |             required by a bound introduced by this call
    |
-   = help: the trait `for<'a> Output<'a>` is not implemented for closure `{closure@$DIR/explicit-reference-cast-unrelated-leaf.rs:18:34: 18:41}`
+help: the trait `for<'a> Output<'a>` is not implemented for closure `{closure@$DIR/explicit-reference-cast-unrelated-leaf.rs:18:34: 18:41}`
+  --> $DIR/explicit-reference-cast-unrelated-leaf.rs:18:34
+   |
+LL |     wrapper.do_something_wrapper(|value| ());
+   |                                  ^^^^^^^
 help: this trait has no implementations, consider adding one
   --> $DIR/explicit-reference-cast-unrelated-leaf.rs:1:1
    |
@@ -27,7 +31,11 @@ error[E0277]: the trait bound `for<'a> _: From<<{closure@$DIR/explicit-reference
 LL |     wrapper.do_something_wrapper(|value| ());
    |             ^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
    |
-   = help: the trait `for<'a> Output<'a>` is not implemented for closure `{closure@$DIR/explicit-reference-cast-unrelated-leaf.rs:18:34: 18:41}`
+help: the trait `for<'a> Output<'a>` is not implemented for closure `{closure@$DIR/explicit-reference-cast-unrelated-leaf.rs:18:34: 18:41}`
+  --> $DIR/explicit-reference-cast-unrelated-leaf.rs:18:34
+   |
+LL |     wrapper.do_something_wrapper(|value| ());
+   |                                  ^^^^^^^
 help: this trait has no implementations, consider adding one
   --> $DIR/explicit-reference-cast-unrelated-leaf.rs:1:1
    |

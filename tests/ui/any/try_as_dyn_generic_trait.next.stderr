@@ -1,6 +1,8 @@
 error[E0080]: evaluation panicked: called `Option::unwrap()` on a `None` value
   --> $DIR/try_as_dyn_generic_trait.rs:22:51
    |
+LL | const _: () = {
+LL |     let payload: Payload = std::ptr::null();
 LL |     let convert: &dyn Convert<&'static Payload> = try_as_dyn(&payload).unwrap();
    |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
 

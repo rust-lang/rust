@@ -1,0 +1,30 @@
+- // MIR for `maybe_dead_field_reborrow` before ReferencePropagation
++ // MIR for `maybe_dead_field_reborrow` after ReferencePropagation
+  
+  fn maybe_dead_field_reborrow(_1: bool) -> i32 {
+      let mut _0: i32;
+      let mut _2: (i32, i32);
+      let mut _3: &mut (i32, i32);
+      let mut _4: &mut i32;
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = (const 0_i32, const 0_i32);
+          _3 = &mut _2;
+          ((*_3).0: i32) = const 1_i32;
+-         _4 = &mut ((*_3).0: i32);
+          switchInt(copy _1) -> [1: bb1, otherwise: bb2];
+      }
+  
+      bb1: {
+          StorageDead(_2);
+          goto -> bb2;
+      }
+  
+      bb2: {
+-         _0 = copy (*_4);
++         _0 = copy ((*_3).0: i32);
+          return;
+      }
+  }
+  

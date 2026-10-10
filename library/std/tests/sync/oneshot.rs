@@ -7,6 +7,26 @@ use std::time::{Duration, Instant};
 use std::{mem, thread};
 
 #[test]
+fn is_ready_after_send() {
+    let (sender, receiver) = oneshot::channel();
+    assert_eq!(receiver.is_ready(), Ok(false));
+
+    sender.send(String::from("hello")).unwrap();
+
+    assert_eq!(receiver.is_ready(), Ok(true));
+    assert_eq!(receiver.try_recv().unwrap(), "hello");
+}
+
+#[test]
+fn is_ready_after_sender_drop() {
+    let (sender, receiver) = oneshot::channel::<()>();
+    drop(sender);
+
+    assert_eq!(receiver.is_ready(), Err(RecvError));
+    assert_eq!(receiver.recv(), Err(RecvError));
+}
+
+#[test]
 fn send_before_try_recv() {
     let (sender, receiver) = oneshot::channel();
 

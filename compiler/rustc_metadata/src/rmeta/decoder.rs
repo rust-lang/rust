@@ -100,12 +100,18 @@ pub(crate) struct CrateMetadata {
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
-    trait_impls: FxIndexMap<(u32, DefIndex), LazyArray<(DefIndex, Option<SimplifiedType>)>>,
+    /// FIXME: make type of the value `LazyArray<(DefIndex, Option<SimplifiedType>)>`
+    /// through transmuting or somehow else, as `LocalDefId` here should be `DefIndex`,
+    /// as it is from external crate.
+    trait_impls: FxIndexMap<RawDefId, LazyArray<(LocalDefId, Option<SimplifiedType>)>>,
     /// Inherent impls which do not follow the normal coherence rules.
     ///
     /// These can be introduced using either `#![rustc_coherence_is_core]`
     /// or `#[rustc_allow_incoherent_impl]`.
-    incoherent_impls: FxIndexMap<SimplifiedType, LazyArray<DefIndex>>,
+    /// FIXME: make type of the value `LazyArray<DefIndex>`
+    /// through transmuting or somehow else, as `LocalDefId` here should be `DefIndex`,
+    /// as it is from external crate.
+    incoherent_impls: FxIndexMap<SimplifiedType, LazyArray<LocalDefId>>,
     /// Proc macro function pointers for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacroClient]>,
     /// Source maps for code from the crate.
@@ -530,6 +536,10 @@ impl<'a, 'tcx> BlobDecoder for MetadataDecodeContext<'a, 'tcx> {
     fn decode_byte_symbol(&mut self) -> ByteSymbol {
         self.blob_decoder.decode_byte_symbol()
     }
+
+    fn decode_local_def_id(&mut self) -> LocalDefId {
+        self.blob_decoder.decode_local_def_id()
+    }
 }
 
 impl<'a> BlobDecoder for BlobDecodeContext<'a> {
@@ -550,6 +560,15 @@ impl<'a> BlobDecoder for BlobDecodeContext<'a> {
             |this| ByteSymbol::intern(this.read_byte_str()),
             |opaque| ByteSymbol::intern(opaque.read_byte_str()),
         )
+    }
+
+    /// The `LocalDefId` decoding logic is different from the default
+    /// one (which is decoding local def id as default def id with crate num),
+    /// because during metadata encoding/decoding `LocalDefId` is used as a wrapper
+    /// around `DefIndex` with a guarantee that it is local, that is why we can
+    /// create `LocalDefId` straight from a def index.
+    fn decode_local_def_id(&mut self) -> LocalDefId {
+        LocalDefId { local_def_index: Decodable::decode(self) }
     }
 }
 
@@ -831,7 +850,7 @@ impl MetadataBlob {
                             out,
                             "{} = crate{}",
                             lang_item.name(),
-                            DefPath::make(LOCAL_CRATE, id, |parent| root
+                            DefPath::make(LOCAL_CRATE, id.local_def_index, |parent| root
                                 .tables
                                 .def_keys
                                 .get(self, parent)
@@ -886,21 +905,21 @@ impl MetadataBlob {
                                 .get_opt_name()
                                 .unwrap_or_else(|| Symbol::intern("???"))
                         };
-                        let visibility =
-                            root.tables.visibility.get(blob, item).unwrap().decode(blob).map_id(
-                                |index| {
-                                    format!(
-                                        "crate{}",
-                                        DefPath::make(LOCAL_CRATE, index, |parent| root
-                                            .tables
-                                            .def_keys
-                                            .get(blob, parent)
-                                            .unwrap()
-                                            .decode(blob))
-                                        .to_string_no_crate_verbose()
-                                    )
-                                },
-                            );
+                        let visibility = root
+                            .tables
+                            .visibility
+                            .get(blob, item)
+                            .unwrap()
+                            .decode(blob)
+                            .map_id(|id| {
+                                format!(
+                                    "crate{}",
+                                    DefPath::make(LOCAL_CRATE, id.local_def_index, |parent| {
+                                        root.tables.def_keys.get(blob, parent).unwrap().decode(blob)
+                                    })
+                                    .to_string_no_crate_verbose()
+                                )
+                            });
                         write!(
                             out,
                             "{nil: <indent$}{:?} {:?} {} {{",
@@ -915,7 +934,7 @@ impl MetadataBlob {
                         {
                             write!(out, "\n")?;
                             for child in children.decode(blob) {
-                                print_item(blob, out, child, indent + 4)?;
+                                print_item(blob, out, child.local_def_index, indent + 4)?;
                             }
                             writeln!(out, "{nil: <indent$}}}", nil = "")?;
                         } else {
@@ -1021,7 +1040,7 @@ impl CrateMetadata {
             .macros
             .decode((self, tcx))
             .enumerate()
-            .find(|(_pos, (i, _))| *i == id)
+            .find(|(_pos, (i, _))| i.local_def_index == id)
             .unwrap();
         (self.raw_proc_macros.unwrap()[pos], kind.decode((self, tcx)))
     }
@@ -1131,7 +1150,7 @@ impl CrateMetadata {
 
         let variant_did =
             if adt_kind == ty::AdtKind::Enum { Some(self.local_def_id(index)) } else { None };
-        let ctor = data.ctor.map(|(kind, index)| (kind, self.local_def_id(index)));
+        let ctor = data.ctor.map(|(kind, id)| (kind, self.local_def_id(id.local_def_index)));
 
         (
             data.idx,
@@ -1176,7 +1195,8 @@ impl CrateMetadata {
                 .get(self, item_id)
                 .expect("variants are not encoded for an enum")
                 .decode((self, tcx))
-                .filter_map(|index| {
+                .filter_map(|id| {
+                    let index = id.local_def_index;
                     let kind = self.def_kind(index);
                     match kind {
                         DefKind::Ctor(..) => None,
@@ -1205,7 +1225,7 @@ impl CrateMetadata {
             .get(self, id)
             .unwrap_or_else(|| self.missing("visibility", id))
             .decode((self, tcx))
-            .map_id(|index| ModId::new_unchecked(self.local_def_id(index)))
+            .map_id(|id| ModId::new_unchecked(self.local_def_id(id.local_def_index)))
     }
 
     fn get_mut_restriction(&self, tcx: TyCtxt<'_>, id: DefIndex) -> RestrictionKind {
@@ -1263,7 +1283,7 @@ impl CrateMetadata {
             self.root
                 .lang_items
                 .decode((self, tcx))
-                .map(move |(def_index, index)| (self.local_def_id(def_index), index)),
+                .map(move |(id, index)| (self.local_def_id(id.local_def_index), index)),
         )
     }
 
@@ -1272,11 +1292,11 @@ impl CrateMetadata {
         tcx: TyCtxt<'tcx>,
         cnum: CrateNum,
     ) -> &'tcx [StrippedCfgItem] {
-        let item_names = self
-            .root
-            .stripped_cfg_items
-            .decode((self, tcx))
-            .map(|item| item.map_scope_id(|index| DefId { krate: cnum, index }));
+        let item_names =
+            self.root.stripped_cfg_items.decode((self, tcx)).map(|item| {
+                item.map_scope_id(|id| DefId { krate: cnum, index: id.local_def_index })
+            });
+
         tcx.arena.alloc_from_iter(item_names)
     }
 
@@ -1287,8 +1307,8 @@ impl CrateMetadata {
             .root
             .diagnostic_items
             .decode((self, tcx))
-            .map(|(name, def_index)| {
-                let id = self.local_def_id(def_index);
+            .map(|(name, id)| {
+                let id = self.local_def_id(id.local_def_index);
                 id_to_name.insert(id, name);
                 (name, id)
             })
@@ -1300,8 +1320,8 @@ impl CrateMetadata {
     fn get_canonical_symbols(&self, tcx: TyCtxt<'_>) -> CanonicalSymbols {
         let mut canonical_symbols = CanonicalSymbols::new();
 
-        for (name, def_index) in self.root.canonical_symbols.decode((self, tcx)) {
-            let id = self.local_def_id(def_index);
+        for (name, id) in self.root.canonical_symbols.decode((self, tcx)) {
+            let id = self.local_def_id(id.local_def_index);
             let _ = canonical_symbols.set(name, id);
         }
 
@@ -1312,8 +1332,8 @@ impl CrateMetadata {
     fn get_fake_doc_items(&self, tcx: TyCtxt<'_>) -> Vec<DefId> {
         let mut fake_doc_items = Vec::new();
 
-        for def_index in self.root.fake_doc_items.decode((self, tcx)) {
-            let id = self.local_def_id(def_index);
+        for id in self.root.fake_doc_items.decode((self, tcx)) {
+            let id = self.local_def_id(id.local_def_index);
             fake_doc_items.push(id);
         }
 
@@ -1343,7 +1363,7 @@ impl CrateMetadata {
                 // the view of this crate as a proc macro crate.
                 if id == CRATE_DEF_INDEX {
                     for (child_index, _) in data.macros.decode((self, tcx)) {
-                        yield self.get_mod_child(tcx, child_index);
+                        yield self.get_mod_child(tcx, child_index.local_def_index);
                     }
                 }
             } else {
@@ -1352,7 +1372,7 @@ impl CrateMetadata {
                 let non_reexports =
                     non_reexports.expect("provided `DefIndex` must refer to a module-like item");
                 for child_index in non_reexports.decode((self, tcx)) {
-                    yield self.get_mod_child(tcx, child_index);
+                    yield self.get_mod_child(tcx, child_index.local_def_index);
                 }
 
                 let reexports = self.root.tables.module_children_reexports.get(self, id);
@@ -1406,7 +1426,7 @@ impl CrateMetadata {
             .get(self, id)
             .unwrap_or_else(|| self.missing("associated_item_or_field_def_ids", id))
             .decode((self, tcx))
-            .map(move |child_index| self.local_def_id(child_index))
+            .map(move |id| self.local_def_id(id.local_def_index))
     }
 
     fn get_associated_item(&self, tcx: TyCtxt<'_>, id: DefIndex) -> ty::AssocItem {
@@ -1437,7 +1457,7 @@ impl CrateMetadata {
             DefKind::Struct | DefKind::Variant => {
                 let vdata =
                     self.root.tables.variant_data.get(self, node_id).unwrap().decode((self, tcx));
-                vdata.ctor.map(|(kind, index)| (kind, self.local_def_id(index)))
+                vdata.ctor.map(|(kind, id)| (kind, self.local_def_id(id.local_def_index)))
             }
             _ => None,
         }
@@ -1487,25 +1507,27 @@ impl CrateMetadata {
                 .inherent_impls
                 .get(self, id)
                 .decode((self, tcx))
-                .map(|index| self.local_def_id(index)),
+                .map(|id| self.local_def_id(id.local_def_index)),
         )
     }
 
     /// Decodes all traits in the crate (for rustdoc and rustc diagnostics).
     fn get_traits(&self, tcx: TyCtxt<'_>) -> impl Iterator<Item = DefId> {
-        self.root.traits.decode((self, tcx)).map(move |index| self.local_def_id(index))
+        self.root.traits.decode((self, tcx)).map(move |id| self.local_def_id(id.local_def_index))
     }
 
     /// Decodes all trait impls in the crate (for rustdoc).
     fn get_trait_impls(&self, tcx: TyCtxt<'_>) -> impl Iterator<Item = DefId> {
         self.trait_impls.values().flat_map(move |impls| {
-            impls.decode((self, tcx)).map(move |(impl_index, _)| self.local_def_id(impl_index))
+            impls.decode((self, tcx)).map(move |(id, _)| self.local_def_id(id.local_def_index))
         })
     }
 
     fn get_incoherent_impls<'tcx>(&self, tcx: TyCtxt<'tcx>, simp: SimplifiedType) -> &'tcx [DefId] {
         if let Some(impls) = self.incoherent_impls.get(&simp) {
-            tcx.arena.alloc_from_iter(impls.decode((self, tcx)).map(|idx| self.local_def_id(idx)))
+            tcx.arena.alloc_from_iter(
+                impls.decode((self, tcx)).map(|id| self.local_def_id(id.local_def_index)),
+            )
         } else {
             &[]
         }
@@ -1523,16 +1545,14 @@ impl CrateMetadata {
         // Do a reverse lookup beforehand to avoid touching the crate_num
         // hash map in the loop below.
         let key = match self.reverse_translate_def_id(trait_def_id) {
-            Some(def_id) => (def_id.krate.as_u32(), def_id.index),
+            Some(def_id) => def_id,
             None => return &[],
         };
 
         if let Some(impls) = self.trait_impls.get(&key) {
-            tcx.arena.alloc_from_iter(
-                impls
-                    .decode((self, tcx))
-                    .map(|(idx, simplified_self_ty)| (self.local_def_id(idx), simplified_self_ty)),
-            )
+            tcx.arena.alloc_from_iter(impls.decode((self, tcx)).map(|(id, simplified_self_ty)| {
+                (self.local_def_id(id.local_def_index), simplified_self_ty)
+            }))
         } else {
             &[]
         }
@@ -1583,7 +1603,10 @@ impl CrateMetadata {
     }
 
     fn get_exportable_items(&self, tcx: TyCtxt<'_>) -> impl Iterator<Item = DefId> {
-        self.root.exportable_items.decode((self, tcx)).map(move |index| self.local_def_id(index))
+        self.root
+            .exportable_items
+            .decode((self, tcx))
+            .map(move |id| self.local_def_id(id.local_def_index))
     }
 
     fn get_stable_order_of_exportable_impls(
@@ -1593,7 +1616,7 @@ impl CrateMetadata {
         self.root
             .stable_order_of_exportable_impls
             .decode((self, tcx))
-            .map(move |v| (self.local_def_id(v.0), v.1))
+            .map(move |v| (self.local_def_id(v.0.local_def_index), v.1))
     }
 
     fn exported_non_generic_symbols<'tcx>(
@@ -2107,8 +2130,10 @@ impl CrateMetadata {
     ) -> impl Iterator<Item = DefId> {
         gen move {
             if let Some(data) = &self.root.proc_macro_data {
-                for def_id in
-                    data.macros.decode((self, tcx)).map(move |(index, _)| DefId { index, krate })
+                for def_id in data
+                    .macros
+                    .decode((self, tcx))
+                    .map(move |(id, _)| DefId { krate, index: id.local_def_index })
                 {
                     yield def_id;
                 }
@@ -2138,10 +2163,10 @@ impl CrateMetadata {
 
     // Translate a DefId from the current compilation environment to a DefId
     // for an external crate.
-    fn reverse_translate_def_id(&self, did: DefId) -> Option<DefId> {
+    fn reverse_translate_def_id(&self, did: DefId) -> Option<RawDefId> {
         for (local, &global) in self.cnum_map.iter_enumerated() {
             if global == did.krate {
-                return Some(DefId { krate: local, index: did.index });
+                return Some(RawDefId { krate: local.as_u32(), index: did.index.as_u32() });
             }
         }
 

@@ -38,7 +38,7 @@ use crate::ty::Visibility;
 #[derive(Copy, Clone, Debug)]
 pub struct PartialRes {
     base_res: Res<NodeId>,
-    unresolved_segments: usize,
+    unresolved_segments: u32,
 }
 
 impl PartialRes {
@@ -52,6 +52,8 @@ impl PartialRes {
         if base_res == Res::Err {
             unresolved_segments = 0
         }
+        let unresolved_segments: u32 =
+            unresolved_segments.try_into().expect("Path had 2^32 unresolved segments");
         PartialRes { base_res, unresolved_segments }
     }
 
@@ -62,7 +64,7 @@ impl PartialRes {
 
     #[inline]
     pub fn unresolved_segments(&self) -> usize {
-        self.unresolved_segments
+        self.unresolved_segments as usize
     }
 
     #[inline]

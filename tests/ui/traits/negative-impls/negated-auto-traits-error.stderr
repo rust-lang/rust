@@ -17,25 +17,8 @@ note: required by a bound in `Outer`
 LL | struct Outer<T: Send>(T);
    |                 ^^^^ required by this bound in `Outer`
 
-error[E0277]: `dummy::TestType` cannot be sent between threads safely
-  --> $DIR/negated-auto-traits-error.rs:23:5
-   |
-LL |     Outer(TestType);
-   |     ^^^^^^^^^^^^^^^ `dummy::TestType` cannot be sent between threads safely
-   |
-help: the trait `Send` is not implemented for `dummy::TestType`
-  --> $DIR/negated-auto-traits-error.rs:20:5
-   |
-LL |     struct TestType;
-   |     ^^^^^^^^^^^^^^^
-note: required by a bound in `Outer`
-  --> $DIR/negated-auto-traits-error.rs:10:17
-   |
-LL | struct Outer<T: Send>(T);
-   |                 ^^^^ required by this bound in `Outer`
-
 error[E0277]: `dummy1b::TestType` cannot be sent between threads safely
-  --> $DIR/negated-auto-traits-error.rs:32:13
+  --> $DIR/negated-auto-traits-error.rs:31:13
    |
 LL |     is_send(TestType);
    |     ------- ^^^^^^^^ `dummy1b::TestType` cannot be sent between threads safely
@@ -43,7 +26,7 @@ LL |     is_send(TestType);
    |     required by a bound introduced by this call
    |
 help: the trait `Send` is not implemented for `dummy1b::TestType`
-  --> $DIR/negated-auto-traits-error.rs:29:5
+  --> $DIR/negated-auto-traits-error.rs:28:5
    |
 LL |     struct TestType;
    |     ^^^^^^^^^^^^^^^
@@ -54,7 +37,7 @@ LL | fn is_send<T: Send>(_: T) {}
    |               ^^^^ required by this bound in `is_send`
 
 error[E0277]: `dummy1c::TestType` cannot be sent between threads safely
-  --> $DIR/negated-auto-traits-error.rs:40:13
+  --> $DIR/negated-auto-traits-error.rs:39:13
    |
 LL |     is_send((8, TestType));
    |     ------- ^^^^^^^^^^^^^ `dummy1c::TestType` cannot be sent between threads safely
@@ -62,7 +45,7 @@ LL |     is_send((8, TestType));
    |     required by a bound introduced by this call
    |
 help: within `({integer}, dummy1c::TestType)`, the trait `Send` is not implemented for `dummy1c::TestType`
-  --> $DIR/negated-auto-traits-error.rs:37:5
+  --> $DIR/negated-auto-traits-error.rs:36:5
    |
 LL |     struct TestType;
    |     ^^^^^^^^^^^^^^^
@@ -74,7 +57,7 @@ LL | fn is_send<T: Send>(_: T) {}
    |               ^^^^ required by this bound in `is_send`
 
 error[E0277]: `dummy2::TestType` cannot be sent between threads safely
-  --> $DIR/negated-auto-traits-error.rs:48:13
+  --> $DIR/negated-auto-traits-error.rs:47:13
    |
 LL |     is_send(Box::new(TestType));
    |     ------- ^^^^^^^^^^^^^^^^^^ the trait `Send` is not implemented for `std::ptr::Unique<dummy2::TestType>`
@@ -96,7 +79,7 @@ LL |     is_send(&Box::new(TestType));
    |             +
 
 error[E0277]: `dummy3::TestType` cannot be sent between threads safely
-  --> $DIR/negated-auto-traits-error.rs:56:13
+  --> $DIR/negated-auto-traits-error.rs:55:13
    |
 LL |     is_send(Box::new(Outer2(TestType)));
    |     ------- ^^^^^^^^^^^^^^^^^^^^^^^^^^ `dummy3::TestType` cannot be sent between threads safely
@@ -104,7 +87,7 @@ LL |     is_send(Box::new(Outer2(TestType)));
    |     required by a bound introduced by this call
    |
 help: within `Outer2<dummy3::TestType>`, the trait `Send` is not implemented for `dummy3::TestType`
-  --> $DIR/negated-auto-traits-error.rs:53:5
+  --> $DIR/negated-auto-traits-error.rs:52:5
    |
 LL |     struct TestType;
    |     ^^^^^^^^^^^^^^^
@@ -123,7 +106,7 @@ LL | fn is_send<T: Send>(_: T) {}
    |               ^^^^ required by this bound in `is_send`
 
 error[E0277]: `main::TestType` cannot be sent between threads safely
-  --> $DIR/negated-auto-traits-error.rs:66:20
+  --> $DIR/negated-auto-traits-error.rs:65:20
    |
 LL |     is_sync(Outer2(TestType));
    |     -------        ^^^^^^^^ `main::TestType` cannot be sent between threads safely
@@ -131,7 +114,7 @@ LL |     is_sync(Outer2(TestType));
    |     required by a bound introduced by this call
    |
 help: the trait `Send` is not implemented for `main::TestType`
-  --> $DIR/negated-auto-traits-error.rs:61:5
+  --> $DIR/negated-auto-traits-error.rs:60:5
    |
 LL |     struct TestType;
    |     ^^^^^^^^^^^^^^^
@@ -148,6 +131,6 @@ note: required by a bound in `is_sync`
 LL | fn is_sync<T: Sync>(_: T) {}
    |               ^^^^ required by this bound in `is_sync`
 
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

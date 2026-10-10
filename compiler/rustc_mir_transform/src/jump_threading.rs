@@ -1049,7 +1049,7 @@ impl<'a, 'tcx> OpportunitySet<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn apply_goto(&mut self, bb: BasicBlock, target: BasicBlock) {
-        self.basic_blocks[bb].terminator_mut().kind = TerminatorKind::Goto { target };
+        self.basic_blocks[bb].terminator_mut().kind = TerminatorKind::goto(target);
     }
 
     #[instrument(level = "debug", skip(self), ret)]

@@ -16,6 +16,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    # Above 3 times the longest job, so that a hang cannot run until GitHub's 6-hour limit.
+    timeout-minutes: 90
 
     strategy:
       fail-fast: false
@@ -39,14 +41,20 @@ jobs:
     - name: Setup rust cache
       uses: Swatinem/rust-cache@v2
 
+    - name: Add apt mirrors
+      uses: ./.github/actions/apt-mirrors
+
     - name: Install packages
+      timeout-minutes: 20
       run: sudo apt-get install ninja-build ripgrep
 
     # FIXME: remove when we have binutils version 2.43 in the repo.
     - name: Install more recent binutils
+      # Without a limit, an unreachable mirror hangs the job until GitHub's 6-hour timeout.
+      timeout-minutes: 20
       run: |
-        echo "deb http://archive.ubuntu.com/ubuntu plucky main universe" | sudo tee /etc/apt/sources.list.d/plucky-copies.list
-        sudo apt-get update -o Acquire::Retries=3
+        echo "deb mirror+file:/etc/apt/apt-mirrors.txt plucky main universe" | sudo tee /etc/apt/sources.list.d/plucky-copies.list
+        sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30
         sudo apt-get install binutils
         installed="$(dpkg-query --showformat='${Version}' --show binutils)"
         echo "Installed binutils: $installed"

@@ -72,10 +72,10 @@ pub(super) fn check_fn<'a, 'tcx>(
             fcx.register_wf_obligation(
                 param_ty.into(),
                 param.span,
-                ObligationCauseCode::WellFormed(Some(WellFormedLoc::Param {
+                ObligationCauseCode::WellFormed(WellFormedLoc::Param {
                     function: fn_def_id,
                     param_idx: idx,
-                })),
+                }),
             );
         }
 

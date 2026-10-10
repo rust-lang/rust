@@ -12,7 +12,7 @@ use rustc_hir::def::DefKind;
 use rustc_middle::mir::interpret::{AllocId, ConstAllocation, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::{BinOp, Body, Const as MirConst, ConstValue, UnOp};
 use rustc_middle::ty::consts::ConstExt;
-use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
+use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::print::{
     with_forced_trimmed_paths, with_no_trimmed_paths, with_resolve_crate_name,
 };
@@ -28,19 +28,13 @@ use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_span::{Span, Symbol};
 use rustc_target::callconv::FnAbi;
 
-use super::{AllocRangeHelpers, CompilerCtxt, TyHelpers, TypingEnvHelpers};
+use super::{AllocRangeHelpers, CompilerCtxt, TyHelpers};
 use crate::builder::BodyBuilder;
 use crate::{Bridge, Error, Tables, filter_def_ids};
 
 impl<'tcx, B: Bridge> TyHelpers<'tcx> for CompilerCtxt<'tcx, B> {
     fn new_foreign(&self, def_id: DefId) -> ty::Ty<'tcx> {
         ty::Ty::new_foreign(self.tcx, def_id)
-    }
-}
-
-impl<'tcx, B: Bridge> TypingEnvHelpers<'tcx> for CompilerCtxt<'tcx, B> {
-    fn fully_monomorphized(&self) -> ty::TypingEnv<'tcx> {
-        ty::TypingEnv::fully_monomorphized()
     }
 }
 
@@ -458,8 +452,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
 
     /// Evaluate constant as a target usize.
     pub fn eval_target_usize(&self, cnst: MirConst<'tcx>) -> Result<u64, B::Error> {
-        use crate::context::TypingEnvHelpers;
-        cnst.try_eval_target_usize(self.tcx, self.fully_monomorphized())
+        cnst.try_eval_target_usize(self.tcx, self.typing_env())
             .ok_or_else(|| B::Error::new(format!("Const `{cnst:?}` cannot be encoded as u64")))
     }
 
@@ -471,7 +464,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     pub fn try_new_const_zst(&self, ty_internal: Ty<'tcx>) -> Result<MirConst<'tcx>, B::Error> {
         let size = self
             .tcx
-            .layout_of(self.fully_monomorphized().as_query_input(ty_internal))
+            .layout_of(self.typing_env().as_query_input(ty_internal))
             .map_err(|err| {
                 B::Error::new(format!(
                     "Cannot create a zero-sized constant for type `{ty_internal}`: {err}"
@@ -523,11 +516,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         value: u128,
         ty_internal: Ty<'tcx>,
     ) -> Result<MirConst<'tcx>, B::Error> {
-        let size = self
-            .tcx
-            .layout_of(self.fully_monomorphized().as_query_input(ty_internal))
-            .unwrap()
-            .size;
+        let size = self.tcx.layout_of(self.typing_env().as_query_input(ty_internal)).unwrap().size;
         let scalar = ScalarInt::try_from_uint(value, size).ok_or_else(|| {
             B::Error::new(format!("Value overflow: cannot convert `{value}` to `{ty_internal}`."))
         })?;
@@ -539,11 +528,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         value: u128,
         ty_internal: Ty<'tcx>,
     ) -> Result<ty::Const<'tcx>, B::Error> {
-        let size = self
-            .tcx
-            .layout_of(self.fully_monomorphized().as_query_input(ty_internal))
-            .unwrap()
-            .size;
+        let size = self.tcx.layout_of(self.typing_env().as_query_input(ty_internal)).unwrap().size;
         let scalar = ScalarInt::try_from_uint(value, size).ok_or_else(|| {
             B::Error::new(format!("Value overflow: cannot convert `{value}` to `{ty_internal}`."))
         })?;
@@ -585,11 +570,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     /// Returns the type of given definition instantiated with the given arguments.
     pub fn def_ty_with_args(&self, item: DefId, args_ref: GenericArgsRef<'tcx>) -> Ty<'tcx> {
         let def_ty = self.tcx.type_of(item);
-        self.tcx.instantiate_and_normalize_erasing_regions(
-            args_ref,
-            self.fully_monomorphized(),
-            def_ty,
-        )
+        self.tcx.instantiate_and_normalize_erasing_regions(args_ref, self.typing_env(), def_ty)
     }
 
     /// `Span` of a `DefId`.
@@ -625,7 +606,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     /// Get the instance type with generic instantiations applied and lifetimes erased.
     pub fn instance_ty(&self, instance: ty::Instance<'tcx>) -> Ty<'tcx> {
         assert!(!instance.has_non_region_param(), "{instance:?} needs further instantiation");
-        instance.ty(self.tcx, self.fully_monomorphized())
+        instance.ty(self.tcx, self.typing_env())
     }
 
     /// Get the instantiation types.
@@ -694,7 +675,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         def_id: DefId,
         args_ref: GenericArgsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
-        match Instance::try_resolve(self.tcx, self.fully_monomorphized(), def_id, args_ref) {
+        match Instance::try_resolve(self.tcx, self.typing_env(), def_id, args_ref) {
             Ok(Some(instance)) => Some(instance),
             Ok(None) | Err(_) => None,
         }
@@ -712,7 +693,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         def_id: DefId,
         args_ref: GenericArgsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
-        Instance::resolve_for_fn_ptr(self.tcx, self.fully_monomorphized(), def_id, args_ref)
+        Instance::resolve_for_fn_ptr(self.tcx, self.typing_env(), def_id, args_ref)
     }
 
     /// Resolve instance for a closure with the requested type.
@@ -728,7 +709,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     /// Try to evaluate an instance into a constant.
     pub fn eval_instance(&self, instance: ty::Instance<'tcx>) -> Result<ConstValue, ErrorHandled> {
         self.tcx.const_eval_instance(
-            self.fully_monomorphized(),
+            self.typing_env(),
             instance,
             self.tcx.def_span(instance.def_id()),
         )

@@ -2818,6 +2818,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn next_trait_solver_globally(self) -> bool {
         self.sess.opts.unstable_opts.next_solver == NextSolverConfig::Globally
+            && !self.sess.opts.unstable_opts.higher_ranked_assumptions
             && !self.features().generic_const_exprs()
     }
 

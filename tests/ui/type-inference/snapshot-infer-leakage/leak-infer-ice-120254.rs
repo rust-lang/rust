@@ -5,8 +5,6 @@
 //@[old] dont-check-compiler-stderr
 //@[old] known-bug: #120254
 
-//[next]~^^^^^^^ ERROR: the trait bound `E: Dbg` is not satisfied
-
 // Regression test for #120254. This no longer reproduces with the new solver
 // even though the underlying issue has not been fixed.
 

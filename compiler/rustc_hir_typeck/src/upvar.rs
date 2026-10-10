@@ -1867,7 +1867,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             // Anything else would be completely captured and therefore handled already.
-            _ => unreachable!(),
+            _ => unreachable!("unexpected base_path_ty: {base_path_ty:?}",),
         }
     }
 

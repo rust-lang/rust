@@ -862,192 +862,21 @@ struct](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/json/struct
 Don't confuse this with
 [`errors::Diag`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html)!
 
-## `#[rustc_on_unimplemented]`
+## Diagnostic attributes
 
-This attribute allows trait definitions to modify error messages when an implementation was
-expected but not found.
-The string literals in the attribute are format strings and can be formatted with named parameters.
-See the Formatting section below for what parameters are permitted.
+There are many attributes that can be used to generate or improve error messages:
+- `diagnostic::on_unimplemented` and [`rustc_on_unimplemented`]: customize unimplemented trait errors
+- `diagnostic::on_move`: customize borrowcheck errors 
+- `diagnostic::on_unknown`: customize unresolved imports errors
+- `diagnostic::on_unmatched_args`: customize macro matcher errors
+- `diagnostic::opaque`: stop the internals of macros from showing up in error messages
+- `diagnostic::on_const`: customize non-const trait impl errors
+- `rustc_as_ptr`: used by the `dangling_pointers_from_temporaries` lint.
+- `rustc_never_returns_null_ptr`: used by the `useless_ptr_null_checks` lint.
+- `rustc_no_implicit_autorefs`: used for the `dangerous_implicit_autorefs` lint.
 
-```rust,ignore
-#[rustc_on_unimplemented(message = "an iterator over \
-    elements of type `{A}` cannot be built from a \
-    collection of type `{Self}`")]
-trait MyIterator<A> {
-    fn next(&mut self) -> A;
-}
+If possible, consider improving or implementing such an attribute rather than adding custom error
+reporting code.
 
-fn iterate_chars<I: MyIterator<char>>(i: I) {
-    // ...
-}
-
-fn main() {
-    iterate_chars(&[1, 2, 3][..]);
-}
-```
-
-When the user compiles this, they will see the following;
-
-```txt
-error[E0277]: an iterator over elements of type `char` cannot be built from a collection of type `&[{integer}]`
-  --> src/main.rs:13:19
-   |
-13 |     iterate_chars(&[1, 2, 3][..]);
-   |     ------------- ^^^^^^^^^^^^^^ the trait `MyIterator<char>` is not implemented for `&[{integer}]`
-   |     |
-   |     required by a bound introduced by this call
-   |
-note: required by a bound in `iterate_chars`
-```
-
-You can modify the contents of:
- - the main error message (`message`)
- - the label (`label`)
- - the note(s) (`note`)
-
-For example, the following attribute
-
-```rust,ignore
-#[rustc_on_unimplemented(message = "message", label = "label", note = "note")]
-trait MyIterator<A> {
-    fn next(&mut self) -> A;
-}
-```
-
-Would generate the following output:
-
-```text
-error[E0277]: message
-  --> <file>:10:19
-   |
-10 |     iterate_chars(&[1, 2, 3][..]);
-   |     ------------- ^^^^^^^^^^^^^^ label
-   |     |
-   |     required by a bound introduced by this call
-   |
-   = help: the trait `MyIterator<char>` is not implemented for `&[{integer}]`
-   = note: note
-note: required by a bound in `iterate_chars`
-```
-
-The functionality discussed so far is also available with
-[`#[diagnostic::on_unimplemented]`](https://doc.rust-lang.org/nightly/reference/attributes/diagnostics.html#the-diagnosticon_unimplemented-attribute).
-If you can, you should use that instead.
-
-### Filtering
-
-To allow more targeted error messages,
-it is possible to filter the application of these fields with `on`.
-
-You can filter on the following boolean flags:
- - `crate_local`: whether the code causing the trait bound to not be
-   fulfilled is part of the user's crate.
-   This is used to avoid suggesting code changes that would require modifying a dependency.
- - `direct`: whether this is a user-specified rather than derived obligation.
- - `from_desugaring`: whether we are in some kind of desugaring,
-   like `?` or a `try` block for example.
-   This flag can also be matched on, see below.
-
-You can match on the following names and values, using `name = "value"`:
- - `cause`: Match against one variant of the `ObligationCauseCode` enum.
-   Only `"MainFunctionType"` is supported.
- - `from_desugaring`: Match against a particular variant of the `DesugaringKind` enum.
-   The desugaring is identified by its variant name, for example
-   `"QuestionMark"` for `?` desugaring, or `"TryBlock"` for `try` blocks.
- - `Self` and any generic arguments of the trait,
-   like `Self = "alloc::string::String"` or `Rhs="i32"`.
-
-The compiler can provide several values to match on, for example:
-  - the self_ty, pretty printed with and without type arguments resolved.
-  - `"{integral}"`, if self_ty is an integral of which the type is known.
-  - `"[]"`, `"[{ty}]"`, `"[{ty}; _]"`, `"[{ty}; $N]"` when applicable.
-  - references to said slices and arrays.
-  - `"fn"`, `"unsafe fn"` or `"#[target_feature] fn"` when self is a function.
-  - `"{integer}"` and `"{float}"` if the type is a number but we haven't inferred it yet.
-  - `"{struct}"`, `"{enum}"` and `"{union}"` to match self as an ADT
-  - combinations of the above, like `"[{integral}; _]"`.
-
-For example, the `Iterator` trait can be filtered in the following way:
-
-```rust,ignore
-#[rustc_on_unimplemented(
-    on(Self = "&str", note = "call `.chars()` or `.as_bytes()` on `{Self}`"),
-    message = "`{Self}` is not an iterator",
-    label = "`{Self}` is not an iterator",
-    note = "maybe try calling `.iter()` or a similar method"
-)]
-pub trait Iterator {}
-```
-
-Which would produce the following outputs:
-
-```text
-error[E0277]: `Foo` is not an iterator
- --> src/main.rs:4:16
-  |
-4 |     for foo in Foo {}
-  |                ^^^ `Foo` is not an iterator
-  |
-  = note: maybe try calling `.iter()` or a similar method
-  = help: the trait `std::iter::Iterator` is not implemented for `Foo`
-  = note: required by `std::iter::IntoIterator::into_iter`
-
-error[E0277]: `&str` is not an iterator
- --> src/main.rs:5:16
-  |
-5 |     for foo in "" {}
-  |                ^^ `&str` is not an iterator
-  |
-  = note: call `.chars()` or `.bytes() on `&str`
-  = help: the trait `std::iter::Iterator` is not implemented for `&str`
-  = note: required by `std::iter::IntoIterator::into_iter`
-```
-
-The `on` filter accepts `all`, `any` and `not` predicates similar to the `cfg` attribute:
-
-```rust,ignore
-#[rustc_on_unimplemented(on(
-    all(Self = "&str", T = "alloc::string::String"),
-    note = "you can coerce a `{T}` into a `{Self}` by writing `&*variable`"
-))]
-pub trait From<T>: Sized {
-    /* ... */
-}
-```
-
-### Formatting
-
-The string literals are format strings that accept parameters wrapped in braces
-but positional and listed parameters are not accepted.
-The following parameter names are valid:
-- `Self` and all generic parameters of the trait.
-- `This`: the name of the trait the attribute is on, without generics.
-- `This:path`: the full path of the trait the attribute is on, with unresolved generics.
-- `This:resolved`: the full path of the trait the attribute is on, with resolved generics.
-Additionally, this will "sugar" the `Fn(...)` traits.
-- `ItemContext`: the kind of `hir::Node` we're in, things like `"an async block"`,
-   `"a function"`, `"an async function"`, etc.
-
-Something like:
-
-```rust,ignore
-#![feature(rustc_attrs)]
-
-#[rustc_on_unimplemented(message = "Self = `{Self}`, \
-    T = `{T}`, this = `{This}`, trait = `{Trait}`, \
-    context = `{ItemContext}`")]
-pub trait From<T>: Sized {
-    fn from(x: T) -> Self;
-}
-
-fn main() {
-    let x: i8 = From::from(42_i32);
-}
-```
-
-Will format the message into
-```text
-"Self = `i8`, T = `i32`, this = `From`, trait = `From<i32>`, context = `a function`"
-```
-
+[`rustc_on_unimplemented`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_ir/attribute.rustc_on_unimplemented.html
 [diag]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html

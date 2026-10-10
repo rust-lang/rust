@@ -411,6 +411,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     check_incompatible_features(sess, features);
     check_dependent_features(sess, features);
     warn_next_solver_and_gce(sess, features);
+    warn_next_solver_and_higher_ranked_assumptions(sess);
     check_features_requiring_new_solver(sess, features);
 
     let mut visitor = PostExpansionVisitor { sess, features };
@@ -703,8 +704,8 @@ fn warn_next_solver_and_gce(sess: &Session, features: &Features) {
         return;
     }
 
-    // Warn people who uses GCE and -Znext-solver=globally
-    // that their trait solver was downgraded to -Znext-solver=no
+    // Warn people who use GCE and -Znext-solver=globally
+    // that their trait solver was downgraded to -Znext-solver=coherence
     if let Some(gce_span) = features
         .enabled_lang_features()
         .iter()
@@ -713,6 +714,16 @@ fn warn_next_solver_and_gce(sess: &Session, features: &Features) {
     {
         sess.dcx()
             .emit_warn(diagnostics::NextSolverDisabledForGenericConstExprs { span: gce_span });
+    }
+}
+
+fn warn_next_solver_and_higher_ranked_assumptions(sess: &Session) {
+    // Warn people who use -Zhigher-ranked-assumptions and -Znext-solver=globally
+    // that their trait solver was downgraded to -Znext-solver=coherence
+    if sess.opts.unstable_opts.next_solver == NextSolverConfig::Globally
+        && sess.opts.unstable_opts.higher_ranked_assumptions
+    {
+        sess.dcx().emit_warn(diagnostics::NextSolverDisabledForHigherRankedAssumptions);
     }
 }
 

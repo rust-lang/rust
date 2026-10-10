@@ -2541,7 +2541,7 @@ pub struct TargetOptions {
     /// rustc and not forwarded to LLVM.
     pub rustc_abi: Option<RustcAbi>,
 
-    /// Whether or not RelaxElfRelocation flag will be passed to the linker
+    /// Whether or not X86RelaxRelocations flag will be passed to LLVM (x86 only).
     pub relax_elf_relocations: bool,
 
     /// Additional arguments to pass to LLVM, similar to the `-C llvm-args` codegen option.

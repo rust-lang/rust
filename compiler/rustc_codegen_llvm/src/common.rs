@@ -2,7 +2,7 @@
 
 use std::borrow::Borrow;
 
-use libc::{c_char, c_uint};
+use libc::c_uint;
 use rustc_abi::Primitive::Pointer;
 use rustc_abi::{self as abi, ExternAbi, HasDataLayout as _};
 use rustc_ast::Mutability;
@@ -470,20 +470,14 @@ pub(crate) fn val_ty(v: &Value) -> &Type {
 }
 
 pub(crate) fn bytes_in_context<'ll>(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
-    unsafe {
-        let ptr = bytes.as_ptr() as *const c_char;
-        llvm::LLVMConstStringInContext2(llcx, ptr, bytes.len(), TRUE)
-    }
+    unsafe { llvm::LLVMConstStringInContext2(llcx, bytes.as_ptr(), bytes.len(), TRUE) }
 }
 
 pub(crate) fn null_terminate_bytes_in_context<'ll>(
     llcx: &'ll llvm::Context,
     bytes: &[u8],
 ) -> &'ll Value {
-    unsafe {
-        let ptr = bytes.as_ptr() as *const c_char;
-        llvm::LLVMConstStringInContext2(llcx, ptr, bytes.len(), FALSE)
-    }
+    unsafe { llvm::LLVMConstStringInContext2(llcx, bytes.as_ptr(), bytes.len(), FALSE) }
 }
 
 pub(crate) fn named_struct<'ll>(ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
@@ -516,22 +510,4 @@ pub(crate) fn get_dllimport<'tcx>(
 ) -> Option<&'tcx DllImport> {
     tcx.native_library(id)
         .and_then(|lib| lib.dll_imports.iter().find(|di| di.name.as_str() == name))
-}
-
-/// Extension trait for explicit casts to `*const c_char`.
-pub(crate) trait AsCCharPtr {
-    /// Equivalent to `self.as_ptr().cast()`, but only casts to `*const c_char`.
-    fn as_c_char_ptr(&self) -> *const c_char;
-}
-
-impl AsCCharPtr for str {
-    fn as_c_char_ptr(&self) -> *const c_char {
-        self.as_ptr().cast()
-    }
-}
-
-impl AsCCharPtr for [u8] {
-    fn as_c_char_ptr(&self) -> *const c_char {
-        self.as_ptr().cast()
-    }
 }

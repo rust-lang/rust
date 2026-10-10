@@ -22,7 +22,7 @@ use rustc_middle::mir::BinOp;
 use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::offload_meta::OffloadMetadata;
-use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
+use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, bug, span_bug, sym};
 use rustc_structures::CrateType;
@@ -497,11 +497,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                             self.call_intrinsic(llvm_name, &[llty], &[args[0].immediate(), y]);
                         self.intcast(ret, result_layout.llvm_type(self), false)
                     }
-                    sym::ctpop => {
-                        let ret =
-                            self.call_intrinsic("llvm.ctpop", &[llty], &[args[0].immediate()]);
-                        self.intcast(ret, result_layout.llvm_type(self), false)
-                    }
+                    sym::ctpop => self.ctpop(args[0].immediate()),
                     sym::bswap => {
                         if width == 8 {
                             args[0].immediate() // byte swap a u8/i8 is just a no-op
@@ -1047,6 +1043,11 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         } else {
             cond
         }
+    }
+
+    fn ctpop(&mut self, val: Self::Value) -> Self::Value {
+        let ret = self.call_intrinsic("llvm.ctpop", &[self.val_ty(val)], &[val]);
+        self.intcast(ret, self.type_i32(), false)
     }
 
     fn type_checked_load(
@@ -1885,7 +1886,7 @@ fn codegen_autodiff<'ll, 'tcx>(
     adjust_activity_to_abi(
         tcx,
         source_fn_ptr_ty,
-        TypingEnv::fully_monomorphized(),
+        bx.cx.typing_env(),
         &mut diff_attrs.input_activity,
     );
 
@@ -2029,6 +2030,9 @@ fn get_args_from_tuple<'ll, 'tcx>(
                         let field = tuple_place.project_field(bx, tuple_index);
                         result.push(field.val.llval);
                         tuple_index += 1;
+                    }
+                    PassMode::IndirectUnsized { .. } => {
+                        bug!("autodiff/offload args must not be unsized");
                     }
                 }
             }
