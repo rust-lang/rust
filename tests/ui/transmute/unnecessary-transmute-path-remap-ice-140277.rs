@@ -1,5 +1,7 @@
 //@ aux-crate: zerocopy=unnecessary-transmute-path-remap-ice-140277-trans.rs
-//@ compile-flags: -Znext-solver=globally
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@ [next] compile-flags: -Znext-solver
 //@ check-pass
 // tests for a regression in linting for unnecessary transmutes
 // where a span was inacessible for snippet procuring,

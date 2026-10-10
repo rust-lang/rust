@@ -1,5 +1,7 @@
 //@ normalize-stderr: "\d+ bits" -> "N bits"
-//@ compile-flags: -Znext-solver=globally
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@ [next] compile-flags: -Znext-solver
 // Tests that are conservative around thin/fat pointer mismatches.
 
 #![allow(dead_code)]

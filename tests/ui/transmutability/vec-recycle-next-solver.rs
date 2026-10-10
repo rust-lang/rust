@@ -1,4 +1,6 @@
-//@ compile-flags: -Znext-solver=globally
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@ [next] compile-flags: -Znext-solver
 //@ check-pass
 
 #![feature(vec_recycle, transmutability)]

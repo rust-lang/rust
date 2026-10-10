@@ -1,4 +1,6 @@
-//@ compile-flags: -Znext-solver=globally
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@ [next] compile-flags: -Znext-solver
 use std::mem;
 
 unsafe fn foo() -> (i8, *const (), Option<fn()>) {

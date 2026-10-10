@@ -1,5 +1,7 @@
 //! Verify transmuting is allowed when `Src` and `Dst` are the same associated type.
-//@ compile-flags: -Znext-solver=globally
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@ [next] compile-flags: -Znext-solver
 //@ check-pass
 
 trait Foo {
