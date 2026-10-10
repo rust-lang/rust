@@ -828,9 +828,11 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         proj: ProjectionElem<VnIndex, Ty<'tcx>>,
     ) -> Option<(PlaceTy<'tcx>, VnIndex)> {
         let projection_ty = place_ty.projection_ty(self.tcx, proj);
-        // References that we load from a union field cannot be unified.
+        // References that we load from a union field or MaybeDangling cannot be unified.
         // See https://github.com/rust-lang/rust/issues/163825
-        if place_ty.ty.is_union() && projection_ty.ty.is_ref() {
+        if projection_ty.ty.is_ref()
+            && (place_ty.ty.is_union() || place_ty.ty.is_like_maybe_dangling())
+        {
             return None;
         }
         let proj = match proj {
