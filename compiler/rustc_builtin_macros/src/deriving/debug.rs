@@ -50,7 +50,7 @@ pub(crate) fn expand_deriving_debug(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand(cx, item, push)
+    trait_def.expand_ext_inner(cx, item, push, false, true)
 }
 
 fn formatter_ident(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {

@@ -464,7 +464,18 @@ impl<'a> TraitDef<'a> {
         cx: &ExtCtxt<'_>,
         item: &'a ast::Item,
         push: &mut dyn FnMut(Box<ast::Item>),
+        from_scratch: bool
+    ) {
+        self.expand_ext_inner(cx, item, push, from_scratch, false);
+    }
+
+    pub(crate) fn expand_ext_inner(
+        self,
+        cx: &ExtCtxt<'_>,
+        item: &'a ast::Item,
+        push: &mut dyn FnMut(Box<ast::Item>),
         from_scratch: bool,
+        empty: bool
     ) {
         let span = self.span;
         let is_packed = matches!(
@@ -509,6 +520,8 @@ impl<'a> TraitDef<'a> {
                 let methods = self.methods.iter().filter_map(|method_def| {
                     let body = if from_scratch || method_def.is_static() {
                         method_def.call_substructure_method(cx, span, StaticEnum(enum_def), *ident)
+                    } else if empty && enum_def.variants.len() > 0 {
+                        method_def.call_substructure_method(cx, span, EnumDiscr(None), *ident)
                     } else {
                         method_def.expand_enum_method_body(cx, span, enum_def, *ident)
                     };
