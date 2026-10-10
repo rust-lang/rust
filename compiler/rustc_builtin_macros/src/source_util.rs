@@ -66,12 +66,12 @@ pub(crate) fn expand_file(
     check_zero_tts(cx, sp, tts, "file!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
-    let loc = cx.source_map().lookup_char_pos(topmost.lo());
+    let file = cx.source_map().lookup_source_file(topmost.lo());
 
     use rustc_span::RemapPathScopeComponents;
     ExpandResult::Ready(MacEager::expr(cx.expr_str(
         topmost,
-        Symbol::intern(&loc.file.name.display(RemapPathScopeComponents::MACRO).to_string_lossy()),
+        Symbol::intern(&file.name.display(RemapPathScopeComponents::MACRO).to_string_lossy()),
     )))
 }
 
