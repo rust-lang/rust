@@ -1,0 +1,12 @@
+warning: use of deprecated `no_link` attribute
+  --> $DIR/macro-crate-def-only.rs:5:14
+   |
+LL | #[macro_use] #[no_link]
+   |              ^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #164032 <https://github.com/rust-lang/rust/issues/164032>
+   = note: `#[warn(no_link_attr_used)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: 1 warning emitted
+

@@ -34,6 +34,8 @@
 #![no_builtins] //~ ERROR unused attribute
 
 #[no_link]
+//~^ WARN use of deprecated `no_link` attribute
+//~| WARN this was previously accepted by the compiler
 #[no_link] //~ ERROR unused attribute
 extern crate lint_unused_extern_crate;
 
