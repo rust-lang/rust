@@ -783,8 +783,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        let result = fs::remove_file(path).map(|_| 0);
-        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
+        #[rustfmt::skip] // work around https://github.com/rust-lang/rustfmt/issues/7045
+        let result = cfg_select! {
+            unix => fs::remove_file(path),
+            windows => {{
+                // This should be able to remove symlinks to dirs, but on Windows that requires
+                // `remove_dir`. Our work-around is racy but there's not a lot we can do about that.
+                // FIXME: maybe we can retry based on the error code?
+                use std::os::windows::fs::FileTypeExt;
+                let metadata = path.symlink_metadata();
+                if metadata.is_ok_and(|m| m.file_type().is_symlink_dir()) {
+                    fs::remove_dir(path)
+                } else {
+                    fs::remove_file(path)
+                }
+            }}
+        };
+        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result.map(|()| 0))?))
     }
 
     fn symlink(
@@ -792,17 +807,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         target_op: &OpTy<'tcx>,
         linkpath_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        fn create_link(src: &Path, dst: &Path) -> std::io::Result<()> {
+        fn create_link(target: &Path, link: &Path) -> std::io::Result<()> {
             cfg_select! {
-                unix => std::os::unix::fs::symlink(src, dst),
+                unix => std::os::unix::fs::symlink(target, link),
                 windows => {
                     use std::os::windows::fs;
+
+                    // The target filename is interpreted relative to where `link` is located,
+                    // but we need it relative to where we are.
+                    let target_is_dir = link.parent().is_some_and(|dir| dir.join(target).is_dir());
                     // This is racy, but not much we can do about that.
                     // FIXME: maybe we can retry based on the error code?
-                    if src.is_dir() {
-                        fs::symlink_dir(src, dst)
+                    if target_is_dir {
+                        fs::symlink_dir(target, link)
                     } else {
-                        fs::symlink_file(src, dst)
+                        fs::symlink_file(target, link)
                     }
                 }
             }
@@ -1305,9 +1324,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        let result = fs::remove_dir(path).map(|_| 0i32);
+        #[rustfmt::skip] // work around https://github.com/rust-lang/rustfmt/issues/7045
+        let result = cfg_select! {
+            unix => fs::remove_dir(path),
+            windows => {{
+                // This should *not* be able to remove symlinks to dirs, but on Windows it is. Our
+                // work-around is racy (it might change to being a directory symlink after we
+                // checked it), but there's not a lot we can do about that.
+                use std::os::windows::fs::FileTypeExt;
+                let metadata = path.symlink_metadata();
+                if metadata.is_ok_and(|m| m.file_type().is_symlink_dir()) {
+                    return this.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
+                } else {
+                    fs::remove_dir(path)
+                }
+            }}
+        };
 
-        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
+        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result.map(|_| 0i32))?))
     }
 
     fn opendir(&mut self, name_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {

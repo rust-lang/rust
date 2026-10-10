@@ -726,13 +726,17 @@ pub fn open_file_or_dir(
                 Some(root) => root.open_dir_with(path, opts),
                 None => Dir::open_with(path, opts),
             };
-            dir.map(|d| File::from(OwnedHandle::from(d))).map_err(|err2| {
-                // If this 2nd attempt says "not a directory", preserve the original error. It's
-                // possible that we lost a race twice if this keeps being changed from directory
-                // to file and back. However, in that case it was entirely non-existent for a
-                // little while, so returning an error is still fine.
-                if err2.kind() == io::ErrorKind::NotADirectory { err } else { err2 }
-            })
+            match dir {
+                // Convert back to file so it always has the same type.
+                Ok(dir) => Ok(File::from(OwnedHandle::from(dir))),
+                Err(err2) => {
+                    // If this 2nd attempt says "not a directory", preserve the original error. It's
+                    // possible that we lost a race twice if this keeps being changed from directory
+                    // to file and back. However, in that case it was entirely non-existent for a
+                    // little while, so returning an error is still fine.
+                    Err(if err2.kind() == io::ErrorKind::NotADirectory { err } else { err2 })
+                }
+            }
         } else {
             Err(err)
         }
