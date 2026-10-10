@@ -24,7 +24,7 @@ impl Location<'_> {
         lines.enumerate().filter_map(|(i, line)| {
         //~^ ERROR closure may outlive the current function, but it borrows `self.start.line`, which is owned by the current function
         //~| ERROR closure may outlive the current function, but it borrows `self.end.line`, which is owned by the current function
-            if self.start.line as usize <= i && i <= self.end.line as usize {
+            if *&self.start.line as usize <= i && i <= *&self.end.line as usize {
                 Some((i as u32 + 1, line))
             } else {
                 None
