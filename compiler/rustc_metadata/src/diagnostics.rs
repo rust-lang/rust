@@ -325,7 +325,7 @@ impl Diagnostic<'_> for MultipleCandidates {
 
 #[derive(Diagnostic)]
 #[diag(
-    "only metadata stub found for `{$flavor}` dependency `{$crate_name}` please provide path to the corresponding .rmeta file with full metadata"
+    "only metadata stub found for `{$flavor}` dependency `{$crate_name}`. Please provide path to the corresponding .rmeta file with full metadata"
 )]
 pub(crate) struct FullMetadataNotFound {
     #[primary_span]
