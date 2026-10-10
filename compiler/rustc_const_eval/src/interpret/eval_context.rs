@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
+use std::convert::identity;
 
 use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
@@ -18,7 +19,7 @@ use rustc_middle::ty::{
 use rustc_span::{Span, span_bug};
 use rustc_structures::Limit;
 use rustc_target::callconv::FnAbi;
-use tracing::{debug, trace};
+use tracing::trace;
 
 use super::{
     Frame, FrameInfo, GlobalId, InterpErrorKind, InterpResult, MPlaceTy, Machine, MemPlaceMeta,
@@ -376,49 +377,34 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
     }
 
-    /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a
-    /// frame which is not `#[track_caller]`. This matches the `caller_location` intrinsic,
+    /// Grabs the implicit caller location argument, if there is one,
+    /// or falls back to the "current" span. This matches the `caller_location` intrinsic,
     /// and is primarily intended for the panic machinery.
-    pub(crate) fn find_closest_untracked_caller_location(&self) -> Span {
-        for frame in self.stack().iter().rev() {
-            debug!("find_closest_untracked_caller_location: checking frame {:?}", frame.instance);
+    pub(crate) fn caller_location(&self) -> Span {
+        let frame = self.frame();
 
-            // Assert that the frame we look at is actually executing code currently
-            // (`loc` is `Right` when we are unwinding and the frame does not require cleanup).
-            let loc = frame.loc.left().unwrap();
+        // Assert that the frame we look at is actually executing code currently
+        // (`loc` is `Right` when we are unwinding and the frame does not require cleanup).
+        let loc = frame.loc.left().unwrap();
 
-            // This could be a non-`Call` terminator (such as `Drop`), or not a terminator at all
-            // (such as `box`). Use the normal span by default.
-            let mut source_info = *frame.body.source_info(loc);
+        assert_eq!(
+            frame.track_caller_arg.is_some(),
+            frame.instance.def.requires_caller_location(*self.tcx)
+        );
 
-            // If this is a `Call` terminator, use the `fn_span` instead.
-            let block = &frame.body.basic_blocks[loc.block];
-            if loc.statement_index == block.statements.len() {
-                debug!(
-                    "find_closest_untracked_caller_location: got terminator {:?} ({:?})",
-                    block.terminator(),
-                    block.terminator().kind,
-                );
-                if let mir::TerminatorKind::Call { fn_span, .. } = block.terminator().kind {
-                    source_info.span = fn_span;
-                }
-            }
+        // This could be a non-`Call` terminator (such as `Drop`), or not a terminator at all
+        // (such as `box`). Use the normal span by default.
+        let mut source_info = *frame.body.source_info(loc);
 
-            let caller_location = if frame.instance.def.requires_caller_location(*self.tcx) {
-                // We use `Err(())` as indication that we should continue up the call stack since
-                // this is a `#[track_caller]` function.
-                Some(Err(()))
-            } else {
-                None
-            };
-            if let Ok(span) =
-                frame.body.caller_location_span(source_info, caller_location, *self.tcx, Ok)
-            {
-                return span;
-            }
+        // If this is a `Call` terminator, use the `fn_span` instead.
+        let block = &frame.body.basic_blocks[loc.block];
+        if loc.statement_index == block.statements.len()
+            && let mir::TerminatorKind::Call { fn_span, .. } = block.terminator().kind
+        {
+            source_info.span = fn_span;
         }
 
-        span_bug!(self.cur_span(), "no non-`#[track_caller]` frame found")
+        frame.body.caller_location_span(source_info, frame.track_caller_arg, *self.tcx, identity)
     }
 
     /// Returns the actual dynamic size and alignment of the place at the given type.

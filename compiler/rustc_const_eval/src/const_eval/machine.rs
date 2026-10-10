@@ -253,7 +253,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
             }
 
             let msg = Symbol::intern(self.read_str(&msg_place)?);
-            let span = self.find_closest_untracked_caller_location();
+            let span = self.caller_location();
             let (file, line, col) = self.location_triple_for_span(span);
             return Err(ConstEvalErrKind::Panic { msg, file, line, col }).into();
         } else if self.tcx.is_lang_item(def_id, LangItem::PanicFmt) {
@@ -470,7 +470,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
     fn panic_nounwind(ecx: &mut InterpCx<'tcx, Self>, msg: &str) -> InterpResult<'tcx> {
         let msg = Symbol::intern(msg);
-        let span = ecx.find_closest_untracked_caller_location();
+        let span = ecx.caller_location();
         let (file, line, col) = ecx.location_triple_for_span(span);
         Err(ConstEvalErrKind::Panic { msg, file, line, col }).into()
     }
