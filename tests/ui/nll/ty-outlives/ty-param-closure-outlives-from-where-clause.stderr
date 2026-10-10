@@ -21,6 +21,31 @@ LL | fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
    |
    = note: defining type: no_region::<T>
 
+note: external requirements
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:27:26
+   |
+LL |     with_signature(a, b, |x, y| {
+   |                          ^^^^^^
+   |
+   = note: defining type: no_region::<T>::{closure#0} with closure args [
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'?1 ()>, T)),
+               (),
+           ]
+   = note: late-bound region is '?2
+   = note: number of external vids: 3
+   = note: where T: '?1
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: no external requirements
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:26:1
+   |
+LL | fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: no_region::<T>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:32:9
    |
@@ -83,6 +108,33 @@ LL | |     T: 'b,
    | |__________^
    |
    = note: defining type: wrong_region::<'?1, T>
+
+note: external requirements
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:63:26
+   |
+LL |     with_signature(a, b, |x, y| {
+   |                          ^^^^^^
+   |
+   = note: defining type: wrong_region::<'?1, T>::{closure#0} with closure args [
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'?2 ()>, T)),
+               (),
+           ]
+   = note: late-bound region is '?3
+   = note: number of external vids: 4
+   = note: where T: '?2
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: no external requirements
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:59:1
+   |
+LL | / fn wrong_region<'a, 'b, T>(a: Cell<&'a ()>, b: T)
+LL | | where
+LL | |     T: 'b,
+   | |__________^
+   |
+   = note: defining type: wrong_region::<'?1, T>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:65:9

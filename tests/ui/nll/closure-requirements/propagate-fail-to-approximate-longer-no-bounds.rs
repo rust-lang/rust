@@ -36,6 +36,8 @@ fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
         // Only works if 'x: 'y:
         demand_y(x, y, x.get())
         //~^ ERROR
+        //~| WARN: lifetime may not live long enough [wf_closure_checks]
+        //~| WARN: this was previously accepted by the compiler but is being phased out
     });
 }
 

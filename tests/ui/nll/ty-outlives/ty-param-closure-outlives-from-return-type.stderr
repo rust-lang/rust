@@ -22,6 +22,32 @@ LL | |     T: Debug,
    |
    = note: defining type: no_region::<'?1, T>
 
+note: external requirements
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:27:23
+   |
+LL |     with_signature(x, |y| y)
+   |                       ^^^
+   |
+   = note: defining type: no_region::<'?1, T>::{closure#0} with closure args [
+               i32,
+               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn std::fmt::Debug + '?2)>,
+               (),
+           ]
+   = note: number of external vids: 3
+   = note: where T: '?2
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: no external requirements
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:16:1
+   |
+LL | / fn no_region<'a, T>(x: Box<T>) -> Box<dyn Debug + 'a>
+LL | | where
+LL | |     T: Debug,
+   | |_____________^
+   |
+   = note: defining type: no_region::<'?1, T>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-outlives-from-return-type.rs:27:27
    |
