@@ -226,10 +226,6 @@ struct Builder<'a, 'tcx> {
     // the root (most of them do) and saves us from retracing many sub-paths
     // many times, and rechecking many nodes.
     lint_level_roots_cache: GrowableBitSet<hir::ItemLocalId>,
-
-    /// Collects additional coverage information during MIR building.
-    /// Only present if coverage is enabled and this function is eligible.
-    coverage_info: Option<coverageinfo::CoverageInfoBuilder>,
 }
 
 type CaptureMap<'tcx> = SortedIndexMultiMap<usize, ItemLocalId, Capture<'tcx>>;
@@ -812,7 +808,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             unit_temp: None,
             var_debug_info: vec![],
             lint_level_roots_cache: GrowableBitSet::new_empty(),
-            coverage_info: coverageinfo::CoverageInfoBuilder::new_if_enabled(tcx, def),
         };
 
         assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
@@ -824,7 +819,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     #[allow(dead_code)]
     fn dump_for_debugging(&self) {
-        let mut body = Body::new(
+        let body = Body::new(
             MirSource::item(self.def_id.to_def_id()),
             self.cfg.basic_blocks.clone(),
             self.source_scopes.clone(),
@@ -836,14 +831,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.coroutine.clone(),
             None,
         );
-        body.coverage_early_info = self.coverage_info.as_ref().map(|b| b.as_done());
 
         let writer = pretty::MirWriter::new(self.tcx);
         writer.write_mir_fn(&body, &mut std::io::stdout()).unwrap();
     }
 
     fn finish(self) -> Body<'tcx> {
-        let mut body = Body::new(
+        let body = Body::new(
             MirSource::item(self.def_id.to_def_id()),
             self.cfg.basic_blocks,
             self.source_scopes,
@@ -855,7 +849,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.coroutine,
             None,
         );
-        body.coverage_early_info = self.coverage_info.map(|b| b.into_done());
 
         let writer = pretty::MirWriter::new(self.tcx);
         for (index, block) in body.basic_blocks.iter().enumerate() {
