@@ -1,0 +1,265 @@
+mod parse;
+mod render;
+
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+
+use eyre::{Context, OptionExt, Result, bail};
+use parse::ParsedTargetInfoFile;
+use serde::Deserialize;
+
+/// Information about a target obtained from the markdown and rustc.
+struct TargetInfo {
+    name: String,
+    maintainers: Vec<String>,
+    sections: Vec<(String, String)>,
+    footnotes: Vec<String>,
+    target_cfgs: Vec<(String, String)>,
+    metadata: RustcTargetMetadata,
+}
+
+/// All the sections that we want every doc page to have.
+/// It may make sense to relax this into two kinds of sections, "required" sections
+/// and "optional" sections, where required sections will get stubbed out when not found
+/// while optional sections will just not exist when not found.
+// IMPORTANT: This is also documented in the README, keep it in sync.
+const SECTIONS: &[&str] = &[
+    "Overview",
+    "Requirements",
+    "Testing",
+    "Building the target",
+    "Cross compilation",
+    "Building Rust programs",
+];
+
+fn main() -> Result<()> {
+    let args = std::env::args().collect::<Vec<_>>();
+    let input_dir = args
+        .get(1)
+        .ok_or_eyre("first argument must be path to target_infos directory containing target source md files (src/doc/rustc/target_infos/)")?;
+    let output_src = args.get(2).ok_or_eyre(
+        "second argument must be path to `src` output directory (build/$target/md-doc/rustc/src)",
+    )?;
+
+    eprintln!("Loading target info docs from {input_dir}");
+    eprintln!("Writing output to {output_src}");
+
+    let targets_to_skip = std::env::var("TARGET_DOCS_SKIP_TARGETS");
+    let targets_to_skip =
+        targets_to_skip.as_deref().map(|s| s.split(",").collect::<Vec<_>>()).unwrap_or_default();
+
+    let rustc = PathBuf::from(
+        std::env::var_os("RUSTC").ok_or_eyre("must pass RUSTC env var pointing to rustc")?,
+    );
+    let check_only = std::env::var("TARGET_CHECK_ONLY").as_deref() == Ok("1");
+
+    eprintln!("Collecting rustc target information");
+    let rustc_targets = rustc_target_info(&rustc, &targets_to_skip)?;
+
+    eprintln!("Collecting target_infos");
+    let mut info_patterns = parse::load_target_infos(Path::new(input_dir))
+        .wrap_err("failed loading target_info")?
+        .into_iter()
+        .map(|info| {
+            let footnotes_used =
+                info.footnotes.keys().map(|target| (target.clone(), false)).collect();
+            TargetPatternEntry { info, used: false, footnotes_used }
+        })
+        .collect::<Vec<_>>();
+
+    let targets = rustc_targets
+        .into_iter()
+        .map(|rustc| {
+            let md = target_doc_info(&mut info_patterns, &rustc.name);
+            TargetInfo {
+                name: rustc.name,
+                maintainers: md.maintainers,
+                sections: md.sections,
+                footnotes: md.footnotes,
+                target_cfgs: rustc.target_cfgs,
+                metadata: rustc.metadata,
+            }
+        })
+        .collect::<Vec<_>>();
+
+    eprintln!("Rendering targets, check_only={check_only}");
+    let targets_dir = Path::new(output_src).join("platform-support").join("targets");
+    let old_targets_dir = Path::new(output_src).join("platform-support");
+    if !check_only {
+        std::fs::create_dir_all(&targets_dir).wrap_err("creating platform-support/targets dir")?;
+    }
+    for info in &targets {
+        let mut doc = render::render_target_md(info);
+
+        //FIXME: This is temporary during migration
+        if info.maintainers.is_empty() && info.sections.is_empty() {
+            let old_path = old_targets_dir.join(format!("{}.md", info.name));
+            if old_path.is_file() {
+                doc = std::fs::read_to_string(old_path)?;
+                //eprintln!("WARN: {}: using legacy target info", info.name);
+            } /*else {
+            eprintln!("WARN: {}: no target info", info.name);
+            }*/
+        }
+
+        if !check_only {
+            std::fs::write(targets_dir.join(format!("{}.md", info.name)), doc)
+                .wrap_err("writing target file")?;
+        }
+    }
+
+    for target_pattern in info_patterns {
+        if !target_pattern.used {
+            bail!(
+                "{}: target pattern `{}` was never used.\nnote that you must use `*` globs in the pattern, not `_` like in the file name.",
+                target_pattern.info.full_path.display(),
+                target_pattern.info.pattern
+            );
+        }
+
+        for footnote_target in target_pattern.info.footnotes.keys() {
+            let used = target_pattern.footnotes_used[footnote_target];
+            if !used {
+                bail!(
+                    "{}: in target pattern `{}`, the footnotes for target `{}` were never used",
+                    target_pattern.info.full_path.display(),
+                    target_pattern.info.pattern,
+                    footnote_target,
+                );
+            }
+        }
+    }
+
+    render::render_static(check_only, Path::new(output_src), &targets)?;
+
+    eprintln!("Finished generating target docs");
+    Ok(())
+}
+
+impl TargetInfo {
+    fn doc_path(&self) -> Option<String> {
+        Some(format!("platform-support/targets/{}.md", self.name))
+    }
+}
+
+struct TargetPatternEntry {
+    info: ParsedTargetInfoFile,
+    used: bool,
+    footnotes_used: HashMap<String, bool>,
+}
+
+/// Information about a target obtained from the target_info markdown file.
+struct TargetInfoMd {
+    maintainers: Vec<String>,
+    sections: Vec<(String, String)>,
+    footnotes: Vec<String>,
+}
+
+fn target_doc_info(info_patterns: &mut [TargetPatternEntry], target: &str) -> TargetInfoMd {
+    let mut maintainers = Vec::new();
+    let mut sections = Vec::new();
+
+    let mut footnotes = Vec::new();
+
+    for target_pattern_entry in info_patterns {
+        if target_pattern_entry.info.pattern_glob.matches(target) {
+            target_pattern_entry.used = true;
+            let target_pattern = &target_pattern_entry.info;
+
+            maintainers.extend_from_slice(&target_pattern.maintainers);
+
+            for (section_name, content) in &target_pattern.sections {
+                if sections.iter().any(|(name, _)| name == section_name) {
+                    panic!(
+                        "target {target} inherits the section {section_name} from multiple patterns, create a more specific pattern and add it there"
+                    );
+                }
+                sections.push((section_name.clone(), content.clone()));
+            }
+
+            if let Some(target_footnotes) = target_pattern.footnotes.get(target) {
+                target_pattern_entry.footnotes_used.insert(target.to_owned(), true);
+
+                if !footnotes.is_empty() {
+                    panic!("target {target} is assigned metadata from more than one pattern");
+                }
+                footnotes = target_footnotes.clone();
+            }
+        }
+    }
+
+    TargetInfoMd { maintainers, sections, footnotes }
+}
+
+/// Information about a target obtained from rustc.
+struct RustcTargetInfo {
+    name: String,
+    target_cfgs: Vec<(String, String)>,
+    metadata: RustcTargetMetadata,
+}
+
+#[derive(Deserialize)]
+struct RustcTargetMetadata {
+    description: Option<String>,
+    tier: Option<u8>,
+    host_tools: Option<bool>,
+    std: Option<bool>,
+}
+
+/// Get information about targets from rustc.
+fn rustc_target_info(rustc: &Path, targets_to_skip: &[&str]) -> Result<Vec<RustcTargetInfo>> {
+    #[derive(Deserialize)]
+    struct TargetJson {
+        metadata: RustcTargetMetadata,
+    }
+
+    let json_specs =
+        rustc_stdout(rustc, &["-Zunstable-options", "--print", "all-target-specs-json"])?;
+    let specs = serde_json::from_str::<HashMap<String, TargetJson>>(&json_specs)
+        .wrap_err("parsing --print all-target-specs-json for metadata")?;
+
+    let mut rustc_targets = Vec::with_capacity(specs.len());
+
+    for (target, spec) in specs {
+        if targets_to_skip.contains(&&*target) {
+            continue;
+        }
+
+        let cfgs = rustc_stdout(rustc, &["--print", "cfg", "--target", &target])
+            .wrap_err_with(|| format!("failed to get target cfgs for {target}"))?;
+        let target_cfgs = cfgs
+            .lines()
+            .filter_map(|line| {
+                if line.starts_with("target_") {
+                    let Some((key, value)) = line.split_once('=') else {
+                        // For example `unix`
+                        return None;
+                    };
+                    Some((key.to_owned(), value.to_owned()))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        rustc_targets.push(RustcTargetInfo { name: target, target_cfgs, metadata: spec.metadata });
+    }
+
+    rustc_targets.sort_unstable_by(|a, b| a.name.cmp(&b.name));
+
+    Ok(rustc_targets)
+}
+
+fn rustc_stdout(rustc: &Path, args: &[&str]) -> Result<String> {
+    let output = Command::new(rustc).args(args).output()?;
+    if output.status.success() {
+        Ok(String::from_utf8(output.stdout)?)
+    } else {
+        bail!(
+            "rustc failed: {}, {}",
+            output.status,
+            String::from_utf8(output.stderr).unwrap_or_default()
+        );
+    }
+}

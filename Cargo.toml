@@ -40,6 +40,7 @@ members = [
   "src/tools/rustdoc-gui-test",
   "src/tools/rustdoc-themes",
   "src/tools/rustfmt",
+  "src/tools/target-docs",
   "src/tools/test-float-parse",
   "src/tools/tidy",
   "src/tools/tier-check",
@@ -86,4 +87,3 @@ codegen-units = 1
 # If you want to use a crate with local modifications, you can set a path or git dependency here.
 # For git dependencies, also add your source to ALLOWED_SOURCES in src/tools/tidy/src/extdeps.rs.
 #[patch.crates-io]
-
