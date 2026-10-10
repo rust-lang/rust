@@ -475,8 +475,37 @@ mod nonzero {
 }
 
 mod r#ref {
+    use std::mem::size_of;
+
     use super::*;
     use crate::layout::Reference;
+    use crate::maybe_transmutable::MaybeTransmutableQuery;
+
+    #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
+    enum Referent {
+        Src,
+        Dst,
+    }
+
+    impl layout::Type for Referent {}
+
+    type Tree = layout::Tree<Def, usize, Referent>;
+
+    const SRC: Reference<usize, Referent> = Reference {
+        region: 1,
+        is_mut: false,
+        referent: Referent::Src,
+        referent_size: 1,
+        referent_align: 1,
+    };
+
+    const DST: Reference<usize, Referent> = Reference {
+        region: 2,
+        is_mut: false,
+        referent: Referent::Dst,
+        referent_size: 1,
+        referent_align: 1,
+    };
 
     #[test]
     fn should_permit_identity_transmutation() {
@@ -511,6 +540,117 @@ mod r#ref {
                     Condition::Immutable { ty: () },
                 ]))
             );
+        }
+    }
+
+    #[test]
+    fn shared_destinations_require_forward_obligations() {
+        for src_is_mut in [false, true] {
+            let src = Tree::Ref(Reference { is_mut: src_is_mut, ..SRC });
+            let dst = Tree::Ref(DST);
+
+            for (lifetimes, conditions) in [
+                (
+                    false,
+                    vec![
+                        Condition::Transmutable { src: Referent::Src, dst: Referent::Dst },
+                        Condition::Outlives { long: 1, short: 2 },
+                        Condition::Immutable { ty: Referent::Dst },
+                    ],
+                ),
+                (
+                    true,
+                    vec![
+                        Condition::Transmutable { src: Referent::Src, dst: Referent::Dst },
+                        Condition::Immutable { ty: Referent::Dst },
+                    ],
+                ),
+            ] {
+                let answer = MaybeTransmutableQuery::new(
+                    src.clone(),
+                    dst.clone(),
+                    Assume { lifetimes, ..Assume::default() },
+                    UltraMinimal::default(),
+                )
+                .answer();
+                assert_eq!(
+                    answer,
+                    Answer::If(Condition::IfAll(conditions)),
+                    "src_is_mut: {src_is_mut}, lifetimes: {lifetimes}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn mutable_destinations_require_bidirectional_obligations() {
+        let src = Tree::Ref(Reference { is_mut: true, ..SRC });
+        let dst = Tree::Ref(Reference { is_mut: true, ..DST });
+
+        for (lifetimes, conditions) in [
+            (
+                false,
+                vec![
+                    Condition::Transmutable { src: Referent::Src, dst: Referent::Dst },
+                    Condition::Outlives { long: 1, short: 2 },
+                    Condition::Transmutable { src: Referent::Dst, dst: Referent::Src },
+                    Condition::Outlives { long: 2, short: 1 },
+                ],
+            ),
+            (
+                true,
+                vec![
+                    Condition::Transmutable { src: Referent::Src, dst: Referent::Dst },
+                    Condition::Transmutable { src: Referent::Dst, dst: Referent::Src },
+                ],
+            ),
+        ] {
+            let answer = MaybeTransmutableQuery::new(
+                src.clone(),
+                dst.clone(),
+                Assume { lifetimes, ..Assume::default() },
+                UltraMinimal::default(),
+            )
+            .answer();
+            assert_eq!(answer, Answer::If(Condition::IfAll(conditions)), "lifetimes: {lifetimes}");
+        }
+    }
+
+    #[test]
+    fn byte_and_reference_alternatives_share_a_state() {
+        // Each byte arm has the same width as the reference arm.
+        let src = Tree::alt([Tree::bytes([0u8; size_of::<&u8>()]), Tree::Ref(SRC)]);
+        let src = layout::Dfa::from_tree(src.prune(&|_| false)).unwrap();
+        assert_eq!(src.bytes_from(src.start).count(), 1);
+        assert_eq!(src.refs_from(src.start).count(), 1);
+
+        let reference_obligations = Answer::If(Condition::IfAll(vec![
+            Condition::Transmutable { src: Referent::Src, dst: Referent::Dst },
+            Condition::Outlives { long: 1, short: 2 },
+            Condition::Immutable { ty: Referent::Dst },
+        ]));
+
+        // Without an assumption, both source alternatives must work. Assuming
+        // validity permits either a matching byte arm or the conditional reference arm.
+        for (dst_byte, without_validity, with_validity) in [
+            (0u8, reference_obligations.clone(), Answer::Yes),
+            (1u8, Answer::No(Reason::DstIsBitIncompatible), reference_obligations),
+        ] {
+            let dst = Tree::alt([Tree::bytes([dst_byte; size_of::<&u8>()]), Tree::Ref(DST)]);
+            let dst = layout::Dfa::from_tree(dst.prune(&|_| false)).unwrap();
+            assert_eq!(dst.bytes_from(dst.start).count(), 1);
+            assert_eq!(dst.refs_from(dst.start).count(), 1);
+
+            for (validity, expected) in [(false, without_validity), (true, with_validity)] {
+                let answer = MaybeTransmutableQuery::new(
+                    src.clone(),
+                    dst.clone(),
+                    Assume { validity, ..Assume::default() },
+                    UltraMinimal::default(),
+                )
+                .answer();
+                assert_eq!(answer, expected, "dst_byte: {dst_byte}, validity: {validity}");
+            }
         }
     }
 }
