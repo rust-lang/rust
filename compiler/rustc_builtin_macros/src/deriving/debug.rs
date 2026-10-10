@@ -273,7 +273,7 @@ fn show_fieldless_enum_concat_str(
     // See https://github.com/rust-lang/rust/pull/155452 for more details.
     // FIXME(panstromek) revisit this threshold,
     //  we've changed the impl quite a bit since it was determined
-    const THRESHOLD: usize = 10;
+    const THRESHOLD: usize = 5;
     let variants_count = def.variants.len();
     if variants_count < THRESHOLD {
         return None;
