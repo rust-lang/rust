@@ -6,6 +6,7 @@
     target_os = "hurd",
     target_os = "aix",
     target_os = "wasi",
+    target_os = "qurt",
 )))]
 use crate::ffi::CStr;
 use crate::mem::{self, DropGuard, ManuallyDrop};
@@ -136,7 +137,7 @@ impl Thread {
         assert!(ret == 0, "failed to join thread: {}", io::Error::from_raw_os_error(ret));
     }
 
-    #[cfg(not(target_os = "wasi"))]
+    #[cfg(not(any(target_os = "wasi", target_os = "qurt")))]
     pub fn id(&self) -> libc::pthread_t {
         self.id
     }
@@ -445,7 +446,7 @@ pub fn set_name(name: &CStr) {
     target_os = "freebsd",
     target_os = "dragonfly",
     target_os = "nuttx",
-    target_os = "cygwin"
+    target_os = "cygwin",
 ))]
 pub fn set_name(name: &CStr) {
     unsafe {
@@ -831,8 +832,13 @@ pub fn sleep_until(deadline: crate::time::Instant) {
 }
 
 pub fn yield_now() {
-    let ret = unsafe { libc::sched_yield() };
-    debug_assert_eq!(ret, 0);
+    #[cfg(not(target_os = "qurt"))]
+    {
+        let ret = unsafe { libc::sched_yield() };
+        debug_assert_eq!(ret, 0);
+    }
+    #[cfg(target_os = "qurt")]
+    sleep(Duration::ZERO);
 }
 
 #[cfg(any(target_os = "android", target_os = "linux"))]
