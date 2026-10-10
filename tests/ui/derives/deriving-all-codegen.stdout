@@ -1219,6 +1219,55 @@ impl ::core::cmp::Ord for Fieldless {
     }
 }
 
+// A C-like, fieldless enum with variants of varying name lengths.
+enum Fieldless0 { A, BBB, CC, }
+#[automatically_derived]
+impl ::core::fmt::Debug for Fieldless0 {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::write_str(f,
+            match self {
+                Fieldless0::A => "A",
+                Fieldless0::BBB => "BBB",
+                Fieldless0::CC => "CC",
+            })
+    }
+}
+
+// A C-like, fieldless enum with 10 variants.
+enum Fieldless10 {
+    AAAAA,
+    BBBB,
+    CC,
+    DDDDDDDD,
+    E,
+    FFFFFFFFFFFFF,
+    GGGGGG,
+    Hatsune,
+    IIIIIII,
+    JJJJJJJJJ,
+}
+#[automatically_derived]
+impl ::core::fmt::Debug for Fieldless10 {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::debug_c_like_enum_write_str(f,
+            "AAAAA BBBB CC DDDDDDDD E FFFFFFFFFFFFF GGGGGG Hatsune IIIIIII JJJJJJJJJ ",
+            match self {
+                Fieldless10::AAAAA => 0usize,
+                Fieldless10::BBBB => 6usize,
+                Fieldless10::CC => 11usize,
+                Fieldless10::DDDDDDDD => 14usize,
+                Fieldless10::E => 23usize,
+                Fieldless10::FFFFFFFFFFFFF => 25usize,
+                Fieldless10::GGGGGG => 39usize,
+                Fieldless10::Hatsune => 46usize,
+                Fieldless10::IIIIIII => 54usize,
+                Fieldless10::JJJJJJJJJ => 62usize,
+            })
+    }
+}
+
 // An enum with multiple fieldless and fielded variants.
 enum Mixed {
 
