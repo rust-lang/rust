@@ -465,11 +465,23 @@ static CodeGenFileType fromRust(LLVMRustFileType Type) {
   }
 }
 
-extern "C" LLVMRustResult
-LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
-                        const char *Path, const char *DwoPath,
-                        LLVMRustFileType RustFileType, bool VerifyIR,
-                        bool DisableSimplifyLibCalls) {
+extern "C" typedef llvm::PassPluginLibraryInfo (*LLVMGetPassPluginInfo)();
+
+enum class LLVMRustTpdeMode {
+  None,
+  Only,
+  Try,
+};
+
+struct LLVMRustTpdeOptions {
+  LLVMRustTpdeMode mode;
+  LLVMGetPassPluginInfo plugin;
+};
+
+extern "C" LLVMRustResult LLVMRustWriteOutputFile(
+    LLVMTargetMachineRef Target, LLVMModuleRef M, const char *Path,
+    const char *DwoPath, LLVMRustFileType RustFileType, bool VerifyIR,
+    bool DisableSimplifyLibCalls, LLVMRustTpdeOptions TpdeOptions) {
   std::unique_ptr<llvm::legacy::PassManager> PM =
       std::make_unique<llvm::legacy::PassManager>();
 
@@ -506,10 +518,46 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
     return LLVMRustResult::Failure;
   }
 
-  // TargetMachine::addPassesToEmitFile stores pointers to the output streams
-  // in a couple of places inside of the object. Explicitly delete the PM after
-  // we call run() to avoid dangling references.
   auto BOS = buffer_ostream(OS);
+
+  if (TpdeOptions.mode != LLVMRustTpdeMode::None) {
+    assert(TpdeOptions.plugin &&
+           "rustc_codegen_llvm must set TpdeOptions.plugin if using -Ztpde");
+
+    if (DwoPath) {
+      LLVMRustSetLastError(
+          "The TPDE codegen backend does not support split debug info.");
+      return LLVMRustResult::Failure;
+    }
+
+    if (RustFileType != LLVMRustFileType::ObjectFile) {
+      LLVMRustSetLastError("The TPDE codegen backend does not support "
+                           "emitting assembly files");
+      return LLVMRustResult::Failure;
+    }
+
+    llvm::PassPluginLibraryInfo plugin = TpdeOptions.plugin();
+    PM->run(*unwrap(M));
+    if (plugin.PreCodeGenCallback(*unwrap(M), *unwrap(Target), FileType, BOS)) {
+      return LLVMRustResult::Success;
+    } else if (TpdeOptions.mode == LLVMRustTpdeMode::Only) {
+      std::string error = "Failed to compile module " +
+                          unwrap(M)->getModuleIdentifier() + " with TPDE";
+      LLVMRustSetLastError(error.c_str());
+      return LLVMRustResult::Failure;
+    }
+  }
+
+  // If using TPDE, the passes prior to emitting the file have already been run,
+  // so we create a new pass manager for emitting the file.
+  // If not, we can reuse the same pass manager
+  std::unique_ptr<llvm::legacy::PassManager> LLVMCodegenPM;
+  if (TpdeOptions.mode == LLVMRustTpdeMode::Try) {
+    LLVMCodegenPM = std::make_unique<llvm::legacy::PassManager>();
+  } else {
+    LLVMCodegenPM = std::move(PM);
+  }
+
   if (DwoPath) {
     auto DOS = raw_fd_ostream(DwoPath, EC, sys::fs::OF_None);
     EC.clear();
@@ -520,14 +568,18 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
       return LLVMRustResult::Failure;
     }
     auto DBOS = buffer_ostream(DOS);
-    unwrap(Target)->addPassesToEmitFile(*PM, BOS, &DBOS, FileType, !VerifyIR);
-    PM->run(*unwrap(M));
-    PM.reset();
+    unwrap(Target)->addPassesToEmitFile(*LLVMCodegenPM, BOS, &DBOS, FileType,
+                                        !VerifyIR);
   } else {
-    unwrap(Target)->addPassesToEmitFile(*PM, BOS, nullptr, FileType, !VerifyIR);
-    PM->run(*unwrap(M));
-    PM.reset();
+    unwrap(Target)->addPassesToEmitFile(*LLVMCodegenPM, BOS, nullptr, FileType,
+                                        !VerifyIR);
   }
+
+  LLVMCodegenPM->run(*unwrap(M));
+  // TargetMachine::addPassesToEmitFile stores pointers to the output streams
+  // in a couple of places inside of the object. Explicitly delete the PM
+  // after we call run() to avoid dangling references.
+  LLVMCodegenPM.reset();
 
   return LLVMRustResult::Success;
 }

@@ -39,7 +39,7 @@ use crate::diagnostics::{
     UnsupportedCompression, WithLlvmError, WriteBytecode,
 };
 use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
-use crate::llvm::{self, DiagnosticInfo};
+use crate::llvm::{self, DiagnosticInfo, TpdeWrapper};
 use crate::type_::llvm_type_ptr;
 use crate::{LlvmCodegenBackend, ModuleLlvm, attributes, base, common, llvm_util};
 
@@ -70,6 +70,8 @@ fn write_output_file<'ll>(
     } else {
         std::ptr::null()
     };
+
+    let tpde = TpdeWrapper::get_instance();
     let result = unsafe {
         llvm::LLVMRustWriteOutputFile(
             target,
@@ -79,6 +81,7 @@ fn write_output_file<'ll>(
             file_type,
             verify_llvm_ir,
             no_builtins,
+            tpde.options().clone(),
         )
     };
 
