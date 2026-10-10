@@ -301,9 +301,6 @@ fn show_fieldless_enum_concat_str(
         concatenated_names.push_str(" ");
     }
 
-    // Create the constant concatenated string
-    let names_str_body = cx.expr_str(span, Symbol::intern(&concatenated_names));
-
     let arms = def
         .variants
         .iter()
@@ -325,6 +322,9 @@ fn show_fieldless_enum_concat_str(
             cx.arm(span, pat, cx.expr_usize(span, name_offset))
         })
         .collect::<ThinVec<_>>();
+
+    // Create the constant concatenated string
+    let names_str_body = cx.expr_str(span, Symbol::intern(&concatenated_names));
 
     let variant_index_expr = cx.expr_match(span, cx.expr_self(span), arms);
 
