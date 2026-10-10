@@ -32,6 +32,9 @@ declare_clippy_lint! {
     /// This lint only warns outer attributes (`#[allow]`), as inner attributes
     /// (`#![allow]`) are usually used to enable or disable lints on a global scale.
     ///
+    /// `#[allow]` written inside a macro is ignored because `#[expect]` has to be
+    /// completed in every expansion
+    ///
     /// ### Why is this bad?
     /// `#[expect]` attributes suppress the lint emission, but emit a warning, if
     /// the expectation is unfulfilled. This can be useful to be notified when the
