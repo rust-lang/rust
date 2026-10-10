@@ -688,6 +688,7 @@ fn human_readable_target_os(os: Symbol) -> Option<&'static str> {
         Psp => "Play Station Portable",
         Psx => "Play Station 1",
         Qnx => "QNX SDP 8.0+",
+        Qtee => "QTEE",
         Qurt => "QuRT",
         Redox => "Redox OS",
         Rtems => "RTEMS OS",
