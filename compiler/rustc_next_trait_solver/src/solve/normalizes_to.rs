@@ -214,7 +214,9 @@ where
         let assumption_projection_pred = ecx.instantiate_binder_with_infer(projection_pred);
         ecx.eq(goal.param_env, goal.predicate.alias, assumption_projection_pred.projection_term)?;
 
-        ecx.instantiate_normalizes_to_term(goal, assumption_projection_pred.term)?;
+        let term =
+            ecx.normalize(goal.param_env, Unnormalized::new_wip(assumption_projection_pred.term))?;
+        ecx.instantiate_normalizes_to_term(goal, term)?;
 
         // Add GAT where clauses from the trait's definition
         // FIXME: We don't need these, since these are the type's own WF obligations.

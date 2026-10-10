@@ -1,8 +1,13 @@
-error[E0275]: overflow evaluating the requirement `(): Trait<<T as Proj<'static>>::Assoc>`
-  --> $DIR/find-param-recursion-issue-152716.rs:19:9
+error[E0275]: overflow evaluating the requirement `<T as Proj<'static>>::Assoc == _`
+  --> $DIR/find-param-recursion-issue-152716.rs:15:1
    |
-LL |     (): Trait<<T as Proj<'static>>::Assoc>
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / fn foo<T>()
+LL | |
+LL | |
+LL | | where
+LL | |     T: for<'a> Proj<'a, Assoc = for<'b> fn(<T as Proj<'b>>::Assoc)>,
+LL | |     (): Trait<<T as Proj<'static>>::Assoc>
+   | |__________________________________________^
 
 error: aborting due to 1 previous error
 
