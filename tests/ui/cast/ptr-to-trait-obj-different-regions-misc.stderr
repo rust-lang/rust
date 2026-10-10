@@ -101,17 +101,16 @@ help: to declare that the trait object captures data from argument `x`, you can 
 LL | fn change_lt_hr<'a>(x: *mut dyn Trait<'a>) -> *mut dyn for<'b> Trait<'b> + 'a {
    |                                                                          ++++
 
-error[E0308]: mismatched types
+error: higher-ranked lifetime error: lifetime outlives placeholder
   --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:20:5
    |
 LL |     x as _
-   |     ^^^^^^ one type is more general than the other
+   |     ^^^^^^ `'b` would have to outlive placeholder in universe `U0`
    |
-   = note: expected trait object `dyn for<'b> Trait<'b>`
-              found trait object `dyn Trait<'_>`
+   = note: outer lifetimes cannot depend on placeholders declared in a higher universe
 
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:32:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:31:5
    |
 LL | fn change_assoc_0<'a, 'b>(
    |                   --  -- lifetime `'b` defined here
@@ -126,7 +125,7 @@ LL |     x as _
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 note: raw pointer casts of trait objects cannot extend lifetimes
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:32:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:31:5
    |
 LL |     x as _
    |     ^^^^^^
@@ -134,7 +133,7 @@ LL |     x as _
    = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
 
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:32:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:31:5
    |
 LL | fn change_assoc_0<'a, 'b>(
    |                   --  -- lifetime `'b` defined here
@@ -149,7 +148,7 @@ LL |     x as _
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 note: raw pointer casts of trait objects cannot extend lifetimes
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:32:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:31:5
    |
 LL |     x as _
    |     ^^^^^^
@@ -161,7 +160,7 @@ help: `'b` and `'a` must be the same: replace one with the other
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:39:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:38:5
    |
 LL | fn change_assoc_1<'a, 'b>(
    |                   --  -- lifetime `'b` defined here
@@ -176,7 +175,7 @@ LL |     x as _
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 note: raw pointer casts of trait objects cannot extend lifetimes
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:39:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:38:5
    |
 LL |     x as _
    |     ^^^^^^
@@ -184,7 +183,7 @@ LL |     x as _
    = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
 
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:39:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:38:5
    |
 LL | fn change_assoc_1<'a, 'b>(
    |                   --  -- lifetime `'b` defined here
@@ -199,7 +198,7 @@ LL |     x as _
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 note: raw pointer casts of trait objects cannot extend lifetimes
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:39:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:38:5
    |
 LL |     x as _
    |     ^^^^^^
@@ -211,7 +210,7 @@ help: `'b` and `'a` must be the same: replace one with the other
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:46:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:45:5
    |
 LL | fn extend_to_static<'a>(ptr: *const dyn Trait<'a>) {
    |                     --  ---
@@ -226,7 +225,7 @@ LL |     require_static(ptr as _)
    |     argument requires that `'a` must outlive `'static`
    |
 note: raw pointer casts of trait objects cannot extend lifetimes
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:46:20
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:45:20
    |
 LL |     require_static(ptr as _)
    |                    ^^^^^^^^
@@ -235,5 +234,4 @@ LL |     require_static(ptr as _)
 
 error: aborting due to 11 previous errors
 
-Some errors have detailed explanations: E0308, E0521.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0521`.

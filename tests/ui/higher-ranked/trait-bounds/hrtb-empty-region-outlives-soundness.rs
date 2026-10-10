@@ -30,7 +30,7 @@ where
 }
 
 trait Trait: Super {}
-impl Trait for () {} //~ ERROR the type `&'b str` does not fulfill the required lifetime
+impl Trait for () {} //~ ERROR: higher-ranked lifetime error: lifetime outlives placeholder
 fn main() {
     let _ = (&() as &dyn Trait).yeet();
 }

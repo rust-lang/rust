@@ -19,7 +19,7 @@ fn mk_unexpected_char_err<'a>() -> Option<&'a i32> {
 }
 
 fn foo<'a>(data: &mut Chars<'a>) {
-    bar(mk_unexpected_char_err) //~ ERROR mismatched types
+    bar(mk_unexpected_char_err) //~ ERROR higher-ranked lifetime error: lifetime outlives placeholder
 }
 
 fn bar<F>(t: F)
