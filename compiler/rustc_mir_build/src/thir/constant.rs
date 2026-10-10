@@ -38,11 +38,18 @@ pub(crate) fn lit_to_const<'tcx>(
             let valtree_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, tcx.types.str_);
             (ty::ValTree::from_raw_bytes(tcx, str_bytes), valtree_ty)
         }
-        (ast::LitKind::ByteStr(byte_sym, _), Some(ty::Ref(_, inner_ty, _)))
+        (ast::LitKind::ByteStr(byte_sym, _), Some(ty::Ref(region, inner_ty, mutbl)))
             if let ty::Slice(ty) | ty::Array(ty, _) = inner_ty.kind()
                 && let ty::Uint(UintTy::U8) = ty.kind() =>
         {
-            (ty::ValTree::from_raw_bytes(tcx, byte_sym.as_byte_str()), expected_ty.unwrap())
+            let valtree_ty = if inner_ty.is_slice() {
+                expected_ty.unwrap()
+            } else {
+                let array_ty =
+                    Ty::new_array(tcx, tcx.types.u8, byte_sym.as_byte_str().len() as u64);
+                Ty::new_ref(tcx, *region, array_ty, *mutbl)
+            };
+            (ty::ValTree::from_raw_bytes(tcx, byte_sym.as_byte_str()), valtree_ty)
         }
         (
             ast::LitKind::ByteStr(byte_sym, _),
@@ -52,7 +59,12 @@ pub(crate) fn lit_to_const<'tcx>(
         {
             // Byte string literal patterns may have type `[u8]` or `[u8; N]` if `deref_patterns` is
             // enabled, in order to allow, e.g., `deref!(b"..."): Vec<u8>`.
-            (ty::ValTree::from_raw_bytes(tcx, byte_sym.as_byte_str()), expected_ty.unwrap())
+            let valtree_ty = if expected_ty.unwrap().is_slice() {
+                expected_ty.unwrap()
+            } else {
+                Ty::new_array(tcx, tcx.types.u8, byte_sym.as_byte_str().len() as u64)
+            };
+            (ty::ValTree::from_raw_bytes(tcx, byte_sym.as_byte_str()), valtree_ty)
         }
         (ast::LitKind::ByteStr(byte_sym, _), _) => {
             let valtree = ty::ValTree::from_raw_bytes(tcx, byte_sym.as_byte_str());
