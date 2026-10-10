@@ -1,12 +1,16 @@
-//@ run-crash
 //@ compile-flags: -Copt-level=3 -Cdebug-assertions=no -Zub-checks=yes
-//@ error-pattern: unsafe precondition(s) violated: slice::from_raw_parts requires
 //@ revisions: null misaligned toolarge
+//@ [misaligned] error-pattern: unsafe precondition(s) violated: slice::from_raw_parts requires
+//@ [toolarge] error-pattern: unsafe precondition(s) violated: slice::from_raw_parts requires
+//@ [misaligned] run-crash
+//@ [toolarge] run-crash
+//@ [null] run-pass
 
 #![allow(invalid_null_arguments)]
 
 fn main() {
     unsafe {
+        // This is okay.
         #[cfg(null)]
         let _s: &[u8] = std::slice::from_raw_parts(std::ptr::null(), 0);
         #[cfg(misaligned)]
