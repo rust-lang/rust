@@ -103,11 +103,27 @@ impl JoinSemiLattice for BorrowckDomain {
 }
 
 /// The transient state of the dataflow analyses used by the borrow checker.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) struct BorrowckDomain {
     pub(crate) borrows: BorrowsDomain,
     pub(crate) uninits: MaybeUninitializedPlacesDomain,
     pub(crate) ever_inits: EverInitializedPlacesDomain,
+}
+
+impl Clone for BorrowckDomain {
+    fn clone(&self) -> Self {
+        Self {
+            borrows: self.borrows.clone(),
+            uninits: self.uninits.clone(),
+            ever_inits: self.ever_inits.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.borrows.clone_from(&source.borrows);
+        self.uninits.clone_from(&source.uninits);
+        self.ever_inits.clone_from(&source.ever_inits);
+    }
 }
 
 rustc_index::newtype_index! {
