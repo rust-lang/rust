@@ -2586,7 +2586,7 @@ impl<'a> Formatter<'a> {
         names: &str,
         start_index: usize,
     ) -> Result {
-        self.write_str(&names[start_index..].split(' ').next().unwrap())
+        self.write_str(names[start_index..].split(' ').next().unwrap())
     }
 
     /// Creates a `DebugTuple` builder designed to assist with creation of
