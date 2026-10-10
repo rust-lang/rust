@@ -802,7 +802,7 @@ macro_rules! unreachable {
 #[rustc_diagnostic_opaque]
 macro_rules! unimplemented {
     () => {
-        $crate::panicking::panic("not implemented")
+        $crate::panicking::unimplemented_default_msg()
     };
     ($($arg:tt)+) => {
         $crate::panic!("not implemented: {}", $crate::format_args!($($arg)+))
@@ -883,7 +883,7 @@ macro_rules! unimplemented {
 #[rustc_diagnostic_opaque]
 macro_rules! todo {
     () => {
-        $crate::panicking::panic("not yet implemented")
+        $crate::panicking::todo_default_msg()
     };
     ($($arg:tt)+) => {
         $crate::panic!("not yet implemented: {}", $crate::format_args!($($arg)+))

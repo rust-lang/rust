@@ -24,7 +24,7 @@ pub fn f1(x: &[f64], y: f64) -> f64 {
     // constructor) namespace? > It's expected to work normally.
 
 
-    ::core::panicking::panic("not implemented")
+    ::core::panicking::unimplemented_default_msg()
 }
 #[rustc_autodiff(Reverse, 1, Duplicated, Const, Active)]
 pub fn df1(x: &[f64], dx_0: &mut [f64], y: f64, dret: f64) -> f64 {
@@ -37,7 +37,7 @@ pub fn f2() {}
 pub fn df2() { ::core::intrinsics::autodiff(f2 as fn(), df2, ()) }
 #[rustc_autodiff]
 pub fn f3(x: &[f64], y: f64) -> f64 {
-    ::core::panicking::panic("not implemented")
+    ::core::panicking::unimplemented_default_msg()
 }
 #[rustc_autodiff(Reverse, 1, Duplicated, Const, Active)]
 pub fn df3(x: &[f64], dx_0: &mut [f64], y: f64, dret: f64) -> f64 {
@@ -47,14 +47,14 @@ pub fn df3(x: &[f64], dx_0: &mut [f64], y: f64, dret: f64) -> f64 {
 enum Foo { Reverse, }
 use Foo::Reverse;
 #[rustc_autodiff]
-pub fn f4(x: f32) { ::core::panicking::panic("not implemented") }
+pub fn f4(x: f32) { ::core::panicking::unimplemented_default_msg() }
 #[rustc_autodiff(Reverse, 1, Const, None)]
 pub fn df4(x: f32) {
     ::core::intrinsics::autodiff(f4 as fn(_: f32), df4, (x,))
 }
 #[rustc_autodiff]
 pub fn f5(x: *const f32, y: &f32) {
-    ::core::panicking::panic("not implemented")
+    ::core::panicking::unimplemented_default_msg()
 }
 #[rustc_autodiff(Reverse, 1, DuplicatedOnly, Duplicated, None)]
 pub unsafe fn df5(x: *const f32, dx_0: *mut f32, y: &f32, dy_0: &mut f32) {

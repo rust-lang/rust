@@ -31,7 +31,7 @@ pub fn f1(x: &[f64], y: f64) -> f64 {
 
     // Make sure we can handle generics
 
-    ::core::panicking::panic("not implemented")
+    ::core::panicking::unimplemented_default_msg()
 }
 #[rustc_autodiff(Forward, 1, Dual, Const, Dual)]
 pub fn df1(x: &[f64], bx_0: &[f64], y: f64) -> (f64, f64) {
@@ -40,7 +40,7 @@ pub fn df1(x: &[f64], bx_0: &[f64], y: f64) -> (f64, f64) {
 }
 #[rustc_autodiff]
 pub fn f2(x: &[f64], y: f64) -> f64 {
-    ::core::panicking::panic("not implemented")
+    ::core::panicking::unimplemented_default_msg()
 }
 #[rustc_autodiff(Forward, 1, Dual, Const, Const)]
 pub fn df2(x: &[f64], bx_0: &[f64], y: f64) -> f64 {
@@ -49,7 +49,7 @@ pub fn df2(x: &[f64], bx_0: &[f64], y: f64) -> f64 {
 }
 #[rustc_autodiff]
 pub fn f3(x: &[f64], y: f64) -> f64 {
-    ::core::panicking::panic("not implemented")
+    ::core::panicking::unimplemented_default_msg()
 }
 #[rustc_autodiff(Forward, 1, Dual, Const, Const)]
 pub fn df3(x: &[f64], bx_0: &[f64], y: f64) -> f64 {
@@ -62,7 +62,7 @@ pub fn f4() {}
 pub fn df4() -> () { ::core::intrinsics::autodiff(f4 as fn(), df4, ()) }
 #[rustc_autodiff]
 pub fn f5(x: &[f64], y: f64) -> f64 {
-    ::core::panicking::panic("not implemented")
+    ::core::panicking::unimplemented_default_msg()
 }
 #[rustc_autodiff(Forward, 1, Const, Dual, Const)]
 pub fn df5_y(x: &[f64], y: f64, by_0: f64) -> f64 {
@@ -82,7 +82,7 @@ pub fn df5_rev(x: &[f64], dx_0: &mut [f64], y: f64, dret: f64) -> f64 {
 struct DoesNotImplDefault;
 #[rustc_autodiff]
 pub fn f6() -> DoesNotImplDefault {
-    ::core::panicking::panic("not implemented")
+    ::core::panicking::unimplemented_default_msg()
 }
 #[rustc_autodiff(Forward, 1, Const)]
 pub fn df6() -> DoesNotImplDefault {
@@ -96,7 +96,7 @@ pub fn df7(x: f32) -> () {
 }
 #[no_mangle]
 #[rustc_autodiff]
-fn f8(x: &f32) -> f32 { ::core::panicking::panic("not implemented") }
+fn f8(x: &f32) -> f32 { ::core::panicking::unimplemented_default_msg() }
 #[rustc_autodiff(Forward, 4, Dual, Dual)]
 fn f8_3(x: &f32, bx_0: &f32, bx_1: &f32, bx_2: &f32, bx_3: &f32)
     -> [f32; 5usize] {
