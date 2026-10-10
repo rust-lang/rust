@@ -196,7 +196,7 @@ for example `for<'a> fn(&'a str)` vs `fn(&'static str)` must have a different `T
 ## Evaluation of const items is deterministic ✅
 
 As the values of const items can feed into the type system, it is important that the value of a const item is always the same in every crate.
-If this isn't the case then we can wind up with associated types with "equal" const arguments and so are "equal" associated types, and yet when normalized during codegen in different crates actually wind up as different types.
+If this isn't the case, we could wind up with associated types with "equal" const arguments and so are "equal" associated types, and yet when normalized during codegen in different crates actually wind up as different types.
 
 Notably this does *not* extend to const *functions*, as the type system only works with the results of const *items* it's actually fine for const functions to be non deterministic so long as that doesn't affect the final value of a const item.
 
