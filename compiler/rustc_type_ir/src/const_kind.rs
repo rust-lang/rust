@@ -94,9 +94,11 @@ impl<I: Interner> AliasConst<I> {
     }
 }
 
-/// AliasConstKind is extremely similar to AliasTyKind, and likely should be reasoned about
-/// and handled in very similar ways. The documentation for AliasTyKind/etc. may be helpful when
-/// learning about AliasConstKind.
+/// `AliasConstKind` is extremely similar to [`AliasTyKind`], and likely should be reasoned about
+/// and handled in very similar ways. The documentation for [`AliasTyKind`]/etc. may be helpful when
+/// learning about `AliasConstKind`.
+///
+/// [`AliasTyKind`]: crate::AliasTyKind
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
