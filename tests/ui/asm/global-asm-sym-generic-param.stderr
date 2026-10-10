@@ -1,0 +1,41 @@
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/global-asm-sym-generic-param.rs:13:27
+   |
+LL | fn fun_ty<T: Trait>() {
+   |           - type parameter from outer item
+LL |     global_asm!("{}", sym<T>::pure);
+   |     ----------------------^--------
+   |     |                     |
+   |     |                     use of generic parameter from outer item
+   |     generic parameter used in this inner global asm item
+   |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
+
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/global-asm-sym-generic-param.rs:26:54
+   |
+LL | fn fun_const<const N: usize>() {
+   |                    - const parameter from outer item
+LL |     global_asm!("{}", sym <() as TraitWithConstParam<N>>::pure);
+   |     -------------------------------------------------^---------
+   |     |                                                |
+   |     |                                                use of generic parameter from outer item
+   |     generic parameter used in this inner global asm item
+   |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
+
+error[E0747]: unresolved item provided when a constant was expected
+  --> $DIR/global-asm-sym-generic-param.rs:26:54
+   |
+LL |     global_asm!("{}", sym <() as TraitWithConstParam<N>>::pure);
+   |                                                      ^
+   |
+help: if this generic argument was intended as a const parameter, surround it with braces
+   |
+LL |     global_asm!("{}", sym <() as TraitWithConstParam<{ N }>>::pure);
+   |                                                      +   +
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0401, E0747.
+For more information about an error, try `rustc --explain E0401`.
