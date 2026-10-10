@@ -1,10 +1,11 @@
 //! Comparison traits for `[T]`.
 
 use super::{from_raw_parts, memchr};
+use crate::any::try_as_dyn;
 use crate::ascii;
 use crate::cmp::{self, BytewiseEq, Ordering};
 use crate::intrinsics::compare_bytes;
-use crate::marker::Destruct;
+use crate::marker::{Destruct, PhantomData, StructuralPartialEq};
 use crate::mem::{SizedTypeProperties, transmute_copy};
 use crate::num::NonZero;
 use crate::ops::ControlFlow;
@@ -123,17 +124,8 @@ where
     // The codegen backend can still inline it later if needed.
     #[rustc_no_mir_inline]
     default unsafe fn equal_same_length(lhs: *const Self, rhs: *const B, len: usize) -> bool {
-        // Implemented as explicit indexing rather
-        // than zipped iterators for performance reasons.
-        // See PR https://github.com/rust-lang/rust/pull/116846
-        for idx in 0..len {
-            // SAFETY: idx < len, so both are in-bounds and readable
-            if unsafe { *lhs.add(idx) != *rhs.add(idx) } {
-                return false;
-            }
-        }
-
-        true
+        // SAFETY: forwarding to a function with the same preconditions.
+        unsafe { SlicePartialEqUnroll::equal_same_length(lhs, rhs, len) }
     }
 }
 
@@ -153,6 +145,97 @@ where
             let size = crate::intrinsics::unchecked_mul(len, Self::SIZE);
             compare_bytes(lhs as _, rhs as _, size) == 0
         }
+    }
+}
+
+#[doc(hidden)]
+// intermediate trait for specialization of slice's PartialEq
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const trait SlicePartialEqUnroll<B> {
+    /// # Safety
+    /// `lhs` and `rhs` are both readable for `len` elements
+    unsafe fn equal_same_length(lhs: *const Self, rhs: *const B, len: usize) -> bool;
+}
+
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl<A, B> SlicePartialEqUnroll<B> for A
+where
+    A: [const] PartialEq<B>,
+{
+    // It's not worth trying to inline the loops underneath here *in MIR*,
+    // and preventing it encourages more useful inlining upstream,
+    // such as in `<str as PartialEq>::eq`.
+    // The codegen backend can still inline it later if needed.
+    #[rustc_no_mir_inline]
+    default unsafe fn equal_same_length(lhs: *const Self, rhs: *const B, len: usize) -> bool {
+        // Implemented as explicit indexing rather
+        // than zipped iterators for performance reasons.
+        // See PR https://github.com/rust-lang/rust/pull/116846
+        for idx in 0..len {
+            // SAFETY: idx < len, so both are in-bounds and readable
+            if unsafe { *lhs.add(idx) != *rhs.add(idx) } {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+struct IsStructuralEq<T>(PhantomData<T>);
+impl<T: StructuralPartialEq> StructuralPartialEq for IsStructuralEq<T> {}
+
+#[unsafe(rustc_allow_lifetime_dependent_specialization)]
+unsafe trait SymmetricalModuloLifetimes {}
+unsafe impl<A> SymmetricalModuloLifetimes for (A, A) {}
+
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl<A, B> SlicePartialEqUnroll<B> for A
+where
+    A: [const] PartialEq<B>,
+    (A, B): SymmetricalModuloLifetimes,
+{
+    // It's not worth trying to inline the loops underneath here *in MIR*,
+    // and preventing it encourages more useful inlining upstream,
+    // such as in `<str as PartialEq>::eq`.
+    // The codegen backend can still inline it later if needed.
+    #[rustc_no_mir_inline]
+    unsafe fn equal_same_length(lhs: *const Self, rhs: *const B, len: usize) -> bool {
+        let mut offset = 0;
+        if const {
+            size_of::<Self>() > 0
+                && size_of::<Self>() <= size_of::<usize>()
+                && try_as_dyn::<IsStructuralEq<Self>, dyn StructuralPartialEq>(&IsStructuralEq::<
+                    Self,
+                >(
+                    PhantomData
+                ))
+                .is_some()
+        } {
+            while len - offset >= 4 {
+                let mut eq = true;
+                for i in 0..4 {
+                    // SAFETY: idx < len, so both are in-bounds and readable
+                    eq &= unsafe { *lhs.add(offset + i) == *rhs.add(offset + i) }
+                }
+
+                if !eq {
+                    return false;
+                }
+
+                // SAFETY: ensured by loop condition
+                offset = unsafe { offset.unchecked_add(4) };
+            }
+        }
+
+        for idx in offset..len {
+            // SAFETY: idx < len, so both are in-bounds and readable
+            if unsafe { *lhs.add(idx) != *rhs.add(idx) } {
+                return false;
+            }
+        }
+
+        true
     }
 }
 
