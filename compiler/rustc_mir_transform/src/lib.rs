@@ -647,6 +647,10 @@ fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     ];
 
     pm::run_passes(tcx, body, passes, Some(MirPhase::Analysis(AnalysisPhase::PostCleanup)));
+    // `PostAnalysisNormalize` is the pass that puts a body into `TypingMode::PostAnalysis`.
+    // It has to be run here because moving it earlier or later would cause `validate-mir`
+    // to fail due to mismatched typing envs.
+    pm::run_passes(tcx, body, &[&post_analysis_normalize::PostAnalysisNormalize], None);
 }
 
 /// Returns the sequence of passes that lowers analysis to runtime MIR.
@@ -654,8 +658,6 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
         // These next passes must be executed together.
         &add_call_guards::CriticalCallEdges,
-        // Must be done before drop elaboration because we need to drop opaque types, too.
-        &post_analysis_normalize::PostAnalysisNormalize,
         // Calling this after `PostAnalysisNormalize` ensures that we don't deal with opaque types.
         &add_subtyping_projections::Subtyper,
         &elaborate_drops::ElaborateDrops,
