@@ -27,7 +27,7 @@ mod ref_decodable;
 /// This offset is also chosen so that the first byte is never < 0x80.
 pub const SHORTHAND_OFFSET: usize = 0x80;
 
-pub trait TyEncoder<'tcx>: SpanEncoder {
+pub trait TyEncoder<'tcx>: SpanEncoder + rustc_type_ir::PredicateEncoder<TyCtxt<'tcx>> {
     const CLEAR_CROSS_CRATE: bool;
 
     fn position(&self) -> usize;
@@ -128,18 +128,26 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for Ty<'tcx> {
     }
 }
 
-impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Predicate<'tcx> {
-    fn encode(&self, e: &mut E) {
-        let kind = self.kind();
-        kind.bound_vars().encode(e);
-        encode_with_shorthand(e, &kind.skip_binder(), TyEncoder::predicate_shorthands);
-    }
+/// Encode a predicate using rustc's existing shorthand representation.
+fn encode_predicate_kind<'tcx, E: TyEncoder<'tcx>>(
+    e: &mut E,
+    kind: ty::Binder<'tcx, ty::PredicateKind<'tcx>>,
+) {
+    kind.bound_vars().encode(e);
+    encode_with_shorthand(e, &kind.skip_binder(), TyEncoder::predicate_shorthands);
 }
 
-impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Clause<'tcx> {
-    fn encode(&self, e: &mut E) {
-        self.as_predicate().encode(e);
-    }
+/// Encode a predicate using rustc's existing shorthand representation.
+pub fn encode_predicate<'tcx, E: TyEncoder<'tcx>>(e: &mut E, predicate: ty::Predicate<'tcx>) {
+    encode_predicate_kind(e, predicate.kind());
+}
+
+/// Encode the shared representation with the same shorthand format.
+pub fn encode_shared_predicate<'tcx, E: TyEncoder<'tcx>>(
+    e: &mut E,
+    predicate: rustc_type_ir::predicates::Predicate<TyCtxt<'tcx>>,
+) {
+    encode_predicate_kind(e, predicate.kind());
 }
 
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Pattern<'tcx> {
@@ -203,31 +211,32 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Ty<'tcx> {
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Predicate<'tcx> {
-    fn decode(decoder: &mut D) -> ty::Predicate<'tcx> {
-        let bound_vars = Decodable::decode(decoder);
-        // Handle shorthands first, if we have a usize > 0x80.
-        let predicate_kind = ty::Binder::bind_with_vars(
-            if decoder.positioned_at_shorthand() {
-                let pos = decoder.read_usize();
-                assert!(pos >= SHORTHAND_OFFSET);
-                let shorthand = pos - SHORTHAND_OFFSET;
+/// Decode a predicate, resolving shorthand references before interning it.
+pub fn decode_predicate<'tcx, D: TyDecoder<'tcx>>(decoder: &mut D) -> ty::Predicate<'tcx> {
+    let bound_vars = Decodable::decode(decoder);
+    // Handle shorthands first, if we have a usize > 0x80.
+    let predicate_kind = ty::Binder::bind_with_vars(
+        if decoder.positioned_at_shorthand() {
+            let pos = decoder.read_usize();
+            assert!(pos >= SHORTHAND_OFFSET);
+            let shorthand = pos - SHORTHAND_OFFSET;
 
-                decoder.with_position(shorthand, <ty::PredicateKind<'tcx> as Decodable<D>>::decode)
-            } else {
-                <ty::PredicateKind<'tcx> as Decodable<D>>::decode(decoder)
-            },
-            bound_vars,
-        );
-        decoder.interner().mk_predicate(predicate_kind)
-    }
+            decoder.with_position(shorthand, <ty::PredicateKind<'tcx> as Decodable<D>>::decode)
+        } else {
+            <ty::PredicateKind<'tcx> as Decodable<D>>::decode(decoder)
+        },
+        bound_vars,
+    );
+    decoder.interner().mk_predicate(predicate_kind)
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Clause<'tcx> {
-    fn decode(decoder: &mut D) -> ty::Clause<'tcx> {
-        let pred: ty::Predicate<'tcx> = Decodable::decode(decoder);
-        pred.expect_clause()
-    }
+/// Decode the shared representation using rustc's existing decoder.
+///
+/// The concrete and shared wrappers currently use identical interned storage.
+pub fn decode_shared_predicate<'tcx, D: TyDecoder<'tcx>>(
+    decoder: &mut D,
+) -> rustc_type_ir::predicates::Predicate<TyCtxt<'tcx>> {
+    decode_predicate(decoder)
 }
 
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for GenericArgsRef<'tcx> {

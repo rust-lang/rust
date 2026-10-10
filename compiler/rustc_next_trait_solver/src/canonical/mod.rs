@@ -54,7 +54,7 @@ impl<I: Interner, T> ResponseT<I> for inspect::State<I, T> {
 /// This expects `goal` and `opaque_types` to be eager resolved.
 pub(super) fn canonicalize_goal<D, I>(
     delegate: &D,
-    goal: Goal<I, I::Predicate>,
+    goal: Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>,
     opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
     typing_mode: TypingMode<I>,
 ) -> (ThinVec<I::GenericArg>, I::CanonicalInput)

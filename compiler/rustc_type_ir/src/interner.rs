@@ -19,6 +19,7 @@ use crate::search_graph::RequiredDepth;
 use crate::solve::{
     AccessedOpaques, CanonicalInputData, Certainty, ExternalConstraintsData, QueryResult, inspect,
 };
+use crate::sty::predicates::Predicate as InternedPredicate;
 use crate::visit::{Flags, TypeVisitable};
 use crate::{
     self as ty, AliasTermKind, BoundRegion, BoundVar, CanonicalParamEnvCache, Const, ConstKind,
@@ -242,6 +243,7 @@ pub trait Interner:
 
     type InternedRegionKind: Interned<Self, Value = RegionKind<Self>>;
     type InternedConstKind: Interned<Self, Value = WithCachedTypeInfo<ConstKind<Self>>>;
+    type InternedPredicateKind: Interned<Self, Value = WithCachedTypeInfo<ty::Binder<Self, ty::PredicateKind<Self>>>>;
 
     type RegionAssumptions: Copy
         + Debug
@@ -252,9 +254,13 @@ pub trait Interner:
 
     // Predicates
     type ParamEnv: ParamEnv<Self>;
-    type Predicate: Predicate<Self>;
     type Clause: Clause<Self>;
     type Clauses: Clauses<Self>;
+
+    fn intern_predicate(
+        self,
+        predicate: ty::Binder<Self, ty::PredicateKind<Self>>,
+    ) -> InternedPredicate<Self>;
 
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R;
 
@@ -593,6 +599,7 @@ declare_lift_into! {
     InherentAssocConstId,
     InherentAssocTyId,
     InternedConstKind,
+    InternedPredicateKind,
     InternedRegionKind,
     OpaqueTyId,
     ParamEnv,

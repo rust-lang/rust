@@ -22,7 +22,7 @@ use crate::{
 };
 
 pub type CanonicalInputData<I> =
-    ty::CanonicalQueryInput<I, QueryInput<I, <I as Interner>::Predicate>>;
+    ty::CanonicalQueryInput<I, QueryInput<I, rustc_type_ir::sty::predicates::Predicate<I>>>;
 pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
 /// The result of evaluating a canonical query.
 ///
@@ -746,7 +746,9 @@ impl VisibleForLeakCheck {
 #[derive_where(Clone, Hash, PartialEq, Debug, Default; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
-pub struct NestedNormalizationGoals<I: Interner>(pub Vec<(GoalSource, Goal<I, I::Predicate>)>);
+pub struct NestedNormalizationGoals<I: Interner>(
+    pub Vec<(GoalSource, Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>)>,
+);
 
 impl<I: Interner> Eq for NestedNormalizationGoals<I> {}
 

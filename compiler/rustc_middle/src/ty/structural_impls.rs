@@ -9,14 +9,14 @@ use rustc_abi::TyAndLayout;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::Spanned;
-use rustc_type_ir::{PredicateProxy, TypeFolder, Upcast, VisitorResult, try_visit};
+use rustc_type_ir::{TypeFolder, VisitorResult, try_visit};
 
 use super::{GenericArg, GenericArgKind, Pattern};
 use crate::mir::PlaceElem;
 use crate::ty::print::{FmtPrinter, Printer, with_no_trimmed_paths};
 use crate::ty::{
-    self, Binder, FallibleTypeFolder, Lift, ProjectionClause, Term, TermKind, Ty, TyCtxt,
-    TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self, FallibleTypeFolder, Lift, Term, TermKind, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 
 impl fmt::Debug for ty::TraitDef {
@@ -94,18 +94,6 @@ impl fmt::Debug for ty::ParamTy {
 impl fmt::Debug for ty::ParamConst {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}/#{}", self.name, self.index)
-    }
-}
-
-impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.kind())
-    }
-}
-
-impl<'tcx> fmt::Debug for ty::Clause<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.kind())
     }
 }
 
@@ -467,100 +455,6 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        folder.try_fold_predicate(self)
-    }
-
-    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
-        folder.fold_predicate(self)
-    }
-}
-
-impl<'tcx> PredicateProxy<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
-    fn allow_normalization(&self) -> bool {
-        rustc_type_ir::inherent::Predicate::allow_normalization(*self)
-    }
-
-    fn map_projection(
-        self,
-        tcx: TyCtxt<'tcx>,
-        f: impl FnOnce(Binder<'tcx, ProjectionClause<'tcx>>) -> Binder<'tcx, ProjectionClause<'tcx>>,
-    ) -> Option<Self> {
-        self.as_projection_clause().map(|kind| f(kind).upcast(tcx))
-    }
-
-    fn clause_kind_unchecked(&self) -> Option<ty::Binder<'tcx, ty::ClauseKind<'tcx>>> {
-        self.as_clause().map(|clause| clause.kind())
-    }
-}
-
-// FIXME(clause): This is wonky
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(folder.try_fold_predicate(self)?)
-    }
-
-    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
-        folder.fold_predicate(self)
-    }
-}
-
-// follow `Predicate`'s implementation (by deferring to it)
-impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
-    fn try_super_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        <ty::Predicate<'_> as TypeSuperFoldable<TyCtxt<'tcx>>>::try_super_fold_with(
-            self.as_predicate(),
-            folder,
-        )
-        .map(|i| i.expect_clause())
-    }
-
-    fn super_fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
-        <ty::Predicate<'_> as TypeSuperFoldable<TyCtxt<'tcx>>>::super_fold_with(
-            self.as_predicate(),
-            folder,
-        )
-        .expect_clause()
-    }
-}
-
-impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
-    fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
-        <ty::Predicate<'_> as TypeSuperVisitable<TyCtxt<'tcx>>>::super_visit_with(
-            &self.as_predicate(),
-            visitor,
-        )
-    }
-}
-
-impl<'tcx> PredicateProxy<TyCtxt<'tcx>> for ty::Clause<'tcx> {
-    fn allow_normalization(&self) -> bool {
-        self.as_predicate().allow_normalization()
-    }
-
-    fn map_projection(
-        self,
-        tcx: TyCtxt<'tcx>,
-        f: impl FnOnce(Binder<'tcx, ProjectionClause<'tcx>>) -> Binder<'tcx, ProjectionClause<'tcx>>,
-    ) -> Option<Self> {
-        self.as_projection_clause().map(|kind| f(kind).upcast(tcx))
-    }
-
-    fn clause_kind_unchecked(&self) -> Option<ty::Binder<'tcx, ty::ClauseKind<'tcx>>> {
-        Some(self.kind())
-    }
-}
-
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
@@ -571,47 +465,6 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
 
     fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
         folder.fold_clauses(self)
-    }
-}
-
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
-        visitor.visit_predicate(*self)
-    }
-}
-
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
-        visitor.visit_predicate(self.as_predicate())
-    }
-}
-
-impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
-    fn try_super_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        // This method looks different to `Ty::try_super_fold_with` and `Const::super_fold_with`.
-        // Why is that? `PredicateKind` provides little scope for optimized folding, unlike
-        // `TyKind` and `ConstKind` (which have common variants that don't require recursive
-        // `fold_with` calls on their fields). So we just derive the `TypeFoldable` impl for
-        // `PredicateKind` and call it here because the derived code is as fast as hand-written
-        // code would be.
-        let new = self.kind().try_fold_with(folder)?;
-        Ok(folder.cx().reuse_or_mk_predicate(self, new))
-    }
-
-    fn super_fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
-        // See comment in `Predicate::try_super_fold_with`.
-        let new = self.kind().fold_with(folder);
-        folder.cx().reuse_or_mk_predicate(self, new)
-    }
-}
-
-impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
-    fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
-        // See comment in `Predicate::try_super_fold_with`.
-        self.kind().visit_with(visitor)
     }
 }
 

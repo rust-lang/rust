@@ -223,7 +223,7 @@ where
             cx.own_clauses_of(goal.predicate.alias.expect_projection_def_id().into())
                 .iter_instantiated(cx, goal.predicate.alias.args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|clause| goal.with(cx, clause)),
+                .map(|clause| goal.with(cx, clause.as_predicate())),
         )?;
 
         then(ecx)
@@ -292,7 +292,7 @@ where
                 .clauses_of(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|clause| goal.with(cx, clause));
+                .map(|clause| goal.with(cx, clause.as_predicate()));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds)?;
 
             // Bail if the nested goals don't hold here. This is to avoid unnecessarily
@@ -309,7 +309,7 @@ where
                 cx.own_clauses_of(alias_def_id.into())
                     .iter_instantiated(cx, goal.predicate.alias.args)
                     .map(Unnormalized::skip_norm_wip)
-                    .map(|clause| goal.with(cx, clause)),
+                    .map(|clause| goal.with(cx, clause.as_predicate())),
             )?;
 
             let error_response = |ecx: &mut EvalCtxt<'_, D>, guar| {
@@ -1125,7 +1125,7 @@ where
                 cx.clauses_of(target_container_def_id)
                     .iter_instantiated(cx, target_args)
                     .map(Unnormalized::skip_norm_wip)
-                    .map(|clause| goal.with(cx, clause)),
+                    .map(|clause| goal.with(cx, clause.as_predicate())),
             )?;
             goal.predicate.alias.args.rebase_onto(cx, impl_trait_ref.def_id.into(), target_args)
         })

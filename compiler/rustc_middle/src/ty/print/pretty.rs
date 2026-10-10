@@ -3405,14 +3405,6 @@ define_print_and_forward_display! {
       }
     }
 
-    ty::Predicate<'tcx> {
-        self.kind().print(p)?;
-    }
-
-    ty::Clause<'tcx> {
-        self.kind().print(p)?;
-    }
-
     ty::UserTypeKind<'tcx> {
         match *self {
             Self::Ty(ty) => {
@@ -3442,6 +3434,20 @@ define_print_and_forward_display! {
             GenericArgKind::Type(ty) => ty.print(p)?,
             GenericArgKind::Const(ct) => ct.print(p)?,
         }
+    }
+}
+
+// Predicate and Clause are owned by rustc_type_ir, which provides their Display impls.
+// Keep rustc's Print implementations here so its existing printer is unchanged.
+define_print! {
+    (self, p):
+
+    ty::Predicate<'tcx> {
+        self.kind().print(p)?;
+    }
+
+    ty::Clause<'tcx> {
+        self.kind().print(p)?;
     }
 }
 

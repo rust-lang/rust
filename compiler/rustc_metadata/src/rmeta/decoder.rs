@@ -438,6 +438,10 @@ impl<'a, 'tcx> rustc_middle::ty::InternerDecoder for MetadataDecodeContext<'a, '
     fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
+
+    fn decode_predicate(&mut self) -> rustc_middle::ty::predicates::Predicate<Self::Interner> {
+        rustc_middle::ty::codec::decode_shared_predicate(self)
+    }
 }
 
 impl<'a, 'tcx> Decodable<MetadataDecodeContext<'a, 'tcx>> for ExpnIndex {

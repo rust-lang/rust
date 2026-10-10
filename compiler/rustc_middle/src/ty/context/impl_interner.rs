@@ -23,8 +23,8 @@ use crate::traits::solve::{
     self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, QueryResult, inspect,
 };
 use crate::ty::{
-    self, BoundRegion, Clause, Const, List, ParamTy, Pattern, PolyExistentialPredicate, Predicate,
-    Region, RegionKind, RequiredDepth, Ty, TyCtxt,
+    self, BoundRegion, Clause, Const, List, ParamTy, Pattern, PolyExistentialPredicate, Region,
+    RegionKind, RequiredDepth, Ty, TyCtxt,
 };
 
 #[allow(rustc::usage_of_ty_tykind)]
@@ -118,16 +118,24 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type ScalarInt = ty::ScalarInt;
     type InternedRegionKind = Interned<'tcx, ty::RegionKind<'tcx>>;
     type InternedConstKind = Interned<'tcx, WithCachedTypeInfo<ty::ConstKind<'tcx>>>;
+    type InternedPredicateKind =
+        Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, ty::PredicateKind<'tcx>>>>;
     type EarlyParamRegion = ty::EarlyParamRegion;
     type LateParamRegionKind = ty::LateParamRegionKind;
 
     type RegionAssumptions = &'tcx ty::List<ty::ArgOutlivesClause<'tcx>>;
 
     type ParamEnv = ty::ParamEnv<'tcx>;
-    type Predicate = Predicate<'tcx>;
 
     type Clause = Clause<'tcx>;
     type Clauses = ty::Clauses<'tcx>;
+
+    fn intern_predicate(
+        self,
+        predicate: ty::Binder<'tcx, ty::PredicateKind<'tcx>>,
+    ) -> rustc_type_ir::sty::predicates::Predicate<Self> {
+        self.interners.intern_predicate(predicate)
+    }
 
     type Tracked<T: fmt::Debug + Clone> = WithDepNode<T>;
     fn mk_tracked<T: fmt::Debug + Clone>(
