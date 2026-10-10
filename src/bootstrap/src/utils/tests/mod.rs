@@ -88,6 +88,11 @@ impl ConfigBuilder {
         self.args(&["--set", &format!("target.{target}.no-std=true")])
     }
 
+    /// Set the runner used to execute binaries built for the specified target.
+    pub fn override_target_runner(self, target: &str, runner: &str) -> Self {
+        self.args(&["--set", &format!("target.{target}.runner={runner}")])
+    }
+
     pub fn hosts(mut self, targets: &[&str]) -> Self {
         self.args.push("--host".to_string());
         self.args.push(targets.join(","));
