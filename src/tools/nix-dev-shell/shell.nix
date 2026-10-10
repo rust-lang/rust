@@ -27,4 +27,8 @@ pkgs.mkShell {
     # cargo seems to dlopen libcurl, so we need it in the ld library path
     LD_LIBRARY_PATH = "${makeLibraryPath [pkgs.stdenv.cc.cc.lib pkgs.curl]}";
   };
+
+  # Without this, the c compiler runs with `-O2` by default. This causes
+  # problems with miri native-lib tests (rust-lang/miri#5393).
+  hardeningDisable = [ "fortify" ];
 }
