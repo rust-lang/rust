@@ -11,6 +11,7 @@ LL |     println!("{}", start.test);
 note: `Mine::make_string_bar` takes ownership of the receiver `self`, which moves `start`
   --> $DIR/ownership-struct-update-moved-error.rs:9:28
    |
+LL | impl Mine {
 LL |     fn make_string_bar(mut self) -> Mine {
    |                            ^^^^
 

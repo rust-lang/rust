@@ -16,6 +16,7 @@ LL |         x.zero()
 note: `Foo::zero` takes ownership of the receiver `self`, which moves `x`
   --> $DIR/issue-34721.rs:4:13
    |
+LL | pub trait Foo {
 LL |     fn zero(self) -> Self;
    |             ^^^^
 help: consider further restricting type parameter `T` with trait `Copy`

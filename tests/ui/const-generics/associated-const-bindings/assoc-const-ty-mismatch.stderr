@@ -9,6 +9,7 @@ LL | fn foo<F: Foo<N = usize>>() {}
 note: the associated constant is defined here
   --> $DIR/assoc-const-ty-mismatch.rs:5:5
    |
+LL | pub trait Foo {
 LL |     const N: usize;
    |     ^^^^^^^^^^^^^^
 
@@ -23,6 +24,7 @@ LL | fn foo2<F: FooTy<T = 3usize>>() {}
 note: the associated type is defined here
   --> $DIR/assoc-const-ty-mismatch.rs:9:5
    |
+LL | pub trait FooTy {
 LL |     type T;
    |     ^^^^^^
 
