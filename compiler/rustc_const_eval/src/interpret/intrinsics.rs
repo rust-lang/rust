@@ -618,7 +618,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::copysignf64 => self.float_copysign_intrinsic::<Double>(args, dest)?,
             sym::copysignf128 => self.float_copysign_intrinsic::<Quad>(args, dest)?,
 
-            sym::fabs => {
+            sym::fabs | sym::ilogb => {
                 let arg = self.read_immediate(&args[0])?;
                 let ty::Float(float_ty) = arg.layout.ty.kind() else {
                     span_bug!(
@@ -634,6 +634,27 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     FloatTy::F128 => self.unop_float_intrinsic::<Quad>(intrinsic_name, arg)?,
                 };
                 self.write_scalar(out_val, dest)?;
+            }
+
+            sym::scalbn => {
+                let arg = self.read_immediate(&args[0])?;
+                let exp = self.read_immediate(&args[1])?;
+
+                let ty::Float(float_ty) = arg.layout.ty.kind() else {
+                    span_bug!(
+                        self.cur_span(),
+                        "non-float type for float intrinsic: {}",
+                        arg.layout.ty,
+                    );
+                };
+
+                let res = match float_ty {
+                    FloatTy::F16 => self.scalbn_intrinsic::<Half>(arg, exp)?,
+                    FloatTy::F32 => self.scalbn_intrinsic::<Single>(arg, exp)?,
+                    FloatTy::F64 => self.scalbn_intrinsic::<Double>(arg, exp)?,
+                    FloatTy::F128 => self.scalbn_intrinsic::<Quad>(arg, exp)?,
+                };
+                self.write_scalar(res, dest)?;
             }
 
             sym::floorf16 => self.float_round_intrinsic::<Half>(
@@ -1219,10 +1240,27 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     {
         let x: F = arg.to_scalar().to_float()?;
         match name {
-            // bitwise, no NaN adjustments
+            // fabs and ilogb are both bitwise, no NaN adjustments.
             sym::fabs => interp_ok(x.abs().into()),
+            sym::ilogb => interp_ok(Scalar::from_i32(x.ilogb())),
             _ => bug!("not a unary float intrinsic: {}", name),
         }
+    }
+
+    fn scalbn_intrinsic<F>(
+        &self,
+        arg: ImmTy<'tcx, M::Provenance>,
+        exp: ImmTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let arg: F = arg.to_scalar().to_float()?;
+        let exp: i32 = exp.to_scalar().to_i32()?;
+
+        let res = arg.scalbn(exp);
+        let res = self.adjust_nan(res, &[arg]);
+        interp_ok(res.into())
     }
 
     fn float_minmax<F>(
