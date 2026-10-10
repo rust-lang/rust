@@ -15,13 +15,13 @@ use std::fs::{
 use std::io::{
     Error, ErrorKind, IoSlice, IoSliceMut, IsTerminal, Read, Result, Seek, SeekFrom, Write,
 };
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[rustfmt::skip]
 #[cfg(unix)]
-use std::os::unix::fs::symlink as symlink_file;
+use std::os::unix::fs::{symlink as symlink_file, symlink as symlink_dir};
 #[cfg(windows)]
-use std::os::windows::fs::symlink_file;
+use std::os::windows::fs::{symlink_dir, symlink_file};
 
 #[path = "../../utils/mod.rs"]
 mod utils;
@@ -705,10 +705,8 @@ fn test_symlink() {
     // Creating a symbolic link should succeed.
     symlink_file(&path, &symlink_path).unwrap();
     // Test that the symbolic link has the same contents as the file.
-    let mut symlink_file = File::open(&symlink_path).unwrap();
-    let mut contents = Vec::new();
-    symlink_file.read_to_end(&mut contents).unwrap();
-    assert_eq!(bytes, contents.as_slice());
+    let contents = fs::read(&symlink_path).unwrap();
+    assert_eq!(&contents, bytes);
 
     // Test that metadata of a symbolic link (i.e., the file it points to) is correct.
     check_metadata(bytes, &symlink_path).unwrap();
@@ -719,8 +717,32 @@ fn test_symlink() {
     // Removing symbolic link should succeed.
     remove_file(&symlink_path).unwrap();
 
-    // Removing file should succeed.
+    // Relative paths are interpreted relative to the symlink.
+    let dirpath = utils::prepare("miri_test_fs_link_dir");
+    fs::create_dir(&dirpath).unwrap();
+    let symlink_path2 = dirpath.join("link");
+    // `/` in symlink target does not work natively on Windows hosts!
+    symlink_file(PathBuf::from("..").join("miri_test_fs_link_target.txt"), &symlink_path2).unwrap();
+    let contents = fs::read(&symlink_path2).unwrap();
+    assert_eq!(&contents, bytes);
+    // Also test directory symlinks as that makes a difference on Windows hosts.
+    symlink_dir("miri_test_fs_link_dir", &symlink_path).unwrap();
+    fs::read_dir(&symlink_path).unwrap();
+
+    // Cleanup.
     remove_file(&path).unwrap();
+    remove_file(&symlink_path2).unwrap();
+    remove_dir(&dirpath).unwrap();
+    // Symlinks to dirs are more like files on Linux, and more like dirs on Windows.
+    if cfg!(windows) {
+        let err = remove_file(&symlink_path).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::PermissionDenied);
+        remove_dir(&symlink_path).unwrap();
+    } else {
+        let err = remove_dir(&symlink_path).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::NotADirectory);
+        remove_file(&symlink_path).unwrap();
+    }
 }
 
 fn test_hard_link() {

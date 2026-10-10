@@ -236,17 +236,16 @@ impl VisitProvenance for DirTable {
 }
 
 fn maybe_sync_file(
-    file: &File,
-    writable: bool,
+    file: &FileHandle,
     operation: fn(&File) -> std::io::Result<()>,
 ) -> std::io::Result<i32> {
-    if !writable && cfg!(windows) {
+    if !file.writable && cfg!(windows) {
         // sync_all() and sync_data() will return an error on Windows hosts if the file is not opened
         // for writing. (FlushFileBuffers requires that the file handle have the
         // GENERIC_WRITE right)
         Ok(0i32)
     } else {
-        let result = operation(file);
+        let result = operation(&file.file);
         result.map(|_| 0i32)
     }
 }
@@ -467,6 +466,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         use std::os::windows::fs::OpenOptionsExt;
 
         let this = self.eval_context_mut();
+        let open_name = if dirfd.is_some() { "openat" } else { "open" };
 
         let dirfd = match dirfd {
             Some(dirfd) => Some(this.read_scalar(dirfd)?.to_i32()?),
@@ -513,7 +513,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // Only support default mode for non-UNIX (i.e. Windows) host
                     if mode != 0o666 {
                         throw_unsup_format!(
-                            "non-default mode 0o{:o} is not supported on non-Unix hosts",
+                            "{open_name}: non-default mode 0o{:o} is not supported on non-Unix hosts",
                             mode
                         );
                     }
@@ -536,7 +536,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // windows. We need to check that in fact the access mode flags for the current target
         // only use these two bits, otherwise we are in an unsupported target and should error.
         if (o_rdonly | o_wronly | o_rdwr) & !0b11 != 0 {
-            throw_unsup_format!("access mode flags on this target are unsupported");
+            throw_unsup_format!("{open_name}: access mode flags on this target are unsupported");
         }
         let mut writable = true;
         let mut readable = true;
@@ -554,7 +554,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else if access_mode == o_rdwr {
             options.read(true).write(true);
         } else {
-            throw_unsup_format!("unsupported access mode {:#x}", access_mode);
+            throw_unsup_format!("{open_name}: unsupported access mode {:#x}", access_mode);
         }
 
         if this.tcx.sess.target.os == Os::Linux {
@@ -649,6 +649,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     custom_flags |= libc::O_NOFOLLOW;
                 }
                 windows => {
+                    if dirfd.is_some() {
+                        throw_unsup_format!(
+                            "openat: `O_NOFOLLOW` is not supported on Windows hosts"
+                        );
+                    }
                     custom_flags |=
                         windows_sys::Win32::Storage::FileSystem::FILE_FLAG_OPEN_REPARSE_POINT;
                 }
@@ -657,12 +662,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // If `flag` has any bits left set, those are not supported.
         if flag != 0 {
-            throw_unsup_format!("unsupported flags for `open`: {flag:#x}");
+            throw_unsup_format!("{open_name}: unsupported flags: {flag:#x}");
         }
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`open`", reject_with)?;
+            this.reject_in_isolation(&format!("`{open_name}`"), reject_with)?;
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
@@ -686,7 +691,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Let's see what we get when we open this!
         options.custom_flags(custom_flags);
-        match open_file_or_dir(dirfd.as_ref().map(|d| &d.dir), &path, &options) {
+        // Windows does not by itself treat `.` correctly so we do that by hand.
+        // (https://github.com/rust-lang/rust/issues/163032)
+        let f_or_d = match &dirfd {
+            // Using `try_clone` here means that on the host, we have the same underlying file
+            // description, even when it would be separate natively. That should be fine since
+            // std never gives us an `fs::Dir` whose internal state (e.g. for iteration) matters.
+            Some(dirfd) if path.to_str() == Some(".") => dirfd.dir.try_clone().map(Either::Right),
+            _ => open_file_or_dir(dirfd.as_ref().map(|d| &d.dir), &path, &options),
+        };
+        match f_or_d {
             Err(err) => this.set_errno_and_return_neg1_i32(err),
             Ok(Either::Right(dir)) => {
                 // This means it cannot be a symlink, so `nofollow` is fine.
@@ -696,13 +710,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return this.set_errno_and_return_neg1_i32(LibcError("EISDIR"));
                 }
 
-                #[cfg(bootstrap)]
-                let path = match &dirfd {
-                    Some(dir) => dir.fallback.join(&path),
-                    None => path.into(),
-                };
-
-                let fd = this.machine.fds.insert_new(DirHandle::new(dir, &path));
+                let fd = this.machine.fds.insert_new(DirHandle {
+                    dir,
+                    #[cfg(bootstrap)]
+                    fallback: match &dirfd {
+                        Some(dirfd) => dirfd.fallback.join(&path).canonicalize().unwrap(),
+                        None => path.canonicalize().unwrap(),
+                    },
+                });
                 interp_ok(Scalar::from_i32(fd))
             }
             Ok(Either::Left(file)) => {
@@ -774,8 +789,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        let result = fs::remove_file(path).map(|_| 0);
-        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
+        #[rustfmt::skip] // work around https://github.com/rust-lang/rustfmt/issues/7045
+        let result = cfg_select! {
+            unix => fs::remove_file(path),
+            windows => {{
+                // This should be able to remove symlinks to dirs, but on Windows that requires
+                // `remove_dir`. Our work-around is racy but there's not a lot we can do about that.
+                // FIXME: maybe we can retry based on the error code?
+                use std::os::windows::fs::FileTypeExt;
+                let metadata = path.symlink_metadata();
+                if metadata.is_ok_and(|m| m.file_type().is_symlink_dir()) {
+                    fs::remove_dir(path)
+                } else {
+                    fs::remove_file(path)
+                }
+            }}
+        };
+        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result.map(|()| 0))?))
     }
 
     fn symlink(
@@ -783,17 +813,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         target_op: &OpTy<'tcx>,
         linkpath_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        fn create_link(src: &Path, dst: &Path) -> std::io::Result<()> {
+        fn create_link(target: &Path, link: &Path) -> std::io::Result<()> {
             cfg_select! {
-                unix => std::os::unix::fs::symlink(src, dst),
+                unix => std::os::unix::fs::symlink(target, link),
                 windows => {
                     use std::os::windows::fs;
+
+                    // The target filename is interpreted relative to where `link` is located,
+                    // but we need it relative to where we are.
+                    let target_is_dir = link.parent().is_some_and(|dir| dir.join(target).is_dir());
                     // This is racy, but not much we can do about that.
                     // FIXME: maybe we can retry based on the error code?
-                    if src.is_dir() {
-                        fs::symlink_dir(src, dst)
+                    if target_is_dir {
+                        fs::symlink_dir(target, link)
                     } else {
-                        fs::symlink_file(src, dst)
+                        fs::symlink_file(target, link)
                     }
                 }
             }
@@ -1296,9 +1330,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        let result = fs::remove_dir(path).map(|_| 0i32);
+        #[rustfmt::skip] // work around https://github.com/rust-lang/rustfmt/issues/7045
+        let result = cfg_select! {
+            unix => fs::remove_dir(path),
+            windows => {{
+                // This should *not* be able to remove symlinks to dirs, but on Windows it is. Our
+                // work-around is racy (it might change to being a directory symlink after we
+                // checked it), but there's not a lot we can do about that.
+                use std::os::windows::fs::FileTypeExt;
+                let metadata = path.symlink_metadata();
+                if metadata.is_ok_and(|m| m.file_type().is_symlink_dir()) {
+                    return this.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
+                } else {
+                    fs::remove_dir(path)
+                }
+            }}
+        };
 
-        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
+        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result.map(|_| 0i32))?))
     }
 
     fn opendir(&mut self, name_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
@@ -1329,7 +1378,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         "cannot `opendir` this directory: failed to create directory handle"
                     );
                 };
-                let dir = this.machine.fds.new_ref(DirHandle::new(dir, &name));
+                let dir = this.machine.fds.new_ref(DirHandle {
+                    dir,
+                    #[cfg(bootstrap)]
+                    fallback: name.canonicalize().unwrap(),
+                });
                 let dir_fd_id = dir.id();
                 let dir_fd_num = this.machine.fds.insert(dir);
 
@@ -1702,7 +1755,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         })?;
         assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
 
-        let io_result = maybe_sync_file(&file.file, file.writable, File::sync_all);
+        let io_result = maybe_sync_file(&file, File::sync_all);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
 
@@ -1720,7 +1773,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         })?;
         assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
 
-        let io_result = maybe_sync_file(&file.file, file.writable, File::sync_data);
+        let io_result = maybe_sync_file(&file, File::sync_data);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
 
@@ -1849,7 +1902,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         })?;
         assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
 
-        let io_result = maybe_sync_file(&file.file, file.writable, File::sync_data);
+        let io_result = maybe_sync_file(&file, File::sync_data);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
 
@@ -2217,8 +2270,9 @@ impl FileMetadata {
             };
 
             // Windows does not by itself treat `.` correctly so we do that by hand.
+            // (https://github.com/rust-lang/rust/issues/163032)
             #[cfg(not(bootstrap))]
-            let metadata = if cfg!(windows) && path.to_str() == Some(".") {
+            let metadata = if path.to_str() == Some(".") {
                 dir.dir.self_metadata()
             } else if symlink_nofollow_flag {
                 dir.dir.symlink_metadata(path)
@@ -2226,7 +2280,7 @@ impl FileMetadata {
                 dir.dir.metadata(path)
             };
             #[cfg(bootstrap)]
-            let metadata = if cfg!(windows) && path.to_str() == Some(".") {
+            let metadata = if path.to_str() == Some(".") {
                 dir.dir.metadata()
             } else if symlink_nofollow_flag {
                 dir.fallback.join(path).symlink_metadata()

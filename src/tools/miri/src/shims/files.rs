@@ -518,23 +518,6 @@ pub struct DirHandle {
     pub(super) fallback: std::path::PathBuf,
 }
 
-impl DirHandle {
-    pub fn new(dir: Dir, path: &std::path::Path) -> Self {
-        cfg_select! {
-            bootstrap => {
-                // Only stage 1 builds need the fallback so panicking is fine.
-                let fallback =
-                    path.canonicalize().expect("canonicalizing directory fallback should succeed");
-                DirHandle { dir, fallback }
-            }
-            _ => {
-                let _unused = path;
-                DirHandle { dir }
-            }
-        }
-    }
-}
-
 impl FileDescription for DirHandle {
     fn name(&self) -> &'static str {
         "directory"
@@ -719,7 +702,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
 /// Open something for which we don't know ahead of time whether it is a file or a directory.
 ///
-/// Custom flags need to be passed separately since they cannot be read from `opts`...
+/// Note that on Windows hosts, `custom_flags` is ignored if `root` is `Some`!
 pub fn open_file_or_dir(
     root: Option<&fs::Dir>,
     path: &std::path::Path,
@@ -743,7 +726,17 @@ pub fn open_file_or_dir(
                 Some(root) => root.open_dir_with(path, opts),
                 None => Dir::open_with(path, opts),
             };
-            dir.map(|d| File::from(OwnedHandle::from(d)))
+            match dir {
+                // Convert back to file so it always has the same type.
+                Ok(dir) => Ok(File::from(OwnedHandle::from(dir))),
+                Err(err2) => {
+                    // If this 2nd attempt says "not a directory", preserve the original error. It's
+                    // possible that we lost a race twice if this keeps being changed from directory
+                    // to file and back. However, in that case it was entirely non-existent for a
+                    // little while, so returning an error is still fine.
+                    Err(if err2.kind() == io::ErrorKind::NotADirectory { err } else { err2 })
+                }
+            }
         } else {
             Err(err)
         }
