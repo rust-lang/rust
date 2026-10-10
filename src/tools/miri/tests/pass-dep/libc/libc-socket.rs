@@ -67,6 +67,7 @@ fn main() {
 
     test_sockopt_sndtimeo();
     test_sockopt_rcvtimeo();
+    test_sockopt_reuseaddr();
 
     test_unblock_after_socket_close();
 }
@@ -134,8 +135,6 @@ fn test_set_reuseaddr_invalid_len() {
     // Value should be of type `libc::c_int` which has size 4 bytes.
     // By providing an u16 of size 2 bytes we trigger an invalid length error.
     let err = net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR, 1u16).unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::InvalidInput);
-    // Check that it is the right kind of `InvalidInput`.
     assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
 
     // By providing an u64 of size 8 bytes the behavior differs between native hosts and Miri.
@@ -143,7 +142,6 @@ fn test_set_reuseaddr_invalid_len() {
     match result {
         Err(err) => {
             // Check that this is the right error.
-            assert_eq!(err.kind(), ErrorKind::InvalidInput);
             assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
         }
         Ok(_) => {
@@ -189,8 +187,6 @@ fn test_set_nosigpipe_invalid_len() {
     // Value should be of type `libc::c_int` which has size 4 bytes.
     // By providing a u16 of size 2 bytes we trigger an invalid length error.
     let err = net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1u16).unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::InvalidInput);
-    // Check that it is the right kind of `InvalidInput`.
     assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
 }
 
@@ -209,8 +205,6 @@ fn test_bind_ipv4_invalid_addr_len() {
         ))
         .unwrap_err()
     };
-    assert_eq!(err.kind(), ErrorKind::InvalidInput);
-    // Check that it is the right kind of `InvalidInput`.
     assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
 
     if cfg!(miri) {
@@ -225,8 +219,6 @@ fn test_bind_ipv4_invalid_addr_len() {
             ))
             .unwrap_err()
         };
-        assert_eq!(err.kind(), ErrorKind::InvalidInput);
-        // Check that it is the right kind of `InvalidInput`.
         assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
     }
 }
@@ -1078,6 +1070,30 @@ fn test_sockopt_rcvtimeo() {
     assert_eq!(err.kind(), ErrorKind::WouldBlock);
     // Ensure that we blocked for at least 40 milliseconds.
     assert!(before.elapsed() >= Duration::from_millis(40))
+}
+
+/// Test setting and reading the SO_REUSEADDR socket option.
+fn test_sockopt_reuseaddr() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    let (_peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+    net::setsockopt(client_sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR, true as libc::c_int)
+        .unwrap();
+    let reuseaddr =
+        net::getsockopt::<libc::c_int>(client_sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR)
+            .unwrap();
+    assert_ne!(reuseaddr, 0);
+
+    net::setsockopt(client_sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR, false as libc::c_int)
+        .unwrap();
+    let reuseaddr =
+        net::getsockopt::<libc::c_int>(client_sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR)
+            .unwrap();
+    assert_eq!(reuseaddr, 0);
 }
 
 /// Test that a thread which is blocked on a socket gets unblocked once

@@ -2,6 +2,9 @@
 //@compile-flags: -Zmiri-disable-isolation
 //@run-native
 
+#![feature(tcp_linger)]
+#![feature(tcp_keepalive)]
+
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
 use std::thread;
@@ -23,6 +26,8 @@ fn main() {
     test_sockopt_nodelay();
     test_sockopt_read_timeout();
     test_sockopt_write_timeout();
+    test_sockopt_linger();
+    test_sockopt_keepalive();
 }
 
 fn test_create_ipv4_listener() {
@@ -263,4 +268,34 @@ fn test_sockopt_write_timeout() {
             Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
         }
     }
+}
+
+/// Test setting and reading the SO_LINGER socket option.
+fn test_sockopt_linger() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+
+    let stream = TcpStream::connect(address).unwrap();
+    let _other_end = listener.accept().unwrap();
+
+    let original_linger = Some(Duration::from_secs(10));
+    stream.set_linger(original_linger).unwrap();
+    assert_eq!(original_linger, stream.linger().unwrap());
+
+    stream.set_linger(None).unwrap();
+    assert_eq!(None, stream.linger().unwrap());
+}
+
+/// Test setting and reading the SO_KEEPALIVE socket option.
+fn test_sockopt_keepalive() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+
+    let stream = TcpStream::connect(address).unwrap();
+    let _other_end = listener.accept().unwrap();
+
+    stream.set_keepalive(true).unwrap();
+    assert_eq!(stream.keepalive().unwrap(), true);
+    stream.set_keepalive(false).unwrap();
+    assert_eq!(stream.keepalive().unwrap(), false);
 }
