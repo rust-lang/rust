@@ -772,7 +772,7 @@ impl<'a> Parser<'a> {
 
             let mut is_const = false;
             if fn_parse_mode.allow_const
-                && this.check_keyword(exp!(Const))
+                && this.token.is_keyword(kw::Const)
                 && this.look_ahead(1, |token| token.is_non_reserved_ident())
                 && this.look_ahead(2, |token| *token == token::Colon)
             {
