@@ -941,7 +941,7 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-note: there is a field `0` on `Box<Box<X6>>` with type `std::ptr::Unique<Box<X6>>` but it is private; `0` from `X6` was accessed through auto-deref instead
+note: there is a field `0` on `Box<Box<X6>>` with type `boxed::BoxRaw<Box<X6>>` but it is private; `0` from `X6` was accessed through auto-deref instead
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
    |
    = note: in this struct
@@ -1080,7 +1080,7 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-note: there is a field `0` on `Box<Box<X7>>` with type `std::ptr::Unique<Box<X7>>` but it is private; `0` from `X7` was accessed through auto-deref instead
+note: there is a field `0` on `Box<Box<X7>>` with type `boxed::BoxRaw<Box<X7>>` but it is private; `0` from `X7` was accessed through auto-deref instead
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
    |
    = note: in this struct
@@ -1115,7 +1115,7 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-note: there is a field `0` on `Box<X8>` with type `std::ptr::Unique<X8>` but it is private; `0` from `X8` was accessed through auto-deref instead
+note: there is a field `0` on `Box<X8>` with type `boxed::BoxRaw<X8>` but it is private; `0` from `X8` was accessed through auto-deref instead
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
    |
    = note: in this struct
@@ -1234,7 +1234,7 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-note: there is a field `0` on `Box<Box<X8>>` with type `std::ptr::Unique<Box<X8>>` but it is private; `0` from `X8` was accessed through auto-deref instead
+note: there is a field `0` on `Box<Box<X8>>` with type `boxed::BoxRaw<Box<X8>>` but it is private; `0` from `X8` was accessed through auto-deref instead
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
    |
    = note: in this struct
@@ -1328,7 +1328,7 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-note: there is a field `0` on `Box<X9>` with type `std::ptr::Unique<X9>` but it is private; `0` from `X9` was accessed through auto-deref instead
+note: there is a field `0` on `Box<X9>` with type `boxed::BoxRaw<X9>` but it is private; `0` from `X9` was accessed through auto-deref instead
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
    |
    = note: in this struct
@@ -1468,7 +1468,7 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-note: there is a field `0` on `Box<Box<X9>>` with type `std::ptr::Unique<Box<X9>>` but it is private; `0` from `X9` was accessed through auto-deref instead
+note: there is a field `0` on `Box<Box<X9>>` with type `boxed::BoxRaw<Box<X9>>` but it is private; `0` from `X9` was accessed through auto-deref instead
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
    |
    = note: in this struct
