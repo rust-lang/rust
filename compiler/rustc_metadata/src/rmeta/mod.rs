@@ -343,7 +343,7 @@ pub(crate) struct CrateRootUnhashed {
 /// On-disk representation of `DefId`.
 /// This creates a type-safe way to enforce that we remap the CrateNum between the on-disk
 /// representation and the compilation session.
-#[derive(Copy, Clone, Hash, PartialEq, Eq, Encodable, BlobDecodable)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, BlobDecodable)]
 pub(crate) struct RawDefId {
     krate: u32,
     index: u32,

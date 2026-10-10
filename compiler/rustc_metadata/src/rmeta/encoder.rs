@@ -18,7 +18,7 @@ use rustc_data_structures::sync::{par_for_each_in, par_join};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
+use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir_pretty::id_to_string;
 use rustc_index::IndexVec;
@@ -78,6 +78,15 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     hygiene_ctxt: Rc<RefCell<HygieneEncodeContext>>,
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
+    // Remapping of non-deterministic local def ids for stable encoding
+    // during parallel compilation.
+    local_def_ids_remapping: Vec<DefIndex>,
+    // DefIndex of a first non-deterministically allocated local def id
+    // (see `Definitions::commit_end_of_determinism`).
+    first_non_det_index: u32,
+    // Stably sorted non-deterministic local def ids that are used
+    // when iterating over all local def ids.
+    non_det_sorted_ids: Vec<LocalDefId>,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -147,6 +156,18 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnIndex {
     }
 }
 
+impl Encodable<EncodeContext<'_, '_>> for RawDefId {
+    fn encode(&self, e: &mut EncodeContext<'_, '_>) {
+        self.krate.encode(e);
+
+        if self.krate == 0 {
+            e.emit_u32(e.map_index(DefIndex::from_u32(self.index)).as_u32());
+        } else {
+            self.index.encode(e);
+        }
+    }
+}
+
 impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     fn encode_crate_num(&mut self, crate_num: CrateNum) {
         if crate_num != LOCAL_CRATE && self.is_proc_macro {
@@ -164,6 +185,8 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     }
 
     fn encode_def_id(&mut self, def_id: DefId) {
+        let def_id = self.map_def_id(def_id);
+
         def_id.krate.encode(self);
         self.emit_u32(def_id.index.as_u32());
     }
@@ -235,7 +258,7 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     /// `LocalDefId` as a wrapper around def index we want to encode
     /// def index only, so we override the encode implementation.
     fn encode_local_def_id(&mut self, def_id: LocalDefId) {
-        self.emit_u32(def_id.local_def_index.as_u32());
+        self.emit_u32(self.map_local_def_id(def_id).local_def_index.as_u32());
     }
 
     /// We override encoding logic for `DefKey` during metadata encoding,
@@ -434,20 +457,23 @@ macro_rules! record_some_lazy {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
         let value = $value;
         let lazy = $self.lazy(value);
-        $self.$tables.$table.set_some($def_id, lazy);
+        let def_id = $self.map_local_def_id($def_id);
+        $self.$tables.$table.set_some(def_id, lazy);
     }};
 }
 
 macro_rules! record_some {
-    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {
-        $self.$tables.$table.set_some($def_id, $value)
-    };
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
+        let def_id = $self.map_local_def_id($def_id);
+        $self.$tables.$table.set_some(def_id, $value)
+    }};
 }
 
 macro_rules! record_value {
-    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {
-        $self.$tables.$table.set($def_id, $value)
-    };
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
+        let def_id = $self.map_local_def_id($def_id);
+        $self.$tables.$table.set(def_id, $value)
+    }};
 }
 
 // Shorthand for `$self.$tables.$table.set_some($def_id.index, $self.lazy_array($value))`, which would
@@ -456,7 +482,8 @@ macro_rules! record_array {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
         let value = $value;
         let lazy = $self.lazy_array(value);
-        $self.$tables.$table.set_some($def_id, lazy);
+        let def_id = $self.map_local_def_id($def_id);
+        $self.$tables.$table.set_some(def_id, lazy);
     }};
 }
 
@@ -464,7 +491,8 @@ macro_rules! record_defaulted_array {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
         let value = $value;
         let lazy = $self.lazy_array(value);
-        $self.$tables.$table.set($def_id, lazy);
+        let def_id = $self.map_local_def_id($def_id);
+        $self.$tables.$table.set(def_id, lazy);
     }};
 }
 
@@ -566,10 +594,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record_value!(self.tables.def_path_hashes[def_id] <- def_path_hash.local_hash().as_u64())
             }
         } else {
-            for (def_index, def_key, def_path_hash) in defs.enumerated_keys_and_path_hashes() {
-                let def_id = LocalDefId { local_def_index: def_index };
+            for def_id in self.iter_sorted_local_ids() {
+                let def_key = defs.def_key(def_id);
+                let hash = defs.def_path_hash(def_id).local_hash().as_u64();
+
                 record_some_lazy!(self.tables.def_keys[def_id] <- def_key);
-                record_value!(self.tables.def_path_hashes[def_id] <- def_path_hash.local_hash().as_u64())
+                record_value!(self.tables.def_path_hashes[def_id] <- hash);
             }
         }
     }
@@ -1457,6 +1487,49 @@ fn should_encode_const(def_kind: DefKind) -> bool {
     }
 }
 
+impl EncodeContext<'_, '_> {
+    #[inline]
+    fn map_local_def_id(&self, local_def_id: LocalDefId) -> LocalDefId {
+        LocalDefId { local_def_index: self.map_index(local_def_id.local_def_index) }
+    }
+
+    #[inline]
+    fn map_def_id(&self, def_id: DefId) -> DefId {
+        if def_id.is_local() {
+            DefId { krate: LOCAL_CRATE, index: self.map_index(def_id.index) }
+        } else {
+            def_id
+        }
+    }
+
+    #[inline]
+    fn map_index(&self, def_index: DefIndex) -> DefIndex {
+        let index = def_index.as_u32();
+
+        if index < self.first_non_det_index {
+            def_index
+        } else {
+            let remapped_idx = index - self.first_non_det_index;
+            self.local_def_ids_remapping[remapped_idx as usize]
+        }
+    }
+
+    fn iter_sorted_local_ids(&self) -> impl Iterator<Item = LocalDefId> + use<> {
+        let non_det_part = self.non_det_sorted_ids.clone();
+        let first_non_det_index = self.first_non_det_index;
+
+        gen move {
+            for i in 0..first_non_det_index {
+                yield LocalDefId { local_def_index: DefIndex::from_u32(i) }
+            }
+
+            for def_id in non_det_part {
+                yield def_id
+            }
+        }
+    }
+}
+
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_attrs(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
@@ -1489,8 +1562,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
 
         let tcx = self.tcx;
-
-        for local_id in tcx.iter_local_def_id() {
+        for local_id in self.iter_sorted_local_ids() {
             let def_id = local_id.to_def_id();
             let def_kind = tcx.def_kind(local_id);
             record_some!(self.tables.def_kind[local_id] <- def_kind);
@@ -2626,6 +2698,10 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         tcx,
         || {
             with_encode_metadata_header(tcx, path, |ecx| {
+                ecx.local_def_ids_remapping = create_local_def_ids_remapping(tcx);
+                ecx.non_det_sorted_ids =
+                    create_sorted_non_det_local_ids(tcx, &ecx.local_def_ids_remapping);
+
                 // Encode all the entries and extra information in the crate,
                 // culminating in the `CrateRoot` which points to all of it.
                 let (root, unhashed) = ecx.encode_crate_root();
@@ -2659,6 +2735,59 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
             (header.position.get(), 0)
         })
     }
+}
+
+/// Creates remapping of non deterministic local def ids
+/// (i.e., ids that start from `Definitions::last_deterministic_index + 1`).
+fn create_local_def_ids_remapping(tcx: TyCtxt<'_>) -> Vec<DefIndex> {
+    let defs = tcx.untracked().definitions.read();
+
+    let mut non_det_ids = vec![];
+    let start = tcx.definitions().first_non_det_index().as_usize();
+
+    for idx in start..defs.num_definitions() {
+        let def_id_level = |mut id| {
+            let mut level = 0;
+            while let Some(parent) = tcx.opt_local_parent(id) {
+                level += 1;
+                id = parent;
+            }
+
+            level
+        };
+
+        let def_id = LocalDefId { local_def_index: idx.into() };
+        non_det_ids.push((def_id, def_id_level(def_id), defs.def_path_hash(def_id).local_hash()));
+    }
+
+    // Sort by level first in order to satisfy the invariant that child def id
+    // always has a higher def index than its parent (see `def_id_partial_cmp`),
+    // in context of one level sort by stable hash. Ids from higher level will
+    // get higher remapped def index.
+    non_det_ids.sort_by_key(|(_, level, hash)| (*level, *hash));
+
+    let mut remapping = vec![CRATE_DEF_INDEX; non_det_ids.len()];
+    for (idx, (id, ..)) in non_det_ids.into_iter().enumerate() {
+        remapping[id.local_def_index.as_usize() - start] = DefIndex::from_usize(start + idx);
+    }
+
+    remapping
+}
+
+/// Creates stably sorted list of non deterministic local def ids
+/// (i.e., ids that start from `Definitions::last_deterministic_index + 1`).
+fn create_sorted_non_det_local_ids(tcx: TyCtxt<'_>, remapping: &[DefIndex]) -> Vec<LocalDefId> {
+    let defs = tcx.untracked().definitions.read();
+    let start = defs.first_non_det_index().as_usize();
+
+    let mut sorted_def_ids = (start..defs.num_definitions())
+        .into_iter()
+        .map(|idx| LocalDefId { local_def_index: DefIndex::from(idx) })
+        .collect::<Vec<_>>();
+
+    sorted_def_ids.sort_by_key(|id| remapping[id.local_def_index.as_usize() - start]);
+
+    sorted_def_ids
 }
 
 fn with_encode_metadata_header(
@@ -2734,6 +2863,9 @@ fn with_encode_metadata_header(
         is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: Default::default(),
         symbol_index_table: Default::default(),
+        local_def_ids_remapping: Default::default(),
+        first_non_det_index: tcx.definitions().first_non_det_index().as_u32(),
+        non_det_sorted_ids: Default::default(),
     };
 
     // Encode the rustc version string in a predictable location.

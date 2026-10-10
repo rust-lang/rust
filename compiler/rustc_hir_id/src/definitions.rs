@@ -98,6 +98,7 @@ pub struct Definitions {
     def_id_to_key: IndexVec<LocalDefId, DefKey>,
     // We do only store the local hash, as all the definitions are from the current crate.
     def_path_hashes: IndexVec<LocalDefId, Hash64>,
+    first_non_det_index: Option<DefIndex>,
     def_path_hash_to_index: DefPathToIndexMap,
 }
 
@@ -302,13 +303,22 @@ pub enum DefPathData {
 }
 
 impl Definitions {
-    /// This function indicates that the order of def id allocations
+    /// This function indicates that the def id allocations
     /// may be non-deterministic after it was called.
     pub fn commit_end_of_determinism(&mut self) {
         assert!(
             self.def_path_hash_to_index.after_parallel_alloc.replace(Default::default()).is_none(),
             "this function should be called only once"
-        )
+        );
+
+        // `self.def_id_to_key.len()` can't be empty, at least crate root should
+        // be present.
+        let def_index = DefIndex::from_usize(self.def_id_to_key.len());
+        self.first_non_det_index.replace(def_index);
+    }
+
+    pub fn first_non_det_index(&self) -> DefIndex {
+        self.first_non_det_index.expect("must contain index")
     }
 
     #[inline(always)]
@@ -362,6 +372,7 @@ impl Definitions {
             def_path_hashes: Default::default(),
             def_id_to_key: Default::default(),
             def_path_hash_to_index: Default::default(),
+            first_non_det_index: Default::default(),
         };
 
         // Create the root definition.
