@@ -62,7 +62,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "fstat$INODE64" => {
                 let [fd, buf] =
                     this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
-                let result = this.fstat(fd, buf)?;
+                let result = this.fstat(fd, buf, "stat")?;
                 this.write_scalar(result, dest)?;
             }
             "fstatat$INODE64" => {
@@ -80,7 +80,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "readdir$INODE64" => {
                 let [dirp] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
-                this.readdir(dirp, dest)?;
+                this.readdir(dirp, dest, "dirent")?;
             }
             "realpath$DARWIN_EXTSN" => {
                 let [path, resolved_path] =

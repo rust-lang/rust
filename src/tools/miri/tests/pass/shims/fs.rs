@@ -15,7 +15,13 @@ use std::fs::{
 use std::io::{
     Error, ErrorKind, IoSlice, IoSliceMut, IsTerminal, Read, Result, Seek, SeekFrom, Write,
 };
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+#[rustfmt::skip]
+#[cfg(unix)]
+use std::os::unix::fs::{symlink as symlink_file, symlink as symlink_dir};
+#[cfg(windows)]
+use std::os::windows::fs::{symlink_dir, symlink_file};
 
 #[path = "../../utils/mod.rs"]
 mod utils;
@@ -43,12 +49,26 @@ fn main() {
         target_os = "freebsd",
         target_os = "solaris",
         target_os = "illumos",
-        target_os = "android"
+        target_os = "android",
+        not(miri)
     )) {
         test_file_set_times();
     }
+    // In Miri, only these targets lower `fs::set_times` to the `utimensat` shim. Natively, it
+    // works everywhere.
+    if cfg!(any(
+        target_os = "linux",
+        target_os = "freebsd",
+        target_os = "solaris",
+        target_os = "illumos",
+        not(miri)
+    )) {
+        test_set_times();
+        test_set_times_nofollow();
+    }
     // Windows file handling is very incomplete.
-    if cfg!(not(windows)) {
+    if cfg!(not(windows)) || cfg!(not(miri)) {
+        test_create_new_dangling_symlink();
         test_directory();
         test_canonicalize();
         #[cfg(not(target_os = "solaris"))] // does not have flock
@@ -78,6 +98,7 @@ fn test_file() {
 
     // Test creating, writing and closing a file (closing is tested when `file` is dropped).
     let mut file = File::create(&path).unwrap();
+    let _dbg = format!("{file:?}"); // ensure we have the shims for this
     assert!(!file.metadata().unwrap().permissions().readonly()); // new file shouldn't be read-only
     // Writing 0 bytes should not change the file contents.
     file.write(&mut []).unwrap();
@@ -180,15 +201,27 @@ fn test_file_create_new() {
     // Creating a new file that doesn't yet exist should succeed.
     OpenOptions::new().write(true).create_new(true).open(&path).unwrap();
     // Creating a new file that already exists should fail.
-    assert_eq!(
-        ErrorKind::AlreadyExists,
-        OpenOptions::new().write(true).create_new(true).open(&path).unwrap_err().kind()
-    );
+    let err = OpenOptions::new().write(true).create_new(true).open(&path).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::AlreadyExists);
     // Optionally creating a new file that already exists should succeed.
     OpenOptions::new().write(true).create(true).open(&path).unwrap();
 
     // Clean up
     remove_file(&path).unwrap();
+}
+
+// Merge this into the test above once it works on Windows.
+fn test_create_new_dangling_symlink() {
+    if !utils::have_symlink_permission() {
+        return;
+    }
+
+    let path = utils::prepare("miri_test_fs_file_create_new_dangling_symlink.txt");
+    // Create dangling symlink
+    symlink_file("does-not-exist", &path).unwrap();
+    // That's enough to make `create_new` fail.
+    let err = OpenOptions::new().write(true).create_new(true).open(&path).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::AlreadyExists);
 }
 
 fn test_seek() {
@@ -327,6 +360,82 @@ fn test_file_set_times() {
     remove_file(&path).unwrap();
 }
 
+fn test_set_times() {
+    use std::fs::FileTimes;
+    use std::time::{Duration, SystemTime};
+
+    let path = utils::prepare_with_content("miri_test_fs_set_times_path.txt", b"hello");
+
+    // Use fixed, whole-second timestamps to avoid sub-second granularity differences between
+    // file systems.
+    let accessed = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000_000_000);
+    let modified = SystemTime::UNIX_EPOCH + Duration::from_secs(1_234_567_890);
+
+    // Setting both timestamps round-trips through the file's metadata.
+    fs::set_times(&path, FileTimes::new().set_accessed(accessed).set_modified(modified)).unwrap();
+    let metadata = fs::metadata(&path).unwrap();
+    assert_eq!(metadata.accessed().unwrap(), accessed);
+    assert_eq!(metadata.modified().unwrap(), modified);
+
+    // Setting only the modification time (`UTIME_OMIT` for access) leaves the access time alone.
+    let newer_modified = SystemTime::UNIX_EPOCH + Duration::from_secs(2_000_000_000);
+    fs::set_times(&path, FileTimes::new().set_modified(newer_modified)).unwrap();
+    let metadata = fs::metadata(&path).unwrap();
+    assert_eq!(metadata.accessed().unwrap(), accessed);
+    assert_eq!(metadata.modified().unwrap(), newer_modified);
+
+    // Setting neither timestamp (`UTIME_OMIT` for both) succeeds and changes nothing.
+    fs::set_times(&path, FileTimes::new()).unwrap();
+    let metadata = fs::metadata(&path).unwrap();
+    assert_eq!(metadata.accessed().unwrap(), accessed);
+    assert_eq!(metadata.modified().unwrap(), newer_modified);
+
+    remove_file(&path).unwrap();
+
+    // A missing file is reported as such.
+    let err = fs::set_times(&path, FileTimes::new().set_modified(modified)).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::NotFound);
+
+    // With nothing to update, Linux does not even look at the path. Other systems may still
+    // report the missing file.
+    let res = fs::set_times(&path, FileTimes::new());
+    if cfg!(target_os = "linux") {
+        res.expect("`set_times` without any timestamps should always succeed on Linux");
+    } else {
+        assert!(res.is_ok() || res.is_err_and(|e| e.kind() == ErrorKind::NotFound));
+    }
+}
+
+fn test_set_times_nofollow() {
+    use std::fs::FileTimes;
+    use std::time::{Duration, SystemTime};
+
+    if !utils::have_symlink_permission() {
+        return;
+    }
+
+    let path = utils::prepare_with_content("miri_test_fs_set_times_nofollow.txt", b"hello");
+    let symlink_path = utils::prepare("miri_test_fs_set_times_nofollow_symlink.txt");
+    symlink_file(&path, &symlink_path).unwrap();
+
+    let target_modified = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000_000_000);
+    let symlink_modified = SystemTime::UNIX_EPOCH + Duration::from_secs(1_234_567_890);
+
+    // `set_times` through the symlink changes the target, `set_times_nofollow` the symlink itself.
+    fs::set_times(&symlink_path, FileTimes::new().set_modified(target_modified)).unwrap();
+    fs::set_times_nofollow(&symlink_path, FileTimes::new().set_modified(symlink_modified)).unwrap();
+    assert_eq!(fs::metadata(&path).unwrap().modified().unwrap(), target_modified);
+    assert_eq!(fs::symlink_metadata(&symlink_path).unwrap().modified().unwrap(), symlink_modified);
+
+    // Setting neither timestamp succeeds and changes neither the symlink nor its target.
+    fs::set_times_nofollow(&symlink_path, FileTimes::new()).unwrap();
+    assert_eq!(fs::metadata(&path).unwrap().modified().unwrap(), target_modified);
+    assert_eq!(fs::symlink_metadata(&symlink_path).unwrap().modified().unwrap(), symlink_modified);
+
+    remove_file(&symlink_path).unwrap();
+    remove_file(&path).unwrap();
+}
+
 fn test_errors() {
     let bytes = b"Hello, World!\n";
     let path = utils::prepare("miri_test_fs_errors.txt");
@@ -364,7 +473,7 @@ fn test_rename() {
 }
 
 fn test_canonicalize() {
-    let dir_path = utils::prepare_dir("miri_test_fs_dir");
+    let dir_path = utils::prepare("miri_test_fs_dir");
     create_dir(&dir_path).unwrap();
     let path = dir_path.join("test_file");
     drop(File::create(&path).unwrap());
@@ -376,7 +485,7 @@ fn test_canonicalize() {
 }
 
 fn test_directory() {
-    let dir_path = utils::prepare_dir("miri_test_fs_dir");
+    let dir_path = utils::prepare("miri_test_fs_dir");
     // Creating a directory should succeed.
     create_dir(&dir_path).unwrap();
     // Test that the metadata of a directory is correct.
@@ -594,15 +703,10 @@ fn test_symlink() {
     let symlink_path = utils::prepare("miri_test_fs_symlink.txt");
 
     // Creating a symbolic link should succeed.
-    #[cfg(unix)]
-    std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
-    #[cfg(windows)]
-    std::os::windows::fs::symlink_file(&path, &symlink_path).unwrap();
+    symlink_file(&path, &symlink_path).unwrap();
     // Test that the symbolic link has the same contents as the file.
-    let mut symlink_file = File::open(&symlink_path).unwrap();
-    let mut contents = Vec::new();
-    symlink_file.read_to_end(&mut contents).unwrap();
-    assert_eq!(bytes, contents.as_slice());
+    let contents = fs::read(&symlink_path).unwrap();
+    assert_eq!(&contents, bytes);
 
     // Test that metadata of a symbolic link (i.e., the file it points to) is correct.
     check_metadata(bytes, &symlink_path).unwrap();
@@ -613,8 +717,32 @@ fn test_symlink() {
     // Removing symbolic link should succeed.
     remove_file(&symlink_path).unwrap();
 
-    // Removing file should succeed.
+    // Relative paths are interpreted relative to the symlink.
+    let dirpath = utils::prepare("miri_test_fs_link_dir");
+    fs::create_dir(&dirpath).unwrap();
+    let symlink_path2 = dirpath.join("link");
+    // `/` in symlink target does not work natively on Windows hosts!
+    symlink_file(PathBuf::from("..").join("miri_test_fs_link_target.txt"), &symlink_path2).unwrap();
+    let contents = fs::read(&symlink_path2).unwrap();
+    assert_eq!(&contents, bytes);
+    // Also test directory symlinks as that makes a difference on Windows hosts.
+    symlink_dir("miri_test_fs_link_dir", &symlink_path).unwrap();
+    fs::read_dir(&symlink_path).unwrap();
+
+    // Cleanup.
     remove_file(&path).unwrap();
+    remove_file(&symlink_path2).unwrap();
+    remove_dir(&dirpath).unwrap();
+    // Symlinks to dirs are more like files on Linux, and more like dirs on Windows.
+    if cfg!(windows) {
+        let err = remove_file(&symlink_path).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::PermissionDenied);
+        remove_dir(&symlink_path).unwrap();
+    } else {
+        let err = remove_dir(&symlink_path).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::NotADirectory);
+        remove_file(&symlink_path).unwrap();
+    }
 }
 
 fn test_hard_link() {
@@ -647,18 +775,44 @@ fn test_hard_link() {
 }
 
 fn test_directory_handle() {
-    let filename = utils::prepare_with_content("miri_test_directory_handle.txt", b"hello");
-    assert!(filename.is_absolute());
-    let dir = fs::Dir::open(filename.parent().unwrap()).unwrap();
+    let dirname = utils::prepare("miri_test_directory_handle");
+    assert!(dirname.is_absolute());
+    fs::create_dir(&dirname).unwrap();
+    let filename = dirname.join("file.txt");
+    fs::write(&filename, b"hello").unwrap();
+
+    let dir = fs::Dir::open(&dirname).unwrap();
     assert!(dir.self_metadata().unwrap().is_dir());
+    let _dbg = format!("{dir:?}"); // ensure we have the shims for this
 
-    let stat = dir.metadata(filename.file_name().unwrap()).unwrap();
+    let stat = dir.metadata("file.txt").unwrap();
     assert!(stat.is_file());
     assert!(stat.len() == 5);
-    let stat = dir.metadata(&filename).unwrap(); // absolute path
-    assert!(stat.is_file());
-    assert!(stat.len() == 5);
+    if cfg!(unix) {
+        // Windows does not seem to support opening an absolute path relative to a `Dir`.
+        // FIXME: is that intentional? <https://github.com/rust-lang/rust/issues/163923>
+        let stat = dir.metadata(&filename).unwrap(); // absolute path
+        assert!(stat.is_file());
+        assert!(stat.len() == 5);
+    }
 
-    let err = fs::Dir::open(filename).unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::NotADirectory);
+    if cfg!(unix) {
+        // Windows actually succeeds when opening a file as a directory.
+        // FIXME: is that intentional? <https://github.com/rust-lang/rust/issues/163926>
+        let err = fs::Dir::open(&filename).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::NotADirectory);
+    }
+
+    let mut file = dir.open_file("file.txt").unwrap();
+    let mut data = Vec::new();
+    file.read_to_end(&mut data).unwrap();
+    assert_eq!(&data, b"hello");
+
+    let err = dir
+        .open_file_with("file.txt", OpenOptions::new().write(true).create_new(true))
+        .unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::AlreadyExists);
+
+    fs::create_dir(dirname.join("subdir")).unwrap();
+    let _subdir = dir.open_dir("subdir").unwrap();
 }

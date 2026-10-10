@@ -1,9 +1,10 @@
 //@ignore-target: windows
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
+
 //@revisions: windows_host unix_host
 //@[unix_host] ignore-host: windows
 //@[windows_host] only-host: windows
-//@run-native
 
 #![feature(io_error_inprogress)]
 
@@ -697,7 +698,7 @@ fn test_getsockname_ipv4_connect_nonblock() {
 
     assert_eq!(addr.sin_family, sock_addr.sin_family);
     if cfg!(windows_host) {
-        // On Windows hosts a connecting socket is bound to the unspecified address.
+        // FIXME: On Windows hosts a connecting socket is bound to the unspecified address.
         assert_eq!(addr.sin_addr.s_addr, sock_addr.sin_addr.s_addr);
     } else {
         // On UNIX hosts a connecting socket is bound to any local interface address
