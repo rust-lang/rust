@@ -317,8 +317,6 @@ pub(crate) fn make_bat_command_line(
     cmd.push(b'"' as u16);
 
     // Append the arguments.
-    // FIXME: This needs tests to ensure that the arguments are properly
-    // reconstructed by the batch script by default.
     for arg in args {
         cmd.push(' ' as u16);
         match arg {
