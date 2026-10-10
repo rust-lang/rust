@@ -11,9 +11,9 @@ extern crate incoherent_impl2;
 pub use incoherent_impl2::Error;
 
 //@ has 'src/foo/incoherent_impl-inlined.rs.html'
-//@ has - '//pre//a[@href="../../foo/struct.Error.html#method.new"]' 'new'
+//@ has - '//pre//a[@href="../../foo/type.Error.html#method.new"]' 'new'
 
-//@ has 'foo/struct.Error.html'
+//@ has 'foo/type.Error.html'
 //@ has - '//*[@id="method.new"]' 'pub fn new() -> Error'
 
 fn foo() {
