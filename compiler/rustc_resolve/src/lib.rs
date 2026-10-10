@@ -262,7 +262,10 @@ enum ResolutionError<'ra> {
     /// Error E0416: identifier is bound more than once in the same pattern.
     IdentifierBoundMoreThanOnceInSamePattern(Ident),
     /// Error E0426: use of undeclared label.
-    UndeclaredLabel { name: Symbol, suggestion: Option<LabelSuggestion> },
+    UndeclaredLabel {
+        name: Symbol,
+        suggestion: Option<LabelSuggestion>,
+    },
     /// Error E0433: failed to resolve.
     FailedToResolve {
         segment: Symbol,
@@ -273,7 +276,9 @@ enum ResolutionError<'ra> {
         message: String,
     },
     /// Error E0434: can't capture dynamic environment in a fn item.
-    CannotCaptureDynamicEnvironmentInFnItem { suggest_closure: bool },
+    CannotCaptureDynamicEnvironmentInFnItem {
+        suggest_closure: bool,
+    },
     /// Error E0435: attempt to use a non-constant value in a constant.
     AttemptToUseNonConstantValueInConstant {
         ident: Ident,
@@ -296,7 +301,9 @@ enum ResolutionError<'ra> {
     // FIXME(generic_const_parameter_types): This should give custom output specifying it's only
     // problematic to use *forward declared* parameters when the feature is enabled.
     /// ERROR E0770: the type of const parameters must not depend on other generic parameters.
-    ParamInTyOfConstParam { name: Symbol },
+    ParamInTyOfConstParam {
+        name: Symbol,
+    },
     /// cannot use self in const param
     SelfInConstParam,
     /// generic parameters must not be used inside const evaluations.
@@ -310,11 +317,18 @@ enum ResolutionError<'ra> {
     /// generic parameters must not be used inside enum discriminants.
     ///
     /// This error is emitted even with `generic_const_exprs`.
-    ParamInEnumDiscriminant { name: Symbol, param_kind: ParamKindInEnumDiscriminant },
+    ParamInEnumDiscriminant {
+        name: Symbol,
+        param_kind: ParamKindInEnumDiscriminant,
+    },
     /// Error E0735: generic parameters with a default cannot use `Self`
     ForwardDeclaredSelf(ForwardGenericParamBanReason),
     /// Error E0767: use of unreachable label
-    UnreachableLabel { name: Symbol, definition_span: Span, suggestion: Option<LabelSuggestion> },
+    UnreachableLabel {
+        name: Symbol,
+        definition_span: Span,
+        suggestion: Option<LabelSuggestion>,
+    },
     /// Error E0323, E0324, E0325: mismatch between trait item and impl item.
     TraitImplMismatch {
         name: Ident,
@@ -339,6 +353,11 @@ enum ResolutionError<'ra> {
     LowercaseSelf,
     /// A never pattern has a binding.
     BindingInNeverPattern,
+    CannotUseInnerLocalInMoveExpr {
+        move_expr_span: Span,
+        ident: Ident,
+        scope_span: Span,
+    },
 }
 
 #[derive(Debug)]
