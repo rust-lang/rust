@@ -473,20 +473,67 @@ fn test_openat() {
     // Absolute path, can use garbage dirfd.
     let dirfd =
         errno_result(unsafe { libc::openat(999, cpath.as_ptr(), libc::O_DIRECTORY) }).unwrap();
+
     // Open file relative to dirfd.
     let fd =
         errno_result(unsafe { libc::openat(dirfd, c"file.txt".as_ptr(), libc::O_RDWR) }).unwrap();
     let data = libc_utils::read_exact_array::<4>(fd).unwrap();
     assert_eq!(&data, b"data");
+    errno_check(unsafe { libc::close(fd) });
+    // That should error with O_DIRECTORY.
+    let err = errno_result(unsafe { libc::openat(dirfd, c"file.txt".as_ptr(), libc::O_DIRECTORY) })
+        .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOTDIR);
 
-    // Open dir itself relative to dirfd.
-    fs::create_dir(path.join("dir")).unwrap();
+    // Open dir relative to dirfd. Even without O_DIRECTORY.
     let dirfd2 =
-        errno_result(unsafe { libc::openat(dirfd, c"dir".as_ptr(), libc::O_DIRECTORY) }).unwrap();
+        errno_result(unsafe { libc::openat(dirfd, c".".as_ptr(), libc::O_RDONLY) }).unwrap();
+    errno_check(unsafe { libc::close(dirfd2) });
+
+    // Open things via symlink.
+    if utils::have_symlink_permission() {
+        fs::create_dir(path.join("dir")).unwrap();
+        fs::symlink("dir", path.join("dirlink")).unwrap();
+        fs::symlink("../file.txt", path.join("dir/filelink")).unwrap();
+        let dirfd2 =
+            errno_result(unsafe { libc::openat(dirfd, c"dirlink".as_ptr(), libc::O_RDONLY) })
+                .unwrap();
+        // This link points to above `dirfd2` but that should still work.
+        let fd =
+            errno_result(unsafe { libc::openat(dirfd2, c"filelink".as_ptr(), libc::O_RDONLY) })
+                .unwrap();
+        let data = libc_utils::read_exact_array::<4>(fd).unwrap();
+        assert_eq!(&data, b"data");
+        errno_check(unsafe { libc::close(fd) });
+        errno_check(unsafe { libc::close(dirfd2) });
+        // That should fail with O_NOFOLLOW.
+        let err =
+            errno_result(unsafe { libc::openat(dirfd, c"dirlink".as_ptr(), libc::O_NOFOLLOW) })
+                .unwrap_err();
+        assert!(
+            matches!(err.raw_os_error().unwrap(), libc::ELOOP | libc::EMLINK),
+            "unexpected errno: {err}"
+        );
+        let err = errno_result(unsafe {
+            libc::openat(dirfd, c"dir/filelink".as_ptr(), libc::O_NOFOLLOW)
+        })
+        .unwrap_err();
+        assert!(
+            matches!(err.raw_os_error().unwrap(), libc::ELOOP | libc::EMLINK),
+            "unexpected errno: {err}"
+        );
+        // But if only the first component is a symlink, that works fine.
+        fs::rename(path.join("file.txt"), path.join("dir/file.txt")).unwrap();
+        let fd = errno_result(unsafe {
+            libc::openat(dirfd, c"dirlink/file.txt".as_ptr(), libc::O_NOFOLLOW)
+        })
+        .unwrap();
+        let data = libc_utils::read_exact_array::<4>(fd).unwrap();
+        assert_eq!(&data, b"data");
+        errno_check(unsafe { libc::close(fd) });
+    }
 
     errno_check(unsafe { libc::close(dirfd) });
-    errno_check(unsafe { libc::close(dirfd2) });
-    errno_check(unsafe { libc::close(fd) });
 }
 
 fn test_create_read_write() {

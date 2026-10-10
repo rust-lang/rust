@@ -236,17 +236,16 @@ impl VisitProvenance for DirTable {
 }
 
 fn maybe_sync_file(
-    file: &File,
-    writable: bool,
+    file: &FileHandle,
     operation: fn(&File) -> std::io::Result<()>,
 ) -> std::io::Result<i32> {
-    if !writable && cfg!(windows) {
+    if !file.writable && cfg!(windows) {
         // sync_all() and sync_data() will return an error on Windows hosts if the file is not opened
         // for writing. (FlushFileBuffers requires that the file handle have the
         // GENERIC_WRITE right)
         Ok(0i32)
     } else {
-        let result = operation(file);
+        let result = operation(&file.file);
         result.map(|_| 0i32)
     }
 }
@@ -686,7 +685,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Let's see what we get when we open this!
         options.custom_flags(custom_flags);
-        match open_file_or_dir(dirfd.as_ref().map(|d| &d.dir), &path, &options) {
+        // Windows does not by itself treat `.` correctly so we do that by hand.
+        // (https://github.com/rust-lang/rust/issues/163032)
+        let f_or_d = match &dirfd {
+            // Using `try_clone` here means that on the host, we have the same underlying file
+            // description, even when it would be separate natively. That should be fine since
+            // std never gives us an `fs::Dir` whose internal state (e.g. for iteration) matters.
+            Some(dirfd) if path.to_str() == Some(".") => dirfd.dir.try_clone().map(Either::Right),
+            _ => open_file_or_dir(dirfd.as_ref().map(|d| &d.dir), &path, &options),
+        };
+        match f_or_d {
             Err(err) => this.set_errno_and_return_neg1_i32(err),
             Ok(Either::Right(dir)) => {
                 // This means it cannot be a symlink, so `nofollow` is fine.
@@ -1707,7 +1715,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         })?;
         assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
 
-        let io_result = maybe_sync_file(&file.file, file.writable, File::sync_all);
+        let io_result = maybe_sync_file(&file, File::sync_all);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
 
@@ -1725,7 +1733,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         })?;
         assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
 
-        let io_result = maybe_sync_file(&file.file, file.writable, File::sync_data);
+        let io_result = maybe_sync_file(&file, File::sync_data);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
 
@@ -1854,7 +1862,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         })?;
         assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
 
-        let io_result = maybe_sync_file(&file.file, file.writable, File::sync_data);
+        let io_result = maybe_sync_file(&file, File::sync_data);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
 
@@ -2222,8 +2230,9 @@ impl FileMetadata {
             };
 
             // Windows does not by itself treat `.` correctly so we do that by hand.
+            // (https://github.com/rust-lang/rust/issues/163032)
             #[cfg(not(bootstrap))]
-            let metadata = if cfg!(windows) && path.to_str() == Some(".") {
+            let metadata = if path.to_str() == Some(".") {
                 dir.dir.self_metadata()
             } else if symlink_nofollow_flag {
                 dir.dir.symlink_metadata(path)
@@ -2231,7 +2240,7 @@ impl FileMetadata {
                 dir.dir.metadata(path)
             };
             #[cfg(bootstrap)]
-            let metadata = if cfg!(windows) && path.to_str() == Some(".") {
+            let metadata = if path.to_str() == Some(".") {
                 dir.dir.metadata()
             } else if symlink_nofollow_flag {
                 dir.fallback.join(path).symlink_metadata()
