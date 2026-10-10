@@ -1282,7 +1282,11 @@ pub(super) fn check_const_item<'tcx>(
     if tcx.is_direct_const(def_id.into()) {
         if !tcx.features().const_param_ty_unchecked() {
             wfcx.register_bound(
-                ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(item_ty)),
+                ObligationCause::new(
+                    tcx.ty_span(def_id),
+                    def_id,
+                    ObligationCauseCode::ConstItemTy(item_ty),
+                ),
                 wfcx.param_env,
                 item_ty,
                 tcx.require_lang_item(LangItem::ConstParamTy, span),
