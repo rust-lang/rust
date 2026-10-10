@@ -18,8 +18,7 @@ type system, so here's an incomplete and unofficial list of invariants of the co
 
 If a type containing aliases is well-formed,
 it should also be well-formed after normalizing said aliases.
-We rely on this as otherwise we would have to re-check for well-formedness for these
-types.
+We rely on this as otherwise we would have to re-check for well-formedness for these types.
 
 This currently does not hold due to a type system unsoundness: [#84533](https://github.com/rust-lang/rust/issues/84533).
 
@@ -48,8 +47,7 @@ This unfortunately does not hold - at least in the new solver - due to a few ann
 
 This means that we must never return *success* for goals for which no `impl` exists.
 That would mean we assume a trait is implemented even though it is not,
-which is very likely to result in
-actual unsoundness.
+which is very likely to result in actual unsoundness.
 When using `where`-bounds to prove a goal, the `impl` will be provided by the user of the item.
 
 This invariant only holds if we check region constraints.
