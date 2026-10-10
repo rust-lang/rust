@@ -1,4 +1,4 @@
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::{AnonConst, DUMMY_NODE_ID, Ty, TyPat, TyPatKind, ast, token};
 use rustc_errors::PResult;
 use rustc_expand::base::{self, DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
@@ -9,7 +9,7 @@ use rustc_span::Span;
 pub(crate) fn expand<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     let (ty, pat) = match parse_pat_ty(cx, tts) {
         Ok(parsed) => parsed,
@@ -23,7 +23,7 @@ pub(crate) fn expand<'cx>(
 
 fn parse_pat_ty<'a>(
     cx: &mut ExtCtxt<'a>,
-    stream: TokenStream,
+    stream: ArenaTokenStream,
 ) -> PResult<'a, (Box<Ty>, Box<TyPat>)> {
     let mut parser = cx.new_parser_from_tts(stream);
 
