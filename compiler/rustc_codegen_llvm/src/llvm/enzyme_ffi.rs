@@ -1,6 +1,6 @@
 #![expect(dead_code)]
 
-use libc::{c_char, c_uint};
+use libc::{c_char, c_uchar, c_uint};
 
 use super::MetadataKindId;
 use super::ffi::{AttributeKind, BasicBlock, Context, Metadata, Module, Type, Value};
@@ -47,10 +47,14 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustGetArrayNumElements(Ty: &Type) -> u64;
     pub(crate) fn LLVMRustHasFnAttribute(
         F: &Value,
-        Name: *const c_char,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: libc::size_t,
     ) -> bool;
-    pub(crate) fn LLVMRustRemoveFnAttribute(F: &Value, Name: *const c_char, NameLen: libc::size_t);
+    pub(crate) fn LLVMRustRemoveFnAttribute(
+        F: &Value,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: libc::size_t,
+    );
     pub(crate) fn LLVMGetFirstFunction(M: &Module) -> Option<&Value>;
     pub(crate) fn LLVMGetNextFunction(Fn: &Value) -> Option<&Value>;
     pub(crate) fn LLVMRustRemoveEnumAttributeAtIndex(
