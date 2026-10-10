@@ -112,6 +112,18 @@ pub(crate) struct LtoBitcodeFromRlib {
 }
 
 #[derive(Diagnostic)]
+#[diag("failed to load the TPDE backend: {$err}")]
+pub(crate) struct TpdeComponentUnavailable {
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("TPDE backend not found in the sysroot: {$err}")]
+pub(crate) struct TpdeComponentMissing {
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
 pub(crate) enum LlvmError<'a> {
     #[diag("could not write output to {$path}")]
     WriteOutput { path: &'a Path },
