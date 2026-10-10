@@ -1,0 +1,33 @@
+error[E0403]: the name `C` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/const-param-type-name-collision-ice-162776.rs:6:23
+   |
+LL | impl<'b, 'c, C, const C: usize> S<C, C> {
+   |              -        ^ already used
+   |              |
+   |              first use of `C`
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/const-param-type-name-collision-ice-162776.rs:6:38
+   |
+LL | impl<'b, 'c, C, const C: usize> S<C, C> {
+   |                                      ^
+   |
+help: consider changing this type parameter to a const parameter
+   |
+LL - impl<'b, 'c, C, const C: usize> S<C, C> {
+LL + impl<'b, 'c, const C: usize, const C: usize> S<C, C> {
+   |
+
+error[E0392]: type parameter `A` is never used
+  --> $DIR/const-param-type-name-collision-ice-162776.rs:3:10
+   |
+LL | struct S<A, const C: usize>;
+   |          ^ unused type parameter
+   |
+   = help: consider removing `A`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `A` to be a const parameter, use `const A: /* Type */` instead
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0392, E0403, E0747.
+For more information about an error, try `rustc --explain E0392`.

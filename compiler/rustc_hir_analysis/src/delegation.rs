@@ -484,6 +484,15 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
             let args = self.args.as_slice();
 
             for clause in clauses.clauses {
+                // a const param which is not present in the remapping cannot be represented
+                // in the delegation's generic arguments (issue #162776).
+                if let ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _)) =
+                    clause.0.as_predicate().kind().skip_binder()
+                    && let ty::ConstKind::Param(param) = ct.kind()
+                    && !self.folder.remap_table.contains_key(&param.index)
+                {
+                    continue;
+                }
                 // If self ty is specified then there will be no generic param `Self`,
                 // so we do not need its clauses.
                 if self.filter_self_clauses
