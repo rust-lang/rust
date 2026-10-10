@@ -1,5 +1,3 @@
-
-
 fn update_node(foo: &mut Option<String>) {
     *foo = Some(foo.unwrap());
     //~^ ERROR cannot move out of `*foo`
