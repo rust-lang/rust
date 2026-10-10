@@ -18,8 +18,10 @@ impl<'tcx> MutVisitor<'tcx> for EraseDerefTempsVisitor<'tcx> {
 
     fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, _: Location) {
         if let &mut Rvalue::CopyForDeref(place) = rvalue {
-            // We do *NOT* want a retag here! This assignment might copy a mutable reference we
-            // can't actually copy, we just need it temporarily to create another pointer.
+            // We must *NOT* retag here! Not only can this assignment copy mutable references that
+            // cannot actually be copied, given some r: &&(u8, u8), the assignment let v = (**r).0;
+            // will do a CopyForDeref of the &(u8, u8) but only do a read of the first element, so
+            // doing a retagging copy adds UB.
             *rvalue = Rvalue::Use(Operand::Copy(place), WithRetag::No)
         }
     }
