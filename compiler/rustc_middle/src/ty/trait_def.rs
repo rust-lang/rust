@@ -106,6 +106,56 @@ pub struct TraitImpls {
     blanket_impls: Vec<DefId>,
     /// Impls indexed by their simplified self type, for fast lookup.
     non_blanket_impls: FxIndexMap<SimplifiedType, Vec<DefId>>,
+    /// Buckets of `non_blanket_impls` whose impls all have a first-argument key (see
+    /// `first_arg_key`), split by that key.
+    by_first_arg: FxIndexMap<SimplifiedType, FxIndexMap<ArgKey, Vec<DefId>>>,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, StableHash)]
+enum ArgKey {
+    Ty(SimplifiedType),
+    Const(u128),
+}
+
+/// The key of the first type or const argument of an ADT self type. Arguments with different
+/// keys never unify, whatever their parameters are instantiated with; an argument that could
+/// unify with any key has none.
+fn first_arg_key<'tcx>(tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Option<ArgKey> {
+    let ty::Adt(_, args) = self_ty.kind() else { return None };
+    match args.iter().find(|arg| arg.as_region().is_none())?.kind() {
+        ty::GenericArgKind::Type(ty) => match ty.kind() {
+            ty::Param(_)
+            | ty::Alias(..)
+            | ty::Infer(_)
+            | ty::Bound(..)
+            | ty::Placeholder(_)
+            | ty::Error(_)
+            | ty::Pat(..) => None,
+            _ => fast_reject::simplify_type(tcx, ty, TreatParams::AsRigid).map(ArgKey::Ty),
+        },
+        ty::GenericArgKind::Const(ct) => match ct.kind() {
+            ty::ConstKind::Value(value) => {
+                value.try_to_leaf().map(|leaf| ArgKey::Const(leaf.to_bits_unchecked()))
+            }
+            _ => None,
+        },
+        ty::GenericArgKind::Lifetime(_) => None,
+    }
+}
+
+/// Splits a bucket of `non_blanket_impls` by first-argument key. A bucket with an impl from
+/// another crate is not split, as reading its header would mean decoding it.
+fn split_by_first_arg(tcx: TyCtxt<'_>, impls: &[DefId]) -> Option<FxIndexMap<ArgKey, Vec<DefId>>> {
+    let mut by_arg: FxIndexMap<ArgKey, Vec<DefId>> = FxIndexMap::default();
+    for &impl_def_id in impls {
+        if !impl_def_id.is_local() {
+            return None;
+        }
+        let self_ty = tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip();
+        by_arg.entry(first_arg_key(tcx, self_ty)?).or_default().push(impl_def_id);
+    }
+    // With a single key the split would only duplicate the bucket.
+    (by_arg.len() > 1).then_some(by_arg)
 }
 
 impl TraitImpls {
@@ -145,10 +195,16 @@ impl<'tcx> TyCtxt<'tcx> {
         let tcx = self;
         let trait_impls = tcx.trait_impls_of(trait_def_id);
         let mut consider_impls_for_simplified_type = |simp| {
-            if let Some(impls_for_type) = trait_impls.non_blanket_impls().get(&simp) {
-                for &impl_def_id in impls_for_type {
-                    try_visit!(f(impl_def_id))
-                }
+            // In a split bucket, only the impls with `self_ty`'s key can match it.
+            let impls_for_type = if let Some(by_arg) = trait_impls.by_first_arg.get(&simp)
+                && let Some(key) = first_arg_key(tcx, self_ty)
+            {
+                by_arg.get(&key)
+            } else {
+                trait_impls.non_blanket_impls.get(&simp)
+            };
+            for &impl_def_id in impls_for_type.into_iter().flatten() {
+                try_visit!(f(impl_def_id))
             }
 
             R::output()
@@ -296,7 +352,8 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// `trait_def_id` MUST BE the `DefId` of a trait.
     pub fn all_impls(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> {
-        let TraitImpls { blanket_impls, non_blanket_impls } = self.trait_impls_of(trait_def_id);
+        let TraitImpls { blanket_impls, non_blanket_impls, by_first_arg: _ } =
+            self.trait_impls_of(trait_def_id);
 
         blanket_impls.iter().chain(non_blanket_impls.iter().flat_map(|(_, v)| v)).cloned()
     }
@@ -337,6 +394,12 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
             impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
         } else {
             impls.blanket_impls.push(impl_def_id);
+        }
+    }
+
+    for (&simp, bucket) in &impls.non_blanket_impls {
+        if let Some(by_arg) = split_by_first_arg(tcx, bucket) {
+            impls.by_first_arg.insert(simp, by_arg);
         }
     }
 
