@@ -904,6 +904,7 @@ mod desc {
     pub(crate) const parse_target_feature: &str = parse_string;
     pub(crate) const parse_terminal_url: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `auto`";
+    pub(crate) const parse_tpde: &str = "either no value or one of: `try` (default), `only`";
     pub(crate) const parse_wasi_exec_model: &str = "either `command` or `reactor`";
     pub(crate) const parse_split_debuginfo: &str =
         "one of supported split-debuginfo modes (`off`, `packed`, or `unpacked`)";
@@ -1896,6 +1897,15 @@ pub mod parse {
             Some("on" | "" | "yes" | "y") | None => TerminalUrl::Yes,
             Some("off" | "no" | "n") => TerminalUrl::No,
             Some("auto") => TerminalUrl::Auto,
+            _ => return false,
+        };
+        true
+    }
+
+    pub(crate) fn parse_tpde(slot: &mut Option<Tpde>, v: Option<&str>) -> bool {
+        *slot = match v {
+            Some("try") | None => Some(Tpde::Try),
+            Some("only") => Some(Tpde::Only),
             _ => return false,
         };
         true
@@ -2946,6 +2956,7 @@ written to standard error output)"),
     #[rustc_lint_opt_deny_field_access("use `Session::tls_model` instead of this field")]
     tls_model: Option<TlsModel> = (None, parse_tls_model, [TRACKED],
         "choose the TLS model to use (`rustc --print tls-models` for details)"),
+    tpde: Option<Tpde> = (None, parse_tpde, [TRACKED], "enable the experimental TPDE-LLVM codegen backend for debug builds"),
     trace_macros: bool = (false, parse_bool, [UNTRACKED],
         "for every macro invocation, print its name and arguments (default: no)"),
     track_diagnostics: bool = (false, parse_bool, [UNTRACKED],
