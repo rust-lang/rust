@@ -1216,14 +1216,14 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_const_struct(&mut self, qpath: &hir::QPath<'_>, fields: &&[&ConstArgExprField<'_>]) {
+    fn print_const_struct(&mut self, qpath: &hir::QPath<'_>, fields: &[ConstArgExprField<'_>]) {
         self.print_qpath(qpath, true);
         self.word(" ");
         self.word("{");
         if !fields.is_empty() {
             self.nbsp();
         }
-        self.commasep(Inconsistent, *fields, |s, field| {
+        self.commasep(Inconsistent, fields, |s, field| {
             s.word(field.field.as_str().to_string());
             s.word(":");
             s.nbsp();
@@ -1232,10 +1232,10 @@ impl<'a> State<'a> {
         self.word("}");
     }
 
-    fn print_const_ctor(&mut self, qpath: &hir::QPath<'_>, args: &&[&ConstArg<'_, ()>]) {
+    fn print_const_ctor(&mut self, qpath: &hir::QPath<'_>, args: &[ConstArg<'_, ()>]) {
         self.print_qpath(qpath, true);
         self.word("(");
-        self.commasep(Inconsistent, *args, |s, arg| {
+        self.commasep(Inconsistent, args, |s, arg| {
             s.print_const_arg(arg);
         });
         self.word(")");

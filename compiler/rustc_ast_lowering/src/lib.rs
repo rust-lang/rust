@@ -2844,10 +2844,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     None,
                 );
 
-                let lowered_args = self.arena.alloc_from_iter(args.iter().map(|arg| {
-                    let const_arg = self.lower_expr_to_const_arg_direct(arg, None);
-                    &*self.arena.alloc(const_arg)
-                }));
+                let lowered_args = self.arena.alloc_from_iter(
+                    args.iter().map(|arg| self.lower_expr_to_const_arg_direct(arg, None)),
+                );
 
                 ConstArg {
                     hir_id: self.lower_node_id(node_id),
@@ -2856,10 +2855,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
             }
             ExprKind::Tup(exprs) => {
-                let exprs = self.arena.alloc_from_iter(exprs.iter().map(|expr| {
-                    let expr = self.lower_expr_to_const_arg_direct(expr, None);
-                    &*self.arena.alloc(expr)
-                }));
+                let exprs = self.arena.alloc_from_iter(
+                    exprs.iter().map(|expr| self.lower_expr_to_const_arg_direct(expr, None)),
+                );
 
                 ConstArg {
                     hir_id: self.lower_node_id(node_id),
@@ -2892,12 +2890,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_attrs(hir_id, &f.attrs, f.span, Target::ExprField);
                     let expr = self.lower_expr_to_const_arg_direct(&f.expr, None);
 
-                    &*self.arena.alloc(hir::ConstArgExprField {
+                    hir::ConstArgExprField {
                         hir_id,
                         field: self.lower_ident(f.ident),
                         expr: self.arena.alloc(expr),
                         span: self.lower_span(f.span),
-                    })
+                    }
                 }));
 
                 ConstArg {
@@ -2907,10 +2905,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
             }
             ExprKind::Array(elements) => {
-                let lowered_elems = self.arena.alloc_from_iter(elements.iter().map(|element| {
-                    let const_arg = self.lower_expr_to_const_arg_direct(element, None);
-                    &*self.arena.alloc(const_arg)
-                }));
+                let lowered_elems = self.arena.alloc_from_iter(
+                    elements
+                        .iter()
+                        .map(|element| self.lower_expr_to_const_arg_direct(element, None)),
+                );
                 let array_expr = self.arena.alloc(hir::ConstArgArrayExpr {
                     span: self.lower_span(expr.span),
                     elems: lowered_elems,

@@ -2541,7 +2541,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         hir_id: HirId,
         qpath: hir::QPath<'_>,
-        args: &[&hir::ConstArg<'_>],
+        args: &[hir::ConstArg<'_>],
         span: Span,
     ) -> Const<'tcx> {
         let tcx = self.tcx();
@@ -2642,7 +2642,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
     fn lower_const_arg_tup(
         &self,
-        exprs: &[&hir::ConstArg<'_>],
+        exprs: &[hir::ConstArg<'_>],
         ty: Ty<'tcx>,
         span: Span,
     ) -> Const<'tcx> {
@@ -2685,7 +2685,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         hir_id: HirId,
         qpath: hir::QPath<'_>,
-        inits: &[&hir::ConstArgExprField<'_>],
+        inits: &[hir::ConstArgExprField<'_>],
         span: Span,
     ) -> Const<'tcx> {
         // FIXME(mgca): try to deduplicate this function with
