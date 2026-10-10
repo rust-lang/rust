@@ -1,8 +1,8 @@
 error: higher-ranked lifetime error: lifetime outlives placeholder
-  --> $DIR/hr-projection-mismatch.rs:20:5
+  --> $DIR/hrtb-empty-region-outlives-soundness.rs:33:16
    |
-LL |     wrap::<_, Thing>();
-   |     ^^^^^^^^^^^^^^^^^^ `'a` would have to outlive placeholder in universe `U0`
+LL | impl Trait for () {}
+   |                ^^ `'b` would have to outlive placeholder in universe `U0`
    |
    = note: outer lifetimes cannot depend on placeholders declared in a higher universe
 
