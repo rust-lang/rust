@@ -213,6 +213,30 @@ pub impl(self) trait CommandExt {
     /// If no directory has been specified with [`process::Command::current_dir`], this will set the
     /// directory to `/`, to avoid leaving the current directory outside the chroot. (This is an
     /// intentional difference from the underlying `chroot` system call.)
+    ///
+    /// This typically requires privileges, such as root or a specific capability.
+    ///
+    /// Note that according to the POSIX standard, `chroot` is not required to be async-signal-safe,
+    /// and functions called between `fork` and `exec` must be async-signal-safe. However, in
+    /// practice, the ability to `fork` then `chroot` then `exec` is a capability widely provided by
+    /// Rust targets and relied upon by numerous programs.
+    ///
+    /// See the [`chroot`] manual page for more details.
+    ///
+    /// [`chroot`]: https://man7.org/linux/man-pages/man2/chroot.2.html
+    ///
+    /// # Examples
+    ///
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+    /// use std::process::Command;
+    /// use std::os::unix::process::CommandExt;
+    ///
+    /// Command::new("contained")
+    ///    .chroot("/sandbox")
+    ///    .spawn()?
+    ///    .wait()?;
+    #[doc = "```"]
     #[unstable(feature = "process_chroot", issue = "141298")]
     fn chroot<P: AsRef<Path>>(&mut self, dir: P) -> &mut process::Command;
 
