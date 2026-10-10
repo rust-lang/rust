@@ -3318,8 +3318,122 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 }
             }
         }
+        self.check_and_suggest_closure_annotation(borrow, &mut err);
 
         err
+    }
+
+    /// E0597 can occur when an unannotated closure argument infers a too-large lifetime.
+    /// We trace the borrow's MIR local down to an `Rvalue::Aggregate` to map the argument
+    /// back to the HIR parameter index (since we lack `input_tys` here in borrowck).
+    fn check_and_suggest_closure_annotation(
+        &self,
+        borrow: &BorrowData<'tcx>,
+        err: &mut Diag<'diag>,
+    ) {
+        let tcx = self.infcx.tcx;
+
+        let location = borrow.reserve_location;
+        let Some(Statement { kind: StatementKind::Assign((place, _)), .. }) =
+            self.body[location.block].statements.get(location.statement_index)
+        else {
+            return;
+        };
+        let Some(mut target) = place.as_local() else { return };
+
+        let mut tuple_index = None;
+
+        // Trace the def-use chain to find the index of the closure argument tuple.
+        for stmt in &self.body[location.block].statements[location.statement_index + 1..] {
+            let StatementKind::Assign((place, ref rvalue)) = stmt.kind else { continue };
+            let Some(assigned_to) = place.as_local() else { continue };
+
+            let mut matched = false;
+            match rvalue {
+                Rvalue::Use(operand, _) | Rvalue::Cast(_, operand, _) => {
+                    matched =
+                        operand.place().is_some_and(|p| p.local_or_deref_local() == Some(target));
+                }
+                Rvalue::Ref(_, _, p) | Rvalue::CopyForDeref(p) => {
+                    matched = p.local_or_deref_local() == Some(target);
+                }
+                Rvalue::Aggregate(kind, operands) => {
+                    for (i, operand) in operands.iter_enumerated() {
+                        if operand.place().is_some_and(|p| p.local_or_deref_local() == Some(target))
+                        {
+                            matched = true;
+                            if let AggregateKind::Tuple = kind {
+                                tuple_index = Some(i.as_usize());
+                            }
+                            break;
+                        }
+                    }
+                }
+                _ => {}
+            }
+
+            if matched {
+                target = assigned_to;
+                if tuple_index.is_some() {
+                    break;
+                }
+            }
+        }
+
+        let Some(idx) = tuple_index else { return };
+
+        let Some(terminator) = &self.body[location.block].terminator else { return };
+        let TerminatorKind::Call { args, .. } = &terminator.kind else { return };
+
+        // Verify this is a closure call (args[0] is the environment, args[1] is the argument tuple)
+        // and that our traced local is the tuple argument.
+        if args.len() != 2 {
+            return;
+        }
+
+        let (Operand::Copy(p) | Operand::Move(p)) = &args[1].node else { return };
+        if p.local_or_deref_local() != Some(target) {
+            return;
+        }
+
+        let Some(self_arg) = args.get(0) else { return };
+        let self_ty = self_arg.node.ty(self.body, tcx).peel_refs();
+        let ty::Closure(def_id, closure_args) = self_ty.kind() else { return };
+        let Some(local_def_id) = def_id.as_local() else { return };
+
+        // Bail if the closure is already higher-ranked; adding explicit lifetimes won't fix E0597.
+        if !closure_args.as_closure().sig().bound_vars().is_empty() {
+            return;
+        }
+
+        let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(closure), .. }) =
+            tcx.hir_node_by_def_id(local_def_id)
+        else {
+            return;
+        };
+
+        let body = tcx.hir_body(closure.body);
+        let fn_decl = closure.fn_decl;
+
+        let Some(param) = body.params.get(idx) else { return };
+        let Some(hir_ty) = fn_decl.inputs.get(idx) else { return };
+
+        let sugg = if param.ty_span == param.pat.span {
+            Some((param.pat.span.shrink_to_hi(), ": &_".to_string()))
+        } else if let hir::TyKind::Infer(()) = hir_ty.kind {
+            Some((hir_ty.span, "&_".to_string()))
+        } else {
+            None
+        };
+
+        if let Some((span, replace_text)) = sugg {
+            err.span_suggestion_verbose(
+                span,
+                "consider annotating the closure's argument type to explicitly specify its lifetime",
+                replace_text,
+                Applicability::MaybeIncorrect,
+            );
+        }
     }
 
     fn report_borrow_conflicts_with_destructor(
