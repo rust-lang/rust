@@ -1,6 +1,6 @@
 // FIXME: This is currently disabled on *BSD.
 
-use super::{SocketAddr, sockaddr_un};
+use super::{SockaddrBuf, SocketAddr};
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::marker::PhantomData;
 use crate::mem::zeroed;
@@ -36,10 +36,11 @@ pub(super) fn recv_vectored_with_ancillary_from(
     ancillary: &mut SocketAncillary<'_>,
 ) -> io::Result<(usize, bool, io::Result<SocketAddr>)> {
     unsafe {
-        let mut msg_name: libc::sockaddr_un = zeroed();
+        let mut sock = SockaddrBuf::default();
+        let (addr, len) = sock.as_max_libc_output();
         let mut msg: libc::msghdr = zeroed();
-        msg.msg_name = (&raw mut msg_name) as *mut _;
-        msg.msg_namelen = size_of::<libc::sockaddr_un>() as libc::socklen_t;
+        msg.msg_name = addr.cast();
+        msg.msg_namelen = len.read();
         msg.msg_iov = bufs.as_mut_ptr().cast();
         msg.msg_iovlen = bufs.len() as _;
         msg.msg_controllen = ancillary.buffer.len() as _;
@@ -54,9 +55,11 @@ pub(super) fn recv_vectored_with_ancillary_from(
         ancillary.truncated = msg.msg_flags & libc::MSG_CTRUNC == libc::MSG_CTRUNC;
 
         let truncated = msg.msg_flags & libc::MSG_TRUNC == libc::MSG_TRUNC;
-        let addr = SocketAddr::from_parts(msg_name, msg.msg_namelen);
 
-        Ok((count, truncated, addr))
+        *len = msg.msg_namelen;
+        sock.update_from_libc()?;
+
+        Ok((count, truncated, Ok(SocketAddr { sock })))
     }
 }
 
@@ -67,12 +70,12 @@ pub(super) fn send_vectored_with_ancillary_to(
     ancillary: &mut SocketAncillary<'_>,
 ) -> io::Result<usize> {
     unsafe {
-        let (mut msg_name, msg_namelen) =
-            if let Some(path) = path { sockaddr_un(path)? } else { (zeroed(), 0) };
+        let sockaddr = if let Some(path) = path { SocketAddr::from_path(path)? } else { zeroed() };
+        let (addr, len) = sockaddr.sock.as_libc_input();
 
         let mut msg: libc::msghdr = zeroed();
-        msg.msg_name = (&raw mut msg_name) as *mut _;
-        msg.msg_namelen = msg_namelen;
+        msg.msg_name = addr.cast_mut().cast();
+        msg.msg_namelen = len;
         msg.msg_iov = bufs.as_ptr() as *mut _;
         msg.msg_iovlen = bufs.len() as _;
         msg.msg_controllen = ancillary.length as _;
