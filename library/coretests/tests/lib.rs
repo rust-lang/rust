@@ -68,7 +68,6 @@
 #![feature(generic_assert_internals)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
-#![feature(int_from_ascii)]
 #![feature(int_roundings)]
 #![feature(integer_casts)]
 #![feature(io_slice_as_bytes)]
