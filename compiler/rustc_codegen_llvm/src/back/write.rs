@@ -1152,8 +1152,14 @@ pub(crate) fn codegen(
     )
 }
 
-fn create_section_with_flags_asm(section_name: &str, section_flags: &str, data: &[u8]) -> Vec<u8> {
-    let mut asm = format!(".section {section_name},\"{section_flags}\"\n").into_bytes();
+fn create_section_with_flags_and_type_asm(
+    section_name: &str,
+    section_flags: &str,
+    section_type: &str,
+    data: &[u8],
+) -> Vec<u8> {
+    let mut asm =
+        format!(".section {section_name},\"{section_flags}\",@{section_type}\n").into_bytes();
     asm.extend_from_slice(b".ascii \"");
     asm.reserve(data.len());
     for &byte in data {
@@ -1181,7 +1187,7 @@ pub(crate) fn bitcode_section_name(cgcx: &CodegenContext) -> &'static CStr {
     } else if cgcx.target_is_like_aix {
         c".ipa"
     } else {
-        c".llvmbc"
+        c".llvm.lto"
     }
 }
 
@@ -1259,9 +1265,8 @@ fn embed_bitcode(
     } else {
         // We need custom section flags, so emit module-level inline assembly.
         let section_flags = if cgcx.is_pe_coff { "n" } else { "e" };
-        let asm = create_section_with_flags_asm(".llvmbc", section_flags, bitcode);
-        llvm::append_module_inline_asm(llmod, &asm, "", "");
-        let asm = create_section_with_flags_asm(".llvmcmd", section_flags, &[]);
+        let asm =
+            create_section_with_flags_and_type_asm(".llvm.lto", section_flags, "llvm_lto", bitcode);
         llvm::append_module_inline_asm(llmod, &asm, "", "");
     }
 }

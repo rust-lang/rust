@@ -7,7 +7,9 @@
 // RUSTBUILD_FORCE_CLANG_BASED_TESTS and only runs tests which contain "clang" in their
 // name.
 
-use run_make_support::{clang, env_var, llvm_ar, llvm_objdump, rustc, static_lib_name};
+use run_make_support::{
+    clang, env_var, llvm_ar, llvm_objdump, rust_lib_name, rustc, static_lib_name,
+};
 
 #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
 static RUST_ALWAYS_INLINED_PATTERN: &'static str = "bl.*<rust_always_inlined>";
@@ -28,31 +30,33 @@ static C_NEVER_INLINED_PATTERN: &'static str = "bl.*<c_never_inlined>";
 static C_NEVER_INLINED_PATTERN: &'static str = "call.*c_never_inlined";
 
 fn main() {
-    test_lto(false);
-    test_lto(true);
+    test_lto(false, false);
+    test_lto(false, true);
+    test_lto(true, false);
+    test_lto(true, true);
 }
 
-fn test_lto(fat_lto: bool) {
+fn test_lto(fat_lto: bool, fat_lto_objects: bool) {
     let lto = if fat_lto { "fat" } else { "thin" };
     let clang_lto = if fat_lto { "full" } else { "thin" };
-    println!("Running {lto} lto");
+    let mut rustc_cmd = rustc();
+    let mut clang_cmd = clang();
 
-    rustc()
-        .lto(lto)
-        .linker_plugin_lto("on")
-        .output(static_lib_name("rustlib-xlto"))
-        .opt_level("2")
-        .codegen_units(1)
-        .input("rustlib.rs")
-        .run();
-    clang()
-        .lto(clang_lto)
-        .use_ld("lld")
-        .arg("-lrustlib-xlto")
-        .out_exe("cmain")
-        .input("cmain.c")
-        .arg("-O3")
-        .run();
+    if fat_lto_objects {
+        // Rustc can output fat lto objects only as rlibs.
+        let out = rust_lib_name("rustlib-xlto");
+        rustc_cmd.crate_type("rlib").output(&out);
+        clang_cmd.arg(out).arg("-ffat-lto-objects");
+        println!("Running {lto} lto with fat lto objects");
+    } else {
+        let out = static_lib_name("rustlib-xlto");
+        rustc_cmd.crate_type("staticlib").output(&out).linker_plugin_lto("on");
+        clang_cmd.arg(out);
+        println!("Running {lto} lto with non-fat lto objects");
+    }
+
+    rustc_cmd.lto(lto).opt_level("2").codegen_units(1).input("rustlib.rs").run();
+    clang_cmd.lto(clang_lto).use_ld("lld").out_exe("cmain").input("cmain.c").arg("-O3").run();
 
     let dump = llvm_objdump().disassemble().input("cmain").run();
     // Make sure we don't find a call instruction to the function we expect to
@@ -72,9 +76,19 @@ fn test_lto(fat_lto: bool) {
         }
     }
 
-    clang().input("clib.c").lto(clang_lto).arg("-c").out_exe("clib.o").arg("-O2").run();
+    let mut rustc_cmd = rustc();
+    let mut clang_cmd = clang();
+
+    if fat_lto_objects {
+        clang_cmd.arg("-ffat-lto-objects");
+        // Pass argument to LLD directly because Clang won't forward it unless
+        // `-flto`/`-flto=full` is passed, which rustc doesn't do.
+        rustc_cmd.link_arg("-Wl,--fat-lto-objects");
+    }
+
+    clang_cmd.input("clib.c").lto(clang_lto).arg("-c").out_exe("clib.o").arg("-O2").run();
     llvm_ar().obj_to_ar().output_input(static_lib_name("xyz"), "clib.o").run();
-    rustc()
+    rustc_cmd
         .lto(lto)
         .linker_plugin_lto("on")
         .opt_level("2")
