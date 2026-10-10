@@ -299,7 +299,7 @@ where
 
 /// Checks if the given resolved path is used in the given body.
 pub fn is_res_used(cx: &LateContext<'_>, res: Res, body: BodyId) -> bool {
-    for_each_expr(cx.tcx, cx.tcx.hir_body(body).value, |e| {
+    for_each_expr(cx.tcx, &cx.tcx.hir_body(body).value, |e| {
         if let ExprKind::Path(p) = &e.kind
             && cx.qpath_res(p, e.hir_id) == res
         {

@@ -1779,7 +1779,7 @@ pub fn get_async_closure_expr<'tcx>(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Optio
 
 /// Peels away all the compiler generated code surrounding the body of an async function,
 pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'tcx Expr<'tcx>> {
-    get_async_closure_expr(tcx, body.value)
+    get_async_closure_expr(tcx, &body.value)
 }
 
 // check if expr is calling method or function with #[must_use] attribute
@@ -1842,7 +1842,7 @@ fn is_body_identity_function<'hir>(cx: &LateContext<'_>, func: &Body<'hir>) -> b
         true
     };
 
-    let mut expr = func.value;
+    let mut expr = &func.value;
     loop {
         match expr.kind {
             ExprKind::Block(

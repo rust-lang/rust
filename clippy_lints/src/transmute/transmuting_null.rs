@@ -67,7 +67,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'t
     // `std::mem::transmute(const { u64::MIN as *const u64 });`
     if let ExprKind::ConstBlock(ConstBlock { body, .. }) = arg.kind {
         // Strip out the const and run again
-        let block = cx.tcx.hir_body(body).value;
+        let block = &cx.tcx.hir_body(body).value;
         return check(cx, expr, block, to_ty);
     }
 

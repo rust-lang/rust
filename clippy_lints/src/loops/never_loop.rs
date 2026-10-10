@@ -91,8 +91,8 @@ pub(super) fn check_iterator_reduction<'tcx>(
     recv: &'tcx Expr<'tcx>,
     closure: &'tcx Closure<'tcx>,
 ) {
-    let closure_body = cx.tcx.hir_body(closure.body).value;
-    let body_ty = cx.typeck_results().expr_ty(closure_body);
+    let closure_body = &cx.tcx.hir_body(closure.body).value;
+    let body_ty = cx.typeck_results().expr_ty(&closure_body);
     if body_ty.is_never() && !contains_return(closure_body) {
         span_lint_and_then(
             cx,
