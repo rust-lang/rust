@@ -17,10 +17,10 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(diagnostic_on_unknown))]
 #![cfg_attr(target_arch = "loongarch64", feature(stdarch_loongarch))]
 #![feature(core_io_borrowed_buf)]
 #![feature(decl_macro)]
-#![feature(diagnostic_on_unknown)]
 #![feature(map_try_insert)]
 #![feature(negative_impls)]
 #![feature(read_buf)]

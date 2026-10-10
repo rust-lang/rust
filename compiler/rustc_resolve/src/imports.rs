@@ -205,8 +205,6 @@ pub(crate) struct ImportData<'ra> {
     /// A `#[diagnostic::on_unknown]` attribute applied
     /// to the given import. This allows crates to specify
     /// custom error messages for a specific import
-    ///
-    /// This is `None` if the feature flag for `diagnostic::on_unknown` is disabled.
     pub on_unknown_attr: Option<OnUnknownData>,
 }
 

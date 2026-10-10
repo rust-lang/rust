@@ -1,6 +1,5 @@
 //! Test that the `label` span points at the identifier passed to the macro.
 
-#![feature(diagnostic_on_unknown)]
 #![crate_type = "lib"]
 
 mod things {}

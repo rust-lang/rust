@@ -176,9 +176,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
 
         // Process `import` use of  the `#[diagnostic::on_unknown]` attribute.
-        //
-        // We don't need to check feature gates here; that happens on initialization of the
-        // `on_unknown_attr` fields.
         let (mut message, label, mut notes) =
             if let Some(directive) = errors[0].1.on_unknown_attr.as_ref().map(|a| &a.directive) {
                 let this = errors
@@ -4398,13 +4395,12 @@ impl OnUnknownData {
         r: &Resolver<'_, '_>,
         attrs: &[ast::Attribute],
     ) -> Option<OnUnknownData> {
-        if r.features.diagnostic_on_unknown()
-            && let Some(Attribute::Parsed(AttributeKind::OnUnknown { directive, .. })) =
-                AttributeParser::parse_limited_sym(
-                    r.tcx.sess,
-                    attrs,
-                    &[sym::diagnostic, sym::on_unknown],
-                )
+        if let Some(Attribute::Parsed(AttributeKind::OnUnknown { directive, .. })) =
+            AttributeParser::parse_limited_sym(
+                r.tcx.sess,
+                attrs,
+                &[sym::diagnostic, sym::on_unknown],
+            )
         {
             Some(Self { directive: directive? })
         } else {
