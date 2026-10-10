@@ -528,27 +528,30 @@ extern "C" LLVMRustResult LLVMRustWriteOutputFile(
            "rustc_codegen_llvm must set TpdeOptions.plugin if using -Ztpde");
 
     if (DwoPath) {
-      LLVMRustSetLastError(
-          "The TPDE codegen backend does not support split debug info.");
-      return LLVMRustResult::Failure;
-    }
-
-    if (RustFileType != LLVMRustFileType::ObjectFile) {
-      LLVMRustSetLastError("The TPDE codegen backend does not support "
-                           "emitting assembly files");
-      return LLVMRustResult::Failure;
-    }
-
-    llvm::PassPluginLibraryInfo plugin = TpdeOptions.plugin();
-    PM->run(*unwrap(M));
-    if (plugin.PreCodeGenCallback(*unwrap(M), *unwrap(Target), FileType, BOS)) {
-      PM.reset();
-      return LLVMRustResult::Success;
-    } else if (TpdeOptions.mode == LLVMRustTpdeMode::Only) {
-      std::string error = "Failed to compile module " +
-                          unwrap(M)->getModuleIdentifier() + " with TPDE";
-      LLVMRustSetLastError(error.c_str());
-      return LLVMRustResult::Failure;
+      if (TpdeOptions.mode == LLVMRustTpdeMode::Only) {
+        LLVMRustSetLastError(
+            "The TPDE codegen backend does not support split debug info.");
+        return LLVMRustResult::Failure;
+      }
+    } else if (RustFileType != LLVMRustFileType::ObjectFile) {
+      if (TpdeOptions.mode == LLVMRustTpdeMode::Only) {
+        LLVMRustSetLastError("The TPDE codegen backend does not support "
+                             "emitting assembly files");
+        return LLVMRustResult::Failure;
+      }
+    } else {
+      llvm::PassPluginLibraryInfo plugin = TpdeOptions.plugin();
+      PM->run(*unwrap(M));
+      if (plugin.PreCodeGenCallback(*unwrap(M), *unwrap(Target), FileType,
+                                    BOS)) {
+        PM.reset();
+        return LLVMRustResult::Success;
+      } else if (TpdeOptions.mode == LLVMRustTpdeMode::Only) {
+        std::string error = "Failed to compile module " +
+                            unwrap(M)->getModuleIdentifier() + " with TPDE";
+        LLVMRustSetLastError(error.c_str());
+        return LLVMRustResult::Failure;
+      }
     }
   }
 
