@@ -167,6 +167,21 @@ const _: () = ();
 /// [`object_lifetime_default`]: ../rustc_middle/ty/struct.TyCtxt.html#method.object_lifetime_default
 const _: () = ();
 
+#[cfg_attr(not(bootstrap), doc(attribute = "rustc_dump_ptrauth_discriminator"))]
+/// Dumps the function pointer type discriminator of the annotated function.
+///
+/// The discriminator is computed from an encoding of the function's signature (function type). The
+/// `ptrauth_encoding` argument prints this encoding, while the `ptrauth_hash` argument prints the
+/// resulting discriminator hash.
+///
+/// See [`AttributeKind::RustcDumpPtrauthDiscriminator`] for the internal representation of this
+/// attribute.
+///
+/// # Example
+///
+#[doc = include_example!("rustc_dump_ptrauth_discriminator")]
+const _: () = ();
+
 #[doc(attribute = "rustc_dump_symbol_name")]
 /// Dumps the symbol name of the annotated item, also demangling it if necessary.
 ///
