@@ -12,7 +12,7 @@ pub use generic_const_items::K;
 
 //@ has user/trait.Trait.html
 //@ has - '//*[@id="associatedconstant.C"]' \
-// "const C<'a>: &'a T \
+// "const C<'a>: &'a T\
 // where \
 //     T: 'a + Eq"
 pub use generic_const_items::Trait;
@@ -20,7 +20,7 @@ pub use generic_const_items::Trait;
 //@ has user/struct.Implementor.html
 //@ has - '//h3[@class="code-header"]' 'impl Trait<str> for Implementor'
 //@ has - '//*[@id="associatedconstant.C"]' \
-// "const C<'a>: &'a str = \"C\" \
+// "const C<'a>: &'a str = \"C\"\
 // where \
 //     str: 'a"
 pub use generic_const_items::Implementor;

@@ -34,9 +34,9 @@ pub const C<'a>: u8 = 1 + 1 where &'a (): Sized;
 //@ has generic_const_items/trait.Trait.html
 pub trait Trait<T: ?Sized> {
     //@ has - '//*[@id="associatedconstant.C"]' \
-    // "const C<'a>: &'a T \
+    // "const C<'a>: &'a T\
     // where \
-    //     T: 'a + Eq"
+    //     T: 'a + Eq,"
     const C<'a>: &'a T
     where
         T: 'a + Eq;
@@ -48,7 +48,7 @@ pub struct Implementor;
 //@ has - '//h3[@class="code-header"]' 'impl Trait<str> for Implementor'
 impl Trait<str> for Implementor {
     //@ has - '//*[@id="associatedconstant.C"]' \
-    // "const C<'a>: &'a str = \"C\" \
+    // "const C<'a>: &'a str = \"C\"\
     // where \
     //     str: 'a"
     const C<'a>: &'a str = "C"

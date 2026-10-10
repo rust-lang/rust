@@ -8,7 +8,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::MacroKind;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
-use crate::clean;
+use crate::clean::{self, ItemKind};
 
 macro_rules! item_type {
     ($($variant:ident = $number:literal,)+) => {
@@ -84,8 +84,8 @@ item_type! {
     Static = 9,
     Trait = 10,
     Impl = 11,
-    TyMethod = 12,
-    Method = 13,
+    AssocFnWithoutBody = 12,
+    AssocFnWithBody = 13,
     StructField = 14,
     Variant = 15,
     Macro = 16,
@@ -112,45 +112,43 @@ item_type! {
 impl<'a> From<&'a clean::Item> for ItemType {
     fn from(item: &'a clean::Item) -> ItemType {
         let kind = match &item.kind {
-            clean::StrippedItem(item) => item,
+            ItemKind::Stripped(item) => item,
             kind => kind,
         };
 
         match kind {
-            clean::ModuleItem(..) => ItemType::Module,
-            clean::ExternCrateItem { .. } => ItemType::ExternCrate,
-            clean::ImportItem(..) => ItemType::Import,
-            clean::StructItem(..) => ItemType::Struct,
-            clean::UnionItem(..) => ItemType::Union,
-            clean::EnumItem(..) => ItemType::Enum,
-            clean::FunctionItem(..) => ItemType::Function,
-            clean::TypeAliasItem(..) => ItemType::TypeAlias,
-            clean::StaticItem(..) => ItemType::Static,
-            clean::ConstantItem(..) => ItemType::Constant,
-            clean::TraitItem(..) => ItemType::Trait,
-            clean::ImplItem(..) | clean::PlaceholderImplItem => ItemType::Impl,
-            clean::RequiredMethodItem(..) => ItemType::TyMethod,
-            clean::MethodItem(..) => ItemType::Method,
-            clean::StructFieldItem(..) => ItemType::StructField,
-            clean::VariantItem(..) => ItemType::Variant,
-            clean::ForeignFunctionItem(..) => ItemType::Function, // no ForeignFunction
-            clean::ForeignStaticItem(..) => ItemType::Static,     // no ForeignStatic
-            clean::MacroItem(..) => ItemType::Macro,
-            clean::PrimitiveItem(..) => ItemType::Primitive,
-            clean::RequiredAssocConstItem(..)
-            | clean::ProvidedAssocConstItem(..)
-            | clean::ImplAssocConstItem(..) => ItemType::AssocConst,
-            clean::RequiredAssocTypeItem(..) | clean::AssocTypeItem(..) => ItemType::AssocType,
-            clean::ForeignTypeItem => ItemType::ForeignType,
-            clean::KeywordItem => ItemType::Keyword,
-            clean::AttributeItem => ItemType::Attribute,
-            clean::TraitAliasItem(..) => ItemType::TraitAlias,
-            clean::ProcMacroItem(mac) => match mac.kind {
+            ItemKind::Module(..) => ItemType::Module,
+            ItemKind::ExternCrate { .. } => ItemType::ExternCrate,
+            ItemKind::Import(..) => ItemType::Import,
+            ItemKind::Struct(..) => ItemType::Struct,
+            ItemKind::Union(..) => ItemType::Union,
+            ItemKind::Enum(..) => ItemType::Enum,
+            ItemKind::Fn(..) => ItemType::Function,
+            ItemKind::TyAlias(..) => ItemType::TypeAlias,
+            ItemKind::Static(..) => ItemType::Static,
+            ItemKind::Const(..) => ItemType::Constant,
+            ItemKind::Trait(..) => ItemType::Trait,
+            ItemKind::Impl(..) | ItemKind::PlaceholderImpl => ItemType::Impl,
+            ItemKind::AssocFn(clean::AssocFn { body: None, .. }) => ItemType::AssocFnWithoutBody,
+            ItemKind::AssocFn(clean::AssocFn { body: Some(_), .. }) => ItemType::AssocFnWithBody,
+            ItemKind::StructField(..) => ItemType::StructField,
+            ItemKind::Variant(..) => ItemType::Variant,
+            ItemKind::ForeignFn(..) => ItemType::Function, // no ForeignFunction
+            ItemKind::ForeignStatic(..) => ItemType::Static, // no ForeignStatic
+            ItemKind::DeclMacro(..) => ItemType::Macro,
+            ItemKind::Primitive(..) => ItemType::Primitive,
+            ItemKind::AssocConst(..) => ItemType::AssocConst,
+            ItemKind::AssocTy(..) => ItemType::AssocType,
+            ItemKind::ForeignTy => ItemType::ForeignType,
+            ItemKind::Keyword => ItemType::Keyword,
+            ItemKind::Attribute => ItemType::Attribute,
+            ItemKind::TraitAlias(..) => ItemType::TraitAlias,
+            ItemKind::ProcMacro(mac) => match mac.kind {
                 MacroKind::Bang => ItemType::Macro,
                 MacroKind::Attr => ItemType::ProcAttribute,
                 MacroKind::Derive => ItemType::ProcDerive,
             },
-            clean::StrippedItem(..) => unreachable!(),
+            ItemKind::Stripped(..) => unreachable!(),
         }
     }
 }
@@ -178,9 +176,9 @@ impl ItemType {
             DefKind::AssocTy => Self::AssocType,
             DefKind::AssocFn => {
                 if tcx.associated_item(def_id).defaultness(tcx).has_value() {
-                    Self::Method
+                    Self::AssocFnWithBody
                 } else {
-                    Self::TyMethod
+                    Self::AssocFnWithoutBody
                 }
             }
             DefKind::Ctor(CtorOf::Struct, _) => Self::Struct,
@@ -215,8 +213,8 @@ impl ItemType {
             ItemType::Static => "static",
             ItemType::Trait => "trait",
             ItemType::Impl => "impl",
-            ItemType::TyMethod => "tymethod",
-            ItemType::Method => "method",
+            ItemType::AssocFnWithoutBody => "tymethod",
+            ItemType::AssocFnWithBody => "method",
             ItemType::StructField => "structfield",
             ItemType::Variant => "variant",
             ItemType::Macro => "macro",
@@ -232,15 +230,18 @@ impl ItemType {
             ItemType::Attribute => "attribute",
         }
     }
-    pub(crate) fn is_method(&self) -> bool {
-        matches!(self, ItemType::Method | ItemType::TyMethod)
+    pub(crate) fn is_assoc_fn(&self) -> bool {
+        matches!(self, ItemType::AssocFnWithBody | ItemType::AssocFnWithoutBody)
     }
     pub(crate) fn is_adt(&self) -> bool {
         matches!(self, ItemType::Struct | ItemType::Union | ItemType::Enum)
     }
     /// Keep this the same as isFnLikeTy in search.js
     pub(crate) fn is_fn_like(&self) -> bool {
-        matches!(self, ItemType::Function | ItemType::Method | ItemType::TyMethod)
+        matches!(
+            self,
+            ItemType::Function | ItemType::AssocFnWithBody | ItemType::AssocFnWithoutBody
+        )
     }
 }
 
