@@ -90,6 +90,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::{Hash64, Hash128};
 use sha1::Sha1;
 use sha2::Sha256;
+use span_encoding::InlineCtxt;
 
 #[cfg(test)]
 mod tests;
@@ -712,12 +713,12 @@ impl SpanData {
     /// Avoid if possible, `Span::map_ctxt` should be preferred.
     #[inline]
     fn with_ctxt(&self, ctxt: SyntaxContext) -> Span {
-        Span::new(self.lo, self.hi, ctxt, self.parent)
+        Span::new_ordered(self.lo, self.hi, ctxt, self.parent)
     }
     /// Avoid if possible, `Span::with_parent` should be preferred.
     #[inline]
     fn with_parent(&self, parent: Option<LocalDefId>) -> Span {
-        Span::new(self.lo, self.hi, self.ctxt, parent)
+        Span::new_ordered(self.lo, self.hi, self.ctxt, parent)
     }
     /// Returns `true` if this is a dummy span with any hygienic context.
     #[inline]
@@ -1095,39 +1096,46 @@ impl Span {
     }
 
     /// Check if you can select metavar spans for the given spans to get matching contexts.
-    fn try_metavars(a: SpanData, b: SpanData, a_orig: Span, b_orig: Span) -> (SpanData, SpanData) {
+    #[cold]
+    fn try_metavars(
+        a_ctxt: SyntaxContext,
+        b_ctxt: SyntaxContext,
+        a_orig: Span,
+        b_orig: Span,
+    ) -> (Option<SpanData>, Option<SpanData>) {
         match with_metavar_spans(|mspans| (mspans.get(a_orig), mspans.get(b_orig))) {
             (None, None) => {}
             (Some(meta_a), None) => {
                 let meta_a = meta_a.data();
-                if meta_a.ctxt == b.ctxt {
-                    return (meta_a, b);
+                if meta_a.ctxt == b_ctxt {
+                    return (Some(meta_a), None);
                 }
             }
             (None, Some(meta_b)) => {
                 let meta_b = meta_b.data();
-                if a.ctxt == meta_b.ctxt {
-                    return (a, meta_b);
+                if a_ctxt == meta_b.ctxt {
+                    return (None, Some(meta_b));
                 }
             }
             (Some(meta_a), Some(meta_b)) => {
                 let meta_b = meta_b.data();
-                if a.ctxt == meta_b.ctxt {
-                    return (a, meta_b);
+                if a_ctxt == meta_b.ctxt {
+                    return (None, Some(meta_b));
                 }
                 let meta_a = meta_a.data();
-                if meta_a.ctxt == b.ctxt {
-                    return (meta_a, b);
+                if meta_a.ctxt == b_ctxt {
+                    return (Some(meta_a), None);
                 } else if meta_a.ctxt == meta_b.ctxt {
-                    return (meta_a, meta_b);
+                    return (Some(meta_a), Some(meta_b));
                 }
             }
         }
 
-        (a, b)
+        (None, None)
     }
 
     /// Prepare two spans to a combine operation like `to` or `between`.
+    #[inline(always)]
     fn prepare_to_combine(
         a_orig: Span,
         b_orig: Span,
@@ -1137,20 +1145,22 @@ impl Span {
             return Ok((a, b, if a.parent == b.parent { a.parent } else { None }));
         }
 
-        let (a, b) = Span::try_metavars(a, b, a_orig, b_orig);
-        if a.ctxt == b.ctxt {
-            return Ok((a, b, if a.parent == b.parent { a.parent } else { None }));
+        match Span::try_metavars(a.ctxt, b.ctxt, a_orig, b_orig) {
+            (None, None) => {
+                // Context mismatches usually happen when procedural macros combine spans copied from
+                // the macro input with spans produced by the macro (`Span::*_site`).
+                // In that case we consider the combined span to be produced by the macro and return
+                // the original macro-produced span as the result.
+                // Otherwise we just fall back to returning the first span.
+                // Combining locations typically doesn't make sense in case of context mismatches.
+                Err(if a.ctxt.is_root() { b_orig } else { a_orig })
+            }
+            (a_new, b_new) => {
+                let a = a_new.unwrap_or(a);
+                let b = b_new.unwrap_or(b);
+                Ok((a, b, if a.parent == b.parent { a.parent } else { None }))
+            }
         }
-
-        // Context mismatches usually happen when procedural macros combine spans copied from
-        // the macro input with spans produced by the macro (`Span::*_site`).
-        // In that case we consider the combined span to be produced by the macro and return
-        // the original macro-produced span as the result.
-        // Otherwise we just fall back to returning the first span.
-        // Combining locations typically doesn't make sense in case of context mismatches.
-        // `is_root` here is a fast path optimization.
-        let a_is_callsite = a.ctxt.is_root() || a.ctxt == b.span().source_callsite().ctxt();
-        Err(if a_is_callsite { b_orig } else { a_orig })
     }
 
     /// This span, but in a larger context, may switch to the metavariable span if suitable.
@@ -1172,10 +1182,31 @@ impl Span {
     ///     ^^^^^^^^^^^^^^^^^^^^
     /// ```
     pub fn to(self, end: Span) -> Span {
-        match Span::prepare_to_combine(self, end) {
-            Ok((from, to, parent)) => {
-                Span::new(cmp::min(from.lo, to.lo), cmp::max(from.hi, to.hi), from.ctxt, parent)
+        // Inline-only fast path
+        use rustc_serialize::int_overflow::{DebugStrictAdd, DebugStrictSub};
+        if let Some(from) = InlineCtxt::try_from_span(self)
+            && let Some(to) = InlineCtxt::try_from_span(end)
+            && from.ctxt == to.ctxt
+        {
+            let lo = cmp::min(from.lo, to.lo);
+            let len = cmp::max(from.lo.debug_strict_add(from.len), to.lo.debug_strict_add(to.len))
+                .debug_strict_sub(lo);
+            if let Some(span) = InlineCtxt::try_new_span(lo, len, from.ctxt) {
+                return span;
             }
+        }
+        self.to_non_inline(end)
+    }
+
+    #[inline(never)]
+    fn to_non_inline(self, end: Span) -> Span {
+        match Span::prepare_to_combine(self, end) {
+            Ok((from, to, parent)) => Span::new_ordered(
+                cmp::min(from.lo, to.lo),
+                cmp::max(from.hi, to.hi),
+                from.ctxt,
+                parent,
+            ),
             Err(fallback) => fallback,
         }
     }
@@ -1245,7 +1276,7 @@ impl Span {
             return None;
         }
 
-        Some(Span::new(self_.lo, self_.hi, self_.ctxt, parent))
+        Some(Span::new_ordered(self_.lo, self_.hi, self_.ctxt, parent))
     }
 
     pub fn from_inner(self, inner: InnerSpan) -> Span {
@@ -1558,7 +1589,7 @@ impl SpanDecoder for MemDecoder<'_> {
         let lo = Decodable::decode(self);
         let hi = Decodable::decode(self);
 
-        Span::new(lo, hi, SyntaxContext::root(), None)
+        Span::new_ordered(lo, hi, SyntaxContext::root(), None)
     }
 
     fn decode_expn_id(&mut self) -> ExpnId {

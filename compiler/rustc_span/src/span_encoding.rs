@@ -28,75 +28,63 @@ use crate::{BytePos, SPAN_TRACK, SpanData};
 /// because memory usage and cache miss rates are significantly higher without
 /// compression.
 ///
-/// There are four different span forms.
+/// There are four different span formats and each packs data into the 8 bytes
+/// in a different way. A variable-length prefix in the high bits identifies
+/// which format is being used. It is an invariant that we always use the first
+/// listed format whose requirements are satisfied. `len` is `hi - lo`.
 ///
-/// Inline-context format (requires ~15-bit length, ~16-bit context, and no parent):
-/// - `span.lo_or_index` holds `span_data.lo`
-/// - `span.len_with_tag_or_marker` holds `span_data.hi - span_data.lo` (must be `<= MAX_LEN`)
-/// - `span.ctxt_or_parent_or_marker` holds `span_data.ctxt` (must be `<= MAX_CTXT_OR_PARENT`)
+/// - Inline-context format (requires 15-bit length, 16-bit context, and no parent):
 ///
-/// Inline-parent format (requires ~15-bit length, root context, and ~16-bit parent):
-/// - `span.lo_or_index` holds `span_data.lo`
-/// - `span.len_with_tag_or_marker` holds `PARENT_TAG | (span_data.hi - span_data.lo)`
-///   (the len part must be `<= MAX_LEN`)
-/// - `span.ctxt_or_parent_or_marker` holds `span_data.parent` (must be `<= MAX_CTXT_OR_PARENT`)
+///     `[ prefix=0 | len:15 | ctxt:16 | lo:32 ]`
 ///
-/// Partially-interned format (requires ~16-bit context):
-/// - `span.lo_or_index` holds the index into the interner table
-/// - `span.len_with_tag_or_marker` is `LEN_INTERNED_MARKER` (all 1s)
-/// - `span.ctxt_or_parent_or_marker` holds `span_data.ctxt` (must be `<= MAX_CTXT_OR_PARENT`)
-/// - Requires looking in the interning table for lo and length, but the
-///   context is stored inline as well as interned because context lookups are
-///   often done in isolation.
+/// - Inline-parent format (requires 14-bit length, root context, and 15-bit parent):
 ///
-/// Fully-interned format (all cases not covered above):
-/// - `span.lo_or_index` holds the index into the interner table
-/// - `span.len_with_tag_or_marker` is `LEN_INTERNED_MARKER` (all 1s)
-/// - `span.ctxt_or_parent_or_marker` is `CTXT_INTERNED_MARKER` (all 1s)
+///     `[ prefix=110 | len:14 | parent:15 | lo:32 ]`
 ///
-/// In short (see `match_span_kind!` for the code version of this):
-/// - The absence/presence of `LEN_INTERNED_MARKER` in
-///   `len_with_tag_or_marker` distinguishes the inline forms from the interned
-///   forms.
-///   - The absence/presence of the `PARENT_TAG` bit in
-///     `len_with_tag_or_marker` distinguishes inline-context from inline-parent.
-///   - The absence/presence of `CTXT_INTERNED_MARKER` in
-///     `ctxt_or_parent_or_marker` distinguishes partially-interned from
-///     fully-interned.
+/// - Inline-pair format (requires 24-bit lo, 7-bit length, 15-bit context, 16-bit parent):
 ///
-/// Notes about the choice of field sizes:
+///     `[ prefix=10 | len:7 | ctxt:15 | parent:16 | lo:24 ]`
 ///
-/// - `lo` is 32 bits in both `Span` and `SpanData`, which means that `lo`
-///   values never cause interning. The number of bits needed for `lo`
-///   depends on the crate size. 32 bits allows up to 4 GiB of code in a crate.
-///   Having no compression on this field means there is no performance cliff
-///   if a crate exceeds a particular size.
+/// - Interned format (all cases not covered above):
 ///
-/// - `len` is ~15 bits in `Span` (a u16, minus 1 bit for PARENT_TAG) and 32
-///   bits in `SpanData`, which means that large `len` values will cause
-///   interning. The number of bits needed for `len` does not depend on the
-///   crate size. The most common numbers of bits for `len` are from 0 to 7,
+///     `[ prefix=111 | ctxt:29 | index:32 ]`
+///
+/// Notes about this design.
+///
+/// - This configuration was the best one found after many measurements of
+///   real-world crates, and replaced an earlier 8-byte design.
+///
+/// - The size of `lo` depends on the size of the crate and its dependencies.
+///   Crates whose `lo` size exceeds 24-bits are extremely rare.
+///
+/// - The most common numbers of bits needed for `len` are from 0 to 7,
 ///   with a peak usually at 3 or 4, and then it drops off quickly from 8
-///   onwards. 15 bits is enough for 99.9%+ of cases, but larger values
-///   (sometimes 20+ bits) might occur dozens of times in a typical crate.
+///   onwards. Lengths larger than 14 bits are rare, but many crates will have
+///   a small number of such lengths (sometimes 20+ bits).
 ///
-/// - `ctxt_or_parent_or_marker` is 16 bits in `Span` and two 32 bit fields in
-///   `SpanData`, which means interning will happen if `ctxt` is large, if
-///   `parent` is large, or if both values are non-zero. The number of bits
-///   needed for `ctxt` values depend partly on the crate size and partly on
-///   the form of the code. No crates in `rustc-perf` need more than 16 bits
-///   for `ctxt`, but larger crates might. The same is true for `parent`.
+/// - The number of bits needed for `ctxt` and `parent` values depend partly on
+///   the crate size and partly on the form of the code. For both fields,
+///   values needing more than 15 bits are very rare, and most crates won't hit
+///   these limits.
+///
+/// - The ctxt is stored inline in every format (Every ctxt must fit in
+///   29 bits; if we ever hit that we'd have many gigabytes of contexts, and
+///   certainly would have OOM'd anyway.) This means reading the ctxt never
+///   requires checking the interner. This is good because the ctxt is often
+///   consulted by itself. It also means we don't need to store the ctxt in the
+///   interner table, which we achieve by using `SpanDataNoCtxt`, which
+///   minimizes the number of unique values that need to be interned.
+///
+/// - The use of `repr(packed(4))` means `Span` has an alignment of 4 bytes,
+///   which keeps many types that contain spans (e.g. AST nodes) smaller.
 ///
 /// In order to reliably use parented spans in incremental compilation,
 /// accesses to `lo` and `hi` must introduce a dependency to the parent definition's span.
 /// This is performed using the callback `SPAN_TRACK` to access the query engine.
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 #[rustc_pass_by_value]
-pub struct Span {
-    lo_or_index: u32,
-    len_with_tag_or_marker: u16,
-    ctxt_or_parent_or_marker: u16,
-}
+#[repr(packed(4))]
+pub struct Span(u64);
 
 // `SyntaxContext` (`SpanData::ctxt`) and `LocalDefId` (within `SpanData::parent`) aren't orderable.
 // If you want to order spans just on `lo`/`hi`, use explicit comparisons involving `Span::lo_hi`.
@@ -104,118 +92,254 @@ pub struct Span {
 impl !PartialOrd for Span {}
 impl !Ord for Span {}
 
+/// Specifies a field within one of the span formats. Provides const operations that (a) let a span
+/// format be fully specified, and (b) check/read/write the field for/from/to a span.
+#[derive(Copy, Clone)]
+struct SpanField {
+    /// The field's bit position, where zero means it's in the lowest bits.
+    shift: u32,
+    /// The field's width, in bits.
+    width: u32,
+}
+
+impl SpanField {
+    /// Specifies the top field, i.e. the highest bits. Chained with `below`.
+    #[inline]
+    const fn top(width: u32) -> Self {
+        Self { shift: 64 - width, width }
+    }
+
+    /// Specifies a field that comes below the field in `self`. Chainable.
+    #[inline]
+    const fn below(self, width: u32) -> Self {
+        Self { shift: self.shift - width, width }
+    }
+
+    /// The mask for the (downshifted to 0..n) field.
+    #[inline]
+    const fn mask(self) -> u64 {
+        (1 << self.width) - 1
+    }
+
+    /// Gets the field from a span-as-`u64` as a `u32`.
+    #[inline]
+    const fn get(self, u: u64) -> u32 {
+        ((u >> self.shift) & self.mask()) as u32
+    }
+
+    /// Sets the field to `v` in an otherwise-zero span-as-`u64`.
+    #[inline]
+    const fn set(self, v: u32) -> u64 {
+        debug_assert!(v <= self.mask() as u32);
+        (v as u64) << self.shift
+    }
+
+    /// Returns non-zero if `v` is too big to fit in the field.
+    #[inline]
+    const fn too_big(self, v: u32) -> u32 {
+        v & !(self.mask() as u32)
+    }
+
+    /// Asserts that a field uses the bottom-most bits.
+    #[inline]
+    const fn assert_is_bottom(self) {
+        assert!(self.shift == 0);
+    }
+}
+
 // Convenience structures for all span formats.
+// InlineCtxt is public to allow inline-only fast paths.
 #[derive(Clone, Copy)]
-struct InlineCtxt {
-    lo: u32,
-    len: u16,
-    ctxt: u16,
+pub(crate) struct InlineCtxt {
+    pub(crate) lo: u32,
+    pub(crate) len: u32,
+    pub(crate) ctxt: u32,
 }
 
 #[derive(Clone, Copy)]
 struct InlineParent {
     lo: u32,
-    len_with_tag: u16,
-    parent: u16,
+    len: u32,
+    parent: u32,
 }
 
 #[derive(Clone, Copy)]
-struct PartiallyInterned {
-    index: u32,
-    ctxt: u16,
+struct InlinePair {
+    lo: u32,
+    len: u32,
+    ctxt: u32,
+    parent: u32,
 }
 
 #[derive(Clone, Copy)]
 struct Interned {
+    ctxt: u32,
     index: u32,
 }
 
 impl InlineCtxt {
+    const PREFIX_VALUE: u32 = 0b0;
+    const PREFIX: SpanField = SpanField::top(1);
+    const LEN: SpanField = Self::PREFIX.below(15);
+    const CTXT: SpanField = Self::LEN.below(16);
+    const LO: SpanField = Self::CTXT.below(32);
+
+    #[inline]
+    pub(crate) const fn try_new_span(lo: u32, len: u32, ctxt: u32) -> Option<Span> {
+        if Self::LEN.too_big(len) | Self::CTXT.too_big(ctxt) == 0 {
+            Some(Span(
+                Self::PREFIX.set(Self::PREFIX_VALUE)
+                    | Self::LEN.set(len)
+                    | Self::CTXT.set(ctxt)
+                    | Self::LO.set(lo),
+            ))
+        } else {
+            None
+        }
+    }
+
     #[inline]
     fn data(self) -> SpanData {
-        let len = self.len as u32;
-        debug_assert!(len <= MAX_LEN);
         SpanData {
             lo: BytePos(self.lo),
-            hi: BytePos(self.lo.debug_strict_add(len)),
-            ctxt: SyntaxContext::from_u16(self.ctxt),
+            hi: BytePos(self.lo.debug_strict_add(self.len)),
+            ctxt: SyntaxContext::from_u32(self.ctxt),
             parent: None,
         }
     }
-    #[inline]
-    fn span(lo: u32, len: u16, ctxt: u16) -> Span {
-        Span { lo_or_index: lo, len_with_tag_or_marker: len, ctxt_or_parent_or_marker: ctxt }
-    }
+
     #[inline]
     fn from_span(span: Span) -> InlineCtxt {
-        let (lo, len, ctxt) =
-            (span.lo_or_index, span.len_with_tag_or_marker, span.ctxt_or_parent_or_marker);
-        InlineCtxt { lo, len, ctxt }
+        let u = span.0;
+        Self { lo: Self::LO.get(u), len: Self::LEN.get(u), ctxt: Self::CTXT.get(u) }
+    }
+
+    #[inline]
+    pub(crate) fn try_from_span(span: Span) -> Option<InlineCtxt> {
+        if Self::PREFIX.get(span.0) == Self::PREFIX_VALUE {
+            Some(Self::from_span(span))
+        } else {
+            None
+        }
     }
 }
+const _: () = InlineCtxt::LO.assert_is_bottom();
 
 impl InlineParent {
+    const PREFIX_VALUE: u32 = 0b110;
+    const PREFIX: SpanField = SpanField::top(3);
+    const LEN: SpanField = Self::PREFIX.below(14);
+    const PARENT: SpanField = Self::LEN.below(15);
+    const LO: SpanField = Self::PARENT.below(32);
+
     #[inline]
-    fn data(self) -> SpanData {
-        let len = (self.len_with_tag & !PARENT_TAG) as u32;
-        debug_assert!(len <= MAX_LEN);
-        SpanData {
-            lo: BytePos(self.lo),
-            hi: BytePos(self.lo.debug_strict_add(len)),
-            ctxt: SyntaxContext::root(),
-            parent: Some(LocalDefId { local_def_index: DefIndex::from_u16(self.parent) }),
+    fn try_new_span(lo: u32, len: u32, ctxt: u32, parent: u32) -> Option<Span> {
+        if Self::LEN.too_big(len) | ctxt | Self::PARENT.too_big(parent) == 0 {
+            Some(Span(
+                Self::PREFIX.set(Self::PREFIX_VALUE)
+                    | Self::LEN.set(len)
+                    | Self::PARENT.set(parent)
+                    | Self::LO.set(lo),
+            ))
+        } else {
+            None
         }
     }
+
     #[inline]
-    fn span(lo: u32, len: u16, parent: u16) -> Span {
-        let (lo_or_index, len_with_tag_or_marker, ctxt_or_parent_or_marker) =
-            (lo, PARENT_TAG | len, parent);
-        Span { lo_or_index, len_with_tag_or_marker, ctxt_or_parent_or_marker }
+    fn data(self) -> SpanData {
+        SpanData {
+            lo: BytePos(self.lo),
+            hi: BytePos(self.lo.debug_strict_add(self.len)),
+            ctxt: SyntaxContext::root(),
+            parent: Some(LocalDefId { local_def_index: DefIndex::from_u32(self.parent) }),
+        }
     }
+
     #[inline]
     fn from_span(span: Span) -> InlineParent {
-        let (lo, len_with_tag, parent) =
-            (span.lo_or_index, span.len_with_tag_or_marker, span.ctxt_or_parent_or_marker);
-        InlineParent { lo, len_with_tag, parent }
+        let u = span.0;
+        Self { lo: Self::LO.get(u), len: Self::LEN.get(u), parent: Self::PARENT.get(u) }
     }
 }
+const _: () = InlineParent::LO.assert_is_bottom();
 
-impl PartiallyInterned {
+impl InlinePair {
+    const PREFIX_VALUE: u32 = 0b10;
+    const PREFIX: SpanField = SpanField::top(2);
+    const LEN: SpanField = Self::PREFIX.below(7);
+    const CTXT: SpanField = Self::LEN.below(15);
+    const PARENT: SpanField = Self::CTXT.below(16);
+    const LO: SpanField = Self::PARENT.below(24);
+
+    #[inline]
+    fn try_new_span(lo: u32, len: u32, ctxt: u32, parent: u32) -> Option<Span> {
+        if Self::LO.too_big(lo)
+            | Self::LEN.too_big(len)
+            | Self::CTXT.too_big(ctxt)
+            | Self::PARENT.too_big(parent)
+            == 0
+        {
+            Some(Span(
+                Self::PREFIX.set(Self::PREFIX_VALUE)
+                    | Self::LEN.set(len)
+                    | Self::CTXT.set(ctxt)
+                    | Self::PARENT.set(parent)
+                    | Self::LO.set(lo),
+            ))
+        } else {
+            None
+        }
+    }
+
     #[inline]
     fn data(self) -> SpanData {
         SpanData {
-            ctxt: SyntaxContext::from_u16(self.ctxt),
-            ..with_span_interner(|interner| interner.spans[self.index as usize])
+            lo: BytePos(self.lo),
+            hi: BytePos(self.lo.debug_strict_add(self.len)),
+            ctxt: SyntaxContext::from_u32(self.ctxt),
+            parent: Some(LocalDefId { local_def_index: DefIndex::from_u32(self.parent) }),
         }
     }
+
     #[inline]
-    fn span(index: u32, ctxt: u16) -> Span {
-        let (lo_or_index, len_with_tag_or_marker, ctxt_or_parent_or_marker) =
-            (index, LEN_INTERNED_MARKER, ctxt);
-        Span { lo_or_index, len_with_tag_or_marker, ctxt_or_parent_or_marker }
-    }
-    #[inline]
-    fn from_span(span: Span) -> PartiallyInterned {
-        PartiallyInterned { index: span.lo_or_index, ctxt: span.ctxt_or_parent_or_marker }
+    fn from_span(span: Span) -> InlinePair {
+        let u = span.0;
+        Self {
+            lo: Self::LO.get(u),
+            len: Self::LEN.get(u),
+            ctxt: Self::CTXT.get(u),
+            parent: Self::PARENT.get(u),
+        }
     }
 }
+const _: () = InlinePair::LO.assert_is_bottom();
 
 impl Interned {
+    const PREFIX_VALUE: u32 = 0b111;
+    const PREFIX: SpanField = SpanField::top(3);
+    const CTXT: SpanField = Self::PREFIX.below(29);
+    const INDEX: SpanField = Self::CTXT.below(32);
+
+    #[inline]
+    fn new_span(ctxt: u32, index: u32) -> Span {
+        Span(Self::PREFIX.set(Self::PREFIX_VALUE) | Self::CTXT.set(ctxt) | Self::INDEX.set(index))
+    }
+
     #[inline]
     fn data(self) -> SpanData {
-        with_span_interner(|interner| interner.spans[self.index as usize])
+        let SpanDataNoCtxt { lo, hi, parent } =
+            with_span_interner(|interner| interner.spans[self.index as usize]);
+        SpanData { lo, hi, ctxt: SyntaxContext::from_u32(self.ctxt), parent }
     }
-    #[inline]
-    fn span(index: u32) -> Span {
-        let (lo_or_index, len_with_tag_or_marker, ctxt_or_parent_or_marker) =
-            (index, LEN_INTERNED_MARKER, CTXT_INTERNED_MARKER);
-        Span { lo_or_index, len_with_tag_or_marker, ctxt_or_parent_or_marker }
-    }
+
     #[inline]
     fn from_span(span: Span) -> Interned {
-        Interned { index: span.lo_or_index }
+        let u = span.0;
+        Self { ctxt: Self::CTXT.get(u), index: Self::INDEX.get(u) }
     }
 }
+const _: () = Interned::INDEX.assert_is_bottom();
 
 // This code is very hot, and converting span to an enum and matching on it doesn't optimize away
 // properly. So we are using a macro emulating such a match, but expand it directly to an if-else
@@ -225,47 +349,33 @@ macro_rules! match_span_kind {
         $span:expr,
         InlineCtxt($span1:ident) => $arm1:expr,
         InlineParent($span2:ident) => $arm2:expr,
-        PartiallyInterned($span3:ident) => $arm3:expr,
+        InlinePair($span3:ident) => $arm3:expr,
         Interned($span4:ident) => $arm4:expr,
-    ) => {
-        if $span.len_with_tag_or_marker != LEN_INTERNED_MARKER {
-            if $span.len_with_tag_or_marker & PARENT_TAG == 0 {
-                // Inline-context format.
-                let $span1 = InlineCtxt::from_span($span);
-                $arm1
-            } else {
-                // Inline-parent format.
-                let $span2 = InlineParent::from_span($span);
-                $arm2
-            }
-        } else if $span.ctxt_or_parent_or_marker != CTXT_INTERNED_MARKER {
-            // Partially-interned format.
-            let $span3 = PartiallyInterned::from_span($span);
+    ) => {{
+        let span64 = $span.0;
+        if InlineCtxt::PREFIX.get(span64) == InlineCtxt::PREFIX_VALUE {
+            let $span1 = InlineCtxt::from_span($span);
+            $arm1
+        } else if InlineParent::PREFIX.get(span64) == InlineParent::PREFIX_VALUE {
+            let $span2 = InlineParent::from_span($span);
+            $arm2
+        } else if InlinePair::PREFIX.get(span64) == InlinePair::PREFIX_VALUE {
+            let $span3 = InlinePair::from_span($span);
             $arm3
         } else {
-            // Interned format.
             let $span4 = Interned::from_span($span);
             $arm4
         }
-    };
+    }};
 }
 
-// `MAX_LEN` is chosen so that `PARENT_TAG | MAX_LEN` is distinct from
-// `LEN_INTERNED_MARKER`. (If `MAX_LEN` was 1 higher, this wouldn't be true.)
-const MAX_LEN: u32 = 0b0111_1111_1111_1110;
-const PARENT_TAG: u16 = 0b1000_0000_0000_0000;
-const LEN_INTERNED_MARKER: u16 = 0b1111_1111_1111_1111;
-
-// `MAX_CTXT_OR_PARENT` is chosen so it's as big as possible while not equal to
-// `CTXT_INTERNED_MARKER`.
-const MAX_CTXT_OR_PARENT: u32 = 0b1111_1111_1111_1110;
-const CTXT_INTERNED_MARKER: u16 = 0b1111_1111_1111_1111;
-
 /// The dummy span has zero position, length, and context, and no parent.
-pub const DUMMY_SP: Span =
-    Span { lo_or_index: 0, len_with_tag_or_marker: 0, ctxt_or_parent_or_marker: 0 };
+pub const DUMMY_SP: Span = InlineCtxt::try_new_span(0, 0, 0).unwrap();
 
 impl Span {
+    /// Create a new `Span`, handling the invalid case where `lo > hi` by swapping.
+    ///
+    /// If possible, ensure that `lo <= hi`, and call `Span::new_ordered` instead.
     #[inline]
     pub fn new(
         mut lo: BytePos,
@@ -276,31 +386,53 @@ impl Span {
         if lo > hi {
             std::mem::swap(&mut lo, &mut hi);
         }
+        Span::new_ordered(lo, hi, ctxt, parent)
+    }
 
-        // Small len and ctxt may enable one of fully inline formats (or may not).
-        let (len, ctxt32) = (hi.0 - lo.0, ctxt.as_u32());
-        if len <= MAX_LEN && ctxt32 <= MAX_CTXT_OR_PARENT {
-            match parent {
-                None => return InlineCtxt::span(lo.0, len as u16, ctxt32 as u16),
-                Some(parent) => {
-                    let parent32 = parent.local_def_index.as_u32();
-                    if ctxt32 == 0 && parent32 <= MAX_CTXT_OR_PARENT {
-                        return InlineParent::span(lo.0, len as u16, parent32 as u16);
-                    }
-                }
+    /// Create a new `Span`.
+    ///
+    /// This requires that `lo <= hi`.
+    #[inline]
+    pub fn new_ordered(
+        lo: BytePos,
+        hi: BytePos,
+        ctxt: SyntaxContext,
+        parent: Option<LocalDefId>,
+    ) -> Self {
+        #[cold]
+        #[inline(never)]
+        fn interned(lo: BytePos, hi: BytePos, ctxt: u32, parent: Option<LocalDefId>) -> Span {
+            // Interned.
+            assert!(Interned::CTXT.too_big(ctxt) == 0); // this is a hard limit, with no fallback
+            let index =
+                with_span_interner(|interner| interner.intern(&SpanDataNoCtxt { lo, hi, parent }));
+            Interned::new_span(ctxt, index)
+        }
+
+        debug_assert!(lo <= hi);
+
+        let lo32 = lo.0;
+        let (len, ctxt32) = (hi.0 - lo32, ctxt.as_u32());
+        if let Some(parent) = parent {
+            if let Some(span) = Span::try_new_span_with_parent(lo32, len, ctxt32, parent) {
+                // InlineParent or InlinePair.
+                return span;
             }
+        } else if let Some(span) = InlineCtxt::try_new_span(lo32, len, ctxt32) {
+            // InlineCtxt.
+            return span;
         }
 
-        // Otherwise small ctxt may enable the partially inline format.
-        let index = |ctxt| {
-            with_span_interner(|interner| interner.intern(&SpanData { lo, hi, ctxt, parent }))
-        };
-        if ctxt32 <= MAX_CTXT_OR_PARENT {
-            // Interned ctxt should never be read, so it can use any value.
-            PartiallyInterned::span(index(SyntaxContext::from_u32(u32::MAX)), ctxt32 as u16)
-        } else {
-            Interned::span(index(ctxt))
-        }
+        interned(lo, hi, ctxt32, parent)
+    }
+
+    /// Tries to create an `InlineParent` or `InlinePair` format span. Returns `None` if the fields
+    /// won't fit.
+    #[inline]
+    fn try_new_span_with_parent(lo: u32, len: u32, ctxt: u32, parent: LocalDefId) -> Option<Self> {
+        let parent = parent.local_def_index.as_u32();
+        InlineParent::try_new_span(lo, len, ctxt, parent)
+            .or_else(|| InlinePair::try_new_span(lo, len, ctxt, parent))
     }
 
     #[inline]
@@ -320,7 +452,7 @@ impl Span {
             self,
             InlineCtxt(span) => span.data(),
             InlineParent(span) => span.data(),
-            PartiallyInterned(span) => span.data(),
+            InlinePair(span) => span.data(),
             Interned(span) => span.data(),
         }
     }
@@ -328,37 +460,22 @@ impl Span {
     /// Returns `true` if this span comes from any kind of macro, desugaring or inlining.
     #[inline]
     pub fn from_expansion(self) -> bool {
-        let ctxt = match_span_kind! {
-            self,
-            // All branches here, except `InlineParent`, actually return `span.ctxt_or_parent_or_marker`.
-            // Since `Interned` is selected if the field contains `CTXT_INTERNED_MARKER` returning that value
-            // as the context allows the compiler to optimize out the branch that selects between either
-            // `Interned` and `PartiallyInterned`.
-            //
-            // Interned contexts can never be the root context and `CTXT_INTERNED_MARKER` has a different value
-            // than the root context so this works for checking is this is an expansion.
-            InlineCtxt(span) => SyntaxContext::from_u16(span.ctxt),
-            InlineParent(_span) => SyntaxContext::root(),
-            PartiallyInterned(span) => SyntaxContext::from_u16(span.ctxt),
-            Interned(_span) => SyntaxContext::from_u16(CTXT_INTERNED_MARKER),
-        };
-        !ctxt.is_root()
+        !self.ctxt().is_root()
     }
 
-    /// Returns `true` if this is a dummy span with any hygienic context.
+    /// Returns `true` if this is a dummy span with lo=0, hi=0. Any context value is allowed, which
+    /// means it's not the same as an equality comparison with `DUMMY_SP`.
     #[inline]
     pub fn is_dummy(self) -> bool {
-        if self.len_with_tag_or_marker != LEN_INTERNED_MARKER {
-            // Inline-context or inline-parent format.
-            let lo = self.lo_or_index;
-            let len = (self.len_with_tag_or_marker & !PARENT_TAG) as u32;
-            debug_assert!(len <= MAX_LEN);
-            lo == 0 && len == 0
-        } else {
-            // Fully-interned or partially-interned format.
-            let index = self.lo_or_index;
-            let data = with_span_interner(|interner| interner.spans[index as usize]);
-            data.lo == BytePos(0) && data.hi == BytePos(0)
+        match_span_kind! {
+            self,
+            InlineCtxt(span) => span.lo == 0 && span.len == 0,
+            InlineParent(span) => span.lo == 0 && span.len == 0,
+            InlinePair(span) => span.lo == 0 && span.len == 0,
+            Interned(span) => {
+                let data = with_span_interner(|interner| interner.spans[span.index as usize]);
+                data.lo == BytePos(0) && data.hi == BytePos(0)
+            },
         }
     }
 
@@ -369,58 +486,46 @@ impl Span {
             InlineCtxt(span) => {
                 // This format occurs 1-2 orders of magnitude more often than others (#125017),
                 // so it makes sense to micro-optimize it to avoid `span.data()` and `Span::new()`.
-                let new_ctxt = map(SyntaxContext::from_u16(span.ctxt));
+                let new_ctxt = map(SyntaxContext::from_u32(span.ctxt));
                 let new_ctxt32 = new_ctxt.as_u32();
-                return if new_ctxt32 <= MAX_CTXT_OR_PARENT {
-                    // Any small new context including zero will preserve the format.
-                    InlineCtxt::span(span.lo, span.len, new_ctxt32 as u16)
+                return if let Some(span) = InlineCtxt::try_new_span(span.lo, span.len, new_ctxt32) {
+                    span
                 } else {
                     span.data().with_ctxt(new_ctxt)
                 };
             },
             InlineParent(span) => span.data(),
-            PartiallyInterned(span) => span.data(),
+            InlinePair(span) => span.data(),
             Interned(span) => span.data(),
         };
 
         data.with_ctxt(map(data.ctxt))
     }
 
-    // Returns either syntactic context, if it can be retrieved without taking the interner lock,
-    // or an index into the interner if it cannot.
-    #[inline]
-    fn inline_ctxt(self) -> Result<SyntaxContext, usize> {
-        match_span_kind! {
-            self,
-            InlineCtxt(span) => Ok(SyntaxContext::from_u16(span.ctxt)),
-            InlineParent(_span) => Ok(SyntaxContext::root()),
-            PartiallyInterned(span) => Ok(SyntaxContext::from_u16(span.ctxt)),
-            Interned(span) => Err(span.index as usize),
-        }
-    }
-
     /// This function is used as a fast path when decoding the full `SpanData` is not necessary.
-    /// It's a cut-down version of `data_untracked`.
+    /// It's a cut-down version of `data_untracked` and doesn't require taking the interner lock.
     #[cfg_attr(not(test), rustc_diagnostic_item = "SpanCtxt")]
     #[inline]
     pub fn ctxt(self) -> SyntaxContext {
-        self.inline_ctxt()
-            .unwrap_or_else(|index| with_span_interner(|interner| interner.spans[index].ctxt))
+        let ctxt32 = match_span_kind! {
+            self,
+            InlineCtxt(span) => span.ctxt,
+            InlineParent(_span) => return SyntaxContext::root(),
+            InlinePair(span) => span.ctxt,
+            Interned(span) => span.ctxt,
+        };
+        SyntaxContext::from_u32(ctxt32)
     }
 
+    // Allow `span_use_eq_ctxt` because this is `eq_ctxt`!
+    //
+    // FIXME(nnethercote): context equality used to be much more complex, but the span
+    // representation changed and now simple equality is fine. This method and the
+    // `span_use_eq_ctxt` lint and the `SpanCtxt` diagnostic item can be removed.
+    #[allow(rustc::span_use_eq_ctxt)]
     #[inline]
     pub fn eq_ctxt(self, other: Span) -> bool {
-        match (self.inline_ctxt(), other.inline_ctxt()) {
-            (Ok(ctxt1), Ok(ctxt2)) => ctxt1 == ctxt2,
-            // If `inline_ctxt` returns `Ok` the context is <= MAX_CTXT_OR_PARENT.
-            // If it returns `Err` the span is fully interned and the context
-            // is > MAX_CTXT_OR_PARENT. As these do not overlap an `Ok` and `Err` result cannot
-            // have an equal context.
-            (Ok(_), Err(_)) | (Err(_), Ok(_)) => false,
-            (Err(index1), Err(index2)) => with_span_interner(|interner| {
-                interner.spans[index1].ctxt == interner.spans[index2].ctxt
-            }),
-        }
+        self.ctxt() == other.ctxt()
     }
 
     #[inline]
@@ -429,21 +534,20 @@ impl Span {
             self,
             InlineCtxt(span) => {
                 // This format occurs 1-2 orders of magnitude more often than others (#126544),
-                // so it makes sense to micro-optimize it to avoid `span.data()` and `Span::new()`.
-                // Copypaste from `Span::new`, the small len & ctxt conditions are known to hold.
+                // so it makes sense to micro-optimize it to avoid `span.data()`.
                 match parent {
                     None => return self,
-                    Some(parent) => {
-                        let parent32 = parent.local_def_index.as_u32();
-                        if span.ctxt == 0 && parent32 <= MAX_CTXT_OR_PARENT {
-                            return InlineParent::span(span.lo, span.len, parent32 as u16);
-                        }
+                    Some(parent)
+                        if let Some(span) =
+                            Span::try_new_span_with_parent(span.lo, span.len, span.ctxt, parent) =>
+                    {
+                        return span;
                     }
+                    _ => span.data(),
                 }
-                span.data()
             },
             InlineParent(span) => span.data(),
-            PartiallyInterned(span) => span.data(),
+            InlinePair(span) => span.data(),
             Interned(span) => span.data(),
         };
 
@@ -455,27 +559,26 @@ impl Span {
 
     #[inline]
     pub fn parent(self) -> Option<LocalDefId> {
-        let interned_parent =
-            |index: u32| with_span_interner(|interner| interner.spans[index as usize].parent);
+        let to_parent = |parent| Some(LocalDefId { local_def_index: DefIndex::from_u32(parent) });
         match_span_kind! {
             self,
             InlineCtxt(_span) => None,
-            InlineParent(span) => Some(LocalDefId { local_def_index: DefIndex::from_u16(span.parent) }),
-            PartiallyInterned(span) => interned_parent(span.index),
-            Interned(span) => interned_parent(span.index),
+            InlineParent(span) => to_parent(span.parent),
+            InlinePair(span) => to_parent(span.parent),
+            Interned(span) => {
+                with_span_interner(|interner| interner.spans[span.index as usize].parent)
+            },
         }
     }
 
     #[inline]
     pub(crate) fn to_raw_span(self) -> RawSpan {
-        // Field order must match `from_raw_span`.
-        RawSpan(self.lo_or_index, self.len_with_tag_or_marker, self.ctxt_or_parent_or_marker)
+        RawSpan(self.0)
     }
 
     #[inline]
-    pub fn from_raw_span(RawSpan(a, b, c): RawSpan) -> Span {
-        // Field order must match `to_raw_span`.
-        Span { lo_or_index: a, len_with_tag_or_marker: b, ctxt_or_parent_or_marker: c }
+    pub fn from_raw_span(RawSpan(a): RawSpan) -> Span {
+        Span(a)
     }
 }
 
@@ -511,14 +614,23 @@ impl Ord for OrdSpan {
 // Hashing shouldn't be necessary.
 impl !Hash for OrdSpan {}
 
+/// `SpanData` minus the `ctxt` field. This is what we actually intern, because we can always store
+/// ctxt inline in `Span`.
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+struct SpanDataNoCtxt {
+    lo: BytePos,
+    hi: BytePos,
+    parent: Option<LocalDefId>,
+}
+
 #[derive(Default)]
 pub(crate) struct SpanInterner {
-    spans: FxIndexSet<SpanData>,
+    spans: FxIndexSet<SpanDataNoCtxt>,
 }
 
 impl SpanInterner {
-    fn intern(&mut self, span_data: &SpanData) -> u32 {
-        let (index, _) = self.spans.insert_full(*span_data);
+    fn intern(&mut self, span_data_no_ctxt: &SpanDataNoCtxt) -> u32 {
+        let (index, _) = self.spans.insert_full(*span_data_no_ctxt);
         index as u32
     }
 }
