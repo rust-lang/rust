@@ -561,6 +561,24 @@ impl CommandLineStep for Llvm {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
             // Keep the pre-LLVM23 behavior for now.
             cfg.define("LLVM_VERSIONED_DYLIB_NAME_ON_DARWIN", "OFF");
+
+            // `llvm-objcopy` is also shipped in the `rustc` component as
+            // "$root/lib/rustlib/$host/bin/rust-objcopy", where the default rpath of
+            // "$ORIGIN/../lib" does not reach the LLVM shared library distributed at "$root/lib".
+            // Add the same rpath entry as `Lld::run` does for `rust-lld`, so `rust-objcopy` can
+            // be invoked without rustup's library path overrides or the `llvm-tools` component.
+            //
+            // Be careful when changing this path, we need to ensure it's quoted or escaped:
+            // `$ORIGIN` would otherwise be expanded when the `LdFlags` are passed verbatim to
+            // cmake.
+            if builder.config.rpath_enabled(target) && helpers::use_host_linker(target) {
+                if target.contains("linux") {
+                    ldflags.exe.push(" -Wl,-rpath,'$ORIGIN/../../../'");
+                }
+                if target.contains("apple-darwin") {
+                    ldflags.exe.push(" -Wl,-rpath,'@loader_path/../../../'");
+                }
+            }
         }
 
         if (target.starts_with("csky")
