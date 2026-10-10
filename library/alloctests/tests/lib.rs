@@ -16,6 +16,7 @@
 #![feature(const_btree_len)]
 #![feature(const_cmp)]
 #![feature(const_heap)]
+#![feature(const_precise_live_drops)]
 #![feature(const_trait_impl)]
 #![feature(core_intrinsics)]
 #![feature(core_io_borrowed_buf)]

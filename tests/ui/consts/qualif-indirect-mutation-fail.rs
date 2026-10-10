@@ -69,3 +69,25 @@ pub const fn address_of_const() {
     let y: Option<NotConstDestruct> = None; //~ ERROR destructor of
     std::ptr::addr_of!(y);
 }
+
+// Regression test for an incorrect implementation of state join.
+pub const fn regression_test_for_incorrect_join() {
+    let mut a = Some(NotConstDestruct); //~ ERROR destructor of
+    let b = NotConstDestruct;
+    let p = &raw mut a;
+    let x = unsafe { std::ptr::read(p) };
+    std::mem::forget(a);
+    std::mem::forget(x);
+    a = None;
+    unsafe { std::ptr::write(p, Some(b)) };
+}
+
+// Use after move cannot sneak past checks.
+// NB: Semantics of MIR move elimination might make it possible to accept this.
+pub const fn use_after_move() {
+    let mut a = None; //~ ERROR destructor of
+    let p = &raw mut a;
+    std::mem::forget(a);
+    a = None;
+    unsafe { std::ptr::write(p, Some(NotConstDestruct)) };
+}
