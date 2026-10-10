@@ -272,12 +272,12 @@ impl<'cx> MacroExpanderResult<'cx> {
         site_span: Span,
         arm_span: Span,
         macro_ident: Ident,
-    ) -> Self {
+    ) -> Box<dyn MacResult + 'cx> {
         // Emit SEMICOLON_IN_EXPRESSIONS_FROM_MACROS here, rather than the NON_LOCAL version.
         let is_local = true;
         let parser =
             ParserAnyMacro::from_tts(cx, tts, site_span, arm_span, is_local, macro_ident, &[], &[]);
-        ExpandResult::Ready(Box::new(parser))
+        Box::new(parser)
     }
 }
 

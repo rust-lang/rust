@@ -29,11 +29,7 @@ fn tts_to_mac_result<'cx, 'sess>(
     tts: TokenStream,
     span: Span,
 ) -> Box<dyn MacResult + 'cx> {
-    match ExpandResult::from_tts(ecx, tts, site_span, span, Ident::with_dummy_span(sym::cfg_select))
-    {
-        ExpandResult::Ready(x) => x,
-        _ => unreachable!("from_tts always returns Ready"),
-    }
+    ExpandResult::from_tts(ecx, tts, site_span, span, Ident::with_dummy_span(sym::cfg_select))
 }
 
 macro_rules! forward_to_parser_any_macro {
