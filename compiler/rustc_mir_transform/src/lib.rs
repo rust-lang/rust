@@ -20,9 +20,9 @@ use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
 use rustc_middle::mir::{
-    AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs, LocalDecl,
-    MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, START_BLOCK,
-    SourceInfo, Statement, StatementKind, TerminatorKind, WithRetag,
+    AnalysisPhase, Body, BodyTypingMode, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs,
+    LocalDecl, MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue,
+    START_BLOCK, SourceInfo, Statement, StatementKind, TerminatorKind, WithRetag,
 };
 use rustc_middle::query;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
@@ -594,6 +594,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
         _ => {}
     }
 
+    body.typing_mode = BodyTypingMode::PostBorrowck;
     run_analysis_to_runtime_passes(tcx, &mut body);
 
     tcx.alloc_steal_mir(body)
@@ -602,6 +603,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
 // Made public so that `mir_drops_elaborated_and_const_checked` can be overridden
 // by custom rustc drivers, running all the steps by themselves. See #114628.
 pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    assert!(body.typing_mode == BodyTypingMode::PostBorrowck);
     assert!(body.phase == MirPhase::Analysis(AnalysisPhase::Initial));
     let did = body.source.def_id();
 
@@ -629,6 +631,7 @@ pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
 
     debug!("runtime_mir_cleanup({:?})", did);
     run_runtime_cleanup_passes(tcx, body);
+    assert!(body.typing_mode == BodyTypingMode::PostAnalysis, "{:?}", body.typing_mode);
     assert!(body.phase == MirPhase::Runtime(RuntimePhase::PostCleanup));
 }
 
@@ -843,6 +846,7 @@ fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, Body<'_
     let mut promoted = tcx.mir_promoted(def).1.steal();
 
     for body in &mut promoted {
+        body.typing_mode = BodyTypingMode::PostBorrowck;
         run_analysis_to_runtime_passes(tcx, body);
     }
 
