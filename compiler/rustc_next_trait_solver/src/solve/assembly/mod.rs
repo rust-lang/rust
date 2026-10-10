@@ -259,7 +259,7 @@ where
         goal_trait_ref: ty::TraitRef<I>,
         impl_def_id: I::ImplId,
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
+    ) -> Result<Result<Candidate<I>, CandidateHeadUsages>, RerunNonErased>;
 
     /// If the predicate contained an error, we want to avoid emitting unnecessary trait
     /// errors but still want to emit errors for other trait goals. We have some special
@@ -457,17 +457,12 @@ impl AssembleCandidatesFrom {
     }
 }
 
-/// This is currently used to track the [CandidateHeadUsages] of all failed `ParamEnv`
-/// candidates. This is then used to ignore their head usages in case there's another
-/// always applicable `ParamEnv` candidate. Look at how `param_env_head_usages` is
-/// used in the code for more details.
-///
-/// We could easily extend this to also ignore head usages of other ignored candidates.
-/// However, we currently don't have any tests where this matters and the complexity of
-/// doing so does not feel worth it for now.
+/// Head usages of failed candidates which may be ignored when their results
+/// do not affect the selected candidate.
 #[derive(Debug)]
 pub(super) struct FailedCandidateInfo {
     pub param_env_head_usages: CandidateHeadUsages,
+    pub impl_head_usages: CandidateHeadUsages,
 }
 
 impl<D, I> EvalCtxt<'_, D>
@@ -484,8 +479,10 @@ where
         assemble_from: AssembleCandidatesFrom,
     ) -> Result<(Vec<Candidate<I>>, FailedCandidateInfo), RerunNonErased> {
         let mut candidates = vec![];
-        let mut failed_candidate_info =
-            FailedCandidateInfo { param_env_head_usages: CandidateHeadUsages::default() };
+        let mut failed_candidate_info = FailedCandidateInfo {
+            param_env_head_usages: CandidateHeadUsages::default(),
+            impl_head_usages: CandidateHeadUsages::default(),
+        };
         let Ok(normalized_self_ty) =
             self.structurally_normalize_ty(goal.param_env, goal.predicate.self_ty())
         else {
@@ -546,7 +543,11 @@ where
                     }),
                 };
                 if assemble_impls {
-                    self.assemble_impl_candidates(goal, &mut candidates)?;
+                    self.assemble_impl_candidates(
+                        goal,
+                        &mut candidates,
+                        &mut failed_candidate_info,
+                    )?;
                     self.assemble_object_bound_candidates(goal, &mut candidates);
                 }
             }
@@ -588,17 +589,18 @@ where
         &mut self,
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
+        failed_candidate_info: &mut FailedCandidateInfo,
     ) -> Result<(), RerunNonErased> {
         let cx = self.cx();
         let goal_trait_ref = goal.predicate.trait_ref(cx);
         cx.for_each_relevant_impl(goal_trait_ref, |impl_def_id| -> Result<_, _> {
             match G::consider_impl_candidate(self, goal, goal_trait_ref, impl_def_id, |ecx| {
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            })
-            .map_err_to_rerun()?
-            {
+            })? {
                 Ok(candidate) => candidates.push(candidate),
-                Err(NoSolution) => {}
+                Err(head_usages) => {
+                    failed_candidate_info.impl_head_usages.merge_usages(head_usages);
+                }
             }
 
             Ok(())
@@ -1224,11 +1226,9 @@ where
                         // other inference variables.
                         Err(NoSolution.into())
                     }
-                })
-                .map_err_to_rerun()?
-                {
+                })? {
                     Ok(candidate) => candidates.push(candidate),
-                    Err(NoSolution) => {}
+                    Err(_head_usages) => {}
                 }
 
                 Ok(())

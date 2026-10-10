@@ -4,6 +4,7 @@ use rustc_type_ir::data_structures::IndexSet;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
+use rustc_type_ir::search_graph::CandidateHeadUsages;
 use rustc_type_ir::solve::{
     AliasBoundKind, CandidatePreferenceMode, CanonicalResponse, ExternalConstraintsData, MaybeInfo,
     NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunNonErased,
@@ -63,21 +64,21 @@ where
         goal_trait_ref: TraitRef<I>,
         impl_def_id: I::ImplId,
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+    ) -> Result<Result<Candidate<I>, CandidateHeadUsages>, RerunNonErased> {
         let cx = ecx.cx();
 
         let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
         if !DeepRejectCtxt::relate_rigid_infer(ecx.cx())
             .args_may_unify(goal_trait_ref.args, impl_trait_ref.skip_binder().args)
         {
-            return Err(NoSolution.into());
+            return Ok(Err(CandidateHeadUsages::default()));
         }
 
         // For every `default impl`, there's always a non-default `impl` that will *also* apply.
         // There's no reason to register a candidate for this impl, since it is *not* proof that
         // the trait goal holds.
         if cx.impl_is_default(impl_def_id) {
-            return Err(NoSolution.into());
+            return Ok(Err(CandidateHeadUsages::default()));
         }
 
         match (cx.impl_polarity(impl_def_id), goal.predicate.polarity) {
@@ -88,15 +89,16 @@ where
             // Impl doesn't match polarity
             (ty::ImplPolarity::Positive, ty::ClausePolarity::Negative)
             | (ty::ImplPolarity::Negative, ty::ClausePolarity::Positive) => {
-                return Err(NoSolution.into());
+                return Ok(Err(CandidateHeadUsages::default()));
             }
         }
 
         if ecx.typing_mode().is_reflection() && !cx.is_fully_generic_for_reflection(impl_def_id) {
-            return Err(NoSolution.into());
+            return Ok(Err(CandidateHeadUsages::default()));
         }
 
-        ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
+        let probe = ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id));
+        probe.enter_with_failed_candidate_head_usages(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id.into());
             ecx.record_impl_args(impl_args);
             let impl_trait_ref = impl_trait_ref.instantiate(cx, impl_args).skip_norm_wip();
@@ -1671,6 +1673,11 @@ where
             let where_bounds: Vec<_> = candidates
                 .extract_if(.., |c| matches!(c.source, CandidateSource::ParamEnv(_)))
                 .collect();
+
+            for candidate in candidates {
+                self.ignore_candidate_head_usages(candidate.head_usages);
+            }
+            self.ignore_candidate_head_usages(failed_candidate_info.impl_head_usages);
             let Some((response, info)) = self.try_merge_candidates(&where_bounds) else {
                 return Ok((self.bail_with_ambiguity(&where_bounds), None));
             };
