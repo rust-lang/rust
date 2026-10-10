@@ -235,10 +235,10 @@ fn show_fieldless_enum(
     def: &EnumDef,
     type_ident: Ident,
 ) -> BlockOrExpr {
-    let fmt = formatter_ident(cx, span);
-    if let Some(expr) = show_fieldless_enum_concat_str(cx, span, def, substr, fmt.clone()) {
+    if let Some(expr) = show_fieldless_enum_concat_str(cx, span, def, substr) {
         return BlockOrExpr::new_expr(expr);
     }
+    let fmt = formatter_ident(cx, span);
     let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
     let arms = def
         .variants
@@ -268,7 +268,6 @@ fn show_fieldless_enum_concat_str(
     span: Span,
     def: &EnumDef,
     substr: &Substructure<'_>,
-    fmt: Box<ast::Expr>,
 ) -> Option<Box<ast::Expr>> {
     // Minimum variants count where this optimization starts to pay off.
     // See https://github.com/rust-lang/rust/pull/155452 for more details.
@@ -279,6 +278,7 @@ fn show_fieldless_enum_concat_str(
     if variants_count < THRESHOLD {
         return None;
     }
+    let fmt = formatter_ident(cx, span);
 
     let mut concatenated_names = String::new();
 
