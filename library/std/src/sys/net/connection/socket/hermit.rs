@@ -14,6 +14,8 @@ pub use crate::sys::{cvt, cvt_r};
 use crate::time::{Duration, Instant};
 use crate::{cmp, mem};
 
+pub const MSG_NOSIGNAL: c_int = 0;
+
 #[expect(non_camel_case_types)]
 pub type wrlen_t = usize;
 
