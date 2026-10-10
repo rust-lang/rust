@@ -1,0 +1,114 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:11:5
+   |
+LL |     <[(); N] as IntoIterator>::Item::Item:,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `Item` implemented for `<[(); N] as IntoIterator>::Item`, you could use the fully-qualified path
+   |
+LL -     <[(); N] as IntoIterator>::Item::Item:,
+LL +     <<[(); N] as IntoIterator>::Item as Example>::Item:,
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:17:12
+   |
+LL |     Option<<[(); N] as IntoIterator>::Item::Item>: Sized,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `Item` implemented for `<[(); N] as IntoIterator>::Item`, you could use the fully-qualified path
+   |
+LL -     Option<<[(); N] as IntoIterator>::Item::Item>: Sized,
+LL +     Option<<<[(); N] as IntoIterator>::Item as Example>::Item>: Sized,
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:22:8
+   |
+LL |     _: <[(); N] as IntoIterator>::Item::Item,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `Item` implemented for `<[(); N] as IntoIterator>::Item`, you could use the fully-qualified path
+   |
+LL -     _: <[(); N] as IntoIterator>::Item::Item,
+LL +     _: <<[(); N] as IntoIterator>::Item as Example>::Item,
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:27:5
+   |
+LL |     <[(); N] as IntoIterator>::Item::Item;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `Item` implemented for `<[(); N] as IntoIterator>::Item`, you could use the fully-qualified path
+   |
+LL -     <[(); N] as IntoIterator>::Item::Item;
+LL +     <<[(); N] as IntoIterator>::Item as Example>::Item;
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:31:12
+   |
+LL |     field: <[(); N] as IntoIterator>::Item::Item,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `Item` implemented for `<[(); N] as IntoIterator>::Item`, you could use the fully-qualified path
+   |
+LL -     field: <[(); N] as IntoIterator>::Item::Item,
+LL +     field: <<[(); N] as IntoIterator>::Item as Example>::Item,
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:47:14
+   |
+LL |     const M: <[(); N] as IntoIterator>::Item::Item,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `Item` implemented for `<[(); N] as IntoIterator>::Item`, you could use the fully-qualified path
+   |
+LL -     const M: <[(); N] as IntoIterator>::Item::Item,
+LL +     const M: <<[(); N] as IntoIterator>::Item as Example>::Item,
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:53:9
+   |
+LL |     T = <[(); N] as IntoIterator>::Item::Item,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `Item` implemented for `<[(); N] as IntoIterator>::Item`, you could use the fully-qualified path
+   |
+LL -     T = <[(); N] as IntoIterator>::Item::Item,
+LL +     T = <<[(); N] as IntoIterator>::Item as Example>::Item,
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:40:9
+   |
+LL |         <[(); N] as IntoIterator>::Item::Item:,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `Item` implemented for `<[(); N] as IntoIterator>::Item`, you could use the fully-qualified path
+   |
+LL -         <[(); N] as IntoIterator>::Item::Item:,
+LL +         <<[(); N] as IntoIterator>::Item as Example>::Item:,
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:58:12
+   |
+LL |     let _: <[(); N] as IntoIterator>::Item::Item;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     let _: <[(); N] as IntoIterator>::Item::Item;
+LL +     let _: <<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item;
+   |
+LL -     let _: <[(); N] as IntoIterator>::Item::Item;
+LL +     let _: <<[(); N] as IntoIterator>::Item as IntoIterator>::Item;
+   |
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0223`.

@@ -37,7 +37,7 @@ use rustc_errors::{
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, AnonConst, GenericArg, GenericArgs, HirId};
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::DynCompatibilityViolation;
 use rustc_lint_defs::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_macros::{TypeFoldable, TypeVisitable};
@@ -45,8 +45,8 @@ use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{
     self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput,
-    Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
-    const_lit_matches_ty, fold_regions,
+    Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast, const_lit_matches_ty,
+    fold_regions,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::{LocalModId, ModId};
@@ -231,6 +231,9 @@ pub trait HirTyLowerer<'tcx> {
 
     /// The inference context of the lowering context if applicable.
     fn infcx(&self) -> Option<&InferCtxt<'tcx>>;
+
+    /// The parameter environment when lowering in a context with inference.
+    fn param_env(&self) -> Option<ty::ParamEnv<'tcx>>;
 
     /// Convenience method for coercing the lowering context into a trait object type.
     ///
@@ -1860,16 +1863,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Vec<String> {
         let tcx = self.tcx();
 
-        // In contexts that have no inference context, just make a new one.
-        // We do need a local variable to store it, though.
-        let infcx_;
-        let infcx = if let Some(infcx) = self.infcx() {
-            infcx
-        } else {
-            assert!(!qself_ty.has_infer());
-            infcx_ = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
-            &infcx_
-        };
+        let infcx = self.infcx();
+        let param_env = self.param_env();
+
+        // We cannot normalize aliases while lowering item signatures.
+        // Avoid suggesting traits based on an unresolved projection.
+        if infcx.is_none() && qself_ty.has_aliases() {
+            return Vec::new();
+        }
+
+        let value = fold_regions(tcx, qself_ty, |_, _| tcx.lifetimes.re_erased);
+        // FIXME: Don't bother dealing with non-lifetime binders here...
+        if value.has_escaping_bound_vars() {
+            return Vec::new();
+        }
 
         tcx.all_traits_including_private()
             .filter(|trait_def_id| {
@@ -1887,19 +1894,47 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     && tcx.all_impls(*trait_def_id)
                         .any(|impl_def_id| {
                             let header = tcx.impl_trait_header(impl_def_id);
-                            let trait_ref = header.trait_ref.instantiate(tcx, infcx.fresh_args_for_item(DUMMY_SP, impl_def_id)).skip_norm_wip();
-
-                            let value = fold_regions(tcx, qself_ty, |_, _| tcx.lifetimes.re_erased);
-                            // FIXME: Don't bother dealing with non-lifetime binders here...
-                            if value.has_escaping_bound_vars() {
+                            if header.polarity == ty::ImplPolarity::Negative {
                                 return false;
                             }
-                            infcx
-                                .can_eq(
-                                    ty::ParamEnv::empty(),
+
+                            if let Some(infcx) = infcx {
+                                let trait_ref = header
+                                    .trait_ref
+                                    .instantiate(
+                                        tcx,
+                                        infcx.fresh_args_for_item(DUMMY_SP, impl_def_id),
+                                    )
+                                    .skip_norm_wip();
+
+                                infcx.can_eq(
+                                    param_env.expect("inference requires a parameter environment"),
                                     trait_ref.self_ty(),
                                     value,
-                                ) && header.polarity != ty::ImplPolarity::Negative
+                                )
+                            } else {
+                                let impl_ty = header
+                                    .trait_ref
+                                    .instantiate_identity()
+                                    .skip_norm_wip()
+                                    .self_ty();
+
+                                // Fast rejection doesn't check that repeated impl
+                                // parameters match the same type. Avoid suggesting
+                                // impls that need that additional equality check.
+                                let mut seen = FxHashSet::default();
+                                if crate::constrained_generic_params::parameters_for(
+                                    tcx, impl_ty, true,
+                                )
+                                .into_iter()
+                                .any(|param| !seen.insert(param))
+                                {
+                                    return false;
+                                }
+
+                                ty::DeepRejectCtxt::relate_rigid_infer(tcx)
+                                    .types_may_unify_with_depth(value, impl_ty, usize::MAX)
+                            }
                         })
             })
             .map(|trait_def_id| tcx.def_path_str(trait_def_id))

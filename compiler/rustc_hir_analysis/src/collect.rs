@@ -708,6 +708,10 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         None
     }
 
+    fn param_env(&self) -> Option<ty::ParamEnv<'tcx>> {
+        None
+    }
+
     fn lower_fn_sig(
         &self,
         decl: &hir::FnDecl<'_>,
