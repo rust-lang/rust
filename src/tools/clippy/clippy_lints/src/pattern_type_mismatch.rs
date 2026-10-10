@@ -117,12 +117,12 @@ impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
         &mut self,
         cx: &LateContext<'tcx>,
         _: intravisit::FnKind<'tcx>,
-        _: &'tcx FnDecl<'_>,
-        body: &'tcx Body<'_>,
+        decl: &'tcx FnDecl<'_>,
+        _: &'tcx Body<'_>,
         _: Span,
         _: LocalDefId,
     ) {
-        for param in body.params {
+        for param in decl.inputs {
             apply_lint(cx, param.pat, DerefPossible::Impossible);
         }
     }

@@ -182,7 +182,7 @@ pub fn suggest_restriction<'tcx>(
         let mut ty_spans = vec![];
         for input in fn_sig.decl.inputs {
             ReplaceImplTraitVisitor { ty_spans: &mut ty_spans, param_did: param.def_id }
-                .visit_ty_unambig(input);
+                .visit_ty_unambig(input.ty);
         }
         // The type param `T: Trait` we will suggest to introduce.
         let type_param = format!("{type_param_name}: {bound_str}");
@@ -2312,11 +2312,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     /// Suggest removing `&` from a function parameter type like `&impl Future`.
     fn suggest_remove_ref_from_param(&self, param: &hir::Param<'_>, err: &mut Diag<'_>) -> bool {
-        if let Some(decl) = self.tcx.parent_hir_node(param.hir_id).fn_decl()
-            && let Some(input_ty) = decl.inputs.iter().find(|t| param.ty_span.contains(t.span))
-            && let hir::TyKind::Ref(_, ty, _) = input_ty.kind
-        {
-            let ref_span = input_ty.span.until(ty.span);
+        if let hir::TyKind::Ref(_, ty, _) = param.ty.kind {
+            let ref_span = param.ty.span.until(ty.span);
             match self.tcx.sess.source_map().span_to_snippet(ref_span) {
                 Ok(snippet) if snippet.starts_with("&") => {
                     err.span_suggestion_verbose(
@@ -4218,7 +4215,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                     Node::Param(param) => {
                         err.span_suggestion_verbose(
-                            param.ty_span.shrink_to_lo(),
+                            param.ty.span.shrink_to_lo(),
                             "function arguments must have a statically known size, borrowed types \
                             always have a known size",
                             "&",
@@ -4238,17 +4235,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     types always have a known size";
                 if let Some(hir_id) = hir_id
                     && let hir::Node::Param(param) = self.tcx.hir_node(hir_id)
-                    && let Some(decl) = self.tcx.parent_hir_node(hir_id).fn_decl()
-                    && let Some(t) = decl.inputs.iter().find(|t| param.ty_span.contains(t.span))
                 {
-                    // We use `contains` because the type might be surrounded by parentheses,
-                    // which makes `ty_span` and `t.span` disagree with each other, but one
-                    // fully contains the other: `foo: (dyn Foo + Bar)`
-                    //                                 ^-------------^
-                    //                                 ||
-                    //                                 |t.span
-                    //                                 param._ty_span
-                    ty = Some(t);
+                    ty = Some(param.ty);
                 } else if let Some(hir_id) = hir_id
                     && let hir::Node::Ty(t) = self.tcx.hir_node(hir_id)
                 {
@@ -4268,13 +4256,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             let needs_parens = traits.len() != 1;
                             // Don't recommend impl Trait as a closure argument
                             if let Some(hir_id) = hir_id
-                                && matches!(
+                                && (matches!(
                                     self.tcx.parent_hir_node(hir_id),
                                     hir::Node::Item(hir::Item {
                                         kind: hir::ItemKind::Fn { .. },
                                         ..
                                     })
-                                )
+                                ) || matches!(
+                                    self.tcx.parent_hir_node(hir_id),
+                                    hir::Node::Param(_)
+                                ) && matches!(
+                                    self.tcx.parent_hir_node(self.tcx.parent_hir_id(hir_id)),
+                                    hir::Node::Item(hir::Item {
+                                        kind: hir::ItemKind::Fn { .. },
+                                        ..
+                                    })
+                                ))
                             {
                                 err.span_suggestion_verbose(
                                     span,
@@ -5776,7 +5773,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     );
                     let assocs_in_this_method = self.probe_assoc_types_at_expr(
                         &type_diffs,
-                        param.ty_span,
+                        param.ty.span,
                         prev_ty,
                         param.hir_id,
                         param_env,
@@ -6825,7 +6822,7 @@ fn hint_missing_borrow<'tcx>(
     let mut to_borrow = Vec::new();
     let mut remove_borrow = Vec::new();
 
-    for ((found_arg, expected_arg), arg) in found_args.zip(expected_args).zip(args) {
+    for ((found_arg, expected_arg), param) in found_args.zip(expected_args).zip(args) {
         let (found_ty, found_refs) = get_deref_type_and_refs(*found_arg);
         let (expected_ty, expected_refs) = get_deref_type_and_refs(*expected_arg);
 
@@ -6835,7 +6832,7 @@ fn hint_missing_borrow<'tcx>(
                 && found_refs[..] == expected_refs[expected_refs.len() - found_refs.len()..]
             {
                 to_borrow.push((
-                    arg.span.shrink_to_lo(),
+                    param.ty.span.shrink_to_lo(),
                     expected_refs[..expected_refs.len() - found_refs.len()]
                         .iter()
                         .map(|mutbl| format!("&{}", mutbl.prefix_str()))
@@ -6843,9 +6840,9 @@ fn hint_missing_borrow<'tcx>(
                         .join(""),
                 ));
             } else if found_refs.len() > expected_refs.len() {
-                let mut span = arg.span.shrink_to_lo();
+                let mut span = param.ty.span.shrink_to_lo();
                 let mut left = found_refs.len() - expected_refs.len();
-                let mut ty = arg;
+                let mut ty = param.ty;
                 while let hir::TyKind::Ref(_, inner_ty, _) = &ty.kind
                     && left > 0
                 {
@@ -7089,7 +7086,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceImplTraitFolder<'tcx> {
 pub fn suggest_desugaring_async_fn_to_impl_future_in_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
     sig: hir::FnSig<'tcx>,
-    body: hir::TraitFn<'tcx>,
+    body: hir::TraitFn,
     opaque_def_id: LocalDefId,
     add_bounds: &str,
 ) -> Option<Vec<(Span, String)>> {

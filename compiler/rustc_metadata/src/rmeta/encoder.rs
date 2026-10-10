@@ -1311,7 +1311,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
             if let hir::OpaqueTyOrigin::FnReturn { parent, .. }
             | hir::OpaqueTyOrigin::AsyncFn { parent, .. } = origin
                 && let hir::Node::TraitItem(trait_item) = tcx.hir_node_by_def_id(parent)
-                && let (_, hir::TraitFn::Required(..)) = trait_item.expect_fn()
+                && let (_, hir::TraitFn::Required) = trait_item.expect_fn()
             {
                 false
             } else {

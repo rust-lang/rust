@@ -15,7 +15,7 @@ use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, ForeignItemId, ItemId, Node, PatKind, QPath};
+use rustc_hir::{self as hir, BodyId, FnDecl, ForeignItemId, ItemId, Node, PatKind, QPath};
 use rustc_lint_defs::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
 use rustc_lint_defs::{self as lint, Lint, StableLintExpectationId};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -691,7 +691,14 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     type Result = ControlFlow<ErrorGuaranteed>;
 
-    fn visit_nested_body(&mut self, body: hir::BodyId) -> Self::Result {
+    fn visit_fn_decl(&mut self, decl: &'tcx FnDecl<'tcx>) -> Self::Result {
+        if !decl.fn_decl_kind.has_body() {
+            intravisit::walk_fn_decl(self, decl)?;
+        }
+        ControlFlow::Continue(())
+    }
+
+    fn visit_nested_body(&mut self, body: BodyId) -> Self::Result {
         let typeck_results = self.tcx.typeck_body(body);
 
         // The result shouldn't be tainted, otherwise it will cause ICE.
@@ -700,6 +707,9 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         }
 
         let old_maybe_typeck_results = self.maybe_typeck_results.replace(typeck_results);
+        if let Some(decl) = self.tcx.hir_fn_decl_by_hir_id(self.tcx.hir_body_owner(body)) {
+            intravisit::walk_fn_decl(self, decl)?;
+        }
         let body = self.tcx.hir_body(body);
         let result = self.visit_body(body);
         self.maybe_typeck_results = old_maybe_typeck_results;

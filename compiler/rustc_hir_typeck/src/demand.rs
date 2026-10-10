@@ -785,8 +785,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     primary_span = init.span;
                                     post_message = " value";
                                 }
-                                hir::Node::Param(hir::Param { ty_span, .. }) => {
-                                    primary_span = *ty_span;
+                                hir::Node::Param(hir::Param { ty, .. }) => {
+                                    primary_span = ty.span;
                                     post_message = " parameter type";
                                 }
                                 _ => {}
@@ -880,7 +880,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let hir::Node::Pat(pat) = self.tcx.hir_node(*hir_id)
 
             // The pattern we have is an fn argument.
-            && let hir::Node::Param(hir::Param { ty_span, .. }) =
+            && let hir::Node::Param(hir::Param { ty, .. }) =
                 self.tcx.parent_hir_node(pat.hir_id)
             && let item = self.tcx.hir_get_parent_item(pat.hir_id)
             && let item = self.tcx.hir_owner_node(item)
@@ -893,8 +893,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let Some(ty_ref) = fn_decl
                 .inputs
                 .iter()
-                .filter_map(|ty| match ty.kind {
-                    hir::TyKind::Ref(lt, inner_ty, mutbl) if ty.span == *ty_span => Some((lt, inner_ty, mutbl)),
+                .filter_map(|param| match param.ty.kind {
+                    hir::TyKind::Ref(lt, inner_ty, mutbl) if param.ty.span == ty.span => Some((lt, inner_ty, mutbl)),
                     _ => None,
                 })
                 .next()

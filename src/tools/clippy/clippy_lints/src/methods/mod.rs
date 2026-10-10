@@ -5363,7 +5363,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             return;
         }
 
-        if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind {
+        if let hir::ImplItemKind::Fn(ref sig, _id) = impl_item.kind {
             let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
             let item = cx.tcx.hir_expect_item(parent);
             let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip();
@@ -5377,7 +5377,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             if sig.decl.implicit_self().has_implicit_self()
                 && !(self.avoid_breaking_exported_api
                     && cx.effective_visibilities.is_exported(impl_item.owner_id.def_id))
-                && let Some(first_arg) = iter_input_pats(sig.decl, cx.tcx.hir_body(id)).next()
+                && let Some(first_arg) = iter_input_pats(sig.decl).next()
                 && let Some(first_arg_ty) = first_arg_ty_opt
             {
                 wrong_self_convention::check(
@@ -5400,7 +5400,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             && !item.span.in_external_macro(cx.tcx.sess.source_map())
         {
             if sig.decl.implicit_self().has_implicit_self()
-                && let Some(first_arg_hir_ty) = sig.decl.inputs.first()
+                && let Some(first_arg_hir) = sig.decl.inputs.first()
                 && let Some(&first_arg_ty) = cx
                     .tcx
                     .fn_sig(item.owner_id)
@@ -5416,7 +5416,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     item.ident.name,
                     self_ty,
                     first_arg_ty,
-                    first_arg_hir_ty.span,
+                    first_arg_hir.ty.span,
                     false,
                     true,
                 );
@@ -5485,7 +5485,7 @@ impl Methods {
                         Some((sym::chars, recv, _, _, _))
                             if let ExprKind::Closure(arg) = arg.kind
                                 && let body = cx.tcx.hir_body(arg.body)
-                                && let [param] = body.params =>
+                                && let [param] = arg.fn_decl.inputs =>
                         {
                             string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), self.msrv);
                         },

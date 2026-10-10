@@ -35,7 +35,7 @@ pub fn find_anon_type<'tcx>(
         .decl
         .inputs
         .iter()
-        .find_map(|arg| find_component_for_bound_region(tcx, arg, anon_reg.region_def_id))
+        .find_map(|param| find_component_for_bound_region(tcx, param.ty, anon_reg.region_def_id))
         .map(|ty| (ty, fn_sig))
 }
 

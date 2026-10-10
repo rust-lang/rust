@@ -20,7 +20,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Option<
             .decl
             .inputs
             .iter()
-            .flat_map(get_lifetimes)
+            .flat_map(|p| get_lifetimes(&p.ty))
             .filter(|&(lt, _, _)| cx.tcx.named_bound_var(lt.hir_id) == out_region)
             .map(|(_, mutability, span)| (mutability == Some(Mutability::Not)).then_some(span))
             .collect();

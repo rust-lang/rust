@@ -22,8 +22,9 @@ pub(super) fn check<'tcx>(
 ) {
     // Looking for: `a.and_then(|a| b.map(|b| (a, b)))`.
     // `and_then(|a| ...)`
-    if let ExprKind::Closure(&hir::Closure { body: outer_body_id, .. }) = arg.kind
-        && let hir::Body { params: [outer_param], value: outer_value, .. } = cx.tcx.hir_body(outer_body_id)
+    if let ExprKind::Closure(&hir::Closure { fn_decl: outer_fn_decl, body: outer_body_id, .. }) = arg.kind
+        && let [outer_param] = outer_fn_decl.inputs
+        && let outer_value = cx.tcx.hir_body(outer_body_id).value
         && let PatKind::Binding(_, outer_param_id, _, None) = outer_param.pat.kind
         && cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Option)
         // `b.map(|b| ...)`
@@ -35,8 +36,9 @@ pub(super) fn check<'tcx>(
         // `b` does not reference the outer closure parameter `a`.
         && !local_used_in(cx, outer_param_id, map_recv)
         // `|b| (a, b)`
-        && let ExprKind::Closure(&hir::Closure { body: inner_body_id, .. }) = map_arg.kind
-        && let hir::Body { params: [inner_param], value: inner_value, .. } = cx.tcx.hir_body(inner_body_id)
+        && let ExprKind::Closure(&hir::Closure { fn_decl: inner_fn_decl, body: inner_body_id, .. }) = map_arg.kind
+        && let [inner_param] = inner_fn_decl.inputs
+        && let inner_value = cx.tcx.hir_body(inner_body_id).value
         && let PatKind::Binding(_, inner_param_id, _, None) = inner_param.pat.kind
         // `(a, b)` or `(b, a)` — tuple of outer and inner param in either order.
         && let ExprKind::Tup([first, second]) = peel_blocks(inner_value).kind

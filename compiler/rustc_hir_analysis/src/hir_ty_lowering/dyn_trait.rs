@@ -950,8 +950,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         // Suggestions for function parameters.
-        for ty in sig.decl.inputs {
-            if ty.peel_refs().hir_id != hir_id {
+        for param in sig.decl.inputs {
+            if param.ty.peel_refs().hir_id != hir_id {
                 continue;
             }
             let sugg = self.add_generic_param_suggestion(generics, span, &trait_name);

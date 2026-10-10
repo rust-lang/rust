@@ -396,11 +396,11 @@ fn report_number_of_arguments_mismatch<'tcx>(
         .and_then(|def_id| {
             let declaration_sig = get_declaration_sig(tcx, def_id).expect("foreign item sig");
             let pos = declaration_number_args.saturating_sub(1);
-            declaration_sig.decl.inputs.get(pos).map(|arg| {
+            declaration_sig.decl.inputs.get(pos).map(|param| {
                 if pos == 0 {
-                    arg.span
+                    param.ty.span
                 } else {
-                    arg.span.with_lo(declaration_sig.decl.inputs[0].span.lo())
+                    param.ty.span.with_lo(declaration_sig.decl.inputs[0].ty.span.lo())
                 }
             })
         })
@@ -413,11 +413,11 @@ fn report_number_of_arguments_mismatch<'tcx>(
         .decl
         .inputs
         .get(pos)
-        .map(|arg| {
+        .map(|param| {
             if pos == 0 {
-                arg.span
+                param.ty.span
             } else {
-                arg.span.with_lo(external_impl_sig.decl.inputs[0].span.lo())
+                param.ty.span.with_lo(external_impl_sig.decl.inputs[0].ty.span.lo())
             }
         })
         .unwrap_or_else(|| tcx.def_span(external_impl));
@@ -536,12 +536,12 @@ fn extract_spans_for_error_reporting<'tcx>(
     let (mut external_impl_args, external_impl_name) = {
         let item = tcx.hir_expect_item(external_impl);
         let (ident, sig, _, _) = item.expect_fn();
-        (sig.decl.inputs.iter().map(|t| t.span).chain(iter::once(sig.decl.output.span())), ident)
+        (sig.decl.inputs.iter().map(|p| p.ty.span).chain(iter::once(sig.decl.output.span())), ident)
     };
 
     let declaration_args = declaration.as_local().map(|def_id| {
         if let Some(sig) = get_declaration_sig(tcx, def_id) {
-            sig.decl.inputs.iter().map(|t| t.span).chain(iter::once(sig.decl.output.span()))
+            sig.decl.inputs.iter().map(|p| p.ty.span).chain(iter::once(sig.decl.output.span()))
         } else {
             panic!("expected {def_id:?} to be a foreign function");
         }

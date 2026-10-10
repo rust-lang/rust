@@ -13,7 +13,7 @@ note: associated function defined here
   --> $DIR/param-mismatch-trait-fn.rs:2:8
    |
 LL |     fn same_type<T>(_: T, _: T);
-   |        ^^^^^^^^^ -  -     - this parameter needs to match the `[X; 1]` type of parameter #1
+   |        ^^^^^^^^^ -  ----  ---- this parameter needs to match the `[X; 1]` type of parameter #1
    |                  |  |
    |                  |  parameter #2 needs to match the `[X; 1]` type of this parameter
    |                  parameter #1 and parameter #2 both reference this parameter `T`

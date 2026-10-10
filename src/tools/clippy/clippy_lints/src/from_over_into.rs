@@ -193,8 +193,7 @@ fn convert_to_from(
     let ImplItemKind::Fn(ref sig, body_id) = impl_item.kind else {
         return None;
     };
-    let body = cx.tcx.hir_body(body_id);
-    let [self_param] = body.params else { return None };
+    let [self_param] = sig.decl.inputs else { return None };
     let PatKind::Binding(.., self_ident, None) = self_param.pat.kind else {
         return None;
     };
@@ -217,7 +216,7 @@ fn convert_to_from(
         (impl_item.ident.span, String::from("from")),
         // fn into([mut] self: U) -> T  ->  fn into([mut] val: T) -> T
         //               ~~~~~~~                          ~~~~~~
-        (self_ident.span.to(self_param.ty_span), format!("val: {from}")),
+        (self_ident.span.to(self_param.ty.span), format!("val: {from}")),
     ];
 
     if let FnRetTy::Return(_) = sig.decl.output {
@@ -232,6 +231,7 @@ fn convert_to_from(
         lower: Vec::new(),
     };
 
+    let body = cx.tcx.hir_body(body_id);
     if finder.visit_expr(body.value).is_break() {
         return None;
     }

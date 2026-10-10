@@ -94,7 +94,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
     pub(crate) fn gather_from_param(fcx: &'a FnCtxt<'a, 'tcx>, param: &'tcx hir::Param<'tcx>) {
         let mut visitor = GatherLocalsVisitor {
             fcx,
-            outermost_fn_param_pat: Some((param.ty_span, param.hir_id)),
+            outermost_fn_param_pat: Some((param.ty.span, param.hir_id)),
         };
         visitor.visit_pat(param.pat);
     }

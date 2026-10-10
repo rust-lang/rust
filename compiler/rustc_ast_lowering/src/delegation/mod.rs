@@ -51,7 +51,7 @@ use rustc_hir::{self as hir, FnDeclFlags, QPath};
 use rustc_middle::ty::Asyncness;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::kw;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, sym};
 
 use crate::delegation::generics::{GenericsGenerationResults, GenericsPosition};
 use crate::delegation::resolution::resolver::DelegationResolver;
@@ -82,10 +82,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         self.add_attrs_if_needed(&res);
 
-        let (body_id, call_expr_id, unused_target_expr) =
+        let (body_id, params, call_expr_id, unused_target_expr) =
             self.lower_delegation_body(delegation, &res, &mut generics);
 
-        let decl = self.lower_delegation_decl(&res, &generics, call_expr_id, unused_target_expr);
+        let decl =
+            self.lower_delegation_decl(&res, params, &generics, call_expr_id, unused_target_expr);
 
         let sig = self.lower_delegation_sig(res.sig_id, decl, span);
 
@@ -105,6 +106,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_delegation_decl(
         &mut self,
         res: &DelegationResolution,
+        params: &'hir [hir::Param<'hir>],
         generics: &GenericsGenerationResults<'hir>,
         call_expr_id: HirId,
         unused_target_expr: bool,
@@ -115,14 +117,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // The last parameter in C variadic functions is skipped in the signature,
         // like during regular lowering.
         let decl_param_count = param_count - c_variadic as usize;
-        let inputs = self.arena.alloc_from_iter((0..decl_param_count).map(|arg| hir::Ty {
-            hir_id: self.next_id(),
-            kind: hir::TyKind::InferDelegation(hir::InferDelegation::Sig(
-                sig_id,
-                hir::InferDelegationSig::Input(arg),
-            )),
-            span,
-        }));
+        let inputs =
+            self.arena.alloc_from_iter((0..decl_param_count).zip(params).map(|(arg, param)| {
+                hir::Param {
+                    hir_id: param.hir_id,
+                    pat: param.pat,
+                    ty: self.arena.alloc(hir::Ty {
+                        hir_id: self.next_id(),
+                        kind: hir::TyKind::InferDelegation(hir::InferDelegation::Sig(
+                            sig_id,
+                            hir::InferDelegationSig::Input(arg),
+                        )),
+                        span,
+                    }),
+                    param_span: param.param_span,
+                }
+            }));
 
         let output = self.arena.alloc(hir::Ty {
             hir_id: self.next_id(),
@@ -161,7 +171,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .set_lifetime_elision_allowed(true)
                 .set_c_variadic(c_variadic)
                 .set_splatted(splatted, inputs.len())
-                .unwrap(),
+                .unwrap()
+                .set_has_body(true),
         })
     }
 
@@ -213,7 +224,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
             default_binding_modes: false,
         });
 
-        (hir::Param { hir_id: self.next_id(), pat, ty_span: span, span }, pat_node_id)
+        let hir_id = self.next_id();
+        (
+            hir::Param {
+                hir_id,
+                pat,
+                param_span: span,
+                ty: self.arena.alloc(hir::Ty {
+                    #[allow(deprecated)]
+                    kind: hir::TyKind::Err(ErrorGuaranteed::unchecked_error_guaranteed()),
+                    span: self.lower_span(span),
+                    hir_id,
+                }),
+            },
+            pat_node_id,
+        )
     }
 
     fn generate_arg(
@@ -248,14 +273,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         delegation: &Delegation,
         res: &DelegationResolution,
         generics: &mut GenericsGenerationResults<'hir>,
-    ) -> (hir::BodyId, HirId, bool) {
+    ) -> (hir::BodyId, &'hir [hir::Param<'hir>], HirId, bool) {
         let block = delegation.body.as_deref();
         let mut call_expr_id = HirId::INVALID;
         let mut unused_target_expr = false;
 
-        let block_id = self.lower_body(|this| {
+        let (params, block_id) = self.lower_body_with_params(|this| {
             let &DelegationResolution { param_info, span, is_method, .. } = res;
-            let ParamInfo { param_count, .. } = param_info;
+            let ParamInfo { param_count, c_variadic, .. } = param_info;
+            let param_count = param_count - c_variadic as usize;
             let arguments_to_map = &res.sig_mapping.arguments_to_map;
 
             let mut parameters: Vec<hir::Param<'_>> = Vec::with_capacity(param_count);
@@ -315,7 +341,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         debug_assert_ne!(call_expr_id, HirId::INVALID);
 
-        (block_id, call_expr_id, unused_target_expr)
+        (block_id, params, call_expr_id, unused_target_expr)
     }
 
     fn lower_block_maybe_more_than_once(
@@ -600,7 +626,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 targeted_by_break: false,
             });
 
-            (&[], this.mk_expr(hir::ExprKind::Block(block, None), span))
+            this.mk_expr(hir::ExprKind::Block(block, None), span)
         });
 
         let generics = hir::Generics::empty();

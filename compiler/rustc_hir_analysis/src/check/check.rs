@@ -936,7 +936,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             if let hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, .. }
             | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id, .. } = origin
                 && let hir::Node::TraitItem(trait_item) = tcx.hir_node_by_def_id(fn_def_id)
-                && let (_, hir::TraitFn::Required(..)) = trait_item.expect_fn()
+                && let (_, hir::TraitFn::Required) = trait_item.expect_fn()
             {
                 // Skip opaques from RPIT in traits with no default body.
             } else {

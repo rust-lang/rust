@@ -483,7 +483,7 @@ fn virtual_call_violations_for_method<'tcx>(
                 ..
             })) = tcx.hir_get_if_local(method.def_id).as_ref()
             {
-                Some(sig.decl.inputs[i].span)
+                Some(sig.decl.inputs[i].ty.span)
             } else {
                 None
             };
@@ -520,12 +520,12 @@ fn virtual_call_violations_for_method<'tcx>(
     if receiver_ty != tcx.types.self_param {
         if !receiver_is_dispatchable(tcx, method, receiver_ty) {
             let span_n_lt = if let Some(hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Fn(sig, trait_fn),
+                kind: hir::TraitItemKind::Fn(sig, _),
                 ..
             })) = tcx.hir_get_if_local(method.def_id).as_ref()
             {
                 // If we have `self: &'a Ty`, get `'a`, so that we can suggest `&'a self`.
-                let lt = match sig.decl.inputs[0].kind {
+                let lt = match sig.decl.inputs[0].ty.kind {
                     hir::TyKind::Ref(lt, ..) if lt.ident.name == kw::UnderscoreLifetime => {
                         sym::empty
                     }
@@ -533,22 +533,7 @@ fn virtual_call_violations_for_method<'tcx>(
                     _ => sym::empty,
                 };
                 // Get the `Span` for all of `self: Ty`, not just `Ty`.
-                match trait_fn {
-                    hir::TraitFn::Required([Some(name), ..])
-                        if name.span.eq_ctxt(sig.decl.inputs[0].span) =>
-                    {
-                        Some(name.span.to(sig.decl.inputs[0].span))
-                    }
-                    hir::TraitFn::Provided(body_id)
-                        if let body = tcx.hir_body(*body_id)
-                            && let Some(p) = body.params.get(0)
-                            && p.span.eq_ctxt(p.ty_span) =>
-                    {
-                        Some(p.span.to(p.ty_span))
-                    }
-                    _ => None,
-                }
-                .map(|sp| (sp, lt))
+                sig.decl.inputs.get(0).map(|p| (p.param_span.to(p.ty.span), lt))
             } else {
                 None
             };

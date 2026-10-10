@@ -453,10 +453,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = kind
                             && let hir::def::Res::Local(hir_id) = path.res
                             && let hir::Node::Pat(b) = self.tcx.hir_node(hir_id)
-                            && let hir::Node::Param(p) = self.tcx.parent_hir_node(b.hir_id)
-                            && let Some(decl) = self.tcx.parent_hir_node(p.hir_id).fn_decl()
-                            && let Some(ty) = decl.inputs.iter().find(|ty| ty.span == p.ty_span)
-                            && let hir::TyKind::Ref(_, inner_ty, hir::Mutability::Not) = &ty.kind
+                            && let hir::Node::Param(param) = self.tcx.parent_hir_node(b.hir_id)
+                            && let hir::TyKind::Ref(_, inner_ty, hir::Mutability::Not) =
+                                &param.ty.kind
                         {
                             err.span_suggestion_verbose(
                                 inner_ty.span.shrink_to_lo(),
@@ -4458,33 +4457,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     .as_local()
                                     .map(|def_id| self.tcx.hir_node_by_def_id(def_id));
                                 if let Some(hir::Node::TraitItem(hir::TraitItem {
-                                    kind: hir::TraitItemKind::Fn(fn_sig, method),
+                                    kind: hir::TraitItemKind::Fn(fn_sig, _),
                                     ..
                                 })) = id
                                 {
-                                    let self_first_arg = match method {
-                                        hir::TraitFn::Required([ident, ..]) => {
-                                            matches!(ident, Some(Ident { name: kw::SelfLower, .. }))
-                                        }
-                                        hir::TraitFn::Provided(body_id) => {
-                                            self.tcx.hir_body(*body_id).params.first().is_some_and(
-                                                |param| {
-                                                    matches!(
-                                                        param.pat.kind,
-                                                        hir::PatKind::Binding(_, _, ident, _)
-                                                            if ident.name == kw::SelfLower
-                                                    )
-                                                },
+                                    let self_first_arg =
+                                        fn_sig.decl.inputs.first().is_some_and(|param| {
+                                            matches!(
+                                                param.pat.kind,
+                                                hir::PatKind::Binding(_, _, ident, _)
+                                                    if ident.name == kw::SelfLower
                                             )
-                                        }
-                                        _ => false,
-                                    };
+                                        });
 
                                     if !fn_sig.decl.implicit_self().has_implicit_self()
                                         && self_first_arg
                                     {
-                                        if let Some(ty) = fn_sig.decl.inputs.get(0) {
-                                            arbitrary_rcvr.push(ty.span);
+                                        if let Some(param) = fn_sig.decl.inputs.get(0) {
+                                            arbitrary_rcvr.push(param.ty.span);
                                         }
                                         return false;
                                     }

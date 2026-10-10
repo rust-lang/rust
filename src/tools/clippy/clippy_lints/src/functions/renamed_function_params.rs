@@ -11,7 +11,7 @@ use super::RENAMED_FUNCTION_PARAMS;
 
 pub(super) fn check_impl_item(cx: &LateContext<'_>, item: &ImplItem<'_>, ignored_traits: &DefIdSet) {
     if !item.span.from_expansion()
-        && let ImplItemKind::Fn(_, body_id) = item.kind
+        && let ImplItemKind::Fn(sig, _) = item.kind
         && let parent_node = cx.tcx.parent_hir_node(item.hir_id())
         && let Node::Item(parent_item) = parent_node
         && let ItemKind::Impl(Impl {
@@ -21,7 +21,7 @@ pub(super) fn check_impl_item(cx: &LateContext<'_>, item: &ImplItem<'_>, ignored
         && let Some(did) = cx.tcx.trait_item_of(item.owner_id)
         && !is_from_ignored_trait(&of_trait.trait_ref, ignored_traits)
     {
-        let mut param_idents_iter = cx.tcx.hir_body_param_idents(body_id);
+        let mut param_idents_iter = cx.tcx.hir_body_param_idents(sig.decl);
         let mut default_param_idents_iter = cx.tcx.fn_arg_idents(did).iter().copied();
 
         let renames = RenamedFnArgs::new(&mut default_param_idents_iter, &mut param_idents_iter);
