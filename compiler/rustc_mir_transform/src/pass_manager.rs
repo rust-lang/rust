@@ -5,7 +5,7 @@ use std::sync::atomic::Ordering;
 use rustc_attr_ir::OptimizeAttr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_hir::def_id::DefId;
-use rustc_middle::mir::{Body, MirDumper, MirPhase, RuntimePhase};
+use rustc_middle::mir::{Body, BodyTypingMode, MirDumper, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::OptLevel;
@@ -386,6 +386,26 @@ fn run_passes_inner<'tcx>(
     if let Some(new_phase) = phase_change {
         if body.phase >= new_phase {
             panic!("Invalid MIR phase transition from {:?} to {:?}", body.phase, new_phase);
+        }
+
+        // Custom MIR can skip analysis-to-runtime lowering where we update
+        // the typing mode for normal MIR body.
+        //
+        // FIXME: it's ugly that we set the typing mode of custom MIR in the
+        // runtime phase to `PostBorrowck` after borrowck and then back to
+        // `PostAnalysis` here.
+        if matches!(body.injection_phase, Some(MirPhase::Runtime(_)))
+            && matches!(new_phase, MirPhase::Runtime(_))
+        {
+            body.typing_mode = BodyTypingMode::PostAnalysis;
+        }
+
+        // We perform type mode transitions in MIR transform. But some bodies don't actually
+        // undergo analysis-to-runtime lowering, such as shims and sometimes custom MIR.
+        // We try to guard against future MIR building procedures that don't go through the usual
+        // lowering. The final validation is expected to run in `TypingMode::PostAnalysis`.
+        if new_phase == MirPhase::Runtime(RuntimePhase::Optimized) {
+            assert_eq!(body.typing_mode, BodyTypingMode::PostAnalysis);
         }
 
         body.phase = new_phase;

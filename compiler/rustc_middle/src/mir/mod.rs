@@ -201,6 +201,21 @@ pub enum MentionedItem<'tcx> {
     Closure(Ty<'tcx>),
 }
 
+/// Track what typing mode a MIR body should use at current stage.
+/// A MIR body usually starts with `Borrowck`. After borrowck is done, it's set to `PostBorrowck`.
+/// In `PostAnalysisNormalize` pass, we reveal all opaques types and set the typing mode to
+/// `PostAnalysis`.
+///
+/// We can't directly use `ty::TypingMode` since it's not `TyEncodable/TyDecodable`.
+/// Previously we use MIR phase to derive this but it's inaccurate.
+#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
+pub enum BodyTypingMode {
+    PostTypeckThroughBorrowck,
+    PostBorrowck,
+    PostAnalysis,
+}
+
 /// The lowered representation of a single function.
 #[derive(Clone, TyEncodable, TyDecodable, Debug, StableHash, TypeFoldable, TypeVisitable)]
 pub struct Body<'tcx> {
@@ -214,6 +229,9 @@ pub struct Body<'tcx> {
     /// promoted items have already been optimized, whereas ours have not. This field allows
     /// us to see the difference and forego optimization on the inlined promoted items.
     pub phase: MirPhase,
+
+    /// See [`BodyTypingMode`] for more info.
+    pub typing_mode: BodyTypingMode,
 
     /// How many passes we have executed since starting the current phase. Used for debug output.
     pub pass_count: usize,
@@ -353,6 +371,7 @@ impl<'tcx> Body<'tcx> {
 
         let mut body = Body {
             phase: MirPhase::Built,
+            typing_mode: BodyTypingMode::PostTypeckThroughBorrowck,
             pass_count: 0,
             source,
             basic_blocks: BasicBlocks::new(basic_blocks),
@@ -384,6 +403,7 @@ impl<'tcx> Body<'tcx> {
     pub fn new_cfg_only(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
         let mut body = Body {
             phase: MirPhase::Built,
+            typing_mode: BodyTypingMode::PostTypeckThroughBorrowck,
             pass_count: 0,
             source: MirSource::item(CRATE_DEF_ID.to_def_id()),
             basic_blocks: BasicBlocks::new(basic_blocks),
@@ -414,38 +434,35 @@ impl<'tcx> Body<'tcx> {
 
     pub fn typing_env(&self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
         if tcx.use_typing_mode_post_typeck_through_borrowck() {
-            match self.phase {
-                MirPhase::Built | MirPhase::Analysis(AnalysisPhase::Initial)
-                    if let Some(def_id) = self.source.def_id().as_local() =>
-                {
+            match self.typing_mode {
+                BodyTypingMode::PostTypeckThroughBorrowck => {
+                    let local_def_id =
+                        self.source.def_id().as_local().expect("We only build MIR for local body");
                     TypingEnv::new(
                         tcx.param_env(self.source.def_id()),
-                        ty::TypingMode::borrowck(tcx, def_id),
+                        ty::TypingMode::borrowck(tcx, local_def_id),
                     )
                 }
-                MirPhase::Analysis(AnalysisPhase::PostCleanup)
-                    if let Some(def_id) = self.source.def_id().as_local() =>
-                {
+                BodyTypingMode::PostBorrowck => {
+                    let local_def_id =
+                        self.source.def_id().as_local().expect("We only build MIR for local body");
                     TypingEnv::new(
                         tcx.param_env(self.source.def_id()),
-                        ty::TypingMode::post_borrowck_analysis(tcx, def_id),
+                        ty::TypingMode::post_borrowck_analysis(tcx, local_def_id),
                     )
                 }
-                MirPhase::Built | MirPhase::Analysis(_) => {
-                    // This branch happens for drop glue and fn ptr shims.
-                    // FIXME: why do we do any of this analysis on drop glue etc?
-                    // This should ideally all be skipped.
-                    TypingEnv::post_analysis(tcx, self.source.def_id())
-                }
-                MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
+                // We build shims like `drop_in_place` in post analysis typing mode.
+                BodyTypingMode::PostAnalysis => TypingEnv::post_analysis(tcx, self.source.def_id()),
             }
         } else {
-            match self.phase {
-                MirPhase::Built | MirPhase::Analysis(_) => TypingEnv::new(
-                    tcx.param_env(self.source.def_id()),
-                    ty::TypingMode::non_body_analysis(),
-                ),
-                MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
+            match self.typing_mode {
+                BodyTypingMode::PostTypeckThroughBorrowck | BodyTypingMode::PostBorrowck => {
+                    TypingEnv::new(
+                        tcx.param_env(self.source.def_id()),
+                        ty::TypingMode::non_body_analysis(),
+                    )
+                }
+                BodyTypingMode::PostAnalysis => TypingEnv::post_analysis(tcx, self.source.def_id()),
             }
         }
     }
