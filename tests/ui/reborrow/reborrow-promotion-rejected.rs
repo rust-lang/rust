@@ -11,7 +11,7 @@ impl Reborrow for MyMut<'_> {}
 
 #[derive(Clone, Copy)]
 struct MyRef<'a>(&'a u8);
-impl<'a> CoerceShared<MyRef<'a>> for MyMut<'a> {}
+impl<'a: 'b, 'b> CoerceShared<MyRef<'b>> for MyMut<'a> {}
 
 const fn coerce(x: MyRef<'_>) -> MyRef<'_> {
     x
