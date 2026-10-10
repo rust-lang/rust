@@ -2596,6 +2596,20 @@ fn foo(iter: impl Iterator<Item = u32>) {
 }
 "#,
         );
+        check_edit(
+            "neg",
+            r#"
+//- minicore: iterator, iterators, unary_ops, builtin_impls
+fn foo(iter: impl Iterator<Item = u32>) {
+    iter.map(core::ops::Neg::$0)
+}
+"#,
+            r#"
+fn foo(iter: impl Iterator<Item = u32>) {
+    iter.map(core::ops::Neg::neg)
+}
+"#,
+        );
     }
 
     #[test]
