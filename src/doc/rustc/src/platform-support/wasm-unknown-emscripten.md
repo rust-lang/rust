@@ -1,29 +1,35 @@
-# `wasm32-unknown-emscripten`
+# `wasm*-unknown-emscripten`
 
-**Tier: 2**
+Emscripten WebAssembly targets.
 
-The `wasm32-unknown-emscripten` target is a WebAssembly compilation target which
-uses the [Emscripten](https://emscripten.org/) compiler toolchain. Emscripten is
+**Tier: 2 (without Host Tools)**
+
+- `wasm32-unknown-emscripten`: WebAssembly via Emscripten.
+
+**Tier: 3**
+
+- `wasm64-unknown-emscripten`: WebAssembly with Memory64 via Emscripten.
+
+These targets are WebAssembly compilation targets which use the
+[Emscripten](https://emscripten.org/) compiler toolchain. Emscripten is primarily
 a C/C++ toolchain designed to make it as easy as possible to port C/C++ code
 written for Linux to run on the web or in other JavaScript runtimes such as Node.
 It thus provides POSIX-compatible (musl) `libc` and `libstd` implementations and
 many Linux APIs, access to the OpenGL and SDL APIs, and the ability to run arbitrary
 JavaScript code, all based on web APIs using JS glue code. With the
-`wasm32-unknown-emscripten` target, Rust code can interoperate with Emscripten's
+`wasm*-unknown-emscripten` targets, Rust code can interoperate with Emscripten's
 ecosystem, C/C++ and JS code, and web APIs.
 
-One existing user of this target is the
-[`pyodide` project](https://pyodide.org/) which provides a Python runtime in
-WebAssembly using Emscripten and compiles Python extension modules written in Rust
-to the `wasm32-unknown-emscripten` target.
+One example user of these targets is the [`pyodide` project](https://pyodide.org/)
+which provides a Python runtime in WebAssembly using Emscripten and compiles Python
+extension modules written in Rust to the `wasm32-unknown-emscripten` target.
 
 If you want to generate a standalone WebAssembly binary that does not require
 access to the web APIs or the Rust standard library, the
-[`wasm32-unknown-unknown`](./wasm32-unknown-unknown.md) target may be better
-suited for you. However, [`wasm32-unknown-unknown`](./wasm32-unknown-unknown.md)
-does not (easily) support interop with C/C++ code. Please refer to the
-[wasm-bindgen](https://crates.io/crates/wasm-bindgen) crate in case you want to
-interoperate with JavaScript with this target.
+[`wasm32-unknown-unknown`](./wasm32-unknown-unknown.md) or
+[`wasm64-unknown-unknown`](./wasm64-unknown-unknown.md) targets may be better
+suited for you. Those targets however do not (easily) support interop with
+C/C++ code.
 
 Like Emscripten, the WASI targets [`wasm32-wasip1`](./wasm32-wasip1.md),
 [`wasm32-wasip2`](./wasm32-wasip2.md), and
@@ -33,17 +39,21 @@ of the Rust standard library. While the WASI targets are portable across
 different hosts (web and non-web), WASI has no standard way of accessing web
 APIs, whereas Emscripten has the ability to run arbitrary JS from WASM and
 access many web APIs.  If you are only targeting the web and need to access web
-APIs, the `wasm32-unknown-emscripten` target may be preferable.
+APIs, these targets may be preferable.
 
 ## Target maintainers
 
+`wasm32-unknown-emscripten`:
 [@hoodmane](https://github.com/hoodmane)
 [@juntyr](https://github.com/juntyr)
 
+`wasm64-unknown-emscripten`:
+[@hoodmane](https://github.com/hoodmane)
+
 ## Requirements
 
-This target is cross-compiled. The Emscripten compiler toolchain `emcc` must be
-installed to link WASM binaries for this target. Emscripten 4.0.0 or newer is
+These targets are cross-compiled. The Emscripten compiler toolchain `emcc` must be
+installed to link WASM binaries for these targets. Emscripten 4.0.0 or newer is
 required. You can install `emcc` using:
 
 ```sh
@@ -60,11 +70,12 @@ further details and instructions.
 
 Building this target can be done by:
 
-* Configure the `wasm32-unknown-emscripten` target to get built.
+* Configure the `wasm32-unknown-emscripten` or `wasm64-unknown-emscripten` target
+  to get built.
 * Ensure the `WebAssembly` target backend is not disabled in LLVM.
 
 These are all controlled through `bootstrap.toml` options. It should be possible
-to build this target on any platform. A minimal example configuration would be:
+to build these targets on any platform. A minimal example configuration would be:
 
 ```toml
 [llvm]
@@ -72,12 +83,16 @@ targets = "WebAssembly"
 
 [build]
 build-stage = 1
-target = ["wasm32-unknown-emscripten"]
+target = ["wasm32-unknown-emscripten", "wasm64-unknown-emscripten"]
+
+[rust]
+lldb = true
 ```
 
 ## Building Rust programs
 
-Rust programs can be compiled by adding this target via rustup:
+The `wasm32-unknown-emscripten` target is tier 2 and has a prebuilt standard library
+available, so using it can be done by adding it via rustup:
 
 ```sh
 $ rustup target add wasm32-unknown-emscripten
@@ -90,9 +105,16 @@ $ rustc foo.rs --target wasm32-unknown-emscripten
 $ file foo.wasm
 ```
 
+The `wasm64-unknown-emscripten` target is tier 3, and you must compile the standard
+library yourself, such as with `-Zbuild-std`:
+
+```sh
+$ cargo +nightly build -Zbuild-std --target wasm64-unknown-emscripten
+```
+
 ## Cross-compilation
 
-This target can be cross-compiled from any host.
+These targets can be cross-compiled from any host.
 
 ## Emscripten ABI Compatibility
 
@@ -117,11 +139,11 @@ any `-C link-arg`s that you compiled your Rust code with.
 
 ## Testing
 
-This target is not extensively tested in CI for the rust-lang/rust repository. It
+These targets are not extensively tested in CI for the rust-lang/rust repository. It
 can be tested locally, for example, with:
 
 ```sh
-EMCC_CFLAGS="-s MAXIMUM_MEMORY=2GB" ./x.py test --target wasm32-unknown-emscripten --skip src/tools/linkchecker
+EMCC_CFLAGS="-sSTACK_SIZE=1MB -sMAXIMUM_MEMORY=2GB -sALLOW_MEMORY_GROWTH -Wno-limited-postlink-optimizations" ./x.py test --target wasm32-unknown-emscripten,wasm64-unknown-emscripten --skip src/tools/linkchecker --skip src/tools/html-checker
 ```
 
 To run these tests, both `emcc` and `node` need to be in your `$PATH`. You can
@@ -133,7 +155,7 @@ to test the [`wasm32-wasip1`](./wasm32-wasip1.md) target instead.
 
 ## Conditionally compiling code
 
-It's recommended to conditionally compile code for this target with:
+It's recommended to conditionally compile code for these targets with:
 
 ```text
 #[cfg(target_os = "emscripten")]
@@ -149,10 +171,10 @@ which do *not* use emscripten, which can be achieved with:
 ## Enabled WebAssembly features
 
 WebAssembly is an evolving standard which adds new features such as new
-instructions over time. This target's default set of supported WebAssembly
-features will additionally change over time. The `wasm32-unknown-emscripten` target
-inherits the default settings of LLVM which typically, but not necessarily, matches
-the default settings of Emscripten as well. At link time, `emcc` configures the
+instructions over time. These targets' default set of supported WebAssembly
+features will additionally change over time. These targets inherit the default
+settings of LLVM which typically, but not necessarily, matches the default
+settings of Emscripten as well. At link time, `emcc` configures the
 linker to use Emscripten's settings.
 
 Please refer to the [`wasm32-unknown-unknown`](./wasm32-unknown-unknown.md)
@@ -160,7 +182,10 @@ target's documentation on which WebAssembly features Rust enables by default, ho
 features can be disabled, and how Rust code can be conditionally compiled based on
 which features are enabled.
 
-Note that Rust code compiled for `wasm32-unknown-emscripten` currently enables
+`wasm64-unknown-emscripten` has a different set of default target features, see
+[`wasm64-unknown-unknown`](./wasm64-unknown-unknown.md) for details on those.
+
+Note that Rust code compiled for these targets currently enables
 `-fwasm-exceptions` (legacy WASM exceptions) by default unless the Rust code is
 compiled with `-Cpanic=abort`.
 

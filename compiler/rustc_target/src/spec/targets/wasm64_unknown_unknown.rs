@@ -32,15 +32,12 @@ pub(crate) fn target() -> Target {
         ],
     );
 
-    // Any engine that implements wasm64 will surely implement the rest of these
-    // features since they were all merged into the official spec by the time
-    // wasm64 was designed.
-    options.features = "+bulk-memory,+mutable-globals,+sign-ext,+nontrapping-fptoint".into();
+    options.features = base::wasm::default_wasm64_features();
 
     Target {
         llvm_target: "wasm64-unknown-unknown".into(),
         metadata: TargetMetadata {
-            description: Some("WebAssembly".into()),
+            description: Some("WebAssembly with Memory64".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: None, // ?

@@ -1,6 +1,8 @@
+use std::borrow::Cow;
+
 use crate::spec::{
-    BinaryFormat, Cc, LinkSelfContainedDefault, LinkerFlavor, PanicStrategy, RelocModel,
-    TargetOptions, TlsModel, add_link_args, cvs,
+    BinaryFormat, Cc, LinkArgs, LinkSelfContainedDefault, LinkerFlavor, Os, PanicStrategy,
+    RelocModel, TargetOptions, TlsModel, add_link_args, cvs,
 };
 
 pub(crate) fn options() -> TargetOptions {
@@ -127,4 +129,50 @@ pub(crate) fn options() -> TargetOptions {
 
         ..Default::default()
     }
+}
+
+pub(crate) fn emscripten_options() -> TargetOptions {
+    TargetOptions {
+        os: Os::Emscripten,
+        linker_flavor: LinkerFlavor::EmCc,
+        // emcc emits two files - a .js file to instantiate the wasm and supply platform
+        // functionality, and a .wasm file.
+        exe_suffix: ".js".into(),
+        linker: None,
+        // Reset flags for non-Em flavors back to empty to satisfy sanity checking tests.
+        pre_link_args: LinkArgs::new(),
+        post_link_args: TargetOptions::link_args(LinkerFlavor::EmCc, &["-sABORTING_MALLOC=0"]),
+        relocation_model: RelocModel::Pic,
+        // crt_static should always be true for an executable and always false
+        // for a shared library. There is no easy way to indicate this and it
+        // doesn't seem to matter much so we set crt_static_allows_dylibs to
+        // true and leave crt_static as true when linking dynamic libraries.
+        // wasi also sets crt_static_allows_dylibs: true so this is at least
+        // aligned between wasm targets.
+        crt_static_respected: true,
+        crt_static_default: true,
+        crt_static_allows_dylibs: true,
+        main_needs_argc_argv: true,
+        // Use the wasm C-ABI entry name from the tool-conventions BasicCABI
+        // spec rather than a raw `main`, as referenced by emscripten's crt/libc.
+        // Required for entry paths like `-sPROXY_TO_PTHREAD`, whose
+        // `crt1_proxy_main` links against `__main_argc_argv`.
+        entry_name: "__main_argc_argv".into(),
+        panic_strategy: PanicStrategy::Unwind,
+        no_default_libraries: false,
+        families: cvs!["unix", "wasm"],
+        // Explicitly override the `base::wasm`'s `llvm_args` back to empty. The
+        // base is to force using the most standard exception-handling
+        // instructions, when enabled, but this target is intended to follow
+        // Emscripten, which is whatever LLVM defaults to.
+        llvm_args: cvs![],
+        ..options()
+    }
+}
+
+pub(crate) fn default_wasm64_features() -> Cow<'static, str> {
+    // Any engine that implements wasm64 will surely implement the rest of
+    // these features since they were all merged into the official spec by the
+    // time wasm64 was designed.
+    "+bulk-memory,+mutable-globals,+sign-ext,+nontrapping-fptoint".into()
 }
