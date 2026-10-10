@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of `*foo` which is behind a mutable reference
-  --> $DIR/option-content-move-take.rs:4:17
+  --> $DIR/option-content-move-take.rs:2:17
    |
 LL |     *foo = Some(foo.unwrap());
    |                 ^^^ -------- `*foo` moved due to this method call
