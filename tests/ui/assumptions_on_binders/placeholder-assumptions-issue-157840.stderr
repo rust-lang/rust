@@ -1,15 +1,13 @@
-error[E0277]: the trait bound `(): Trait<fn(for<'a> fn(<T as Proj<'a>>::Assoc))>` is not satisfied
-  --> $DIR/placeholder-assumptions-issue-157840.rs:12:9
+error[E0275]: overflow evaluating the requirement `<T as Proj<'a>>::Assoc == _`
+  --> $DIR/placeholder-assumptions-issue-157840.rs:9:1
    |
-LL |     (): Trait<<T as Proj<'a>>::Assoc>,
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<fn(for<'a> fn(<T as Proj<'a>>::Assoc))>` is not implemented for `()`
-   |
-help: this trait has no implementations, consider adding one
-  --> $DIR/placeholder-assumptions-issue-157840.rs:3:1
-   |
-LL | trait Trait<T> {}
-   | ^^^^^^^^^^^^^^
+LL | / fn foo<'a, T>()
+LL | |
+LL | | where
+LL | |     T: Proj<'a, Assoc = fn(<T as Proj>::Assoc)>,
+LL | |     (): Trait<<T as Proj<'a>>::Assoc>,
+   | |______________________________________^
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0275`.

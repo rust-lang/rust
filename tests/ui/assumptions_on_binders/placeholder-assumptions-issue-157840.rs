@@ -7,10 +7,10 @@ trait Proj<'a> {
 }
 
 fn foo<'a, T>()
+//~^ ERROR overflow evaluating the requirement `<T as Proj<'a>>::Assoc == _`
 where
     T: Proj<'a, Assoc = fn(<T as Proj>::Assoc)>,
     (): Trait<<T as Proj<'a>>::Assoc>,
-    //~^ ERROR the trait bound `(): Trait<fn(for<'a> fn(<T as Proj<'a>>::Assoc))>` is not satisfied
 {
 }
 
