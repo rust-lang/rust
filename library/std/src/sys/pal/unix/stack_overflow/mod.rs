@@ -10,22 +10,15 @@ cfg_select! {
     // usually have fewer qualms about forwards compatibility, since the runtime
     // is shipped with the OS):
     // <https://github.com/apple/swift/blob/swift-5.10-RELEASE/stdlib/public/runtime/CrashHandlerMacOS.cpp>
-    //
-    // miri doesn't model signals nor stack overflows and this code has some
-    // synchronization properties that we don't want to expose to user code,
-    // hence we disable it on miri.
-    all(
-        not(miri),
-        any(
-            target_os = "linux",
-            target_os = "freebsd",
-            target_os = "hurd",
-            target_os = "macos",
-            target_os = "netbsd",
-            target_os = "openbsd",
-            target_os = "solaris",
-            target_os = "illumos",
-        )
+    any(
+        target_os = "linux",
+        target_os = "freebsd",
+        target_os = "hurd",
+        target_os = "macos",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "solaris",
+        target_os = "illumos",
     ) => {
         mod handler_signal;
         mod thread_info;
@@ -41,8 +34,19 @@ cfg_select! {
     }
 }
 
-pub use self::imp::init;
-use self::imp::{drop_handler, make_handler};
+/// # Safety
+/// Must be called only once, on the main thread, during program startup.
+pub unsafe fn init() {
+    // miri doesn't model signals nor stack overflows and this code has some
+    // synchronization properties that we don't want to expose to user code,
+    // hence we disable it on miri.
+    if cfg!(miri) {
+        return;
+    }
+
+    // SAFETY: guaranteed by caller.
+    unsafe { imp::init() };
+}
 
 pub struct Handler {
     data: *mut libc::c_void,
@@ -50,7 +54,11 @@ pub struct Handler {
 
 impl Handler {
     pub unsafe fn new() -> Handler {
-        make_handler(false)
+        if cfg!(miri) {
+            return Handler::null();
+        }
+
+        imp::make_handler(false)
     }
 
     fn null() -> Handler {
@@ -60,8 +68,10 @@ impl Handler {
 
 impl Drop for Handler {
     fn drop(&mut self) {
-        unsafe {
-            drop_handler(self.data);
+        if cfg!(miri) {
+            return;
         }
+
+        unsafe { imp::drop_handler(self.data) };
     }
 }
