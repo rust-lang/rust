@@ -81,7 +81,6 @@ macro_rules! impl_Debug {
         $(
             #[stable(feature = "rust1", since = "1.0.0")]
             impl fmt::Debug for $T {
-                #[inline]
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     if f.debug_lower_hex() {
                         fmt::LowerHex::fmt(self, f)
