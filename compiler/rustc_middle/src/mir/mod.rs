@@ -93,7 +93,7 @@ impl MirPhase {
     pub fn name(&self) -> &'static str {
         match *self {
             MirPhase::Built => "built",
-            MirPhase::Analysis(AnalysisPhase::Initial) => "analysis",
+            MirPhase::Analysis(AnalysisPhase::Initial | AnalysisPhase::PostBorrowck) => "analysis",
             MirPhase::Analysis(AnalysisPhase::PostCleanup) => "analysis-post-cleanup",
             MirPhase::Runtime(RuntimePhase::Initial) => "runtime",
             MirPhase::Runtime(RuntimePhase::PostCleanup) => "runtime-post-cleanup",
@@ -423,7 +423,7 @@ impl<'tcx> Body<'tcx> {
                         ty::TypingMode::borrowck(tcx, def_id),
                     )
                 }
-                MirPhase::Analysis(AnalysisPhase::PostCleanup)
+                MirPhase::Analysis(AnalysisPhase::PostBorrowck)
                     if let Some(def_id) = self.source.def_id().as_local() =>
                 {
                     TypingEnv::new(
@@ -441,11 +441,16 @@ impl<'tcx> Body<'tcx> {
             }
         } else {
             match self.phase {
-                MirPhase::Built | MirPhase::Analysis(_) => TypingEnv::new(
-                    tcx.param_env(self.source.def_id()),
-                    ty::TypingMode::non_body_analysis(),
-                ),
-                MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
+                MirPhase::Built
+                | MirPhase::Analysis(AnalysisPhase::Initial | AnalysisPhase::PostBorrowck) => {
+                    TypingEnv::new(
+                        tcx.param_env(self.source.def_id()),
+                        ty::TypingMode::non_body_analysis(),
+                    )
+                }
+                MirPhase::Analysis(AnalysisPhase::PostCleanup) | MirPhase::Runtime(_) => {
+                    TypingEnv::post_analysis(tcx, self.source.def_id())
+                }
             }
         }
     }

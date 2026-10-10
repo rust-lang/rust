@@ -365,6 +365,8 @@ fn run_passes_inner<'tcx>(
                     .generic_activity_with_arg(pass.profiler_name(), &**prof_arg)
                     .run(|| pass.run_pass(tcx, body));
             } else {
+                let typing_env = body.typing_env(tcx);
+                tracing::debug!("run mir pass: {} with {:?}", pass_name, typing_env);
                 pass.run_pass(tcx, body);
             }
 

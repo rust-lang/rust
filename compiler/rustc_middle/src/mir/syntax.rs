@@ -101,6 +101,10 @@ pub enum MirPhase {
 #[derive(StableHash)]
 pub enum AnalysisPhase {
     Initial = 0,
+    /// This one is the same as `Initial` w.r.t MIR dialect.
+    /// It's used to derive the typing mode. Otherwise we would need an additional field
+    /// on `mir::Body` to track it.
+    PostBorrowck = 1,
     /// Beginning in this phase, the following variants are disallowed:
     /// * [`TerminatorKind::FalseUnwind`]
     /// * [`TerminatorKind::FalseEdge`]
@@ -116,7 +120,7 @@ pub enum AnalysisPhase {
     ///
     /// Furthermore, `Deref` projections must be the first projection within any place (if they
     /// appear at all)
-    PostCleanup = 1,
+    PostCleanup = 2,
 }
 
 /// See [`MirPhase::Runtime`].
