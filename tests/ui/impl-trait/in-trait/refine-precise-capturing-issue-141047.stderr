@@ -1,0 +1,93 @@
+error: impl trait in impl method signature does not match trait method signature
+  --> $DIR/refine-precise-capturing-issue-141047.rs:11:20
+   |
+LL |     fn f(&self) -> impl use<Self> + Send;
+   |                    --------------------- return type from trait method defined here
+...
+LL |     fn f(&self) -> () {}
+   |                    ^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+note: the lint level is defined here
+  --> $DIR/refine-precise-capturing-issue-141047.rs:4:9
+   |
+LL | #![deny(refining_impl_trait)]
+   |         ^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(refining_impl_trait_internal)]` implied by `#[deny(refining_impl_trait)]`
+help: replace the return type so that it matches the trait
+   |
+LL -     fn f(&self) -> () {}
+LL +     fn f(&self) -> impl std::marker::Send + use<> {}
+   |
+
+error: impl trait in impl method signature does not match trait method signature
+  --> $DIR/refine-precise-capturing-issue-141047.rs:18:20
+   |
+LL |     fn f(&self) -> impl use<Self> + Send;
+   |                    --------------------- return type from trait method defined here
+...
+LL |     fn f(&self) -> () {}
+   |                    ^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+help: replace the return type so that it matches the trait
+   |
+LL -     fn f(&self) -> () {}
+LL +     fn f(&self) -> impl std::marker::Send + use<T> {}
+   |
+
+error: impl trait in impl method signature does not match trait method signature
+  --> $DIR/refine-precise-capturing-issue-141047.rs:27:20
+   |
+LL |     fn f(&self) -> impl use<Self, T> + Send;
+   |                    ------------------------ return type from trait method defined here
+...
+LL |     fn f(&self) -> () {}
+   |                    ^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+help: replace the return type so that it matches the trait
+   |
+LL -     fn f(&self) -> () {}
+LL +     fn f(&self) -> impl std::marker::Send + use<> {}
+   |
+
+error: impl trait in impl method signature does not match trait method signature
+  --> $DIR/refine-precise-capturing-issue-141047.rs:37:20
+   |
+LL |     fn f(&self) -> impl Send;
+   |                    --------- return type from trait method defined here
+...
+LL |     fn f(&self) -> () {}
+   |                    ^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+help: replace the return type so that it matches the trait
+   |
+LL -     fn f(&self) -> () {}
+LL +     fn f(&self) -> impl std::marker::Send {}
+   |
+
+error: impl trait in impl method signature does not match trait method signature
+  --> $DIR/refine-precise-capturing-issue-141047.rs:47:27
+   |
+LL |     fn f<'a>(&'a self) -> impl use<'a, Self> + Send;
+   |                           ------------------------- return type from trait method defined here
+...
+LL |     fn f<'a>(&'a self) -> () {}
+   |                           ^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+help: replace the return type so that it matches the trait
+   |
+LL -     fn f<'a>(&'a self) -> () {}
+LL +     fn f<'a>(&'a self) -> impl std::marker::Send {}
+   |
+
+error: aborting due to 5 previous errors
+
