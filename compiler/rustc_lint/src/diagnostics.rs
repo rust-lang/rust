@@ -2615,7 +2615,7 @@ pub(crate) struct UnusedOp<'a> {
 #[derive(Subdiagnostic)]
 pub(crate) enum UnusedOpSuggestion {
     #[suggestion(
-        "use `let _ = ...` to ignore the resulting value",
+        "if you wish to disregard this recommendation, use `let _ = ...` to ignore the value",
         style = "verbose",
         code = "let _ = ",
         applicability = "maybe-incorrect"
@@ -2625,7 +2625,7 @@ pub(crate) enum UnusedOpSuggestion {
         span: Span,
     },
     #[multipart_suggestion(
-        "use `let _ = ...` to ignore the resulting value",
+        "if you wish to disregard this recommendation, use `let _ = ...` to ignore the value",
         style = "verbose",
         applicability = "maybe-incorrect"
     )]
@@ -2689,7 +2689,7 @@ pub(crate) struct UnusedDef<'a, 'b> {
 #[derive(Subdiagnostic)]
 pub(crate) enum UnusedDefSuggestion {
     #[suggestion(
-        "use `let _ = ...` to ignore the resulting value",
+        "if you wish to disregard this recommendation, use `let _ = ...` to ignore the value",
         style = "verbose",
         code = "let _ = ",
         applicability = "maybe-incorrect"
@@ -2699,7 +2699,7 @@ pub(crate) enum UnusedDefSuggestion {
         span: Span,
     },
     #[multipart_suggestion(
-        "use `let _ = ...` to ignore the resulting value",
+        "if you wish to disregard this recommendation, use `let _ = ...` to ignore the value",
         style = "verbose",
         applicability = "maybe-incorrect"
     )]
@@ -2710,7 +2710,7 @@ pub(crate) enum UnusedDefSuggestion {
         after_span: Span,
     },
     #[suggestion(
-        "use `let _unused = ...` to ignore the resulting value without dropping it immediately",
+        "if you wish to disregard this recommendation, use `let _unused = ...` to ignore the resulting value without dropping it immediately",
         style = "verbose",
         code = "let _unused = ",
         applicability = "maybe-incorrect"
@@ -2720,7 +2720,7 @@ pub(crate) enum UnusedDefSuggestion {
         span: Span,
     },
     #[multipart_suggestion(
-        "use `let _unused = ...` to ignore the resulting value without dropping it immediately",
+        "if you wish to disregard this recommendation, use `let _unused = ...` to ignore the resulting value without dropping it immediately",
         style = "verbose",
         applicability = "maybe-incorrect"
     )]
