@@ -4954,10 +4954,17 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         partial_res
     }
 
-    fn self_type_is_available(&mut self) -> bool {
+    fn self_type_is_available(&mut self) -> Option<DefId> {
         let binding = self
             .maybe_resolve_ident_in_lexical_scope(Ident::with_dummy_span(kw::SelfUpper), TypeNS);
-        if let Some(LateDecl::RibDef(res)) = binding { res != Res::Err } else { false }
+        if let Some(LateDecl::RibDef(
+            Res::SelfTyAlias { alias_to, .. } | Res::SelfTyParam { trait_: alias_to },
+        )) = binding
+        {
+            Some(alias_to)
+        } else {
+            None
+        }
     }
 
     fn self_value_is_available(&mut self, self_span: Span) -> bool {
