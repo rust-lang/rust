@@ -285,8 +285,7 @@ fn show_fieldless_enum_concat_str(
     let arms = def
         .variants
         .iter()
-        .enumerate()
-        .map(|(i, v)| {
+        .map(|v| {
             let name_offset = concatenated_names.len();
 
             let name = v.ident.name.as_str();
