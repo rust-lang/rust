@@ -24,7 +24,7 @@ pub enum GenericParamDefKind {
         /// a const parameter in the function's argument list (including `self`).
         /// `Some(i)` means the argument at index `i` supplies this const parameter,
         /// while `None` indicates a regular const generic parameter.
-        arg_pos: Option<u32>,
+        arg_pos: Option<u16>,
     },
 }
 
@@ -60,7 +60,7 @@ impl GenericParamDefKind {
     }
 
     /// Returns the position of a function argument const generic.
-    pub fn arg_pos(&self) -> Option<u32> {
+    pub fn arg_pos(&self) -> Option<u16> {
         match self {
             GenericParamDefKind::Const { arg_pos, .. } => *arg_pos,
             _ => None,
@@ -145,6 +145,7 @@ pub struct Generics {
     pub param_def_id_to_index: FxHashMap<DefId, u32>,
 
     pub has_self: bool,
+    pub has_arg_pos_consts: bool,
     pub has_late_bound_regions: Option<Span>,
 }
 
@@ -318,8 +319,10 @@ impl<'tcx> Generics {
         self.own_params.iter().filter(|p| p.kind.is_synthetic()).count()
     }
 
-    pub fn own_arg_pos_consts(&'tcx self) -> impl Iterator<Item = (&'tcx GenericParamDef, u32)> {
-        self.own_params.iter().filter_map(|param| Some((param, param.kind.arg_pos()?)))
+    pub fn own_arg_pos_consts(&'tcx self) -> impl Iterator<Item = (&'tcx GenericParamDef, u16)> {
+        let params = if self.has_arg_pos_consts { &self.own_params[..] } else { &[] };
+
+        params.iter().filter_map(|param| Some((param, param.kind.arg_pos()?)))
     }
 
     /// Returns the args corresponding to the generic parameters

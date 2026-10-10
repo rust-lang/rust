@@ -418,17 +418,25 @@ impl<'tcx> ThirBuildCx<'tcx> {
                         ty::FnDef(def_id, _) => Some(tcx.generics_of(def_id)),
                         _ => None,
                     };
-                    let is_const_arg = |idx: usize| {
-                        generics.is_some_and(|g| {
-                            g.own_arg_pos_consts().any(|(_, pos)| pos as usize == idx)
-                        })
+                    let args = if generics.is_some_and(|g| g.has_arg_pos_consts) {
+                        let is_const_arg = |idx: usize| {
+                            generics.is_some_and(|g| {
+                                g.own_arg_pos_consts().any(|(_, pos)| pos as usize == idx)
+                            })
+                        };
+
+                        std::iter::once(receiver)
+                            .chain(args.iter())
+                            .enumerate()
+                            .filter(|&(idx, _)| !is_const_arg(idx))
+                            .map(|(_, arg)| self.mirror_expr(arg))
+                            .collect()
+                    } else {
+                        std::iter::once(receiver)
+                            .chain(args.iter())
+                            .map(|arg| self.mirror_expr(arg))
+                            .collect()
                     };
-                    let args = std::iter::once(receiver)
-                        .chain(args.iter())
-                        .enumerate()
-                        .filter(|&(idx, _)| !is_const_arg(idx))
-                        .map(|(_, arg)| self.mirror_expr(arg))
-                        .collect();
 
                     ExprKind::Call {
                         ty: expr.ty,
@@ -538,17 +546,21 @@ impl<'tcx> ThirBuildCx<'tcx> {
                             ty::FnDef(def_id, _) => Some(tcx.generics_of(def_id)),
                             _ => None,
                         };
-                        let is_const_arg = |idx: usize| {
-                            generics.is_some_and(|g| {
-                                g.own_arg_pos_consts().any(|(_, pos)| pos as usize == idx)
-                            })
+                        let args = if generics.is_some_and(|g| g.has_arg_pos_consts) {
+                            let is_const_arg = |idx: usize| {
+                                generics.is_some_and(|g| {
+                                    g.own_arg_pos_consts().any(|(_, pos)| pos as usize == idx)
+                                })
+                            };
+                            args.iter()
+                                .enumerate()
+                                .filter(|&(idx, _)| !is_const_arg(idx))
+                                .map(|(_, arg)| self.mirror_expr(arg))
+                                .collect()
+                        } else {
+                            args.iter().map(|arg| self.mirror_expr(arg)).collect()
                         };
-                        let args = args
-                            .iter()
-                            .enumerate()
-                            .filter(|&(idx, _)| !is_const_arg(idx))
-                            .map(|(_, arg)| self.mirror_expr(arg))
-                            .collect();
+
                         ExprKind::Call {
                             ty: fn_ty,
                             fun: self.mirror_expr(fun),

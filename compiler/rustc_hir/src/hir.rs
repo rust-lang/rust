@@ -850,7 +850,7 @@ pub enum GenericParamKind<'hir> {
         default: Option<&'hir ConstArg<'hir>>,
         /// Position of the const parameter in the function's argument list,
         /// used by `function_arg_const_generics`.
-        arg_pos: Option<u32>,
+        arg_pos: Option<u16>,
     },
 }
 

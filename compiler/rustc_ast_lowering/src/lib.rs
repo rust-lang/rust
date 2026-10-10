@@ -1950,16 +1950,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Skip the `...` (`CVarArgs`) trailing arguments from the AST,
         // as they are not explicit in HIR/Ty function signatures.
         // (instead, the `c_variadic` flag is set to `true`)
-        let mut inputs = decl.inputs.iter().enumerate().collect::<Vec<_>>();
-        if decl.c_variadic() {
+        let input_count = if decl.c_variadic() {
             // Splat + variadic errors in AST validation, so just ignore one of them here.
             splatted = None;
-            inputs.pop();
-        }
+            decl.inputs.len() - 1
+        } else {
+            decl.inputs.len()
+        };
+
+        let inputs = decl.inputs.iter().enumerate().take(input_count);
         // Function argument const params are moved from `inputs` into the function's
         // generics. Their position is taken from the original `decl.inputs` (before
         // removing `...`), so it matches the argument position at the call site.
-        let inputs = self.arena.alloc_from_iter(inputs.iter().filter_map(|(param_idx, param)| {
+        let inputs = self.arena.alloc_from_iter(inputs.filter_map(|(param_idx, param)| {
             if let Some(ident) = param.const_param_ident() {
                 if !matches!(
                     kind,
@@ -1985,7 +1988,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     kind: hir::GenericParamKind::Const {
                         ty,
                         default: None,
-                        arg_pos: Some(*param_idx as u32),
+                        arg_pos: Some(param_idx as u16),
                     },
                     colon_span: None,
                     source: hir::GenericParamSource::Generics,
