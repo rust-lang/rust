@@ -73,6 +73,17 @@ pub(super) fn is_inline_valid_on_body<'tcx>(
     _: TyCtxt<'tcx>,
     body: &Body<'tcx>,
 ) -> Result<(), &'static str> {
+    // We currently do not support inlining a callee which is the coroutine
+    // desugared from `#[track_caller] async fn`.
+    // This is because figuring out the caller_location of such coroutines
+    // requires accessing the argument of the `poll()` call. And inlining
+    // would cause us to lose track of where that argument is.
+    if let Some(coroutine) = &body.coroutine
+        && coroutine.captured_caller_location.is_some()
+    {
+        return Err("can't inline coroutines from `#[track_caller] async fn`");
+    }
+
     if body
         .basic_blocks
         .iter()

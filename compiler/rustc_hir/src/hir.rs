@@ -1453,6 +1453,12 @@ pub struct Closure<'hir> {
     pub fn_arg_span: Option<Span>,
     pub kind: ClosureKind,
     pub explicit_captures: &'hir [ExplicitCapture],
+    /// If this is a coroutine that was desugared from a coroutine fn that's annotated
+    /// with `#[track_caller]`, then we track the binding that contains the caller location
+    /// outside the coroutine.
+    ///
+    /// FIXME(closure_track_caller): Also do this for coroutine closures
+    pub captured_caller_location: Option<HirId>,
 }
 
 /// A HIR local that must be captured by value even if ordinary closure capture

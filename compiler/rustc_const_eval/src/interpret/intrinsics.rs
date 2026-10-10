@@ -25,7 +25,7 @@ use super::{
     PlaceTy, Pointer, PointerArithmetic, Projectable, Provenance, Scalar, err_ub_format,
     err_unsup_format, interp_ok, throw_inval, throw_ub, throw_ub_format,
 };
-use crate::interpret::{MPlaceTy, Writeable};
+use crate::interpret::{CallerLocation, MPlaceTy, Writeable};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum MulAddType {
@@ -293,10 +293,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
 
             sym::caller_location => {
-                let span = self.find_closest_untracked_caller_location();
-                let val = self.tcx.span_as_caller_location(span);
-                let val =
-                    self.const_val_to_op(val, self.tcx.caller_location_ty(), Some(dest.layout))?;
+                let val = match self.caller_location()? {
+                    CallerLocation::Direct(span) => self.const_val_to_op(
+                        self.tcx.span_as_caller_location(span),
+                        self.tcx.caller_location_ty(),
+                        Some(dest.layout),
+                    )?,
+                    CallerLocation::Memory(place) => self
+                        .mplace_to_imm_ptr(
+                            &place,
+                            Some(
+                                self.tcx.erase_and_anonymize_regions(self.tcx.caller_location_ty()),
+                            ),
+                        )?
+                        .into(),
+                };
                 self.copy_op(&val, dest)?;
             }
 

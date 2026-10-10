@@ -96,6 +96,9 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     /// frame is popped.
     pub(super) va_list: Vec<MPlaceTy<'tcx, Prov>>,
 
+    /// The implicit caller location argument that is passed by this function's caller, if any.
+    pub(super) track_caller_arg: Option<CallerLocation<'tcx, Prov>>,
+
     /// The span of the `tracing` crate is stored here.
     /// When the guard is dropped, the span is exited. This gives us
     /// a full stack trace on all tracing statements.
@@ -110,6 +113,18 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     ///
     /// Needs to be public because ConstProp does unspeakable things to it.
     pub(super) loc: Either<mir::Location, Span>,
+}
+
+/// Information necessary to figure out the caller_location
+#[derive(Clone)]
+pub(crate) enum CallerLocation<'tcx, Prov: Provenance> {
+    /// Simple case: This span was created when we called a `#[track_caller]` frame
+    /// (other than an async fn) from a normal frame. We know the span from just inspecting
+    /// the stack at the point of this call.
+    Direct(Span),
+    /// A place containing a `std::panic::Location`. This is used for `#[track_caller] async fn`,
+    /// which captures a `&std::panic::Location` in the coroutine.
+    Memory(MPlaceTy<'tcx, Prov>),
 }
 
 /// Where and how to continue when returning/unwinding from the current function.
@@ -258,13 +273,14 @@ impl<'tcx, Prov: Provenance> Frame<'tcx, Prov> {
         Frame {
             body: self.body,
             instance: self.instance,
+            extra,
             return_cont: self.return_cont,
             return_place: self.return_place,
             locals: self.locals,
             va_list: self.va_list,
-            loc: self.loc,
-            extra,
+            track_caller_arg: self.track_caller_arg,
             tracing_span: self.tracing_span,
+            loc: self.loc,
         }
     }
 }
@@ -400,6 +416,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return_place: return_place.clone(),
             locals,
             va_list: vec![],
+            track_caller_arg: None,
             instance,
             tracing_span: SpanGuard::new(),
             extra: (),

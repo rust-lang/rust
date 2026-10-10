@@ -1,20 +1,26 @@
 // This test is duplicated (with changes) at
 // src/tools/miri/tests/pass/async-panic-track-caller.rs
 
-// FIXME: catch_unwind is broken in gcc. Will be fixed in the next rustc_codegen_gcc sync.
-//@ ignore-backends: gcc
 //@ run-pass
-//@ edition:2021
-//@ revisions: afn cls afn_cls nofeat
-//@ needs-unwind
+//@ edition:2024
+//@ revisions: nofeat afn cls afn_cls nofeat_opt afn_opt cls_opt afn_cls_opt
+//@[nofeat_opt] compile-flags: -O -Zinline-mir-hint-threshold=1000
+//@[afn_opt] compile-flags: -O -Zinline-mir-hint-threshold=1000
+//@[cls_opt] compile-flags: -O -Zinline-mir-hint-threshold=1000
+//@[afn_cls_opt] compile-flags: -O -Zinline-mir-hint-threshold=1000
 // gate-test-async_fn_track_caller
-#![feature(stmt_expr_attributes)]
-#![cfg_attr(any(afn, afn_cls), feature(async_fn_track_caller))]
-#![cfg_attr(any(cls, afn_cls), feature(closure_track_caller))]
+//
+#![feature(stmt_expr_attributes, coroutines, coroutine_trait, gen_blocks)]
+#![cfg_attr(any(afn, afn_cls, afn_opt, afn_cls_opt), feature(async_fn_track_caller))]
+#![cfg_attr(any(cls, afn_cls, cls_opt, afn_cls_opt), feature(closure_track_caller))]
 #![allow(unused)]
 
 use std::future::Future;
-use std::panic;
+use std::ops::Coroutine;
+use std::panic::{self, Location};
+use std::pin::pin;
+use std::sync::atomic::AtomicU32;
+use std::sync::atomic::Ordering::Relaxed;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, Wake};
 use std::thread::{self, Thread};
@@ -47,8 +53,12 @@ fn block_on<T>(fut: impl Future<Output = T>) -> T {
     }
 }
 
+static LINE: AtomicU32 = AtomicU32::new(0);
+
 async fn bar() {
-    panic!()
+    LINE.store(Location::caller().line(), Relaxed);
+    #[cfg(panic = "unwind")]
+    panic!();
 }
 
 async fn foo() {
@@ -57,9 +67,11 @@ async fn foo() {
 }
 
 #[track_caller]
-//[cls,nofeat]~^ WARN `#[track_caller]` on async functions is a no-op
+//[nofeat,cls,nofeat_opt,cls_opt]~^ WARN `#[track_caller]` on async functions is a no-op
 async fn bar_track_caller() {
-    panic!()
+    LINE.store(Location::caller().line(), Relaxed);
+    #[cfg(panic = "unwind")]
+    panic!();
 }
 
 async fn foo_track_caller() {
@@ -71,8 +83,10 @@ struct Foo;
 
 impl Foo {
     #[track_caller]
-    //[cls,nofeat]~^ WARN `#[track_caller]` on async functions is a no-op
+    //[nofeat,cls,nofeat_opt,cls_opt]~^ WARN `#[track_caller]` on async functions is a no-op
     async fn bar_assoc() {
+        LINE.store(Location::caller().line(), Relaxed);
+        #[cfg(panic = "unwind")]
         panic!();
     }
 }
@@ -84,10 +98,12 @@ async fn foo_assoc() {
 
 // Since compilation is expected to fail for this fn when `closure_track_caller`
 // is disabled, we test that separately in `async-closure-gate.rs`
-#[cfg(any(cls, afn_cls))]
+#[cfg(any(cls, afn_cls, cls_opt, afn_cls_opt))]
 async fn foo_closure() {
     let closure = #[track_caller]
     async || {
+        LINE.store(Location::caller().line(), Relaxed);
+        #[cfg(panic = "unwind")]
         panic!();
     };
     let future = closure();
@@ -96,18 +112,22 @@ async fn foo_closure() {
 
 // Since compilation is expected to fail for this fn when `closure_track_caller`
 // is disabled, we test that separately in `async-closure-gate.rs`
-#[cfg(any(cls, afn_cls))]
+#[cfg(any(cls, afn_cls, cls_opt, afn_cls_opt))]
 async fn foo_block() {
     let future = #[track_caller]
     async {
+        LINE.store(Location::caller().line(), Relaxed);
+        #[cfg(panic = "unwind")]
         panic!();
     };
     future.await;
 }
 
 #[track_caller]
-//[cls,nofeat]~^ WARN `#[track_caller]` on async functions is a no-op
+//[nofeat,cls,nofeat_opt,cls_opt]~^ WARN `#[track_caller]` on async functions is a no-op
 async fn bar_manual_poll() {
+    LINE.store(Location::caller().line(), Relaxed);
+    #[cfg(panic = "unwind")]
     panic!();
 }
 
@@ -119,7 +139,128 @@ fn foo_manual_poll() {
     assert_eq!(res, std::task::Poll::Ready(()));
 }
 
-fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
+trait Trait {
+    async fn bar_trait_attr_nowhere();
+    #[track_caller]
+    async fn bar_trait_attr_in_trait();
+    async fn bar_trait_attr_in_impl();
+    #[track_caller]
+    async fn bar_trait_attr_in_both();
+
+    #[track_caller]
+    fn bar_rpit_in_trait() -> impl Future<Output = ()>;
+    #[track_caller]
+    async fn bar_rpit_in_impl();
+}
+impl Trait for Foo {
+    async fn bar_trait_attr_nowhere() {
+        LINE.store(Location::caller().line(), Relaxed);
+        #[cfg(panic = "unwind")]
+        panic!();
+    }
+    async fn bar_trait_attr_in_trait() {
+        LINE.store(Location::caller().line(), Relaxed);
+        #[cfg(panic = "unwind")]
+        panic!();
+    }
+    #[track_caller]
+    //[nofeat,cls,nofeat_opt,cls_opt]~^ WARN `#[track_caller]` on async functions is a no-op
+    async fn bar_trait_attr_in_impl() {
+        LINE.store(Location::caller().line(), Relaxed);
+        #[cfg(panic = "unwind")]
+        panic!();
+    }
+    #[track_caller]
+    //[nofeat,cls,nofeat_opt,cls_opt]~^ WARN `#[track_caller]` on async functions is a no-op
+    async fn bar_trait_attr_in_both() {
+        LINE.store(Location::caller().line(), Relaxed);
+        #[cfg(panic = "unwind")]
+        panic!();
+    }
+
+    async fn bar_rpit_in_trait() {
+        LINE.store(Location::caller().line(), Relaxed);
+        #[cfg(panic = "unwind")]
+        panic!();
+    }
+    fn bar_rpit_in_impl() -> impl Future<Output = ()> {
+        async {
+            LINE.store(Location::caller().line(), Relaxed);
+            #[cfg(panic = "unwind")]
+            panic!();
+        }
+    }
+}
+
+async fn foo_trait_attr_nowhere() {
+    let future = Foo::bar_trait_attr_nowhere();
+    future.await;
+}
+async fn foo_trait_attr_in_trait() {
+    let future = Foo::bar_trait_attr_in_trait();
+    future.await;
+}
+async fn foo_trait_attr_in_impl() {
+    let future = Foo::bar_trait_attr_in_impl();
+    future.await;
+}
+async fn foo_trait_attr_in_both() {
+    let future = Foo::bar_trait_attr_in_both();
+    future.await;
+}
+
+async fn foo_rpit_in_trait() {
+    let future = Foo::bar_rpit_in_trait();
+    future.await;
+}
+async fn foo_rpit_in_impl() {
+    let future = Foo::bar_rpit_in_impl();
+    future.await;
+}
+
+#[track_caller]
+gen fn bar_gen_fn() {
+    LINE.store(Location::caller().line(), Relaxed);
+    #[cfg(panic = "unwind")]
+    panic!();
+}
+
+fn foo_gen_fn() {
+    let mut iter = bar_gen_fn();
+    let _ = iter.next();
+}
+
+// Since compilation is expected to fail for this fn when `closure_track_caller`
+// is disabled, we test that separately in `async-closure-gate.rs`
+#[cfg(any(cls, afn_cls, cls_opt, afn_cls_opt))]
+fn foo_gen_block() {
+    let mut iter = #[track_caller]
+    gen {
+        LINE.store(Location::caller().line(), Relaxed);
+        #[cfg(panic = "unwind")]
+        panic!();
+        yield ();
+    };
+    let _ = iter.next();
+}
+
+// Since compilation is expected to fail for this fn when `closure_track_caller`
+// is disabled, we test that separately in `async-closure-gate.rs`
+#[cfg(any(cls, afn_cls, cls_opt, afn_cls_opt))]
+fn foo_coroutine() {
+    let coro = #[track_caller]
+    #[coroutine]
+    || {
+        LINE.store(Location::caller().line(), Relaxed);
+        #[cfg(panic = "unwind")]
+        panic!();
+        yield ();
+    };
+    let coro = std::pin::pin!(coro);
+    let _ = coro.resume(());
+}
+
+fn assert_panicked_at(f: impl FnOnce() + panic::UnwindSafe, line: u32) {
     let loc = Arc::new(Mutex::new(None));
 
     let hook = panic::take_hook();
@@ -129,42 +270,130 @@ fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
             *loc.lock().unwrap() = info.location().map(|loc| loc.line())
         }));
     }
-    panic::catch_unwind(f).unwrap_err();
+    let result = panic::catch_unwind(f);
     panic::set_hook(hook);
-    let x = loc.lock().unwrap().unwrap();
-    x
+    #[cfg(panic = "unwind")]
+    {
+        assert!(result.is_err());
+        assert_eq!(loc.lock().unwrap().unwrap(), line);
+    }
+    #[cfg(not(panic = "unwind"))]
+    assert!(result.is_ok());
 }
 
-// FIXME(async_fn_track_caller): Currently, #[track_caller] on an async function
-// uses the location where the future is awaited or polled.
-// The correct behavior as per T-lang is to use the location where the function is called.
 fn main() {
-    assert_eq!(panicked_at(|| block_on(foo())), 51);
+    assert_panicked_at(|| block_on(foo()), 61);
+    assert_eq!(LINE.load(Relaxed), 59);
 
-    #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 67);
-    #[cfg(any(cls, nofeat))]
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 62);
+    #[cfg(any(afn, afn_cls, afn_opt, afn_cls_opt))]
+    assert_panicked_at(|| block_on(foo_track_caller()), 78);
+    #[cfg(any(afn, afn_cls, afn_opt, afn_cls_opt))]
+    assert_eq!(LINE.load(Relaxed), 78);
+    #[cfg(any(cls, nofeat, cls_opt, nofeat_opt))]
+    assert_panicked_at(|| block_on(foo_track_caller()), 74);
+    #[cfg(any(cls, nofeat, cls_opt, nofeat_opt))]
+    assert_eq!(LINE.load(Relaxed), 72);
 
-    #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 82);
-    #[cfg(any(cls, nofeat))]
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 76);
+    #[cfg(any(afn, afn_cls, afn_opt, afn_cls_opt))]
+    assert_panicked_at(|| block_on(foo_assoc()), 95);
+    #[cfg(any(afn, afn_cls, afn_opt, afn_cls_opt))]
+    assert_eq!(LINE.load(Relaxed), 95);
+    #[cfg(any(cls, nofeat, cls_opt, nofeat_opt))]
+    assert_panicked_at(|| block_on(foo_assoc()), 90);
+    #[cfg(any(cls, nofeat, cls_opt, nofeat_opt))]
+    assert_eq!(LINE.load(Relaxed), 88);
 
+    // FIXME(closure_track_caller): Currently, #[track_caller] on an async closure
+    // uses the location where the future is awaited or polled.
+    // It should be changed to use the location where the closure is called,
+    // so the behavior matches that of `async fn`.
+    #[cfg(any(afn_cls, afn_cls_opt))]
+    assert_panicked_at(|| block_on(foo_closure()), 110);
+    #[cfg(any(afn_cls, afn_cls_opt))]
+    assert_eq!(LINE.load(Relaxed), 110);
     // FIXME(closure_track_caller): if closure_track_caller is enabled, but
     // async_fn_track_caller is disabled, then #[track_caller] on async closures
     // silently do nothing. Either it should function, or we should emit a warning.
     // See #161961
-    #[cfg(cls)]
-    assert_eq!(panicked_at(|| block_on(foo_closure())), 91);
-    #[cfg(afn_cls)]
-    assert_eq!(panicked_at(|| block_on(foo_closure())), 94);
+    #[cfg(any(cls, cls_opt))]
+    assert_panicked_at(|| block_on(foo_closure()), 107);
+    #[cfg(any(cls, cls_opt))]
+    assert_eq!(LINE.load(Relaxed), 105);
 
     #[cfg(any(cls, afn_cls))]
-    assert_eq!(panicked_at(|| block_on(foo_block())), 105);
+    assert_panicked_at(|| block_on(foo_block()), 123);
+    #[cfg(any(cls, afn_cls))]
+    assert_eq!(LINE.load(Relaxed), 123);
 
-    #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| foo_manual_poll()), 118);
-    #[cfg(any(cls, nofeat))]
-    assert_eq!(panicked_at(|| foo_manual_poll()), 111);
+    #[cfg(any(afn, afn_cls, afn_opt, afn_cls_opt))]
+    assert_panicked_at(|| foo_manual_poll(), 135);
+    #[cfg(any(afn, afn_cls, afn_opt, afn_cls_opt))]
+    assert_eq!(LINE.load(Relaxed), 135);
+    #[cfg(any(cls, nofeat, cls_opt, nofeat_opt))]
+    assert_panicked_at(|| foo_manual_poll(), 131);
+    #[cfg(any(cls, nofeat, cls_opt, nofeat_opt))]
+    assert_eq!(LINE.load(Relaxed), 129);
+
+    assert_panicked_at(|| block_on(foo_trait_attr_nowhere()), 159);
+    assert_eq!(LINE.load(Relaxed), 157);
+
+    #[cfg(any(afn, afn_cls, afn_opt, afn_cls_opt))]
+    assert_panicked_at(|| block_on(foo_trait_attr_in_trait()), 200);
+    #[cfg(any(afn, afn_cls, afn_opt, afn_cls_opt))]
+    assert_eq!(LINE.load(Relaxed), 200);
+    #[cfg(any(cls, nofeat, cls_opt, nofeat_opt))]
+    assert_panicked_at(|| block_on(foo_trait_attr_in_trait()), 164);
+    #[cfg(any(cls, nofeat, cls_opt, nofeat_opt))]
+    assert_eq!(LINE.load(Relaxed), 162);
+
+    #[cfg(any(afn, afn_cls, afn_opt, afn_cls_opt))]
+    assert_panicked_at(|| block_on(foo_trait_attr_in_impl()), 204);
+    #[cfg(any(afn, afn_cls, afn_opt, afn_cls_opt))]
+    assert_eq!(LINE.load(Relaxed), 204);
+    #[cfg(any(cls, nofeat, cls_opt, nofeat_opt))]
+    assert_panicked_at(|| block_on(foo_trait_attr_in_impl()), 171);
+    #[cfg(any(cls, nofeat, cls_opt, nofeat_opt))]
+    assert_eq!(LINE.load(Relaxed), 169);
+
+    #[cfg(any(afn, afn_cls, afn_opt, afn_cls_opt))]
+    assert_panicked_at(|| block_on(foo_trait_attr_in_both()), 208);
+    #[cfg(any(afn, afn_cls, afn_opt, afn_cls_opt))]
+    assert_eq!(LINE.load(Relaxed), 208);
+    #[cfg(any(cls, nofeat, cls_opt, nofeat_opt))]
+    assert_panicked_at(|| block_on(foo_trait_attr_in_both()), 178);
+    #[cfg(any(cls, nofeat, cls_opt, nofeat_opt))]
+    assert_eq!(LINE.load(Relaxed), 176);
+
+    #[cfg(any(afn, afn_cls, afn_opt, afn_cls_opt))]
+    assert_panicked_at(|| block_on(foo_rpit_in_trait()), 213);
+    #[cfg(any(afn, afn_cls, afn_opt, afn_cls_opt))]
+    assert_eq!(LINE.load(Relaxed), 213);
+    #[cfg(any(cls, nofeat, cls_opt, nofeat_opt))]
+    assert_panicked_at(|| block_on(foo_rpit_in_trait()), 184);
+    #[cfg(any(cls, nofeat, cls_opt, nofeat_opt))]
+    assert_eq!(LINE.load(Relaxed), 182);
+
+    assert_panicked_at(|| block_on(foo_rpit_in_impl()), 190);
+    assert_eq!(LINE.load(Relaxed), 188);
+
+    // FIXME(gen_blocks): Decide if this behavior is correct.
+    #[cfg(any(afn, afn_cls, afn_opt, afn_cls_opt))]
+    assert_panicked_at(|| foo_gen_fn(), 229);
+    #[cfg(any(afn, afn_cls, afn_opt, afn_cls_opt))]
+    assert_eq!(LINE.load(Relaxed), 229);
+    #[cfg(any(cls, nofeat, cls_opt, nofeat_opt))]
+    assert_panicked_at(|| foo_gen_fn(), 225);
+    #[cfg(any(cls, nofeat, cls_opt, nofeat_opt))]
+    assert_eq!(LINE.load(Relaxed), 223);
+
+    #[cfg(any(cls, afn_cls, cls_opt, afn_cls_opt))]
+    assert_panicked_at(|| foo_gen_block(), 244);
+    #[cfg(any(cls, afn_cls, cls_opt, afn_cls_opt))]
+    assert_eq!(LINE.load(Relaxed), 244);
+
+    // FIXME(coroutines): This behavior is inconsistent with async blocks.
+    #[cfg(any(cls, afn_cls, cls_opt, afn_cls_opt))]
+    assert_panicked_at(|| foo_coroutine(), 260);
+    #[cfg(any(cls, afn_cls, cls_opt, afn_cls_opt))]
+    assert_eq!(LINE.load(Relaxed), 260);
 }

@@ -1240,6 +1240,8 @@ pub enum DesugaringKind {
         source: bool,
     },
     RangeExpr,
+    // `#[track_caller]` applied to a coroutine fn or coroutine closure
+    CoroutineFnTrackCaller,
 }
 
 impl DesugaringKind {
@@ -1262,6 +1264,9 @@ impl DesugaringKind {
                 "expression that expanded into a format string literal"
             }
             DesugaringKind::RangeExpr => "range expression",
+            DesugaringKind::CoroutineFnTrackCaller => {
+                "`#[track_caller]` on coroutine fn or coroutine closure"
+            }
         }
     }
 
@@ -1282,6 +1287,7 @@ impl DesugaringKind {
             DesugaringKind::PatTyRange => value == "PatTyRange",
             DesugaringKind::FormatLiteral { .. } => value == "FormatLiteral",
             DesugaringKind::RangeExpr => value == "RangeExpr",
+            DesugaringKind::CoroutineFnTrackCaller => value == "CoroutineFnTrackCaller",
         }
     }
 }

@@ -228,6 +228,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind: closure_kind,
             constness: self.lower_constness(attrs, constness),
             explicit_captures,
+            captured_caller_location: None,
         });
 
         (hir::ExprKind::Closure(c), move_expr_state)
@@ -324,8 +325,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     body.span,
                     coroutine_marker,
                     hir::CoroutineSource::Closure,
+                    false,
                 );
 
+                // FIXME(closure_track_caller): Currently, coroutine closures,
+                // unlike coroutine fns, have #[track_caller] track the poller instead of
+                // the caller of the closure.
                 this.maybe_forward_track_caller(closure_hir_id, expr.hir_id);
 
                 (parameters, expr)
@@ -374,6 +379,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind: hir::ClosureKind::CoroutineClosure(coroutine_desugaring),
             constness: self.lower_constness(attrs, constness),
             explicit_captures,
+            captured_caller_location: None,
         });
         hir::ExprKind::Closure(c)
     }
