@@ -51,25 +51,50 @@
 //!
 //! # Memory layout
 //!
-//! When the type is non-zero-sized and the capacity is nonzero, [`Vec`] uses the [`Global`]
-//! allocator for its allocation. It is valid to convert both ways between such a [`Vec`] and a raw
-//! pointer allocated with the [`Global`] allocator, provided that the [`Layout`] used with the
-//! allocator is correct for a sequence of `capacity` elements of the type, and the first `len`
-//! values pointed to by the raw pointer are valid. More precisely, a `ptr: *mut T` that has been
-//! allocated with the [`Global`] allocator with [`Layout::array::<T>(capacity)`][Layout::array] may
-//! be converted into a vec using
-//! [`Vec::<T>::from_raw_parts(ptr, len, capacity)`](Vec::from_raw_parts). Conversely, the memory
-//! backing a `value: *mut T` obtained from [`Vec::<T>::as_mut_ptr`] may be deallocated using the
-//! [`Global`] allocator with the same layout.
+//! A [`Vec`] conceptually consists of a raw pointer `ptr` to the start of the allocation, a
+//! length `len`, a capacity `cap`, and an allocator `alloc`.
+//! While the exact fields and their order are not specified, a [`Vec`] can be converted to and
+//! from these parts using [`Vec::into_raw_parts_with_allocator`], [`Vec::from_raw_parts_in`],
+//! [`Vec::into_raw_parts`], and [`Vec::from_raw_parts`], as well as their [`NonNull`]-based
+//! versions.
 //!
-//! For zero-sized types (ZSTs), or when the capacity is zero, the `Vec` pointer must be non-null
-//! and sufficiently aligned. The recommended way to build a `Vec` of ZSTs if [`vec!`] cannot be
-//! used is to use [`ptr::NonNull::dangling`].
+//! The parts of a [`Vec`] have the following invariants:
 //!
+//! * If [`size_of::<T>()`](size_of) and `cap` are non-zero, then:
+//!   - `ptr` must point to the start of a memory block [*currently allocated*] via `alloc`.
+//!   - [`Layout::array::<T>(cap)`] must [*fit*] the memory block of `ptr`. In particular,
+//!     * `T` must have the same alignment as the [`Layout`] `ptr` was allocated with, and
+//!     * `size_of::<T>() * cap` must be at least the size of the [`Layout`] `ptr` was
+//!       allocated with, and at most the size of the allocation returned the allocator.
+//!   - `size_of::<T>() * cap` must be at most [`isize::MAX`].
+//!     See the safety documentation of [`pointer::offset`].
+//! * If [`size_of::<T>()`](size_of) or `cap` is zero, then `ptr` must be any sufficiently aligned non-null pointer.
+//!
+//!   NOTE: `ptr` will not be passed to the allocator for deallocation by the destructor of [`Vec`]
+//!   in this case. Thus, it is unwise to use a pointer acquired from the allocator for this, as
+//!   overallocated memory may end up being leaked. Use [`ptr::dangling`] instead.
+//! * The following must always be satisfied:
+//!   - `len` needs to be less than or equal to `cap`.
+//!   - At `ptr`, there are at least `len` valid values of type `T`, laid out contiguously
+//!     (like an array). These values are considered owned by the [`Vec`].
+//!
+//! It is sound to create a [`Vec`] from parts that satisfy these invariants.
+//!
+//! Conversely, the memory backing `ptr` obtained from [`Vec::as_mut_ptr`] or
+//! [`Vec::into_raw_parts_with_allocator`]-like methods may be deallocated
+//! using the allocator, with layout [`Layout::array::<T>(cap)`], provided
+//! that [`size_of::<T>()`](size_of) or `cap` is non-zero.
+//! To automatically handle the case where the allocation is zero-sized,
+//! it is recommended to use [`Vec::from_raw_parts_in`], instead of manually
+//! deallocating.
+//!
+//! [*fit*]: crate::alloc::Allocator#memory-fitting
+//! [*currently allocated*]: crate::alloc::Allocator#currently-allocated-memory
+//! [`allocate`]: crate::alloc::Allocator::allocate
 //! [`push`]: Vec::push
 //! [`ptr::NonNull::dangling`]: NonNull::dangling
 //! [`Layout`]: crate::alloc::Layout
-//! [Layout::array]: crate::alloc::Layout::array
+//! [`Layout::array::<T>(cap)`]: crate::alloc::Layout::array
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -303,35 +328,13 @@ mod sve_retain;
 ///
 /// # Guarantees
 ///
+/// The following section is to be read as an addendum of the
+/// [memory layout](self#memory-layout) section.
+///
 /// Due to its incredibly fundamental nature, `Vec` makes a lot of guarantees
 /// about its design. This ensures that it's as low-overhead as possible in
 /// the general case, and can be correctly manipulated in primitive ways
-/// by unsafe code. Note that these guarantees refer to an unqualified `Vec<T>`.
-/// If additional type parameters are added (e.g., to support custom allocators),
-/// overriding their defaults may change the behavior.
-///
-/// Most fundamentally, `Vec` is and always will be a (pointer, capacity, length)
-/// triplet. No more, no less. The order of these fields is completely
-/// unspecified, and you should use the appropriate methods to modify these.
-/// The pointer will never be null, so this type is null-pointer-optimized.
-///
-/// However, the pointer might not actually point to allocated memory. In particular,
-/// if you construct a `Vec` with capacity 0 via [`Vec::new`], [`vec![]`][`vec!`],
-/// [`Vec::with_capacity(0)`][`Vec::with_capacity`], or by calling [`shrink_to_fit`]
-/// on an empty Vec, it will not allocate memory. Similarly, if you store zero-sized
-/// types inside a `Vec`, it will not allocate space for them. *Note that in this case
-/// the `Vec` might not report a [`capacity`] of 0*. `Vec` will allocate if and only
-/// if <code>[size_of::\<T>]\() * [capacity]\() > 0</code>. In general, `Vec`'s allocation
-/// details are very subtle --- if you intend to allocate memory using a `Vec`
-/// and use it for something else (either to pass to unsafe code, or to build your
-/// own memory-backed collection), be sure to deallocate this memory by using
-/// `from_raw_parts` to recover the `Vec` and then dropping it.
-///
-/// If a `Vec` *has* allocated memory, then the memory it points to is on the heap
-/// (as defined by the allocator Rust is configured to use by default), and its
-/// pointer points to [`len`] initialized, contiguous elements in order (what
-/// you would see if you coerced it to a slice), followed by <code>[capacity] - [len]</code>
-/// logically uninitialized, contiguous elements.
+/// by unsafe code.
 ///
 /// A vector containing the elements `'a'` and `'b'` with capacity 4 can be
 /// visualized as below. The top part is the `Vec` struct, it contains a
@@ -469,7 +472,7 @@ impl<T> Vec<T> {
     ///
     /// The vector will be able to hold at least `capacity` elements without
     /// reallocating. This method is allowed to allocate for more elements than
-    /// `capacity`. If `capacity` is zero, the vector will not allocate.
+    /// `capacity`. If `capacity` is zero, the vector [will not allocate].
     ///
     /// It is important to note that although the returned vector has the
     /// minimum *capacity* specified, the vector will have a zero *length*. For
@@ -479,11 +482,12 @@ impl<T> Vec<T> {
     /// If it is important to know the exact allocated capacity of a `Vec`,
     /// always use the [`capacity`] method after construction.
     ///
-    /// For `Vec<T>` where `T` is a zero-sized type, there will be no allocation
-    /// and the capacity will always be `usize::MAX`.
+    /// For `Vec<T>` where `T` is a zero-sized type, the vector
+    /// [will not allocate], and the capacity will always be `usize::MAX`.
     ///
     /// [Capacity and reallocation]: #capacity-and-reallocation
     /// [`capacity`]: Vec::capacity
+    /// [will not allocate]: self#memory-layout
     ///
     /// # Panics
     ///
@@ -529,12 +533,14 @@ impl<T> Vec<T> {
     ///
     /// The vector will be able to hold at least `capacity` elements without
     /// reallocating. This method is allowed to allocate for more elements than
-    /// `capacity`. If `capacity` is zero, the vector will not allocate.
+    /// `capacity`. If `capacity` is zero, the vector [will not allocate].
     ///
     /// # Errors
     ///
     /// Returns an error if the capacity exceeds `isize::MAX` _bytes_,
     /// or if the allocator reports allocation failure.
+    ///
+    /// [will not allocate]: self#memory-layout
     #[inline]
     #[unstable(feature = "try_with_capacity", issue = "91913")]
     pub fn try_with_capacity(capacity: usize) -> Result<Self, TryReserveError> {
@@ -545,34 +551,10 @@ impl<T> Vec<T> {
     ///
     /// # Safety
     ///
-    /// This is highly unsafe, due to the number of invariants that aren't
-    /// checked:
+    /// The parts must satisfy the invariants described in the [memory layout] section,
+    /// with allocator [`Global`].
     ///
-    /// * If `T` is not a zero-sized type and the capacity is nonzero, `ptr` must have
-    ///   been allocated using the global allocator, such as via the [`alloc::alloc`]
-    ///   function. If `T` is a zero-sized type or the capacity is zero, `ptr` need
-    ///   only be non-null and aligned.
-    /// * `T` needs to have the same alignment as what `ptr` was allocated with,
-    ///   if the pointer is required to be allocated.
-    ///   (`T` having a less strict alignment is not sufficient, the alignment really
-    ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
-    ///   allocated and deallocated with the same layout.)
-    /// * The size of `T` times the `capacity` (i.e. the allocated size in bytes), if
-    ///   nonzero, needs to be the same size as the pointer was allocated with.
-    ///   (Because similar to alignment, [`dealloc`] must be called with the same
-    ///   layout `size`.)
-    /// * `length` needs to be less than or equal to `capacity`.
-    /// * The first `length` values must be properly initialized values of type `T`.
-    /// * `capacity` needs to be the capacity that the pointer was allocated with,
-    ///   if the pointer is required to be allocated.
-    /// * The allocated size in bytes must be no larger than `isize::MAX`.
-    ///   See the safety documentation of [`pointer::offset`].
-    ///
-    /// These requirements are always upheld by any `ptr` that has been allocated
-    /// via `Vec<T>`. Other allocation sources are allowed if the invariants are
-    /// upheld.
-    ///
-    /// Violating these may cause problems like corrupting the allocator's
+    /// Violating them may cause problems like corrupting the allocator's
     /// internal data structures. For example it is normally **not** safe
     /// to build a `Vec<u8>` from a pointer to a C `char` array with length
     /// `size_t`, doing so is only safe if the array was initially allocated by
@@ -591,8 +573,7 @@ impl<T> Vec<T> {
     /// function.
     ///
     /// [`String`]: crate::string::String
-    /// [`alloc::alloc`]: crate::alloc::alloc
-    /// [`dealloc`]: crate::alloc::GlobalAlloc::dealloc
+    /// [memory layout]: self#memory-layout
     ///
     /// # Examples
     ///
@@ -652,29 +633,10 @@ impl<T> Vec<T> {
     ///
     /// # Safety
     ///
-    /// This is highly unsafe, due to the number of invariants that aren't
-    /// checked:
+    /// The parts must satisfy the invariants described in the [memory layout] section,
+    /// with allocator [`Global`].
     ///
-    /// * `ptr` must have been allocated using the global allocator, such as via
-    ///   the [`alloc::alloc`] function.
-    /// * `T` needs to have the same alignment as what `ptr` was allocated with.
-    ///   (`T` having a less strict alignment is not sufficient, the alignment really
-    ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
-    ///   allocated and deallocated with the same layout.)
-    /// * The size of `T` times the `capacity` (i.e. the allocated size in bytes) needs
-    ///   to be the same size as the pointer was allocated with. (Because similar to
-    ///   alignment, [`dealloc`] must be called with the same layout `size`.)
-    /// * `length` needs to be less than or equal to `capacity`.
-    /// * The first `length` values must be properly initialized values of type `T`.
-    /// * `capacity` needs to be the capacity that the pointer was allocated with.
-    /// * The allocated size in bytes must be no larger than `isize::MAX`.
-    ///   See the safety documentation of [`pointer::offset`].
-    ///
-    /// These requirements are always upheld by any `ptr` that has been allocated
-    /// via `Vec<T>`. Other allocation sources are allowed if the invariants are
-    /// upheld.
-    ///
-    /// Violating these may cause problems like corrupting the allocator's
+    /// Violating them may cause problems like corrupting the allocator's
     /// internal data structures. For example it is normally **not** safe
     /// to build a `Vec<u8>` from a pointer to a C `char` array with length
     /// `size_t`, doing so is only safe if the array was initially allocated by
@@ -693,8 +655,7 @@ impl<T> Vec<T> {
     /// function.
     ///
     /// [`String`]: crate::string::String
-    /// [`alloc::alloc`]: crate::alloc::alloc
-    /// [`dealloc`]: crate::alloc::GlobalAlloc::dealloc
+    /// [memory layout]: self#memory-layout
     ///
     /// # Examples
     ///
@@ -917,7 +878,7 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     ///
     /// The vector will be able to hold at least `capacity` elements without
     /// reallocating. This method is allowed to allocate for more elements than
-    /// `capacity`. If `capacity` is zero, the vector will not allocate.
+    /// `capacity`. If `capacity` is zero, the vector [will not allocate].
     ///
     /// It is important to note that although the returned vector has the
     /// minimum *capacity* specified, the vector will have a zero *length*. For
@@ -927,11 +888,12 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     /// If it is important to know the exact allocated capacity of a `Vec`,
     /// always use the [`capacity`] method after construction.
     ///
-    /// For `Vec<T, A>` where `T` is a zero-sized type, there will be no allocation
-    /// and the capacity will always be `usize::MAX`.
+    /// For `Vec<T, A>` where `T` is a zero-sized type, the vector
+    /// [will not allocate], and the capacity will always be `usize::MAX`.
     ///
     /// [Capacity and reallocation]: #capacity-and-reallocation
     /// [`capacity`]: Vec::capacity
+    /// [will not allocate]: self#memory-layout
     ///
     /// # Panics
     ///
@@ -1069,12 +1031,14 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// The vector will be able to hold at least `capacity` elements without
     /// reallocating. This method is allowed to allocate for more elements than
-    /// `capacity`. If `capacity` is zero, the vector will not allocate.
+    /// `capacity`. If `capacity` is zero, the vector [will not allocate].
     ///
     /// # Errors
     ///
     /// Returns an error if the capacity exceeds `isize::MAX` _bytes_,
     /// or if the allocator reports allocation failure.
+    ///
+    /// [will not allocate]: self#memory-layout
     #[inline]
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
     // #[unstable(feature = "try_with_capacity", issue = "91913")]
@@ -1087,28 +1051,9 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Safety
     ///
-    /// This is highly unsafe, due to the number of invariants that aren't
-    /// checked:
+    /// The parts must satisfy the invariants described in the [memory layout] section.
     ///
-    /// * `ptr` must be [*currently allocated*] via the given allocator `alloc`.
-    /// * `T` needs to have the same alignment as what `ptr` was allocated with.
-    ///   (`T` having a less strict alignment is not sufficient, the alignment really
-    ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
-    ///   allocated and deallocated with the same layout.)
-    /// * The size of `T` times the `capacity` (i.e. the allocated size in bytes) needs
-    ///   to be the same size as the pointer was allocated with. (Because similar to
-    ///   alignment, [`dealloc`] must be called with the same layout `size`.)
-    /// * `length` needs to be less than or equal to `capacity`.
-    /// * The first `length` values must be properly initialized values of type `T`.
-    /// * `capacity` needs to [*fit*] the layout size that the pointer was allocated with.
-    /// * The allocated size in bytes must be no larger than `isize::MAX`.
-    ///   See the safety documentation of [`pointer::offset`].
-    ///
-    /// These requirements are always upheld by any `ptr` that has been allocated
-    /// via `Vec<T, A>`. Other allocation sources are allowed if the invariants are
-    /// upheld.
-    ///
-    /// Violating these may cause problems like corrupting the allocator's
+    /// Violating them may cause problems like corrupting the allocator's
     /// internal data structures. For example it is **not** safe
     /// to build a `Vec<u8>` from a pointer to a C `char` array with length `size_t`.
     /// It's also not safe to build one from a `Vec<u16>` and its length, because
@@ -1123,9 +1068,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// function.
     ///
     /// [`String`]: crate::string::String
-    /// [`dealloc`]: crate::alloc::GlobalAlloc::dealloc
-    /// [*currently allocated*]: crate::alloc::Allocator#currently-allocated-memory
-    /// [*fit*]: crate::alloc::Allocator#memory-fitting
+    /// [`allocate`]: crate::alloc::Allocator::allocate
+    /// [memory layout]: self#memory-layout
     ///
     /// # Examples
     ///
@@ -1201,28 +1145,9 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Safety
     ///
-    /// This is highly unsafe, due to the number of invariants that aren't
-    /// checked:
+    /// The parts must satisfy the invariants described in the [memory layout] section.
     ///
-    /// * `ptr` must be [*currently allocated*] via the given allocator `alloc`.
-    /// * `T` needs to have the same alignment as what `ptr` was allocated with.
-    ///   (`T` having a less strict alignment is not sufficient, the alignment really
-    ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
-    ///   allocated and deallocated with the same layout.)
-    /// * The size of `T` times the `capacity` (i.e. the allocated size in bytes) needs
-    ///   to be the same size as the pointer was allocated with. (Because similar to
-    ///   alignment, [`dealloc`] must be called with the same layout `size`.)
-    /// * `length` needs to be less than or equal to `capacity`.
-    /// * The first `length` values must be properly initialized values of type `T`.
-    /// * `capacity` needs to [*fit*] the layout size that the pointer was allocated with.
-    /// * The allocated size in bytes must be no larger than `isize::MAX`.
-    ///   See the safety documentation of [`pointer::offset`].
-    ///
-    /// These requirements are always upheld by any `ptr` that has been allocated
-    /// via `Vec<T, A>`. Other allocation sources are allowed if the invariants are
-    /// upheld.
-    ///
-    /// Violating these may cause problems like corrupting the allocator's
+    /// Violating them may cause problems like corrupting the allocator's
     /// internal data structures. For example it is **not** safe
     /// to build a `Vec<u8>` from a pointer to a C `char` array with length `size_t`.
     /// It's also not safe to build one from a `Vec<u16>` and its length, because
@@ -1238,8 +1163,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// [`String`]: crate::string::String
     /// [`dealloc`]: crate::alloc::GlobalAlloc::dealloc
-    /// [*currently allocated*]: crate::alloc::Allocator#currently-allocated-memory
-    /// [*fit*]: crate::alloc::Allocator#memory-fitting
+    /// [memory layout]: self#memory-layout
     ///
     /// # Examples
     ///
@@ -1899,7 +1823,7 @@ impl<T, A: Allocator> Vec<T, A> {
     }
 
     /// Returns a raw pointer to the vector's buffer, or a dangling raw pointer
-    /// valid for zero sized reads if the vector didn't allocate.
+    /// valid for zero sized reads if the vector [didn't allocate].
     ///
     /// The caller must ensure that the vector outlives the pointer this
     /// function returns, or else it will end up dangling.
@@ -1951,6 +1875,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`as_mut_ptr`]: Vec::as_mut_ptr
     /// [`as_ptr`]: Vec::as_ptr
     /// [`as_non_null`]: Vec::as_non_null
+    /// [didn't allocate]: self#memory-layout
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     #[rustc_never_returns_null_ptr]
@@ -1963,7 +1888,7 @@ impl<T, A: Allocator> Vec<T, A> {
     }
 
     /// Returns a raw mutable pointer to the vector's buffer, or a dangling
-    /// raw pointer valid for zero sized reads if the vector didn't allocate.
+    /// raw pointer valid for zero sized reads if the vector [didn't allocate].
     ///
     /// The caller must ensure that the vector outlives the pointer this
     /// function returns, or else it will end up dangling.
@@ -2035,6 +1960,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`as_non_null`]: Vec::as_non_null
     /// [`dealloc`]: crate::alloc::GlobalAlloc::dealloc
     /// [`ManuallyDrop`]: core::mem::ManuallyDrop
+    /// [didn't allocate]: self#memory-layout
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     #[rustc_never_returns_null_ptr]
@@ -2047,7 +1973,7 @@ impl<T, A: Allocator> Vec<T, A> {
     }
 
     /// Returns a `NonNull` pointer to the vector's buffer, or a dangling
-    /// `NonNull` pointer valid for zero sized reads if the vector didn't allocate.
+    /// `NonNull` pointer valid for zero sized reads if the vector [didn't allocate].
     ///
     /// The caller must ensure that the vector outlives the pointer this
     /// function returns, or else it will end up dangling.
@@ -2102,6 +2028,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`as_mut_ptr`]: Vec::as_mut_ptr
     /// [`as_ptr`]: Vec::as_ptr
     /// [`as_non_null`]: Vec::as_non_null
+    /// [didn't allocate]: self#memory-layout
     #[unstable(feature = "vec_as_non_null", issue = "157843")]
     #[rustc_const_unstable(feature = "vec_as_non_null", issue = "157843")]
     #[rustc_as_ptr]
