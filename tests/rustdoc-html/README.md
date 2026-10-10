@@ -144,6 +144,10 @@ page, etc.
 Contains tests checking the content of the source code pages (when you click on the `source`
 links).
 
+## `tests/rustdoc-html/struct`
+
+Same as `tests/rustdoc-html/enum` but for struct items.
+
 ## `tests/rustdoc-html/synthetic_auto`
 
 Somewhat equivalent to the `auto` folder's tests. Both should likely be merged.
