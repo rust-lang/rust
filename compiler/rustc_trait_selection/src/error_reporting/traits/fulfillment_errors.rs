@@ -57,6 +57,39 @@ use crate::traits::{
 };
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
+    /// Checks for an explicit `Self: Trait` bound on an associated type impl.
+    fn is_explicit_self_trait_bound_on_impl_assoc_type(
+        &self,
+        body_def_id: LocalDefId,
+        cause_code: &ObligationCauseCode<'tcx>,
+        trait_def_id: DefId,
+    ) -> bool {
+        let ObligationCauseCode::WhereClause(item_def_id, span) = *cause_code.peel_derives() else {
+            return false;
+        };
+        let is_impl_trait_assoc_type = if let Some(assoc_item) =
+            self.tcx.opt_associated_item(body_def_id.to_def_id())
+            && let Some(trait_item_def_id) = assoc_item.trait_item_def_id()
+        {
+            trait_item_def_id == item_def_id
+                && matches!(assoc_item.kind, ty::AssocKind::Type { .. })
+        } else {
+            false
+        };
+
+        if !is_impl_trait_assoc_type {
+            return false;
+        }
+
+        self.tcx.clauses_of(item_def_id).instantiate_own_identity().any(|(clause, clause_span)| {
+            clause_span == span
+                && clause.skip_norm_wip().as_trait_clause().is_some_and(|trait_pred| {
+                    trait_pred.def_id() == trait_def_id
+                        && trait_pred.skip_binder().self_ty().is_self_param()
+                })
+        })
+    }
+
     /// The `root_obligation` parameter should be the `root_obligation` field
     /// from a `FulfillmentError`. If no `FulfillmentError` is available,
     /// then it should be the same as `obligation`.
@@ -187,12 +220,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             } else {
                                 None
                             };
-
-                        let is_explicit_self_sized_bound_on_impl_assoc_type =
-                            impl_assoc_type_self_trait_bound_param.is_some()
-                                && self
-                                    .tcx
-                                    .is_lang_item(leaf_trait_predicate.def_id(), LangItem::Sized);
 
                         if let Some(param_ty) = impl_assoc_type_self_trait_bound_param {
                             span = param_ty.span_from_generics(
@@ -418,11 +445,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             _ => DUMMY_SP,
                         };
                         if let Some(s) = label {
-                            // Preserve custom `#[rustc_on_unimplemented]` labels for other traits;
-                            // the explicit `Self: Sized` associated-type case has targeted labeling.
-                            if !is_explicit_self_sized_bound_on_impl_assoc_type {
-                                err.span_label(span, s);
-                            }
+                            // If it has a custom `#[rustc_on_unimplemented]`
+                            // error message, let's display it as the label!
+                            err.span_label(span, s);
                             if !matches!(leaf_trait_predicate.skip_binder().self_ty().kind(), ty::Param(_))
                                 // When the self type is a type param We don't need to "the trait
                                 // `std::marker::Sized` is not implemented for `T`" as we will point

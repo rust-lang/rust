@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/assoc-item-own-bound-issue-162368.rs:13:18
+  --> $DIR/assoc-item-own-bound.rs:18:18
    |
 LL | impl<T: ?Sized> Trait for T {
    |      - this type parameter needs to be `Sized`
