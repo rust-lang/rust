@@ -267,8 +267,10 @@ approved by the appropriate team for that shared code before acceptance.
     target may not have; use conditional compilation or runtime detection, as
     appropriate, to let each target run code supported by that target.
 - Tier 3 targets must be able to produce assembly using at least one of
-  rustc's supported backends from any host target. (Having support in a fork
-  of the backend is not sufficient, it must be upstream.)
+  rustc's supported backends from any host target. The default target CPU (if any) and
+  target features must be supported by that backend. Having support in a fork
+  of the backend is not sufficient, it must be upstream in the version of the
+  backend that ships with rustc.
 
 If a tier 3 target stops meeting these requirements, or the target maintainers
 no longer have interest or time, or the target shows no signs of activity and
