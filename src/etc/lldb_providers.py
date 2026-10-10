@@ -4,6 +4,7 @@ import sys
 from enum import Flag, auto
 from typing import TYPE_CHECKING, Dict, Generator, List, Optional
 
+import lldb
 from lldb import (
     SBData,
     SBError,
@@ -1555,14 +1556,43 @@ def StdRcSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     return f"strong={strong}, weak={weak}"
 
 
+_USIZE_TYPE = None
+
+
+def _get_usize_type(target):
+    global _USIZE_TYPE
+
+    if _USIZE_TYPE is None:
+        ptr_size = target.addr_size
+
+        for basic_type in [
+            lldb.eBasicTypeUnsignedLongLong,
+            lldb.eBasicTypeUnsignedLong,
+            lldb.eBasicTypeUnsignedShort,
+            lldb.eBasicTypeUnsignedInt,
+            lldb.eBasicTypeUnsignedChar,
+        ]:
+            candidate_type = target.GetBasicType(basic_type)
+
+            if candidate_type.GetByteSize() == ptr_size:
+                _USIZE_TYPE = candidate_type
+
+                break
+
+        if _USIZE_TYPE is None:
+            _USIZE_TYPE = lldb.SBType()
+
+    return _USIZE_TYPE
+
+
 class StdRcSyntheticProvider:
     """Pretty-printer for alloc::rc::Rc<T> and alloc::sync::Arc<T>
-
-    struct Rc<T> { ptr: NonNull<RcInner<T>>, ... }
+    struct RcValuePointer<T> { ptr: NonNull<T>, ... }
+    struct Rc<T> { ptr: RcValuePointer<T>, ... }
     rust 1.31.1: struct NonNull<T> { pointer: NonZero<*const T> }
     rust 1.33.0: struct NonNull<T> { pointer: *const T }
     struct NonZero<T>(T)
-    struct RcInner<T> { strong: Cell<usize>, weak: Cell<usize>, value: T }
+    struct Header<C> { strong: C, weak: C }
 
     struct Arc<T> { ptr: NonNull<ArcInner<T>>, ... }
     struct ArcInner<T> { strong: atomic::Atomic<usize>, weak: atomic::Atomic<usize>, data: T }
@@ -1571,28 +1601,54 @@ class StdRcSyntheticProvider:
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque, is_atomic: bool = False):
         self.valobj = valobj
 
-        self.ptr = unwrap_unique_or_non_null(self.valobj.GetChildMemberWithName("ptr"))
-
-        self.value = self.ptr.GetChildMemberWithName("data" if is_atomic else "value")
-
-        # infallibly gets an unsigned integer type of at least 64 bits. We don't need to worry about
-        # whether or not `usize` is actually smaller than that since we don't ever display the
-        # underlying type to the user anyway
-        usize_type = valobj.GetTarget().GetBasicType(eBasicTypeUnsignedLongLong)
-
-        self.strong = self.ptr.GetChildMemberWithName("strong").Cast(usize_type)
-        self.weak = self.ptr.GetChildMemberWithName("weak").Cast(usize_type)
-
-        # If the usize type isn't valid due to llvm/llvm-project#196812, not even the type's fields
-        # will populate. Luckily, `RcInner` is `#[repr(C)]`, so we can infallibly find the strong
-        # and weak values in memory
-        if not self.strong.IsValid() or not self.weak.IsValid():
-            raw_ptr = self.ptr.Cast(usize_type.GetPointerType())
-            addr = raw_ptr.GetValueAsAddress()
-            self.strong = self.valobj.CreateValueFromAddress("strong", addr, usize_type)
-            self.weak = self.valobj.CreateValueFromAddress(
-                "weak", addr + usize_type.GetByteSize(), usize_type
+        if is_atomic:
+            self.ptr = unwrap_unique_or_non_null(
+                self.valobj.GetChildMemberWithName("ptr")
             )
+
+            self.value = self.ptr.GetChildMemberWithName("data")
+
+            # infallibly gets an unsigned integer type of at least 64 bits. We don't need to worry
+            # about whether or not `usize` is actually smaller than that since we don't ever display
+            # the underlying type to the user anyway
+            usize_type = valobj.GetTarget().GetBasicType(eBasicTypeUnsignedLongLong)
+
+            self.strong = self.ptr.GetChildMemberWithName("strong").Cast(usize_type)
+            self.weak = self.ptr.GetChildMemberWithName("weak").Cast(usize_type)
+
+            # If the usize type isn't valid due to llvm/llvm-project#196812, not even the type's
+            # fields will populate. Luckily, `RcInner` is `#[repr(C)]`, so we can infallibly find
+            # the strong and weak values in memory
+            if not self.strong.IsValid() or not self.weak.IsValid():
+                raw_ptr = self.ptr.Cast(usize_type.GetPointerType())
+                addr = raw_ptr.GetValueAsAddress()
+
+                self.strong = self.valobj.CreateValueFromAddress(
+                    "strong", addr, usize_type
+                )
+
+                self.weak = self.valobj.CreateValueFromAddress(
+                    "weak", addr + usize_type.GetByteSize(), usize_type
+                )
+        else:
+            ptr = (
+                self.valobj.GetChildMemberWithName("ptr")
+                .GetChildMemberWithName("ptr")
+                .GetChildMemberWithName("pointer")
+            )
+
+            self.value = ptr.deref.Clone("value")
+
+            target = ptr.GetTarget()
+            weak_address = ptr.GetValueAsUnsigned() - target.addr_size
+            strong_address = weak_address - target.addr_size
+            usize_type = _get_usize_type(target)
+
+            self.strong = ptr.CreateValueFromAddress(
+                "strong", strong_address, usize_type
+            )
+
+            self.weak = ptr.CreateValueFromAddress("weak", weak_address, usize_type)
 
         self.value_builder = ValueBuilder(valobj)
 

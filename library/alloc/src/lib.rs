@@ -241,6 +241,8 @@ mod raw_vec;
 /// Implementations of reference-counted pointers.
 #[cfg(not(no_rc))]
 mod rcs {
+    mod common;
+
     pub mod rc;
 
     #[cfg(all(not(no_sync), target_has_atomic = "ptr"))]
