@@ -2715,6 +2715,7 @@ impl<'a> Parser<'a> {
     pub fn parse_test_binder_body(&mut self) -> PResult<'a, TestBinderBody> {
         let mut foralls = ThinVec::new();
         let mut exists = ThinVec::new();
+        let mut region_equalities = Vec::new();
         let mut constraints = Vec::new();
         let mut predicates = Vec::new();
         self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {
@@ -2731,11 +2732,20 @@ impl<'a> Parser<'a> {
                     exists.push(this.parse_test_binder_exists()?)
                 }
 
+                _ if this.token.is_lifetime() && this.look_ahead(1, |t| t.kind == token::Eq) => {
+                    let lhs = this.expect_lifetime();
+                    this.expect(exp!(Eq))?;
+                    if !this.check_lifetime() {
+                        this.unexpected()?;
+                    }
+                    let rhs = this.expect_lifetime();
+                    region_equalities.push(TestBinderRegionEquality { lhs, rhs });
+                }
                 _ => constraints.push(this.parse_test_binder_constraint()?),
             }
             Ok(())
         })?;
-        Ok(TestBinderBody { foralls, exists, constraints, predicates })
+        Ok(TestBinderBody { foralls, exists, region_equalities, constraints, predicates })
     }
 
     pub fn parse_test_binder_forall(&mut self) -> PResult<'a, TestBinderForall> {

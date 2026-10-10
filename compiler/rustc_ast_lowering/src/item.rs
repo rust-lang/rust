@@ -1998,6 +1998,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let exists = self.arena.alloc_from_iter(
             body.exists.iter().map(|exists| self.lower_test_binder_exists(exists)),
         );
+        let region_equalities = self.arena.alloc_from_iter(body.region_equalities.iter().map(
+            |TestBinderRegionEquality { lhs, rhs }| {
+                let lhs = self.lower_lifetime(lhs, LifetimeSource::Other, lhs.ident.into());
+                let rhs = self.lower_lifetime(rhs, LifetimeSource::Other, rhs.ident.into());
+                (lhs, rhs)
+            },
+        ));
         let constraints = self.lower_test_binder_constraints_as_and(&body.constraints);
         let mut dedup_map = Default::default();
         let predicates = self.arena.alloc_from_iter(
@@ -2005,7 +2012,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .iter()
                 .map(|predicate| self.lower_where_predicate(predicate, &[], &mut dedup_map)),
         );
-        hir::TestBinderBody { foralls, exists, constraints, predicates }
+        hir::TestBinderBody { foralls, exists, region_equalities, constraints, predicates }
     }
 
     fn lower_test_binder_forall(

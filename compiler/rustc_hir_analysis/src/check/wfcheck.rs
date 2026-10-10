@@ -2356,7 +2356,15 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     pub(super) fn check_test_binder_body(&self, body: TestBinderBody<'tcx>) {
-        let TestBinderBody { foralls, exists, constraints, predicates } = body;
+        let TestBinderBody { foralls, exists, region_equalities, constraints, predicates } = body;
+        for (equality, span) in region_equalities {
+            let cause = traits::ObligationCause::misc(span, self.body_def_id);
+            self.infcx.register_region_eq_constraint(
+                equality,
+                ty::VisibleForLeakCheck::Yes,
+                &cause,
+            );
+        }
         if !predicates.is_empty() {
             for (predicate, span) in predicates {
                 let cause = traits::ObligationCause::misc(span, self.body_def_id);
@@ -2776,6 +2784,7 @@ struct RedundantLifetimeArgsLint<'tcx> {
 pub(crate) struct TestBinderBody<'tcx> {
     pub foralls: Vec<TestBinderForall<'tcx>>,
     pub exists: Vec<TestBinderExists<'tcx>>,
+    pub region_equalities: Vec<(ty::RegionEqPredicate<'tcx>, Span)>,
     /// Constraints to be inserted directly into constraint storage to be proven
     pub constraints: SolverRegionConstraint<'tcx>,
     /// Constraints declared using `where` syntax, used via `register_obligation`
