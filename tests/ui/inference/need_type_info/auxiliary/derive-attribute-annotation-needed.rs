@@ -1,5 +1,6 @@
 //@ edition: 2018
 #![feature(proc_macro_quote)]
+#![allow(self_type_conversion)]
 use proc_macro::{TokenStream, Ident, TokenTree, quote};
 
 #[proc_macro_derive(Serialize, attributes(serde))]
