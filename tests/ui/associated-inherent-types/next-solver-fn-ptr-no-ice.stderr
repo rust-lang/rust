@@ -1,0 +1,32 @@
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/next-solver-fn-ptr-no-ice.rs:13:18
+   |
+LL |     type Assoc = &mut Peekable<I>;
+   |                  ^ explicit lifetime name needed here
+
+error[E0425]: cannot find type `Peekable` in this scope
+  --> $DIR/next-solver-fn-ptr-no-ice.rs:13:23
+   |
+LL |     type Assoc = &mut Peekable<I>;
+   |                       ^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use std::iter::Peekable;
+   |
+
+error[E0425]: cannot find type `I` in this scope
+  --> $DIR/next-solver-fn-ptr-no-ice.rs:13:32
+   |
+LL |     type Assoc = &mut Peekable<I>;
+   |                                ^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | impl<'a, I> Foo<fn(&'a ())> {
+   |        +++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0425, E0637.
+For more information about an error, try `rustc --explain E0425`.
