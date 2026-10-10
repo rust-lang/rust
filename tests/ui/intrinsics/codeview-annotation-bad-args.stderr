@@ -1,0 +1,51 @@
+error[E0080]: evaluation panicked: panic
+  --> $DIR/codeview-annotation-bad-args.rs:16:27
+   |
+LL | impl CodeViewAnnotationArgs for Invalid {
+LL |     const ARGS: &[&str] = panic!("panic");
+   |                           ^^^^^^^^^^^^^^^ evaluation of `<Invalid as std::intrinsics::CodeViewAnnotationArgs>::ARGS` failed here
+
+note: erroneous constant encountered
+  --> $SRC_DIR/core/src/intrinsics/mod.rs:LL:COL
+
+note: erroneous constant encountered
+  --> $SRC_DIR/core/src/intrinsics/mod.rs:LL:COL
+
+note: the above error was encountered while instantiating `fn std::intrinsics::codeview_annotation::<Invalid>`
+  --> $DIR/codeview-annotation-bad-args.rs:42:5
+   |
+LL |     codeview_annotation::<Invalid>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0080]: evaluation panicked: panic
+  --> $DIR/codeview-annotation-bad-args.rs:27:24
+   |
+LL | impl GetName for i32 {
+LL |     const NAME: &str = panic!("panic");
+   |                        ^^^^^^^^^^^^^^^ evaluation of `<i32 as GetName>::NAME` failed here
+
+note: erroneous constant encountered
+  --> $DIR/codeview-annotation-bad-args.rs:33:29
+   |
+LL |     const ARGS: &[&str] = &[T::NAME];
+   |                             ^^^^^^^
+
+note: erroneous constant encountered
+  --> $SRC_DIR/core/src/intrinsics/mod.rs:LL:COL
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $SRC_DIR/core/src/intrinsics/mod.rs:LL:COL
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: the above error was encountered while instantiating `fn std::intrinsics::codeview_annotation::<Args<i32>>`
+  --> $DIR/codeview-annotation-bad-args.rs:37:5
+   |
+LL |     codeview_annotation::<Args<T>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
