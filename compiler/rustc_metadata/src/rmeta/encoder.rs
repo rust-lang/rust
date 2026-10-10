@@ -2839,7 +2839,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 /// use a different method for pretty-printing. Ideally this function
 /// should only ever be used as a fallback.
 pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body<'_>, def_id: LocalDefId) -> String {
-    let value = body.value;
+    let value = &body.value;
 
     #[derive(PartialEq, Eq)]
     enum Classification {

@@ -720,7 +720,7 @@ impl<'tcx> Visitor<'tcx> for RustdocVisitor<'_, 'tcx> {
         // Unneeded.
     }
 
-    fn visit_body(&mut self, b: &hir::Body<'tcx>) {
+    fn visit_body(&mut self, b: &'tcx hir::Body<'tcx>) {
         let prev = mem::replace(&mut self.inside_body, true);
         walk_body(self, b);
         self.inside_body = prev;

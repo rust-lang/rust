@@ -25,7 +25,7 @@ pub(super) fn check<'tcx>(
         && let hir::ExprKind::Closure(&hir::Closure { body, .. }) = def_arg.kind
         && let body = cx.tcx.hir_body(body)
         // And finally we check that we return a `None` in the "else case".
-        && is_none_expr(cx, peel_blocks(body.value))
+        && is_none_expr(cx, peel_blocks(&body.value))
     {
         let msg = "called `map_or_else(|_| None, Some)` on a `Result` value";
         let self_snippet = snippet(cx, recv.span, "..");

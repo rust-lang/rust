@@ -178,7 +178,7 @@ fn check_arms(cx: &LateContext<'_>, none_arm: &Arm<'_>, some_arm: &Arm<'_>) -> b
 fn returns_empty_slice(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match expr.kind {
         ExprKind::Path(_) => expr.res(cx).is_diag_item(cx, sym::default_fn),
-        ExprKind::Closure(cl) => is_empty_slice(cx, cx.tcx.hir_body(cl.body).value),
+        ExprKind::Closure(cl) => is_empty_slice(cx, &cx.tcx.hir_body(cl.body).value),
         _ => false,
     }
 }

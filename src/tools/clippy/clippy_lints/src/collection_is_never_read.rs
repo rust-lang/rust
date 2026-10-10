@@ -120,7 +120,7 @@ fn has_no_read_access<'tcx, T: Visitable<'tcx>>(cx: &LateContext<'tcx>, id: HirI
                     // To keep things simple, we only check the first param to see if its read.
                     && let Body { params: [param, ..], value } = cx.tcx.hir_body(closure.body)
                 {
-                    !has_no_read_access(cx, param.hir_id, *value)
+                    !has_no_read_access(cx, param.hir_id, value)
                 } else {
                     false
                 }

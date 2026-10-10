@@ -106,7 +106,7 @@ pub(crate) fn check_and_then_method<'tcx>(
         && let Some(fn_arg_span) = closure.fn_arg_span
         && let [param] = body.params
         && let expr_span_ctxt = expr.span.ctxt()
-        && let Some(some_expr) = get_cond_expr(cx, param.pat, body.value, expr_span_ctxt)
+        && let Some(some_expr) = get_cond_expr(cx, param.pat, &body.value, expr_span_ctxt)
     {
         span_lint_and_then(
             cx,

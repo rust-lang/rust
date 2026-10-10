@@ -118,7 +118,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
 
         // Check if all return expression respect the following condition and collect them.
         let mut suggs = Vec::new();
-        let can_sugg = find_all_ret_expressions(cx, body.value, |ret_expr| {
+        let can_sugg = find_all_ret_expressions(cx, &body.value, |ret_expr| {
             if !ret_expr.span.from_expansion()
                 // Check if a function call.
                 && let ExprKind::Call(func, [arg]) = ret_expr.kind

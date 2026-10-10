@@ -232,7 +232,7 @@ fn convert_to_from(
         lower: Vec::new(),
     };
 
-    if finder.visit_expr(body.value).is_break() {
+    if finder.visit_expr(&body.value).is_break() {
         return None;
     }
 

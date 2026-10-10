@@ -5487,7 +5487,7 @@ impl Methods {
                                 && let body = cx.tcx.hir_body(arg.body)
                                 && let [param] = body.params =>
                         {
-                            string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), self.msrv);
+                            string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(&body.value), self.msrv);
                         },
                         Some((sym::map, _, [map_arg], _, map_call_span)) => {
                             map_all_any_identity::check(cx, expr, recv, map_call_span, map_arg, call_span, arg, "any");

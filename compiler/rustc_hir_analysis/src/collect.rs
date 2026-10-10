@@ -1705,7 +1705,7 @@ fn coroutine_for_closure(tcx: TyCtxt<'_>, def_id: LocalDefId) -> DefId {
         bug!()
     };
 
-    let &hir::Expr {
+    let hir::Expr {
         kind:
             hir::ExprKind::Closure(&rustc_hir::Closure {
                 def_id,

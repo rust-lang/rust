@@ -964,9 +964,9 @@ fn get_const_hir_value<'tcx>(
         _ => return None,
     };
     match ct_rhs {
-        ConstItemRhs::Body(body_id) => Some((tcx.typeck(did), tcx.hir_body(body_id).value)),
+        ConstItemRhs::Body(body_id) => Some((tcx.typeck(did), &tcx.hir_body(body_id).value)),
         ConstItemRhs::Direct(ct_arg) => match ct_arg.kind {
-            ConstArgKind::Anon(anon_const) => Some((tcx.typeck(did), tcx.hir_body(anon_const.body).value)),
+            ConstArgKind::Anon(anon_const) => Some((tcx.typeck(did), &tcx.hir_body(anon_const.body).value)),
             _ => None,
         },
     }

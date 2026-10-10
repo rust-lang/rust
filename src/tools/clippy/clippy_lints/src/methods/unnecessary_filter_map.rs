@@ -27,12 +27,12 @@ pub(super) fn check<'tcx>(
     if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = arg.kind {
         let body = cx.tcx.hir_body(body);
         let arg_id = body.params[0].pat.hir_id;
-        let mutates_arg = mutated_variables(body.value, cx).is_none_or(|used_mutably| used_mutably.contains(&arg_id));
-        let (clone_or_copy_needed, _) = clone_or_copy_needed(cx, body.params[0].pat, body.value);
+        let mutates_arg = mutated_variables(&body.value, cx).is_none_or(|used_mutably| used_mutably.contains(&arg_id));
+        let (clone_or_copy_needed, _) = clone_or_copy_needed(cx, body.params[0].pat, &body.value);
 
-        let (mut found_mapping, mut found_filtering) = check_expression(cx, arg_id, body.value);
+        let (mut found_mapping, mut found_filtering) = check_expression(cx, arg_id, &body.value);
 
-        let _: Option<!> = for_each_expr_without_closures(body.value, |e| {
+        let _: Option<!> = for_each_expr_without_closures(&body.value, |e| {
             if let hir::ExprKind::Ret(Some(e)) = &e.kind {
                 let (found_mapping_res, found_filtering_res) = check_expression(cx, arg_id, e);
                 found_mapping |= found_mapping_res;
@@ -46,7 +46,7 @@ pub(super) fn check<'tcx>(
         let sugg = if !found_filtering {
             // Check if the closure is .filter_map(|x| Some(x))
             if kind.is_filter_map()
-                && let Some(arg) = as_some_expr(cx, body.value)
+                && let Some(arg) = as_some_expr(cx, &body.value)
                 && let hir::ExprKind::Path(_) = arg.kind
             {
                 span_lint(
@@ -62,7 +62,7 @@ pub(super) fn check<'tcx>(
                 Kind::FindMap => "map(..).next()",
             }
         } else if !found_mapping && !mutates_arg && (!clone_or_copy_needed || is_copy(cx, in_ty)) {
-            let ty = cx.typeck_results().expr_ty(body.value);
+            let ty = cx.typeck_results().expr_ty(&body.value);
             if option_arg_ty(cx, ty).is_some_and(|t| t == in_ty) {
                 match kind {
                     Kind::FilterMap => "filter(..)",

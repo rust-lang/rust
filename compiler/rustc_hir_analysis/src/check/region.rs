@@ -762,7 +762,7 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
         resolve_block(self, b, false);
     }
 
-    fn visit_body(&mut self, body: &hir::Body<'tcx>) {
+    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
         let body_id = body.id();
         let owner_id = self.tcx.hir_body_owner_def_id(body_id);
 
@@ -783,7 +783,7 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
                 }
 
                 // The body of the every fn is a root scope.
-                resolve_expr(this, body.value, true);
+                resolve_expr(this, &body.value, true);
             } else {
                 // All bodies have an outer temporary drop scope, but temporaries
                 // and `super let` bindings in constant initializers may be extended
@@ -808,7 +808,7 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
                     local_id: body.value.hir_id.local_id,
                     data: ScopeData::Destruction,
                 });
-                resolve_local(this, None, Some(body.value), LetKind::Regular);
+                resolve_local(this, None, Some(&body.value), LetKind::Regular);
             }
         })
     }

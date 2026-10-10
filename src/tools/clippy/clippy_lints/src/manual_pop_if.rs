@@ -219,7 +219,7 @@ fn check_is_some_and_pattern<'tcx>(
         return Some(ManualPopIfPattern {
             kind,
             collection_expr,
-            predicate: body.value,
+            predicate: &body.value,
             param_name: ident.name,
             if_span: if_expr_span,
             spans: MultiSpan::from(vec![if_expr_span.with_hi(cond.span.hi()), pop_span]),
@@ -370,7 +370,7 @@ fn check_map_unwrap_or_pattern<'tcx>(
         && kind.is_diag_item(cx, collection_expr)
         && let ExprKind::Closure(closure) = closure_arg.kind
         && let body = cx.tcx.hir_body(closure.body)
-        && cx.typeck_results().expr_ty(body.value).is_bool()
+        && cx.typeck_results().expr_ty(&body.value).is_bool()
         && let Some((pop_collection, pop_span, suggestable)) = check_pop_unwrap(cx, then_block, pop_method)
         && eq_expr_value(cx, if_expr_span.ctxt(), collection_expr, pop_collection)
         && let Some(param) = body.params.first()
@@ -379,7 +379,7 @@ fn check_map_unwrap_or_pattern<'tcx>(
         return Some(ManualPopIfPattern {
             kind,
             collection_expr,
-            predicate: body.value,
+            predicate: &body.value,
             param_name: ident.name,
             if_span: if_expr_span,
             spans: MultiSpan::from(vec![if_expr_span.with_hi(cond.span.hi()), pop_span]),

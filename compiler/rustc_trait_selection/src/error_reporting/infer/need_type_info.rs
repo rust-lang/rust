@@ -522,7 +522,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if let Some(body) =
             self.tcx.hir_maybe_body_owned_by(self.tcx.typeck_root_def_id_local(body_def_id))
         {
-            let expr = body.value;
+            let expr = &body.value;
             local_visitor.visit_expr(expr);
             body_from_expansion = body.value.span.from_expansion();
         }
@@ -1380,7 +1380,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
 
     /// For closures, we first visit the parameters and then the content,
     /// as we prefer those.
-    fn visit_body(&mut self, body: &Body<'tcx>) {
+    fn visit_body(&mut self, body: &'tcx Body<'tcx>) {
         for param in body.params {
             debug!(
                 "param: span {:?}, ty_span {:?}, pat.span {:?}",

@@ -13,7 +13,7 @@ pub(super) fn check(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Att
     }
 
     if let Some(span) = find_attr!(attrs, Inline(InlineAttr::Always, span) => *span)
-        && body.is_none_or(|body| is_relevant_expr(cx, cx.tcx.hir_body(body).value))
+        && body.is_none_or(|body| is_relevant_expr(cx, &cx.tcx.hir_body(body).value))
     {
         span_lint(
             cx,

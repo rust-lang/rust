@@ -187,7 +187,7 @@ impl LateLintPass<'_> for NonCanonicalImpls {
                         && implements_trait(cx, trait_impl.self_ty(), copy_trait, &[])
                     {
                         for (assoc, body, _) in assoc_fns {
-                            check_clone_on_copy(cx, assoc, body.value);
+                            check_clone_on_copy(cx, assoc, &body.value);
                         }
                     }
                 },

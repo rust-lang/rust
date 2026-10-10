@@ -7,7 +7,7 @@ use rustc_hir::{self as hir, Body, FnRetTy, FnSig, GenericArg, Lifetime, Mutabil
 use rustc_lint::LateContext;
 use rustc_span::Span;
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Option<&Body<'tcx>>) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Option<&'tcx Body<'tcx>>) {
     let FnRetTy::Return(ty) = sig.decl.output else { return };
     for (out, mutability, out_span) in get_lifetimes(ty) {
         if mutability != Some(Mutability::Mut) {
@@ -26,7 +26,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Option<
             .collect();
         if let Some(args_immut_refs) = args_immut_refs
             && !args_immut_refs.is_empty()
-            && body.is_none_or(|body| sig.header.is_unsafe() || contains_unsafe_block(cx, body.value))
+            && body.is_none_or(|body| sig.header.is_unsafe() || contains_unsafe_block(cx, &body.value))
         {
             span_lint_and_then(
                 cx,

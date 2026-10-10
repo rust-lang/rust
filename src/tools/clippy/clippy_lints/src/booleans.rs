@@ -459,7 +459,7 @@ fn simplify_not(cx: &LateContext<'_>, curr_msrv: Msrv, expr: &Expr<'_>) -> Optio
                 .map(|param| param.span.get_text(cx).map(|t| t.to_string()))
                 .collect::<Option<Vec<_>>>()?
                 .join(", ");
-            let negated = simplify_not(cx, curr_msrv, body.value)?;
+            let negated = simplify_not(cx, curr_msrv, &body.value)?;
             Some(format!("|{params}| {negated}"))
         },
         ExprKind::Unary(UnOp::Not, expr) => expr.span.get_text(cx).map(|t| t.to_string()),

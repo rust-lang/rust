@@ -227,7 +227,7 @@ impl<'tcx> Visitor<'tcx> for VarBindingVisitor<'_, 'tcx> {
                         self.identifiers.remove(&ident.name);
                     });
                 }
-                self.visit_expr(body.value)?;
+                self.visit_expr(&body.value)?;
                 self.identifiers = before;
                 ControlFlow::Continue(())
             },

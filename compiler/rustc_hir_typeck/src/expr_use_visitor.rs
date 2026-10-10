@@ -316,7 +316,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             self.walk_pat(&param_place, param.pat, false)?;
         }
 
-        self.consume_expr(body.value)?;
+        self.consume_expr(&body.value)?;
 
         Ok(())
     }

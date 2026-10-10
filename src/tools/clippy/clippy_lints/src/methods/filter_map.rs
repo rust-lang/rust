@@ -23,7 +23,7 @@ fn is_method(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol) -> bool
         ExprKind::MethodCall(segment, _, _, _) => segment.ident.name == method_name,
         ExprKind::Closure(Closure { body, .. }) => {
             let body = cx.tcx.hir_body(*body);
-            let closure_expr = peel_blocks(body.value);
+            let closure_expr = peel_blocks(&body.value);
             match closure_expr.kind {
                 ExprKind::MethodCall(PathSegment { ident, .. }, receiver, ..) => {
                     if ident.name == method_name
@@ -189,7 +189,7 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
                 //        ^^^^     ^^^^^^^        ^                  ^^^^^^^^^^^^^^
                 //     scrutinee  variant_span  variant_ident        else_
                 let (scrutinee, else_, variant_ident, variant_span) =
-                    match higher::IfLetOrMatch::parse(cx, map_body.value) {
+                    match higher::IfLetOrMatch::parse(cx, &map_body.value) {
                         // For `if let` we want to check that the variant matching arm references the local created by
                         // its pattern
                         Some(higher::IfLetOrMatch::IfLet(sc, pat, then, Some(else_), ..))
@@ -418,7 +418,7 @@ fn is_find_or_filter<'a>(
         }
 
         && let PatKind::Binding(_, filter_param_id, _, None) = filter_pat.kind
-        && let Some(offending_expr) = OffendingFilterExpr::hir(cx, filter_body.value, filter_param_id)
+        && let Some(offending_expr) = OffendingFilterExpr::hir(cx, &filter_body.value, filter_param_id)
 
         && let ExprKind::Closure(&Closure { body: map_body_id, .. }) = map_arg.kind
         && let map_body = cx.tcx.hir_body(map_body_id)

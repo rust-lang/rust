@@ -206,7 +206,7 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
             },
             ExprKind::Closure(&Closure { body, .. }) => (
                 Pat::Str(""),
-                expr_search_pat_inner(tcx, tcx.hir_body(body).value, outer_span).1,
+                expr_search_pat_inner(tcx, &tcx.hir_body(body).value, outer_span).1,
             ),
             ExprKind::Block(
                 Block {
@@ -342,7 +342,7 @@ fn fn_kind_pat(tcx: TyCtxt<'_>, kind: &FnKind<'_>, body: &Body<'_>, hir_id: HirI
     let (mut start_pat, end_pat) = match kind {
         FnKind::ItemFn(.., header) => (fn_header_search_pat(*header), Pat::Str("")),
         FnKind::Method(.., sig) => (fn_header_search_pat(sig.header), Pat::Str("")),
-        FnKind::Closure => return (Pat::Str(""), expr_search_pat(tcx, body.value).1),
+        FnKind::Closure => return (Pat::Str(""), expr_search_pat(tcx, &body.value).1),
     };
     match tcx.hir_node(hir_id) {
         Node::Item(Item { vis_span, .. })
