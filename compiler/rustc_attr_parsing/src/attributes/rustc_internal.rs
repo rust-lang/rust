@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
-use rustc_ast::{GenericParamKind, ItemKind, LitIntType, LitKind, MetaItemLit};
+use rustc_ast::{AssocItemKind, GenericParamKind, ItemKind, LitIntType, LitKind, MetaItemLit};
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{
     BorrowckGraphvizFormatKind, CguFields, CguKind, RustcCleanAttribute, RustcCleanQueries,
-    RustcMirKind,
+    RustcMirKind, find_attr,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_feature::AttributeStability;
@@ -85,6 +85,51 @@ impl SingleAttributeParser for RustcMustImplementOneOfParser {
         }
 
         Some(AttributeKind::RustcMustImplementOneOf { attr_span: cx.attr_span, fn_names })
+    }
+
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        if cx.target != Target::Trait {
+            return;
+        }
+
+        let item = cx.target_item.expect("missing AST target item for Target::Trait");
+        let ItemKind::Trait(trait_) = &item.kind else {
+            panic!("expected trait AST target item for Target::Trait");
+        };
+
+        let fn_names =
+            find_attr!(cx.parsed_attrs, RustcMustImplementOneOf { fn_names, .. } => fn_names)
+                .expect("missing parsed RustcMustImplementOneOf attribute in finalize_check");
+
+        for ident in fn_names {
+            let item = trait_.items.iter().find(|item| item.kind.ident() == Some(*ident));
+
+            match item {
+                Some(item) => match &item.kind {
+                    AssocItemKind::Fn(f) => {
+                        if f.body.is_none() {
+                            cx.emit_err(diagnostics::FunctionNotHaveDefaultImplementation {
+                                span: item.span,
+                                note_span: attr_span,
+                            });
+                        }
+                    }
+                    AssocItemKind::Delegation(_) => {}
+                    _ => {
+                        cx.emit_err(diagnostics::MustImplementNotFunction {
+                            span: item.span,
+                            span_note: diagnostics::MustImplementNotFunctionSpanNote {
+                                span: attr_span,
+                            },
+                            note: diagnostics::MustImplementNotFunctionNote {},
+                        });
+                    }
+                },
+                None => {
+                    cx.emit_err(diagnostics::FunctionNotFoundInTrait { span: ident.span });
+                }
+            }
+        }
     }
 }
 

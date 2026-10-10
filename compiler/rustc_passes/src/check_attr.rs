@@ -17,7 +17,6 @@ use rustc_attr_ir::{
     OptimizeAttr, ReprAttr, find_attr,
 };
 use rustc_attr_parsing::AttributeParser;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg};
 use rustc_feature::BUILTIN_ATTRIBUTE_SET;
 use rustc_hir::def::DefKind;
@@ -40,7 +39,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt, TypingMode, Unnormalized};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, span_bug, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol, bug, kw, span_bug, sym};
 use rustc_structures::CrateType;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
@@ -205,9 +204,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::MayDangle(attr_span) => self.check_may_dangle(hir_id, *attr_span),
             AttributeKind::Doc(attr) => self.check_doc_attrs(attr, hir_id, target),
             AttributeKind::EiiImpl(eii_impl) => self.check_eii_impl(eii_impl),
-            AttributeKind::RustcMustImplementOneOf { attr_span, fn_names } => {
-                self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id, target)
-            }
             AttributeKind::OnUnimplemented { directive } => {
                 self.check_diagnostic_on_unimplemented(hir_id, directive.as_deref())
             }
@@ -360,6 +356,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcMacroTransparency(_) => (),
             AttributeKind::RustcMain => (),
             AttributeKind::RustcMir(_) => (),
+            AttributeKind::RustcMustImplementOneOf { .. } => (),
             AttributeKind::RustcMustMatchExhaustively(..) => (),
             AttributeKind::RustcNeverReturnsNullPtr => (),
             AttributeKind::RustcNoImplicitAutorefs => (),
@@ -455,56 +452,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
             is_out_of_line || has_path_attr || self.has_nested_module_path_dependency(child_module)
         })
-    }
-
-    fn check_rustc_must_implement_one_of(
-        &self,
-        attr_span: Span,
-        list: &ThinVec<Ident>,
-        hir_id: HirId,
-        target: Target,
-    ) {
-        // Ignoring invalid targets because TyCtxt::associated_items emits bug if the target isn't valid
-        // the parser has already produced an error for the target being invalid
-        if !matches!(target, Target::Trait) {
-            return;
-        }
-
-        let def_id = hir_id.owner.def_id;
-
-        let items = self.tcx.associated_items(def_id);
-        // Check that all arguments of `#[rustc_must_implement_one_of]` reference
-        // functions in the trait with default implementations
-        for ident in list {
-            let item = items
-                .filter_by_name_unhygienic(ident.name)
-                .find(|item| item.ident(self.tcx) == *ident);
-
-            match item {
-                Some(item) if matches!(item.kind, ty::AssocKind::Fn { .. }) => {
-                    if !item.defaultness(self.tcx).has_value() {
-                        self.tcx.dcx().emit_err(
-                            diagnostics::FunctionNotHaveDefaultImplementation {
-                                span: self.tcx.def_span(item.def_id),
-                                note_span: attr_span,
-                            },
-                        );
-                    }
-                }
-                Some(item) => {
-                    self.dcx().emit_err(diagnostics::MustImplementNotFunction {
-                        span: self.tcx.def_span(item.def_id),
-                        span_note: diagnostics::MustImplementNotFunctionSpanNote {
-                            span: attr_span,
-                        },
-                        note: diagnostics::MustImplementNotFunctionNote {},
-                    });
-                }
-                None => {
-                    self.dcx().emit_err(diagnostics::FunctionNotFoundInTrait { span: ident.span });
-                }
-            }
-        }
     }
 
     /// Checks that each externally implementable item (EII) implementation uses `unsafe`
