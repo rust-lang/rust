@@ -1,0 +1,9 @@
+error[E0271]: type mismatch resolving `<{closure@bound-type-relate.rs:7:5} as FnOnce<()>>::Output == T`
+  --> $DIR/bound-type-relate.rs:5:14
+   |
+LL | fn take() -> impl for<T> Fn() -> T {
+   |              ^^^^^^^^^^^^^^^^^^^^^ expected integer, found placeholder type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.
