@@ -328,16 +328,26 @@ impl<'tcx> ItemCtxt<'tcx> {
         &self,
         item: &hir::TestBinderBody<'tcx>,
     ) -> TestBinderBody<'tcx> {
-        let hir::TestBinderBody { foralls, exists, constraints, predicates } = item;
+        let hir::TestBinderBody { foralls, exists, region_equalities, constraints, predicates } =
+            item;
         let foralls = foralls.iter().map(|forall| self.lower_test_binder_forall(forall)).collect();
         let exists = exists.iter().map(|exists| self.lower_test_binder_exists(exists)).collect();
+        let region_equalities = region_equalities
+            .iter()
+            .map(|(lhs, rhs)| {
+                let span = lhs.ident.span.to(rhs.ident.span);
+                let lhs = self.lowerer().lower_lifetime(lhs, RegionInferReason::RegionPredicate);
+                let rhs = self.lowerer().lower_lifetime(rhs, RegionInferReason::RegionPredicate);
+                (ty::RegionEqPredicate(lhs, rhs), span)
+            })
+            .collect();
         let constraints = self.lower_test_binder_constraint(&constraints);
         let mut clauses = Default::default();
         for predicate in *predicates {
             clauses_of::where_predicate_clauses(self, predicate, &mut clauses);
         }
         let predicates = clauses.into_iter().map(|(c, span)| (c.kind(), span)).collect();
-        TestBinderBody { foralls, exists, constraints, predicates }
+        TestBinderBody { foralls, exists, region_equalities, constraints, predicates }
     }
 
     #[instrument(level = "debug", skip(self), ret)]

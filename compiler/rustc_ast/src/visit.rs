@@ -559,6 +559,7 @@ macro_rules! common_visitor_and_walkers {
             StructExpr,
             StructRest,
             Term,
+            TestBinderRegionEquality,
             Trait,
             TraitBoundModifiers,
             TraitObjectSyntax,

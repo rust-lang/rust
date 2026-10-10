@@ -4529,6 +4529,7 @@ impl FnHeader {
 pub struct TestBinderBody<'hir> {
     pub foralls: &'hir [TestBinderForall<'hir>],
     pub exists: &'hir [TestBinderExists<'hir>],
+    pub region_equalities: &'hir [(&'hir Lifetime, &'hir Lifetime)],
     /// Constraints to be inserted directly into constraint storage to be proven
     pub constraints: TestBinderConstraint<'hir>,
     /// Constraints declared using `where` syntax, used via `register_obligation`
