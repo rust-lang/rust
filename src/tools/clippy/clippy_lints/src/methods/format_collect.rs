@@ -21,7 +21,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, map_arg: &Expr<'_>, m
     if cx.typeck_results().expr_ty(expr).is_lang_item(cx, LangItem::String)
         && let ExprKind::Closure(closure) = map_arg.kind
         && let body = cx.tcx.hir_body(closure.body)
-        && let Some(value) = peel_non_expn_blocks(body.value)
+        && let Some(value) = peel_non_expn_blocks(&body.value)
         && let Some(mac) = root_macro_call_first_node(cx, value)
         && is_format_macro(cx, mac.def_id)
     {

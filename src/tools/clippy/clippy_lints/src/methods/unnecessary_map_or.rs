@@ -54,7 +54,7 @@ fn closure_bool_constant(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<bool> 
     let [_] = body.params else {
         return None;
     };
-    bool_constant(cx, body.value)
+    bool_constant(cx, &body.value)
 }
 
 /// Checks whether a `Result::{map_or, map_or_else}` call is a variant query.

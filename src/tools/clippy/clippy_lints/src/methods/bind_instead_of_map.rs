@@ -166,7 +166,7 @@ impl BindInsteadOfMap {
         match arg.kind {
             hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, .. }) => {
                 let closure_body = cx.tcx.hir_body(body);
-                let closure_expr = peel_blocks(closure_body.value);
+                let closure_expr = peel_blocks(&closure_body.value);
 
                 if self.lint_closure_autofixable(cx, expr, recv, closure_expr, fn_decl_span) {
                     true

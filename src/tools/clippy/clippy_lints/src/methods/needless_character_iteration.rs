@@ -108,7 +108,7 @@ pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>,
         while let ExprKind::MethodCall(_, new_recv, _, _) = recv.kind {
             recv = new_recv;
         }
-        let body_expr = peel_blocks(body.value);
+        let body_expr = peel_blocks(&body.value);
 
         handle_expr(
             cx,

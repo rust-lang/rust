@@ -126,7 +126,7 @@ fn check_fold_with_op(
     if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = acc.kind
         // Extract the body of the closure passed to fold
         && let closure_body = cx.tcx.hir_body(body)
-        && let closure_expr = peel_blocks(closure_body.value)
+        && let closure_expr = peel_blocks(&closure_body.value)
 
         // Check if the closure body is of the form `acc <op> some_expr(x)`
         && let hir::ExprKind::Binary(ref bin_op, left_expr, right_expr) = closure_expr.kind
@@ -353,7 +353,7 @@ fn check_option_fold<'tcx>(
         let mut acc_uses: Vec<Span> = Vec::new();
         let mut acc_uses_ok = true;
         if let Some(acc_id) = acc_id {
-            for_each_expr(cx.tcx, closure_body.value, |sub_expr| {
+            for_each_expr(cx.tcx, &closure_body.value, |sub_expr| {
                 if sub_expr.res_local_id() == Some(acc_id) {
                     if sub_expr.span.ctxt() == ctxt {
                         acc_uses.push(sub_expr.span);

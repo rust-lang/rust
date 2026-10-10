@@ -276,7 +276,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
         walk_expr(self, expr);
     }
 
-    fn visit_body(&mut self, body: &hir::Body<'tcx>) {
+    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
         let saved_typeck_results = self.typeck_results;
         self.typeck_results = self.tcx.typeck_body(body.id());
         walk_body(self, body);

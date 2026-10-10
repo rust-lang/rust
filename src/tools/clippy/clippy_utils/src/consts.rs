@@ -622,7 +622,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
     fn expr(&self, e: &Expr<'_>) -> Option<Constant> {
         self.check_ctxt(e.span.ctxt());
         match e.kind {
-            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.tcx.hir_body(body).value),
+            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(&self.tcx.hir_body(body).value),
             ExprKind::DropTemps(e) => self.expr(e),
             ExprKind::Path(ref qpath) => self.qpath(qpath, e.hir_id),
             ExprKind::Block(block, _) => {
@@ -695,7 +695,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
     /// leaves the local crate.
     pub fn eval_is_empty(&self, e: &Expr<'_>) -> Option<bool> {
         match e.kind {
-            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.eval_is_empty(self.tcx.hir_body(body).value),
+            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.eval_is_empty(&self.tcx.hir_body(body).value),
             ExprKind::DropTemps(e) => self.eval_is_empty(e),
             ExprKind::Lit(lit) => {
                 if is_direct_expn_of(e.span, sym::cfg).is_some() {
@@ -1184,9 +1184,9 @@ pub fn is_zero_integer_const(cx: &LateContext<'_>, expr: &Expr<'_>, ctxt: Syntax
 
 pub fn const_item_rhs_to_expr<'tcx>(tcx: TyCtxt<'tcx>, ct_rhs: ConstItemRhs<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     match ct_rhs {
-        ConstItemRhs::Body(body_id) => Some(tcx.hir_body(body_id).value),
+        ConstItemRhs::Body(body_id) => Some(&tcx.hir_body(body_id).value),
         ConstItemRhs::Direct(const_arg) => match const_arg.kind {
-            ConstArgKind::Anon(anon) => Some(tcx.hir_body(anon.body).value),
+            ConstArgKind::Anon(anon) => Some(&tcx.hir_body(anon.body).value),
             ConstArgKind::Struct(..)
             | ConstArgKind::Tup(..)
             | ConstArgKind::Literal { .. }

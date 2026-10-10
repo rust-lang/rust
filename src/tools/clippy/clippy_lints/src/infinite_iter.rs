@@ -161,7 +161,7 @@ fn is_infinite(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
                 && let ExprKind::Closure(&Closure { body, .. }) = args[0].kind
             {
                 let body = cx.tcx.hir_body(body);
-                return is_infinite(cx, body.value);
+                return is_infinite(cx, &body.value);
             }
             Finite
         },

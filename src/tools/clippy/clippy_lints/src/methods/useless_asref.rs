@@ -152,7 +152,7 @@ fn is_calling_clone(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
                 && let [param] = closure_body.params
                 && let hir::PatKind::Binding(_, local_id, ..) = strip_pat_refs(param.pat).kind =>
         {
-            let closure_expr = peel_blocks(closure_body.value);
+            let closure_expr = peel_blocks(&closure_body.value);
             match closure_expr.kind {
                 hir::ExprKind::MethodCall(method, obj, [], _) => {
                     if method.ident.name == sym::clone

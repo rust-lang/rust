@@ -286,7 +286,7 @@ fn find_binding_use_scope<'tcx>(
                     Some((_, Node::ImplItem(i))) if let ImplItemKind::Fn(_, body) = i.kind => body,
                     _ => break None,
                 };
-                break Some(BindingUseRange::Param(tcx.hir_body(body).value));
+                break Some(BindingUseRange::Param(&tcx.hir_body(body).value));
             },
             Some((_, Node::LetStmt(_)))
                 if let Some((id, Node::Stmt(_))) = iter.next()

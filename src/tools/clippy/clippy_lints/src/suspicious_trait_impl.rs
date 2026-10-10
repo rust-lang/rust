@@ -92,7 +92,7 @@ fn check_expr_inner<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, bin
             ]
                 .iter()
                 .find(|&(ts, _)| ts.iter().any(|&t| Some(trait_id) == cx.tcx.lang_items().get(t)))
-            && count_binops(body.value) == 1
+            && count_binops(&body.value) == 1
     {
         span_lint(
             cx,

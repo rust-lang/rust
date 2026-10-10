@@ -142,7 +142,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryLiteralBound {
         }
 
         // Check for all return statements returning literals
-        if check_explicit_returns_static_str(body.value) && check_implicit_returns_static_str(body) {
+        if check_explicit_returns_static_str(&body.value) && check_implicit_returns_static_str(body) {
             span_lint_and_sugg(
                 cx,
                 UNNECESSARY_LITERAL_BOUND,

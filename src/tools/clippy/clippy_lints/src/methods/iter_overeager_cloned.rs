@@ -67,7 +67,7 @@ pub(super) fn check<'tcx>(
                 return;
             };
 
-            if param_captured_by_move_block(cx, body.value, p) {
+            if param_captured_by_move_block(cx, &body.value, p) {
                 return;
             }
 

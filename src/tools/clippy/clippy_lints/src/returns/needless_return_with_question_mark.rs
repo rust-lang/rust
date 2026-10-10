@@ -22,7 +22,7 @@ pub(super) fn check_stmt<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         && maybe_constr.res(cx).ctor_parent(cx).is_lang_item(cx, ResultErr)
 
         // Ensure this is not the final stmt, otherwise removing it would cause a compile error
-        && let block = cx.tcx.hir_body_owned_by(cx.tcx.hir_enclosing_body_owner(expr.hir_id)).value
+        && let block = &cx.tcx.hir_body_owned_by(cx.tcx.hir_enclosing_body_owner(expr.hir_id)).value
         && let ExprKind::Block(block, _) = peel_async_body(block).kind
         && !is_inside_let_else(cx.tcx, expr)
         && let [.., final_stmt] = block.stmts

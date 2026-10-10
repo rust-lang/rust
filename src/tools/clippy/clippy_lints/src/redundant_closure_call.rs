@@ -94,29 +94,29 @@ fn find_innermost_closure<'tcx>(
 
     while let ExprKind::Closure(closure) = expr.kind
         && let body = cx.tcx.hir_body(closure.body)
-        && !contains_early_return(body.value)
+        && !contains_early_return(&body.value)
         && steps > 0
     {
-        let mut unwrapped_body_value = body.value;
+        let mut unwrapped_body_value = &body.value;
         let mut asyncness = ty::Asyncness::No;
         let mut capture_clause = closure.capture_clause;
 
         if let ExprKind::Closure(inner_closure) = body.value.kind {
             if matches!(inner_closure.kind, DESUGARED_ASYNC_CLOSURE_KIND) {
                 asyncness = ty::Asyncness::Yes;
-                unwrapped_body_value = cx.tcx.hir_body(inner_closure.body).value;
+                unwrapped_body_value = &cx.tcx.hir_body(inner_closure.body).value;
             } else if matches!(inner_closure.kind, DESUGARED_ASYNC_BLOCK_CLOSURE_KIND) {
                 asyncness = ty::Asyncness::Yes;
                 capture_clause = inner_closure.capture_clause;
-                unwrapped_body_value = cx.tcx.hir_body(inner_closure.body).value;
+                unwrapped_body_value = &cx.tcx.hir_body(inner_closure.body).value;
             }
 
-            if contains_early_return(unwrapped_body_value) {
+            if contains_early_return(&unwrapped_body_value) {
                 break;
             }
         }
 
-        expr = body.value;
+        expr = &body.value;
         data = Some((
             unwrapped_body_value,
             closure.fn_decl,
@@ -201,7 +201,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                             if let ExprKind::Closure(closure) = body.kind {
                                 // Like `async fn`, async closures are wrapped in an additional block
                                 // to move all of the closure's arguments into the future.
-                                body = cx.tcx.hir_body(closure.body).value;
+                                body = &cx.tcx.hir_body(closure.body).value;
                             }
 
                             // `async x` is a syntax error, so it becomes `async { x }`

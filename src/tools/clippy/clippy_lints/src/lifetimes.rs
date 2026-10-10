@@ -345,7 +345,7 @@ fn could_use_elision<'tcx>(
         }
 
         let mut checker = BodyLifetimeChecker::new(cx);
-        if checker.visit_expr(body.value).is_break() {
+        if checker.visit_expr(&body.value).is_break() {
             return None;
         }
     }

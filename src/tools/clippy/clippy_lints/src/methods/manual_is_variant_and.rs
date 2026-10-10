@@ -149,7 +149,7 @@ impl<'hir> MapFunc<'hir> {
     fn sugg(self, cx: &LateContext<'hir>, invert: bool, app: &mut Applicability) -> String {
         match self {
             Self::Closure(closure) => {
-                let body = Sugg::hir_with_applicability(cx, cx.tcx.hir_body(closure.body).value, "..", app);
+                let body = Sugg::hir_with_applicability(cx, &cx.tcx.hir_body(closure.body).value, "..", app);
                 format!(
                     "{} {}",
                     snippet_with_applicability(cx, closure.fn_decl_span, "|..|", app),
