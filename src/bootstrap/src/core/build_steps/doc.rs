@@ -1731,7 +1731,7 @@ impl CommandLineStep for RustcBook {
         // For now, we just check that the files are correct but do not generate output.
         // Let the user override it to TARGET_CHECK_ONLY=0 for testing, but use 1 by default.
         // See https://github.com/rust-lang/rust/issues/120745 for more info.
-        cmd.env("TARGET_CHECK_ONLY", std::env::var("TARGET_CHECK_ONLY").as_deref().unwrap_or("1"));
+        //cmd.env("TARGET_CHECK_ONLY", std::env::var("TARGET_CHECK_ONLY").as_deref().unwrap_or("1"));
         // target-docs uses -Zunstable-options --print all-target-specs-json
         cmd.env("RUSTC_BOOTSTRAP", "1");
 
