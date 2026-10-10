@@ -92,6 +92,10 @@ pub(crate) struct FnParseMode {
     /// definition or extern block. Within an impl block or a module, it should
     /// always be set to true.
     pub(super) req_body: bool,
+    /// Whether function_arg_const_generics (`const N: T`) is allowed
+    /// in the parameter list. Enabled for free, impl, and trait functions.
+    /// Disabled for the rest.
+    pub(super) allow_const: bool,
 }
 
 /// The context in which a function is parsed.
@@ -138,6 +142,8 @@ impl<'a> Parser<'a> {
                 }
             }
         };
+
+        let decl = Box::new(decl);
 
         // Store the end of function parameters to give better diagnostics
         // inside `parse_fn_body()`.
@@ -671,11 +677,11 @@ impl<'a> Parser<'a> {
         fn_parse_mode: &FnParseMode,
         ret_allow_plus: AllowPlus,
         recover_return_sign: RecoverReturnSign,
-    ) -> PResult<'a, Box<FnDecl>> {
-        Ok(Box::new(FnDecl {
+    ) -> PResult<'a, FnDecl> {
+        Ok(FnDecl {
             inputs: self.parse_fn_params(fn_parse_mode)?,
             output: self.parse_ret_ty(ret_allow_plus, RecoverQPath::Yes, recover_return_sign)?,
-        }))
+        })
     }
 
     /// Parses the parameter list of a function, including the `(` and `)` delimiters.
@@ -763,6 +769,19 @@ impl<'a> Parser<'a> {
             } else {
                 is_name_required
             };
+
+            let mut is_const = false;
+            if fn_parse_mode.allow_const
+                && this.check_keyword(exp!(Const))
+                && this.look_ahead(1, |token| token.is_non_reserved_ident())
+                && this.look_ahead(2, |token| *token == token::Colon)
+            {
+                this.bump();
+                let span = this.prev_token.span;
+                is_const = true;
+                this.psess.gated_spans.gate(sym::function_arg_const_generics, span);
+            }
+
             let (pat, ty) = if is_name_required || this.is_named_param() {
                 debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
                 let (pat, colon) = this.parse_fn_param_pat_colon()?;
@@ -841,7 +860,15 @@ impl<'a> Parser<'a> {
             let span = lo.to(this.prev_token.span);
 
             Ok((
-                Param { attrs, id: ast::DUMMY_NODE_ID, is_placeholder: false, pat, span, ty },
+                Param {
+                    attrs,
+                    id: ast::DUMMY_NODE_ID,
+                    is_placeholder: false,
+                    pat,
+                    span,
+                    ty,
+                    has_const_keyword: is_const,
+                },
                 Trailing::No,
                 UsePreAttrPos::No,
             ))

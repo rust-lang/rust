@@ -232,6 +232,14 @@ pub(crate) struct FnParamForbiddenSelf {
 }
 
 #[derive(Diagnostic)]
+#[diag("`const` parameter is only allowed in free/trait/impl functions")]
+pub(crate) struct InvalidConstParam {
+    #[primary_span]
+    #[label("not semantically valid as function parameter")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`default` is only allowed on items in trait impls")]
 pub(crate) struct ForbiddenDefault {
     #[primary_span]

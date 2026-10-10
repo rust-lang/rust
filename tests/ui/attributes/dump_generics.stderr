@@ -39,6 +39,7 @@ note: Generics {
                   pure_wrt_drop: false,
                   kind: Const {
                       has_default: false,
+                      arg_pos: None,
                   },
               },
               GenericParamDef {
@@ -137,6 +138,7 @@ note: Generics {
                   pure_wrt_drop: false,
                   kind: Const {
                       has_default: false,
+                      arg_pos: None,
                   },
               },
               GenericParamDef {
@@ -225,6 +227,7 @@ note: Generics {
                   pure_wrt_drop: false,
                   kind: Const {
                       has_default: false,
+                      arg_pos: None,
                   },
               },
               GenericParamDef {
@@ -309,6 +312,7 @@ note: Generics {
                   pure_wrt_drop: false,
                   kind: Const {
                       has_default: false,
+                      arg_pos: None,
                   },
               },
               GenericParamDef {
@@ -393,6 +397,7 @@ note: Generics {
                   pure_wrt_drop: false,
                   kind: Const {
                       has_default: false,
+                      arg_pos: None,
                   },
               },
               GenericParamDef {
@@ -470,6 +475,7 @@ note: Generics {
                   pure_wrt_drop: false,
                   kind: Const {
                       has_default: false,
+                      arg_pos: None,
                   },
               },
               GenericParamDef {
@@ -562,6 +568,7 @@ note: Generics {
                   pure_wrt_drop: false,
                   kind: Const {
                       has_default: false,
+                      arg_pos: None,
                   },
               },
               GenericParamDef {
@@ -650,6 +657,7 @@ note: Generics {
                   pure_wrt_drop: false,
                   kind: Const {
                       has_default: false,
+                      arg_pos: None,
                   },
               },
               GenericParamDef {
@@ -803,6 +811,7 @@ note: Generics {
                   pure_wrt_drop: false,
                   kind: Const {
                       has_default: false,
+                      arg_pos: None,
                   },
               },
           ],

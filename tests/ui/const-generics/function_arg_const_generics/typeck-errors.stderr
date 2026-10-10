@@ -1,0 +1,62 @@
+error[E0049]: associated function `m` has 0 const parameters but its trait declaration has 1 const parameter
+  --> $DIR/typeck-errors.rs:15:9
+   |
+LL |     fn m(const N: usize);
+   |          -------------- expected 1 const parameter
+...
+LL |     fn m(x: usize) {}
+   |         ^ found 0 const parameters
+
+error[E0049]: associated function `n` has 1 const parameter but its trait declaration has 0 const parameters
+  --> $DIR/typeck-errors.rs:16:10
+   |
+LL |     fn n(x: usize);
+   |         - expected 0 const parameters
+...
+LL |     fn n(const N: usize) {}
+   |          ^^^^^^^^^^^^^^ found 1 const parameter
+
+error[E0107]: function takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/typeck-errors.rs:20:13
+   |
+LL |     let _ = foo::<3>(3);
+   |             ^^^----- help: remove the unnecessary generics
+   |             |
+   |             expected 0 generic arguments
+   |
+note: function defined here, with 0 generic parameters
+  --> $DIR/typeck-errors.rs:3:4
+   |
+LL | fn foo(const N: usize) -> [u8; N] {
+   |    ^^^
+
+error: the constant `true` is not of type `usize`
+  --> $DIR/typeck-errors.rs:21:13
+   |
+LL |     let _ = foo(true);
+   |             ^^^^^^^^^ expected `usize`, found `bool`
+   |
+note: required by a const generic parameter in `foo`
+  --> $DIR/typeck-errors.rs:3:8
+   |
+LL | fn foo(const N: usize) -> [u8; N] {
+   |        ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+
+error[E0308]: mismatched types
+  --> $DIR/typeck-errors.rs:21:17
+   |
+LL |     let _ = foo(true);
+   |             --- ^^^^ expected `usize`, found `bool`
+   |             |
+   |             arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/typeck-errors.rs:3:4
+   |
+LL | fn foo(const N: usize) -> [u8; N] {
+   |    ^^^       -
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0049, E0107, E0308.
+For more information about an error, try `rustc --explain E0049`.

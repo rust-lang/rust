@@ -555,6 +555,8 @@ declare_features! (
     (internal, freeze_impls, "1.78.0", Some(121675)),
     /// Frontmatter `---` blocks for use by external tools.
     (unstable, frontmatter, "1.88.0", Some(136889)),
+    /// Allow function args to be const generics
+    (incomplete, function_arg_const_generics, "CURRENT_RUSTC_VERSION", Some(163261)),
     /// Allows using ADTs in directly represented generic const args.
     (incomplete, gca_adts, "CURRENT_RUSTC_VERSION", Some(163420)),
     /// Allows using generics in more complex const expressions, based on definitional equality.
@@ -879,6 +881,13 @@ pub enum DependentFeature {
 /// Some features require one or more other features to be enabled.
 pub const DEPENDENT_FEATURES: &[(Symbol, DependentFeature)] = &[
     // tidy-alphabetical-start
+    (
+        sym::function_arg_const_generics,
+        DependentFeature::Or(&[
+            DependentFeature::Leaf(sym::gca_min_const_items),
+            DependentFeature::Leaf(sym::gca_adts),
+        ]),
+    ),
     (
         sym::gca_adts,
         DependentFeature::Or(&[

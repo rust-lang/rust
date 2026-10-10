@@ -403,6 +403,7 @@ impl<'a> Parser<'a> {
                             context: FnContext::ParenthesizedArgumentList,
                             req_name: |_, _| false,
                             req_body: false,
+                            allow_const: false,
                         };
                         let param = p.parse_param_general(&mode, first_param)?;
                         first_param = false;

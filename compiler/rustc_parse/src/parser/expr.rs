@@ -2440,6 +2440,7 @@ impl<'a> Parser<'a> {
                     span: lo.to(this.prev_token.span),
                     id: DUMMY_NODE_ID,
                     is_placeholder: false,
+                    has_const_keyword: false,
                 },
                 Trailing::from(this.token == token::Comma),
                 UsePreAttrPos::No,
