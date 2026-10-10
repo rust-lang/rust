@@ -80,7 +80,11 @@ fn implied_outlives_bounds<'a, 'tcx>(
         // FIXME(higher_ranked_auto): Should we register assumptions here?
         // We otherwise would get spurious errors if normalizing an implied
         // outlives bound required proving some higher-ranked coroutine obl.
-        let QueryRegionConstraints { constraints, assumptions: _ } = constraints;
+        let QueryRegionConstraints { constraints, assumptions: _, solver_constraints } =
+            constraints;
+        if let Some(constraint) = solver_constraints {
+            infcx.register_solver_region_constraint(constraint.with_spans(span));
+        }
         let cause = ObligationCause::misc(span, body_def_id);
         for &QueryRegionConstraint { constraint, visible_for_leak_check: vis, .. } in &constraints {
             match constraint {
