@@ -1,0 +1,8 @@
+error: the constant `&*b""` is not of type `&'static [u8; 18282773015276577824]`
+  --> $DIR/byte-str-len-mismatch-ice-163904.rs:4:1
+   |
+LL | const X4: &[u8; 0x2468_ACF1_3579_BDFF_DB97_530E_CA86_420] = b"";
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&'static [u8; 18282773015276577824]`, found `&'static [u8; 0]`
+
+error: aborting due to 1 previous error
+
