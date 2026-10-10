@@ -251,6 +251,18 @@ fn maybe_sync_file(
     }
 }
 
+/// The host `FileTimes` that applies the given access and modification time updates.
+fn host_file_times_from_updates(access: TimeUpdate, modified: TimeUpdate) -> FileTimes {
+    let mut filetimes = FileTimes::new();
+    if let TimeUpdate::Set(access) = access {
+        filetimes = filetimes.set_accessed(access);
+    }
+    if let TimeUpdate::Set(modified) = modified {
+        filetimes = filetimes.set_modified(modified);
+    }
+    filetimes
+}
+
 impl<'tcx> EvalContextExtPrivate<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Decode one `futimens` `timespec`, handling the `UTIME_NOW`/`UTIME_OMIT` `tv_nsec` values.
@@ -278,6 +290,32 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(None);
         };
         interp_ok(SystemTime::UNIX_EPOCH.checked_add(duration).map(TimeUpdate::Set))
+    }
+
+    /// Decode the `times` argument of `futimens`/`utimensat`: `[atime, mtime]`, or NULL to set both
+    /// to now, as `(access, modified)`.
+    /// `None` means a `timespec` is invalid and the caller should report `EINVAL`.
+    fn parse_utimens_times(
+        &self,
+        times_ptr: Pointer,
+    ) -> InterpResult<'tcx, Option<(TimeUpdate, TimeUpdate)>> {
+        let this = self.eval_context_ref();
+
+        if this.ptr_is_null(times_ptr)? {
+            let now = TimeUpdate::Set(SystemTime::now());
+            interp_ok(Some((now, now)))
+        } else {
+            let timespec = this.libc_ty_layout("timespec");
+            let access_place = this.ptr_to_mplace(times_ptr, timespec);
+            let modified_place = access_place.offset(timespec.size, timespec, this)?;
+            let Some(access) = this.parse_utimens_timespec(&access_place)? else {
+                return interp_ok(None);
+            };
+            let Some(modified) = this.parse_utimens_timespec(&modified_place)? else {
+                return interp_ok(None);
+            };
+            interp_ok(Some((access, modified)))
+        }
     }
 
     fn write_stat_buf(
@@ -1706,30 +1744,75 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         })?;
         assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
 
-        let (access, modified) = if this.ptr_is_null(times_ptr)? {
-            let now = TimeUpdate::Set(SystemTime::now());
-            (now, now)
-        } else {
-            let timespec = this.libc_ty_layout("timespec");
-            let access_place = this.deref_pointer_as(times_op, timespec)?;
-            let modified_place = access_place.offset(timespec.size, timespec, this)?;
-            let Some(access) = this.parse_utimens_timespec(&access_place)? else {
-                return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
-            };
-            let Some(modified) = this.parse_utimens_timespec(&modified_place)? else {
-                return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
-            };
-            (access, modified)
+        let Some((access, modified)) = this.parse_utimens_times(times_ptr)? else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         };
+        let result = file.file.set_times(host_file_times_from_updates(access, modified));
+        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result.map(|()| 0i32))?))
+    }
 
-        let mut filetimes = FileTimes::new();
-        if let TimeUpdate::Set(access) = access {
-            filetimes = filetimes.set_accessed(access);
+    /// `utimensat(dirfd, path, times, flags)`: like `futimens`, but for the file at `path`. With
+    /// `AT_SYMLINK_NOFOLLOW`, a symlink at `path` is updated itself rather than its target.
+    fn utimensat(
+        &mut self,
+        dirfd_op: &OpTy<'tcx>,
+        path_op: &OpTy<'tcx>,
+        times_op: &OpTy<'tcx>,
+        flags_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let dirfd = this.read_scalar(dirfd_op)?.to_i32()?;
+        let path_ptr = this.read_pointer(path_op)?;
+        let times_ptr = this.read_pointer(times_op)?;
+        let flags = this.read_scalar(flags_op)?.to_i32()?;
+
+        if this.ptr_is_null(path_ptr)? {
+            // With `AT_FDCWD` this is a bad address on all systems. With any other `dirfd`, Linux
+            // operates on `dirfd` itself (like `futimens`) while macOS still fails.
+            if dirfd != this.eval_libc_i32("AT_FDCWD") {
+                throw_unsup_format!(
+                    "`utimensat` with a NULL path is only supported for `AT_FDCWD`"
+                );
+            }
+            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
-        if let TimeUpdate::Set(modified) = modified {
-            filetimes = filetimes.set_modified(modified);
+        let path = this.read_path_from_c_str(path_ptr)?.into_owned();
+
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`utimensat`", reject_with)?;
+            return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
         }
-        let result = file.file.set_times(filetimes);
+
+        let mut flags = flags;
+        // Parse known flags and subtract them from `flags`.
+        let at_symlink_nofollow = this.eval_libc_i32("AT_SYMLINK_NOFOLLOW");
+        let symlink_nofollow_flag = flags & at_symlink_nofollow == at_symlink_nofollow;
+        flags &= !at_symlink_nofollow;
+
+        if flags != 0 {
+            throw_unsup_format!("unsupported flags for `utimensat`: {flags:#x}")
+        }
+
+        if !(path.is_absolute() || dirfd == this.eval_libc_i32("AT_FDCWD")) {
+            throw_unsup_format!("`utimensat` with a path relative to a `dirfd` is not supported");
+        }
+
+        let Some((access, modified)) = this.parse_utimens_times(times_ptr)? else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+        };
+        if matches!((access, modified), (TimeUpdate::Omit, TimeUpdate::Omit)) {
+            // Nothing to do. Behavior in this case differs between platforms: Linux always
+            // succeeds, macOS/FreeBSD check whether the file exists. POSIX arguably allows both.
+            // We decide to follow Linux.
+            return interp_ok(Scalar::from_i32(0));
+        }
+        let filetimes = host_file_times_from_updates(access, modified);
+        let result = if symlink_nofollow_flag {
+            fs::set_times_nofollow(path, filetimes)
+        } else {
+            fs::set_times(path, filetimes)
+        };
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result.map(|()| 0i32))?))
     }
 
