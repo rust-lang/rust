@@ -1,4 +1,4 @@
-//@ run-rustfix
+//@ run-pass
 
 #![allow(dead_code)]
 
@@ -8,7 +8,6 @@ impl X {
     fn f(&mut self) {
         generic(self);
         self.0 += 1;
-        //~^ ERROR: use of moved value: `self` [E0382]
     }
 }
 

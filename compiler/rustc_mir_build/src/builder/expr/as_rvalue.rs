@@ -294,7 +294,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             // by reference captures use as_operand
                             Some(Category::Place) => {
                                 let place = unpack!(block = this.as_place(block, upvar));
-                                this.consume_by_copy_or_move(place)
+                                this.consume_by_copy_reborrow_or_move(place, block, upvar_expr.span)
                             }
                             _ => {
                                 // Turn mutable borrow captures into unique
@@ -435,9 +435,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 block.and(Rvalue::Use(operand, WithRetag::Yes))
             }
-            ExprKind::Reborrow { source, mutability, target } => {
-                let temp = unpack!(block = this.as_temp(block, scope, source, mutability));
-                block.and(Rvalue::Reborrow(target, mutability, temp.into()))
+            ExprKind::CoerceShared { source, target } => {
+                let temp = unpack!(block = this.as_temp(block, scope, source, Mutability::Not));
+                block.and(Rvalue::Reborrow(target, Mutability::Not, temp.into()))
             }
         }
     }

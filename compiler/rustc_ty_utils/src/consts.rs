@@ -222,7 +222,7 @@ fn recurse_build<'tcx>(
         | ExprKind::ThreadLocalRef(_) => {
             error(GenericConstantTooComplexSub::OperationNotSupported(node.span))?
         }
-        ExprKind::Reborrow { .. } => {
+        ExprKind::CoerceShared { .. } => {
             unimplemented!();
         }
     })
@@ -322,7 +322,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::InlineAsm(_)
             | thir::ExprKind::ThreadLocalRef(_)
             | thir::ExprKind::Yield { .. } => false,
-            thir::ExprKind::Reborrow { .. } => {
+            thir::ExprKind::CoerceShared { .. } => {
                 unimplemented!();
             }
         }

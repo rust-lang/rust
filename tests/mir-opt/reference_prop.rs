@@ -233,7 +233,7 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
         // CHECK: bb4: {
         // CHECK: [[a:_.*]] = const 7_usize;
         // CHECK: [[b:_.*]] = &mut [[a]];
-        // CHECK: [[c:_.*]] = copy (*[[b]]);
+        // CHECK: [[c:_.*]] = copy [[a]];
 
         let mut a = 7_usize;
         let b = &mut a;
@@ -246,10 +246,8 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
         // CHECK: bb5: {
         // CHECK: [[a:_.*]] = const 7_usize;
         // CHECK: [[b1:_.*]] = &mut [[a]];
-        // CHECK: [[c:_.*]] = copy (*[[b1]]);
-        // CHECK: [[b2:_.*]] = copy [[b1]];
-        // CHECK: [[c2:_.*]] = copy (*[[b2]]);
-        // CHECK: [[b3:_.*]] = copy [[b2]];
+        // CHECK: [[c:_.*]] = copy [[a]];
+        // CHECK: [[c2:_.*]] = copy [[a]];
 
         let mut a = 7_usize;
         let b1 = &mut a;
@@ -894,6 +892,26 @@ fn many_debuginfo() {
         &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&a;
 }
 
+fn remut(mut x: u8) {
+    // CHECK-LABEL: fn remut(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug c => [[a]];
+    let a = &mut x;
+    let b = &mut *a; //< this cannot mutate a.
+    let c = a; //< so `c` and `a` can be merged.
+    opaque(c);
+}
+
+fn reraw(mut x: u8) {
+    // CHECK-LABEL: fn reraw(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug c => [[a]];
+    let a = &mut x;
+    let b = &raw mut *a; //< this cannot mutate a.
+    let c = a; //< so `c` and `a` can be merged.
+    opaque(c);
+}
+
 fn main() {
     let mut x = 5_usize;
     let mut y = 7_usize;
@@ -910,6 +928,8 @@ fn main() {
     unique_with_copies();
     debuginfo();
     many_debuginfo();
+    remut(42);
+    reraw(42);
 }
 
 // EMIT_MIR reference_prop.reference_propagation.ReferencePropagation.diff
@@ -924,3 +944,5 @@ fn main() {
 // EMIT_MIR reference_prop.mut_raw_then_mut_shr.ReferencePropagation.diff
 // EMIT_MIR reference_prop.unique_with_copies.ReferencePropagation.diff
 // EMIT_MIR reference_prop.debuginfo.ReferencePropagation.diff
+// EMIT_MIR reference_prop.remut.ReferencePropagation.diff
+// EMIT_MIR reference_prop.reraw.ReferencePropagation.diff

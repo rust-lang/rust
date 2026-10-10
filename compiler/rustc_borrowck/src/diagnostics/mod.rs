@@ -34,7 +34,6 @@ use tracing::debug;
 
 use super::MirBorrowckCtxt;
 use super::borrow_set::BorrowData;
-use crate::LocalMutationIsAllowed;
 use crate::constraints::OutlivesConstraint;
 use crate::nll::ConstraintDescription;
 use crate::session_diagnostics::{
@@ -993,8 +992,6 @@ struct CapturedMessageOpt {
     is_partial_move: bool,
     is_loop_message: bool,
     is_move_msg: bool,
-    is_loop_move: bool,
-    has_suggest_reborrow: bool,
     maybe_reinitialized_locations_is_empty: bool,
 }
 
@@ -1235,8 +1232,6 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             is_partial_move: is_partial,
             is_loop_message,
             is_move_msg,
-            is_loop_move,
-            has_suggest_reborrow,
             maybe_reinitialized_locations_is_empty,
         } = msg_opt;
         let mut suggested_cloning = false;
@@ -1434,32 +1429,6 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                                 });
                             }
                             _ => {}
-                        }
-                        // If the moved place was a `&mut` ref, then we can
-                        // suggest to reborrow it where it was moved, so it
-                        // will still be valid by the time we get to the usage.
-                        if let ty::Ref(_, _, hir::Mutability::Mut) =
-                            moved_place.ty(self.body, self.infcx.tcx).ty.kind()
-                        {
-                            // The `&mut *place` reborrow suggestion is `MachineApplicable`, so
-                            // only offer it where `*place` can be borrowed mutably: a value
-                            // captured by an `Fn` closure (held via `&self`) cannot, and the
-                            // suggestion would otherwise fail to compile with E0596.
-                            let reborrow_place = self.infcx.tcx.mk_place_deref(moved_place);
-                            let reborrow_is_valid = self
-                                .is_mutable(reborrow_place.as_ref(), LocalMutationIsAllowed::No)
-                                .is_ok();
-                            // Suggest `reborrow` in other place for following situations:
-                            // 1. If we are in a loop this will be suggested later.
-                            // 2. If the moved value is a mut reference, it is used in a
-                            // generic function and the corresponding arg's type is generic param.
-                            if !is_loop_move && !has_suggest_reborrow && reborrow_is_valid {
-                                self.suggest_reborrow(
-                                    err,
-                                    move_span.shrink_to_lo(),
-                                    moved_place.as_ref(),
-                                );
-                            }
                         }
                     } else {
                         match desugaring {
