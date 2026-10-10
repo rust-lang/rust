@@ -2246,7 +2246,6 @@ impl ExitCode {
     /// # Examples
     ///
     /// ```
-    /// #![feature(exitcode_exit_method)]
     /// # use std::process::ExitCode;
     /// # use std::fmt;
     /// # enum UhOhError { GenericProblem, Specific, WithCode { exit_code: ExitCode, _x: () } }
@@ -2265,7 +2264,7 @@ impl ExitCode {
     ///     code.exit_process()
     /// }
     /// ```
-    #[unstable(feature = "exitcode_exit_method", issue = "97100")]
+    #[stable(feature = "exitcode_exit_method", since = "CURRENT_RUSTC_VERSION")]
     pub fn exit_process(self) -> ! {
         exit(self.to_i32())
     }
