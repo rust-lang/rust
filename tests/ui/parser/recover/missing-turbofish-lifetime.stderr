@@ -1,0 +1,112 @@
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/missing-turbofish-lifetime.rs:15:19
+   |
+LL |     let _ = Struct<'_> {
+   |                   ^
+   |
+help: add `::`
+   |
+LL |     let _ = Struct::<'_> {
+   |                   ++
+
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/missing-turbofish-lifetime.rs:23:19
+   |
+LL |     let _ = Struct<'a> {
+   |                   ^
+   |
+help: add `::`
+   |
+LL |     let _ = Struct::<'a> {
+   |                   ++
+
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/missing-turbofish-lifetime.rs:31:19
+   |
+LL |     let _ = Struct<'abc> {
+   |                   ^
+   |
+help: add `::`
+   |
+LL |     let _ = Struct::<'abc> {
+   |                   ++
+
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/missing-turbofish-lifetime.rs:41:24
+   |
+LL |     let _ = TupleStruct<'_>("");
+   |                        ^
+   |
+help: add `::`
+   |
+LL |     let _ = TupleStruct::<'_>("");
+   |                        ++
+
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/missing-turbofish-lifetime.rs:58:20
+   |
+LL |     let _ = Wrapper<'a>::new("hi");
+   |                    ^
+   |
+help: add `::`
+   |
+LL |     let _ = Wrapper::<'a>::new("hi");
+   |                    ++
+
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/missing-turbofish-lifetime.rs:62:20
+   |
+LL |     let _ = Struct2<'a> { x: 1, _p: std::marker::PhantomData }.method();
+   |                    ^
+   |
+help: add `::`
+   |
+LL |     let _ = Struct2::<'a> { x: 1, _p: std::marker::PhantomData }.method();
+   |                    ++
+
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/missing-turbofish-lifetime.rs:66:20
+   |
+LL |     let _ = Struct2<'a> { x: 1, _p: std::marker::PhantomData }.method()?;
+   |                    ^
+   |
+help: add `::`
+   |
+LL |     let _ = Struct2::<'a> { x: 1, _p: std::marker::PhantomData }.method()?;
+   |                    ++
+
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/missing-turbofish-lifetime.rs:70:6
+   |
+LL |     f<'_>();
+   |      ^
+   |
+help: add `::`
+   |
+LL |     f::<'_>();
+   |      ++
+
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/missing-turbofish-lifetime.rs:75:20
+   |
+LL |     let _ = Struct3<'a, 'b> { a: "hi", b: "hi" };
+   |                    ^
+   |
+help: add `::`
+   |
+LL |     let _ = Struct3::<'a, 'b> { a: "hi", b: "hi" };
+   |                    ++
+
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/missing-turbofish-lifetime.rs:80:20
+   |
+LL |     let _ = StructT<'a, &str> { a: "hi", b: "hi" };
+   |                    ^
+   |
+help: add `::`
+   |
+LL |     let _ = StructT::<'a, &str> { a: "hi", b: "hi" };
+   |                    ++
+
+error: aborting due to 10 previous errors
+

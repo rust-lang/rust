@@ -20,18 +20,14 @@ fn main() {
     //~| HELP use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
 
     let _ = f<'_, i8>();
-    //~^ ERROR expected one of
-    //~| HELP use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
-    //~| ERROR expected
-    //~| HELP add `'` to close the char literal
-    //~| ERROR labels cannot use keyword names
+    //~^ ERROR cannot find function `f` in this scope
+    //~| ERROR use `::<...>` instead of `<...>` to specify lifetime arguments
+    //~| HELP add `::`
 
     f<'_>();
-    //~^ ERROR comparison operators cannot be chained
-    //~| HELP use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
-    //~| ERROR expected
-    //~| HELP add `'` to close the char literal
-    //~| ERROR labels cannot use keyword names
+    //~^ ERROR cannot find function `f` in this scope
+    //~| ERROR use `::<...>` instead of `<...>` to specify lifetime arguments
+    //~| HELP add `::`
 
     let _ = f<u8>;
     //~^ ERROR comparison operators cannot be chained

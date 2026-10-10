@@ -1,27 +1,16 @@
-error: expected `while`, `for`, `loop` or `{` after a label
-  --> $DIR/issue-93282.rs:2:9
+error: use `::<...>` instead of `<...>` to specify lifetime arguments
+  --> $DIR/issue-93282.rs:3:6
    |
 LL |     f<'a,>
-   |         ^ expected `while`, `for`, `loop` or `{` after a label
+   |      ^
    |
-help: add `'` to close the char literal
-   |
-LL |     f<'a',>
-   |         +
-
-error: expected one of `.`, `:`, `;`, `?`, `for`, `loop`, `while`, `}`, or an operator, found `,`
-  --> $DIR/issue-93282.rs:2:9
-   |
-LL |     f<'a,>
-   |         ^ expected one of 9 possible tokens
-   |
-help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+help: add `::`
    |
 LL |     f::<'a,>
    |      ++
 
 error: expected `while`, `for`, `loop` or `{` after a label
-  --> $DIR/issue-93282.rs:13:11
+  --> $DIR/issue-93282.rs:16:11
    |
 LL |     bar('y, x);
    |           ^ expected `while`, `for`, `loop` or `{` after a label
@@ -31,8 +20,25 @@ help: add `'` to close the char literal
 LL |     bar('y', x);
    |           +
 
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/issue-93282.rs:3:7
+   |
+LL |     f<'a,>
+   |       ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn main<'a>() {
+   |        ++++
+
+error[E0425]: cannot find value `f` in this scope
+  --> $DIR/issue-93282.rs:3:5
+   |
+LL |     f<'a,>
+   |     ^ not found in this scope
+
 error[E0308]: mismatched types
-  --> $DIR/issue-93282.rs:13:9
+  --> $DIR/issue-93282.rs:16:9
    |
 LL |     bar('y, x);
    |     --- ^^ expected `usize`, found `char`
@@ -40,11 +46,12 @@ LL |     bar('y, x);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/issue-93282.rs:7:4
+  --> $DIR/issue-93282.rs:10:4
    |
 LL | fn bar(a: usize, b: usize) -> usize {
    |    ^^^ --------
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0308`.
+Some errors have detailed explanations: E0261, E0308, E0425.
+For more information about an error, try `rustc --explain E0261`.
