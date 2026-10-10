@@ -3331,13 +3331,14 @@ impl CommandLineStep for Tpde {
 
         let tpde_plugin = builder.ensure(super::tpde::Tpde { target: self.target });
 
+        let target_libdir = format!("lib/rustlib/{}/lib", self.target.triple);
+
         let mut tarball = Tarball::new(builder, "tpde", &host.triple);
         tarball.set_overlay(OverlayKind::Tpde);
         tarball.is_preview(true);
         tarball.add_legal_and_readme_to("share/doc/tpde");
 
-        // Put tpde-plugin.so next to librustc_driver
-        tarball.add_file(tpde_plugin.plugin_path(), "lib/", FileType::NativeLibrary);
+        tarball.add_file(tpde_plugin.plugin_path(), target_libdir, FileType::NativeLibrary);
         Some(tarball.generate())
     }
 

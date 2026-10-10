@@ -2547,19 +2547,18 @@ impl CommandLineStep for Assemble {
         maybe_install_llvm_bitcode_linker();
 
         if builder.config.rust_tpde {
+            debug!("`tpde` requested");
             // The rustc TPDE integration is Linux-only for now
             if !host.contains("linux") {
                 builder.info(&format!("host target `{host}` not supported by tpde. skipping"));
             }
             // Put TPDE next to librustc_driver.so
             let tpde_output = builder.ensure(Tpde { target: host });
-            builder.copy_link(
-                tpde_output.plugin_path(),
-                &builder
-                    .rustc_libdir(target_compiler)
-                    .join(tpde_output.plugin_path().file_name().unwrap()),
-                FileType::NativeLibrary,
-            );
+            let target_libdir =
+                builder.sysroot_target_libdir(target_compiler, target_compiler.host);
+            let target_dst_lib = target_libdir.join(tpde_output.plugin_path());
+
+            builder.copy_link(tpde_output.plugin_path(), &target_dst_lib, FileType::NativeLibrary);
         }
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
