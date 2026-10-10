@@ -1,3 +1,4 @@
+use indoc::indoc;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
@@ -619,7 +620,14 @@ fn stdin_formatting_smoke_test() {
     }
 
     #[cfg(not(windows))]
-    assert_eq!(buf, "<stdin>:\n\nfn main() {}\n".as_bytes());
+    {
+        let expected = indoc! {"
+            <stdin>:
+
+            fn main() {}
+        "};
+        assert_eq!(buf, expected.as_bytes());
+    }
     #[cfg(windows)]
     assert_eq!(buf, "<stdin>:\n\nfn main() {}\r\n".as_bytes());
 }
@@ -644,8 +652,19 @@ fn stdin_parser_panic_caught() {
 #[test]
 fn stdin_works_with_modified_lines() {
     init_log();
-    let input = "\nfn\n some( )\n{\n}\nfn main () {}\n";
-    let output = "1 6 2\nfn some() {}\nfn main() {}\n";
+    let input = indoc! {"
+
+        fn
+         some( )
+        {
+        }
+        fn main () {}
+    "};
+    let output = indoc! {"
+        1 6 2
+        fn some() {}
+        fn main() {}
+    "};
 
     let input = Input::Text(input.to_owned());
     let mut config = Config::default();
@@ -715,7 +734,10 @@ fn stdin_disable_all_formatting_test() {
 #[test]
 fn stdin_generated_files_issue_5172() {
     init_log();
-    let input = Input::Text("//@generated\nfn   main() {}".to_owned());
+    let input = Input::Text(String::from(indoc! {"
+        //@generated
+        fn   main() {}
+    "}));
     let mut config = Config::default();
     config.set().emit_mode(EmitMode::Stdout);
     config.set().format_generated_files(false);
@@ -729,7 +751,12 @@ fn stdin_generated_files_issue_5172() {
     // N.B. this should be changed once `format_generated_files` is supported with stdin
     assert_eq!(
         String::from_utf8(buf).unwrap(),
-        "<stdin>:\n\n//@generated\nfn main() {}\n",
+        indoc! {"
+            <stdin>:
+
+            //@generated
+            fn main() {}
+        "},
     );
 }
 
@@ -737,7 +764,11 @@ fn stdin_generated_files_issue_5172() {
 fn stdin_handles_mod_inner_ignore_attr() {
     // see https://github.com/rust-lang/rustfmt/issues/5368
     init_log();
-    let input = String::from("#![rustfmt::skip]\n\nfn    main() {  }");
+    let input = String::from(indoc! {"
+        #![rustfmt::skip]
+
+        fn    main() {  }
+    "});
     let mut child = Command::new(rustfmt().to_str().unwrap())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
