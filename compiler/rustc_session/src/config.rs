@@ -3338,6 +3338,14 @@ impl PpMode {
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
+pub enum Tpde {
+    /// Attempt to compile with TPDE-LLVM, but fall back to LLVM if unsupported LLVM IR is encountered
+    Try,
+    /// Attempt to compile with TPDE-LLVM, and bail if unsupported LLVM IR is encountered
+    Only,
+}
+
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub enum WasiExecModel {
     Command,
     Reactor,
@@ -3390,7 +3398,7 @@ pub(crate) mod dep_tracking {
         InstrumentMcountOpts, InstrumentXRay, LinkerPluginLto, LocationDetail, LtoCli,
         MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
         OutputTypes, PatchableFunctionEntry, PointerAuthOption, Polonius, ResolveDocLinks,
-        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
+        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, Tpde,
         WasiExecModel,
     };
     use crate::lint;
@@ -3500,6 +3508,7 @@ pub(crate) mod dep_tracking {
         CodegenRetagOptions,
         RustcVersion,
         PointerAuthOption,
+        Tpde,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
