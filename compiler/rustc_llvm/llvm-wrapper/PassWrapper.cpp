@@ -518,6 +518,9 @@ extern "C" LLVMRustResult LLVMRustWriteOutputFile(
     return LLVMRustResult::Failure;
   }
 
+  // TargetMachine::addPassesToEmitFile stores pointers to the output streams
+  // in a couple of places inside of the object. Explicitly delete the PM
+  // after we call run() to avoid dangling references.
   auto BOS = buffer_ostream(OS);
 
   if (TpdeOptions.mode != LLVMRustTpdeMode::None) {
@@ -539,6 +542,7 @@ extern "C" LLVMRustResult LLVMRustWriteOutputFile(
     llvm::PassPluginLibraryInfo plugin = TpdeOptions.plugin();
     PM->run(*unwrap(M));
     if (plugin.PreCodeGenCallback(*unwrap(M), *unwrap(Target), FileType, BOS)) {
+      PM.reset();
       return LLVMRustResult::Success;
     } else if (TpdeOptions.mode == LLVMRustTpdeMode::Only) {
       std::string error = "Failed to compile module " +
@@ -570,16 +574,14 @@ extern "C" LLVMRustResult LLVMRustWriteOutputFile(
     auto DBOS = buffer_ostream(DOS);
     unwrap(Target)->addPassesToEmitFile(*LLVMCodegenPM, BOS, &DBOS, FileType,
                                         !VerifyIR);
+    LLVMCodegenPM->run(*unwrap(M));
+    LLVMCodegenPM.reset();
   } else {
     unwrap(Target)->addPassesToEmitFile(*LLVMCodegenPM, BOS, nullptr, FileType,
                                         !VerifyIR);
+    LLVMCodegenPM->run(*unwrap(M));
+    LLVMCodegenPM.reset();
   }
-
-  LLVMCodegenPM->run(*unwrap(M));
-  // TargetMachine::addPassesToEmitFile stores pointers to the output streams
-  // in a couple of places inside of the object. Explicitly delete the PM
-  // after we call run() to avoid dangling references.
-  LLVMCodegenPM.reset();
 
   return LLVMRustResult::Success;
 }
