@@ -28,16 +28,14 @@ struct InnerPadding {
 }
 
 // CHECK-LABEL: c_ret_with_inner_padding:
-// CHECK: mov r7, sp
-// CHECK-NEXT: orr.w r0, r0, r1, lsl #16
+// CHECK: orr.w r0, r0, r1, lsl #16
 #[no_mangle]
 extern "C" fn c_ret_with_inner_padding(a: u8, b: u16) -> InnerPadding {
     InnerPadding { a, b }
 }
 
 // CHECK-LABEL: cmse_ret_with_inner_padding:
-// CHECK: mov r7, sp
-// CHECK-NEXT: uxtb r0, r0
+// CHECK: uxtb r0, r0
 // CHECK-NEXT: orr.w r0, r0, r1, lsl #16
 #[no_mangle]
 extern "cmse-nonsecure-entry" fn cmse_ret_with_inner_padding(a: u8, b: u16) -> InnerPadding {
@@ -45,10 +43,9 @@ extern "cmse-nonsecure-entry" fn cmse_ret_with_inner_padding(a: u8, b: u16) -> I
 }
 
 // CHECK-LABEL: c_call_with_inner_padding:
-// CHECK: mov r7, sp
-// CHECK-NEXT: mov r2, r0
+// CHECK: mov r2, r0
 // CHECK-NEXT: bic r0, r1, #65280
-// CHECK-NEXT: pop.w   {r7, lr}
+// CHECK-NEXT: bx r2
 #[no_mangle]
 extern "C" fn c_call_with_inner_padding(f: unsafe extern "C" fn(InnerPadding), x: InnerPadding) {
     unsafe { f(x) }
@@ -74,16 +71,14 @@ struct TrailingPadding {
 }
 
 // CHECK-LABEL: c_ret_with_trailing_padding:
-// CHECK: mov r7, sp
-// CHECK-NEXT: orr.w r0, r0, r1, lsl #16
+// CHECK: orr.w r0, r0, r1, lsl #16
 #[no_mangle]
 extern "C" fn c_ret_with_trailing_padding(a: u16, b: u8) -> TrailingPadding {
     TrailingPadding { a, b }
 }
 
 // CHECK-LABEL: cmse_ret_with_trailing_padding:
-// CHECK: mov r7, sp
-// CHECK-NEXT: uxtb r1, r1
+// CHECK: uxtb r1, r1
 // CHECK-NEXT: uxth r0, r0
 // CHECK-NEXT: orr.w r0, r0, r1, lsl #16
 #[no_mangle]
@@ -92,10 +87,9 @@ extern "cmse-nonsecure-entry" fn cmse_ret_with_trailing_padding(a: u16, b: u8) -
 }
 
 // CHECK-LABEL: c_call_with_trailing_padding:
-// CHECK: mov r7, sp
-// CHECK-NEXT: mov r2, r0
+// CHECK: mov r2, r0
 // CHECK-NEXT: bic r0, r1, #-16777216
-// CHECK-NEXT: pop.w   {r7, lr}
+// CHECK-NEXT: bx r2
 #[no_mangle]
 extern "C" fn c_call_with_trailing_padding(
     f: unsafe extern "C" fn(TrailingPadding),
@@ -125,8 +119,8 @@ struct WideU8 {
 // `extern "C"` does not clear the padding.
 //
 // CHECK-LABEL: c_ret_with_wide_u8:
-// CHECK: mov r7, sp
-// CHECK-NEXT: orr.w r0, r0, r1, lsl #16
+// CHECK: orr.w r0, r0, r1, lsl #16
+// CHECK-NEXT: bx lr
 #[no_mangle]
 extern "C" fn c_ret_with_wide_u8(a: u8, b: u8) -> [WideU8; 2] {
     [WideU8 { a }, WideU8 { a: b }]
@@ -135,8 +129,7 @@ extern "C" fn c_ret_with_wide_u8(a: u8, b: u8) -> [WideU8; 2] {
 // Upper bits are cleared by uxtb.
 //
 // CHECK-LABEL: cmse_ret_with_wide_u8:
-// CHECK: mov r7, sp
-// CHECK-NEXT: uxtb r1, r1
+// CHECK: uxtb r1, r1
 // CHECK-NEXT: uxtb r0, r0
 // CHECK-NEXT: orr.w r0, r0, r1, lsl #16
 #[no_mangle]
@@ -147,8 +140,7 @@ extern "cmse-nonsecure-entry" fn cmse_ret_with_wide_u8(a: u8, b: u8) -> [WideU8;
 // Same idea, the padding is recognized even through the MaybeUninit.
 //
 // CHECK-LABEL: cmse_ret_with_wide_u8_uninit:
-// CHECK: mov r7, sp
-// CHECK-NEXT: uxtb r0, r0
+// CHECK: uxtb r0, r0
 // CHECK-NEXT: orr.w r0, r0, r1, lsl #16
 // CHECK-NEXT: bic r0, r0, #-16711936
 #[no_mangle]
@@ -162,8 +154,7 @@ extern "cmse-nonsecure-entry" fn cmse_ret_with_wide_u8_uninit(
 // Same idea, the padding is recognized even through the MaybeUninit.
 //
 // CHECK-LABEL: cmse_ret_with_wide_u8_uninit_tuple:
-// CHECK: mov r7, sp
-// CHECK-NEXT: uxtb r0, r0
+// CHECK: uxtb r0, r0
 // CHECK-NEXT: orr.w r0, r0, r1, lsl #16
 // CHECK-NEXT: bic r0, r0, #-16711936
 #[no_mangle]
@@ -176,11 +167,9 @@ extern "cmse-nonsecure-entry" fn cmse_ret_with_wide_u8_uninit_tuple(
 
 // CHECK-LABEL: c_call_with_inner_wide_u8:
 // CHECK: push    {r7, lr}
-// CHECK-NEXT: .setfp  r7, sp
-// CHECK-NEXT: mov r7, sp
 // CHECK-NEXT: mov lr, r3
 // CHECK-NEXT: mov r12, r0
-// CHECK-NEXT: ldr r3, [r7, #8]
+// CHECK-NEXT: ldr r3, [sp, #8]
 // CHECK-NEXT: mov r0, r1
 // CHECK-NEXT: mov r1, r2
 // CHECK-NEXT: mov r2, lr
@@ -219,8 +208,7 @@ enum VariantsSameSize {
 impl Copy for VariantsSameSize {}
 
 // CHECK-LABEL: variants_same_size:
-// CHECK: mov r7, sp
-// CHECK-NEXT: ldrh r1, [r0, #2]
+// CHECK: ldrh r1, [r0, #2]
 // CHECK-NEXT: ldrb r0, [r0]
 // CHECK-NEXT: orr.w r0, r0, r1, lsl #16
 #[no_mangle]
@@ -239,8 +227,7 @@ impl Copy for VariantsDifferentSize {}
 // A uxtbeq conditionally clears the padding only for variant A.
 //
 // CHECK-LABEL: variants_different_size:
-// CHECK: mov r7, sp
-// CHECK-NEXT: ldrh r1, [r0, #2]
+// CHECK: ldrh r1, [r0, #2]
 // CHECK-NEXT: ldrb r0, [r0]
 // CHECK-NEXT: lsls r2, r0, #31
 // CHECK-NEXT: it eq
@@ -266,8 +253,7 @@ impl Copy for UninhabitedVariant {}
 // Only `B` is inhabited, so reading the tag is not needed.
 //
 // CHECK-LABEL: uninhabited_variant:
-// CHECK: mov r7, sp
-// CHECK-NEXT: ldrh r1, [r0, #2]
+// CHECK: ldrh r1, [r0, #2]
 // CHECK-NEXT: ldrb r0, [r0]
 // CHECK-NEXT: orr.w r0, r0, r1, lsl #16
 #[no_mangle]
@@ -277,8 +263,7 @@ extern "cmse-nonsecure-entry" fn uninhabited_variant(v: &UninhabitedVariant) -> 
 
 // The single guaranteed-padding byte is cleared with a `bic` mask over the whole loaded word.
 // CHECK-LABEL: variants_same_size_array:
-// CHECK: mov r7, sp
-// CHECK-NEXT: ldr r0, [r0]
+// CHECK: ldr r0, [r0]
 // CHECK-NEXT: bic r0, r0, #65280
 #[no_mangle]
 #[expect(improper_ctypes_definitions)]
@@ -289,8 +274,7 @@ extern "cmse-nonsecure-entry" fn variants_same_size_array(
 }
 
 // CHECK-LABEL: variants_different_size_array:
-// CHECK: mov r7, sp
-// CHECK-NEXT: ldrh r1, [r0, #2]
+// CHECK: ldrh r1, [r0, #2]
 // CHECK-NEXT: ldrb r0, [r0]
 // CHECK-NEXT: lsls r2, r0, #31
 // CHECK-NEXT: it eq
@@ -305,8 +289,7 @@ extern "cmse-nonsecure-entry" fn variants_different_size_array(
 }
 
 // CHECK-LABEL: variants_same_size_tuple:
-// CHECK: mov r7, sp
-// CHECK-NEXT: ldrh r1, [r0, #2]
+// CHECK: ldrh r1, [r0, #2]
 // CHECK-NEXT: ldrb r0, [r0]
 // CHECK-NEXT: orr.w r0, r0, r1, lsl #16
 #[no_mangle]
@@ -318,8 +301,7 @@ extern "cmse-nonsecure-entry" fn variants_same_size_tuple(
 }
 
 // CHECK-LABEL: variants_different_size_tuple:
-// CHECK: mov r7, sp
-// CHECK-NEXT: ldrh r1, [r0, #2]
+// CHECK: ldrh r1, [r0, #2]
 // CHECK-NEXT: ldrb r0, [r0]
 // CHECK-NEXT: lsls r2, r0, #31
 // CHECK-NEXT: it eq
