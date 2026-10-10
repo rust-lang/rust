@@ -862,6 +862,7 @@ impl File {
     /// `restart` is set to `true`.
     ///
     /// The returned bool indicates if there are more entries or not.
+    /// You must only iterate the buffer if this returned `true`!
     /// It is an error if `self` is not a directory.
     ///
     /// # Symlinks and other reparse points
@@ -883,6 +884,8 @@ impl File {
                 buffer.capacity() as _,
             );
             if result == 0 {
+                // Apparently ERROR_NO_MORE_FILES also means that the buffer is empty / was left
+                // unchanged. FIXME: find docs that say this.
                 let err = api::get_last_error();
                 if err.code == c::ERROR_NO_MORE_FILES { Ok(false) } else { Err(err) }
             } else {
@@ -952,8 +955,8 @@ impl<'a> Iterator for DirBuffIter<'a> {
             // While this is guaranteed to be aligned in documentation for
             // https://docs.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_id_both_dir_info
             // it does not seem that reality is so kind, and assuming this
-            // caused crashes in some cases (https://github.com/rust-lang/rust/issues/104530)
-            // presumably, this can be blamed on buggy filesystem drivers, but who knows.
+            // caused crashes in some cases (https://github.com/rust-lang/rust/issues/104530).
+            // Presumably, this can be blamed on buggy filesystem drivers, but who knows.
             let next_entry = (&raw const (*info).NextEntryOffset).read_unaligned() as usize;
             let length = (&raw const (*info).FileNameLength).read_unaligned() as usize;
             let attrs = (&raw const (*info).FileAttributes).read_unaligned();
