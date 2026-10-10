@@ -106,10 +106,7 @@ impl ConstValue {
         typing_env: ty::TypingEnv<'tcx>,
         ty: Ty<'tcx>,
     ) -> Option<u128> {
-        let size = tcx
-            .layout_of(typing_env.with_post_analysis_normalized(tcx).as_query_input(ty))
-            .ok()?
-            .size;
+        let size = tcx.layout_of(typing_env.as_query_input(ty)).ok()?.size;
         self.try_to_bits(size)
     }
 
@@ -382,10 +379,7 @@ impl<'tcx> Const<'tcx> {
         typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<u128> {
         let int = self.try_eval_scalar_int(tcx, typing_env)?;
-        let size = tcx
-            .layout_of(typing_env.with_post_analysis_normalized(tcx).as_query_input(self.ty()))
-            .ok()?
-            .size;
+        let size = tcx.layout_of(typing_env.as_query_input(self.ty())).ok()?.size;
         Some(int.to_bits(size))
     }
 

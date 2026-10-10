@@ -12,12 +12,14 @@ impl<T> AnyOption<T> {
 // item which is now borrowck'd together with its parent. As
 // borrowck of the parent requires us to have already lowered the match,
 // this is a query cycle.
+//
+// Update: this no longer has cycle error after #164023
 
 fn uwu() {}
 fn defines() {
     match Some(async {}) {
         AnyOption::<_>::NONE => {}
-        //~^ ERROR cycle detected when building THIR for `defines`
+        //~^ ERROR constant pattern cannot depend on generic parameters
         _ => {}
     }
 }
