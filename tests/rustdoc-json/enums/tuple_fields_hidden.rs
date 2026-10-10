@@ -1,14 +1,14 @@
-//@ set 1.1.0 = "$.index[?(@.docs=='1.1.0')].id"
-//@ set 2.1.0 = "$.index[?(@.docs=='2.1.0')].id"
-//@ set 2.1.1 = "$.index[?(@.docs=='2.1.1')].id"
-//@ set 2.2.1 = "$.index[?(@.docs=='2.2.1')].id"
-//@ set 2.3.0 = "$.index[?(@.docs=='2.3.0')].id"
-//@ set 3.1.1 = "$.index[?(@.docs=='3.1.1')].id"
-//@ set 3.1.2 = "$.index[?(@.docs=='3.1.2')].id"
-//@ set 3.2.0 = "$.index[?(@.docs=='3.2.0')].id"
-//@ set 3.2.2 = "$.index[?(@.docs=='3.2.2')].id"
-//@ set 3.3.0 = "$.index[?(@.docs=='3.3.0')].id"
-//@ set 3.3.1 = "$.index[?(@.docs=='3.3.1')].id"
+//@ set 1.1.0 = "$.index[?(@.docs[0].text=='1.1.0')].id"
+//@ set 2.1.0 = "$.index[?(@.docs[0].text=='2.1.0')].id"
+//@ set 2.1.1 = "$.index[?(@.docs[0].text=='2.1.1')].id"
+//@ set 2.2.1 = "$.index[?(@.docs[0].text=='2.2.1')].id"
+//@ set 2.3.0 = "$.index[?(@.docs[0].text=='2.3.0')].id"
+//@ set 3.1.1 = "$.index[?(@.docs[0].text=='3.1.1')].id"
+//@ set 3.1.2 = "$.index[?(@.docs[0].text=='3.1.2')].id"
+//@ set 3.2.0 = "$.index[?(@.docs[0].text=='3.2.0')].id"
+//@ set 3.2.2 = "$.index[?(@.docs[0].text=='3.2.2')].id"
+//@ set 3.3.0 = "$.index[?(@.docs[0].text=='3.3.0')].id"
+//@ set 3.3.1 = "$.index[?(@.docs[0].text=='3.3.1')].id"
 
 pub enum EnumWithStrippedTupleVariants {
     //@ count "$.index[?(@.name=='None')].inner.variant.kind.tuple[*]" 0
@@ -55,26 +55,26 @@ pub enum EnumWithStrippedTupleVariants {
     Three3(/** 3.3.0*/ bool, /** 3.3.1*/ bool, #[doc(hidden)] bool),
 }
 
-//@ is "$.index[?(@.docs=='1.1.0')].name" '"0"'
-//@ is "$.index[?(@.docs=='2.1.0')].name" '"0"'
-//@ is "$.index[?(@.docs=='2.1.1')].name" '"1"'
-//@ is "$.index[?(@.docs=='2.2.1')].name" '"1"'
-//@ is "$.index[?(@.docs=='2.3.0')].name" '"0"'
-//@ is "$.index[?(@.docs=='3.1.1')].name" '"1"'
-//@ is "$.index[?(@.docs=='3.1.2')].name" '"2"'
-//@ is "$.index[?(@.docs=='3.2.0')].name" '"0"'
-//@ is "$.index[?(@.docs=='3.2.2')].name" '"2"'
-//@ is "$.index[?(@.docs=='3.3.0')].name" '"0"'
-//@ is "$.index[?(@.docs=='3.3.1')].name" '"1"'
+//@ is "$.index[?(@.docs[0].text=='1.1.0')].name" '"0"'
+//@ is "$.index[?(@.docs[0].text=='2.1.0')].name" '"0"'
+//@ is "$.index[?(@.docs[0].text=='2.1.1')].name" '"1"'
+//@ is "$.index[?(@.docs[0].text=='2.2.1')].name" '"1"'
+//@ is "$.index[?(@.docs[0].text=='2.3.0')].name" '"0"'
+//@ is "$.index[?(@.docs[0].text=='3.1.1')].name" '"1"'
+//@ is "$.index[?(@.docs[0].text=='3.1.2')].name" '"2"'
+//@ is "$.index[?(@.docs[0].text=='3.2.0')].name" '"0"'
+//@ is "$.index[?(@.docs[0].text=='3.2.2')].name" '"2"'
+//@ is "$.index[?(@.docs[0].text=='3.3.0')].name" '"0"'
+//@ is "$.index[?(@.docs[0].text=='3.3.1')].name" '"1"'
 
-//@ is "$.index[?(@.docs=='1.1.0')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='2.1.0')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='2.1.1')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='2.2.1')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='2.3.0')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='3.1.1')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='3.1.2')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='3.2.0')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='3.2.2')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='3.3.0')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='3.3.1')].inner.struct_field" '{"primitive": "bool"}'
+//@ is "$.index[?(@.docs[0].text=='1.1.0')].inner.struct_field" '{"primitive": "bool"}'
+//@ is "$.index[?(@.docs[0].text=='2.1.0')].inner.struct_field" '{"primitive": "bool"}'
+//@ is "$.index[?(@.docs[0].text=='2.1.1')].inner.struct_field" '{"primitive": "bool"}'
+//@ is "$.index[?(@.docs[0].text=='2.2.1')].inner.struct_field" '{"primitive": "bool"}'
+//@ is "$.index[?(@.docs[0].text=='2.3.0')].inner.struct_field" '{"primitive": "bool"}'
+//@ is "$.index[?(@.docs[0].text=='3.1.1')].inner.struct_field" '{"primitive": "bool"}'
+//@ is "$.index[?(@.docs[0].text=='3.1.2')].inner.struct_field" '{"primitive": "bool"}'
+//@ is "$.index[?(@.docs[0].text=='3.2.0')].inner.struct_field" '{"primitive": "bool"}'
+//@ is "$.index[?(@.docs[0].text=='3.2.2')].inner.struct_field" '{"primitive": "bool"}'
+//@ is "$.index[?(@.docs[0].text=='3.3.0')].inner.struct_field" '{"primitive": "bool"}'
+//@ is "$.index[?(@.docs[0].text=='3.3.1')].inner.struct_field" '{"primitive": "bool"}'

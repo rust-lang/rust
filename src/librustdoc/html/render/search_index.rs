@@ -1325,8 +1325,10 @@ pub(crate) fn build_index(
 
     // The crate always goes first in this list
     let crate_name = krate.name(tcx);
-    let crate_doc =
-        short_markdown_summary(&krate.module.doc_value(), &krate.module.link_names(cache));
+    let crate_doc = short_markdown_summary(
+        &krate.module.doc_values().values().next().map_or_default(|s| &s[..]),
+        &krate.module.link_names(cache),
+    );
     let crate_idx = {
         let crate_path = (ItemType::ExternCrate, vec![crate_name]);
         match serialized_index.crate_paths_index.entry(crate_path) {

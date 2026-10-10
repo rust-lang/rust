@@ -227,7 +227,7 @@ impl DocFolder for ImplStripper<'_, '_> {
                 {
                     debug!("ImplStripper: no public item; removing {imp:?}");
                     return None;
-                } else if imp.items.is_empty() && i.doc_value().is_empty() {
+                } else if imp.items.is_empty() && i.doc_values().is_empty() {
                     debug!("ImplStripper: no item and no doc; removing {imp:?}");
                     return None;
                 }

@@ -33,8 +33,8 @@ pub trait UnstableTraitForImpl {
     fn unstable_trait_method(&self);
 }
 
-//@ is "$.index[?(@.docs=='stable inherent impl')].stability.feature" '"stable_inherent_impl"'
-//@ is "$.index[?(@.docs=='stable inherent impl')].stability.level.stable.since" '"2.0.0"'
+//@ is "$.index[?(@.docs[0].text=='stable inherent impl')].stability.feature" '"stable_inherent_impl"'
+//@ is "$.index[?(@.docs[0].text=='stable inherent impl')].stability.level.stable.since" '"2.0.0"'
 /// stable inherent impl
 #[stable(feature = "stable_inherent_impl", since = "2.0.0")]
 impl StableImplTarget {
@@ -50,8 +50,8 @@ impl StableImplTarget {
     pub const UNSTABLE_ASSOC_CONST_IN_IMPL: usize = 2;
 }
 
-//@ is "$.index[?(@.docs=='unstable inherent impl')].stability.level" '"unstable"'
-//@ is "$.index[?(@.docs=='unstable inherent impl')].stability.feature" '"unstable_inherent_impl"'
+//@ is "$.index[?(@.docs[0].text=='unstable inherent impl')].stability.level" '"unstable"'
+//@ is "$.index[?(@.docs[0].text=='unstable inherent impl')].stability.feature" '"unstable_inherent_impl"'
 /// unstable inherent impl
 #[unstable(feature = "unstable_inherent_impl", issue = "none")]
 impl StableImplTarget {
@@ -69,57 +69,57 @@ impl StableImplTarget {
 // stability onto the implemented item. The unstable impl case is different: rustc records the
 // impl block's instability on contained impl items, so JSON exposes that inherited instability.
 
-//@ is "$.index[?(@.docs=='stable trait impl with unstable trait method')].stability.feature" '"stable_trait_impl_with_unstable_trait_method"'
-//@ is "$.index[?(@.docs=='stable trait impl with unstable trait method')].stability.level.stable.since" '"3.0.0"'
+//@ is "$.index[?(@.docs[0].text=='stable trait impl with unstable trait method')].stability.feature" '"stable_trait_impl_with_unstable_trait_method"'
+//@ is "$.index[?(@.docs[0].text=='stable trait impl with unstable trait method')].stability.level.stable.since" '"3.0.0"'
 /// stable trait impl with unstable trait method
 #[stable(feature = "stable_trait_impl_with_unstable_trait_method", since = "3.0.0")]
 impl StableTraitWithUnstableMethodForImpl for StableImplTarget {
     // The impl item has no separate stability record; the trait method is unstable.
-    //@ is "$.index[?(@.docs=='method for unstable trait item inside stable trait impl')].stability" null
+    //@ is "$.index[?(@.docs[0].text=='method for unstable trait item inside stable trait impl')].stability" null
     /// method for unstable trait item inside stable trait impl
     fn unstable_trait_method_for_stable_impl(&self) {}
 }
 
-//@ is "$.index[?(@.docs=='stable trait impl')].stability.feature" '"stable_trait_impl"'
-//@ is "$.index[?(@.docs=='stable trait impl')].stability.level.stable.since" '"3.0.0"'
+//@ is "$.index[?(@.docs[0].text=='stable trait impl')].stability.feature" '"stable_trait_impl"'
+//@ is "$.index[?(@.docs[0].text=='stable trait impl')].stability.level.stable.since" '"3.0.0"'
 /// stable trait impl
 #[stable(feature = "stable_trait_impl", since = "3.0.0")]
 impl StableTraitForImpl for StableImplTarget {
     // These impl items likewise have no separate stability records.
     // Their trait item declarations and the impl block are all stable.
 
-    //@ is "$.index[?(@.docs=='assoc type inside stable trait impl')].stability" null
+    //@ is "$.index[?(@.docs[0].text=='assoc type inside stable trait impl')].stability" null
     /// assoc type inside stable trait impl
     type StableOutput = usize;
 
-    //@ is "$.index[?(@.docs=='assoc const inside stable trait impl')].stability" null
+    //@ is "$.index[?(@.docs[0].text=='assoc const inside stable trait impl')].stability" null
     /// assoc const inside stable trait impl
     const STABLE_ASSOC_CONST: usize = 0;
 
-    //@ is "$.index[?(@.docs=='method inside stable trait impl')].stability" null
+    //@ is "$.index[?(@.docs[0].text=='method inside stable trait impl')].stability" null
     /// method inside stable trait impl
     fn stable_trait_method(&self) {}
 }
 
-//@ is "$.index[?(@.docs=='unstable trait impl')].stability.level" '"unstable"'
-//@ is "$.index[?(@.docs=='unstable trait impl')].stability.feature" '"unstable_trait_impl"'
+//@ is "$.index[?(@.docs[0].text=='unstable trait impl')].stability.level" '"unstable"'
+//@ is "$.index[?(@.docs[0].text=='unstable trait impl')].stability.feature" '"unstable_trait_impl"'
 /// unstable trait impl
 #[unstable(feature = "unstable_trait_impl", issue = "none")]
 impl UnstableTraitForImpl for StableImplTarget {
     // These associated items inherit the impl block's instability in rustdoc JSON.
 
-    //@ is "$.index[?(@.docs=='assoc type inside unstable trait impl')].stability.level" '"unstable"'
-    //@ is "$.index[?(@.docs=='assoc type inside unstable trait impl')].stability.feature" '"unstable_trait_impl"'
+    //@ is "$.index[?(@.docs[0].text=='assoc type inside unstable trait impl')].stability.level" '"unstable"'
+    //@ is "$.index[?(@.docs[0].text=='assoc type inside unstable trait impl')].stability.feature" '"unstable_trait_impl"'
     /// assoc type inside unstable trait impl
     type UnstableOutput = usize;
 
-    //@ is "$.index[?(@.docs=='assoc const inside unstable trait impl')].stability.level" '"unstable"'
-    //@ is "$.index[?(@.docs=='assoc const inside unstable trait impl')].stability.feature" '"unstable_trait_impl"'
+    //@ is "$.index[?(@.docs[0].text=='assoc const inside unstable trait impl')].stability.level" '"unstable"'
+    //@ is "$.index[?(@.docs[0].text=='assoc const inside unstable trait impl')].stability.feature" '"unstable_trait_impl"'
     /// assoc const inside unstable trait impl
     const UNSTABLE_ASSOC_CONST: usize = 0;
 
-    //@ is "$.index[?(@.docs=='method inside unstable trait impl')].stability.level" '"unstable"'
-    //@ is "$.index[?(@.docs=='method inside unstable trait impl')].stability.feature" '"unstable_trait_impl"'
+    //@ is "$.index[?(@.docs[0].text=='method inside unstable trait impl')].stability.level" '"unstable"'
+    //@ is "$.index[?(@.docs[0].text=='method inside unstable trait impl')].stability.feature" '"unstable_trait_impl"'
     /// method inside unstable trait impl
     fn unstable_trait_method(&self) {}
 }
