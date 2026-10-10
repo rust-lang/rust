@@ -25,6 +25,7 @@ impl<I> Cloned<I> {
     }
 }
 
+#[inline]
 fn clone_try_fold<T: Clone, Acc, R>(mut f: impl FnMut(Acc, T) -> R) -> impl FnMut(Acc, &T) -> R {
     move |acc, elt| f(acc, elt.clone())
 }
@@ -45,6 +46,7 @@ where
         self.it.size_hint()
     }
 
+    #[inline]
     fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
@@ -54,6 +56,7 @@ where
         self.it.try_fold(init, clone_try_fold(f))
     }
 
+    #[inline]
     fn fold<Acc, F>(self, init: Acc, f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
@@ -81,6 +84,7 @@ where
         self.it.next_back().cloned()
     }
 
+    #[inline]
     fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
@@ -90,6 +94,7 @@ where
         self.it.try_rfold(init, clone_try_fold(f))
     }
 
+    #[inline]
     fn rfold<Acc, F>(self, init: Acc, f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
