@@ -724,7 +724,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Desugar `try { <stmts>; <expr> }` into `{ <stmts>; ::std::ops::Try::from_output(<expr>) }`,
-    /// `try { <stmts>; }` into `{ <stmts>; ::std::ops::Try::from_output(()) }`
+    /// `try { <stmts>; }` into `{ ::std::ops::Try::from_output({ <stmts>; }) }`
     /// and save the block id to use it as a break target for desugaring of the `?` operator.
     fn lower_expr_try_block(&mut self, body: &Block, opt_ty: Option<&Ty>) -> hir::ExprKind<'hir> {
         let body_hir_id = self.lower_node_id(body.id);
@@ -736,7 +736,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let whole_block = self.with_try_block_scope(new_scope, |this| {
             let mut block = this.lower_block_noalloc(body_hir_id, body, true);
 
-            // Final expression of the block (if present) or `()` with span at the end of block
+            // Final expression of the block (if present) or the statements wrapped within a block.
             let (try_span, tail_expr) = if let Some(expr) = block.expr.take() {
                 (
                     this.mark_span_with_reason(
@@ -752,8 +752,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     this.tcx.sess.source_map().end_point(body.span),
                     Some(Arc::clone(&crate::ALLOW_TRY_TRAIT)),
                 );
+                let stmts = mem::take(&mut block.stmts);
+                let inner = this.block_all(body.span, stmts, None);
 
-                (try_span, this.expr_unit(try_span))
+                (
+                    try_span,
+                    &*this.arena.alloc(this.expr(try_span, hir::ExprKind::Block(inner, None))),
+                )
             };
 
             let ok_wrapped_span =

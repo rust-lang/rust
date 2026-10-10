@@ -238,9 +238,9 @@ mod expressions {
 
     /// ExprKind::TryBlock
     fn expr_try_block() {
-        { from_output(()) }
-        { return; from_output(()) }
-        type_ascribe!({ from_output(()) }, Option<_>);
+        { from_output({ }) }
+        { from_output({ return; }) }
+        type_ascribe!({ from_output({ }) }, Option<_>);
         type_ascribe!({
                 from_output(match branch(None) {
                         Break {  0: residual } => #[allow(unreachable_code)]
