@@ -1,0 +1,12 @@
+error: cannot use `x` in this move expression
+  --> $DIR/closure-local-uninitialized.rs:10:14
+   |
+LL |     let _c = || {
+   |              -- `x` is defined within this scope
+LL |         let x;
+   |             - `x` is defined here
+LL |         move(x);
+   |         -----^- this expression is evaluated outside that scope
+
+error: aborting due to 1 previous error
+

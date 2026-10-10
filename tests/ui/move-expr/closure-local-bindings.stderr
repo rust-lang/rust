@@ -1,0 +1,125 @@
+error: cannot use `x` in this move expression
+  --> $DIR/closure-local-bindings.rs:12:27
+   |
+LL |     let _ = |x: i32| move(x);
+   |             -------- -----^-
+   |             ||       |
+   |             ||       this expression is evaluated outside that scope
+   |             |`x` is defined here
+   |             `x` is defined within this scope
+
+error: cannot use `x` in this move expression
+  --> $DIR/closure-local-bindings.rs:15:39
+   |
+LL |     let _ = |(x, _): (i32, i32)| move(x);
+   |             -------------------- -----^-
+   |             | |                  |
+   |             | |                  this expression is evaluated outside that scope
+   |             | `x` is defined here
+   |             `x` is defined within this scope
+
+error: cannot use `x` in this move expression
+  --> $DIR/closure-local-bindings.rs:21:14
+   |
+LL |     let _ = || {
+   |             -- `x` is defined within this scope
+LL |         let x = 2;
+   |             - `x` is defined here
+LL |         move(x);
+   |         -----^- this expression is evaluated outside that scope
+
+error: cannot use `x` in this move expression
+  --> $DIR/closure-local-bindings.rs:27:18
+   |
+LL |     let _ = || {
+   |             -- `x` is defined within this scope
+LL |         for x in [1] {
+   |             - `x` is defined here
+LL |             move(x);
+   |             -----^- this expression is evaluated outside that scope
+
+error: cannot use `x` in this move expression
+  --> $DIR/closure-local-bindings.rs:34:18
+   |
+LL |     let _ = || {
+   |             -- `x` is defined within this scope
+LL |         if let Some(x) = Some(1) {
+   |                     - `x` is defined here
+LL |             move(x);
+   |             -----^- this expression is evaluated outside that scope
+
+error: cannot use `x` in this move expression
+  --> $DIR/closure-local-bindings.rs:41:22
+   |
+LL |     let _ = || {
+   |             -- `x` is defined within this scope
+LL |         let x = 1;
+   |             - `x` is defined here
+LL |         || move(move(x))
+   |                 -----^- this expression is evaluated outside that scope
+
+error: cannot use `x` in this move expression
+  --> $DIR/closure-local-bindings.rs:47:14
+   |
+LL |     let _ = || || move({
+   |             -- `x` is defined within this scope
+LL |         let x = 1;
+   |             - `x` is defined here
+LL |         move(x)
+   |         -----^- this expression is evaluated outside that scope
+
+error: cannot use `x` in this move expression
+  --> $DIR/closure-local-bindings.rs:53:21
+   |
+LL |     ($value:expr) => { move($value) };
+   |                        ------------ this expression is evaluated outside that scope
+...
+LL |     let _ = || {
+   |             -- `x` is defined within this scope
+LL |         let x = 1;
+   |             - `x` is defined here
+LL |         move_value!(x);
+   |                     ^
+
+error: cannot use `x` in this move expression
+  --> $DIR/closure-local-bindings.rs:57:33
+   |
+LL |     let _ = async |x: i32| move(x);
+   |             -------------- -----^-
+   |             |      |       |
+   |             |      |       this expression is evaluated outside that scope
+   |             |      `x` is defined here
+   |             `x` is defined within this scope
+
+error: cannot use `x` in this move expression
+  --> $DIR/closure-local-bindings.rs:62:14
+   |
+LL |     let _ = async {
+   |             ----- `x` is defined within this scope
+LL |         let x = 1;
+   |             - `x` is defined here
+LL |         move(x);
+   |         -----^- this expression is evaluated outside that scope
+
+error: cannot use `x` in this move expression
+  --> $DIR/closure-local-bindings.rs:68:20
+   |
+LL |     let _ = gen {
+   |             --- `x` is defined within this scope
+LL |         let x = 1;
+   |             - `x` is defined here
+LL |         yield move(x);
+   |               -----^- this expression is evaluated outside that scope
+
+error: cannot use `x` in this move expression
+  --> $DIR/closure-local-bindings.rs:74:17
+   |
+LL |     let _ = || {
+   |             -- `x` is defined within this scope
+LL |         let x = 1;
+   |             - `x` is defined here
+LL |         move(|| x)
+   |         --------^- this expression is evaluated outside that scope
+
+error: aborting due to 12 previous errors
+
