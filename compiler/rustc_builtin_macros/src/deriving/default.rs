@@ -69,7 +69,15 @@ fn default_struct_substructure(
     variant_data: &VariantData,
     type_ident: Ident,
 ) -> BlockOrExpr {
+    // FIXME: This is currently needed to avoid a regression with attribute macros after
+    // derives that incorrectly rely on the generated code using `Unit {}` instead of `Unit`.
+    // See https://github.com/rust-lang/rust/issues/164078.
+    if variant_data.fields().is_empty() {
+        return BlockOrExpr::new_expr(cx.expr_struct_ident(trait_span, type_ident, ThinVec::new()));
+    }
+
     let expr = match variant_data {
+        // This is currently unreachable due to the above hack.
         VariantData::Unit(_) => cx.expr_ident(trait_span, type_ident),
         VariantData::Tuple(fields, _) => {
             let exprs = fields
