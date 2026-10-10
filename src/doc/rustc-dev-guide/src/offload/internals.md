@@ -53,3 +53,28 @@ Trying to teach the whole rustc middle and backend to be aware that any symbol n
 and it is questionable why we should make the whole compiler more complex, if the alternative is a ~5 line cargo wrapper.
 We still control the full compilation pipeline and have both host and device code available,
 therefore there shouldn't be a runtime performance difference between the two approaches.
+
+## Safety and region design
+
+The `Region` type (`core::offload::Region`) is a host-side handle to a contiguous memory region
+that should be partitioned across the execution units (threads) of an offloaded kernel. Creating a
+`Region` takes a mutable borrow of the underlying slice, so Rust's borrow checker prevents the host
+from accessing the memory while the region is alive. `Region` is deliberately neither `Copy` nor
+`Clone`, which avoids aliasing the same memory through multiple handles. A region can be reborrowed
+with `Region::reborrow` when a shorter lifetime is needed.
+
+The way a region is split across execution units is described by the `PartitioningStrategy` trait.
+Given the region pointer and length, the strategy's `get` and `get_mut` methods return a read-only
+or mutable view for the current execution unit, or `None` where the current unit has no work to do.
+`PartitioningStrategy` is an `unsafe` trait: an implementation must guarantee that all views it
+hands out are disjoint, otherwise two units could write to the same location.
+
+A strategy exposes `check_launch(len, grid, block)`, which decides whether a given number of elements
+can be launched with a particular grid/block configuration. This check is soundness-critical: it may
+only return `Ok` unconditionally if and only if a launch is valid for arbitrary `len`, `grid`, and
+`block` values. If any configuration would produce incorrect results or cause undefined behavior, it
+must return a `LaunchError`. The `offload!` macro calls `check_launch` for every `Region` argument
+before launching, and panics if the check fails.
+
+Only `Region`s passed to a kernel by value can be mapped like slices. A `Region` nested inside another
+type is rejected during type checking (see `contains_nested_offload_region` in `rustc_hir_typeck`).
