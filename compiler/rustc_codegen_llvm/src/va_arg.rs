@@ -88,7 +88,7 @@ fn get_param_type_alignment<'ll, 'tcx>(
     };
 
     match bx.cx.tcx.sess.target.arch {
-        Arch::PowerPC64 => match scalar.primitive() {
+        Arch::PowerPC | Arch::PowerPC64 => match scalar.primitive() {
             Primitive::Int(integer, _) => match integer {
                 Integer::I8 | Integer::I16 => unreachable!(),
                 Integer::I32 | Integer::I64 => { /* fall through */ }
@@ -96,7 +96,8 @@ fn get_param_type_alignment<'ll, 'tcx>(
             },
             Primitive::Float(float) => match float {
                 Float::F16 | Float::F16B | Float::F32 => unreachable!(),
-                Float::F64 | Float::F128 | Float::PpcF128 => { /* fall through */ }
+                Float::F64 | Float::F128 => { /* fall through */ }
+                Float::PpcF128 => return Align::EIGHT,
             },
             Primitive::Pointer(_) => { /* fall through */ }
         },
@@ -317,11 +318,15 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
     // All instances of VaArgSafe are passed directly.
     let is_indirect = false;
 
-    let (is_i64, is_int, is_f64) = match layout.layout.backend_repr() {
+    let (is_i64, is_int, is_f64, is_ppcf128) = match layout.layout.backend_repr() {
         BackendRepr::Scalar(scalar) => match scalar.primitive() {
-            rustc_abi::Primitive::Int(integer, _) => (integer.size().bits() == 64, true, false),
-            rustc_abi::Primitive::Float(float) => (false, false, float.size().bits() == 64),
-            rustc_abi::Primitive::Pointer(_) => (false, true, false),
+            rustc_abi::Primitive::Int(integer, _) => {
+                (integer.size().bits() == 64, true, false, false)
+            }
+            rustc_abi::Primitive::Float(float) => {
+                (false, false, matches!(float, Float::F64), matches!(float, Float::PpcF128))
+            }
+            rustc_abi::Primitive::Pointer(_) => (false, true, false, false),
         },
         _ => unreachable!("all instances of VaArgSafe are represented as scalars"),
     };
@@ -335,13 +340,20 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
     let mut num_regs = bx.load(bx.type_i8(), num_regs_addr, dl.i8_align);
 
     // "Align" the register count when the type is passed as `i64`.
-    if is_i64 || (is_f64 && is_soft_float_abi) {
+    if is_i64 || ((is_f64 || is_ppcf128) && is_soft_float_abi) {
         num_regs = bx.add(num_regs, bx.const_u8(1));
         num_regs = bx.and(num_regs, bx.const_u8(0b1111_1110));
     }
 
     let max_regs = 8u8;
-    let use_regs = bx.icmp(IntPredicate::IntULT, num_regs, bx.const_u8(max_regs));
+    let use_regs = if is_int || is_soft_float_abi {
+        bx.icmp(IntPredicate::IntULT, num_regs, bx.const_u8(max_regs))
+    } else {
+        let fpr = num_regs;
+        let n_reg = layout.size.bytes().div_ceil(8) as u8;
+        bx.icmp(IntPredicate::IntULE, fpr, bx.const_u8(max_regs - n_reg))
+    };
+
     let ptr_align_abi = bx.tcx().data_layout.pointer_align().abi;
 
     let in_reg = bx.append_sibling_block("va_arg.in_reg");
@@ -368,7 +380,11 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
         let reg_addr = bx.inbounds_ptradd(reg_addr, reg_offset);
 
         // Increase the used-register count.
-        let reg_incr = if is_i64 || (is_f64 && is_soft_float_abi) { 2 } else { 1 };
+        let reg_incr = if is_int {
+            layout.size.bytes().div_ceil(4) as u8
+        } else {
+            layout.size.bytes().div_ceil(8) as u8
+        };
         let new_num_regs = bx.add(num_regs, bx.cx.const_u8(reg_incr));
         bx.store(new_num_regs, num_regs_addr, dl.i8_align);
 
@@ -395,9 +411,9 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
         let mut overflow_area = bx.load(bx.type_ptr(), overflow_area_ptr, ptr_align_abi);
 
         // Round up address of argument to alignment
-        if layout.layout.align.abi > overflow_area_align {
-            overflow_area =
-                round_pointer_up_to_alignment(bx, overflow_area, layout.layout.align.abi);
+        let align = get_param_type_alignment(bx, layout);
+        if align > overflow_area_align {
+            overflow_area = round_pointer_up_to_alignment(bx, overflow_area, align);
         }
 
         let mem_addr = overflow_area;
@@ -417,7 +433,8 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
     let val_type = layout.llvm_type(bx);
     let val_addr =
         if is_indirect { bx.load(bx.cx.type_ptr(), val_addr, ptr_align_abi) } else { val_addr };
-    bx.load(val_type, val_addr, layout.align.abi)
+    let align = get_param_type_alignment(bx, layout);
+    bx.load(val_type, val_addr, align)
 }
 
 fn emit_s390x_va_arg<'ll, 'tcx>(
