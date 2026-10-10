@@ -14,7 +14,7 @@ mod llvm_enzyme {
     use rustc_ast::tokenstream::*;
     use rustc_ast::visit::AssocCtxt::*;
     use rustc_ast::{
-        self as ast, AnonConst, FnRetTy, FnSig, GenericArg, GenericParamKind, Generics, ItemKind,
+        self as ast, FnRetTy, FnSig, GenericArg, GenericParamKind, Generics, ItemKind,
         MetaItemInner, PatKind, TyKind, Visibility,
     };
     use rustc_attr_ir::RustcAutodiff;
@@ -332,16 +332,7 @@ mod llvm_enzyme {
         );
 
         // The first element of it is the name of the function to be generated
-        let d_fn = Box::new(ast::Fn {
-            defaultness: ast::Defaultness::Implicit,
-            sig: d_sig,
-            ident: first_ident(&meta_item_vec[0]),
-            generics,
-            contract: None,
-            body: Some(d_body),
-            define_opaque: None,
-            eii_impl: None,
-        });
+        let d_fn = ecx.item_fn(d_sig, first_ident(&meta_item_vec[0]), generics, Some(d_body));
         let mut rustc_ad_attr =
             Box::new(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
 
@@ -502,7 +493,7 @@ mod llvm_enzyme {
     ) -> rustc_ast::Stmt {
         let primal_path_expr = gen_turbofish_expr(ecx, primal, generics, span, is_impl);
 
-        let self_ty = || ecx.ty_path(ast::Path::from_ident(Ident::with_dummy_span(kw::SelfUpper)));
+        let self_ty = || ecx.ty_self(DUMMY_SP);
         let fn_ptr_params: ThinVec<ast::Param> = p_sig
             .decl
             .inputs
@@ -562,11 +553,9 @@ mod llvm_enzyme {
                 .collect::<ThinVec<_>>(),
         );
 
-        let enzyme_path_idents = ecx.std_path(&[sym::intrinsics, sym::autodiff]);
-        let enzyme_path = ecx.path(span, enzyme_path_idents);
-        let call_expr = ecx.expr_call(
+        let call_expr = ecx.expr_call_intrinsic(
             span,
-            ecx.expr_path(enzyme_path),
+            sym::autodiff,
             thin_vec![primal_fn_ptr, diff_path_expr, tuple_expr],
         );
 
@@ -593,17 +582,15 @@ mod llvm_enzyme {
                     Some(GenericArg::Type(ty))
                 }
                 GenericParamKind::Const { .. } => {
-                    let expr = ecx.expr_path(ast::Path::from_ident(p.ident));
-                    let anon_const = AnonConst { id: ast::DUMMY_NODE_ID, value: expr };
+                    let anon_const = ecx.const_ident(span, p.ident);
                     Some(GenericArg::Const(anon_const))
                 }
                 GenericParamKind::Lifetime => None,
             })
             .collect::<Vec<_>>();
 
-        let idents =
-            if is_impl { vec![Ident::new(kw::SelfUpper, span), ident] } else { vec![ident] };
-        let path = ecx.path_all(span, false, idents, generic_args);
+        let idents = if is_impl { &[Ident::new(kw::SelfUpper, span), ident][..] } else { &[ident] };
+        let path = ecx.path_all(span, idents, generic_args);
 
         ecx.expr_path(path)
     }
@@ -707,8 +694,7 @@ mod llvm_enzyme {
                             panic!("not an ident?");
                         };
                         let name = format!("d{}_{}", old_name, i);
-                        let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
-                        *shadow_arg.pat = ecx.pat_ident(shadow_arg.pat.span, ident);
+                        *shadow_arg.pat = ecx.pat_ident(shadow_arg.pat.span, Symbol::intern(&name));
                         d_inputs.push(shadow_arg);
                     }
                 }
@@ -733,9 +719,8 @@ mod llvm_enzyme {
                             panic!("not an ident?");
                         };
                         let name = format!("b{}_{}", old_name, i);
-                        let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
 
-                        *shadow_arg.pat = ecx.pat_ident(shadow_arg.pat.span, ident);
+                        *shadow_arg.pat = ecx.pat_ident(shadow_arg.pat.span, Symbol::intern(&name));
                         d_inputs.push(shadow_arg);
                     }
                 }
@@ -764,9 +749,7 @@ mod llvm_enzyme {
                             panic!("Did not expect Default ret ty: {:?}", span);
                         }
                     };
-                    let name = "dret".to_string();
-                    let ident = Ident::from_str_and_span(&name, ty.span);
-                    let shadow_arg = ecx.param(ty.span, ident, ty);
+                    let shadow_arg = ecx.param(ty.span, sym::dret, ty);
                     d_inputs.push(shadow_arg);
                 }
                 _ => {}
@@ -841,8 +824,7 @@ mod llvm_enzyme {
                     if act_ret.len() == 1 {
                         act_ret[0].clone()
                     } else {
-                        let kind = TyKind::Tup(act_ret);
-                        Box::new(rustc_ast::Ty { kind, id: ast::DUMMY_NODE_ID, span })
+                        ecx.ty(span, TyKind::Tup(act_ret))
                     }
                 }
             };

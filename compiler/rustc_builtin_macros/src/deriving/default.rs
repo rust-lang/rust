@@ -1,14 +1,13 @@
 use core::ops::ControlFlow;
 
 use rustc_ast::visit::{Visitor, visit_opt};
-use rustc_ast::{self as ast, EnumDef, Safety, VariantData, attr};
+use rustc_ast::{self as ast, EnumDef, VariantData, attr};
 use rustc_expand::base::{DummyResult, ExtCtxt};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use smallvec::SmallVec;
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::deriving::generic::*;
-use crate::deriving::new_path;
 use crate::diagnostics;
 
 pub(crate) fn expand_deriving_default(
@@ -22,7 +21,7 @@ pub(crate) fn expand_deriving_default(
 
     let trait_def = TraitDef {
         span,
-        path: new_path(cx, span, &[kw::Default, sym::Default], vec![]),
+        path: cx.std_path(span, &[kw::Default, sym::Default]),
         skip_path_as_bound: has_a_default_variant(item),
         needs_copy_as_bound_if_packed: false,
         additional_bounds: SmallVec::new(),
@@ -36,30 +35,29 @@ pub(crate) fn expand_deriving_default(
             ret_ty: cx.ty_self(span),
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            combine_substructure: combine_substructure(|cx, trait_span, substr| {
+            combine_substructure: |cx, trait_span, substr| {
                 match substr.fields {
                     StaticStruct(variant_data) => {
                         default_struct_substructure(cx, trait_span, variant_data, substr.type_ident)
                     }
                     StaticEnum(enum_def) => {
-                        default_enum_substructure(cx, trait_span, enum_def, item.span)
+                        default_enum_substructure(cx, trait_span, enum_def, substr.item.span)
                     }
                     _ => cx
                         .dcx()
                         .span_bug(trait_span, "unexpected substructure in `derive(Default)`"),
                 }
-            }),
+            },
         }],
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
     trait_def.expand(cx, item, push)
 }
 
 fn default_call(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
     // Note that `kw::Default` is "default" and `sym::Default` is "Default"!
-    let default_ident = cx.std_path(&[kw::Default, sym::Default, kw::Default]);
+    let default_ident = cx.std_path(span, &[kw::Default, sym::Default, kw::Default]);
     cx.expr_call_global(span, default_ident, ThinVec::new())
 }
 
@@ -118,7 +116,7 @@ fn default_enum_substructure(
             match &default_variant.data {
                 VariantData::Unit(_) => cx.expr_path(cx.path(
                     default_variant.span,
-                    vec![Ident::new(kw::SelfUpper, default_variant.span), default_variant.ident],
+                    &[Ident::new(kw::SelfUpper, default_variant.span), default_variant.ident],
                 )),
                 VariantData::Struct { fields, .. } => {
                     // This only happens if `#![feature(default_field_values)]`. We have validated
@@ -143,10 +141,7 @@ fn default_enum_substructure(
                         .collect();
                     let path = cx.path(
                         default_variant.span,
-                        vec![
-                            Ident::new(kw::SelfUpper, default_variant.span),
-                            default_variant.ident,
-                        ],
+                        &[Ident::new(kw::SelfUpper, default_variant.span), default_variant.ident],
                     );
                     cx.expr_struct(default_variant.span, path, default_fields)
                 }

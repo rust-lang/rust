@@ -4,6 +4,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![feature(decl_macro)]
+#![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]
 #![feature(proc_macro_internals)]
@@ -62,13 +63,13 @@ pub mod util;
 pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     let mut register = |name, kind| resolver.register_builtin_macro(name, kind);
     macro register_bang($($name:ident: $f:expr,)*) {
-        $(register(sym::$name, SyntaxExtensionKind::LegacyBang(Arc::new($f as MacroExpanderFn)));)*
+        $(register(sym::$name, SyntaxExtensionKind::AstBang(Arc::new($f as MacroExpanderFn)));)*
     }
     macro register_attr($($name:ident: $f:expr,)*) {
-        $(register(sym::$name, SyntaxExtensionKind::LegacyAttr(Arc::new($f)));)*
+        $(register(sym::$name, SyntaxExtensionKind::AstAttr(Arc::new($f)));)*
     }
     macro register_derive($($name:ident: $f:expr,)*) {
-        $(register(sym::$name, SyntaxExtensionKind::LegacyDerive(Arc::new(BuiltinDerive($f))));)*
+        $(register(sym::$name, SyntaxExtensionKind::AstDerive(Arc::new(BuiltinDerive($f))));)*
     }
 
     register_bang! {

@@ -1,13 +1,11 @@
 use rustc_ast::expand::allocator::{ALLOC_ERROR_HANDLER, global_fn_name};
-use rustc_ast::{
-    self as ast, Fn, FnHeader, FnSig, Generics, ItemKind, Safety, Stmt, StmtKind, TyKind,
-};
+use rustc_ast::{self as ast, FnHeader, FnSig, Generics, ItemKind, Safety, Stmt, StmtKind, TyKind};
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::{Ident, Span, kw, sym};
-use thin_vec::{ThinVec, thin_vec};
+use rustc_span::{Ident, Span, sym};
+use thin_vec::thin_vec;
 
 use crate::diagnostics;
-use crate::util::check_builtin_macro_attribute;
+use crate::util::{check_builtin_macro_attribute, path_std};
 
 pub(crate) fn expand(
     ecx: &mut ExtCtxt<'_>,
@@ -42,10 +40,7 @@ pub(crate) fn expand(
     let stmts = thin_vec![generate_handler(ecx, ident, span, sig_span)];
 
     // Generate anonymous constant serving as container for the allocator methods.
-    let const_ty = ecx.ty(sig_span, TyKind::Tup(ThinVec::new()));
-    let const_body = ecx.expr_block(ecx.block(span, stmts));
-    let const_item =
-        ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, Some(const_body));
+    let const_item = ecx.item_const_underscore(span, ecx.block(span, stmts));
     let const_item = if is_stmt {
         Annotatable::Stmt(Box::new(ecx.stmt_item(span, const_item)))
     } else {
@@ -61,38 +56,34 @@ pub(crate) fn expand(
 //     handler(core::alloc::Layout::from_size_align_unchecked(size, align))
 // }
 fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span) -> Stmt {
-    let usize = cx.path_ident(span, Ident::new(sym::usize, span));
-    let ty_usize = cx.ty_path(usize);
-    let size = Ident::new(sym::size, span);
-    let align = Ident::new(sym::align, span);
+    let ty_usize = cx.ty_sym(span, sym::usize);
 
-    let layout_new = cx.std_path(&[sym::alloc, sym::Layout, sym::from_size_align_unchecked]);
-    let layout_new = cx.expr_path(cx.path(span, layout_new));
+    let layout_new = path_std!(cx, span, alloc::Layout::from_size_align_unchecked);
+    let layout_new = cx.expr_path(layout_new);
     let layout = cx.expr_call(
         span,
         layout_new,
-        thin_vec![cx.expr_ident(span, size), cx.expr_ident(span, align)],
+        thin_vec![cx.expr_ident_sym(span, sym::size), cx.expr_ident_sym(span, sym::align)],
     );
 
     let call = cx.expr_call_ident(sig_span, handler, thin_vec![layout]);
 
     let never = ast::FnRetTy::Ty(cx.ty(span, TyKind::Never));
-    let params = thin_vec![cx.param(span, size, ty_usize.clone()), cx.param(span, align, ty_usize)];
+    let params = thin_vec![
+        cx.param(span, sym::size, ty_usize.clone()),
+        cx.param(span, sym::align, ty_usize)
+    ];
     let decl = cx.fn_decl(params, never);
     let header = FnHeader { safety: Safety::Unsafe(span), ..FnHeader::default() };
     let sig = FnSig { decl, header, span };
 
     let body = Some(cx.block_expr(call));
-    let kind = ItemKind::Fn(Box::new(Fn {
-        defaultness: ast::Defaultness::Implicit,
+    let kind = ItemKind::Fn(cx.item_fn(
         sig,
-        ident: Ident::from_str_and_span(&global_fn_name(ALLOC_ERROR_HANDLER), span),
-        generics: Generics::default(),
-        contract: None,
+        Ident::from_str_and_span(&global_fn_name(ALLOC_ERROR_HANDLER), span),
+        Generics::default(),
         body,
-        define_opaque: None,
-        eii_impl: None,
-    }));
+    ));
 
     let attrs = thin_vec![cx.attr_word(sym::rustc_std_internal_symbol, span)];
 

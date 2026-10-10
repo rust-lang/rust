@@ -10,6 +10,8 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
+use crate::util::path_std;
+
 pub(super) struct Context<'cx, 'a> {
     // An optimization.
     //
@@ -99,7 +101,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
     fn build_initial_imports(&self) -> Stmt {
         let nested_tree = |this: &Self, sym| UseTreeAndId {
             inner: UseTree {
-                prefix: this.cx.path(this.span, vec![Ident::with_dummy_span(sym)]),
+                prefix: this.cx.path_sym(this.span, sym),
                 kind: UseTreeKind::Simple(None),
             },
             id: DUMMY_NODE_ID,
@@ -110,7 +112,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 self.span,
                 thin_vec![self.cx.attr_nested_word(sym::allow, sym::unused_imports, self.span)],
                 ItemKind::Use(UseTree {
-                    prefix: self.cx.path(self.span, self.cx.std_path(&[sym::asserting])),
+                    prefix: path_std!(self.cx, self.span, asserting),
                     kind: UseTreeKind::Nested {
                         items: thin_vec![
                             nested_tree(self, sym::TryCaptureGeneric),
@@ -125,10 +127,9 @@ impl<'cx, 'a> Context<'cx, 'a> {
 
     /// Takes the conditional expression of `assert!` and then wraps it inside `unlikely`
     fn build_unlikely(&self, cond_expr: Box<Expr>) -> Box<Expr> {
-        let unlikely_path = self.cx.std_path(&[sym::intrinsics, sym::unlikely]);
-        self.cx.expr_call(
+        self.cx.expr_call_intrinsic(
             self.span,
-            self.cx.expr_path(self.cx.path(self.span, unlikely_path)),
+            sym::unlikely,
             thin_vec![self.cx.expr(self.span, ExprKind::Unary(UnOp::Not, cond_expr))],
         )
     }
@@ -342,13 +343,9 @@ impl<'cx, 'a> Context<'cx, 'a> {
         let curr_capture_idx = self.capture_decls.len();
         let capture_string = format!("__capture{curr_capture_idx}");
         let ident = Ident::new(Symbol::intern(&capture_string), self.span);
-        let init_std_path = self.cx.std_path(&[sym::asserting, sym::Capture, sym::new]);
-        let init = self.cx.expr_call(
-            self.span,
-            self.cx.expr_path(self.cx.path(self.span, init_std_path)),
-            ThinVec::new(),
-        );
-        let capture = Capture { decl: self.cx.stmt_let(self.span, true, ident, init), ident };
+        let init_std_path = path_std!(self.cx, self.span, asserting::Capture::new);
+        let init = self.cx.expr_call(self.span, self.cx.expr_path(init_std_path), ThinVec::new());
+        let capture = Capture { decl: self.cx.stmt_let(self.span, true, ident.name, init), ident };
         self.capture_decls.push(capture);
         self.manage_try_capture(ident, curr_capture_idx, expr);
     }
@@ -366,7 +363,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         expr: &mut Box<Expr>,
     ) {
         let local_bind_string = format!("__local_bind{curr_capture_idx}");
-        let local_bind = Ident::new(Symbol::intern(&local_bind_string), self.span);
+        let local_bind = Symbol::intern(&local_bind_string);
         self.local_bind_decls.push(self.cx.stmt_let(
             self.span,
             false,
@@ -375,10 +372,8 @@ impl<'cx, 'a> Context<'cx, 'a> {
         ));
         let wrapper = self.cx.expr_call(
             self.span,
-            self.cx.expr_path(
-                self.cx.path(self.span, self.cx.std_path(&[sym::asserting, sym::Wrapper])),
-            ),
-            thin_vec![self.cx.expr_path(Path::from_ident(local_bind))],
+            self.cx.expr_path(path_std!(self.cx, self.span, asserting::Wrapper)),
+            thin_vec![self.cx.expr_path(self.cx.path_sym(self.span, local_bind))],
         );
         let try_capture_call = self
             .cx
@@ -393,7 +388,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 )],
             ))
             .add_trailing_semicolon();
-        let local_bind_path = self.cx.expr_path(Path::from_ident(local_bind));
+        let local_bind_path = self.cx.expr_path(self.cx.path_sym(self.span, local_bind));
         let rslt = if self.is_consumed {
             let ret = self.cx.stmt_expr(local_bind_path);
             self.cx.expr_block(self.cx.block(self.span, thin_vec![try_capture_call, ret]))

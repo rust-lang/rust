@@ -331,7 +331,7 @@ fn generate_default_impl(
             foreign_item_name.span,
             // prefix self to explicitly escape the const block generated below
             // NOTE: this is why EIIs can't be used on statements
-            vec![Ident::new(kw::SelfLower, foreign_item_name.span), foreign_item_name],
+            &[Ident::new(kw::SelfLower, foreign_item_name.span), foreign_item_name],
         )),
     });
 
@@ -349,9 +349,7 @@ fn generate_default_impl(
     };
 
     let anon_mod = |span: Span, stmts: ThinVec<ast::Stmt>| {
-        let unit = ecx.ty(item_span, ast::TyKind::Tup(ThinVec::new()));
-        let underscore = Ident::new(kw::Underscore, item_span);
-        ecx.item_const(span, underscore, unit, Some(ecx.expr_block(ecx.block(span, stmts))))
+        ecx.item_const_underscore(span, ecx.block(span, stmts))
     };
 
     // const _: () = {

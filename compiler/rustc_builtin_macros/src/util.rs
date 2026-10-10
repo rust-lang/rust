@@ -7,9 +7,17 @@ use rustc_expand::expand::AstFragment;
 use rustc_lint_defs::builtin::DUPLICATE_MACRO_ATTRIBUTES;
 use rustc_parse::{exp, parser};
 use rustc_session::diagnostics::report_lit_error;
-use rustc_span::{BytePos, Span, Symbol};
+use rustc_span::{BytePos, Span, Symbol, sym};
 
 use crate::diagnostics;
+
+pub macro path($($rest:ident)::+) {{
+    &[ $( sym::$rest ),+ ]
+}}
+
+pub macro path_std($cx: expr, $span: expr, $($x:tt)*) {
+    $cx.std_path($span, path!( $($x)* ) )
+}
 
 pub(crate) fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, name: Symbol) {
     // All the built-in macro attributes are "words" at the moment.
