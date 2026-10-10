@@ -466,6 +466,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         use std::os::windows::fs::OpenOptionsExt;
 
         let this = self.eval_context_mut();
+        let open_name = if dirfd.is_some() { "openat" } else { "open" };
 
         let dirfd = match dirfd {
             Some(dirfd) => Some(this.read_scalar(dirfd)?.to_i32()?),
@@ -512,7 +513,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // Only support default mode for non-UNIX (i.e. Windows) host
                     if mode != 0o666 {
                         throw_unsup_format!(
-                            "non-default mode 0o{:o} is not supported on non-Unix hosts",
+                            "{open_name}: non-default mode 0o{:o} is not supported on non-Unix hosts",
                             mode
                         );
                     }
@@ -535,7 +536,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // windows. We need to check that in fact the access mode flags for the current target
         // only use these two bits, otherwise we are in an unsupported target and should error.
         if (o_rdonly | o_wronly | o_rdwr) & !0b11 != 0 {
-            throw_unsup_format!("access mode flags on this target are unsupported");
+            throw_unsup_format!("{open_name}: access mode flags on this target are unsupported");
         }
         let mut writable = true;
         let mut readable = true;
@@ -553,7 +554,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else if access_mode == o_rdwr {
             options.read(true).write(true);
         } else {
-            throw_unsup_format!("unsupported access mode {:#x}", access_mode);
+            throw_unsup_format!("{open_name}: unsupported access mode {:#x}", access_mode);
         }
 
         if this.tcx.sess.target.os == Os::Linux {
@@ -648,6 +649,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     custom_flags |= libc::O_NOFOLLOW;
                 }
                 windows => {
+                    if dirfd.is_some() {
+                        throw_unsup_format!(
+                            "openat: `O_NOFOLLOW` is not supported on Windows hosts"
+                        );
+                    }
                     custom_flags |=
                         windows_sys::Win32::Storage::FileSystem::FILE_FLAG_OPEN_REPARSE_POINT;
                 }
@@ -656,12 +662,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // If `flag` has any bits left set, those are not supported.
         if flag != 0 {
-            throw_unsup_format!("unsupported flags for `open`: {flag:#x}");
+            throw_unsup_format!("{open_name}: unsupported flags: {flag:#x}");
         }
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`open`", reject_with)?;
+            this.reject_in_isolation(&format!("`{open_name}`"), reject_with)?;
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 

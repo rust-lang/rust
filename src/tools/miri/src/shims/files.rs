@@ -702,7 +702,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
 /// Open something for which we don't know ahead of time whether it is a file or a directory.
 ///
-/// Custom flags need to be passed separately since they cannot be read from `opts`...
+/// Note that on Windows hosts, `custom_flags` is ignored if `root` is `Some`!
 pub fn open_file_or_dir(
     root: Option<&fs::Dir>,
     path: &std::path::Path,

@@ -2,6 +2,10 @@
 //@compile-flags: -Zmiri-disable-isolation
 //@run-native
 
+//@revisions: windows_host unix_host
+//@[unix_host] ignore-host: windows
+//@[windows_host] only-host: windows
+
 use std::ffi::{CStr, CString, OsString};
 use std::fs::File;
 use std::io::Write;
@@ -514,31 +518,36 @@ fn test_openat() {
         assert_eq!(&data, b"data");
         errno_check(unsafe { libc::close(fd) });
         errno_check(unsafe { libc::close(dirfd2) });
-        // That should fail with O_NOFOLLOW.
-        let err =
-            errno_result(unsafe { libc::openat(dirfd, c"dirlink".as_ptr(), libc::O_NOFOLLOW) })
-                .unwrap_err();
-        assert!(
-            matches!(err.raw_os_error().unwrap(), libc::ELOOP | libc::EMLINK),
-            "unexpected errno: {err}"
-        );
-        let err = errno_result(unsafe {
-            libc::openat(dirfd, c"dir/filelink".as_ptr(), libc::O_NOFOLLOW)
-        })
-        .unwrap_err();
-        assert!(
-            matches!(err.raw_os_error().unwrap(), libc::ELOOP | libc::EMLINK),
-            "unexpected errno: {err}"
-        );
-        // But if only the first component is a symlink, that works fine.
-        fs::rename(path.join("file.txt"), path.join("dir/file.txt")).unwrap();
-        let fd = errno_result(unsafe {
-            libc::openat(dirfd, c"dirlink/file.txt".as_ptr(), libc::O_NOFOLLOW)
-        })
-        .unwrap();
-        let data = libc_utils::read_exact_array::<4>(fd).unwrap();
-        assert_eq!(&data, b"data");
-        errno_check(unsafe { libc::close(fd) });
+
+        // FIXME: O_NOFOLLOW does not work with openat on Windows hosts.
+        // See <https://github.com/rust-lang/miri/issues/5406>.
+        if cfg!(not(windows_host)) {
+            // That should fail with O_NOFOLLOW.
+            let err =
+                errno_result(unsafe { libc::openat(dirfd, c"dirlink".as_ptr(), libc::O_NOFOLLOW) })
+                    .unwrap_err();
+            assert!(
+                matches!(err.raw_os_error().unwrap(), libc::ELOOP | libc::EMLINK),
+                "unexpected errno: {err}"
+            );
+            let err = errno_result(unsafe {
+                libc::openat(dirfd, c"dir/filelink".as_ptr(), libc::O_NOFOLLOW)
+            })
+            .unwrap_err();
+            assert!(
+                matches!(err.raw_os_error().unwrap(), libc::ELOOP | libc::EMLINK),
+                "unexpected errno: {err}"
+            );
+            // But if only the first component is a symlink, that works fine.
+            fs::rename(path.join("file.txt"), path.join("dir/file.txt")).unwrap();
+            let fd = errno_result(unsafe {
+                libc::openat(dirfd, c"dirlink/file.txt".as_ptr(), libc::O_NOFOLLOW)
+            })
+            .unwrap();
+            let data = libc_utils::read_exact_array::<4>(fd).unwrap();
+            assert_eq!(&data, b"data");
+            errno_check(unsafe { libc::close(fd) });
+        }
     }
 
     errno_check(unsafe { libc::close(dirfd) });
@@ -566,12 +575,13 @@ fn test_create_read_write() {
 }
 
 fn test_dup_stdout_stderr() {
-    let bytes = b"hello dup fd\n";
     unsafe {
         let new_stdout = libc::fcntl(1, libc::F_DUPFD, 0);
         let new_stderr = libc::fcntl(2, libc::F_DUPFD, 0);
-        libc_utils::write_all(new_stdout, bytes).unwrap();
-        libc_utils::write_all(new_stderr, bytes).unwrap();
+        libc_utils::write_all(new_stdout, b"hello stdout\n").unwrap();
+        libc_utils::write_all(new_stderr, b"hello stderr\n").unwrap();
+        errno_check(libc::close(new_stdout));
+        errno_check(libc::close(new_stderr));
     }
 }
 
