@@ -51,21 +51,7 @@ impl Socket {
         Ok(())
     }
 
-    pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
-        self.set_nonblocking(true)?;
-        let r = unsafe {
-            let (addr, len) = socket_addr_to_c(addr);
-            cvt(netc::connect(self.as_raw_fd(), addr.as_ptr(), len))
-        };
-        self.set_nonblocking(false)?;
-
-        match r {
-            Ok(_) => return Ok(()),
-            // there's no ErrorKind for EINPROGRESS :(
-            Err(ref e) if e.raw_os_error() == Some(netc::errno::EINPROGRESS) => {}
-            Err(e) => return Err(e),
-        }
-
+    pub fn poll_connected(&self, timeout: Duration) -> io::Result<()> {
         let mut pollfd = netc::pollfd { fd: self.as_raw_fd(), events: netc::POLLOUT, revents: 0 };
 
         if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
