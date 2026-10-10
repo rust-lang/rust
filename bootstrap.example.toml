@@ -103,8 +103,11 @@
 # Whether to build Enzyme as AutoDiff backend.
 #llvm.enzyme = false
 
-# Whether to build LLVM with support for it's gpu offload runtime.
+# Whether to build LLVM with support for its gpu offload runtime.
 #llvm.offload = false
+
+# Whether to build TPDE as an experimental alternative LLVM backend.
+#llvm.tpde = false
 
 # Absolute path to the directory containing ClangConfig.cmake
 #llvm.offload-clang-dir = ""
@@ -842,7 +845,7 @@
 # sysroot.
 #rust.llvm-tools = true
 
-# Indicates whether the `self-contained` llvm-bitcode-linker, will be made available
+# Indicates whether the `self-contained` llvm-bitcode-linker will be made available
 # in the sysroot. It is required for running nvptx tests.
 #rust.llvm-bitcode-linker = false
 
