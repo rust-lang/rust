@@ -77,6 +77,24 @@ LL |     let x: Option<NotConstDestruct> = None;
 LL | }
    | - value is dropped here
 
-error: aborting due to 9 previous errors
+error[E0493]: destructor of `Option<NotConstDestruct>` cannot be evaluated at compile-time
+  --> $DIR/qualif-indirect-mutation-fail.rs:75:9
+   |
+LL |     let mut a = Some(NotConstDestruct);
+   |         ^^^^^ the destructor for this type cannot be evaluated in constant functions
+...
+LL | }
+   | - value is dropped here
+
+error[E0493]: destructor of `Option<NotConstDestruct>` cannot be evaluated at compile-time
+  --> $DIR/qualif-indirect-mutation-fail.rs:88:9
+   |
+LL |     let mut a = None;
+   |         ^^^^^ the destructor for this type cannot be evaluated in constant functions
+...
+LL | }
+   | - value is dropped here
+
+error: aborting due to 11 previous errors
 
 For more information about this error, try `rustc --explain E0493`.
