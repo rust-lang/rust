@@ -289,11 +289,7 @@ fn show_fieldless_enum_concat_str(
         return None;
     }
 
-    let variant_names = def
-        .variants
-        .iter()
-        .map(|v| v.disr_expr.is_none().then_some(v.ident.name.as_str()))
-        .collect::<Option<ThinVec<_>>>()?;
+    let variant_names = def.variants.iter().map(|v| v.ident.name.as_str()).collect::<ThinVec<_>>();
 
     let total_bytes: usize = variant_names.iter().map(|n| n.len() + 1).sum();
     let mut concatenated_names = String::with_capacity(total_bytes);
