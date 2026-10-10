@@ -366,6 +366,8 @@
 #![feature(once_lazy_lock_get_unchecked)]
 #![feature(panic_can_unwind)]
 #![feature(panic_internals)]
+#![feature(pattern)]
+#![feature(pattern_internals)]
 #![feature(pin_coerce_unsized_trait)]
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
@@ -563,6 +565,8 @@ pub use core::mem;
 pub use core::ops;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::option;
+#[unstable(feature = "pattern", issue = "27721")]
+pub use core::pattern;
 #[stable(feature = "pin", since = "1.33.0")]
 pub use core::pin;
 #[stable(feature = "rust1", since = "1.0.0")]
