@@ -78,9 +78,25 @@ impl Thread {
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     let res = unsafe {
-        let mut sysinfo: c::SYSTEM_INFO = crate::mem::zeroed();
-        c::GetSystemInfo(&mut sysinfo);
-        sysinfo.dwNumberOfProcessors as usize
+        // Before Windows 11 / Server 2022 a process is confined to a single processor
+        // group by default; since then it spans every group. The number of groups the
+        // process is assigned to tells the two apart without an OS-version check.
+        let mut group_count: u16 = 1;
+        let mut group: u16 = 0;
+        // A process in more than one group fails this call with ERROR_INSUFFICIENT_BUFFER
+        // and writes the real group count into `group_count`; every other case leaves the
+        // initial `1`, so the return value can be ignored.
+        c::GetProcessGroupAffinity(c::GetCurrentProcess(), &mut group_count, &mut group);
+
+        if group_count > 1 {
+            // The process spans every group, so count the active CPUs across all of them.
+            c::GetActiveProcessorCount(c::ALL_PROCESSOR_GROUPS) as usize
+        } else {
+            // A single group holds every CPU the process can use by default.
+            let mut sysinfo: c::SYSTEM_INFO = crate::mem::zeroed();
+            c::GetSystemInfo(&mut sysinfo);
+            sysinfo.dwNumberOfProcessors as usize
+        }
     };
     match res {
         0 => Err(io::Error::UNKNOWN_THREAD_COUNT),
