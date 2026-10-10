@@ -1436,6 +1436,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ResolutionError::BindingInNeverPattern => {
                 self.dcx().create_err(diagnostics::BindingInNeverPattern { span })
             }
+            ResolutionError::CannotUseInnerLocalInMoveExpr {
+                move_expr_span,
+                ident,
+                scope_span,
+            } => self.dcx().create_err(diagnostics::CannotUseInnerLocalInMoveExpr {
+                span,
+                ident,
+                binding_span: ident.span,
+                move_expr_span,
+                scope_span,
+            }),
         }
     }
 
