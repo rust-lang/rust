@@ -143,6 +143,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 .fatal("`-Cinstrument-coverage` is LLVM specific and not supported by Cranelift");
         }
 
+        if sess.opts.unstable_opts.tpde.is_some() {
+            sess.dcx().fatal("-Ztpde is LLVM-specific and not supported by Cranelift");
+        }
+
         // Set `config` if not already set.
         let config = self.config.get_or_insert_with(|| {
             BackendConfig::from_opts(&sess.opts.cg.llvm_args)
