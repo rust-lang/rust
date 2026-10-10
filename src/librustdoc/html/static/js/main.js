@@ -2249,4 +2249,45 @@ function preLoadCss(cssUrl) {
         elem.addEventListener("mouseover", addCopyButton);
         elem.addEventListener("click", showHideCodeExampleButtons);
     });
+
+    /* Setting the "sticky offset" to prevent the heading to hide the target below it. */
+    (function() {
+        const observer = new IntersectionObserver(entries => {
+            for (const entry of entries) {
+                // The ratio drops below 1 in two cases: stuck at the top, or partly
+                // below the bottom of the viewport. Checking `top` tells them apart.
+                if (entry.intersectionRatio < 1 && entry.boundingClientRect.top < 1) {
+                    onEach(
+                        entry.target.getElementsByClassName("item-info"),
+                        elem => elem.classList.add("hidden"),
+                    );
+                    onEach(
+                        entry.target.getElementsByClassName("docblock"),
+                        elem => elem.classList.add("hidden"),
+                    );
+                    document.documentElement.style.setProperty(
+                        "--sticky-offset", `${entry.boundingClientRect.height}px`);
+                } else {
+                    onEach(
+                        entry.target.querySelectorAll(".hidden"),
+                        elem => elem.classList.remove("hidden"),
+                    );
+                }
+            }
+        }, {
+            rootMargin: "-1px 0px 0px 0px",
+            threshold: [1],
+        });
+
+        onEachLazy(
+            document.querySelectorAll(
+                "h2.section-header + div > details.implementors-toggle > summary"
+            ),
+            elem => observer.observe(elem),
+        );
+        onEachLazy(
+            document.querySelectorAll("details.toggle.big-toggle > summary"),
+            elem => observer.observe(elem),
+        );
+    }());
 }());

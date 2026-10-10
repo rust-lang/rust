@@ -33,6 +33,11 @@ nav.sub {
 	display: block;
 }
 
+details.toggle [id] {
+	/* This is used to prevent anchors from going below the sticky `details`. */
+	scroll-margin-top: 30vh;
+}
+
 /* Begin: styles for themes
 	Keep the default light and dark themes synchronized with the ones
 	in rustdoc.css */
@@ -147,6 +152,18 @@ nav.sub {
 	--notable-badge-green: oklch(0.88 0.21 150);
 	--notable-badge-blue: oklch(0.88 0.21 240);
 	--notable-badge-violet: oklch(0.88 0.21 300);
+	--collapse-toggle-closed-semi-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+		viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M4,2l4,4l-4,4" \
+		stroke="black" stroke-opacity="0.5" fill="none" stroke-width="1px"/></svg>');
+	--collapse-toggle-closed-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+		viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M4,2l4,4l-4,4" \
+		stroke="black" fill="none" stroke-width="1px"/></svg>');
+	--collapse-toggle-open-semi-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+		viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M2,4l4,4l4,-4" \
+		stroke="black" stroke-opacity="0.5" fill="none" stroke-width="1px"/></svg>');
+	--collapse-toggle-open-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+		viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M2,4l4,4l4,-4" \
+		stroke="black" fill="none" stroke-width="1px"/></svg>');
 }
 /* End theme: light */
 
@@ -264,6 +281,18 @@ nav.sub {
 		--notable-badge-green: oklch(0.55 0.21 150);
 		--notable-badge-blue: oklch(0.55 0.21 240);
 		--notable-badge-violet: oklch(0.55 0.21 300);
+		--collapse-toggle-closed-semi-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+			viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M4,2l4,4l-4,4" \
+			stroke="white" stroke-opacity="0.5" fill="none" stroke-width="1px"/></svg>');
+		--collapse-toggle-closed-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+			viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M4,2l4,4l-4,4" \
+			stroke="white" fill="none" stroke-width="1px"/></svg>');
+		--collapse-toggle-open-semi-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+			viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M2,4l4,4l4,-4" \
+			stroke="white" stroke-opacity="0.5" fill="none" stroke-width="1px"/></svg>');
+		--collapse-toggle-open-opaque: url('data:image/svg+xml,<svg width="16" height="16" \
+			viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M2,4l4,4l4,-4" \
+			stroke="white" fill="none" stroke-width="1px"/></svg>');
 	}
 /* End theme: dark */
 }
