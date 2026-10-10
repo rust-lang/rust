@@ -1,0 +1,30 @@
+error[E0507]: cannot move out of `*foo` which is behind a mutable reference
+  --> $DIR/option-content-move-take.rs:4:17
+   |
+LL |     *foo = Some(foo.unwrap());
+   |                 ^^^ -------- `*foo` moved due to this method call
+   |                 |
+   |                 move occurs because `*foo` has type `Option<String>`, which does not implement the `Copy` trait
+   |
+note: `std::option::Option::<T>::unwrap` takes ownership of the receiver `self`, which moves `*foo`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: consider calling `.as_ref()` to borrow the value's contents
+   |
+LL |     *foo = Some(foo.as_ref().unwrap());
+   |                    +++++++++
+help: consider calling `.as_mut()` to mutably borrow the value's contents
+   |
+LL |     *foo = Some(foo.as_mut().unwrap());
+   |                    +++++++++
+help: consider calling `.take()` to replace the value and return the old
+   |
+LL |     *foo = Some(foo.take().unwrap());
+   |                    +++++++
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     *foo = Some(foo.clone().unwrap());
+   |                    ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

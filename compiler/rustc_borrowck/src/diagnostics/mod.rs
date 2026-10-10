@@ -1395,6 +1395,29 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             var_span: var_span.shrink_to_hi(),
                         });
                     }
+                    let is_option = parent_self_ty.is_some_and(|def_id| {
+                        matches!(tcx.get_diagnostic_name(def_id), Some(sym::Option))
+                    });
+                    let mut saw_deref = false;
+                    let mut all_mut = true;
+                    for (place, elem) in moved_place.iter_projections() {
+                        if matches!(elem, ProjectionElem::Deref) {
+                            saw_deref = true;
+                            if !matches!(
+                                self.borrowed_content_source(place),
+                                BorrowedContentSource::DerefMutableRef
+                            ) {
+                                all_mut = false;
+                                break;
+                            }
+                        }
+                    }
+                    let behind_mut_ref = saw_deref && all_mut;
+                    if is_option && behind_mut_ref {
+                        err.subdiagnostic(CaptureReasonLabel::OptionTake {
+                            var_span: var_span.shrink_to_hi(),
+                        });
+                    }
                     if let Some((
                         kind @ (CallDesugaringKind::ForLoopIntoIter
                         | CallDesugaringKind::ForLoopIntoAsyncIter),
