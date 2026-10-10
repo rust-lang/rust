@@ -64,6 +64,8 @@ For reference sake, the set of proposals that LLVM supports at the time of writi
     * [Multiple memories]- `+multimemory`
     * [Relaxed SIMD] - `+relaxed-simd`
     * [Tail call] - `+tail-call`
+* Post-3.0 proposals:
+    * [Wide Arithmetic] - `+wide-arithmetic`
 
 [Bulk memory]: https://github.com/WebAssembly/spec/blob/main/proposals/bulk-memory-operations/Overview.md
 [Sign-extending operations]: https://github.com/WebAssembly/spec/blob/main/proposals/sign-extension-ops/Overview.md
@@ -78,6 +80,7 @@ For reference sake, the set of proposals that LLVM supports at the time of writi
 [Multiple memories]: https://github.com/WebAssembly/multi-memory
 [Relaxed SIMD]: https://github.com/WebAssembly/relaxed-simd
 [Tail call]: https://github.com/WebAssembly/tail-call
+[Wide Arithmetic]: https://github.com/WebAssembly/wide-arithmetic
 
 Additional proposals in the future are, of course, also not enabled by default.
 
