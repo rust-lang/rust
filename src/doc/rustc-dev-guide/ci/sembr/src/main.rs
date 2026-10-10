@@ -112,23 +112,24 @@ fn comply(content: &str) -> String {
         if in_code_block || ignore(&line) {
             continue;
         }
-        if REGEX_SPLIT.is_match(&line) {
-            let indent = if let Some(regex_match) = REGEX_LIST_ENTRY.find(&line) {
-                regex_match.len()
-            } else {
-                line.find(|ch: char| !ch.is_whitespace()).unwrap()
-            };
-            let mut newly_split_lines = line.split_inclusive(&*REGEX_SPLIT);
-            let first = newly_split_lines.next().unwrap().trim_end().to_owned();
-            let mut remaining: Vec<_> = newly_split_lines
-                .map(|portion| format!("{:indent$}{}", "", portion.trim_end()))
-                .collect();
-            let mut new_lines = Vec::new();
-            new_lines.push(first);
-            new_lines.append(&mut remaining);
-            new_content.splice(new_n..=new_n, new_lines.clone());
-            new_n += new_lines.len() - 1;
+        if !REGEX_SPLIT.is_match(&line) {
+            continue;
         }
+        let indent = if let Some(regex_match) = REGEX_LIST_ENTRY.find(&line) {
+            regex_match.len()
+        } else {
+            line.find(|ch: char| !ch.is_whitespace()).unwrap()
+        };
+        let mut newly_split_lines = line.split_inclusive(&*REGEX_SPLIT);
+        let first = newly_split_lines.next().unwrap().trim_end().to_owned();
+        let mut remaining: Vec<_> = newly_split_lines
+            .map(|portion| format!("{:indent$}{}", "", portion.trim_end()))
+            .collect();
+        let mut new_lines = Vec::new();
+        new_lines.push(first);
+        new_lines.append(&mut remaining);
+        new_content.splice(new_n..=new_n, new_lines.clone());
+        new_n += new_lines.len() - 1;
     }
     new_content.join("\n") + "\n"
 }
