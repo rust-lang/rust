@@ -1,5 +1,5 @@
 error[E0277]: `&i32` cannot be safely transmuted into `&[NewType; 4]`
-  --> $DIR/with-condition-nested-goals.rs:10:74
+  --> $DIR/with-condition-nested-goals.rs:16:74
    |
 LL |     let bytes: &[NewType; 4] = unsafe { TransmuteFrom::<&i32>::transmute(&1i32) };
    |                                         -------------------------------- ^^^^^ unsatisfied trait bound
