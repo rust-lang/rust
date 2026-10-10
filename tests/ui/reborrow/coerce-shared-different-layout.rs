@@ -1,4 +1,6 @@
-//@ known-bug: unknown
+//! Regression test for an ICE when coercing through a `CoerceShared` impl whose source has more
+//! data fields than its target. Coherence currently rejects such impls.
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 
@@ -27,6 +29,7 @@ impl<'a, T> Clone for ImbrisRef<'a, T> {
 impl<'a, T> Copy for ImbrisRef<'a, T> {}
 
 impl<'a, T> CoerceShared<ImbrisRef<'a, T>> for ImbrisMut<'a, T> {}
+//~^ ERROR
 
 fn ptr(value: ImbrisRef<'_, i32>) -> NonNull<i32> {
     value.ptr

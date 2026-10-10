@@ -1,4 +1,6 @@
-//@ known-bug: unknown
+//! Regression test for an ICE when coercing through `CoerceShared` impls whose tuple fields put
+//! `PhantomData` at different positions in the source and the target.
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 
@@ -9,6 +11,7 @@ struct SourceLeadingMut<'a, T>(PhantomData<&'a mut T>, &'a mut T);
 impl<'a, T> Reborrow for SourceLeadingMut<'a, T> {}
 
 struct SourceLeadingRef<'a, T>(&'a T);
+//~^ ERROR
 
 impl<'a, T> Clone for SourceLeadingRef<'a, T> {
     fn clone(&self) -> Self {
@@ -25,6 +28,7 @@ struct TargetLeadingMut<'a, T>(&'a mut T);
 impl<'a, T> Reborrow for TargetLeadingMut<'a, T> {}
 
 struct TargetLeadingRef<'a, T>(PhantomData<&'a T>, &'a T);
+//~^ ERROR
 
 impl<'a, T> Clone for TargetLeadingRef<'a, T> {
     fn clone(&self) -> Self {
@@ -46,6 +50,7 @@ struct InterleavedMut<'a, T, U>(
 impl<'a, T, U> Reborrow for InterleavedMut<'a, T, U> {}
 
 struct InterleavedRef<'a, T, U>(&'a T, PhantomData<&'a T>, &'a U, PhantomData<&'a U>);
+//~^ ERROR
 
 impl<'a, T, U> Clone for InterleavedRef<'a, T, U> {
     fn clone(&self) -> Self {

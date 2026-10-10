@@ -1,0 +1,28 @@
+error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/invalid-reborrow-impl-phantom-data-wrong-generics.rs:9:23
+   |
+LL | impl<'a> Reborrow for PhantomData<'a> {}
+   |                       ^^^^^^^^^^^---- help: remove the unnecessary generics
+   |                       |
+   |                       expected 0 lifetime arguments
+
+error[E0107]: struct takes 1 generic argument but 0 generic arguments were supplied
+  --> $DIR/invalid-reborrow-impl-phantom-data-wrong-generics.rs:9:23
+   |
+LL | impl<'a> Reborrow for PhantomData<'a> {}
+   |                       ^^^^^^^^^^^ expected 1 generic argument
+   |
+help: add missing generic argument
+   |
+LL | impl<'a> Reborrow for PhantomData<'a, T> {}
+   |                                     +++
+
+error: implementing `Reborrow` requires exactly one lifetime argument in the reborrowed type
+  --> $DIR/invalid-reborrow-impl-phantom-data-wrong-generics.rs:9:1
+   |
+LL | impl<'a> Reborrow for PhantomData<'a> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

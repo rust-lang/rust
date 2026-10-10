@@ -1,4 +1,6 @@
-//@ known-bug: unknown
+//! Regression test for an ICE when coercing through a `CoerceShared` impl with several non-ZST
+//! data fields, which coherence currently rejects.
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 
@@ -34,6 +36,7 @@ impl<'a, T> Clone for MatRef<'a, T> {
 impl<'a, T> Copy for MatRef<'a, T> {}
 
 impl<'a, T> CoerceShared<MatRef<'a, T>> for MatMut<'a, T> {}
+//~^ ERROR
 
 fn dims<T>(mat: MatRef<'_, T>) -> (usize, usize, usize, usize) {
     let _ = mat.ptr;

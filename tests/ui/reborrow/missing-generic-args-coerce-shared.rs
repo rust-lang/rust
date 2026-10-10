@@ -1,4 +1,7 @@
-//@ known-bug: unknown
+//! Regression test for an ICE in borrowck when a `CoerceShared` target field is missing generic
+//! arguments.
+//! See <https://github.com/rust-lang/rust/issues/156315>.
+
 #![feature(reborrow)]
 
 // Malformed no-ICE regression: this intentionally keeps the missing generic arguments from the
