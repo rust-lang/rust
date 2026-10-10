@@ -1,0 +1,2 @@
+error: using -Zllvm-tpde with LTO enabled is not supported
+

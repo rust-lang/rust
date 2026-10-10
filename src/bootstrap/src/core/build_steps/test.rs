@@ -2624,6 +2624,10 @@ Please disable assertions with `rust.debug-assertions = false`.
             cmd.arg("--has-offload");
         }
 
+        if builder.sess.config.llvm_tpde {
+            cmd.arg("--has-tpde");
+        }
+
         if builder.config.cmd.bless() {
             cmd.arg("--bless");
         }
