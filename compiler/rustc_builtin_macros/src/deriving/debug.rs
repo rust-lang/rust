@@ -263,17 +263,6 @@ fn show_fieldless_enum(
     BlockOrExpr::new_expr(cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]))
 }
 
-/// Special case for fieldless enums with no discriminants. Builds
-/// ```text
-/// impl ::core::fmt::Debug for A {
-///     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-///         static __NAMES: &str = "ABBBCC";
-///         static __OFFSET: [usize; 4] =[0, 1, 4, 6];
-///         let __d = ::core::intrinsics::discriminant_value(self) as usize;
-///         ::core::fmt::Formatter::debug_c_like_enums_write_str(f, __NAMES, &__OFFSET, __d)
-///     }
-/// }
-/// ```
 fn show_fieldless_enum_concat_str(
     cx: &ExtCtxt<'_>,
     span: Span,
