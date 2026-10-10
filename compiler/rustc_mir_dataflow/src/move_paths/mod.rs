@@ -1,7 +1,7 @@
 //! [`MovePath`]s track the initialization state of places and their sub-paths.
 
 use std::fmt;
-use std::ops::{Index, IndexMut};
+use std::rc::Rc;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
@@ -11,6 +11,7 @@ use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::Span;
 use smallvec::SmallVec;
 
+use crate::points::{DenseLocationMap, PointIndex};
 use crate::un_derefer::UnDerefer;
 
 rustc_index::newtype_index! {
@@ -174,6 +175,9 @@ where
 
 #[derive(Debug)]
 pub struct MoveData<'tcx> {
+    /// Numbers the locations of the body; `move_out_loc_map` and `init_loc_map` are indexed by it.
+    pub location_map: Rc<DenseLocationMap>,
+
     /// All the gathered `MovePath`s.
     pub move_paths: IndexVec<MovePathIndex, MovePath<'tcx>>,
 
@@ -181,7 +185,7 @@ pub struct MoveData<'tcx> {
     pub move_outs: IndexVec<MoveOutIndex, MoveOut>,
     /// Map from locations to `MoveOut`s. `SmallVec` because each location might cause more than
     /// one `MoveOut`. Used during analysis and diagnostics.
-    pub move_out_loc_map: LocationMap<SmallVec<[MoveOutIndex; 4]>>,
+    pub move_out_loc_map: IndexVec<PointIndex, SmallVec<[MoveOutIndex; 4]>>,
     /// Map from `MovePath`s (places) to `MoveOuts`. `SmallVec` because each `MovePath` may be
     /// moved-out of more than once. Used mostly for diagnostics.
     pub move_out_path_map: IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
@@ -193,7 +197,7 @@ pub struct MoveData<'tcx> {
     pub inits: IndexVec<InitIndex, Init>,
     /// Map from locations to `Init`s. `SmallVec` because each location might cause more than one
     /// `Init`, though more than one is very rare (e.g. inline asm).
-    pub init_loc_map: LocationMap<SmallVec<[InitIndex; 1]>>,
+    pub init_loc_map: IndexVec<PointIndex, SmallVec<[InitIndex; 1]>>,
     /// Map from `MovePath`s (places) to `Init`s. `SmallVec` because each `MovePath` (place) might
     /// be inited more than once.
     pub init_path_map: IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
@@ -201,59 +205,6 @@ pub struct MoveData<'tcx> {
 
 pub trait HasMoveData<'tcx> {
     fn move_data(&self) -> &MoveData<'tcx>;
-}
-
-#[derive(Debug)]
-pub struct LocationMap<T> {
-    /// All per-location entries live in the single flat `data` vector.
-    /// `block_starts[bb]` gives the index in `data` where block `bb`'s entries
-    /// start; each block has one entry per statement plus one for its terminator.
-    data: Vec<T>,
-    block_starts: IndexVec<BasicBlock, usize>,
-}
-
-impl<T> LocationMap<T> {
-    #[inline]
-    fn offset(&self, loc: Location) -> usize {
-        let offset = self.block_starts[loc.block] + loc.statement_index;
-        if cfg!(debug_assertions) {
-            // A block's entries run until the next block's start, or the end of
-            // `data` for the last block.
-            let next = loc.block.as_usize() + 1;
-            let block_end = self.block_starts.raw.get(next).copied().unwrap_or(self.data.len());
-            assert!(offset < block_end, "{loc:?} is out of range for its block");
-        }
-        offset
-    }
-}
-
-impl<T> Index<Location> for LocationMap<T> {
-    type Output = T;
-    fn index(&self, index: Location) -> &Self::Output {
-        &self.data[self.offset(index)]
-    }
-}
-
-impl<T> IndexMut<Location> for LocationMap<T> {
-    fn index_mut(&mut self, index: Location) -> &mut Self::Output {
-        let offset = self.offset(index);
-        &mut self.data[offset]
-    }
-}
-
-impl<T> LocationMap<T>
-where
-    T: Default + Clone,
-{
-    fn new(body: &Body<'_>) -> Self {
-        let mut block_starts = IndexVec::with_capacity(body.basic_blocks.len());
-        let mut total = 0;
-        for block in body.basic_blocks.iter() {
-            block_starts.push(total);
-            total += block.statements.len() + 1;
-        }
-        LocationMap { data: vec![T::default(); total], block_starts }
-    }
 }
 
 /// `MoveOut` represents a point in a program that moves out of some
@@ -402,6 +353,22 @@ impl<'tcx> MoveData<'tcx> {
         filter: impl Fn(Ty<'tcx>) -> bool,
     ) -> MoveData<'tcx> {
         builder::gather_moves(body, tcx, filter)
+    }
+
+    /// The index of `loc` in `move_out_loc_map` and `init_loc_map`.
+    #[inline]
+    pub fn point(&self, loc: Location) -> PointIndex {
+        self.location_map.point_from_location(loc)
+    }
+
+    /// The `MoveOut`s at `loc`.
+    pub fn move_outs_at(&self, loc: Location) -> &[MoveOutIndex] {
+        &self.move_out_loc_map[self.point(loc)]
+    }
+
+    /// The `Init`s at `loc`.
+    pub fn inits_at(&self, loc: Location) -> &[InitIndex] {
+        &self.init_loc_map[self.point(loc)]
     }
 
     /// For the move path `mpi`, returns the root local variable that starts the path.

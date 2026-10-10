@@ -4,6 +4,7 @@ use smallvec::SmallVec;
 use tracing::debug;
 
 use super::move_paths::{InitKind, LookupResult, MoveData, MovePathIndex};
+use crate::points::PointIndex;
 
 /// The value of an inserted drop flag.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -115,8 +116,10 @@ pub fn drop_flag_effects_for_location<'tcx, F>(
 {
     debug!("drop_flag_effects_for_location({:?})", loc);
 
+    let point = move_data.point(loc);
+
     // first, move out of the RHS
-    for mi in &move_data.move_out_loc_map[loc] {
+    for mi in &move_data.move_out_loc_map[point] {
         let path = mi.move_path_index(move_data);
         debug!("moving out of path {:?}", move_data.move_paths[path]);
 
@@ -133,14 +136,14 @@ pub fn drop_flag_effects_for_location<'tcx, F>(
 
     debug!("drop_flag_effects: assignment for location({:?})", loc);
 
-    for_location_inits(move_data, loc, |mpi| callback(mpi, DropFlagState::Present));
+    for_location_inits(move_data, point, |mpi| callback(mpi, DropFlagState::Present));
 }
 
-fn for_location_inits<'tcx, F>(move_data: &MoveData<'tcx>, loc: Location, mut callback: F)
+fn for_location_inits<'tcx, F>(move_data: &MoveData<'tcx>, point: PointIndex, mut callback: F)
 where
     F: FnMut(MovePathIndex),
 {
-    for ii in &move_data.init_loc_map[loc] {
+    for ii in &move_data.init_loc_map[point] {
         let init = move_data.inits[*ii];
         match init.kind {
             InitKind::Deep => {

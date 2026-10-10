@@ -93,7 +93,7 @@ impl<'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'_, '_, '_, 'tcx> {
     fn visit_local(&mut self, local: Local, place_context: PlaceContext, location: Location) {
         if place_context.is_place_assignment() && self.temporary_used_locals.contains(&local) {
             // Propagate the Local assigned at this Location as a used mutable local variable
-            for moi in &self.mbcx.move_data.move_out_loc_map[location] {
+            for moi in self.mbcx.move_data.move_outs_at(location) {
                 let mpi = &self.mbcx.move_data.move_outs[*moi].path;
                 let path = &self.mbcx.move_data.move_paths[*mpi];
                 debug!(

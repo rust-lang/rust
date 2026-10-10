@@ -697,10 +697,9 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         location: Location,
     ) {
         let move_data = self.move_data();
-        let init_loc_map = &move_data.init_loc_map;
 
         // Record inits of locals. Projections can be ignored.
-        state.gen_all(init_loc_map[location].iter().copied().filter_map(|ii| {
+        state.gen_all(move_data.inits_at(location).iter().copied().filter_map(|ii| {
             let init_mpi = move_data.inits[ii].path;
             move_data.move_paths[init_mpi].place.as_local()
         }));
@@ -720,10 +719,9 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         location: Location,
     ) {
         let move_data = self.move_data();
-        let init_loc_map = &move_data.init_loc_map;
 
         // Record inits of locals. Projections can be ignored.
-        state.gen_all(init_loc_map[location].iter().copied().filter_map(|ii| {
+        state.gen_all(move_data.inits_at(location).iter().copied().filter_map(|ii| {
             let init = &move_data.inits[ii];
             if init.kind != InitKind::NonPanicPathOnly {
                 move_data.move_paths[init.path].place.as_local()
@@ -740,11 +738,10 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         _return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
         let move_data = self.move_data();
-        let init_loc_map = &move_data.init_loc_map;
 
         // Record inits of locals. Projections can be ignored.
         let call_loc = self.body.terminator_loc(block);
-        state.gen_all(init_loc_map[call_loc].iter().copied().filter_map(|ii| {
+        state.gen_all(move_data.inits_at(call_loc).iter().copied().filter_map(|ii| {
             let init = &move_data.inits[ii];
             if init.kind == InitKind::NonPanicPathOnly {
                 move_data.move_paths[init.path].place.as_local()
