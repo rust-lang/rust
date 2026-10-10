@@ -127,6 +127,9 @@ Options:
                         `forbid` level.
         --remap-path-prefix FROM=TO
                         Remap source names in compiler messages
+        --remap-path-scope [macro,diagnostics,documentation,debuginfo,coverage,object,all]
+                        Defines which scopes of paths should be remapped by
+                        `--remap-path-prefix`
         --index-page PATH
                         Markdown file to be used as index page
         --enable-index-page 
@@ -162,9 +165,6 @@ Options:
                         Force all doctests to be compiled as a single binary,
                         instead of one binary per test. If merging fails,
                         rustdoc will emit a hard error.
-        --remap-path-scope [macro,diagnostics,debuginfo,coverage,object,all]
-                        Defines which scopes of paths should be remapped by
-                        `--remap-path-prefix`
         --show-type-layout 
                         Include the memory layout of types in the docs
         --no-capture    Don't capture stdout and stderr of tests
