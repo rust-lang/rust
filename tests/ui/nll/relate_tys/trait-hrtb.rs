@@ -10,5 +10,5 @@ fn make_foo<'a>() -> Box<dyn Foo<'a>> {
 
 fn main() {
     let x: Box<dyn Foo<'static>> = make_foo();
-    let y: Box<dyn for<'a> Foo<'a>> = x; //~ ERROR mismatched types [E0308]
+    let y: Box<dyn for<'a> Foo<'a>> = x; //~ ERROR higher-ranked lifetime error: lifetime outlives placeholder
 }

@@ -18,8 +18,7 @@ fn change_lt_ba<'a, 'b: 'a>(x: *mut dyn Trait<'a>) -> *mut dyn Trait<'b> {
 
 fn change_lt_hr<'a>(x: *mut dyn Trait<'a>) -> *mut dyn for<'b> Trait<'b> {
     x as _ //~ error: lifetime may not live long enough
-    //~^ error: mismatched types
-    //~| NOTE one type is more general than the other
+        //~^ error: higher-ranked lifetime error: lifetime outlives placeholder
 }
 
 trait Assocked {
