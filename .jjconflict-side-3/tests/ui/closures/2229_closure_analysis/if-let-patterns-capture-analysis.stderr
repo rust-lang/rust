@@ -1,0 +1,90 @@
+error: First Pass analysis includes:
+  --> $DIR/if-let-patterns-capture-analysis.rs:15:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         if let SingleVariant::Pair(ref n, s) = variant {
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing variant[(0, 0)] -> Immutable
+  --> $DIR/if-let-patterns-capture-analysis.rs:18:48
+   |
+LL |         if let SingleVariant::Pair(ref n, s) = variant {
+   |                                                ^^^^^^^
+note: Capturing variant[(1, 0)] -> ByValue
+  --> $DIR/if-let-patterns-capture-analysis.rs:18:48
+   |
+LL |         if let SingleVariant::Pair(ref n, s) = variant {
+   |                                                ^^^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/if-let-patterns-capture-analysis.rs:15:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         if let SingleVariant::Pair(ref n, s) = variant {
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture variant[(0, 0)] -> Immutable
+  --> $DIR/if-let-patterns-capture-analysis.rs:18:48
+   |
+LL |         if let SingleVariant::Pair(ref n, s) = variant {
+   |                                                ^^^^^^^
+note: Min Capture variant[(1, 0)] -> ByValue
+  --> $DIR/if-let-patterns-capture-analysis.rs:18:48
+   |
+LL |         if let SingleVariant::Pair(ref n, s) = variant {
+   |                                                ^^^^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/if-let-patterns-capture-analysis.rs:34:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         match variant {
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing variant[(0, 0)] -> Immutable
+  --> $DIR/if-let-patterns-capture-analysis.rs:37:15
+   |
+LL |         match variant {
+   |               ^^^^^^^
+note: Capturing variant[(1, 0)] -> ByValue
+  --> $DIR/if-let-patterns-capture-analysis.rs:37:15
+   |
+LL |         match variant {
+   |               ^^^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/if-let-patterns-capture-analysis.rs:34:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         match variant {
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture variant[(0, 0)] -> Immutable
+  --> $DIR/if-let-patterns-capture-analysis.rs:37:15
+   |
+LL |         match variant {
+   |               ^^^^^^^
+note: Min Capture variant[(1, 0)] -> ByValue
+  --> $DIR/if-let-patterns-capture-analysis.rs:37:15
+   |
+LL |         match variant {
+   |               ^^^^^^^
+
+error: aborting due to 4 previous errors
+

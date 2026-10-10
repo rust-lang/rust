@@ -1,0 +1,11 @@
+error[E0124]: field `field1` is already declared
+  --> $DIR/E0124.rs:3:5
+   |
+LL |     field1: i32,
+   |     ----------- `field1` first declared here
+LL |     field1: i32,
+   |     ^^^^^^^^^^^ field already declared
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0124`.

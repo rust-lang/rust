@@ -1,0 +1,16 @@
+warning: trait `AutoInner` is never used
+  --> $DIR/auto-traits.rs:22:16
+   |
+LL |     auto trait AutoInner {}
+   |                ^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: trait `AutoUnsafeInner` is never used
+  --> $DIR/auto-traits.rs:23:23
+   |
+LL |     unsafe auto trait AutoUnsafeInner {}
+   |                       ^^^^^^^^^^^^^^^
+
+warning: 2 warnings emitted
+

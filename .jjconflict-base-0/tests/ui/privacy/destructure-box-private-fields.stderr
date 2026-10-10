@@ -1,0 +1,11 @@
+error[E0532]: cannot match against a tuple struct which contains private fields
+  --> $DIR/destructure-box-private-fields.rs:5:9
+   |
+LL |     let Box(a) = loop { };
+   |         ^^^ constructor is not visible here due to private fields
+   |
+   = note: a struct named `Box` exists in another namespace
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0532`.

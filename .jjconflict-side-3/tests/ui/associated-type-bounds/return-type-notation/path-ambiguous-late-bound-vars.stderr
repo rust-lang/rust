@@ -1,0 +1,26 @@
+error[E0221]: ambiguous associated function `f` in bounds of `T`
+  --> $DIR/path-ambiguous-late-bound-vars.rs:27:5
+   |
+LL |     fn f() -> impl Sized;
+   |     --------------------- ambiguous `f` from `A`
+...
+LL |     fn f<'b>() -> impl Sized;
+   |     ------------------------- ambiguous `f` from `B`
+...
+LL |     T::f(..):,
+   |     ^^^^^^^^ ambiguous associated function `f`
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL -     T::f(..):,
+LL +     <T as B>::f(..):,
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL -     T::f(..):,
+LL +     <T as A>::f(..):,
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0221`.

@@ -1,0 +1,35 @@
+error[E0005]: refutable pattern in local binding
+  --> $DIR/issue-112269.rs:3:9
+   |
+LL |     const x: i32 = 4;
+   |     ------------ missing patterns are not covered because `x` is interpreted as a constant pattern, not a new variable
+LL |     let x: i32 = 3;
+   |         ^ patterns `i32::MIN..=3_i32` and `5_i32..=i32::MAX` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+help: introduce a variable instead
+   |
+LL |     let x_var: i32 = 3;
+   |          ++++
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/issue-112269.rs:7:9
+   |
+LL |     const y: i32 = 3;
+   |     ------------ missing patterns are not covered because `y` is interpreted as a constant pattern, not a new variable
+LL |     let y = 4;
+   |         ^ patterns `i32::MIN..=2_i32` and `4_i32..=i32::MAX` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+help: introduce a variable instead
+   |
+LL |     let y_var = 4;
+   |          ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0005`.

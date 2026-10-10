@@ -1,0 +1,133 @@
+error: use of a disallowed type `std::sync::atomic::AtomicU32`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:7:1
+   |
+LL | use std::sync::atomic::AtomicU32;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::disallowed-types` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_types)]`
+
+error: use of a disallowed type `std::time::Instant`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:9:1
+   |
+LL | use std::time::Instant as Sneaky;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: use of a disallowed type `std::time::Instant`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:14:33
+   |
+LL | fn bad_return_type() -> fn() -> Sneaky {
+   |                                 ^^^^^^
+
+error: use of a disallowed type `std::time::Instant`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:19:28
+   |
+LL | fn bad_arg_type(_: impl Fn(Sneaky) -> foo::atomic::AtomicU32) {}
+   |                            ^^^^^^
+
+error: use of a disallowed type `std::sync::atomic::AtomicU32`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:19:39
+   |
+LL | fn bad_arg_type(_: impl Fn(Sneaky) -> foo::atomic::AtomicU32) {}
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^
+
+error: use of a disallowed type `std::io::Read`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:23:22
+   |
+LL | fn trait_obj(_: &dyn std::io::Read) {}
+   |                      ^^^^^^^^^^^^^
+
+error: use of a disallowed type `usize`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:26:33
+   |
+LL | fn full_and_single_path_prim(_: usize, _: bool) {}
+   |                                 ^^^^^
+
+error: use of a disallowed type `bool`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:26:43
+   |
+LL | fn full_and_single_path_prim(_: usize, _: bool) {}
+   |                                           ^^^^
+
+error: use of a disallowed type `usize`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:30:28
+   |
+LL | fn const_generics<const C: usize>() {}
+   |                            ^^^^^
+
+error: use of a disallowed type `usize`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:33:24
+   |
+LL | struct GenArg<const U: usize>([u8; U]);
+   |                        ^^^^^
+
+error: use of a disallowed type `std::net::Ipv4Addr`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:38:10
+   |
+LL | fn ip(_: std::net::Ipv4Addr) {}
+   |          ^^^^^^^^^^^^^^^^^^
+   |
+   = note: no IPv4 allowed
+
+error: use of a disallowed type `std::net::TcpListener`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:41:16
+   |
+LL | fn listener(_: std::net::TcpListener) {}
+   |                ^^^^^^^^^^^^^^^^^^^^^
+
+error: use of a disallowed type `std::collections::HashMap`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:46:48
+   |
+LL |     let _: std::collections::HashMap<(), ()> = std::collections::HashMap::new();
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: use of a disallowed type `std::collections::HashMap`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:46:12
+   |
+LL |     let _: std::collections::HashMap<(), ()> = std::collections::HashMap::new();
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: use of a disallowed type `std::time::Instant`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:49:13
+   |
+LL |     let _ = Sneaky::now();
+   |             ^^^^^^
+
+error: use of a disallowed type `std::sync::atomic::AtomicU32`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:51:13
+   |
+LL |     let _ = foo::atomic::AtomicU32::new(0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: use of a disallowed type `std::sync::atomic::AtomicU32`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:53:17
+   |
+LL |     static FOO: std::sync::atomic::AtomicU32 = foo::atomic::AtomicU32::new(1);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: use of a disallowed type `std::sync::atomic::AtomicU32`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:53:48
+   |
+LL |     static FOO: std::sync::atomic::AtomicU32 = foo::atomic::AtomicU32::new(1);
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^
+
+error: use of a disallowed type `syn::TypePath`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:56:43
+   |
+LL |     let _: std::collections::BTreeMap<(), syn::TypePath> = Default::default();
+   |                                           ^^^^^^^^^^^^^
+
+error: use of a disallowed type `proc_macro2::Ident`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:58:13
+   |
+LL |     let _ = syn::Ident::new("", todo!());
+   |             ^^^^^^^^^^
+
+error: use of a disallowed type `usize`
+  --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:61:12
+   |
+LL |     let _: usize = 64_usize;
+   |            ^^^^^
+
+error: aborting due to 21 previous errors
+

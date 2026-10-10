@@ -1,0 +1,16 @@
+error[E0384]: cannot assign twice to immutable variable `a`
+  --> $DIR/tainted-promoteds.rs:7:5
+   |
+LL |     let a = 0;
+   |         - first assignment to `a`
+LL |     a = &0 * &1 * &2 * &3;
+   |     ^^^^^^^^^^^^^^^^^^^^^ cannot assign twice to immutable variable
+   |
+help: consider making this binding mutable
+   |
+LL |     let mut a = 0;
+   |         +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0384`.

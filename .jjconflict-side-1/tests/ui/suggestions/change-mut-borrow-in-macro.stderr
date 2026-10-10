@@ -1,0 +1,40 @@
+error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnMut`
+  --> $DIR/change-mut-borrow-in-macro.rs:18:20
+   |
+LL |         (0..100).for_each(&$f)
+   |                  -------- --- the requirement to implement `Fn` derives from here
+   |                  |
+   |                  required by a bound introduced by this call
+...
+LL |     let mut func = |increment: usize| value += increment;
+   |                    ^^^^^^^^^^^^^^^^^^ ----- closure is `FnMut` because it mutates the variable `value` here
+   |                    |
+   |                    this closure implements `FnMut`, not `Fn`
+   |
+   = note: `FnMut(usize)` is implemented for `&mut {closure@$DIR/change-mut-borrow-in-macro.rs:18:20: 18:38}`, but not for `&{closure@$DIR/change-mut-borrow-in-macro.rs:18:20: 18:38}`
+   = note: required for `&{closure@$DIR/change-mut-borrow-in-macro.rs:18:20: 18:38}` to implement `FnMut(usize)`
+note: required by a bound in `for_each`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+
+error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnMut`
+  --> $DIR/change-mut-borrow-in-macro.rs:23:26
+   |
+LL |     let mut other_func = |increment: usize| other += increment;
+   |                          ^^^^^^^^^^^^^^^^^^ ----- closure is `FnMut` because it mutates the variable `other` here
+   |                          |
+   |                          this closure implements `FnMut`, not `Fn`
+LL |
+LL |     mut_borrow_macro::call_it!(other_func);
+   |     --------------------------------------
+   |     |
+   |     the requirement to implement `Fn` derives from here
+   |     required by a bound introduced by this call
+   |
+   = note: `FnMut(usize)` is implemented for `&mut {closure@$DIR/change-mut-borrow-in-macro.rs:23:26: 23:44}`, but not for `&{closure@$DIR/change-mut-borrow-in-macro.rs:23:26: 23:44}`
+   = note: required for `&{closure@$DIR/change-mut-borrow-in-macro.rs:23:26: 23:44}` to implement `FnMut(usize)`
+note: required by a bound in `for_each`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0525`.

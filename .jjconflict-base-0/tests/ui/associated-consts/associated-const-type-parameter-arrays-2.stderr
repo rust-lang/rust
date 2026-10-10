@@ -1,0 +1,18 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/associated-const-type-parameter-arrays-2.rs:16:22
+   |
+LL |     let _array = [4; <A as Foo>::Y];
+   |                      ^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: constant expression depends on a generic parameter
+  --> $DIR/associated-const-type-parameter-arrays-2.rs:16:18
+   |
+LL |     let _array = [4; <A as Foo>::Y];
+   |                  ^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to 2 previous errors
+

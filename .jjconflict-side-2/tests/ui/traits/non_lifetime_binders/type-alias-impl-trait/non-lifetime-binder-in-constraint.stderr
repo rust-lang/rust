@@ -1,0 +1,39 @@
+error: cannot capture late-bound type parameter in nested `impl Trait`
+  --> $DIR/non-lifetime-binder-in-constraint.rs:6:58
+   |
+LL | fn produce() -> impl for<T> Trait<(), Assoc = impl Trait<T>> {
+   |                          - parameter defined here        ^
+
+error[E0220]: associated type `Assoc` not found for `Trait`
+  --> $DIR/non-lifetime-binder-in-constraint.rs:6:39
+   |
+LL | fn produce() -> impl for<T> Trait<(), Assoc = impl Trait<T>> {
+   |                                       ^^^^^ associated type `Assoc` not found
+
+error[E0220]: associated type `Assoc` not found for `Trait`
+  --> $DIR/non-lifetime-binder-in-constraint.rs:6:39
+   |
+LL | fn produce() -> impl for<T> Trait<(), Assoc = impl Trait<T>> {
+   |                                       ^^^^^ associated type `Assoc` not found
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: the trait bound `{integer}: Trait<()>` is not satisfied
+  --> $DIR/non-lifetime-binder-in-constraint.rs:6:17
+   |
+LL | fn produce() -> impl for<T> Trait<(), Assoc = impl Trait<T>> {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<()>` is not implemented for `{integer}`
+...
+LL |     16
+   |     -- return type was inferred to be `{integer}` here
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/non-lifetime-binder-in-constraint.rs:4:1
+   |
+LL | trait Trait<T: ?Sized> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0220, E0277.
+For more information about an error, try `rustc --explain E0220`.

@@ -1,0 +1,50 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "r#struct"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "92"
+          SEMICOLON ";"
+        WHITESPACE " "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "r#trait"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          BIN_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "r#struct"
+            WHITESPACE " "
+            STAR "*"
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "2"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"

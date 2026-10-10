@@ -1,0 +1,36 @@
+error: expected `{}`, found `;`
+  --> $DIR/duplicated-item-in-const-generics.rs:5:9
+   |
+LL |   enum A;
+   |         ^
+   |
+   = help: try using `{}` instead
+
+error: expected `{}`, found `;`
+  --> $DIR/duplicated-item-in-const-generics.rs:8:4
+   |
+LL | >> ;
+   |    ^
+   |
+   = help: try using `{}` instead
+
+error[E0428]: the name `A` is defined multiple times
+  --> $DIR/duplicated-item-in-const-generics.rs:6:3
+   |
+LL |   enum A;
+   |   ------- previous definition of the type `A` here
+LL |   struct A<A>;
+   |   ^^^^^^^^^^^^ `A` redefined here
+   |
+   = note: `A` must be defined only once in the type namespace of this block
+
+error[E0405]: cannot find trait `TraitB` in this scope
+  --> $DIR/duplicated-item-in-const-generics.rs:3:27
+   |
+LL | trait TraitA < AsA = impl TraitB < {
+   |                           ^^^^^^ not found in this scope
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0405, E0428.
+For more information about an error, try `rustc --explain E0405`.

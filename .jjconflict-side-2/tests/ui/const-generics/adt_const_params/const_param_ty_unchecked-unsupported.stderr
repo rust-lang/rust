@@ -1,0 +1,34 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/const_param_ty_unchecked-unsupported.rs:8:8
+   |
+LL |     a: Vec<[u8]>
+   |        ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+note: required by an implicit `Sized` bound in `Vec`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/const_param_ty_unchecked-unsupported.rs:14:8
+   |
+LL | fn foo<const N: Vec<[u8]>>() {}
+   |        ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+note: required by an implicit `Sized` bound in `Vec`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/const_param_ty_unchecked-unsupported.rs:14:8
+   |
+LL | fn foo<const N: Vec<[u8]>>() {}
+   |        ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+note: required by an implicit `Sized` bound in `Vec`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

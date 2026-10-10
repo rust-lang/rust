@@ -1,0 +1,8 @@
+error: `async move` blocks are only allowed in Rust 2018 or later
+  --> $DIR/edition-gated-async-move-syntax-issue89699.rs:10:1
+   |
+LL | fn foo() {}
+   | ^^
+
+error: aborting due to 1 previous error
+

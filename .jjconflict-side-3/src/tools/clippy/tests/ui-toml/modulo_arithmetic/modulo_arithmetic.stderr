@@ -1,0 +1,40 @@
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui-toml/modulo_arithmetic/modulo_arithmetic.rs:6:13
+   |
+LL |     let c = a % b == 0;
+   |             ^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+   = note: `-D clippy::modulo-arithmetic` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::modulo_arithmetic)]`
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui-toml/modulo_arithmetic/modulo_arithmetic.rs:8:13
+   |
+LL |     let c = a % b != 0;
+   |             ^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui-toml/modulo_arithmetic/modulo_arithmetic.rs:10:18
+   |
+LL |     let c = 0 == a % b;
+   |                  ^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: you are using modulo operator on types that might have different signs
+  --> tests/ui-toml/modulo_arithmetic/modulo_arithmetic.rs:12:18
+   |
+LL |     let c = 0 != a % b;
+   |                  ^^^^^
+   |
+   = note: double check for expected result especially when interoperating with different languages
+   = note: or consider using `rem_euclid` or similar function
+
+error: aborting due to 4 previous errors
+

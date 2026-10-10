@@ -1,0 +1,11 @@
+[address]
+src:*src-ignore-memory.rs
+
+[memory]
+src:*src-ignore-memory.rs
+
+[thread]
+src:*src-ignore-memory.rs
+
+[hwaddress]
+src:*src-ignore-memory.rs

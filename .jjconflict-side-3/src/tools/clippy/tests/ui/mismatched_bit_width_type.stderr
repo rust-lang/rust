@@ -1,0 +1,524 @@
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:9:13
+   |
+LL |     let _ = i8::BITS - w.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+   = note: `-D clippy::mismatched-bit-width-type` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mismatched_bit_width_type)]`
+help: if you meant to use `u8::BITS`, use
+   |
+LL -     let _ = i8::BITS - w.leading_zeros();
+LL +     let _ = w.bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:10:13
+   |
+LL |     let _ = u32::BITS - w.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `u8::BITS`, use
+   |
+LL -     let _ = u32::BITS - w.leading_zeros();
+LL +     let _ = w.bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:12:13
+   |
+LL |     let _ = i16::BITS - w.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `u16::BITS`, use
+   |
+LL -     let _ = i16::BITS - w.leading_zeros();
+LL +     let _ = w.bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:13:13
+   |
+LL |     let _ = u8::BITS - w.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `u16::BITS`, use
+   |
+LL -     let _ = u8::BITS - w.leading_zeros();
+LL +     let _ = w.bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:15:13
+   |
+LL |     let _ = i32::BITS - w.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `u32::BITS`, use
+   |
+LL -     let _ = i32::BITS - w.leading_zeros();
+LL +     let _ = w.bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:16:13
+   |
+LL |     let _ = isize::BITS - w.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `u32::BITS`, use
+   |
+LL -     let _ = isize::BITS - w.leading_zeros();
+LL +     let _ = w.bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:18:13
+   |
+LL |     let _ = i64::BITS - w.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `u64::BITS`, use
+   |
+LL -     let _ = i64::BITS - w.leading_zeros();
+LL +     let _ = w.bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:19:13
+   |
+LL |     let _ = NonZero::<u64>::BITS - w.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `u64::BITS`, use
+   |
+LL -     let _ = NonZero::<u64>::BITS - w.leading_zeros();
+LL +     let _ = w.bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:21:13
+   |
+LL |     let _ = isize::BITS - w.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `usize::BITS`, use
+   |
+LL -     let _ = isize::BITS - w.leading_zeros();
+LL +     let _ = w.bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:22:13
+   |
+LL |     let _ = NonZero::<isize>::BITS - w.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `usize::BITS`, use
+   |
+LL -     let _ = NonZero::<isize>::BITS - w.leading_zeros();
+LL +     let _ = w.bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:26:13
+   |
+LL |     let _ = u8::BITS - x.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `i8::BITS`, use
+   |
+LL -     let _ = u8::BITS - x.leading_zeros();
+LL +     let _ = x.cast_unsigned().bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:27:13
+   |
+LL |     let _ = i16::BITS - x.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `i8::BITS`, use
+   |
+LL -     let _ = i16::BITS - x.leading_zeros();
+LL +     let _ = x.cast_unsigned().bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:29:13
+   |
+LL |     let _ = u16::BITS - x.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `i16::BITS`, use
+   |
+LL -     let _ = u16::BITS - x.leading_zeros();
+LL +     let _ = x.cast_unsigned().bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:30:13
+   |
+LL |     let _ = NonZero::<u32>::BITS - x.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `i16::BITS`, use
+   |
+LL -     let _ = NonZero::<u32>::BITS - x.leading_zeros();
+LL +     let _ = x.cast_unsigned().bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:32:13
+   |
+LL |     let _ = u32::BITS - x.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `i32::BITS`, use
+   |
+LL -     let _ = u32::BITS - x.leading_zeros();
+LL +     let _ = x.cast_unsigned().bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:33:13
+   |
+LL |     let _ = NonZero::<i32>::BITS - x.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `i32::BITS`, use
+   |
+LL -     let _ = NonZero::<i32>::BITS - x.leading_zeros();
+LL +     let _ = x.cast_unsigned().bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:35:13
+   |
+LL |     let _ = u64::BITS - x.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `i64::BITS`, use
+   |
+LL -     let _ = u64::BITS - x.leading_zeros();
+LL +     let _ = x.cast_unsigned().bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:36:13
+   |
+LL |     let _ = isize::BITS - x.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `i64::BITS`, use
+   |
+LL -     let _ = isize::BITS - x.leading_zeros();
+LL +     let _ = x.cast_unsigned().bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:38:13
+   |
+LL |     let _ = usize::BITS - x.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `isize::BITS`, use
+   |
+LL -     let _ = usize::BITS - x.leading_zeros();
+LL +     let _ = x.cast_unsigned().bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:39:13
+   |
+LL |     let _ = u32::BITS - x.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `isize::BITS`, use
+   |
+LL -     let _ = u32::BITS - x.leading_zeros();
+LL +     let _ = x.cast_unsigned().bit_width();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:44:13
+   |
+LL |     let _ = NonZero::<i8>::BITS - y.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<u8>::BITS`, use
+   |
+LL -     let _ = NonZero::<i8>::BITS - y.leading_zeros();
+LL +     let _ = y.bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:45:13
+   |
+LL |     let _ = u8::BITS - y.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<u8>::BITS`, use
+   |
+LL -     let _ = u8::BITS - y.leading_zeros();
+LL +     let _ = y.bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:47:13
+   |
+LL |     let _ = NonZero::<i16>::BITS - y.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<u16>::BITS`, use
+   |
+LL -     let _ = NonZero::<i16>::BITS - y.leading_zeros();
+LL +     let _ = y.bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:48:13
+   |
+LL |     let _ = i16::BITS - y.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<u16>::BITS`, use
+   |
+LL -     let _ = i16::BITS - y.leading_zeros();
+LL +     let _ = y.bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:50:13
+   |
+LL |     let _ = NonZeroI32::BITS - y.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<u32>::BITS`, use
+   |
+LL -     let _ = NonZeroI32::BITS - y.leading_zeros();
+LL +     let _ = y.bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:51:13
+   |
+LL |     let _ = NonZero::<u64>::BITS - y.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<u32>::BITS`, use
+   |
+LL -     let _ = NonZero::<u64>::BITS - y.leading_zeros();
+LL +     let _ = y.bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:53:13
+   |
+LL |     let _ = NonZero::<i64>::BITS - y.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<u64>::BITS`, use
+   |
+LL -     let _ = NonZero::<i64>::BITS - y.leading_zeros();
+LL +     let _ = y.bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:54:13
+   |
+LL |     let _ = NonZero::<usize>::BITS - y.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<u64>::BITS`, use
+   |
+LL -     let _ = NonZero::<usize>::BITS - y.leading_zeros();
+LL +     let _ = y.bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:56:13
+   |
+LL |     let _ = num::NonZero::<isize>::BITS - y.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<usize>::BITS`, use
+   |
+LL -     let _ = num::NonZero::<isize>::BITS - y.leading_zeros();
+LL +     let _ = y.bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:57:13
+   |
+LL |     let _ = u64::BITS - y.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<usize>::BITS`, use
+   |
+LL -     let _ = u64::BITS - y.leading_zeros();
+LL +     let _ = y.bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:61:13
+   |
+LL |     let _ = NonZero::<u8>::BITS - z.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<i8>::BITS`, use
+   |
+LL -     let _ = NonZero::<u8>::BITS - z.leading_zeros();
+LL +     let _ = z.cast_unsigned().bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:62:13
+   |
+LL |     let _ = u8::BITS - z.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<i8>::BITS`, use
+   |
+LL -     let _ = u8::BITS - z.leading_zeros();
+LL +     let _ = z.cast_unsigned().bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:64:13
+   |
+LL |     let _ = NonZero::<u16>::BITS - z.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<i16>::BITS`, use
+   |
+LL -     let _ = NonZero::<u16>::BITS - z.leading_zeros();
+LL +     let _ = z.cast_unsigned().bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:65:13
+   |
+LL |     let _ = i16::BITS - z.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<i16>::BITS`, use
+   |
+LL -     let _ = i16::BITS - z.leading_zeros();
+LL +     let _ = z.cast_unsigned().bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:67:13
+   |
+LL |     let _ = NonZeroU32::BITS - z.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<i32>::BITS`, use
+   |
+LL -     let _ = NonZeroU32::BITS - z.leading_zeros();
+LL +     let _ = z.cast_unsigned().bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:68:13
+   |
+LL |     let _ = NonZero::<u32>::BITS - z.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<i32>::BITS`, use
+   |
+LL -     let _ = NonZero::<u32>::BITS - z.leading_zeros();
+LL +     let _ = z.cast_unsigned().bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:70:13
+   |
+LL |     let _ = NonZero::<u64>::BITS - z.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<i64>::BITS`, use
+   |
+LL -     let _ = NonZero::<u64>::BITS - z.leading_zeros();
+LL +     let _ = z.cast_unsigned().bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:71:13
+   |
+LL |     let _ = NonZero::<i32>::BITS - z.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<i64>::BITS`, use
+   |
+LL -     let _ = NonZero::<i32>::BITS - z.leading_zeros();
+LL +     let _ = z.cast_unsigned().bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:73:13
+   |
+LL |     let _ = num::NonZero::<usize>::BITS - z.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<isize>::BITS`, use
+   |
+LL -     let _ = num::NonZero::<usize>::BITS - z.leading_zeros();
+LL +     let _ = z.cast_unsigned().bit_width().get();
+   |
+
+error: possible buggy implementation of `bit_width`
+  --> tests/ui/mismatched_bit_width_type.rs:74:13
+   |
+LL |     let _ = num::NonZero::<i64>::BITS - z.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: in order to calculate the bit width, `T::BITS` should match the type of the value calling `.leading_zeros()`
+help: if you meant to use `std::num::NonZero<isize>::BITS`, use
+   |
+LL -     let _ = num::NonZero::<i64>::BITS - z.leading_zeros();
+LL +     let _ = z.cast_unsigned().bit_width().get();
+   |
+
+error: aborting due to 40 previous errors
+

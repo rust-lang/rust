@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `Assoc`
+  --> $DIR/specialize_on_type_error.rs:14:1
+   |
+LL |     type Assoc: Y;
+   |     ------------- `Assoc` from trait
+...
+LL | impl<T: X> Z for A<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^ missing `Assoc` in implementation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

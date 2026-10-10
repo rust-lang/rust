@@ -1,0 +1,41 @@
+error[E0658]: yield syntax is experimental
+  --> $DIR/feature-gate-yield-expr.rs:5:5
+   |
+LL |     yield ();
+   |     ^^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(yield_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: yield syntax is experimental
+  --> $DIR/feature-gate-yield-expr.rs:5:5
+   |
+LL |     yield ();
+   |     ^^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(yield_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
+  --> $DIR/feature-gate-yield-expr.rs:5:5
+   |
+LL |     yield ();
+   |     ^^^^^^^^
+   |
+help: use `#[coroutine]` to make this closure a coroutine
+   |
+LL | #[coroutine] fn main() {
+   | ++++++++++++
+
+error[E0627]: yield expression outside of coroutine literal
+  --> $DIR/feature-gate-yield-expr.rs:5:5
+   |
+LL |     yield ();
+   |     ^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0627, E0658.
+For more information about an error, try `rustc --explain E0627`.

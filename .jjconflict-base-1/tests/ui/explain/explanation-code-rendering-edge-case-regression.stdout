@@ -1,0 +1,7 @@
+An unknown or invalid lint was used on the command line.
+
+Erroneous code example:
+
+rustc[2m[97m [0m[2m[97m-[0m[33mD[0m[2m[97m [0mbogus[2m[97m [0mrust_file[2m[97m.[0mrs
+
+Maybe you just misspelled the lint name or the lint doesn't exist anymore. Either way, try to update/remove it in order to fix the error.

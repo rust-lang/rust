@@ -1,0 +1,10 @@
+warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
+  --> $DIR/malformed-diagnostic-attributes-if-expression.rs:6:1
+   |
+LL | #[diagnostic::do_not_recommend(if not_accepted)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: 1 warning emitted
+

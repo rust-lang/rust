@@ -1,0 +1,21 @@
+error[E0508]: cannot move out of type `[Foo]`, a non-copy slice
+  --> $DIR/borrowck-move-out-of-vec-tail.rs:17:19
+   |
+LL |             match tail {
+   |                   ^^^^ cannot move out of here
+LL |
+LL |                 &[Foo { string: a },
+   |                                 - data moved here
+LL |                   Foo { string: b }] => {
+   |                                 - ...and here
+   |
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider removing the borrow
+   |
+LL -                 &[Foo { string: a },
+LL +                 [Foo { string: a },
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0508`.

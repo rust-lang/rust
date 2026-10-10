@@ -1,0 +1,17 @@
+error[E0603]: module `b` is private
+  --> $DIR/private-trait-non-local.rs:4:13
+   |
+LL | use aux::a::b::Sealed;
+   |             ^  ------ trait `Sealed` is not publicly re-exported
+   |             |
+   |             private module
+   |
+note: the module `b` is defined here
+  --> $DIR/auxiliary/private-trait-non-local-aux.rs:2:5
+   |
+LL |     mod b {
+   |     ^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.

@@ -1,0 +1,10 @@
+error: cannot find macro `test` in this scope
+  --> $DIR/issue-11692-2.rs:2:13
+   |
+LL |     concat!(test!());
+   |             ^^^^
+   |
+   = note: `test` is in scope, but it is an attribute: `#[test]`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,18 @@
+error[E0382]: use of moved value: `f`
+  --> $DIR/fnonce-moved-twice-12127.rs:13:9
+   |
+LL |         f();
+   |         --- `f` moved due to this call
+LL |         f();
+   |         ^ value used here after move
+   |
+note: this value implements `FnOnce`, which causes it to be moved when called
+  --> $DIR/fnonce-moved-twice-12127.rs:12:9
+   |
+LL |         f();
+   |         ^
+   = note: move occurs because `f` has type `{closure@$DIR/fnonce-moved-twice-12127.rs:10:24: 10:30}`, which does not implement the `Copy` trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

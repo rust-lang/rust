@@ -1,0 +1,22 @@
+error: expected `;` or `]`, found `*`
+  --> $DIR/removed-syntax-fixed-vec.rs:1:17
+   |
+LL | type v = [isize * 3];
+   |                 ^ expected `;` or `]`
+   |
+help: you might have meant to use `;` as the separator
+   |
+LL - type v = [isize * 3];
+LL + type v = [isize; 3];
+   |
+
+warning: type `v` should have an upper camel case name
+  --> $DIR/removed-syntax-fixed-vec.rs:1:6
+   |
+LL | type v = [isize * 3];
+   |      ^ help: convert the identifier to upper camel case (notice the capitalization): `V`
+   |
+   = note: `#[warn(non_camel_case_types)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+error: aborting due to 1 previous error; 1 warning emitted
+

@@ -1,0 +1,9 @@
+error[E0094]: intrinsic has wrong number of type parameters: found 2, expected 1
+  --> $DIR/E0094.rs:4:11
+   |
+LL | fn size_of<T, U>() -> usize;
+   |           ^^^^^^ expected 1 type parameter
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0094`.

@@ -1,0 +1,12 @@
+[package]
+name = "unstable-book-gen"
+version = "0.1.0"
+license = "MIT OR Apache-2.0"
+edition = "2021"
+
+[dependencies]
+tidy = { path = "../tidy" }
+
+# not actually needed but required for now to unify the feature selection of
+# `num-traits` between this and `rustbook`
+num-traits = "0.2"

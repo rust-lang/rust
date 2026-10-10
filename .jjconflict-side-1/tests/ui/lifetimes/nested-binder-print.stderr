@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/nested-binder-print.rs:6:18
+   |
+LL |     let x: u32 = y;
+   |            ---   ^ expected `u32`, found fn pointer
+   |            |
+   |            expected due to this
+   |
+   = note:    expected type `u32`
+           found fn pointer `for<'a> fn(for<'b> fn(TwoLt<'b, 'a>))`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

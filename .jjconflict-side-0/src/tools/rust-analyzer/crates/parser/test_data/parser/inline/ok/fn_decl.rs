@@ -1,0 +1,1 @@
+trait T { fn foo(); }

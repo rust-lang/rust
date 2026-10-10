@@ -1,0 +1,15 @@
+error[E0605]: non-primitive cast: `&dyn Foo<i32>` as `&dyn Bar<u32>`
+  --> $DIR/type-checking-test-2.rs:17:13
+   |
+LL |     let _ = x as &dyn Bar<u32>; // Error
+   |             ^^^^^^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+
+error[E0605]: non-primitive cast: `&dyn Foo<u32>` as `&dyn Bar<_>`
+  --> $DIR/type-checking-test-2.rs:22:13
+   |
+LL |     let a = x as &dyn Bar<_>; // Ambiguous
+   |             ^^^^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0605`.

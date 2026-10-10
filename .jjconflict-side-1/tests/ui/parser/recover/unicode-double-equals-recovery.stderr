@@ -1,0 +1,26 @@
+error: unknown start of token: \u{2a75}
+  --> $DIR/unicode-double-equals-recovery.rs:1:16
+   |
+LL | const A: usize ⩵ 2;
+   |                ^
+   |
+help: Unicode character '⩵' (Two Consecutive Equals Signs) looks like '==' (Double Equals Sign), but it is not
+   |
+LL - const A: usize ⩵ 2;
+LL + const A: usize == 2;
+   |
+
+error: unexpected `==`
+  --> $DIR/unicode-double-equals-recovery.rs:1:16
+   |
+LL | const A: usize ⩵ 2;
+   |                ^
+   |
+help: try using `=` instead
+   |
+LL - const A: usize ⩵ 2;
+LL + const A: usize = 2;
+   |
+
+error: aborting due to 2 previous errors
+

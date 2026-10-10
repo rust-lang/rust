@@ -1,0 +1,10 @@
+[package]
+name = "dependency-crate-name"
+version = "0.1.0"
+authors = ["calebcartwright"]
+edition = "2018"
+
+[dependencies]
+subdep-crate-name = { path = "subdep-dir-name" }
+indexmap = "1.0.2"
+rusty-hook = "0.8.4"

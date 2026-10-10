@@ -1,0 +1,10 @@
+// CHECK: callee - {[-1]:Float@double} |{[-1]:Pointer}:{}
+// CHECK: ptr %{{[0-9]+}}: {[-1]:Pointer, [-1,0]:Float@double}
+// CHECK-DAG: %{{[0-9]+}} = load double, ptr %{{[0-9]+}}, align 8, !dbg !{{[0-9]+}}, !noundef !{{[0-9]+}}: {[-1]:Float@double}
+// CHECK-DAG: %{{[0-9]+}} = fmul double %{{[0-9]+}}, %{{[0-9]+}}, !dbg !{{[0-9]+}}: {[-1]:Float@double}
+// CHECK-DAG: ret double %{{[0-9]+}}, !dbg !{{[0-9]+}}: {}
+// CHECK: callee - {[-1]:Float@double} |{[-1]:Pointer, [-1,0]:Float@double}:{}
+// CHECK: ptr %{{[0-9]+}}: {[-1]:Pointer, [-1,0]:Float@double}
+// CHECK-DAG: %{{[0-9]+}} = load double, ptr %{{[0-9]+}}, align 8, !dbg !{{[0-9]+}}, !noundef !{{[0-9]+}}: {[-1]:Float@double}
+// CHECK-DAG: %{{[0-9]+}} = fmul double %{{[0-9]+}}, %{{[0-9]+}}, !dbg !{{[0-9]+}}: {[-1]:Float@double}
+// CHECK-DAG: ret double %{{[0-9]+}}, !dbg !{{[0-9]+}}: {}

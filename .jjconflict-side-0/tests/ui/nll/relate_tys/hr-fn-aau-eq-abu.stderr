@@ -1,0 +1,22 @@
+error[E0308]: mismatched types
+  --> $DIR/hr-fn-aau-eq-abu.rs:18:53
+   |
+LL |     let a: Cell<for<'a, 'b> fn(&'a u32, &'b u32)> = make_cell_aa();
+   |                                                     ^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected struct `Cell<for<'a, 'b> fn(&'a _, &'b _)>`
+              found struct `Cell<for<'a> fn(&'a _, &'a _)>`
+
+error[E0308]: mismatched types
+  --> $DIR/hr-fn-aau-eq-abu.rs:18:53
+   |
+LL |     let a: Cell<for<'a, 'b> fn(&'a u32, &'b u32)> = make_cell_aa();
+   |                                                     ^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected struct `Cell<for<'a, 'b> fn(&'a _, &'b _)>`
+              found struct `Cell<for<'a> fn(&'a _, &'a _)>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

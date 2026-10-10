@@ -1,0 +1,15 @@
+error[E0477]: the type `&'a i32` does not fulfill the required lifetime
+  --> $DIR/regions-assoc-type-static-bound-in-trait-not-met.rs:10:18
+   |
+LL |     type Value = &'a i32;
+   |                  ^^^^^^^
+   |
+note: type must satisfy the static lifetime as required by this binding
+  --> $DIR/regions-assoc-type-static-bound-in-trait-not-met.rs:5:17
+   |
+LL |     type Value: 'static;
+   |                 ^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0477`.

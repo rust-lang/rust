@@ -1,0 +1,11 @@
+error[E0609]: no field `f` on type `Foo`
+  --> $DIR/non-existent-field-present-in-subfield-recursion-limit.rs:41:22
+   |
+LL |     let test = fooer.f;
+   |                      ^ unknown field
+   |
+   = note: available fields are: `first`, `second`, `third`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0609`.

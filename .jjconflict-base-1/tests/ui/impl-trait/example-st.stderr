@@ -1,0 +1,10 @@
+warning: trait `Bind` is never used
+  --> $DIR/example-st.rs:6:7
+   |
+LL | trait Bind<F> {
+   |       ^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

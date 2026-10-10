@@ -1,0 +1,15 @@
+error[E0080]: tried to allocate more memory than available to compiler
+  --> $DIR/large_const_alloc.rs:11:13
+   |
+LL |     let x = [0_u8; (1 << 47) - 1];
+   |             ^^^^^^^^^^^^^^^^^^^^^ evaluation of `FOO` failed here
+
+error[E0080]: tried to allocate more memory than available to compiler
+  --> $DIR/large_const_alloc.rs:16:13
+   |
+LL |     let x = [0_u8; (1 << 47) - 1];
+   |             ^^^^^^^^^^^^^^^^^^^^^ evaluation of `FOO2` failed here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

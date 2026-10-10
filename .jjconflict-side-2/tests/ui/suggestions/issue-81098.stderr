@@ -1,0 +1,19 @@
+error[E0277]: `()` doesn't implement `std::fmt::Display`
+  --> $DIR/issue-81098.rs:3:13
+   |
+LL | fn wat() -> impl core::fmt::Display {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::fmt::Display` is not implemented for `()`
+
+error[E0277]: `()` doesn't implement `std::fmt::Display`
+  --> $DIR/issue-81098.rs:9:12
+   |
+LL | fn ok() -> impl core::fmt::Display {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::fmt::Display` is not implemented for `()`
+LL |     1;
+   |     -- help: remove this semicolon
+   |     |
+   |     this expression has type `{integer}`, which implements `std::fmt::Display`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

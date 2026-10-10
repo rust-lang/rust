@@ -1,0 +1,23 @@
+error: functions with the "x86-interrupt" ABI cannot be `async`
+  --> $DIR/cannot-be-coroutine.rs:58:1
+   |
+LL | async extern "x86-interrupt" fn x86(_p: *mut ()) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `async` keyword from this definition
+   |
+LL - async extern "x86-interrupt" fn x86(_p: *mut ()) {
+LL + extern "x86-interrupt" fn x86(_p: *mut ()) {
+   |
+
+error: requires `ResumeTy` lang_item
+  --> $DIR/cannot-be-coroutine.rs:38:19
+   |
+LL |   async fn vanilla(){
+   |  ___________________^
+LL | |
+LL | | }
+   | |_^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,45 @@
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+  --> $DIR/issue-88236-2.rs:15:49
+   |
+LL | fn make_impl() -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {}
+   |                                                 ^^^^^^^^^^^^--
+   |                                                 |
+   |                                                 `impl Trait` implicitly captures all lifetimes in scope
+   |
+note: lifetime declared here
+  --> $DIR/issue-88236-2.rs:15:28
+   |
+LL | fn make_impl() -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {}
+   |                            ^^
+
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+  --> $DIR/issue-88236-2.rs:18:68
+   |
+LL | fn make_weird_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
+   |                                                                    ^^^^^^^^^^^^--
+   |                                                                    |
+   |                                                                    `impl Trait` implicitly captures all lifetimes in scope
+   |
+note: lifetime declared here
+  --> $DIR/issue-88236-2.rs:18:47
+   |
+LL | fn make_weird_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
+   |                                               ^^
+
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+  --> $DIR/issue-88236-2.rs:23:66
+   |
+LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
+   |                                                                  ^^^^^^^^^^^^--
+   |                                                                  |
+   |                                                                  `impl Trait` implicitly captures all lifetimes in scope
+   |
+note: lifetime declared here
+  --> $DIR/issue-88236-2.rs:23:45
+   |
+LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
+   |                                             ^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0657`.

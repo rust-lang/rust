@@ -1,0 +1,28 @@
+error: this could be simplified with `bool::then`
+  --> tests/ui/if_then_some_else_none_unfixable.rs:13:9
+   |
+LL | /         if i % 2 == 0 {
+LL | |
+LL | |             Some(Box::new(Foo::default()))
+LL | |         } else {
+LL | |             None
+LL | |         }
+   | |_________^
+   |
+   = note: `-D clippy::if-then-some-else-none` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::if_then_some_else_none)]`
+
+error: this could be simplified with `bool::then`
+  --> tests/ui/if_then_some_else_none_unfixable.rs:28:22
+   |
+LL |           do_something(if i.rem(2) == 0 {
+   |  ______________________^
+LL | |
+LL | |             Some(&i)
+LL | |         } else {
+LL | |             None
+LL | |         });
+   | |_________^
+
+error: aborting due to 2 previous errors
+

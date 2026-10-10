@@ -1,0 +1,27 @@
+error[E0373]: gen block may outlive the current function, but it borrows `x`, which is owned by the current function
+  --> $DIR/gen_block_move.rs:7:5
+   |
+LL |     gen {
+   |     ^^^ may outlive borrowed value `x`
+...
+LL |         x.clear();
+   |         - `x` is borrowed here
+   |
+note: gen block is returned here
+  --> $DIR/gen_block_move.rs:7:5
+   |
+LL | /     gen {
+LL | |         yield 42;
+LL | |         if x == "foo" { return }
+LL | |         x.clear();
+LL | |         for x in 3..6 { yield x }
+LL | |     }
+   | |_____^
+help: to force the gen block to take ownership of `x` (and any other referenced variables), use the `move` keyword
+   |
+LL |     gen move {
+   |         ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0373`.

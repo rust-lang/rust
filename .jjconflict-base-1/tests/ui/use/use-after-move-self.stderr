@@ -1,0 +1,19 @@
+error[E0382]: use of moved value: `self`
+  --> $DIR/use-after-move-self.rs:10:16
+   |
+LL |     pub fn foo(self) -> isize {
+   |                ---- move occurs because `self` has type `S`, which does not implement the `Copy` trait
+LL |         self.bar();
+   |              ----- `self` moved due to this method call
+LL |         return *self.x;
+   |                ^^^^^^^ value used here after move
+   |
+note: `S::bar` takes ownership of the receiver `self`, which moves `self`
+  --> $DIR/use-after-move-self.rs:13:16
+   |
+LL |     pub fn bar(self) {}
+   |                ^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.
