@@ -4,8 +4,12 @@
 //
 // - `foo.rs` is a cdylib.
 // - `load_and_unload.rs` is a binary that loads and unloads the cdylib.
+//
+// This test is ignored on musl hosts because musl's dlclose is a no-op and
+// therefore destructors won't run when the library is unloaded.
 
 //@ ignore-cross-compile
+//@ ignore-musl
 
 use run_make_support::{diff, run_with_args, rustc};
 
