@@ -840,6 +840,18 @@ LL - #[allow_internal_unsafe = 1]
 LL + #[allow_internal_unsafe]
    |
 
+error: private items are not exportable
+  --> $DIR/malformed-attrs.rs:117:1
+   |
+LL | fn test() {
+   | ^^^^^^^^^
+   |
+note: is only usable at visibility `pub(crate)`
+  --> $DIR/malformed-attrs.rs:117:1
+   |
+LL | fn test() {
+   | ^^^^^^^^^
+
 error: attribute should be applied to `const fn`
   --> $DIR/malformed-attrs.rs:30:1
    |
@@ -984,7 +996,7 @@ LL |     #[coroutine = 63] || {}
    = note: expected unit type `()`
               found coroutine `{coroutine@$DIR/malformed-attrs.rs:117:23: 117:25}`
 
-error: aborting due to 74 previous errors; 8 warnings emitted
+error: aborting due to 75 previous errors; 8 warnings emitted
 
 Some errors have detailed explanations: E0308, E0463, E0539, E0565, E0658, E0805.
 For more information about an error, try `rustc --explain E0308`.
