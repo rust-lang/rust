@@ -1,4 +1,6 @@
 // tidy-alphabetical-start
+#![cfg_attr(any(target_arch = "powerpc", target_arch = "powerpc64"), feature(powerpc_ppcf128))]
+#![cfg_attr(any(target_arch = "powerpc", target_arch = "powerpc64"), feature(stdarch_powerpc))]
 #![cfg_attr(not(panic = "abort"), feature(reentrant_lock))]
 #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
 #![feature(array_ptr_get)]
