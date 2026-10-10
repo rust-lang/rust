@@ -3286,3 +3286,61 @@ impl CommandLineStep for Gcc {
         ))
     }
 }
+
+/// Tarball containing a TPDE plugin dylib, so that it can be used in rustc_codegen_llvm.
+/// by a compiler whose host is `target`.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct Tpde {
+    target: TargetSelection,
+}
+
+impl CommandLineStep for Tpde {
+    type Output = Option<GeneratedTarball>;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("tpde")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Tpde { target: run.builder.host_target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        // This prevents tpde from being built for "dist"
+        // or "install" on the stable/beta channels. It is not yet stable and
+        // should not be included.
+        if !builder.sess.unstable_features() {
+            return None;
+        }
+
+        let host = self.target;
+        // The rustc TPDE integration is Linux-only for now
+        if !host.contains("linux") {
+            builder.info(&format!("host target `{host}` not supported by tpde. skipping"));
+            return None;
+        }
+
+        // We need the TPDE sources to build TPDE and also to add its license and README
+        // files to the tarball
+        builder.require_submodule(
+            "src/tpde",
+            Some("The src/tpde submodule is required for disting tpde-plugin"),
+        );
+
+        let tpde_plugin = builder.ensure(llvm::Tpde { target: self.target });
+
+        let target_libdir = format!("lib/rustlib/{}/lib", self.target.triple);
+
+        let mut tarball = Tarball::new(builder, "tpde", &host.triple);
+        tarball.set_overlay(OverlayKind::Tpde);
+        tarball.is_preview(true);
+        tarball.add_legal_and_readme_to("share/doc/tpde");
+
+        tarball.add_file(tpde_plugin.plugin_path(), target_libdir, FileType::NativeLibrary);
+        Some(tarball.generate())
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("tpde", self.target))
+    }
+}

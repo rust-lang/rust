@@ -16,7 +16,7 @@ use rustc_session::config::{
     InstrumentCoverage, InstrumentMcount, InstrumentMcountOpts, InstrumentXRay, LinkSelfContained,
     LinkerPluginLto, LocationDetail, LtoCli, MirIncludeSpans, NextSolverConfig, Offload, Options,
     OutFileName, OutputType, OutputTypes, PAuthKey, PacRet, Passes, PatchableFunctionEntry,
-    Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion,
+    Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion, Tpde,
     WasiExecModel, build_session_options, rustc_optgroups,
 };
 use rustc_session::search_paths::SearchPath;
@@ -906,6 +906,8 @@ fn test_unstable_options_tracking_hash() {
     tracked!(thinlto, Some(true));
     tracked!(tiny_const_eval_limit, true);
     tracked!(tls_model, Some(TlsModel::GeneralDynamic));
+    tracked!(tpde, Some(Tpde::Only));
+    tracked!(tpde, Some(Tpde::Try));
     tracked!(translate_remapped_path_to_local_path, false);
     tracked!(trap_unreachable, Some(false));
     tracked!(treat_err_as_bug, NonZero::new(1));

@@ -261,6 +261,10 @@ impl CodegenBackend for GccCodegenBackend {
             });
         }
 
+        if sess.opts.unstable_opts.tpde.is_some() {
+            sess.dcx().fatal("-Ztpde is LLVM-specific and not supported by GCC");
+        }
+
         CodegenBackendInit {
             global_backend_features,
             replaced_intrinsics: vec![],
