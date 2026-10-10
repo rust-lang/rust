@@ -135,8 +135,6 @@ fn test_set_reuseaddr_invalid_len() {
     // Value should be of type `libc::c_int` which has size 4 bytes.
     // By providing an u16 of size 2 bytes we trigger an invalid length error.
     let err = net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR, 1u16).unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::InvalidInput);
-    // Check that it is the right kind of `InvalidInput`.
     assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
 
     // By providing an u64 of size 8 bytes the behavior differs between native hosts and Miri.
@@ -144,7 +142,6 @@ fn test_set_reuseaddr_invalid_len() {
     match result {
         Err(err) => {
             // Check that this is the right error.
-            assert_eq!(err.kind(), ErrorKind::InvalidInput);
             assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
         }
         Ok(_) => {
@@ -190,8 +187,6 @@ fn test_set_nosigpipe_invalid_len() {
     // Value should be of type `libc::c_int` which has size 4 bytes.
     // By providing a u16 of size 2 bytes we trigger an invalid length error.
     let err = net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1u16).unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::InvalidInput);
-    // Check that it is the right kind of `InvalidInput`.
     assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
 }
 
@@ -210,8 +205,6 @@ fn test_bind_ipv4_invalid_addr_len() {
         ))
         .unwrap_err()
     };
-    assert_eq!(err.kind(), ErrorKind::InvalidInput);
-    // Check that it is the right kind of `InvalidInput`.
     assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
 
     if cfg!(miri) {
@@ -226,8 +219,6 @@ fn test_bind_ipv4_invalid_addr_len() {
             ))
             .unwrap_err()
         };
-        assert_eq!(err.kind(), ErrorKind::InvalidInput);
-        // Check that it is the right kind of `InvalidInput`.
         assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
     }
 }
