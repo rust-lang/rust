@@ -1103,6 +1103,8 @@ pub enum LocalInfo<'tcx> {
     DerefTemp,
     /// A temporary created for borrow checking.
     FakeBorrow,
+    /// A temporary created to hold the result of a `deref` or `deref_mut` call for a deref pattern.
+    PatternTemp { matched_place: Place<'tcx> },
     /// A local without anything interesting about it.
     Boring,
 }
