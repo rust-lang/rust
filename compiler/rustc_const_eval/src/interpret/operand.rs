@@ -597,7 +597,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(match mplace.layout.backend_repr {
             BackendRepr::Scalar(abi::Scalar::Initialized { value: s, .. }) => {
                 let size = s.size(self);
-                assert_eq!(size, mplace.layout.size, "abi::Scalar size does not match layout size");
+                // For `x87_f80` the primitive is 80 bits, but the field (after rounding up to
+                // the alignment) is 12 bytes (on 32-bit systems) or 16 bytes (64-bit).
+                // So we can't assert equality of size and layout.size.
+                assert_eq!(
+                    size.align_to(s.default_align(self).abi),
+                    mplace.layout.size,
+                    "abi::Scalar is larger than its layout"
+                );
                 let scalar = alloc.read_scalar(
                     alloc_range(Size::ZERO, size),
                     /*read_provenance*/ matches!(s, abi::Primitive::Pointer(_)),

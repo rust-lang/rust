@@ -1,9 +1,9 @@
 use std::fmt;
 
 use itertools::Either;
-use rustc_abi as abi;
 use rustc_abi::{
-    Align, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, TagEncoding, VariantIdx, Variants,
+    self as abi, Align, BackendRepr, FIRST_VARIANT, FieldIdx, Float, Primitive, Size, TagEncoding,
+    VariantIdx, Variants,
 };
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_middle::mir::interpret::{Pointer, Scalar, alloc_range};
@@ -240,7 +240,14 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         match layout.backend_repr {
             BackendRepr::Scalar(s @ abi::Scalar::Initialized { .. }) => {
                 let size = s.size(bx);
-                assert_eq!(size, layout.size, "abi::Scalar size does not match layout size");
+                // For `x87_f80` the primitive is 80 bits, but the field (after rounding up to
+                // the alignment) is 12 bytes (on 32-bit systems) or 16 bytes (64-bit).
+                // So we can't assert equality of size and layout.size.
+                assert_eq!(
+                    size.align_to(s.default_align(bx).abi),
+                    layout.size,
+                    "abi::Scalar is larger than its layout"
+                );
                 let val = read_scalar(offset, size, s, bx.immediate_backend_type(layout));
                 OperandRef { val: OperandValue::Immediate(val), layout, move_annotation: None }
             }
@@ -410,12 +417,25 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     OperandValue::Pair(a_llval, b_llval),
                     BackendRepr::ScalarPair { a, b, b_offset },
                 ) => {
+                    let cx = bx.cx();
                     if offset.bytes() == 0 {
-                        assert_eq!(field.size, a.size(bx.cx()));
+                        if let Primitive::Float(Float::X87F80) = a.primitive() {
+                            // The primitive is 80 bits, but the field (after rounding up to the
+                            // alignment) is 12 bytes (on 32-bit systems) or 16 bytes (64-bit).
+                            assert_eq!(field.size, a.size(cx).align_to(a.default_align(cx).abi));
+                        } else {
+                            assert_eq!(field.size, a.size(cx));
+                        }
                         (Some(a), a_llval)
                     } else {
                         assert_eq!(offset, b_offset);
-                        assert_eq!(field.size, b.size(bx.cx()));
+                        if let Primitive::Float(Float::X87F80) = b.primitive() {
+                            // The primitive is 80 bits, but the field (after rounding up to the
+                            // alignment) is 12 bytes (on 32-bit systems) or 16 bytes (64-bit).
+                            assert_eq!(field.size, b.size(cx).align_to(b.default_align(cx).abi));
+                        } else {
+                            assert_eq!(field.size, b.size(cx));
+                        }
                         (Some(b), b_llval)
                     }
                 }
