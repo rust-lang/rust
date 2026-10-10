@@ -422,3 +422,16 @@ fn rustfmt_allow_not_a_dir_errors() {
     assert_eq!(stdout, "");
     assert_eq!(stderr, "");
 }
+
+// FIXME(cfg_select): ungate when `cfg_select!` formatting can be enabled on stable.
+#[nightly_only_test]
+#[test]
+fn cfg_select_parser_recovery_ice_7087() {
+    // See also https://github.com/rust-lang/rustfmt/issues/7087
+    let source = "cfg_select! { true => { fn foo {} } }\n";
+    let panic_re = regex::Regex::new("thread.*panicked").unwrap();
+    let (stdout, stderr) = rustfmt_with_extra(&[], None, &[], Some(source));
+    assert!(!panic_re.is_match(&stderr));
+    // Invalid arm should cause `cfg_select!` to be re-emitted unmodified.
+    assert_eq!(source, stdout);
+}
