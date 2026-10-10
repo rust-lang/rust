@@ -1730,7 +1730,6 @@ fn fchmod_works() {
     check!(file.set_permissions(p));
 }
 
-#[cfg(not(target_os = "android"))]
 #[test]
 fn fchmodat_works() {
     let tmpdir = tmpdir();
