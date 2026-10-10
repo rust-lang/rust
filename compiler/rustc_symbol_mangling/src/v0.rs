@@ -127,10 +127,12 @@ pub fn mangle_cgu<'tcx>(tcx: TyCtxt<'tcx>, krate: CrateNum, cgu_name: Either<u64
     std::mem::take(&mut p.out)
 }
 
+pub fn eh_personality_symbol<'tcx>(tcx: TyCtxt<'tcx>) -> String {
+    mangle_internal_symbol(tcx, "rust_eh_personality")
+}
+
 pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> String {
     match item_name {
-        // rust_eh_personality must not be renamed as LLVM hard-codes the name
-        "rust_eh_personality" => return item_name.to_owned(),
         // Apple availability symbols need to not be mangled to be usable by
         // C/Objective-C code.
         "__isPlatformVersionAtLeast" | "__isOSVersionAtLeast" => return item_name.to_owned(),

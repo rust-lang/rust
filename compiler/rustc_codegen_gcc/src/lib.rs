@@ -155,6 +155,14 @@ impl GccCodegenBackend {
     fn config(&self) -> &BackendConfig {
         self.config.as_ref().expect("target info not initialized")
     }
+
+    #[cfg(feature = "master")]
+    fn set_personality_function(&self, tcx: TyCtxt<'_>) {
+        let personality_symbol = rustc_symbol_mangling::eh_personality_symbol(tcx);
+        gccjit::set_global_personality_function_name(
+            &CString::new(personality_symbol).expect("symbol name shouldn't contain NUL"),
+        );
+    }
 }
 
 fn load_libgccjit_if_needed(libgccjit_target_lib_file: &Path) {
@@ -237,8 +245,6 @@ impl CodegenBackend for GccCodegenBackend {
                 target_info: Arc::new(IntoDynSyncSend(context.get_target_info())),
                 lto_supported: gccjit::is_lto_supported(),
             });
-
-            gccjit::set_global_personality_function_name(c"rust_eh_personality");
         }
 
         #[cfg(not(feature = "master"))]
@@ -274,6 +280,8 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
+        #[cfg(feature = "master")]
+        self.set_personality_function(tcx);
         Box::new(codegen_crate(self.clone(), tcx))
     }
 
