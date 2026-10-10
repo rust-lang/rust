@@ -1,0 +1,13 @@
+warning: method `iter_` is never used
+  --> $DIR/static-impl.rs:38:8
+   |
+LL | trait vec_utils<T> {
+   |       --------- method in this trait
+LL |     fn length_(&self, ) -> usize;
+LL |     fn iter_<F>(&self, f: F) where F: FnMut(&T);
+   |        ^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

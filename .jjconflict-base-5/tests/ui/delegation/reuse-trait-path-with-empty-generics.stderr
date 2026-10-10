@@ -1,0 +1,11 @@
+error[E0423]: cannot find function `Trait` in this scope
+  --> $DIR/reuse-trait-path-with-empty-generics.rs:9:11
+   |
+LL |     reuse Trait::<> as bar4;
+   |           ^^^^^ not found in this scope
+   |
+   = note: a trait named `Trait` exists in another namespace
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0423`.

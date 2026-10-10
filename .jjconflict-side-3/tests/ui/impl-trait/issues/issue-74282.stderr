@@ -1,0 +1,46 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-74282.rs:9:15
+   |
+LL |   type Closure = impl Fn() -> u64;
+   |                  ---------------- the expected opaque type
+...
+LL |       Anonymous(|| {
+   |  _____---------_^
+   | |     |
+   | |     arguments to this struct are incorrect
+LL | |
+LL | |         3
+LL | |     })
+   | |_____^ expected opaque type, found closure
+   |
+   = note: expected opaque type `Closure`
+                  found closure `{closure@$DIR/issue-74282.rs:9:15: 9:17}`
+   = note: no two closures, even if identical, have the same type
+   = help: consider boxing your closure and/or using it as a trait object
+note: tuple struct defined here
+  --> $DIR/issue-74282.rs:4:8
+   |
+LL | struct Anonymous(Closure);
+   |        ^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/issue-74282.rs:9:5
+   |
+LL | /     Anonymous(|| {
+LL | |
+LL | |         3
+LL | |     })
+   | |______^ expected `()`, found `Anonymous`
+   |
+help: consider using a semicolon here
+   |
+LL |     });
+   |       +
+help: try adding a return type
+   |
+LL | fn bop() -> Anonymous {
+   |          ++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

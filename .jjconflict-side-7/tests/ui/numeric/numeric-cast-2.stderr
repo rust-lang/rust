@@ -1,0 +1,42 @@
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-2.rs:5:18
+   |
+LL |     let x: u16 = foo();
+   |            ---   ^^^^^ expected `u16`, found `i32`
+   |            |
+   |            expected due to this
+   |
+help: you can convert an `i32` to a `u16` and panic if the converted value doesn't fit
+   |
+LL |     let x: u16 = foo().try_into().unwrap();
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-2.rs:7:18
+   |
+LL |     let y: i64 = x + x;
+   |            ---   ^^^^^ expected `i64`, found `u16`
+   |            |
+   |            expected due to this
+   |
+help: you can convert a `u16` to an `i64`
+   |
+LL |     let y: i64 = (x + x).into();
+   |                  +     ++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-2.rs:9:18
+   |
+LL |     let z: i32 = x + x;
+   |            ---   ^^^^^ expected `i32`, found `u16`
+   |            |
+   |            expected due to this
+   |
+help: you can convert a `u16` to an `i32`
+   |
+LL |     let z: i32 = (x + x).into();
+   |                  +     ++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

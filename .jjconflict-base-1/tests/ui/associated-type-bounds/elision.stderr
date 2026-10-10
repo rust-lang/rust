@@ -1,0 +1,28 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/elision.rs:4:70
+   |
+LL | fn f(x: &mut dyn Iterator<Item: Iterator<Item = &'_ ()>>) -> Option<&'_ ()> { x.next() }
+   |         ------------------------------------------------             ^^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say which one of `x`'s 2 lifetimes it is borrowed from
+help: consider introducing a named lifetime parameter
+   |
+LL - fn f(x: &mut dyn Iterator<Item: Iterator<Item = &'_ ()>>) -> Option<&'_ ()> { x.next() }
+LL + fn f<'a>(x: &'a mut dyn Iterator<Item: Iterator<Item = &'a ()>>) -> Option<&'a ()> { x.next() }
+   |
+
+error: associated type bounds are not allowed in `dyn` types
+  --> $DIR/elision.rs:4:27
+   |
+LL | fn f(x: &mut dyn Iterator<Item: Iterator<Item = &'_ ()>>) -> Option<&'_ ()> { x.next() }
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `impl Trait` to introduce a type instead
+   |
+LL - fn f(x: &mut dyn Iterator<Item: Iterator<Item = &'_ ()>>) -> Option<&'_ ()> { x.next() }
+LL + fn f(x: &mut dyn Iterator<Item = impl Iterator<Item = &'_ ()>>) -> Option<&'_ ()> { x.next() }
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

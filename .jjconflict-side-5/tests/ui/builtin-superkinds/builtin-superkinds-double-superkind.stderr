@@ -1,0 +1,37 @@
+error[E0277]: `T` cannot be sent between threads safely
+  --> $DIR/builtin-superkinds-double-superkind.rs:6:32
+   |
+LL | impl <T: Sync+'static> Foo for (T,) { }
+   |                                ^^^^ `T` cannot be sent between threads safely
+   |
+   = note: required because it appears within the type `(T,)`
+note: required by a bound in `Foo`
+  --> $DIR/builtin-superkinds-double-superkind.rs:4:13
+   |
+LL | trait Foo : Send+Sync { }
+   |             ^^^^ required by this bound in `Foo`
+help: consider further restricting type parameter `T` with trait `Send`
+   |
+LL | impl <T: Sync+'static + std::marker::Send> Foo for (T,) { }
+   |                       +++++++++++++++++++
+
+error[E0277]: `T` cannot be shared between threads safely
+  --> $DIR/builtin-superkinds-double-superkind.rs:9:24
+   |
+LL | impl <T: Send> Foo for (T,T) { }
+   |                        ^^^^^ `T` cannot be shared between threads safely
+   |
+   = note: required because it appears within the type `(T, T)`
+note: required by a bound in `Foo`
+  --> $DIR/builtin-superkinds-double-superkind.rs:4:18
+   |
+LL | trait Foo : Send+Sync { }
+   |                  ^^^^ required by this bound in `Foo`
+help: consider further restricting type parameter `T` with trait `Sync`
+   |
+LL | impl <T: Send + std::marker::Sync> Foo for (T,T) { }
+   |               +++++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,38 @@
+error[E0277]: `Position1` doesn't implement `Debug`
+  --> $DIR/generated-derive-suggestion-issue-148207.rs:33:26
+   |
+LL |         println!("{:?}", p1);
+   |                   ----   ^^ `Position1` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |                   |
+   |                   required by this formatting parameter
+   |
+help: the trait `Debug` is not implemented for `Position1`
+  --> $DIR/generated-derive-suggestion-issue-148207.rs:13:1
+   |
+LL | #[generated_enum_derive::generator]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | gen_enums_from_list!(["X"]);
+   | --------------------------- in this macro invocation
+   = note: add `#[derive(Debug)]` to `Position1` or manually `impl Debug for Position1`
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `gen_enums_from_list` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `Generated` doesn't implement `Debug`
+  --> $DIR/generated-derive-suggestion-issue-148207.rs:35:26
+   |
+LL |         println!("{:?}", Generated::X);
+   |                   ----   ^^^^^^^^^^^^ `Generated` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |                   |
+   |                   required by this formatting parameter
+   |
+help: the trait `Debug` is not implemented for `Generated`
+  --> $DIR/generated-derive-suggestion-issue-148207.rs:20:1
+   |
+LL | generated_enum_derive::generated_enum!();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: add `#[derive(Debug)]` to `Generated` or manually `impl Debug for Generated`
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `generated_enum_derive::generated_enum` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

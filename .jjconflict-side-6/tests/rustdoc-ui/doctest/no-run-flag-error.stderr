@@ -1,0 +1,2 @@
+error: the `--test` flag must be passed to enable `--no-run`
+

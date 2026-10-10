@@ -1,0 +1,73 @@
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:4:24
+   |
+LL | fn f(_: impl Trait<T = Copy>) {}
+   |                        ^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | fn f(_: impl Trait<T = dyn Copy>) {}
+   |                        +++
+help: you might have meant to write a bound here
+   |
+LL - fn f(_: impl Trait<T = Copy>) {}
+LL + fn f(_: impl Trait<T: Copy>) {}
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:9:24
+   |
+LL | fn g(_: impl Trait<T = std::fmt::Debug + Eq>) {}
+   |                        ^^^^^^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | fn g(_: impl Trait<T = dyn std::fmt::Debug + Eq>) {}
+   |                        +++
+help: you might have meant to write a bound here
+   |
+LL - fn g(_: impl Trait<T = std::fmt::Debug + Eq>) {}
+LL + fn g(_: impl Trait<T: std::fmt::Debug + Eq>) {}
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:14:26
+   |
+LL | fn h(_: impl Trait<T<> = 'static + for<'a> Fn(&'a ())>) {}
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | fn h(_: impl Trait<T<> = dyn 'static + for<'a> Fn(&'a ())>) {}
+   |                          +++
+help: you might have meant to write a bound here
+   |
+LL - fn h(_: impl Trait<T<> = 'static + for<'a> Fn(&'a ())>) {}
+LL + fn h(_: impl Trait<T<>: 'static + for<'a> Fn(&'a ())>) {}
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:20:26
+   |
+LL | type Obj = dyn Trait<T = Clone>;
+   |                          ^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | type Obj = dyn Trait<T = dyn Clone>;
+   |                          +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:29:22
+   |
+LL | fn i(_: impl Fn() -> std::fmt::Debug) {}
+   |                      ^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | fn i(_: impl Fn() -> dyn std::fmt::Debug) {}
+   |                      +++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0782`.

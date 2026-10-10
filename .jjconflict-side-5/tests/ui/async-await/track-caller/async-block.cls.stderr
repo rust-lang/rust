@@ -1,0 +1,42 @@
+error: `#[track_caller]` on async functions is a no-op
+  --> $DIR/async-block.rs:16:1
+   |
+LL |   #[track_caller]
+   |   ^^^^^^^^^^^^^^^
+LL |
+LL | / async fn foo() {
+LL | |     let _ = #[track_caller]
+LL | |
+LL | |     async {};
+LL | | }
+   | |_- this function will not propagate the caller location
+   |
+   = note: see issue #110011 <https://github.com/rust-lang/rust/issues/110011> for more information
+   = help: add `#![feature(async_fn_track_caller)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+note: the lint level is defined here
+  --> $DIR/async-block.rs:6:9
+   |
+LL | #![deny(ungated_async_fn_track_caller)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[track_caller]` on async functions is a no-op
+  --> $DIR/async-block.rs:24:1
+   |
+LL |   #[track_caller]
+   |   ^^^^^^^^^^^^^^^
+LL |
+LL | / async fn foo2() {
+LL | |     let _ = async {
+LL | |         let _ = #[track_caller]
+...  |
+LL | |     };
+LL | | }
+   | |_- this function will not propagate the caller location
+   |
+   = note: see issue #110011 <https://github.com/rust-lang/rust/issues/110011> for more information
+   = help: add `#![feature(async_fn_track_caller)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+

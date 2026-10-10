@@ -1,0 +1,43 @@
+error: converting a Symbol to a string
+  --> tests/ui-internal/symbol_as_str_unfixable.rs:9:5
+   |
+LL |     s.as_str() == "xyz123";
+   |     ^^^^^^^^^^
+   |
+   = help: add the symbols to `clippy_utils/src/sym.rs` if needed
+   = note: `-D clippy::symbol-as-str` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::symbol_as_str)]`
+help: use preinterned symbols instead
+   |
+LL -     s.as_str() == "xyz123";
+LL +     s == sym::xyz123;
+   |
+
+error: converting a Symbol to a string
+  --> tests/ui-internal/symbol_as_str_unfixable.rs:11:5
+   |
+LL |     s.as_str() == "with-dash";
+   |     ^^^^^^^^^^
+   |
+   = help: add the symbols to `clippy_utils/src/sym.rs` if needed
+help: use preinterned symbols instead
+   |
+LL -     s.as_str() == "with-dash";
+LL +     s == sym::with_dash;
+   |
+
+error: converting a Symbol to a string
+  --> tests/ui-internal/symbol_as_str_unfixable.rs:13:5
+   |
+LL |     s.as_str() == "with.dot";
+   |     ^^^^^^^^^^
+   |
+   = help: add the symbols to `clippy_utils/src/sym.rs` if needed
+help: use preinterned symbols instead
+   |
+LL -     s.as_str() == "with.dot";
+LL +     s == sym::with_dot;
+   |
+
+error: aborting due to 3 previous errors
+

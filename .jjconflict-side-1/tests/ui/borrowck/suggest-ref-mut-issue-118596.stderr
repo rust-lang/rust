@@ -1,0 +1,37 @@
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/suggest-ref-mut-issue-118596.rs:4:9
+   |
+LL |     if let Some(x) = y {
+   |                 - first assignment to `x`
+LL |         x = 2;
+   |         ^^^^^ cannot assign twice to immutable variable
+   |
+help: consider making this binding mutable
+   |
+LL |     if let Some(mut x) = y {
+   |                 +++
+help: to modify the original value, take a borrow instead
+   |
+LL |     if let Some(ref mut x) = y {
+   |                 +++++++
+
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/suggest-ref-mut-issue-118596.rs:9:5
+   |
+LL |     let [x, ref xs_hold @ ..] = arr;
+   |          - first assignment to `x`
+LL |     x = 0;
+   |     ^^^^^ cannot assign twice to immutable variable
+   |
+help: consider making this binding mutable
+   |
+LL |     let [mut x, ref xs_hold @ ..] = arr;
+   |          +++
+help: to modify the original value, take a borrow instead
+   |
+LL |     let [ref mut x, ref xs_hold @ ..] = arr;
+   |          +++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0384`.

@@ -1,0 +1,15 @@
+error[E0603]: constant `PRIVATE` is private
+  --> $DIR/E0603.rs:6:17
+   |
+LL |     SomeModule::PRIVATE;
+   |                 ^^^^^^^ private constant
+   |
+note: the constant `PRIVATE` is defined here
+  --> $DIR/E0603.rs:2:5
+   |
+LL |     const PRIVATE: u32 = 0x_a_bad_1dea_u32;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.

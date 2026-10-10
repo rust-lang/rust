@@ -1,0 +1,3 @@
+disallowed-methods = [
+    { path = "gccjit::types::Type::add_attribute", reason = "go through `type_::apply_struct_attributes` instead: an attribute set directly on a type would not be part of the `CodegenCx::struct_types` cache key, so it would silently change every other use of that type" },
+]

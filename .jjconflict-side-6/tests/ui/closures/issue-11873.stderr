@@ -1,0 +1,16 @@
+error[E0505]: cannot move out of `v` because it is borrowed
+  --> $DIR/issue-11873.rs:4:14
+   |
+LL |     let mut f = || v.push(2);
+   |                 -- - borrow occurs due to use in closure
+   |                 |
+   |                 borrow of `v` occurs here
+LL |     let _w = v;
+   |              ^ move out of `v` occurs here
+LL |
+LL |     f();
+   |     - borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0505`.

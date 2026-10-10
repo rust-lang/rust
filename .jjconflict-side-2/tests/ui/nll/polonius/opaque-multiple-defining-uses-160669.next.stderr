@@ -1,0 +1,69 @@
+error[E0597]: `local` does not live long enough
+  --> $DIR/opaque-multiple-defining-uses-160669.rs:31:16
+   |
+LL |         let local = String::from("dangling");
+   |             ----- binding `local` declared here
+LL |         return &local;
+   |                ^^^^^^ borrowed value does not live long enough
+LL |     }
+   |     - `local` dropped here while still borrowed
+LL |     s
+LL | }
+   |  - borrow later used here
+
+error[E0597]: `local` does not live long enough
+  --> $DIR/opaque-multiple-defining-uses-160669.rs:41:16
+   |
+LL |         let local = String::from("dangling0");
+   |             ----- binding `local` declared here
+LL |         return &local;
+   |                ^^^^^^ borrowed value does not live long enough
+LL |     }
+   |     - `local` dropped here while still borrowed
+...
+LL | }
+   |  - borrow later used here
+
+error[E0597]: `local` does not live long enough
+  --> $DIR/opaque-multiple-defining-uses-160669.rs:45:16
+   |
+LL |         let local = String::from("dangling1");
+   |             ----- binding `local` declared here
+LL |         return &local;
+   |                ^^^^^^ borrowed value does not live long enough
+LL |     }
+   |     - `local` dropped here while still borrowed
+LL |     s
+LL | }
+   |  - borrow later used here
+
+error[E0597]: `local` does not live long enough
+  --> $DIR/opaque-multiple-defining-uses-160669.rs:57:5
+   |
+LL |     let local = String::from("dangling");
+   |         ----- binding `local` declared here
+LL |     &local
+   |     ^^^^^^ borrowed value does not live long enough
+LL | }
+   | -- borrow later used here
+   | |
+   | `local` dropped here while still borrowed
+
+error[E0597]: `short` does not live long enough
+  --> $DIR/opaque-multiple-defining-uses-160669.rs:64:16
+   |
+LL | fn minimal(short: (), out: &'static ()) -> impl Sized {
+   |            ----- binding `short` declared here
+LL |     if true {
+LL |         return &short;
+   |                ^^^^^^ borrowed value does not live long enough
+...
+LL | }
+   |  -
+   |  |
+   |  `short` dropped here while still borrowed
+   |  borrow later used here
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

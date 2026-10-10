@@ -1,0 +1,26 @@
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/augmented-assignments.rs:20:5
+   |
+LL |     let mut x = Int(1);
+   |         ----- binding `x` declared here
+LL |     x
+   |     - borrow of `x` occurs here
+...
+LL |     x;
+   |     ^ move out of `x` occurs here
+
+error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
+  --> $DIR/augmented-assignments.rs:27:5
+   |
+LL |     y
+   |     ^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut y = Int(2);
+   |         +++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0505, E0596.
+For more information about an error, try `rustc --explain E0505`.

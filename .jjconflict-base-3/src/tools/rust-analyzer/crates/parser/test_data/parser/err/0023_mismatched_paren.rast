@@ -1,0 +1,45 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        MACRO_EXPR
+          MACRO_CALL
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "foo"
+            BANG "!"
+            WHITESPACE " "
+            TOKEN_TREE
+              L_PAREN "("
+              WHITESPACE "\n        "
+              IDENT "bar"
+              COMMA ","
+              WHITESPACE " "
+              STRING "\"baz\""
+              COMMA ","
+              WHITESPACE " "
+              INT_NUMBER "1"
+              COMMA ","
+              WHITESPACE " "
+              FLOAT_NUMBER "2.0"
+        WHITESPACE "\n    "
+        R_CURLY "}"
+  WHITESPACE " "
+  COMMENT "//~ ERROR incorrect close delimiter"
+  WHITESPACE "\n"
+  ERROR
+    R_CURLY "}"
+  WHITESPACE "\n"
+error 49: unmatched `}`
+error 92: unmatched `}`

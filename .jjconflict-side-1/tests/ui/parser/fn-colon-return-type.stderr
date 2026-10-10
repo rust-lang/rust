@@ -1,0 +1,14 @@
+error: return types are denoted using `->`
+  --> $DIR/fn-colon-return-type.rs:1:15
+   |
+LL | fn foo(x: i32): i32 {
+   |               ^
+   |
+help: use `->` instead
+   |
+LL - fn foo(x: i32): i32 {
+LL + fn foo(x: i32) -> i32 {
+   |
+
+error: aborting due to 1 previous error
+

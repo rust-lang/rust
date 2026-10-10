@@ -1,0 +1,36 @@
+SOURCE_FILE
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      PATH
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              SELF_KW "self"
+        COLON2 "::"
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "foo"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      PATH
+        PATH
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                SUPER_KW "super"
+          COLON2 "::"
+          PATH_SEGMENT
+            NAME_REF
+              SUPER_KW "super"
+        COLON2 "::"
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "bar"
+    SEMICOLON ";"
+  WHITESPACE "\n"

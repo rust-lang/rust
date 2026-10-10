@@ -1,0 +1,66 @@
+error[E0599]: no method named `foo` found for struct `A` in the current scope
+  --> $DIR/suggest-assoc-fn-call-for-impl-trait.rs:21:8
+   |
+LL | struct A {
+   | -------- method `foo` not found for this struct
+...
+LL |     _a.foo();
+   |        ^^^ this is an associated function, not a method
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in the trait `M`
+  --> $DIR/suggest-assoc-fn-call-for-impl-trait.rs:8:5
+   |
+LL |     fn foo(_a: Self);
+   |     ^^^^^^^^^^^^^^^^^
+help: use associated function syntax instead
+   |
+LL -     _a.foo();
+LL +     A::foo(_a);
+   |
+
+error[E0599]: no method named `baz` found for struct `A` in the current scope
+  --> $DIR/suggest-assoc-fn-call-for-impl-trait.rs:23:8
+   |
+LL | struct A {
+   | -------- method `baz` not found for this struct
+...
+LL |     _a.baz(0);
+   |        ^^^ this is an associated function, not a method
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in the trait `M`
+  --> $DIR/suggest-assoc-fn-call-for-impl-trait.rs:10:5
+   |
+LL |     fn baz(_a: i32);
+   |     ^^^^^^^^^^^^^^^^
+help: use associated function syntax instead
+   |
+LL -     _a.baz(0);
+LL +     A::baz(0);
+   |
+
+error[E0599]: no method named `bar` found for struct `A` in the current scope
+  --> $DIR/suggest-assoc-fn-call-for-impl-trait.rs:27:8
+   |
+LL | struct A {
+   | -------- method `bar` not found for this struct
+...
+LL |     _b.bar();
+   |        ^^^ this is an associated function, not a method
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in the trait `M`
+  --> $DIR/suggest-assoc-fn-call-for-impl-trait.rs:9:5
+   |
+LL |     fn bar(_a: Self);
+   |     ^^^^^^^^^^^^^^^^^
+help: use associated function syntax instead
+   |
+LL -     _b.bar();
+LL +     A::bar(_b);
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

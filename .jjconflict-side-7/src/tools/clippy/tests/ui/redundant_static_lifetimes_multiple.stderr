@@ -1,0 +1,65 @@
+error: constants have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes_multiple.rs:4:18
+   |
+LL | const VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR: Consider removing 'static
+   |                 -^^^^^^^------------------ help: consider removing `'static`: `&[&[&'static str]]`
+   |
+   = note: `-D clippy::redundant-static-lifetimes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_static_lifetimes)]`
+
+error: constants have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes_multiple.rs:4:30
+   |
+LL | const VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR: Consider removing 'static
+   |                             -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: constants have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes_multiple.rs:8:29
+   |
+LL | const VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
+   |                            -^^^^^^^--------------- help: consider removing `'static`: `&[&'static str]`
+
+error: constants have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes_multiple.rs:8:39
+   |
+LL | const VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
+   |                                      -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: statics have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes_multiple.rs:12:40
+   |
+LL | static STATIC_VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR: Consider removing 'static
+   |                                       -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: statics have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes_multiple.rs:12:55
+   |
+LL | static STATIC_VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR: Consider removing 'static
+   |                                                      -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: statics have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes_multiple.rs:16:26
+   |
+LL | static STATIC_VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR: Consider removing 'static
+   |                         -^^^^^^^------------------ help: consider removing `'static`: `&[&[&'static str]]`
+
+error: statics have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes_multiple.rs:16:38
+   |
+LL | static STATIC_VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR: Consider removing 'static
+   |                                     -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: statics have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes_multiple.rs:20:37
+   |
+LL | static STATIC_VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
+   |                                    -^^^^^^^--------------- help: consider removing `'static`: `&[&'static str]`
+
+error: statics have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes_multiple.rs:20:47
+   |
+LL | static STATIC_VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
+   |                                              -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: aborting due to 10 previous errors
+

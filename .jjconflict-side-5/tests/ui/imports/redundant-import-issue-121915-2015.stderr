@@ -1,0 +1,17 @@
+error: the item `aux_issue_121915` is imported redundantly
+  --> $DIR/redundant-import-issue-121915-2015.rs:9:9
+   |
+LL | extern crate aux_issue_121915;
+   | ------------------------------ the item `aux_issue_121915` is already imported here
+...
+LL |     use aux_issue_121915;
+   |         ^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/redundant-import-issue-121915-2015.rs:7:8
+   |
+LL | #[deny(redundant_imports)]
+   |        ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

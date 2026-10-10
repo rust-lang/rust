@@ -1,0 +1,36 @@
+error: calling .bytes() is very inefficient when data is not in memory
+  --> tests/ui/unbuffered_bytes.rs:10:5
+   |
+LL |     file.bytes();
+   |     ^^^^^^^^^^^^
+   |
+   = help: consider using `BufReader`
+   = note: `-D clippy::unbuffered-bytes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unbuffered_bytes)]`
+
+error: calling .bytes() is very inefficient when data is not in memory
+  --> tests/ui/unbuffered_bytes.rs:15:5
+   |
+LL |     tcp_stream.bytes();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `BufReader`
+
+error: calling .bytes() is very inefficient when data is not in memory
+  --> tests/ui/unbuffered_bytes.rs:28:5
+   |
+LL |     s.bytes();
+   |     ^^^^^^^^^
+   |
+   = help: consider using `BufReader`
+
+error: calling .bytes() is very inefficient when data is not in memory
+  --> tests/ui/unbuffered_bytes.rs:39:5
+   |
+LL |     r.bytes();
+   |     ^^^^^^^^^
+   |
+   = help: consider using `BufReader`
+
+error: aborting due to 4 previous errors
+

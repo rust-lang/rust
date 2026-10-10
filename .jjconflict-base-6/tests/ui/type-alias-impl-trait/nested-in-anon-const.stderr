@@ -1,0 +1,20 @@
+error[E0308]: mismatched types
+  --> $DIR/nested-in-anon-const.rs:12:17
+   |
+LL | /                 {
+LL | |                     type B<Z> = impl Sized;
+LL | |
+LL | |                 },
+   | |_________________^ expected `usize`, found `()`
+
+error: unconstrained opaque type
+  --> $DIR/nested-in-anon-const.rs:13:33
+   |
+LL |                     type B<Z> = impl Sized;
+   |                                 ^^^^^^^^^^
+   |
+   = note: `B` must be used in combination with a concrete type within the same crate
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

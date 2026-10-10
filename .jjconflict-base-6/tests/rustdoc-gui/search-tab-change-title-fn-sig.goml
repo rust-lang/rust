@@ -1,0 +1,56 @@
+// Checks that the search tab results work correctly with function signature syntax
+// First, try a search-by-name
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+call-function: ("perform-search", {"query": "Foo"})
+
+assert-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
+assert-text: ("#search-tabs > button:nth-of-type(1)", "In Names", STARTS_WITH)
+assert: "input.search-input:focus"
+// Use left-right keys
+press-key: "ArrowDown"
+assert: "#results > .search-results.active > a:nth-of-type(1):focus"
+press-key: "ArrowRight"
+wait-for-attribute: ("#search-tabs > button:nth-of-type(2)", {"class": "selected"})
+press-key: "ArrowRight"
+wait-for-attribute: ("#search-tabs > button:nth-of-type(3)", {"class": "selected"})
+press-key: "ArrowRight"
+wait-for-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
+press-key: "ArrowLeft"
+wait-for-attribute: ("#search-tabs > button:nth-of-type(3)", {"class": "selected"})
+
+// Now try search-by-return
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+call-function: ("perform-search", {"query": "-> String"})
+assert-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
+assert-text: ("#search-tabs > button:nth-of-type(1)", "In Function Return Types", STARTS_WITH)
+assert: "input.search-input:focus"
+// Use left-right keys
+press-key: "ArrowDown"
+assert: "#results > .search-results.active > a:nth-of-type(1):focus"
+press-key: "ArrowRight"
+wait-for-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
+press-key: "ArrowRight"
+wait-for-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
+press-key: "ArrowRight"
+wait-for-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
+press-key: "ArrowLeft"
+wait-for-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
+
+// Try with a search-by-return with no results
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+call-function: ("perform-search", {"query": "-> Something"})
+assert-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
+assert-text: ("#search-tabs > button:nth-of-type(1)", "In Function Return Types", STARTS_WITH)
+
+// Try with a search-by-parameter
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+call-function: ("perform-search", {"query": "usize,pattern"})
+assert-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
+assert-text: ("#search-tabs > button:nth-of-type(1)", "In Function Parameters", STARTS_WITH)
+
+// Try with a search-by-parameter-and-return
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+call-function: ("perform-search", {"query": "pattern -> str"})
+assert-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
+assert-text: ("#search-tabs > button:nth-of-type(1)", "In Function Signatures", STARTS_WITH)

@@ -1,0 +1,20 @@
+error[E0496]: lifetime name `'s` shadows a lifetime name that is already in scope
+  --> $DIR/shadow.rs:4:12
+   |
+LL | impl<'s> Foo<&'s u8> {
+   |      -- first declared here
+LL |     fn bar<'s>(&self, x: &'s u8) {}
+   |            ^^ lifetime `'s` already in scope
+
+error[E0496]: lifetime name `'s` shadows a lifetime name that is already in scope
+  --> $DIR/shadow.rs:5:19
+   |
+LL | impl<'s> Foo<&'s u8> {
+   |      -- first declared here
+LL |     fn bar<'s>(&self, x: &'s u8) {}
+LL |     fn baz(x: for<'s> fn(&'s u32)) {}
+   |                   ^^ lifetime `'s` already in scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0496`.

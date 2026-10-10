@@ -1,0 +1,32 @@
+error[E0282]: type annotations needed
+  --> $DIR/infer.rs:17:13
+   |
+LL |     let _ = mem::transmute::<fn() -> _, extern "cmse-nonsecure-entry" fn() -> _>;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `Src` declared on the function `transmute`
+
+error[E0282]: type annotations needed
+  --> $DIR/infer.rs:22:13
+   |
+LL |     let _ = mem::transmute::<fn() -> (i32, _), extern "cmse-nonsecure-entry" fn() -> (i32, _)>;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `Src` declared on the function `transmute`
+
+error[E0282]: type annotations needed
+  --> $DIR/infer.rs:27:13
+   |
+LL |     let _ = mem::transmute::<fn(_: _) -> (), extern "cmse-nonsecure-entry" fn(_: _) -> ()>;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `Src` declared on the function `transmute`
+
+error[E0282]: type annotations needed
+  --> $DIR/infer.rs:32:13
+   |
+LL |       let _ = mem::transmute::<
+   |  _____________^
+LL | |
+LL | |         fn(_: (i32, _)) -> (),
+LL | |         extern "cmse-nonsecure-entry" fn(_: (i32, _)) -> (),
+LL | |     >;
+   | |_____^ cannot infer type of the type parameter `Src` declared on the function `transmute`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

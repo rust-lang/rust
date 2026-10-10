@@ -1,0 +1,92 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/typeck_type_placeholder_item_help.rs:4:15
+   |
+LL | fn test1() -> _ { Some(42) }
+   |               ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - fn test1() -> _ { Some(42) }
+LL + fn test1() -> Option<i32> { Some(42) }
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/typeck_type_placeholder_item_help.rs:7:14
+   |
+LL | const TEST2: _ = 42u32;
+   |              ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL - const TEST2: _ = 42u32;
+LL + const TEST2: u32 = 42u32;
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/typeck_type_placeholder_item_help.rs:10:14
+   |
+LL | const TEST3: _ = Some(42);
+   |              ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL - const TEST3: _ = Some(42);
+LL + const TEST3: Option<i32> = Some(42);
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/typeck_type_placeholder_item_help.rs:13:22
+   |
+LL | const TEST4: fn() -> _ = 42;
+   |                      ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
+  --> $DIR/typeck_type_placeholder_item_help.rs:24:18
+   |
+LL |     const TEST6: _ = 13;
+   |                  ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL -     const TEST6: _ = 13;
+LL +     const TEST6: i32 = 13;
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
+  --> $DIR/typeck_type_placeholder_item_help.rs:17:18
+   |
+LL |     const TEST5: _ = 42;
+   |                  ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL -     const TEST5: _ = 42;
+LL +     const TEST5: i32 = 42;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/typeck_type_placeholder_item_help.rs:29:28
+   |
+LL |     let _: Option<usize> = test1();
+   |            -------------   ^^^^^^^ expected `Option<usize>`, found `Option<i32>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected enum `Option<usize>`
+              found enum `Option<i32>`
+
+error[E0308]: mismatched types
+  --> $DIR/typeck_type_placeholder_item_help.rs:30:18
+   |
+LL |     let _: f64 = test1();
+   |            ---   ^^^^^^^ expected `f64`, found `Option<i32>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected type `f64`
+              found enum `Option<i32>`
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0121, E0308.
+For more information about an error, try `rustc --explain E0121`.

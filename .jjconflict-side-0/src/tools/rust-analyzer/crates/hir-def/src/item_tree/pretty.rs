@@ -1,0 +1,321 @@
+//! `ItemTree` debug printer.
+
+use std::fmt::{self, Write};
+
+use span::{Edition, ErasedFileAstId};
+
+use crate::{
+    item_tree::{
+        Const, Enum, ExternBlock, ExternCrate, Function, Impl, ItemTree, Macro2, MacroCall,
+        MacroRules, Mod, ModItemId, ModItemKind, ModKind, RawVisibilityId, SourceDatabase, Static,
+        Struct, Trait, TypeAlias, Union, Use, UseTree, UseTreeKind, attrs::AttrsOrCfg,
+    },
+    visibility::RawVisibility,
+};
+
+pub(super) fn print_item_tree(
+    db: &dyn SourceDatabase,
+    tree: &ItemTree,
+    edition: Edition,
+) -> String {
+    let mut p =
+        Printer { db, tree, buf: String::new(), indent_level: 0, needs_indent: true, edition };
+
+    if let Some(top_attrs) = tree.top_level_attrs() {
+        p.print_attrs(top_attrs, true, "\n");
+        p.blank();
+    }
+
+    for item in tree.top_level_items() {
+        p.print_mod_item(*item);
+    }
+
+    let mut s = p.buf.trim_end_matches('\n').to_owned();
+    s.push('\n');
+    s
+}
+
+macro_rules! w {
+    ($dst:expr, $($arg:tt)*) => {
+        { let _ = write!($dst, $($arg)*); }
+    };
+}
+
+macro_rules! wln {
+    ($dst:expr) => {
+        { let _ = writeln!($dst); }
+    };
+    ($dst:expr, $($arg:tt)*) => {
+        { let _ = writeln!($dst, $($arg)*); }
+    };
+}
+
+struct Printer<'a> {
+    db: &'a dyn SourceDatabase,
+    tree: &'a ItemTree,
+    buf: String,
+    indent_level: usize,
+    needs_indent: bool,
+    edition: Edition,
+}
+
+impl Printer<'_> {
+    fn indented(&mut self, f: impl FnOnce(&mut Self)) {
+        self.indent_level += 1;
+        wln!(self);
+        f(self);
+        self.indent_level -= 1;
+        self.buf = self.buf.trim_end_matches('\n').to_owned();
+    }
+
+    /// Ensures that a blank line is output before the next text.
+    fn blank(&mut self) {
+        let mut iter = self.buf.chars().rev().fuse();
+        match (iter.next(), iter.next()) {
+            (Some('\n'), Some('\n') | None) | (None, None) => {}
+            (Some('\n'), Some(_)) => {
+                self.buf.push('\n');
+            }
+            (Some(_), _) => {
+                self.buf.push('\n');
+                self.buf.push('\n');
+            }
+            (None, Some(_)) => unreachable!(),
+        }
+    }
+
+    fn print_attrs(&mut self, attrs: &AttrsOrCfg, inner: bool, separated_by: &str) {
+        let (cfg_disabled_expr, attrs) = match attrs {
+            AttrsOrCfg::Enabled { attrs } => (None, attrs),
+            AttrsOrCfg::CfgDisabled(inner_box) => (Some(&inner_box.0), &inner_box.1),
+        };
+        let inner = if inner { "!" } else { "" };
+        for attr in &*attrs.as_ref() {
+            w!(
+                self,
+                "#{}[{}{}]{}",
+                inner,
+                attr.path.display(self.db, self.edition),
+                attr.input.as_ref().map(|it| it.to_string()).unwrap_or_default(),
+                separated_by,
+            );
+        }
+        if let Some(expr) = cfg_disabled_expr {
+            w!(self, "#{inner}[cfg({expr})]{separated_by}");
+        }
+    }
+
+    fn print_attrs_of(&mut self, of: ModItemId, separated_by: &str) {
+        if let Some(attrs) = self.tree.attrs(of) {
+            self.print_attrs(attrs, false, separated_by);
+        }
+    }
+
+    fn print_visibility(&mut self, vis: RawVisibilityId) {
+        match &self.tree[vis] {
+            RawVisibility::Module(path, _expl) => {
+                w!(self, "pub(in {}) ", path.display(self.db, self.edition))
+            }
+            RawVisibility::Public => w!(self, "pub "),
+            RawVisibility::PubCrate => w!(self, "pub(crate) "),
+            RawVisibility::PubSelf(_) => w!(self, "pub(self) "),
+        };
+    }
+
+    fn print_use_tree(&mut self, use_tree: &UseTree) {
+        match &use_tree.kind {
+            UseTreeKind::Single { path, alias } => {
+                w!(self, "{}", path.display(self.db, self.edition));
+                if let Some(alias) = alias {
+                    w!(self, " as {}", alias.display(self.edition));
+                }
+            }
+            UseTreeKind::Glob { path } => {
+                if let Some(path) = path {
+                    w!(self, "{}::", path.display(self.db, self.edition));
+                }
+                w!(self, "*");
+            }
+            UseTreeKind::Prefixed { prefix, list } => {
+                if let Some(prefix) = prefix {
+                    w!(self, "{}::", prefix.display(self.db, self.edition));
+                }
+                w!(self, "{{");
+                for (i, tree) in list.iter().enumerate() {
+                    if i != 0 {
+                        w!(self, ", ");
+                    }
+                    self.print_use_tree(tree);
+                }
+                w!(self, "}}");
+            }
+        }
+    }
+
+    fn print_mod_item(&mut self, item: ModItemId) {
+        self.print_attrs_of(item, "\n");
+
+        match self.tree.index(item) {
+            ModItemKind::Use(ast_id, item) => {
+                let Use { visibility, use_tree } = item;
+                self.print_ast_id(ast_id.erase());
+                self.print_visibility(*visibility);
+                w!(self, "use ");
+                self.print_use_tree(use_tree);
+                wln!(self, ";");
+            }
+            ModItemKind::ExternCrate(ast_id, item) => {
+                let ExternCrate { name, alias, visibility } = item;
+                self.print_ast_id(ast_id.erase());
+                self.print_visibility(*visibility);
+                w!(self, "extern crate {}", name.display(self.db, self.edition));
+                if let Some(alias) = alias {
+                    w!(self, " as {}", alias.display(self.edition));
+                }
+                wln!(self, ";");
+            }
+            ModItemKind::ExternBlock(ast_id, item) => {
+                let ExternBlock { children } = item;
+                self.print_ast_id(ast_id.erase());
+                w!(self, "extern {{");
+                self.indented(|this| {
+                    for child in &**children {
+                        this.print_mod_item(*child);
+                    }
+                });
+                wln!(self, "}}");
+            }
+            ModItemKind::Function(ast_id, item) => {
+                let Function { name, visibility } = item;
+                self.print_ast_id(ast_id.erase());
+                self.print_visibility(*visibility);
+                wln!(self, "fn {};", name.display(self.db, self.edition));
+            }
+            ModItemKind::Struct(ast_id, item) => {
+                let Struct { visibility, name, value_ns_ctor: _ } = item;
+                self.print_ast_id(ast_id.erase());
+                self.print_visibility(*visibility);
+                wln!(self, "struct {} {{ ... }}", name.display(self.db, self.edition));
+            }
+            ModItemKind::Union(ast_id, item) => {
+                let Union { name, visibility } = item;
+                self.print_ast_id(ast_id.erase());
+                self.print_visibility(*visibility);
+                wln!(self, "union {} {{ ... }}", name.display(self.db, self.edition));
+            }
+            ModItemKind::Enum(ast_id, item) => {
+                let Enum { name, visibility } = item;
+                self.print_ast_id(ast_id.erase());
+                self.print_visibility(*visibility);
+                wln!(self, "enum {} {{ ... }}", name.display(self.db, self.edition));
+            }
+            ModItemKind::Const(ast_id, item) => {
+                let Const { name, visibility } = item;
+                self.print_ast_id(ast_id.erase());
+                self.print_visibility(*visibility);
+                w!(self, "const ");
+                match name {
+                    Some(name) => w!(self, "{}", name.display(self.db, self.edition)),
+                    None => w!(self, "_"),
+                }
+                wln!(self, " = _;");
+            }
+            ModItemKind::Static(ast_id, item) => {
+                let Static { name, visibility } = item;
+                self.print_ast_id(ast_id.erase());
+                self.print_visibility(*visibility);
+                w!(self, "static ");
+                w!(self, "{}", name.display(self.db, self.edition));
+                w!(self, " = _;");
+                wln!(self);
+            }
+            ModItemKind::Trait(ast_id, item) => {
+                let Trait { name, visibility } = item;
+                self.print_ast_id(ast_id.erase());
+                self.print_visibility(*visibility);
+                w!(self, "trait {} {{ ... }}", name.display(self.db, self.edition));
+            }
+            ModItemKind::Impl(ast_id, item) => {
+                let Impl { is_trait_impl: _ } = item;
+                self.print_ast_id(ast_id.erase());
+                w!(self, "impl {{ ... }}");
+            }
+            ModItemKind::TypeAlias(ast_id, item) => {
+                let TypeAlias { name, visibility } = item;
+                self.print_ast_id(ast_id.erase());
+                self.print_visibility(*visibility);
+                w!(self, "type {}", name.display(self.db, self.edition));
+                w!(self, ";");
+                wln!(self);
+            }
+            ModItemKind::Mod(ast_id, item) => {
+                let Mod { name, visibility, kind } = item;
+                self.print_ast_id(ast_id.erase());
+                self.print_visibility(*visibility);
+                w!(self, "mod {}", name.display(self.db, self.edition));
+                match kind {
+                    ModKind::Inline { items } => {
+                        w!(self, " {{");
+                        self.indented(|this| {
+                            for item in &**items {
+                                this.print_mod_item(*item);
+                            }
+                        });
+                        wln!(self, "}}");
+                    }
+                    ModKind::Outline => {
+                        wln!(self, ";");
+                    }
+                }
+            }
+            ModItemKind::MacroCall(ast_id, item) => {
+                let MacroCall { path, expand_to, ctxt } = item;
+                let _ = writeln!(
+                    self,
+                    "// AstId: {:#?}, SyntaxContextId: {}, ExpandTo: {:?}",
+                    ast_id.erase(),
+                    ctxt,
+                    expand_to
+                );
+                wln!(self, "{}!(...);", path.display(self.db, self.edition));
+            }
+            ModItemKind::MacroRules(ast_id, item) => {
+                let MacroRules { name } = item;
+                self.print_ast_id(ast_id.erase());
+                wln!(self, "macro_rules! {} {{ ... }}", name.display(self.db, self.edition));
+            }
+            ModItemKind::Macro2(ast_id, item) => {
+                let Macro2 { name, visibility } = item;
+                self.print_ast_id(ast_id.erase());
+                self.print_visibility(*visibility);
+                wln!(self, "macro {} {{ ... }}", name.display(self.db, self.edition));
+            }
+        }
+
+        self.blank();
+    }
+
+    fn print_ast_id(&mut self, ast_id: ErasedFileAstId) {
+        wln!(self, "// AstId: {ast_id:#?}");
+    }
+}
+
+impl Write for Printer<'_> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for line in s.split_inclusive('\n') {
+            if self.needs_indent {
+                match self.buf.chars().last() {
+                    Some('\n') | None => {}
+                    _ => self.buf.push('\n'),
+                }
+                self.buf.push_str(&"    ".repeat(self.indent_level));
+                self.needs_indent = false;
+            }
+
+            self.buf.push_str(line);
+            self.needs_indent = line.ends_with('\n');
+        }
+
+        Ok(())
+    }
+}

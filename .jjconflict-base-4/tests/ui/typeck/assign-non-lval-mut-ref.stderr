@@ -1,0 +1,56 @@
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/assign-non-lval-mut-ref.rs:5:27
+   |
+LL |     x.last_mut().unwrap() = 2;
+   |     --------------------- ^
+   |     |
+   |     cannot assign to this expression
+   |
+help: consider dereferencing here to assign to the mutably borrowed value
+   |
+LL |     *x.last_mut().unwrap() = 2;
+   |     +
+
+error[E0368]: binary assignment operation `+=` cannot be applied to type `&mut usize`
+  --> $DIR/assign-non-lval-mut-ref.rs:7:5
+   |
+LL |     x.last_mut().unwrap() += 1;
+   |     ---------------------^^^^^
+   |     |
+   |     cannot use `+=` on type `&mut usize`
+   |
+help: `+=` can be used on `usize` if you dereference the left-hand side
+   |
+LL |     *x.last_mut().unwrap() += 1;
+   |     +
+
+error[E0308]: mismatched types
+  --> $DIR/assign-non-lval-mut-ref.rs:11:9
+   |
+LL |     let y = x.last_mut().unwrap();
+   |             --------------------- expected due to this value
+LL |     y = 2;
+   |         ^ expected `&mut usize`, found integer
+   |
+help: consider dereferencing here to assign to the mutably borrowed value
+   |
+LL |     *y = 2;
+   |     +
+
+error[E0368]: binary assignment operation `+=` cannot be applied to type `&mut usize`
+  --> $DIR/assign-non-lval-mut-ref.rs:13:5
+   |
+LL |     y += 1;
+   |     -^^^^^
+   |     |
+   |     cannot use `+=` on type `&mut usize`
+   |
+help: `+=` can be used on `usize` if you dereference the left-hand side
+   |
+LL |     *y += 1;
+   |     +
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0070, E0308, E0368.
+For more information about an error, try `rustc --explain E0070`.

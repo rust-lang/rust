@@ -1,0 +1,41 @@
+error[E0027]: pattern does not mention field `unstable`
+  --> $DIR/unstable-gated-fields.rs:10:9
+   |
+LL |     let UnstableStruct { stable, stable2, } = UnstableStruct::default();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing field `unstable`
+   |
+help: include the missing field in the pattern
+   |
+LL |     let UnstableStruct { stable, stable2, unstable } = UnstableStruct::default();
+   |                                           ++++++++
+help: if you don't care about this missing field, you can explicitly ignore it
+   |
+LL |     let UnstableStruct { stable, stable2, unstable: _ } = UnstableStruct::default();
+   |                                           +++++++++++
+help: or always ignore missing fields here
+   |
+LL |     let UnstableStruct { stable, stable2, .. } = UnstableStruct::default();
+   |                                           ++
+
+error[E0027]: pattern does not mention field `stable2`
+  --> $DIR/unstable-gated-fields.rs:13:9
+   |
+LL |     let UnstableStruct { stable, unstable, } = UnstableStruct::default();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing field `stable2`
+   |
+help: include the missing field in the pattern
+   |
+LL |     let UnstableStruct { stable, unstable, stable2 } = UnstableStruct::default();
+   |                                            +++++++
+help: if you don't care about this missing field, you can explicitly ignore it
+   |
+LL |     let UnstableStruct { stable, unstable, stable2: _ } = UnstableStruct::default();
+   |                                            ++++++++++
+help: or always ignore missing fields here
+   |
+LL |     let UnstableStruct { stable, unstable, .. } = UnstableStruct::default();
+   |                                            ++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0027`.

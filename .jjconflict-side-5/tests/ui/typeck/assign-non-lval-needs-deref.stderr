@@ -1,0 +1,16 @@
+error[E0067]: invalid left-hand side of assignment
+  --> $DIR/assign-non-lval-needs-deref.rs:15:16
+   |
+LL |     (&mut Foo) += ();
+   |     ---------- ^^
+   |     |
+   |     cannot assign to this expression
+   |
+help: consider dereferencing the left-hand side of this operation
+   |
+LL |     *(&mut Foo) += ();
+   |     +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0067`.

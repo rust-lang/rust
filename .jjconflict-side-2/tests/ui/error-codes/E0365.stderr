@@ -1,0 +1,11 @@
+error[E0365]: `foo` is only public within the crate, and cannot be re-exported outside
+  --> $DIR/E0365.rs:5:9
+   |
+LL | pub use foo as foo2;
+   |         ^^^^^^^^^^^ re-export of crate public `foo`
+   |
+   = note: consider declaring type or module `foo` with `pub`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0365`.

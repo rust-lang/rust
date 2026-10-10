@@ -1,0 +1,35 @@
+error[E0703]: invalid ABI: found `rust-intrinsic`
+  --> $DIR/invalid-ABI-rust-intrinsic.rs:4:12
+   |
+LL |     extern "rust-intrinsic" fn foo(&self);
+   |            ^^^^^^^^^^^^^^^^ invalid ABI
+   |
+   = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
+
+error[E0703]: invalid ABI: found `rust-intrinsic`
+  --> $DIR/invalid-ABI-rust-intrinsic.rs:8:12
+   |
+LL |     extern "rust-intrinsic" fn foo(&self) {
+   |            ^^^^^^^^^^^^^^^^ invalid ABI
+   |
+   = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
+
+error[E0703]: invalid ABI: found `rust-intrinsic`
+  --> $DIR/invalid-ABI-rust-intrinsic.rs:12:8
+   |
+LL | extern "rust-intrinsic" fn hello() {
+   |        ^^^^^^^^^^^^^^^^ invalid ABI
+   |
+   = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
+
+error[E0703]: invalid ABI: found `rust-intrinsic`
+  --> $DIR/invalid-ABI-rust-intrinsic.rs:15:8
+   |
+LL | extern "rust-intrinsic" {
+   |        ^^^^^^^^^^^^^^^^ invalid ABI
+   |
+   = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0703`.

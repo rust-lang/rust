@@ -1,0 +1,38 @@
+error[E0308]: mismatched types
+  --> $DIR/fn_def_opaque_coercion_to_fn_ptr.rs:19:9
+   |
+LL | type F = impl Sized;
+   |          ---------- the expected opaque type
+...
+LL |     let mut x = bar::<F>;
+   |                 -------- expected due to this value
+LL |     x = foo::<()>;
+   |         ^^^^^^^^^ expected fn item, found a different fn item
+   |
+   = note: expected fn item `fn(F) -> F {bar::<F>}`
+              found fn item `fn(()) -> () {foo::<()>}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn_def_opaque_coercion_to_fn_ptr.rs:29:9
+   |
+LL | fn foo<T>(t: T) -> T {
+   | -------------------- function `foo` defined here
+...
+LL | type I = impl Sized;
+   |          ---------- the found opaque type
+...
+LL |     let mut x = bar::<()>;
+   |                 --------- expected due to this value
+LL |     x = foo::<I>;
+   |         ^^^^^^^^ expected fn item, found a different fn item
+   |
+   = note: expected fn item `fn(()) -> () {bar::<()>}`
+              found fn item `fn(I) -> I {foo::<I>}`
+help: use parentheses to call this function
+   |
+LL |     x = foo::<I>(/* I */);
+   |                 +++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

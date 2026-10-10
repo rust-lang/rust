@@ -1,0 +1,11 @@
+error: lifetime may not live long enough
+  --> $DIR/E0621-does-not-trigger-for-closures.rs:13:45
+   |
+LL |     invoke(&x, |a, b| if a > b { a } else { b });
+   |                    --                       ^ returning this value requires that `'1` must outlive `'2`
+   |                    ||
+   |                    |return type of closure is &'2 i32
+   |                    has type `&'1 i32`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,18 @@
+error[E0259]: the name `alloc` is defined multiple times
+  --> $DIR/E0259.rs:5:1
+   |
+LL | extern crate alloc;
+   | ------------------- previous import of the extern crate `alloc` here
+LL |
+LL | extern crate test as alloc;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `alloc` reimported here
+   |
+   = note: `alloc` must be defined only once in the type namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | extern crate test as other_alloc;
+   |                      ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0259`.

@@ -1,0 +1,20 @@
+error: function `dead_fn` is never used
+  --> $DIR/lint-dead-code-2.rs:22:4
+   |
+LL | fn dead_fn() {}
+   |    ^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-dead-code-2.rs:2:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: function `main` is never used
+  --> $DIR/lint-dead-code-2.rs:34:4
+   |
+LL | fn main() {
+   |    ^^^^
+
+error: aborting due to 2 previous errors
+

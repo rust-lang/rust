@@ -1,0 +1,116 @@
+error: map with zero-sized value type
+  --> tests/ui/zero_sized_hashmap_values.rs:5:28
+   |
+LL | const CONST_NOT_OK: Option<HashMap<String, ()>> = None;
+   |                            ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+   = note: `-D clippy::zero-sized-map-values` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::zero_sized_map_values)]`
+
+error: map with zero-sized value type
+  --> tests/ui/zero_sized_hashmap_values.rs:9:30
+   |
+LL | static STATIC_NOT_OK: Option<HashMap<String, ()>> = None;
+   |                              ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> tests/ui/zero_sized_hashmap_values.rs:13:17
+   |
+LL | type NotOkMap = HashMap<String, ()>;
+   |                 ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> tests/ui/zero_sized_hashmap_values.rs:18:11
+   |
+LL |     NotOk(HashMap<String, ()>),
+   |           ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> tests/ui/zero_sized_hashmap_values.rs:24:13
+   |
+LL |     not_ok: HashMap<String, ()>,
+   |             ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> tests/ui/zero_sized_hashmap_values.rs:26:22
+   |
+LL |     also_not_ok: Vec<HashMap<usize, ()>>,
+   |                      ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> tests/ui/zero_sized_hashmap_values.rs:35:30
+   |
+LL |     fn weird_map(&self, map: HashMap<usize, ()>);
+   |                              ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> tests/ui/zero_sized_hashmap_values.rs:44:25
+   |
+LL |     fn not_ok(&self) -> HashMap<String, ()> {
+   |                         ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> tests/ui/zero_sized_hashmap_values.rs:63:14
+   |
+LL | fn test(map: HashMap<String, ()>, key: &str) -> HashMap<String, ()> {
+   |              ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> tests/ui/zero_sized_hashmap_values.rs:63:49
+   |
+LL | fn test(map: HashMap<String, ()>, key: &str) -> HashMap<String, ()> {
+   |                                                 ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> tests/ui/zero_sized_hashmap_values.rs:91:14
+   |
+LL |     type D = HashMap<u32, S<E>>;
+   |              ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> tests/ui/zero_sized_hashmap_values.rs:104:34
+   |
+LL |     let _: HashMap<String, ()> = HashMap::new();
+   |                                  ^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> tests/ui/zero_sized_hashmap_values.rs:104:12
+   |
+LL |     let _: HashMap<String, ()> = HashMap::new();
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> tests/ui/zero_sized_hashmap_values.rs:110:12
+   |
+LL |     let _: HashMap<_, _> = std::iter::empty::<(String, ())>().collect();
+   |            ^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: aborting due to 14 previous errors
+

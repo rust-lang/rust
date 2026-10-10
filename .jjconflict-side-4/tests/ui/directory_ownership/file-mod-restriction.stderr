@@ -1,0 +1,10 @@
+error: cannot declare a file module inside a block unless it has a path attribute
+  --> $DIR/file-mod-restriction.rs:4:5
+   |
+LL |     mod foo;
+   |     ^^^^^^^^
+   |
+   = note: file modules are usually placed outside of blocks, at the top level of the file
+
+error: aborting due to 1 previous error
+

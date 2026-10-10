@@ -1,0 +1,8 @@
+error: cannot find a built-in macro with name `unknown`
+  --> $DIR/unknown-builtin.rs:4:1
+   |
+LL | macro_rules! unknown { () => () }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

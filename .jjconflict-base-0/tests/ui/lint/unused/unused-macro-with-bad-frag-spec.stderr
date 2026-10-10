@@ -1,0 +1,10 @@
+error: invalid fragment specifier `t_ty`
+  --> $DIR/unused-macro-with-bad-frag-spec.rs:6:6
+   |
+LL |     ($wrong:t_ty) => ()
+   |      ^^^^^^^^^^^
+   |
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+
+error: aborting due to 1 previous error
+

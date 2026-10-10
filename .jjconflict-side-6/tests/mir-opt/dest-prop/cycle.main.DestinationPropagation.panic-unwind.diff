@@ -1,0 +1,70 @@
+- // MIR for `main` before DestinationPropagation
++ // MIR for `main` after DestinationPropagation
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: i32;
+      let mut _4: i32;
+      let _5: ();
+      let mut _6: i32;
+      scope 1 {
+          debug x => _1;
+          let _2: i32;
+          scope 2 {
+-             debug y => _2;
++             debug y => _1;
+              let _3: i32;
+              scope 3 {
+-                 debug z => _3;
++                 debug z => _1;
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_1);
++         nop;
+          _1 = val() -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+-         StorageLive(_2);
+-         _2 = copy _1;
+-         StorageLive(_3);
+-         _3 = copy _2;
+-         StorageLive(_4);
+-         _4 = copy _3;
+-         _1 = move _4;
+-         StorageDead(_4);
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
+          StorageLive(_5);
+-         StorageLive(_6);
+-         _6 = copy _1;
+-         _5 = std::mem::drop::<i32>(move _6) -> [return: bb2, unwind continue];
++         nop;
++         nop;
++         _5 = std::mem::drop::<i32>(move _1) -> [return: bb2, unwind continue];
+      }
+  
+      bb2: {
+-         StorageDead(_6);
++         nop;
+          StorageDead(_5);
+          _0 = const ();
+-         StorageDead(_3);
+-         StorageDead(_2);
+-         StorageDead(_1);
++         nop;
++         nop;
++         nop;
+          return;
+      }
+  }
+  

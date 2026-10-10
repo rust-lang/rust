@@ -1,0 +1,13 @@
+error[E0499]: cannot borrow `*bar` as mutable more than once at a time
+  --> $DIR/issue-51117.rs:10:13
+   |
+LL |         Some(baz) => {
+   |              --- first mutable borrow occurs here
+LL |             bar.take();
+   |             ^^^ second mutable borrow occurs here
+LL |             drop(baz);
+   |                  --- first borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0499`.

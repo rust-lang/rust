@@ -1,0 +1,27 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "T"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    SLICE_TYPE
+      L_BRACK "["
+      TUPLE_TYPE
+        L_PAREN "("
+        R_PAREN ")"
+  WHITESPACE " "
+  ERROR
+    INT_NUMBER "92"
+  ERROR
+    R_BRACK "]"
+  ERROR
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 12: expected `;` or `]`
+error 12: expected SEMICOLON
+error 13: expected an item
+error 15: expected an item
+error 16: expected an item

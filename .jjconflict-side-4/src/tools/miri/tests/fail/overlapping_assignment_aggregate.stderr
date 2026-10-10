@@ -1,0 +1,13 @@
+error: Undefined Behavior: `copy_nonoverlapping` called on overlapping ranges
+  --> tests/fail/overlapping_assignment_aggregate.rs:LL:CC
+   |
+LL |             _1 = (_1.0, );
+   |             ^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

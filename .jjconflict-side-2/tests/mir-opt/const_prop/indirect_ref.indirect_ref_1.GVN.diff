@@ -1,0 +1,63 @@
+- // MIR for `indirect_ref_1` before GVN
++ // MIR for `indirect_ref_1` after GVN
+  
+  fn indirect_ref_1(_1: &(&i32,), _2: for<'a> fn(&'a i32), _3: fn()) -> () {
+      debug x => _1;
+      debug out => _2;
+      debug clobber => _3;
+      let mut _0: ();
+      let _4: ();
+      let mut _5: for<'a> fn(&'a i32);
+      let mut _6: &i32;
+      let _7: ();
+      let mut _8: fn();
+      let _9: ();
+      let mut _10: for<'a> fn(&'a i32);
+      let mut _11: &i32;
+      let mut _12: &i32;
+      let mut _13: &i32;
+  
+      bb0: {
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = copy _2;
+          StorageLive(_6);
+          _12 = no_retag copy ((*_1).0: &i32);
+          _6 = &(*_12);
+-         _4 = move _5(move _6) -> [return: bb1, unwind unreachable];
++         _4 = copy _2(move _6) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_6);
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageLive(_7);
+          StorageLive(_8);
+          _8 = copy _3;
+-         _7 = move _8() -> [return: bb2, unwind unreachable];
++         _7 = copy _3() -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageLive(_9);
+          StorageLive(_10);
+          _10 = copy _2;
+          StorageLive(_11);
+          _13 = no_retag copy ((*_1).0: &i32);
+          _11 = &(*_13);
+-         _9 = move _10(move _11) -> [return: bb3, unwind unreachable];
++         _9 = copy _2(move _11) -> [return: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+          StorageDead(_11);
+          StorageDead(_10);
+          StorageDead(_9);
+          _0 = const ();
+          return;
+      }
+  }
+  

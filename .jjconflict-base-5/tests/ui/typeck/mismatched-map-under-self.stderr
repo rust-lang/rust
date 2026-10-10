@@ -1,0 +1,42 @@
+error[E0053]: method `values` has an incompatible type for trait
+  --> $DIR/mismatched-map-under-self.rs:10:15
+   |
+LL |     fn values(self) -> Self::Values {
+   |               ^^^^ expected `&Option<T>`, found `Option<T>`
+   |
+note: type in trait
+  --> $DIR/mismatched-map-under-self.rs:4:15
+   |
+LL |     fn values(&self) -> Self::Values;
+   |               ^^^^^
+   = note: expected signature `fn(&Option<_>)`
+              found signature `fn(Option<_>)`
+help: change the self-receiver type to match the trait
+   |
+LL |     fn values(&self) -> Self::Values {
+   |               +
+
+error[E0631]: type mismatch in function arguments
+  --> $DIR/mismatched-map-under-self.rs:12:18
+   |
+LL |     fn values(&self) -> Self::Values;
+   |     --------------------------------- found signature defined here
+...
+LL |         self.map(Insertable::values).unwrap_or_default()
+   |              --- ^^^^^^^^^^^^^^^^^^ expected due to this
+   |              |
+   |              required by a bound introduced by this call
+   |
+   = note: expected function signature `fn(T) -> _`
+              found function signature `fn(&_) -> _`
+note: required by a bound in `Option::<T>::map`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: consider wrapping the function in a closure
+   |
+LL |         self.map(|arg0: T| Insertable::values(&arg0)).unwrap_or_default()
+   |                  +++++++++                   +++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0053, E0631.
+For more information about an error, try `rustc --explain E0053`.

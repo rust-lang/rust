@@ -1,0 +1,16 @@
+// This test ensures that clicking on a method summary, but not on the "[-]",
+// doesn't toggle the <details>.
+go-to: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html"
+assert-attribute: (".impl-items .toggle", {"open": ""})
+click: "h4.code-header" // This is the position of "pub" in "pub fn a_method"
+assert-attribute: (".impl-items .toggle", {"open": ""})
+click-with-offset: (
+    ".impl-items .toggle summary",
+    {"x": -24, "y": 8}, // This is the position of "[-]" next to that pub fn.
+)
+assert-attribute-false: (".impl-items .toggle", {"open": ""})
+
+// Click the "Trait" part of "impl Trait" and verify it navigates.
+click: "#impl-Trait-for-Foo h3 a:first-of-type"
+assert-text: (".main-heading .rustdoc-breadcrumbs", "lib2")
+assert-text: (".main-heading h1", "Trait Trait Copy item path")

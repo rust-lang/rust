@@ -1,0 +1,10 @@
+error: unconstrained opaque type
+  --> $DIR/declared_but_never_defined.rs:6:12
+   |
+LL | type Bar = impl std::fmt::Debug;
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Bar` must be used in combination with a concrete type within the same crate
+
+error: aborting due to 1 previous error
+

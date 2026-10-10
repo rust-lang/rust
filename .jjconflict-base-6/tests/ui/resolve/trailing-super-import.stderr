@@ -1,0 +1,8 @@
+error: `super` in paths can only be used in start position, after `self`, or after another `super`
+  --> $DIR/trailing-super-import.rs:6:13
+   |
+LL | use my_api::super as super_alias;
+   |             ^^^^^
+
+error: aborting due to 1 previous error
+

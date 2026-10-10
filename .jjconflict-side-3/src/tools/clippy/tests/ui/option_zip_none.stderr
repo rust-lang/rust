@@ -1,0 +1,64 @@
+error: calling `.zip()` on an `Option` where one side is `None` always returns `None`
+  --> tests/ui/option_zip_none.rs:39:13
+   |
+LL |     let _ = opt.zip(None::<()>);
+   |             ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::option-zip-none` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::option_zip_none)]`
+help: if you meant to zip the contents of the `Option` with `None`, use `Option::map`
+   |
+LL -     let _ = opt.zip(None::<()>);
+LL +     let _ = opt.map(|n| (n, None::<()>));
+   |
+
+error: calling `.zip()` on an `Option` where one side is `None` always returns `None`
+  --> tests/ui/option_zip_none.rs:48:13
+   |
+LL |     let _ = (&standard_opt).zip(None::<()>);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if you meant to zip the contents of the `Option` with `None`, use `Option::map`
+   |
+LL -     let _ = (&standard_opt).zip(None::<()>);
+LL +     let _ = (&standard_opt).map(|n| (n, None::<()>));
+   |
+
+error: calling `.zip()` on an `Option` where one side is `None` always returns `None`
+  --> tests/ui/option_zip_none.rs:51:13
+   |
+LL |     let _ = None::<i32>.zip(Some(1));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if you meant to zip the contents of the `Option` with `None`, use `Option::map`
+   |
+LL -     let _ = None::<i32>.zip(Some(1));
+LL +     let _ = Some(1).map(|n| (None::<i32>, n));
+   |
+
+error: calling `.zip()` on an `Option` where one side is `None` always returns `None`
+  --> tests/ui/option_zip_none.rs:54:13
+   |
+LL |     let _ = Some(1).zip(None::<()>);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if you meant to zip the contents of the `Option` with `None`, use `Option::map`
+   |
+LL -     let _ = Some(1).zip(None::<()>);
+LL +     let _ = Some(1).map(|n| (n, None::<()>));
+   |
+
+error: calling `.zip()` on an `Option` where one side is `None` always returns `None`
+  --> tests/ui/option_zip_none.rs:63:13
+   |
+LL |     let _ = opt.zip(macro_none!());
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if you meant to zip the contents of the `Option` with `None`, use `Option::map`
+   |
+LL -     let _ = opt.zip(macro_none!());
+LL +     let _ = opt.map(|n| (n, macro_none!()));
+   |
+
+error: aborting due to 5 previous errors
+

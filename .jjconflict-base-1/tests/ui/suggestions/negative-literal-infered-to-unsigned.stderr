@@ -1,0 +1,25 @@
+error[E0277]: the trait bound `usize: Neg` is not satisfied
+  --> $DIR/negative-literal-infered-to-unsigned.rs:2:14
+   |
+LL |     for x in -5..5 {
+   |              ^^ the trait `Neg` is not implemented for `usize`
+   |
+help: consider specifying an integer type that can be negative
+   |
+LL |     for x in -5isize..5 {
+   |                +++++
+
+error[E0277]: the trait bound `usize: Neg` is not satisfied
+  --> $DIR/negative-literal-infered-to-unsigned.rs:7:13
+   |
+LL |     let x = -5;
+   |             ^^ the trait `Neg` is not implemented for `usize`
+   |
+help: consider specifying an integer type that can be negative
+   |
+LL |     let x = -5isize;
+   |               +++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

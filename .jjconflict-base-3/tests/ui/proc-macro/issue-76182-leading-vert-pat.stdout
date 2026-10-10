@@ -1,0 +1,62 @@
+PRINT-ATTR INPUT (DISPLAY): fn main() { match () { | () => () } }
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "fn",
+        span: $DIR/issue-76182-leading-vert-pat.rs:14:1: 14:3 (#0),
+    },
+    Ident {
+        ident: "main",
+        span: $DIR/issue-76182-leading-vert-pat.rs:14:4: 14:8 (#0),
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [],
+        span: $DIR/issue-76182-leading-vert-pat.rs:14:8: 14:10 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Ident {
+                ident: "match",
+                span: $DIR/issue-76182-leading-vert-pat.rs:15:5: 15:10 (#0),
+            },
+            Group {
+                delimiter: Parenthesis,
+                stream: TokenStream [],
+                span: $DIR/issue-76182-leading-vert-pat.rs:15:11: 15:13 (#0),
+            },
+            Group {
+                delimiter: Brace,
+                stream: TokenStream [
+                    Punct {
+                        ch: '|',
+                        spacing: Alone,
+                        span: $DIR/issue-76182-leading-vert-pat.rs:15:16: 15:17 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [],
+                        span: $DIR/issue-76182-leading-vert-pat.rs:15:18: 15:20 (#0),
+                    },
+                    Punct {
+                        ch: '=',
+                        spacing: Joint,
+                        span: $DIR/issue-76182-leading-vert-pat.rs:15:21: 15:22 (#0),
+                    },
+                    Punct {
+                        ch: '>',
+                        spacing: Alone,
+                        span: $DIR/issue-76182-leading-vert-pat.rs:15:22: 15:23 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [],
+                        span: $DIR/issue-76182-leading-vert-pat.rs:15:24: 15:26 (#0),
+                    },
+                ],
+                span: $DIR/issue-76182-leading-vert-pat.rs:15:14: 15:28 (#0),
+            },
+        ],
+        span: $DIR/issue-76182-leading-vert-pat.rs:14:11: 16:2 (#0),
+    },
+]

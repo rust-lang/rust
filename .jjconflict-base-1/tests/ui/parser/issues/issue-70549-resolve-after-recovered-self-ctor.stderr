@@ -1,0 +1,75 @@
+error: expected identifier, found keyword `Self`
+  --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:4:17
+   |
+LL |     fn foo(&mur Self) {}
+   |                 ^^^^ expected identifier, found keyword
+
+error: expected one of `:`, `@`, or `|`, found keyword `Self`
+  --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:4:17
+   |
+LL |     fn foo(&mur Self) {}
+   |                 ^^^^ expected one of `:`, `@`, or `|`
+   |
+help: there is a keyword `mut` with a similar name
+   |
+LL -     fn foo(&mur Self) {}
+LL +     fn foo(&mut Self) {}
+   |
+
+error: unexpected lifetime `'static` in pattern
+  --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:8:13
+   |
+LL |     fn bar(&'static mur Self) {}
+   |             ^^^^^^^
+   |
+help: remove the lifetime
+   |
+LL -     fn bar(&'static mur Self) {}
+LL +     fn bar(&mur Self) {}
+   |
+
+error: expected identifier, found keyword `Self`
+  --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:8:25
+   |
+LL |     fn bar(&'static mur Self) {}
+   |                         ^^^^ expected identifier, found keyword
+
+error: expected one of `:`, `@`, or `|`, found keyword `Self`
+  --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:8:25
+   |
+LL |     fn bar(&'static mur Self) {}
+   |                         ^^^^ expected one of `:`, `@`, or `|`
+   |
+help: there is a keyword `mut` with a similar name
+   |
+LL -     fn bar(&'static mur Self) {}
+LL +     fn bar(&'static mut Self) {}
+   |
+
+error: expected one of `:`, `@`, or `|`, found keyword `Self`
+  --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:14:17
+   |
+LL |     fn baz(&mur Self @ _) {}
+   |                 ^^^^ expected one of `:`, `@`, or `|`
+   |
+help: there is a keyword `mut` with a similar name
+   |
+LL -     fn baz(&mur Self @ _) {}
+LL +     fn baz(&mut Self @ _) {}
+   |
+
+error[E0533]: expected unit struct, found self constructor `Self`
+  --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:4:17
+   |
+LL |     fn foo(&mur Self) {}
+   |                 ^^^^ not a unit struct
+
+error[E0533]: expected unit struct, found self constructor `Self`
+  --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:8:25
+   |
+LL |     fn bar(&'static mur Self) {}
+   |                         ^^^^ not a unit struct
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0533`.

@@ -1,0 +1,111 @@
+error[E0277]: a value of type `i32` cannot be built from an iterator over elements of type `i32`
+  --> $DIR/type-check-defaults.rs:6:23
+   |
+LL | struct WellFormed<Z = Foo<i32, i32>>(Z);
+   |                       ^^^^^^^^^^^^^ value of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
+   |
+   = help: the trait `FromIterator<i32>` is not implemented for `i32`
+note: required by a bound in `Foo`
+  --> $DIR/type-check-defaults.rs:5:18
+   |
+LL | struct Foo<T, U: FromIterator<T>>(T, U);
+   |                  ^^^^^^^^^^^^^^^ required by this bound in `Foo`
+
+error[E0277]: a value of type `i32` cannot be built from an iterator over elements of type `i32`
+  --> $DIR/type-check-defaults.rs:8:38
+   |
+LL | struct WellFormedNoBounds<Z:?Sized = Foo<i32, i32>>(Z);
+   |                                      ^^^^^^^^^^^^^ value of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
+   |
+   = help: the trait `FromIterator<i32>` is not implemented for `i32`
+note: required by a bound in `Foo`
+  --> $DIR/type-check-defaults.rs:5:18
+   |
+LL | struct Foo<T, U: FromIterator<T>>(T, U);
+   |                  ^^^^^^^^^^^^^^^ required by this bound in `Foo`
+
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/type-check-defaults.rs:11:17
+   |
+LL | struct Bounds<T:Copy=String>(T);
+   |                 ^^^^ the trait `Copy` is not implemented for `String`
+   |
+note: required by a bound in `Bounds`
+  --> $DIR/type-check-defaults.rs:11:17
+   |
+LL | struct Bounds<T:Copy=String>(T);
+   |                 ^^^^ required by this bound in `Bounds`
+
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/type-check-defaults.rs:14:42
+   |
+LL | struct WhereClause<T=String>(T) where T: Copy;
+   |                                          ^^^^ the trait `Copy` is not implemented for `String`
+   |
+note: required by a bound in `WhereClause`
+  --> $DIR/type-check-defaults.rs:14:42
+   |
+LL | struct WhereClause<T=String>(T) where T: Copy;
+   |                                          ^^^^ required by this bound in `WhereClause`
+
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/type-check-defaults.rs:17:20
+   |
+LL | trait TraitBound<T:Copy=String> {}
+   |                    ^^^^ the trait `Copy` is not implemented for `String`
+   |
+note: required by a bound in `TraitBound`
+  --> $DIR/type-check-defaults.rs:17:20
+   |
+LL | trait TraitBound<T:Copy=String> {}
+   |                    ^^^^ required by this bound in `TraitBound`
+
+error[E0277]: the trait bound `T: Copy` is not satisfied
+  --> $DIR/type-check-defaults.rs:21:25
+   |
+LL | trait Base<T = String>: Super<T> { }
+   |                         ^^^^^^^^ the trait `Copy` is not implemented for `T`
+   |
+note: required by a bound in `Super`
+  --> $DIR/type-check-defaults.rs:20:16
+   |
+LL | trait Super<T: Copy> { }
+   |                ^^^^ required by this bound in `Super`
+help: consider further restricting type parameter `T` with trait `Copy`
+   |
+LL | trait Base<T = String>: Super<T> where T: std::marker::Copy { }
+   |                                  ++++++++++++++++++++++++++
+
+error[E0277]: cannot add `u8` to `i32`
+  --> $DIR/type-check-defaults.rs:24:66
+   |
+LL | trait ProjectionPred<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
+   |                                                                  ^^^^^^^ no implementation for `i32 + u8`
+   |
+   = help: the trait `Add<u8>` is not implemented for `i32`
+help: the following other types implement trait `Add<Rhs>`
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+   = note: `i32` implements `Add`
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&i32` implements `Add<i32>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `i32` implements `Add<&i32>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&i32` implements `Add`
+note: required by a bound in `ProjectionPred`
+  --> $DIR/type-check-defaults.rs:24:66
+   |
+LL | trait ProjectionPred<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
+   |                                                                  ^^^^^^^ required by this bound in `ProjectionPred`
+   = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

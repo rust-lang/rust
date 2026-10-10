@@ -1,0 +1,15 @@
+error[E0605]: non-primitive cast: `*const i32` as `&'static i32`
+  --> $DIR/issue-89497.rs:7:45
+   |
+LL |     let _reference: &'static i32 = unsafe { pointer as *const i32 as &'static i32 };
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+   |
+help: consider borrowing the value
+   |
+LL -     let _reference: &'static i32 = unsafe { pointer as *const i32 as &'static i32 };
+LL +     let _reference: &'static i32 = unsafe { &*(pointer as *const i32) };
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0605`.

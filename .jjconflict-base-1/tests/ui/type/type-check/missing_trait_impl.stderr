@@ -1,0 +1,58 @@
+error[E0369]: cannot add `T` to `T`
+  --> $DIR/missing_trait_impl.rs:5:15
+   |
+LL |     let z = x + y;
+   |             - ^ - T
+   |             |
+   |             T
+   |
+help: consider restricting type parameter `T` with trait `Add`
+   |
+LL | fn foo<T: std::ops::Add>(x: T, y: T) {
+   |         +++++++++++++++
+
+error[E0368]: binary assignment operation `+=` cannot be applied to type `T`
+  --> $DIR/missing_trait_impl.rs:9:5
+   |
+LL |     x += x;
+   |     -^^^^^
+   |     |
+   |     cannot use `+=` on type `T`
+   |
+help: consider restricting type parameter `T` with trait `AddAssign`
+   |
+LL | fn bar<T: std::ops::AddAssign>(x: T) {
+   |         +++++++++++++++++++++
+
+error[E0600]: cannot apply unary operator `-` to type `T`
+  --> $DIR/missing_trait_impl.rs:13:13
+   |
+LL |     let y = -x;
+   |             ^^ cannot apply unary operator `-`
+   |
+help: consider restricting type parameter `T` with trait `Neg`
+   |
+LL | fn baz<T: std::ops::Neg>(x: T) {
+   |         +++++++++++++++
+
+error[E0600]: cannot apply unary operator `!` to type `T`
+  --> $DIR/missing_trait_impl.rs:14:13
+   |
+LL |     let y = !x;
+   |             ^^ cannot apply unary operator `!`
+   |
+help: consider restricting type parameter `T` with trait `Not`
+   |
+LL | fn baz<T: std::ops::Not>(x: T) {
+   |         +++++++++++++++
+
+error[E0614]: type `T` cannot be dereferenced
+  --> $DIR/missing_trait_impl.rs:15:13
+   |
+LL |     let y = *x;
+   |             ^^ can't be dereferenced
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0368, E0369, E0600, E0614.
+For more information about an error, try `rustc --explain E0368`.

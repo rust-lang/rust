@@ -1,0 +1,22 @@
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/str-as-char-butchered.rs:4:21
+   |
+LL |     let _: &str = 'β;
+   |                     ^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: add `'` to close the char literal
+   |
+LL |     let _: &str = 'β';
+   |                     +
+
+error[E0308]: mismatched types
+  --> $DIR/str-as-char-butchered.rs:4:19
+   |
+LL |     let _: &str = 'β;
+   |            ----   ^^ expected `&str`, found `char`
+   |            |
+   |            expected due to this
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

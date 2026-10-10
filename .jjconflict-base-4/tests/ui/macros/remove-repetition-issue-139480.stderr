@@ -1,0 +1,44 @@
+error: repetition matches empty token tree
+  --> $DIR/remove-repetition-issue-139480.rs:2:7
+   |
+LL |     ($($v: vis)? $name: ident) => {
+   |       ^^^^^^^^^
+   |
+   = note: a `vis` fragment can already be empty
+help: remove the `$(` and `)?`
+   |
+LL -     ($($v: vis)? $name: ident) => {
+LL +     ($v: vis $name: ident) => {
+   |
+
+error: repetition matches empty token tree
+  --> $DIR/remove-repetition-issue-139480.rs:8:20
+   |
+LL |     ($name: ident $($v: vis)?) => {
+   |                    ^^^^^^^^^
+   |
+   = note: a `vis` fragment can already be empty
+help: remove the `$(` and `)?`
+   |
+LL -     ($name: ident $($v: vis)?) => {
+LL +     ($name: ident $v: vis) => {
+   |
+
+error: repetition matches empty token tree
+  --> $DIR/remove-repetition-issue-139480.rs:17:9
+   |
+LL |         ($v: vis)?) => {
+   |         ^^^^^^^^^
+   |
+   = note: a `vis` fragment can already be empty
+help: remove the `$(` and `)?`
+   |
+LL -     ($name: ident $/*
+LL -         this comment gets removed by the suggestion
+LL -         */
+LL -         ($v: vis)?) => {
+LL +     ($name: ident $v: vis) => {
+   |
+
+error: aborting due to 3 previous errors
+

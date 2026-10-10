@@ -1,0 +1,47 @@
+- // MIR for `f` before JumpThreading
++ // MIR for `f` after JumpThreading
+  
+  fn f() -> u64 {
+      let mut _0: u64;
+      let mut _1: bool;
+  
+      bb0: {
+          StorageLive(_1);
+          switchInt(const A) -> [1: bb2, 2: bb2, 3: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          _1 = const true;
+-         goto -> bb3;
++         goto -> bb7;
+      }
+  
+      bb2: {
+          _1 = const B;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          switchInt(copy _1) -> [0: bb5, otherwise: bb4];
+      }
+  
+      bb4: {
+          _0 = const 2_u64;
+          goto -> bb6;
+      }
+  
+      bb5: {
+          _0 = const 1_u64;
+          goto -> bb6;
+      }
+  
+      bb6: {
+          StorageDead(_1);
+          return;
++     }
++ 
++     bb7: {
++         goto -> bb4;
+      }
+  }
+  

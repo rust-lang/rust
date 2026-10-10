@@ -1,0 +1,25 @@
+error: item does not constrain `Foo::{opaque#0}`
+  --> $DIR/no_inferrable_concrete_type.rs:10:8
+   |
+LL | pub fn bar(x: Foo) -> Foo {
+   |        ^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/no_inferrable_concrete_type.rs:6:16
+   |
+LL | pub type Foo = impl Copy;
+   |                ^^^^^^^^^
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/no_inferrable_concrete_type.rs:17:22
+   |
+LL |         let _: Foo = std::mem::transmute(0u8);
+   |                      ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `u8` (8 bits)
+   = note: target type: `{type error}` (the type has an unknown layout)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0512`.

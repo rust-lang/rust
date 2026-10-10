@@ -1,0 +1,47 @@
+error[E0425]: cannot find value `value` in this scope
+  --> $DIR/format-captured-standard-macros.rs:18:41
+   |
+LL |         let _ = write!(String::new(), "{value}");
+   |                                         ^^^^^
+   |
+help: you might have meant to add a named formatting argument
+   |
+LL |         let _ = write!(String::new(), "{value}", value = self.value);
+   |                                                ++++++++++++++++++++
+
+error[E0425]: cannot find value `value` in this scope
+  --> $DIR/format-captured-standard-macros.rs:20:28
+   |
+LL |         assert_eq!(1, 1, "{value}");
+   |                            ^^^^^
+   |
+help: you might have meant to add a named formatting argument
+   |
+LL |         assert_eq!(1, 1, "{value}", value = self.value);
+   |                                   ++++++++++++++++++++
+
+error[E0425]: cannot find value `value` in this scope
+  --> $DIR/format-captured-standard-macros.rs:24:21
+   |
+LL |         panic!("{} {value}", 1);
+   |                     ^^^^^
+   |
+help: you might have meant to add a named formatting argument
+   |
+LL |         panic!("{} {value}", 1, value = self.value);
+   |                               ++++++++++++++++++++
+
+error[E0425]: cannot find value `value` in this scope
+  --> $DIR/format-captured-standard-macros.rs:30:24
+   |
+LL |         unreachable!("{value}");
+   |                        ^^^^^
+   |
+help: you might have meant to add a named formatting argument
+   |
+LL |         unreachable!("{value}", value = self.value);
+   |                               ++++++++++++++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

@@ -1,0 +1,10 @@
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_on_fn_params.rs:8:43
+   |
+LL | fn check_unfulfilled_expectation(#[expect(unused_variables)] used_value: u32) {
+   |                                           ^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unfulfilled_lint_expectations)]` on by default
+
+warning: 1 warning emitted
+

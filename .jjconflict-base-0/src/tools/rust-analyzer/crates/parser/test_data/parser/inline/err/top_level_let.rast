@@ -1,0 +1,30 @@
+SOURCE_FILE
+  ERROR
+    LET_KW "let"
+    WHITESPACE " "
+    IDENT_PAT
+      REF_KW "ref"
+      WHITESPACE " "
+      NAME
+        IDENT "foo"
+    COLON ":"
+    WHITESPACE " "
+    FN_PTR_TYPE
+      FN_KW "fn"
+      PARAM_LIST
+        L_PAREN "("
+        R_PAREN ")"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    BIN_EXPR
+      LITERAL
+        INT_NUMBER "1"
+      WHITESPACE " "
+      PLUS "+"
+      WHITESPACE " "
+      LITERAL
+        INT_NUMBER "3"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 0: expected an item

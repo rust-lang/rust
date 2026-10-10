@@ -1,0 +1,21 @@
+error: `extern` block uses type `W`, which is not FFI-safe
+  --> $DIR/union-repr-c.rs:15:22
+   |
+LL |     static FOREIGN2: W;
+   |                      ^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this union
+   = note: this union has unspecified layout
+note: the type is defined here
+  --> $DIR/union-repr-c.rs:9:1
+   |
+LL | union W {
+   | ^^^^^^^
+note: the lint level is defined here
+  --> $DIR/union-repr-c.rs:2:9
+   |
+LL | #![deny(improper_ctypes)]
+   |         ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

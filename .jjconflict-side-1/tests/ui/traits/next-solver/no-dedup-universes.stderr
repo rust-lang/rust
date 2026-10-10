@@ -1,0 +1,10 @@
+error: higher-ranked lifetime error
+  --> $DIR/no-dedup-universes.rs:20:13
+   |
+LL | fn main() { f(Foo); }
+   |             ^^^^^^
+   |
+   = note: could not prove `Foo: Trait`
+
+error: aborting due to 1 previous error
+

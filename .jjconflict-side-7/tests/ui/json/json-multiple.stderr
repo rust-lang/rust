@@ -1,0 +1,1 @@
+{"$message_type":"artifact","artifact":"$TEST_BUILD_DIR/libjson_multiple.rlib","emit":"link"}

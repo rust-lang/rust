@@ -1,0 +1,15 @@
+error[E0609]: no field `baz` on type `Foo`
+  --> $DIR/issue-36798.rs:7:7
+   |
+LL |     f.baz;
+   |       ^^^ unknown field
+   |
+help: a field with a similar name exists
+   |
+LL -     f.baz;
+LL +     f.bar;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0609`.

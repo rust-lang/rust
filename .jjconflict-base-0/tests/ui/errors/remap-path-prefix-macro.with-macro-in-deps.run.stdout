@@ -1,0 +1,3 @@
+file::my_file!() = remapped/errors/remap-path-prefix-macro.rs
+file::file() = remapped/errors/auxiliary/file-macro.rs
+file!() = remapped/errors/remap-path-prefix-macro.rs

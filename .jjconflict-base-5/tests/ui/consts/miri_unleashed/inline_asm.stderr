@@ -1,0 +1,17 @@
+error[E0080]: inline assembly is not supported
+  --> $DIR/inline_asm.rs:10:14
+   |
+LL |     unsafe { asm!("nop"); }
+   |              ^^^^^^^^^^^ evaluation of `TEST_BAD` failed here
+
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/inline_asm.rs:10:14
+   |
+LL |     unsafe { asm!("nop"); }
+   |              ^^^^^^^^^^^
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.

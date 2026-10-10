@@ -1,0 +1,14 @@
+error: unused import: `std::fs`
+  --> $DIR/unused-import-issue-87973.rs:8:5
+   |
+LL | use std::fs;
+   |     ^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-import-issue-87973.rs:2:9
+   |
+LL | #![deny(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

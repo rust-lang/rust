@@ -1,0 +1,85 @@
+error[E0658]: generic const items are experimental
+  --> $DIR/feature-gate-generic_const_items.rs:2:14
+   |
+LL |     const ONE<T>: i32;
+   |              ^^^
+   |
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
+   = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: generic const items are experimental
+  --> $DIR/feature-gate-generic_const_items.rs:6:5
+   |
+LL | /     where
+LL | |         A: Copy;
+   | |_______________^
+   |
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
+   = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: generic const items are experimental
+  --> $DIR/feature-gate-generic_const_items.rs:11:12
+   |
+LL | const CONST<T>: i32 = 0;
+   |            ^^^
+   |
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
+   = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: generic const items are experimental
+  --> $DIR/feature-gate-generic_const_items.rs:14:12
+   |
+LL | const EMPTY<>: i32 = 0;
+   |            ^^
+   |
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
+   = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: generic const items are experimental
+  --> $DIR/feature-gate-generic_const_items.rs:18:1
+   |
+LL | / where
+LL | |     String: Clone;
+   | |_________________^
+   |
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
+   = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: generic const items are experimental
+  --> $DIR/feature-gate-generic_const_items.rs:28:22
+   |
+LL | discard! { const FREE<T>: () = (); }
+   |                      ^^^
+   |
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
+   = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: generic const items are experimental
+  --> $DIR/feature-gate-generic_const_items.rs:31:33
+   |
+LL | discard! { impl () { const ASSOC<const N: ()>: () = (); } }
+   |                                 ^^^^^^^^^^^^^
+   |
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
+   = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: generic const items are experimental
+  --> $DIR/feature-gate-generic_const_items.rs:34:43
+   |
+LL | discard! { impl () { const ASSOC: i32 = 0 where String: Copy; } }
+   |                                           ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
+   = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

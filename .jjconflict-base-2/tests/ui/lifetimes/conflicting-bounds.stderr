@@ -1,0 +1,14 @@
+error[E0283]: type annotations needed: cannot satisfy `Self: Gen<'source>`
+   |
+note: multiple `impl`s or `where` clauses satisfying `Self: Gen<'source>` found
+  --> $DIR/conflicting-bounds.rs:3:1
+   |
+LL | pub trait Gen<'source> {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |         Self: for<'s> Gen<'s, Output = T>;
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

@@ -1,0 +1,1289 @@
+use std::borrow::Cow;
+use std::fmt::{self, Debug};
+use std::hash::Hash;
+use std::ops::{Deref, DerefMut};
+use std::panic;
+use std::path::PathBuf;
+use std::thread::panicking;
+
+use rustc_ast::attr::version::RustcVersion;
+use rustc_data_structures::stable_hash::StableHasher;
+use rustc_error_messages::{DiagArgMap, DiagArgName, IntoDiagArg};
+use rustc_hashes::Hash128;
+use rustc_lint_defs::Applicability;
+use rustc_macros::{Decodable, Encodable};
+use rustc_span::{Span, Spanned, Symbol};
+use tracing::debug;
+
+use crate::{
+    CodeSuggestion, DiagCtxtHandle, DiagMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level,
+    MultiSpan, StashKey, Style, Sublevel, Substitution, SubstitutionPart, SuggestionStyle,
+    Suggestions,
+};
+
+/// Trait implemented by error types. This is rarely implemented manually. Instead, use
+/// `#[derive(Diagnostic)]` -- see [rustc_macros::Diagnostic].
+pub trait Diagnostic<'a> {
+    /// Write out as a diagnostic out of `DiagCtxt`.
+    #[must_use]
+    #[track_caller]
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a>;
+}
+
+impl<'a, T> Diagnostic<'a> for Spanned<T>
+where
+    T: Diagnostic<'a>,
+{
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
+        self.node.into_diag(dcx, level).with_span(self.span)
+    }
+}
+
+/// Type used to emit diagnostic through a closure instead of implementing the `Diagnostic` trait.
+pub struct DiagDecorator<F: FnOnce(&mut Diag<'_>)>(pub F);
+
+impl<'a, F: FnOnce(&mut Diag<'_>)> Diagnostic<'a> for DiagDecorator<F> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
+        let mut diag = Diag::new(dcx, level, "");
+        (self.0)(&mut diag);
+        diag
+    }
+}
+
+/// Trait implemented by error types. This should not be implemented manually. Instead, use
+/// `#[derive(Subdiagnostic)]` -- see [rustc_macros::Subdiagnostic].
+pub trait Subdiagnostic {
+    /// Add a subdiagnostic to an existing diagnostic.
+    fn add_to_diag(self, diag: &mut Diag<'_>);
+}
+
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub struct DiagLocation {
+    file: Cow<'static, str>,
+    line: u32,
+    col: u32,
+}
+
+impl DiagLocation {
+    pub fn from_location(loc: &'static panic::Location<'static>) -> Self {
+        DiagLocation { file: loc.file().into(), line: loc.line(), col: loc.column() }
+    }
+
+    #[track_caller]
+    pub fn caller() -> Self {
+        Self::from_location(panic::Location::caller())
+    }
+}
+
+impl fmt::Display for DiagLocation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}:{}", self.file, self.line, self.col)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
+pub struct IsLint {
+    /// The lint name.
+    pub(crate) name: String,
+    /// Indicates whether this lint should show up in cargo's future breakage report.
+    has_future_breakage: bool,
+    /// Indicates the minimum rust version this lint applies to
+    rust_version: Option<RustcVersion>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct DiagStyledString(pub Vec<StringPart>);
+
+impl DiagStyledString {
+    pub fn new() -> DiagStyledString {
+        DiagStyledString(vec![])
+    }
+    pub fn push_normal<S: Into<String>>(&mut self, t: S) {
+        self.0.push(StringPart::normal(t));
+    }
+    pub fn push_highlighted<S: Into<String>>(&mut self, t: S) {
+        self.0.push(StringPart::highlighted(t));
+    }
+    pub fn push<S: Into<String>>(&mut self, t: S, highlight: bool) {
+        if highlight {
+            self.push_highlighted(t);
+        } else {
+            self.push_normal(t);
+        }
+    }
+    pub fn normal<S: Into<String>>(t: S) -> DiagStyledString {
+        DiagStyledString(vec![StringPart::normal(t)])
+    }
+
+    pub fn highlighted<S: Into<String>>(t: S) -> DiagStyledString {
+        DiagStyledString(vec![StringPart::highlighted(t)])
+    }
+
+    pub fn content(&self) -> String {
+        self.0.iter().map(|x| x.content.as_str()).collect::<String>()
+    }
+
+    /// Merge segments of the same style.
+    pub fn compact(&mut self) {
+        let segments = std::mem::take(&mut self.0);
+        let mut iter = segments.into_iter();
+        let Some(mut prev) = iter.next() else { return };
+        while let Some(segment) = iter.next() {
+            if prev.style == segment.style {
+                prev.content.push_str(&segment.content);
+            } else {
+                self.0.push(prev);
+                prev = segment;
+            }
+        }
+        self.0.push(prev);
+    }
+
+    /// Remove the middle of all long segments for shorter rendering.
+    pub fn shorten(&mut self) {
+        self.compact();
+        /// The marker for removed text.
+        const ELLIPSIS: &str = "...";
+        /// How many chars at the start and end will remain.
+        const PADDING: usize = 6;
+        /// The distance after which it is not worth it to reduce the text.
+        const DELTA: usize = 3;
+
+        for segment in self.0.iter_mut() {
+            let char_len = segment.content.chars().count();
+            if char_len > PADDING * 2 + ELLIPSIS.chars().count() + DELTA
+                && let Some((left, _)) = segment.content.char_indices().nth(PADDING)
+                && let Some((right, _)) = segment.content.char_indices().nth(char_len - PADDING)
+            {
+                segment.content.replace_range(left..right, ELLIPSIS);
+            }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct StringPart {
+    content: String,
+    style: Style,
+}
+
+impl StringPart {
+    pub fn normal<S: Into<String>>(content: S) -> StringPart {
+        StringPart { content: content.into(), style: Style::NoStyle }
+    }
+
+    pub fn highlighted<S: Into<String>>(content: S) -> StringPart {
+        StringPart { content: content.into(), style: Style::Highlight }
+    }
+}
+
+/// The main part of a diagnostic. Note that `Diag`, which wraps this type, is
+/// used for most operations, and should be used instead whenever possible.
+/// This type should only be used when `Diag`'s lifetime causes difficulties,
+/// e.g. when storing diagnostics within `DiagCtxt`.
+#[must_use]
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub struct DiagInner {
+    // NOTE(eddyb) this is private to disallow arbitrary after-the-fact changes,
+    // outside of what methods in this crate themselves allow.
+    pub(crate) level: Level,
+
+    pub messages: Vec<(DiagMessage, Style)>,
+    pub code: Option<ErrCode>,
+    pub span: MultiSpan,
+    pub children: Vec<Subdiag>,
+    pub suggestions: Suggestions,
+    pub args: DiagArgMap,
+    pub is_lint: Option<IsLint>,
+    pub long_ty_path: Option<PathBuf>,
+    /// With `-Ztrack_diagnostics` enabled,
+    /// we print where in rustc this error was emitted.
+    pub emitted_at: DiagLocation,
+}
+
+impl DiagInner {
+    #[track_caller]
+    pub fn new<M: Into<DiagMessage>>(level: Level, message: M) -> Self {
+        DiagInner::new_with_messages(level, vec![(message.into(), Style::NoStyle)])
+    }
+
+    #[track_caller]
+    pub fn new_with_messages(level: Level, messages: Vec<(DiagMessage, Style)>) -> Self {
+        DiagInner {
+            level,
+            messages,
+            code: None,
+            span: MultiSpan::new(),
+            children: vec![],
+            suggestions: Suggestions::Enabled(vec![]),
+            args: Default::default(),
+            is_lint: None,
+            long_ty_path: None,
+            emitted_at: DiagLocation::caller(),
+        }
+    }
+
+    #[inline(always)]
+    pub fn level(&self) -> Level {
+        self.level
+    }
+
+    pub fn is_error(&self) -> bool {
+        match self.level {
+            Level::Bug | Level::Fatal | Level::Error | Level::DelayedBug => true,
+
+            Level::Warning(_) | Level::Note | Level::Help | Level::FailureNote => false,
+        }
+    }
+
+    /// Indicates whether this diagnostic should show up in cargo's future breakage report.
+    pub(crate) fn has_future_breakage(&self) -> bool {
+        matches!(self.is_lint, Some(IsLint { has_future_breakage: true, .. }))
+    }
+
+    /// Indicates the minimum rust version this lint applies to.
+    pub(crate) fn rust_version(&self) -> Option<RustcVersion> {
+        self.is_lint.as_ref().and_then(|is| is.rust_version)
+    }
+
+    pub(crate) fn sub(
+        &mut self,
+        level: Sublevel,
+        message: impl Into<DiagMessage>,
+        span: MultiSpan,
+    ) {
+        let sub = Subdiag { level, messages: vec![(message.into(), Style::NoStyle)], span };
+        self.children.push(sub);
+    }
+
+    pub(crate) fn arg(&mut self, name: impl Into<DiagArgName>, arg: impl IntoDiagArg) {
+        let name = name.into();
+        let value = arg.into_diag_arg(&mut self.long_ty_path);
+        // This assertion is to avoid subdiagnostics overwriting an existing diagnostic arg.
+        debug_assert!(
+            !self.args.contains_key(&name) || self.args.get(&name) == Some(&value),
+            "arg {} already exists",
+            name
+        );
+        self.args.insert(name, value);
+    }
+
+    pub fn remove_arg(&mut self, name: &str) {
+        self.args.swap_remove(name);
+    }
+
+    pub fn emitted_at_sub_diag(&self) -> Subdiag {
+        let track = format!("-Ztrack-diagnostics: created at {}", self.emitted_at);
+        Subdiag {
+            level: crate::Sublevel::Note,
+            messages: vec![(DiagMessage::Str(Cow::Owned(track)), Style::NoStyle)],
+            span: MultiSpan::new(),
+        }
+    }
+
+    /// Hash used to determine if two diagnostics are the same. Used by
+    /// `DiagCtxtInner::emitted_diagnostics`. Some fields are ignored for the hash.
+    pub(crate) fn dedup_hash(&self) -> Hash128 {
+        // Deconstruct to ensure all fields are considered.
+        let DiagInner {
+            level,
+            messages,
+            code,
+            span,
+            children,
+            suggestions,
+            args,
+            is_lint,
+            long_ty_path: _, // ignore
+            emitted_at: _,   // ignore
+        } = self;
+
+        let hashed_parts = (
+            std::mem::discriminant(level), // ignore the field within `Warning`
+            messages,
+            code,
+            span,
+            children,
+            suggestions,
+            args.as_slice(),
+            is_lint,
+        );
+
+        let mut hasher = StableHasher::new();
+        hashed_parts.hash(&mut hasher);
+        hasher.finish()
+    }
+}
+
+/// A "sub"-diagnostic attached to a parent diagnostic.
+/// For example, a note attached to an error.
+#[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
+pub struct Subdiag {
+    pub level: Sublevel,
+    pub messages: Vec<(DiagMessage, Style)>,
+    pub span: MultiSpan,
+}
+
+/// Used for emitting structured error messages and other diagnostic information.
+/// Wraps a `DiagInner`, adding some useful things.
+/// - The `dcx` field, allowing it to (a) emit itself, and (b) do a drop check
+///   that it has been emitted or cancelled.
+///
+/// Each constructed `Diag` must be consumed by a function such as
+/// `emit_bug`/`emit_fatal`/`emit_err`/`emit`, `cancel`, or `delay_as_bug`. A
+/// panic occurs if a `Diag` is dropped without being consumed by one of these
+/// functions.
+///
+/// If there is some state in a downstream crate you would like to access in
+/// the methods of `Diag` here, consider extending `DiagCtxtFlags`.
+#[must_use]
+pub struct Diag<'a> {
+    pub dcx: DiagCtxtHandle<'a>,
+
+    /// Why the `Option`? It is always `Some` until the `Diag` is consumed via
+    /// `emit`, `cancel`, etc. At that point it is consumed and replaced with
+    /// `None`. Then `drop` checks that it is `None`; if not, it panics because
+    /// a diagnostic was built but not used.
+    ///
+    /// Why the Box? `DiagInner` is a large type, and `Diag` is often used as a
+    /// return value, especially within the frequently-used `PResult` type. In
+    /// theory, return value optimization (RVO) should avoid unnecessary
+    /// copying. In practice, it does not (at the time of writing).
+    diag: Option<Box<DiagInner>>,
+}
+
+// Cloning a `Diag` is a recipe for a diagnostic being emitted twice, which
+// would be bad.
+impl !Clone for Diag<'_> {}
+
+rustc_data_structures::static_assert_size!(Diag<'_>, 3 * size_of::<usize>());
+
+impl Deref for Diag<'_> {
+    type Target = DiagInner;
+
+    fn deref(&self) -> &DiagInner {
+        self.diag.as_ref().unwrap()
+    }
+}
+
+impl DerefMut for Diag<'_> {
+    fn deref_mut(&mut self) -> &mut DiagInner {
+        self.diag.as_mut().unwrap()
+    }
+}
+
+impl Debug for Diag<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.diag.fmt(f)
+    }
+}
+
+/// `Diag` impls many `&mut self -> &mut Self` methods. Each one modifies an
+/// existing diagnostic, either in a standalone fashion, e.g.
+/// `err.code(code);`, or in a chained fashion to make multiple modifications,
+/// e.g. `err.code(code).span(span);`.
+///
+/// This macro creates an equivalent `self -> Self` method, with a `with_`
+/// prefix. This can be used in a chained fashion when making a new diagnostic,
+/// e.g. `let err = struct_err(msg).with_code(code);`, or emitting a new
+/// diagnostic, e.g. `struct_err(msg).with_code(code).emit();`.
+///
+/// Although the latter method can be used to modify an existing diagnostic,
+/// e.g. `err = err.with_code(code);`, this should be avoided because the former
+/// method gives shorter code, e.g. `err.code(code);`.
+///
+/// Note: the `with_` methods are added only when needed. If you want to use
+/// one and it's not defined, feel free to add it.
+///
+/// Note: any doc comments must be within the `with_fn!` call.
+macro_rules! with_fn {
+    {
+        $with_f:ident,
+        $(#[$attrs:meta])*
+        pub fn $f:ident(&mut $self:ident, $($name:ident: $ty:ty),* $(,)?) -> &mut Self {
+            $($body:tt)*
+        }
+    } => {
+        // The original function.
+        $(#[$attrs])*
+        #[doc = concat!("See [`Diag::", stringify!($f), "()`].")]
+        pub fn $f(&mut $self, $($name: $ty),*) -> &mut Self {
+            $($body)*
+        }
+
+        // The `with_*` variant.
+        $(#[$attrs])*
+        #[doc = concat!("See [`Diag::", stringify!($f), "()`].")]
+        pub fn $with_f(mut $self, $($name: $ty),*) -> Self {
+            $self.$f($($name),*);
+            $self
+        }
+    };
+}
+
+impl<'a> Diag<'a> {
+    #[track_caller]
+    pub fn new(dcx: DiagCtxtHandle<'a>, level: Level, message: impl Into<DiagMessage>) -> Self {
+        Self::new_diagnostic(dcx, DiagInner::new(level, message))
+    }
+
+    /// Allow moving diagnostics between different error tainting contexts
+    pub fn with_dcx(mut self, dcx: DiagCtxtHandle<'_>) -> Diag<'_> {
+        Diag { dcx, diag: self.diag.take() }
+    }
+
+    /// Creates a new `Diag` with an already constructed diagnostic.
+    #[track_caller]
+    pub(crate) fn new_diagnostic(dcx: DiagCtxtHandle<'a>, diag: DiagInner) -> Self {
+        debug!("Created new diagnostic");
+        Self { dcx, diag: Some(Box::new(diag)) }
+    }
+
+    /// Delay emission of this diagnostic as a bug.
+    ///
+    /// This can be useful in contexts where an error indicates a bug but
+    /// typically this only happens when other compilation errors have already
+    /// happened. In those cases this can be used to defer emission of this
+    /// diagnostic as a bug in the compiler only if no other errors have been
+    /// emitted.
+    ///
+    /// In the meantime, though, callsites are required to deal with the "bug"
+    /// locally in whichever way makes the most sense.
+    #[track_caller]
+    pub fn downgrade_to_delayed_bug(&mut self) {
+        assert!(
+            matches!(self.level, Level::Error | Level::DelayedBug),
+            "downgrade_to_delayed_bug: cannot downgrade {:?} to DelayedBug: not an error",
+            self.level
+        );
+        self.level = Level::DelayedBug;
+    }
+
+    /// Make emitting this diagnostic fatal.
+    #[track_caller]
+    pub fn upgrade_to_fatal(mut self) -> Diag<'a> {
+        assert!(
+            matches!(self.level, Level::Error),
+            "upgrade_to_fatal: cannot upgrade {:?} to Fatal: not an error",
+            self.level
+        );
+        self.level = Level::Fatal;
+
+        // Take is okay since we immediately rewrap it in another diagnostic.
+        // i.e. we do emit it despite defusing the original diagnostic's drop bomb.
+        let diag = self.diag.take();
+        Diag { dcx: self.dcx, diag }
+    }
+
+    with_fn! { with_span_label,
+    /// Appends a labeled span to the diagnostic.
+    ///
+    /// Labels are used to convey additional context for the diagnostic's primary span. They will
+    /// be shown together with the original diagnostic's span, *not* with spans added by
+    /// `span_note`, `span_help`, etc. Therefore, if the primary span is not displayable (because
+    /// the span is `DUMMY_SP` or the source code isn't found), labels will not be displayed
+    /// either.
+    ///
+    /// Implementation-wise, the label span is pushed onto the [`MultiSpan`] that was created when
+    /// the diagnostic was constructed. However, the label span is *not* considered a
+    /// ["primary span"][`MultiSpan`]; only the `Span` supplied when creating the diagnostic is
+    /// primary.
+    pub fn span_label(&mut self, span: Span, label: impl Into<DiagMessage>) -> &mut Self {
+        self.span.push_span_label(span, label.into());
+        self
+    } }
+
+    with_fn! { with_span_context,
+    pub fn span_context(&mut self, span: Span) -> &mut Self {
+        self.span.push_span_context(span);
+        self
+    } }
+
+    with_fn! { with_span_labels,
+    /// Labels all the given spans with the provided label.
+    /// See [`Self::span_label()`] for more information.
+    pub fn span_labels(&mut self, spans: impl IntoIterator<Item = Span>, label: &str) -> &mut Self {
+        for span in spans {
+            self.span_label(span, label.to_string());
+        }
+        self
+    } }
+
+    pub fn replace_span_with(&mut self, after: Span, keep_label: bool) -> &mut Self {
+        let before = self.span.clone();
+        self.span(after);
+        for span_label in before.span_labels() {
+            if let Some(label) = span_label.label {
+                if span_label.is_primary && keep_label {
+                    self.span.push_span_label(after, label);
+                } else {
+                    self.span.push_span_label(span_label.span, label);
+                }
+            }
+        }
+        self
+    }
+
+    pub fn note_expected_found(
+        &mut self,
+        expected_label: &str,
+        expected: DiagStyledString,
+        found_label: &str,
+        found: DiagStyledString,
+    ) -> &mut Self {
+        self.note_expected_found_extra(
+            expected_label,
+            expected,
+            found_label,
+            found,
+            DiagStyledString::normal(""),
+            DiagStyledString::normal(""),
+        )
+    }
+
+    pub fn note_expected_found_extra(
+        &mut self,
+        expected_label: &str,
+        expected: DiagStyledString,
+        found_label: &str,
+        found: DiagStyledString,
+        expected_extra: DiagStyledString,
+        found_extra: DiagStyledString,
+    ) -> &mut Self {
+        let expected_label = expected_label.to_string();
+        let expected_label = if expected_label.is_empty() {
+            "expected".to_string()
+        } else {
+            format!("expected {expected_label}")
+        };
+        let found_label = found_label.to_string();
+        let found_label = if found_label.is_empty() {
+            "found".to_string()
+        } else {
+            format!("found {found_label}")
+        };
+        let (found_padding, expected_padding) = if expected_label.len() > found_label.len() {
+            (expected_label.len() - found_label.len(), 0)
+        } else {
+            (0, found_label.len() - expected_label.len())
+        };
+        let mut msg = vec![StringPart::normal(format!(
+            "{}{} `",
+            " ".repeat(expected_padding),
+            expected_label
+        ))];
+        msg.extend(expected.0);
+        msg.push(StringPart::normal(format!("`")));
+        msg.extend(expected_extra.0);
+        msg.push(StringPart::normal(format!("\n")));
+        msg.push(StringPart::normal(format!("{}{} `", " ".repeat(found_padding), found_label)));
+        msg.extend(found.0);
+        msg.push(StringPart::normal(format!("`")));
+        msg.extend(found_extra.0);
+
+        // For now, just attach these as notes.
+        self.highlighted_note(msg);
+        self
+    }
+
+    pub fn note_trait_signature(&mut self, name: Symbol, signature: String) -> &mut Self {
+        self.highlighted_note(vec![
+            StringPart::normal(format!("`{name}` from trait: `")),
+            StringPart::highlighted(signature),
+            StringPart::normal("`"),
+        ]);
+        self
+    }
+
+    with_fn! { with_note,
+    /// Add a note attached to this diagnostic.
+    pub fn note(&mut self, msg: impl Into<DiagMessage>) -> &mut Self {
+        self.sub(Sublevel::Note, msg, MultiSpan::new());
+        self
+    } }
+
+    pub fn highlighted_note(&mut self, msg: Vec<StringPart>) -> &mut Self {
+        self.sub_with_highlights(Sublevel::Note, msg, MultiSpan::new());
+        self
+    }
+
+    pub fn highlighted_span_note(
+        &mut self,
+        span: impl Into<MultiSpan>,
+        msg: Vec<StringPart>,
+    ) -> &mut Self {
+        self.sub_with_highlights(Sublevel::Note, msg, span.into());
+        self
+    }
+
+    /// This is like [`Diag::note()`], but it's only printed once.
+    pub fn note_once(&mut self, msg: impl Into<DiagMessage>) -> &mut Self {
+        self.sub(Sublevel::OnceNote, msg, MultiSpan::new());
+        self
+    }
+
+    with_fn! { with_span_note,
+    /// Prints the span with a note above it.
+    /// This is like [`Diag::note()`], but it gets its own span.
+    pub fn span_note(
+        &mut self,
+        sp: impl Into<MultiSpan>,
+        msg: impl Into<DiagMessage>,
+    ) -> &mut Self {
+        self.sub(Sublevel::Note, msg, sp.into());
+        self
+    } }
+
+    /// Prints the span with a note above it.
+    /// This is like [`Diag::note_once()`], but it gets its own span.
+    pub fn span_note_once<S: Into<MultiSpan>>(
+        &mut self,
+        sp: S,
+        msg: impl Into<DiagMessage>,
+    ) -> &mut Self {
+        self.sub(Sublevel::OnceNote, msg, sp.into());
+        self
+    }
+
+    with_fn! { with_warn,
+    /// Add a warning attached to this diagnostic.
+    pub fn warn(&mut self, msg: impl Into<DiagMessage>) -> &mut Self {
+        self.sub(Sublevel::Warning, msg, MultiSpan::new());
+        self
+    } }
+
+    /// Prints the span with a warning above it.
+    /// This is like [`Diag::warn()`], but it gets its own span.
+    pub fn span_warn<S: Into<MultiSpan>>(
+        &mut self,
+        sp: S,
+        msg: impl Into<DiagMessage>,
+    ) -> &mut Self {
+        self.sub(Sublevel::Warning, msg, sp.into());
+        self
+    }
+
+    with_fn! { with_help,
+    /// Add a help message attached to this diagnostic.
+    pub fn help(&mut self, msg: impl Into<DiagMessage>) -> &mut Self {
+        self.sub(Sublevel::Help, msg, MultiSpan::new());
+        self
+    } }
+
+    /// This is like [`Diag::help()`], but it's only printed once.
+    pub fn help_once(&mut self, msg: impl Into<DiagMessage>) -> &mut Self {
+        self.sub(Sublevel::OnceHelp, msg, MultiSpan::new());
+        self
+    }
+
+    /// Add a help message attached to this diagnostic with a customizable highlighted message.
+    pub fn highlighted_help(&mut self, msg: Vec<StringPart>) -> &mut Self {
+        self.sub_with_highlights(Sublevel::Help, msg, MultiSpan::new());
+        self
+    }
+
+    /// Add a help message attached to this diagnostic with a customizable highlighted message.
+    pub fn highlighted_span_help(
+        &mut self,
+        span: impl Into<MultiSpan>,
+        msg: Vec<StringPart>,
+    ) -> &mut Self {
+        self.sub_with_highlights(Sublevel::Help, msg, span.into());
+        self
+    }
+
+    with_fn! { with_span_help,
+    /// Prints the span with some help above it.
+    /// This is like [`Diag::help()`], but it gets its own span.
+    pub fn span_help(
+        &mut self,
+        sp: impl Into<MultiSpan>,
+        msg: impl Into<DiagMessage>,
+    ) -> &mut Self {
+        self.sub(Sublevel::Help, msg, sp.into());
+        self
+    } }
+
+    /// Disallow attaching suggestions to this diagnostic.
+    /// Any suggestions attached e.g. with the `span_suggestion_*` methods
+    /// (before and after the call to `disable_suggestions`) will be ignored.
+    pub fn disable_suggestions(&mut self) -> &mut Self {
+        self.suggestions = Suggestions::Disabled;
+        self
+    }
+
+    /// Prevent new suggestions from being added to this diagnostic.
+    ///
+    /// Suggestions added before the call to `.seal_suggestions()` will be preserved
+    /// and new suggestions will be ignored.
+    pub fn seal_suggestions(&mut self) -> &mut Self {
+        if let Suggestions::Enabled(suggestions) = &mut self.suggestions {
+            let suggestions_slice = std::mem::take(suggestions).into_boxed_slice();
+            self.suggestions = Suggestions::Sealed(suggestions_slice);
+        }
+        self
+    }
+
+    /// Helper for pushing to `self.suggestions`.
+    ///
+    /// A new suggestion is added if suggestions are enabled for this diagnostic.
+    /// Otherwise, they are ignored.
+    fn push_suggestion(&mut self, suggestion: CodeSuggestion) {
+        for subst in &suggestion.substitutions {
+            for part in &subst.parts {
+                let span = part.span;
+                let call_site = span.ctxt().outer_expn_data().call_site;
+                if span.in_derive_expansion() && span.overlaps_or_adjacent(call_site) {
+                    // Ignore if spans is from derive macro.
+                    return;
+                }
+            }
+        }
+
+        if let Suggestions::Enabled(suggestions) = &mut self.suggestions {
+            suggestions.push(suggestion);
+        }
+    }
+
+    with_fn! { with_multipart_suggestion,
+    /// Show a suggestion that has multiple parts to it, always as its own subdiagnostic.
+    /// In other words, multiple changes need to be applied as part of this suggestion.
+    pub fn multipart_suggestion(
+        &mut self,
+        msg: impl Into<DiagMessage>,
+        suggestion: Vec<(Span, String)>,
+        applicability: Applicability,
+    ) -> &mut Self {
+        self.multipart_suggestion_with_style(
+            msg,
+            suggestion,
+            applicability,
+            SuggestionStyle::ShowAlways,
+        )
+    } }
+
+    /// [`Diag::multipart_suggestion()`] but you can set the [`SuggestionStyle`].
+    pub fn multipart_suggestion_with_style(
+        &mut self,
+        msg: impl Into<DiagMessage>,
+        mut suggestion: Vec<(Span, String)>,
+        applicability: Applicability,
+        style: SuggestionStyle,
+    ) -> &mut Self {
+        let mut seen = crate::FxHashSet::default();
+        suggestion.retain(|(span, msg)| seen.insert((span.lo(), span.hi(), msg.clone())));
+
+        let parts = suggestion
+            .into_iter()
+            .map(|(span, snippet)| SubstitutionPart { snippet, span })
+            .collect::<Vec<_>>();
+
+        assert!(!parts.is_empty());
+        debug_assert_eq!(
+            parts.iter().find(|part| part.span.is_empty() && part.snippet.is_empty()),
+            None,
+            "Span must not be empty and have no suggestion",
+        );
+        debug_assert_eq!(
+            parts.array_windows().find(|[a, b]| a.span.overlaps(b.span)),
+            None,
+            "suggestion must not have overlapping parts",
+        );
+
+        self.push_suggestion(CodeSuggestion {
+            substitutions: vec![Substitution { parts }],
+            msg: msg.into(),
+            style,
+            applicability,
+        });
+        self
+    }
+
+    /// Prints out a message with for a multipart suggestion without showing the suggested code.
+    ///
+    /// This is intended to be used for suggestions that are obvious in what the changes need to
+    /// be from the message, showing the span label inline would be visually unpleasant
+    /// (marginally overlapping spans or multiline spans) and showing the snippet window wouldn't
+    /// improve understandability.
+    pub fn tool_only_multipart_suggestion(
+        &mut self,
+        msg: impl Into<DiagMessage>,
+        suggestion: Vec<(Span, String)>,
+        applicability: Applicability,
+    ) -> &mut Self {
+        self.multipart_suggestion_with_style(
+            msg,
+            suggestion,
+            applicability,
+            SuggestionStyle::CompletelyHidden,
+        )
+    }
+
+    with_fn! { with_span_suggestion,
+    /// Prints out a message with a suggested edit of the code.
+    ///
+    /// In case of short messages and a simple suggestion, rustc displays it as a label:
+    ///
+    /// ```text
+    /// try adding parentheses: `(tup.0).1`
+    /// ```
+    ///
+    /// The message
+    ///
+    /// * should not end in any punctuation (a `:` is added automatically)
+    /// * should not be a question (avoid language like "did you mean")
+    /// * should not contain any phrases like "the following", "as shown", etc.
+    /// * may look like "to do xyz, use" or "to do xyz, use abc"
+    /// * may contain a name of a function, variable, or type, but not whole expressions
+    ///
+    /// See [`CodeSuggestion`] for more information.
+    pub fn span_suggestion(
+        &mut self,
+        sp: Span,
+        msg: impl Into<DiagMessage>,
+        suggestion: impl ToString,
+        applicability: Applicability,
+    ) -> &mut Self {
+        self.span_suggestion_with_style(
+            sp,
+            msg,
+            suggestion,
+            applicability,
+            SuggestionStyle::ShowCode,
+        );
+        self
+    } }
+
+    with_fn! { with_span_suggestion_with_style,
+    /// [`Diag::span_suggestion()`] but you can set the [`SuggestionStyle`].
+    pub fn span_suggestion_with_style(
+        &mut self,
+        sp: Span,
+        msg: impl Into<DiagMessage>,
+        suggestion: impl ToString,
+        applicability: Applicability,
+        style: SuggestionStyle,
+    ) -> &mut Self {
+        debug_assert!(
+            !(sp.is_empty() && suggestion.to_string().is_empty()),
+            "Span must not be empty and have no suggestion"
+        );
+        self.push_suggestion(CodeSuggestion {
+            substitutions: vec![Substitution {
+                parts: vec![SubstitutionPart { snippet: suggestion.to_string(), span: sp }],
+            }],
+            msg: msg.into(),
+            style,
+            applicability,
+        });
+        self
+    } }
+
+    with_fn! { with_span_suggestion_verbose,
+    /// Always show the suggested change.
+    pub fn span_suggestion_verbose(
+        &mut self,
+        sp: Span,
+        msg: impl Into<DiagMessage>,
+        suggestion: impl ToString,
+        applicability: Applicability,
+    ) -> &mut Self {
+        self.span_suggestion_with_style(
+            sp,
+            msg,
+            suggestion,
+            applicability,
+            SuggestionStyle::ShowAlways,
+        );
+        self
+    } }
+
+    with_fn! { with_span_suggestions,
+    /// Prints out a message with multiple suggested edits of the code.
+    /// See also [`Diag::span_suggestion()`].
+    pub fn span_suggestions(
+        &mut self,
+        sp: Span,
+        msg: impl Into<DiagMessage>,
+        suggestions: impl IntoIterator<Item = String>,
+        applicability: Applicability,
+    ) -> &mut Self {
+        self.span_suggestions_with_style(
+            sp,
+            msg,
+            suggestions,
+            applicability,
+            SuggestionStyle::ShowAlways,
+        )
+    } }
+
+    pub fn span_suggestions_with_style(
+        &mut self,
+        sp: Span,
+        msg: impl Into<DiagMessage>,
+        suggestions: impl IntoIterator<Item = String>,
+        applicability: Applicability,
+        style: SuggestionStyle,
+    ) -> &mut Self {
+        let substitutions = suggestions
+            .into_iter()
+            .map(|snippet| {
+                debug_assert!(
+                    !(sp.is_empty() && snippet.is_empty()),
+                    "Span `{sp:?}` must not be empty and have no suggestion"
+                );
+                Substitution { parts: vec![SubstitutionPart { snippet, span: sp }] }
+            })
+            .collect();
+        self.push_suggestion(CodeSuggestion {
+            substitutions,
+            msg: msg.into(),
+            style,
+            applicability,
+        });
+        self
+    }
+
+    /// Prints out a message with multiple suggested edits of the code, where each edit consists of
+    /// multiple parts.
+    /// See also [`Diag::multipart_suggestion()`].
+    pub fn multipart_suggestions(
+        &mut self,
+        msg: impl Into<DiagMessage>,
+        suggestions: impl IntoIterator<Item = Vec<(Span, String)>>,
+        applicability: Applicability,
+    ) -> &mut Self {
+        let substitutions = suggestions
+            .into_iter()
+            .map(|sugg| {
+                let mut parts = sugg
+                    .into_iter()
+                    .map(|(span, snippet)| SubstitutionPart { snippet, span })
+                    .collect::<Vec<_>>();
+
+                parts.sort_unstable_by_key(|part| part.span.lo_hi());
+
+                assert!(!parts.is_empty());
+                debug_assert_eq!(
+                    parts.iter().find(|part| part.span.is_empty() && part.snippet.is_empty()),
+                    None,
+                    "Span must not be empty and have no suggestion",
+                );
+                debug_assert_eq!(
+                    parts.array_windows().find(|[a, b]| a.span.overlaps(b.span)),
+                    None,
+                    "suggestion must not have overlapping parts",
+                );
+
+                Substitution { parts }
+            })
+            .collect();
+
+        self.push_suggestion(CodeSuggestion {
+            substitutions,
+            msg: msg.into(),
+            style: SuggestionStyle::ShowAlways,
+            applicability,
+        });
+        self
+    }
+
+    with_fn! { with_span_suggestion_short,
+    /// Prints out a message with a suggested edit of the code. If the suggestion is presented
+    /// inline, it will only show the message and not the suggestion.
+    ///
+    /// See [`CodeSuggestion`] for more information.
+    pub fn span_suggestion_short(
+        &mut self,
+        sp: Span,
+        msg: impl Into<DiagMessage>,
+        suggestion: impl ToString,
+        applicability: Applicability,
+    ) -> &mut Self {
+        self.span_suggestion_with_style(
+            sp,
+            msg,
+            suggestion,
+            applicability,
+            SuggestionStyle::HideCodeInline,
+        );
+        self
+    } }
+
+    /// Prints out a message for a suggestion without showing the suggested code.
+    ///
+    /// This is intended to be used for suggestions that are obvious in what the changes need to
+    /// be from the message, showing the span label inline would be visually unpleasant
+    /// (marginally overlapping spans or multiline spans) and showing the snippet window wouldn't
+    /// improve understandability.
+    pub fn span_suggestion_hidden(
+        &mut self,
+        sp: Span,
+        msg: impl Into<DiagMessage>,
+        suggestion: impl ToString,
+        applicability: Applicability,
+    ) -> &mut Self {
+        self.span_suggestion_with_style(
+            sp,
+            msg,
+            suggestion,
+            applicability,
+            SuggestionStyle::HideCodeAlways,
+        );
+        self
+    }
+
+    with_fn! { with_tool_only_span_suggestion,
+    /// Adds a suggestion to the JSON output that will not be shown in the CLI.
+    ///
+    /// This is intended to be used for suggestions that are *very* obvious in what the changes
+    /// need to be from the message, but we still want other tools to be able to apply them.
+    pub fn tool_only_span_suggestion(
+        &mut self,
+        sp: Span,
+        msg: impl Into<DiagMessage>,
+        suggestion: impl ToString,
+        applicability: Applicability,
+    ) -> &mut Self {
+        self.span_suggestion_with_style(
+            sp,
+            msg,
+            suggestion,
+            applicability,
+            SuggestionStyle::CompletelyHidden,
+        );
+        self
+    } }
+
+    /// Add a subdiagnostic from a type that implements `Subdiagnostic` (see
+    /// [rustc_macros::Subdiagnostic]). Performs eager formatting of any messages
+    /// used in the subdiagnostic, so suitable for use with repeated messages (i.e. re-use of
+    /// interpolated variables).
+    pub fn subdiagnostic(&mut self, subdiagnostic: impl Subdiagnostic) -> &mut Self {
+        subdiagnostic.add_to_diag(self);
+        self
+    }
+
+    with_fn! { with_span,
+    /// Add a span.
+    pub fn span(&mut self, sp: impl Into<MultiSpan>) -> &mut Self {
+        self.span = sp.into();
+        self
+    } }
+
+    pub fn is_lint(
+        &mut self,
+        name: String,
+        has_future_breakage: bool,
+        rust_version: Option<RustcVersion>,
+    ) -> &mut Self {
+        self.is_lint = Some(IsLint { name, has_future_breakage, rust_version });
+        self
+    }
+
+    with_fn! { with_code,
+    /// Add an error code.
+    pub fn code(&mut self, code: ErrCode) -> &mut Self {
+        self.code = Some(code);
+        self
+    } }
+
+    with_fn! { with_primary_message,
+    /// Add a primary message.
+    pub fn primary_message(&mut self, msg: impl Into<DiagMessage>) -> &mut Self {
+        self.messages[0] = (msg.into(), Style::NoStyle);
+        self
+    } }
+
+    with_fn! { with_arg,
+    /// Add an argument.
+    pub fn arg(
+        &mut self,
+        name: impl Into<DiagArgName>,
+        arg: impl IntoDiagArg,
+    ) -> &mut Self {
+        self.deref_mut().arg(name, arg);
+        self
+    } }
+
+    /// Convenience function for internal use, clients should use one of the
+    /// public methods above.
+    ///
+    /// Used by `proc_macro_server` for implementing `server::Diagnostic`.
+    pub fn sub(&mut self, level: Sublevel, message: impl Into<DiagMessage>, span: MultiSpan) {
+        self.deref_mut().sub(level, message, span);
+    }
+
+    /// Convenience function for internal use, clients should use one of the
+    /// public methods above.
+    fn sub_with_highlights(&mut self, level: Sublevel, messages: Vec<StringPart>, span: MultiSpan) {
+        let messages = messages.into_iter().map(|m| (m.content.into(), m.style)).collect();
+        let sub = Subdiag { level, messages, span };
+        self.children.push(sub);
+    }
+
+    /// Takes the diagnostic. For use by methods that consume the Diag: `emit`,
+    /// `cancel`, etc. Afterwards, `drop` is the only code that will be run on
+    /// `self`.
+    fn take_diag(&mut self) -> DiagInner {
+        if let Some(path) = &self.long_ty_path {
+            self.note(format!(
+                "the full name for the type has been written to '{}'",
+                path.display()
+            ));
+            self.note("consider using `--verbose` to print the full type name to the console");
+        }
+        *self.diag.take().unwrap()
+    }
+
+    /// This method allows us to access the path of the file where "long types" are written to.
+    ///
+    /// When calling `Diag::emit`, as part of that we will check if a `long_ty_path` has been set,
+    /// and if it has been then we add a note mentioning the file where the "long types" were
+    /// written to.
+    ///
+    /// When calling `tcx.short_string()` after a `Diag` is constructed, the preferred way of doing
+    /// so is `tcx.short_string(ty, diag.long_ty_path())`. The diagnostic itself is the one that
+    /// keeps the existence of a "long type" anywhere in the diagnostic, so the note telling the
+    /// user where we wrote the file to is only printed once at most, *and* it makes it much harder
+    /// to forget to set it.
+    ///
+    /// If the diagnostic hasn't been created before a "short ty string" is created, then you should
+    /// ensure that this method is called to set it `*diag.long_ty_path() = path`.
+    ///
+    /// As a rule of thumb, if you see or add at least one `tcx.short_string()` call anywhere, in a
+    /// scope, `diag.long_ty_path()` should be called once somewhere close by.
+    pub fn long_ty_path(&mut self) -> &mut Option<PathBuf> {
+        &mut self.long_ty_path
+    }
+
+    pub fn with_long_ty_path(mut self, long_ty_path: Option<PathBuf>) -> Self {
+        self.long_ty_path = long_ty_path;
+        self
+    }
+
+    /// Emit the diagnostic. Will also abort appropriately if the level is `Bug` or `Fatal`.
+    #[track_caller]
+    pub fn emit(mut self) {
+        let level = self.level; // get level before taking the inner diag
+        let diag = self.take_diag();
+        self.dcx.emit_diagnostic(diag);
+
+        match level {
+            Level::Bug => panic::panic_any(ExplicitBug),
+            Level::Fatal => crate::FatalError.raise(),
+            _ => {}
+        }
+    }
+
+    /// Use this on a `Bug` diagnostic if you need the `!` return type. Otherwise `emit` suffices.
+    /// Aborts if used on a non-`Bug` diagnostic.
+    #[track_caller]
+    pub fn emit_bug(self) -> ! {
+        assert_eq!(self.level, Level::Bug);
+        self.emit();
+        unreachable!(); // `emit` will have aborted
+    }
+
+    /// Use this on a `Fatal` diagnostic if you need the `!` return type. Otherwise `emit`
+    /// suffices. Aborts if used on a non-`Fatal` diagnostic.
+    #[track_caller]
+    pub fn emit_fatal(self) -> ! {
+        assert_eq!(self.level, Level::Fatal);
+        self.emit();
+        unreachable!(); // `emit` will have aborted
+    }
+
+    /// Use this on an `Error`/`DelayedBug` diagnostic if you need the `ErrorGuaranteed` return
+    /// type. Otherwise `emit` suffices. Aborts if used on a non-`Error`/`DelayedBug` diagnostic.
+    #[track_caller]
+    pub fn emit_err(mut self) -> ErrorGuaranteed {
+        let diag = self.take_diag();
+
+        // The only error levels that should reach here are `Error` and `DelayedBug`.
+        // (Also, even though `level` isn't `pub`, the whole `DiagInner` could
+        // be overwritten with a new one thanks to `DerefMut`. So this assert
+        // protects against that, too.)
+        assert!(
+            matches!(diag.level, Level::Error | Level::DelayedBug),
+            "invalid diagnostic level ({:?})",
+            diag.level,
+        );
+
+        let guar = self.dcx.emit_diagnostic(diag);
+        guar.unwrap()
+    }
+
+    /// Emit the diagnostic unless `delay` is true,
+    /// in which case the emission will be delayed as a bug.
+    ///
+    /// See `emit` and `delay_as_bug` for details.
+    #[track_caller]
+    pub fn emit_err_unless_delay(mut self, delay: bool) -> ErrorGuaranteed {
+        if delay {
+            self.downgrade_to_delayed_bug();
+        }
+        self.emit_err()
+    }
+
+    /// Cancel and consume the diagnostic. (A diagnostic must either be emitted or
+    /// cancelled or it will panic when dropped).
+    pub fn cancel(mut self) {
+        self.diag = None;
+        drop(self);
+    }
+
+    /// Cancels this diagnostic and returns its first message, if it exists.
+    pub fn cancel_into_message(self) -> Option<String> {
+        let s = self.diag.as_ref()?.messages.get(0)?.0.as_str().map(ToString::to_string);
+        self.cancel();
+        s
+    }
+
+    /// See `DiagCtxtHandle::stash_diagnostic` for details.
+    pub fn stash(mut self, span: Span, key: StashKey) -> Option<ErrorGuaranteed> {
+        let diag = self.take_diag();
+        self.dcx.stash_diagnostic(span, key, diag)
+    }
+
+    /// Delay emission of this diagnostic as a bug.
+    ///
+    /// This can be useful in contexts where an error indicates a bug but
+    /// typically this only happens when other compilation errors have already
+    /// happened. In those cases this can be used to defer emission of this
+    /// diagnostic as a bug in the compiler only if no other errors have been
+    /// emitted.
+    ///
+    /// In the meantime, though, callsites are required to deal with the "bug"
+    /// locally in whichever way makes the most sense.
+    #[track_caller]
+    pub fn delay_as_bug(mut self) -> ErrorGuaranteed {
+        self.downgrade_to_delayed_bug();
+        self.emit_err()
+    }
+}
+
+/// Destructor bomb: every `Diag` must be consumed (emitted, cancelled, etc.)
+/// or we emit a bug.
+impl Drop for Diag<'_> {
+    fn drop(&mut self) {
+        match self.diag.take() {
+            Some(diag) if !panicking() => {
+                self.dcx.emit_diagnostic(DiagInner::new(
+                    Level::Bug,
+                    DiagMessage::from("the following error was constructed but not emitted"),
+                ));
+                self.dcx.emit_diagnostic(*diag);
+                panic!("error was constructed but not emitted");
+            }
+            _ => {}
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! struct_span_code_err {
+    ($dcx:expr, $span:expr, $code:expr, $($message:tt)*) => ({
+        $dcx.struct_span_err($span, format!($($message)*)).with_code($code)
+    })
+}

@@ -1,0 +1,70 @@
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/type-alias-bounds.rs:23:12
+   |
+LL |     let _: AliasConstUnused<String>;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+note: required by a bound in `ct_unused_0::AliasConstUnused`
+  --> $DIR/type-alias-bounds.rs:20:30
+   |
+LL |     type AliasConstUnused<T: Copy> = (T, I32<{ DATA }>);
+   |                              ^^^^ required by this bound in `AliasConstUnused`
+
+error[E0080]: entering unreachable code
+  --> $DIR/type-alias-bounds.rs:29:52
+   |
+LL |     type AliasConstUnused where String: Copy = I32<{ 0; 0 }>;
+   |                                                    ^^^^^^^^ evaluation of `ct_unused_1::AliasConstUnused::{constant#0}` failed here
+
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/type-alias-bounds.rs:32:12
+   |
+LL |     let _: AliasConstUnused;
+   |            ^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+note: required by a bound in `ct_unused_1::AliasConstUnused`
+  --> $DIR/type-alias-bounds.rs:29:41
+   |
+LL |     type AliasConstUnused where String: Copy = I32<{ 0; 0 }>;
+   |                                         ^^^^ required by this bound in `AliasConstUnused`
+
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/type-alias-bounds.rs:40:12
+   |
+LL |     let _: AliasFnUnused<String>;
+   |            ^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+note: required by a bound in `AliasFnUnused`
+  --> $DIR/type-alias-bounds.rs:37:27
+   |
+LL |     type AliasFnUnused<T: Copy> = (T, I32<{ code() }>);
+   |                           ^^^^ required by this bound in `AliasFnUnused`
+
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/type-alias-bounds.rs:58:12
+   |
+LL |     let _: AliasAssocConstUsed<String>;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+note: required by a bound in `AliasAssocConstUsed`
+  --> $DIR/type-alias-bounds.rs:56:41
+   |
+LL |     type AliasAssocConstUsed<T: Trait + Copy> = I32<{ T::DATA }>;
+   |                                         ^^^^ required by this bound in `AliasAssocConstUsed`
+
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/type-alias-bounds.rs:66:12
+   |
+LL |     let _: AliasFnUsed<String>;
+   |            ^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+note: required by a bound in `AliasFnUsed`
+  --> $DIR/type-alias-bounds.rs:63:33
+   |
+LL |     type AliasFnUsed<T: Trait + Copy> = I32<{ code::<T>() }>;
+   |                                 ^^^^ required by this bound in `AliasFnUsed`
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0080, E0277.
+For more information about an error, try `rustc --explain E0080`.

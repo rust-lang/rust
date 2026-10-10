@@ -1,0 +1,7 @@
+
+thread 'main' ($TID) panicked at $DIR/track-caller-for-once-87707.rs:15:24:
+Here Once instance is poisoned.
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'main' ($TID) panicked at $DIR/track-caller-for-once-87707.rs:17:7:
+Once instance has previously been poisoned

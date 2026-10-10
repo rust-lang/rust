@@ -1,0 +1,16 @@
+error: lifetime may not live long enough
+  --> $DIR/implied_bounds.rs:18:9
+   |
+LL | impl<'a> Convert<'a> for () {
+   |      -- lifetime `'a` defined here
+...
+LL |     fn convert<'b, T: ?Sized>(_proof: &'b WithLifetime<'a>, x: &'a T) -> &'b T {
+   |                -- lifetime `'b` defined here
+...
+LL |         x
+   |         ^ associated function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: aborting due to 1 previous error
+

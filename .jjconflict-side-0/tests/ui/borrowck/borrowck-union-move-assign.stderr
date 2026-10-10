@@ -1,0 +1,22 @@
+error[E0382]: use of moved value: `u`
+  --> $DIR/borrowck-union-move-assign.rs:17:21
+   |
+LL |             let mut u = U { a: ManuallyDrop::new(A) };
+   |                 ----- move occurs because `u` has type `U`, which does not implement the `Copy` trait
+LL |             let a = u.a;
+   |                     --- value moved here
+LL |             let a = u.a;
+   |                     ^^^ value used here after move
+   |
+note: if `U` implemented `Clone`, you could clone the value
+  --> $DIR/borrowck-union-move-assign.rs:7:1
+   |
+LL | union U {
+   | ^^^^^^^ consider implementing `Clone` for this type
+...
+LL |             let a = u.a;
+   |                     --- you could clone this value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

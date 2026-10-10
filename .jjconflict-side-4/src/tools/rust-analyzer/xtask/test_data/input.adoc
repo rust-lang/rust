@@ -1,0 +1,90 @@
+= Changelog #256
+:sectanchors:
+:page-layout: post
+
+Hello!
+
+Commit: commit:0123456789abcdef0123456789abcdef01234567[] +
+Release: release:2022-01-01[]
+
+== New Features
+
+* **BREAKING** pr:1111[] shortcut kbd:[ctrl+r]
+- hyphen-prefixed list item
+* nested list item
+** `foo` -> `foofoo`
+** `bar` -> `barbar`
+* listing in the secondary level
+. install
+. add to config
++
+[source,json]
+----
+{"foo":"bar"}
+----
+* list item with continuation
++
+image::https://example.com/animation.gif[]
++
+image::https://example.com/animation.gif["alt text"]
++
+video::https://example.com/movie.mp4[options=loop]
++
+video::https://example.com/movie.mp4[options="autoplay,loop"]
++
+.Image
+image::https://example.com/animation.gif[]
++
+.Video
+video::https://example.com/movie.mp4[options=loop]
++
+[source,bash]
+----
+rustup update nightly
+----
++
+----
+This is a plain listing.
+----
+* single line item followed by empty lines
+
+* multiline list
+item followed by empty lines
+
+* multiline list
+  item with indent
+
+* multiline list
+item not followed by empty lines
+* multiline list
+item followed by different marker
+** foo
+** bar
+* multiline list
+item followed by list continuation
++
+paragraph
+paragraph
+
+== Another Section
+
+* foo bar baz
+* list item with an inline image
+  image:https://example.com/animation.gif[]
+
+The highlight of the month is probably pr:1111[].
+See https://example.com/manual[online manual] for more information.
+
+[source,bash]
+----
+rustup update nightly
+----
+
+[source]
+----
+rustup update nightly
+----
+
+----
+This is a plain listing.
+----

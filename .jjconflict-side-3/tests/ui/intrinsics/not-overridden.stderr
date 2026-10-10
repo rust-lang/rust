@@ -1,0 +1,11 @@
+error: must be overridden by codegen backend, but isn't
+  --> $DIR/not-overridden.rs:15:14
+   |
+LL |     unsafe { const_deallocate(std::ptr::null_mut(), 0, 0) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+query stack during panic:
+end of query stack
+error: aborting due to 1 previous error
+

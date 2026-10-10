@@ -1,0 +1,22 @@
+error: macro expansion ignores `expr` metavariable and any tokens following
+  --> $DIR/trait-non-item-macros.rs:3:9
+   |
+LL |         $a
+   |         ^^
+...
+LL |     bah!(2);
+   |     ------- caused by the macro expansion here
+   |
+   = note: the usage of `bah!` is likely invalid in trait item context
+
+error[E0308]: mismatched types
+  --> $DIR/trait-non-item-macros.rs:12:33
+   |
+LL |     let _recovery_witness: () = 0;
+   |                            --   ^ expected `()`, found integer
+   |                            |
+   |                            expected due to this
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

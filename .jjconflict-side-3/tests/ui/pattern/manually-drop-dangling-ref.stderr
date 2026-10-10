@@ -1,0 +1,10 @@
+error: constant DATA cannot be used as pattern
+  --> $DIR/manually-drop-dangling-ref.rs:5:12
+   |
+LL |     if let DATA = DATA {}
+   |            ^^^^
+   |
+   = note: constants that reference mutable or external memory or that contain dangling references cannot be used as patterns
+
+error: aborting due to 1 previous error
+

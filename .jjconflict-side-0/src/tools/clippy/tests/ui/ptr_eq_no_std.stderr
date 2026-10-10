@@ -1,0 +1,17 @@
+error: use `core::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq_no_std.rs:31:13
+   |
+LL |     let _ = a as *const _ as usize == b as *const _ as usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `core::ptr::eq(a, b)`
+   |
+   = note: `-D clippy::ptr-eq` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ptr_eq)]`
+
+error: use `core::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq_no_std.rs:33:13
+   |
+LL |     let _ = a as *const _ == b as *const _;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `core::ptr::eq(a, b)`
+
+error: aborting due to 2 previous errors
+

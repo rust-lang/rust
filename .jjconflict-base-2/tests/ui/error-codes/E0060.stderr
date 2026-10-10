@@ -1,0 +1,19 @@
+error[E0060]: this function takes at least 1 argument but 0 arguments were supplied
+  --> $DIR/E0060.rs:6:14
+   |
+LL |     unsafe { printf(); }
+   |              ^^^^^^-- argument #1 of type `*const u8` is missing
+   |
+note: function defined here
+  --> $DIR/E0060.rs:2:8
+   |
+LL |     fn printf(_: *const u8, ...) -> u32;
+   |        ^^^^^^ -
+help: provide the argument
+   |
+LL |     unsafe { printf(/* *const u8 */); }
+   |                     +++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0060`.
