@@ -820,62 +820,24 @@ impl SourceMap {
     }
 
     /// Given a 'Span', tries to tell if it's wrapped by "<>" or "()"
-    /// the algorithm searches if the next character is '>' or ')' after skipping white space
-    /// then searches the previous character to match '<' or '(' after skipping white space
+    /// the algorithm searches if the next character is '>' or ')' after skipping whitespace and comments
+    /// then searches the previous character to match '<' or '(' after skipping whitespace and comments
     /// return true if wrapped by '<>' or '()'
     pub fn span_wrapped_by_angle_or_parentheses(&self, span: Span) -> bool {
         self.span_to_source(span, |src, start_index, end_index| {
             if src.get(start_index..end_index).is_none() {
                 return Ok(false);
             }
-            // test the right side to match '>' after skipping white space
-            let end_src = &src[end_index..];
-            let mut i = 0;
-            let mut found_right_parentheses = false;
-            let mut found_right_angle = false;
-            while let Some(cc) = end_src.chars().nth(i) {
-                if cc == ' ' {
-                    i = i + 1;
-                } else if cc == '>' {
-                    // found > in the right;
-                    found_right_angle = true;
-                    break;
-                } else if cc == ')' {
-                    found_right_parentheses = true;
-                    break;
-                } else {
-                    // failed to find '>' return false immediately
-                    return Ok(false);
-                }
-            }
-            // test the left side to match '<' after skipping white space
-            i = start_index;
-            let start_src = &src[0..start_index];
-            while let Some(cc) = start_src.chars().nth(i) {
-                if cc == ' ' {
-                    if i == 0 {
-                        return Ok(false);
-                    }
-                    i = i - 1;
-                } else if cc == '<' {
-                    // found < in the left
-                    if !found_right_angle {
-                        // skip something like "(< )>"
-                        return Ok(false);
-                    }
-                    break;
-                } else if cc == '(' {
-                    if !found_right_parentheses {
-                        // skip something like "<(>)"
-                        return Ok(false);
-                    }
-                    break;
-                } else {
-                    // failed to find '<' return false immediately
-                    return Ok(false);
-                }
-            }
-            Ok(true)
+            let right = next_delim_kind(&src[end_index..]);
+            let left = prev_delim_kind(&src[..start_index]);
+            Ok(matches!(
+                (left, right),
+                (Some(rustc_lexer::TokenKind::Lt), Some(rustc_lexer::TokenKind::Gt))
+                    | (
+                        Some(rustc_lexer::TokenKind::OpenParen),
+                        Some(rustc_lexer::TokenKind::CloseParen)
+                    )
+            ))
         })
         .is_ok_and(|is_accessible| is_accessible)
     }
@@ -1325,4 +1287,30 @@ impl FilePathMapping {
 
         found
     }
+}
+
+/// First token in `src` that is not whitespace or a comment.
+fn next_delim_kind(src: &str) -> Option<rustc_lexer::TokenKind> {
+    rustc_lexer::tokenize(src, rustc_lexer::FrontmatterAllowed::No)
+        .find_map(|token| (!is_span_wrap_trivia(token.kind)).then_some(token.kind))
+}
+
+/// Last token in `src` that is not whitespace or a comment.
+fn prev_delim_kind(src: &str) -> Option<rustc_lexer::TokenKind> {
+    let mut last = None;
+    for token in rustc_lexer::tokenize(src, rustc_lexer::FrontmatterAllowed::No) {
+        if !is_span_wrap_trivia(token.kind) {
+            last = Some(token.kind);
+        }
+    }
+    last
+}
+
+fn is_span_wrap_trivia(kind: rustc_lexer::TokenKind) -> bool {
+    matches!(
+        kind,
+        rustc_lexer::TokenKind::Whitespace
+            | rustc_lexer::TokenKind::LineComment { .. }
+            | rustc_lexer::TokenKind::BlockComment { .. }
+    )
 }
