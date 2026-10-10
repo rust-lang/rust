@@ -11,6 +11,7 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, Span, bug, span_bug};
+use rustc_type_ir::{TypeFolder, TypeSuperFoldable};
 use tracing::{debug, instrument};
 
 use crate::diagnostics;
@@ -994,6 +995,30 @@ impl<'tcx> Instance<'tcx> {
         }
     }
 
+    // TODO: this and polymorphize should probably be queries,
+    // used less ad hoc, and located somewhere else
+    #[instrument(level = "debug", skip(tcx), ret)]
+    pub fn erase_escaping(&self, tcx: TyCtxt<'tcx>) -> Self {
+        struct EraseEscapingFolder<'tcx> {
+            tcx: TyCtxt<'tcx>,
+        }
+
+        impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EraseEscapingFolder<'tcx> {
+            fn cx(&self) -> TyCtxt<'tcx> {
+                self.tcx
+            }
+
+            fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+                match *t.kind() {
+                    ty::Erased(_, layout) => Ty::new_erased(self.tcx, None, layout),
+                    _ => t.super_fold_with(self),
+                }
+            }
+        }
+
+        self.fold_with(&mut EraseEscapingFolder { tcx })
+    }
+
     // TODO: this and/or is_ty_param_polymorphizable should probably be queries,
     // used less ad hoc, and located somewhere else
     #[instrument(level = "debug", skip(tcx), ret)]
@@ -1046,7 +1071,8 @@ impl<'tcx> Instance<'tcx> {
                             && !layout.uninhabited
                         {
                             let param_layout = make_param_layout(tcx, layout);
-                            let erased_ty = tcx.mk_ty_from_kind(ty::Erased(param_layout));
+                            let erased_ty =
+                                tcx.mk_ty_from_kind(ty::Erased(Some(param_ty), param_layout));
                             erased_ty.into()
                         } else {
                             arg

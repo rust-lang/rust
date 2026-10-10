@@ -1099,7 +1099,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> 
 
     // TODO: polymorphize should not be ad hoc like this
     if tcx.is_reachable_non_generic(def_id)
-        || instance.polymorphize(tcx).upstream_monomorphization(tcx).is_some()
+        || instance.erase_escaping(tcx).polymorphize(tcx).upstream_monomorphization(tcx).is_some()
     {
         // We can link to the item in question, no instance needed in this crate.
         return false;
@@ -1233,7 +1233,8 @@ fn create_fn_mono_item<'tcx>(
         crate::util::dump_closure_profile(tcx, instance);
     }
 
-    respan(source, MonoItem::Fn(instance.polymorphize(tcx)))
+    let instance = instance.erase_escaping(tcx).polymorphize(tcx);
+    respan(source, MonoItem::Fn(instance))
 }
 
 /// Creates a `MonoItem` for each method that is referenced by the vtable for

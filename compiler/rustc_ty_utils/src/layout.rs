@@ -841,7 +841,7 @@ fn layout_of_uncached<'tcx>(
             cx.layout_of(ty)?.layout
         }
 
-        ty::Erased(param_layout) => layout_of_param_layout(tcx, param_layout),
+        ty::Erased(_, param_layout) => layout_of_param_layout(tcx, param_layout),
 
         // Types with no meaningful known layout.
         ty::Param(_) | ty::Placeholder(..) => {

@@ -448,6 +448,15 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn new_erased(
+        tcx: TyCtxt<'tcx>,
+        param: Option<ParamTy>,
+        layout: ParamLayout<'tcx>,
+    ) -> Ty<'tcx> {
+        Ty::new(tcx, Erased(param, layout))
+    }
+
+    #[inline]
     pub fn new_bound(
         tcx: TyCtxt<'tcx>,
         index: ty::DebruijnIndex,
@@ -965,6 +974,14 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_param(tcx, param.index, param.name)
     }
 
+    fn new_erased(
+        tcx: TyCtxt<'tcx>,
+        param: Option<ty::ParamTy>,
+        layout: ty::ParamLayout<'tcx>,
+    ) -> Self {
+        Ty::new_erased(tcx, param, layout)
+    }
+
     fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderType<'tcx>) -> Self {
         Ty::new_placeholder(tcx, placeholder)
     }
@@ -1358,6 +1375,10 @@ impl<'tcx> Ty<'tcx> {
                 .expect("expected SIMD field to have definite array size"),
             *f0_elem_ty,
         )
+    }
+
+    pub fn erase_escaping(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        if let Erased(_, layout) = *self.kind() { Ty::new_erased(tcx, None, layout) } else { self }
     }
 
     #[inline]

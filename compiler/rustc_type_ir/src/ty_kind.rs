@@ -316,7 +316,13 @@ pub enum TyKind<I: Interner> {
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}`.
     Param(I::ParamTy),
 
-    Erased(I::ParamLayout),
+    /// An erased type parameter.
+    ///
+    /// This represents all possible instantiations of the parameter for a given layout.
+    /// The [`I::ParamTy`] is present within its defining context (e.g., function or impl) so
+    /// that information related to trait methods can be looked up. It is `None` otherwise,
+    /// to avoid leaking parameters outside their scope.
+    Erased(Option<I::ParamTy>, I::ParamLayout),
 
     /// Bound type variable, used to represent the `'a` in `for<'a> fn(&'a ())`.
     ///
@@ -487,7 +493,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             }
             Alias(is_rigid, a) => f.debug_tuple("Alias").field(&is_rigid).field(&a).finish(),
             Param(p) => write!(f, "{p:?}"),
-            Erased(l) => write!(f, "{l:?}"),
+            Erased(p, l) => write!(f, "{p:?}@{l:?}"),
             Bound(d, b) => crate::debug_bound_var(f, *d, b),
             Placeholder(p) => write!(f, "{p:?}"),
             Infer(t) => write!(f, "{:?}", t),
