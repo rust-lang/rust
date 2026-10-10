@@ -121,10 +121,11 @@ where
         extend_integer_width_mips(arg, 64);
 
         // We always pad with an integer, even if the primitive is a float. This
-        // conflicts with our reading of the specification, which would require
-        // padding floats with floats and integers with integers.
-        // However, this implementation is consistent with GCC, which means we
-        // are compatible with the de-facto ABI on the platform.
+        // is because the N64 ABI puts the n-th argument in the n-th register
+        // starting from $4 if it belongs in a GPR and in the n-th register
+        // starting from $f12 if it belongs in a FPR.
+        // Therefore padding with an integer results in skipping a FPR for the
+        // next floating point parameter.
         if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
             let kind = RegKind::from_primitive(scalar.primitive());
             arg.cast_to_and_pad_i32(CastTarget::from(Reg { kind, size }), pad_i32);
