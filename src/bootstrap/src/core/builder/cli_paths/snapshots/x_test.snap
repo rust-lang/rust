@@ -226,3 +226,4 @@ expression: test
 [Test] test::IntrinsicTest
     targets: [x86_64-unknown-linux-gnu]
     - Set({intrinsic-test})
+    - Set({library/stdarch/crates/intrinsic-test})
