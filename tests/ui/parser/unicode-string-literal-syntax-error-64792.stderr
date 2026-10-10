@@ -5,9 +5,14 @@ LL | struct X {}
    | ----------- `X` defined here
 LL |
 LL | const Y: X = X("ö");
-   |              ^^^^^^ help: use struct literal syntax instead: `X {}`
+   |              ^^^^^^
    |
    = note: a struct named `X` exists in another namespace
+help: use struct literal syntax instead
+   |
+LL - const Y: X = X("ö");
+LL + const Y: X = X {};
+   |
 
 error: aborting due to 1 previous error
 
