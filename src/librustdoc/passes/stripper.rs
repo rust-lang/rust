@@ -268,6 +268,7 @@ pub(crate) struct ImportStripper<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) is_json_output: bool,
     pub(crate) document_hidden: bool,
+    pub(crate) document_private: bool,
 }
 
 impl ImportStripper<'_> {
@@ -290,6 +291,7 @@ impl DocFolder for ImportStripper<'_> {
                 debug!("ImportStripper: stripping {:?}", i.name);
                 None
             }
+            clean::ImportItem(imp) if self.document_private => Some(self.fold_item_recur(i)),
             // clean::ImportItem(_) if !self.document_hidden && i.is_doc_hidden() => None,
             clean::ExternCrateItem { .. } | clean::ImportItem(..)
                 if i.visibility(self.tcx) != Some(Visibility::Public) =>
