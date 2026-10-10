@@ -807,7 +807,10 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 // x86-64 non-softfloat targets all require SSE2 so we can use SSE registers.
                 arg.layout.size.bits() <= 128
             }
-            // So far, we haven't implemented this logic for any other target.
+            Arch::AArch64 if spec.rustc_abi != Some(RustcAbi::Softfloat) => {
+                // aarch64 non-softfloat targets all require Neon
+                arg.layout.size.bits() <= 128
+            }
             _ => false,
         };
 
