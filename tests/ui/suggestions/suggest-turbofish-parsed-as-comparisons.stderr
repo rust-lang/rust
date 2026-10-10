@@ -1,0 +1,255 @@
+error: can't compare two types
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:24:41
+   |
+LL |     let _ = Arc::new(RwLock::new(HashMap<i32, i64>::default()));
+   |                                         ^        ^ these are parsed as "less than" and "greater than"
+   |
+help: you likely intended to write type `HashMap` with type parameters, but type parameters in expression contexts require the use of the "turbofish" `::<>`
+   |
+LL |     let _ = Arc::new(RwLock::new(HashMap::<i32, i64>::default()));
+   |                                         ++
+
+error: can't compare two types
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:26:26
+   |
+LL |     let _ = S.foo(HashMap<i32, i64>::default());
+   |                          ^        ^ these are parsed as "less than" and "greater than"
+   |
+help: you likely intended to write type `HashMap` with type parameters, but type parameters in expression contexts require the use of the "turbofish" `::<>`
+   |
+LL |     let _ = S.foo(HashMap::<i32, i64>::default());
+   |                          ++
+
+error: can't compare two types
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:28:21
+   |
+LL |     let _ = bar(Many<i32, i32, i32, i32>::new());
+   |                     ^                  ^ these are parsed as "less than" and "greater than"
+   |
+help: you likely intended to write type `Many` with type parameters, but type parameters in expression contexts require the use of the "turbofish" `::<>`
+   |
+LL |     let _ = bar(Many::<i32, i32, i32, i32>::new());
+   |                     ++
+
+error: can't compare two types
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:30:23
+   |
+LL |     let _ = S.bar(Many<i32, i32, i32, i32>::new());
+   |                       ^                  ^ these are parsed as "less than" and "greater than"
+   |
+help: you likely intended to write type `Many` with type parameters, but type parameters in expression contexts require the use of the "turbofish" `::<>`
+   |
+LL |     let _ = S.bar(Many::<i32, i32, i32, i32>::new());
+   |                       ++
+
+error: can't compare two types
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:32:21
+   |
+LL |     let _ = bar(Many<i32, i32, i32, i32>::new(), Many<i32, i32, i32, i32>::new());
+   |                     ^                  ^ these are parsed as "less than" and "greater than"
+   |
+help: you likely intended to write type `Many` with type parameters, but type parameters in expression contexts require the use of the "turbofish" `::<>`
+   |
+LL |     let _ = bar(Many::<i32, i32, i32, i32>::new(), Many<i32, i32, i32, i32>::new());
+   |                     ++
+
+error: can't compare two types
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:32:54
+   |
+LL |     let _ = bar(Many<i32, i32, i32, i32>::new(), Many<i32, i32, i32, i32>::new());
+   |                                                      ^                  ^ these are parsed as "less than" and "greater than"
+   |
+help: you likely intended to write type `Many` with type parameters, but type parameters in expression contexts require the use of the "turbofish" `::<>`
+   |
+LL |     let _ = bar(Many<i32, i32, i32, i32>::new(), Many::<i32, i32, i32, i32>::new());
+   |                                                      ++
+
+error: can't compare two types
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:35:23
+   |
+LL |     let _ = S.bar(Many<i32, i32, i32, i32>::new(), Many<i32, i32, i32, i32>::new());
+   |                       ^                  ^ these are parsed as "less than" and "greater than"
+   |
+help: you likely intended to write type `Many` with type parameters, but type parameters in expression contexts require the use of the "turbofish" `::<>`
+   |
+LL |     let _ = S.bar(Many::<i32, i32, i32, i32>::new(), Many<i32, i32, i32, i32>::new());
+   |                       ++
+
+error: can't compare two types
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:35:56
+   |
+LL |     let _ = S.bar(Many<i32, i32, i32, i32>::new(), Many<i32, i32, i32, i32>::new());
+   |                                                        ^                  ^ these are parsed as "less than" and "greater than"
+   |
+help: you likely intended to write type `Many` with type parameters, but type parameters in expression contexts require the use of the "turbofish" `::<>`
+   |
+LL |     let _ = S.bar(Many<i32, i32, i32, i32>::new(), Many::<i32, i32, i32, i32>::new());
+   |                                                        ++
+
+error: can't compare two types
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:38:27
+   |
+LL |     let _ = bar(1, 2, Many<i32, i32, i32, i32>::new());
+   |                           ^                  ^ these are parsed as "less than" and "greater than"
+   |
+help: you likely intended to write type `Many` with type parameters, but type parameters in expression contexts require the use of the "turbofish" `::<>`
+   |
+LL |     let _ = bar(1, 2, Many::<i32, i32, i32, i32>::new());
+   |                           ++
+
+error: can't compare two types
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:40:29
+   |
+LL |     let _ = S.bar(1, 2, Many<i32, i32, i32, i32>::new());
+   |                             ^                  ^ these are parsed as "less than" and "greater than"
+   |
+help: you likely intended to write type `Many` with type parameters, but type parameters in expression contexts require the use of the "turbofish" `::<>`
+   |
+LL |     let _ = S.bar(1, 2, Many::<i32, i32, i32, i32>::new());
+   |                             ++
+
+error: can't compare two types
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:42:27
+   |
+LL |     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+   |                           ^                  ^ these are parsed as "less than" and "greater than"
+   |
+help: you likely intended to write type `Many` with type parameters, but type parameters in expression contexts require the use of the "turbofish" `::<>`
+   |
+LL |     let _ = bar(a, b, Many::<i32, i32, i32, i32>::new(), c, d);
+   |                           ++
+
+error: can't compare two types
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:48:29
+   |
+LL |     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+   |                             ^                  ^ these are parsed as "less than" and "greater than"
+   |
+help: you likely intended to write type `Many` with type parameters, but type parameters in expression contexts require the use of the "turbofish" `::<>`
+   |
+LL |     let _ = S.bar(a, b, Many::<i32, i32, i32, i32>::new(), c, d);
+   |                             ++
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:42:17
+   |
+LL | struct S;
+   | --------- similarly named unit struct `S` defined here
+...
+LL |     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+   |                 ^
+   |
+help: a unit struct with a similar name exists
+   |
+LL -     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+LL +     let _ = bar(S, b, Many<i32, i32, i32, i32>::new(), c, d);
+   |
+
+error[E0425]: cannot find value `b` in this scope
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:42:20
+   |
+LL | struct S;
+   | --------- similarly named unit struct `S` defined here
+...
+LL |     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+   |                    ^
+   |
+help: a unit struct with a similar name exists
+   |
+LL -     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+LL +     let _ = bar(a, S, Many<i32, i32, i32, i32>::new(), c, d);
+   |
+
+error[E0425]: cannot find value `c` in this scope
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:42:56
+   |
+LL | struct S;
+   | --------- similarly named unit struct `S` defined here
+...
+LL |     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+   |                                                        ^
+   |
+help: a unit struct with a similar name exists
+   |
+LL -     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+LL +     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), S, d);
+   |
+
+error[E0425]: cannot find value `d` in this scope
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:42:59
+   |
+LL | struct S;
+   | --------- similarly named unit struct `S` defined here
+...
+LL |     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+   |                                                           ^
+   |
+help: a unit struct with a similar name exists
+   |
+LL -     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+LL +     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, S);
+   |
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:48:19
+   |
+LL | struct S;
+   | --------- similarly named unit struct `S` defined here
+...
+LL |     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+   |                   ^
+   |
+help: a unit struct with a similar name exists
+   |
+LL -     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+LL +     let _ = S.bar(S, b, Many<i32, i32, i32, i32>::new(), c, d);
+   |
+
+error[E0425]: cannot find value `b` in this scope
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:48:22
+   |
+LL | struct S;
+   | --------- similarly named unit struct `S` defined here
+...
+LL |     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+   |                      ^
+   |
+help: a unit struct with a similar name exists
+   |
+LL -     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+LL +     let _ = S.bar(a, S, Many<i32, i32, i32, i32>::new(), c, d);
+   |
+
+error[E0425]: cannot find value `c` in this scope
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:48:58
+   |
+LL | struct S;
+   | --------- similarly named unit struct `S` defined here
+...
+LL |     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+   |                                                          ^
+   |
+help: a unit struct with a similar name exists
+   |
+LL -     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+LL +     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), S, d);
+   |
+
+error[E0425]: cannot find value `d` in this scope
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:48:61
+   |
+LL | struct S;
+   | --------- similarly named unit struct `S` defined here
+...
+LL |     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+   |                                                             ^
+   |
+help: a unit struct with a similar name exists
+   |
+LL -     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+LL +     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, S);
+   |
+
+error: aborting due to 20 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
