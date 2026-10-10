@@ -404,6 +404,10 @@ auto:
       DOCKER_SCRIPT: x86_64-gnu-parallel-frontend.sh
     <<: *job-linux-4c
 
+  # Check the stdlib for all Tier 1 and Tier 2 targets
+  - name: test-x86_64-gnu-stdlib-important-targets
+    <<: *job-linux-4c
+
   # This job ensures commits landing on nightly still pass the full
   # test suite on the stable channel. There are some UI tests that
   # depend on the channel being built (for example if they include the
