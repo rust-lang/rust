@@ -3,8 +3,8 @@
 //! The analysis converts compiler layouts into trees of bytes, references, and
 //! definition markers. It prunes destination paths that may carry safety invariants unless
 //! safety is assumed, then converts the trees into deterministic finite automata.
-//! Comparing the automata produces an `Answer`; reference transitions can leave
-//! `Condition`s for the trait solver to discharge.
+//! Comparing the automata produces an [`rustc_middle::ty::transmute::Answer`]; reference transitions can leave
+//! [`rustc_middle::ty::transmute::Condition`]s for the trait solver to discharge.
 
 // tidy-alphabetical-start
 #![cfg_attr(test, feature(test))]
