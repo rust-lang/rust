@@ -13,6 +13,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
     ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
+use rustc_middle::mono::MonoItem;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{
     self, GenericArgKind, GenericArgsRef, Instance, ShimKind, SymbolName, Ty, TyCtxt,
@@ -102,6 +103,16 @@ pub fn reachable_non_generics_helper(tcx: TyCtxt<'_>) -> DefIdMap<SymbolExportIn
 
             let generics = tcx.generics_of(def_id);
             if generics.requires_monomorphization(tcx) {
+                return None;
+            }
+
+            let mono_item = if tcx.is_static(def_id.to_def_id()) {
+                MonoItem::Static(def_id.to_def_id())
+            } else {
+                MonoItem::Fn(Instance::mono(tcx, def_id.to_def_id()))
+            };
+
+            if !mono_item.is_instantiable(tcx) {
                 return None;
             }
 
