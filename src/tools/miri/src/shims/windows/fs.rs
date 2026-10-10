@@ -300,7 +300,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         unreachable!()
                     }
 
-                    let fd_num = this.machine.fds.insert_new(DirHandle::new(dir, &file_name));
+                    let fd_num = this.machine.fds.insert_new(DirHandle {
+                        dir,
+                        #[cfg(bootstrap)]
+                        fallback: file_name.canonicalize().unwrap(),
+                    });
                     interp_ok(Handle::File(fd_num))
                 }
                 Ok(Either::Left(file)) => {

@@ -696,13 +696,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return this.set_errno_and_return_neg1_i32(LibcError("EISDIR"));
                 }
 
-                #[cfg(bootstrap)]
-                let path = match &dirfd {
-                    Some(dir) => dir.fallback.join(&path),
-                    None => path.into(),
-                };
-
-                let fd = this.machine.fds.insert_new(DirHandle::new(dir, &path));
+                let fd = this.machine.fds.insert_new(DirHandle {
+                    dir,
+                    #[cfg(bootstrap)]
+                    fallback: match &dirfd {
+                        Some(dirfd) => dirfd.fallback.join(&path).canonicalize().unwrap(),
+                        None => path.canonicalize().unwrap(),
+                    },
+                });
                 interp_ok(Scalar::from_i32(fd))
             }
             Ok(Either::Left(file)) => {
@@ -1329,7 +1330,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         "cannot `opendir` this directory: failed to create directory handle"
                     );
                 };
-                let dir = this.machine.fds.new_ref(DirHandle::new(dir, &name));
+                let dir = this.machine.fds.new_ref(DirHandle {
+                    dir,
+                    #[cfg(bootstrap)]
+                    fallback: name.canonicalize().unwrap(),
+                });
                 let dir_fd_id = dir.id();
                 let dir_fd_num = this.machine.fds.insert(dir);
 

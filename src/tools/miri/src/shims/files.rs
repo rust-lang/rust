@@ -518,23 +518,6 @@ pub struct DirHandle {
     pub(super) fallback: std::path::PathBuf,
 }
 
-impl DirHandle {
-    pub fn new(dir: Dir, path: &std::path::Path) -> Self {
-        cfg_select! {
-            bootstrap => {
-                // Only stage 1 builds need the fallback so panicking is fine.
-                let fallback =
-                    path.canonicalize().expect("canonicalizing directory fallback should succeed");
-                DirHandle { dir, fallback }
-            }
-            _ => {
-                let _unused = path;
-                DirHandle { dir }
-            }
-        }
-    }
-}
-
 impl FileDescription for DirHandle {
     fn name(&self) -> &'static str {
         "directory"
