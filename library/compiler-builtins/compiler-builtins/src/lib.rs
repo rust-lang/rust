@@ -15,8 +15,6 @@
 #![cfg_attr(f16_enabled, feature(f16))]
 #![cfg_attr(f128_enabled, feature(f128))]
 #![cfg_attr(all(target_family = "wasm"), feature(wasm_numeric_instr))]
-//
-#![allow(unstable_name_collisions)] // FIXME(float_bits_const): remove when stable
 #![allow(unused_features)]
 #![allow(internal_features)]
 // `mem::swap` cannot be used because it may generate references to memcpy in unoptimized code.
