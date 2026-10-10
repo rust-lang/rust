@@ -1631,6 +1631,7 @@ impl<T: PointeeSized> Copy for NonNull<T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
+// SAFETY: Pointers are trivially cloneable regardless of value limitations.
 unsafe impl<T: PointeeSized> TrivialClone for NonNull<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "18598")]

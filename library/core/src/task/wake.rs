@@ -415,8 +415,10 @@ pub struct Waker {
 #[stable(feature = "futures_api", since = "1.36.0")]
 impl Unpin for Waker {}
 #[stable(feature = "futures_api", since = "1.36.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl Send for Waker {}
 #[stable(feature = "futures_api", since = "1.36.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl Sync for Waker {}
 
 impl Waker {

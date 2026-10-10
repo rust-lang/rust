@@ -552,7 +552,10 @@ fn check_file_style(base_path: &Path, check: &mut RunningCheck, file: &Path, con
         }
         // Only check core & alloc for now; to be expanded to (parts of)
         // std in the future as well.
-        if trimmed.contains("unsafe {")
+        if (trimmed.contains("unsafe {")
+            || trimmed.contains("#[unsafe(")
+            || trimmed.contains("#![unsafe(")
+            || trimmed.contains("unsafe impl"))
             && !trimmed.starts_with("//")
             && !last_safety_comment
             && !is_test

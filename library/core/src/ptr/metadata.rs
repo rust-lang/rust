@@ -210,7 +210,9 @@ impl<Dyn: PointeeSized> DynMetadata<Dyn> {
     }
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<Dyn: PointeeSized> Send for DynMetadata<Dyn> {}
+// ignore-tidy-undocumented-unsafe
 unsafe impl<Dyn: PointeeSized> Sync for DynMetadata<Dyn> {}
 
 impl<Dyn: PointeeSized> fmt::Debug for DynMetadata<Dyn> {
@@ -233,6 +235,7 @@ impl<Dyn: PointeeSized> Clone for DynMetadata<Dyn> {
 }
 
 #[doc(hidden)]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<Dyn: PointeeSized> TrivialClone for DynMetadata<Dyn> {}
 
 impl<Dyn: PointeeSized> Eq for DynMetadata<Dyn> {}

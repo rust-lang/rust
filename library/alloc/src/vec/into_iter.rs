@@ -257,8 +257,10 @@ impl<T, A: Allocator> AsRef<[T]> for IntoIter<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Send, A: Allocator + Send> Send for IntoIter<T, A> {}
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Sync, A: Allocator + Sync> Sync for IntoIter<T, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -548,9 +550,11 @@ impl<T, A: Allocator> FusedIterator for IntoIter<T, A> {}
 
 #[doc(hidden)]
 #[unstable(issue = "none", feature = "trusted_fused")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T, A: Allocator> TrustedFused for IntoIter<T, A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T, A: Allocator> TrustedLen for IntoIter<T, A> {}
 
 #[stable(feature = "default_iters", since = "1.70.0")]
@@ -573,6 +577,7 @@ where
 
 #[doc(hidden)]
 #[unstable(issue = "none", feature = "std_internals")]
+// ignore-tidy-undocumented-unsafe
 #[unsafe(rustc_allow_lifetime_dependent_specialization)]
 trait NonDrop {}
 
@@ -585,6 +590,7 @@ impl<T: Copy> NonDrop for T {}
 #[unstable(issue = "none", feature = "std_internals")]
 // TrustedRandomAccess (without NoCoerce) must not be implemented because
 // subtypes/supertypes of `T` might not be `NonDrop`
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T, A: Allocator> TrustedRandomAccessNoCoerce for IntoIter<T, A>
 where
     T: NonDrop,
@@ -601,6 +607,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for IntoIter<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
     fn drop(&mut self) {
         struct DropGuard<'a, T, A: Allocator>(&'a mut IntoIter<T, A>);
@@ -628,6 +635,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
 // also refer to the vec::in_place_collect module documentation to get an overview
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T, A: Allocator> InPlaceIterable for IntoIter<T, A> {
     const EXPAND_BY: Option<NonZero<usize>> = NonZero::new(1);
     const MERGE_BY: Option<NonZero<usize>> = NonZero::new(1);
@@ -635,6 +643,7 @@ unsafe impl<T, A: Allocator> InPlaceIterable for IntoIter<T, A> {
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A> {
     type Source = Self;
 
@@ -645,6 +654,7 @@ unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A> {
 }
 
 #[cfg(not(no_global_oom_handling))]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> AsVecIntoIter for IntoIter<T> {
     type Item = T;
 

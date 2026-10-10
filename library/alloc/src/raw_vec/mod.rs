@@ -99,7 +99,9 @@ struct RawVecInner<A: Allocator = Global> {
 }
 
 // FIXME: Consider moving these impls to `RawVec`, once #162850 is resolved.
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A: Allocator + Send> Send for RawVecInner<A> {}
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A: Allocator + Sync> Sync for RawVecInner<A> {}
 impl<A: Allocator + UnwindSafe> UnwindSafe for RawVecInner<A> {}
 
@@ -436,6 +438,7 @@ impl<T, A: Allocator> RawVec<T, A> {
 }
 
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl<#[may_dangle] T, A: [const] Allocator + [const] Destruct> Drop for RawVec<T, A> {
     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
     fn drop(&mut self) {

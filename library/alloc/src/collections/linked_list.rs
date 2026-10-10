@@ -1190,6 +1190,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for LinkedList<T, A> {
     fn drop(&mut self) {
         struct DropGuard<'a, T, A: Allocator>(&'a mut LinkedList<T, A>);
@@ -1268,6 +1269,7 @@ impl<T> ExactSizeIterator for Iter<'_, T> {}
 impl<T> FusedIterator for Iter<'_, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedLen for Iter<'_, T> {}
 
 #[stable(feature = "default_iters", since = "1.70.0")]
@@ -1343,6 +1345,7 @@ impl<T> ExactSizeIterator for IterMut<'_, T> {}
 impl<T> FusedIterator for IterMut<'_, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedLen for IterMut<'_, T> {}
 
 #[stable(feature = "default_iters", since = "1.70.0")]
@@ -2082,6 +2085,7 @@ impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {}
 impl<T, A: Allocator> FusedIterator for IntoIter<T, A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T, A: Allocator> TrustedLen for IntoIter<T, A> {}
 
 #[stable(feature = "default_iters", since = "1.70.0")]
@@ -2283,31 +2287,41 @@ fn assert_covariance() {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Send, A: Allocator + Send> Send for LinkedList<T, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Sync, A: Allocator + Sync> Sync for LinkedList<T, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Sync> Send for Iter<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Sync> Sync for Iter<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Send> Send for IterMut<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Sync> Sync for IterMut<'_, T> {}
 
 #[unstable(feature = "linked_list_cursors", issue = "58533")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Sync, A: Allocator + Sync> Send for Cursor<'_, T, A> {}
 
 #[unstable(feature = "linked_list_cursors", issue = "58533")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Sync, A: Allocator + Sync> Sync for Cursor<'_, T, A> {}
 
 #[unstable(feature = "linked_list_cursors", issue = "58533")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Send, A: Allocator + Send> Send for CursorMut<'_, T, A> {}
 
 #[unstable(feature = "linked_list_cursors", issue = "58533")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Sync, A: Allocator + Sync> Sync for CursorMut<'_, T, A> {}

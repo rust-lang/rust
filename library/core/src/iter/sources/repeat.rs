@@ -147,4 +147,5 @@ impl<A: Clone> DoubleEndedIterator for Repeat<A> {
 impl<A: Clone> FusedIterator for Repeat<A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A: Clone> TrustedLen for Repeat<A> {}

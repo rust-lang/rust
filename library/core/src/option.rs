@@ -2297,6 +2297,7 @@ impl<T> crate::clone::UseCloned for Option<T> where T: crate::clone::UseCloned {
 #[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+// SAFETY: Enum discriminants are always trivially cloneable.
 const unsafe impl<T> TrivialClone for Option<T> where T: [const] TrivialClone + [const] Destruct {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2522,6 +2523,7 @@ impl<A> ExactSizeIterator for Item<A> {
     }
 }
 impl<A> FusedIterator for Item<A> {}
+// SAFETY: An extremely trivial, trustable length.
 unsafe impl<A> TrustedLen for Item<A> {}
 
 /// An iterator over a reference to the [`Some`] variant of an [`Option`].
@@ -2564,6 +2566,7 @@ impl<A> ExactSizeIterator for Iter<'_, A> {}
 impl<A> FusedIterator for Iter<'_, A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// SAFETY: An extremely trivial, trustable length.
 unsafe impl<A> TrustedLen for Iter<'_, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2613,6 +2616,7 @@ impl<A> ExactSizeIterator for IterMut<'_, A> {}
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A> FusedIterator for IterMut<'_, A> {}
 #[unstable(feature = "trusted_len", issue = "37572")]
+// SAFETY: An extremely trivial, trustable length.
 unsafe impl<A> TrustedLen for IterMut<'_, A> {}
 
 /// An iterator over the value in [`Some`] variant of an [`Option`].
@@ -2657,6 +2661,7 @@ impl<A> FusedIterator for IntoIter<A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+// SAFETY: An extremely trivial, trustable length.
 const unsafe impl<A> TrustedLen for IntoIter<A> {}
 
 /// The iterator produced by [`Option::into_flat_iter`]. See its documentation for more.
@@ -2786,6 +2791,7 @@ impl<A: ExactSizeIterator> ExactSizeIterator for OptionFlatten<A> {}
 impl<A: FusedIterator> FusedIterator for OptionFlatten<A> {}
 
 #[unstable(feature = "option_into_flat_iter", issue = "148441")]
+// SAFETY: We forward to the inner iterator, whose length is trustworthy.
 unsafe impl<A: TrustedLen> TrustedLen for OptionFlatten<A> {}
 
 /////////////////////////////////////////////////////////////////////////////

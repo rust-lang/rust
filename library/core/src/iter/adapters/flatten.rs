@@ -148,6 +148,7 @@ where
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I, U, F> TrustedLen for FlatMap<I, U, F>
 where
     I: Iterator,
@@ -158,6 +159,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I, U, F> SourceIter for FlatMap<I, U, F>
 where
     I: SourceIter + TrustedFused,
@@ -310,6 +312,7 @@ where
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> TrustedLen for Flatten<I>
 where
     I: Iterator<Item: IntoIterator>,
@@ -318,6 +321,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> SourceIter for Flatten<I>
 where
     I: SourceIter + TrustedFused + Iterator,
@@ -694,6 +698,7 @@ where
     }
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<const N: usize, I, T> TrustedLen
     for FlattenCompat<I, <[T; N] as IntoIterator>::IntoIter>
 where
@@ -701,6 +706,7 @@ where
 {
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, const N: usize, I, T> TrustedLen
     for FlattenCompat<I, <&'a [T; N] as IntoIterator>::IntoIter>
 where
@@ -708,6 +714,7 @@ where
 {
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, const N: usize, I, T> TrustedLen
     for FlattenCompat<I, <&'a mut [T; N] as IntoIterator>::IntoIter>
 where

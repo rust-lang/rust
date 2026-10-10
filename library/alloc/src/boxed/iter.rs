@@ -317,6 +317,7 @@ impl<T, const N: usize, A: Allocator> ExactSizeIterator for BoxedArrayIntoIter<T
 impl<T, const N: usize, A: Allocator> FusedIterator for BoxedArrayIntoIter<T, N, A> {}
 
 #[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
+// SAFETY: We just forward to `vec::IntoIter`, which has a trustable length.
 unsafe impl<T, const N: usize, A: Allocator> TrustedLen for BoxedArrayIntoIter<T, N, A> {}
 
 #[cfg(not(no_global_oom_handling))]

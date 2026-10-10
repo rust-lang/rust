@@ -317,6 +317,7 @@ pub struct Cell<T: ?Sized> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized> Send for Cell<T> where T: Send {}
 
 // Note that this negative impl isn't strictly necessary for correctness,
@@ -804,18 +805,25 @@ pub unsafe trait CloneFromCell: Clone {}
 // `CloneFromCell` can be implemented for types that don't have indirection and which don't access
 // `Cell`s in their `Clone` implementation. A commonly-used subset is covered here.
 #[unstable(feature = "cell_get_cloned", issue = "145329")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: CloneFromCell, const N: usize> CloneFromCell for [T; N] {}
 #[unstable(feature = "cell_get_cloned", issue = "145329")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: CloneFromCell> CloneFromCell for Option<T> {}
 #[unstable(feature = "cell_get_cloned", issue = "145329")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: CloneFromCell, E: CloneFromCell> CloneFromCell for Result<T, E> {}
 #[unstable(feature = "cell_get_cloned", issue = "145329")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized> CloneFromCell for PhantomData<T> {}
 #[unstable(feature = "cell_get_cloned", issue = "145329")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: CloneFromCell> CloneFromCell for ManuallyDrop<T> {}
 #[unstable(feature = "cell_get_cloned", issue = "145329")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: CloneFromCell> CloneFromCell for ops::Range<T> {}
 #[unstable(feature = "cell_get_cloned", issue = "145329")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: CloneFromCell> CloneFromCell for range::Range<T> {}
 
 #[unstable(feature = "cell_get_cloned", issue = "145329")]
@@ -1436,6 +1444,7 @@ impl<T: Default> RefCell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized> Send for RefCell<T> where T: Send {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1635,6 +1644,7 @@ const impl<T: ?Sized> Deref for Ref<'_, T> {
 }
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized> DerefPure for Ref<'_, T> {}
 
 impl<'b, T: ?Sized> Ref<'b, T> {
@@ -2129,6 +2139,7 @@ const impl<T: ?Sized> DerefMut for RefMut<'_, T> {
 }
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized> DerefPure for RefMut<'_, T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "18598")]
@@ -2608,6 +2619,7 @@ pub struct SyncUnsafeCell<T: ?Sized> {
 }
 
 #[unstable(feature = "sync_unsafe_cell", issue = "95439")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized + Sync> Sync for SyncUnsafeCell<T> {}
 
 #[unstable(feature = "sync_unsafe_cell", issue = "95439")]
@@ -2713,10 +2725,12 @@ fn assert_coerce_unsized(
 // user to perform unsizing coercions with `Pin<Ref<'b, T>>` pointers if they
 // can manage to create one.
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'b, T: ?Sized> PinSafePointer for Ref<'b, T> {}
 
 // The implementations of Deref/DerefMut are not malicious, so we can allow the
 // user to perform unsizing coercions with `Pin<RefMut<'b, T>>` pointers if they
 // can manage to create one.
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'b, T: ?Sized> PinSafePointer for RefMut<'b, T> {}

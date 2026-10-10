@@ -2005,6 +2005,7 @@ impl<T> ExactSizeIterator for Iter<'_, T> {}
 impl<T> FusedIterator for Iter<'_, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// SAFETY: An extremely trivial, trustable length.
 unsafe impl<A> TrustedLen for Iter<'_, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2054,6 +2055,7 @@ impl<T> ExactSizeIterator for IterMut<'_, T> {}
 impl<T> FusedIterator for IterMut<'_, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// SAFETY: An extremely trivial, trustable length.
 unsafe impl<A> TrustedLen for IterMut<'_, A> {}
 
 /// An iterator over the value in a [`Ok`] variant of a [`Result`].
@@ -2100,6 +2102,7 @@ impl<T> ExactSizeIterator for IntoIter<T> {}
 impl<T> FusedIterator for IntoIter<T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// SAFETY: An extremely trivial, trustable length.
 unsafe impl<A> TrustedLen for IntoIter<A> {}
 
 /////////////////////////////////////////////////////////////////////////////

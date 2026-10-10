@@ -171,6 +171,7 @@ where
 impl<I, const N: usize> FusedIterator for ArrayChunks<I, N> where I: FusedIterator {}
 
 #[unstable(issue = "none", feature = "trusted_fused")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I, const N: usize> TrustedFused for ArrayChunks<I, N> where I: TrustedFused + Iterator {}
 
 #[unstable(feature = "iter_array_chunks", issue = "100450")]
@@ -245,6 +246,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I, const N: usize> SourceIter for ArrayChunks<I, N>
 where
     I: SourceIter + Iterator,
@@ -259,6 +261,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: InPlaceIterable + Iterator, const N: usize> InPlaceIterable for ArrayChunks<I, N> {
     const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
     const MERGE_BY: Option<NonZero<usize>> = const {

@@ -24,6 +24,7 @@ pub(crate) const unsafe trait BytewiseEq<Rhs = Self>:
 
 macro_rules! is_bytewise_comparable {
     ($($t:ty),+ $(,)?) => {$(
+        // ignore-tidy-undocumented-unsafe
         const unsafe impl BytewiseEq for $t {}
     )+};
 }

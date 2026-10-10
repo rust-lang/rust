@@ -366,10 +366,10 @@ impl<T: Copy> Clone for MaybeUninit<T> {
     }
 }
 
-// SAFETY: the clone implementation is a copy, see above.
 #[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
-unsafe impl<T> TrivialClone for MaybeUninit<T> where MaybeUninit<T>: Clone {}
+// SAFETY: The `Copy` implementation makes this trivially correct.
+unsafe impl<T: Copy> TrivialClone for MaybeUninit<T> {}
 
 #[stable(feature = "maybe_uninit_debug", since = "1.41.0")]
 impl<T> fmt::Debug for MaybeUninit<T> {

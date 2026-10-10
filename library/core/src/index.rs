@@ -50,6 +50,7 @@ pub struct Clamp<Idx>(pub Idx);
 pub struct Last;
 
 #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> SliceIndex<[T]> for Clamp<usize> {
     type Output = T;
 
@@ -81,6 +82,7 @@ unsafe impl<T> SliceIndex<[T]> for Clamp<usize> {
 }
 
 #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> SliceIndex<[T]> for Clamp<range::Range<usize>> {
     type Output = [T];
 
@@ -124,6 +126,7 @@ unsafe impl<T> SliceIndex<[T]> for Clamp<range::Range<usize>> {
 }
 
 #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> SliceIndex<[T]> for Clamp<ops::Range<usize>> {
     type Output = [T];
 
@@ -167,6 +170,7 @@ unsafe impl<T> SliceIndex<[T]> for Clamp<ops::Range<usize>> {
 }
 
 #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> SliceIndex<[T]> for Clamp<range::RangeInclusive<usize>> {
     type Output = [T];
 
@@ -210,6 +214,7 @@ unsafe impl<T> SliceIndex<[T]> for Clamp<range::RangeInclusive<usize>> {
 }
 
 #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> SliceIndex<[T]> for Clamp<ops::RangeInclusive<usize>> {
     type Output = [T];
 
@@ -253,6 +258,7 @@ unsafe impl<T> SliceIndex<[T]> for Clamp<ops::RangeInclusive<usize>> {
 }
 
 #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> SliceIndex<[T]> for Clamp<range::RangeFrom<usize>> {
     type Output = [T];
 
@@ -284,6 +290,7 @@ unsafe impl<T> SliceIndex<[T]> for Clamp<range::RangeFrom<usize>> {
 }
 
 #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> SliceIndex<[T]> for Clamp<ops::RangeFrom<usize>> {
     type Output = [T];
 
@@ -315,6 +322,7 @@ unsafe impl<T> SliceIndex<[T]> for Clamp<ops::RangeFrom<usize>> {
 }
 
 #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> SliceIndex<[T]> for Clamp<ops::RangeTo<usize>> {
     type Output = [T];
 
@@ -346,6 +354,7 @@ unsafe impl<T> SliceIndex<[T]> for Clamp<ops::RangeTo<usize>> {
 }
 
 #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> SliceIndex<[T]> for Clamp<range::RangeToInclusive<usize>> {
     type Output = [T];
 
@@ -377,6 +386,7 @@ unsafe impl<T> SliceIndex<[T]> for Clamp<range::RangeToInclusive<usize>> {
 }
 
 #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> SliceIndex<[T]> for Clamp<ops::RangeToInclusive<usize>> {
     type Output = [T];
 
@@ -408,6 +418,7 @@ unsafe impl<T> SliceIndex<[T]> for Clamp<ops::RangeToInclusive<usize>> {
 }
 
 #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> SliceIndex<[T]> for Clamp<ops::RangeFull> {
     type Output = [T];
 
@@ -439,6 +450,7 @@ unsafe impl<T> SliceIndex<[T]> for Clamp<ops::RangeFull> {
 }
 
 #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> SliceIndex<[T]> for Last {
     type Output = T;
 

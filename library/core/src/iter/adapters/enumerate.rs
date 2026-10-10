@@ -262,10 +262,12 @@ where
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> TrustedRandomAccess for Enumerate<I> where I: TrustedRandomAccess {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> TrustedRandomAccessNoCoerce for Enumerate<I>
 where
     I: TrustedRandomAccessNoCoerce,
@@ -277,12 +279,15 @@ where
 impl<I> FusedIterator for Enumerate<I> where I: FusedIterator {}
 
 #[unstable(issue = "none", feature = "trusted_fused")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: TrustedFused> TrustedFused for Enumerate<I> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> TrustedLen for Enumerate<I> where I: TrustedLen {}
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> SourceIter for Enumerate<I>
 where
     I: SourceIter,
@@ -297,6 +302,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: InPlaceIterable> InPlaceIterable for Enumerate<I> {
     const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
     const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;

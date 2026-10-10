@@ -258,4 +258,5 @@ impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {
 impl<T, A: Allocator> FusedIterator for IntoIter<T, A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T, A: Allocator> TrustedLen for IntoIter<T, A> {}

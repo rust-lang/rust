@@ -645,6 +645,7 @@ pub unsafe trait CloneToUninit {
 }
 
 #[unstable(feature = "clone_to_uninit", issue = "126799")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Clone> CloneToUninit for T {
     #[inline]
     unsafe fn clone_to_uninit(&self, dest: *mut u8) {
@@ -654,6 +655,7 @@ unsafe impl<T: Clone> CloneToUninit for T {
 }
 
 #[unstable(feature = "clone_to_uninit", issue = "126799")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Clone> CloneToUninit for [T] {
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
@@ -665,6 +667,7 @@ unsafe impl<T: Clone> CloneToUninit for [T] {
 }
 
 #[unstable(feature = "clone_to_uninit", issue = "126799")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl CloneToUninit for str {
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
@@ -675,6 +678,7 @@ unsafe impl CloneToUninit for str {
 }
 
 #[unstable(feature = "clone_to_uninit", issue = "126799")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl CloneToUninit for crate::ffi::CStr {
     #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn clone_to_uninit(&self, dest: *mut u8) {
@@ -687,6 +691,7 @@ unsafe impl CloneToUninit for crate::ffi::CStr {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl CloneToUninit for crate::bstr::ByteStr {
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
@@ -720,6 +725,7 @@ mod impls {
                 #[doc(hidden)]
                 #[unstable(feature = "trivial_clone", issue = "none")]
                 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+                // ignore-tidy-undocumented-unsafe
                 const unsafe impl TrivialClone for $t {}
             )*
         }
@@ -744,6 +750,7 @@ mod impls {
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    // ignore-tidy-undocumented-unsafe
     const unsafe impl TrivialClone for ! {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -758,6 +765,7 @@ mod impls {
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    // ignore-tidy-undocumented-unsafe
     const unsafe impl<T: PointeeSized> TrivialClone for *const T {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -772,6 +780,7 @@ mod impls {
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    // ignore-tidy-undocumented-unsafe
     const unsafe impl<T: PointeeSized> TrivialClone for *mut T {}
 
     /// Shared references can be cloned, but mutable references *cannot*!
@@ -788,6 +797,7 @@ mod impls {
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    // ignore-tidy-undocumented-unsafe
     const unsafe impl<T: PointeeSized> TrivialClone for &T {}
 
     #[unstable(feature = "share_trait", issue = "156756")]

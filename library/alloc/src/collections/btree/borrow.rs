@@ -16,7 +16,9 @@ pub(super) struct DormantMutRef<'a, T> {
     _marker: PhantomData<&'a mut T>,
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> Sync for DormantMutRef<'a, T> where &'a mut T: Sync {}
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> Send for DormantMutRef<'a, T> where &'a mut T: Send {}
 
 impl<'a, T> DormantMutRef<'a, T> {

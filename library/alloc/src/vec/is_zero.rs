@@ -12,6 +12,7 @@ pub(super) unsafe trait IsZero {
 
 macro_rules! impl_is_zero {
     ($t:ty, $is_zero:expr) => {
+        // ignore-tidy-undocumented-unsafe
         unsafe impl IsZero for $t {
             #[inline]
             fn is_zero(&self) -> bool {
@@ -46,6 +47,7 @@ impl_is_zero!(f64, |x: f64| x.to_bits() == 0);
 // `IsZero` cannot be soundly implemented for pointers because of provenance
 // (see #135338).
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T, const N: usize> IsZero for [T; N] {
     #[inline]
     default fn is_zero(&self) -> bool {
@@ -57,6 +59,7 @@ unsafe impl<T, const N: usize> IsZero for [T; N] {
     }
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: IsZero, const N: usize> IsZero for [T; N] {
     #[inline]
     fn is_zero(&self) -> bool {
@@ -88,6 +91,7 @@ macro_rules! impl_is_zero_tuples {
         // We already have an impl for () above.
     };
     ($first_arg:ident $(,$rest:ident)*) => {
+        // ignore-tidy-undocumented-unsafe
         unsafe impl <$first_arg: IsZero, $($rest: IsZero,)*> IsZero for ($first_arg, $($rest,)*){
             #[inline]
             fn is_zero(&self) -> bool{
@@ -114,6 +118,7 @@ impl_is_zero_tuples!(A, B, C, D, E, F, G, H);
 // `Option<&mut T>` never implements `Clone`, so there's no need for an impl of
 // `SpecFromElem`.
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized> IsZero for Option<&T> {
     #[inline]
     fn is_zero(&self) -> bool {
@@ -121,6 +126,7 @@ unsafe impl<T: ?Sized> IsZero for Option<&T> {
     }
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized> IsZero for Option<Box<T>> {
     #[inline]
     fn is_zero(&self) -> bool {
@@ -136,6 +142,7 @@ unsafe impl<T: ?Sized> IsZero for Option<Box<T>> {
 // the only niche available to represent `None` is the one that's all zeros.
 macro_rules! impl_is_zero_option_of_nonzero_int {
     ($($t:ty),+ $(,)?) => {$(
+        // ignore-tidy-undocumented-unsafe
         unsafe impl IsZero for Option<NonZero<$t>> {
             #[inline]
             fn is_zero(&self) -> bool {
@@ -149,6 +156,7 @@ impl_is_zero_option_of_nonzero_int!(u8, u16, u32, u64, u128, usize, i8, i16, i32
 
 macro_rules! impl_is_zero_option_of_int {
     ($($t:ty),+ $(,)?) => {$(
+        // SAFETY: All-zeroes is a valid bitpattern for these primitives, and we explicitly verify that `None` uses a zero discriminant.
         unsafe impl IsZero for Option<$t> {
             #[inline]
             fn is_zero(&self) -> bool {
@@ -165,6 +173,7 @@ macro_rules! impl_is_zero_option_of_int {
 
 impl_is_zero_option_of_int!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, usize, isize);
 
+// SAFETY: This is a transparent wrapper.
 unsafe impl<T: IsZero> IsZero for Wrapping<T> {
     #[inline]
     fn is_zero(&self) -> bool {
@@ -172,6 +181,7 @@ unsafe impl<T: IsZero> IsZero for Wrapping<T> {
     }
 }
 
+// SAFETY: This is a transparent wrapper.
 unsafe impl<T: IsZero> IsZero for Saturating<T> {
     #[inline]
     fn is_zero(&self) -> bool {
@@ -181,9 +191,13 @@ unsafe impl<T: IsZero> IsZero for Saturating<T> {
 
 macro_rules! impl_is_zero_option_of_bool {
     ($($t:ty),+ $(,)?) => {$(
+        // SAFETY: Due to the abundant niche space, zero is always `Some(false)`.
         unsafe impl IsZero for $t {
             #[inline]
             fn is_zero(&self) -> bool {
+                const {
+                    assert!(size_of::<$t>() == 1);
+                }
                 // SAFETY: This is *not* a stable layout guarantee, but
                 // inside `core` we're allowed to rely on the current rustc
                 // behavior that options of bools will be one byte with

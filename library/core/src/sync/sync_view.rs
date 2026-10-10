@@ -102,8 +102,8 @@ pub struct SyncView<T: ?Sized> {
     inner: T,
 }
 
-// See `SyncView`'s docs for justification.
 #[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
+// SAFETY: See `SyncView`'s docs for justification.
 unsafe impl<T: ?Sized> Sync for SyncView<T> {}
 
 #[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
@@ -364,6 +364,7 @@ where
 #[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl<T> TrivialClone for SyncView<T> where T: Sync + [const] TrivialClone {}
 
 #[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]

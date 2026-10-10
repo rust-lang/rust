@@ -199,9 +199,11 @@ where
 impl<I: FusedIterator, P> FusedIterator for Filter<I, P> where P: FnMut(&I::Item) -> bool {}
 
 #[unstable(issue = "none", feature = "trusted_fused")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: TrustedFused, F> TrustedFused for Filter<I, F> {}
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<P, I> SourceIter for Filter<I, P>
 where
     I: SourceIter,
@@ -216,6 +218,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: InPlaceIterable, P> InPlaceIterable for Filter<I, P> {
     const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
     const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;

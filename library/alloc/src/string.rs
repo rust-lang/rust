@@ -2904,6 +2904,7 @@ impl ops::Deref for String {
 }
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// SAFETY: We return a stable index for deref.
 unsafe impl ops::DerefPure for String {}
 
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
@@ -3584,8 +3585,10 @@ impl fmt::Debug for Drain<'_> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl Sync for Drain<'_> {}
 #[stable(feature = "drain", since = "1.6.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl Send for Drain<'_> {}
 
 #[stable(feature = "drain", since = "1.6.0")]

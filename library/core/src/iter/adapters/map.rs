@@ -184,9 +184,11 @@ where
 impl<B, I: FusedIterator, F> FusedIterator for Map<I, F> where F: FnMut(I::Item) -> B {}
 
 #[unstable(issue = "none", feature = "trusted_fused")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: TrustedFused, F> TrustedFused for Map<I, F> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<B, I, F> TrustedLen for Map<I, F>
 where
     I: TrustedLen,
@@ -196,10 +198,12 @@ where
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I, F> TrustedRandomAccess for Map<I, F> where I: TrustedRandomAccess {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I, F> TrustedRandomAccessNoCoerce for Map<I, F>
 where
     I: TrustedRandomAccessNoCoerce,
@@ -208,6 +212,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I, F> SourceIter for Map<I, F>
 where
     I: SourceIter,
@@ -222,6 +227,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: InPlaceIterable, F> InPlaceIterable for Map<I, F> {
     const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
     const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;

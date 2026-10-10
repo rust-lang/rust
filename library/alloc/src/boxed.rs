@@ -1974,6 +1974,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// SAFETY: We explicitly do not read the `T` inside the `Box` when dropping.
 unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Box<T, A> {
     #[inline]
     fn drop(&mut self) {
@@ -2301,6 +2302,7 @@ impl<T: ?Sized, A: Allocator> DerefMut for Box<T, A> {
 }
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// SAFETY: We always return the address of the allocated pointer, which is stable.
 unsafe impl<T: ?Sized, A: Allocator> DerefPure for Box<T, A> {}
 
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
@@ -2361,6 +2363,8 @@ impl<Args: Tuple, F: AsyncFn<Args> + ?Sized, A: Allocator> AsyncFn<Args> for Box
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> for Box<T, A> {}
 
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
+// SAFETY:
 // A pointer can only be pin safe if it does not implement certain safe traits
 // maliciously. Since `Box` is fundamental, downstream crates may be able to
 // implement those traits for `Box<LocalType>`, so we must carefully check that
@@ -2380,7 +2384,6 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> fo
 // `Clone` for `Box<LocalType>`, it is not problematic for the cloned box to be
 // wrapped in `Pin`, since the same conversion could have been carried out
 // safely as `Box::pin((*p).clone())`.
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized, A: StaticAllocator> PinSafePointer for Box<T, A> {}
 
 // It is quite crucial that we only allow the `Global` allocator here.
@@ -2491,6 +2494,7 @@ impl<E: Error, A: Allocator> Error for Box<E, A> {
 }
 
 #[stable(feature = "allocator_api", since = "1.100.0")]
+// SAFETY: This just forwards to the inner allocator, whose implementation must be correct.
 unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Box<T, A> {
     #[inline]
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
