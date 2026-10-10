@@ -29,7 +29,6 @@
 #![feature(hashmap_internals)]
 #![feature(inplace_iteration)]
 #![feature(io_const_error)]
-#![feature(iter_advance_by)]
 #![feature(iter_array_chunks)]
 #![feature(iter_next_chunk)]
 #![feature(linked_list_cursors)]
