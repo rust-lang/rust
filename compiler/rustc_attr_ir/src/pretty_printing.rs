@@ -17,6 +17,8 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 use rustc_structures::{CollapseMacroDebuginfo, CrateType, Limit, NativeLibKind, SanitizerSet};
 use thin_vec::ThinVec;
 
+use crate::HashIgnoredAttrId;
+
 /// This trait is used to print attributes in `rustc_hir_pretty`.
 ///
 /// For structs and enums it can be derived using [`rustc_macros::PrintAttribute`].
@@ -32,7 +34,7 @@ pub trait PrintAttribute {
     fn print_attribute(&self, p: &mut Printer);
 }
 
-impl<T: PrintAttribute> PrintAttribute for &T {
+impl<T: ?Sized + PrintAttribute> PrintAttribute for &T {
     fn should_render(&self) -> bool {
         T::should_render(self)
     }
@@ -41,7 +43,7 @@ impl<T: PrintAttribute> PrintAttribute for &T {
         T::print_attribute(self, p)
     }
 }
-impl<T: PrintAttribute> PrintAttribute for Box<T> {
+impl<T: ?Sized + PrintAttribute> PrintAttribute for Box<T> {
     fn should_render(&self) -> bool {
         self.deref().should_render()
     }
@@ -61,7 +63,8 @@ impl<T: PrintAttribute> PrintAttribute for Option<T> {
         }
     }
 }
-impl<T: PrintAttribute> PrintAttribute for ThinVec<T> {
+
+impl<T: PrintAttribute> PrintAttribute for [T] {
     fn should_render(&self) -> bool {
         self.is_empty() || self[0].should_render()
     }
@@ -77,6 +80,16 @@ impl<T: PrintAttribute> PrintAttribute for ThinVec<T> {
             last_printed = i.should_render();
         }
         p.word("]");
+    }
+}
+
+impl<T: PrintAttribute> PrintAttribute for ThinVec<T> {
+    fn should_render(&self) -> bool {
+        self.as_slice().should_render()
+    }
+
+    fn print_attribute(&self, p: &mut Printer) {
+        self.as_slice().print_attribute(p)
     }
 }
 impl<T: PrintAttribute, T2: PrintAttribute> PrintAttribute for FxIndexMap<T, T2> {
@@ -189,7 +202,7 @@ macro_rules! print_tup {
 }
 
 print_tup!(A B C D E F G H);
-print_skip!(Span, (), ErrorGuaranteed, AttrId);
+print_skip!(Span, (), ErrorGuaranteed, AttrId, HashIgnoredAttrId);
 print_disp!(u8, u16, u32, u128, usize, bool, NonZero<u32>, Limit);
 print_debug!(
     Symbol,
