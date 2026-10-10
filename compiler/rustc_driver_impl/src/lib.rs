@@ -302,6 +302,7 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
 
         let linker = create_and_enter_global_ctxt(compiler, krate, |tcx| {
             // Make sure name resolution and macro expansion is run.
+            // This is earliest point at which name resolution is done.
             let _ = tcx.resolver_for_lowering();
 
             if callbacks.after_expansion(compiler, tcx) == Compilation::Stop {
@@ -312,9 +313,9 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
 
             passes::write_interface(tcx);
 
-            if sess.opts.output_types.contains_key(&OutputType::DepInfo)
-                && sess.opts.output_types.len() == 1
-            {
+            if sess.opts.output_types.all(|out| out <= &OutputType::DepInfo) {
+                let _metadata = rustc_metadata::fs::encode_and_write_metadata(tcx, true);
+                debug_assert!(_metadata.is_ok());
                 return None;
             }
 
@@ -325,6 +326,20 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
             tcx.ensure_ok().analysis(());
 
             if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
+                return None;
+            }
+
+            if sess
+                .opts
+                .output_types
+                .contains_key(&OutputType::FullAnalysis)
+                .then(|| {
+                    let _metadata = rustc_metadata::fs::encode_and_write_metadata(tcx, true);
+                    debug_assert!(_metadata.is_ok());
+                    Some(0)
+                })
+                .is_some_and(|_| sess.opts.output_types.all(|out| out <= &OutputType::FullAnalysis))
+            {
                 return None;
             }
 
