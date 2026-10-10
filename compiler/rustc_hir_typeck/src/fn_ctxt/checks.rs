@@ -1078,7 +1078,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         match layout.backend_repr {
                             rustc_abi::BackendRepr::Scalar(scalar) => {
-                                scalar.valid_range(&tcx).contains(u128::from(i.get())).then_some(ty)
+                                scalar.valid_range(&tcx).contains(i.as_u128()).then_some(ty)
                             }
                             _ => unreachable!(),
                         }

@@ -2011,7 +2011,7 @@ fn detect_discriminant_duplicate<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>)
                     tcx.hir_node_by_def_id(discr_def_id.expect_local())
                     && let hir::ExprKind::Lit(lit) = &tcx.hir_body(expr.body).value.kind
                     && let rustc_ast::LitKind::Int(lit_value, _int_kind) = &lit.node
-                    && *lit_value != dis.val
+                    && lit_value.as_u128() != dis.val
                 {
                     (tcx.def_span(discr_def_id), format!("`{dis}` (overflowed from `{lit_value}`)"))
                 } else {

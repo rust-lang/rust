@@ -19,19 +19,19 @@
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
 use std::borrow::{Borrow, Cow};
+use std::fmt::Formatter;
 use std::{cmp, fmt};
 
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
-use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, StableHash, Walkable};
 pub use rustc_span::AttrId;
 use rustc_span::{
     ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, LocalExpnId, Span, Spanned, Symbol, kw, respan,
-    sym,
+    sym, with_session_globals,
 };
 use thin_vec::{ThinVec, thin_vec};
 
@@ -2281,7 +2281,7 @@ pub enum LitKind {
     /// A character literal (`'a'`).
     Char(char),
     /// An integer literal (`1`).
-    Int(Pu128, LitIntType),
+    Int(CompressedIntLiteral, LitIntType),
     /// A float literal (`1.0`, `1f64` or `1E10f64`). The pre-suffix part is
     /// stored as a symbol rather than `f64` so that `LitKind` can impl `Eq`
     /// and `Hash`.
@@ -2338,6 +2338,69 @@ impl LitKind {
             | LitKind::Bool(..)
             | LitKind::Err(_) => false,
         }
+    }
+}
+
+const MAX_INLINE_INT_LITERAL_VALUE: u32 = 0b01111111111111111111111111111111;
+
+/// 128-bit integer literal that is either:
+/// - Stored inline, if its value is < 2^31
+/// - Stored as an index into a global interned table, if it is larger.
+///
+/// The highest bit of the value is set to 1 if it is interned.
+///
+/// The motivation for this optimization is to reduce the size of the LitKind AST node.
+#[derive(Clone, Copy, Encodable, Decodable, Debug, Hash, Eq, PartialEq, StableHash)]
+pub struct CompressedIntLiteral(u32);
+
+impl CompressedIntLiteral {
+    pub fn from_u128(value: u128) -> Self {
+        // Store inline
+        if value <= MAX_INLINE_INT_LITERAL_VALUE as u128 {
+            Self(value as u32)
+        } else {
+            // Store interned
+            let index = with_session_globals(|session| {
+                session.int_literal_interner.with_lock(|interner| interner.intern(value))
+            });
+            assert!(index <= MAX_INLINE_INT_LITERAL_VALUE);
+            let index = (1 << 31) | index;
+            Self(index)
+        }
+    }
+
+    #[inline]
+    pub fn as_u8(&self) -> Result<u8, std::num::TryFromIntError> {
+        self.as_u128().try_into()
+    }
+
+    #[inline]
+    pub fn as_u32(&self) -> Result<u32, std::num::TryFromIntError> {
+        self.as_u128().try_into()
+    }
+
+    #[inline]
+    pub fn as_u64(&self) -> Result<u64, std::num::TryFromIntError> {
+        self.as_u128().try_into()
+    }
+
+    #[inline]
+    pub fn as_u128(&self) -> u128 {
+        let is_inline = self.0 <= MAX_INLINE_INT_LITERAL_VALUE;
+        if is_inline {
+            self.0 as u128
+        } else {
+            let key = self.0 & MAX_INLINE_INT_LITERAL_VALUE;
+            with_session_globals(|session| {
+                session.int_literal_interner.with_lock(|interner| interner.get(key))
+            })
+        }
+    }
+}
+
+impl std::fmt::Display for CompressedIntLiteral {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        self.as_u128().fmt(f)
     }
 }
 
@@ -4488,11 +4551,11 @@ mod size_asserts {
     static_assert_size!(Item, 144);
     static_assert_size!(ItemKind, 88);
     static_assert_size!(Lifetime, 16);
-    static_assert_size!(LitKind, 24);
+    static_assert_size!(LitKind, 8);
     static_assert_size!(Local, 96);
-    static_assert_size!(MetaItem, 80);
-    static_assert_size!(MetaItemKind, 40);
-    static_assert_size!(MetaItemLit, 40);
+    static_assert_size!(MetaItem, 64);
+    static_assert_size!(MetaItemKind, 24);
+    static_assert_size!(MetaItemLit, 24);
     static_assert_size!(NormalAttr, 80);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 64);

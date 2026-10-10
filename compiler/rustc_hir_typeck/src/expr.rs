@@ -3481,7 +3481,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // If index is an unsuffixed integer, show the fixed expression:
                         if let ExprKind::Lit(lit) = idx.kind
                             && let ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) = lit.node
-                            && i.get() < types.len().try_into().expect("tuple length fits in u128")
+                            && i.as_u128()
+                                < types.len().try_into().expect("tuple length fits in u128")
                         {
                             err.span_suggestion(
                                 brackets_span,

@@ -120,6 +120,8 @@ pub struct SessionGlobals {
     metavar_spans: MetavarSpansMap,
     hygiene_data: Lock<hygiene::HygieneData>,
 
+    pub int_literal_interner: Lock<IntLiteralInterner>,
+
     /// The session's source map, if there is one. This field should only be
     /// used in places where the `Session` is truly not available, such as
     /// `<Span as Debug>::fmt`.
@@ -137,6 +139,7 @@ impl SessionGlobals {
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
             metavar_spans: Default::default(),
             hygiene_data: Lock::new(hygiene::HygieneData::new(edition)),
+            int_literal_interner: Lock::new(IntLiteralInterner::default()),
             source_map: sm_inputs.map(|inputs| Arc::new(SourceMap::with_inputs(inputs))),
         }
     }
@@ -196,6 +199,25 @@ pub fn create_default_session_globals_then<R>(f: impl FnOnce() -> R) -> R {
 // and `decode_expn_id` will need to be updated to handle concurrent
 // deserialization.
 scoped_tls::scoped_thread_local!(static SESSION_GLOBALS: SessionGlobals);
+
+#[derive(Default)]
+pub struct IntLiteralInterner {
+    literal_map: UnordMap<u32, u128>,
+}
+
+impl IntLiteralInterner {
+    #[inline]
+    pub fn intern(&mut self, value: u128) -> u32 {
+        let index = self.literal_map.len() as u32;
+        self.literal_map.insert(index, value);
+        index
+    }
+
+    #[inline]
+    pub fn get(&self, key: u32) -> u128 {
+        *self.literal_map.get(&key).unwrap()
+    }
+}
 
 #[derive(Default)]
 pub struct MetavarSpansMap(FreezeLock<UnordMap<Span, (Span, bool)>>);

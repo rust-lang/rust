@@ -232,6 +232,7 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         };
         // Detect literal value out of range `[min, max]` inclusive, avoiding use of `-min` to
         // prevent overflow/panic.
+        let lit_val = lit_val.as_u128();
         if (negated && lit_val > max + 1) || (!negated && lit_val > max) {
             return Err(self.tcx.dcx().emit_err(LiteralOutOfRange { span, ty, min, max }));
         }

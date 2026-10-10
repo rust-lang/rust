@@ -669,7 +669,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                             ast::LitKind::Int(
                                 v,
                                 ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed,
-                            ) => v.get() as i128,
+                            ) => v.as_u128() as i128,
                             _ => return true,
                         },
                         _ => bug!(),
@@ -680,7 +680,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                     let (min, max): (u128, u128) = uint_ty_range(uint_ty);
                     let lit_val: u128 = match lit.kind {
                         hir::ExprKind::Lit(li) => match li.node {
-                            ast::LitKind::Int(v, _) => v.get(),
+                            ast::LitKind::Int(v, _) => v.as_u128(),
                             _ => return true,
                         },
                         _ => bug!(),
