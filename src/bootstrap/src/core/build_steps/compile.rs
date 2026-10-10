@@ -218,8 +218,10 @@ impl CommandLineStep for Std {
 
         if Self::should_be_uplifted_from_stage_1(builder, build_compiler.stage) {
             let build_compiler_for_std_to_uplift = builder.compiler(1, builder.host_target);
-            let stage_1_stamp = builder.std(build_compiler_for_std_to_uplift, target);
-
+            let stage_1_stamp = builder.ensure(
+                Std::new(build_compiler_for_std_to_uplift, target)
+                    .is_for_mir_opt_tests(self.is_for_mir_opt_tests),
+            );
             let msg = if build_compiler_for_std_to_uplift.host == target {
                 format!(
                     "Uplifting library (stage{} -> stage{stage})",
