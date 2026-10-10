@@ -111,27 +111,35 @@ pub const unsafe fn unreachable_unchecked() -> ! {
     unsafe { intrinsics::unreachable() }
 }
 
-/// Makes a *soundness* promise to the compiler that `cond` holds.
+/// Makes a *soundness* promise to the compiler that `cond` is `true`.
 ///
-/// This may allow the optimizer to simplify things, but it might also make the generated code
-/// slower. Either way, calling it will most likely make compilation take longer.
+/// This may enable further optimization during compilation, but it might also make the
+/// generated code slower. Either way, calling it will most likely make compilation take longer.
 ///
 /// You may know this from other places as
 /// [`llvm.assume`](https://llvm.org/docs/LangRef.html#llvm-assume-intrinsic) or, in C,
 /// [`__builtin_assume`](https://clang.llvm.org/docs/LanguageExtensions.html#builtin-assume).
 ///
-/// This promotes a correctness requirement to a soundness requirement. Don't do that without
-/// very good reason.
+/// While [`assert!`] can be thought of as a _correctness requirement_, `assert_unchecked()` is a
+/// _soundness guarantee_. Do not make such guarantee without very good reason.
+///
+/// Using this function is a situational tool for micro-optimization. Any use should come with
+/// a repeatable benchmark to show the value, with the expectation to drop it later should the
+/// optimizer get smarter and no longer need it. Using this function is allowed to have no
+/// beneficial consequences at all; observable effects of evaluating `cond` to `true` are
+/// guaranteed to be observed, though.
 ///
 /// # Usage
 ///
-/// This is a situational tool for micro-optimization, and is allowed to do nothing. Any use
-/// should come with a repeatable benchmark to show the value, with the expectation to drop it
-/// later should the optimizer get smarter and no longer need it.
+/// Using this function may allow the compiler to deduce further optimization under the assumption
+/// that `cond` can't possibly ever be `false`. For example, `assert_unchecked(!my_vec.is_empty())`
+/// is likely to allow the compiler to conclude that `my_vec.first()` will always return an element,
+/// removing code within `.first()` that checks the condition of `my_vec` being empty.
 ///
-/// The more complicated the condition, the less likely this is to be useful. For example,
-/// `assert_unchecked(foo.is_sorted())` is a complex enough value that the compiler is unlikely
-/// to be able to take advantage of it.
+/// Careful thought should be given, as `cond` might either be too broad or too narrow compared
+/// to what the programmer wants to express. Furthermore, the more complicated the condition, the less
+/// likely this function is to be useful. For example, `assert_unchecked(foo.is_sorted())` is too
+/// complex/narrow for the compiler to take advantage of.
 ///
 /// There's also no need to `assert_unchecked` basic properties of things.  For example, the
 /// compiler already knows the range of `count_ones`, so there is no benefit to
@@ -143,57 +151,78 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 ///
 /// # Safety
 ///
-/// `cond` must be `true`. It is immediate UB to call this with `false`.
+/// `cond` must be `true`. It is immediate Undefined Behavior to call this with `false`.
+///
+/// As with all forms of Undefined Behavior, if the assumptions embedded in using this function
+/// turn out to be wrong - that is, if `cond` *could* possibly be `false` is some situations -
+/// the compiler may have generated nonsensical machine instructions for this situation,
+/// including in seemingly unrelated code. Therefor, avoid relying on side-effects of
+/// evaluating `cond`. For example, `assert_unchecked(is_reactor_healthy_or_shutdown())`
+/// **may not** "shut down an unhealthy reactor" if that code-path invariably leads to
+/// `cond` being `false`.
+///
+/// It is guaranteed that calling this function with `false` in debug-mode will result in
+/// an observable panic.
 ///
 /// # Example
 ///
-/// ```
-/// use core::hint;
-///
-/// /// # Safety
-/// ///
-/// /// `p` must be nonnull and valid
-/// pub unsafe fn next_value(p: *const i32) -> i32 {
-///     // SAFETY: caller invariants guarantee that `p` is not null
-///     unsafe { hint::assert_unchecked(!p.is_null()) }
-///
-///     if p.is_null() {
-///         return -1;
-///     } else {
-///         // SAFETY: caller invariants guarantee that `p` is valid
-///         unsafe { *p + 1 }
-///     }
+/// ```rust,no_run
+/// # fn read_hardware_values() -> &'static [u32] { todo!() }
+/// # const HW_GUARANTEED_LANE_COUNT: usize = 4;
+/// let values: &'static [u32] = read_hardware_values();
+/// unsafe {
+///     // Safety: The hardware guarantees this.
+///     std::hint::assert_unchecked(values.len().is_multiple_of(HW_GUARANTEED_LANE_COUNT));
 /// }
+///
+/// // The `assert_unchecked()` above guarantees to the compiler that the
+/// // length of the slice is divisible by `HW_GUARANTEED_LANE_COUNT`, possibly
+/// // enabling auto-vectoriziation without runtime-checks for tailing elements.
+/// let sum: u32 = values.iter().sum();
 /// ```
 ///
-/// Without the `assert_unchecked`, the above function produces the following with optimizations
-/// enabled:
+/// As the compiler is free to deduce any and all further guarantees it can from using this function,
+/// unless carefully written, the condition expressed in `cond` might be too broad:
 ///
-/// ```asm
-/// next_value:
-///         test    rdi, rdi
-///         je      .LBB0_1
-///         mov     eax, dword ptr [rdi]
-///         inc     eax
-///         ret
-/// .LBB0_1:
-///         mov     eax, -1
-///         ret
+/// ```rust,no_run
+/// /// ⚠️ The following example is horribly broken!
+///
+/// /// Classify non-negative f64. Return `None` if the argument is `NaN`.
+/// ///
+/// /// Safety: The argument must not be negative.
+/// ///
+/// pub unsafe fn classify_not_negative(x: f64) -> Option<&'static str> {
+///    // The argument is guaranteed to not be negative. Tell the compiler!
+///    // Hint: The following is wrong! The guarantee "x is zero or positive"
+///    // is too broad compared to just "not negative": NaN is neither negative
+///    // nor `>= 0.`.
+///    unsafe { std::hint::assert_unchecked(x >= 0.) };
+///
+///    if x.is_nan() {
+///        // The programmer got more than they bargained for: The
+///        // `assert_unchecked` above not only establishes that the value is
+///        // "not negative" but also - by implication of comparing at all -
+///        // that the value is never NaN. So the `None`-case here
+///        // is considered not possible and gets removed by the compiler.
+///        None
+///    } else if x == 0. {
+///        Some("Exactly zero")
+///    } else {
+///        Some("Positive")
+///    }
+///}
+///
+///fn main() {
+///    // NaN is not negative. One might read the safety comment above to the
+///    // effect that it is safe to call `classify_not_negative()` with NaN.
+///    let nan: f64 = std::hint::black_box(f64::NAN);
+///
+///    // This may print `Some("Positive")`, `Some("Exactly zero")`, crash
+///    // the program, or do anything else. Calling the function with an
+///    // a NaN is Undefined Behavior.
+///    dbg!(unsafe { classify_not_negative(nan) });
+///}
 /// ```
-///
-/// Adding the assertion allows the optimizer to remove the extra check:
-///
-/// ```asm
-/// next_value:
-///         mov     eax, dword ptr [rdi]
-///         inc     eax
-///         ret
-/// ```
-///
-/// This example is quite unlike anything that would be used in the real world: it is redundant
-/// to put an assertion right next to code that checks the same thing, and dereferencing a
-/// pointer already has the builtin assumption that it is nonnull. However, it illustrates the
-/// kind of changes the optimizer can make even when the behavior is less obviously related.
 #[track_caller]
 #[inline(always)]
 #[doc(alias = "assume")]
