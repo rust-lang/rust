@@ -127,7 +127,10 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
                 Some(place)
             }
             StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
-                Some(local.into())
+                if self.known_to_be_zst(self.local_decls[local].ty) {
+                    statement.make_nop(true);
+                }
+                return;
             }
             StatementKind::Coverage(_)
             | StatementKind::Intrinsic(_)
@@ -135,9 +138,13 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::ConstEvalCounter => None,
         };
+        // Under move-elimination semantics, direct ZST writes still serve to
+        // allocate the base local and give it an address. Genuinely unused
+        // assignments are later deleted by DSE.
         if let Some(place_for_ty) = place_for_ty
             && let ty = place_for_ty.ty(self.local_decls, self.tcx).ty
             && self.known_to_be_zst(ty)
+            && place_for_ty.is_indirect()
         {
             statement.make_nop(true);
         } else {

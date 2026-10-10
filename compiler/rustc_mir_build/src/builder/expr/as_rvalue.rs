@@ -348,11 +348,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
                 block = this.stmt_expr(block, expr_id, None).into_block();
                 block.and(Rvalue::Use(
-                    Operand::Constant(Box::new(ConstOperand {
-                        span: expr_span,
-                        user_ty: None,
-                        const_: Const::zero_sized(this.tcx.types.unit),
-                    })),
+                    Operand::zero_sized_constant(this.tcx.types.unit, expr_span),
                     WithRetag::Yes,
                 ))
             }

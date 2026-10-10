@@ -54,6 +54,7 @@ fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> ()
     }
 
     bb4: {
+        _0 = const ();
         StorageDead(_7);
         drop(_4) -> [return: bb5, unwind continue];
     }
