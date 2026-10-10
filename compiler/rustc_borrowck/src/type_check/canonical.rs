@@ -175,7 +175,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let param_env = self.infcx.param_env;
         // Upcast to a `Clause`, then to a `Predicate`.
         let predicate = clause.upcast(self.tcx()).upcast(self.tcx());
-        let _: Result<_, ErrorGuaranteed> = self.fully_perform_op(
+        let _: Result<(), ErrorGuaranteed> = self.fully_perform_op(
             locations,
             category,
             param_env.and(type_op::prove_predicate::ProvePredicate { predicate }),
