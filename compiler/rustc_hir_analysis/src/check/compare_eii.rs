@@ -511,7 +511,7 @@ fn report_eii_mismatch<'tcx>(
     infcx.err_ctxt().note_type_err(
         &mut diag,
         &cause,
-        trait_err_span.map(|sp| (sp, Cow::from("type in declaration"), false)),
+        trait_err_span.map(|sp| (sp.into(), Cow::from("type in declaration"), false)),
         Some(param_env.and(infer::ValuePairs::PolySigs(ExpectedFound {
             expected: ty::Binder::dummy(declaration_sig),
             found: ty::Binder::dummy(external_impl_sig),

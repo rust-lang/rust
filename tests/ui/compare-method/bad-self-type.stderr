@@ -1,6 +1,8 @@
 error[E0053]: method `poll` has an incompatible type for trait
   --> $DIR/bad-self-type.rs:10:13
    |
+LL | impl Future for MyFuture {
+LL |     type Output = ();
 LL |     fn poll(self, _: &mut Context<'_>) -> Poll<()> {
    |             ^^^^ expected `Pin<&mut MyFuture>`, found `MyFuture`
    |
@@ -14,12 +16,14 @@ LL |     fn poll(self: Pin<&mut MyFuture>, _: &mut Context<'_>) -> Poll<()> {
 error[E0053]: method `foo` has an incompatible type for trait
   --> $DIR/bad-self-type.rs:22:18
    |
+LL | impl T for MyFuture {
 LL |     fn foo(self: Box<Self>) {}
    |                  ^^^^^^^^^ expected `MyFuture`, found `Box<MyFuture>`
    |
 note: type in trait
   --> $DIR/bad-self-type.rs:17:12
    |
+LL | trait T {
 LL |     fn foo(self);
    |            ^^^^
    = note: expected signature `fn(MyFuture)`
@@ -33,12 +37,16 @@ LL +     fn foo(self) {}
 error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/bad-self-type.rs:24:17
    |
+LL | impl T for MyFuture {
+...
 LL |     fn bar(self) {}
    |                 ^ expected `Option<()>`, found `()`
    |
 note: type in trait
   --> $DIR/bad-self-type.rs:18:21
    |
+LL | trait T {
+LL |     fn foo(self);
 LL |     fn bar(self) -> Option<()>;
    |                     ^^^^^^^^^^
    = note: expected signature `fn(MyFuture) -> Option<()>`

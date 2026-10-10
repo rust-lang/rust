@@ -59,6 +59,8 @@ LL | impl Fn<()> for Foo {
 error[E0053]: method `call` has an incompatible type for trait
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:13:32
    |
+LL | impl Fn<()> for Foo {
+...
 LL |     extern "rust-call" fn call(self, args: ()) -> () {}
    |                                ^^^^ expected `&Foo`, found `Foo`
    |
@@ -151,6 +153,8 @@ LL | impl FnOnce() for Foo1 {
 error[E0053]: method `call_mut` has an incompatible type for trait
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:30:36
    |
+LL | impl FnMut<()> for Bar {
+...
 LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
    |                                    ^^^^^ types differ in mutability
    |

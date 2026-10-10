@@ -54,7 +54,9 @@ use rustc_abi::ExternAbi;
 use rustc_attr_ir::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_errors::{Applicability, Diag, DiagStyledString, IntoDiagArg, StringPart, pluralize};
+use rustc_errors::{
+    Applicability, Diag, DiagStyledString, IntoDiagArg, MultiSpan, StringPart, pluralize,
+};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor;
@@ -1463,7 +1465,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         diag: &mut Diag<'_>,
         cause: &ObligationCause<'tcx>,
-        secondary_span: Option<(Span, Cow<'static, str>, bool)>,
+        secondary_span: Option<(MultiSpan, Cow<'static, str>, bool)>,
         mut values: Option<ty::ParamEnvAnd<'tcx, ValuePairs<'tcx>>>,
         terr: TypeError<'tcx>,
         prefer_label: bool,
@@ -1639,9 +1641,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         };
 
-        let mut label_or_note = |span: Span, msg: Cow<'static, str>| {
-            if (prefer_label && is_simple_error) || &[span] == diag.span.primary_spans() {
-                diag.span_label(span, msg);
+        let mut label_or_note = |span: MultiSpan, msg: Cow<'static, str>| {
+            if !span.has_span_labels()
+                && span.span_context().is_empty()
+                && ((prefer_label && is_simple_error)
+                    || span.primary_spans() == diag.span.primary_spans())
+            {
+                for span in span.primary_spans() {
+                    diag.span_label(*span, msg.clone());
+                }
             } else {
                 diag.span_note(span, msg);
             }
@@ -1657,9 +1665,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     terr.to_string(self.tcx)
                 };
                 label_or_note(secondary_span, terr);
-                label_or_note(span, secondary_msg);
+                label_or_note(span.into(), secondary_msg);
             } else {
-                label_or_note(span, terr.to_string(self.tcx));
+                label_or_note(span.into(), terr.to_string(self.tcx));
                 label_or_note(secondary_span, secondary_msg);
             }
         } else if let Some(values) = values
@@ -1671,12 +1679,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let expected = with_forced_trimmed_paths!(e.sort_string(self.tcx));
             let found = with_forced_trimmed_paths!(f.sort_string(self.tcx));
             if expected == found {
-                label_or_note(span, terr.to_string(self.tcx));
+                label_or_note(span.into(), terr.to_string(self.tcx));
             } else {
-                label_or_note(span, Cow::from(format!("expected {expected}, found {found}")));
+                label_or_note(
+                    span.into(),
+                    Cow::from(format!("expected {expected}, found {found}")),
+                );
             }
         } else {
-            label_or_note(span, terr.to_string(self.tcx));
+            label_or_note(span.into(), terr.to_string(self.tcx));
         }
 
         if let Some(param_env) = param_env {

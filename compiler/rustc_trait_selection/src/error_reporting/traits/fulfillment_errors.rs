@@ -1878,7 +1878,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             ..
                         }),
                     ) => Some((
-                        ty.span,
+                        ty.span.into(),
                         with_forced_trimmed_paths!(Cow::from(format!(
                             "type mismatch resolving `{}`",
                             self.tcx.short_string(

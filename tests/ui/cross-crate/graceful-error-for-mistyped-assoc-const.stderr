@@ -1,6 +1,7 @@
 error[E0326]: implemented const `CONST` has an incompatible type for trait
   --> $DIR/graceful-error-for-mistyped-assoc-const.rs:10:18
    |
+LL | impl issue_41549::Trait for S {
 LL |     const CONST: () = ();
    |                  ^^ expected `u32`, found `()`
 

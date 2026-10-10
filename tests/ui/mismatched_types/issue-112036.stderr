@@ -1,6 +1,7 @@
 error[E0053]: method `drop` has an incompatible type for trait
   --> $DIR/issue-112036.rs:4:13
    |
+LL | impl Drop for Foo {
 LL |     fn drop(self) {}
    |             ^^^^ expected `&mut Foo`, found `Foo`
    |
