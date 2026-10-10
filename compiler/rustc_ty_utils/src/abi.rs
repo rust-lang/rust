@@ -10,7 +10,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     FnAbiError, HasTyCtxt, HasTypingEnv, LayoutCx, LayoutOf, TyAndLayout, fn_can_unwind,
 };
-use rustc_middle::ty::{self, InstanceKind, ShimKind, Ty, TyCtxt, Unnormalized};
+use rustc_middle::ty::{self, Instance, InstanceKind, ShimKind, Ty, TyCtxt, Unnormalized};
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, bug};
 use rustc_target::callconv::{
@@ -231,8 +231,7 @@ struct FnAbiDesc<'tcx> {
     layout_cx: LayoutCx<'tcx>,
     sig: ty::FnSig<'tcx>,
 
-    /// The function's definition, if its body can be used to deduce parameter attributes.
-    determined_fn_def_id: Option<DefId>,
+    instance: Option<Instance<'tcx>>,
     caller_location: Option<Ty<'tcx>>,
     is_virtual_call: bool,
     extra_args: &'tcx [Ty<'tcx>],
@@ -250,9 +249,7 @@ impl<'tcx> FnAbiDesc<'tcx> {
                 typing_env,
                 Unnormalized::new_wip(tcx.instantiate_bound_regions_with_erased(sig)),
             ),
-            // Parameter attributes can never be deduced for indirect calls, as there is no
-            // function body available to use.
-            determined_fn_def_id: None,
+            instance: None,
             caller_location: None,
             is_virtual_call: false,
             extra_args,
@@ -265,19 +262,13 @@ impl<'tcx> FnAbiDesc<'tcx> {
     ) -> Self {
         let ty::PseudoCanonicalInput { typing_env, value: (instance, extra_args) } = query;
         let is_virtual_call = matches!(instance.def, ty::InstanceKind::Virtual(..));
-        let is_tls_shim_call =
-            matches!(instance.def, ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(_)));
         Self {
             layout_cx: LayoutCx::new(tcx, typing_env),
             sig: tcx.normalize_erasing_regions(
                 typing_env,
                 Unnormalized::new_wip(fn_sig_for_fn_abi(tcx, instance, typing_env)),
             ),
-            // Parameter attributes can be deduced from the bodies of neither:
-            // - virtual calls, as they might call other functions from the vtable; nor
-            // - TLS shims, as they would refer to the underlying static.
-            determined_fn_def_id: (!is_virtual_call && !is_tls_shim_call)
-                .then(|| instance.def_id()),
+            instance: Some(instance),
             caller_location: instance
                 .def
                 .requires_caller_location(tcx)
@@ -312,11 +303,14 @@ fn fn_abi_of_instance_raw<'tcx>(
     // delegate to it here in order to reuse (and, if necessary, augment) its result.
     tcx.fn_abi_of_instance_no_deduced_attrs(query).map(|fn_abi| {
         let params = FnAbiDesc::for_instance(tcx, query);
-        // If the function's body can be used to deduce parameter attributes, then adjust such
-        // "no deduced attrs" ABI; otherwise, return that ABI unadjusted.
-        params.determined_fn_def_id.map_or(fn_abi, |fn_def_id| {
+        // Apply attributes deduced from MIR body. This requires that an instance MIR is its optimized MIR.
+        // For example, DropGlue(def_id, ty) MIR is compiler generated, while optimized MIR for def_id is
+        // that of an empty placeholder function `drop_glue` from the standard library.
+        if let Some(Instance { def: InstanceKind::Item(fn_def_id), .. }) = params.instance {
             fn_abi_adjust_for_deduced_attrs(&params.layout_cx, fn_abi, params.sig.abi(), fn_def_id)
-        })
+        } else {
+            fn_abi
+        }
     })
 }
 
@@ -327,7 +321,7 @@ fn arg_attrs_for_rust_scalar<'tcx>(
     layout: TyAndLayout<'tcx>,
     offset: Size,
     is_return: bool,
-    determined_fn_def_id: Option<DefId>,
+    instance: Option<Instance<'tcx>>,
 ) -> ArgAttributes {
     let mut attrs = ArgAttributes::new();
 
@@ -381,13 +375,11 @@ fn arg_attrs_for_rust_scalar<'tcx>(
                 && matches!(kind, PointerKind::MutableRef { unpin: true })
                 && !is_return
             {
-                let rustc_no_writable = match determined_fn_def_id {
-                    Some(def_id) => find_attr!(tcx, def_id, RustcNoWritable),
-                    None => true, // If no def_id exists, we make the conservative choice and disable the feature.
-                };
-
-                if !rustc_no_writable {
-                    attrs.set(ArgAttribute::Writable);
+                if let Some(Instance { def: InstanceKind::Item(def_id), .. }) = instance {
+                    let rustc_no_writable = find_attr!(tcx, def_id, RustcNoWritable);
+                    if !rustc_no_writable {
+                        attrs.set(ArgAttribute::Writable);
+                    }
                 }
             }
 
@@ -536,15 +528,12 @@ fn fn_abi_sanity_check<'tcx>(
     fn_arg_sanity_check(cx, spec_abi, &fn_abi.ret, true);
 }
 
-#[tracing::instrument(
-    level = "debug",
-    skip(cx, caller_location, determined_fn_def_id, is_virtual_call)
-)]
+#[tracing::instrument(level = "debug", skip(cx, caller_location, instance, is_virtual_call))]
 fn fn_abi_new_uncached<'tcx>(
     FnAbiDesc {
         layout_cx: ref cx,
         sig,
-        determined_fn_def_id,
+        instance,
         caller_location,
         is_virtual_call,
         extra_args,
@@ -591,7 +580,7 @@ fn fn_abi_new_uncached<'tcx>(
         };
 
         Ok(ArgAbi::new(layout, |scalar, offset| {
-            arg_attrs_for_rust_scalar(*cx, scalar, layout, offset, is_return, determined_fn_def_id)
+            arg_attrs_for_rust_scalar(*cx, scalar, layout, offset, is_return, instance)
         }))
     };
 
@@ -611,8 +600,17 @@ fn fn_abi_new_uncached<'tcx>(
         // FIXME return false for tls shim
         can_unwind: fn_can_unwind(
             tcx,
-            // Since `#[rustc_nounwind]` can change unwinding, we cannot infer unwinding by `fn_def_id` for a virtual call.
-            determined_fn_def_id,
+            instance.and_then(|instance| match instance.def {
+                InstanceKind::Item(item) => Some(item),
+                InstanceKind::Intrinsic(item) => Some(item),
+                // Used to recognize that with -Z panic-in-drop=abort, `drop_glue` never unwinds.
+                InstanceKind::Shim(ShimKind::DropGlue(def_id, _ty)) => Some(def_id),
+                InstanceKind::Shim(_) => None,
+                // Don't apply rustc_nounwind from trait method to impls.
+                InstanceKind::Virtual(..) => None,
+                // Not used with fn_abi_of_instance.
+                InstanceKind::LlvmIntrinsic(_) => None,
+            }),
             sig.abi(),
         ),
     };
