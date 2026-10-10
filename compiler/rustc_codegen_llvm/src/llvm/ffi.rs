@@ -982,7 +982,11 @@ unsafe extern "C" {
     // Operations on all values
     pub(crate) fn LLVMTypeOf(Val: &Value) -> &Type;
     pub(crate) fn LLVMGetValueName2(Val: &Value, Length: *mut size_t) -> *const c_char;
-    pub(crate) fn LLVMSetValueName2(Val: &Value, Name: *const c_char, NameLen: size_t);
+    pub(crate) fn LLVMSetValueName2(
+        Val: &Value,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+    );
     pub(crate) fn LLVMReplaceAllUsesWith<'a>(OldVal: &'a Value, NewVal: &'a Value);
     pub(crate) safe fn LLVMGetMetadata<'a>(
         Val: &'a Value,
@@ -1117,9 +1121,9 @@ unsafe extern "C" {
     // Operations on attributes
     pub(crate) fn LLVMCreateStringAttribute(
         C: &Context,
-        Name: *const c_char,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: c_uint,
-        Value: *const c_char,
+        Value: *const c_uchar, // See "PTR_LEN_STR".
         ValueLen: c_uint,
     ) -> &Attribute;
 
@@ -1139,7 +1143,10 @@ unsafe extern "C" {
     ) -> &'a Value;
 
     // Operations about llvm intrinsics
-    pub(crate) fn LLVMLookupIntrinsicID(Name: *const c_char, NameLen: size_t) -> c_uint;
+    pub(crate) fn LLVMLookupIntrinsicID(
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+    ) -> c_uint;
     pub(crate) fn LLVMIntrinsicIsOverloaded(ID: NonZero<c_uint>) -> Bool;
     pub(crate) fn LLVMGetIntrinsicDeclaration<'a>(
         Mod: &'a Module,
@@ -1675,7 +1682,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMSetComdat(V: &Value, C: &Comdat);
 
     pub(crate) fn LLVMCreateOperandBundle(
-        Tag: *const c_char,
+        Tag: *const c_uchar, // See "PTR_LEN_STR".
         TagLen: size_t,
         Args: *const &'_ Value,
         NumArgs: c_uint,
@@ -2186,7 +2193,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustAddModuleFlagU32(
         M: &Module,
         MergeBehavior: ModuleFlagMergeBehavior,
-        Name: *const c_char,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
         Value: u32,
     );
@@ -2194,9 +2201,9 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustAddModuleFlagString(
         M: &Module,
         MergeBehavior: ModuleFlagMergeBehavior,
-        Name: *const c_char,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
-        Value: *const c_char,
+        Value: *const c_uchar, // See "PTR_LEN_STR".
         ValueLen: size_t,
     );
 
