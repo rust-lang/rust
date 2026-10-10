@@ -23,7 +23,6 @@ use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::gcc::{Gcc, GccOutput, GccTargetPair};
 use crate::core::build_steps::llvm::{LlvmFromCi, LlvmKind, prebuilt_llvm_output};
 use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
-use crate::core::build_steps::tpde::Tpde;
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder::{
     self, Builder, Cargo, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
@@ -2546,18 +2545,17 @@ impl CommandLineStep for Assemble {
 
         maybe_install_llvm_bitcode_linker();
 
-        if builder.config.rust_tpde {
-            debug!("`tpde` requested");
+        if builder.config.llvm_tpde {
+            debug!("`llvm_tpde` requested");
             // The rustc TPDE integration is Linux-only for now
             if !host.contains("linux") {
                 builder.info(&format!("host target `{host}` not supported by tpde. skipping"));
             }
             // Put TPDE next to librustc_driver.so
-            let tpde_output = builder.ensure(Tpde { target: host });
+            let tpde_output = builder.ensure(llvm::Tpde { target: host });
             let target_libdir =
                 builder.sysroot_target_libdir(target_compiler, target_compiler.host);
-            let target_dst_lib = target_libdir.join(tpde_output.plugin_path());
-
+            let target_dst_lib = target_libdir.join(tpde_output.plugin_path().file_name().unwrap());
             builder.copy_link(tpde_output.plugin_path(), &target_dst_lib, FileType::NativeLibrary);
         }
 

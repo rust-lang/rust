@@ -679,6 +679,6 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 163731,
         severity: ChangeSeverity::Info,
-        summary: "New option `rust.tpde` controls whether the TPDE pass plugin should be included in the compiler sysroot. Additional options under the `[tpde]` table control TPDE compilation options.",
+        summary: "A new option `llvm.tpde` has been added to control whether the TPDE pass plugin should be built as an experimental alternative LLVM backend.",
     },
 ];

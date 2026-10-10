@@ -15,5 +15,4 @@ pub(crate) mod synthetic_targets;
 pub(crate) mod test;
 pub(crate) mod tool;
 pub(crate) mod toolstate;
-pub(crate) mod tpde;
 pub(crate) mod vendor;

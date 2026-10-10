@@ -46,7 +46,6 @@ use crate::core::config::toml::rust::{
 use crate::core::config::toml::target::{
     DefaultLinuxLinkerOverride, Target, TomlTarget, default_linux_linker_overrides,
 };
-use crate::core::config::toml::tpde::Tpde;
 use crate::core::config::{
     Allocator, CompilerBuiltins, CompressDebuginfo, DebuggerPath, DebuginfoLevel, DryRun,
     GccCiMode, LlvmCiMode, LlvmLibunwind, Merge, ReplaceOpt, RustcLto, SplitDebuginfo,
@@ -178,6 +177,7 @@ pub(crate) struct Config {
     pub llvm_enable_warnings: bool,
     pub llvm_ci_mode: LlvmCiMode,
     pub llvm_build_config: HashMap<String, String>,
+    pub llvm_tpde: bool,
 
     pub bootstrap_override_lld: BootstrapOverrideLld,
     pub lld_enabled: bool,
@@ -350,13 +350,6 @@ pub(crate) struct Config {
     pub exec_ctx: ExecutionContext,
 
     pub wasm_proc_macros: bool,
-
-    // Whether or not to include TPDE in the built sysroot
-    pub rust_tpde: bool,
-    // TPDE codegen options
-    pub tpde_optimize: bool,
-    pub tpde_release_debuginfo: bool,
-    pub tpde_assertions: bool,
 }
 
 impl Config {
@@ -490,7 +483,6 @@ impl Config {
             target: toml_target,
             dist: toml_dist,
             pgo: toml_pgo,
-            tpde: toml_tpde,
             profile: _,
             include: _,
         } = toml;
@@ -634,7 +626,6 @@ impl Config {
             rustflags: rust_rustflags,
             stdlib_semver_baseline: rust_stdlib_semver_baseline,
             wasm_proc_macros,
-            tpde: rust_tpde,
         } = toml_rust.unwrap_or_default();
 
         let Llvm {
@@ -667,6 +658,7 @@ impl Config {
             enable_warnings: llvm_enable_warnings,
             download_ci_llvm: llvm_download_ci_llvm,
             build_config: llvm_build_config,
+            tpde: llvm_tpde,
         } = toml_llvm.unwrap_or_default();
 
         let Dist {
@@ -683,12 +675,6 @@ impl Config {
             download_ci_gcc: gcc_download_ci_gcc,
             libgccjit_libs_dir: gcc_libgccjit_libs_dir,
         } = toml_gcc.unwrap_or_default();
-
-        let Tpde {
-            optimize: tpde_optimize,
-            release_debuginfo: tpde_release_debuginfo,
-            assertions: tpde_assertions,
-        } = toml_tpde.unwrap_or_default();
 
         let Pgo {
             rustc: pgo_rustc,
@@ -1528,6 +1514,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             llvm_tests: llvm_tests.unwrap_or(false),
             llvm_thin_lto: llvm_thin_lto.unwrap_or(false),
             llvm_tools_enabled: rust_llvm_tools.unwrap_or(true),
+            llvm_tpde: llvm_tpde.unwrap_or(false),
             llvm_use_libcxx: llvm_use_libcxx.unwrap_or(false),
             llvm_use_linker,
             llvm_version_suffix,
@@ -1597,7 +1584,6 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 .unwrap_or(BTreeSet::from([String::from("panic-unwind")])),
             rust_strip: rust_strip.unwrap_or(false),
             rust_thin_lto_import_instr_limit,
-            rust_tpde: rust_tpde.unwrap_or(false),
             rust_validate_mir_opts,
             rust_verify_llvm_ir: rust_verify_llvm_ir.unwrap_or(false),
             rustc_debug_assertions: rust_rustc_debug_assertions.unwrap_or(rust_debug == Some(true)),
@@ -1630,9 +1616,6 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             tools_debug_assertions: rust_tools_debug_assertions
                 .or(rust_rustc_debug_assertions)
                 .unwrap_or(rust_debug == Some(true)),
-            tpde_assertions: tpde_assertions.unwrap_or(false),
-            tpde_optimize: tpde_optimize.unwrap_or(true),
-            tpde_release_debuginfo: tpde_release_debuginfo.unwrap_or(true),
             vendor,
             verbose_tests,
             wasm_proc_macros: wasm_proc_macros.unwrap_or(false),

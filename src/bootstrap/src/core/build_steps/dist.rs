@@ -3287,10 +3287,8 @@ impl CommandLineStep for Gcc {
     }
 }
 
-/// Tarball containing a TPDE plugin dylib, needed as a
-/// dependency for the TPDE codegen backend in rustc_codegen_llvm.
-///
-/// This component is used for distribution through rustup.
+/// Tarball containing a TPDE plugin dylib, so that it can be used in rustc_codegen_llvm.
+/// by a compiler whose host is `target`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Tpde {
     target: TargetSelection,
@@ -3329,7 +3327,7 @@ impl CommandLineStep for Tpde {
             Some("The src/tpde submodule is required for disting tpde-plugin"),
         );
 
-        let tpde_plugin = builder.ensure(super::tpde::Tpde { target: self.target });
+        let tpde_plugin = builder.ensure(llvm::Tpde { target: self.target });
 
         let target_libdir = format!("lib/rustlib/{}/lib", self.target.triple);
 

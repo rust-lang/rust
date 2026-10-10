@@ -18,8 +18,7 @@ use crate::core::build_steps::compile::{Std, StdLink, looks_like_codegen_backend
 use crate::core::build_steps::llvm::{LlvmKind, get_llvm_build_status};
 use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::build_steps::{
-    check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, tpde,
-    vendor,
+    check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
 };
 use crate::core::builder::step_stack::StepRecord;
 pub use crate::core::builder::step_stack::StepStack;
@@ -808,6 +807,7 @@ impl<'a> Builder<'a> {
                 llvm::Enzyme,
                 llvm::RustOffload,
                 llvm::CrtBeginEnd,
+                llvm::Tpde,
                 tool::RustdocGUITest,
                 tool::OptimizedDist,
                 tool::CoverageDump,
@@ -815,7 +815,6 @@ impl<'a> Builder<'a> {
                 tool::RustcPerf,
                 tool::WasmComponentLd,
                 tool::LldWrapper,
-                tpde::Tpde,
             ),
             Kind::Clippy => describe!(
                 clippy::Std,

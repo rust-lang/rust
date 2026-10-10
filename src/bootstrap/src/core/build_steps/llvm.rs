@@ -102,7 +102,7 @@ impl LlvmBuildStatus {
 
 /// Allows each step to add C/Cxx flags which are only used for a specific cmake invocation.
 #[derive(Debug, Clone, Default)]
-pub(super) struct CcFlags {
+struct CcFlags {
     /// Additional values for CMAKE_CC_FLAGS, to be added before all other values.
     cflags: OsString,
     /// Additional values for CMAKE_CXX_FLAGS, to be added before all other values.
@@ -110,7 +110,7 @@ pub(super) struct CcFlags {
 }
 
 impl CcFlags {
-    pub fn push_all(&mut self, s: impl AsRef<OsStr>) {
+    fn push_all(&mut self, s: impl AsRef<OsStr>) {
         let s = s.as_ref();
         self.cflags.push(" ");
         self.cflags.push(s);
@@ -121,17 +121,17 @@ impl CcFlags {
 
 /// Linker flags to pass to LLVM's CMake invocation.
 #[derive(Debug, Clone, Default)]
-pub(super) struct LdFlags {
+struct LdFlags {
     /// CMAKE_EXE_LINKER_FLAGS
-    pub exe: OsString,
+    exe: OsString,
     /// CMAKE_SHARED_LINKER_FLAGS
-    pub shared: OsString,
+    shared: OsString,
     /// CMAKE_MODULE_LINKER_FLAGS
-    pub module: OsString,
+    module: OsString,
 }
 
 impl LdFlags {
-    pub fn push_all(&mut self, s: impl AsRef<OsStr>) {
+    fn push_all(&mut self, s: impl AsRef<OsStr>) {
         let s = s.as_ref();
         self.exe.push(" ");
         self.exe.push(s);
@@ -834,7 +834,7 @@ fn debuginfo_map_cflags(builder: &Builder<'_>, target: TargetSelection) -> Vec<S
 
 /// Tries to reuse a locally built LLD as a linker.
 /// If it is not available, uses a global LLD from PATH.
-pub(super) fn try_link_with_in_tree_lld(
+fn try_link_with_in_tree_lld(
     builder: &Builder<'_>,
     target: TargetSelection,
     llvm_output: &LlvmOutput,
@@ -866,7 +866,7 @@ pub(super) fn try_link_with_in_tree_lld(
     }
 }
 
-pub(super) fn configure_cmake(
+fn configure_cmake(
     builder: &Builder<'_>,
     target: TargetSelection,
     cfg: &mut cmake::Config,
@@ -2276,5 +2276,171 @@ impl Step for FileCheck {
         // Here we take the filecheck from LLVM directly
         let llvm_output = builder.ensure(Llvm { target: self.target });
         llvm_output.root_dir().join("bin").join(exe("FileCheck", self.target))
+    }
+}
+
+/// Result of building TPDE artifacts.
+///
+/// Currently only tpde-plugin.so is consumed elsewhere.
+#[derive(Clone)]
+pub struct TpdeOutput {
+    tpde_root_dir: PathBuf,
+    tpde_plugin_path: PathBuf,
+}
+
+impl TpdeOutput {
+    /// Path to tpde-plugin.so
+    pub fn plugin_path(&self) -> &Path {
+        &self.tpde_plugin_path
+    }
+}
+
+pub struct TpdeBuildInfo {
+    stamp: BuildStamp,
+    output: TpdeOutput,
+}
+
+pub enum TpdeBuildStatus {
+    AlreadyBuilt(TpdeOutput),
+    ShouldBuild(TpdeBuildInfo),
+}
+
+/// Return build status of TPDE, considering only the locally built TPDE.
+///
+/// Calling this function should never attempt to checkout the TPDE submodule.
+fn get_locally_built_tpde_build_status(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+) -> TpdeBuildStatus {
+    let out_dir = tpde_output_dir(builder, target);
+
+    let res = TpdeOutput {
+        tpde_plugin_path: out_dir.join("build").join("tpde-llvm").join("tpde-plugin.so"),
+        tpde_root_dir: out_dir,
+    };
+
+    static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
+    let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
+        generate_smart_stamp_hash(
+            builder,
+            &builder.config.src.join("src/tpde"),
+            builder.in_tree_tpde_info.sha().unwrap_or_default(),
+        )
+    });
+
+    // Rebuild if build options change
+    let stamp = BuildStamp::new(&res.tpde_root_dir)
+        .with_prefix("tpde")
+        .add_stamp(smart_stamp_hash)
+        .add_stamp(builder.config.llvm_assertions)
+        .add_stamp(builder.config.llvm_optimize)
+        .add_stamp(builder.config.llvm_release_debuginfo);
+
+    if stamp.is_up_to_date() {
+        if smart_stamp_hash.is_empty() {
+            builder.info(
+                "Could not determine the TPDE submodule commit hash. \
+                     Assuming that a TPDE rebuild is not necessary.",
+            );
+            builder.info(&format!(
+                "To force TPDE to rebuild, remove the file `{}`",
+                stamp.path().display()
+            ));
+        }
+        return TpdeBuildStatus::AlreadyBuilt(res);
+    }
+
+    TpdeBuildStatus::ShouldBuild(TpdeBuildInfo { stamp, output: res })
+}
+
+/// Output directory of *locally built* TPDE for the given `target`.
+/// Should only be used within this module, when building TPDE.
+/// Otherwise, you should ensure the `Tpde` step and read its root directory.
+fn tpde_output_dir(builder: &Builder<'_>, target: TargetSelection) -> PathBuf {
+    builder.config.out.join(target).join("tpde")
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct Tpde {
+    pub target: TargetSelection,
+}
+
+impl CommandLineStep for Tpde {
+    type Output = TpdeOutput;
+
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tpde").alias("tpde")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Tpde { target: run.target });
+    }
+
+    /// Compile TPDE for `target`.
+    fn run(self, builder: &Builder<'_>) -> TpdeOutput {
+        let target = self.target;
+        let llvm = builder.ensure(Llvm { target });
+        if fs::read_dir(llvm.cmake_dir()).into_iter().flatten().flat_map(Result::ok).count() == 0 {
+            // If it can't find LLVMConfig.cmake, TPDE falls back to any other LLVM in the system path
+            builder.info(&format!(
+                "WARNING: {:?} is empty, which will cause TPDE to be built with the system LLVM. \
+                This may be because you are using CI LLVM, which does not distribute the required CMake files.",
+                llvm.cmake_dir()
+            ));
+        }
+        builder.config.update_submodule("src/tpde");
+        // If TPDE has already been built, we avoid building it again.
+        let TpdeBuildInfo { stamp, output } =
+            match get_locally_built_tpde_build_status(builder, target) {
+                TpdeBuildStatus::AlreadyBuilt(p) => return p,
+                TpdeBuildStatus::ShouldBuild(m) => m,
+            };
+
+        let _guard = builder.msg_unstaged(Kind::Build, "TPDE", target);
+        t!(stamp.remove());
+        let _time = helpers::timeit(builder);
+        t!(fs::create_dir_all(&output.tpde_root_dir));
+
+        let mut cfg = cmake::Config::new(builder.src.join("src/tpde"));
+
+        let profile = get_llvm_profile(&builder.config);
+        let assertions = if builder.config.llvm_assertions { "ON" } else { "OFF" };
+
+        cfg.out_dir(&output.tpde_root_dir)
+            .profile(profile)
+            .define("TPDE_ENABLE_ASSERTIONS", assertions)
+            .define("TPDE_ENABLE_LLVM", "ON")
+            .define("TPDE_ENABLE_ENCODEGEN", "ON")
+            .define("TPDE_INCLUDE_TESTS", "OFF")
+            .define("LLVM_DIR", llvm.cmake_dir());
+
+        let mut ldflags = LdFlags::default();
+        try_link_with_in_tree_lld(builder, target, &llvm, &mut cfg, &mut ldflags);
+        configure_cmake(builder, target, &mut cfg, true, ldflags, CcFlags::default(), &[]);
+
+        if builder.config.dry_run() {
+            return output;
+        }
+
+        cfg.build();
+
+        // When building TPDE as a shared library on linux, it can contain unexpected debuginfo:
+        // some can come from the C++ standard library. Unless we're explicitly requesting TPDE to
+        // be built with debuginfo, strip it away after the fact, to make dist artifacts smaller.
+        if builder.config.llvm_optimize && !builder.config.llvm_release_debuginfo {
+            // If the shared library exists in TPDE's `/build/tpde-llvm` folder, strip its
+            // debuginfo.
+            crate::core::build_steps::compile::strip_debug(builder, target, output.plugin_path());
+        }
+
+        t!(stamp.write());
+
+        output
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::build("tpde", self.target))
     }
 }
