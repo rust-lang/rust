@@ -10,6 +10,7 @@ use rustc_infer::traits::{
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_next_trait_solver::canonical::instantiate_canonical_state;
 use rustc_next_trait_solver::solve::{GoalEvaluation, MaybeInfo, SolverDelegateEvalExt as _};
 use rustc_span::{bug, span_bug};
 use tracing::{instrument, trace};
@@ -383,10 +384,64 @@ impl<'tcx> BestObligation<'tcx> {
                 self.detect_error_in_self_ty_normalization(goal, pred.projection_term.self_ty())?;
                 self.detect_non_well_formed_assoc_item(goal, pred.projection_term)?;
             }
+            Some(ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)))
+                if matches!(pred.projection_term.kind, ty::AliasTermKind::OpaqueTy { .. })
+                    && !self.consider_ambiguities =>
+            {
+                self.detect_error_in_opaque_bounds(goal)?;
+            }
             Some(_) | None => {}
         }
 
         ControlFlow::Break(self.obligation.clone())
+    }
+
+    fn detect_error_in_opaque_bounds(
+        &mut self,
+        goal: &inspect::InspectGoal<'_, 'tcx>,
+    ) -> ControlFlow<PredicateObligation<'tcx>> {
+        if goal.depth() + 1 >= self.config().max_depth {
+            return ControlFlow::Continue(());
+        }
+
+        let infcx = goal.infcx();
+        let delegate = <&SolverDelegate<'tcx>>::from(infcx);
+        let prev_universe = infcx.universe();
+        let (_, proof_tree) = delegate.evaluate_root_goal_for_proof_tree(goal.goal(), self.span());
+        let mut orig_values = proof_tree.orig_values;
+        let mut nested_goals = Vec::new();
+        for step in &proof_tree.final_revision.steps {
+            if let inspect::ProbeStep::AddGoal(_, nested_goal) = *step {
+                nested_goals.push(instantiate_canonical_state(
+                    delegate,
+                    self.span(),
+                    prev_universe,
+                    &mut orig_values,
+                    nested_goal,
+                ));
+            }
+        }
+        let () = instantiate_canonical_state(
+            delegate,
+            self.span(),
+            prev_universe,
+            &mut orig_values,
+            proof_tree.final_revision.final_state,
+        );
+
+        for nested_goal in nested_goals {
+            let obligation = Obligation::new(
+                infcx.tcx,
+                self.obligation.cause.clone(),
+                nested_goal.param_env,
+                nested_goal.predicate,
+            );
+            self.with_derived_obligation(obligation, |this| {
+                infcx.visit_proof_tree_at_depth(nested_goal, goal.depth() + 1, this)
+            })?;
+        }
+
+        ControlFlow::Continue(())
     }
 }
 
