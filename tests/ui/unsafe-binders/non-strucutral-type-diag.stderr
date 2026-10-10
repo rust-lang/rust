@@ -1,5 +1,5 @@
 error: constant of non-structural type `Option<(unsafe<'a> Adt<'a>, Box<dyn Send>)>` in a pattern
-  --> $DIR/non-strucutral-type-diag.rs:13:9
+  --> $DIR/non-strucutral-type-diag.rs:14:9
    |
 LL | const C: Option<(unsafe<'a> Adt<'a>, Box<dyn Send>)> = None;
    | ---------------------------------------------------- constant defined here

@@ -425,12 +425,8 @@ where
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             ecx.add_goals(
                 GoalSource::AliasBoundConstCondition,
-                const_conditions.into_iter().map(|trait_ref| {
-                    goal.with(
-                        cx,
-                        ty::Binder::dummy(trait_ref)
-                            .to_host_effect_clause(cx, goal.predicate.constness),
-                    )
+                const_conditions.iter().map(|trait_ref| {
+                    goal.with(cx, trait_ref.to_host_effect_clause(cx, goal.predicate.constness))
                 }),
             )?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

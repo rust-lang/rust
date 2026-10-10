@@ -218,11 +218,32 @@ impl<'tcx> TyCtxt<'tcx> {
         ty: Ty<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
     ) -> Ty<'tcx> {
+        struct ReplaceUnsafeBinders<'tcx> {
+            tcx: TyCtxt<'tcx>,
+        }
+        impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceUnsafeBinders<'tcx> {
+            fn cx(&self) -> TyCtxt<'tcx> {
+                self.tcx
+            }
+            fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+                match t.kind() {
+                    &ty::UnsafeBinder(inner) => self
+                        .tcx
+                        .instantiate_bound_regions_with_erased(inner.into())
+                        .super_fold_with(self),
+                    _ => t.super_fold_with(self),
+                }
+            }
+        }
+        let ty = ReplaceUnsafeBinders { tcx: self }.fold_ty(ty);
         self.assert_fully_normalized(typing_env, ty);
         self.struct_tail_raw(
             ty,
             &ObligationCause::dummy(),
-            |ty| self.normalize_erasing_regions(typing_env, ty),
+            |ty| {
+                let ty = self.normalize_erasing_regions(typing_env, ty);
+                ReplaceUnsafeBinders { tcx: self }.fold_ty(ty)
+            },
             || {},
         )
     }
@@ -1304,8 +1325,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::FnDef(..)
             | ty::Error(_)
             | ty::FnPtr(..) => true,
-            // FIXME(unsafe_binders):
-            ty::UnsafeBinder(_) => unimplemented!(),
+            // Unsafe binders do not have drop glue - async or otherwise
+            ty::UnsafeBinder(_) => true,
             ty::Tuple(fields) => fields.iter().all(Self::is_trivially_not_async_drop),
             ty::Pat(elem_ty, _) | ty::Slice(elem_ty) | ty::Array(elem_ty, _) => {
                 elem_ty.is_trivially_not_async_drop()

@@ -18,7 +18,8 @@ use rustc_type_ir::TyKind::*;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::walk::TypeWalker;
 use rustc_type_ir::{
-    self as ir, BoundVar, CollectAndApply, MayBeErased, TypeVisitableExt, elaborate,
+    self as ir, BoundVar, CollectAndApply, MayBeErased, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, elaborate,
 };
 use tracing::instrument;
 use ty::util::IntTypeExt;
@@ -1765,9 +1766,9 @@ impl<'tcx> Ty<'tcx> {
     pub fn ptr_metadata_ty_or_tail(
         self,
         tcx: TyCtxt<'tcx>,
-        normalize: impl FnMut(Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx>,
+        mut normalize: impl FnMut(Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx>,
     ) -> Result<Ty<'tcx>, Ty<'tcx>> {
-        let tail = tcx.struct_tail_raw(self, &ObligationCause::dummy(), normalize, || {});
+        let tail = tcx.struct_tail_raw(self, &ObligationCause::dummy(), &mut normalize, || {});
         match tail.kind() {
             // Sized types
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -1807,7 +1808,10 @@ impl<'tcx> Ty<'tcx> {
             // metadata of `tail`.
             ty::Param(_) | ty::Alias(..) => Err(tail),
 
-            ty::UnsafeBinder(_) => unimplemented!("FIXME(unsafe_binder)"),
+            // We *could* try to be a bit clever here by recursing and returning
+            // `Ok` on the "simple" types. That's not easy. And this seems to
+            // work? So, do it this way for now.
+            ty::UnsafeBinder(_) => Err(tail),
 
             ty::Infer(ty::TyVar(_))
             | ty::Pat(..)
@@ -1826,7 +1830,25 @@ impl<'tcx> Ty<'tcx> {
         tcx: TyCtxt<'tcx>,
         normalize: impl FnMut(Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx>,
     ) -> Ty<'tcx> {
-        match self.ptr_metadata_ty_or_tail(tcx, normalize) {
+        struct ReplaceUnsafeBinders<'tcx> {
+            tcx: TyCtxt<'tcx>,
+        }
+        impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceUnsafeBinders<'tcx> {
+            fn cx(&self) -> TyCtxt<'tcx> {
+                self.tcx
+            }
+            fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+                match t.kind() {
+                    &ty::UnsafeBinder(inner) => self
+                        .tcx
+                        .instantiate_bound_regions_with_erased(inner.into())
+                        .super_fold_with(self),
+                    _ => t.super_fold_with(self),
+                }
+            }
+        }
+        let ty = ReplaceUnsafeBinders { tcx }.fold_ty(self);
+        match ty.ptr_metadata_ty_or_tail(tcx, normalize) {
             Ok(metadata) => metadata,
             Err(tail) => bug!(
                 "`ptr_metadata_ty` failed to get metadata for type: {self:?} (tail = {tail:?})"
@@ -1967,7 +1989,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Float(_)
             | ty::FnDef(..)
             | ty::FnPtr(..)
-            | ty::UnsafeBinder(_)
             | ty::RawPtr(..)
             | ty::Char
             | ty::Ref(..)
@@ -1998,6 +2019,8 @@ impl<'tcx> Ty<'tcx> {
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) | ty::Bound(..) => false,
 
             ty::Infer(ty::TyVar(_)) => false,
+
+            ty::UnsafeBinder(inner) => inner.skip_binder().has_trivial_sizedness(tcx, sizedness),
 
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`has_trivial_sizedness` applied to unexpected type: {:?}", self)

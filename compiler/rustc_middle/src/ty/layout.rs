@@ -594,6 +594,11 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 }
             }
 
+            ty::UnsafeBinder(bound_ty) => {
+                let inner = tcx.instantiate_bound_regions_with_erased(bound_ty.into());
+                SizeSkeleton::compute_inner(inner, tcx, typing_env, span, depth + 1)
+            }
+
             _ => Err(err),
         }
     }

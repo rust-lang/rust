@@ -1,3 +1,4 @@
+//@ compile-flags: -Znext-solver
 //@ compile-flags: -Zvalidate-mir
 
 // Regression test for <https://github.com/rust-lang/rust/issues/141394>.

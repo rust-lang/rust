@@ -717,9 +717,13 @@ pub(crate) fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
-        // FIXME(unsafe_binders): Implement this.
-        ty::UnsafeBinder(_) => {
-            unimplemented!()
+        &ty::UnsafeBinder(bound_ty) => {
+            typeid.push_str(&encode_ty(
+                tcx,
+                tcx.instantiate_bound_regions_with_erased(bound_ty.into()),
+                dict,
+                options,
+            ));
         }
 
         // Trait types

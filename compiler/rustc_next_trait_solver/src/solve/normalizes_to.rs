@@ -1,5 +1,6 @@
 use std::debug_assert_matches;
 
+use derive_where::derive_where;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
@@ -8,8 +9,8 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt,
 };
 use rustc_type_ir::{
-    self as ty, Const, FieldInfo, Interner, NormalizesTo, PredicateKind, Region, Unnormalized,
-    Upcast as _,
+    self as ty, BoundVarIndexKind, Const, FieldInfo, Interner, NormalizesTo, PredicateKind, Region,
+    Unnormalized, Upcast as _, fold_regions,
 };
 use tracing::instrument;
 
@@ -156,6 +157,161 @@ where
             goal.predicate.term,
             goal.predicate.alias.to_term(self.cx(), ty::IsRigid::Yes),
         )
+    }
+}
+
+/// Represents one step in the processing of computing `<T as Pointee>::Metadata`.
+/// Depending on what `T` is, we may know different things.
+#[derive_where(Debug; I: Interner)]
+enum PointeeStep<I: Interner> {
+    /// We know the metadata ty for this type, so we can return it directly
+    Metadata(I::Ty),
+    /// The metadata ty for this type is `DynMetadata<X>` for some dyn layout type.
+    ///
+    /// For all types without unsafe binders, this should *just* be a normal
+    /// `DynMetadata<dyn Trait + 'a>`.
+    ///
+    /// For types with unsafe binders, this will look like
+    /// `DynMetadata<unsafe<'a> ManuallyDrop<dyn Trait + 'a>>`.
+    Dyn(I::Ty),
+    /// The metadata ty for this type is the metadata ty for some struct tail.
+    /// For `Tail(U)`, we get `<U as Pointee>::Metadata`. If this is known-sized,
+    /// then we can return `()`; otherwise, we return this as a rigid alias.
+    Tail(I::Ty),
+    /// If we encounter a rigid alias, a param, or a placeholder, we just
+    /// fallback to checking if the type is `Sized` and if so, return `()`.
+    Opaque,
+}
+
+/// Take a single step in computing `<T as Pointee>::Metadata`.
+/// See `PointeeStep` for the different cases we may encounter.
+#[tracing::instrument(skip(cx), ret)]
+fn take_pointee_step<I: Interner>(cx: I, self_ty: I::Ty) -> PointeeStep<I> {
+    match self_ty.kind() {
+        ty::Bool
+        | ty::Char
+        | ty::Int(..)
+        | ty::Uint(..)
+        | ty::Float(..)
+        | ty::Array(..)
+        | ty::Pat(..)
+        | ty::RawPtr(..)
+        | ty::Ref(..)
+        | ty::FnDef(..)
+        | ty::FnPtr(..)
+        | ty::Closure(..)
+        | ty::CoroutineClosure(..)
+        | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
+        | ty::Coroutine(..)
+        | ty::CoroutineWitness(..)
+        | ty::Never
+        | ty::Foreign(..) => PointeeStep::Metadata(Ty::new_unit(cx)),
+
+        ty::Error(e) => PointeeStep::Metadata(Ty::new_error(cx, e)),
+
+        ty::Str | ty::Slice(_) => PointeeStep::Metadata(Ty::new_usize(cx)),
+
+        ty::Dynamic(..) => PointeeStep::Dyn(self_ty),
+
+        ty::Alias(ty::IsRigid::Yes, _) | ty::Param(_) | ty::Placeholder(..) => PointeeStep::Opaque,
+
+        ty::Adt(def, args)
+            if def.is_struct()
+                && let Some(tail_ty) = def.struct_tail_ty(cx) =>
+        {
+            PointeeStep::Tail(tail_ty.instantiate(cx, args).skip_norm_wip())
+        }
+        ty::Adt(..) => PointeeStep::Metadata(Ty::new_unit(cx)),
+
+        ty::Tuple(elements) if let Some(tail_ty) = elements.last() => PointeeStep::Tail(tail_ty),
+        ty::Tuple(..) => PointeeStep::Metadata(Ty::new_unit(cx)),
+
+        ty::UnsafeBinder(binder) => take_unsafe_binder_step(cx, binder.into()),
+
+        ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+        | ty::Alias(ty::IsRigid::No, _)
+        | ty::Bound(..) => {
+            panic!("unexpected self ty `{:?}` when normalizing `<T as Pointee>::Metadata`", self_ty)
+        }
+    }
+}
+
+/// If we encounter an `unsafe<..> X` type, then we need to be a bit clever in
+/// the metadata that we return. There are a couple things to consider:
+/// - If we see nested unsafe binders, we combine both into a single under binder,
+///   which may bind some inner metadata ty.
+/// - If we see nested `ManuallyDrop` types, then we just collapse them into as single one.
+/// - If the eventual metadata ty is a `dyn Trait + 'a`, then the metadata is
+///   `DynMetadata<unsafe<'a> ManuallyDrop<dyn Trait + 'a>>`, not `DynMetadata<dyn Trait + 'a>`.
+///   This is because the `unsafe<'a> DynMetadata<dyn Trait + 'a>` doesn't
+///   implement the necessary `Pointee::Metadata` bounds. Furthermore, we can't
+///   return `DynMetadata<unsafe<'a> dyn Trait + 'a>` because that type is not well-formed.
+///   We also don't return `DynMetadata<dyn Trait + 'static>`, because we don't
+///   want to lie about lifetimes lie that.
+fn take_unsafe_binder_step<I: Interner>(cx: I, binder: ty::Binder<I, I::Ty>) -> PointeeStep<I> {
+    let manually_drop = cx.require_adt_lang_item(SolverAdtLangItem::ManuallyDrop);
+    let as_manually_drop = |ty: I::Ty| {
+        if let ty::Adt(def, args) = ty.kind()
+            && def.def_id() == manually_drop
+        {
+            Some(args.as_slice()[0].expect_ty())
+        } else {
+            None
+        }
+    };
+    let mk_unsafe_binder = |inner: I::Ty, bound_vars: I::BoundVarKinds| {
+        let manually_drop_args = cx.mk_args_from_iter([I::GenericArg::from(inner)].into_iter());
+        let manually_drop_self = Ty::new_adt(cx, cx.adt_def(manually_drop), manually_drop_args);
+        Ty::new_unsafe_binder(cx, ty::Binder::bind_with_vars(manually_drop_self, bound_vars))
+    };
+
+    // `unsafe<..> X` means `X` is `ManuallyDrop<Y>` or `Copy` (and thus metadata is `()`, because `trait Copy: Sized`).
+    let Some(bound_ty) = as_manually_drop(binder.skip_binder()) else {
+        return PointeeStep::Metadata(Ty::new_unit(cx));
+    };
+
+    match bound_ty.kind() {
+        // `unsafe<'a> ManuallyDrop<unsafe<'b> X>` => `unsafe<'a, 'b> ManuallyDrop<X>`.
+        ty::UnsafeBinder(inner) => {
+            let outer_bound_vars = binder.bound_vars();
+            let inner_bound_vars = inner.bound_vars();
+
+            let inner = fold_regions(cx, inner.skip_binder(), |r, curr_db| match r.kind() {
+                ty::ReBound(BoundVarIndexKind::Bound(db), br) if db == curr_db => {
+                    let bound_region = ty::BoundRegion {
+                        kind: br.kind,
+                        var: ty::BoundVar::from_u32(
+                            br.var.as_u32() + outer_bound_vars.len() as u32,
+                        ),
+                    };
+                    ty::Region::new_bound(cx, db, bound_region)
+                }
+                ty::ReBound(BoundVarIndexKind::Bound(db), br) if db == (curr_db + 1) => {
+                    ty::Region::new_bound(cx, curr_db, br)
+                }
+                _ => r,
+            });
+
+            let bound_vars = BoundVarKinds::from_vars(
+                cx,
+                outer_bound_vars.iter().chain(inner_bound_vars.iter()),
+            );
+            PointeeStep::Tail(mk_unsafe_binder(inner, bound_vars))
+        }
+        // `unsafe<..> MD<MD<Z>>` => `unsafe<..> MD<Z>`.
+        _ if let Some(inner) = as_manually_drop(bound_ty) => {
+            PointeeStep::Tail(mk_unsafe_binder(inner, binder.bound_vars()))
+        }
+        _ => match take_pointee_step(cx, bound_ty) {
+            PointeeStep::Metadata(metadata) => PointeeStep::Metadata(metadata),
+            PointeeStep::Tail(tail) => {
+                PointeeStep::Tail(mk_unsafe_binder(tail, binder.bound_vars()))
+            }
+            PointeeStep::Dyn(dyn_ty) => {
+                PointeeStep::Dyn(mk_unsafe_binder(dyn_ty, binder.bound_vars()))
+            }
+            PointeeStep::Opaque => PointeeStep::Opaque,
+        },
     }
 }
 
@@ -719,38 +875,19 @@ where
             ty::AliasTermKind::ProjectionTy { def_id: metadata_def_id },
             goal.predicate.alias.kind
         );
-        let metadata_ty = match goal.predicate.self_ty().kind() {
-            ty::Bool
-            | ty::Char
-            | ty::Int(..)
-            | ty::Uint(..)
-            | ty::Float(..)
-            | ty::Array(..)
-            | ty::Pat(..)
-            | ty::RawPtr(..)
-            | ty::Ref(..)
-            | ty::FnDef(..)
-            | ty::FnPtr(..)
-            | ty::Closure(..)
-            | ty::CoroutineClosure(..)
-            | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
-            | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
-            | ty::Never
-            | ty::Foreign(..) => Ty::new_unit(cx),
 
-            ty::Error(e) => Ty::new_error(cx, e),
-
-            ty::Str | ty::Slice(_) => Ty::new_usize(cx),
-
-            ty::Dynamic(_, _) => {
+        let metadata_ty = match take_pointee_step(cx, goal.predicate.self_ty()) {
+            PointeeStep::Metadata(metadata_ty) => metadata_ty,
+            PointeeStep::Dyn(dyn_ty) => {
                 let dyn_metadata = cx.require_adt_lang_item(SolverAdtLangItem::DynMetadata);
                 cx.type_of(dyn_metadata.into())
-                    .instantiate(cx, &[I::GenericArg::from(goal.predicate.self_ty())])
+                    .instantiate(cx, &[I::GenericArg::from(dyn_ty)])
                     .skip_norm_wip()
             }
-
-            ty::Alias(ty::IsRigid::Yes, _) | ty::Param(_) | ty::Placeholder(..) => {
+            PointeeStep::Tail(tail_ty) => {
+                Ty::new_projection(cx, ty::IsRigid::No, metadata_def_id, [tail_ty])
+            }
+            PointeeStep::Opaque => {
                 // This is the "fallback impl" for type parameters, unnormalizable projections
                 // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
                 // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
@@ -778,38 +915,7 @@ where
                     })
                 });
             }
-
-            ty::Adt(def, args) if def.is_struct() => match def.struct_tail_ty(cx) {
-                None => Ty::new_unit(cx),
-                Some(tail_ty) => Ty::new_projection(
-                    cx,
-                    ty::IsRigid::No,
-                    metadata_def_id,
-                    [tail_ty.instantiate(cx, args).skip_norm_wip()],
-                ),
-            },
-            ty::Adt(_, _) => Ty::new_unit(cx),
-
-            ty::Tuple(elements) => match elements.last() {
-                None => Ty::new_unit(cx),
-                Some(tail_ty) => {
-                    Ty::new_projection(cx, ty::IsRigid::No, metadata_def_id, [tail_ty])
-                }
-            },
-
-            ty::UnsafeBinder(_) => {
-                // FIXME(unsafe_binder): Figure out how to handle pointee for unsafe binders.
-                unimplemented!()
-            }
-
-            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
-            | ty::Alias(ty::IsRigid::No, _)
-            | ty::Bound(..) => panic!(
-                "unexpected self ty `{:?}` when normalizing `<T as Pointee>::Metadata`",
-                goal.predicate.self_ty()
-            ),
         };
-
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             ecx.instantiate_normalizes_to_term(goal, metadata_ty.into())?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
@@ -1005,12 +1111,8 @@ where
             | ty::Slice(_)
             | ty::Dynamic(_, _)
             | ty::Tuple(_)
-            | ty::Error(_) => self_ty.discriminant_ty(ecx.cx()),
-
-            ty::UnsafeBinder(_) => {
-                // FIXME(unsafe_binders): instantiate this with placeholders?? i guess??
-                unimplemented!("discr subgoal...")
-            }
+            | ty::Error(_)
+            | ty::UnsafeBinder(_) => self_ty.discriminant_ty(ecx.cx()),
 
             // Given an alias, parameter, or placeholder we add an impl candidate normalizing to a rigid
             // alias. In case there's a where-bound further constraining this alias it is preferred over
