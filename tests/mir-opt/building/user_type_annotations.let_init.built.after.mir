@@ -11,8 +11,7 @@ fn let_init() -> () {
     let _3: &char as UserTypeProjection { base: UserType(0), projs: [Field(2, ())] };
     let mut _4: (u32, u64, &char);
     let mut _5: &char;
-    let _6: &char;
-    let _7: char;
+    let _6: char;
     scope 1 {
         debug x => _1;
         debug y => _2;
@@ -23,10 +22,8 @@ fn let_init() -> () {
         StorageLive(_4);
         StorageLive(_5);
         StorageLive(_6);
-        StorageLive(_7);
-        _7 = const 'u';
-        _6 = &_7;
-        _5 = &(*_6);
+        _6 = const 'u';
+        _5 = &_6;
         _4 = (const 7_u32, const 12_u64, move _5);
         StorageDead(_5);
         PlaceMention(_4);
@@ -37,13 +34,12 @@ fn let_init() -> () {
         _2 = copy (_4.1: u64);
         StorageLive(_3);
         _3 = copy (_4.2: &char);
-        StorageDead(_6);
         StorageDead(_4);
         _0 = const ();
         StorageDead(_3);
         StorageDead(_2);
         StorageDead(_1);
-        StorageDead(_7);
+        StorageDead(_6);
         return;
     }
 
