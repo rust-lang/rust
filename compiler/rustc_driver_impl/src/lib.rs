@@ -1304,7 +1304,7 @@ pub fn handle_help(matches: &getopts::Matches, args: &[String]) -> bool {
     let chelp_pos = opt_help_pos("C");
     let print_help = || {
         // Only show unstable options in --help if we accept unstable options.
-        let unstable_enabled = nightly_options::is_unstable_enabled(&matches);
+        let unstable_enabled = nightly_options::unstable_options_enabled(&matches);
         let nightly_build = nightly_options::match_is_nightly_build(&matches);
         usage(matches.opt_present("verbose"), unstable_enabled, nightly_build);
     };

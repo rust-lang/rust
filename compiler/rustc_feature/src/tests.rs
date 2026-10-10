@@ -34,4 +34,11 @@ fn rustc_bootstrap_parsing() {
     // Does not support specifying any crate.
     assert!(is_force_stable(Some("x")));
     assert!(is_force_stable(Some("x,y,z")));
+
+    // `RUSTC_BOOTSTRAP=-2` simulates the stable toolchain, while allowing unstable compiler flags
+    // to be passed.
+    std::assert_matches!(
+        UnstableFeatures::from_environment_value(None, Ok("-2".to_string())),
+        UnstableFeatures::ActAsStableForTesting
+    );
 }
