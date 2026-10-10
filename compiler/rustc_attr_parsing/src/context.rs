@@ -30,6 +30,7 @@ use crate::attributes::confusables::*;
 use crate::attributes::crate_level::*;
 use crate::attributes::debugger::*;
 use crate::attributes::deprecation::*;
+use crate::attributes::diagnostic::c_buffer_length::*;
 use crate::attributes::diagnostic::do_not_recommend::*;
 use crate::attributes::diagnostic::on_const::*;
 use crate::attributes::diagnostic::on_move::*;
@@ -163,6 +164,7 @@ attribute_parsers!(
     pub(crate) static ATTRIBUTE_PARSERS = [
         // tidy-alphabetical-start
         BodyStabilityParser,
+        CBufferLengthParser,
         ConfusablesParser,
         ConstStabilityParser,
         DocParser,
