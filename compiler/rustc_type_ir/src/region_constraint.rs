@@ -54,9 +54,9 @@ use crate::inherent::*;
 use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
 use crate::visit::TypeVisitableExt;
 use crate::{
-    AliasTy, Binder, BoundRegion, BoundVar, BoundVariableKind, ClauseKind, DebruijnIndex,
-    InferCtxtLike, Interner, IsRigid, OutlivesClause, Region, RegionKind, TyKind, TypeFoldable,
-    TypeFolder, TypingMode, UniverseIndex, Variance, elaborate, max_universe,
+    AliasTy, Binder, BoundRegion, BoundRegionKind, BoundVar, BoundVariableKind, ClauseKind,
+    DebruijnIndex, InferCtxtLike, Interner, IsRigid, OutlivesClause, Region, RegionKind, TyKind,
+    TypeFoldable, TypeFolder, TypingMode, UniverseIndex, Variance, elaborate, max_universe,
     set_aliases_to_non_rigid,
 };
 
@@ -965,15 +965,15 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
         let bound_outlives = bound_outlives.map_bound(|(alias, _)| (alias, region));
 
         let mut replacer = PlaceholderReplacer {
-            cx: infcx.cx(),
-            existing_var_count: bound_outlives.bound_vars().len(),
-            bound_vars: IndexMap::default(),
+            cx: infcx,
+            preexisting_var_count: bound_outlives.bound_vars().len(),
+            regions: IndexMap::default(),
             universe: u,
             current_index: DebruijnIndex::ZERO,
         };
         let escaping_outlives = bound_outlives.skip_binder().fold_with(&mut replacer);
         let bound_vars = bound_outlives.bound_vars().iter().chain(
-            core::mem::take(&mut replacer.bound_vars)
+            core::mem::take(&mut replacer.regions)
                 .into_iter()
                 .map(|(_, bound_region)| BoundVariableKind::Region(bound_region.kind)),
         );
@@ -1078,30 +1078,52 @@ pub fn regions_outlived_by_placeholder<I: Interner>(
     })
 }
 
-pub struct PlaceholderReplacer<I: Interner> {
-    cx: I,
-    existing_var_count: usize,
-    bound_vars: IndexMap<BoundVar, BoundRegion<I>>,
+pub struct PlaceholderReplacer<'a, I: Interner, Infcx: InferCtxtLike<Interner = I>> {
+    cx: &'a Infcx,
+    preexisting_var_count: usize,
+    regions: IndexMap<Region<I>, BoundRegion<I>>,
     universe: UniverseIndex,
     current_index: DebruijnIndex,
 }
 
-impl<I: Interner> TypeFolder<I> for PlaceholderReplacer<I> {
+impl<'a, I: Interner, Infcx: InferCtxtLike<Interner = I>> PlaceholderReplacer<'a, I, Infcx> {
+    fn existing_var_count(&self) -> usize {
+        self.preexisting_var_count + self.regions.len()
+    }
+}
+
+impl<'a, I: Interner, Infcx: InferCtxtLike<Interner = I>> TypeFolder<I>
+    for PlaceholderReplacer<'a, I, Infcx>
+{
     fn cx(&self) -> I {
-        self.cx
+        self.cx.cx()
     }
 
     fn fold_region(&mut self, r: Region<I>) -> Region<I> {
+        let cx = self.cx();
+
         match r.kind() {
             RegionKind::RePlaceholder(p) if p.universe == self.universe => {
-                let bound_vars_len = self.bound_vars.len();
-                let mapped_var = self.bound_vars.entry(p.bound.var).or_insert(BoundRegion {
-                    var: BoundVar::from_usize(self.existing_var_count + bound_vars_len),
+                let existing_var_count = self.existing_var_count();
+                let mapped_var = self.regions.entry(r).or_insert(BoundRegion {
+                    var: BoundVar::from_usize(existing_var_count),
                     kind: p.bound.kind,
                 });
-                Region::new_bound(self.cx, self.current_index, *mapped_var)
+                Region::new_bound(cx, self.current_index, *mapped_var)
             }
-            // FIXME(-Zassumptions-on-binders): We should be handling region variables here somehow
+            RegionKind::ReVar(inf) => {
+                let u = self.cx.universe_of_region(inf).unwrap();
+                if u == self.universe {
+                    let existing_var_count = self.existing_var_count();
+                    let mapped_var = self.regions.entry(r).or_insert(BoundRegion {
+                        var: BoundVar::from_usize(existing_var_count),
+                        kind: BoundRegionKind::Anon,
+                    });
+                    Region::new_bound(cx, self.current_index, *mapped_var)
+                } else {
+                    r
+                }
+            }
             _ => r,
         }
     }
