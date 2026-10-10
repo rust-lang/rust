@@ -1,5 +1,6 @@
 //@ check-pass
 //@ revisions: current next
+//@[current] compile-flags: -Znext-solver=coherence
 //@[next] compile-flags: -Znext-solver=globally
 
 // https://github.com/rust-lang/rust/issues/161495
