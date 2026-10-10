@@ -68,7 +68,11 @@ pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?
 /// The precise behavior is not guaranteed, it depends on the architecture and operating system.
 /// Not all architectures guarantee that a breakpoint instruction interrupts execution in the absence
 /// of a debugger, and not all operating systems and execution environments guarantee that such an
-/// interrupt aborts the current process.
+/// interrupt aborts the current process. On operating systems where the behavior of the interrupt
+/// can be overwritten by the application (e.g. via a SIGTRAP signal handler), the application
+/// *should* make sure to still abort the process, but we recommend not relying on that for
+/// soundness unless you actually know for sure that the application running your code keeps the
+/// default (or equivalent) behavior.
 ///
 /// The precise instruction is guaranteed only on the following targets:
 /// - On x86 targets, this produces an `int3` instruction.
