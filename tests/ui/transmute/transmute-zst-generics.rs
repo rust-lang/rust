@@ -1,5 +1,7 @@
 //@ run-pass
-
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@ [next] compile-flags: -Znext-solver
 // Transmuting to/from ZSTs that contain generics.
 
 #![feature(transmute_generic_consts)]

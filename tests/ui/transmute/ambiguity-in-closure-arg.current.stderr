@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/ambiguity-in-closure-arg.rs:6:44
+  --> $DIR/ambiguity-in-closure-arg.rs:11:44
    |
 LL |     unsafe { std::mem::transmute::<_, ()>(|o_b: Unconstrained<_>| {}) };
    |                                            ^^^^^^^^^^^^^^^^^^^^^ cannot infer type

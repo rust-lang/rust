@@ -24,7 +24,7 @@ use crate::solve::assembly::{
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
-    MergeCandidateInfo, NoSolution, ParamEnvSource, StalledOnCoroutines,
+    MergeCandidateInfo, NoSolution, ParamEnvSource, StalledOnCoroutines, flatten_answer_tree,
     has_only_region_constraints,
 };
 
@@ -656,6 +656,8 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+        use rustc_type_ir::transmute::Answer;
+
         if goal.predicate.polarity != ty::ClausePolarity::Positive {
             return Err(NoSolution.into());
         }
@@ -678,11 +680,28 @@ where
                     goal.predicate.trait_ref.args.const_at(2),
                 )?;
 
-                let certainty = ecx.is_transmutable(
+                let answer = ecx.is_transmutable(
                     goal.predicate.trait_ref.args.type_at(0),
                     goal.predicate.trait_ref.args.type_at(1),
                     assume,
                 )?;
+
+                let certainty = match answer {
+                    Answer::No(_) => return Err(NoSolution.into()),
+                    Answer::Yes => Certainty::Yes,
+                    Answer::If(cond) => {
+                        let tcx = ecx.cx();
+                        ecx.add_goals(
+                            GoalSource::Misc,
+                            flatten_answer_tree(tcx, goal.predicate, cond)
+                                .into_iter()
+                                .map(|predicate| Goal::new(tcx, goal.param_env, predicate)),
+                        )?;
+
+                        Certainty::Yes
+                    }
+                };
+
                 ecx.evaluate_added_goals_and_make_canonical_response(certainty)
             },
         )
