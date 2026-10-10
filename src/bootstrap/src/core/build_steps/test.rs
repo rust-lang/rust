@@ -1075,7 +1075,8 @@ impl CommandLineStep for IntrinsicTest {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("intrinsic-test")
+        // Keep accepting the historical path used by external CI jobs.
+        run.path("library/stdarch/crates/intrinsic-test").alias("intrinsic-test")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
