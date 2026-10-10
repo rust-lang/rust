@@ -172,8 +172,10 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                     }
                 }
             }
-            ItemKind::Const(ident, _, ty, rhs) => {
-                if ty.is_suggestable_infer_ty() {
+            ItemKind::Const(ident, generics, ty, rhs) => {
+                // We can't infer the type of parameterized const items without causing a query
+                // cycle (typeck -..> inferred_outlives_of -..> type_of -> typeck), so let's not.
+                if generics.params.is_empty() && ty.is_suggestable_infer_ty() {
                     let hir_body_id = match rhs {
                         ConstItemRhs::Body(body) => Some(body.hir_id),
                         ConstItemRhs::Direct(_) => None,

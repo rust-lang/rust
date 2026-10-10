@@ -1,12 +1,14 @@
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::outlives::{Component, push_outlives_components};
 use rustc_middle::ty::{self, GenericArg, GenericArgKind, Region, Ty, TyCtxt};
 use rustc_span::{Span, bug, span_bug};
 use smallvec::smallvec;
 
-/// Tracks the `T: 'a` or `'a: 'a` clauses that we have inferred
-/// must be added to the struct header.
-pub(crate) type RequiredClauses<'tcx> = FxIndexMap<ty::ArgOutlivesClause<'tcx>, Span>;
+pub(crate) type OutlivesClauses<'tcx> = FxIndexMap<ty::ArgOutlivesClause<'tcx>, Span>;
+
+pub(crate) type GlobalOutlivesClauses<'tcx> =
+    FxIndexMap<DefId, ty::EarlyBinder<'tcx, OutlivesClauses<'tcx>>>;
 
 /// Given a requirement `T: 'a` or `'b: 'a`, deduce the
 /// outlives_component and add it to `required_clauses`
@@ -15,7 +17,7 @@ pub(crate) fn insert_outlives_clause<'tcx>(
     arg: GenericArg<'tcx>,
     outlived_region: Region<'tcx>,
     span: Span,
-    required_clauses: &mut RequiredClauses<'tcx>,
+    required_clauses: &mut OutlivesClauses<'tcx>,
 ) {
     // If the `'a` region is bound within the field type itself, we
     // don't want to propagate this constraint to the header.

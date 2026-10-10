@@ -1834,9 +1834,7 @@ fn const_of_item<'tcx>(
     };
     let ct_arg = match ct_rhs {
         hir::ConstItemRhs::Direct(ct_arg) => ct_arg,
-        hir::ConstItemRhs::Body(_) => {
-            return None;
-        }
+        hir::ConstItemRhs::Body(_) => return None,
     };
     let icx = ItemCtxt::new(tcx, def_id);
     let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);

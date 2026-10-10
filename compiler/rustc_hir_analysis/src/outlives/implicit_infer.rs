@@ -1,22 +1,17 @@
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, GenericArg, GenericArgKind, Ty, TyCtxt};
 use rustc_span::Span;
 use tracing::debug;
 
-use super::explicit::ExplicitClausesMap;
+use super::explicit::GlobalExplicitOutlivesClauses;
 use super::utils::*;
 
 /// Infer outlives-clauses for the items in the local crate.
-pub(super) fn infer_clauses(
-    tcx: TyCtxt<'_>,
-) -> FxIndexMap<DefId, ty::EarlyBinder<'_, RequiredClauses<'_>>> {
-    debug!("infer_clauses");
-
-    let mut explicit_map = ExplicitClausesMap::new();
-
-    let mut global_inferred_outlives = FxIndexMap::default();
+#[tracing::instrument(level = "debug", skip_all)]
+pub(super) fn infer_outlives_clauses(tcx: TyCtxt<'_>) -> GlobalOutlivesClauses<'_> {
+    let mut global_explicit_clauses = GlobalExplicitOutlivesClauses::default();
+    let mut global_inferred_clauses = GlobalOutlivesClauses::default();
 
     // If new clauses were added then we need to re-calculate
     // all crates since there could be new implied clauses.
@@ -26,10 +21,9 @@ pub(super) fn infer_clauses(
         // Visit all the crates and infer clauses
         for id in tcx.hir_free_items() {
             let item_did = id.owner_id;
+            debug!(?item_did);
 
-            debug!("InferVisitor::visit_item(item={:?})", item_did);
-
-            let mut item_required_clauses = RequiredClauses::default();
+            let mut item_required_clauses = OutlivesClauses::default();
             match tcx.def_kind(item_did) {
                 DefKind::Union | DefKind::Enum | DefKind::Struct => {
                     let adt_def = tcx.adt_def(item_did.to_def_id());
@@ -45,28 +39,60 @@ pub(super) fn infer_clauses(
                         let field_ty =
                             tcx.type_of(field_def.did).instantiate_identity().skip_norm_wip();
                         let field_span = tcx.def_span(field_def.did);
-                        insert_required_clauses_to_be_wf(
+                        insert_required_outlives_clauses_to_be_wf(
                             tcx,
-                            field_ty,
+                            field_ty.into(),
                             field_span,
-                            &global_inferred_outlives,
                             &mut item_required_clauses,
-                            &mut explicit_map,
+                            &global_inferred_clauses,
+                            &mut global_explicit_clauses,
                         );
                     }
                 }
 
                 DefKind::TyAlias if tcx.type_alias_is_checked(item_did) => {
-                    insert_required_clauses_to_be_wf(
+                    let ty = tcx.type_of(item_did).instantiate_identity().skip_norm_wip();
+                    insert_required_outlives_clauses_to_be_wf(
                         tcx,
-                        tcx.type_of(item_did).instantiate_identity().skip_norm_wip(),
+                        ty.into(),
                         tcx.def_span(item_did),
-                        &global_inferred_outlives,
                         &mut item_required_clauses,
-                        &mut explicit_map,
+                        &global_inferred_clauses,
+                        &mut global_explicit_clauses,
                     );
                 }
+                // HACK(generic_const_items): We have to explicitly disqualify const items that do
+                // not have any parameters to break certain query cycles that would otherwise occur
+                // when `typeck`'ing const items which we would only do if its type signature was
+                // ill-formed due to it missing or containing inferred types `_`.
+                //
+                // This is correct as we only ever imply outlives-predicates where the outlived
+                // region is early-bound ... for which the item must have generic parameters.
+                DefKind::Const if !tcx.generics_of(item_did).is_empty() => {
+                    let span = tcx.def_span(item_did);
 
+                    let ty = tcx.type_of(item_did).instantiate_identity().skip_norm_wip();
+                    insert_required_outlives_clauses_to_be_wf(
+                        tcx,
+                        ty.into(),
+                        span,
+                        &mut item_required_clauses,
+                        &global_inferred_clauses,
+                        &mut global_explicit_clauses,
+                    );
+
+                    if let Some(ct) = tcx.const_of_item(item_did) {
+                        let ct = ct.instantiate_identity().skip_norm_wip();
+                        insert_required_outlives_clauses_to_be_wf(
+                            tcx,
+                            ct.into(),
+                            span,
+                            &mut item_required_clauses,
+                            &global_inferred_clauses,
+                            &mut global_explicit_clauses,
+                        );
+                    }
+                }
                 _ => {}
             };
 
@@ -76,12 +102,12 @@ pub(super) fn infer_clauses(
             // Therefore mark `clauses_added` as true and which will ensure
             // we walk the crates again and re-calculate clauses for all
             // items.
-            let item_clauses_len: usize = global_inferred_outlives
+            let item_clauses_len: usize = global_inferred_clauses
                 .get(&item_did.to_def_id())
                 .map_or(0, |c| c.as_ref().skip_binder().len());
             if item_required_clauses.len() > item_clauses_len {
                 clauses_added.push(item_did);
-                global_inferred_outlives.insert(
+                global_inferred_clauses.insert(
                     item_did.to_def_id(),
                     ty::EarlyBinder::bind_iter(item_required_clauses),
                 );
@@ -104,130 +130,169 @@ pub(super) fn infer_clauses(
         }
     }
 
-    global_inferred_outlives
+    global_inferred_clauses
 }
 
-fn insert_required_clauses_to_be_wf<'tcx>(
+fn insert_required_outlives_clauses_to_be_wf<'tcx>(
     tcx: TyCtxt<'tcx>,
-    ty: Ty<'tcx>,
+    arg: ty::GenericArg<'tcx>,
     span: Span,
-    global_inferred_outlives: &FxIndexMap<DefId, ty::EarlyBinder<'tcx, RequiredClauses<'tcx>>>,
-    required_clauses: &mut RequiredClauses<'tcx>,
-    explicit_map: &mut ExplicitClausesMap<'tcx>,
+    required_clauses: &mut OutlivesClauses<'tcx>,
+    global_inferred_clauses: &GlobalOutlivesClauses<'tcx>,
+    global_explicit_clauses: &mut GlobalExplicitOutlivesClauses<'tcx>,
 ) {
-    for arg in ty.walk() {
-        let leaf_ty = match arg.kind() {
-            GenericArgKind::Type(ty) => ty,
-
-            // No clauses from lifetimes or constants, except potentially
-            // constants' types, but `walk` will get to them as well.
-            GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => continue,
-        };
-
-        match *leaf_ty.kind() {
-            ty::Ref(region, rty, _) => {
-                // The type is `&'a T` which means that we will have
-                // a clause requirement of `T: 'a` (`T` outlives `'a`).
-                //
-                // We also want to calculate potential clauses for the `T`.
-                debug!("Ref");
-                insert_outlives_clause(tcx, rty.into(), region, span, required_clauses);
-            }
-
-            ty::Adt(def, args) => {
-                // For ADTs (structs/enums/unions), we check inferred and explicit clauses.
-                debug!("Adt");
-                check_inferred_clauses(
-                    tcx,
-                    def.did(),
-                    args,
-                    global_inferred_outlives,
-                    required_clauses,
-                );
-                check_explicit_clauses(
-                    tcx,
-                    def.did(),
-                    args,
-                    required_clauses,
-                    explicit_map,
-                    IgnoreClausesReferencingSelf::No,
-                );
-            }
-
-            ty::Alias(_, ty::AliasTy { kind: ty::Free { def_id }, args, .. }) => {
-                // This corresponds to a type like `Type<'a, T>`.
-                // We check inferred and explicit clauses.
-                debug!("Free");
-                check_inferred_clauses(
-                    tcx,
-                    def_id,
-                    args,
-                    global_inferred_outlives,
-                    required_clauses,
-                );
-                check_explicit_clauses(
-                    tcx,
-                    def_id,
-                    args,
-                    required_clauses,
-                    explicit_map,
-                    IgnoreClausesReferencingSelf::No,
-                );
-            }
-
-            ty::Dynamic(obj, ..) => {
-                // This corresponds to `dyn Trait<..>`. In this case, we should
-                // use the explicit clauses as well.
-                debug!("Dynamic");
-                if let Some(trait_ref) = obj.principal() {
-                    let args = trait_ref
-                        .with_self_ty(tcx, tcx.types.trait_object_dummy_self)
-                        .skip_binder()
-                        .args;
-                    // We skip clauses that reference the `Self` type parameter since we don't
-                    // want to leak the dummy Self to the clauses map.
-                    //
-                    // While filtering out bounds like `Self: 'a` as in `trait Trait<'a, T>: 'a {}`
-                    // doesn't matter since they can't affect the lifetime / type parameters anyway,
-                    // for bounds like `Self::AssocTy: 'b` which we of course currently also ignore
-                    // (see also #54467) it might conceivably be better to extract the binding
-                    // `AssocTy = U` from the trait object type (which must exist) and thus infer
-                    // an outlives requirement that `U: 'b`.
-                    check_explicit_clauses(
-                        tcx,
-                        trait_ref.def_id(),
-                        args,
-                        required_clauses,
-                        explicit_map,
-                        IgnoreClausesReferencingSelf::Yes,
-                    );
-                }
-            }
-
-            ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args, .. }) => {
-                // This corresponds to a type like `<() as Trait<'a, T>>::Type`.
-                // We only use the explicit clauses of the trait but
-                // not the ones of the associated type itself.
-                debug!("Projection");
-                check_explicit_clauses(
-                    tcx,
-                    tcx.parent(def_id),
-                    args,
-                    required_clauses,
-                    explicit_map,
-                    IgnoreClausesReferencingSelf::No,
-                );
-            }
-
-            // FIXME(inherent_associated_types): Use the explicit clauses from the parent impl.
-            ty::Alias(_, ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {}
-
-            _ => {}
+    for arg in arg.walk() {
+        match arg.kind() {
+            GenericArgKind::Lifetime(_) => {}
+            GenericArgKind::Type(ty) => check_leaf_ty(
+                tcx,
+                ty,
+                span,
+                required_clauses,
+                global_inferred_clauses,
+                global_explicit_clauses,
+            ),
+            GenericArgKind::Const(ct) => check_leaf_ct(
+                tcx,
+                ct,
+                required_clauses,
+                global_inferred_clauses,
+                global_explicit_clauses,
+            ),
         }
     }
 }
 
-/// Check the explicit clauses declared on the type.
+fn check_leaf_ty<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    leaf_ty: Ty<'tcx>,
+    span: Span,
+    required_clauses: &mut OutlivesClauses<'tcx>,
+    global_inferred_clauses: &GlobalOutlivesClauses<'tcx>,
+    global_explicit_clauses: &mut GlobalExplicitOutlivesClauses<'tcx>,
+) {
+    match *leaf_ty.kind() {
+        ty::Ref(region, rty, _) => {
+            // The type is `&'a T` which means that we will have
+            // a clause requirement of `T: 'a` (`T` outlives `'a`).
+            //
+            // We also want to calculate potential clauses for the `T`.
+            insert_outlives_clause(tcx, rty.into(), region, span, required_clauses);
+        }
+        ty::Adt(def, args) => {
+            // For ADTs (structs/enums/unions), we check inferred and explicit clauses.
+            check_inferred_clauses(tcx, def.did(), args, global_inferred_clauses, required_clauses);
+            check_explicit_clauses(
+                tcx,
+                def.did(),
+                args,
+                required_clauses,
+                global_explicit_clauses,
+                IgnoreClausesReferencingSelf::No,
+            );
+        }
+        ty::Alias(_, ty::AliasTy { kind: ty::Free { def_id }, args, .. }) => {
+            // This corresponds to a type like `Type<'a, T>`.
+            // We check inferred and explicit clauses.
+            check_inferred_clauses(tcx, def_id, args, global_inferred_clauses, required_clauses);
+            check_explicit_clauses(
+                tcx,
+                def_id,
+                args,
+                required_clauses,
+                global_explicit_clauses,
+                IgnoreClausesReferencingSelf::No,
+            );
+        }
+        ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args, .. }) => {
+            // This corresponds to a type like `<() as Trait<'a, T>>::Type`.
+            // We only use the explicit clauses of the trait but not the ones of the associated item
+            // itself. FIXME(#141692): Ideally we would consider them, too, though.
+            check_explicit_clauses(
+                tcx,
+                tcx.parent(def_id),
+                args,
+                required_clauses,
+                global_explicit_clauses,
+                IgnoreClausesReferencingSelf::No,
+            );
+        }
+        // FIXME(inherent_associated_types): Use the explicit clauses from the parent impl.
+        ty::Alias(_, ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {}
+        ty::Dynamic(obj, ..) => {
+            // This corresponds to `dyn Trait<..>`. In this case, we should
+            // use the explicit clauses as well.
+            if let Some(trait_ref) = obj.principal() {
+                let args = trait_ref
+                    .with_self_ty(tcx, tcx.types.trait_object_dummy_self)
+                    .skip_binder()
+                    .args;
+                // We skip clauses that reference the `Self` type parameter since we don't
+                // want to leak the dummy Self to the clauses map.
+                //
+                // While filtering out bounds like `Self: 'a` as in `trait Trait<'a, T>: 'a {}`
+                // doesn't matter since they can't affect the lifetime / type parameters anyway,
+                // for bounds like `Self::AssocTy: 'b` which we of course currently also ignore
+                // (see also #54467) it might conceivably be better to extract the binding
+                // `AssocTy = U` from the trait object type (which must exist) and thus infer
+                // an outlives requirement that `U: 'b`.
+                check_explicit_clauses(
+                    tcx,
+                    trait_ref.def_id(),
+                    args,
+                    required_clauses,
+                    global_explicit_clauses,
+                    IgnoreClausesReferencingSelf::Yes,
+                );
+            }
+        }
+        _ => {}
+    }
+}
+
+fn check_leaf_ct<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    leaf_ct: ty::Const<'tcx>,
+    required_clauses: &mut OutlivesClauses<'tcx>,
+    global_inferred_clauses: &GlobalOutlivesClauses<'tcx>,
+    global_explicit_clauses: &mut GlobalExplicitOutlivesClauses<'tcx>,
+) {
+    match leaf_ct.kind() {
+        ty::ConstKind::Alias(
+            _,
+            ty::AliasConst { kind: ty::AliasConstKind::Free { def_id }, args, .. },
+        ) => {
+            check_inferred_clauses(tcx, def_id, args, global_inferred_clauses, required_clauses);
+            check_explicit_clauses(
+                tcx,
+                def_id,
+                args,
+                required_clauses,
+                global_explicit_clauses,
+                IgnoreClausesReferencingSelf::No,
+            );
+        }
+        ty::ConstKind::Alias(
+            _,
+            ty::AliasConst { kind: ty::AliasConstKind::Projection { def_id }, args, .. },
+        ) => {
+            // This corresponds to a constant like `<() as Trait<'a, T>>::CONST`.
+            // We only use the explicit clauses of the trait but not the ones of the associated item
+            // itself. FIXME(#141692): Ideally we would consider them, too, though.
+            check_explicit_clauses(
+                tcx,
+                tcx.parent(def_id),
+                args,
+                required_clauses,
+                global_explicit_clauses,
+                IgnoreClausesReferencingSelf::No,
+            );
+        }
+        _ => {}
+    }
+}
+
+/// Check the explicit clauses declared on the item.
 ///
 /// ### Example
 ///
@@ -249,11 +314,11 @@ fn check_explicit_clauses<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     args: &[GenericArg<'tcx>],
-    required_clauses: &mut RequiredClauses<'tcx>,
-    explicit_map: &mut ExplicitClausesMap<'tcx>,
+    required_clauses: &mut OutlivesClauses<'tcx>,
+    global_explicit_clauses: &mut GlobalExplicitOutlivesClauses<'tcx>,
     ignore_clauses_refing_self: IgnoreClausesReferencingSelf,
 ) {
-    let explicit_clauses = explicit_map.explicit_clauses_of(tcx, def_id);
+    let explicit_clauses = global_explicit_clauses.explicit_outlives_clauses_of(tcx, def_id);
 
     for (&clause @ ty::OutlivesClause(arg, _), &span) in explicit_clauses.as_ref().skip_binder() {
         debug!(?clause);
@@ -279,7 +344,7 @@ enum IgnoreClausesReferencingSelf {
     No,
 }
 
-/// Check the inferred clauses of the type.
+/// Check the inferred clauses of the item.
 ///
 /// ### Example
 ///
@@ -302,13 +367,13 @@ fn check_inferred_clauses<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     args: ty::GenericArgsRef<'tcx>,
-    global_inferred_outlives: &FxIndexMap<DefId, ty::EarlyBinder<'tcx, RequiredClauses<'tcx>>>,
-    required_clauses: &mut RequiredClauses<'tcx>,
+    global_inferred_clauses: &GlobalOutlivesClauses<'tcx>,
+    required_clauses: &mut OutlivesClauses<'tcx>,
 ) {
     // Load the current set of inferred and explicit clauses from `global_inferred_outlives`
     // and filter the ones that are `TypeOutlives`.
 
-    let Some(clauses) = global_inferred_outlives.get(&def_id) else {
+    let Some(clauses) = global_inferred_clauses.get(&def_id) else {
         return;
     };
 
