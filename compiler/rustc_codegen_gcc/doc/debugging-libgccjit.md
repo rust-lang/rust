@@ -61,7 +61,7 @@ To print a debug representation of a gimple struct:
 debug_gimple_stmt(gimple_struct)
 ```
 
-To get the `rustc` command to run in `gdb`, add the `--verbose` flag to `cargo build`.
+To get the `rustc` command to run in `gdb`, add the `show` flag to `cargo build`.
 
 To have the correct file paths in `gdb` instead of `/usr/src/debug/gcc/libstdc++-v3/libsupc++/eh_personality.cc`:
 
