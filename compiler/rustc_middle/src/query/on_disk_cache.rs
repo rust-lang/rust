@@ -937,6 +937,11 @@ impl<'tcx> TyEncoder<'tcx> for CacheEncoder<'tcx> {
 
         index.encode(self);
     }
+
+    #[inline]
+    fn encode_def_id_map<V: Encodable<Self>>(&mut self, map: &FxHashMap<DefId, V>) {
+        map.encode(self);
+    }
 }
 
 macro_rules! encoder_methods {

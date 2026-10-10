@@ -149,6 +149,10 @@ impl<'a, 'tcx> TyEncoder<'tcx> for OffloadManifestEncoder<'a, 'tcx> {
     fn encode_alloc_id(&mut self, _alloc_id: &rustc_middle::mir::interpret::AllocId) {
         // AllocIds are not expected in the manifest.
     }
+
+    fn encode_def_id_map<V: Encodable<Self>>(&mut self, map: &FxHashMap<DefId, V>) {
+        map.encode(self);
+    }
 }
 
 const UNRESOLVED_DEF_ID: DefId = DefId {
