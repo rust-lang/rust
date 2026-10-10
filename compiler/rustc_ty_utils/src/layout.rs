@@ -841,6 +841,8 @@ fn layout_of_uncached<'tcx>(
             cx.layout_of(ty)?.layout
         }
 
+        ty::Erased(param_layout) => layout_of_param_layout(tcx, param_layout),
+
         // Types with no meaningful known layout.
         ty::Param(_) | ty::Placeholder(..) => {
             return Err(error(cx, LayoutError::TooGeneric(ty)));
@@ -871,6 +873,25 @@ fn layout_of_uncached<'tcx>(
             // `ty::Error` is handled at the top of this function.
             bug!("layout_of: unexpected type `{ty}`")
         }
+    })
+}
+
+fn layout_of_param_layout<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_layout: ty::ParamLayout<'tcx>,
+) -> Layout<'tcx> {
+    let ty::ParamLayoutData { backend_repr, largest_niche, align, size } = *param_layout.0.0;
+    tcx.mk_layout(LayoutData {
+        fields: FieldsShape::Opaque,
+        variants: Variants::Opaque,
+        backend_repr,
+        largest_niche,
+        uninhabited: false,
+        align: rustc_abi::AbiAlign::new(align),
+        size,
+        max_repr_align: None,
+        unadjusted_abi_align: align,
+        randomization_seed: Hash64::ZERO,
     })
 }
 
@@ -959,6 +980,7 @@ fn variant_info_for_adt<'tcx>(
     };
 
     match layout.variants {
+        Variants::Opaque => unreachable!(),
         Variants::Empty => (vec![], None),
 
         Variants::Single { index } => {

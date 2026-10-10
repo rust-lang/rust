@@ -109,6 +109,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Pat = Pattern<'tcx>;
     type PatList = &'tcx List<Pattern<'tcx>>;
     type Safety = hir::Safety;
+    type ParamLayout = ty::ParamLayout<'tcx>;
     type Consts = &'tcx List<ty::Const<'tcx>>;
 
     type ParamConst = ty::ParamConst;

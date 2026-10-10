@@ -1,6 +1,8 @@
 use std::ops::RangeFull;
 use std::{fmt, iter};
 
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
+
 use crate::Size;
 #[cfg(feature = "nightly")]
 use crate::StableHash;
@@ -14,7 +16,7 @@ use crate::StableHash;
 ///    254 (-2), 255 (-1), 0, 1, 2
 ///
 /// This is intended specifically to mirror LLVM’s `!range` metadata semantics.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct WrappingRange {
     pub start: u128,

@@ -14,6 +14,7 @@ use crate::ty::{self, Ty, TyCtxt};
 
 rustc_arena::declare_arena! {
     layout: rustc_abi::LayoutData<rustc_abi::FieldIdx, rustc_abi::VariantIdx>,
+    param_layout: rustc_middle::ty::ParamLayoutData,
     proxy_coroutine_layout: rustc_middle::mir::CoroutineLayout<'tcx>,
     fn_abi: rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>,
     adt_def: rustc_middle::ty::AdtDefData,

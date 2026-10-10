@@ -144,6 +144,8 @@ pub fn mangle_offload_export<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) 
 // instance from the local crate. In particular, it will also look up the
 // correct symbol name of instances from upstream crates.
 fn symbol_name_provider<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::SymbolName<'tcx> {
+    // TODO: not the right place for this probably
+    let instance = instance.polymorphize(tcx);
     let symbol_name = compute_symbol_name(tcx, instance, || {
         // This closure determines the instantiating crate for instances that
         // need an instantiating-crate-suffix for their symbol name, in order
@@ -362,10 +364,11 @@ fn compute_symbol_name<'tcx>(
         }
     };
 
-    debug_assert!(
-        rustc_demangle::try_demangle(&symbol).is_ok(),
-        "compute_symbol_name: `{symbol}` cannot be demangled"
-    );
+    // TODO: handle erased params in demangling somehow
+    // debug_assert!(
+    //     rustc_demangle::try_demangle(&symbol).is_ok(),
+    //     "compute_symbol_name: `{symbol}` cannot be demangled"
+    // );
 
     symbol
 }

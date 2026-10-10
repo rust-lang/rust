@@ -376,6 +376,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     ) -> PathElem<'tcx> {
         // First, check if we are projecting to a variant.
         match layout.variants {
+            Variants::Opaque => unreachable!(),
             Variants::Multiple { tag_field, .. } => {
                 if tag_field.as_usize() == field {
                     return match layout.ty.kind() {
@@ -423,6 +424,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             ty::Adt(def, ..) if def.is_enum() => {
                 // we might be projecting *to* a variant, or to a field *in* a variant.
                 match layout.variants {
+                    Variants::Opaque => unreachable!(),
                     Variants::Single { index } => {
                         // Inside a variant
                         PathElem::Field(def.variant(index).fields[FieldIdx::from_usize(field)].name)
@@ -991,6 +993,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             | ty::Placeholder(..)
             | ty::Bound(..)
             | ty::Param(..)
+            | ty::Erased(..)
             | ty::Alias(..)
             | ty::CoroutineWitness(..) => bug!("Encountered invalid type {:?}", ty),
         }
@@ -1189,7 +1192,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             }
             // Just recursively add all the fields of everything to the output.
             match &layout.fields {
-                FieldsShape::Primitive => {
+                FieldsShape::Opaque | FieldsShape::Primitive => {
                     out.add_range(base_offset, layout.size);
                 }
                 &FieldsShape::Union(fields) => {
@@ -1223,7 +1226,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             }
             // Don't forget potential other variants.
             match &layout.variants {
-                Variants::Single { .. } | Variants::Empty => {
+                Variants::Opaque | Variants::Single { .. } | Variants::Empty => {
                     // Fully handled above.
                 }
                 Variants::Multiple { variants, .. } => {

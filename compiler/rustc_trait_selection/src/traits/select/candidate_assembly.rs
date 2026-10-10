@@ -687,6 +687,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Alias(_, _)
                 | ty::Infer(_)
                 | ty::Param(..)
+                | ty::Erased(..)
                 | ty::Bound(_, _) => {}
 
                 // These can't possibly implement `FnPtr` as they are concrete types
@@ -787,6 +788,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
                 ty::Param(..)
+                | ty::Erased(..)
                 | ty::Alias(
                     _,
                     ty::AliasTy {
@@ -1229,7 +1231,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // Fallback to whatever user-defined impls or param-env clauses exist in this case.
-            ty::Adt(..) | ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) => {}
+            ty::Adt(..) | ty::Alias(..) | ty::Param(..) | ty::Erased(..) | ty::Placeholder(..) => {}
 
             ty::Infer(ty::TyVar(_)) => {
                 candidates.ambiguous = true;
@@ -1268,6 +1270,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Never
+            | ty::Erased(..)
             | ty::Error(_) => {
                 candidates.vec.push(SizedCandidate);
             }
@@ -1360,6 +1363,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Never
             | ty::Alias(..)
             | ty::Param(_)
+            | ty::Erased(..)
             | ty::Bound(_, _)
             | ty::Error(_)
             | ty::Infer(_)
@@ -1401,6 +1405,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Tuple(..)
             | ty::Alias(..)
             | ty::Param(..)
+            | ty::Erased(..)
             | ty::Bound(..)
             | ty::Error(_)
             | ty::Infer(
@@ -1443,6 +1448,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Foreign(..)
             | ty::Alias(..)
             | ty::Param(_)
+            | ty::Erased(..)
             | ty::Placeholder(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)

@@ -140,6 +140,8 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
                 self.out.push(Component::Param(p));
             }
 
+            ty::Erased(..) => {}
+
             ty::Placeholder(p) => {
                 self.out.push(Component::Placeholder(p));
             }

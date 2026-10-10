@@ -200,6 +200,7 @@ pub trait Interner:
         + TypeVisitable<Self>
         + SliceLike<Item = Self::Pat>;
     type Safety: Safety<Self>;
+    type ParamLayout: Copy + Debug + Hash + Eq;
 
     // Kinds of consts
     type Consts: Copy + Debug + Hash + Eq + SliceLike<Item = Const<Self>> + Default;

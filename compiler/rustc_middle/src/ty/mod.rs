@@ -98,9 +98,9 @@ pub use self::sty::{
     Alias, AliasTy, AliasTyKind, Article, Binder, BoundConst, BoundRegion, BoundRegionKind,
     BoundTy, BoundTyKind, BoundVariableKind, CanonicalPolyFnSig, CoroutineArgsExt, EarlyBinder,
     FnSig, FnSigKind, FreeAliasTy, InherentAliasTy, InlineConstArgs, InlineConstArgsParts,
-    OpaqueAliasTy, ParamConst, ParamTy, PlaceholderConst, PlaceholderRegion, PlaceholderType,
-    PolyFnSig, ProjectionAliasTy, TyKind, TypeAndMut, TypingMode, TypingModeEqWrapper,
-    Unnormalized, UpvarArgs,
+    OpaqueAliasTy, ParamConst, ParamLayout, ParamLayoutData, ParamTy, PlaceholderConst,
+    PlaceholderRegion, PlaceholderType, PolyFnSig, ProjectionAliasTy, TyKind, TypeAndMut,
+    TypingMode, TypingModeEqWrapper, Unnormalized, UpvarArgs,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
@@ -1658,6 +1658,11 @@ impl<'tcx> TyCtxt<'tcx> {
         // If `-Z randomize-layout` was enabled for the type definition then we can
         // consider performing layout randomization
         if self.sess.opts.unstable_opts.randomize_layout {
+            // FIXME: figure out if these features are incompatible in cross-crate contexts too
+            assert!(
+                !self.sess.opts.unstable_opts.polymorphize,
+                "-Zpolymorphize is incompatible with -Zrandomize-layout"
+            );
             flags.insert(ReprFlags::RANDOMIZE_LAYOUT);
         }
 

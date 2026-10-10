@@ -311,7 +311,7 @@ where
             | ty::Bound(..)
             | ty::Error(_)
             | ty::CoroutineWitness(..) => {}
-            ty::Placeholder(..) | ty::Infer(..) => {
+            ty::Erased(..) | ty::Placeholder(..) | ty::Infer(..) => {
                 bug!("unexpected type: {:?}", ty)
             }
         }

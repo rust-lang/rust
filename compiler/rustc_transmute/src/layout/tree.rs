@@ -385,7 +385,9 @@ pub(crate) mod rustc {
                     assert_eq!(offsets.len(), members.len());
                     Self::from_variant(Def::Primitive, None, (ty, layout), layout.size, cx)
                 }
-                FieldsShape::Array { .. } | FieldsShape::Union(_) => Err(Err::NotYetSupported),
+                FieldsShape::Opaque | FieldsShape::Array { .. } | FieldsShape::Union(_) => {
+                    Err(Err::NotYetSupported)
+                }
             }
         }
 
@@ -436,6 +438,7 @@ pub(crate) mod rustc {
             };
 
             match *layout.variants() {
+                Variants::Opaque => unreachable!(),
                 Variants::Empty => Ok(Self::uninhabited()),
                 Variants::Single { index } => {
                     // `Variants::Single` on enums with variants denotes that
@@ -598,6 +601,7 @@ pub(crate) mod rustc {
         match ty.kind() {
             ty::Adt(def, args) => {
                 match layout.variants {
+                    Variants::Opaque => unreachable!(),
                     Variants::Single { index } => {
                         let field = &def.variant(index).fields[i];
                         field.ty(cx.tcx(), args).skip_norm_wip()

@@ -62,8 +62,15 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
         })
     }
 
-    fn skip_newtypes<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) -> TyAndLayout<'tcx> {
+    fn skip_newtypes<'tcx>(
+        cx: &LayoutCx<'tcx>,
+        layout: &TyAndLayout<'tcx>,
+    ) -> Option<TyAndLayout<'tcx>> {
         match *layout.ty.kind() {
+            // Erased params have already had their layouts sanity-checked at construction.
+            // The sanity check fails for them because their layouts may have fields
+            // from the underlying type, but `ty::Erased` has no type info for fields.
+            ty::Erased(..) => return None,
             ty::UnsafeBinder(bound_ty) => {
                 let ty = cx.tcx().instantiate_bound_regions_with_erased(bound_ty.into());
                 return skip_newtypes(cx, &TyAndLayout { ty, ..*layout });
@@ -73,12 +80,12 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
 
         if matches!(layout.layout.variants(), Variants::Multiple { .. }) {
             // Definitely not a newtype of anything.
-            return *layout;
+            return Some(*layout);
         }
         let mut fields = non_zst_fields(cx, layout);
         let Some(first) = fields.next() else {
             // No fields here, so this could be a primitive or enum -- either way it's not a newtype around a thing
-            return *layout;
+            return Some(*layout);
         };
         if fields.next().is_none() {
             let (offset, first) = first;
@@ -90,7 +97,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
             }
         }
         // No more newtypes here.
-        *layout
+        Some(*layout)
     }
 
     fn check_layout_abi<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
@@ -119,7 +126,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 let align = align.unwrap();
                 let size = size.unwrap();
                 // Check that this matches the underlying field.
-                let inner = skip_newtypes(cx, layout);
+                let Some(inner) = skip_newtypes(cx, layout) else { return };
                 assert!(
                     matches!(inner.layout.backend_repr(), BackendRepr::Scalar(_)),
                     "`Scalar` type {} is newtype around non-`Scalar` type {}",
@@ -171,7 +178,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
             }
             BackendRepr::ScalarPair { a: scalar1, b: scalar2, b_offset } => {
                 // Check that the underlying pair of fields matches.
-                let inner = skip_newtypes(cx, layout);
+                let Some(inner) = skip_newtypes(cx, layout) else { return };
                 assert!(
                     matches!(inner.layout.backend_repr(), BackendRepr::ScalarPair { .. }),
                     "`ScalarPair` type {} is newtype around non-`ScalarPair` type {}",
@@ -286,6 +293,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
     check_layout_abi(cx, layout);
 
     match &layout.variants {
+        Variants::Opaque => assert!(layout.ty.is_erased()),
         Variants::Empty => {
             assert!(layout.is_uninhabited());
         }

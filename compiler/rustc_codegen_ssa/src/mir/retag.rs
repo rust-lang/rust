@@ -121,6 +121,7 @@ impl<'a, 'tcx, V> RetagPlan<V> {
 
         let mut variant_plans = FxIndexMap::default();
         match &layout.variants {
+            Variants::Opaque => {}
             Variants::Single { .. } | Variants::Empty => {}
             Variants::Multiple { variants, .. } => {
                 for ix in variants.indices() {

@@ -1129,9 +1129,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     use rand::seq::SliceRandom;
                     // `ReprOptions.field_shuffle_seed` is a deterministic seed we can use to randomize field
                     // ordering.
-                    let mut rng = rand_xoshiro::Xoshiro128StarStar::seed_from_u64(
-                        field_seed.wrapping_add(repr.field_shuffle_seed).as_u64(),
-                    );
+                    let rng_seed = field_seed.wrapping_add(repr.field_shuffle_seed).as_u64();
+                    let mut rng = rand_xoshiro::Xoshiro128StarStar::seed_from_u64(rng_seed);
 
                     // Shuffle the ordering of the fields.
                     optimizing.shuffle(&mut rng);
@@ -1381,6 +1380,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                                     offsets
                                 }
                                 FieldsShape::Primitive
+                                | FieldsShape::Opaque
                                 | FieldsShape::Array { .. }
                                 | FieldsShape::Union(..) => {
                                     panic!("encountered a non-arbitrary layout during enum layout")
