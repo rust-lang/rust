@@ -2296,7 +2296,8 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, opaque_def_id: LocalDefId) -> ErrorG
                         && let Some(coroutine_layout) = tcx.mir_coroutine_witnesses(closure_def_id)
                     {
                         for interior_ty in &coroutine_layout.field_tys {
-                            label_match(interior_ty.ty, interior_ty.source_info.span);
+                            let ty = interior_ty.ty.instantiate_identity().skip_norm_wip();
+                            label_match(ty, interior_ty.source_info.span);
                         }
                     }
                 }

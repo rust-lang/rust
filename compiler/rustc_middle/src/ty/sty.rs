@@ -101,7 +101,8 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
     #[inline]
     fn variant_range(&self, def_id: DefId, tcx: TyCtxt<'tcx>) -> Range<VariantIdx> {
         // FIXME requires optimized MIR
-        FIRST_VARIANT..tcx.coroutine_layout(def_id, self.args).unwrap().variant_fields.next_index()
+        FIRST_VARIANT
+            ..tcx.coroutine_layout(def_id, self.args).unwrap().variant_fields().next_index()
     }
 
     /// The discriminant for the given variant. Panics if the `variant_index` is
@@ -162,14 +163,13 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
         tcx: TyCtxt<'tcx>,
     ) -> impl Iterator<Item: Iterator<Item = Ty<'tcx>>> {
         let layout = tcx.coroutine_layout(def_id, self.args).unwrap();
-        layout.variant_fields.iter().map(move |variant| {
+        layout.variant_fields().iter().map(move |variant| {
             variant.iter().map(move |field| {
                 if tcx.is_async_drop_in_place_coroutine(def_id) {
-                    layout.field_tys[*field].ty
+                    // FIXME(async_drop): this needs a comment for why its correct
+                    layout.get_identity_ty(*field).skip_norm_wip()
                 } else {
-                    ty::EarlyBinder::bind(tcx, layout.field_tys[*field].ty)
-                        .instantiate(tcx, self.args)
-                        .skip_norm_wip()
+                    layout.get_ty(tcx, *field).skip_norm_wip()
                 }
             })
         })
