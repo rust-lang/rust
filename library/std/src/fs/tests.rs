@@ -3148,6 +3148,19 @@ fn test_dir_metadata() {
     assert!(metadata.is_symlink());
 }
 
+#[test]
+fn test_read_dir_dir() {
+    let tmpdir = tmpdir();
+    check!(fs::write(tmpdir.path().join("file.txt"), b"hello"));
+
+    let read_dir = check!(fs::read_dir(tmpdir.path()));
+    let dir = check!(read_dir.dir());
+    let mut f = check!(dir.open_file("file.txt"));
+    let mut data = vec![];
+    check!(f.read_to_end(&mut data));
+    assert_eq!(data, b"hello");
+}
+
 fn root_test_dir(what: &str) -> PathBuf {
     crate::env::current_dir().unwrap().ancestors().last().unwrap().join(what)
 }

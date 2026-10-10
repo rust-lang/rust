@@ -406,6 +406,14 @@ pub fn readdir(path: &Path) -> io::Result<ReadDir> {
     })
 }
 
+impl ReadDir {
+    pub fn dir(&self) -> io::Result<Dir> {
+        let mut options = OpenOptions::new();
+        options.read(true);
+        Dir::open(Path::new(&self.path), &options)
+    }
+}
+
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 

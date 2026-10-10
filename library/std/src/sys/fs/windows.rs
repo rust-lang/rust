@@ -113,6 +113,15 @@ impl fmt::Debug for c::FILETIME {
 #[derive(Debug)]
 pub struct DirBuilder;
 
+impl ReadDir {
+    pub fn dir(&self) -> io::Result<Dir> {
+        let mut options = OpenOptions::new();
+        options.read(true);
+        // FIXME: use race-free handle-based approach instead.
+        Dir::open(&self.root, &options)
+    }
+}
+
 impl fmt::Debug for ReadDir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This will only be called from std::fs::ReadDir, which will add a "ReadDir()" frame.
