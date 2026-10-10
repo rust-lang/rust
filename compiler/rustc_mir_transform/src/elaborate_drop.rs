@@ -677,7 +677,9 @@ where
             return false;
         }
 
-        let is_async_drop_feature_enabled = if self.tcx().features().async_drop() {
+        let is_async_drop_feature_enabled = if self.tcx().features().async_drop()
+            || matches!(self.elaborator.body().source.instance, ty::InstanceKind::Shim(..))
+        {
             true
         } else {
             // Check if the type needing async drop comes from a dependency crate.
