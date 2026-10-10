@@ -1,18 +1,18 @@
-//@ only-wasm32-wasip1
+//@ only-wasm32
 
 use std::path::Path;
 
 use run_make_support::{rfs, rustc, wasmparser};
 
 fn main() {
-    rustc().input("foo.rs").target("wasm32-wasip1").run();
+    rustc().input("foo.rs").emit_wasm_core_module().run();
     verify_symbols(Path::new("foo.wasm"));
-    rustc().input("foo.rs").target("wasm32-wasip1").opt().run();
+    rustc().input("foo.rs").emit_wasm_core_module().opt().run();
     verify_symbols(Path::new("foo.wasm"));
 
-    rustc().input("bar.rs").target("wasm32-wasip1").run();
+    rustc().input("bar.rs").emit_wasm_core_module().arg("-Cpanic=abort").run();
     verify_symbols(Path::new("bar.wasm"));
-    rustc().input("bar.rs").target("wasm32-wasip1").opt().run();
+    rustc().input("bar.rs").emit_wasm_core_module().arg("-Cpanic=abort").opt().run();
     verify_symbols(Path::new("bar.wasm"));
 }
 
@@ -28,7 +28,11 @@ fn verify_symbols(path: &Path) {
                 if e.kind != wasmparser::ExternalKind::Func {
                     continue;
                 }
-                if e.name == "foo" || e.name == "_initialize" {
+                if e.name == "foo"
+                    || e.name == "_initialize"
+                    || e.name == "__wasm_task_hook"
+                    || e.name == "cabi_realloc"
+                {
                     continue;
                 }
                 panic!("unexpected export {e:?}");
