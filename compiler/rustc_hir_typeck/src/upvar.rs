@@ -2450,17 +2450,7 @@ fn adjust_for_non_move_closure(
             }
         }
 
-        // A non-`move`/`use` closure that only `.use`s an upvar does not need to
-        // own (and thus clone-on-capture) the value. The `ByUse` kind here can only
-        // come from a `x.use` in the body (a `use ||` capture clause goes through
-        // `adjust_for_use_closure` instead). Capturing such a place by immutable
-        // borrow lets the `.use` expression clone per evaluation, rather than also
-        // cloning the value into the closure at construction time. See #157141.
-        ty::UpvarCapture::ByUse => {
-            kind = ty::UpvarCapture::ByRef(ty::BorrowKind::Immutable);
-        }
-
-        ty::UpvarCapture::ByRef(..) => {}
+        ty::UpvarCapture::ByUse | ty::UpvarCapture::ByRef(..) => {}
     }
 
     (place, kind)
