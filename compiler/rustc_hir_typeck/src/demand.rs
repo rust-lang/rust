@@ -277,6 +277,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr = expr.peel_drop_temps();
         let cause = self.misc(expr.span);
         let expr_ty = self.deeply_resolve_ignoring_regions(checked_ty);
+        if let TypeError::ConstMismatch(ExpectedFound { expected: const_expected, found }) = e
+            && const_values_have_mismatched_types(const_expected, found)
+        {
+            // Do not emit the outer E0308.
+            // `ConstArgHasWrongType` will emit:
+            // "the constant `1` is not of type `u16`"
+            return Ok(expected);
+        }
+
         let mut err =
             self.err_ctxt().report_mismatched_types(&cause, self.param_env, expected, expr_ty, e);
 
@@ -1347,4 +1356,31 @@ pub(crate) enum TypeMismatchSource<'tcx> {
     /// expression has constrained the method's receiver in a way that makes the
     /// argument's type incompatible.
     Arg { call_expr: &'tcx hir::Expr<'tcx>, incompatible_arg: usize },
+}
+
+fn const_values_have_mismatched_types<'tcx>(
+    expected: ty::Const<'tcx>,
+    found: ty::Const<'tcx>,
+) -> bool {
+    let (ty::ConstKind::Value(expected_value), ty::ConstKind::Value(found_value)) =
+        (expected.kind(), found.kind())
+    else {
+        return false;
+    };
+
+    if expected_value.ty != found_value.ty {
+        return true;
+    }
+
+    match (*expected_value.valtree, *found_value.valtree) {
+        (ty::ValTreeKind::Branch(expected_fields), ty::ValTreeKind::Branch(found_fields))
+            if expected_fields.len() == found_fields.len() =>
+        {
+            expected_fields.iter().zip(found_fields.iter()).any(|(expected_field, found_field)| {
+                const_values_have_mismatched_types(expected_field, found_field)
+            })
+        }
+
+        _ => false,
+    }
 }
