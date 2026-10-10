@@ -150,8 +150,8 @@ Some examples of `X` in `ignore-X` or `only-X`:
 - When the [parallel frontend] is enabled: `ignore-parallel-frontend`
 - Specific [compare modes]: `compare-mode-polonius`, `compare-mode-next-solver`,
   `compare-mode-split-dwarf`, `compare-mode-split-dwarf-single`
-- The two different test modes used by coverage tests: `ignore-coverage-map`,
-  `ignore-coverage-run`
+- The two different test modes used by coverage tests:
+  `ignore-coverage-map` and `ignore-coverage-run`
 - When testing a dist toolchain: `dist`
   - This needs to be enabled with `COMPILETEST_ENABLE_DIST_TESTS=1`
 - The `rustc_abi` of the target: e.g. `rustc_abi-x86_64-sse2`
@@ -408,7 +408,7 @@ by calling every parser defined in the `Config` struct's implementation block,
 also in [`src/tools/compiletest/src/directives.rs`] (note that the `Config` struct's
 declaration block is found in [`src/tools/compiletest/src/common.rs`]).
 `TestProps`'s `load_from()` method will try passing the current line of text to each parser,
-which, in turn typically checks to see if the line begins with a
+which, in turn, typically checks to see if the line begins with a
 particular commented (`//@`) directive such as `//@ must-compile-successfully`
 or `//@ failure-status`.
 Whitespace after the comment marker is optional.
