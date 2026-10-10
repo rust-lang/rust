@@ -1,31 +1,31 @@
-error: type `for<'a> fn(&'a priv_trait::Pub) {<priv_trait::Pub as PrivTr>::method}` is private
+error: method `PrivTr::method` is private
   --> $DIR/associated-item-privacy-trait.rs:15:21
    |
 LL |     pub macro mac() {
 LL |         let value = <Pub as PrivTr>::method;
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^ private type
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^ private method
 ...
 LL |     priv_trait::mac!();
    |     ------------------ in this macro invocation
 
-error: type `for<'a> fn(&'a priv_trait::Pub) {<priv_trait::Pub as PrivTr>::method}` is private
+error: method `PrivTr::method` is private
   --> $DIR/associated-item-privacy-trait.rs:17:9
    |
 LL |     pub macro mac() {
 ...
 LL |         value;
-   |         ^^^^^ private type
+   |         ^^^^^ private method
 ...
 LL |     priv_trait::mac!();
    |     ------------------ in this macro invocation
 
-error: type `for<'a> fn(&'a Self) {<Self as PrivTr>::method}` is private
+error: method `PrivTr::method` is private
   --> $DIR/associated-item-privacy-trait.rs:19:13
    |
 LL |     pub macro mac() {
 ...
 LL |         Pub.method();
-   |             ^^^^^^ private type
+   |             ^^^^^^ private method
 ...
 LL |     priv_trait::mac!();
    |     ------------------ in this macro invocation
