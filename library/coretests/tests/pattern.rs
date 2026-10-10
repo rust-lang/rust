@@ -1,4 +1,4 @@
-use std::str::pattern::*;
+use std::pattern::*;
 
 // This macro makes it easier to write
 // tests that do a series of iterations
@@ -580,10 +580,11 @@ fn two_way_next_reject_skips_matches() {
     // plen - pattern len
     // ulen - unmatch len
     #[track_caller]
-    fn check_fw_bw<'a, T>(haystack: &'a str, pat: T, plen: usize, ulen: usize)
+    fn check_fw_bw<'a, H, T>(haystack: &'a H, pat: T, plen: usize, ulen: usize)
     where
-        T: Pattern + Copy,
-        T::Searcher<'a>: ReverseSearcher<'a>,
+        H: Haystack + ?Sized,
+        T: Pattern<H> + Copy,
+        T::Searcher<'a>: ReverseSearcher<'a, H>,
     {
         // haystack is a concatenation of 3 fragments: [Match, Reject, Match]
         // prepare ranges that point to each fragment
