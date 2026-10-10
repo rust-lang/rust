@@ -1,0 +1,4 @@
+error: could not write output to $TEST_BUILD_DIR/llvm_fallback.llvm_fallback.bef9b9dab1dfd663-cgu.0.rcgu.o: Failed to compile module llvm_fallback.bef9b9dab1dfd663-cgu.0 with TPDE
+
+error: aborting due to 1 previous error
+
