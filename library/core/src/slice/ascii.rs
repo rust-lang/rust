@@ -631,8 +631,8 @@ const fn is_ascii(s: &[u8]) -> bool {
                 return is_ascii_simple(s);
             }
 
-            // We always read the first word unaligned, which means `align_offset` is
-            // 0, we'd read the same value again for the aligned read.
+            // We always read the first word unaligned, which means that if
+            // `align_offset` is 0, we'd read the same value again for the aligned read.
             let offset_to_aligned = if align_offset == 0 { USIZE_SIZE } else { align_offset };
 
             let start = s.as_ptr();
