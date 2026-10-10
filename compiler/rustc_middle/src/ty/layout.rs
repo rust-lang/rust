@@ -1428,6 +1428,7 @@ pub fn codegen_handle_fn_abi_err<'tcx>(
     fn_abi_request: FnAbiRequest<'tcx>,
 ) -> ErrorGuaranteed {
     match err {
+        FnAbiError::Layout(LayoutError::ReferencesError(guar)) => guar,
         FnAbiError::Layout(LayoutError::SizeOverflow(_) | LayoutError::InvalidSimd { .. }) => {
             tcx.dcx().emit_err(Spanned { span, node: err })
         }
