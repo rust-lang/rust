@@ -76,7 +76,7 @@ use crate::{fmt, hash, intrinsics, mem, ptr};
 #[repr(transparent)]
 #[rustc_nonnull_optimization_guaranteed]
 #[lang = "non_null"]
-pub struct NonNull<T: PointeeSized> {
+pub struct NonNull<#[rustc_assert_variance(covariant)] T: PointeeSized> {
     pointer: crate::pattern_type!(*const T is !null),
 }
 

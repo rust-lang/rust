@@ -232,6 +232,7 @@ attribute_parsers!(
         Single<ReexportTestHarnessMainParser>,
         Single<RustcAbiParser>,
         Single<RustcAllocatorZeroedVariantParser>,
+        Single<RustcAssertVarianceParser>,
         Single<RustcAutodiffParser>,
         Single<RustcBuiltinMacroParser>,
         Single<RustcDeprecatedSafe2024Parser>,

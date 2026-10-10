@@ -32,7 +32,7 @@ use crate::ptr::NonNull;
 )]
 #[doc(hidden)]
 #[repr(transparent)]
-pub struct Unique<T: PointeeSized> {
+pub struct Unique<#[rustc_assert_variance(covariant)] T: PointeeSized> {
     pointer: NonNull<T>,
     // NOTE: this marker has no consequences for variance, but is necessary
     // for dropck to understand that we logically own a `T`.
