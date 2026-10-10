@@ -3910,7 +3910,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 // worry about the other case: that is, if there is a move of a.b.c, it is already
                 // marked as a move of a.b and a as well, so we will generate the correct errors
                 // there.
-                for moi in &self.move_data.move_out_loc_map[location] {
+                for moi in self.move_data.move_outs_at(location) {
                     debug!("report_use_of_moved_or_uninitialized: moi={:?}", moi);
                     let path = self.move_data.move_outs[*moi].path;
                     if mpis.contains(&path) {
@@ -3944,7 +3944,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
 
             // check for inits
             let mut any_match = false;
-            for ii in &self.move_data.init_loc_map[location] {
+            for ii in self.move_data.inits_at(location) {
                 let init = self.move_data.inits[*ii];
                 match init.kind {
                     InitKind::Deep | InitKind::NonPanicPathOnly => {

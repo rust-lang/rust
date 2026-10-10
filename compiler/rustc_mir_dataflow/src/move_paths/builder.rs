@@ -1,4 +1,5 @@
 use std::mem;
+use std::rc::Rc;
 
 use rustc_index::IndexVec;
 use rustc_middle::mir::*;
@@ -9,9 +10,10 @@ use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
 use super::{
-    Init, InitIndex, InitKind, InitLocation, LocationMap, LookupResult, MoveData, MoveOut,
-    MoveOutIndex, MovePath, MovePathIndex, MovePathLookup, MoveSubPath, MoveSubPathResult,
+    Init, InitIndex, InitKind, InitLocation, LookupResult, MoveData, MoveOut, MoveOutIndex,
+    MovePath, MovePathIndex, MovePathLookup, MoveSubPath, MoveSubPathResult,
 };
+use crate::points::DenseLocationMap;
 
 struct MoveDataBuilder<'a, 'tcx, F> {
     body: &'a Body<'tcx>,
@@ -48,13 +50,17 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             })
             .collect();
 
+        let location_map = Rc::new(DenseLocationMap::new(body));
+        let num_points = location_map.num_points();
+
         MoveDataBuilder {
             body,
             loc: Location::START,
             tcx,
             data: MoveData {
+                location_map,
                 move_outs: IndexVec::new(),
-                move_out_loc_map: LocationMap::new(body),
+                move_out_loc_map: IndexVec::from_fn_n(|_| SmallVec::new(), num_points),
                 rev_lookup: MovePathLookup {
                     locals,
                     projections: Default::default(),
@@ -63,7 +69,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                 move_paths,
                 move_out_path_map,
                 inits: IndexVec::new(),
-                init_loc_map: LocationMap::new(body),
+                init_loc_map: IndexVec::from_fn_n(|_| SmallVec::new(), num_points),
                 init_path_map,
             },
             filter,
@@ -560,7 +566,8 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             self.loc, place, move_out, path
         );
         self.data.move_out_path_map[path].push(move_out);
-        self.data.move_out_loc_map[self.loc].push(move_out);
+        let point = self.data.point(self.loc);
+        self.data.move_out_loc_map[point].push(move_out);
     }
 
     fn gather_init(&mut self, place: PlaceRef<'tcx>, kind: InitKind) {
@@ -589,7 +596,8 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             );
 
             self.data.init_path_map[path].push(init);
-            self.data.init_loc_map[self.loc].push(init);
+            let point = self.data.point(self.loc);
+            self.data.init_loc_map[point].push(init);
         }
     }
 }
