@@ -1,4 +1,3 @@
-//@ ignore-windows-gnu: #128981
 //@ ignore-android: FIXME(#10381)
 //@ compile-flags:-g
 //@ ignore-backends: gcc
