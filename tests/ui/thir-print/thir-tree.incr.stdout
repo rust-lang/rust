@@ -1,0 +1,31 @@
+DefId(0:3 ~ thir_tree[7aaa]::main):
+params: [
+]
+body:
+    Expr {
+        ty: ()
+        temp_scope_id: 2
+        span: $DIR/thir-tree.rs:8:15: 8:17 (#0) (parent=DefId(0:3 ~ thir_tree[7aaa]::main))
+        kind: 
+            Scope {
+                region_scope: Node(2)
+                hir_id: HirId(DefId(0:3 ~ thir_tree[7aaa]::main).2)
+                value:
+                    Expr {
+                        ty: ()
+                        temp_scope_id: 2
+                        span: $DIR/thir-tree.rs:8:15: 8:17 (#0) (parent=DefId(0:3 ~ thir_tree[7aaa]::main))
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/thir-tree.rs:8:15: 8:17 (#0) (parent=DefId(0:3 ~ thir_tree[7aaa]::main))
+                                region_scope: Node(1)
+                                safety_mode: Safe
+                                stmts: []
+                                expr: []
+                            }
+                    }
+            }
+    }
+
+
