@@ -1415,7 +1415,7 @@ cc = ["@nnethercote"]
 
 [mentions."tests/ui/stats/input-stats.stderr"]
 message = "Changes to the size of AST and/or HIR nodes."
-cc = ["@nnethercote"]
+cc = ["@nnethercote", "@JonathanBrouwer"]
 
 [mentions."compiler/rustc_sanitizers"]
 cc = ["@rcvalle"]
