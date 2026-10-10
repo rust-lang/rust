@@ -42,3 +42,16 @@
 pub const fn abort_immediate() -> ! {
     crate::intrinsics::abort_immediate()
 }
+
+/// Triggers a debugger breakpoint, pausing execution if possible.
+///
+/// This signals the environment to pause execution if a debugger is attached, and pass control to
+/// the debugger. Execution may then be aborted or continued by the user controlling the debugger.
+///
+/// If no debugger is attached, this will typically abort the process but may also continue
+/// execution.
+#[unstable(feature = "breakpoint", issue = "133724")]
+#[inline(always)]
+pub fn breakpoint() {
+    crate::intrinsics::breakpoint();
+}
