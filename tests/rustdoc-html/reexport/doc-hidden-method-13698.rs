@@ -7,7 +7,7 @@
 extern crate issue_13698;
 
 pub struct Foo;
-//@ has 'issue_13698/struct.Foo.html'
+//@ has 'issue_13698/type.Foo.html'
 // There is only one visible trait impl method (from the `Foo` trait).
 //@ count - '//*[@id="trait-implementations-list"]//*[@class="method trait-impl"]' 1
 //@ has - '//*[@id="trait-implementations-list"]//*[@class="method trait-impl"]' \

@@ -8,8 +8,8 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 
 //@ has foo/demo/index.html
-//@ has - '//a[@href="../struct.Foo.html"]' 'Foo'
-//@ has - '//a[@href="struct.DemoStruct.html"]' 'DemoStruct'
+//@ has - '//a[@href="../type.Foo.html"]' 'Foo'
+//@ has - '//a[@href="type.DemoStruct.html"]' 'DemoStruct'
 
 /// Outer doc-comment [`Foo`].
 pub mod demo {

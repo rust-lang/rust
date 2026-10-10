@@ -19,8 +19,8 @@ define-function: ("collapsed-from-search", [], block {
     // Then we run the search.
     call-function: ("open-search", {})
     write-into: (".search-input", "foo::must_use")
-    wait-for: "//*[@id='search']//a[@href='../test_docs/struct.Foo.html#method.must_use']"
-    click: "//*[@id='search']//a[@href='../test_docs/struct.Foo.html#method.must_use']"
+    wait-for: "//*[@id='search']//a[@href='../test_docs/type.Foo.html#method.must_use']"
+    click: "//*[@id='search']//a[@href='../test_docs/type.Foo.html#method.must_use']"
     assert-property: ("#implementations-list .implementors-toggle", {"open": "true"})
 })
 

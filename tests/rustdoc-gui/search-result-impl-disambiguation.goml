@@ -10,12 +10,12 @@ call-function: ("perform-search", {"query": "ZyxwvutMethodDisambiguation -> bool
 // Check the disambiguated link.
 assert-count: ("a.result-method", 1)
 assert-attribute: ("a.result-method", {
-    "href": "../test_docs/struct.ZyxwvutMethodDisambiguation.html#impl-ZyxwvutMethodDisambiguation/method.method_impl_disambiguation"
+    "href": "../test_docs/type.ZyxwvutMethodDisambiguation.html#impl-ZyxwvutMethodDisambiguation/method.method_impl_disambiguation"
 })
 click: "a.result-method"
 wait-for: "#impl-ZyxwvutMethodDisambiguation"
 assert-document-property: ({
-    "URL": "struct.ZyxwvutMethodDisambiguation.html#method.method_impl_disambiguation"
+    "URL": "type.ZyxwvutMethodDisambiguation.html#method.method_impl_disambiguation"
 }, ENDS_WITH)
 assert: "section:target"
 
@@ -26,12 +26,12 @@ call-function: ("perform-search", {"query": "ZyxwvutMethodDisambiguation, usize 
 // Check the disambiguated link.
 assert-count: ("a.result-method", 1)
 assert-attribute: ("a.result-method", {
-    "href": "../test_docs/struct.ZyxwvutMethodDisambiguation.html#impl-ZyxwvutTrait-for-ZyxwvutMethodDisambiguation/method.method_impl_disambiguation"
+    "href": "../test_docs/type.ZyxwvutMethodDisambiguation.html#impl-ZyxwvutTrait-for-ZyxwvutMethodDisambiguation/method.method_impl_disambiguation"
 })
 click: "a.result-method"
 wait-for: "#impl-ZyxwvutMethodDisambiguation"
 assert-document-property: ({
-    "URL": "struct.ZyxwvutMethodDisambiguation.html#method.method_impl_disambiguation-1"
+    "URL": "type.ZyxwvutMethodDisambiguation.html#method.method_impl_disambiguation-1"
 }, ENDS_WITH)
 assert: "section:target"
 
@@ -42,7 +42,7 @@ go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=MultiImplBlockStruct->b
 call-function: ("wait-for-search-results", {})
 assert-count: ("a.result-method", 1)
 assert-attribute: ("a.result-method", {
-    "href": "../lib2/another_mod/struct.MultiImplBlockStruct.html#impl-MultiImplBlockStruct/method.second_fn"
+    "href": "../lib2/another_mod/type.MultiImplBlockStruct.html#impl-MultiImplBlockStruct/method.second_fn"
 })
 click: "a.result-method"
 wait-for: "details:has(summary > #impl-MultiImplBlockStruct-1) > div section[id='method.second_fn']:target"
@@ -51,7 +51,7 @@ go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=MultiImplBlockStruct->u
 call-function: ("wait-for-search-results", {})
 assert-count: ("a.result-method", 1)
 assert-attribute: ("a.result-method", {
-    "href": "../lib2/another_mod/struct.MultiImplBlockStruct.html#impl-MultiImplBlockTrait-for-MultiImplBlockStruct/method.second_fn"
+    "href": "../lib2/another_mod/type.MultiImplBlockStruct.html#impl-MultiImplBlockTrait-for-MultiImplBlockStruct/method.second_fn"
 })
 click: "a.result-method"
 wait-for: "details:has(summary > #impl-MultiImplBlockTrait-for-MultiImplBlockStruct) > div section[id='method.second_fn-1']:target"

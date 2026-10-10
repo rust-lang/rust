@@ -61,19 +61,19 @@ pub mod unstable {
 pub struct Foo;
 
 impl Foo {
-    //@ has 'foo/struct.Foo.html' '//*[@id="method.gated"]/h4[@class="code-header"]' 'pub fn gated() -> u32'
+    //@ has 'foo/type.Foo.html' '//*[@id="method.gated"]/h4[@class="code-header"]' 'pub fn gated() -> u32'
     //@ has - '//span[@class="since"]' '1.0.0 (const: unstable)'
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature="foo", issue = "none")]
     pub const fn gated() -> u32 { 42 }
 
-    //@ has 'foo/struct.Foo.html' '//*[@id="method.gated_unsafe"]/h4[@class="code-header"]' 'pub unsafe fn gated_unsafe() -> u32'
+    //@ has 'foo/type.Foo.html' '//*[@id="method.gated_unsafe"]/h4[@class="code-header"]' 'pub unsafe fn gated_unsafe() -> u32'
     //@ has - '//span[@class="since"]' '1.0.0 (const: unstable)'
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature="foo", issue = "none")]
     pub const unsafe fn gated_unsafe() -> u32 { 42 }
 
-    //@ has 'foo/struct.Foo.html' '//*[@id="method.stable_impl"]/h4[@class="code-header"]' 'pub const fn stable_impl() -> u32'
+    //@ has 'foo/type.Foo.html' '//*[@id="method.stable_impl"]/h4[@class="code-header"]' 'pub const fn stable_impl() -> u32'
     //@ has - '//span[@class="since"]' '1.0.0 (const: 1.2.0)'
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const2", since = "1.2.0")]
@@ -85,7 +85,7 @@ pub struct Bar;
 
 impl Bar {
     // Show non-const stabilities that are the same as the enclosing item.
-    //@ has 'foo/struct.Bar.html' '//span[@class="since"]' '1.0.0 (const: 1.2.0)'
+    //@ has 'foo/type.Bar.html' '//span[@class="since"]' '1.0.0 (const: 1.2.0)'
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const2", since = "1.2.0")]
     pub const fn stable_impl() -> u32 { 42 }

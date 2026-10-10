@@ -8,6 +8,6 @@ macro_rules! bar {
     () => {}
 }
 
-//@ has foo/struct.Bar.html
+//@ has foo/type.Bar.html
 //@ !has foo/Bar.t.html
 pub struct Bar;

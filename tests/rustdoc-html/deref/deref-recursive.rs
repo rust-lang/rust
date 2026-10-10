@@ -2,7 +2,7 @@
 // levels if needed.
 // For `Deref` on foreign types, look at `deref-recursive-pathbuf.rs`.
 
-//@ has 'foo/struct.Foo.html'
+//@ has 'foo/type.Foo.html'
 //@ has '-' '//*[@id="deref-methods-Bar"]' 'Methods from Deref<Target = Bar>'
 //@ has '-' '//*[@class="impl-items"]//*[@id="method.bar"]' 'pub fn bar(&self)'
 //@ has '-' '//*[@id="deref-methods-Baz"]' 'Methods from Deref<Target = Baz>'

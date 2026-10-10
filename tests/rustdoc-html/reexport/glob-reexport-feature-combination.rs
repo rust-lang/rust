@@ -10,7 +10,7 @@
 //@ has 'foo/index.html'
 //@ has - '//dt/a[@title="struct foo::A"]/../*[@class="stab portability"]' 'Non-bar and non-foo'
 
-//@ has 'foo/struct.A.html'
+//@ has 'foo/type.A.html'
 //@ has - '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
 //    'Available on non-crate feature bar and non-crate feature foo only.'
 
@@ -27,7 +27,7 @@ pub use a::*;
 //@ has 'foo/index.html'
 //@ has - '//dt/a[@title="struct foo::B"]/../*[@class="stab portability"]' 'Non-bar and non-baz and non-foo'
 
-//@ has 'foo/struct.B.html'
+//@ has 'foo/type.B.html'
 //@ has - '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
 //    'Available on non-crate feature bar and non-crate feature baz and non-crate feature foo only.'
 
@@ -48,7 +48,7 @@ pub use b::*;
 //@ has 'foo/index.html'
 //@ has - '//dt/a[@title="struct foo::C"]/../*[@class="stab portability"]' 'Non-bar and non-baz and non-foo'
 
-//@ has 'foo/struct.C.html'
+//@ has 'foo/type.C.html'
 //@ has - '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
 //    'Available on non-crate feature bar and non-crate feature baz and non-crate feature foo only.'
 

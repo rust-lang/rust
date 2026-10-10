@@ -13,7 +13,7 @@ pub trait Foo {
 pub struct Bar;
 
 impl Foo for Bar {
-    //@ has assoc_consts/struct.Bar.html '//h3[@class="code-header"]' 'impl Foo for Bar'
+    //@ has assoc_consts/type.Bar.html '//h3[@class="code-header"]' 'impl Foo for Bar'
     //@ has - '//*[@id="associatedconstant.FOO"]' 'const FOO: usize'
     const FOO: usize = 12;
     //@ has - '//*[@id="associatedconstant.FOO_NO_DEFAULT"]' 'const FOO_NO_DEFAULT: bool'
@@ -24,7 +24,7 @@ impl Foo for Bar {
 }
 
 impl Bar {
-    //@ has assoc_consts/struct.Bar.html '//*[@id="associatedconstant.BAR"]' \
+    //@ has assoc_consts/type.Bar.html '//*[@id="associatedconstant.BAR"]' \
     //      'const BAR: usize'
     pub const BAR: usize = 3;
 
@@ -36,7 +36,7 @@ impl Bar {
 pub struct Baz<'a, U: 'a, T>(T, &'a [U]);
 
 impl Bar {
-    //@ has assoc_consts/struct.Bar.html '//*[@id="associatedconstant.BAZ"]' \
+    //@ has assoc_consts/type.Bar.html '//*[@id="associatedconstant.BAZ"]' \
     //      "const BAZ: Baz<'static, u8, u32>"
     pub const BAZ: Baz<'static, u8, u32> = Baz(321, &[1, 2, 3]);
 }
@@ -44,15 +44,15 @@ impl Bar {
 pub fn f(_: &(ToString + 'static)) {}
 
 impl Bar {
-    //@ has assoc_consts/struct.Bar.html '//*[@id="associatedconstant.F"]' \
+    //@ has assoc_consts/type.Bar.html '//*[@id="associatedconstant.F"]' \
     //      "const F: fn(&(dyn ToString + 'static))"
     pub const F: fn(_: &(ToString + 'static)) = f;
 }
 
 impl Bar {
-    //@ !hasraw assoc_consts/struct.Bar.html 'BAR_PRIVATE'
+    //@ !hasraw assoc_consts/type.Bar.html 'BAR_PRIVATE'
     const BAR_PRIVATE: char = 'a';
-    //@ !hasraw assoc_consts/struct.Bar.html 'BAR_HIDDEN'
+    //@ !hasraw assoc_consts/type.Bar.html 'BAR_HIDDEN'
     #[doc(hidden)]
     pub const BAR_HIDDEN: &'static str = "a";
 }
@@ -81,7 +81,7 @@ pub trait Qux {
     const QUX_DEFAULT2: u32 = 3;
 }
 
-//@ has assoc_consts/struct.Bar.html '//h3[@class="code-header"]' 'impl Qux for Bar'
+//@ has assoc_consts/type.Bar.html '//h3[@class="code-header"]' 'impl Qux for Bar'
 impl Qux for Bar {
     //@ has - '//*[@id="associatedconstant.QUX0"]' 'const QUX0: u8'
     //@ has - '//*[@class="docblock"]' "Docs for QUX0 in trait."

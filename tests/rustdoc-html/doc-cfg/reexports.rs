@@ -6,16 +6,16 @@
 #![feature(doc_cfg)]
 #![crate_name = "foo"]
 
-//@ has 'foo/struct.FlatBanana.html'
+//@ has 'foo/type.FlatBanana.html'
 //@ has - '//*[@class="item-info"]/*[@class="stab portability"]' 'Available on non-crate feature banana and non-crate feature yoyo only.'
 
-//@ has 'foo/struct.SubBanana.html'
+//@ has 'foo/type.SubBanana.html'
 //@ has - '//*[@class="item-info"]/*[@class="stab portability"]' 'Available on non-crate feature ananas and non-crate feature banana and non-crate feature yoyo only.'
 
 #[cfg(not(feature = "yoyo"))]
 pub use self::banana::*;
 
-//@ has 'foo/struct.Yolo.html'
+//@ has 'foo/type.Yolo.html'
 //@ has - '//*[@class="item-info"]/*[@class="stab portability"]' 'Available on non-crate feature ananas and non-crate feature banana only.'
 pub use self::banana::SubBanana as Yolo;
 

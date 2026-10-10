@@ -10,8 +10,8 @@
 //      ''
 //@ matches - '//dd' 'Docs'
 
-//@ !has internal/struct.S.html '//*[@class="stab unstable"]' ''
-//@ !has internal/struct.S.html '//*[@class="stab internal"]' ''
+//@ !has internal/type.S.html '//*[@class="stab unstable"]' ''
+//@ !has internal/type.S.html '//*[@class="stab internal"]' ''
 /// Docs
 pub struct S;
 

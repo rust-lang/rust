@@ -8,7 +8,7 @@ extern crate notable_dep;
 // unlinkable: the badge is still emitted but rendered as plain text.
 use notable_dep::Spaceship;
 
-//@ has 'foo/struct.Rocket.html'
+//@ has 'foo/type.Rocket.html'
 // The badge is present...
 //@ has - '//div[@class="notable-trait-badge-container"]/a' 'Spaceship'
 // ...but unlinked: no badge carries an `href`.

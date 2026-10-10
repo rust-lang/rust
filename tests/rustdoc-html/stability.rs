@@ -14,10 +14,10 @@ pub struct AaStable;
 
 #[unstable(feature = "test", issue = "none")]
 pub struct Unstable {
-    //@ has stability/struct.Unstable.html \
+    //@ has stability/type.Unstable.html \
     //      '//span[@class="item-info"]//div[@class="stab unstable"]' \
     //      'This is a nightly-only experimental API'
-    //@ count stability/struct.Unstable.html '//span[@class="stab unstable"]' 0
+    //@ count stability/type.Unstable.html '//span[@class="stab unstable"]' 0
     pub foo: u32,
     pub bar: u32,
 }
@@ -27,7 +27,7 @@ pub struct ZzStable;
 
 #[unstable(feature = "unstable", issue = "none")]
 pub mod unstable {
-    //@ !hasraw stability/unstable/struct.StableInUnstable.html \
+    //@ !hasraw stability/unstable/type.StableInUnstable.html \
     //      '//div[@class="main-heading"]//span[@class="since"]'
     //@ has - '//div[@class="stab unstable"]' 'experimental'
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -35,21 +35,21 @@ pub mod unstable {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     pub mod stable_in_unstable {
-        //@ !hasraw stability/unstable/stable_in_unstable/struct.Inner.html \
+        //@ !hasraw stability/unstable/stable_in_unstable/type.Inner.html \
         //      '//div[@class="main-heading"]//span[@class="since"]'
         //@ has - '//div[@class="stab unstable"]' 'experimental'
         #[stable(feature = "rust1", since = "1.0.0")]
         pub struct Inner;
     }
 
-    //@ has stability/struct.AaStable.html \
+    //@ has stability/type.AaStable.html \
     //      '//*[@id="method.foo"]//span[@class="since"]' '2.2.2'
     impl super::AaStable {
         #[stable(feature = "rust2", since = "2.2.2")]
         pub fn foo() {}
     }
 
-    //@ has stability/unstable/struct.StableInUnstable.html \
+    //@ has stability/unstable/type.StableInUnstable.html \
     //      '//*[@id="method.foo"]//span[@class="since"]' '1.0.0'
     impl StableInUnstable {
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -60,7 +60,7 @@ pub mod unstable {
 #[unstable(feature = "unstable", issue = "none")]
 #[doc(hidden)]
 pub mod unstable_stripped {
-    //@ has stability/struct.AaStable.html \
+    //@ has stability/type.AaStable.html \
     //      '//*[@id="method.foo"]//span[@class="since"]' '2.2.2'
     impl super::AaStable {
         #[stable(feature = "rust2", since = "2.2.2")]
@@ -70,14 +70,14 @@ pub mod unstable_stripped {
 
 #[stable(feature = "rust2", since = "2.2.2")]
 pub mod stable_later {
-    //@ has stability/stable_later/struct.StableInLater.html \
+    //@ has stability/stable_later/type.StableInLater.html \
     //      '//div[@class="main-heading"]//span[@class="since"]' '2.2.2'
     #[stable(feature = "rust1", since = "1.0.0")]
     pub struct StableInLater;
 
     #[stable(feature = "rust1", since = "1.0.0")]
     pub mod stable_in_later {
-        //@ has stability/stable_later/stable_in_later/struct.Inner.html \
+        //@ has stability/stable_later/stable_in_later/type.Inner.html \
         //      '//div[@class="main-heading"]//span[@class="since"]' '2.2.2'
         #[stable(feature = "rust1", since = "1.0.0")]
         pub struct Inner;
@@ -90,26 +90,26 @@ pub mod stable_later {
     module = "stable_module",
 )]
 pub mod stable_earlier1 {
-    //@ has stability/stable_earlier1/struct.StableInUnstable.html \
+    //@ has stability/stable_earlier1/type.StableInUnstable.html \
     //      '//div[@class="main-heading"]//span[@class="since"]' '1.0.0'
     //@ has - '//*[@id="method.foo"]//span[@class="since"]' '1.0.0'
     #[doc(inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use crate::unstable::StableInUnstable;
 
-    //@ has stability/stable_earlier1/stable_in_unstable/struct.Inner.html \
+    //@ has stability/stable_earlier1/stable_in_unstable/type.Inner.html \
     //      '//div[@class="main-heading"]//span[@class="since"]' '1.0.0'
     #[doc(inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use crate::unstable::stable_in_unstable;
 
-    //@ has stability/stable_earlier1/struct.StableInLater.html \
+    //@ has stability/stable_earlier1/type.StableInLater.html \
     //      '//div[@class="main-heading"]//span[@class="since"]' '1.0.0'
     #[doc(inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use crate::stable_later::StableInLater;
 
-    //@ has stability/stable_earlier1/stable_in_later/struct.Inner.html \
+    //@ has stability/stable_earlier1/stable_in_later/type.Inner.html \
     //      '//div[@class="main-heading"]//span[@class="since"]' '1.0.0'
     #[doc(inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -119,26 +119,26 @@ pub mod stable_earlier1 {
 /// These will inherit the crate stability.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod stable_earlier2 {
-    //@ has stability/stable_earlier2/struct.StableInUnstable.html \
+    //@ has stability/stable_earlier2/type.StableInUnstable.html \
     //      '//div[@class="main-heading"]//span[@class="since"]' '1.6.0'
     //@ has - '//*[@id="method.foo"]//span[@class="since"]' '1.0.0'
     #[doc(inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use crate::unstable::StableInUnstable;
 
-    //@ has stability/stable_earlier2/stable_in_unstable/struct.Inner.html \
+    //@ has stability/stable_earlier2/stable_in_unstable/type.Inner.html \
     //      '//div[@class="main-heading"]//span[@class="since"]' '1.6.0'
     #[doc(inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use crate::unstable::stable_in_unstable;
 
-    //@ has stability/stable_earlier2/struct.StableInLater.html \
+    //@ has stability/stable_earlier2/type.StableInLater.html \
     //      '//div[@class="main-heading"]//span[@class="since"]' '1.6.0'
     #[doc(inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use crate::stable_later::StableInLater;
 
-    //@ has stability/stable_earlier2/stable_in_later/struct.Inner.html \
+    //@ has stability/stable_earlier2/stable_in_later/type.Inner.html \
     //      '//div[@class="main-heading"]//span[@class="since"]' '1.6.0'
     #[doc(inline)]
     #[stable(feature = "rust1", since = "1.0.0")]

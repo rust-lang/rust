@@ -28,12 +28,12 @@ impl Foo {
 
 fn babar() {}
 
-//@ has - '//pre[@class="rust"]//a/@href' '/struct.String.html'
+//@ has - '//pre[@class="rust"]//a/@href' '/type.String.html'
 //@ has - '//pre[@class="rust"]//a/@href' '/primitive.u32.html'
 //@ has - '//pre[@class="rust"]//a/@href' '/primitive.str.html'
 // The 5 links to line 23 and the line 23 itself.
 //@ count - '//pre[@class="rust"]//a[@href="#23"]' 6
-//@ has - '//pre[@class="rust"]//a[@href="../../source_code/struct.SourceCode.html"]' \
+//@ has - '//pre[@class="rust"]//a[@href="../../source_code/type.SourceCode.html"]' \
 //        'SourceCode'
 pub fn foo(a: u32, b: &str, c: String, d: Foo, e: bar::Bar, f: source_code::SourceCode) {
     let x = 12;

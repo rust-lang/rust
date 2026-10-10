@@ -18,7 +18,7 @@ const _: () = {
 
     struct ShouldBeHidden;
 
-    //@ has 'foo/struct.Foo.html'
+    //@ has 'foo/type.Foo.html'
     //@ !has - '//*[@class="code-header"]' 'impl Bar for Foo'
     #[doc(hidden)]
     impl Bar for Foo {
@@ -27,7 +27,7 @@ const _: () = {
         }
     }
 
-    //@ has 'foo/struct.Private.html'
+    //@ has 'foo/type.Private.html'
     //@ has - '//*[@id="impl-Bar-for-Private"]/*[@class="code-header"]' 'impl Bar for Private'
     //@ has - '//*[@id="method.bar"]/*[@class="code-header"]' 'fn bar(&self)'
     impl Bar for Private {

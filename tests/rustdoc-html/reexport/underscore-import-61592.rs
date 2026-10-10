@@ -13,5 +13,5 @@ pub use foo::FooTrait as _;
 //@ has bar/index.html
 //@ has - '//a[@href="#reexports"]' 'Re-exports'
 //@ has - '//code' 'pub use foo::FooStruct as _;'
-//@ !has - '//a[@href="struct._.html"]' ''
+//@ !has - '//a[@href="type._.html"]' ''
 pub use foo::FooStruct as _;

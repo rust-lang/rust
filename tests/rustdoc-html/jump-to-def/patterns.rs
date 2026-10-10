@@ -22,8 +22,8 @@ pub enum X {
 pub fn foo() -> Result<(), ()> {
     // FIXME: would be nice to be able to check both the class and the href at the same time so
     // we could check the text as well...
-    //@ has - '//a[@class="prelude-val"]/@href' '{{channel}}/core/result/enum.Result.html#variant.Ok'
-    //@ has - '//a[@href="{{channel}}/core/result/enum.Result.html#variant.Ok"]' 'Ok'
+    //@ has - '//a[@class="prelude-val"]/@href' '{{channel}}/core/result/type.Result.html#variant.Ok'
+    //@ has - '//a[@href="{{channel}}/core/result/type.Result.html#variant.Ok"]' 'Ok'
     Ok(())
 }
 

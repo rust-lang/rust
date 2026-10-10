@@ -12,7 +12,7 @@ impl Body {
 }
 
 impl Default for Body {
-    //@ has foo/struct.Body.html '//a/@href' 'struct.Body.html#method.empty'
+    //@ has foo/type.Body.html '//a/@href' 'type.Body.html#method.empty'
 
     /// Returns [`Body::empty()`](Body::empty).
     fn default() -> Body {

@@ -20,7 +20,7 @@ impl dyn FooTrait {
 #[doc(inline)]
 pub use incoherent_impl_types::FooStruct;
 
-//@ has foo/struct.FooStruct.html
+//@ has foo/type.FooStruct.html
 //@ count - '//section[@id="method.do_something"]' 1
 impl FooStruct {
     #[rustc_allow_incoherent_impl]

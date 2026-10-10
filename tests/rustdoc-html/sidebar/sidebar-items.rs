@@ -31,7 +31,7 @@ pub trait DynCompatible {
     fn access(&self);
 }
 
-//@ has foo/struct.Bar.html
+//@ has foo/type.Bar.html
 //@ has - '//div[@class="sidebar-elems"]//h3/a[@href="#fields"]' 'Fields'
 //@ has - '//*[@class="sidebar-elems"]//section//a[@href="#structfield.f"]' 'f'
 //@ has - '//*[@class="sidebar-elems"]//section//a[@href="#structfield.u"]' 'u'
@@ -42,7 +42,7 @@ pub struct Bar {
     waza: u32,
 }
 
-//@ has foo/struct.Bar.html
+//@ has foo/type.Bar.html
 //@ has - '//div[@class="sidebar-elems"]//h3/a[@href="#implementations"]' 'Associated Functions'
 //@ has - '//div[@class="sidebar-elems"]//h3/a[@href="#implementations"]' 'Methods'
 impl Bar {
@@ -50,7 +50,7 @@ impl Bar {
     pub fn assoc_fn() {}
 }
 
-//@ has foo/enum.En.html
+//@ has foo/type.En.html
 //@ has - '//div[@class="sidebar-elems"]//h3/a[@href="#variants"]' 'Variants'
 //@ has - '//*[@class="sidebar-elems"]//section//a' 'Foo'
 //@ has - '//*[@class="sidebar-elems"]//section//a' 'Bar'
@@ -59,7 +59,7 @@ pub enum En {
     Bar,
 }
 
-//@ has foo/union.MyUnion.html
+//@ has foo/type.MyUnion.html
 //@ has - '//div[@class="sidebar-elems"]//h3/a[@href="#fields"]' 'Fields'
 //@ has - '//*[@class="sidebar-elems"]//section//a[@href="#structfield.f1"]' 'f1'
 //@ has - '//*[@class="sidebar-elems"]//section//a[@href="#structfield.f2"]' 'f2'

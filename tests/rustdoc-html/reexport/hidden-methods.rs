@@ -16,7 +16,7 @@ pub mod hidden {
     }
 }
 
-//@ has foo/struct.Foo.html
+//@ has foo/type.Foo.html
 // Only `not_hidden` should be present.
 //@ count - '//*[@id="implementations-list"]//*[@class="method"]' 1
 //@ has - '//*[@id="implementations-list"]//*[@class="method"]' 'pub fn not_hidden'
@@ -28,7 +28,7 @@ impl Foo {
     pub fn not_hidden() {}
 }
 
-//@ has foo/struct.Bar.html
+//@ has foo/type.Bar.html
 //@ count - '//*[@id="implementations-list"]//*[@class="method"]' 1
 //@ has - '//*[@id="implementations-list"]//*[@class="method"]' 'pub fn not_hidden'
 //@ count - '//*[@id="rustdoc-toc"]/*[@class="block method"]//a' 1

@@ -48,7 +48,7 @@ pub use aux::Aid;
 // associated types inside trait *impls*. More particularly, check that we don't render
 // any bounds (here `Self::Alias<T>: ...`) as item bounds unlike all the trait test cases above.
 
-//@ has main/struct.Implementor.html
+//@ has main/type.Implementor.html
 //@ has - '//*[@id="associatedtype.Alias"]' \
 // "type Alias<T: Eq> = T \
 // where \

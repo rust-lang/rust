@@ -59,7 +59,7 @@ where
 }
 
 impl<T> S<T> {
-    //@ !has foo/struct.S.html '//section[@id="method.foo"]/h4[@class="code-header"]' '[const]'
+    //@ !has foo/type.S.html '//section[@id="method.foo"]/h4[@class="code-header"]' '[const]'
     //@ has - '//section[@id="method.foo"]/h4[@class="code-header"]/a[@class="trait"]' 'Fn'
     //@ !has - '//section[@id="method.foo"]/h4[@class="code-header"]/span[@class="where"]' '[const]'
     //@ has - '//section[@id="method.foo"]/h4[@class="code-header"]/div[@class="where"]' ': Fn'

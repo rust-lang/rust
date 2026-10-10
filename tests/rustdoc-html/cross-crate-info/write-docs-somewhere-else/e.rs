@@ -1,9 +1,9 @@
 //@ aux-build:f.rs
 //@ build-aux-docs
-//@ has e/enum.Echo.html
+//@ has e/type.Echo.html
 //@ !has f/trait.Foxtrot.html
-//@ hasraw e/enum.Echo.html 'Foxtrot'
-//@ hasraw trait.impl/f/trait.Foxtrot.js 'enum.Echo.html'
+//@ hasraw e/type.Echo.html 'Foxtrot'
+//@ hasraw trait.impl/f/trait.Foxtrot.js 'type.Echo.html'
 //@ !hasraw search.index/name/*.js 'Foxtrot'
 //@ hasraw search.index/name/*.js 'Echo'
 

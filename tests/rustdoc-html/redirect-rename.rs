@@ -1,8 +1,9 @@
 #![crate_name = "foo"]
 
 mod hidden {
-    //@ has foo/hidden/struct.Foo.html
-    //@ has - '//p/a' '../../foo/struct.FooBar.html'
+    //@ has foo/hidden/type.Foo.html
+    //@ has - '//p/a' '../type.FooBar.html'
+    //@ !has - '//p/a' '../../type.FooBar.html'
     pub struct Foo {}
     pub union U { a: usize }
     pub enum Empty {}
@@ -10,19 +11,21 @@ mod hidden {
     pub static S: usize = 1;
 
     //@ has foo/hidden/bar/index.html
-    //@ has - '//p/a' '../../foo/baz/index.html'
+    //@ has - '//p/a' '../../baz/index.html'
+    //@ !has - '//p/a' '../../../baz/index.html'
     pub mod bar {
-        //@ has foo/hidden/bar/struct.Thing.html
-        //@ has - '//p/a' '../../foo/baz/struct.Thing.html'
+        //@ has foo/hidden/bar/type.Thing.html
+        //@ has - '//p/a' '../../baz/type.Thing.html'
+        //@ !has - '//p/a' '../../../baz/type.Thing.html'
         pub struct Thing {}
     }
 }
 
-//@ has foo/struct.FooBar.html
+//@ has foo/type.FooBar.html
 pub use hidden::Foo as FooBar;
-//@ has foo/union.FooU.html
+//@ has foo/type.FooU.html
 pub use hidden::U as FooU;
-//@ has foo/enum.FooEmpty.html
+//@ has foo/type.FooEmpty.html
 pub use hidden::Empty as FooEmpty;
 //@ has foo/constant.FooC.html
 pub use hidden::C as FooC;
@@ -30,5 +33,5 @@ pub use hidden::C as FooC;
 pub use hidden::S as FooS;
 
 //@ has foo/baz/index.html
-//@ has foo/baz/struct.Thing.html
+//@ has foo/baz/type.Thing.html
 pub use hidden::bar as baz;

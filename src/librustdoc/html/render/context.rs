@@ -30,6 +30,7 @@ use crate::formats::FormatRenderer;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
+use crate::html::format::href_relative_parts;
 use crate::html::macro_expansion::ExpandedCode;
 use crate::html::markdown::{self, ErrorCodes, IdMap, plain_text_summary};
 use crate::html::render::write_shared::write_shared;
@@ -303,14 +304,18 @@ impl<'tcx> Context<'tcx> {
                 // preventing an infinite redirection loop in the generated
                 // documentation.
 
-                let path = fmt::from_fn(|f| {
-                    for name in &info.parts[..info.parts.len() - 1] {
-                        write!(f, "{name}/")?;
-                    }
-                    write!(f, "{}", print_ty_path(info.ty, info.parts.last().unwrap().as_str()))
-                });
                 match self.shared.redirections {
                     Some(ref redirections) => {
+                        let path = fmt::from_fn(|f| {
+                            for name in &info.parts[..info.parts.len() - 1] {
+                                write!(f, "{name}/")?;
+                            }
+                            write!(
+                                f,
+                                "{}",
+                                print_ty_path(info.ty, info.parts.last().unwrap().as_str())
+                            )
+                        });
                         let mut current_path = String::new();
                         for name in &self.current {
                             current_path.push_str(name.as_str());
@@ -324,7 +329,13 @@ impl<'tcx> Context<'tcx> {
                         redirections.borrow_mut().insert(current_path, path.to_string());
                     }
                     None => {
-                        return layout::redirect(&format!("{root}{path}", root = self.root_path()));
+                        let mut path =
+                            href_relative_parts(&info.parts[..info.parts.len() - 1], &self.current);
+                        path.push_fmt(format_args!(
+                            "{}",
+                            print_ty_path(info.ty, info.parts.last().unwrap().as_str())
+                        ));
+                        return layout::redirect(&path.finish());
                     }
                 }
             }
@@ -794,19 +805,32 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             self.shared.fs.write(joint_dst, buf)?;
             // If the item is a macro, redirect from the old macro URL (with !)
             // to the new one (without).
-            let item_type = item.type_();
-            if item_type == ItemType::Macro {
-                let name = item.name.as_ref().unwrap();
-                let redir_name = format!("{item_type}.{name}!.html");
+            if let Some(html_redirect_filename) = item.html_redirect_filename() {
+                let to_parts = self
+                    .cache()
+                    .paths
+                    .get(&item.item_id.expect_def_id())
+                    .map_or(&self.current, |info| &info.parts);
                 if let Some(ref redirections) = self.shared.redirections {
-                    let crate_name = &self.shared.layout.krate;
-                    redirections.borrow_mut().insert(
-                        format!("{crate_name}/{redir_name}"),
-                        format!("{crate_name}/{file_name}"),
-                    );
+                    let to_path = fmt::from_fn(|f| {
+                        for name in &to_parts[..to_parts.len() - 1] {
+                            write!(f, "{name}/")?;
+                        }
+                        write!(f, "{}", item.html_filename())
+                    });
+                    let from_path = fmt::from_fn(|f| {
+                        for name in &self.current {
+                            write!(f, "{name}/")?;
+                        }
+                        write!(f, "{}", html_redirect_filename)
+                    });
+                    redirections.borrow_mut().insert(from_path.to_string(), to_path.to_string());
                 } else {
-                    let v = layout::redirect(&file_name);
-                    let redir_dst = self.dst.join(redir_name);
+                    let mut to_path =
+                        href_relative_parts(&to_parts[..to_parts.len() - 1], &self.current);
+                    to_path.push(&item.html_filename());
+                    let v = layout::redirect(&to_path.finish());
+                    let redir_dst = self.dst.join(html_redirect_filename);
                     self.shared.fs.write(redir_dst, v)?;
                 }
             }

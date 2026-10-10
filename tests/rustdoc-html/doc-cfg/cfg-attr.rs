@@ -4,7 +4,7 @@
 #![crate_name = "foo"]
 #![feature(doc_cfg)]
 
-//@ has 'foo/struct.Test.html'
+//@ has 'foo/type.Test.html'
 //@ has - '//*[@id="impl-Debug-for-Test"]/*[@class="item-info"]/*[@class="stab portability"]' \
 //  'Available on non-crate feature debug only.'
 //@ has - '//*[@id="impl-Clone-for-Test"]/*[@class="item-info"]/*[@class="stab portability"]' \

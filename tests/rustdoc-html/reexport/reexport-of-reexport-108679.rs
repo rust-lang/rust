@@ -1,4 +1,4 @@
-// This test ensures that the `struct.B.html` only exists in `a`:
+// This test ensures that the `type.B.html` only exists in `a`:
 // since `a::B` is public (and inlined too), `self::a::B` doesn't
 // need to be inlined as well.
 
@@ -9,8 +9,8 @@ pub mod a {
     // Should only contain "Structs".
     //@ count - '//*[@id="main-content"]//*[@class="item-table"]' 1
     //@ has - '//*[@id="structs"]' 'Structs'
-    //@ has - '//*[@id="main-content"]//a[@href="struct.A.html"]' 'A'
-    //@ has - '//*[@id="main-content"]//a[@href="struct.B.html"]' 'B'
+    //@ has - '//*[@id="main-content"]//a[@href="type.A.html"]' 'A'
+    //@ has - '//*[@id="main-content"]//a[@href="type.B.html"]' 'B'
     mod b {
         pub struct B;
     }

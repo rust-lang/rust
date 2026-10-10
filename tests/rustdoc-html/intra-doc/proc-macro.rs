@@ -8,7 +8,7 @@ extern crate proc_macro_macro;
 pub use proc_macro_macro::{DeriveA, attr_a};
 use proc_macro_macro::{DeriveB, attr_b};
 
-//@ has proc_macro/struct.Foo.html
+//@ has proc_macro/type.Foo.html
 //@ has - '//a/@href' 'derive.DeriveA.html'
 //@ has - '//a/@href' 'attr.attr_a.html'
 //@ has - '//a/@href' 'trait.DeriveTrait.html'
@@ -17,7 +17,7 @@ use proc_macro_macro::{DeriveB, attr_b};
 /// Link to [DeriveA], [attr_a], [DeriveB], [attr_b], [DeriveTrait]
 pub struct Foo;
 
-//@ has proc_macro/struct.Bar.html
+//@ has proc_macro/type.Bar.html
 //@ has - '//a/@href' 'derive.DeriveA.html'
 //@ has - '//a/@href' 'attr.attr_a.html'
 /// Link to [deriveA](derive@DeriveA) [attr](macro@attr_a)

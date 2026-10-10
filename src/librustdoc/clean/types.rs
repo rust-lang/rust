@@ -786,7 +786,27 @@ impl Item {
 
     /// Generates the HTML file name based on the item kind.
     pub(crate) fn html_filename(&self) -> String {
-        format!("{type_}.{name}.html", type_ = self.type_(), name = self.name.unwrap())
+        let type_ = match self.type_() {
+            ItemType::Struct | ItemType::Union | ItemType::Enum | ItemType::ForeignType => "type",
+            type_ => type_.as_str(),
+        };
+        format!("{type_}.{name}.html", name = self.name.unwrap())
+    }
+
+    /// Generates the HTML file for the legacy redirect
+    /// <https://gist.github.com/notriddle/08752eb42289c82a69638d65553571c4>
+    pub(crate) fn html_redirect_filename(&self) -> Option<String> {
+        let redirect_type = match self.type_() {
+            ItemType::Struct => "struct",
+            ItemType::Union => "union",
+            ItemType::Enum => "enum",
+            ItemType::ForeignType => "foreigntype",
+            ItemType::Macro => {
+                return Some(format!("macro.{name}!.html", name = self.name.unwrap()));
+            }
+            _ => return None,
+        };
+        Some(format!("{redirect_type}.{name}.html", name = self.name.unwrap()))
     }
 
     /// Returns a `FnHeader` if `self` is a function item, otherwise returns `None`.

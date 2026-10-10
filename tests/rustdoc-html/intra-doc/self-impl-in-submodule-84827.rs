@@ -18,7 +18,7 @@ pub struct Foo {
 // Case 1: `Foo` is not in scope inside `bar`, but `Self::foo` still resolves
 // to the field on `crate::Foo`.
 pub mod bar {
-    //@ has foo/struct.Foo.html '//a[@href="struct.Foo.html#structfield.foo"]' 'Self::foo'
+    //@ has foo/type.Foo.html '//a[@href="type.Foo.html#structfield.foo"]' 'Self::foo'
     impl crate::Foo {
         /// Baz the [`Self::foo`].
         pub fn baz(&self) {}
@@ -31,7 +31,7 @@ pub mod bar {
 pub mod baz {
     use crate::other::Foo;
 
-    //@ has foo/struct.Foo.html '//a[@href="struct.Foo.html#structfield.foo"]' 'Self::foo'
+    //@ has foo/type.Foo.html '//a[@href="type.Foo.html#structfield.foo"]' 'Self::foo'
     impl crate::Foo {
         /// Quux the [`Self::foo`].
         pub fn quux(&self) {}

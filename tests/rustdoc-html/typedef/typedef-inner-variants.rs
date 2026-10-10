@@ -25,7 +25,7 @@ impl Interner for TyCtxt {
 //@ count - '//*[@id="fields"]' 0
 pub type AliasTy = Ty;
 
-//@ has 'inner_variants/enum.IrTyKind.html'
+//@ has 'inner_variants/type.IrTyKind.html'
 pub enum IrTyKind<A, I: Interner> {
     /// Doc comment for AdtKind
     AdtKind(I::Adt),
@@ -55,7 +55,7 @@ pub type NearlyTyKind<A> = IrTyKind<A, TyCtxt>;
 //@ has - '//pre[@class="rust item-decl"]//code/a[4]' "i64"
 pub type TyKind = IrTyKind<i64, TyCtxt>;
 
-//@ has 'inner_variants/union.OneOr.html'
+//@ has 'inner_variants/type.OneOr.html'
 pub union OneOr<A: Copy> {
     pub one: i64,
     pub or: A,
@@ -69,7 +69,7 @@ pub union OneOr<A: Copy> {
 //@ matches - '//pre[@class="rust item-decl"]//code' "union OneOrF64"
 pub type OneOrF64 = OneOr<f64>;
 
-//@ has 'inner_variants/struct.One.html'
+//@ has 'inner_variants/type.One.html'
 pub struct One<T> {
     pub val: T,
     #[doc(hidden)]
@@ -86,7 +86,7 @@ pub struct One<T> {
 //@ matches - '//pre[@class="rust item-decl"]//code' "pub val"
 pub type OneU64 = One<u64>;
 
-//@ has 'inner_variants/struct.OnceA.html'
+//@ has 'inner_variants/type.OnceA.html'
 pub struct OnceA<'a, A> {
     pub a: &'a A,
 }
@@ -99,7 +99,7 @@ pub struct OnceA<'a, A> {
 //@ matches - '//pre[@class="rust item-decl"]//code' "&'a"
 pub type Once<'a> = OnceA<'a, i64>;
 
-//@ has 'inner_variants/struct.HighlyGenericStruct.html'
+//@ has 'inner_variants/type.HighlyGenericStruct.html'
 pub struct HighlyGenericStruct<A, B, C, D> {
     pub z: (A, B, C, D)
 }

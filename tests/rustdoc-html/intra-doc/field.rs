@@ -1,7 +1,7 @@
-//@ has field/index.html '//a[@href="{{channel}}/core/ops/range/struct.Range.html#structfield.start"]' 'start'
-//@ has field/index.html '//a[@href="{{channel}}/core/io/error/enum.ErrorKind.html#variant.NotFound"]' 'not_found'
-//@ has field/index.html '//a[@href="struct.FieldAndMethod.html#structfield.x"]' 'x'
-//@ has field/index.html '//a[@href="enum.VariantAndMethod.html#variant.X"]' 'X'
+//@ has field/index.html '//a[@href="{{channel}}/core/ops/range/type.Range.html#structfield.start"]' 'start'
+//@ has field/index.html '//a[@href="{{channel}}/core/io/error/type.ErrorKind.html#variant.NotFound"]' 'not_found'
+//@ has field/index.html '//a[@href="type.FieldAndMethod.html#structfield.x"]' 'x'
+//@ has field/index.html '//a[@href="type.VariantAndMethod.html#variant.X"]' 'X'
 //! [start][std::ops::Range::start]
 //! [not_found][core::io::ErrorKind::NotFound]
 //! [x][field@crate::FieldAndMethod::x]

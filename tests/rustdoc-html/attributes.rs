@@ -26,7 +26,7 @@ pub extern "C" fn escape_html() {}
 #[unsafe(link_section = ".text")]
 pub extern "C" fn example() {}
 
-//@ has foo/struct.Repr.html '//*[@class="code-attribute"]' '#[repr(C, align(8))]'
+//@ has foo/type.Repr.html '//*[@class="code-attribute"]' '#[repr(C, align(8))]'
 #[repr(C, align(8))]
 pub struct Repr;
 
@@ -37,18 +37,18 @@ macro_rules! macro_rule {
     () => {};
 }
 
-//@ has 'foo/enum.Enum.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "enum")]'
+//@ has 'foo/type.Enum.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "enum")]'
 #[unsafe(link_section = "enum")]
 pub enum Enum {
-    //@ has 'foo/enum.Enum.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "a")]'
+    //@ has 'foo/type.Enum.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "a")]'
     //@ has - '//*[@class="variants"]//*[@class="code-attribute"]' '#[unsafe(link_section = "a")]'
     #[unsafe(link_section = "a")]
     A,
-    //@ has 'foo/enum.Enum.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "quz")]'
+    //@ has 'foo/type.Enum.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "quz")]'
     //@ has - '//*[@class="variants"]//*[@class="code-attribute"]' '#[unsafe(link_section = "quz")]'
     #[unsafe(link_section = "quz")]
     Quz {
-        //@ has 'foo/enum.Enum.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "b")]'
+        //@ has 'foo/type.Enum.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "b")]'
         //@ has - '//*[@class="variants"]//*[@class="code-attribute"]' '#[unsafe(link_section = "b")]'
         #[unsafe(link_section = "b")]
         b: (),
@@ -69,19 +69,19 @@ pub trait Trait {
     fn foo() {}
 }
 
-//@ has 'foo/union.Union.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "union")]'
+//@ has 'foo/type.Union.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "union")]'
 #[unsafe(link_section = "union")]
 pub union Union {
-    //@ has 'foo/union.Union.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "x")]'
+    //@ has 'foo/type.Union.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "x")]'
     #[unsafe(link_section = "x")]
     pub x: u32,
     y: f32,
 }
 
-//@ has 'foo/struct.Struct.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "struct")]'
+//@ has 'foo/type.Struct.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "struct")]'
 #[unsafe(link_section = "struct")]
 pub struct Struct {
-    //@ has 'foo/struct.Struct.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "x")]'
+    //@ has 'foo/type.Struct.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "x")]'
     //@ has - '//*[@id="structfield.x"]//*[@class="code-attribute"]' '#[unsafe(link_section = "x")]'
     #[unsafe(link_section = "x")]
     pub x: u32,
@@ -89,6 +89,6 @@ pub struct Struct {
 }
 
 // Check that the attributes from the trait items show up consistently in the impl.
-//@ has 'foo/struct.Struct.html' '//*[@id="trait-implementations-list"]//*[@class="code-attribute"]' '#[unsafe(link_section = "bar")]'
-//@ has 'foo/struct.Struct.html' '//*[@id="trait-implementations-list"]//*[@class="code-attribute"]' '#[unsafe(link_section = "foo")]'
+//@ has 'foo/type.Struct.html' '//*[@id="trait-implementations-list"]//*[@class="code-attribute"]' '#[unsafe(link_section = "bar")]'
+//@ has 'foo/type.Struct.html' '//*[@id="trait-implementations-list"]//*[@class="code-attribute"]' '#[unsafe(link_section = "foo")]'
 impl Trait for Struct {}

@@ -25,11 +25,11 @@ pub mod inside2 {
 
 pub mod nested {
     //! [Inside1] [Inside2]
-    //@ has foo/nested/index.html '//a[@href="../struct.Inside1.html"]' 'Inside1'
-    //@ has foo/nested/index.html '//a[@href="../struct.Inside2.html"]' 'Inside2'
+    //@ has foo/nested/index.html '//a[@href="../type.Inside1.html"]' 'Inside1'
+    //@ has foo/nested/index.html '//a[@href="../type.Inside2.html"]' 'Inside2'
     //! [Inside1::stuff] [Inside2::stuff]
-    //@ has foo/nested/index.html '//a[@href="../struct.Inside1.html#method.stuff"]' 'Inside1::stuff'
-    //@ has foo/nested/index.html '//a[@href="../struct.Inside2.html#method.stuff"]' 'Inside2::stuff'
+    //@ has foo/nested/index.html '//a[@href="../type.Inside1.html#method.stuff"]' 'Inside1::stuff'
+    //@ has foo/nested/index.html '//a[@href="../type.Inside2.html#method.stuff"]' 'Inside2::stuff'
     use crate::inside1::Inside1;
     use crate::inside2::Inside2;
 }

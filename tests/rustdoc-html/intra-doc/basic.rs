@@ -1,15 +1,15 @@
 #![allow(rustdoc::redundant_explicit_links)]
 
 //@ has basic/index.html
-//@ has - '//a/@href' 'struct.ThisType.html'
+//@ has - '//a/@href' 'type.ThisType.html'
 //@ has - '//a/@title' 'struct basic::ThisType'
-//@ has - '//a/@href' 'struct.ThisType.html#method.this_method'
+//@ has - '//a/@href' 'type.ThisType.html#method.this_method'
 //@ has - '//a/@title' 'method basic::ThisType::this_method'
-//@ has - '//a/@href' 'struct.ThisType.html#method.this_assoc_fn'
+//@ has - '//a/@href' 'type.ThisType.html#method.this_assoc_fn'
 //@ has - '//a/@title' 'associated function basic::ThisType::this_assoc_fn'
-//@ has - '//a/@href' 'enum.ThisEnum.html'
+//@ has - '//a/@href' 'type.ThisEnum.html'
 //@ has - '//a/@title' 'enum basic::ThisEnum'
-//@ has - '//a/@href' 'enum.ThisEnum.html#variant.ThisVariant'
+//@ has - '//a/@href' 'type.ThisEnum.html#variant.ThisVariant'
 //@ has - '//a/@title' 'variant basic::ThisEnum::ThisVariant'
 //@ has - '//a/@href' 'trait.ThisTrait.html'
 //@ has - '//a/@title' 'trait basic::ThisTrait'
@@ -25,7 +25,7 @@
 //@ has - '//a/@title' 'trait basic::ThisTrait'
 //@ has - '//a/@href' 'type.ThisAlias.html'
 //@ has - '//a/@title' 'type basic::ThisAlias'
-//@ has - '//a/@href' 'union.ThisUnion.html'
+//@ has - '//a/@href' 'type.ThisUnion.html'
 //@ has - '//a/@title' 'union basic::ThisUnion'
 //@ has - '//a/@href' 'fn.this_function.html'
 //@ has - '//a/@title' 'fn basic::this_function'
@@ -71,7 +71,7 @@ macro_rules! this_macro {
     () => {};
 }
 
-//@ has basic/struct.ThisType.html '//a/@href' 'macro.this_macro.html'
+//@ has basic/type.ThisType.html '//a/@href' 'macro.this_macro.html'
 /// another link to [`this_macro!()`]
 pub struct ThisType;
 
@@ -99,10 +99,10 @@ pub trait SoAmbiguous {}
 pub fn SoAmbiguous() {}
 
 
-//@ has basic/struct.SomeOtherType.html '//a/@href' 'struct.ThisType.html'
-//@ has - '//a/@href' 'struct.ThisType.html#method.this_method'
-//@ has - '//a/@href' 'enum.ThisEnum.html'
-//@ has - '//a/@href' 'enum.ThisEnum.html#variant.ThisVariant'
+//@ has basic/type.SomeOtherType.html '//a/@href' 'type.ThisType.html'
+//@ has - '//a/@href' 'type.ThisType.html#method.this_method'
+//@ has - '//a/@href' 'type.ThisEnum.html'
+//@ has - '//a/@href' 'type.ThisEnum.html#variant.ThisVariant'
 /// Shortcut links for:
 /// * [`ThisType`]
 /// * [`ThisType::this_method`]

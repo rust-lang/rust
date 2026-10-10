@@ -16,6 +16,6 @@ pub use extern_links::Foo;
 #[doc(hidden)]
 pub mod hidden {
     //@ !has foo/hidden/extern_links/index.html
-    //@ !has foo/hidden/extern_links/struct.Foo.html
+    //@ !has foo/hidden/extern_links/type.Foo.html
     pub use extern_links;
 }

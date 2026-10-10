@@ -2,7 +2,7 @@ pub struct Inner<T: Copy> {
     field: *mut T,
 }
 
-//@ has negative/struct.Outer.html
+//@ has negative/type.Outer.html
 //@ has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl<T> !Send for Outer<T>"
 //

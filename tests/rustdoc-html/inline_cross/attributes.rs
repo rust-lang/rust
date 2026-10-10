@@ -16,5 +16,5 @@ pub use attributes::link_section;
 //                                 '#[unsafe(export_name = "exonym")]'
 pub use attributes::export_name;
 
-//@ has 'user/struct.NonExhaustive.html' '//pre[@class="rust item-decl"]' '#[non_exhaustive]'
+//@ has 'user/type.NonExhaustive.html' '//pre[@class="rust item-decl"]' '#[non_exhaustive]'
 pub use attributes::NonExhaustive;

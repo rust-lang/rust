@@ -3,7 +3,7 @@
 
 #![feature(negative_impls)]
 
-//@ has foo/struct.A.html
+//@ has foo/type.A.html
 //@ has - '//*[@id="trait-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl !Send for A"
 //@ has - '//*[@id="trait-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
@@ -13,7 +13,7 @@ pub struct A();
 impl !Send for A {}
 impl !Sync for A {}
 
-//@ has foo/struct.B.html
+//@ has foo/type.B.html
 //@ has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl<T> !Send for B<T>"
 //@ has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \

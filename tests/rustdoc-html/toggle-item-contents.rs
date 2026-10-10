@@ -1,13 +1,13 @@
 #![allow(unused)]
 
-//@ has 'toggle_item_contents/struct.PubStruct.html'
+//@ has 'toggle_item_contents/type.PubStruct.html'
 //@ count - '//details[@class="toggle type-contents-toggle"]' 0
 pub struct PubStruct {
     pub a: usize,
     pub b: usize,
 }
 
-//@ has 'toggle_item_contents/struct.BigPubStruct.html'
+//@ has 'toggle_item_contents/type.BigPubStruct.html'
 //@ count - '//details[@class="toggle type-contents-toggle"]' 1
 //@ has - '//details[@class="toggle type-contents-toggle"]' 'Show 13 fields'
 pub struct BigPubStruct {
@@ -26,7 +26,7 @@ pub struct BigPubStruct {
     pub m: usize,
 }
 
-//@ has 'toggle_item_contents/union.BigUnion.html'
+//@ has 'toggle_item_contents/type.BigUnion.html'
 //@ count - '//details[@class="toggle type-contents-toggle"]' 1
 //@ has - '//details[@class="toggle type-contents-toggle"]' 'Show 13 fields'
 pub union BigUnion {
@@ -45,7 +45,7 @@ pub union BigUnion {
     pub m: usize,
 }
 
-//@ has 'toggle_item_contents/union.Union.html'
+//@ has 'toggle_item_contents/type.Union.html'
 //@ count - '//details[@class="toggle type-contents-toggle"]' 0
 pub union Union {
     pub a: usize,
@@ -53,7 +53,7 @@ pub union Union {
     pub c: usize,
 }
 
-//@ has 'toggle_item_contents/struct.PrivStruct.html'
+//@ has 'toggle_item_contents/type.PrivStruct.html'
 //@ count - '//details[@class="toggle type-contents-toggle"]' 0
 //@ has - '//pre[@class="rust item-decl"]' '/* private fields */'
 pub struct PrivStruct {
@@ -61,7 +61,7 @@ pub struct PrivStruct {
     b: usize,
 }
 
-//@ has 'toggle_item_contents/enum.Enum.html'
+//@ has 'toggle_item_contents/type.Enum.html'
 //@ !has - '//details[@class="toggle type-contents-toggle"]' ''
 pub enum Enum {
     A, B, C,
@@ -71,7 +71,7 @@ pub enum Enum {
     }
 }
 
-//@ has 'toggle_item_contents/enum.EnumStructVariant.html'
+//@ has 'toggle_item_contents/type.EnumStructVariant.html'
 //@ !has - '//details[@class="toggle type-contents-toggle"]' ''
 pub enum EnumStructVariant {
     A, B, C,
@@ -80,7 +80,7 @@ pub enum EnumStructVariant {
     }
 }
 
-//@ has 'toggle_item_contents/enum.LargeEnum.html'
+//@ has 'toggle_item_contents/type.LargeEnum.html'
 //@ count - '//pre[@class="rust item-decl"]//details[@class="toggle type-contents-toggle"]' 1
 //@ has - '//pre[@class="rust item-decl"]//details[@class="toggle type-contents-toggle"]' 'Show 13 variants'
 pub enum LargeEnum {

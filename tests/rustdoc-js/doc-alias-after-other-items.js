@@ -9,7 +9,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias_after_other_items',
                 'name': 'Foo',
-                'href': '../doc_alias_after_other_items/struct.Foo.html',
+                'href': '../doc_alias_after_other_items/type.Foo.html',
             },
             {
                 'path': 'doc_alias_after_other_items',
@@ -25,7 +25,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias_after_other_items',
                 'name': 'Confiture',
-                'href': '../doc_alias_after_other_items/struct.Confiture.html',
+                'href': '../doc_alias_after_other_items/type.Confiture.html',
             },
             {
                 'path': 'doc_alias_after_other_items',

@@ -9,6 +9,6 @@
 
 extern crate assoc_const_private_fields;
 
-//@ has foo/struct.HasPrivateFields.html
+//@ has foo/type.HasPrivateFields.html
 //@ matches - '//*[@id="associatedconstant.ASSOC"]' '^pub const ASSOC: HasPrivateFields$'
 pub use assoc_const_private_fields::HasPrivateFields;

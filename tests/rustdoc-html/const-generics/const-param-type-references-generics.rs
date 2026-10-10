@@ -12,5 +12,5 @@ pub fn instantiate() {
     takes(Bar::<2, { [1; 2] }>);
 }
 
-//@ has foo/struct.Bar.html '//pre[@class="rust item-decl"]' 'pub struct Bar<const N: usize, const M: [u8; N]>'
+//@ has foo/type.Bar.html '//pre[@class="rust item-decl"]' 'pub struct Bar<const N: usize, const M: [u8; N]>'
 //@ has foo/fn.takes.html '//pre[@class="rust item-decl"]' 'pub fn takes<const N: usize, const M: [u8; N]>(_: Bar<N, M>)'

@@ -9,7 +9,7 @@ pub trait AlsoLabeled {}
 
 pub trait Plain {}
 
-//@ has 'foo/struct.Tagged.html'
+//@ has 'foo/type.Tagged.html'
 //@ has - '//div[@class="notable-trait-badge-container"]/a[@href="trait.Labeled.html"][@title="foo::Labeled"]' 'Labeled'
 // Badges are sorted by trait name, so `AlsoLabeled` precedes `Labeled`.
 //@ has - '//div[@class="notable-trait-badge-container"]/a[1]' 'AlsoLabeled'
@@ -19,7 +19,7 @@ impl Labeled for Tagged {}
 impl AlsoLabeled for Tagged {}
 impl Plain for Tagged {}
 
-//@ has 'foo/struct.Untagged.html'
+//@ has 'foo/type.Untagged.html'
 //@ count - '//div[@class="notable-trait-badge-container"]' 0
 pub struct Untagged;
 impl Plain for Untagged {}

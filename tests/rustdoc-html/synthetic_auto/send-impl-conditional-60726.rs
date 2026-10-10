@@ -28,7 +28,7 @@ where
     I:InterfaceType<Send=True>
 {}
 
-//@ has foo/struct.IntoIter.html
+//@ has foo/type.IntoIter.html
 //@ has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl<T> !Send for IntoIter<T>"
 //@ has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \

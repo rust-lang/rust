@@ -1,6 +1,6 @@
 #![crate_name = "foo"]
 
-//@ has 'foo/struct.Foo.html'
+//@ has 'foo/type.Foo.html'
 pub struct Foo;
 
 //@ has - '//*[@class="docblock"]' 'Hello empty impl block!'
@@ -15,6 +15,6 @@ impl Foo {}
 pub struct Another;
 pub trait Bar {}
 
-//@ has 'foo/struct.Another.html'
+//@ has 'foo/type.Another.html'
 //@ has - '//h3[@class="code-header"]' 'impl Bar for Another'
 impl Bar for Another {}

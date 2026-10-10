@@ -26,7 +26,7 @@ impl DerefMut for Bar {
     fn deref_mut(&mut self) -> &mut Foo { loop {} }
 }
 
-//@ has foo/struct.Bar.html
+//@ has foo/type.Bar.html
 //@ has - '//*[@id="method.by_ref"]//h4[@class="code-header"]' 'fn by_ref(&self)'
 //@ has - '//*[@id="method.by_ref"]' 'fn by_ref(&self)'
 //@ has - '//*[@id="method.by_explicit_ref"]//h4[@class="code-header"]' 'fn by_explicit_ref(self: &Foo)'

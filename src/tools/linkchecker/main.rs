@@ -38,10 +38,10 @@ use html5ever::tokenizer::{
 const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
     // These try to link to std::collections, but are defined in alloc
     // https://github.com/rust-lang/rust/issues/74481
-    ("std/collections/btree_map/struct.BTreeMap.html", &["#insert-and-complex-keys"]),
-    ("std/collections/btree_set/struct.BTreeSet.html", &["#insert-and-complex-keys"]),
-    ("alloc/collections/btree_map/struct.BTreeMap.html", &["#insert-and-complex-keys"]),
-    ("alloc/collections/btree_set/struct.BTreeSet.html", &["#insert-and-complex-keys"]),
+    ("std/collections/btree_map/type.BTreeMap.html", &["#insert-and-complex-keys"]),
+    ("std/collections/btree_set/type.BTreeSet.html", &["#insert-and-complex-keys"]),
+    ("alloc/collections/btree_map/type.BTreeMap.html", &["#insert-and-complex-keys"]),
+    ("alloc/collections/btree_set/type.BTreeSet.html", &["#insert-and-complex-keys"]),
 
     // These try to link to various things in std, but are defined in core.
     // The docs in std::primitive use proper intra-doc links, so these seem fine to special-case.
@@ -50,8 +50,8 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
     ("alloc/slice/trait.Join.html", &["#method.join"]),
     ("alloc/slice/trait.Concat.html", &["#method.concat"]),
     ("alloc/slice/index.html", &["#method.concat", "#method.join"]),
-    ("alloc/vec/struct.Vec.html", &["#method.sort_by_key", "#method.sort_by_cached_key"]),
-    ("alloc/bstr/struct.ByteStr.html", &[
+    ("alloc/vec/type.Vec.html", &["#method.sort_by_key", "#method.sort_by_cached_key"]),
+    ("alloc/bstr/type.ByteStr.html", &[
         "#method.to_ascii_uppercase",
         "#method.to_ascii_lowercase",
         "core/slice::sort_by_key",
@@ -59,7 +59,7 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
         "#method.sort_by_cached_key",
         "#method.sort_by_key"
     ]),
-    ("alloc/bstr/struct.ByteString.html", &[
+    ("alloc/bstr/type.ByteString.html", &[
         "#method.to_ascii_uppercase",
         "#method.to_ascii_lowercase",
         "core/slice::sort_by_key",
@@ -67,7 +67,7 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
         "#method.sort_by_cached_key",
         "#method.sort_by_key"
     ]),
-    ("core/bstr/struct.ByteStr.html", &[
+    ("core/bstr/type.ByteStr.html", &[
         "#method.to_ascii_uppercase",
         "#method.to_ascii_lowercase",
         "core/bstr/slice::sort_by_key",
@@ -78,21 +78,21 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
     ("core/primitive.slice.html", &["#method.to_ascii_uppercase", "#method.to_ascii_lowercase",
                                     "core/slice::sort_by_key", "core\\slice::sort_by_key",
                                     "#method.sort_by_cached_key"]),
-    ("core/io/struct.IoSlice.html", &[
+    ("core/io/type.IoSlice.html", &[
         "#method.to_ascii_uppercase",
         "#method.to_ascii_lowercase",
         "core/io/slice::sort_by_key",
         "core\\io\\slice::sort_by_key",
         "#method.sort_by_cached_key"
     ]),
-    ("core/io/struct.IoSliceMut.html", &[
+    ("core/io/type.IoSliceMut.html", &[
         "#method.to_ascii_uppercase",
         "#method.to_ascii_lowercase",
         "core/io/slice::sort_by_key",
         "core\\io\\slice::sort_by_key",
         "#method.sort_by_cached_key"
     ]),
-    ("alloc/io/struct.IoSlice.html", &[
+    ("alloc/io/type.IoSlice.html", &[
         "#method.to_ascii_uppercase",
         "#method.to_ascii_lowercase",
         "alloc/io/slice::sort_by_key",
@@ -100,7 +100,7 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
         "#method.sort_by_key",
         "#method.sort_by_cached_key"
     ]),
-    ("alloc/io/struct.IoSliceMut.html", &[
+    ("alloc/io/type.IoSliceMut.html", &[
         "#method.to_ascii_uppercase",
         "#method.to_ascii_lowercase",
         "alloc/io/slice::sort_by_key",
@@ -113,10 +113,10 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
 #[rustfmt::skip]
 const INTRA_DOC_LINK_EXCEPTIONS: &[(&str, &[&str])] = &[
     // This is being used in the sense of 'inclusive range', not a markdown link
-    ("core/ops/struct.RangeInclusive.html", &["begin</code>, <code>end"]),
-    ("std/ops/struct.RangeInclusive.html", &["begin</code>, <code>end"]),
-    ("core/range/legacy/struct.RangeInclusive.html", &["begin</code>, <code>end"]),
-    ("std/range/legacy/struct.RangeInclusive.html", &["begin</code>, <code>end"]),
+    ("core/ops/type.RangeInclusive.html", &["begin</code>, <code>end"]),
+    ("std/ops/type.RangeInclusive.html", &["begin</code>, <code>end"]),
+    ("core/range/legacy/type.RangeInclusive.html", &["begin</code>, <code>end"]),
+    ("std/range/legacy/type.RangeInclusive.html", &["begin</code>, <code>end"]),
     ("core/slice/trait.SliceIndex.html", &["begin</code>, <code>end"]),
     ("alloc/slice/trait.SliceIndex.html", &["begin</code>, <code>end"]),
     ("std/slice/trait.SliceIndex.html", &["begin</code>, <code>end"]),

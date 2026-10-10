@@ -23,7 +23,7 @@ pub trait Bar {
     fn bar() {}
 }
 
-//@ has 'foo/struct.Foo.html'
+//@ has 'foo/type.Foo.html'
 impl Bar for Foo {
     //@ has - '//*[@id="associatedtype.T"]/a[@class="anchor"]' ''
     type T = u32;

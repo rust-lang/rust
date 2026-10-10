@@ -6,7 +6,7 @@
 
 //@ has 'foo/type.A.html'
 //@ has - '//pre[@class="rust item-decl"]' '<S as Tr>::P<Option<i32>>'
-//@ has - '//pre[@class="rust item-decl"]//a[@class="enum"]/@href' '{{channel}}/core/option/enum.Option.html'
+//@ has - '//pre[@class="rust item-decl"]//a[@class="enum"]/@href' '{{channel}}/core/option/type.Option.html'
 pub type A = <S as Tr>::P<Option<i32>>;
 
 /*private*/ trait Tr {

@@ -10,7 +10,7 @@
 //@ edition: 2018
 
 //@ has extern_crate_only_used_in_link/index.html
-//@ has - '//a[@href="../issue_66159_1/struct.Something.html"]' 'issue_66159_1::Something'
+//@ has - '//a[@href="../issue_66159_1/type.Something.html"]' 'issue_66159_1::Something'
 //! [issue_66159_1::Something]
 
 //@ has - '//a[@href="../empty/index.html"]' 'empty'

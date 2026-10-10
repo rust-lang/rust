@@ -3,4 +3,4 @@
 #![crate_name = "foo"]
 
 //@ !has foo/redirect-map.json
-pub struct Foo;
+pub fn foo() {}

@@ -10,5 +10,5 @@ pub enum Foo {
 
 //@ has 'foo/index.html'
 
-//@ has - '//*[@class="item-table reexports"]/*[@id="reexport.S"]//a[@href="enum.Foo.html#variant.S"]' 'S'
+//@ has - '//*[@class="item-table reexports"]/*[@id="reexport.S"]//a[@href="type.Foo.html#variant.S"]' 'S'
 pub use self::Foo::S;

@@ -23,7 +23,7 @@ pub trait Item {
     fn xyzzy() {}
 }
 
-//@ has default_trait_method/struct.Foo.html
+//@ has default_trait_method/type.Foo.html
 pub struct Foo;
 impl Item for Foo {
     //@ has - '//*[@id="method.foo"]' 'default fn foo()'

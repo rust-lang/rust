@@ -1,6 +1,6 @@
 #![crate_name = "foo"]
 
-//@ has foo/struct.Foo.html
+//@ has foo/type.Foo.html
 //@ count - '//*[@class="docblock"]/div/table' 2
 //@ !has - '//*[@class="docblock"]/table' ''
 /// | hello | hello2 |
