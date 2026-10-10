@@ -250,13 +250,12 @@ fn parse_alignment(node: &LitKind, cx: &AcceptContext<'_, '_>) -> Result<Align, 
 
     // `Align::from_bytes` accepts 0 as a valid input,
     // so we check if its a power of two first
-    if !literal.get().is_power_of_two() {
+    if !literal.as_u128().is_power_of_two() {
         return Err("not a power of two".to_string());
     }
     // lit must be < 2^29
     let align = literal
-        .get()
-        .try_into()
+        .as_u64()
         .ok()
         .and_then(|a| Align::from_bytes(a).ok())
         .ok_or("larger than 2^29".to_string())?;

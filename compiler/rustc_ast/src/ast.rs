@@ -19,12 +19,13 @@
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
 use std::borrow::{Borrow, Cow};
+use std::fmt::Formatter;
+use std::hint::unreachable_unchecked;
 use std::{cmp, fmt};
 
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
-use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, StableHash, Walkable};
@@ -2281,7 +2282,7 @@ pub enum LitKind {
     /// A character literal (`'a'`).
     Char(char),
     /// An integer literal (`1`).
-    Int(Pu128, LitIntType),
+    Int(IntLiteral, LitIntType),
     /// A float literal (`1.0`, `1f64` or `1E10f64`). The pre-suffix part is
     /// stored as a symbol rather than `f64` so that `LitKind` can impl `Eq`
     /// and `Hash`.
@@ -2338,6 +2339,50 @@ impl LitKind {
             | LitKind::Bool(..)
             | LitKind::Err(_) => false,
         }
+    }
+}
+
+#[derive(Clone, Copy, Encodable, Decodable, Debug, Hash, Eq, PartialEq, StableHash)]
+pub struct IntLiteral(Symbol);
+
+impl IntLiteral {
+    pub fn from_symbol(symbol: Symbol) -> Self {
+        Self(symbol)
+    }
+
+    #[inline]
+    pub fn as_u8(&self) -> Result<u8, std::num::TryFromIntError> {
+        self.as_u128().try_into()
+    }
+
+    #[inline]
+    pub fn as_u32(&self) -> Result<u32, std::num::TryFromIntError> {
+        self.as_u128().try_into()
+    }
+
+    #[inline]
+    pub fn as_u64(&self) -> Result<u64, std::num::TryFromIntError> {
+        self.as_u128().try_into()
+    }
+
+    // We should only be given a symbol that is safe to parse as a u128 value
+    #[inline]
+    pub fn as_u128(&self) -> u128 {
+        let s = self.0.as_str();
+        let base = match s.as_bytes() {
+            [b'0', b'x', ..] => 16,
+            [b'0', b'o', ..] => 8,
+            [b'0', b'b', ..] => 2,
+            _ => 10,
+        };
+        let s = &s[if base != 10 { 2 } else { 0 }..];
+        u128::from_str_radix(s, base).unwrap_or_else(|_| unsafe { unreachable_unchecked() })
+    }
+}
+
+impl std::fmt::Display for IntLiteral {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        self.as_u128().fmt(f)
     }
 }
 
@@ -4488,11 +4533,11 @@ mod size_asserts {
     static_assert_size!(Item, 144);
     static_assert_size!(ItemKind, 88);
     static_assert_size!(Lifetime, 16);
-    static_assert_size!(LitKind, 24);
+    static_assert_size!(LitKind, 8);
     static_assert_size!(Local, 96);
-    static_assert_size!(MetaItem, 80);
-    static_assert_size!(MetaItemKind, 40);
-    static_assert_size!(MetaItemLit, 40);
+    static_assert_size!(MetaItem, 64);
+    static_assert_size!(MetaItemKind, 24);
+    static_assert_size!(MetaItemLit, 24);
     static_assert_size!(NormalAttr, 80);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 64);

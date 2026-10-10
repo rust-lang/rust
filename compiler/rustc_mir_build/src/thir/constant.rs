@@ -73,24 +73,28 @@ pub(crate) fn lit_to_const<'tcx>(
             (valtree, valtree_ty)
         }
         (ast::LitKind::Int(n, ast::LitIntType::Unsigned(ui)), _) if !neg => {
-            let scalar_int = trunc(n.get(), ui);
+            let scalar_int = trunc(n.as_u128(), ui);
             (ty::ValTree::from_scalar_int(tcx, scalar_int), Ty::new_uint(tcx, ui))
         }
         (ast::LitKind::Int(_, ast::LitIntType::Unsigned(_)), _) if neg => return None,
         (ast::LitKind::Int(n, ast::LitIntType::Signed(i)), _) => {
-            let scalar_int =
-                trunc(if neg { u128::wrapping_neg(n.get()) } else { n.get() }, i.to_unsigned());
+            let scalar_int = trunc(
+                if neg { u128::wrapping_neg(n.as_u128()) } else { n.as_u128() },
+                i.to_unsigned(),
+            );
             (ty::ValTree::from_scalar_int(tcx, scalar_int), Ty::new_int(tcx, i))
         }
         (ast::LitKind::Int(n, ast::LitIntType::Unsuffixed), Some(ty::Uint(ui))) if !neg => {
-            let scalar_int = trunc(n.get(), *ui);
+            let scalar_int = trunc(n.as_u128(), *ui);
             (ty::ValTree::from_scalar_int(tcx, scalar_int), Ty::new_uint(tcx, *ui))
         }
         (ast::LitKind::Int(n, ast::LitIntType::Unsuffixed), Some(ty::Int(i))) => {
             // Unsigned "negation" has the same bitwise effect as signed negation,
             // which gets the result we want without additional casts.
-            let scalar_int =
-                trunc(if neg { u128::wrapping_neg(n.get()) } else { n.get() }, i.to_unsigned());
+            let scalar_int = trunc(
+                if neg { u128::wrapping_neg(n.as_u128()) } else { n.as_u128() },
+                i.to_unsigned(),
+            );
             (ty::ValTree::from_scalar_int(tcx, scalar_int), Ty::new_int(tcx, *i))
         }
         (ast::LitKind::Bool(b), _) => (ty::ValTree::from_scalar_int(tcx, b.into()), tcx.types.bool),
