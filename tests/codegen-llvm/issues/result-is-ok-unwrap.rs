@@ -9,7 +9,7 @@ use std::hint::black_box;
 // CHECK-LABEL: @unwrap_after_is_ok
 #[no_mangle]
 pub fn unwrap_after_is_ok(arg: Result<u64, u32>) {
-    // CHECK-NOT: unwrap_failed
+    // CHECK-NOT: call{{.*}}unwrap_failed
     // CHECK-NOT: panic
     if arg.is_ok() {
         let value = arg.unwrap();

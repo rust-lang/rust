@@ -1181,7 +1181,7 @@ impl<T, E> Result<T, E> {
     {
         match self {
             Ok(t) => t,
-            Err(e) => unwrap_failed(msg, &e),
+            Err(e) => unwrap_failed(msg, e),
         }
     }
 
@@ -1229,7 +1229,7 @@ impl<T, E> Result<T, E> {
     {
         match self {
             Ok(t) => t,
-            Err(e) => unwrap_failed("called `Result::unwrap()` on an `Err` value", &e),
+            Err(e) => unwrap_failed("called `Result::unwrap()` on an `Err` value", e),
         }
     }
 
@@ -1294,7 +1294,7 @@ impl<T, E> Result<T, E> {
         T: fmt::Debug,
     {
         match self {
-            Ok(t) => unwrap_failed(msg, &t),
+            Ok(t) => unwrap_failed(msg, t),
             Err(e) => e,
         }
     }
@@ -1325,7 +1325,7 @@ impl<T, E> Result<T, E> {
         T: fmt::Debug,
     {
         match self {
-            Ok(t) => unwrap_failed("called `Result::unwrap_err()` on an `Ok` value", &t),
+            Ok(t) => unwrap_failed("called `Result::unwrap_err()` on an `Ok` value", t),
             Err(e) => e,
         }
     }
@@ -1858,12 +1858,21 @@ impl<T, E> Result<Result<T, E>, E> {
 }
 
 // This is a separate function to reduce the code size of the methods
+//
+// Take `error` by value so that `unwrap` doesn't need to include a landing pad to drop `error`
+// during unwinding. This reduces the size of `unwrap` and allows it to be MIR inlined.
 #[cfg(not(panic = "immediate-abort"))]
 #[inline(never)]
 #[cold]
 #[track_caller]
-fn unwrap_failed(msg: &str, error: &dyn fmt::Debug) -> ! {
-    panic!("{msg}: {error:?}");
+fn unwrap_failed<T: fmt::Debug>(msg: &str, error: T) -> ! {
+    // Do the actual formatting with a `&dyn Debug` to reduce code size.
+    #[inline(never)]
+    #[track_caller]
+    fn unwrap_failed_inner(msg: &str, error: &dyn fmt::Debug) -> ! {
+        panic!("{msg}: {error:?}")
+    }
+    unwrap_failed_inner(msg, &error)
 }
 
 // This is a separate function to avoid constructing a `dyn Debug`
@@ -1874,7 +1883,7 @@ fn unwrap_failed(msg: &str, error: &dyn fmt::Debug) -> ! {
 #[inline]
 #[cold]
 #[track_caller]
-const fn unwrap_failed<T>(_msg: &str, _error: &T) -> ! {
+const fn unwrap_failed<T>(_msg: &str, _error: T) -> ! {
     panic!()
 }
 
