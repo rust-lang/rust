@@ -1,0 +1,16 @@
+error: expected pattern, found `}`
+  --> $DIR/group-set-span-open-close.rs:11:9
+   |
+LL |         }
+   |         ^ expected pattern
+
+error: expected pattern, found `}`
+  --> $DIR/group-set-span-open-close.rs:17:9
+   |
+LL | /         {
+LL | |             // hello i am a line in between please make sure the span points at the entire block
+LL | |         }
+   | |_________^ expected pattern
+
+error: aborting due to 2 previous errors
+
