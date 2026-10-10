@@ -1,6 +1,7 @@
 use crate::fmt;
 use crate::iter::InPlaceIterable;
 use crate::iter::adapters::SourceIter;
+use crate::marker::Destruct;
 use crate::num::NonZero;
 use crate::ops::{ControlFlow, Try};
 
