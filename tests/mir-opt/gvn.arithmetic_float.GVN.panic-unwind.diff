@@ -40,7 +40,7 @@
           StorageLive(_4);
           _4 = copy _1;
 -         _3 = Add(move _4, const 0f64);
-+         _3 = Add(copy _1, const 0f64);
++         _3 = Add(const 0f64, copy _1);
           StorageDead(_4);
           _2 = opaque::<f64>(move _3) -> [return: bb1, unwind continue];
       }
@@ -66,7 +66,7 @@
           StorageLive(_10);
           _10 = copy _1;
 -         _9 = Mul(move _10, const 0f64);
-+         _9 = Mul(copy _1, const 0f64);
++         _9 = Mul(const 0f64, copy _1);
           StorageDead(_10);
           _8 = opaque::<f64>(move _9) -> [return: bb3, unwind continue];
       }

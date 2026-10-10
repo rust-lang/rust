@@ -212,7 +212,7 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         _21 = copy ((_14.0: std::slice::Iter<'_, T>).1: *const T);
         _22 = copy _21 as usize (Transmute);
         StorageDead(_21);
-        _20 = Eq(copy _22, const 0_usize);
+        _20 = Eq(const 0_usize, copy _22);
         StorageDead(_22);
         goto -> bb7;
     }

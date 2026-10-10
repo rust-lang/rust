@@ -18,7 +18,7 @@
           StorageLive(_2);
           StorageLive(_3);
           _3 = copy _1;
-          _2 = Eq(copy _1, const 17_i8);
+          _2 = Eq(const 17_i8, copy _1);
           StorageDead(_3);
 -         switchInt(copy _2) -> [0: bb2, otherwise: bb1];
 +         switchInt(copy _1) -> [17: bb1, otherwise: bb2];

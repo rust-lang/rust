@@ -10,7 +10,7 @@ fn foo() {
     // CHECK: _2 = &mut (_1.0: i32);
     // CHECK: (*_2) = const 5_i32;
     // CHECK: _4 = copy (_1.0: i32);
-    // CHECK: _3 = Eq(move _4, const 5_i32);
+    // CHECK: _3 = Eq(const 5_i32, move _4);
 
     let mut u = (1,);
     *&mut u.0 = 5;
@@ -25,7 +25,7 @@ fn bar() {
     // CHECK: _3 = &raw mut (_1.0: i32);
     // CHECK: (*_3) = const 5_i32;
     // CHECK: _5 = copy (_1.0: i32);
-    // CHECK: _4 = Eq(move _5, const 5_i32);
+    // CHECK: _4 = Eq(const 5_i32, move _5);
 
     let mut v = (1,);
     unsafe {

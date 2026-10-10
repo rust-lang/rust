@@ -199,7 +199,7 @@
           _28 = copy _1;
 -         _29 = Eq(copy _28, const 0_u64);
 -         assert(!move _29, "attempt to divide `{}` by zero", const 0_u64) -> [success: bb10, unwind unreachable];
-+         _29 = Eq(copy _1, const 0_u64);
++         _29 = Eq(const 0_u64, copy _1);
 +         assert(!copy _29, "attempt to divide `{}` by zero", const 0_u64) -> [success: bb10, unwind unreachable];
       }
   

@@ -18,7 +18,7 @@ pub fn ezmap(x: Option<i32>) -> Option<i32> {
 
     // CHECK-LABEL: fn ezmap
     // CHECK: [[INNER:_.+]] = copy ((_1 as Some).0: i32);
-    // CHECK: [[SUCC:_.+]] = Add({{copy|move}} [[INNER]], const 1_i32);
+    // CHECK: [[SUCC:_.+]] = Add(const 1_i32, {{copy|move}} [[INNER]]);
     // CHECK: _0 = Option::<i32>::Some({{copy|move}} [[SUCC]]);
     map(x, |n| n + 1)
 }
@@ -31,7 +31,7 @@ pub fn map_via_question_mark(x: Option<i32>) -> Option<i32> {
     // CHECK: [[INNER:_.+]] = copy ((_1 as Some).0: i32);
     // CHECK: [[TEMP1:_.+]] = ControlFlow::<Option<!>, i32>::Continue(copy [[INNER]]);
     // CHECK: [[TEMP2:_.+]] = copy (([[TEMP1]] as Continue).0: i32);
-    // CHECK: [[SUCC:_.+]] = Add({{copy|move}} [[TEMP2]], const 1_i32);
+    // CHECK: [[SUCC:_.+]] = Add(const 1_i32, {{copy|move}} [[TEMP2]]);
     // CHECK: _0 = Option::<i32>::Some({{copy|move}} [[SUCC]]);
     Some(x? + 1)
 }

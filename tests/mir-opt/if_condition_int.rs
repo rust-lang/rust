@@ -88,7 +88,7 @@ fn opt_multiple_ifs(x: u32) -> u32 {
 // the switchInt can be optimized but the b statement can't be removed as it's used later on
 fn dont_remove_comparison(a: i8) -> i32 {
     // CHECK-LABEL: fn dont_remove_comparison(
-    // CHECK: [[b:_.*]] = Eq(copy _1, const 17_i8);
+    // CHECK: [[b:_.*]] = Eq(const 17_i8, copy _1);
     // CHECK: switchInt(copy _1) -> [17: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
     // CHECK: [[BB1]]:
     // CHECK: [[cast_1:_.*]] = copy [[b]] as i32 (IntToInt);
@@ -108,13 +108,13 @@ fn dont_remove_comparison(a: i8) -> i32 {
 #[custom_mir(dialect = "runtime")]
 fn dont_remove_moved_comparison(a: i8) -> i32 {
     // CHECK-LABEL: fn dont_remove_moved_comparison(
-    // CHECK: [[b:_.*]] = Eq(copy _1, const 17_i8);
+    // CHECK: [[b:_.*]] = Eq(const 17_i8, copy _1);
     // CHECK: [[cast:_.*]] = copy [[b]] as i32 (IntToInt);
     // CHECK: switchInt(copy _1) -> [17: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
     // CHECK: [[BB1]]:
     // CHECK: _0 = copy [[cast]];
     // CHECK: [[BB2]]:
-    // CHECK: _0 = Add(copy [[cast]], const 1_i32);
+    // CHECK: _0 = Add(const 1_i32, copy [[cast]]);
     mir! {
         let b: bool;
         let c: i32;
@@ -145,7 +145,7 @@ fn dont_remove_moved_comparison(a: i8) -> i32 {
 fn dont_opt_storage_live_after_comparison(a: bool) {
     // CHECK-LABEL: fn dont_opt_storage_live_after_comparison(
     // CHECK: [[b:_.*]] = copy _1 as u32 (IntToInt);
-    // CHECK: [[cmp:_.*]] = Eq(copy [[b]], const 42_u32);
+    // CHECK: [[cmp:_.*]] = Eq(const 42_u32, copy [[b]]);
     // CHECK: StorageDead([[b]]);
     // CHECK: StorageLive([[b]]);
     // CHECK: switchInt(move [[cmp]]) -> [1: {{bb.*}}, otherwise: {{bb.*}}];
@@ -177,7 +177,7 @@ fn dont_opt_storage_live_after_comparison(a: bool) {
 // test that we do not optimize on floats
 fn dont_opt_floats(a: f32) -> i32 {
     // CHECK-LABEL: fn dont_opt_floats(
-    // CHECK: [[cmp:_.*]] = Eq(copy _1, const -42f32);
+    // CHECK: [[cmp:_.*]] = Eq(const -42f32, copy _1);
     // CHECK: switchInt(move [[cmp]]) -> [0: [[BB2:bb.*]], otherwise: [[BB1:bb.*]]];
     // CHECK: [[BB1]]:
     // CHECK: _0 = const 0_i32;
@@ -190,7 +190,7 @@ fn dont_opt_floats(a: f32) -> i32 {
 #[custom_mir(dialect = "runtime")]
 pub fn on_non_ssa_switch(mut v: u64) -> i32 {
     // CHECK-LABEL: fn on_non_ssa_switch(
-    // CHECK: [[cmp:_.*]] = Eq(copy _1, const 42_u64);
+    // CHECK: [[cmp:_.*]] = Eq(const 42_u64, copy _1);
     // CHECK: [[cmp]] = const false;
     // CHECK: switchInt(copy [[cmp]]) -> [1: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
     // CHECK: [[BB1]]:
@@ -223,7 +223,7 @@ pub fn on_non_ssa_switch(mut v: u64) -> i32 {
 #[custom_mir(dialect = "runtime")]
 pub fn on_non_ssa_cmp(mut v: u64) -> i32 {
     // CHECK-LABEL: fn on_non_ssa_cmp(
-    // CHECK: [[cmp:_.*]] = Eq(copy _1, const 42_u64);
+    // CHECK: [[cmp:_.*]] = Eq(const 42_u64, copy _1);
     // CHECK: _1 = const 43_u64;
     // CHECK: switchInt(copy [[cmp]]) -> [1: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
     // CHECK: [[BB1]]:
@@ -256,7 +256,7 @@ pub fn on_non_ssa_cmp(mut v: u64) -> i32 {
 #[custom_mir(dialect = "runtime")]
 pub fn on_non_ssa_place(mut v: [u64; 10], mut i: usize) -> i32 {
     // CHECK-LABEL: fn on_non_ssa_place(
-    // CHECK: [[cmp:_.*]] = Eq(copy _1[_2], const 42_u64);
+    // CHECK: [[cmp:_.*]] = Eq(const 42_u64, copy _1[_2]);
     // CHECK: _2 = const 10_usize;
     // CHECK: switchInt(copy [[cmp]]) -> [1: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
     // CHECK: [[BB1]]:
