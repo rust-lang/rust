@@ -940,7 +940,7 @@ static LOONGARCH_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 const IBMZ_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     // For "backchain", https://github.com/rust-lang/rust/issues/142412 is a stabilization blocker
-    ("backchain", Unstable(sym::s390x_target_feature), &[]),
+    ("backchain", InternalOnly { reason: "use -Cforce-frame-pointers instead", hard_error: true }, &[]),
     ("concurrent-functions", Unstable(sym::s390x_target_feature), &[]),
     ("deflate-conversion", Unstable(sym::s390x_target_feature), &[]),
     ("enhanced-sort", Unstable(sym::s390x_target_feature), &[]),
