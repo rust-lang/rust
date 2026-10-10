@@ -941,28 +941,44 @@ where
         let coroutine = args.as_coroutine();
         let def_id = goal.predicate.alias.expect_projection_ty_def_id();
 
-        let term = if cx.is_projection_lang_item(def_id, SolverProjectionLangItem::CoroutineReturn)
-        {
-            coroutine.return_ty().into()
-        } else if cx.is_projection_lang_item(def_id, SolverProjectionLangItem::CoroutineYield) {
-            coroutine.yield_ty().into()
-        } else {
-            panic!("unexpected associated item `{:?}` for `{self_ty:?}`", def_id)
-        };
+        let (term, projection_term) =
+            if cx.is_projection_lang_item(def_id, SolverProjectionLangItem::CoroutineReturn) {
+                (
+                    coroutine.return_ty().into(),
+                    ty::AliasTerm::new(
+                        ecx.cx(),
+                        goal.predicate.alias.kind,
+                        [self_ty, coroutine.resume_ty()],
+                    ),
+                )
+            } else if cx.is_projection_lang_item(def_id, SolverProjectionLangItem::CoroutineYield) {
+                (
+                    coroutine.yield_ty().into(),
+                    ty::AliasTerm::new(
+                        ecx.cx(),
+                        goal.predicate.alias.kind,
+                        [
+                            self_ty.into(),
+                            coroutine.resume_ty().into(),
+                            goal.predicate
+                                .alias
+                                .args
+                                .iter()
+                                .filter(|a| a.as_region().is_some())
+                                .next()
+                                .unwrap(),
+                        ],
+                    ),
+                )
+            } else {
+                panic!("unexpected associated item `{:?}` for `{self_ty:?}`", def_id)
+            };
 
         Self::probe_and_consider_implied_clause(
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
-            ty::ProjectionClause {
-                projection_term: ty::AliasTerm::new(
-                    ecx.cx(),
-                    goal.predicate.alias.kind,
-                    [self_ty, coroutine.resume_ty()],
-                ),
-                term,
-            }
-            .upcast(cx),
+            ty::ProjectionClause { projection_term, term }.upcast(cx),
             // Technically, we need to check that the coroutine type is Sized,
             // but that's already proven by the coroutine being WF.
             [],

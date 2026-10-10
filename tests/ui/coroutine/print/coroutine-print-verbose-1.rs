@@ -14,7 +14,7 @@ use std::{
 pub struct Ready<T>(Option<T>);
 impl<T: Unpin> Coroutine<()> for Ready<T> {
     type Return = T;
-    type Yield = ();
+    type Yield<'a>  = () where Self: 'a;
     fn resume(mut self: Pin<&mut Self>, _args: ()) -> CoroutineState<(), T> {
         CoroutineState::Complete(self.0.take().unwrap())
     }

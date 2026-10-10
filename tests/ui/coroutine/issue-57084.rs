@@ -5,7 +5,7 @@
 #![feature(coroutines,coroutine_trait)]
 use std::ops::Coroutine;
 
-fn with<F>(f: F) -> impl Coroutine<Yield=(), Return=()>
+fn with<'a, F: 'a>(f: F) -> impl Coroutine<Yield<'a> = (), Return=()>
 where F: Fn() -> ()
 {
     #[coroutine] move || {

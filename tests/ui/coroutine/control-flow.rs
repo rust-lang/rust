@@ -9,7 +9,7 @@ use std::ops::{CoroutineState, Coroutine};
 use std::pin::Pin;
 
 fn finish<T>(mut amt: usize, mut t: T) -> T::Return
-    where T: Coroutine<(), Yield = ()> + Unpin,
+    where T: for <'y> Coroutine<(), Yield<'y> = ()> + Unpin,
 {
     loop {
         match Pin::new(&mut t).resume(()) {

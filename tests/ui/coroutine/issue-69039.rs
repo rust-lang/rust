@@ -8,7 +8,7 @@ fn mkstr(my_name: String, my_mood: String) -> String {
     format!("{} is {}", my_name.trim(), my_mood.trim())
 }
 
-fn my_scenario() -> impl Coroutine<String, Yield = &'static str, Return = String> {
+fn my_scenario() -> impl for<'y> Coroutine<String, Yield<'y> = &'static str, Return = String> {
     #[coroutine]
     |_arg: String| {
         let my_name = yield "What is your name?";

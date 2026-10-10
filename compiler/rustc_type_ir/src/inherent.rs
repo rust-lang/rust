@@ -289,7 +289,7 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
     }
 
     fn expect_region(&self) -> Region<I> {
-        self.as_region().expect("expected a const")
+        self.as_region().expect("expected a region")
     }
 
     fn is_non_region_infer(self) -> bool {
