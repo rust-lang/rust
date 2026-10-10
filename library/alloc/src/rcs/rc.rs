@@ -1997,14 +1997,16 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// Returns `true` if there are no other `Rc` or [`Weak`] pointers to the same allocation;
     /// returns `false` otherwise.
     ///
-    /// If this function returns `true`, it is safe to call [`get_mut_unchecked`]
-    /// immediately afterward.
+    /// If this function returns `true`, then it is guaranteed to be safe to call
+    /// [`get_mut_unchecked`] on this `Rc`, as long as no clones occur in between.
+    ///
+    /// The result can become stale if the `Rc` is cloned or downgraded between
+    /// the check and its use. Make sure no new `Rc` or `Weak` pointers are created
+    /// in between.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_is_unique)]
-    ///
     /// use std::rc::Rc;
     ///
     /// let x = Rc::new(3);
@@ -2024,11 +2026,9 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// This function will always return the same value as `Rc::get_mut(rc).is_some()`. However,
     /// unlike that operation it does not produce any mutable references to the underlying data,
     /// meaning no pointers to the data inside the `Rc` are invalidated by the call. Thus, the
-    /// following code is valid, even though it would be UB if it used `Rc::get_mut`:
+    /// following code is valid:
     ///
     /// ```
-    /// #![feature(arc_is_unique)]
-    ///
     /// use std::rc::Rc;
     ///
     /// let rc = Rc::new(5);
@@ -2037,9 +2037,15 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// assert_eq!(unsafe { *pointer }, 5);
     /// ```
     ///
+    /// The following changes would make the example unsound:
+    ///
+    /// - Using `Rc::get_mut` to create a mutable reference while also accessing the value
+    ///   through `pointer`.
+    /// - Dropping `rc` before dereferencing `pointer`, leaving it dangling.
+    ///
     /// [`get_mut_unchecked`]: Self::get_mut_unchecked
     #[inline]
-    #[unstable(feature = "arc_is_unique", issue = "138938")]
+    #[stable(feature = "arc_is_unique", since = "CURRENT_RUSTC_VERSION")]
     pub fn is_unique(this: &Self) -> bool {
         Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
     }
