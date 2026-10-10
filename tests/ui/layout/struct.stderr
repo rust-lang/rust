@@ -10,5 +10,65 @@ error: backend_repr: Scalar(i32 is ..)
 LL | struct AlignedZstButStillScalar(i32, [i16; 0]);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: layout_of(Packed2RustIsScalar) = Layout {
+           size: Size(4 bytes),
+           align: AbiAlign {
+               abi: Align(2 bytes),
+           },
+           backend_repr: Scalar(
+               u32 is ..,
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: None,
+           uninhabited: false,
+           variants: Single {
+               index: 0,
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(2 bytes),
+           randomization_seed: 5197957715782000817,
+       }
+  --> $DIR/struct.rs:16:1
+   |
+LL | struct Packed2RustIsScalar(u32);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: layout_of(Packed2CIsMemory) = Layout {
+           size: Size(4 bytes),
+           align: AbiAlign {
+               abi: Align(2 bytes),
+           },
+           backend_repr: Memory {
+               sized: true,
+           },
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: None,
+           uninhabited: false,
+           variants: Single {
+               index: 0,
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(2 bytes),
+           randomization_seed: 12081895529137334233,
+       }
+  --> $DIR/struct.rs:20:1
+   |
+LL | struct Packed2CIsMemory(u32);
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 
