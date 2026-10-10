@@ -4,7 +4,7 @@
 use core::clone::CloneToUninit;
 
 use crate::borrow::Cow;
-use crate::bstr::ByteStr;
+use crate::byte_str::ByteStr;
 use crate::collections::TryReserveError;
 use crate::rc::Rc;
 use crate::sync::Arc;
