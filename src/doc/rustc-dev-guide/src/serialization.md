@@ -37,7 +37,7 @@ types, floating point types, `bool`, `char`, `str`, etc.
 For types that are constructed from those types,
 `Encodable` and `Decodable` are usually implemented by [derives].
 These generate implementations that forward deserialization to the fields of the struct or enum.
-For a struct those impls look something like this:
+For a struct, those impls look something like this:
 
 ```rust,ignore
 #![feature(rustc_private)]
@@ -151,7 +151,7 @@ The [`rustc_macros`] crate defines various derives to help implement `Decodable`
 
 ## Shorthands
 
-`Ty` can be deeply recursive,
+`Ty` can be deeply recursive;
 if each `Ty` was encoded naively then crate metadata would be very large.
 To handle this,
 each `TyEncoder` has a cache of locations in its output where it has serialized types.
@@ -173,11 +173,10 @@ The `LazyArray<[T]>` and `LazyTable<I, T>` types provide some functionality over
 
 - It's possible to encode a `LazyArray<T>` directly from an `Iterator`,
   without first collecting into a `Vec<T>`.
-- Indexing into a `LazyTable<I,
-  T>` does not require decoding entries other than the one being read.
+- Indexing into a `LazyTable<I, T>` does not require decoding entries, other than the one being read.
 
 **note**: `LazyValue<T>` does not cache its value after being deserialized the first time.
-Instead the query system itself is the main way of caching these results.
+Instead, the query system itself is the main way of caching these results.
 
 [`LazyArray<T>`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/struct.LazyValue.html
 [`LazyTable<I, T>`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/struct.LazyValue.html
