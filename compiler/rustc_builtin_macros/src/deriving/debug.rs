@@ -270,10 +270,10 @@ fn show_fieldless_enum_concat_str(
     substr: &Substructure<'_>,
 ) -> Option<Box<ast::Expr>> {
     // Minimum variants count where this optimization starts to pay off.
-    // See https://github.com/rust-lang/rust/pull/155452 for more details.
-    // FIXME(panstromek) revisit this threshold,
-    //  we've changed the impl quite a bit since it was determined
-    const THRESHOLD: usize = 2;
+    // Initial value of 10 came from https://github.com/rust-lang/rust/pull/155452.
+    // Refined with the new impl in https://github.com/rust-lang/rust/pull/162535.
+    // Tested 10,5,2 on rustc-perf.
+    const THRESHOLD: usize = 5;
     let variants_count = def.variants.len();
     if variants_count < THRESHOLD {
         return None;
