@@ -256,7 +256,7 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>) -> Option<
         && let ExprKind::MethodCall(method_path, left_expr, [right_expr], _) = closure_body.value.kind
         && method_path.ident.name == sym::cmp
         && let Some(ord_trait) = cx.tcx.get_diagnostic_item(sym::Ord)
-        && cx.ty_based_def(closure_body.value).opt_parent(cx).opt_def_id() == Some(ord_trait)
+        && cx.ty_based_def(&closure_body.value).opt_parent(cx).opt_def_id() == Some(ord_trait)
     {
         let (closure_body, closure_arg, reverse) =
             if mirrored_exprs(left_expr, right_expr, &binding_map, BindingSource::Left) {

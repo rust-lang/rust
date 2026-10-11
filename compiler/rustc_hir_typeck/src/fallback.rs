@@ -341,7 +341,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 let reachable_vids =
                     graph::depth_first_search_as_undirected(coercions, vid).collect();
                 AnnotateUnitFallbackVisitor { reachable_vids, fcx: self }
-                    .visit_expr(body.value)
+                    .visit_expr(&body.value)
                     .break_value()
             })
             .collect();

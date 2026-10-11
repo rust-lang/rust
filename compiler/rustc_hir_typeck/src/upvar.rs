@@ -575,7 +575,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // for the inner coroutine may actually be more restrictive.
                 if infer_kind {
                     let ty::Coroutine(_, coroutine_args) =
-                        *self.typeck_results.borrow().expr_ty(body.value).kind()
+                        *self.typeck_results.borrow().expr_ty(&body.value).kind()
                     else {
                         bug!();
                     };

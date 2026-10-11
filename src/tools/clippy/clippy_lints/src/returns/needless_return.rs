@@ -70,7 +70,7 @@ pub(super) fn check_fn<'tcx>(cx: &LateContext<'tcx>, kind: FnKind<'tcx>, body: &
             } else {
                 RetReplacement::Empty
             };
-            check_final_expr(cx, body.value, vec![], replacement, None);
+            check_final_expr(cx, &body.value, vec![], replacement, None);
         },
         FnKind::ItemFn(..) | FnKind::Method(..) => {
             check_block_return(cx, &body.value.kind, sp, vec![]);
