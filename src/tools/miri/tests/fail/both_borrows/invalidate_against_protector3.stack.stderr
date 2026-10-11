@@ -1,4 +1,4 @@
-error: Undefined Behavior: not granting access to tag <TAG> because that would remove [SharedReadOnly for <TAG>] which is strongly protected
+error: Undefined Behavior: not granting access to tag <TAG> because that would remove [SharedReadOnly for <TAG>] which is strongly protected (i.e. it is in use as a function argument)
   --> tests/fail/both_borrows/invalidate_against_protector3.rs:LL:CC
    |
 LL |     unsafe { *x = 0 };
