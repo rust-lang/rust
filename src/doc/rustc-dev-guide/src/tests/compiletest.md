@@ -200,7 +200,7 @@ In the default mode, it asserts that the fingerprints must be the same.
 The attribute takes the following arguments:
 
 * `cfg="<cond>"` — checks the cfg condition `<cond>`,
-and only runs the check if the config condition evaluates to true.
+  and only runs the check if the config condition evaluates to true.
   This can be used to only run the `rustc_clean` attribute in a specific revision.
 * `except="<query1>,<query2>,..."` — asserts that the query results for the listed queries must be different,
   rather than the same.
