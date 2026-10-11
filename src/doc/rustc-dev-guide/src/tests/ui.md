@@ -95,7 +95,7 @@ will check for output files:
 - `dont-check-compiler-stderr` — Ignores stderr from the compiler.
 - `dont-check-compiler-stdout` — Ignores stdout from the compiler.
 - `compare-output-by-lines` — Some tests have non-deterministic orders of output,
-so we need to compare by lines.
+  so we need to compare by lines.
 
 UI tests run with `-Zdeduplicate-diagnostics=no` flag,
 which disables rustc's built-in diagnostic deduplication mechanism.
@@ -589,7 +589,6 @@ If this is a problem,
 then you can add the `rustfix-only-machine-applicable` directive in addition to `run-rustfix`.
 This should be used if there is a mixture of different suggestion levels,
 and some of the non-machine-applicable ones do not apply cleanly.
-
 
 ## Compare modes
 
