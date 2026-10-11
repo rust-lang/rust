@@ -491,8 +491,8 @@ impl HirEqInterExpr<'_, '_, '_> {
             self.inner.cx.tcx.typeck_body(right),
         ));
         let res = self.eq_expr(
-            self.inner.cx.tcx.hir_body(left).value,
-            self.inner.cx.tcx.hir_body(right).value,
+            &self.inner.cx.tcx.hir_body(left).value,
+            &self.inner.cx.tcx.hir_body(right).value,
         );
         self.inner.maybe_typeck_results = old_maybe_typeck_results;
         res
@@ -1246,7 +1246,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             }) => {
                 mem::discriminant(capture_clause).hash(&mut self.s);
                 // closures inherit TypeckResults
-                self.hash_expr(self.cx.tcx.hir_body(*body).value);
+                self.hash_expr(&self.cx.tcx.hir_body(*body).value);
             },
             ExprKind::ConstBlock(l_id) => {
                 self.hash_body(l_id.body);
@@ -1669,7 +1669,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn hash_body(&mut self, body_id: BodyId) {
         // swap out TypeckResults when hashing a body
         let old_maybe_typeck_results = self.maybe_typeck_results.replace(self.cx.tcx.typeck_body(body_id));
-        self.hash_expr(self.cx.tcx.hir_body(body_id).value);
+        self.hash_expr(&self.cx.tcx.hir_body(body_id).value);
         self.maybe_typeck_results = old_maybe_typeck_results;
     }
 
@@ -1805,7 +1805,7 @@ pub fn has_ambiguous_literal_in_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> b
 
         ExprKind::Closure(Closure { body, .. }) => {
             let body = cx.tcx.hir_body(*body);
-            let closure_expr = crate::peel_blocks(body.value);
+            let closure_expr = crate::peel_blocks(&body.value);
             has_ambiguous_literal_in_expr(cx, closure_expr)
         },
 

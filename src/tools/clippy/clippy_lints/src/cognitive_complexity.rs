@@ -154,7 +154,7 @@ impl<'tcx> LateLintPass<'tcx> for CognitiveComplexity {
                     },
                 }
             } else {
-                body.value
+                &body.value
             };
 
             self.check(cx, kind, decl, expr, span);

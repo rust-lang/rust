@@ -4,8 +4,8 @@
 
 `compiletest` is the main test harness of the Rust test suite.
 It allows test authors to organize large numbers of tests (the Rust compiler has many thousands),
-efficient test execution (parallel execution is supported), and
-allows the test author to configure behavior and expected results of both
+efficient test execution (parallel execution is supported),
+and allows the test author to configure behavior and expected results of both
 individual and groups of tests.
 
 > **Note for macOS users**
@@ -139,10 +139,9 @@ The directives for pretty-printing tests are:
   If specified without a value,
   then it means the pretty-print output should match the original source.
   If specified with a value, as in `//@ pp-exact:foo.pp`,
-  it will ensure that the pretty-printed output matches the
-  contents of the given file.
-  Otherwise, if `pp-exact` is not specified, then
-  the pretty-printed output will be pretty-printed one more time,
+  it will ensure that the pretty-printed output matches the contents of the given file.
+  Otherwise, if `pp-exact` is not specified,
+  then the pretty-printed output will be pretty-printed one more time,
   and the output of the two pretty-printing rounds will be compared to ensure that the
   pretty-printed output converges to a steady state.
 
@@ -194,12 +193,14 @@ change over time, and a test may no longer be checking the right thing but will 
 
 Incremental tests may use the attribute `#[rustc_clean(...)]` attribute.
 This attribute compares the fingerprint from the current compilation session with the previous one.
-The first revision should never have an active `rustc_clean` attribute, since it will always be dirty.
+The first revision should never have an active `rustc_clean` attribute,
+since it will always be dirty.
 
 In the default mode, it asserts that the fingerprints must be the same.
 The attribute takes the following arguments:
 
-* `cfg="<cond>"` — checks the cfg condition `<cond>`, and only runs the check if the config condition evaluates to true.
+* `cfg="<cond>"` — checks the cfg condition `<cond>`,
+  and only runs the check if the config condition evaluates to true.
   This can be used to only run the `rustc_clean` attribute in a specific revision.
 * `except="<query1>,<query2>,..."` — asserts that the query results for the listed queries must be different,
   rather than the same.
@@ -314,7 +315,8 @@ the debugger currently being used:
   NOTE: The "Rust" version of LLDB doesn't exist anymore, so this will always be ignored.
   This should probably be removed.
 
-By passing the `--debugger` option to compiletest, you can specify a single debugger to run tests with.
+By passing the `--debugger` option to compiletest,
+you can specify a single debugger to run tests with.
 For example, `./x test tests/debuginfo -- --debugger gdb` will only test GDB commands.
 
 > **Note on running lldb debuginfo tests locally with a prebuilt lldb
@@ -363,8 +365,8 @@ See the [FileCheck] documentation for a tutorial and more information.
 
 See also the [assembly tests](#assembly-tests) for a similar set of tests.
 
-By default, codegen tests will have `//@ needs-target-std` *implied* (that the
-target needs to support std),
+By default,
+codegen tests will have `//@ needs-target-std` *implied* (that the target needs to support std),
 *unless* the `#![no_std]`/`#![no_core]` attribute was specified in the test source.
 You can override this behavior and explicitly
 write `//@ needs-target-std` to only run the test when target supports std,
@@ -491,8 +493,8 @@ The recipe generates test cases and runs them in parallel.
 #### Using Rust recipes
 
 Each test should be in a separate directory with a `rmake.rs` Rust program,
-called the *recipe*. A recipe will be compiled and executed by compiletest with
-the `run_make_support` library linked in.
+called the *recipe*.
+A recipe will be compiled and executed by compiletest with the `run_make_support` library linked in.
 
 If you need new utilities or functionality,
 consider extending and improving the [`run_make_support`] library.
@@ -614,8 +616,8 @@ worrying about the actual changes, as long as the `coverage-run` tests still pas
 #### `coverage-run` suite
 
 In `coverage-run` mode, these tests perform an end-to-end test of coverage reporting.
-They compile a test program with coverage instrumentation, run that
-program to produce raw coverage data,
+They compile a test program with coverage instrumentation,
+run that program to produce raw coverage data,
 and then use LLVM tools to process that data into a human-readable code coverage report.
 
 Instrumented binaries need to be linked against the LLVM profiler runtime,
@@ -894,7 +896,8 @@ however compare-modes must be manually run individually via the `--compare-mode`
 ## Parallel frontend
 
 Compiletest can be run with the `--parallel-frontend-threads` flag to run the compiler in parallel mode.
-This can be used to check that the compiler produces the same output in parallel mode as in non-parallel mode, and to check for any issues that might arise in parallel mode.
+This can be used to check that the compiler produces the same output in parallel mode as in non-parallel mode,
+and to check for any issues that might arise in parallel mode.
 
 To run the tests in parallel mode, you need to pass the `--parallel-frontend-threads` CLI flag:
 
@@ -902,10 +905,14 @@ To run the tests in parallel mode, you need to pass the `--parallel-frontend-thr
 ./x test tests/ui -- --parallel-frontend-threads=N --iteration-count=M
 ```
 
-Where `N` is the number of threads to use for the parallel frontend, and `M` is the number of times to run each test in parallel mode (to increase the chances of catching any non-determinism).
+Where `N` is the number of threads to use for the parallel frontend,
+and `M` is the number of times to run each test in parallel mode (to increase the chances of catching any non-determinism).
 
-Also, when running with `--parallel-frontend-threads`, the `compare-output-by-lines` directive would be implied for all tests, since the output from the parallel frontend can be non-deterministic in terms of the order of lines.
+Also, when running with `--parallel-frontend-threads`,
+the `compare-output-by-lines` directive would be implied for all tests,
+since the output from the parallel frontend can be non-deterministic in terms of the order of lines.
 
-The parallel frontend is available in UI tests only at the moment, and is not currently supported in other test suites.
+The parallel frontend is available in UI tests only at the moment,
+and is not currently supported in other test suites.
 
 [`--extern` modifiers]: https://github.com/rust-lang/rust/issues/98405
