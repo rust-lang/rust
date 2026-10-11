@@ -75,11 +75,7 @@ fn run_format_inner<'tcx, T: FormatRenderer<'tcx>>(
             prof.generic_activity_with_arg("render_mod_item", item.name.unwrap().to_string());
 
         cx.mod_item_in(item)?;
-        let (ItemKind::Stripped(ItemKind::Module(ref module)) | ItemKind::Module(ref module)) =
-            item.inner.kind
-        else {
-            unreachable!()
-        };
+        let ItemKind::Module(module) = item.inner.kind.unstripped() else { unreachable!() };
         for it in module.items.iter() {
             let info = cx.save_module_data();
             run_format_inner(cx, it, prof)?;

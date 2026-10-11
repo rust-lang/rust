@@ -743,11 +743,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         // Render sidebar-items.js used throughout this module.
         if !self.info.render_redirect_pages {
-            let (ItemKind::Stripped(ItemKind::Module(ref module)) | ItemKind::Module(ref module)) =
-                item.kind
-            else {
-                unreachable!()
-            };
+            let ItemKind::Module(module) = item.kind.unstripped() else { unreachable!() };
             let items = self.build_sidebar_items(module);
             let js_dst = self.dst.join(format!("sidebar-items{}.js", self.shared.resource_suffix));
             let v = format!("window.SIDEBAR_ITEMS = {};", serde_json::to_string(&items).unwrap());

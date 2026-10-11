@@ -57,10 +57,7 @@ pub(crate) trait DocVisitor<'a>: Sized {
 
     /// Don't override!
     fn visit_item_recur(&mut self, item: &'a Item) {
-        match &item.kind {
-            ItemKind::Stripped(i) => self.visit_inner_recur(i),
-            _ => self.visit_inner_recur(&item.kind),
-        }
+        self.visit_inner_recur(item.kind.unstripped())
     }
 
     fn visit_mod(&mut self, m: &'a Module) {
