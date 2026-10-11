@@ -309,6 +309,10 @@ pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
     unsupported()
 }
 
+pub fn rename_noreplace(_old: &Path, _new: &Path) -> io::Result<()> {
+    unsupported()
+}
+
 pub fn set_perm(_p: &Path, perm: FilePermissions) -> io::Result<()> {
     match perm.0 {}
 }
