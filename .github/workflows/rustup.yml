@@ -100,6 +100,9 @@ jobs:
       run: |
         ./y.sh clean all
 
+    - name: Remove rustc-dev
+      uses: ./.github/actions/remove-rustc-dev
+
     - name: Prepare dependencies
       run: |
         git config --global user.email "user@example.com"
@@ -154,6 +157,9 @@ jobs:
         ./y.sh build --sysroot --release --release-sysroot
         ./y.sh test --cargo-tests
         ./y.sh clean all
+
+    - name: Remove rustc-dev
+      uses: ./.github/actions/remove-rustc-dev
 
     - name: Prepare dependencies
       run: |
@@ -283,6 +289,9 @@ jobs:
         ./y.sh test --release --clean --release-sysroot --build-sysroot --mini-tests --std-tests --test-libcore
         ./y.sh test --cargo-tests
 
+    - name: Remove rustc-dev
+      uses: ./.github/actions/remove-rustc-dev
+
     - name: Run stdarch tests
       if: ${{ !matrix.cargo_runner }}
       run: |
@@ -312,6 +321,9 @@ jobs:
 
     - name: Use the cg_gcc distributed by rustup
       uses: ./.github/actions/rustup-cg-gcc
+
+    - name: Remove rustc-dev
+      uses: ./.github/actions/remove-rustc-dev
 
     - name: Setup rust cache
       uses: Swatinem/rust-cache@v2
