@@ -257,15 +257,15 @@ def base_name(name: str) -> tuple[str, str]:
         return found
 
     if name.endswith("f"):
-        return (name.rstrip("f"), "f32")
+        return (name.removesuffix("f"), "f32")
     elif name.endswith("f16"):
-        return (name.rstrip("f16"), "f16")
+        return (name.removesuffix("f16"), "f16")
     elif name.endswith("f32"):
-        return (name.rstrip("f32"), "f32")
+        return (name.removesuffix("f32"), "f32")
     elif name.endswith("f64"):
-        return (name.rstrip("f64"), "f64")
+        return (name.removesuffix("f64"), "f64")
     elif name.endswith("f128"):
-        return (name.rstrip("f128"), "f128")
+        return (name.removesuffix("f128"), "f128")
 
     return (name, "f64")
 

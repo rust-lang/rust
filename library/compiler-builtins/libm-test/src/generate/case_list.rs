@@ -852,6 +852,23 @@ fn exp2f_cases() -> Vec<TestCase<op::exp2f::Routine>> {
     cases![]
 }
 
+#[cfg(f16_enabled)]
+fn exp2m1f16_cases() -> Vec<TestCase<op::exp2m1f16::Routine>> {
+    let mut cases = cases![];
+
+    // Exceptional inputs and branch boundaries from CORE-MATH.
+    for bits in [
+        0x118c, 0x21bc, 0x8da9, 0x973f, 0x8461, 0x27ff, 0x2800, 0x4bff, 0x4c00,
+    ] {
+        cases.push(TestCase {
+            input: (f16::from_bits(bits),),
+            output: None,
+        });
+    }
+
+    cases
+}
+
 fn exp2m1f_cases() -> Vec<TestCase<op::exp2m1f::Routine>> {
     let mut cases = cases![];
 

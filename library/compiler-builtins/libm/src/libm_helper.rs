@@ -194,6 +194,7 @@ libm_helper! {
         // verify-sorted-start
         (fn ceil(x: f16) -> (f16);                  => ceilf16);
         (fn copysign(x: f16, y: f16) -> (f16);      => copysignf16);
+        (fn exp2m1(x: f16) -> (f16);                => exp2m1f16);
         (fn fabs(x: f16) -> (f16);                  => fabsf16);
         (fn fdim(x: f16, y: f16) -> (f16);          => fdimf16);
         (fn floor(x: f16) -> (f16);                 => floorf16);
