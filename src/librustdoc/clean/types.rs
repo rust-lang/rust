@@ -483,11 +483,7 @@ impl Item {
     }
 
     pub(crate) fn span(&self, tcx: TyCtxt<'_>) -> Option<Span> {
-        let kind = match &self.kind {
-            ItemKind::Stripped(k) => k,
-            _ => &self.kind,
-        };
-        match kind {
+        match self.kind.unstripped() {
             ItemKind::Module(Module { span, .. }) => Some(*span),
             ItemKind::Impl(Impl { kind: ImplKind::Auto, .. }) => None,
             ItemKind::Impl(Impl { kind: ImplKind::Blanket(_), .. }) => {
@@ -651,30 +647,19 @@ impl Item {
         self.type_() == ItemType::Variant
     }
     pub(crate) fn is_associated_type(&self) -> bool {
-        matches!(self.kind, ItemKind::AssocType(..) | ItemKind::Stripped(ItemKind::AssocType(..)))
+        matches!(self.kind.unstripped(), ItemKind::AssocType(..))
     }
     pub(crate) fn is_required_associated_type(&self) -> bool {
-        matches!(
-            self.kind,
-            ItemKind::RequiredAssocType(..) | ItemKind::Stripped(ItemKind::RequiredAssocType(..))
-        )
+        matches!(self.kind.unstripped(), ItemKind::RequiredAssocType(..))
     }
     pub(crate) fn is_associated_const(&self) -> bool {
         matches!(
-            self.kind,
-            ItemKind::ProvidedAssocConstant(..)
-                | ItemKind::ImplAssocConstant(..)
-                | ItemKind::Stripped(
-                    ItemKind::ProvidedAssocConstant(..) | ItemKind::ImplAssocConstant(..)
-                )
+            self.kind.unstripped(),
+            ItemKind::ProvidedAssocConstant(..) | ItemKind::ImplAssocConstant(..)
         )
     }
     pub(crate) fn is_required_associated_const(&self) -> bool {
-        matches!(
-            self.kind,
-            ItemKind::RequiredAssocConstant(..)
-                | ItemKind::Stripped(ItemKind::RequiredAssocConstant(..))
-        )
+        matches!(self.kind.unstripped(), ItemKind::RequiredAssocConstant(..))
     }
     pub(crate) fn is_method(&self) -> bool {
         self.type_() == ItemType::Method
@@ -1026,6 +1011,13 @@ impl ItemKind {
             | Self::Keyword
             | Self::Attribute
             | Self::PlaceholderImpl => [].iter(),
+        }
+    }
+
+    pub(crate) fn unstripped(&self) -> &Self {
+        match self {
+            Self::Stripped(kind) => kind,
+            _ => self,
         }
     }
 }

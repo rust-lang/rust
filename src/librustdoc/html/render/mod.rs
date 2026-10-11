@@ -828,12 +828,7 @@ fn document_full_inner(
             }
         }
 
-        let kind = match &item.kind {
-            ItemKind::Stripped(kind) => kind,
-            kind => kind,
-        };
-
-        if let ItemKind::Function(..) | ItemKind::AssocFunction(..) = kind {
+        if let ItemKind::Function(..) | ItemKind::AssocFunction(..) = item.kind.unstripped() {
             render_call_locations(f, cx, item)?;
         }
         Ok(())

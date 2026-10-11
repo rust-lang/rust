@@ -111,12 +111,7 @@ item_type! {
 
 impl<'a> From<&'a clean::Item> for ItemType {
     fn from(item: &'a clean::Item) -> ItemType {
-        let kind = match &item.kind {
-            ItemKind::Stripped(item) => item,
-            kind => kind,
-        };
-
-        match kind {
+        match item.kind.unstripped() {
             ItemKind::Module(..) => ItemType::Module,
             ItemKind::ExternCrate { .. } => ItemType::ExternCrate,
             ItemKind::Import(..) => ItemType::Import,
