@@ -3,8 +3,8 @@
 The THIR ("Typed High-Level Intermediate Representation"), previously called HAIR for
 "High-Level Abstract IR", is another IR used by rustc that is generated after
 [type checking]. It is (as of <!-- date-check --> October 2026) used for
-[MIR construction], [exhaustiveness checking], [unsafety checking], and
-[explicit tail call checking].
+[MIR construction], [exhaustiveness checking], [unsafety checking],
+and [explicit tail call checking].
 
 [type checking]: ./hir-typeck/summary.md
 [MIR construction]: ./mir/construction.md
@@ -21,15 +21,14 @@ But it has some other interesting features that distinguish it from the HIR:
   Specifically, all [body owners] have THIR created.
   Consequently, the THIR has no representation for items like `struct`s or `trait`s.
 
-- Each body of THIR is only stored temporarily and is dropped as soon as it's no longer
-  needed, as opposed to being stored until the end of the compilation process (which
+- Each body of THIR is only stored temporarily and is dropped as soon as it's no longer needed,
+  as opposed to being stored until the end of the compilation process (which
   is what is done with the HIR).
 
-- Besides making the types of all nodes available, the THIR also has additional
-  desugaring compared to the HIR.
-  For example, automatic references and dereferences
-  are made explicit, and method calls and overloaded operators are converted into
-  plain function calls.
+- Besides making the types of all nodes available,
+  the THIR also has additional desugaring compared to the HIR.
+  For example, automatic references and dereferences are made explicit,
+  and method calls and overloaded operators are converted into plain function calls.
   Destruction scopes are also made explicit.
 
 - Statements, expressions, match arms, blocks, and parameters are stored separately.
