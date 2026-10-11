@@ -162,7 +162,7 @@ LL |     x as _
    = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
 
 error: one or more lifetime errors were found in this item
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:29:4
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:28:4
    |
 LL | fn change_assoc_0<'a, 'b>(
    |    ^^^^^^^^^^^^^^
@@ -216,7 +216,7 @@ LL |     x as _
    = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
 
 error: one or more lifetime errors were found in this item
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:36:4
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:35:4
    |
 LL | fn change_assoc_1<'a, 'b>(
    |    ^^^^^^^^^^^^^^

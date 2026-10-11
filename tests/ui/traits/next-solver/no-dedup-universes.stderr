@@ -1,10 +1,10 @@
-error: higher-ranked lifetime error
+error: higher-ranked lifetime error: lifetime outlives placeholder
   --> $DIR/no-dedup-universes.rs:20:13
    |
 LL | fn main() { f(Foo); }
-   |             ^^^^^^
+   |             ^^^^^^ `'a` would have to outlive placeholder in universe `U0`
    |
-   = note: could not prove `Foo: Trait`
+   = note: outer lifetimes cannot depend on placeholders declared in a higher universe
 
 error: aborting due to 1 previous error
 
