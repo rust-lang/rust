@@ -14,28 +14,28 @@ Current focus:
 
 ## Setup
 
-From `miri/`, install the pinned toolchain and the local `cargo-miri`
-command:
+From `miri/`, install the pinned toolchain:
 
 ```sh
 ./miri toolchain
-./miri install
 ```
 
-Then build the Miri sysroot and export it for Priroda:
+This is sufficient for running the [tests](#test) with `./miri test-priroda`,
+which builds the driver and prepares the sysroot itself. To run Priroda
+manually, install it together with Miri and prepare the local Miri sysroot:
 
 ```sh
-cargo +miri miri setup
+./miri install --features priroda
 export MIRI_SYSROOT="$(cargo +miri miri setup --print-sysroot)"
 ```
 
 ## Run
 
-Priroda currently reads `MIRI_SYSROOT` directly. After setup, run Priroda
-from `miri/priroda/`:
+Priroda currently reads `MIRI_SYSROOT` directly. After setup, run the installed
+binary from the miri toolchain:
 
 ```sh
-cargo run -- ../tests/pass/empty_main.rs
+rustup run miri priroda tests/pass/empty_main.rs
 ```
 
 ## DAP Prototype
@@ -93,14 +93,15 @@ Before running the debugger configuration, make sure:
   it in your shell before launching VS Code, or replace the argument with the
   absolute sysroot path.
 - The `cargo` in `command` resolves to the `miri` toolchain's cargo, so the task
-  builds Priroda with `rustc_private`. That is automatic when the workspace is
-  `miri/priroda`; when using the templates from another project, pass `+miri` as
-  the first `cargo` argument.
+  builds Priroda with `rustc_private`. When using the templates outside a Miri
+  checkout with its toolchain override, pass `+miri` as the first `cargo`
+  argument.
 
-The task runs Priroda through `cargo run` against the Priroda crate:
+The task runs the Priroda binary target from the main Miri package:
 
 ```sh
-cargo run --manifest-path /path/to/miri/priroda/Cargo.toml -- \
+cargo run --manifest-path /path/to/miri/Cargo.toml \
+    --bin priroda --features priroda -- \
     --dap --port 4711 --sysroot "$MIRI_SYSROOT" /path/to/project/src/main.rs
 ```
 
@@ -133,22 +134,16 @@ skips unrecognized requests rather than failing, so those are ignored.
 
 ## Test
 
-Priroda's CLI tests also need `MIRI_SYSROOT`. Run them from `miri/priroda/`:
+Run Priroda's tests from the Miri repository root:
 
 ```sh
-cargo test
+./miri test-priroda
 ```
 
-If the CLI tests fail due to mismatched output, you can update the expected output files by running the tests with the `--bless` flag:
+To update the expected output files after an intentional output change, run:
 
 ```sh
-cargo test -- --bless
-```
-
-or 
-
-```sh
-RUSTC_BLESS=1 cargo test
+./miri test-priroda --bless
 ```
 
 ## Commands
