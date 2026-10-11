@@ -1668,8 +1668,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         {
             let e = self.tcx.erase_and_anonymize_regions(e);
             let f = self.tcx.erase_and_anonymize_regions(f);
-            let expected = with_forced_trimmed_paths!(e.sort_string(self.tcx));
-            let found = with_forced_trimmed_paths!(f.sort_string(self.tcx));
+            let (expected, found) = if let (ty::Adt(def_e, _), ty::Adt(def_f, _)) = (e.kind(), f.kind())
+                && def_e.did() == def_f.did()
+                && let Some((ref exp_s, ref fnd_s)) = expected_found
+            {
+                (Cow::from(format!("`{}`", exp_s.content())), Cow::from(format!("`{}`", fnd_s.content())))
+            } else {
+                (
+                    with_forced_trimmed_paths!(e.sort_string(self.tcx)),
+                    with_forced_trimmed_paths!(f.sort_string(self.tcx)),
+                )
+            };
             if expected == found {
                 label_or_note(span, terr.to_string(self.tcx));
             } else {
