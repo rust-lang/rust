@@ -764,6 +764,54 @@ unsafe fn test_avx512bw() {
         assert_eq_m512i(_mm512_packus_epi32(a, b), dst);
     }
     test_mm512_packus_epi32();
+
+    #[target_feature(enable = "avx512bw")]
+    unsafe fn test_mm512_avg_epu8() {
+        let a = _mm512_set1_epi8(1);
+        let b = _mm512_set1_epi8(1);
+        let r = _mm512_avg_epu8(a, b);
+        let e = _mm512_set1_epi8(1);
+        assert_eq_m512i(r, e);
+
+        // Intermediary sum can overflow, but the final result not.
+        let a = _mm512_set1_epi8(u8::MAX as i8);
+        let b = _mm512_set1_epi8((u8::MAX - 2) as i8);
+        let r = _mm512_avg_epu8(a, b);
+        let e = _mm512_set1_epi8((u8::MAX - 1) as i8);
+        assert_eq_m512i(r, e);
+
+        // Odd sums are rounded up.
+        let a = _mm512_set1_epi8(3);
+        let b = _mm512_set1_epi8(6);
+        let r = _mm512_avg_epu8(a, b);
+        let e = _mm512_set1_epi8(5);
+        assert_eq_m512i(r, e);
+    }
+    test_mm512_avg_epu8();
+
+    #[target_feature(enable = "avx512bw")]
+    unsafe fn test_mm512_avg_epu16() {
+        let a = _mm512_set1_epi16(1);
+        let b = _mm512_set1_epi16(1);
+        let r = _mm512_avg_epu16(a, b);
+        let e = _mm512_set1_epi16(1);
+        assert_eq_m512i(r, e);
+
+        // Intermediary sum can overflow, but the final result not.
+        let a = _mm512_set1_epi16(u16::MAX as i16);
+        let b = _mm512_set1_epi16((u16::MAX - 2) as i16);
+        let r = _mm512_avg_epu16(a, b);
+        let e = _mm512_set1_epi16((u16::MAX - 1) as i16);
+        assert_eq_m512i(r, e);
+
+        // Odd sums are rounded up.
+        let a = _mm512_set1_epi16(3);
+        let b = _mm512_set1_epi16(6);
+        let r = _mm512_avg_epu16(a, b);
+        let e = _mm512_set1_epi16(5);
+        assert_eq_m512i(r, e);
+    }
+    test_mm512_avg_epu16();
 }
 
 #[target_feature(enable = "avx512vbmi,avx512vl")]
