@@ -420,7 +420,7 @@ pub(super) fn emit_frag_parse_err(
                             Applicability::MaybeIncorrect,
                         );
                     }
-                } else {
+                } else if parser.psess.source_map().span_followed_by(site_span, ";").is_none() {
                     e.span_suggestion_verbose(
                         site_span.shrink_to_hi(),
                         "add `;` to interpret the expansion as a statement",
