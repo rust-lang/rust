@@ -89,11 +89,19 @@ rustc_index::newtype_index! {
     pub struct SerializedDepNodeIndex {}
 }
 
-impl SerializedDepNodeIndex {
-    /// Converts a current-session dep node index to a "serialized" index,
-    /// for the purpose of serializing data to be loaded by future sessions.
+/// A node of the previous graph keeps its index in the current graph, and the current graph
+/// is the next session's previous graph (see the module docs). So an index converts between
+/// the two types unchanged, in both directions.
+impl From<SerializedDepNodeIndex> for DepNodeIndex {
     #[inline(always)]
-    pub fn from_curr_for_serialization(index: DepNodeIndex) -> Self {
+    fn from(index: SerializedDepNodeIndex) -> Self {
+        DepNodeIndex::from_u32(index.as_u32())
+    }
+}
+
+impl From<DepNodeIndex> for SerializedDepNodeIndex {
+    #[inline(always)]
+    fn from(index: DepNodeIndex) -> Self {
         SerializedDepNodeIndex::from_u32(index.as_u32())
     }
 }
@@ -301,7 +309,7 @@ impl SerializedDepGraph {
         let bytes_per_index = edge_header.bytes_per_index();
         let header = SerializedNodeHeader::with_bytes_per_index(
             &self.nodes[index],
-            DepNodeIndex::from_u32(index.as_u32()),
+            DepNodeIndex::from(index),
             self.value_fingerprints[index],
             bytes_per_index,
             num_edges as usize,
@@ -766,7 +774,7 @@ impl EncoderState {
     #[inline]
     fn next_index(&self, local: &mut LocalEncoderState) -> DepNodeIndex {
         if let Some(&index) = local.free_indices.last() {
-            return DepNodeIndex::from_u32(index.as_u32());
+            return DepNodeIndex::from(index);
         }
 
         if local.remaining_node_index == 0 {
@@ -780,7 +788,7 @@ impl EncoderState {
                     local
                         .free_indices
                         .extend(free_indices.drain(len - len.min(FREE_INDEX_BATCH)..));
-                    return DepNodeIndex::from_u32(local.free_indices.last().unwrap().as_u32());
+                    return DepNodeIndex::from(*local.free_indices.last().unwrap());
                 }
             }
 
@@ -819,13 +827,15 @@ impl EncoderState {
         local.node_count += 1;
     }
 
+    /// Counts one encoded node and, with `-Zquery-dep-graph`, adds it to the retained graph.
+    /// `edges` is only called for the retained graph.
     #[inline]
-    fn record(
+    fn record<E: IntoIterator<Item = DepNodeIndex>>(
         &self,
         node: &DepNode,
         index: DepNodeIndex,
         edge_count: usize,
-        edges: &[DepNodeIndex],
+        edges: impl FnOnce() -> E,
         retained_graph: &Option<Lock<RetainedDepGraph>>,
         local: &mut LocalEncoderState,
     ) {
@@ -840,7 +850,7 @@ impl EncoderState {
                 // contention would make the retained graph nondeterministic. Readers take a
                 // clone of the graph (`retained_dep_graph`) rather than holding the lock, so
                 // this never deadlocks against a reentrant `record`.
-                retained_graph.lock().push(index, *node, edges);
+                retained_graph.lock().push(index, *node, edges());
             });
         }
 
@@ -878,29 +888,33 @@ impl EncoderState {
         node.encode(local.encoder(), index);
         self.flush_mem_encoder(&mut *local);
         self.count_node(&mut *local);
-        self.record(&node.node, index, node.edges.len(), node.edges, retained_graph, &mut *local);
+        let edges = move || node.edges.iter().copied();
+        self.record(&node.node, index, node.edges.len(), edges, retained_graph, &mut *local);
     }
 
     /// Promotes a node from the previous graph: its previous record is written out again
     /// as is, instead of being rebuilt.
     ///
     /// The node and its edge targets keep their previous indices, so the record on disk is
-    /// still the right one. `edges` holds the same targets as that record, gathered by the
-    /// marking walk; only the retained graph reads it.
+    /// still the right one. Only the retained graph wants the edge list in memory, and it
+    /// reads that list back off the previous graph.
     #[inline]
     fn promote_node(
         &self,
         prev_index: SerializedDepNodeIndex,
         retained_graph: &Option<Lock<RetainedDepGraph>>,
         local: &mut LocalEncoderState,
-        edges: &[DepNodeIndex],
     ) {
         let edge_count = self.previous.re_emit_record(prev_index, local.encoder());
-        debug_assert_eq!(edge_count, edges.len());
         self.flush_mem_encoder(&mut *local);
         self.count_node(&mut *local);
         let node = self.previous.index_to_node(prev_index);
-        let index = DepNodeIndex::from_u32(prev_index.as_u32());
+        let index = DepNodeIndex::from(prev_index);
+
+        // Every target of a promoted node is green and so keeps its previous index, which
+        // makes the current edge list the previous one unchanged.
+        let edges = || self.previous.edge_targets_from(prev_index).map(DepNodeIndex::from);
+
         self.record(node, index, edge_count, edges, retained_graph, &mut *local);
     }
 
@@ -1109,7 +1123,7 @@ impl GraphEncoder {
 
         let mut local = self.status.local.borrow_mut();
 
-        let index = DepNodeIndex::from_u32(prev_index.as_u32());
+        let index = DepNodeIndex::from(prev_index);
         let color = if is_green { DesiredColor::Green } else { DesiredColor::Red };
 
         // Use `try_set_color` to avoid racing when `send_promoted` is called concurrently
@@ -1124,23 +1138,20 @@ impl GraphEncoder {
         index
     }
 
-    /// Encodes a node that was promoted from the previous graph. It reads the information directly
-    /// from the previous dep graph and expects all edges to already have a new dep node index
-    /// assigned.
+    /// Encodes a node that was promoted from the previous graph. It reads the information
+    /// directly from the previous dep graph and expects all of its edge targets to be green.
     ///
-    /// Tries to mark the dep node green, and returns Some if it is now green,
-    /// or None if had already been concurrently marked red.
+    /// Tries to mark the dep node green, and returns whether it is now green; `false` means
+    /// it had already been concurrently marked red.
     #[inline]
     pub(crate) fn send_promoted(
         &self,
         prev_index: SerializedDepNodeIndex,
         colors: &DepNodeColorMap,
-        edges: &[DepNodeIndex],
-    ) -> Option<DepNodeIndex> {
+    ) -> bool {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
 
         let mut local = self.status.local.borrow_mut();
-        let index = DepNodeIndex::from_u32(prev_index.as_u32());
 
         // Use `try_set_color` to avoid racing when `send_promoted` or `send_and_color`
         // is called concurrently on the same index.
@@ -1150,18 +1161,18 @@ impl GraphEncoder {
                     self.status
                         .previous
                         .edge_targets_from(prev_index)
-                        .all(|target| matches!(colors.get(target), DepNodeColor::Green(_))),
+                        .all(|target| matches!(colors.get(target), DepNodeColor::Green)),
                     "promoted node {prev_index:?} names a target that is not green",
                 );
-                self.status.promote_node(prev_index, &self.retained_graph, &mut *local, edges);
-                Some(index)
+                self.status.promote_node(prev_index, &self.retained_graph, &mut *local);
+                true
             }
             // The query was re-executed in the meantime, by another thread or while
             // forcing a dependency, and encoded red. Since all dependencies were green,
             // that only happens for `no_hash` queries: with no fingerprint to compare,
             // re-execution always colors them red.
-            TrySetColorResult::AlreadyRed => None,
-            TrySetColorResult::AlreadyGreen => Some(index),
+            TrySetColorResult::AlreadyRed => false,
+            TrySetColorResult::AlreadyGreen => true,
         }
     }
 

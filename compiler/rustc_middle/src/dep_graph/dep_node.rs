@@ -57,7 +57,7 @@ use rustc_hir::definitions::DefPathHash;
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::Symbol;
 
-use super::{DepNodeIndex, KeyFingerprintStyle, SerializedDepNodeIndex};
+use super::{KeyFingerprintStyle, SerializedDepNodeIndex};
 use crate::dep_graph::DepNodeKey;
 use crate::mono::MonoItem;
 use crate::ty::{TyCtxt, tls};
@@ -217,16 +217,10 @@ pub struct DepKindVTable<'tcx> {
     >,
 
     /// Load the on-disk cached value of a query into memory. The node is known
-    /// to be green, with `prev_index` its index in the previous session's dep
-    /// graph and `dep_node_index` its index in the current session's dep graph.
-    pub promote_from_disk_fn: Option<
-        fn(
-            tcx: TyCtxt<'tcx>,
-            dep_node: DepNode,
-            prev_index: SerializedDepNodeIndex,
-            dep_node_index: DepNodeIndex,
-        ),
-    >,
+    /// to be green, so `prev_index`, its index in the previous session's dep
+    /// graph, is its index in the current session's dep graph as well.
+    pub promote_from_disk_fn:
+        Option<fn(tcx: TyCtxt<'tcx>, dep_node: DepNode, prev_index: SerializedDepNodeIndex)>,
 }
 
 /// A "work product" corresponds to a `.o` (or other) file that we

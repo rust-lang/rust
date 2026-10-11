@@ -28,12 +28,17 @@ impl RetainedDepGraph {
 
     /// Adds `node` at its dep-graph index. Indices are allocated to threads in batches, so the
     /// index space is sparse and the slots skipped over hold no node.
-    pub fn push(&mut self, index: DepNodeIndex, node: DepNode, edges: &[DepNodeIndex]) {
+    pub fn push(
+        &mut self,
+        index: DepNodeIndex,
+        node: DepNode,
+        edges: impl IntoIterator<Item = DepNodeIndex>,
+    ) {
         let source = NodeIndex(index.as_usize());
         self.inner.add_node_with_idx(source, node);
         self.indices.insert(node, source);
 
-        for &target in edges.iter() {
+        for target in edges {
             self.inner.add_edge(source, NodeIndex(target.as_usize()), ());
         }
     }

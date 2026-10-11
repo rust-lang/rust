@@ -1,5 +1,4 @@
 use std::assert_matches;
-use std::cell::Cell;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -10,7 +9,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::ShardedHashMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
-use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal};
+use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::DiagInner;
 use rustc_index::IndexVec;
@@ -90,41 +89,11 @@ pub(crate) struct MarkFrame<'a> {
     parent: Option<&'a MarkFrame<'a>>,
 }
 
-/// The edge list of one node being marked green: it occupies `buf[start..]` of the shared
-/// scratch buffer and is popped again on drop, restoring the buffer for the enclosing call.
-struct EdgeFrame<'a> {
-    buf: &'a mut Vec<DepNodeIndex>,
-    start: usize,
-}
-
-impl<'a> EdgeFrame<'a> {
-    #[inline]
-    fn new(buf: &'a mut Vec<DepNodeIndex>) -> Self {
-        EdgeFrame { start: buf.len(), buf }
-    }
-
-    #[inline]
-    fn push(&mut self, edge: DepNodeIndex) {
-        self.buf.push(edge);
-    }
-
-    /// The edges pushed onto this frame so far.
-    #[inline]
-    fn get(&self) -> &[DepNodeIndex] {
-        &self.buf[self.start..]
-    }
-}
-
-impl Drop for EdgeFrame<'_> {
-    #[inline]
-    fn drop(&mut self) {
-        self.buf.truncate(self.start);
-    }
-}
-
+/// The color of a node from the previous session. A green node keeps its previous index
+/// (see the module docs of `serialized`), so the variant does not need to carry it.
 #[derive(Debug)]
 pub(super) enum DepNodeColor {
-    Green(DepNodeIndex),
+    Green,
     Red,
     Unknown,
 }
@@ -152,9 +121,6 @@ pub struct DepGraphData {
     /// a particular query result was decoded from disk
     /// (not just marked green)
     debug_loaded_from_disk: Lock<FxHashSet<DepNode>>,
-
-    /// Per-worker edge buffer amortized across `try_mark_green` calls.
-    green_edge_buf: WorkerLocal<Cell<Vec<DepNodeIndex>>>,
 
     /// Pool of read recorders, amortized across tasks. Global rather than per worker so the
     /// retained memory is bounded by the total number of concurrently recording tasks.
@@ -216,7 +182,6 @@ impl DepGraph {
                 previous: prev_graph,
                 colors,
                 debug_loaded_from_disk: Default::default(),
-                green_edge_buf: WorkerLocal::default(),
                 read_recorder_pool: Lock::new(Vec::new()),
             })),
             virtual_dep_node_index: Arc::new(AtomicU32::new(0)),
@@ -613,29 +578,24 @@ impl DepGraph {
             // value to an existing node.
             //
             // For sanity, we still check that the loaded stable hash and the new one match.
-            if let Some(prev_index) = data.previous.node_to_index_opt(&node) {
-                let dep_node_index = data.colors.current(prev_index);
-                if let Some(dep_node_index) = dep_node_index {
-                    incremental_verify_ich(
-                        tcx,
-                        data,
-                        result,
-                        prev_index,
-                        hash_result,
-                        format_value_fn,
+            if let Some(prev_index) = data.previous.node_to_index_opt(&node)
+                && data.is_index_green(prev_index)
+            {
+                incremental_verify_ich(tcx, data, result, prev_index, hash_result, format_value_fn);
+
+                // A green node keeps its previous index.
+                let dep_node_index = DepNodeIndex::from(prev_index);
+
+                #[cfg(debug_assertions)]
+                if hash_result.is_some() {
+                    data.current.record_edge(
+                        dep_node_index,
+                        node,
+                        data.prev_value_fingerprint_of(prev_index),
                     );
-
-                    #[cfg(debug_assertions)]
-                    if hash_result.is_some() {
-                        data.current.record_edge(
-                            dep_node_index,
-                            node,
-                            data.prev_value_fingerprint_of(prev_index),
-                        );
-                    }
-
-                    return dep_node_index;
                 }
+
+                return dep_node_index;
             }
 
             // `read_deps` calls the closure exactly once, with the current task's deps.
@@ -676,7 +636,7 @@ impl DepGraphData {
             let ok = match color {
                 DepNodeColor::Unknown => true,
                 DepNodeColor::Red => false,
-                DepNodeColor::Green(..) => sess.opts.jobs.frontend.is_some(), // Other threads may mark this green
+                DepNodeColor::Green => sess.opts.jobs.frontend.is_some(), // Other threads may mark this green
             };
             if !ok {
                 panic!("{}", msg())
@@ -693,11 +653,10 @@ impl DepGraphData {
         }
     }
 
-    /// Returns true if the given node has been marked as green during the
-    /// current compilation session. Used in various assertions
+    /// Whether the node at `prev_index` has been marked green in this session.
     #[inline]
     pub fn is_index_green(&self, prev_index: SerializedDepNodeIndex) -> bool {
-        matches!(self.colors.get(prev_index), DepNodeColor::Green(_))
+        matches!(self.colors.get(prev_index), DepNodeColor::Green)
     }
 
     #[inline]
@@ -759,9 +718,9 @@ impl DepGraphData {
                 .load_side_effect(tcx, prev_index)
                 .unwrap();
 
-            // Use `send_and_color` as `promote_node_and_deps_to_current` expects all
-            // green dependencies. `send_and_color` will also prevent multiple nodes
-            // being encoded for concurrent calls.
+            // The node cannot be promoted, since promotion expects every dependency to be
+            // green and this node depends on the forever-red node. `send_and_color` writes
+            // it afresh, and keeps concurrent calls from encoding it twice.
             let dep_node_index = self.current.encoder.send_and_color(
                 prev_index,
                 &self.colors,
@@ -834,23 +793,21 @@ impl DepGraphData {
         }
     }
 
-    fn promote_node_and_deps_to_current(
-        &self,
-        prev_index: SerializedDepNodeIndex,
-        edges: &[DepNodeIndex],
-    ) -> Option<DepNodeIndex> {
-        let dep_node_index = self.current.encoder.send_promoted(prev_index, &self.colors, edges);
+    /// Marks the node at `prev_index` green and writes its previous record out again.
+    /// Returns `false` if the node had been marked red concurrently.
+    fn promote_node(&self, prev_index: SerializedDepNodeIndex) -> bool {
+        let promoted = self.current.encoder.send_promoted(prev_index, &self.colors);
 
         #[cfg(debug_assertions)]
-        if let Some(dep_node_index) = dep_node_index {
+        if promoted {
             self.current.record_edge(
-                dep_node_index,
+                DepNodeIndex::from(prev_index),
                 *self.previous.index_to_node(prev_index),
                 self.previous.value_fingerprint_for_index(prev_index),
             );
         }
 
-        dep_node_index
+        promoted
     }
 }
 
@@ -895,22 +852,20 @@ impl DepGraph {
         &self,
         tcx: TyCtxt<'tcx>,
         dep_node: &DepNode,
-    ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
+    ) -> Option<DepNodeIndex> {
         self.data()?.try_mark_green(tcx, dep_node)
     }
 }
 
 impl DepGraphData {
-    /// Try to mark a node index for the node dep_node.
-    ///
-    /// A node will have an index, when it's already been marked green, or when we can mark it
-    /// green. This function will mark the current task as a reader of the specified node, when
-    /// a node index can be found for that node.
+    /// Tries to mark `dep_node` green: it already is, or it existed in the previous session
+    /// and all of its dependencies can be marked green. Returns the node's index, which a
+    /// green node keeps from the previous session.
     pub fn try_mark_green<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
         dep_node: &DepNode,
-    ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
+    ) -> Option<DepNodeIndex> {
         debug_assert!(!tcx.is_eval_always(dep_node.kind));
 
         // Return None if the dep node didn't exist in the previous session
@@ -918,37 +873,25 @@ impl DepGraphData {
 
         debug_assert_eq!(self.previous.index_to_node(prev_index), dep_node);
 
-        match self.colors.get(prev_index) {
-            DepNodeColor::Green(dep_node_index) => Some((prev_index, dep_node_index)),
-            DepNodeColor::Red => None,
-            DepNodeColor::Unknown => {
-                // This DepNode and the corresponding query invocation existed
-                // in the previous compilation session too, so we can try to
-                // mark it as green by recursively marking all of its
-                // dependencies green.
-
-                // Reuse a per-worker buffer for the edges instead of allocating one per call.
-                // The recursion gives it back empty: each `EdgeFrame` pops its edges on drop.
-                let mut edge_buf = self.green_edge_buf.take();
-                let result = self.try_mark_previous_green(tcx, prev_index, None, &mut edge_buf);
-                debug_assert!(edge_buf.is_empty());
-                self.green_edge_buf.set(edge_buf);
-                result.map(|dep_node_index| (prev_index, dep_node_index))
-            }
-        }
+        let green = match self.colors.get(prev_index) {
+            DepNodeColor::Green => true,
+            DepNodeColor::Red => false,
+            // This DepNode and the corresponding query invocation existed in the previous
+            // compilation session too, so we can try to mark it as green by recursively
+            // marking all of its dependencies green.
+            DepNodeColor::Unknown => self.try_mark_previous_green(tcx, prev_index, None),
+        };
+        green.then(|| DepNodeIndex::from(prev_index))
     }
 
     /// Try to mark a dep-node which existed in the previous compilation session as green.
-    #[instrument(skip(self, tcx, prev_dep_node_index, frame, edge_buf), level = "debug")]
+    #[instrument(skip(self, tcx, prev_dep_node_index, frame), level = "debug")]
     fn try_mark_previous_green<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
         prev_dep_node_index: SerializedDepNodeIndex,
         frame: Option<&MarkFrame<'_>>,
-        // Amortized buffer to store edges in.
-        edge_buf: &mut Vec<DepNodeIndex>,
-    ) -> Option<DepNodeIndex> {
-        let mut edges = EdgeFrame::new(edge_buf);
+    ) -> bool {
         let frame = MarkFrame { index: prev_dep_node_index, parent: frame };
 
         // We never try to mark eval_always nodes as green
@@ -958,14 +901,11 @@ impl DepGraphData {
             match self.colors.get(parent_dep_node_index) {
                 // This dependency has been marked as green before, we are still ok and can
                 // continue checking the remaining dependencies.
-                DepNodeColor::Green(parent_index) => {
-                    edges.push(parent_index);
-                    continue;
-                }
+                DepNodeColor::Green => continue,
 
                 // This dependency's result is different to the previous compilation session. We
                 // cannot mark this dep_node as green, so stop checking.
-                DepNodeColor::Red => return None,
+                DepNodeColor::Red => return false,
 
                 // We still need to determine this dependency's colour.
                 DepNodeColor::Unknown => {}
@@ -975,30 +915,19 @@ impl DepGraphData {
 
             // If this dependency isn't eval_always, try to mark it green recursively.
             if !tcx.is_eval_always(parent_dep_node.kind)
-                && let Some(parent_index) = self.try_mark_previous_green(
-                    tcx,
-                    parent_dep_node_index,
-                    Some(&frame),
-                    // Pass the edge buffer to the recursive call.
-                    // It will use an `EdgeFrame` to give it back unchanged.
-                    edges.buf,
-                )
+                && self.try_mark_previous_green(tcx, parent_dep_node_index, Some(&frame))
             {
-                edges.push(parent_index);
                 continue;
             }
 
             // We failed to mark it green, so we try to force the query.
             if !tcx.try_force_from_dep_node(*parent_dep_node, parent_dep_node_index, &frame) {
-                return None;
+                return false;
             }
 
             match self.colors.get(parent_dep_node_index) {
-                DepNodeColor::Green(parent_index) => {
-                    edges.push(parent_index);
-                    continue;
-                }
-                DepNodeColor::Red => return None,
+                DepNodeColor::Green => continue,
+                DepNodeColor::Red => return false,
                 DepNodeColor::Unknown => {}
             }
 
@@ -1012,7 +941,7 @@ impl DepGraphData {
             // returning `None`) so it can emit error messages and wind down, but rely on the fact
             // that this invalid state will not be persisted to the incremental compilation cache
             // because of compilation errors being present.
-            return None;
+            return false;
         }
 
         // If we got here without hitting a `return` that means that all
@@ -1024,10 +953,7 @@ impl DepGraphData {
         // previous record out again, so only one of them writes it.
         //
         // `no_hash` nodes may fail this promotion due to already being conservatively colored red.
-        let dep_node_index =
-            self.promote_node_and_deps_to_current(prev_dep_node_index, edges.get())?;
-
-        Some(dep_node_index)
+        self.promote_node(prev_dep_node_index)
     }
 }
 
@@ -1041,7 +967,7 @@ impl DepGraph {
     /// Returns true if the given node has been marked as green during the
     /// current compilation session. Used in various assertions
     pub fn is_green(&self, dep_node: &DepNode) -> bool {
-        matches!(self.node_color(dep_node), DepNodeColor::Green(_))
+        matches!(self.node_color(dep_node), DepNodeColor::Green)
     }
 
     pub fn assert_dep_node_not_yet_allocated_in_current_session<S: std::fmt::Display>(
@@ -1069,12 +995,12 @@ impl DepGraph {
         let data = self.data.as_ref().unwrap();
         for prev_index in data.colors.values.indices() {
             match data.colors.get(prev_index) {
-                DepNodeColor::Green(dep_node_index) => {
+                DepNodeColor::Green => {
                     let dep_node = data.previous.index_to_node(prev_index);
                     if let Some(promote_fn) =
                         tcx.dep_kind_vtable(dep_node.kind).promote_from_disk_fn
                     {
-                        promote_fn(tcx, *dep_node, prev_index, dep_node_index)
+                        promote_fn(tcx, *dep_node, prev_index)
                     };
                 }
                 DepNodeColor::Unknown | DepNodeColor::Red => {
@@ -1287,7 +1213,7 @@ impl CurrentDepGraph {
 
         // The color map covers exactly the previous session's index space.
         if (index.as_u32() as usize) < colors.values.len() {
-            let prev_index = SerializedDepNodeIndex::from_u32(index.as_u32());
+            let prev_index = SerializedDepNodeIndex::from(index);
             let result = colors.try_set_color(prev_index, prev_color);
             assert_matches!(result, TrySetColorResult::Success);
         }
@@ -1358,17 +1284,6 @@ impl DepNodeColorMap {
         DepNodeColorMap { values: (0..size).map(|_| AtomicU8::new(COLOR_UNKNOWN)).collect() }
     }
 
-    /// The current-session index of a node that has been marked green, or `None`
-    /// if it has not been.
-    #[inline]
-    pub(super) fn current(&self, index: SerializedDepNodeIndex) -> Option<DepNodeIndex> {
-        if self.values[index].load(Ordering::Relaxed) == COLOR_GREEN {
-            Some(DepNodeIndex::from_u32(index.as_u32()))
-        } else {
-            None
-        }
-    }
-
     /// Atomically sets the color of a previous-session dep node to either green
     /// or red, if it has not already been colored.
     ///
@@ -1401,7 +1316,7 @@ impl DepNodeColorMap {
         // Green is by far the most common case. Check for that first so we can succeed with a
         // single comparison.
         if value == COLOR_GREEN {
-            DepNodeColor::Green(DepNodeIndex::from_u32(index.as_u32()))
+            DepNodeColor::Green
         } else if value == COLOR_RED {
             DepNodeColor::Red
         } else {
@@ -1460,7 +1375,7 @@ fn panic_on_forbidden_read(data: &DepGraphData, dep_node_index: DepNodeIndex) ->
     // index space that has been colored names a node of the previous graph. An uncolored
     // index in that space was unoccupied and has been handed to a new node instead.
     let dep_node = (dep_node_index.as_usize() < data.colors.values.len())
-        .then(|| SerializedDepNodeIndex::from_u32(dep_node_index.as_u32()))
+        .then(|| SerializedDepNodeIndex::from(dep_node_index))
         .filter(|&prev_index| !matches!(data.colors.get(prev_index), DepNodeColor::Unknown))
         .map(|prev_index| *data.previous.index_to_node(prev_index));
 
