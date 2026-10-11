@@ -11,8 +11,7 @@ adding a new command-line argument.
 
 - Flags should be orthogonal to each other.
   For example, if we'd have a json-emitting variant of multiple actions `foo` and `bar`,
-  an additional
-  `--json` flag is better than adding `--foo-json` and `--bar-json`.
+  an additional `--json` flag is better than adding `--foo-json` and `--bar-json`.
 - Avoid flags with the `no-` prefix.
   Instead, use the [`parse_bool`] function,
   such as `-C embed-bitcode=no`.
