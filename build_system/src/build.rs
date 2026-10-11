@@ -264,7 +264,9 @@ fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     for flag in &flags {
         command.push(flag);
     }
-    run_command_with_output_and_env(&command, None, Some(&env))?;
+    if args.config_info.backend_path.is_none() {
+        run_command_with_output_and_env(&command, None, Some(&env))?;
+    }
 
     args.config_info.setup(&mut env, false, true)?;
 

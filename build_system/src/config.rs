@@ -18,15 +18,6 @@ pub enum Channel {
     Release,
 }
 
-impl Channel {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Debug => "debug",
-            Self::Release => "release",
-        }
-    }
-}
-
 fn failed_config_parsing(config_file: &Path, err: &str) -> Result<ConfigFile, String> {
     Err(format!("Failed to parse `{}`: {}", config_file.display(), err))
 }
@@ -35,6 +26,7 @@ fn failed_config_parsing(config_file: &Path, err: &str) -> Result<ConfigFile, St
 pub struct ConfigFile {
     gcc_path: Option<String>,
     download_gccjit: Option<bool>,
+    backend_path: Option<String>,
 }
 
 impl ConfigFile {
@@ -66,6 +58,15 @@ impl ConfigFile {
                         "Expected a boolean for `download-gccjit`",
                     );
                 }
+                ("backend-path", TomlValue::String(value)) => {
+                    config.backend_path = Some(value.as_str().to_string())
+                }
+                ("backend-path", _) => {
+                    return failed_config_parsing(
+                        config_file,
+                        "Expected a string for `backend-path`",
+                    );
+                }
                 _ => return failed_config_parsing(config_file, &format!("Unknown key `{key}`")),
             }
         }
@@ -91,6 +92,13 @@ impl ConfigFile {
                     .to_string();
             }
             _ => {}
+        }
+        if let Some(backend_path) = config.backend_path.as_mut() {
+            *backend_path = Path::new(backend_path)
+                .canonicalize()
+                .map_err(|err| format!("Failed to get absolute path of `{backend_path}`: {err:?}"))?
+                .display()
+                .to_string();
         }
         Ok(config)
     }
@@ -121,6 +129,8 @@ pub struct ConfigInfo {
     pub no_download: bool,
     pub no_default_features: bool,
     pub backend: Option<String>,
+    /// A prebuilt backend dylib to use instead of building this repository.
+    pub backend_path: Option<String>,
     pub features: Vec<String>,
 }
 
@@ -292,7 +302,15 @@ impl ConfigInfo {
             Some(config_file) => config_file.into(),
             None => self.compute_path("config.toml"),
         };
-        let ConfigFile { gcc_path, download_gccjit } = ConfigFile::new(&config_file)?;
+        let ConfigFile { gcc_path, download_gccjit, backend_path } = ConfigFile::new(&config_file)?;
+        if let Some(backend_path) = &backend_path {
+            println!(
+                "Backend path retrieved from `{}`. Using `{}` instead of building the backend",
+                config_file.display(),
+                backend_path
+            );
+        }
+        self.backend_path = backend_path;
 
         if let Some(true) = download_gccjit {
             self.download_gccjit_if_needed()?;
@@ -381,12 +399,15 @@ impl ConfigInfo {
         };
 
         let mut rustflags = Vec::new();
-        self.cg_backend_path = current_dir
-            .join("target")
-            .join(channel)
-            .join(format!("librustc_codegen_gcc.{}", self.dylib_ext))
-            .display()
-            .to_string();
+        self.cg_backend_path = match &self.backend_path {
+            Some(backend_path) => backend_path.clone(),
+            None => current_dir
+                .join("target")
+                .join(channel)
+                .join(format!("librustc_codegen_gcc.{}", self.dylib_ext))
+                .display()
+                .to_string(),
+        };
         self.sysroot_path =
             current_dir.join(get_sysroot_dir()).join("sysroot").display().to_string();
         if let Some(backend) = &self.backend {
