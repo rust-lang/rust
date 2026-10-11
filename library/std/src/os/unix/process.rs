@@ -747,6 +747,14 @@ impl From<OwnedFd> for process::ChildStderr {
 }
 
 /// Returns the OS-assigned process identifier associated with this process's parent.
+///
+/// # Example
+///
+/// ```rust
+/// use std::os::unix::process;
+/// let parent = process::parent_id();
+/// println!("The parent process has ID {}", parent);
+/// ```
 #[must_use]
 #[stable(feature = "unix_ppid", since = "1.27.0")]
 pub fn parent_id() -> u32 {
