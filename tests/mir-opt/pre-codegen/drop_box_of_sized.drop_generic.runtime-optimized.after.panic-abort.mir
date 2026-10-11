@@ -12,15 +12,15 @@ fn drop_generic(_1: *mut Box<T>) -> () {
                     scope 5 {
                         scope 18 (inlined Layout::size) {
                         }
-                        scope 19 (inlined std::ptr::Unique::<T>::cast::<u8>) {
+                        scope 19 (inlined boxed::BoxRaw::<T>::cast::<u8>) {
                             let mut _4: std::ptr::NonNull<u8>;
                             scope 20 (inlined NonNull::<T>::cast::<u8>) {
                                 scope 21 (inlined NonNull::<T>::as_ptr) {
                                 }
                             }
                         }
-                        scope 22 (inlined <NonNull<u8> as From<std::ptr::Unique<u8>>>::from) {
-                            scope 23 (inlined std::ptr::Unique::<u8>::as_non_null_ptr) {
+                        scope 22 (inlined boxed::<impl From<boxed::BoxRaw<u8>> for NonNull<u8>>::from) {
+                            scope 23 (inlined boxed::BoxRaw::<u8>::as_non_null_ptr) {
                             }
                         }
                         scope 24 (inlined <std::alloc::Global as Allocator>::deallocate) {
@@ -38,7 +38,7 @@ fn drop_generic(_1: *mut Box<T>) -> () {
                             }
                         }
                     }
-                    scope 6 (inlined std::ptr::Unique::<T>::as_ptr) {
+                    scope 6 (inlined boxed::BoxRaw::<T>::as_ptr) {
                         scope 7 (inlined NonNull::<T>::as_ptr) {
                         }
                     }
@@ -71,7 +71,7 @@ fn drop_generic(_1: *mut Box<T>) -> () {
     bb0: {
         StorageLive(_4);
         StorageLive(_2);
-        _2 = copy (((*_1).0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>);
+        _2 = copy (((*_1).0: std::boxed::BoxRaw<T>).0: std::ptr::NonNull<T>);
         _3 = const <T as std::mem::SizedTypeProperties>::ALIGN as std::mem::Alignment (Transmute);
         switchInt(const <T as std::mem::SizedTypeProperties>::SIZE) -> [0: bb3, otherwise: bb1];
     }

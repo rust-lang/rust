@@ -389,6 +389,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             {
                                 self.tcx.def_span(def.did())
                             }
+                            ty::Closure(def_id, _) => self.tcx.def_span(*def_id),
                             _ => DUMMY_SP,
                         };
                         if let Some(s) = label {

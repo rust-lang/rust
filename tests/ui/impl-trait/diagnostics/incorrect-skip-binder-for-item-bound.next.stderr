@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `for<'a> u8: From<&'a ()>` is not satisfied
-  --> $DIR/incorrect-skip-binder-for-item-bound.rs:19:15
+  --> $DIR/incorrect-skip-binder-for-item-bound.rs:16:15
    |
 LL | fn hello() -> impl for<'a> A<'a, Assoc: Into<u8> + 'static + Copy> {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> From<&'a ()>` is not implemented for `u8`

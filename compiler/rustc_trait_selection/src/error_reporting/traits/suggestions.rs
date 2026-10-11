@@ -4974,8 +4974,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         .as_ref()
                         .and_then(|typeck| typeck.node_type_opt(expr.hir_id))
                     && let Some(pred) = predicate.as_clause()
-                    && let ty::ClauseKind::Trait(pred) = pred.kind().skip_binder()
-                    && self.can_eq(param_env, pred.self_ty(), expr_ty)
+                    && let Some(pred) = pred.as_trait_clause()
+                    && self
+                        .infcx
+                        .enter_forall(pred, |pred| self.can_eq(param_env, pred.self_ty(), expr_ty))
                 {
                     (expr_ty, expr)
                 } else {

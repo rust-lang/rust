@@ -308,7 +308,7 @@ fn print_generic_args(generic_args: &clean::GenericArgs, cx: &Context<'_>) -> im
 }
 
 // Possible errors when computing href link source for a `DefId`
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub(crate) enum HrefError {
     /// This item is known to rustdoc, but from a crate that does not have documentation generated.
     ///
@@ -338,6 +338,7 @@ pub(crate) enum HrefError {
 }
 
 /// Type representing information of an `href` attribute.
+#[derive(Debug)]
 pub(crate) struct HrefInfo {
     /// URL to the item page.
     pub(crate) url: String,
@@ -530,6 +531,18 @@ fn generate_item_def_id_path(
         {
             def_id = trait_def_id;
         } else if let Some(new_def_id) = ty.ty_adt_def().map(|adt| adt.did()) {
+            // If the inferred item is available in the local path map, it means we're reexporting
+            // from the current crate, so better use the local path directly.
+            if cx.cache().paths.contains_key(&new_def_id)
+                && let Ok(mut info) =
+                    href_with_jump_to_def_path_depth(new_def_id, cx, jump_to_def_path_depth, None)
+            {
+                let kind = ItemType::from_def_id(original_def_id, tcx);
+                // We need to append the anchor to the URL otherwise we're just linking to the
+                // parent item...
+                info.url = format!("{}#{kind}.{}", info.url, tcx.item_name(original_def_id));
+                return Ok(info);
+            }
             def_id = new_def_id;
             maybe_have_impl_not_in_def_crate = !of_trait
                 && !original_def_id.is_local()
