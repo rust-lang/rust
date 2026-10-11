@@ -1,9 +1,13 @@
 //@ edition:2015
-use foo::bar;
+//@ run-rustfix
+
+#![allow(unused_imports, dead_code)]
+
+use foo::beans;
 //~^ ERROR unresolved import `foo` [E0432]
-//~| NOTE use of unresolved module or unlinked crate `foo`
-//~| HELP you might be missing a crate named `foo`
-//~| SUGGESTION extern crate foo;
+//~| NOTE could not find `foo` in the crate root
+//~| HELP a module with a similar name exists
+//~| SUGGESTION food
 
 use bar::Baz as x;
 //~^ ERROR unresolved import `bar::Baz` [E0432]

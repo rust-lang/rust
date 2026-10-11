@@ -1750,7 +1750,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         FatArrow | Comma | Eq | Or => IsInFollow::Yes,
-                        Ident(name, IdentKind::Normal) if name == kw::If || name == kw::In => {
+                        Ident(kw::If | kw::In, IdentKind::Normal | IdentKind::ForcedKeyword) => {
                             IsInFollow::Yes
                         }
                         _ => IsInFollow::No(TOKENS),
@@ -1764,7 +1764,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         FatArrow | Comma | Eq => IsInFollow::Yes,
-                        Ident(name, IdentKind::Normal) if name == kw::If || name == kw::In => {
+                        Ident(kw::If | kw::In, IdentKind::Normal | IdentKind::ForcedKeyword) => {
                             IsInFollow::Yes
                         }
                         _ => IsInFollow::No(TOKENS),
@@ -1792,7 +1792,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                     TokenTree::Token(token) => match token.kind {
                         OpenBrace | OpenBracket | Comma | FatArrow | Colon | Eq | Gt | Shr
                         | Semi | Or => IsInFollow::Yes,
-                        Ident(name, IdentKind::Normal) if name == kw::As || name == kw::Where => {
+                        Ident(kw::As | kw::Where, IdentKind::Normal | IdentKind::ForcedKeyword) => {
                             IsInFollow::Yes
                         }
                         _ => IsInFollow::No(TOKENS),

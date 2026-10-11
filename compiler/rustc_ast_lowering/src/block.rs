@@ -1,6 +1,6 @@
 use rustc_ast::{Block, BlockCheckMode, Local, LocalKind, Stmt, StmtKind};
+use rustc_attr_ir::target::Target;
 use rustc_hir as hir;
-use rustc_hir::Target;
 use rustc_span::sym;
 use smallvec::SmallVec;
 

@@ -87,6 +87,7 @@ impl LivenessValues {
 
     /// Returns the liveness matrix of points where each region is live. Panics if the liveness
     /// values have been created without any per-point data (that is, for promoteds).
+    #[inline]
     pub(crate) fn points(&self) -> &SparseIntervalMatrix<RegionVid, PointIndex> {
         if let LiveRegions::AtPoints(points) = &self.live_regions {
             points
@@ -190,16 +191,6 @@ impl LivenessValues {
         )
     }
 
-    #[inline]
-    pub(crate) fn point_from_location(&self, location: Location) -> PointIndex {
-        self.location_map.point_from_location(location)
-    }
-
-    #[inline]
-    pub(crate) fn location_from_point(&self, point: PointIndex) -> Location {
-        self.location_map.to_location(point)
-    }
-
     /// When using `-Zpolonius=next`, records the given live loans for the loan scopes and active
     /// loans dataflow computations.
     pub(crate) fn record_live_loans(&mut self, live_loans: LiveLoans) {
@@ -212,6 +203,11 @@ impl LivenessValues {
             .as_ref()
             .expect("Accessing live loans requires `-Zpolonius=next`")
             .contains(point, loan_idx)
+    }
+
+    #[inline]
+    pub(crate) fn location_map(&self) -> &DenseLocationMap {
+        &self.location_map
     }
 }
 

@@ -72,10 +72,12 @@ impl GitHubContext {
     /// The first is a set of patterns of CI jobs that should be executed.
     ///
     /// They can be specified in the form of
-    /// try-job: <job-pattern>
+    /// ```
+    /// try-job[s]: <job-pattern>
     /// or
-    /// try-job: `<job-pattern>`
+    /// try-job[s]: `<job-pattern>`
     /// (to avoid GitHub rendering the glob patterns as Markdown)
+    /// ```
     ///
     /// # No limit
     /// The second is a marker that specifies that the limit on the maximum number of allowed try
@@ -96,7 +98,9 @@ impl GitHubContext {
                 nolimit = true;
                 continue;
             }
-            let Some(pattern) = line.strip_prefix("try-job: ") else {
+            let Some(pattern) =
+                line.strip_prefix("try-job: ").or_else(|| line.strip_prefix("try-jobs: "))
+            else {
                 continue;
             };
             // Strip backticks if present

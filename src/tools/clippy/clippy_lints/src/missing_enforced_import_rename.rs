@@ -5,7 +5,7 @@ use clippy_utils::source::SpanExt as _;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefIdMap;
-use rustc_hir::{Item, ItemKind, UseKind};
+use rustc_hir::{Item, ItemKind, UseKind, UseTree};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Symbol;
@@ -66,41 +66,55 @@ impl ImportRename {
                 .collect(),
         }
     }
+
+    fn check_use_tree(&mut self, cx: &LateContext<'_>, tree: &UseTree<'_>) {
+        let hi = match tree.kind {
+            UseKind::Single(ident) => ident.span.hi(),
+            UseKind::Glob => return,
+            UseKind::Nested { items } => {
+                for (tree, ..) in items {
+                    self.check_use_tree(cx, tree);
+                }
+                return;
+            },
+        };
+        // use `present_items` because it could be in any of type_ns, value_ns, macro_ns
+        for res in tree.prefix.res.present_items() {
+            if let Res::Def(_, id) = res
+                && let Some(name) = self.renames.get(&id)
+                // Remove semicolon since it is not present for nested imports
+                && let span_without_semi = cx.sess().source_map().span_until_char(tree.prefix.span.with_hi(hi), ';')
+                && let Some(snip) = span_without_semi.get_text(cx)
+                && let Some(import) = match snip.split_once(" as ") {
+                    None => Some(snip.as_str()),
+                    Some((import, rename)) => {
+                        let trimmed_rename = rename.trim();
+                        if trimmed_rename == "_" || trimmed_rename == name.as_str() {
+                            None
+                        } else {
+                            Some(import.trim())
+                        }
+                    },
+                }
+            {
+                span_lint_and_sugg(
+                    cx,
+                    MISSING_ENFORCED_IMPORT_RENAMES,
+                    span_without_semi,
+                    "this import should be renamed",
+                    "try",
+                    format!("{import} as {name}"),
+                    Applicability::MachineApplicable,
+                );
+            }
+        }
+    }
 }
 
 impl LateLintPass<'_> for ImportRename {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        if let ItemKind::Use(path, UseKind::Single(_)) = &item.kind {
-            // use `present_items` because it could be in any of type_ns, value_ns, macro_ns
-            for res in path.res.present_items() {
-                if let Res::Def(_, id) = res
-                    && let Some(name) = self.renames.get(&id)
-                    // Remove semicolon since it is not present for nested imports
-                    && let span_without_semi = cx.sess().source_map().span_until_char(item.span, ';')
-                    && let Some(snip) = span_without_semi.get_text(cx)
-                    && let Some(import) = match snip.split_once(" as ") {
-                        None => Some(snip.as_str()),
-                        Some((import, rename)) => {
-                            let trimmed_rename = rename.trim();
-                            if trimmed_rename == "_" || trimmed_rename == name.as_str() {
-                                None
-                            } else {
-                                Some(import.trim())
-                            }
-                        },
-                    }
-                {
-                    span_lint_and_sugg(
-                        cx,
-                        MISSING_ENFORCED_IMPORT_RENAMES,
-                        span_without_semi,
-                        "this import should be renamed",
-                        "try",
-                        format!("{import} as {name}"),
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
+        if let ItemKind::Use(tree) = &item.kind {
+            self.check_use_tree(cx, tree)
         }
     }
 }

@@ -512,7 +512,7 @@ impl<'sess> AttributeParser<'sess> {
         // inspect the fully parsed attributes via `FinalizeCheckContext::parsed_attrs`.
         for (check, attr_span) in deferred_checks {
             check(
-                &FinalizeCheckContext {
+                &mut FinalizeCheckContext {
                     shared: SharedContext {
                         cx: self,
                         target_span,

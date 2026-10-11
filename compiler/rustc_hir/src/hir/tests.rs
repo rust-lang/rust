@@ -21,7 +21,7 @@ macro_rules! define_tests {
 define_tests! {
     cast_never TyKind Never {}
     cast_tup TyKind Tup { 0: &[Ty { span: DUMMY_SP, hir_id: HirId::INVALID, kind: TyKind::Never }] }
-    cast_ptr TyKind Ptr { 0: MutTy { ty: &Ty { span: DUMMY_SP, hir_id: HirId::INVALID, kind: TyKind::Never }, mutbl: Mutability::Not }}
+    cast_ptr TyKind Ptr { 0: &Ty { span: DUMMY_SP, hir_id: HirId::INVALID, kind: TyKind::Never }, 1: Mutability::Not }
     cast_array TyKind Array {
         0: &Ty { span: DUMMY_SP, hir_id: HirId::INVALID, kind: TyKind::Never },
         1: &ConstArg {

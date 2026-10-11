@@ -1,20 +1,13 @@
 error: symbol-name(_ZN72_$LT$issue_75326..Foo$LT$I$C$E$GT$$u20$as$u20$issue_75326..Iterator2$GT$4next17SYMBOL_HASH)
   --> $DIR/issue-75326.rs:41:5
    |
-LL |     #[rustc_dump_symbol_name]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: demangling(<issue_75326::Foo<I,E> as issue_75326::Iterator2>::next::SYMBOL_HASH)
-  --> $DIR/issue-75326.rs:41:5
+LL | /     #[rustc_dump_symbol_name]
+...  |
+LL | |     fn next(&mut self) -> Option<Self::Item> {
+   | |____________________________________________^
    |
-LL |     #[rustc_dump_symbol_name]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: demangling(<issue_75326::Foo<I,E> as issue_75326::Iterator2>::next::SYMBOL_HASH)
+   = note: demangling-alt(<issue_75326::Foo<I,E> as issue_75326::Iterator2>::next)
 
-error: demangling-alt(<issue_75326::Foo<I,E> as issue_75326::Iterator2>::next)
-  --> $DIR/issue-75326.rs:41:5
-   |
-LL |     #[rustc_dump_symbol_name]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 1 previous error
 

@@ -28,6 +28,6 @@ impl NoArgsAttributeParser for AlwaysGcaParser {
     const PATH: &[Symbol] = &[sym::rustc_always_gca];
     const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowList(&[Allow(Target::AssocConst(AssocCtxt::Trait))]);
-    const STABILITY: AttributeStability = unstable!(min_generic_const_args);
+    const STABILITY: AttributeStability = unstable!(gca_min_const_items);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::AlwaysGca;
 }

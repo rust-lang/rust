@@ -2,9 +2,9 @@ use rustc_ast::token::{self, IdentKind, MetaVarKind, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnPtrTy, FnRetTy,
-    GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, MutTy, Mutability,
-    Path, Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax,
-    Ty, TyKind, UnsafeBinderTy,
+    GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, Mutability, Path,
+    Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
+    TyKind, UnsafeBinderTy,
 };
 use rustc_errors::{Applicability, Diag, E0516, PResult};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
@@ -83,20 +83,22 @@ enum AllowCVariadic {
 /// Determine if the given token can begin a bound assuming it follows Rust 2015 identifier `dyn`.
 ///
 /// In Rust 2015, `dyn` is a contextual keyword, not a full one.
-fn can_begin_dyn_bound_in_edition_2015(t: Token) -> bool {
-    if t.is_path_start() {
-        // In `dyn::x`, `dyn<X>` and `dyn<<X>::Y>`, `dyn` should (continue to) denote a regular path
-        // segment for backward compatibility. We make an exception for `dyn(X)` which used to be
-        // interpreted as a path with parenthesized generic arguments which can be semantically
-        // well-formed (consider: `use std::ops::Fn as dyn;`). Instead, we treat it as a trait
-        // object type whose first bound is parenthesized.
-        return t != token::PathSep && t != token::Lt && t != token::Shl;
-    }
+fn can_begin_dyn_bound_in_rust_2015(t: Token) -> bool {
+    // In `dyn::x`, `dyn<X>` and `dyn<<X>::Y>`, `dyn` should (continue to) denote a regular path
+    // segment for backward compatibility. We make an exception for `dyn(X)` which used to be
+    // interpreted as a path with parenthesized generic arguments which can be semantically
+    // well-formed (consider: `use std::ops::Fn as dyn;`). Instead, we treat it as a trait
+    // object type whose first bound is parenthesized.
 
     // Contrary to `Parser::can_begin_bound`, `!`, `const`, `[` and `async` are deliberately not
     // part of this list to contain the number of potential regressions esp. in MBE code.
     // `const` and `[` would regress UI test `macro-dyn-const-2015.rs` and
     // `!` would regress `dyn!(...)` macro calls in Rust 2015 for example.
+
+    if t.is_path_start() {
+        return t != token::PathSep && t != token::Lt && t != token::Shl;
+    }
+
     t == token::OpenParen || t == token::Question || t.is_lifetime() || t.is_keyword(kw::For)
 }
 
@@ -329,9 +331,10 @@ impl<'a> Parser<'a> {
             } else {
                 // Try to recover `for<'a> dyn Trait` or `for<'a> impl Trait`.
                 if self.may_recover()
-                    && (self.eat_keyword_noexpect(kw::Impl) || self.eat_keyword_noexpect(kw::Dyn))
+                    && (self.token.is_keyword(kw::Impl) || self.can_begin_dyn_ty())
                 {
-                    let kw = self.prev_token.ident().unwrap().0;
+                    self.bump();
+                    let (kw, _) = self.prev_token.ident().unwrap();
                     let removal_span = kw.span.with_hi(self.token.span.lo());
                     let path = self.parse_path(PathStyle::Type)?;
                     let mut bounds = thin_vec![GenericBound::Trait(PolyTraitRef::new(
@@ -373,7 +376,7 @@ impl<'a> Parser<'a> {
             }
         } else if self.eat_keyword(exp!(Impl)) {
             self.parse_impl_ty(&mut impl_dyn_multi)?
-        } else if self.is_explicit_dyn_type() {
+        } else if self.can_begin_dyn_ty() {
             self.parse_dyn_ty(&mut impl_dyn_multi)?
         } else if self.eat_lt() {
             // Qualified path
@@ -562,7 +565,7 @@ impl<'a> Parser<'a> {
                     Applicability::MaybeIncorrect,
                 );
                 err.emit();
-                Ok(TyKind::Ref(Some(lt), MutTy { ty, mutbl }))
+                Ok(TyKind::Ref(Some(lt), ty, mutbl))
             }
             Err(diag) => {
                 diag.cancel();
@@ -623,7 +626,7 @@ impl<'a> Parser<'a> {
                 )
                 .emit();
 
-            return Ok(TyKind::Ptr(MutTy { ty, mutbl }));
+            return Ok(TyKind::Ptr(ty, mutbl));
         }
         // This is unreachable because we always get into if above and return from it
         unreachable!("this could never happen")
@@ -640,7 +643,7 @@ impl<'a> Parser<'a> {
             Mutability::Not
         });
         let ty = self.parse_ty_no_plus()?;
-        Ok(TyKind::Ptr(MutTy { ty, mutbl }))
+        Ok(TyKind::Ptr(ty, mutbl))
     }
 
     /// Parses an array (`[TYPE; EXPR]`) or slice (`[TYPE]`) type.
@@ -758,8 +761,8 @@ impl<'a> Parser<'a> {
         }
         let ty = self.parse_ty_no_plus()?;
         Ok(match pinned {
-            Pinnedness::Not => TyKind::Ref(opt_lifetime, MutTy { ty, mutbl }),
-            Pinnedness::Pinned => TyKind::PinnedRef(opt_lifetime, MutTy { ty, mutbl }),
+            Pinnedness::Not => TyKind::Ref(opt_lifetime, ty, mutbl),
+            Pinnedness::Pinned => TyKind::PinnedRef(opt_lifetime, ty, mutbl),
         })
     }
 
@@ -991,16 +994,14 @@ impl<'a> Parser<'a> {
         Ok(GenericBound::Use(args, lo.to(self.prev_token.span)))
     }
 
-    /// Is a `dyn B0 + ... + Bn` type allowed here?
-    fn is_explicit_dyn_type(&mut self) -> bool {
-        self.check_keyword(exp!(Dyn))
+    /// Can the current token begin a `dyn`-prefixed trait object type?
+    fn can_begin_dyn_ty(&mut self) -> bool {
+        self.token.is_keyword(kw::Dyn)
             && (self.token_uninterpolated_span().at_least_rust_2018()
-                || self.look_ahead(1, |&t| can_begin_dyn_bound_in_edition_2015(t)))
+                || self.look_ahead(1, |&t| can_begin_dyn_bound_in_rust_2015(t)))
     }
 
-    /// Parses a `dyn B0 + ... + Bn` type.
-    ///
-    /// Note that this does *not* parse bare trait objects.
+    /// Parse a `dyn`-prefixed trait object type.
     fn parse_dyn_ty(&mut self, impl_dyn_multi: &mut bool) -> PResult<'a, TyKind> {
         self.bump(); // `dyn`
 
@@ -1064,8 +1065,8 @@ impl<'a> Parser<'a> {
                 && (self.token.can_begin_type()
                     || (self.token.is_reserved_ident() && !self.token.is_keyword(kw::Where))))
         {
-            if self.token.is_keyword(kw::Dyn) && self.token.span.edition().at_least_rust_2018() {
-                // Account for `&dyn Trait + dyn Other`.
+            // Account for `&dyn Trait + dyn Other`.
+            if self.can_begin_dyn_ty() {
                 self.bump();
                 self.dcx().emit_err(InvalidDynKeyword {
                     span: self.prev_token.span,

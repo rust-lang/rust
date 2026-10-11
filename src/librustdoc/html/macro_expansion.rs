@@ -103,7 +103,7 @@ impl<'ast> ExpandedCodeVisitor<'ast> {
     }
 
     fn compute_expanded(mut self) -> FxHashMap<BytePos, Vec<ExpandedCode>> {
-        self.expanded_codes.sort_unstable_by(|item1, item2| item1.span.cmp(&item2.span));
+        self.expanded_codes.sort_unstable_by_key(|item| item.span.lo_hi());
         let mut expanded: FxHashMap<BytePos, Vec<ExpandedCode>> = FxHashMap::default();
         for ExpandedCodeInfo { span, code, original_span, .. } in self.expanded_codes {
             if let Ok(lines) = self.source_map.span_to_lines(span)

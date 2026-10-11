@@ -26,6 +26,13 @@
 ///
 /// let _val = Fail::<i32>::C;
 /// ```
+///
+/// Doctest with `#[path]`:
+///
+/// ```rust
+/// #[path = "doctest.rs"] mod doctest;
+/// assert!(doctest::make_true());
+/// ```
 // This is imported in `main.rs`.
 #[unsafe(no_mangle)]
 pub fn make_true() -> bool {

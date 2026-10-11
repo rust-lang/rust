@@ -2485,7 +2485,6 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[allow(unused_attributes)]
         #[inline]
         pub const fn wrapping_abs(self) -> Self {
              if self.is_negative() {
@@ -2978,7 +2977,6 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[allow(unused_attributes)]
         pub const fn overflowing_neg(self) -> (Self, bool) {
             if intrinsics::unlikely(self == Self::MIN) {
                 (Self::MIN, true)
@@ -3630,7 +3628,6 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-        #[allow(unused_attributes)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]

@@ -82,7 +82,7 @@ impl<'a> Iterator for AppearancesIter<'a> {
 
 impl LocalUseMap {
     pub(crate) fn build(
-        live_locals: &[Local],
+        mut live_locals: impl Iterator<Item = Local>,
         location_map: &DenseLocationMap,
         body: &Body<'_>,
     ) -> Self {
@@ -94,13 +94,11 @@ impl LocalUseMap {
             appearances: IndexVec::new(),
         };
 
-        if live_locals.is_empty() {
-            return local_use_map;
-        }
+        let Some(head) = live_locals.next() else { return local_use_map };
 
-        let mut locals_with_use_data: DenseBitSet<Local> =
-            DenseBitSet::new_empty(body.local_decls.len());
-        live_locals.iter().for_each(|&local| {
+        let mut locals_with_use_data = DenseBitSet::new_empty(body.local_decls.len());
+        locals_with_use_data.insert(head);
+        live_locals.for_each(|local| {
             locals_with_use_data.insert(local);
         });
 

@@ -1,4 +1,4 @@
-use rustc_hir::attrs::Linkage;
+use rustc_attr_ir::Linkage;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mono::{MonoItem, MonoItemData, Visibility};
 use rustc_middle::ty::layout::HasTyCtxt;

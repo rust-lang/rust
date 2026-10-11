@@ -2,7 +2,7 @@
 // be specified in the corresp. trait object type (barring exceptions) similiar to associated
 // types. Check that we reject code that doesn't provide the necessary bindings.
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
 
 trait Trait {

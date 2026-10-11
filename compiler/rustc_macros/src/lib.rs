@@ -190,6 +190,7 @@ decl_derive!(
         // field attributes
         primary_span,
         label,
+        context,
         subdiagnostic,
         suggestion)] =>
         #[doc = "See <https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html#derivediagnostic>"]
@@ -225,7 +226,7 @@ pub fn msg(input: TokenStream) -> TokenStream {
 decl_derive! {
     [PrintAttribute] =>
     /// Derives `PrintAttribute` for `AttributeKind`.
-    /// This macro is pretty specific to `rustc_hir::attrs` and likely not that useful in
+    /// This macro is pretty specific to `rustc_attr_ir` and likely not that useful in
     /// other places. It's deriving something close to `Debug` without printing some extraneous
     /// things like spans.
     print_attribute::print_attribute

@@ -155,7 +155,7 @@ fn bar() {
 ```
 
 This is likely to change as const generics functionality is improved.
-For example, `feature(associated_const_equality)` and `feature(min_generic_const_args)` both require handling const aliases similarly to types (without an anonymous constant wrapping all const args).
+For example, `feature(associated_const_equality)` and `feature(gca_min_const_items)` both require handling const aliases similarly to types (without an anonymous constant wrapping all const args).
 
 ## What is normalization
 

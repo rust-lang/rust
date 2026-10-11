@@ -588,13 +588,7 @@ pub(super) fn expand_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             let expr = match mac {
-                Ok(inline_asm) => Box::new(ast::Expr {
-                    id: ast::DUMMY_NODE_ID,
-                    kind: ast::ExprKind::InlineAsm(Box::new(inline_asm)),
-                    span: sp,
-                    attrs: ast::AttrVec::new(),
-                    tokens: None,
-                }),
+                Ok(inline_asm) => ecx.expr(sp, ast::ExprKind::InlineAsm(Box::new(inline_asm))),
                 Err(guar) => DummyResult::raw_expr(sp, Some(guar)),
             };
             MacEager::expr(expr)
@@ -618,13 +612,7 @@ pub(super) fn expand_naked_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             let expr = match mac {
-                Ok(inline_asm) => Box::new(ast::Expr {
-                    id: ast::DUMMY_NODE_ID,
-                    kind: ast::ExprKind::InlineAsm(Box::new(inline_asm)),
-                    span: sp,
-                    attrs: ast::AttrVec::new(),
-                    tokens: None,
-                }),
+                Ok(inline_asm) => ecx.expr(sp, ast::ExprKind::InlineAsm(Box::new(inline_asm))),
                 Err(guar) => DummyResult::raw_expr(sp, Some(guar)),
             };
             MacEager::expr(expr)
@@ -648,17 +636,11 @@ pub(super) fn expand_global_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             match mac {
-                Ok(inline_asm) => MacEager::items(smallvec![Box::new(ast::Item {
-                    attrs: ast::AttrVec::new(),
-                    id: ast::DUMMY_NODE_ID,
-                    kind: ast::ItemKind::GlobalAsm(Box::new(inline_asm)),
-                    vis: ast::Visibility {
-                        span: sp.shrink_to_lo(),
-                        kind: ast::VisibilityKind::Inherited,
-                    },
-                    span: sp,
-                    tokens: None,
-                })]),
+                Ok(inline_asm) => MacEager::items(smallvec![ecx.item(
+                    sp,
+                    ast::AttrVec::new(),
+                    ast::ItemKind::GlobalAsm(Box::new(inline_asm))
+                )]),
                 Err(guar) => DummyResult::any(sp, guar),
             }
         }

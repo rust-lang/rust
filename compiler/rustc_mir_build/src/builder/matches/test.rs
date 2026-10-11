@@ -7,9 +7,9 @@
 
 use std::sync::Arc;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::RangeEnd;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt};

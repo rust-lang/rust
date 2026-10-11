@@ -32,7 +32,6 @@
 // this crate without this line making `rustc_span` available.
 extern crate self as rustc_span;
 
-use derive_where::derive_where;
 use rustc_data_structures::stable_hash::StableHashCtxt;
 use rustc_data_structures::{AtomicRef, outline};
 use rustc_macros::{Decodable, Encodable, StableHash};
@@ -60,7 +59,7 @@ pub mod def_id;
 use def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, LocalDefId, StableCrateId};
 pub mod edit_distance;
 mod span_encoding;
-pub use span_encoding::{DUMMY_SP, Span};
+pub use span_encoding::{DUMMY_SP, OrdSpan, Span};
 
 pub mod symbol;
 pub use symbol::{
@@ -74,7 +73,6 @@ pub mod profiling;
 
 pub mod macros;
 use std::borrow::Cow;
-use std::cmp::{self, Ordering};
 use std::fmt::Display;
 use std::hash::Hash;
 use std::io::{self, Read};
@@ -82,7 +80,7 @@ use std::ops::{Add, Range, Sub};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
-use std::{fmt, iter};
+use std::{cmp, fmt, iter};
 
 pub use macros::{bug, span_bug};
 use md5::{Digest, Md5};
@@ -684,21 +682,19 @@ impl FileName {
 /// sent to other threads, but some pieces of performance infra run in a separate thread.
 /// Using `Span` is generally preferred.
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
-#[derive_where(PartialOrd, Ord)]
 pub struct SpanData {
     pub lo: BytePos,
     pub hi: BytePos,
     /// Information about where the macro came from, if this piece of
     /// code was created by a macro expansion.
-    #[derive_where(skip)]
-    // `SyntaxContext` does not implement `Ord`.
-    // The other fields are enough to determine in-file order.
     pub ctxt: SyntaxContext,
-    #[derive_where(skip)]
-    // `LocalDefId` does not implement `Ord`.
-    // The other fields are enough to determine in-file order.
     pub parent: Option<LocalDefId>,
 }
+
+// `SyntaxContext` and `LocalDefId` aren't orderable. See the equivalent negative impls for `Span`
+// for more details.
+impl !PartialOrd for SpanData {}
+impl !Ord for SpanData {}
 
 impl SpanData {
     #[inline]
@@ -740,17 +736,6 @@ impl Default for SpanData {
     }
 }
 
-impl PartialOrd for Span {
-    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
-        Some(self.cmp(rhs))
-    }
-}
-impl Ord for Span {
-    fn cmp(&self, rhs: &Self) -> Ordering {
-        Ord::cmp(&self.data(), &rhs.data())
-    }
-}
-
 impl Span {
     #[inline]
     pub fn lo(self) -> BytePos {
@@ -771,6 +756,16 @@ impl Span {
     #[inline]
     pub fn with_ctxt(self, ctxt: SyntaxContext) -> Span {
         self.map_ctxt(|_| ctxt)
+    }
+
+    /// When to use this:
+    /// - Use it instead of `==` for span equality comparisons when either span could be generated
+    ///   code and you only care that they point to the same bytes of source text.
+    /// - Use it (possibly via `OrdSpan`) for span ordering comparisons of any kind.
+    #[inline]
+    pub fn lo_hi(self) -> (BytePos, BytePos) {
+        let data = self.data();
+        (data.lo, data.hi)
     }
 
     #[inline]
@@ -859,16 +854,6 @@ impl Span {
         let span = self.data();
         let other = other.data();
         span.lo <= other.hi && other.lo <= span.hi
-    }
-
-    /// Returns `true` if the spans are equal with regards to the source text.
-    ///
-    /// Use this instead of `==` when either span could be generated code,
-    /// and you only care that they point to the same bytes of source text.
-    pub fn source_equal(self, other: Span) -> bool {
-        let span = self.data();
-        let other = other.data();
-        span.lo == other.lo && span.hi == other.hi
     }
 
     /// Returns `Some(span)`, where the start is trimmed by the end of `other`.
@@ -1084,7 +1069,7 @@ impl Span {
                 }
 
                 let expn_data = ctxt.outer_expn_data();
-                let is_recursive = expn_data.call_site.source_equal(prev_span);
+                let is_recursive = expn_data.call_site.lo_hi() == prev_span.lo_hi();
 
                 prev_span = self;
                 self = expn_data.call_site;

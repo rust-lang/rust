@@ -33,10 +33,10 @@ LL |     (&pin mut x,): &'a mut (&'a pin mut Foo<T>,),
    = note: consider using the `pin!` macro
            consider using `Box::pin` if you need to access the pinned value outside of the current scope
 note: required because it appears within the type `Foo<T>`
-  --> $DIR/pin-pattern.rs:11:8
+  --> $DIR/pin-pattern.rs:11:15
    |
 LL | struct Foo<T>(T);
-   |        ^^^    - required by this field
+   |               ^ required by this field
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn tuple_ref_pin_mut_pat_and_mut_of_tuple_pin_mut_ty<'a, T: std::marker::Unpin>(

@@ -5,11 +5,12 @@ use std::num::NonZero;
 use std::ops::Deref;
 use std::{assert_matches, mem};
 
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{ConstStability, StabilityLevel, find_attr};
 use rustc_errors::{Diag, ErrorGuaranteed};
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::visit::Visitor;
@@ -427,7 +428,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
     /// Check the const stability of the given item (fn or trait).
     fn check_callee_stability(&mut self, def_id: DefId) {
         match self.tcx.lookup_const_stability(def_id) {
-            Some(hir::ConstStability { level: hir::StabilityLevel::Stable { .. }, .. }) => {
+            Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
                 // All good.
             }
             None => {
@@ -443,8 +444,8 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                     });
                 }
             }
-            Some(hir::ConstStability {
-                level: hir::StabilityLevel::Unstable { implied_by: implied_feature, issue, .. },
+            Some(ConstStability {
+                level: StabilityLevel::Unstable { implied_by: implied_feature, issue, .. },
                 feature,
                 ..
             }) => {
@@ -858,8 +859,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 });
                             }
                         }
-                        Some(hir::ConstStability {
-                            level: hir::StabilityLevel::Unstable { .. },
+                        Some(ConstStability {
+                            level: StabilityLevel::Unstable { .. },
                             feature,
                             ..
                         }) => {
@@ -878,10 +879,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 const_stable_indirect,
                             });
                         }
-                        Some(hir::ConstStability {
-                            level: hir::StabilityLevel::Stable { .. },
-                            ..
-                        }) => {
+                        Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
                             // All good. Note that a `#[rustc_const_stable]` intrinsic (meaning it
                             // can be *directly* invoked from stable const code) does not always
                             // have the `#[rustc_intrinsic_const_stable_indirect]` attribute (which controls

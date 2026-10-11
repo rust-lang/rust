@@ -1,7 +1,7 @@
 //@ run-crash
 //@ compile-flags: -Cdebug-assertions=yes
 //@ error-pattern: unsafe precondition(s) violated: Vec::from_parts_in requires that length <= capacity
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 
 use std::ptr::NonNull;
 

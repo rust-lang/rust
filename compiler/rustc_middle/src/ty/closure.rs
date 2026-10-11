@@ -1,3 +1,4 @@
+use std::cmp;
 use std::fmt::Write;
 
 use rustc_data_structures::fx::FxIndexMap;
@@ -46,16 +47,32 @@ impl UpvarId {
 #[derive(Eq, PartialEq, Clone, Debug, Copy, TyEncodable, TyDecodable, StableHash, Hash)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum UpvarCapture {
-    /// Upvar is captured by value. This is always true when the
-    /// closure is labeled `move`, but can also be true in other cases
-    /// depending on inference.
-    ByValue,
+    /// Upvar is captured by reference.
+    ByRef(BorrowKind),
 
     /// Upvar is captured by use. This is true when the closure is labeled `use`.
     ByUse,
 
-    /// Upvar is captured by reference.
-    ByRef(BorrowKind),
+    /// Upvar is captured by value. This is always true when the
+    /// closure is labeled `move`, but can also be true in other cases
+    /// depending on inference.
+    ByValue,
+}
+
+// Used in rustc_hir_typeck::upvar::determine_capture_info
+impl PartialOrd for UpvarCapture {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        match (self, other) {
+            (Self::ByValue, Self::ByValue) | (Self::ByUse, Self::ByUse) => {
+                Some(cmp::Ordering::Equal)
+            }
+            (Self::ByValue | Self::ByUse, Self::ByRef(_)) => Some(cmp::Ordering::Greater),
+            (Self::ByRef(_), Self::ByValue | Self::ByUse) => Some(cmp::Ordering::Less),
+            (Self::ByRef(left), Self::ByRef(right)) => Some(left.cmp(&right)),
+            (Self::ByUse, Self::ByValue) | (Self::ByValue, Self::ByUse) => None,
+        }
+    }
 }
 
 /// Given the closure DefId this map provides a map of root variables to minimum
@@ -339,8 +356,21 @@ pub fn place_to_string_for_capture<'tcx>(tcx: TyCtxt<'tcx>, place: &HirPlace<'tc
     curr_string
 }
 
-#[derive(Eq, Clone, PartialEq, Debug, TyEncodable, TyDecodable, Copy, StableHash, Hash)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd, // Order of variants is load-bearing
+    Ord,
+    TyEncodable,
+    TyDecodable,
+    StableHash,
+    TypeFoldable,
+    TypeVisitable
+)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Immutable,

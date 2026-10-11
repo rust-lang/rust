@@ -8,6 +8,7 @@ edition = "2024"
 punycode = "0.4.0"
 rustc-demangle = "0.1.28"
 rustc_abi = { path = "../rustc_abi" }
+rustc_attr_ir = { path = "../rustc_attr_ir" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_hashes = { path = "../rustc_hashes" }
 rustc_hir = { path = "../rustc_hir" }

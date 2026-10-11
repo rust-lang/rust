@@ -10,6 +10,12 @@ error[E0425]: cannot find value `x` in this scope
 LL |         x.add
    |         ^ not found in this scope
 
-error: aborting due to 2 previous errors
+error: failed to resolve delegation callee
+  --> $DIR/unused-import-ice-144594.rs:3:7
+   |
+LL | reuse a as b {
+   |       ^
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0425`.

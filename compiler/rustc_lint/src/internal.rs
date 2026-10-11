@@ -3,10 +3,11 @@
 
 use rustc_ast as ast;
 use rustc_ast::{Pat, PatKind, Path};
+use rustc_attr_ir::find_attr;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, ExprKind, HirId, find_attr};
+use rustc_hir::{Expr, ExprKind, HirId};
 use rustc_lint_defs::{declare_lint_pass, declare_tool_lint};
 use rustc_middle::ty::{self, ClausePolarity, GenericArgsRef};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -41,6 +42,7 @@ impl LateLintPass<'_> for DefaultHashTypes {
         if matches!(
             cx.tcx.hir_node(hir_id),
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Use(..), .. })
+                | hir::Node::NestedUseTree(_)
         ) {
             // Don't lint imports, only actual usages.
             return;
@@ -407,51 +409,79 @@ impl<'tcx> LateLintPass<'tcx> for TypeIr {
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
-        let rustc_hir::ItemKind::Use(path, kind) = item.kind else { return };
-
-        let is_mod_inherent = |res: Res| {
-            res.opt_def_id()
-                .is_some_and(|def_id| cx.tcx.is_diagnostic_item(sym::type_ir_inherent, def_id))
+        let rustc_hir::ItemKind::Use(tree) = item.kind else {
+            return;
         };
 
-        // Path segments except for the final.
-        if let Some(seg) = path.segments.iter().find(|seg| is_mod_inherent(seg.res)) {
-            cx.emit_span_lint(USAGE_OF_TYPE_IR_INHERENT, seg.ident.span, TypeIrInherentUsage);
-        }
-        // Final path resolutions, like `use rustc_type_ir::inherent`
-        else if let Some(type_ns) = path.res.type_ns
-            && is_mod_inherent(type_ns)
-        {
+        check_use(cx, tree, vec![]);
+
+        fn check_use<'tcx>(
+            cx: &LateContext<'_>,
+            tree: hir::UseTree<'tcx>,
+            mut prefix: Vec<&'tcx hir::PathSegment<'tcx>>,
+        ) {
+            let is_mod_inherent = |res: Res| {
+                res.opt_def_id()
+                    .is_some_and(|def_id| cx.tcx.is_diagnostic_item(sym::type_ir_inherent, def_id))
+            };
+
+            prefix.extend(tree.prefix.segments);
+
+            match tree.kind {
+                rustc_hir::UseKind::Single(_) | rustc_hir::UseKind::Glob => {}
+                rustc_hir::UseKind::Nested { items } => {
+                    for (nested, _, _) in items {
+                        check_use(cx, *nested, prefix.clone())
+                    }
+                }
+            }
+
+            // Path segments except for the final.
+            if let Some(seg) = prefix.iter().find(|seg| is_mod_inherent(seg.res)) {
+                cx.emit_span_lint(USAGE_OF_TYPE_IR_INHERENT, seg.ident.span, TypeIrInherentUsage);
+            }
+            // Final path resolutions, like `use rustc_type_ir::inherent`
+            else if let Some(type_ns) = tree.prefix.res.type_ns
+                && is_mod_inherent(type_ns)
+            {
+                cx.emit_span_lint(
+                    USAGE_OF_TYPE_IR_INHERENT,
+                    prefix.last().unwrap().ident.span,
+                    TypeIrInherentUsage,
+                );
+            }
+
+            let (lo, hi, snippet) = match prefix {
+                [.., penultimate, segment]
+                    if is_mod_inherent(penultimate.res)
+                        && let rustc_hir::UseKind::Single(ident) = tree.kind =>
+                {
+                    (segment.ident.span, ident.span, "*")
+                }
+                [.., segment]
+                    if let Some(type_ns) = tree.prefix.res.type_ns
+                        && is_mod_inherent(type_ns)
+                        && let rustc_hir::UseKind::Single(ident) = tree.kind =>
+                {
+                    let (lo, snippet) =
+                        match cx.tcx.sess.source_map().span_to_snippet(tree.prefix.span).as_deref()
+                        {
+                            Ok("self") => (tree.prefix.span, "*"),
+                            _ => (segment.ident.span.shrink_to_hi(), "::*"),
+                        };
+                    (lo, if segment.ident == ident { lo } else { ident.span }, snippet)
+                }
+                _ => return,
+            };
             cx.emit_span_lint(
-                USAGE_OF_TYPE_IR_INHERENT,
-                path.segments.last().unwrap().ident.span,
-                TypeIrInherentUsage,
+                NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT,
+                tree.prefix.span,
+                NonGlobImportTypeIrInherent {
+                    suggestion: lo.eq_ctxt(hi).then(|| lo.to(hi)),
+                    snippet,
+                },
             );
         }
-
-        let (lo, hi, snippet) = match path.segments {
-            [.., penultimate, segment] if is_mod_inherent(penultimate.res) => {
-                (segment.ident.span, item.kind.ident().unwrap().span, "*")
-            }
-            [.., segment]
-                if let Some(type_ns) = path.res.type_ns
-                    && is_mod_inherent(type_ns)
-                    && let rustc_hir::UseKind::Single(ident) = kind =>
-            {
-                let (lo, snippet) =
-                    match cx.tcx.sess.source_map().span_to_snippet(path.span).as_deref() {
-                        Ok("self") => (path.span, "*"),
-                        _ => (segment.ident.span.shrink_to_hi(), "::*"),
-                    };
-                (lo, if segment.ident == ident { lo } else { ident.span }, snippet)
-            }
-            _ => return,
-        };
-        cx.emit_span_lint(
-            NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT,
-            path.span,
-            NonGlobImportTypeIrInherent { suggestion: lo.eq_ctxt(hi).then(|| lo.to(hi)), snippet },
-        );
     }
 
     fn check_path(
@@ -573,10 +603,10 @@ fn is_span_ctxt_call(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
 }
 
 declare_tool_lint! {
-    /// The `symbol_intern_string_literal` detects `Symbol::intern` being called on a string literal
+    /// The `symbol_intern_string_literal` lint detects `Symbol::intern` or `Ident::from_str_and_span` being called on a string literal
     pub rustc::SYMBOL_INTERN_STRING_LITERAL,
     Allow,
-    "Forbid uses of string literals in `Symbol::intern`, suggesting preinterning instead",
+    "Forbid uses of string literals in `Symbol::intern` or `Ident::from_str_and_span`, suggesting preinterning instead",
     report_in_external_macro: true
 }
 
@@ -584,18 +614,30 @@ declare_lint_pass!(SymbolInternStringLiteral => [SYMBOL_INTERN_STRING_LITERAL]);
 
 impl<'tcx> LateLintPass<'tcx> for SymbolInternStringLiteral {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
-        if let hir::ExprKind::Call(path, [arg]) = expr.kind
+        if let hir::ExprKind::Call(path, args) = expr.kind
             && let hir::ExprKind::Path(ref qpath) = path.kind
             && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
-            && cx.tcx.is_diagnostic_item(sym::SymbolIntern, def_id)
-            && let hir::ExprKind::Lit(kind) = arg.kind
-            && let rustc_ast::LitKind::Str(_, _) = kind.node
         {
-            cx.emit_span_lint(
-                SYMBOL_INTERN_STRING_LITERAL,
-                kind.span,
-                SymbolInternStringLiteralDiag,
-            );
+            let (arg, fn_name) = if cx.tcx.is_diagnostic_item(sym::SymbolIntern, def_id)
+                && let [arg] = args
+            {
+                (arg, "Symbol::intern")
+            } else if cx.tcx.is_diagnostic_item(sym::ident_from_str_and_span, def_id)
+                && let [arg, _] = args
+            {
+                (arg, "Ident::from_str_and_span")
+            } else {
+                return;
+            };
+            if let hir::ExprKind::Lit(kind) = arg.kind
+                && let rustc_ast::LitKind::Str(_, _) = kind.node
+            {
+                cx.emit_span_lint(
+                    SYMBOL_INTERN_STRING_LITERAL,
+                    kind.span,
+                    SymbolInternStringLiteralDiag { fn_name },
+                );
+            }
         }
     }
 }

@@ -137,12 +137,11 @@ LL | fn unsized_local() where Dst<dyn A>: Sized {
    |
    = help: within `Dst<(dyn A + 'static)>`, the trait `Sized` is not implemented for `(dyn A + 'static)`
 note: required because it appears within the type `Dst<(dyn A + 'static)>`
-  --> $DIR/feature-gate-trivial_bounds.rs:48:8
+  --> $DIR/feature-gate-trivial_bounds.rs:49:5
    |
 LL | struct Dst<X: ?Sized> {
-   |        ^^^
 LL |     x: X,
-   |     ---- required by this field
+   |     ^^^^ required by this field
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
 LL + #![feature(trivial_bounds)]

@@ -2,9 +2,9 @@
 
 use rustc_abi::FieldIdx;
 use rustc_ast::{AsmMacro, InlineAsmOptions};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
@@ -238,8 +238,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let body_block_end = this.expr_into_dest(tmp, body_block, body).into_block();
 
                     let goto = this.cfg.goto(body_block_end, source_info, loop_block);
-                    if let Some(attrs) = this.thir.attributes.get(&expr_id) {
-                        goto.attributes = attrs.clone();
+                    if let Some(attrs) = this.thir.loop_hint_attrs.get(&expr_id) {
+                        goto.loop_hint_attrs = attrs.clone();
                     }
 
                     // Loops are only exited by `break` expressions.

@@ -1,6 +1,5 @@
 use std::any::Any;
 use std::default::Default;
-use std::iter;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -24,7 +23,7 @@ use rustc_span::def_id::{CrateNum, DefId, LocalDefId, ModId};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
 use rustc_structures::{CollapseMacroDebuginfo, Limit};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
@@ -1323,16 +1322,6 @@ impl<'a> ExtCtxt<'a> {
     }
     pub fn set_trace_macros(&mut self, x: bool) {
         self.ecfg.trace_mac = x
-    }
-    pub fn std_path(&self, components: &[Symbol]) -> Vec<Ident> {
-        let def_site = self.with_def_site_ctxt(DUMMY_SP);
-        iter::once(Ident::new(kw::DollarCrate, def_site))
-            .chain(components.iter().map(|&s| Ident::new(s, def_site)))
-            .collect()
-    }
-    pub fn def_site_path(&self, components: &[Symbol]) -> Vec<Ident> {
-        let def_site = self.with_def_site_ctxt(DUMMY_SP);
-        components.iter().map(|&s| Ident::new(s, def_site)).collect()
     }
 
     pub fn check_unused_macros(&mut self) {

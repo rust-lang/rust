@@ -1,5 +1,6 @@
 use rustc_ast::LitKind;
-use rustc_hir::{BinOpKind, Expr, ExprKind, TyKind, find_attr};
+use rustc_attr_ir::find_attr;
+use rustc_hir::{BinOpKind, Expr, ExprKind, TyKind};
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty::RawPtr;
 use rustc_span::{Span, sym};
@@ -85,7 +86,7 @@ fn useless_check<'a, 'tcx: 'a>(
             return Some(UselessPtrNullChecksDiag::FnRet { fn_name });
         }
         e = if let ExprKind::Cast(expr, t) = e.kind
-            && let TyKind::Ptr(_) = t.kind
+            && let TyKind::Ptr(..) = t.kind
         {
             had_at_least_one_cast = true;
             expr

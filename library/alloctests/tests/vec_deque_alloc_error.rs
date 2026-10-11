@@ -1,4 +1,4 @@
-#![feature(alloc_error_hook, allocator_api)]
+#![feature(alloc_error_hook, allocator_ext)]
 
 use std::alloc::{AllocError, Allocator, Layout, System, set_alloc_error_hook};
 use std::collections::VecDeque;

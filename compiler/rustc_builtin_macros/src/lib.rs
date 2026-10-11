@@ -34,12 +34,12 @@ mod define_opaque;
 mod derive;
 mod deriving;
 mod diagnostics;
-mod direct_const_arg;
 mod edition_panic;
 mod eii;
 mod env;
 mod format;
 mod format_foreign;
+mod gca;
 mod global_allocator;
 mod iter;
 mod log_syntax;
@@ -83,11 +83,11 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         concat_bytes: concat_bytes::expand_concat_bytes,
         const_format_args: format::expand_format_args,
         core_panic: edition_panic::expand_panic,
-        direct_const_arg: direct_const_arg::expand,
         env: env::expand_env,
         file: source_util::expand_file,
         format_args: format::expand_format_args,
         format_args_nl: format::expand_format_args_nl,
+        gca: gca::expand,
         global_asm: asm::expand_global_asm,
         include: source_util::expand_include,
         include_bytes: source_util::expand_include_bytes,

@@ -153,8 +153,6 @@ fn check_coff_symbols<Coff: run_make_support::object::read::coff::CoffHeader>(
 ) {
     // ImageSymbol is 18 bytes; ImageSymbolEx (bigobj) is 20.
     let sym_size = std::mem::size_of::<Coff::ImageSymbolBytes>();
-    // i686 decorates symbol names with a leading underscore.
-    let strip_underscore = header.machine() == pe::IMAGE_FILE_MACHINE_I386;
     let Ok(symbols) = header.symbols(data) else { return };
     let strings = symbols.strings();
     let symtab_base = header.pointer_to_symbol_table() as usize;
@@ -179,8 +177,16 @@ fn check_coff_symbols<Coff: run_make_support::object::read::coff::CoffHeader>(
         }
         let Ok(name_bytes) = symbol.name(strings) else { continue };
         let Ok(mut name) = str::from_utf8(name_bytes).map(String::from) else { continue };
-        if strip_underscore {
-            name = name.strip_prefix('_').unwrap_or(&name).to_string();
+
+        // Adjust for various symbol decorations.
+        match header.machine() {
+            pe::IMAGE_FILE_MACHINE_I386 => {
+                name = name.strip_prefix('_').unwrap_or(&name).to_string();
+            }
+            pe::IMAGE_FILE_MACHINE_ARM64EC => {
+                name = name.strip_prefix('#').unwrap_or(&name).to_string();
+            }
+            _ => {}
         }
 
         if EXPORTED.contains(&name.as_str()) {

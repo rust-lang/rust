@@ -1,9 +1,11 @@
 error[E0201]: duplicate definitions with name `method`:
   --> $DIR/glob-glob-conflict.rs:26:5
    |
+LL | trait Trait {
 LL |     fn method(&self) -> u8;
    |     ----------------------- item in trait
 ...
+LL | impl Trait for u8 {
 LL |     reuse Trait1::*;
    |     ---------------- previous definition here
 LL |     reuse Trait2::*;
@@ -12,9 +14,11 @@ LL |     reuse Trait2::*;
 error[E0201]: duplicate definitions with name `method`:
   --> $DIR/glob-glob-conflict.rs:32:5
    |
+LL | trait Trait {
 LL |     fn method(&self) -> u8;
    |     ----------------------- item in trait
 ...
+LL | impl Trait for u16 {
 LL |     reuse Trait1::*;
    |     ---------------- previous definition here
 LL |     reuse Trait1::*;

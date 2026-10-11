@@ -53,6 +53,7 @@ use rustc_type_ir::TyKind::*;
 use tracing::instrument;
 
 use crate::query::Providers;
+use crate::ty::consts::ConstExt;
 use crate::ty::{
     self, AdtDef, DefId, Ty, TyCtxt, TypeVisitableExt, TypingEnv, VariantDef, Visibility,
 };

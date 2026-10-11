@@ -8,7 +8,7 @@
 //! Users can override these limits via an attribute on the crate like
 //! `#![recursion_limit="22"]`. This pass just looks for those attributes.
 
-use rustc_hir::{Attribute, find_attr};
+use rustc_attr_ir::{Attribute, find_attr};
 use rustc_middle::query::Providers;
 use rustc_session::{Limits, Session};
 use rustc_structures::Limit;

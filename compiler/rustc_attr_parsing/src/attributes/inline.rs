@@ -1,9 +1,9 @@
-use rustc_attr_ir::{AttributeKind, InlineAttr, find_attr};
+use rustc_attr_ir::{Attribute, AttributeKind, InlineAttr, find_attr};
 use rustc_feature::AttributeStability;
-use rustc_lint_defs::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
+use rustc_lint_defs::builtin::{ILL_FORMED_ATTRIBUTE_INPUT, UNUSED_ATTRIBUTES};
 
 use super::prelude::*;
-use crate::diagnostics::InlineForceInlineConflict;
+use crate::diagnostics::{InlineForceInlineConflict, InlineIgnoredForExported};
 
 pub(crate) struct InlineParser;
 
@@ -59,6 +59,25 @@ impl SingleAttributeParser for InlineParser {
             }
         }
     }
+
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        let exported = cx.parsed_attrs.iter().any(|attr| {
+            let Attribute::Parsed(kind) = attr else { return false };
+            kind.is_extern_indicator()
+        });
+        if matches!(
+            cx.target,
+            Target::Fn
+                | Target::Closure
+                | Target::Method(
+                    MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
+                )
+        ) && !find_attr!(cx.parsed_attrs, Inline(InlineAttr::Never, _))
+            && exported
+        {
+            cx.emit_lint(UNUSED_ATTRIBUTES, InlineIgnoredForExported, attr_span);
+        }
+    }
 }
 
 pub(crate) struct RustcForceInlineParser;
@@ -94,7 +113,7 @@ impl SingleAttributeParser for RustcForceInlineParser {
         ))
     }
 
-    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         let Some(inline_span) = find_attr!(cx.parsed_attrs, Inline(attr, span) if !matches!(attr, InlineAttr::Force { .. }) => span)
         else {
             return;

@@ -73,7 +73,7 @@ impl<'tcx> MockBlocks<'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(Span::with_root_ctxt(next_lo, next_hi)),
                 kind,
-                attributes: ThinVec::new(),
+                loop_hint_attrs: ThinVec::new(),
             }),
             false,
         ))

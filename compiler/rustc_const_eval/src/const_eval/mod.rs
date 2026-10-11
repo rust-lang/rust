@@ -2,6 +2,7 @@
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_middle::mir;
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{DUMMY_SP, bug};
 use tracing::instrument;

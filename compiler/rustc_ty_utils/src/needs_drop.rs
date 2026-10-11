@@ -1,8 +1,8 @@
 //! Check whether a type has (potentially) non-trivial drop glue.
 
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
-use rustc_hir::find_attr;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{AlwaysRequiresDrop, needs_drop_components};
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt, Unnormalized};

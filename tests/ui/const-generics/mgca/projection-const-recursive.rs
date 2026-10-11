@@ -3,8 +3,10 @@
 
 // Regression test for <https://github.com/rust-lang/rust/issues/153831>
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
+
+use std::gca;
 
 trait Trait {
     #[rustc_always_gca]
@@ -12,7 +14,7 @@ trait Trait {
 }
 
 impl Trait for () {
-    const A: () = core::direct_const_arg!(<() as Trait>::A);
+    const A: () = gca!(<() as Trait>::A);
     //~^ ERROR: overflow evaluating the requirement `<() as Trait>::A == _`
     //~| ERROR: overflow evaluating the requirement `the constant `<() as Trait>::A` has type `()``
 }

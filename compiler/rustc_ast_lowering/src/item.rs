@@ -1,16 +1,15 @@
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{AttributeKind, EiiImplResolution, find_attr};
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
-use rustc_hir::attrs::{AttributeKind, EiiImplResolution};
-use rustc_hir::def::{DefKind, PerNS, Res};
-use rustc_hir::{
-    self as hir, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin, Target, find_attr,
-};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::{self as hir, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin};
 use rustc_middle::ty::data_structures::IndexMap;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, span_bug, sym};
+use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
 use tracing::instrument;
@@ -68,8 +67,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         name: Ident,
         EiiDecl { foreign_item, impl_unsafe }: &EiiDecl,
-    ) -> Option<hir::attrs::EiiDecl> {
-        self.lower_path_simple_eii(id, foreign_item).map(|did| hir::attrs::EiiDecl {
+    ) -> Option<rustc_attr_ir::EiiDecl> {
+        self.lower_path_simple_eii(id, foreign_item).map(|did| rustc_attr_ir::EiiDecl {
             foreign_item: did,
             impl_unsafe: *impl_unsafe,
             name,
@@ -87,7 +86,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             is_default,
             known_eii_macro_resolution,
         }: &EiiImpl,
-    ) -> hir::attrs::EiiImpl {
+    ) -> rustc_attr_ir::EiiImpl {
         let resolution = if let Some(target) = known_eii_macro_resolution
             && let Some(foreign_item_did) = self.lower_path_simple_eii(*node_id, target)
         {
@@ -100,7 +99,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             )
         };
 
-        hir::attrs::EiiImpl {
+        rustc_attr_ir::EiiImpl {
             span: self.lower_span(*span),
             inner_span: self.lower_span(*inner_span),
             impl_unsafe_span: match *impl_safety {
@@ -116,19 +115,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         id: NodeId,
         i: &ItemKind,
-    ) -> Vec<hir::Attribute> {
+    ) -> Vec<rustc_attr_ir::Attribute> {
         match i {
             ItemKind::Fn(Fn { eii_impl: None, .. })
             | ItemKind::Static(StaticItem { eii_impl: None, .. }) => Vec::new(),
             ItemKind::Fn(Fn { eii_impl: Some(eii_impl), .. })
             | ItemKind::Static(StaticItem { eii_impl: Some(eii_impl), .. }) => {
-                vec![hir::Attribute::Parsed(AttributeKind::EiiImpl(Box::new(
+                vec![rustc_attr_ir::Attribute::Parsed(AttributeKind::EiiImpl(Box::new(
                     self.lower_eii_impl(eii_impl),
                 )))]
             }
             ItemKind::MacroDef(name, MacroDef { eii_declaration: Some(target), .. }) => self
                 .lower_eii_decl(id, *name, target)
-                .map(|decl| vec![hir::Attribute::Parsed(AttributeKind::EiiDeclaration(decl))])
+                .map(|decl| {
+                    vec![rustc_attr_ir::Attribute::Parsed(AttributeKind::EiiDeclaration(decl))]
+                })
                 .unwrap_or_default(),
 
             ItemKind::ExternCrate(..)
@@ -184,7 +185,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         id: NodeId,
         hir_id: hir::HirId,
-        attrs: &'hir [hir::Attribute],
+        attrs: &'hir [rustc_attr_ir::Attribute],
         vis_span: Span,
         i: &ItemKind,
     ) -> hir::ItemKind<'hir> {
@@ -194,11 +195,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::ExternCrate(*orig_name, ident)
             }
             ItemKind::Use(use_tree) => {
-                // Start with an empty prefix.
-                let prefix =
-                    Path { segments: ThinVec::new(), span: use_tree.prefix.span.shrink_to_lo() };
-
-                self.lower_use_tree(use_tree, &prefix, id, vis_span, attrs)
+                hir::ItemKind::Use(self.lower_use_tree(use_tree, id, vis_span, attrs))
             }
             ItemKind::Static(ast::StaticItem {
                 ident,
@@ -548,13 +545,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_use_tree(
         &mut self,
         tree: &UseTree,
-        prefix: &Path,
         id: NodeId,
         vis_span: Span,
-        attrs: &'hir [hir::Attribute],
-    ) -> hir::ItemKind<'hir> {
+        attrs: &'hir [rustc_attr_ir::Attribute],
+    ) -> hir::UseTree<'hir> {
         let path = &tree.prefix;
-        let segments = prefix.segments.iter().chain(path.segments.iter()).cloned().collect();
+        let segments = path.segments.iter().cloned().collect();
 
         match tree.kind {
             UseTreeKind::Simple(rename) => {
@@ -576,106 +572,34 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let res = self.lower_import_res(id, path.span);
                 let path = self.lower_use_path(res, &path, ParamMode::Explicit);
                 let ident = self.lower_ident(ident);
-                hir::ItemKind::Use(path, hir::UseKind::Single(ident))
+                hir::UseTree { prefix: path, kind: hir::UseKind::Single(ident) }
             }
             UseTreeKind::Glob(_) => {
                 let res = self.expect_full_res(id);
                 let res = self.lower_res(res);
                 // Put the result in the appropriate namespace.
-                let res = match res {
-                    Res::Def(DefKind::Mod | DefKind::Trait, _) => {
-                        PerNS { type_ns: Some(res), value_ns: None, macro_ns: None }
-                    }
-                    Res::Def(DefKind::Enum, _) => {
-                        PerNS { type_ns: None, value_ns: Some(res), macro_ns: None }
-                    }
-                    Res::Err => {
-                        // Propagate the error to all namespaces, just to be sure.
-                        let err = Some(Res::Err);
-                        PerNS { type_ns: err, value_ns: err, macro_ns: err }
-                    }
-                    _ => span_bug!(path.span, "bad glob res {:?}", res),
-                };
+                let res = res.in_namespace();
                 let path = Path { segments, span: path.span };
                 let path = self.lower_use_path(res, &path, ParamMode::Explicit);
-                hir::ItemKind::Use(path, hir::UseKind::Glob)
+                hir::UseTree { prefix: path, kind: hir::UseKind::Glob }
             }
             UseTreeKind::Nested { items: ref trees, .. } => {
-                // Nested imports are desugared into simple imports.
-                // So, if we start with
-                //
-                // ```
-                // pub(x) use foo::{a, b};
-                // ```
-                //
-                // we will create three items:
-                //
-                // ```
-                // pub(x) use foo::a;
-                // pub(x) use foo::b;
-                // pub(x) use foo::{}; // <-- this is called the `ListStem`
-                // ```
-                //
-                // The first two are produced by recursively invoking
-                // `lower_use_tree` (and indeed there may be things
-                // like `use foo::{a::{b, c}}` and so forth). They
-                // wind up being directly added to
-                // `self.items`. However, the structure of this
-                // function also requires us to return one item, and
-                // for that we return the `{}` import (called the
-                // `ListStem`).
-
-                let span = prefix.span.to(path.span);
-                let prefix = Path { segments, span };
-
-                // Add all the nested `PathListItem`s to the HIR.
-                for use_tree in trees {
+                let res = self.expect_full_res(id);
+                let res = self.lower_res(res);
+                // Put the result in the appropriate namespace.
+                let res = res.in_namespace();
+                let prefix = self.lower_use_path(res, &path, ParamMode::Explicit);
+                let items = self.arena.alloc_from_iter(trees.iter().map(|use_tree| {
                     let id = use_tree.id;
-                    let owner_id = self.owner_id(id);
+                    let hir_id = self.lower_node_id(id);
+                    let def_id = self.curr_owner.owner.node_id_to_def_id[&id];
+                    if !attrs.is_empty() {
+                        self.curr_owner.attrs.insert(hir_id.local_id, attrs);
+                    }
+                    (self.lower_use_tree(&use_tree.inner, id, vis_span, attrs), hir_id, def_id)
+                }));
 
-                    // Each `use` import is an item and thus are owners of the
-                    // names in the path. Up to this point the nested import is
-                    // the current owner, since we want each desugared import to
-                    // own its own names, we have to adjust the owner before
-                    // lowering the rest of the import.
-                    self.with_hir_id_owner(id, |this| {
-                        // `prefix` is lowered multiple times, but in different HIR owners.
-                        // So each segment gets renewed `HirId` with the same
-                        // `ItemLocalId` and the new owner. (See `lower_node_id`)
-                        let kind =
-                            this.lower_use_tree(&use_tree.inner, &prefix, id, vis_span, attrs);
-                        if !attrs.is_empty() {
-                            this.curr_owner.attrs.insert(hir::ItemLocalId::ZERO, attrs);
-                        }
-
-                        let item = hir::Item {
-                            owner_id,
-                            kind,
-                            vis_span,
-                            span: this.lower_span(use_tree.inner.span()),
-                            eii: find_attr!(attrs, EiiImpl(..) | EiiDeclaration(..)),
-                        };
-                        hir::OwnerNode::Item(this.arena.alloc(item))
-                    });
-                }
-
-                // Condition should match `build_reduced_graph_for_use_tree`.
-                let path = if trees.is_empty()
-                    && !(prefix.segments.is_empty()
-                        || prefix.segments.len() == 1
-                            && prefix.segments[0].ident.name == kw::PathRoot)
-                {
-                    // For empty lists we need to lower the prefix so it is checked for things
-                    // like stability later.
-                    let res = self.lower_import_res(id, span);
-                    self.lower_use_path(res, &prefix, ParamMode::Explicit)
-                } else {
-                    // For non-empty lists we can just drop all the data, the prefix is already
-                    // present in HIR as a part of nested imports.
-                    let span = self.lower_span(span);
-                    self.arena.alloc(hir::UsePath { res: PerNS::default(), segments: &[], span })
-                };
-                hir::ItemKind::Use(path, hir::UseKind::ListStem)
+                hir::UseTree { prefix, kind: hir::UseKind::Nested { items } }
             }
         }
     }
@@ -1351,7 +1275,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         decl: &FnDecl,
         coroutine_marker: Option<CoroutineMarker>,
         body: Option<&Block>,
-        attrs: &'hir [hir::Attribute],
+        attrs: &'hir [rustc_attr_ir::Attribute],
         contract: Option<&FnContract>,
     ) -> hir::BodyId {
         let Some(body) = body else {
@@ -1612,7 +1536,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         kind: FnDeclKind,
         coroutine_marker: Option<CoroutineMarker>,
-        attrs: &[hir::Attribute],
+        attrs: &[rustc_attr_ir::Attribute],
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header, hir::Safety::Safe, attrs);
         let itctx = ImplTraitContext::Universal;
@@ -1626,7 +1550,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         h: FnHeader,
         default_safety: hir::Safety,
-        attrs: &[hir::Attribute],
+        attrs: &[rustc_attr_ir::Attribute],
     ) -> hir::FnHeader {
         let asyncness = if let Some(coroutine_marker) = h.coroutine_marker
             && let CoroutineKind::Async = coroutine_marker.kind
@@ -1713,7 +1637,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// Lowers constness or comptime attribute.
     /// Whether `const` is allowed here is checked by ast validation.
     /// Whether `comptime` is allowed here is checked by the `comptime` attribute parser.
-    pub(super) fn lower_constness(&mut self, attrs: &[hir::Attribute], c: Const) -> hir::Constness {
+    pub(super) fn lower_constness(
+        &mut self,
+        attrs: &[rustc_attr_ir::Attribute],
+        c: Const,
+    ) -> hir::Constness {
         let mut constness = match c {
             Const::Yes(_) => hir::Constness::Const { always: false },
             Const::No => hir::Constness::NotConst,

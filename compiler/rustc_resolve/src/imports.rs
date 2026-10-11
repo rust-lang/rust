@@ -20,7 +20,7 @@ use rustc_middle::ty::Visibility;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
-use rustc_span::{Ident, Span, Symbol, kw, span_bug, sym};
+use rustc_span::{Ident, OrdSpan, Span, Symbol, kw, span_bug, sym};
 use tracing::debug;
 
 use crate::Namespace::{self, *};
@@ -1645,7 +1645,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // purposes it's good enough to just favor one over the other.
         self.per_ns_mut(|this, ns| {
             if let Some(binding) = bindings[ns].get().decl().map(|b| b.import_source()) {
-                this.owners.get_mut(&import_id).unwrap().import_res[ns] = Some(binding.res());
+                this.owners
+                    .get_mut(&import.root_id)
+                    .unwrap()
+                    .import_res
+                    .entry(import_id)
+                    .or_default()[ns] = Some(binding.res());
             }
         });
 
@@ -1668,8 +1673,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if let Some(extern_crate_id) = pub_use_of_private_extern_crate_hack(import.summary(), decl)
         {
             let ImportKind::Single { id, .. } = import.kind else { unreachable!() };
-            let sugg = self.tcx.source_span(extern_crate_id).shrink_to_lo();
-            let diagnostic = crate::diagnostics::PrivateExternCrateReexport { ident, sugg };
+            let sugg = self.tcx.source_span(extern_crate_id);
+            let diagnostic = crate::diagnostics::PrivateExternCrateReexport {
+                ident,
+                sugg: sugg.can_be_used_for_suggestions().then(|| sugg.shrink_to_lo()),
+            };
             return Some(BufferedEarlyLint {
                 lint_id: LintId::of(PUB_USE_OF_PRIVATE_EXTERN_CRATE),
                 node_id: id,
@@ -1757,7 +1765,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             && !other_binding.is_ambiguity_recursive();
                         if is_redundant {
                             redundant_span[ns] =
-                                Some((other_binding.span, other_binding.is_import()));
+                                Some((OrdSpan(other_binding.span), other_binding.is_import()));
                         }
                     }
                     Err(_) => is_redundant = false,
@@ -1777,7 +1785,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     let ident = source;
                     let subs = redundant_spans
                         .into_iter()
-                        .map(|(span, is_imported)| match (span.is_dummy(), is_imported) {
+                        .map(|(OrdSpan(span), is_imported)| match (span.is_dummy(), is_imported) {
                             (false, true) => {
                                 diagnostics::RedundantImportSub::ImportedHere { span, ident }
                             }

@@ -101,6 +101,9 @@ pub enum TokenKind {
     /// A raw identifier, e.g. "r#ident".
     RawIdent,
 
+    /// A forced keyword like `k#fn`.
+    ForcedKeywordIdent,
+
     /// An unknown literal prefix, like `foo#`, `foo'`, `foo"`. Excludes
     /// literal prefixes that contain emoji, which are considered "invalid".
     ///
@@ -574,7 +577,11 @@ impl<'a> Cursor<'a> {
 
             // Raw identifier, raw string literal or identifier.
             'r' => match (self.first(), self.second()) {
-                ('#', c1) if is_id_start(c1) => self.raw_ident(),
+                ('#', c1) if is_id_start(c1) => {
+                    self.bump(); // `#`
+                    self.eat_identifier();
+                    RawIdent
+                }
                 ('#', _) | ('"', _) => {
                     let res = self.raw_double_quoted_string(1);
                     let suffix_start = self.pos_within_token();
@@ -583,6 +590,16 @@ impl<'a> Cursor<'a> {
                     }
                     let kind = RawStr { n_hashes: res.ok() };
                     Literal { kind, suffix_start }
+                }
+                _ => self.ident_or_unknown_prefix(),
+            },
+
+            // Forced keyword identifier or identifier.
+            'k' => match (self.first(), self.second()) {
+                ('#', c1) if is_id_start(c1) => {
+                    self.bump(); // `#`
+                    self.eat_identifier();
+                    ForcedKeywordIdent
                 }
                 _ => self.ident_or_unknown_prefix(),
             },
@@ -821,15 +838,6 @@ impl<'a> Cursor<'a> {
         debug_assert!(is_whitespace(self.prev()));
         self.eat_while(is_whitespace);
         Whitespace
-    }
-
-    fn raw_ident(&mut self) -> TokenKind {
-        debug_assert!(self.prev() == 'r' && self.first() == '#' && is_id_start(self.second()));
-        // Eat "#" symbol.
-        self.bump();
-        // Eat the identifier part of RawIdent.
-        self.eat_identifier();
-        RawIdent
     }
 
     fn ident_or_unknown_prefix(&mut self) -> TokenKind {

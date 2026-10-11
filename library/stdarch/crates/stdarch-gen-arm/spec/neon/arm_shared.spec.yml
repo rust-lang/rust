@@ -2868,7 +2868,7 @@ intrinsics:
       - ["*const f16", float16x8_t, 'q_lane', '3']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
-      - FnCall: [simd_insert!, [src, "LANE as u32", "*ptr"]]
+      - FnCall: [simd_insert!, [src, "LANE as u32", {FnCall: ["crate::ptr::read_unaligned", [ptr]]}]]
 
   - name: "vld1{type[2]}_{neon_type[1]}"
     doc: "Load one single-element structure and replicate to all lanes of one register"
@@ -4683,10 +4683,7 @@ intrinsics:
       - ['*mut u64', uint64x1_t]
     compose:
       - FnCall: [static_assert!, ['LANE == 0']]
-      - Assign:
-          - "*a"
-          - FnCall: [simd_extract!, [b, 'LANE as u32']]
-      - Identifier: [';', Symbol]
+      - FnCall: ['crate::ptr::write_unaligned', [a, {FnCall: [simd_extract!, [b, 'LANE as u32']]}]]
 
   - name: "vst1{neon_type[1].lane_nox}"
     doc: "Store multiple single-element structures from one, two, three, or four registers"
@@ -4708,10 +4705,7 @@ intrinsics:
       - ['*mut p64', poly64x1_t]
     compose:
       - FnCall: [static_assert!, ['LANE == 0']]
-      - Assign:
-          - "*a"
-          - FnCall: [simd_extract!, [b, 'LANE as u32']]
-      - Identifier: [';', Symbol]
+      - FnCall: ['crate::ptr::write_unaligned', [a, {FnCall: [simd_extract!, [b, 'LANE as u32']]}]]
 
   - name: "vst1{neon_type[1].lane_nox}"
     doc: "Store multiple single-element structures from one, two, three, or four registers"
@@ -4733,10 +4727,7 @@ intrinsics:
       - ['*mut p64', poly64x2_t]
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '1']]
-      - Assign:
-          - "*a"
-          - FnCall: [simd_extract!, [b, 'LANE as u32']]
-      - Identifier: [';', Symbol]
+      - FnCall: ['crate::ptr::write_unaligned', [a, {FnCall: [simd_extract!, [b, 'LANE as u32']]}]]
 
   - name: "vst1{neon_type[1].lane_nox}"
     doc: "Store multiple single-element structures from one, two, three, or four registers"
@@ -4774,10 +4765,7 @@ intrinsics:
       - ['*mut f32', float32x4_t, '2']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, "{type[2]}"]]
-      - Assign:
-          - "*a"
-          - FnCall: [simd_extract!, [b, 'LANE as u32']]
-      - Identifier: [';', Symbol]
+      - FnCall: ['crate::ptr::write_unaligned', [a, {FnCall: [simd_extract!, [b, 'LANE as u32']]}]]
 
 
   - name: "vst1{neon_type[1].lane_nox}"
@@ -4799,10 +4787,7 @@ intrinsics:
       - ['*mut f16', float16x8_t, '3']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, "{type[2]}"]]
-      - Assign:
-          - "*a"
-          - FnCall: [simd_extract!, [b, 'LANE as u32']]
-      - Identifier: [';', Symbol]
+      - FnCall: ['crate::ptr::write_unaligned', [a, {FnCall: [simd_extract!, [b, 'LANE as u32']]}]]
 
 
   - name: 'vst1{neon_type[1].no}'
@@ -14310,17 +14295,17 @@ intrinsics:
       - ['vld1q_lane_p16', '*const p16', 'poly16x8_t', '"vld1.16"', '7', 'ld1', 'static_assert_uimm_bits!', 'LANE, 3']
       - ['vld1_lane_s32', '*const i32', 'int32x2_t', '"vld1.32"', '1', 'ld1', 'static_assert_uimm_bits!', 'LANE, 1']
       - ['vld1_lane_u32', '*const u32', 'uint32x2_t', '"vld1.32"', '1', 'ld1', 'static_assert_uimm_bits!', 'LANE, 1']
-      - ['vld1_lane_f32', '*const f32', 'float32x2_t', '"vld1.32"', '1', 'ld1', 'static_assert_uimm_bits!', 'LANE, 1']
+      - ['vld1_lane_f32', '*const f32', 'float32x2_t', 'ldr', '1', 'ld1', 'static_assert_uimm_bits!', 'LANE, 1']
       - ['vld1q_lane_s32', '*const i32', 'int32x4_t', '"vld1.32"', '3', 'ld1', 'static_assert_uimm_bits!', 'LANE, 2']
       - ['vld1q_lane_u32', '*const u32', 'uint32x4_t', '"vld1.32"', '3', 'ld1', 'static_assert_uimm_bits!', 'LANE, 2']
-      - ['vld1q_lane_f32', '*const f32', 'float32x4_t', '"vld1.32"', '3', 'ld1', 'static_assert_uimm_bits!', 'LANE, 2']
-      - ['vld1_lane_s64', '*const i64', 'int64x1_t', 'vldr', '0', 'ldr', 'static_assert!', 'LANE == 0']
-      - ['vld1_lane_u64', '*const u64', 'uint64x1_t', 'vldr', '0', 'ldr', 'static_assert!', 'LANE == 0']
-      - ['vld1q_lane_s64', '*const i64', 'int64x2_t', 'vldr', '1', 'ld1', 'static_assert_uimm_bits!', 'LANE, 1']
-      - ['vld1q_lane_u64', '*const u64', 'uint64x2_t', 'vldr', '1', 'ld1', 'static_assert_uimm_bits!', 'LANE, 1']
+      - ['vld1q_lane_f32', '*const f32', 'float32x4_t', 'ldr', '3', 'ld1', 'static_assert_uimm_bits!', 'LANE, 2']
+      - ['vld1_lane_s64', '*const i64', 'int64x1_t', '"vld1.8"', '0', 'ldr', 'static_assert!', 'LANE == 0']
+      - ['vld1_lane_u64', '*const u64', 'uint64x1_t', '"vld1.8"', '0', 'ldr', 'static_assert!', 'LANE == 0']
+      - ['vld1q_lane_s64', '*const i64', 'int64x2_t', '"vld1.8"', '1', 'ld1', 'static_assert_uimm_bits!', 'LANE, 1']
+      - ['vld1q_lane_u64', '*const u64', 'uint64x2_t', '"vld1.8"', '1', 'ld1', 'static_assert_uimm_bits!', 'LANE, 1']
     compose:
       - FnCall: ["{type[6]}", ["{type[7]}"]]
-      - FnCall: [simd_insert!, [src, 'LANE as u32', '*ptr']]
+      - FnCall: [simd_insert!, [src, 'LANE as u32', {FnCall: ['crate::ptr::read_unaligned', [ptr]]}]]
 
   - name: "{type[0]}"
     doc: "Load one single-element structure to one lane of one register."
@@ -14338,11 +14323,11 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - ['vld1_lane_p64', '*const p64', 'poly64x1_t', 'vldr', '0', 'ldr', 'static_assert!', 'LANE == 0']
-      - ['vld1q_lane_p64', '*const p64', 'poly64x2_t', 'vldr', '1', 'ld1', 'static_assert_uimm_bits!', 'LANE, 1']
+      - ['vld1_lane_p64', '*const p64', 'poly64x1_t', '"vld1.8"', '0', 'ldr', 'static_assert!', 'LANE == 0']
+      - ['vld1q_lane_p64', '*const p64', 'poly64x2_t', '"vld1.8"', '1', 'ld1', 'static_assert_uimm_bits!', 'LANE, 1']
     compose:
       - FnCall: ["{type[6]}", ["{type[7]}"]]
-      - FnCall: [simd_insert!, [src, 'LANE as u32', '*ptr']]
+      - FnCall: [simd_insert!, [src, 'LANE as u32', {FnCall: ['crate::ptr::read_unaligned', [ptr]]}]]
 
   - name: "{type[0]}"
     doc: "Load one single-element structure and Replicate to all lanes (of one register)."
@@ -14396,7 +14381,7 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - ['vld1q_dup_p64', '*const p64', 'poly64x2_t', 'vldr', 'ld1r', 'vld1q_lane_p64::<0>', 'u64x2::splat(0)', '[0, 0]']
+      - ['vld1q_dup_p64', '*const p64', 'poly64x2_t', '"vld1.8"', 'ld1r', 'vld1q_lane_p64::<0>', 'u64x2::splat(0)', '[0, 0]']
     compose:
       - Let:
         - x
@@ -14437,18 +14422,18 @@ intrinsics:
 
       - ['vld1_dup_s32', '*const i32', 'int32x2_t', 'vld1.32', 'ld1r', 'i32x2::splat']
       - ['vld1_dup_u32', '*const u32', 'uint32x2_t', 'vld1.32', 'ld1r', 'u32x2::splat']
-      - ['vld1_dup_f32', '*const f32', 'float32x2_t', 'vld1.32', 'ld1r', 'f32x2::splat']
+      - ['vld1_dup_f32', '*const f32', 'float32x2_t', 'ldr', 'ld1r', 'f32x2::splat']
 
       - ['vld1q_dup_s32', '*const i32', 'int32x4_t', 'vld1.32', 'ld1r', 'i32x4::splat']
       - ['vld1q_dup_u32', '*const u32', 'uint32x4_t', 'vld1.32', 'ld1r', 'u32x4::splat']
-      - ['vld1q_dup_f32', '*const f32', 'float32x4_t', 'vld1.32', 'ld1r', 'f32x4::splat']
+      - ['vld1q_dup_f32', '*const f32', 'float32x4_t', 'ldr', 'ld1r', 'f32x4::splat']
 
-      - ['vld1q_dup_s64', '*const i64', 'int64x2_t', 'vldr', 'ld1r', 'i64x2::splat']
-      - ['vld1q_dup_u64', '*const u64', 'uint64x2_t', 'vldr', 'ld1r', 'u64x2::splat']
+      - ['vld1q_dup_s64', '*const i64', 'int64x2_t', 'vld1.8', 'ld1r', 'i64x2::splat']
+      - ['vld1q_dup_u64', '*const u64', 'uint64x2_t', 'vld1.8', 'ld1r', 'u64x2::splat']
     compose:
       - FnCall:
           - transmute
-          - - FnCall: ['{type[5]}', ["*ptr"]]
+          - - FnCall: ['{type[5]}', [{FnCall: ['crate::ptr::read_unaligned', [ptr]]}]]
 
   - name: "{type[0]}"
     doc: "Absolute difference and accumulate (64-bit)"

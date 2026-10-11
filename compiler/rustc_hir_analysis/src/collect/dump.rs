@@ -1,7 +1,8 @@
+use rustc_attr_ir::find_attr;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{find_attr, intravisit};
+use rustc_hir::intravisit;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, Unnormalized};

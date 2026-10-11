@@ -1,6 +1,6 @@
 //@ edition: 2021
 
-#![feature(must_not_suspend, allocator_api)]
+#![feature(must_not_suspend, allocator_ext)]
 #![deny(must_not_suspend)]
 
 use std::alloc::*;

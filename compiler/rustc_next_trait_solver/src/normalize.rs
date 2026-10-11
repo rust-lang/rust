@@ -2,8 +2,8 @@ use std::fmt::Debug;
 
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::{
-    self as ty, AliasTerm, Binder, FallibleTypeFolder, InferCtxtLike, Interner, PredicateProxy,
-    TypeFoldable, TypeSuperFoldable, TypeVisitableExt, UniverseIndex,
+    self as ty, AliasTerm, Binder, Const, FallibleTypeFolder, InferCtxtLike, Interner,
+    PredicateProxy, TypeFoldable, TypeSuperFoldable, TypeVisitableExt, UniverseIndex,
 };
 use tracing::instrument;
 
@@ -147,7 +147,7 @@ where
     }
 
     #[instrument(level = "trace", skip(self), ret)]
-    fn try_fold_const(&mut self, ct: I::Const) -> Result<I::Const, Self::Error> {
+    fn try_fold_const(&mut self, ct: Const<I>) -> Result<Const<I>, Self::Error> {
         let infcx = self.infcx;
         let original = ct;
 

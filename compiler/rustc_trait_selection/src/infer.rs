@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 pub use rustc_infer::infer::*;
 use rustc_infer::traits::TraitErrors;

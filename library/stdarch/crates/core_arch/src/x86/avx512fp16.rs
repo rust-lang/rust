@@ -16837,6 +16837,7 @@ unsafe extern "llvm-intrinsic" {
 }
 
 #[cfg(test)]
+#[cfg(target_has_reliable_f16)]
 mod tests {
     use crate::core_arch::assert_eq_const as assert_eq;
     use crate::core_arch::x86::*;

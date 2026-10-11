@@ -450,6 +450,9 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 config.using_internal_features,
             );
 
+            // STACK_SIZE is setup in run_in_thread_pool_with_globals, before arriving here.
+            sess.opts.recommended_stack_size = *util::STACK_SIZE.get().unwrap();
+
             let target_config = codegen_backend.target_config(&sess);
 
             // Store all of the target features in the session.

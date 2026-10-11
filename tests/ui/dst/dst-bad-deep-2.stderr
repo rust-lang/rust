@@ -6,10 +6,10 @@ LL |     let h: &Fat<Fat<[isize]>> = &Fat(*g);
    |
    = help: within `Fat<[isize]>`, the trait `Sized` is not implemented for `[isize]`
 note: required because it appears within the type `Fat<[isize]>`
-  --> $DIR/dst-bad-deep-2.rs:6:8
+  --> $DIR/dst-bad-deep-2.rs:6:23
    |
 LL | struct Fat<T: ?Sized>(T);
-   |        ^^^            - required by this field
+   |                       ^ required by this field
    = note: all function arguments must have a statically known size
    = help: unsized fn params are gated as an unstable feature
 

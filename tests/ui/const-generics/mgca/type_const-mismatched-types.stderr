@@ -1,25 +1,25 @@
 error: the constant `5` is not of type `u32`
-  --> $DIR/type_const-mismatched-types.rs:4:1
+  --> $DIR/type_const-mismatched-types.rs:6:1
    |
-LL | const FREE: u32 = core::direct_const_arg!(5_usize);
+LL | const FREE: u32 = gca!(5_usize);
    | ^^^^^^^^^^^^^^^ expected `u32`, found `usize`
 
 error: the constant `5` is not of type `u32`
-  --> $DIR/type_const-mismatched-types.rs:7:1
+  --> $DIR/type_const-mismatched-types.rs:9:1
    |
-LL | const FREE2: isize = core::direct_const_arg!(FREE);
+LL | const FREE2: isize = gca!(FREE);
    | ^^^^^^^^^^^^^^^^^^ expected `u32`, found `usize`
 
 error: the constant `5` is not of type `isize`
-  --> $DIR/type_const-mismatched-types.rs:7:1
+  --> $DIR/type_const-mismatched-types.rs:9:1
    |
-LL | const FREE2: isize = core::direct_const_arg!(FREE);
+LL | const FREE2: isize = gca!(FREE);
    | ^^^^^^^^^^^^^^^^^^ expected `isize`, found `usize`
 
 error: the constant `false` is not of type `usize`
-  --> $DIR/type_const-mismatched-types.rs:17:5
+  --> $DIR/type_const-mismatched-types.rs:19:5
    |
-LL |     const N: usize = core::direct_const_arg!(false);
+LL |     const N: usize = gca!(false);
    |     ^^^^^^^^^^^^^^ expected `usize`, found `bool`
 
 error: aborting due to 4 previous errors

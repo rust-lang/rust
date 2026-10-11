@@ -585,20 +585,58 @@ impl<T> OnceLock<T> {
         res
     }
 
+    /// Returns a reference to the value in the `OnceLock` without checking
+    /// whether it has been initialized.
+    ///
     /// # Safety
     ///
-    /// The cell must be initialized
+    /// The `OnceLock` must be initialized before calling this function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_lazy_lock_get_unchecked)]
+    ///
+    /// use std::sync::OnceLock;
+    ///
+    /// let cell = OnceLock::new();
+    /// cell.set(42).unwrap();
+    ///
+    /// let value = unsafe { cell.get_unchecked() };
+    /// assert_eq!(*value, 42);
+    /// ```
     #[inline]
-    unsafe fn get_unchecked(&self) -> &T {
+    #[unstable(feature = "once_lazy_lock_get_unchecked", issue = "162716")]
+    pub unsafe fn get_unchecked(&self) -> &T {
         debug_assert!(self.initialized());
         unsafe { (&*self.value.get()).assume_init_ref() }
     }
 
+    /// Returns a mutable reference to the value in the `OnceLock` without
+    /// checking whether it has been initialized.
+    ///
     /// # Safety
     ///
-    /// The cell must be initialized
+    /// The `OnceLock` must be initialized before calling this function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_lazy_lock_get_unchecked)]
+    ///
+    /// use std::sync::OnceLock;
+    ///
+    /// let mut cell = OnceLock::new();
+    /// cell.set(42).unwrap();
+    ///
+    /// let value = unsafe { cell.get_unchecked_mut() };
+    /// *value = 100;
+    ///
+    /// assert_eq!(*cell.get().unwrap(), 100);
+    /// ```
     #[inline]
-    unsafe fn get_unchecked_mut(&mut self) -> &mut T {
+    #[unstable(feature = "once_lazy_lock_get_unchecked", issue = "162716")]
+    pub unsafe fn get_unchecked_mut(&mut self) -> &mut T {
         debug_assert!(self.initialized_mut());
         unsafe { self.value.get_mut().assume_init_mut() }
     }

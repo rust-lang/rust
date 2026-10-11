@@ -14,10 +14,10 @@ LL | #![warn(unreachable_pub)]
    |         ^^^^^^^^^^^^^^^
 
 warning: unreachable `pub` item
-  --> $DIR/unreachable_pub.rs:11:24
+  --> $DIR/unreachable_pub.rs:11:13
    |
 LL |     pub use std::env::{Args}; // braced-use has different item spans than unbraced
-   |     ---                ^^^^
+   |     ---     ^^^^^^^^
    |     |
    |     help: consider restricting its visibility: `pub(crate)`
    |

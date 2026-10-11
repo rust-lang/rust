@@ -859,7 +859,7 @@ impl<'a> Parser<'a> {
                 true
             }
             ast::ExprKind::ConstBlock(_) => {
-                self.psess.gated_spans.gate(sym::min_generic_const_args, expr.span);
+                self.psess.gated_spans.gate(sym::gca_min_const_items, expr.span);
                 true
             }
             _ => false,

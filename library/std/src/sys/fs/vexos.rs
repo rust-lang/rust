@@ -16,6 +16,8 @@ pub use unsupported_fs::{
     symlink, unlink,
 };
 
+pub use crate::sys::fs::common::{ExtraHomeDirs, ExtraMediaDirs};
+
 /// VEXos file descriptor.
 ///
 /// This stores an opaque pointer to a [FatFs file object structure] managed by VEXos

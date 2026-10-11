@@ -173,6 +173,9 @@ fn verify_message_formatting(attr_span: Span, msg_span: Span, message: &str) {
         if line.is_empty() {
             continue;
         }
+        if line.trim().starts_with("{") && line.contains(&"found ") {
+            continue;
+        }
         let indent = line.chars().take_while(|c| *c == ' ').count();
         if indent < start {
             span_err(

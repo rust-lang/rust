@@ -1,5 +1,5 @@
 //@ build-pass
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 #![allow(unused_must_use)]
 
 use std::alloc::Allocator;

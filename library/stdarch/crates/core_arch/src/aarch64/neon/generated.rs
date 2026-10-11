@@ -25081,7 +25081,7 @@ pub unsafe fn vst1q_f64_x4(a: *mut f64, b: float64x2x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst1_lane_f64<const LANE: i32>(a: *mut f64, b: float64x1_t) {
     static_assert!(LANE == 0);
-    *a = simd_extract!(b, LANE as u32);
+    core::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_f64)"]
@@ -25094,7 +25094,7 @@ pub unsafe fn vst1_lane_f64<const LANE: i32>(a: *mut f64, b: float64x1_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst1q_lane_f64<const LANE: i32>(a: *mut f64, b: float64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    *a = simd_extract!(b, LANE as u32);
+    core::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_f64)"]

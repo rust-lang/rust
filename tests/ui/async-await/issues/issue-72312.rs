@@ -1,5 +1,7 @@
 //@ edition:2018
 fn require_static<T: 'static>(val: T) -> T {
+    //~^ NOTE: `'static` lifetime requirement from `require_static` introduced here
+    //~| NOTE: lifetime requirement introduced here
     val
 }
 

@@ -30,12 +30,11 @@ LL | static FOO: &Lint = &Lint { desc: "desc" };
    = help: within `&'static Lint`, the trait `Sync` is not implemented for `(dyn Qux + 'static)`
    = note: required because it appears within the type `&'static (dyn Qux + 'static)`
 note: required because it appears within the type `Lint`
-  --> $DIR/unsizing-wfcheck-issue-127299.rs:7:12
+  --> $DIR/unsizing-wfcheck-issue-127299.rs:8:5
    |
 LL | pub struct Lint {
-   |            ^^^^
 LL |     pub desc: &'static dyn Qux,
-   |     -------------------------- required by this field
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this field
    = note: required because it appears within the type `&'static Lint`
    = note: shared static variables must have a type that implements `Sync`
 

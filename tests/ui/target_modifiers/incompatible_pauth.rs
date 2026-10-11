@@ -9,12 +9,12 @@
 //@ [ok_reverse_order] check-pass
 //@ [error_generated] compile-flags: -Zpointer-authentication=+calls,-init-fini
 //@ needs-llvm-components: aarch64
-//@ only-pauthtest
+//@ ignore-backends: gcc
 
 #![feature(no_core)]
-//[error_generated]~^ ERROR mixing `-Zpointer-authentication` will cause an ABI mismatch in crate
-//`incompatible_pauth`
 #![crate_type = "rlib"]
 #![no_core]
 
 extern crate pauth;
+
+//[error_generated]~? ERROR mixing `-Zpointer-authentication` will cause an ABI mismatch in crate `incompatible_pauth`

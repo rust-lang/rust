@@ -2,8 +2,9 @@ use std::{assert_matches, iter};
 
 use rustc_abi::Primitive::Pointer;
 use rustc_abi::{Align, BackendRepr, ExternAbi, PointerKind, Scalar, Size};
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::{self as hir, find_attr};
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_hir as hir;
 use rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
@@ -12,7 +13,9 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{self, InstanceKind, ShimKind, Ty, TyCtxt, Unnormalized};
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, bug};
-use rustc_target::callconv::{AbiMap, ArgAbi, ArgAttribute, ArgAttributes, FnAbi, PassMode};
+use rustc_target::callconv::{
+    AbiMap, ArgAbi, ArgAttribute, ArgAttributes, FnAbi, IndirectMode, PassMode,
+};
 use tracing::debug;
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -444,15 +447,15 @@ fn fn_abi_sanity_check<'tcx>(
                 // omitted entirely in the calling convention.
                 assert!(arg.is_ignore());
             }
-            if let PassMode::Indirect { on_stack, .. } = arg.mode
+            if let PassMode::Indirect { mode, .. } = arg.mode
                 && spec_abi != ExternAbi::RustTail
             {
-                assert!(!on_stack, "rustic abi {spec_abi:?} shouldn't use on_stack");
+                assert!(mode == IndirectMode::Pointer, "rust abi must use plain pointer mode");
             }
         } else if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
             assert_matches!(
                 arg.mode,
-                PassMode::Indirect { on_stack: false, .. },
+                PassMode::Indirect { mode: IndirectMode::Pointer, .. },
                 "the {spec_abi} ABI does not implement `#[rustc_pass_indirectly_in_non_rustic_abis]`"
             );
         }
@@ -506,9 +509,9 @@ fn fn_abi_sanity_check<'tcx>(
                 // Indirect returns are arguments from an ABI perspective.
                 fn_arg_attrs_sanity_check(attrs, false);
             }
-            PassMode::Indirect { meta_attrs: Some(meta_attrs), attrs, on_stack } => {
+            PassMode::Indirect { meta_attrs: Some(meta_attrs), attrs, address_space: _, mode } => {
                 // With metadata. Must be unsized and not on the stack.
-                assert!(arg.layout.is_unsized() && !on_stack);
+                assert!(arg.layout.is_unsized() && *mode == IndirectMode::Pointer);
                 // Also, must not be `extern` type.
                 let tail = tcx.struct_tail_for_codegen(arg.layout.ty, cx.typing_env);
                 if matches!(tail.kind(), ty::Foreign(..)) {

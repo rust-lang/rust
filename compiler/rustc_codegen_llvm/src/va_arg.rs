@@ -1061,15 +1061,28 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
     let stability = target.supports_c_variadic_definitions();
 
     match target.arch {
-        Arch::X86 => emit_ptr_va_arg(
-            bx,
-            addr,
-            layout,
-            PassMode::Direct,
-            SlotSize::Bytes4,
-            if target.is_like_windows { AllowHigherAlign::No } else { AllowHigherAlign::Yes },
-            ForceRightAdjust::No,
-        ),
+        Arch::X86 => {
+            // A small deviation from clang to get the right behavior for f128.
+            //
+            // Note that i64 and f64 have an alignment of only 4 on this architecture.
+            // We need to be careful when adding future types with an alignment bigger
+            // than 4 (e.g. i128), clang has a bunch of custom logic for them.
+            let allow_higher_align = if layout.ty == bx.tcx().types.f128 {
+                AllowHigherAlign::Yes
+            } else {
+                AllowHigherAlign::No
+            };
+
+            emit_ptr_va_arg(
+                bx,
+                addr,
+                layout,
+                PassMode::Direct,
+                SlotSize::Bytes4,
+                allow_higher_align,
+                ForceRightAdjust::No,
+            )
+        }
         Arch::Arm64EC => emit_ptr_va_arg(
             bx,
             addr,

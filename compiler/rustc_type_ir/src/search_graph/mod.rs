@@ -628,8 +628,8 @@ pub struct SearchGraph<D: Delegate<Cx = X>, X: Cx = <D as Delegate>::Cx> {
 /// don't need to track the nested goals used while computing a provisional
 /// cache entry.
 enum UpdateParentGoalCtxt<'a, X: Cx> {
-    Ordinary { nested_goals: &'a NestedGoals<X>, min_reachable_available_depth: AvailableDepth },
-    CycleOnStack(X::Input),
+    Ordinary { nested_goals: &'a NestedGoals<X> },
+    CycleOnStack { head: X::Input },
     ProvisionalCacheHit,
 }
 
@@ -653,9 +653,12 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         heads: impl Iterator<Item = (StackDepth, CycleHead)>,
         encountered_overflow: bool,
         context: UpdateParentGoalCtxt<'_, X>,
+        min_reachable_available_depth: AvailableDepth,
     ) {
         if let Some((parent_index, parent)) = stack.last_mut_with_index() {
             parent.encountered_overflow |= encountered_overflow;
+            parent.min_reached_available_depth =
+                parent.min_reached_available_depth.min(min_reachable_available_depth);
 
             for (head_index, head) in heads {
                 if let Some(candidate_usages) = &mut parent.candidate_usages {
@@ -679,13 +682,11 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 }
             }
             let parent_depends_on_cycle = match context {
-                UpdateParentGoalCtxt::Ordinary { nested_goals, min_reachable_available_depth } => {
-                    parent.min_reached_available_depth =
-                        parent.min_reached_available_depth.min(min_reachable_available_depth);
+                UpdateParentGoalCtxt::Ordinary { nested_goals } => {
                     parent.nested_goals.extend_from_child(step_kind_from_parent, nested_goals);
                     !nested_goals.is_empty()
                 }
-                UpdateParentGoalCtxt::CycleOnStack(head) => {
+                UpdateParentGoalCtxt::CycleOnStack { head } => {
                     // We lookup provisional cache entries before detecting cycles.
                     // We therefore can't use a global cache entry if it contains a cycle
                     // whose head is in the provisional cache.
@@ -811,7 +812,9 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         // - A
         //     - BA cycle
         //     - CB :x:
-        if let Some(result) = self.lookup_provisional_cache(input, step_kind_from_parent) {
+        if let Some(result) =
+            self.lookup_provisional_cache(input, step_kind_from_parent, available_depth)
+        {
             return result;
         }
 
@@ -839,7 +842,9 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         // avoid iterating over the stack in case a goal has already been computed.
         // This may not have an actual performance impact and we could reorder them
         // as it may reduce the number of `nested_goals` we need to track.
-        if let Some(result) = self.check_cycle_on_stack(cx, input, step_kind_from_parent) {
+        if let Some(result) =
+            self.check_cycle_on_stack(cx, input, step_kind_from_parent, available_depth)
+        {
             debug_assert!(validate_cache.is_none(), "global cache and cycle on stack: {input:?}");
             return result;
         }
@@ -874,10 +879,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             step_kind_from_parent,
             evaluation_result.heads.iter(),
             evaluation_result.encountered_overflow,
-            UpdateParentGoalCtxt::Ordinary {
-                nested_goals: &evaluation_result.nested_goals,
-                min_reachable_available_depth: available_depth - evaluation_result.required_depth,
-            },
+            UpdateParentGoalCtxt::Ordinary { nested_goals: &evaluation_result.nested_goals },
+            available_depth - evaluation_result.required_depth,
         );
         let result = evaluation_result.result;
 
@@ -1119,6 +1122,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         &mut self,
         input: X::Input,
         step_kind_from_parent: PathKind,
+        available_depth: AvailableDepth,
     ) -> Option<X::Result> {
         if !D::ENABLE_PROVISIONAL_CACHE {
             return None;
@@ -1157,6 +1161,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                     heads.iter(),
                     encountered_overflow,
                     UpdateParentGoalCtxt::ProvisionalCacheHit,
+                    available_depth,
                 );
                 debug!(?head_index, ?path_from_head, "provisional cache hit");
                 return Some(result);
@@ -1278,10 +1283,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                 step_kind_from_parent,
                 heads,
                 encountered_overflow,
-                UpdateParentGoalCtxt::Ordinary {
-                    nested_goals,
-                    min_reachable_available_depth: available_depth - required_depth,
-                },
+                UpdateParentGoalCtxt::Ordinary { nested_goals },
+                available_depth - required_depth,
             );
 
             debug!(?required_depth, "global cache hit");
@@ -1294,6 +1297,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         cx: X,
         input: X::Input,
         step_kind_from_parent: PathKind,
+        available_depth: AvailableDepth,
     ) -> Option<X::Result> {
         let head_index = self.stack.find(input)?;
         // We have a nested goal which directly relies on a goal deeper in the stack.
@@ -1312,7 +1316,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
             step_kind_from_parent,
             iter::once((head_index, head)),
             false,
-            UpdateParentGoalCtxt::CycleOnStack(input),
+            UpdateParentGoalCtxt::CycleOnStack { head: input },
+            available_depth,
         );
 
         // Return the provisional result or, if we're in the first iteration,

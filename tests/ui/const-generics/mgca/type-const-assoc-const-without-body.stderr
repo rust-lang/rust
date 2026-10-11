@@ -1,19 +1,19 @@
 error: associated constant in `impl` without body
-  --> $DIR/type-const-assoc-const-without-body.rs:14:5
+  --> $DIR/type-const-assoc-const-without-body.rs:16:5
    |
 LL |     const SIZE: usize;
    |     ^^^^^^^^^^^^^^^^^-
    |                      |
    |                      help: provide a definition for the constant: `= <expr>;`
 
-error: implementation of a `#[rustc_always_gca]` must have a `direct_const_arg!` RHS
-  --> $DIR/type-const-assoc-const-without-body.rs:14:5
+error: implementation of a `#[rustc_always_gca]` must have a `gca!` RHS
+  --> $DIR/type-const-assoc-const-without-body.rs:16:5
    |
 LL |     const SIZE: usize;
    |     ^^^^^^^^^^^^^^^^^
    |
 note: trait declaration of const is marked as `#[rustc_always_gca]`
-  --> $DIR/type-const-assoc-const-without-body.rs:8:5
+  --> $DIR/type-const-assoc-const-without-body.rs:10:5
    |
 LL |     const SIZE: usize;
    |     ^^^^^^^^^^^^^^^^^

@@ -27,9 +27,9 @@ use std::ffi::VaList;
 pub extern "C" fn take_va_list(_: VaList<'_>) {}
 //~^ ERROR fn_abi_of(take_va_list) = FnAbi {
 //[x86_64]~^^ ERROR mode: Indirect {
-//[x86_64]~^^^ ERROR on_stack: false,
+//[x86_64]~^^^ ERROR mode: Pointer,
 //[aarch64]~^^^^ ERROR mode: Indirect {
-//[aarch64]~^^^^^ ERROR on_stack: false,
+//[aarch64]~^^^^^ ERROR mode: Pointer,
 //[win]~^^^^^^ ERROR mode: Direct(
 
 #[cfg(all(target_arch = "x86_64", not(windows)))]
@@ -37,11 +37,11 @@ pub extern "C" fn take_va_list(_: VaList<'_>) {}
 pub extern "sysv64" fn take_va_list_sysv64(_: VaList<'_>) {}
 //[x86_64]~^ ERROR fn_abi_of(take_va_list_sysv64) = FnAbi {
 //[x86_64]~^^ ERROR mode: Indirect {
-//[x86_64]~^^^ ERROR on_stack: false,
+//[x86_64]~^^^ ERROR mode: Pointer,
 
 #[cfg(all(target_arch = "x86_64", not(windows)))]
 #[rustc_abi(debug)]
 pub extern "win64" fn take_va_list_win64(_: VaList<'_>) {}
 //[x86_64]~^ ERROR: fn_abi_of(take_va_list_win64) = FnAbi {
 //[x86_64]~^^ ERROR mode: Indirect {
-//[x86_64]~^^^ ERROR on_stack: false,
+//[x86_64]~^^^ ERROR mode: Pointer,

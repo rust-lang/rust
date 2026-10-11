@@ -119,6 +119,13 @@ impl Features {
             false
         }
     }
+
+    /// The generic_const_args family of features has a set of common behavior that can be enabled
+    /// by either `gca_min_const_items` or `gca_adts`. There is no actual `gca` base feature, but
+    /// this method acts as one.
+    pub fn gca(&self) -> bool {
+        self.gca_min_const_items() || self.gca_adts()
+    }
 }
 
 macro_rules! declare_features {
@@ -542,14 +549,26 @@ declare_features! (
     (incomplete, fn_delegation, "1.76.0", Some(118212)),
     /// Traits for function pointers and items
     (unstable, fn_static, "CURRENT_RUSTC_VERSION", Some(148768)),
+    /// Allows using forced keywords `k#fn`.
+    (unstable, forced_keywords, "CURRENT_RUSTC_VERSION", Some(153839)),
     /// Allows impls for the Freeze trait.
     (internal, freeze_impls, "1.78.0", Some(121675)),
     /// Frontmatter `---` blocks for use by external tools.
     (unstable, frontmatter, "1.88.0", Some(136889)),
+    /// Allows using ADTs in directly represented generic const args.
+    (incomplete, gca_adts, "CURRENT_RUSTC_VERSION", Some(163420)),
+    /// Allows using generics in more complex const expressions, based on definitional equality.
+    (incomplete, gca_const_items, "1.95.0", Some(151972)),
+    /// Allows directly represented gca_const_items without the `gca!` macro.
+    (incomplete, gca_macroless_args, "1.99.0", Some(159006)),
+    /// Allows directly represented gca_const_items as the rhs of const items without the
+    /// `gca!` macro.
+    (incomplete, gca_macroless_items, "CURRENT_RUSTC_VERSION", Some(162540)),
+    /// Enables the generic const args MVP (paths to type const items and constructors
+    /// for ADTs and primitives).
+    (incomplete, gca_min_const_items, "1.84.0", Some(132980)),
     /// Allows defining gen blocks and `gen fn`.
     (unstable, gen_blocks, "1.75.0", Some(117078)),
-    /// Allows using generics in more complex const expressions, based on definitional equality.
-    (incomplete, generic_const_args, "1.95.0", Some(151972)),
     /// Allows non-trivial generic constants which have to be shown to successfully evaluate
     /// to a value by being part of an item signature.
     (incomplete, generic_const_exprs, "1.56.0", Some(76560)),
@@ -609,19 +628,11 @@ declare_features! (
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Provides a way to concatenate identifiers using metavariable expressions.
     (unstable, macro_metavar_expr_concat, "1.81.0", Some(124225)),
-    /// Allows directly represented generic_const_args as the rhs of const items without the
-    /// `direct_const_arg!` macro.
-    (incomplete, macroless_const_item_generic_const_args, "CURRENT_RUSTC_VERSION", Some(162540)),
-    /// Allows directly represented generic_const_args without the `direct_const_arg!` macro.
-    (incomplete, macroless_generic_const_args, "1.99.0", Some(159006)),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
     /// Allows additional const parameter types, such as [u8; 10] or user defined types.
     /// User defined types must not have fields more private than the type itself.
     (unstable, min_adt_const_params, "1.96.0", Some(154042)),
-    /// Enables the generic const args MVP (paths to type const items and constructors
-    /// for ADTs and primitives).
-    (incomplete, min_generic_const_args, "1.84.0", Some(132980)),
     /// A minimal, sound subset of specialization intended to be used by the
     /// standard library until the soundness issues with specialization
     /// are fixed.
@@ -857,10 +868,25 @@ pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[
     (sym::ref_pat_eat_one_layer_2024, sym::ref_pat_eat_one_layer_2024_structural),
 ];
 
+pub enum DependentFeature {
+    And(&'static [DependentFeature]),
+    Or(&'static [DependentFeature]),
+    Leaf(Symbol),
+}
+
 /// Some features require one or more other features to be enabled.
-pub const DEPENDENT_FEATURES: &[(Symbol, &[Symbol])] = &[
-    (sym::generic_const_args, &[sym::min_generic_const_args]),
-    (sym::macroless_generic_const_args, &[sym::min_generic_const_args]),
-    (sym::macroless_const_item_generic_const_args, &[sym::min_generic_const_args]),
-    (sym::unsized_const_params, &[sym::adt_const_params]),
+pub const DEPENDENT_FEATURES: &[(Symbol, DependentFeature)] = &[
+    // tidy-alphabetical-start
+    (
+        sym::gca_adts,
+        DependentFeature::Or(&[
+            DependentFeature::Leaf(sym::min_adt_const_params),
+            DependentFeature::Leaf(sym::adt_const_params),
+        ]),
+    ),
+    (sym::gca_const_items, DependentFeature::Leaf(sym::gca_min_const_items)),
+    (sym::gca_macroless_args, DependentFeature::Leaf(sym::gca_min_const_items)),
+    (sym::gca_macroless_items, DependentFeature::Leaf(sym::gca_min_const_items)),
+    (sym::unsized_const_params, DependentFeature::Leaf(sym::adt_const_params)),
+    // tidy-alphabetical-end
 ];

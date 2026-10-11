@@ -1,3 +1,19 @@
+error[E0271]: type mismatch resolving `<RustaceansAreAwesome as Super>::Assoc == ()`
+  --> $DIR/unhandled-crate-mod-issue-144888.rs:16:5
+   |
+LL |     fn transmute(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^ expected `()`, found type parameter `T`
+   |
+   = note:   expected unit type `()`
+           found type parameter `T`
+note: required for `RustaceansAreAwesome` to implement `Mirror`
+  --> $DIR/unhandled-crate-mod-issue-144888.rs:29:28
+   |
+LL | impl<T: Super<Assoc = ()>> Mirror for T {}
+   |               ----------   ^^^^^^     ^
+   |               |
+   |               unsatisfied trait bound introduced here
+
 error[E0271]: type mismatch resolving `<Self as Super>::Assoc == ()`
   --> $DIR/unhandled-crate-mod-issue-144888.rs:16:5
    |
@@ -7,12 +23,26 @@ LL |     fn transmute(&self) {}
    = note:   expected unit type `()`
            found type parameter `T`
 note: required for `Self` to implement `Mirror`
-  --> $DIR/unhandled-crate-mod-issue-144888.rs:27:28
+  --> $DIR/unhandled-crate-mod-issue-144888.rs:29:28
    |
 LL | impl<T: Super<Assoc = ()>> Mirror for T {}
    |               ----------   ^^^^^^     ^
    |               |
    |               unsatisfied trait bound introduced here
+
+error[E0277]: the size for values of type `RustaceansAreAwesome` cannot be known at compilation time
+  --> $DIR/unhandled-crate-mod-issue-144888.rs:16:5
+   |
+LL |     fn transmute(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+note: required for `RustaceansAreAwesome` to implement `Mirror`
+  --> $DIR/unhandled-crate-mod-issue-144888.rs:29:28
+   |
+LL | impl<T: Super<Assoc = ()>> Mirror for T {}
+   |      -                     ^^^^^^     ^
+   |      |
+   |      unsatisfied trait bound implicitly introduced here
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/unhandled-crate-mod-issue-144888.rs:16:5
@@ -21,7 +51,7 @@ LL |     fn transmute(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
 note: required for `Self` to implement `Mirror`
-  --> $DIR/unhandled-crate-mod-issue-144888.rs:27:28
+  --> $DIR/unhandled-crate-mod-issue-144888.rs:29:28
    |
 LL | impl<T: Super<Assoc = ()>> Mirror for T {}
    |      -                     ^^^^^^     ^
@@ -37,7 +67,7 @@ LL | trait Foo<T>: Super<Assoc = T>
    = note:   expected unit type `()`
            found type parameter `T`
 note: required for `Self` to implement `Mirror`
-  --> $DIR/unhandled-crate-mod-issue-144888.rs:27:28
+  --> $DIR/unhandled-crate-mod-issue-144888.rs:29:28
    |
 LL | impl<T: Super<Assoc = ()>> Mirror for T {}
    |               ----------   ^^^^^^     ^
@@ -51,7 +81,7 @@ LL | trait Foo<T>: Super<Assoc = T>
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
 note: required for `Self` to implement `Mirror`
-  --> $DIR/unhandled-crate-mod-issue-144888.rs:27:28
+  --> $DIR/unhandled-crate-mod-issue-144888.rs:29:28
    |
 LL | impl<T: Super<Assoc = ()>> Mirror for T {}
    |      -                     ^^^^^^     ^
@@ -63,7 +93,7 @@ LL | trait Foo<T>: Super<Assoc = T> + Sized
    |                                +++++++
 
 error[E0046]: not all trait items implemented, missing: `Assoc`
-  --> $DIR/unhandled-crate-mod-issue-144888.rs:27:1
+  --> $DIR/unhandled-crate-mod-issue-144888.rs:29:1
    |
 LL |     type Assoc;
    |     ---------- `Assoc` from trait
@@ -83,7 +113,7 @@ LL |     fn transmute(&self) {}
    = note:   expected unit type `()`
            found type parameter `T`
 note: required for `Self` to implement `Mirror`
-  --> $DIR/unhandled-crate-mod-issue-144888.rs:27:28
+  --> $DIR/unhandled-crate-mod-issue-144888.rs:29:28
    |
 LL | impl<T: Super<Assoc = ()>> Mirror for T {}
    |               ----------   ^^^^^^     ^
@@ -97,7 +127,7 @@ LL |     fn transmute(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
 note: required for `Self` to implement `Mirror`
-  --> $DIR/unhandled-crate-mod-issue-144888.rs:27:28
+  --> $DIR/unhandled-crate-mod-issue-144888.rs:29:28
    |
 LL | impl<T: Super<Assoc = ()>> Mirror for T {}
    |      -                     ^^^^^^     ^
@@ -108,7 +138,7 @@ help: consider further restricting `Self`
 LL |     fn transmute(&self) where Self: Sized {}
    |                         +++++++++++++++++
 
-error: aborting due to 7 previous errors
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0046, E0271, E0277.
 For more information about an error, try `rustc --explain E0046`.

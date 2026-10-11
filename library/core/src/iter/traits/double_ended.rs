@@ -189,13 +189,49 @@ pub const trait DoubleEndedIterator: [const] Iterator {
     where
         Self::Item: [const] Destruct,
     {
-        for i in 0..n {
-            if self.next_back().is_none() {
-                // SAFETY: `i` is always less than `n`.
-                return Err(unsafe { NonZero::new_unchecked(n - i) });
+        /// Helper trait to specialize `advance_back_by` via `try_rfold` for `Sized` iterators.
+
+        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+        const trait SpecAdvanceBackBy {
+            fn spec_advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>>;
+        }
+
+        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+        const impl<I: [const] DoubleEndedIterator + ?Sized> SpecAdvanceBackBy for I
+        where
+            I::Item: [const] Destruct,
+        {
+            default fn spec_advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+                for i in 0..n {
+                    if self.next_back().is_none() {
+                        // SAFETY: `i` is always less than `n`.
+                        return Err(unsafe { NonZero::new_unchecked(n - i) });
+                    }
+                }
+                Ok(())
             }
         }
-        Ok(())
+
+        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+        const impl<I: [const] DoubleEndedIterator> SpecAdvanceBackBy for I
+        where
+            I::Item: [const] Destruct,
+        {
+            fn spec_advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+                let Some(n) = NonZero::new(n) else {
+                    return Ok(());
+                };
+
+                let res = self.try_rfold(n, const |n, _| NonZero::new(n.get() - 1));
+
+                match res {
+                    None => Ok(()),
+                    Some(n) => Err(n),
+                }
+            }
+        }
+
+        self.spec_advance_back_by(n)
     }
 
     /// Returns the `n`th element from the end of the iterator.
@@ -245,9 +281,7 @@ pub const trait DoubleEndedIterator: [const] Iterator {
     where
         Self::Item: [const] Destruct,
     {
-        if self.advance_back_by(n).is_err() {
-            return None;
-        }
+        self.advance_back_by(n).ok()?;
         self.next_back()
     }
 

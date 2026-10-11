@@ -1,5 +1,5 @@
 #![expect(incomplete_features)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 fn takes_empty_array<const A: []>() {}
 //~^ ERROR: expected type, found `]`

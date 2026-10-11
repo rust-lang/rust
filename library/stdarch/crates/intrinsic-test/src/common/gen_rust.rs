@@ -4,6 +4,7 @@ use itertools::Itertools;
 
 use super::intrinsic_helpers::TypeDefinition;
 use crate::common::cli::{CcArgStyle, ProcessedCli};
+use crate::common::imm_value_to_ident;
 use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
 use crate::common::values::{test_values_array_name, test_values_array_static};
@@ -276,7 +277,7 @@ for (id, rust, c) in specializations {{
                                 }
                             })
                             .join(","),
-                        c_const_args = imm_values.iter().join("_"),
+                        c_const_args = imm_values.iter().map(imm_value_to_ident).join("_"),
                     ))
                 }
             }),
@@ -343,9 +344,13 @@ unsafe extern "C" {{
                         "fn {name}_wrapper{imm_arglist}(__dst: *mut {return_ty}{arglist});",
                         return_ty = intrinsic.results.rust_type(),
                         name = intrinsic.name,
-                        imm_arglist = imm_values
-                            .iter()
-                            .format_with("", |i, fmt| fmt(&format_args!("_{i}"))),
+                        imm_arglist =
+                            imm_values
+                                .iter()
+                                .format_with("", |i, fmt| fmt(&format_args!(
+                                    "_{}",
+                                    imm_value_to_ident(i)
+                                ))),
                         arglist = intrinsic.arguments.as_non_imm_arglist_rust(),
                     ))
                 }))

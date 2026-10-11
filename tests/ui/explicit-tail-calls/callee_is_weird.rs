@@ -1,4 +1,4 @@
-#![feature(explicit_tail_calls, exclusive_wrapper, fn_traits, unboxed_closures)]
+#![feature(explicit_tail_calls, fn_traits, unboxed_closures)]
 #![expect(incomplete_features)]
 
 fn f() {}

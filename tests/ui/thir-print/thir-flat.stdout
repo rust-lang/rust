@@ -3,7 +3,7 @@ Thir {
     body_type: Fn(
         fn(),
     ),
-    attributes: {},
+    loop_hint_attrs: {},
     arms: [],
     blocks: [
         Block {

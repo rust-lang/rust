@@ -11,21 +11,21 @@ use rustc_span::Spanned;
 use super::MANUAL_DANGLING_PTR;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, from: &Expr<'_>, to: &Ty<'_>) {
-    if let TyKind::Ptr(ref ptr_ty) = to.kind {
+    if let TyKind::Ptr(ref ptr_ty, mutbl) = to.kind {
         let init_expr = expr_or_init(cx, from);
-        if is_expr_const_aligned(cx, init_expr, ptr_ty.ty)
+        if is_expr_const_aligned(cx, init_expr, ptr_ty)
             && let Some(std_or_core) = std_or_core(cx)
-            && let pointee_ty = cx.typeck_results().node_type(ptr_ty.ty.hir_id)
+            && let pointee_ty = cx.typeck_results().node_type(ptr_ty.hir_id)
             && pointee_ty.is_sized(cx.tcx, cx.typing_env())
         {
-            let sugg_fn = match ptr_ty.mutbl {
+            let sugg_fn = match mutbl {
                 Mutability::Not => "ptr::dangling",
                 Mutability::Mut => "ptr::dangling_mut",
             };
 
-            let sugg = if let TyKind::Infer(()) = ptr_ty.ty.kind {
+            let sugg = if let TyKind::Infer(()) = ptr_ty.kind {
                 format!("{std_or_core}::{sugg_fn}()")
-            } else if let Some(mut_ty_snip) = ptr_ty.ty.span.get_text(cx) {
+            } else if let Some(mut_ty_snip) = ptr_ty.span.get_text(cx) {
                 format!("{std_or_core}::{sugg_fn}::<{mut_ty_snip}>()")
             } else {
                 return;

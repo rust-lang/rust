@@ -4,11 +4,11 @@
 // differ from the time of `rustc` even if the name stays the same.
 
 use crate::msrvs::{self, Msrv};
-use rustc_attr_ir::RustcVersion;
 use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{RustcVersion, StableSince};
 use rustc_const_eval::check_consts::ConstCx;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, HirId, StableSince};
+use rustc_hir::{self as hir, HirId};
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::traits::Obligation;
 use rustc_lint::LateContext;

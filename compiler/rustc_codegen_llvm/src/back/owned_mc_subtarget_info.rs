@@ -4,7 +4,7 @@ use std::ptr::NonNull;
 use rustc_data_structures::small_c_str::SmallCStr;
 
 use crate::diagnostics::LlvmError;
-use crate::llvm;
+use crate::{llvm, llvm_util};
 
 /// Responsible for safely creating and disposing llvm::MCSubtargetInfo via ffi functions.
 /// Not cloneable as there is no clone function for llvm::MCSubtargetInfo.
@@ -28,11 +28,20 @@ impl OwnedMCSubtargetInfo {
             .ok_or_else(|| LlvmError::CreateMCSubtargetInfo { triple: SmallCStr::from(triple) })
     }
 
-    pub(crate) fn has_feature(&self, feature: &CStr) -> bool {
-        // SAFETY: `new` ensures we have a valid pointer created by
+    pub(crate) fn has_features(&self, features: llvm_util::LLVMFeature<'_>) -> bool {
+        // Convert to a feature string expected by LLVM's `SubtargetFeatures`.
+        // All of the required LLVM features must be enabled.
+        // (The trailing comma is OK, as `SubtargetFeatures::Split` discards empty substrings.)
+        let features = features.into_iter().flat_map(|feat| ["+", feat, ","]).collect::<String>();
+
+        // SAFETY: `info_unique` is a valid pointer created by
         // `llvm::LLVMRustCreateMCSubtargetInfo`.
         unsafe {
-            llvm::LLVMRustMCSubtargetInfoHasFeature(self.info_unique.as_ref(), feature.as_ptr())
+            llvm::LLVMRustMCSubtargetInfoCheckFeatures(
+                self.info_unique.as_ref(),
+                features.as_ptr(),
+                features.len(),
+            )
         }
     }
 }

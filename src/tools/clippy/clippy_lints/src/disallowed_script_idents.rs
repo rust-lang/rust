@@ -77,7 +77,7 @@ impl EarlyLintPass for DisallowedScriptIdents {
         // Sort by `Span` so that error messages make sense with respect to the
         // order of identifier locations in the code.
         let mut symbols: Vec<_> = symbols.iter().collect();
-        symbols.sort_unstable_by_key(|k| k.1);
+        symbols.sort_unstable_by_key(|k| k.1.lo_hi());
 
         for &(symbol, &span) in &symbols {
             // Note: `symbol.as_str()` is an expensive operation, thus should not be called

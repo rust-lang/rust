@@ -8,6 +8,8 @@ pub use alloc::ffi::c_str::IntoStringError;
 pub use alloc::ffi::c_str::{CString, NulError};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ffi::c_str::CStr;
+#[unstable(feature = "cstr_display", issue = "139984")]
+pub use core::ffi::c_str::Display;
 #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
 pub use core::ffi::c_str::FromBytesUntilNulError;
 #[stable(feature = "cstr_from_bytes", since = "1.10.0")]

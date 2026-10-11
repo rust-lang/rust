@@ -4,9 +4,9 @@ use std::iter;
 use std::ops::ControlFlow;
 
 use rustc_abi::ExternAbi;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, InferResult};
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};

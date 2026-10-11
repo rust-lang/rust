@@ -2,9 +2,9 @@
 //@ compile-flags: -Znext-solver
 
 #![feature(
-    min_generic_const_args,
-    macroless_generic_const_args,
-    generic_const_args,
+    gca_min_const_items,
+    gca_macroless_args,
+    gca_const_items,
     generic_const_items
 )]
 #![expect(incomplete_features)]

@@ -3,6 +3,7 @@
 use gimli::write::{AttributeValue, UnitEntryId};
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 

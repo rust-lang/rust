@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir_analysis::check::check_function_signature;
 use rustc_infer::infer::RegionVariableOrigin;

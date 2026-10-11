@@ -225,7 +225,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         return interp_ok(Handle::Invalid);
                     }
                 };
-                if !dir.metadata().unwrap().is_dir() {
+                #[cfg(bootstrap)]
+                let metadata = dir.metadata();
+                #[cfg(not(bootstrap))]
+                let metadata = dir.self_metadata();
+                if !metadata.unwrap().is_dir() {
                     // This changed from a directory to a file. Retry.
                     continue;
                 }

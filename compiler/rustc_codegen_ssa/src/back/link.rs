@@ -1776,7 +1776,11 @@ fn add_sanitizer_libraries(
         && (sess.opts.unstable_opts.sanitizer_cfi_diag.unwrap_or(false)
             || sess.opts.unstable_opts.sanitizer_cfi_recover.unwrap_or(false))
     {
-        link_sanitizer_runtime(sess, flavor, linker, "ubsan");
+        if sess.is_sanitizer_cfi_minimal_runtime_enabled() {
+            link_sanitizer_runtime(sess, flavor, linker, "ubsan_minimal");
+        } else {
+            link_sanitizer_runtime(sess, flavor, linker, "ubsan");
+        }
     }
 }
 

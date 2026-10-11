@@ -42,9 +42,17 @@ impl CrateRunInfo {
         let env = env::vars_os()
             .filter(|(var, _val)| {
                 // We only need to bother with env vars cargo actually sets.
-                // We try to avoid storing anything that may contain secrets.
                 var.to_str().is_some_and(|var| {
-                    var == "OUT_DIR" || (var.starts_with("CARGO_") && !var.ends_with("_TOKEN"))
+                    (   // Env vars cargo sets for crates.
+                        // <https://doc.rust-lang.org/nightly/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-crates>
+                        var == "OUT_DIR"
+                        || var.starts_with("CARGO_")
+                        // Env vars rustdoc sets for its rustc invocation.
+                        || var.starts_with("UNSTABLE_RUSTDOC_")
+                        || var.starts_with("RUSTDOC_")
+                    )
+                    // We try to avoid storing anything that may contain secrets.
+                    && !var.ends_with("_TOKEN")
                 })
             })
             .collect();

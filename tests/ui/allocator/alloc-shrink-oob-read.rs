@@ -4,7 +4,6 @@
 
 //@ run-pass
 
-#![feature(allocator_api)]
 #![feature(slice_ptr_get)]
 
 use std::alloc::{Allocator, Global, Layout, handle_alloc_error};

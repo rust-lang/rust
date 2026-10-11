@@ -13,13 +13,13 @@ use std::{iter, slice};
 use itertools::{Either, Itertools};
 use rustc_abi::ExternAbi;
 use rustc_ast::join_path_syms;
+use rustc_attr_ir::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, MacroKinds};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::{ConstStability, StabilityLevel, StableSince};
 use rustc_metadata::creader::CStore;
-use rustc_middle::ty::{self, TyCtxt, TypingMode};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypingMode};
 use rustc_span::symbol::kw;
 use rustc_span::{Ident, Symbol};
 use tracing::{debug, trace};
@@ -410,31 +410,114 @@ fn generate_macro_def_id_path(
     Ok(HrefInfo { url, kind: item_type, rust_path: path })
 }
 
+/// Takes an impl `DefId` and return the self `Ty` of the impl.
+fn impl_self_ty(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Ty<'_> {
+    use rustc_middle::traits::ObligationCause;
+    use rustc_middle::ty;
+    use rustc_trait_selection::infer::TyCtxtInferExt;
+    use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
+
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+    let ty = tcx.type_of(impl_def_id);
+    infcx
+        .at(&ObligationCause::dummy(), tcx.param_env(impl_def_id))
+        .query_normalize(ty::Binder::dummy(ty.instantiate_identity().skip_norm_wip()))
+        .map(|resolved| infcx.deeply_resolve_ignoring_regions(resolved.value).skip_binder())
+        .unwrap_or(ty.skip_binder())
+}
+
+fn transitive_reexport_path(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Vec<Symbol>> {
+    transitive_reexport_path_inner(tcx, def_id, &mut Vec::new())
+}
+
+/// Simplified implementation of `rustc_middle::ty::print::pretty::try_print_visible_def_path_recur`.
+fn transitive_reexport_path_inner(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    callers: &mut Vec<DefId>,
+) -> Option<Vec<Symbol>> {
+    use rustc_hir::def_id::ModId;
+    use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+
+    if let Some(cnum) = def_id.as_crate_root() {
+        return Some(vec![tcx.crate_name(cnum)]);
+    }
+
+    let visible_parent_map = tcx.visible_parent_map(());
+    let mut cur_def_key = tcx.def_key(def_id);
+
+    // For a constructor, we want the name of its parent rather than <unnamed>.
+    if let DefPathData::Ctor = cur_def_key.disambiguated_data.data {
+        let parent = DefId {
+            krate: def_id.krate,
+            index: cur_def_key
+                .parent
+                .expect("`DefPathData::Ctor` / `VariantData` missing a parent"),
+        };
+
+        cur_def_key = tcx.def_key(parent);
+    }
+
+    let visible_parent = visible_parent_map.get(&def_id).cloned()?;
+    // FIXME: Should we also check for private items?
+    if tcx.is_doc_hidden(visible_parent) {
+        return None;
+    }
+
+    let actual_parent = tcx.opt_parent(def_id);
+    let mut data = cur_def_key.disambiguated_data.data;
+    match data {
+        DefPathData::TypeNs(ref mut name) if Some(visible_parent) != actual_parent => {
+            // Item might be re-exported several times, but filter for the one
+            // that's public and whose identifier isn't `_`.
+            let reexport = tcx
+                .module_children(ModId::new_unchecked(visible_parent))
+                .iter()
+                .filter(|child| child.res.opt_def_id() == Some(def_id))
+                .find(|child| child.vis.is_public() && child.ident.name != kw::Underscore)
+                .map(|child| child.ident.name);
+
+            if let Some(new_name) = reexport {
+                *name = new_name;
+            } else {
+                // There is no name that is public and isn't `_`, so bail.
+                return None;
+            }
+        }
+        // Re-exported `extern crate`.
+        DefPathData::CrateRoot => {
+            data = DefPathData::TypeNs(tcx.crate_name(def_id.krate));
+        }
+        _ => {}
+    }
+
+    if callers.contains(&visible_parent) {
+        return None;
+    }
+    callers.push(visible_parent);
+    let mut path = transitive_reexport_path_inner(tcx, visible_parent, callers)?;
+    callers.pop();
+    path.push(DisambiguatedDefPathData { data, disambiguator: 0 }.as_sym(false));
+    Some(path)
+}
+
 fn generate_item_def_id_path(
     mut def_id: DefId,
     original_def_id: DefId,
     cx: &Context<'_>,
     root_path: Option<&str>,
 ) -> Result<HrefInfo, HrefError> {
-    use rustc_middle::traits::ObligationCause;
-    use rustc_middle::ty;
-    use rustc_trait_selection::infer::TyCtxtInferExt;
-    use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
-
     let tcx = cx.tcx();
     let crate_name = tcx.crate_name(def_id.krate);
     let mut prim = None;
+    let mut maybe_have_impl_not_in_def_crate = false;
 
     // No need to try to infer the actual parent item if it's not an associated item from the `impl`
     // block.
-    if def_id != original_def_id && matches!(tcx.def_kind(def_id), DefKind::Impl { .. }) {
-        let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
-        let ty = tcx.type_of(def_id);
-        let ty = infcx
-            .at(&ObligationCause::dummy(), tcx.param_env(def_id))
-            .query_normalize(ty::Binder::dummy(ty.instantiate_identity().skip_norm_wip()))
-            .map(|resolved| infcx.deeply_resolve_ignoring_regions(resolved.value).skip_binder())
-            .unwrap_or(ty.skip_binder());
+    if def_id != original_def_id
+        && let DefKind::Impl { of_trait } = tcx.def_kind(def_id)
+    {
+        let ty = impl_self_ty(tcx, def_id);
         // If this is a dyn trait, we want to get the actual trait from which the method comes from.
         // Since a `dyn trait` (as of 2026) can only be composed of a trait plus auto traits, we
         // look for the trait and ignore auto traits.
@@ -449,18 +532,35 @@ fn generate_item_def_id_path(
             def_id = trait_def_id;
         } else if let Some(new_def_id) = ty.ty_adt_def().map(|adt| adt.did()) {
             def_id = new_def_id;
+            maybe_have_impl_not_in_def_crate = !of_trait
+                && !original_def_id.is_local()
+                && !def_id.is_local()
+                && def_id.krate != original_def_id.krate;
         } else {
             prim = PrimitiveType::from_ty(ty);
         }
     }
 
-    let mut fqp = vec![crate_name];
-    let shortty = if let Some(prim) = prim {
-        fqp.push(prim.as_sym());
-        ItemType::Primitive
+    let (shortty, fqp) = if let Some(prim) = prim {
+        (ItemType::Primitive, vec![crate_name, prim.as_sym()])
     } else {
-        fqp.append(&mut clean::inline::item_relative_path(tcx, def_id));
-        ItemType::from_def_id(def_id, tcx)
+        (
+            ItemType::from_def_id(def_id, tcx),
+            if maybe_have_impl_not_in_def_crate
+                // We have a method, not coming from a trait, implemented from a different crate
+                // where the original item is defined. So in short, the item is using
+                // `#[rustc_allow_incoherent_impl]` and we need to keep the non-final item path.
+                // Sadly if we use `item_relative_path` which uses `def_path`, it renders the final
+                // item path and not the intermediate one.
+                && let Some(fqp) = transitive_reexport_path(tcx, def_id)
+            {
+                fqp
+            } else {
+                let mut fqp = vec![crate_name];
+                fqp.append(&mut clean::inline::item_relative_path(tcx, def_id));
+                fqp
+            },
+        )
     };
     let module_fqp = to_module_fqp(shortty, &fqp);
 
@@ -552,6 +652,47 @@ fn make_href(
     url_parts.finish()
 }
 
+fn ty_inherits_doc_hidden<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    match ty.kind() {
+        // If this is a dyn trait, we want to get the actual trait from which the method comes from.
+        // Since a `dyn trait` (as of 2026) can only be composed of a trait plus auto traits, we
+        // look for the trait and ignore auto traits.
+        ty::Dynamic(traits, _) => traits
+            .iter()
+            .find_map(|trait_| match trait_.skip_binder() {
+                ty::ExistentialPredicate::Trait(t) => Some(inherits_doc_hidden(tcx, t.def_id)),
+                ty::ExistentialPredicate::Projection(p) => {
+                    Some(inherits_doc_hidden(tcx, p.trait_ref(tcx).def_id))
+                }
+                ty::ExistentialPredicate::AutoTrait(_) => None,
+            })
+            .unwrap_or(false),
+        ty::Adt(adt, _) => inherits_doc_hidden(tcx, adt.did()),
+        ty::Foreign(def_id) => inherits_doc_hidden(tcx, *def_id),
+        ty::Ref(_, ty, _) => ty_inherits_doc_hidden(tcx, *ty),
+        // For now we consider that everything doesn't inherit `#[doc(hidden)]`. To be confirmed
+        // later.
+        _ => false,
+    }
+}
+
+fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut def_id: DefId) -> bool {
+    loop {
+        if tcx.is_doc_hidden(def_id) {
+            return true;
+        } else if def_id.is_crate_root() {
+            return false;
+        } else if let DefKind::Impl { of_trait } = tcx.def_kind(def_id) {
+            // `impl` blocks stand a bit on their own: unless they have `#[doc(hidden)]` directly
+            // on them, they don't inherit it from the parent context.
+            // Instead we check that the `Self` item and the trait aren't hidden.
+            return ty_inherits_doc_hidden(tcx, impl_self_ty(tcx, def_id))
+                || (of_trait && inherits_doc_hidden(tcx, tcx.impl_trait_id(def_id)));
+        }
+        def_id = tcx.parent(def_id);
+    }
+}
+
 pub(crate) fn href_with_root_path(
     original_did: DefId,
     cx: &Context<'_>,
@@ -590,7 +731,7 @@ pub(crate) fn href_with_root_path(
         // If we are generating an href for the "jump to def" feature, then the only case we want
         // to ignore is if the item is `doc(hidden)` because we can't link to it.
         if root_path.is_some() {
-            if tcx.is_doc_hidden(original_did) {
+            if inherits_doc_hidden(tcx, original_did) {
                 return Err(HrefError::Private);
             }
         } else if !cache.effective_visibilities.is_directly_public(tcx, did)

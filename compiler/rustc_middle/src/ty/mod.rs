@@ -124,6 +124,8 @@ pub mod abstract_const;
 pub mod adjustment;
 pub mod cast;
 pub mod codec;
+// FIXME(#159654): This should get deleted soon
+pub mod consts;
 pub mod error;
 pub mod fast_reject;
 pub mod inhabitedness;
@@ -143,7 +145,6 @@ pub mod vtable;
 mod adt;
 mod assoc;
 mod closure;
-mod consts;
 mod context;
 mod diagnostics;
 mod elaborate_impl;
@@ -1869,7 +1870,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Gets all attributes with the given name.
-    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to call rustc_hir::find_attr! instead."]
+    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to use `rustc_attr_ir::find_attr!` instead."]
     pub fn get_attrs(
         self,
         did: impl Into<DefId>,
@@ -1888,7 +1889,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// </div>
     ///
-    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to call rustc_hir::find_attr! instead."]
+    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to use `rustc_attr_ir::find_attr!` instead."]
     pub fn get_all_attrs(self, did: impl Into<DefId>) -> &'tcx [rustc_attr_ir::Attribute] {
         let did: DefId = did.into();
         if let Some(did) = did.as_local() {

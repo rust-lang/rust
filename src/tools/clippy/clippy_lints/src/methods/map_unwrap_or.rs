@@ -187,7 +187,7 @@ impl<'tcx> Visitor<'tcx> for ReferenceVisitor<'_, 'tcx> {
         // If we haven't found a reference yet, check if this references
         // one of the locals that was moved in the `unwrap_or` argument.
         // We are only interested in exprs that appear before the `unwrap_or` call.
-        if expr.span < self.unwrap_or_span
+        if expr.span.lo_hi() < self.unwrap_or_span.lo_hi()
             && let ExprKind::Path(ref path) = expr.kind
             && let QPath::Resolved(_, path) = path
             && let Res::Local(local_id) = path.res

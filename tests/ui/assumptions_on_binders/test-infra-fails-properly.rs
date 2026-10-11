@@ -60,7 +60,7 @@ core::test_binder_constraints! {
         } expect {
             or {
                 'c: 'b,
-                'c: 'c,
+                'b: 'c,
                 //~^ ERROR forall expect clause failed
             }
         }

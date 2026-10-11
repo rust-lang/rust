@@ -1,7 +1,9 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/117923>.
 //@ check-pass
-#![feature(min_generic_const_args, macroless_generic_const_args)]
+#![feature(gca_min_const_items, gca_macroless_args)]
 #![allow(incomplete_features, dead_code)]
+
+use std::gca;
 
 trait Trait {
     #[rustc_always_gca]
@@ -13,7 +15,7 @@ struct Type<const N: usize> {
 }
 
 impl<const N: usize> Trait for Type<N> {
-    const CT: usize = core::direct_const_arg!(N);
+    const CT: usize = gca!(N);
 }
 
 fn func<const N: usize>() -> impl Trait<CT = { <Type<N> as Trait>::CT }> {

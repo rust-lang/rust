@@ -1,18 +1,17 @@
 use std::range::{RangeFrom, RangeToInclusive};
 
-use hir::def_id::DefId;
 use rustc_abi as abi;
 use rustc_abi::Integer::{I8, I32};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
     AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape, HasDataLayout, Layout,
-    LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size, StructKind, TagEncoding,
-    VariantIdx, Variants, WrappingRange,
+    LayoutCalculatorError, LayoutData, Niche, NicheOptimizations, ReprOptions, Scalar, Size,
+    StructKind, TagEncoding, VariantIdx, Variants, WrappingRange,
 };
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hashes::Hash64;
-use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::find_attr;
+use rustc_hir::def_id::DefId;
 use rustc_index::{Idx as _, IndexVec};
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
@@ -236,7 +235,7 @@ fn layout_of_uncached<'tcx>(
     let univariant = |tys: &[Ty<'tcx>], kind| {
         let fields = tys.iter().map(|ty| cx.layout_of(*ty)).try_collect::<IndexVec<_, _>>()?;
         let repr = ReprOptions::default();
-        map_layout(cx.calc.univariant(&fields, &repr, kind))
+        map_layout(cx.calc.layout_of_univariant(&fields, &repr, kind))
     };
     debug_assert!(!ty.has_non_region_infer());
 
@@ -524,11 +523,11 @@ fn layout_of_uncached<'tcx>(
                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
 
             let element = cx.layout_of(element)?;
-            map_layout(cx.calc.array_like(&element, Some(count)))?
+            map_layout(cx.calc.layout_of_array_like(&element, Some(count)))?
         }
         ty::Slice(element) => {
             let element = cx.layout_of(element)?;
-            map_layout(cx.calc.array_like(&element, None).map(|mut layout| {
+            map_layout(cx.calc.layout_of_array_like(&element, None).map(|mut layout| {
                 // a randomly chosen value to distinguish slices
                 layout.randomization_seed = Hash64::new(0x2dcba99c39784102);
                 layout
@@ -536,7 +535,7 @@ fn layout_of_uncached<'tcx>(
         }
         ty::Str => {
             let element = scalar(Int(I8, false));
-            map_layout(cx.calc.array_like(&element, None).map(|mut layout| {
+            map_layout(cx.calc.layout_of_array_like(&element, None).map(|mut layout| {
                 // another random value
                 layout.randomization_seed = Hash64::new(0xc1325f37d127be22);
                 layout
@@ -587,7 +586,7 @@ fn layout_of_uncached<'tcx>(
 
             let layout = cx
                 .calc
-                .coroutine(
+                .layout_of_coroutine(
                     &local_layouts,
                     prefix_layouts,
                     &info.variant_fields,
@@ -639,7 +638,7 @@ fn layout_of_uncached<'tcx>(
             };
 
             let element_layout = cx.layout_of(element_ty)?;
-            map_layout(cx.calc.scalable_vector_type(
+            map_layout(cx.calc.layout_of_scalable_vector_type(
                 element_layout,
                 element_count as u64,
                 number_of_vectors,
@@ -684,7 +683,7 @@ fn layout_of_uncached<'tcx>(
                 }
             }
 
-            map_layout(cx.calc.simd_type(e_ly, e_len, def.repr().packed()))?
+            map_layout(cx.calc.layout_of_simd_type(e_ly, e_len, def.repr().packed()))?
         }
 
         // ADTs.
@@ -714,11 +713,26 @@ fn layout_of_uncached<'tcx>(
             }
 
             // UnsafeCell and UnsafePinned both disable niche optimizations
-            let is_special_no_niche = def.is_unsafe_cell() || def.is_unsafe_pinned();
+            let niche_optimizations = match def.is_unsafe_cell() || def.is_unsafe_pinned() {
+                true => NicheOptimizations::Disabled,
+                false => NicheOptimizations::Enabled,
+            };
 
             let discr_range_of_repr = |min: RangeFrom<i128>, max: RangeToInclusive<u128>| {
                 abi::Integer::discr_range_of_repr(tcx, ty, &def.repr(), min.start, max.last)
             };
+
+            // We shouldn't be computing the layout of discrs that fail typeck
+            if def.is_enum() {
+                for v in def.variants() {
+                    if let ty::VariantDiscr::Explicit(def_id) = v.discr
+                        && let Some(local_did) = def_id.as_local()
+                        && let Some(guar) = tcx.typeck(local_did).tainted_by_errors
+                    {
+                        return Err(error(cx, LayoutError::ReferencesError(guar)));
+                    }
+                }
+            }
 
             let discriminants_iter = || {
                 def.is_enum()
@@ -744,7 +758,7 @@ fn layout_of_uncached<'tcx>(
                     &def.repr(),
                     &variants,
                     def.is_enum(),
-                    is_special_no_niche,
+                    niche_optimizations,
                     discr_range_of_repr,
                     discriminants_iter(),
                     !maybe_unsized,
@@ -773,7 +787,7 @@ fn layout_of_uncached<'tcx>(
                     &def.repr(),
                     &variants,
                     def.is_enum(),
-                    is_special_no_niche,
+                    niche_optimizations,
                     discr_range_of_repr,
                     discriminants_iter(),
                     !maybe_unsized,

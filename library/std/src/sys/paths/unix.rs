@@ -6,7 +6,7 @@ use libc::{c_char, c_int, c_void};
 
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::os::unix::prelude::*;
-use crate::path::{self, PathBuf};
+use crate::path::{self, Path, PathBuf};
 use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::pal::cvt;
 use crate::{fmt, io, iter, mem, ptr, slice, str};
@@ -74,6 +74,28 @@ pub fn split_paths(unparsed: &OsStr) -> SplitPaths<'_> {
     }
 
     unparsed.as_bytes().split(is_separator).map(into_pathbuf)
+}
+
+pub type SplitPathsRef<'a> = iter::Map<
+    slice::Split<'a, u8, impl FnMut(&u8) -> bool + 'static>,
+    impl FnMut(&[u8]) -> &'_ Path + 'static,
+>;
+
+pub fn split_paths_ref(unparsed: &OsStr) -> Option<SplitPathsRef<'_>> {
+    #[define_opaque(SplitPathsRef)]
+    fn split_paths_ref(unparsed: &OsStr) -> SplitPathsRef<'_> {
+        fn is_separator(&b: &u8) -> bool {
+            b == PATH_SEPARATOR
+        }
+
+        fn into_path(part: &[u8]) -> &Path {
+            Path::new(OsStr::from_bytes(part))
+        }
+
+        unparsed.as_bytes().split(is_separator).map(into_path)
+    }
+
+    Some(split_paths_ref(unparsed))
 }
 
 #[derive(Debug)]

@@ -8,10 +8,10 @@ LL | fn foo(x: NotSync) -> impl Future + Send {
 note: required because it appears within the type `PhantomData<*mut ()>`
   --> $SRC_DIR/core/src/marker.rs:LL:COL
 note: required because it appears within the type `NotSync`
-  --> $DIR/issue-70935-complex-spans.rs:9:8
+  --> $DIR/issue-70935-complex-spans.rs:9:16
    |
 LL | struct NotSync(PhantomData<*mut ()>);
-   |        ^^^^^^^ -------------------- required by this field
+   |                ^^^^^^^^^^^^^^^^^^^^ required by this field
    = note: required for `&NotSync` to implement `Send`
 note: required because it's used within this closure
   --> $DIR/issue-70935-complex-spans.rs:18:13

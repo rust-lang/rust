@@ -2,9 +2,8 @@
 //!
 //! [RFC 3631]: https://rust-lang.github.io/rfcs/3631-rustdoc-cfgs-handling.html
 
+use rustc_attr_ir::{Attribute, AttributeKind, DocAttribute, find_attr};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::attrs::{AttributeKind, DocAttribute};
-use rustc_hir::{Attribute, find_attr};
 use rustc_span::{ExpnKind, MacroKind};
 
 use crate::clean::inline::{load_attrs, merge_attrs};
@@ -89,14 +88,12 @@ impl CfgPropagator<'_, '_> {
         // We also need to merge an item attributes with its parent's in case it's a macro with
         // the `#[macro_export]` attribute, because it might not be defined at crate root.
         else if matches!(item.kind, ItemKind::MacroItem(_, _))
-            && item.inner.attrs.other_attrs.iter().any(|attr| {
-                matches!(
-                    attr,
-                    rustc_hir::Attribute::Parsed(
-                        rustc_hir::attrs::AttributeKind::MacroExport { .. }
-                    )
-                )
-            })
+            && item
+                .inner
+                .attrs
+                .other_attrs
+                .iter()
+                .any(|attr| matches!(attr, Attribute::Parsed(AttributeKind::MacroExport { .. })))
         {
             for parent_def_id in &item.cfg_parent_ids_for_detached_item(self.cx.tcx) {
                 let mut parent_attrs = Vec::new();

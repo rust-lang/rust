@@ -45,7 +45,7 @@ use hir::def::Res;
 use rustc_abi::ExternAbi;
 use rustc_ast as ast;
 use rustc_ast::*;
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, FnDeclFlags, QPath};
 use rustc_middle::ty::Asyncness;

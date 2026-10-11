@@ -2,9 +2,9 @@ use std::any::Any;
 use std::mem;
 use std::sync::Arc;
 
+use rustc_attr_ir::Deprecation;
 use rustc_crate_store::{CrateStore, ExternCrate};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::attrs::Deprecation;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -376,12 +376,12 @@ provide! { tcx, def_id, other, cdata,
     }
     native_libraries => { cdata.get_native_libraries(tcx).collect() }
     foreign_modules => { cdata.get_foreign_modules(tcx).map(|m| (m.def_id, m)).collect() }
-    crate_hash => { cdata.root.header.hash }
+    crate_hash => { cdata.hash() }
     crate_host_hash => { cdata.host_hash }
     crate_name => { cdata.root.header.name }
     num_extern_def_ids => { cdata.num_def_ids() }
 
-    extra_filename => { tcx.arena.alloc_str(&cdata.root.extra_filename) }
+    extra_filename => { tcx.arena.alloc_str(&cdata.unhashed.extra_filename) }
 
     traits => { tcx.arena.alloc_from_iter(cdata.get_traits(tcx)) }
     trait_impls_in_crate => { tcx.arena.alloc_from_iter(cdata.get_trait_impls(tcx)) }

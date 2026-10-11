@@ -11,9 +11,9 @@ use rustc_target::callconv;
 use crate::IndexedVal;
 use crate::abi::{
     AddressSpace, ArgAbi, ArgAttributes, ArgExtension, CallConvention, CastTarget, FieldsShape,
-    FloatLength, FnAbi, IntegerLength, IntegerType, Layout, LayoutShape, NumScalableVectors,
-    PassMode, Primitive, Reg, RegKind, ReprFlags, ReprOptions, Scalar, TagEncoding, TyAndLayout,
-    Uniform, ValueRepr, VariantFields, VariantsShape, WrappingRange,
+    FloatLength, FnAbi, IndirectMode, IntegerLength, IntegerType, Layout, LayoutShape,
+    NumScalableVectors, PassMode, Primitive, Reg, RegKind, ReprFlags, ReprOptions, Scalar,
+    TagEncoding, TyAndLayout, Uniform, ValueRepr, VariantFields, VariantsShape, WrappingRange,
 };
 use crate::compiler_interface::BridgeTys;
 use crate::target::MachineSize as Size;
@@ -155,6 +155,22 @@ impl<'tcx> Stable<'tcx> for CanonAbi {
     }
 }
 
+impl<'tcx> Stable<'tcx> for callconv::IndirectMode {
+    type T = IndirectMode;
+
+    fn stable<'cx>(
+        &self,
+        _tables: &mut Tables<'cx, BridgeTys>,
+        _cx: &CompilerCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
+        match self {
+            callconv::IndirectMode::Pointer => IndirectMode::Pointer,
+            callconv::IndirectMode::OnStack => IndirectMode::OnStack,
+            callconv::IndirectMode::AmdgpuKernelArg => IndirectMode::AmdgpuKernelArg,
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for callconv::PassMode {
     type T = PassMode;
 
@@ -172,11 +188,14 @@ impl<'tcx> Stable<'tcx> for callconv::PassMode {
             callconv::PassMode::Cast { pad_i32_count, cast } => {
                 PassMode::Cast { pad_i32_count: *pad_i32_count, cast: cast.stable(tables, cx) }
             }
-            callconv::PassMode::Indirect { attrs, meta_attrs, on_stack } => PassMode::Indirect {
-                attrs: attrs.stable(tables, cx),
-                meta_attrs: meta_attrs.map(|a| a.stable(tables, cx)),
-                on_stack: *on_stack,
-            },
+            callconv::PassMode::Indirect { attrs, meta_attrs, address_space, mode } => {
+                PassMode::Indirect {
+                    attrs: attrs.stable(tables, cx),
+                    meta_attrs: meta_attrs.map(|a| a.stable(tables, cx)),
+                    address_space: address_space.stable(tables, cx),
+                    mode: mode.stable(tables, cx),
+                }
+            }
         }
     }
 }

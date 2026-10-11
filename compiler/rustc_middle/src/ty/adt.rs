@@ -4,6 +4,8 @@ use std::ops::Range;
 use std::str;
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx, ReprOptions, VariantIdx};
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
@@ -11,10 +13,9 @@ use rustc_data_structures::stable_hash::{
     StableHash, StableHashControls, StableHashCtxt, StableHasher,
 };
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, find_attr};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_session::DataTypeKind;

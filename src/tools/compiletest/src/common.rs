@@ -60,6 +60,7 @@ impl TestMode {
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
     pub(crate) enum TestSuite {
+        AssemblyGcc => "assembly-gcc",
         AssemblyLlvm => "assembly-llvm",
         CodegenLlvm => "codegen-llvm",
         CodegenUnits => "codegen-units",

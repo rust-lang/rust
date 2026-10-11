@@ -148,7 +148,7 @@ pub(crate) fn expand_kernel(
     }
 
     // inline(never) attr
-    let ts: Vec<TokenTree> = vec![TokenTree::Token(
+    let ts = vec![TokenTree::Token(
         Token::new(TokenKind::Ident(sym::never, IdentKind::Normal), span),
         Spacing::Joint,
     )];

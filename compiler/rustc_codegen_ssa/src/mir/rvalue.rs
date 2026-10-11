@@ -5,6 +5,7 @@ use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT};
 use rustc_index::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::ty::adjustment::PointerCoercion;
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Mutability, Ty, TyCtxt};
 use rustc_session::config::OptLevel;

@@ -14,6 +14,7 @@ use walkdir::WalkDir;
 use xshell::{Shell, cmd};
 
 use crate::Command;
+use crate::config::{Config, Toolchain};
 use crate::util::*;
 
 impl MiriEnv {
@@ -67,25 +68,19 @@ impl MiriEnv {
 }
 
 impl Command {
-    fn auto_actions() -> Result<()> {
+    fn auto_actions(config: &Config) -> Result<()> {
         if env::var_os("MIRI_AUTO_OPS").is_some_and(|x| x == "no") {
             return Ok(());
         }
 
-        let miri_dir = miri_dir()?;
-        let auto_everything = path!(miri_dir / ".auto-everything").exists();
-        let auto_toolchain = auto_everything || path!(miri_dir / ".auto-toolchain").exists();
-        let auto_fmt = auto_everything || path!(miri_dir / ".auto-fmt").exists();
-        let auto_clippy = auto_everything || path!(miri_dir / ".auto-clippy").exists();
-
         // `toolchain` goes first as it could affect the others
-        if auto_toolchain {
-            Self::toolchain(None, vec![])?;
+        if config.auto.toolchain {
+            Self::toolchain(None, None, vec![], config)?;
         }
-        if auto_fmt {
+        if config.auto.fmt {
             Self::fmt(vec![])?;
         }
-        if auto_clippy {
+        if config.auto.clippy {
             // no features for auto actions, see
             // https://github.com/rust-lang/miri/pull/4396#discussion_r2149654845
             Self::clippy(vec![], vec![])?;
@@ -94,7 +89,7 @@ impl Command {
         Ok(())
     }
 
-    pub fn exec(self) -> Result<()> {
+    pub fn exec(self, config: &Config) -> Result<()> {
         // First, and crucially only once, run the auto-actions -- but not for all commands.
         match &self {
             Command::Install { .. }
@@ -104,7 +99,7 @@ impl Command {
             | Command::Run { .. }
             | Command::Fmt { .. }
             | Command::Doc { .. }
-            | Command::Clippy { .. } => Self::auto_actions()?,
+            | Command::Clippy { .. } => Self::auto_actions(config)?,
             | Command::Toolchain { .. } | Command::Bench { .. } | Command::Squash => {}
         }
         // Then run the actual command.
@@ -121,12 +116,21 @@ impl Command {
             Command::Clippy { features, flags } => Self::clippy(features, flags),
             Command::Bench { target, no_install, save_baseline, load_baseline, benches } =>
                 Self::bench(target, no_install, save_baseline, load_baseline, benches),
-            Command::Toolchain { commit, flags } => Self::toolchain(commit, flags),
+            Command::Toolchain { name, commit, flags } =>
+                Self::toolchain(name, commit, flags, config),
             Command::Squash => Self::squash(),
         }
     }
 
-    fn toolchain(new_commit: Option<String>, flags: Vec<String>) -> Result<()> {
+    fn toolchain(
+        name: Option<String>,
+        new_commit: Option<String>,
+        flags: Vec<String>,
+        config: &Config,
+    ) -> Result<()> {
+        let name =
+            name.as_deref().or(config.toolchain.name.as_deref()).unwrap_or(Toolchain::DEFAULT_NAME);
+
         let sh = Shell::new()?;
         sh.change_dir(miri_dir()?);
         let new_commit = match new_commit {
@@ -134,7 +138,7 @@ impl Command {
             None => sh.read_file("rust-version")?.trim().to_owned(),
         };
         let current_commit = {
-            let rustc_info = cmd!(sh, "rustc +miri --version -v").read();
+            let rustc_info = cmd!(sh, "rustc +{name} --version -v").read();
             if let Ok(rustc_info) = rustc_info {
                 let metadata = rustc_version::version_meta_for(&rustc_info)?;
                 Some(
@@ -148,18 +152,25 @@ impl Command {
         };
         // Check if we already are at that commit.
         if current_commit.as_ref() == Some(&new_commit) {
-            if active_toolchain()? != "miri" {
-                cmd!(sh, "rustup override set miri").run()?;
+            // The toolchain is already at the right version. Make sure it is active in `miri_dir`.
+            // Ignore errors from `active_toolchain`, the active toolchain might be uninstalled.
+            if active_toolchain().ok().is_none_or(|toolchain| toolchain != name) {
+                cmd!(sh, "rustup override set {name}").run()?;
             }
             return Ok(());
         }
-        // Install and setup new toolchain.
-        cmd!(sh, "rustup toolchain uninstall miri").run()?;
 
-        cmd!(sh, "rustup-toolchain-install-master -n miri -c cargo -c rust-src -c rustc-dev -c llvm-tools -c rustfmt -c clippy {flags...} -- {new_commit}")
+        // Compute rustup-toolchain-install-master flags for additional components.
+        let components =
+            config.toolchain.components.as_deref().unwrap_or(Toolchain::DEFAULT_COMPONENTS);
+        let component_flags = components.iter().flat_map(|component| ["-c", component]);
+
+        // Install and setup new toolchain.
+        cmd!(sh, "rustup toolchain uninstall {name}").run()?;
+        cmd!(sh, "rustup-toolchain-install-master -n {name} -c cargo -c rust-src -c rustc-dev -c llvm-tools {component_flags...} {flags...} -- {new_commit}")
             .run()
             .context("Failed to run rustup-toolchain-install-master. If it is not installed, run 'cargo install --locked rustup-toolchain-install-master'.")?;
-        cmd!(sh, "rustup override set miri").run()?;
+        cmd!(sh, "rustup override set {name}").run()?;
         // Cleanup.
         cmd!(sh, "cargo clean").run()?;
         // Call `cargo metadata` on the sources in case that changes the lockfile

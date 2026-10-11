@@ -60,7 +60,8 @@ where
         | ty::Placeholder(..)
         | ty::Alias(ty::IsRigid::No, _)
         | ty::Bound(..)
-        | ty::Infer(_) => {
+        | ty::Infer(_)
+        | ty::Alias(ty::IsRigid::Yes, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
             panic!("unexpected type `{ty:?}`")
         }
 
@@ -106,15 +107,6 @@ where
                 .map(Unnormalized::skip_norm_wip)
                 .collect(),
         )),
-
-        ty::Alias(ty::IsRigid::Yes, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
-            // We can resolve the `impl Trait` to its concrete type,
-            // which enforces a DAG between the functions requiring
-            // the auto trait bounds in question.
-            Ok(ty::Binder::dummy(vec![
-                cx.type_of(def_id.into()).instantiate(cx, args).skip_norm_wip(),
-            ]))
-        }
     }
 }
 

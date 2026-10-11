@@ -48,8 +48,8 @@ struct LifetimeVisitor<'tcx> {
 
 impl<'tcx> Visitor<'tcx> for LifetimeVisitor<'tcx> {
     fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, hir::AmbigArg>) {
-        if let TyKind::Ref(lt, ref m) = ty.kind {
-            self.result.push((lt, Some(m.mutbl), ty.span));
+        if let TyKind::Ref(lt, _, mutbl) = ty.kind {
+            self.result.push((lt, Some(mutbl), ty.span));
         }
         hir::intravisit::walk_ty(self, ty);
     }

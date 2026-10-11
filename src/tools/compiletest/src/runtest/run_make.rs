@@ -7,6 +7,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 
 use super::{ProcRes, TestCx, disable_error_reporting};
 use crate::common::TestSuite;
+use crate::read2::Truncated;
 use crate::util::{ArgFileCommand, copy_dir_all, dylib_env_var};
 
 impl TestCx<'_> {
@@ -175,8 +176,6 @@ impl TestCx<'_> {
 
         let mut cmd = Command::new(&recipe_bin);
         cmd.current_dir(&rmake_out_dir)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
             // Provide the target-specific env var that is used to record dylib search paths. For
             // example, this could be `LD_LIBRARY_PATH` on some linux distros but `PATH` on Windows.
             .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
@@ -342,16 +341,39 @@ impl TestCx<'_> {
             }
         }
 
-        let proc = disable_error_reporting(|| cmd.spawn().expect("failed to spawn `rmake`"));
-        let (Output { stdout, stderr, status }, truncated) = self.read2_abbreviated(proc);
-        let stdout = String::from_utf8_lossy(&stdout).into_owned();
-        let stderr = String::from_utf8_lossy(&stderr).into_owned();
-        // This conditions on `status.success()` so we don't print output twice on error.
-        // NOTE: this code is called from an executor thread, so it's hidden by default unless --no-capture is passed.
-        self.dump_output(status.success(), &cmd.get_program().to_string_lossy(), &stdout, &stderr);
-        if !status.success() {
-            let res = ProcRes { status, stdout, stderr, truncated, cmdline: format!("{:?}", cmd) };
-            self.fatal_proc_rec("rmake recipe failed to complete", &res);
+        if self.config.capture {
+            cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+            let proc = disable_error_reporting(|| cmd.spawn().expect("failed to spawn `rmake`"));
+            let (Output { stdout, stderr, status }, truncated) = self.read2_abbreviated(proc);
+            let stdout = String::from_utf8_lossy(&stdout).into_owned();
+            let stderr = String::from_utf8_lossy(&stderr).into_owned();
+            // This conditions on `status.success()` so we don't print output twice on error.
+            self.dump_output(
+                status.success(),
+                &cmd.get_program().to_string_lossy(),
+                &stdout,
+                &stderr,
+            );
+            if !status.success() {
+                let res =
+                    ProcRes { status, stdout, stderr, truncated, cmdline: format!("{:?}", cmd) };
+                self.fatal_proc_rec("rmake recipe failed to complete", &res);
+            }
+        } else {
+            // When --no-capture is passed, we don't need to capture the output and just wait for the process to finish
+            let mut proc =
+                disable_error_reporting(|| cmd.spawn().expect("failed to spawn `rmake`"));
+            let status = proc.wait().expect("failed to wait for `rmake`");
+            if !status.success() {
+                let res = ProcRes {
+                    status,
+                    stdout: String::new(),
+                    stderr: String::new(),
+                    truncated: Truncated::No,
+                    cmdline: format!("{:?}", cmd),
+                };
+                self.fatal_proc_rec("rmake recipe failed to complete", &res);
+            }
         }
     }
 }

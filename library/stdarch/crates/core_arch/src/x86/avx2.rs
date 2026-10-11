@@ -5142,10 +5142,24 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     fn test_mm_sllv_epi64() {
-        let a = _mm_set1_epi64x(2);
-        let b = _mm_set1_epi64x(1);
+        let a = _mm_set_epi64x(2, 3);
+        let b = _mm_set_epi64x(1, 2);
         let r = _mm_sllv_epi64(a, b);
-        let e = _mm_set1_epi64x(4);
+        // Compare with the scalar version of the same computation.
+        let e = _mm_set_epi64x(2i64.unbounded_shl(1), 3i64.unbounded_shl(2));
+        assert_eq_m128i(r, e);
+        // Compare with hardcoded output.
+        let e = _mm_set_epi64x(4, 12);
+        assert_eq_m128i(r, e);
+
+        // The shift has unbounded semantics: if the shift amount
+        // is >= the number of bits the result is 0.
+        let a = _mm_set_epi64x(1, 2);
+        let b = _mm_set_epi64x(64, 65);
+        let r = _mm_sllv_epi64(a, b);
+        let e = _mm_set_epi64x(1i64.unbounded_shl(64), 2i64.unbounded_shl(65));
+        assert_eq_m128i(r, e);
+        let e = _mm_set_epi64x(0, 0);
         assert_eq_m128i(r, e);
     }
 
@@ -5192,10 +5206,27 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     fn test_mm_srav_epi32() {
-        let a = _mm_set1_epi32(4);
-        let count = _mm_set1_epi32(1);
-        let r = _mm_srav_epi32(a, count);
-        let e = _mm_set1_epi32(2);
+        let a = _mm_set_epi32(16, -32, 64, -128);
+        let b = _mm_set_epi32(4, 3, 2, 1);
+        let r = _mm_srav_epi32(a, b);
+        let e = _mm_set_epi32(1, -4, 16, -64);
+        assert_eq_m128i(r, e);
+
+        // The shift has unbounded semantics: if the shift amount
+        // is >= the number of bits the result is -1.
+        let a = _mm_set_epi32(-16, -32, -64, -128);
+        let b = _mm_set_epi32(31, 32, 33, 0);
+        let r = _mm_srav_epi32(a, b);
+        // Compare with the scalar version of the same computation.
+        let e = _mm_set_epi32(
+            (-16i32).unbounded_shr(31),
+            (-32i32).unbounded_shr(32),
+            (-64i32).unbounded_shr(33),
+            (-128i32).unbounded_shr(0),
+        );
+        assert_eq_m128i(r, e);
+        // Compare with hardcoded output.
+        let e = _mm_set_epi32(-1, -1, -1, -128);
         assert_eq_m128i(r, e);
     }
 
@@ -5296,10 +5327,24 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     fn test_mm_srlv_epi64() {
-        let a = _mm_set1_epi64x(2);
-        let count = _mm_set1_epi64x(1);
-        let r = _mm_srlv_epi64(a, count);
-        let e = _mm_set1_epi64x(1);
+        let a = _mm_set_epi64x(4, 8);
+        let b = _mm_set_epi64x(2, 1);
+        let r = _mm_srlv_epi64(a, b);
+        // Compare with the scalar version of the same computation.
+        let e = _mm_set_epi64x(4i64.unbounded_shr(2), 8i64.unbounded_shr(1));
+        assert_eq_m128i(r, e);
+        // Compare with hardcoded output.
+        let e = _mm_set_epi64x(1, 4);
+        assert_eq_m128i(r, e);
+
+        // The shift has unbounded semantics: if the shift amount
+        // is >= the number of bits the result is 0.
+        let a = _mm_set_epi64x(i64::MAX, i64::MAX);
+        let b = _mm_set_epi64x(64, 65);
+        let r = _mm_sllv_epi64(a, b);
+        let e = _mm_set_epi64x(i64::MAX.unbounded_shr(64), i64::MAX.unbounded_shr(65));
+        assert_eq_m128i(r, e);
+        let e = _mm_set_epi64x(0, 0);
         assert_eq_m128i(r, e);
     }
 

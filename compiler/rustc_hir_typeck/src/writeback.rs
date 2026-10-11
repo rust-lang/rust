@@ -11,12 +11,13 @@
 use std::mem;
 use std::ops::ControlFlow;
 
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::{E0720, ErrorGuaranteed};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, InferKind, Visitor};
-use rustc_hir::{self as hir, AmbigArg, HirId, find_attr};
+use rustc_hir::{self as hir, AmbigArg, HirId};
 use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
@@ -499,7 +500,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             }
 
             if !errors_buffer.is_empty() {
-                errors_buffer.sort_by_key(|diag| diag.span.primary_span());
+                errors_buffer.sort_by_key(|diag| diag.span.primary_span().map(Span::lo_hi));
                 for err in errors_buffer {
                     err.emit();
                 }

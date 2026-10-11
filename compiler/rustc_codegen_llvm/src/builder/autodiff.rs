@@ -2,13 +2,13 @@ use std::ptr;
 
 use rustc_ast::expand::autodiff_attrs::{DiffActivity, DiffMode};
 use rustc_ast::expand::typetree::FncTree;
+use rustc_attr_ir::RustcAutodiff;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::mir::IntrinsicResult;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceValue;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods, ReturnSlot};
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir::attrs::RustcAutodiff;
 use rustc_middle::ty;
 use rustc_middle::ty::{PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
 use rustc_span::bug;

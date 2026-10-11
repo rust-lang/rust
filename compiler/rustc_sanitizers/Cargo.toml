@@ -8,6 +8,7 @@ edition = "2024"
 bitflags = "2.5.0"
 libc = "0.2"
 rustc_abi = { path = "../rustc_abi" }
+rustc_attr_ir = { path = "../rustc_attr_ir" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_middle = { path = "../rustc_middle" }

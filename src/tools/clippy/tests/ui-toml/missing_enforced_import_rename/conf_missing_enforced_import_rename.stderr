@@ -8,10 +8,10 @@ LL | use std::process::{Child as Kid, exit as wrong_exit};
    = help: to override `-D warnings` add `#[allow(clippy::missing_enforced_import_renames)]`
 
 error: this import should be renamed
-  --> tests/ui-toml/missing_enforced_import_rename/conf_missing_enforced_import_rename.rs:7:1
+  --> tests/ui-toml/missing_enforced_import_rename/conf_missing_enforced_import_rename.rs:7:5
    |
 LL | use std::thread::sleep;
-   | ^^^^^^^^^^^^^^^^^^^^^^ help: try: `use std::thread::sleep as thread_sleep`
+   |     ^^^^^^^^^^^^^^^^^^ help: try: `std::thread::sleep as thread_sleep`
 
 error: this import should be renamed
   --> tests/ui-toml/missing_enforced_import_rename/conf_missing_enforced_import_rename.rs:11:11
@@ -32,10 +32,10 @@ LL |     sync :: Mutex,
    |     ^^^^^^^^^^^^^ help: try: `sync :: Mutex as StdMutie`
 
 error: this import should be renamed
-  --> tests/ui-toml/missing_enforced_import_rename/conf_missing_enforced_import_rename.rs:21:5
+  --> tests/ui-toml/missing_enforced_import_rename/conf_missing_enforced_import_rename.rs:21:9
    |
 LL |     use std::collections::BTreeMap as OopsWrongRename;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `use std::collections::BTreeMap as Map`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::collections::BTreeMap as Map`
 
 error: aborting due to 6 previous errors
 

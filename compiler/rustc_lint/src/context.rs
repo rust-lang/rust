@@ -547,17 +547,7 @@ pub trait LintContext {
     /// retrieved from the current lint pass. Buffered or manually created ids can
     /// cause ICEs.
     fn fulfill_expectation(&self, expectation: Self::LintExpectationId) {
-        // We need to make sure that submitted expectation ids are correctly fulfilled suppressed
-        // and stored between compilation sessions. To not manually do these steps, we simply create
-        // a dummy diagnostic and emit it as usual, which will be suppressed and stored like a
-        // normal expected lint diagnostic.
-        self.sess()
-            .dcx()
-            .struct_expect(
-                "this is a dummy diagnostic, to submit and store an expectation",
-                expectation.into(),
-            )
-            .emit();
+        self.sess().dcx().fulfill_expectation(expectation);
     }
 }
 
@@ -842,7 +832,10 @@ impl<'tcx> LateContext<'tcx> {
     /// be used for pretty-printing HIR by rustc_hir_pretty.
     pub fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
         let has_attr = |id: hir::HirId| -> bool {
-            self.tcx.hir_attrs(id).iter().any(hir::Attribute::is_prefix_attr_for_suggestions)
+            self.tcx
+                .hir_attrs(id)
+                .iter()
+                .any(rustc_attr_ir::Attribute::is_prefix_attr_for_suggestions)
         };
         expr.precedence(&has_attr)
     }

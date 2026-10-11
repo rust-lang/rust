@@ -6,12 +6,14 @@
 
 #![feature(
     adt_const_params,
-    min_generic_const_args,
-    macroless_generic_const_args,
+    gca_min_const_items,
+    gca_macroless_args,
     const_param_ty_trait,
     generic_const_parameter_types
 )]
 #![expect(incomplete_features)]
+
+use std::gca;
 
 trait A {
     type Ty: std::marker::ConstParamTy_;
@@ -21,7 +23,7 @@ trait A {
 
 impl A for () {
     type Ty = i32;
-    const CT: i32 = core::direct_const_arg!(0);
+    const CT: i32 = gca!(0);
 }
 
 fn main() {

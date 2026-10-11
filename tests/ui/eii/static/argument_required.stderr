@@ -1,5 +1,5 @@
 error: `#[eii]` requires the name as an explicit argument when used on a static
-  --> $DIR/argument_required.rs:7:1
+  --> $DIR/argument_required.rs:6:1
    |
 LL | #[eii]
    | ^^^^^^

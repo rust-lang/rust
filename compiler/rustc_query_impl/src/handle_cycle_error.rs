@@ -223,7 +223,7 @@ fn recursive_type_error(
     let start_index = item_and_field_ids
         .iter()
         .enumerate()
-        .min_by_key(|&(_, &(id, _))| tcx.def_span(id))
+        .min_by_key(|&(_, &(id, _))| tcx.def_span(id).lo_hi())
         .unwrap()
         .0;
     item_and_field_ids.rotate_left(start_index);

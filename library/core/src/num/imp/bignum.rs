@@ -386,7 +386,7 @@ macro_rules! define_bignum {
 /// the digit type for `Big32x40`
 pub type Digit32 = u32;
 
-#[cfg(target_pointer_width = "32")]
+#[cfg(any(target_pointer_width = "16", target_pointer_width = "32"))]
 define_bignum!(Big32x40: type=Digit32, n=40);
 
 /// The digit type for `Big64x20`.
@@ -395,12 +395,12 @@ pub type Digit64 = u64;
 #[cfg(target_pointer_width = "64")]
 define_bignum!(Big64x20: type=Digit64, n=20);
 
-#[cfg(target_pointer_width = "32")]
+#[cfg(any(target_pointer_width = "16", target_pointer_width = "32"))]
 pub type Big = Big32x40;
 #[cfg(target_pointer_width = "64")]
 pub type Big = Big64x20;
 
-#[cfg(target_pointer_width = "32")]
+#[cfg(any(target_pointer_width = "16", target_pointer_width = "32"))]
 pub type Digit = Digit32;
 #[cfg(target_pointer_width = "64")]
 pub type Digit = Digit64;

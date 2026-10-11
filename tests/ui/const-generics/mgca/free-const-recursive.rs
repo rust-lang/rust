@@ -4,11 +4,13 @@
 
 // Regression test for <https://github.com/rust-lang/rust/issues/153831>
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
-#![cfg_attr(gca, feature(generic_const_args))]
+#![cfg_attr(gca, feature(gca_const_items))]
 
-const A: () = core::direct_const_arg!(A);
+use std::gca;
+
+const A: () = gca!(A);
 //[gca]~^ ERROR: overflow evaluating the requirement `A == _`
 //[gca]~| ERROR: overflow evaluating the requirement `the constant `A` has type `()``
 //[min_gca]~^^^ ERROR: cycle detected when computing the type-level value for `A`

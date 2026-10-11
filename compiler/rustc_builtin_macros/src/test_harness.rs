@@ -324,7 +324,7 @@ fn add_main(cx: &mut TestCtxt<'_>, c: &mut ast::Crate) {
     // pub fn main() -> ExitCode { ... }
     let main_ret_ty = if cx.test_runner.is_none() {
         // Built-in runner has return type `ExitCode`.
-        let exit_code_path = vec![test_ident, Ident::from_str_and_span("ExitCode", sp)];
+        let exit_code_path = vec![test_ident, Ident::new(sym::ExitCode, sp)];
         ecx.ty(sp, ast::TyKind::Path(None, ecx.path(sp, exit_code_path)))
     } else {
         // User-defined runners have return type `()`.

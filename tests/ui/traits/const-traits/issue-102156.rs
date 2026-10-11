@@ -1,5 +1,5 @@
 //@ edition:2015
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 #![feature(const_trait_impl)]
 
 use core::convert::{From, TryFrom};

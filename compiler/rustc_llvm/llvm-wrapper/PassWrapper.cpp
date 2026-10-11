@@ -107,9 +107,10 @@ LLVMRustCreateMCSubtargetInfo(const char *TripleStr, const char *CPU,
 #endif
 }
 
-extern "C" bool LLVMRustMCSubtargetInfoHasFeature(MCSubtargetInfo *MCInfo,
-                                                  const char *Feature) {
-  return MCInfo->checkFeatures(std::string("+") + Feature);
+extern "C" bool LLVMRustMCSubtargetInfoCheckFeatures(MCSubtargetInfo *MCInfo,
+                                                     const char *Features,
+                                                     size_t FeaturesLen) {
+  return MCInfo->checkFeatures(StringRef{Features, FeaturesLen});
 }
 
 extern "C" void LLVMRustDisposeMCSubtargetInfo(MCSubtargetInfo *MCInfo) {

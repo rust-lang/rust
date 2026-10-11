@@ -27,11 +27,12 @@ fn try_custom_jobs() {
         r#"This is a test PR
 
 try-job: test-aarch64-gnu
+try-jobs: test-aarch64-apple
 try-job: dist-i686-msvc"#,
         "refs/heads/automation/bors/try",
     );
     insta::assert_snapshot!(stdout, @r#"
-    jobs=[{"name":"dist-i686-msvc","full_name":"try - dist-i686-msvc","os":"windows-2022","env":{"ARTIFACTS_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZN24CBO55","AWS_REGION":"us-west-1","CACHES_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZI5DHEBFL","CODEGEN_BACKENDS":"llvm,cranelift","DEPLOY_BUCKET":"rust-lang-ci2","DIST_REQUIRE_ALL_TOOLS":1,"RUST_CONFIGURE_ARGS":"--build=i686-pc-windows-msvc --host=i686-pc-windows-msvc --target=i686-pc-windows-msvc,i586-pc-windows-msvc --enable-full-tools --enable-profiler","SCRIPT":"python x.py dist bootstrap --include-default-paths","TOOLSTATE_PUBLISH":1}},{"name":"test-aarch64-gnu","full_name":"try - test-aarch64-gnu","os":"ubuntu-22.04-arm","env":{"ARTIFACTS_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZN24CBO55","AWS_REGION":"us-west-1","CACHES_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZI5DHEBFL","DEPLOY_BUCKET":"rust-lang-ci2","TOOLSTATE_PUBLISH":1},"free_disk":true}]
+    jobs=[{"name":"dist-i686-msvc","full_name":"try - dist-i686-msvc","os":"windows-2022","env":{"ARTIFACTS_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZN24CBO55","AWS_REGION":"us-west-1","CACHES_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZI5DHEBFL","CODEGEN_BACKENDS":"llvm,cranelift","DEPLOY_BUCKET":"rust-lang-ci2","DIST_REQUIRE_ALL_TOOLS":1,"RUST_CONFIGURE_ARGS":"--build=i686-pc-windows-msvc --host=i686-pc-windows-msvc --target=i686-pc-windows-msvc,i586-pc-windows-msvc --enable-full-tools --enable-profiler","SCRIPT":"python x.py dist bootstrap --include-default-paths","TOOLSTATE_PUBLISH":1}},{"name":"test-aarch64-apple","full_name":"try - test-aarch64-apple","os":"macos-15","env":{"ARTIFACTS_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZN24CBO55","AWS_REGION":"us-west-1","CACHES_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZI5DHEBFL","DEPLOY_BUCKET":"rust-lang-ci2","DEVELOPER_DIR":"/Applications/Xcode_26.2.app/Contents/Developer","MACOSX_DEPLOYMENT_TARGET":11.0,"MACOSX_STD_DEPLOYMENT_TARGET":11.0,"NO_DEBUG_ASSERTIONS":1,"NO_LLVM_ASSERTIONS":1,"NO_OVERFLOW_CHECKS":1,"RUSTC_RETRY_LINKER_ON_SEGFAULT":1,"RUST_CONFIGURE_ARGS":"--enable-sanitizers --enable-profiler --set build.allocator=jemalloc","SCRIPT":"./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin","TOOLSTATE_PUBLISH":1}},{"name":"test-aarch64-gnu","full_name":"try - test-aarch64-gnu","os":"ubuntu-22.04-arm","env":{"ARTIFACTS_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZN24CBO55","AWS_REGION":"us-west-1","CACHES_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZI5DHEBFL","DEPLOY_BUCKET":"rust-lang-ci2","TOOLSTATE_PUBLISH":1},"free_disk":true}]
     run_type=try
     "#);
 }

@@ -1,6 +1,6 @@
+use rustc_attr_ir::InstructionSetAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_hir::attrs::InstructionSetAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_lint_defs::builtin::{AARCH64_SOFTFLOAT_NEON, X86_SOFTFLOAT_SSE};
@@ -383,8 +383,10 @@ pub fn internal_target_features<'a, const N: usize>(
                         } else {
                             sess.dcx().emit_warn(diag);
                         }
-                    } else if stability.requires_nightly(/* in_cfg */ false).is_some() {
-                        // An unstable feature. Warn about using it. It makes little sense
+                    } else if stability.requires_nightly(/* in_cfg */ false).is_some()
+                        && !sess.is_nightly_build()
+                    {
+                        // An unstable feature. Warn about using it on stable. It makes little sense
                         // to hard-error here since we just warn about fully unknown
                         // features above.
                         let note = if stability.is_cfg_stable_toggle_unstable() {

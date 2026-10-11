@@ -27,8 +27,8 @@
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
 #![feature(extend_one)]
-#![feature(mem_conjure_zst)]
 #![feature(f16)]
+#![cfg_attr(bootstrap, feature(mem_conjure_zst))]
 #![recursion_limit = "256"]
 #![allow(internal_features)]
 #![deny(ffi_unwind_calls)]
@@ -1197,7 +1197,7 @@ impl Ident {
     pub fn new(string: &str, span: Span) -> Ident {
         Ident(bridge::Ident {
             sym: bridge::client::Symbol::new_ident(string, false),
-            is_raw: false,
+            kind: bridge::IdentKind::Normal,
             span: span.0,
         })
     }
@@ -1210,7 +1210,7 @@ impl Ident {
     pub fn new_raw(string: &str, span: Span) -> Ident {
         Ident(bridge::Ident {
             sym: bridge::client::Symbol::new_ident(string, true),
-            is_raw: true,
+            kind: bridge::IdentKind::Raw,
             span: span.0,
         })
     }
@@ -1234,8 +1234,8 @@ impl Ident {
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.0.is_raw {
-            f.write_str("r#")?;
+        if let Some(prefix) = self.0.kind.prefix() {
+            f.write_str(prefix)?;
         }
         fmt::Display::fmt(&self.0.sym, f)
     }
