@@ -908,7 +908,8 @@ To run the tests in parallel mode, you need to pass the `--parallel-frontend-thr
 Where `N` is the number of threads to use for the parallel frontend,
 and `M` is the number of times to run each test in parallel mode (to increase the chances of catching any non-determinism).
 
-Also, when running with `--parallel-frontend-threads`, the `compare-output-by-lines` directive would be implied for all tests,
+Also, when running with `--parallel-frontend-threads`,
+the `compare-output-by-lines` directive would be implied for all tests,
 since the output from the parallel frontend can be non-deterministic in terms of the order of lines.
 
 The parallel frontend is available in UI tests only at the moment,
